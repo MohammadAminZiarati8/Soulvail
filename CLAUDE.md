@@ -13,7 +13,22 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Status
 
-**Design and architecture decided. No code exists.** Development process (milestones, task breakdown) is **not yet decided** — propose, discuss, get an explicit go, *then* build. Answering a clarifying question is not a go-ahead. Do not create code, folders, asmdefs, or scaffolding until the owner says so.
+**Design, architecture, and plan decided. No code exists.** Implementation happens one task at a time, **only when the owner names the task and says go.** Answering a clarifying question is not a go-ahead.
+
+## Plan and progress
+
+- [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the map: milestones → tasks (ID, size, dependencies, status)
+- [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **the log: read the Current State block first, every session**
+- [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. Full specs exist for the current and next milestone only.
+
+## Session protocol
+
+1. Read PROGRESS → Current State. Open the spec for the next task (or the one the owner names).
+2. Build exactly the spec's Files table. Behaviour rules ↔ tests, one to one. Nothing outside the table without saying so.
+3. Before handing over: tests green, zero errors, zero new analyzer warnings, manual steps listed for the owner.
+4. Append the PROGRESS entry and update Current State **in the same change**; tick the ROADMAP box; fill the spec's *As built* footer.
+5. Report what changed and give the owner a commit message. **The owner commits and opens the PR.**
+6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after.
 
 ## Architecture in five lines (details in Architecture.md)
 

@@ -97,4 +97,12 @@ public sealed class StateMachine<TState> where TState : struct, Enum
 
 ## As built
 
-_Filled at merge._
+**15/15 tests green. Zero errors, zero warnings.** Public API and all nine behaviour rules built as written.
+
+Three deviations, detailed in [PROGRESS](../PROGRESS.md) under M0-02:
+
+1. **`csc.rsp` (`-langversion:10`) beside all five asmdefs.** Unity 6.3 compiles at C# 9, so the file-scoped namespaces this spec is written in did not build. Owner chose to keep the convention over rewriting it. Every future asmdef needs one.
+2. **`AllocationAssert` measures with Unity's GC recorder**, not the `GC.GetAllocatedBytesForCurrentThread()` / `GC.CollectionCount(0)` strategies described above. Both are inert on Unity's Mono — measured, not assumed — and would have made every "allocates nothing" claim in the project vacuous. The signature in the Files table is unchanged. **Supersede that comment when this spec is next read as a pattern.**
+3. **Fifth file `Tests/Core/Support/AllocationAssertTests.cs`** — the two `AllocationAssert_*` rows in the Tests table had no fixture in the Files table.
+
+Implementation note for later readers: `Tick` caches the current state's handler list on transition rather than doing an enum-keyed dictionary lookup per tick, so rule 8 holds by construction on any runtime.

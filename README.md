@@ -11,6 +11,8 @@ A fast, top-down, auto-aim action roguelite for Android. Pick a Vailkeeper, desc
 | [Docs/GameDesign.md](Docs/GameDesign.md) | What the game is. Pillars, loops, enemies, bosses, difficulty math, Veilrot. |
 | [Docs/Characters.md](Docs/Characters.md) | Classes, skills, the in-run skill tree, levelling. |
 | [Docs/CoreCombat.md](Docs/CoreCombat.md) | Spec for movement, targeting, basic attack, and skill casting. |
+| [Docs/Architecture.md](Docs/Architecture.md) | Hexagonal architecture: pure-C# core, Unity as body and senses, VContainer, data flow, scalability foundations. |
+| [Docs/adr/](Docs/adr/) | Architecture Decision Records — why each decision was made. |
 
 ## Working on it
 

@@ -18,6 +18,11 @@ indent_size = 2
 [*.md]
 trim_trailing_whitespace = false
 
+# Unity-serialised files: Unity writes empty values as "key: " with a trailing space.
+# Stripping it makes Unity rewrite the file on every import. Leave these alone.
+[*.{meta,asset,unity,prefab,mat,anim,controller,overrideController,physicMaterial,physicsMaterial2D,playable,mask,brush,flare,fontsettings,guiskin,giparams,renderTexture,spriteatlas,terrainlayer,mixer,shadervariants,preset,inputactions}]
+trim_trailing_whitespace = false
+
 [*.{cs}]
 # ── Formatting ───────────────────────────────────────────────────
 csharp_new_line_before_open_brace = all

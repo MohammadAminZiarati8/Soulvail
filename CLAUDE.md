@@ -29,6 +29,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 - `main` — tagged milestones only. `dev` — integration. `feature/<slug>` — one task each, branched from `dev`, merged through a PR the owner reviews.
 - Conventional commits: `feat:` `fix:` `chore:` `docs:` `refactor:`. Body says *why*. **No `Co-Authored-By` trailer** — the owner is the sole author.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
+- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, and forward to LFS.
 - Unity YAML merge driver, once per clone:
   ```
   git config merge.unityyaml.name "Unity SmartMerge"
@@ -46,6 +47,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 ## Unity
 
 - Force-text serialization, LF line endings for new scripts, root namespace `Soulvail`.
+- **C# lint:** `Microsoft.Unity.Analyzers` (v1.27.0) at `Assets/Plugins/Analyzers/`, labelled `RoslynAnalyzer`, all platforms disabled. Runs inside Unity's compiler (Console) and the IDE. `.editorconfig` carries the style rules the IDE enforces. No `dotnet` SDK on this machine — the pre-commit format check self-skips.
 - URP: the mobile assets are `Assets/Settings/Mobile_Renderer` / `Mobile_RPAsset`.
 - Unity MCP (`Unity_RunCommand`, `Unity_GetConsoleLogs`) works when the Editor is open and idle.
 - Android module installed; IL2CPP set; active build target still Windows.

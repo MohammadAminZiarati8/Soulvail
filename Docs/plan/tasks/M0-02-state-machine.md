@@ -1,6 +1,6 @@
 # M0-02 — `StateMachine<T>` and the core-purity guard test
 
-**Size:** S · **Depends on:** M0-01 · **Branch:** `m0-02-state-machine`
+**Size:** M · **Depends on:** M0-01 · **Branch:** `m0-02-state-machine`
 **Design refs:** AR §5.2 (as written in v0.1 patterns), AR §5 modules table (`Ai`), ADR-0001, ADR-0003
 
 ## Goal
@@ -14,6 +14,20 @@ The one generic state machine used everywhere (game flow, enemy AI, boss phases)
 | `Core/Common/StateMachine.cs` | Core | Generic FSM over an enum |
 | `Tests/Core/Common/StateMachineTests.cs` | Tests.Core | Behaviour tests |
 | `Tests/Core/AssemblyPurityTests.cs` | Tests.Core | Asserts Core references no `UnityEngine*` / `UnityEditor*` assembly |
+| `Tests/Core/Support/AllocationAssert.cs` | Tests.Core | The one way every spec measures "allocates nothing" |
+
+```csharp
+namespace Soulvail.Tests.Core.Support;
+
+public static class AllocationAssert
+{
+    /// Runs body once as warm-up, then `iterations` times under measurement, and fails if anything was allocated.
+    /// Probes GC.GetAllocatedBytesForCurrentThread() once; if the runtime doesn't support it (returns 0 for a
+    /// deliberately allocating probe), falls back to asserting GC.CollectionCount(0) is unchanged across
+    /// `iterations` × 10 runs — coarse, but it catches per-call allocation.
+    public static void None(Action body, int iterations = 10_000);
+}
+```
 
 ## Public API
 
@@ -65,8 +79,10 @@ public sealed class StateMachine<TState> where TState : struct, Enum
 | `Transition_InsideOnTick_AppliesAfterHandler` | OnTick(A) calls Transition(B) / Tick / Current == B; OnTick(B) not called in the same Tick |
 | `MultipleTransitionsInOneHandler_LastWins` | OnEnter(B) calls Transition(C) then Transition(D) / Transition(B) / Current == D; C never entered |
 | `MultipleHandlers_RunInRegistrationOrder` | two OnEnter(A) handlers / Start / order preserved |
-| `Tick_DoesNotAllocate` | started, 10 000 Ticks after warm-up / measure `GC.GetAllocatedBytesForCurrentThread()` / delta == 0 |
+| `Tick_DoesNotAllocate` | started / `AllocationAssert.None(() => fsm.Tick(0.016f))` / passes |
 | `CoreAssembly_ReferencesNoUnityAssemblies` | `typeof(StateMachine<>).Assembly.GetReferencedAssemblies()` / — / none start with `UnityEngine` or `UnityEditor` |
+| `AllocationAssert_DetectsAllocation` | — / `None(() => new object())` / fails (self-test of the helper, whichever strategy it picked) |
+| `AllocationAssert_PassesForPureBody` | — / `None(() => Math.Sqrt(2))` / passes |
 
 ## Acceptance
 

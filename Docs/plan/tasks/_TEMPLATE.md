@@ -33,6 +33,8 @@ Only these files change. Anything else is a deviation and goes in the PR descrip
 |---|---|
 | `Method_Condition_Expectation` | … / … / … |
 
+"allocated-bytes delta == 0" in any spec means `AllocationAssert.None(body, iterations)` from M0-02 — never the raw `GC` API.
+
 ## Manual verification (device)
 
 _Only if a Game-side change is visible._ Numbered steps, each with the expected observation.

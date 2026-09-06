@@ -84,7 +84,9 @@ public sealed class FloatingStick : OnScreenControl,
 | `Recenter_BeyondRadius_Diagonal` | origin (0,0), touch (60,80) (d=100) / — / (24,32) |
 | `PixelsPerDp_Values` | 160, 320, 0, −1 / — / 1, 2, 1, 1 |
 
-## Manual verification (device, after M0-16)
+## Manual verification (Editor first, then device after M0-16)
+
+**In the Editor:** Window → General → **Device Simulator** with a 1080p phone profile (it converts the mouse to a single touch and applies the profile's DPI and safe area). Steps 1, 2, 3 and 5 are verifiable there; step 4 (multi-touch) is **device-only** and stays deferred until a phone exists.
 
 1. Touch anywhere in the left 45 % — base and knob appear under the thumb.
 2. Drag right 200 px then back left: movement reverses **immediately** (recentering).

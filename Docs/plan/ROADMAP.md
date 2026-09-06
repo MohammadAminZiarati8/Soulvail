@@ -201,6 +201,10 @@
 
 Unscheduled. Promote into a milestone when it earns it.
 
+- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). Not adopted yet; revisit once the test suite is worth guarding — likely during M1.
+- **PR template** mirroring a spec's Acceptance section. Not adopted yet.
+- **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them.
+- **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.
 - `dotnet` SDK on the dev machine → activates the pre-commit format check.

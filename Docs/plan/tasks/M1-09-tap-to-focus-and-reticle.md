@@ -45,9 +45,10 @@ public static class FocusResolver
 ```csharp
 namespace Soulvail.Game.Adapters;
 
-public sealed class TapToFocusAdapter : ITickable
+public sealed class TapToFocusAdapter
 {
     public TapToFocusAdapter(InputAdapter input, IPlayerCommands commands, Camera camera);
+    public void Poll();      // called by RunTicker's command phase, before the snapshot is built
 }
 ```
 
@@ -65,6 +66,7 @@ public sealed class ReticleView : MonoBehaviour
 1. `FocusResolver.Resolve` ignores dead agents; ties → lowest id; empty → −1.
 2. `PlayerCombat.FocusAt(point)`: `id = Resolve(point, enemies, RadiusMetres)`; `id >= 0` → `Targeter.Focus(id)`, else `Targeter.ClearFocus()`. Tapping empty ground clears (CC §3.4).
 3. `TapToFocusAdapter.Tick`: when `input.FocusPressedThisFrame` and the pointer is **not** over a UI raycast target (`EventSystem.current.IsPointerOverGameObject(pointerId)` — this excludes the stick region and any button) → `camera.ScreenPointToRay(pointer)` intersected with the plane `y = 0` → `commands.FocusTarget(point)`. Taps over UI are ignored entirely.
+   **Ordering:** commands must land before the session ticks. `TapToFocusAdapter` is therefore not a free-standing `ITickable`; `RunTicker` owns a small `CommandPhase` it runs first (`MovementSkill` press from M1-16 joins it), so the frame order is one list in one file, not an accident of registration order.
 4. `ReticleView` subscribes to `TargetChanged`. Each `LateUpdate` it positions itself at `views[id].Position` (ground level) when `id >= 0`; hidden otherwise. States (GD §16.4): **auto** — cyan ring, 60 % alpha; **focused** — cyan, 100 %, pulsing scale 1.0↔1.15 at 2 Hz, plus a small chevron child; **blocked** — hollow ring (thin) with a "×" glyph child, still cyan (red is reserved for danger).
 5. `ReticleView` allocates nothing per frame; the pulse is a `Mathf.Sin` on scale.
 6. `RunSession.FocusTarget/ClearFocus` throw `InvalidOperationException` when not running (commands during menu are a bug, not a no-op).

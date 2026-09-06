@@ -17,20 +17,24 @@ Declare the walking skeleton done on evidence: the checklist below passes on the
 
 No code in this task. If the checklist reveals a bug, it becomes a fix task (`M0-20a…`) with its own PR.
 
-## Checklist (owner, on device)
+## Checklist (owner — emulator now, device-only items deferred)
+
+Until a phone is available, items marked **[device]** are recorded as deferred in PROGRESS rather than blocking the tag. They are debt, not exemptions: the first session with real hardware runs every one of them.
 
 Movement and controls — from [CC §8](../../CoreCombat.md):
 - [ ] Stick spawns under the thumb anywhere in the left 45 %
 - [ ] Dynamic recentering: drag far right, then left — reversal is immediate
-- [ ] Deadzone / analog band behave as specified (tiny drag = nothing, ~24 dp = half speed)
-- [ ] Movement and a second touch work simultaneously
+- [ ] Deadzone / analog band behave as specified (tiny drag = nothing, ~24 dp = half speed) — at the emulator's 240 DPI
+- [ ] **[device]** Movement and a second touch work simultaneously
 - [ ] Capsule reaches full speed in a blink and stops with no slide
 - [ ] Facing follows movement; holds when idle
-- [ ] Sustained 60 fps in the grey box (overlay)
+- [ ] **[device]** Sustained 60 fps in the grey box (the emulator's number is meaningless)
+- [ ] **[device]** Touch-to-motion latency feels immediate
 
 Architecture proof:
 - [ ] Play from `Boot`, `Menu`, and `Run` in the Editor all work
-- [ ] Kill the app from the recents screen and relaunch — clean start, no errors
+- [ ] Kill the app from the recents screen and relaunch — clean start, no errors (emulator OK)
+- [ ] Press Play in `Run` directly (no `PendingRun`) — falls back to Oathbound + a warning, no exception
 - [ ] `Tests/Core`, `Tests/Game`, `Tests/PlayMode` all green in the Test Runner
 - [ ] Zero analyzer warnings in the Console after a full reimport
 

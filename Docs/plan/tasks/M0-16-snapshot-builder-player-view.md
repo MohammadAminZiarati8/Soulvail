@@ -28,6 +28,7 @@ namespace Soulvail.Game.Adapters;
 
 public sealed class SnapshotBuilder
 {
+    public const float MaxDt = 1f / 20f;     // a hitch or scene load must never become a 0.3 s simulation step
     public SnapshotBuilder(PlayerView player, InputAdapter input);
     public void Build(WorldSnapshot snapshot, float dt);
 }
@@ -60,7 +61,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 ## Behaviour
 
 **SnapshotBuilder**
-1. `Build`: `snapshot.Clear()`; `Dt = dt`; `MoveInput = input.Move.ToNum()` (already ≤ 1); `PlayerPosition = player.Position.ToNum()`; `PlayerVelocity = player.Velocity.ToNum()`. `EnemyCount` stays 0 (no enemies until M1).
+1. `Build`: `snapshot.Clear()`; `Dt = Mathf.Min(dt, MaxDt)`; `MoveInput = input.Move.ToNum()` (already ≤ 1); `PlayerPosition = player.Position.ToNum()`; `PlayerVelocity = player.Velocity.ToNum()`. `EnemyCount` stays 0 (no enemies until M1). **Every consumer integrates with `snapshot.Dt`** — `RunTicker` passes it to `PlayerView.Apply`, never `Time.deltaTime` — so brain and body take the same step.
 2. Stick axes map straight through: stick X → world X, stick Y → world Z. The camera in M0 has yaw 0, so this is camera-relative by construction. When yaw becomes configurable, the rotation goes **here**, never in core.
 
 **PlayerView**
@@ -69,9 +70,9 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 5. `PlayerView` reads no input and holds no gameplay state. It is a body.
 
 **RunTicker** — the frame order, fixed (AR §4.3)
-6. `Start`: `input.Enable()`; `session.Start(new RunConfig(pending.CharacterId))`.
-7. `Tick`, every frame, in this order: `builder.Build(snapshot, Time.deltaTime)` → `intents.Clear()` → `session.Tick(snapshot)` → `if (intents.HasPlayerMove) player.Apply(intents.PlayerMove, Time.deltaTime)`.
-8. `Dispose`: `session.End()`; `input.Disable()`.
+6. `Start`: `Screen.sleepTimeout = SleepTimeout.NeverSleep` (a run must not dim mid-fight; restored on dispose — menus should let the phone sleep); `input.Enable()`; `session.Start(new RunConfig(pending.IsSet ? pending.CharacterId : catalog.Characters[0].Id))` — the fallback mirrors M0-12 rule 6 so Play-in-Run works.
+7. `Tick`, every frame, in this order: `builder.Build(snapshot, Time.deltaTime)` → `intents.Clear()` → `session.Tick(snapshot)` → `if (intents.HasPlayerMove) player.Apply(intents.PlayerMove, snapshot.Dt)`.
+8. `Dispose`: `session.End()`; `input.Disable()`; `Screen.sleepTimeout = SleepTimeout.SystemSetting`.
 9. `Tick` allocates nothing.
 
 **Prefabs / scene**
@@ -86,6 +87,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 | `Build_CopiesPlayerPositionAndVelocity` | GameObject + `PlayerView` at (3, 0, −2); disabled adapter / Build(dt 0.02) / `PlayerPosition == (3,0,−2)`, `Dt == 0.02`, `EnemyCount == 0` |
 | `Build_CopiesMoveInput` | `InputTestFixture` gamepad stick (0.3, 0.6) / Build / `MoveInput ≈ (0.3, 0.6)` |
 | `Build_ClearsPreviousEnemies` | snapshot with `EnemyCount = 3` / Build / `EnemyCount == 0` |
+| `Build_ClampsDt` | — / Build(dt 0.3) / `Dt == 0.05`; Build(dt 0.016) / `Dt == 0.016` |
 | `Build_AllocatesNothing` | warm-up / 10 000 builds / allocated-bytes delta == 0 |
 
 `PlayerView.Apply` and `RunTicker` are exercised by the manual steps; they're the body, tested on the phone.

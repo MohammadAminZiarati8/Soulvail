@@ -16,9 +16,11 @@ _Updated: 2026-09-07_
 | **Last merged task** | — |
 | **In progress** | — |
 | **Next task** | [M0-01](tasks/M0-01-project-skeleton.md) — Project skeleton |
-| **What works** | Nothing runs yet. Repo has design docs, architecture + ADRs, git hooks, Unity analyzer. |
+| **What works** | Nothing runs yet. Repo has design docs, architecture + ADRs, git hooks, Unity analyzer, M0 + M1 specs. |
+| **Reference device** | **None yet.** BlueStacks 5 (Android 11, 1920 × 1080 @ 240 DPI, ADB on) for APKs; Unity Device Simulator for layout. |
+| **Deferred — device-only** | Nothing yet. Each milestone's acceptance lists its **[device]** items here when tagged; the first session with a phone runs all of them. |
 | **Known issues** | — |
-| **Watch list** | VContainer version pinned in M0-01 must be re-verified at implementation time. |
+| **Watch list** | VContainer version pinned in M0-01 must be re-verified at implementation time. Application id is the placeholder `com.soulvail.dev` — must change before the first store upload (M8-06). |
 
 ---
 

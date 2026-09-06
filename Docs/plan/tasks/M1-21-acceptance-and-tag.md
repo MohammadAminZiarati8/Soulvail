@@ -18,11 +18,13 @@ Answer the M1 question on evidence — *is moving and swinging, with nothing els
 
 No code. A bug found here becomes `M1-21a…` with its own PR.
 
-## Checklist (owner, on device) — [CC §8](../../CoreCombat.md) in full
+## Checklist (owner) — [CC §8](../../CoreCombat.md) in full
+
+Items marked **[device]** cannot be verified on an emulator (one finger, no haptics, meaningless frame rate). They are deferred and tracked in PROGRESS until a phone exists — and `m1`'s *feel verdict* is explicitly provisional until they've been run on hardware.
 
 - [ ] Stick spawns under the thumb anywhere in the left 45 %
 - [ ] Dynamic recentering — reversal is immediate
-- [ ] Movement and buttons work simultaneously (stick + Charge)
+- [ ] **[device]** Movement and buttons work simultaneously (stick + Charge)
 - [ ] Character strafes: faces the target while moving independently
 - [ ] Auto-target picks the sensible enemy and **doesn't jitter** between two of them
 - [ ] Reticle always visible under the current target
@@ -35,8 +37,9 @@ No code. A bug found here becomes `M1-21a…` with its own PR.
 - [ ] Shield absorbs first, refills after 4 s clear; HP ghost trail reads correctly
 - [ ] Dying returns to Menu; Descend starts a fresh run cleanly
 - [ ] Respawns never within 6 m; enemies path around pillars
-- [ ] Haptics: hit / hurt / charge distinct; off switch works
-- [ ] Sustained 60 fps with 12 chasers (overlay); Profiler shows no per-frame GC.Alloc in a 60 s session
+- [ ] **[device]** Haptics: hit / hurt / charge distinct; off switch works
+- [ ] **[device]** Sustained 60 fps with 12 chasers (overlay)
+- [ ] Profiler shows no per-frame GC.Alloc in a 60 s session (Editor profiler is valid for allocation, not for frame time)
 
 Guardrails now in force (GD §12.4) — verify, don't assume:
 - [ ] One-shot rule: no single hit exceeds 35 % of max HP (Husk 8 / 140 ≈ 6 %)

@@ -52,7 +52,7 @@ public static class RunInstaller
 3. `DomainEventHub` as `IDomainEvents` and as itself.
 4. `IntentBuffer` as `IIntentSink` and as itself.
 5. `WorldSnapshot` instance with `BootInstaller.SnapshotEnemyCapacity`.
-6. `IRandom` via factory: resolve `PendingRun`; if `!IsSet` throw `InvalidOperationException("No pending run")`; else `new SeededRandom(pending.Seed)`.
+6. `IRandom` via factory: resolve `PendingRun`; if `IsSet` → `new SeededRandom(pending.Seed)`. If **not** set (pressing Play directly in the Run scene, M0-13 rule 1), fall back to `Environment.TickCount` and log one warning naming the fallback — never throw. `RunTicker` (M0-16) applies the same fallback for the character: `pending.IsSet ? pending.CharacterId : catalog.Characters[0].Id`.
 7. `RunSession` as `IRunSession`.
 8. Disposing the run scope disposes `DomainEventHub` (VContainer disposes `IDisposable` registrations owned by the scope).
 
@@ -70,7 +70,7 @@ Nothing scene-related is registered here — `PlayerView`, `SnapshotBuilder`, `R
 | `Boot_PendingRun_IsSingleton` | built / Resolve twice / same instance |
 | `Run_ResolvesSession_Scoped` | boot container, `CreateScope(RunInstaller.Install)`, pending set / Resolve<IRunSession>() twice / same instance; `IsRunning == false` |
 | `Run_Random_SeededFromPendingRun` | pending.Set(oathbound, 123) / Resolve<IRandom>() / `Seed == 123` |
-| `Run_WithoutPendingRun_ResolveRandomThrows` | pending not set / Resolve<IRandom>() / throws (VContainer wraps; assert inner `InvalidOperationException`) |
+| `Run_WithoutPendingRun_UsesFallbackSeed` | pending not set / Resolve<IRandom>() / resolves; `LogAssert.Expect(LogType.Warning, …)` consumed |
 | `Run_EventsPortAndHub_SameInstance` | scope / Resolve<IDomainEvents>(), Resolve<DomainEventHub>() / same |
 | `Run_IntentPortAndBuffer_SameInstance` | scope / Resolve<IIntentSink>(), Resolve<IntentBuffer>() / same |
 | `Run_Snapshot_HasConfiguredCapacity` | scope / Resolve<WorldSnapshot>() / `EnemyCapacity == 64` |

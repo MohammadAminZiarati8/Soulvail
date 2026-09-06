@@ -1,0 +1,19 @@
+{
+    "name": "Soulvail.Editor",
+    "rootNamespace": "Soulvail.Editor",
+    "references": [
+        "Soulvail.Core",
+        "Soulvail.Game"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

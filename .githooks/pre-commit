@@ -135,7 +135,10 @@ done < "$expanded_file"
 # ---------------------------------------------------- 6. C# format check
 cs_files=$(awk -F'\t' '$1=="A" && $2 ~ /\.cs$/ {print $2}' "$expanded_file")
 if [ -n "$cs_files" ]; then
-  if command -v dotnet >/dev/null 2>&1; then
+  # Probe the subcommand, not the binary: a bare .NET *runtime* also puts `dotnet` on
+  # PATH but has no `format`, and its "No .NET SDKs were found" exit code is
+  # indistinguishable here from a real violation — which reads as a phantom one.
+  if dotnet format --version >/dev/null 2>&1; then
     # --folder: whitespace-only formatting from .editorconfig, no MSBuild/project needed.
     # shellcheck disable=SC2086
     if ! dotnet format whitespace --folder --verify-no-changes --include $cs_files >/dev/null 2>&1; then
@@ -143,7 +146,7 @@ if [ -n "$cs_files" ]; then
       err "  dotnet format whitespace --folder --include $(printf '%s ' $cs_files)"
     fi
   else
-    note "dotnet not found — skipping C# format check (install the .NET SDK to enable it)"
+    note "dotnet format unavailable — skipping C# format check (install the .NET SDK to enable it)"
   fi
 fi
 

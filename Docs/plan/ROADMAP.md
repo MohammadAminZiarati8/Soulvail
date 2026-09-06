@@ -37,7 +37,7 @@
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M0-01](tasks/M0-01-project-skeleton.md) | Project skeleton: folders, five assembly definitions, VContainer 1.19.0 | M | — | ☑ |
-| [M0-02](tasks/M0-02-state-machine.md) | `StateMachine<T>` + core-purity guard test | S | 01 | ☐ |
+| [M0-02](tasks/M0-02-state-machine.md) | `StateMachine<T>` + core-purity guard test | S | 01 | ☑ |
 | [M0-03](tasks/M0-03-domain-events.md) | Domain events: `IDomainEvents`, `DomainEventHub`, `RecordingEvents` | M | 01 | ☐ |
 | [M0-04](tasks/M0-04-random-streams.md) | `IRandom` with named streams, `SeededRandom`, `FixedRandom` fake | M | 01 | ☐ |
 | [M0-05](tasks/M0-05-world-snapshot.md) | `WorldSnapshot`, `EnemySense`, `Num` vector conversions | M | 01 | ☐ |

@@ -81,11 +81,13 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 ## Unity
 
 - Force-text serialization, LF line endings for new scripts, root namespace `Soulvail`.
+- **Every asmdef needs a `csc.rsp` containing `-langversion:10` beside it.** Unity 6.3 compiles at C# 9, so file-scoped namespaces don't build without it. It is per-assembly — an `Assets/csc.rsp` does *not* reach asmdef assemblies. Add one with any new asmdef or its first file breaks the build (M0-02).
+- **Never hand-roll a GC allocation probe.** `GC.GetAllocatedBytesForCurrentThread()` returns 0 always on Unity's Mono and `GC.CollectionCount(0)` barely moves, so both silently pass code that allocates. Use `AllocationAssert.None` (`Tests/Core/Support/`), which measures with Unity's GC recorder (M0-02).
 - **Domain reload is disabled on Play** (Enter Play Mode Options). Iteration is instant, and it's safe *only* because the architecture bans static mutable state. If a static is ever unavoidable, reset it in `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`. Scene reload stays enabled.
 - **Reference device: none yet.** Until a phone is available, builds are verified on BlueStacks 5 (dev APKs include x86-64 for it) and layout on the Unity Device Simulator. Multi-touch, haptics, touch latency, 60 fps and thermal checks are **device-only** and tracked as deferred in PROGRESS.
 - **Application identifier is a placeholder** (`com.soulvail.dev`) until publishing. It is permanent once uploaded to a store — M8-06 changes it first.
 - `Screen.sleepTimeout` is `NeverSleep` only during a run (set in `RunTicker.Start`, restored on dispose) — never app-wide, menus shouldn't burn battery.
-- **C# lint:** `Microsoft.Unity.Analyzers` (v1.27.0) at `Assets/Plugins/Analyzers/`, labelled `RoslynAnalyzer`, all platforms disabled. Runs inside Unity's compiler (Console) and the IDE. `.editorconfig` carries the style rules the IDE enforces. No `dotnet` SDK on this machine — the pre-commit format check self-skips.
+- **C# lint:** `Microsoft.Unity.Analyzers` (v1.27.0) at `Assets/Plugins/Analyzers/`, labelled `RoslynAnalyzer`, all platforms disabled. Runs inside Unity's compiler (Console) and the IDE. `.editorconfig` carries the style rules the IDE enforces. No `dotnet` SDK on this machine — only a .NET runtime, so `dotnet` is on `PATH` but `dotnet format` does not exist. The pre-commit check probes `dotnet format --version` (not the bare binary) and self-skips; probing the binary alone reports a phantom formatting violation (M0-02).
 - URP: the mobile assets are `Assets/Settings/Mobile_Renderer` / `Mobile_RPAsset`.
 - Unity MCP (`Unity_RunCommand`, `Unity_GetConsoleLogs`) works when the Editor is open and idle.
 - Android module installed; IL2CPP set; active build target still Windows.

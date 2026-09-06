@@ -18,4 +18,5 @@ A fast, top-down, auto-aim action roguelite for Android. Pick a Vailkeeper, desc
 
 - Branches: `main` (tagged milestones) ← `dev` (integration) ← `feature/<slug>` (one task each, PR into `dev`).
 - Binary assets are tracked with Git LFS — run `git lfs install` once after cloning.
+- Enable the git hooks once per clone: `git config core.hooksPath .githooks` (what they check: [.githooks/README.md](.githooks/README.md)).
 - Set up Unity's YAML merge driver once per clone (see `CLAUDE.md`).

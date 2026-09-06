@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+# commit-msg — enforce Conventional Commits and project message rules.
+#
+#   <type>(<scope>)?!?: <subject>      subject <= 72 chars, no trailing period
+#   types: feat fix docs chore refactor test perf build ci style revert
+#
+#   No "Co-Authored-By:" trailers — the owner is the sole author.
+#   Merge / revert / fixup! / squash! messages are allowed through.
+#
+# Bypass in an emergency: git commit --no-verify
+
+set -u
+msg_file=$1
+fail=0
+err() { printf 'ERROR: %s\n' "$*" >&2; fail=1; }
+
+# First non-comment, non-blank line is the subject.
+subject=$(grep -v '^#' "$msg_file" | sed '/^[[:space:]]*$/d' | head -n 1)
+
+case "$subject" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([A-Za-z0-9._/-]+\))?!?: [^ ]'; then
+  err "Subject must follow Conventional Commits: <type>(<scope>)?: <summary>"
+  err "  types: feat fix docs chore refactor test perf build ci style revert"
+  err "  got:   $subject"
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  err "Subject is ${#subject} chars; keep it to 72."
+fi
+
+case "$subject" in
+  *.) err "Subject should not end with a period." ;;
+esac
+
+if grep -v '^#' "$msg_file" | grep -Eiq '^Co-Authored-By:'; then
+  err "Remove the Co-Authored-By trailer — commits carry the owner's authorship only."
+fi
+
+if [ "$fail" -ne 0 ]; then
+  printf '\ncommit-msg: message rejected. Edit it (git commit --amend / re-run) or use --no-verify in an emergency.\n' >&2
+  exit 1
+fi
+exit 0

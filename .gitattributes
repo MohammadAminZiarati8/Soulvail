@@ -1,6 +1,9 @@
 # Normalise line endings; LF in the repo, LF in the working tree.
 * text=auto eol=lf
 
+# ── Hooks must stay LF or sh can't read the shebang ─────────────
+.githooks/* text eol=lf
+
 # ── Source ───────────────────────────────────────────────────────
 *.cs        text diff=csharp
 *.asmdef    text

@@ -351,6 +351,8 @@ Assets/_Project/
 │   └── Pooling/
 ├── Editor/                        Soulvail.Editor.asmdef (validation, tooling)
 ├── Tests/Core/                    Soulvail.Tests.Core.asmdef (EditMode, NUnit, → Core only)
+├── Tests/Game/                    Soulvail.Tests.Game.asmdef (EditMode; adapters, authoring, installers — no scene)
+├── Tests/PlayMode/                Soulvail.Tests.PlayMode.asmdef (one smoke test: Boot reaches Menu)
 ├── Data/                          SO instances: Characters/ Enemies/ Skills/ Modes/ Tuning/
 ├── Prefabs/  Scenes/  Art/  Audio/  Materials/
 ```

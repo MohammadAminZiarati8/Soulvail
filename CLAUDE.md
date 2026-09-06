@@ -15,8 +15,8 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Git workflow (decided)
 
+- **Claude never commits or pushes. The owner does all commits.** Claude edits files and reports exactly what changed; the owner stages, commits, pushes, and opens PRs.
 - `main` — tagged milestones only. `dev` — integration. `feature/<slug>` — one task each, branched from `dev`, merged through a PR the owner reviews.
-- Never commit directly to `dev` or `main`.
 - Conventional commits: `feat:` `fix:` `chore:` `docs:` `refactor:`. Body says *why*.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
 - Unity YAML merge driver, once per clone:

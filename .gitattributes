@@ -1,0 +1,89 @@
+# Normalise line endings; LF in the repo, LF in the working tree.
+* text=auto eol=lf
+
+# ── Source ───────────────────────────────────────────────────────
+*.cs        text diff=csharp
+*.asmdef    text
+*.asmref    text
+*.json      text
+*.md        text
+*.shader    text
+*.hlsl      text
+*.cginc     text
+*.compute   text
+*.uxml      text
+*.uss       text
+
+# ── Unity YAML — merged with UnityYAMLMerge (see CLAUDE.md for the git config) ──
+*.unity               merge=unityyaml text
+*.prefab              merge=unityyaml text
+*.asset               merge=unityyaml text
+*.meta                merge=unityyaml text
+*.mat                 merge=unityyaml text
+*.anim                merge=unityyaml text
+*.controller          merge=unityyaml text
+*.overrideController  merge=unityyaml text
+*.physicMaterial      merge=unityyaml text
+*.physicsMaterial2D   merge=unityyaml text
+*.playable            merge=unityyaml text
+*.mask                merge=unityyaml text
+*.brush               merge=unityyaml text
+*.flare               merge=unityyaml text
+*.fontsettings        merge=unityyaml text
+*.guiskin             merge=unityyaml text
+*.giparams            merge=unityyaml text
+*.renderTexture       merge=unityyaml text
+*.spriteatlas         merge=unityyaml text
+*.terrainlayer        merge=unityyaml text
+*.mixer               merge=unityyaml text
+*.shadervariants      merge=unityyaml text
+*.preset              merge=unityyaml text
+*.inputactions        text
+
+# ── Binary assets → Git LFS ──────────────────────────────────────
+# Images
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.jpeg  filter=lfs diff=lfs merge=lfs -text
+*.psd   filter=lfs diff=lfs merge=lfs -text
+*.tga   filter=lfs diff=lfs merge=lfs -text
+*.tif   filter=lfs diff=lfs merge=lfs -text
+*.tiff  filter=lfs diff=lfs merge=lfs -text
+*.exr   filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
+*.gif   filter=lfs diff=lfs merge=lfs -text
+*.bmp   filter=lfs diff=lfs merge=lfs -text
+*.svg   filter=lfs diff=lfs merge=lfs -text
+# Models
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.FBX   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+# Audio
+*.wav   filter=lfs diff=lfs merge=lfs -text
+*.mp3   filter=lfs diff=lfs merge=lfs -text
+*.ogg   filter=lfs diff=lfs merge=lfs -text
+*.aif   filter=lfs diff=lfs merge=lfs -text
+*.aiff  filter=lfs diff=lfs merge=lfs -text
+*.flac  filter=lfs diff=lfs merge=lfs -text
+# Video
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+*.mov   filter=lfs diff=lfs merge=lfs -text
+*.webm  filter=lfs diff=lfs merge=lfs -text
+# Fonts
+*.ttf   filter=lfs diff=lfs merge=lfs -text
+*.otf   filter=lfs diff=lfs merge=lfs -text
+# Binaries / archives
+*.dll   filter=lfs diff=lfs merge=lfs -text
+*.so    filter=lfs diff=lfs merge=lfs -text
+*.a     filter=lfs diff=lfs merge=lfs -text
+*.aar   filter=lfs diff=lfs merge=lfs -text
+*.jar   filter=lfs diff=lfs merge=lfs -text
+*.zip   filter=lfs diff=lfs merge=lfs -text
+*.7z    filter=lfs diff=lfs merge=lfs -text
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+# Unity binary formats
+*.cubemap filter=lfs diff=lfs merge=lfs -text
+*.bytes   filter=lfs diff=lfs merge=lfs -text

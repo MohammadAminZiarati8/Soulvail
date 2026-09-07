@@ -88,7 +88,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 | `Build_CopiesMoveInput` | `InputTestFixture` gamepad stick (0.3, 0.6) / Build / `MoveInput ≈ (0.3, 0.6)` |
 | `Build_ClearsPreviousEnemies` | snapshot with `EnemyCount = 3` / Build / `EnemyCount == 0` |
 | `Build_ClampsDt` | — / Build(dt 0.3) / `Dt == 0.05`; Build(dt 0.016) / `Dt == 0.016` |
-| `Build_AllocatesNothing` | warm-up / 10 000 builds / allocated-bytes delta == 0 |
+| `Build_AllocatesNothing` | warm-up / 10 000 builds / allocates nothing (`AllocationAssert`) |
 
 `PlayerView.Apply` and `RunTicker` are exercised by the manual steps; they're the body, tested on the phone.
 

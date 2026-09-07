@@ -15,7 +15,7 @@ Core has stable identities for content and text, an immutable class spec, and a 
 | `Core/Content/LocKey.cs` | Core | Localisation key |
 | `Core/Content/CharacterSpec.cs` | Core | Immutable class definition |
 | `Core/Content/ContentCatalog.cs` | Core | Lookup by id, duplicates rejected |
-| `Tests/Core/Content/ContentTests.cs` | Tests.Core | All four types (one module, one test file) |
+| `Tests/Core/Content/ContentTests.cs` | Tests.Core | All four types (one module, one test file) — **already exists**; M0-07 created it for `MovementSpec`, so this task adds to it rather than creating it |
 
 ## Public API
 

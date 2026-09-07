@@ -13,7 +13,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Status
 
-**Design, architecture, and plan decided. No code exists.** Implementation happens one task at a time, **only when the owner names the task and says go.** Answering a clarifying question is not a go-ahead.
+**Design, architecture and plan decided; implementation is underway, one task at a time.** Where it stands — milestone, last merged task, next task, watch list — lives in PROGRESS → Current State, never here. A task is built **only when the owner names it and says go.** Answering a clarifying question is not a go-ahead.
 
 ## Plan and progress
 
@@ -34,14 +34,14 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 1. Hexagonal. `Soulvail.Core` is pure C# (`noEngineReferences`) and owns **all** game logic, enemies and bosses included. `Soulvail.Game` is Unity: adapters, views, VContainer scopes. `Game → Core`, never the reverse.
 2. **Core is the brain; Unity is the body and the senses.** Unity reports facts and positions, core decides outcomes, Unity executes intents and renders events.
-3. Commands and facts in immediately; a per-frame `Tick(dt, snapshot)`; events and intents out. Core throttles its own expensive work.
+3. Commands and facts in immediately; a per-frame `Tick(snapshot)` (`dt` rides on the snapshot); events and intents out. Core throttles its own expensive work.
 4. **Nothing is static.** VContainer `BootScope` → `RunScope`. No singletons, no service locator, no global bus.
 5. Every gameplay number is a `Stat` with a modifier stack. Every content reference is a `ContentId`. Every user string is a `LocKey`. `IRandom` has named streams. Save DTOs are versioned with migration tests.
 
 ## Git workflow (decided)
 
 - **Claude never commits or pushes. The owner does all commits.** Claude edits files and reports exactly what changed; the owner stages, commits, pushes, and opens PRs.
-- `main` — tagged milestones only. `dev` — integration. `feature/<slug>` — one task each, branched from `dev`, merged through a PR the owner reviews.
+- `main` — tagged milestones only. `dev` — integration. `m0-09-run-contracts` — lowercase task ID + slug, one task each, branched from `dev`, merged through a PR the owner reviews.
 - Conventional commits: `feat:` `fix:` `chore:` `docs:` `refactor:`. Body says *why*. **No `Co-Authored-By` trailer** — the owner is the sole author.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
 - Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, and forward to LFS.
@@ -52,7 +52,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
   ```
 - `gh` CLI is not installed; PRs are opened on GitHub web.
 
-## Code conventions (when code exists)
+## Code conventions
 
 - Namespaces mirror folders. Private fields `_camelCase`. `[SerializeField] private`, never public fields. File-scoped namespaces. One class per file. `.editorconfig` enforces.
 - Core: constructor injection, `System.Numerics` vectors, no `UnityEngine` ever, no allocations in `Tick` paths.
@@ -96,5 +96,5 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 ## Ask before
 
 - Creating files beyond what a request explicitly covers.
-- Deleting or moving assets, changing `ProjectSettings/`, adding or removing packages (VContainer is approved but not yet added).
+- Deleting or moving assets, changing `ProjectSettings/`, adding or removing packages (VContainer 1.19.0 is in; nothing else is approved).
 - Anything touching the remote.

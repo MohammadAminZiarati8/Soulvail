@@ -72,23 +72,23 @@ See [ADR-0001](adr/0001-hexagonal-pure-core.md).
 ### 4.1 Three channels in, two out
 
 ```
-  COMMANDS (immediate) ─────►┌────────────┐
-    Charge tap, tap-to-focus │            │─────► EVENTS
-    pick node, toggle auto   │            │       EnemyDied, PlayerDamaged, LeveledUp,
-                             │    CORE    │       SkillCast, StageCleared, RunEnded …
-  FACTS (immediate) ────────►│            │
-    cone hit ids, contacts   │  Tick(dt,  │─────► INTENTS (per tick)
-    projectile impacts       │  snapshot) │       PlayerMove(v), EnemyMove(id, dir, speed),
-                             │            │       EnemyAction(id, Lunge…), Spawn(spec, pos)
-  TICK (every frame) ───────►└────────────┘
-    dt + spatial snapshot
+  COMMANDS (immediate) ─────►┌──────────────┐
+    Charge tap, tap-to-focus │              │─────► EVENTS
+    pick node, toggle auto   │              │       EnemyDied, PlayerDamaged, LeveledUp,
+                             │     CORE     │       SkillCast, StageCleared, RunEnded …
+  FACTS (immediate) ────────►│              │
+    cone hit ids, contacts   │Tick(snapshot)│─────► INTENTS (per tick)
+    projectile impacts       │              │       PlayerMove(v), EnemyMove(id, dir, speed),
+                             │              │       EnemyAction(id, Lunge…), Spawn(spec, pos)
+  TICK (every frame) ───────►└──────────────┘
+    spatial snapshot; dt rides inside it
 ```
 
 | Channel | What | When | How |
 |---|---|---|---|
 | **Commands** | Discrete player input | The instant it happens | Method call on an inbound port. A Charge press delayed by a tick would feel broken. |
 | **Facts** | Discrete physical results | The instant they happen | Method call: `ReportConeHits(ids)`, `ReportContact(enemyId)`. Core turns facts into outcomes. |
-| **Tick** | `dt` + where things are | Every frame | `session.Tick(dt, snapshot)`. Core throttles its own expensive work internally. |
+| **Tick** | Where things are, and how long since the last one | Every frame | `session.Tick(snapshot)` — `dt` is a field on the snapshot (§4.2), so there is exactly one way to say how much time passed. Core throttles its own expensive work internally. |
 | **Events** | What happened | As it happens | Outbound port `IDomainEvents`. Views, audio, haptics, analytics subscribe. |
 | **Intents** | What core wants the body to do | Every tick | Written into a preallocated intent buffer the views read after the tick. |
 
@@ -136,7 +136,7 @@ public struct EnemySense
 ```
 1. Input adapter reads touches → commands sent immediately; move vector cached
 2. SnapshotBuilder fills WorldSnapshot from transforms + NavMesh
-3. RunTicker.Tick():  session.Tick(dt, snapshot)     ← core does everything
+3. RunTicker.Tick():  session.Tick(snapshot)         ← core does everything
 4. Views read intents → CharacterController.Move, animation triggers
 5. Physics queries requested by intents run (cone overlap, contacts) → facts reported to core
 6. Event subscribers already fired during step 3 → VFX, audio, HUD updated
@@ -174,7 +174,7 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Direction | Port | Purpose | Implemented by |
 |---|---|---|---|
-| Inbound | `IRunSession` | `Start(mode, class)`, `Tick(dt, snapshot)`, `ReportConeHits`, `ReportContact`, `ReportProjectileHit`, `EndRun` | Core |
+| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`. M1 adds the facts: `ReportConeHits`, `ReportContact`, `ReportProjectileHit` | Core |
 | Inbound | `IPlayerCommands` | `Charge()`, `CastSkill(slot)`, `FocusTarget(worldPoint)`, `ClearFocus()`, `SetAutoCast(skillId, bool)` | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
 | Outbound | `IClock` | `Now` (core time, seconds) | `UnityClock` |
@@ -185,6 +185,8 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 | Outbound | `IIntentSink` | Where core writes per-tick intents | `IntentBuffer` (preallocated) |
 
 Ports are the *only* things in core that mention the outside world. If a core class needs something not on this list, the answer is a new port or a new snapshot field — never a Unity reference.
+
+**A port grows a member when the mechanic that needs it lands, not before.** `IRunSession` is `Start` / `Tick` / `End` through M0 because movement arrives on the snapshot and needs no facts; the `Report*` methods are listed above so the shape is known, but each one is added by the task that produces the fact it carries. A port written ahead of its callers is a guess, and an unused method is one nobody can test.
 
 ---
 

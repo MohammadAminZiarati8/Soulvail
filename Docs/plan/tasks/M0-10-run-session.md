@@ -54,6 +54,7 @@ public sealed class RecordingIntents : IIntentSink
 
 | Test | Given / When / Then |
 |---|---|
+| `Config_DefaultId_Throws` | — / `new RunConfig(default)` / `ArgumentException`; a well-formed but unknown id does **not** throw here |
 | `Start_PublishesRunStarted_WithSeed` | catalog{oathbound}, FixedRandom seed 99 / Start / `Single<RunStarted>()` has id oathbound, seed 99; `IsRunning` |
 | `Start_BuildsState` | — / Start / `State.Character.Id == oathbound`, `Motor.Facing == +Z`, `Time == 0` |
 | `Start_WhenRunning_Throws` | started / Start / throws; still running |
@@ -70,6 +71,8 @@ public sealed class RecordingIntents : IIntentSink
 | `Tick_AllocatesNothing` | started, warm-up / 10 000 ticks / allocates nothing (`AllocationAssert`) |
 
 Test fixture: a catalog with one `CharacterSpec` (`character.oathbound`, CC §7 numbers), `RecordingEvents`, `RecordingIntents`, `FixedRandom` with a known seed. `FixedRandom` must expose `Seed` (constructor parameter) — add it in this task if M0-04 didn't.
+
+`Config_DefaultId_Throws` is the one row here whose behaviour was **built in M0-09**, not in this task: `RunConfig` rejects `default(ContentId)` because it means nobody chose a class, which is a composition mistake rather than missing content. It belongs in `RunSessionTests` rather than a fixture of its own — M0-09 is contracts with no tests, and its spec says this fixture exercises all of them. Rule 2 above is the other half of the pair and must stay true: a well-formed id the catalog does not hold still reaches the catalog and still throws `KeyNotFoundException`.
 
 ## Acceptance
 

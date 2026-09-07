@@ -111,6 +111,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 - Camera behaviour — M0-18. Enemies in the snapshot — M1-06/M1-16.
 - Any decision in `PlayerView`. If you're tempted to put an `if` about gameplay there, it belongs in core.
 
+**Decision to close here, not a deliverable:** `RunState.Motor` (M0-09) is a public handle on a mutable object with a public `Tick`, so nothing in the compiler stops a view from advancing it a second time — the `internal` seal covers `RunState`'s own fields, not what is reachable through them. This task is the proof of whether anything outside core needs the handle at all: `PlayerView` takes velocity and facing from the intent, never from `RunState`. If nothing in `Soulvail.Game` reads `Motor` by the end of this task, say so in *As built* and narrow it — `internal` handle, public `Velocity` / `Facing` reads; M0-10's `Start_BuildsState` asserts through `Motor.Facing` and changes by one line. Small additive edit; doesn't count toward the Files table.
+
 ## As built
 
 _Filled at merge._

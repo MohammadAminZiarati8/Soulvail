@@ -1,0 +1,100 @@
+using System;
+using Soulvail.Core.Content;
+using UnityEngine;
+
+// Block namespace, deliberately, against the project's file-scoped convention: Unity 6.3's
+// script importer parses a file to find the type it declares, and its parser does not
+// understand `namespace X;`. A ScriptableObject declared that way compiles, but Unity never
+// links a MonoScript to it — assets referencing it serialise as `m_Script: {fileID: 0}` and
+// load as null. Verified A/B in one compile cycle (M0-11). Every UnityEngine.Object-derived
+// type in this project uses a block namespace for that reason; pure C# stays file-scoped.
+namespace Soulvail.Game.Authoring
+{
+    /// <summary>
+    /// A playable class as a designer tunes it: the Inspector half of
+    /// <see cref="CharacterSpec"/>. Converted once at boot into the immutable spec core
+    /// consumes and registered in the <c>ContentCatalog</c>. See AR §10.1 and ADR-0006.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two shapes — this and <see cref="CharacterSpec"/> — are the price ADR-0006 accepts
+    /// for a pure core: a <see cref="ScriptableObject"/> is a <see cref="UnityEngine.Object"/>,
+    /// which core may never see. The conversion is the seam that lets the *source* of balance
+    /// data become server JSON later without core noticing.
+    /// </para>
+    /// <para>
+    /// The <c>[Min]</c> attributes are Inspector affordances, not guarantees. They clamp what a
+    /// designer can drag or type; they do not touch a value set through
+    /// <c>SerializedProperty</c>, arriving from a merge, or written by hand into the YAML. The
+    /// real validation is in the core constructors <see cref="ToSpec"/> calls, which is why
+    /// <see cref="ToSpec"/> is the only way out of this type.
+    /// </para>
+    /// </remarks>
+    [CreateAssetMenu(menuName = "Soulvail/Content/Character", fileName = "Character")]
+    public sealed class CharacterDefinition : ScriptableObject
+    {
+        [SerializeField] private string _id = "character.new";
+        [SerializeField] private string _nameKey = "character.new.name";
+        [SerializeField, Min(1f)] private float _maxHp = 100f;
+        [SerializeField, Min(0.01f)] private float _speed = 6f;
+        [SerializeField, Min(0.001f)] private float _accelTime = 0.06f;
+        [SerializeField, Min(0.001f)] private float _decelTime = 0.08f;
+        [SerializeField, Min(1f)] private float _turnSpeedDeg = 720f;
+
+        /// <summary>
+        /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
+        /// before conversion. It is <em>not</em> known to be well-formed: only a
+        /// <see cref="ToSpec"/> that returned tells you that.
+        /// </summary>
+        public string Id => _id;
+
+        /// <summary>
+        /// Builds the immutable spec core consumes. A fresh instance every call — this asset
+        /// holds no runtime state and hands out nothing it keeps a reference to.
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        /// Any authored field is invalid. Always this exact type, never one of its subclasses:
+        /// the caller cannot act on <em>which</em> field failed, only on <em>which asset</em>
+        /// failed, and that is what the message leads with. The original is kept as the inner
+        /// exception, so the field and its value survive into the log.
+        /// </exception>
+        public CharacterSpec ToSpec()
+        {
+            try
+            {
+                return new CharacterSpec(
+                    new ContentId(_id),
+                    new LocKey(_nameKey),
+                    _maxHp,
+                    new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg));
+            }
+            catch (ArgumentException inner)
+            {
+                // The asset name, first thing in the message, is the whole point of catching
+                // here. Uncaught, a designer reading the Console sees "maxHp must be greater
+                // than zero" with a stack trace through the boot installer and no way to tell
+                // which of the catalog's assets to open.
+                throw new ArgumentException(
+                    $"CharacterDefinition '{name}' is not valid content: {inner.Message}",
+                    inner);
+            }
+        }
+
+        /// <remarks>
+        /// Only the id, and only its shape. A malformed id is the one authoring mistake that
+        /// cannot be caught any earlier — a bad number is visibly a bad number in the
+        /// Inspector, while <c>Character.Oathbound</c> looks perfectly reasonable and fails at
+        /// boot. The asset is passed as the log context so clicking the warning selects it.
+        /// </remarks>
+        private void OnValidate()
+        {
+            if (!ContentId.IsValid(_id))
+            {
+                Debug.LogWarning(
+                    $"CharacterDefinition '{name}': '{_id}' is not a valid content id. Expected " +
+                    "lowercase dot-separated segments, at least two, e.g. 'character.oathbound'.",
+                    this);
+            }
+        }
+    }
+}

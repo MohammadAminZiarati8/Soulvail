@@ -114,3 +114,20 @@ dotnet_diagnostic.IDE0044.severity = warning   # make field readonly (ignored on
 dotnet_diagnostic.CA1822.severity = none       # "mark members static" is noisy on MonoBehaviours
 dotnet_diagnostic.IDE0051.severity = none      # unused private members — Unity messages (Awake/Update) trigger it
 dotnet_diagnostic.IDE0060.severity = suggestion
+
+# ── Namespaces on the Unity side ─────────────────────────────────
+# File-scoped namespaces stay the rule everywhere (see [*.cs] above), with one forced
+# exception: Unity 6.3's script importer finds a file's type with its own parser, and that
+# parser does not understand `namespace X;`. A MonoBehaviour or ScriptableObject declared
+# file-scoped compiles fine, but Unity never links a MonoScript to it — every asset referencing
+# it serialises as `m_Script: {fileID: 0}` and loads as null, with no compile error anywhere.
+# Verified A/B in a single compile cycle (M0-11).
+#
+# So UnityEngine.Object-derived types must use block namespaces. That cannot be expressed as a
+# path glob, so these two trees allow either form without a diagnostic; Core and Tests keep the
+# strict file-scoped rule. Forgetting is not silent — the asset visibly fails to bind.
+[Assets/_Project/Game/**.cs]
+csharp_style_namespace_declarations = block_scoped:silent
+
+[Assets/_Project/Editor/**.cs]
+csharp_style_namespace_declarations = block_scoped:silent

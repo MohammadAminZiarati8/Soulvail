@@ -42,7 +42,7 @@
 | [M0-04](tasks/M0-04-random-streams.md) | `IRandom` with named streams, `SeededRandom`, `FixedRandom` fake | M | 01 | ☑ |
 | [M0-05](tasks/M0-05-world-snapshot.md) | `WorldSnapshot`, `EnemySense`, `Num` vector conversions | M | 01 | ☑ |
 | [M0-06](tasks/M0-06-intents.md) | `PlayerMoveIntent`, `IIntentSink`, `IntentBuffer` | M | 05 | ☑ |
-| [M0-07](tasks/M0-07-player-motor.md) | `MovementSpec`, `PlayerMotor`: accel/decel, no inertia, facing | S | 01 | ☐ |
+| [M0-07](tasks/M0-07-player-motor.md) | `MovementSpec`, `PlayerMotor`: accel/decel, no inertia, facing | S | 01 | ☑ |
 | [M0-08](tasks/M0-08-content-catalog.md) | `ContentId`, `LocKey`, `CharacterSpec`, `ContentCatalog` | M | 07 | ☐ |
 | [M0-09](tasks/M0-09-run-contracts.md) | `IRunSession`, `RunConfig`, `RunState`, run events | M | 05 06 07 08 | ☐ |
 | [M0-10](tasks/M0-10-run-session.md) | `RunSession` + `RecordingIntents` fake + tests | S | 03 04 09 | ☐ |

@@ -67,7 +67,7 @@ public sealed class RecordingIntents : IIntentSink
 | `End_PublishesRunEnded_WithTime` | ticked to 2.0 / End / `Single<RunEnded>().Time == 2.0`; `IsRunning == false` |
 | `End_WhenNotRunning_IsNoOp` | — / End / no throw, no events |
 | `End_ThenStart_CreatesNewState` | run, End / Start / new `State` instance, `Time == 0` |
-| `Tick_AllocatesNothing` | started, warm-up / 10 000 ticks / allocated-bytes delta == 0 |
+| `Tick_AllocatesNothing` | started, warm-up / 10 000 ticks / allocates nothing (`AllocationAssert`) |
 
 Test fixture: a catalog with one `CharacterSpec` (`character.oathbound`, CC §7 numbers), `RecordingEvents`, `RecordingIntents`, `FixedRandom` with a known seed. `FixedRandom` must expose `Seed` (constructor parameter) — add it in this task if M0-04 didn't.
 

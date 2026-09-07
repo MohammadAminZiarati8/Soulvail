@@ -81,7 +81,7 @@ Oathbound values (CC §7): Speed 5.4, AccelTime 0.06, DecelTime 0.08, TurnSpeedD
 | `Facing_TakesShorterArc` | facing +Z, target −X (270° cw / 90° ccw) / small dt / rotated toward −X the short way |
 | `Ctor_ZeroFacing_DefaultsToPlusZ` | initialFacing zero / — / Facing == (0, 0, 1) |
 | `Tick_ZeroDt_NoChange` | any state / Tick(0, (0,1), null) / Velocity and Facing unchanged |
-| `Tick_AllocatesNothing` | warm-up / 10 000 ticks / allocated-bytes delta == 0 |
+| `Tick_AllocatesNothing` | warm-up / 10 000 ticks / allocates nothing (`AllocationAssert`) |
 
 ## Acceptance
 
@@ -98,4 +98,15 @@ Oathbound values (CC §7): Speed 5.4, AccelTime 0.06, DecelTime 0.08, TurnSpeedD
 
 ## As built
 
-_Filled at merge._
+Four files, not three, and 19 tests, not 17.
+
+1. **A fourth file, `Tests/Core/Content/ContentTests.cs`.** `Spec_NonPositive_Throws` tests `MovementSpec`, a `Core/Content` type, and the Files table filed it under the motor's fixture. Rather than a dedicated `MovementSpecTests.cs`, this is the fixture **M0-08 already specifies** for the Content module ("all four types — one module, one test file"), created one task early with its first Content type in it. M0-08's Files table is annotated to add to it rather than create it.
+2. **Two tests beyond the Tests table.** `Facing_ZeroFaceDirection_FallsBackToVelocity` covers decision 4 below, which the Behaviour section does not decide. `Spec_StoresValues` guards argument transposition in a four-`float` constructor — swapping `accelTime` and `decelTime` passes every other test in the suite.
+3. **Behaviour rule 5 extended: a `faceDirection` with no ground direction falls back to the velocity rule.** `Vector3?` lets a caller pass `Vector3.Zero` or a purely vertical vector; normalising either is NaN, and a NaN facing never recovers. "Provided" therefore means "provided a direction". Not deferrable the way M0-06 deferred its zero-`Facing` question — the null case here is silent, permanent corruption rather than an open design question.
+4. **`Tick` integrates velocity before facing**, which the spec does not order and which is load-bearing: from rest at full stick the speed passes rule 5's 0.05 threshold in 0.56 ms, so turning first would discard a frame of rotation every time the player starts moving.
+5. **`Tick` treats `dt <= 0` as "no time passed"**, extending rule 7 from `dt == 0`. A negative `dt` would accelerate backwards and turn the wrong way.
+6. **`MovementSpec` rejects NaN as well as non-positive**, spelled `!(value > 0f)` — the natural `value <= 0f` waves NaN through, and one NaN reaches every later frame.
+7. **Tick sizes vary by test.** Two specced durations are not whole 1/120 s ticks (0.03 s is 3.6, 0.0625 s is 7.5), so those tests use sizes summing to the specced duration exactly.
+8. `Facing_RotatesAtTurnSpeed` reaches full speed with the aim pinned to its current facing before releasing it, so it measures the turn rate rather than the accel/facing interaction of decision 4.
+9. The Tests table's allocation row was reworded from "allocated-bytes delta == 0" to "allocates nothing (`AllocationAssert`)" — as were M0-10's and M0-16's, the only other M0 specs still carrying the phrase. See PROGRESS for why the `_TEMPLATE.md` gloss was not enough.
+10. `PlayerMotor`'s constructor throws `ArgumentNullException` on a null spec. Not in the Public API and not given a row; a conventional guard that replaces a `NullReferenceException`.

@@ -1,13 +1,15 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Tests.Core.Content;
 
 /// <summary>
-/// The Content module's fixture: one module, one test file. <see cref="MovementSpec"/> is the
-/// module's first type; M0-08 adds <c>ContentId</c>, <c>LocKey</c>, <c>CharacterSpec</c> and
-/// <c>ContentCatalog</c> here, which is the arrangement its Files table already calls for.
+/// The Content module's fixture: one module, one test file. <see cref="MovementSpec"/> arrived
+/// with M0-07; <see cref="ContentId"/>, <see cref="LocKey"/>, <see cref="CharacterSpec"/> and
+/// <see cref="ContentCatalog"/> with M0-08. Later content types (enemy, skill, mode specs) join
+/// them here.
 /// </summary>
 [TestFixture]
 public sealed class ContentTests
@@ -51,4 +53,285 @@ public sealed class ContentTests
         Assert.That(spec.DecelTime, Is.EqualTo(0.08f));
         Assert.That(spec.TurnSpeedDeg, Is.EqualTo(720f));
     }
+
+    [Test]
+    public void ContentId_ValidForms_Accepted()
+    {
+        Assert.That(new ContentId("a.b").Value, Is.EqualTo("a.b"));
+        Assert.That(new ContentId("character.oathbound").Value, Is.EqualTo("character.oathbound"));
+        Assert.That(new ContentId("skill.x.y_z-1").Value, Is.EqualTo("skill.x.y_z-1"));
+
+        // Digits are head characters too, so a segment may be entirely numeric.
+        Assert.That(new ContentId("mode.d2").Value, Is.EqualTo("mode.d2"));
+
+        // ToString is the id, so an id drops into a log line or a message unquoted.
+        Assert.That(new ContentId("character.oathbound").ToString(), Is.EqualTo("character.oathbound"));
+    }
+
+    [Test]
+    public void ContentId_InvalidForms_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => new ContentId(""));
+        Assert.Throws<ArgumentException>(() => new ContentId("single"));
+        Assert.Throws<ArgumentException>(() => new ContentId("Has.Upper"));
+        Assert.Throws<ArgumentException>(() => new ContentId("a b.c"));
+        Assert.Throws<ArgumentException>(() => new ContentId(".a.b"));
+        Assert.Throws<ArgumentException>(() => new ContentId("a.b."));
+        Assert.Throws<ArgumentException>(() => new ContentId("a..b"));
+        Assert.Throws<ArgumentException>(() => new ContentId(null));
+
+        // `_` and `-` are legal only after the first segment, so an id can never open with
+        // punctuation-adjacent noise from a renamed asset.
+        Assert.Throws<ArgumentException>(() => new ContentId("a_b.c"));
+        Assert.Throws<ArgumentException>(() => new ContentId("a-b.c"));
+
+        // The message carries the offending value: content errors are read by whoever authored
+        // the asset, not by whoever wrote the guard.
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => new ContentId("Has.Upper"));
+        Assert.That(ex.Message, Does.Contain("Has.Upper"));
+    }
+
+    [Test]
+    public void ContentId_TryParse_MatchesIsValid()
+    {
+        string[] inputs =
+        {
+            "a.b", "character.oathbound", "skill.x.y_z-1",
+            "", "single", "Has.Upper", "a b.c", ".a.b", "a.b.", "a..b", null,
+        };
+
+        foreach (string input in inputs)
+        {
+            string shown = input ?? "<null>";
+            bool valid = ContentId.IsValid(input);
+            bool parsed = ContentId.TryParse(input, out ContentId id);
+
+            Assert.That(parsed, Is.EqualTo(valid), $"TryParse disagreed with IsValid for '{shown}'.");
+
+            if (parsed)
+            {
+                Assert.That(id.Value, Is.EqualTo(input), $"TryParse lost the value for '{shown}'.");
+            }
+            else
+            {
+                Assert.That(id.Value, Is.Null, $"TryParse returned false but set an id for '{shown}'.");
+            }
+        }
+    }
+
+    [Test]
+    public void ContentId_Equality_IsOrdinal()
+    {
+        // Built at runtime rather than written as a literal: two identical literals are the same
+        // interned instance, so a reference comparison would pass this test while proving
+        // nothing about the two ids that matter — one from a save file, one from an asset.
+        var built = new ContentId(new string(new[] { 'a', '.', 'b' }));
+        var literal = new ContentId("a.b");
+        var other = new ContentId("a.c");
+
+        Assert.That(built == literal, Is.True);
+        Assert.That(built.Equals(literal), Is.True);
+        Assert.That(built.Equals((object)literal), Is.True);
+        Assert.That(built.GetHashCode(), Is.EqualTo(literal.GetHashCode()));
+
+        Assert.That(built == other, Is.False);
+        Assert.That(built != other, Is.True);
+        Assert.That(built.Equals(other), Is.False);
+        Assert.That(built.Equals("a.b"), Is.False);
+    }
+
+    [Test]
+    public void ContentId_Default_NotEqualToAny()
+    {
+        ContentId none = default;
+        var some = new ContentId("a.b");
+
+        Assert.That(none.Value, Is.Null);
+        Assert.That(none == some, Is.False);
+        Assert.That(some == none, Is.False);
+        Assert.That(none != some, Is.True);
+        Assert.That(none == default(ContentId), Is.True);
+
+        // A default id reaches a hash lookup or a log line like any other; neither may throw.
+        Assert.That(none.GetHashCode(), Is.EqualTo(0));
+        Assert.That(none.ToString(), Is.Empty);
+    }
+
+    [Test]
+    public void LocKey_Valid_Accepted()
+    {
+        var key = new LocKey("character.oathbound.name");
+
+        Assert.That(key.Key, Is.EqualTo("character.oathbound.name"));
+        Assert.That(key.ToString(), Is.EqualTo("character.oathbound.name"));
+
+        // Not a ContentId: a key is not checked against that grammar, or against any table.
+        Assert.DoesNotThrow(() => new LocKey("UI_Descend"));
+        Assert.DoesNotThrow(() => new LocKey("single"));
+    }
+
+    [Test]
+    public void LocKey_Invalid_Rejected()
+    {
+        Assert.Throws<ArgumentException>(() => new LocKey(""));
+        Assert.Throws<ArgumentException>(() => new LocKey("has space"));
+        Assert.Throws<ArgumentException>(() => new LocKey(null));
+
+        // Any whitespace, anywhere — a trailing space or a stray newline from an authored field
+        // would otherwise become a key that silently never resolves.
+        Assert.Throws<ArgumentException>(() => new LocKey("   "));
+        Assert.Throws<ArgumentException>(() => new LocKey("trailing "));
+        Assert.Throws<ArgumentException>(() => new LocKey("has\ttab"));
+        Assert.Throws<ArgumentException>(() => new LocKey("has\nnewline"));
+    }
+
+    [Test]
+    public void LocKey_Equality_IsOrdinal()
+    {
+        var built = new LocKey(new string(new[] { 'a', '.', 'b' }));
+        var literal = new LocKey("a.b");
+        var other = new LocKey("a.c");
+        LocKey none = default;
+
+        Assert.That(built == literal, Is.True);
+        Assert.That(built.Equals(literal), Is.True);
+        Assert.That(built.GetHashCode(), Is.EqualTo(literal.GetHashCode()));
+        Assert.That(built != other, Is.True);
+        Assert.That(none == literal, Is.False);
+        Assert.That(none.ToString(), Is.Empty);
+    }
+
+    [Test]
+    public void CharacterSpec_StoresValues()
+    {
+        var id = new ContentId("character.oathbound");
+        var nameKey = new LocKey("character.oathbound.name");
+        MovementSpec movement = OathboundMovement();
+
+        var spec = new CharacterSpec(id, nameKey, 120f, movement);
+
+        Assert.That(spec.Id, Is.EqualTo(id));
+        Assert.That(spec.NameKey, Is.EqualTo(nameKey));
+        Assert.That(spec.MaxHp, Is.EqualTo(120f));
+        Assert.That(spec.Movement, Is.SameAs(movement));
+    }
+
+    [Test]
+    public void CharacterSpec_InvalidHp_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 0f, OathboundMovement()));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), -1f, OathboundMovement()));
+
+        // Same NaN hole as MovementSpec's guard, and the same spelling closes it.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), float.NaN, OathboundMovement()));
+
+        Assert.DoesNotThrow(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 1f, OathboundMovement()));
+    }
+
+    [Test]
+    public void CharacterSpec_NullMovement_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, null));
+    }
+
+    [Test]
+    public void CharacterSpec_DefaultId_Throws()
+    {
+        // A spec with no id would sit in the catalog under a key that Character() reports as
+        // missing, so it is refused where the data is built.
+        Assert.Throws<ArgumentException>(
+            () => new CharacterSpec(default, OathboundNameKey(), 120f, OathboundMovement()));
+    }
+
+    [Test]
+    public void Catalog_LooksUpById()
+    {
+        CharacterSpec spec = Oathbound();
+        var catalog = new ContentCatalog(new[] { spec });
+
+        Assert.That(catalog.Character(spec.Id), Is.SameAs(spec));
+        Assert.That(catalog.TryGetCharacter(spec.Id, out CharacterSpec found), Is.True);
+        Assert.That(found, Is.SameAs(spec));
+        Assert.That(catalog.Characters.Count, Is.EqualTo(1));
+        Assert.That(catalog.Characters[0], Is.SameAs(spec));
+
+        // The id that finds it is a value, not the instance that was registered.
+        Assert.That(catalog.Character(new ContentId("character.oathbound")), Is.SameAs(spec));
+    }
+
+    [Test]
+    public void Catalog_UnknownId_Throws_NamingId()
+    {
+        var catalog = new ContentCatalog(Array.Empty<CharacterSpec>());
+
+        KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(
+            () => catalog.Character(new ContentId("x.y")));
+
+        Assert.That(ex.Message, Does.Contain("x.y"));
+    }
+
+    [Test]
+    public void Catalog_TryGet_FalseForUnknown()
+    {
+        var catalog = new ContentCatalog(Array.Empty<CharacterSpec>());
+
+        Assert.That(catalog.TryGetCharacter(new ContentId("x.y"), out CharacterSpec spec), Is.False);
+        Assert.That(spec, Is.Null);
+    }
+
+    [Test]
+    public void Catalog_DefaultId_IsUnknown()
+    {
+        var catalog = new ContentCatalog(new[] { Oathbound() });
+
+        Assert.That(catalog.TryGetCharacter(default, out CharacterSpec spec), Is.False);
+        Assert.That(spec, Is.Null);
+        Assert.Throws<KeyNotFoundException>(() => catalog.Character(default));
+    }
+
+    [Test]
+    public void Catalog_DuplicateId_Throws_NamingId()
+    {
+        var first = new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement());
+        var second = new CharacterSpec(OathboundId(), OathboundNameKey(), 200f, OathboundMovement());
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(new[] { first, second }));
+
+        Assert.That(ex.Message, Does.Contain("character.oathbound"));
+    }
+
+    [Test]
+    public void Catalog_CopiesInput()
+    {
+        CharacterSpec spec = Oathbound();
+        var list = new List<CharacterSpec> { spec };
+
+        var catalog = new ContentCatalog(list);
+        list.Clear();
+
+        Assert.That(catalog.Characters.Count, Is.EqualTo(1));
+        Assert.That(catalog.Character(spec.Id), Is.SameAs(spec));
+    }
+
+    [Test]
+    public void Catalog_NullInput_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ContentCatalog(null));
+        Assert.Throws<ArgumentException>(() => new ContentCatalog(new CharacterSpec[] { null }));
+    }
+
+    private static ContentId OathboundId() => new ContentId("character.oathbound");
+
+    private static LocKey OathboundNameKey() => new LocKey("character.oathbound.name");
+
+    private static MovementSpec OathboundMovement() => new MovementSpec(5.4f, 0.06f, 0.08f, 720f);
+
+    private static CharacterSpec Oathbound() =>
+        new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement());
 }

@@ -12,15 +12,15 @@ _Updated: 2026-09-07_
 
 | | |
 |---|---|
-| **Milestone** | M0 — Walking skeleton (in progress, 2/20) |
-| **Last merged task** | [M0-02](tasks/M0-02-state-machine.md) — `StateMachine<T>` + core-purity guard test |
+| **Milestone** | M0 — Walking skeleton (in progress, 3/20) |
+| **Last merged task** | [M0-03](tasks/M0-03-domain-events.md) — Domain events: `IDomainEvents`, `DomainEventHub`, `RecordingEvents` |
 | **In progress** | — |
-| **Next task** | [M0-03](tasks/M0-03-domain-events.md) — Domain events: `IDomainEvents`, `DomainEventHub`, `RecordingEvents` |
-| **What works** | Nothing runs yet, but the first code compiles and is tested. `StateMachine<T>` exists in `Soulvail.Core`; `Soulvail.Core` and `Soulvail.Tests.Core` emit assemblies and the Test Runner lists 15 green EditMode tests. `AllocationAssert` is the suite's one way to claim "allocates nothing". VContainer 1.19.0 installed; the other three assemblies still have no scripts. |
+| **Next task** | [M0-04](tasks/M0-04-random-streams.md) — `IRandom` with named streams, `SeededRandom`, `FixedRandom` fake |
+| **What works** | Nothing runs yet, but core can now say what happened and Unity can hear it. `StateMachine<T>` and the first port, `IDomainEvents`, exist in `Soulvail.Core`; `DomainEventHub` is its run-scoped adapter in `Soulvail.Game`; `RecordingEvents` is the fake every later core test will assert through. Four of the five assemblies emit code and the Test Runner lists 28 EditMode tests. `AllocationAssert` is the suite's one way to claim "allocates nothing". VContainer 1.19.0 installed; only `Soulvail.Editor` still has no scripts. |
 | **Reference device** | **None yet.** BlueStacks 5 (Android 11, 1920 × 1080 @ 240 DPI, ADB on) for APKs; Unity Device Simulator for layout. |
 | **Deferred — device-only** | Nothing yet. Each milestone's acceptance lists its **[device]** items here when tagged; the first session with a phone runs all of them. |
 | **Known issues** | — |
-| **Watch list** | **Every new asmdef needs a `csc.rsp` (`-langversion:10`) beside it or its first file-scoped namespace breaks the build** — all five have one; add it with any sixth. An asmdef with no `.cs` files produces no assembly. **`GC.GetAllocatedBytesForCurrentThread()` and `GC.CollectionCount(0)` are inert on Unity's Mono — never hand-roll an allocation probe from them; use `AllocationAssert`.** Application id is the placeholder `com.soulvail.dev` — must change before the first store upload (M8-06). `Unity.AI.Navigation` is in the AR §12 reference list for `Soulvail.Game` but not in the M0-01 asmdef; M1-19 adds it when NavMesh lands. |
+| **Watch list** | **Every new asmdef needs a `csc.rsp` (`-langversion:10`) beside it or its first file-scoped namespace breaks the build** — all five have one; add it with any sixth. An asmdef with no `.cs` files produces no assembly. **`GC.GetAllocatedBytesForCurrentThread()` and `GC.CollectionCount(0)` are inert on Unity's Mono — never hand-roll an allocation probe from them; use `AllocationAssert`.** **A `Unity_RunCommand` script that calls `File.Delete`/`File.Move` (or `AssetDatabase.DeleteAsset`) is refused with *"User interactions are not supported for MCP tool calls"*** — those are `k_UnsafeMethods` in `RunCommandCodeAnalyzer`, which demand a confirmation the MCP cannot give. Overwrite with `File.WriteAllText` instead. `System.Net`, `System.Diagnostics`, `System.Runtime.InteropServices` and `System.Reflection` are unauthorized namespaces there (M0-03). Application id is the placeholder `com.soulvail.dev` — must change before the first store upload (M8-06). `Unity.AI.Navigation` is in the AR §12 reference list for `Soulvail.Game` but not in the M0-01 asmdef; M1-19 adds it when NavMesh lands. |
 
 ---
 
@@ -76,5 +76,25 @@ After appending, update the Current State table above. If a deviation changes a 
 - Unity's bundled NUnit has no `Assert.Multiple` — sequential asserts instead.
 - **The pre-commit format check was failing open-loop on a phantom violation, and is fixed here.** This machine has a .NET *runtime* but no SDK, so `dotnet` is on `PATH` while `dotnet format` does not exist. The hook probed `command -v dotnet`, got a hit, ran the check, and read its "No .NET SDKs were found" exit code as a formatting difference — blocking the first commit that ever staged a `.cs` file. It now probes `dotnet format --version`, so it skips honestly. The five files were independently verified against `.editorconfig` by hand (no tabs, no trailing whitespace, 4-space indents, LF, final newline). CLAUDE.md's "the check self-skips" is true again.
 - The Unity MCP `RunCommand` wraps submitted code in a `Unity.AI.Assistant.…` namespace. Two consequences for later sessions: `CompilationPipeline` must be fully qualified or it resolves to `Unity.CompilationPipeline`, and **nested classes get duplicated outside their parent by the code-fixer** — declare helper classes at top level. `TestRunnerApi` results were captured by writing to `Temp/` from `RunFinished`, which survives the domain reload the run triggers.
+
+**Follow-ups:** none.
+
+### 2026-09-07 · M0-03 · Domain events · PR #_n_
+
+**Built:** The first port, and the first thing on both sides of the hexagon at once. `IDomainEvents` in `Soulvail.Core.Ports` is how core says what happened without learning who listens; `DomainEventHub` in `Soulvail.Game.Adapters` is its run-scoped typed dispatcher — subscribe/unsubscribe by handle, allocation-free publish, no statics; `RecordingEvents` in `Soulvail.Tests.Core.Fakes` is the fake every later core test will assert event sequences through. 13 new EditMode tests, 28 in the suite. `Soulvail.Game` and `Soulvail.Tests.Game` now emit assemblies for the first time.
+
+**Deviations from spec:** three.
+
+1. **A fifth file, `Tests/Core/Fakes/RecordingEventsTests.cs`.** The Files table names one test file, in `Soulvail.Tests.Game`, but two of the Tests table's rows test `RecordingEvents`, which lives in `Soulvail.Tests.Core` and is not a hub. Filing them under a fixture named for the hub would have been dishonest naming — the same gap M0-02 hit, resolved the same way, and the owner approved it before implementation.
+2. **`Soulvail.Tests.Game` now references `Soulvail.Tests.Core`.** `Publish_AfterWarmup_AllocatesNothing` is specced into the Tests.Game fixture, but `AllocationAssert` lives in Tests.Core and was out of reach. Both assemblies are Editor-only under `UNITY_INCLUDE_TESTS`, so the reference is safe, and it is what keeps the project's one allocation probe single-sourced rather than copied.
+3. **The allocation row's "allocated-bytes delta == 0" is measured with `AllocationAssert` instead.** That phrasing describes exactly the BCL probe M0-02 proved inert on this runtime. Behaviour rule 8 is what the test enforces; the wording was stale, not the rule.
+
+**Learned:**
+
+- **A `Unity_RunCommand` script is refused with *"User interactions are not supported for MCP tool calls"* if it calls anything in `RunCommandCodeAnalyzer.k_UnsafeMethods`** — `System.IO.File.Delete`, `File.Move`, `Directory.Delete`, `AssetDatabase.DeleteAsset`, `FileUtil.DeleteFileOrDirectory`. Those mark the command unsafe, which requires a user confirmation, and MCP callers get `NoOpToolInteractions`, whose only job is to throw that message. Three attempts to start the EditMode run failed this way because each cleared its result file with `File.Delete` first; dropping the delete and overwriting with `File.WriteAllText` (a write, not an unsafe call) runs the suite fine. **`TestRunnerApi.Execute` was never blocked** — the first diagnosis blamed it because the probes that worked differed in the file call too. Separately, `System.Net`, `System.Diagnostics`, `System.Runtime.InteropServices` and `System.Reflection` really are unauthorized namespaces for submitted scripts. The lesson for later sessions is the diagnosis, not the guard: when an MCP command is refused, change one thing at a time.
+- `Publish` walks the live handler list and **defers mutations** instead of snapshotting it. Snapshotting at the top of every publish is the obvious way to satisfy "the in-flight publish sees the list as it was", and it allocates on every publish, which breaks rule 8. Deferring costs nothing on the hot path — the pending queue is only touched when someone actually subscribes or unsubscribes from inside a handler — and it makes re-entrancy fall out for free: a handler that republishes the same type walks the same untouched list. Verified with a re-entrancy check beyond the spec's rows.
+- Channels are created by `Subscribe`, never by `Publish`, so publishing an event nobody listens for allocates nothing **ever**, not merely nothing after the first time. Rule 8 asked for the weaker guarantee.
+- A single throwing handler is rethrown through `ExceptionDispatchInfo` rather than `throw ex`, which would erase the stack trace of the listener that actually failed.
+- `RecordingEvents.Clear()` is in the spec's Public API but has no row in its Tests table. Covered by the ad-hoc harness during verification, not by a fixture — worth a row if the fake ever grows.
 
 **Follow-ups:** none.

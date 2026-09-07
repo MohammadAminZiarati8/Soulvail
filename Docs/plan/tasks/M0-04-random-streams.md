@@ -91,9 +91,9 @@ public sealed class FixedRandom : IRandom          // every stream is the same s
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 42 passed, 0 failed, via `TestRunnerApi`
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -103,4 +103,14 @@ public sealed class FixedRandom : IRandom          // every stream is the same s
 
 ## As built
 
-_Filled at merge._
+**Files:** 5, not 4 — `Tests/Core/Fakes/FixedRandomTests.cs` was added, because two Tests rows exercise a `Soulvail.Tests.Core` fake and the only test file in the table lives in `Soulvail.Tests.Game`. Still size M. Approved before implementation.
+
+**API change:** `FixedRandom.SetStream(string name, params float[])` shipped as five named setters instead — `SetSpawn`, `SetOffers`, `SetAffixes`, `SetDrops`, `SetMisc`, each returning `this` so they chain. Compile-time checked, no new type, and free to change now because nothing in the project draws a random number yet. Approved before implementation.
+
+**Also:** `FixedRandom.Seed` returns 0 (`IRandom` requires the property; the fake has no seed constructor). `Draw_AllocatesNothing` is measured with `AllocationAssert` — the row's "allocated-bytes delta == 0" describes the BCL probe M0-02 proved inert on this runtime — and covers all four draw methods, since rule 8 is about draws in general. One test beyond the table, `FixedRandom_SetStream_OverridesOnlyThatStream`, covers the Public API's "same scripted stream unless set individually", which had no row.
+
+**Rule 9 is the fake's mapping only.** `SeededRandom.NextInt` uses Lemire multiply-shift on the raw 32 bits rather than scaling a float, so bounded draws keep full resolution and stay branchless.
+
+**Verified:** 42 EditMode tests green (28 before, 14 new), zero errors, zero warnings in the Unity Console.
+
+**Carry forward:** the stream indices (Spawn 0 … Misc 4) are part of what a seed means — a sixth stream takes index 5, and nothing moves. On the PROGRESS watch list.

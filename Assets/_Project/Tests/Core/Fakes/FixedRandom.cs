@@ -36,14 +36,38 @@ public sealed class FixedRandom : IRandom
     /// <summary>
     /// Scripts every stream with <paramref name="floats"/>, returned in order by
     /// <see cref="IRandomStream.NextFloat"/>, then <see cref="DefaultValue"/> forever.
+    /// <see cref="Seed"/> is 0.
     /// </summary>
     public FixedRandom(params float[] floats)
+        : this(0, floats)
     {
+    }
+
+    /// <summary>
+    /// As above, with a <see cref="Seed"/> for the systems that record one.
+    /// </summary>
+    /// <remarks>
+    /// A second constructor rather than a parameter added to the first, because a
+    /// <c>params</c> array must come last: <c>FixedRandom(int, params float[])</c> cannot be
+    /// reached by the existing <c>new FixedRandom(0.5f, 0.9f)</c> call sites, and there is no
+    /// implicit <c>float</c> to <c>int</c> conversion, so every one of them still binds to the
+    /// constructor it always did. An <c>int</c> first argument — <c>new FixedRandom(99)</c> —
+    /// binds here, since <c>int</c> to <c>int</c> beats <c>int</c> to <c>float</c>; a scripted
+    /// value of 99 is spelled <c>99f</c>.
+    /// </remarks>
+    public FixedRandom(int seed, params float[] floats)
+    {
+        Seed = seed;
         _shared = new ScriptedStream(floats);
     }
 
-    /// <summary>Always 0. A fake has no seed to reproduce; nothing in the suite reads this.</summary>
-    public int Seed => 0;
+    /// <summary>
+    /// What this fake claims to have been seeded with. Scripted like everything else here — it
+    /// selects no sequence, because the values are handed over rather than generated. It exists
+    /// because systems copy the seed into their own state (<c>RunState.Seed</c>) and publish it
+    /// (<c>RunStarted</c>), and a test asserting on that number needs one it chose.
+    /// </summary>
+    public int Seed { get; }
 
     public IRandomStream Spawn => _spawn ?? _shared;
 

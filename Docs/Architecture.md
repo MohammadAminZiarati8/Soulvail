@@ -206,7 +206,8 @@ BootScope (root, DontDestroyOnLoad)          RunScope (child, per run)
                                               └── Views registered for [Inject]
 ```
 
-- **Core classes use constructor injection.** `new RunSession(clock, random, events, catalog, intents)`. No attributes in core.
+- **Core classes use constructor injection.** `new RunSession(catalog, random, events, intents)`. No attributes in core.
+- **No `IClock` in the session.** Simulated run time is the sum of each tick's `Dt`, which rides in on the snapshot (§4.2), so a clock there would be a second answer to "how much time has passed" — and the wrong one, since wall-clock keeps running while the game is paused or backgrounded. `IClock` (M2-01) is for persistence: when a save was written, how long the app was away. Different question, different code. Same rule as §6's: **a dependency arrives when the mechanic that needs it lands, not before.**
 - **Core participates in Unity's lifecycle through entry points**, never by being a MonoBehaviour: `RunTicker : ITickable` calls `session.Tick`; `IDisposable` on the scope tears the run down.
 - **MonoBehaviours get `[Inject]`** on a method or fields. Pooled prefabs are instantiated through `IObjectResolver.Instantiate` once at pool creation so injection happens once.
 - **Scope = lifetime.** When `RunScope` disposes, the session, events, pools, and every subscription go with it. That is the answer to "what owns run state."

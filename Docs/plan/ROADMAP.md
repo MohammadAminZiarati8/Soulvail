@@ -45,7 +45,7 @@
 | [M0-07](tasks/M0-07-player-motor.md) | `MovementSpec`, `PlayerMotor`: accel/decel, no inertia, facing | S | 01 | ☑ |
 | [M0-08](tasks/M0-08-content-catalog.md) | `ContentId`, `LocKey`, `CharacterSpec`, `ContentCatalog` | M | 07 | ☑ |
 | [M0-09](tasks/M0-09-run-contracts.md) | `IRunSession`, `RunConfig`, `RunState`, run events | M | 05 06 07 08 | ☑ |
-| [M0-10](tasks/M0-10-run-session.md) | `RunSession` + `RecordingIntents` fake + tests | S | 03 04 09 | ☐ |
+| [M0-10](tasks/M0-10-run-session.md) | `RunSession` + `RecordingIntents` fake + tests | S | 03 04 09 | ☑ |
 | [M0-11](tasks/M0-11-character-authoring.md) | `CharacterDefinition` SO, `Oathbound.asset`, conversion + validation tests | S | 08 | ☐ |
 | [M0-12](tasks/M0-12-composition-installers.md) | `BootInstaller`, `RunInstaller`, `PendingRun`, container tests | M | 10 11 | ☐ |
 | [M0-13](tasks/M0-13-scopes-and-scenes.md) | `BootScope`, `RunScope`, `SceneLoader`, `BootFlow`; Boot/Menu/Run scenes | M | 12 | ☐ |

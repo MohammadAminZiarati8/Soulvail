@@ -93,4 +93,16 @@ Containers are built with `new ContainerBuilder()` and `builder.Build()`; run sc
 
 ## As built
 
-_Filled at merge._
+Four files, exactly the Files table. 11 new EditMode tests, 131 in the suite, green; zero errors, zero analyzer warnings.
+
+**Deviations:**
+
+1. **`WorldSnapshot` is registered through a factory at `Lifetime.Scoped`, not as an instance.** Rule 5 says "`WorldSnapshot` instance"; the section header says "all `Lifetime.Scoped`". VContainer's `RegisterInstance` is hardwired to `Lifetime.Singleton` — `InstanceRegistrationBuilder` passes it to its base constructor — so the two cannot both hold. Resolved toward the header. Behaviour is identical either way (a Singleton registered in a child scope's own registry resolves scope-locally), but the label would otherwise have been the one registration in the block that did not mean what it said.
+2. **Three guards in `BootInstaller.Install` that rules 1–2 do not list**: null `builder`, null `definitions`, and a null element in `definitions`. All at a public boundary in M0-09's sense. The element guard is load-bearing rather than decorative — see *Learned*.
+3. **The element guard is spelled `definition == null`, not `is null`.** `CharacterDefinition` is a `UnityEngine.Object`, whose lifetime operator `is null` bypasses; a destroyed asset would read as non-null and fail an NRE later. Also what `UNT0029` asks for.
+4. **A private nested `RunStartedProbe` struct in the fixture.** `Run_ScopeDispose_DisposesHub` needs some `struct` to subscribe with, and using a real run event would couple the row to the event module for no gain. Second use of M0-10's nested-test-helper precedent.
+5. **`PendingRun_ReadBeforeSet_Throws` also covers `Set` and `Clear`.** The row names only the throw, but rule 9's other two sentences have no row of their own and `Clear` is the half most likely to be dropped in a refactor. Assertions inside a row that already owns the behaviour, per M0-05 — the Tests table did not grow.
+6. **`Boot_InvalidDefinition_FailsBuild` also asserts `builder.Count == 0`.** "Throws" is the row; that nothing was registered is what makes the failure safe, and it is what says the catalog is built before anything is installed.
+7. **No LINQ.** Rule 1 sketches `definitions.Select(d => d.ToSpec())`; built as a `for` loop, which is also where the index in the null-element message comes from.
+
+**Learned:** see the PROGRESS entry for 2026-09-07 · M0-12. The finding that matters beyond this task: **VContainer only disposes what it constructed**, so an adapter that owns resources must be registered as a type, never through `RegisterInstance`.

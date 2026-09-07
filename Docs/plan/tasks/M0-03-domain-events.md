@@ -84,9 +84,9 @@ public sealed class RecordingEvents : IDomainEvents
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 28 passed, 0 failed, via `TestRunnerApi`
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -96,4 +96,10 @@ public sealed class RecordingEvents : IDomainEvents
 
 ## As built
 
-_Filled at merge._
+**Files:** 5, not 4. The four in the table, plus `Tests/Core/Fakes/RecordingEventsTests.cs` — the Tests table's two `RecordingEvents_*` rows had no honest fixture to live in, since the only test file listed is the hub's, in a different assembly. Owner approved the fifth file before implementation. One additive edit outside the table: `Soulvail.Tests.Game.asmdef` gained a `Soulvail.Tests.Core` reference so the allocation row can reach `AllocationAssert`.
+
+**Design:** `Publish` walks the live handler list and defers subscribe/unsubscribe until the publish unwinds, rather than snapshotting the list per publish — snapshotting satisfies rule 5 but allocates, breaking rule 8. Deferral also makes re-entrant publish of the same type safe by construction. Channels are created by `Subscribe`, never by `Publish`, so rule 8 holds more strongly than specced: publishing to no subscribers allocates nothing at all, not just nothing after the first time. A lone throwing handler is rethrown via `ExceptionDispatchInfo` to preserve its stack.
+
+**Verification:** compile clean, zero errors, zero warnings. **Full EditMode suite run through `TestRunnerApi`: 28 passed, 0 failed, 0 skipped, 0 inconclusive** — the 13 new tests plus M0-02's 15. The allocation rule was additionally cross-checked with an allocating control body, to confirm `AllocationAssert` was measuring rather than sitting inert.
+
+**Deviation from the Tests table:** the allocation row's "allocated-bytes delta == 0" is measured with `AllocationAssert`; that phrasing names the BCL probe M0-02 proved inert on this runtime. Rule 8 is unchanged.

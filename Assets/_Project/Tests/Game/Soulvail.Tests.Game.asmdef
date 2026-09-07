@@ -4,6 +4,7 @@
     "references": [
         "Soulvail.Core",
         "Soulvail.Game",
+        "Soulvail.Tests.Core",
         "VContainer",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

@@ -54,7 +54,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Code conventions
 
-- Namespaces mirror folders. Private fields `_camelCase`. `[SerializeField] private`, never public fields. File-scoped namespaces. One class per file. `.editorconfig` enforces.
+- Namespaces mirror folders. Private fields `_camelCase`. `[SerializeField] private`, never public fields. File-scoped namespaces **except in `UnityEngine.Object`-derived types, which must use block namespaces** (see the Unity section). One class per file. `.editorconfig` enforces.
 - Core: constructor injection, `System.Numerics` vectors, no `UnityEngine` ever, no allocations in `Tick` paths.
 - Game: `[Inject]`; views are dumb — read intents, render events.
 - Banned: statics/singletons/service locator, static event bus, `FindObjectOfType`, `GetComponent` in `Update`, `Resources.Load`, `UnityEngine.Random`/`Time` in core, string-keyed blackboards, `switch (effect.Type)`, enum ordinals as content identity, raw UI strings, LINQ in hot paths.
@@ -82,6 +82,7 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 
 - Force-text serialization, LF line endings for new scripts, root namespace `Soulvail`.
 - **Every asmdef needs a `csc.rsp` containing `-langversion:10` beside it.** Unity 6.3 compiles at C# 9, so file-scoped namespaces don't build without it. It is per-assembly — an `Assets/csc.rsp` does *not* reach asmdef assemblies. Add one with any new asmdef or its first file breaks the build (M0-02).
+- **Every `MonoBehaviour` and `ScriptableObject` needs a block namespace, never a file-scoped one.** Unity 6.3's script importer finds a file's type with its own parser, which does not understand `namespace X;`. Such a type compiles, but Unity never links a `MonoScript` to it: `MonoScript.FromScriptableObject` returns null, every asset referencing it serialises as `m_Script: {fileID: 0}` and loads as null, and **nothing anywhere reports an error** — the asset just shows "The associated script can not be loaded". Writing the correct GUID into the YAML by hand does not fix it; the `MonoScript` itself has no class. Pure C# keeps file-scoped namespaces (M0-11).
 - **Never hand-roll a GC allocation probe.** `GC.GetAllocatedBytesForCurrentThread()` returns 0 always on Unity's Mono and `GC.CollectionCount(0)` barely moves, so both silently pass code that allocates. Use `AllocationAssert.None` (`Tests/Core/Support/`), which measures with Unity's GC recorder (M0-02).
 - **Domain reload is disabled on Play** (Enter Play Mode Options). Iteration is instant, and it's safe *only* because the architecture bans static mutable state. If a static is ever unavoidable, reset it in `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`. Scene reload stays enabled.
 - **Reference device: none yet.** Until a phone is available, builds are verified on BlueStacks 5 (dev APKs include x86-64 for it) and layout on the Unity Device Simulator. Multi-touch, haptics, touch latency, 60 fps and thermal checks are **device-only** and tracked as deferred in PROGRESS.

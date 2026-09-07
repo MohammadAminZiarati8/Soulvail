@@ -77,4 +77,14 @@ Instances created with `CreateInstance` are destroyed in teardown.
 
 ## As built
 
-_Filled at merge._
+Built to the Files table: three files, plus the two the namespace finding forced (below). 7 EditMode tests, 120 in the suite, green; zero errors, zero new analyzer warnings.
+
+**Deviations:**
+
+1. **`CharacterDefinition` uses a block namespace, against the project convention, and `.editorconfig` + `CLAUDE.md` changed to record why.** Unity 6.3's script importer cannot extract the type from a file-scoped namespace, so no `MonoScript` is linked and every asset referencing the type loads as null with no error anywhere. Forced, not chosen; verified A/B/A and then with two same-cycle probes. The two doc files are outside the Files table and were approved by the owner, who reproduced the finding independently.
+2. **A seventh test, `OnValidate_InvalidId_LogsWarningNamingAsset`.** Behaviour rule 3 had no row — it was Manual verification step 2 only. `LogAssert` makes it testable, and it fails at teardown if the warning stops arriving.
+3. **`ToSpec_InvalidHp_ThrowsNamingAsset` also asserts the inner exception** is the `ArgumentOutOfRangeException` `CharacterSpec` threw. The row's contract is that `ToSpec` narrows every failure to plain `ArgumentException`; without this the narrowing is asserted but the diagnostic it preserves is not.
+4. **Test instances are given a name.** `CreateInstance` leaves `name` empty, and `Does.Contain("")` passes against any string — the two "message names the asset" rows would have proven nothing. Named fixtures are what make them load-bearing.
+5. **`Oathbound.asset` was authored through `AssetDatabase.CreateAsset` + `SerializedObject`, not by hand**, so its GUID and `.meta` are Unity's own. Its first write landed with `m_Script: {fileID: 0}` — the namespace bug — and the reference was repaired with `File.WriteAllText` (`DeleteAsset` is refused over MCP, per M0-03).
+
+**Mutation-tested** (first run was green, so per M0-07/M0-08 it was not trusted): transposing accel/decel reddens `Oathbound_ToSpec_MatchesCoreCombatNumbers` alone; removing the `catch` reddens both `ThrowsNamingAsset` rows; caching the spec reddens `ToSpec_ReturnsNewInstanceEachCall`; silencing `OnValidate` reddens its own row. The caching/`OnValidate` run also exposed a coupling — `ToSpec_InvalidId_ThrowsNamingAsset` had a `LogAssert.Expect` for rule 3 and went red when `OnValidate` was silenced. Removed, so each row owns one behaviour.

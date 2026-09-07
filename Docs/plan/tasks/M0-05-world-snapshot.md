@@ -88,9 +88,9 @@ public static class Num
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 51 passed, 0 failed, via `TestRunnerApi`
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -100,4 +100,18 @@ public static class Num
 
 ## As built
 
-_Filled at merge._
+**Files:** 5, exactly the table. No new asmdef, so no new `csc.rsp`. `Docs/Architecture.md` was also edited — see below; a doc, so it does not count against size M.
+
+**`System.Numerics` needed no reference.** It ships in the .NET Standard profile the project targets (`apiCompatibilityLevel: 6`) and is not a `UnityEngine*` assembly, so `Soulvail.Core.asmdef` is unchanged and `AssemblyPurityTests` stays green. First core dependency beyond `System` and `System.Collections.Generic`.
+
+**AR §4.2 was stale and is corrected in this change** (owner's direction). It sketched `WorldSnapshot` as a struct with no `AddEnemy`/`Clear`/`EnemyCapacity`; this spec's Public API says `sealed class`, and it has to be — `AddEnemy` returns `ref EnemySense` and advances `EnemyCount`, which a by-value copy would throw away. Not a deviation from the spec, and no superseding ADR: ADR-0003 decides that the snapshot is the tick's payload, not its storage kind, so the decision stood and only its illustration was wrong. §4.2 now carries the built shape plus the two rules the sketch could not express — the array outlives every frame, and every reader stops at `EnemyCount` — and §12's adapters list gained `Num`.
+
+**Also:** `ClearAndAdd_AllocateNothing` is measured with `AllocationAssert` — the row's "allocated-bytes delta == 0" describes the BCL probe M0-02 proved inert on this runtime. Two rows carry one extra assertion each, covering behaviour the row already owns rather than growing the table: `Ctor_ZeroCapacity_Throws` also asserts a negative capacity (rule 6 is `<= 0`, the row names only 0), and `Clear_ResetsScalarsAndCount_KeepsArrayInstance` also asserts a stale slot survives (rule 3's "does **not** zero the contents" had no row).
+
+**The ref-return trap.** `var e = snapshot.AddEnemy()` binds a copy and compiles; every assertion about `e` then passes while the snapshot stays empty. `ref` is needed on both sides, and the tests assert through `snapshot.Enemies[…]` rather than through the local so that a copy fails them. M0-06's intent buffer is the next place this applies.
+
+**Public mutable fields are deliberate** on both types, against the project's general ban, which targets Unity components. One writer (`SnapshotBuilder`), one reader (core); properties would cost a call per field per enemy per frame. Documented in the type remarks. No analyzer objects.
+
+**Verified:** 51 EditMode tests green (42 before, 9 new), zero errors, zero warnings in the Unity Console.
+
+**Carry forward:** `Clear()` does not zero `Enemies` — readers must stop at `EnemyCount` or they read last frame's enemies. On the PROGRESS watch list, and now stated in AR §4.2.

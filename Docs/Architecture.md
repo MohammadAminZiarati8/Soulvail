@@ -97,14 +97,21 @@ See [ADR-0001](adr/0001-hexagonal-pure-core.md).
 With all logic in core, core already owns HP, cooldowns, states, and targets. The snapshot is only what core cannot know: **where things are.**
 
 ```csharp
-public struct WorldSnapshot
+public sealed class WorldSnapshot
 {
+    public WorldSnapshot(int enemyCapacity);   // > 0; the device tier's concurrency cap
+
     public float    Dt;
     public Vector2  MoveInput;                 // stick, already deadzoned/banded by the input adapter
     public Vector3  PlayerPosition;
     public Vector3  PlayerVelocity;
-    public int      EnemyCount;
-    public EnemySense[] Enemies;               // preallocated to the concurrency cap
+
+    public int      EnemyCount;                // live entries are Enemies[0..EnemyCount)
+    public readonly EnemySense[] Enemies;      // preallocated to the cap, never replaced
+    public int      EnemyCapacity { get; }
+
+    public ref EnemySense AddEnemy();          // claims the next slot to fill in place; throws when full
+    public void Clear();                       // scalars to zero, EnemyCount = 0
 }
 
 public struct EnemySense
@@ -117,8 +124,11 @@ public struct EnemySense
 }
 ```
 
-- `System.Numerics` vectors — pure C#, no `UnityEngine`. Adapters convert at the boundary.
-- **Zero allocations.** Preallocated arrays sized to the device-tier concurrency cap, structs, int IDs. Rebuilt in place every frame.
+- `System.Numerics` vectors — pure C#, no `UnityEngine`. Adapters convert at the boundary, through `Num`'s extension methods.
+- **Zero allocations.** One snapshot per run, preallocated to the device-tier concurrency cap, struct entries, int IDs. Refilled in place every frame: `Clear`, then one `AddEnemy` per enemy the builder can see.
+- **A class, not a struct.** `AddEnemy` hands back a reference into `Enemies` and advances `EnemyCount`; passed by value, the builder would be filling a copy the ticker never sees.
+- **`Clear` leaves the `Enemies` contents alone**, which is what makes refilling O(1) rather than a capacity-sized write every frame to erase data nobody may read. **Every reader stops at `EnemyCount`** — anything past it is last frame's enemies.
+- **A full snapshot throws.** Silently dropping the enemy would make core blind to it; growing the array would allocate mid-frame. Respecting the cap — by choosing which enemies matter — is the builder's job.
 - Core ticks **every frame with variable `dt`**. The targeting scorer runs on its own 0.1s accumulator inside core; the director on 0.5s. Frequency is a tuning detail inside core, not an architectural boundary.
 
 ### 4.3 Frame order (Unity side)
@@ -343,7 +353,7 @@ Assets/_Project/
 ├── Game/                          Soulvail.Game.asmdef   (→ Core, VContainer, InputSystem, uGUI, TMP, AI.Navigation)
 │   ├── Composition/               BootScope, RunScope, installers
 │   ├── Adapters/                  UnityClock, SeededRandom, LocalJsonSaveStore, TableLocalizer,
-│   │                              SnapshotBuilder, IntentBuffer, DomainEventHub, InputAdapter
+│   │                              SnapshotBuilder, IntentBuffer, DomainEventHub, InputAdapter, Num
 │   ├── Authoring/                 ScriptableObject definitions + ToSpec()
 │   ├── Views/                     PlayerView, EnemyView, projectiles, VFX, reticles
 │   ├── Presentation/              HUD, LevelUp, Sanctum, Menu presenters

@@ -73,9 +73,9 @@ public sealed class IntentBuffer : IIntentSink
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -84,4 +84,14 @@ public sealed class IntentBuffer : IIntentSink
 
 ## As built
 
-_Filled at merge._
+**Five files, not four.** The Files table's fourth row is joined by `Tests/Core/Run/PlayerMoveIntentTests.cs`, because behaviour rule 5 describes a Core type and the table's only test file is in `Tests.Game`. Approved before implementation; still size M. Its one test covers the half of rule 5 the compiler cannot: that the constructor stores a non-unit facing and a zero facing verbatim, normalising and validating neither. Immutability is left to `readonly struct`, where a mutation is a compile error.
+
+**No `Facing` unit-length assertion**, though the rule permits one. Release cost would have been nil — `Debug.Assert` is `[Conditional("DEBUG")]` and Unity defines `DEBUG` only for the Editor and Development Builds — but nothing constructs a `PlayerMoveIntent` yet, so the guard would have decided whether a zero facing is legal before any producer existed to have an opinion. M0-10/M0-16 own that.
+
+**The `PlayerMove` name collision compiles**, as the Public API intends: an explicit implementation's name is `IIntentSink.PlayerMove` and never enters the class's declaration space. Kept deliberately — core holds an `IIntentSink` and can only write, a view holds an `IntentBuffer` and can only read, so the type enforces the direction of the boundary rather than a convention having to.
+
+**`Clear()` leaves the stored intent alone**, matching the "undefined if `!HasPlayerMove`" contract and `WorldSnapshot.Clear`'s precedent. `Clear_ResetsFlag` asserts only the flag; pinning the leftover would promise something the spec calls undefined. On the PROGRESS watch list, because the visible failure is a view that skips the flag check and slides on last frame's velocity.
+
+`WriteAndClear_AllocateNothing` is measured with `AllocationAssert`, not the row's stale "allocated-bytes delta == 0" — see PROGRESS, M0-02.
+
+**Verified:** clean recompile of all four emitting assemblies, zero errors and zero warnings in the Console; full EditMode suite via `TestRunnerApi` green at **57 passed / 0 failed** (51 before).

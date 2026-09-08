@@ -101,10 +101,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps 1–3 verified in Editor
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 153 EditMode, up from 148
+- [x] Zero errors, zero new analyzer warnings
+- [x] Manual steps 1–3 verified in Editor — driven and measured in play mode, numbers in *As built*
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -115,4 +115,30 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
 ## As built
 
-_Filled at merge._
+Built as specified, with seven deviations — the full account is in [PROGRESS](../PROGRESS.md), M0-16. In short:
+
+- **`RunTicker` takes a `ContentCatalog`.** The Public API block above lists seven parameters and no catalog, while rule 6 requires `catalog.Characters[0].Id`; the two disagreed and the behaviour rule won. Eight parameters.
+- **Two materials beyond the Files table** — `Materials/M_PlayerCyan.mat` (`#22D3EE`) and `Materials/M_BoneGrey.mat` (`#6E6A63`) — because rules 10 and 11 ask for a cyan capsule and a grey floor and Unity has no coloured default.
+- **`Player.prefab` has a `FacingMarker` child** as well as the capsule mesh. A capsule is rotationally symmetric, so without it manual step 2 is unobservable rather than merely subtle.
+- **`Run.unity` gains one `Directional Light`.** The scene's ambient-only lighting rendered floor, walls and pillars at a single flat value, which makes steps 1–3 unjudgeable. GD §17.1 asks for exactly one.
+- **`RegisterEntryPoint<RunTicker>(Lifetime.Scoped)`** rather than the defaulted call — identical behaviour in a child scope, honest label.
+- **Pillars use a `MeshCollider`.** The cylinder primitive's `CapsuleCollider` has rounded caps that sit inside the mesh silhouette once scaled, so the player would sink into a pillar before being stopped.
+- **`skinWidth` 0.045 and `minMoveDistance` 0** on the controller. The default `minMoveDistance` discards sub-millimetre steps, which is exactly the tail of CC §2.4's 0.08 s deceleration.
+
+**Decision closed: `RunState.Motor` is now `internal`.** Nothing in `Soulvail.Game` reads the handle — verified by search, and by `PlayerView` taking both values from the intent — so it is narrowed, with `PlayerVelocity` and `PlayerFacing` as the public reads. The names are qualified rather than the bare `Velocity` / `Facing` this section suggested, to match the neighbouring `PlayerPosition` and `WorldSnapshot.PlayerVelocity`. `RunSessionTests` changed on two lines, as M0-10 predicted.
+
+**Verification.** 153 EditMode tests green (148 before), zero compile errors, zero new analyzer warnings, clean Console.
+
+Manual steps 1–4 were driven in play mode by an editor-update script that injects a known stick deflection and measures, rather than by eye. `sleepTimeout` read `NeverSleep` and `targetFrameRate` 60, confirming `RunTicker.Start` ran:
+
+| Check | Measured | Expected |
+|---|---|---|
+| 1, 4 — top speed | `PlayerView.Velocity` 5.400 m/s; 5.400 m/s over 0.999 s of travel | 5.4 (CC §2.5) |
+| 1 — stops with no slide | \|v\| 0.0000 after release; 0.00000 m moved over the next 30 frames | 0 |
+| 2 — facing follows movement | rotY 0.00 moving +Z; 90.00 on stick +X | 0 / 90 |
+| 2 — idle holds facing | rotY 90.00 held 60 frames after release | unchanged |
+| 3 — pillar blocks, no jitter | centre distance 1.995 m; 0.00000 m jitter over 30 frames | 1.5 + 0.45 + 0.045 skin |
+| 3 — wall blocks, no jitter | z 17.505 (north), x −17.505 (west); 0.00000 m jitter over 50 frames | 18 − 0.45 − 0.045 |
+| grounding | y at rest 0.0450 | skinWidth above the floor |
+
+Two things worth keeping from the run. Both collision stops land exactly one `skinWidth` short of the geometry, which is the controller behaving correctly and also proves the pillar's `MeshCollider` is the cylinder rather than a capsule — a capsule would have stopped further out. And while pressed against a wall, `PlayerView.Velocity` still reads **5.400**: core is still asking for full speed and the controller is resolving it to zero displacement. That is the live demonstration of why `Velocity` is the requested velocity and not `CharacterController.velocity`, which would have reported 0 and told core the player had stopped trying to move.

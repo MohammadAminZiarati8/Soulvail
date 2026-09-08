@@ -63,10 +63,10 @@ public sealed class MenuPresenter : MonoBehaviour
 
 ## Acceptance
 
-- [ ] PlayMode tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
-- [ ] Parking lot notes the two raw strings to localise in M6-10
+- [x] PlayMode tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] Parking lot notes the two raw strings to localise in M6-10
 
 ## Out of scope
 
@@ -75,4 +75,30 @@ public sealed class MenuPresenter : MonoBehaviour
 
 ## As built
 
-_Filled at merge._
+**Files, seven** — five from the table plus two the table could not skip:
+
+| Path | Note |
+|---|---|
+| `Game/Composition/MenuScope.cs` | as specced, **block** namespace (M0-11) |
+| `Game/Presentation/MenuPresenter.cs` | as specced, **block** namespace; new folder |
+| `Tests/PlayMode/Soulvail.Tests.PlayMode.asmdef` | non-editor, `UNITY_INCLUDE_TESTS`, refs Core / Game / VContainer / UnityEngine.UI / UnityEngine.TestRunner + `nunit.framework.dll` |
+| `Tests/PlayMode/csc.rsp` | **not in the table.** Sixth asmdef, so `-langversion:10` or its file-scoped namespace does not build (M0-02) |
+| `Tests/PlayMode/BootSmokeTests.cs` | the table's two tests plus one more (deviation 2) |
+| `Scenes/Menu.unity` | *modified:* `MenuScope`, `EventSystem`, title, Descend button, camera to solid black |
+| `Game/Composition/BootFlow.cs` | **not in the table.** *modified:* see deviation 1 — the specced test cannot pass without it |
+
+**Verified.** 153 EditMode tests passed in 2.2 s (unchanged count — nothing here is reachable from EditMode). 3 PlayMode tests passed in 2.3 s, re-run green after the last scene edit:
+
+| Test | |
+|---|---|
+| `Boot_ReachesMenu_WithinFiveSeconds` | passed, 0.63 s |
+| `RootScope_SurvivesSceneLoad` | passed, 0.72 s |
+| `Descend_StartsARun_AndRefusesASecondTap` | passed, 0.83 s — beyond the Tests table |
+
+Console: 0 errors, 0 new warnings (the one remaining warning is `com.unity.ai.assistant` failing to refresh an auth token). Scene wiring verified in the saved YAML rather than the Inspector: both `m_Script` GUIDs resolve, `_descend` and `_menu` point at real objects, `parentReference: {TypeName: }` is empty.
+
+**Manual verification.** Steps 1–3 are all covered by `Descend_StartsARun_AndRefusesASecondTap` plus `Boot_ReachesMenu_WithinFiveSeconds`, which is why the third test was added — the run reaches the Menu from Boot, the tap loads Run, and the button is non-interactable before the load finishes. Layout confirmed by scene-view capture: title and button centred, both legible. **Left for the owner:** an actual thumb on an actual touchscreen, and a look at the Boot → Menu → Run transition at real speed.
+
+**Button size:** 480 × 160 reference px, not dp. Rule 4's ≥ 48 dp holds by computation across screen shapes — 53.3 dp at 1280 × 720 / 320 dpi (worst case), 68.1 dp at 1600 × 720 / 280 dpi, 71.6 dp at 2400 × 1080 / 400 dpi, 106.7 dp on the BlueStacks reference.
+
+**Deviations:** six, listed in the PROGRESS entry. The load-bearing one is `BootFlow`.

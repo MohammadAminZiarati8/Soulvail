@@ -1,0 +1,158 @@
+#!/usr/bin/env sh
+# pre-commit — fast structural checks for a Unity repo. No compile step.
+#
+# 1. No direct commits on main/dev
+# 2. No generated/ignored paths staged
+# 3. Unity .meta consistency for staged assets
+# 4. Whitespace errors and conflict markers
+# 5. Large files that aren't LFS pointers
+# 6. C# whitespace formatting via `dotnet format` if the .NET SDK is present
+#
+# Bypass in an emergency: git commit --no-verify
+
+set -u
+
+fail=0
+err()  { printf 'ERROR: %s\n' "$*" >&2; fail=1; }
+warn() { printf 'warn:  %s\n' "$*" >&2; }
+note() { printf 'note:  %s\n' "$*" >&2; }
+
+# ---------------------------------------------------------------- 1. branch
+branch=$(git symbolic-ref --short -q HEAD || printf '')
+case "$branch" in
+  main|dev)
+    if [ "${ALLOW_DIRECT_COMMIT:-0}" != "1" ]; then
+      err "Direct commits to '$branch' are not allowed. Branch from dev and open a PR."
+      err "  Emergency override: ALLOW_DIRECT_COMMIT=1 git commit ..."
+    fi
+    ;;
+esac
+
+# --------------------------------------------------- collect staged changes
+status_file=$(mktemp)
+trap 'rm -f "$status_file"' EXIT
+git -c core.quotePath=false diff --cached --name-status > "$status_file"
+
+# Expand renames/copies into a delete + an add so the rest of the checks are uniform.
+# Output lines: "<D|A>\t<path>"
+expanded_file=$(mktemp)
+trap 'rm -f "$status_file" "$expanded_file"' EXIT
+while IFS='	' read -r st p1 p2; do
+  [ -z "$st" ] && continue
+  case "$st" in
+    R*|C*) printf 'D\t%s\n' "$p1" >> "$expanded_file"; printf 'A\t%s\n' "$p2" >> "$expanded_file" ;;
+    D)     printf 'D\t%s\n' "$p1" >> "$expanded_file" ;;
+    *)     printf 'A\t%s\n' "$p1" >> "$expanded_file" ;;   # A, M, T
+  esac
+done < "$status_file"
+
+in_index() { git ls-files --cached --error-unmatch -- "$1" >/dev/null 2>&1; }
+dir_in_index() { [ -n "$(git ls-files --cached -- "$1/" | head -1)" ]; }
+
+# ------------------------------------------------------ 2. forbidden paths
+while IFS='	' read -r st p; do
+  [ "$st" = "A" ] || continue
+  case "$p" in
+    Library/*|Temp/*|Logs/*|obj/*|Obj/*|UserSettings/*|Build/*|Builds/*|*.csproj|*.sln|*.slnx|*.apk|*.aab)
+      err "Generated/ignored path is staged: $p" ;;
+  esac
+done < "$expanded_file"
+
+# ----------------------------------------------- 3. Unity .meta consistency
+# Unity ignores paths where any segment starts with '.' or ends with '~'.
+unity_ignored() {
+  case "/$1/" in
+    */.*|*~/*) return 0 ;;
+  esac
+  return 1
+}
+
+while IFS='	' read -r st p; do
+  case "$p" in Assets/*) ;; *) continue ;; esac
+  unity_ignored "$p" && continue
+
+  case "$p" in
+    *.meta)
+      asset=${p%.meta}
+      if [ "$st" = "A" ]; then
+        if ! in_index "$asset" && ! dir_in_index "$asset"; then
+          if [ -d "$asset" ]; then
+            err "$p is staged but folder '$asset' has no tracked files (git can't track empty folders — add a .gitkeep)"
+          else
+            err "$p is staged but its asset '$asset' is not in the index"
+          fi
+        fi
+      else
+        if in_index "$asset" || dir_in_index "$asset"; then
+          err "$p is being deleted but '$asset' is still tracked"
+        fi
+      fi
+      ;;
+    *)
+      if [ "$st" = "A" ]; then
+        in_index "$p.meta" || err "'$p' is staged without its .meta ($p.meta) — let Unity generate it, then stage both"
+        # every ancestor folder below Assets/ needs a .meta too
+        d=$(dirname "$p")
+        while [ "$d" != "Assets" ] && [ "$d" != "." ] && [ "$d" != "/" ]; do
+          in_index "$d.meta" || err "Folder '$d' is missing its $d.meta"
+          d=$(dirname "$d")
+        done
+      else
+        if in_index "$p.meta"; then
+          err "'$p' is being deleted but $p.meta is still tracked — delete both"
+        fi
+      fi
+      ;;
+  esac
+done < "$expanded_file"
+
+# ------------------------------------------ 4. whitespace / conflict markers
+# Excluded: Unity-serialised formats — Unity writes empty values as "key: " with a
+# trailing space, and stripping it makes Unity rewrite the file on every import.
+# Also .md — trailing double-space is a legitimate Markdown line break.
+ws_pathspec='. :(exclude)*.md :(exclude)*.meta :(exclude)*.asset :(exclude)*.unity :(exclude)*.prefab :(exclude)*.mat :(exclude)*.anim :(exclude)*.controller :(exclude)*.overrideController :(exclude)*.physicMaterial :(exclude)*.physicsMaterial2D :(exclude)*.playable :(exclude)*.mask :(exclude)*.brush :(exclude)*.flare :(exclude)*.fontsettings :(exclude)*.guiskin :(exclude)*.giparams :(exclude)*.renderTexture :(exclude)*.spriteatlas :(exclude)*.terrainlayer :(exclude)*.mixer :(exclude)*.shadervariants :(exclude)*.preset :(exclude)*.inputactions'
+# shellcheck disable=SC2086
+if ! git diff --cached --check -- $ws_pathspec >/dev/null 2>&1; then
+  err "Whitespace errors or conflict markers in staged changes:"
+  # shellcheck disable=SC2086
+  git diff --cached --check -- $ws_pathspec >&2 || true
+fi
+
+# ------------------------------------------------- 5. large non-LFS files
+limit=$((5 * 1024 * 1024))
+while IFS='	' read -r st p; do
+  [ "$st" = "A" ] || continue
+  size=$(git cat-file -s ":$p" 2>/dev/null || printf 0)
+  if [ "$size" -gt "$limit" ]; then
+    head=$(git cat-file -p ":$p" | head -c 40)
+    case "$head" in
+      "version https://git-lfs"*) ;;
+      *) err "'$p' is $((size / 1024 / 1024)) MB and not an LFS pointer — add its extension to .gitattributes and re-add" ;;
+    esac
+  fi
+done < "$expanded_file"
+
+# ---------------------------------------------------- 6. C# format check
+cs_files=$(awk -F'\t' '$1=="A" && $2 ~ /\.cs$/ {print $2}' "$expanded_file")
+if [ -n "$cs_files" ]; then
+  # Probe the subcommand, not the binary: a bare .NET *runtime* also puts `dotnet` on
+  # PATH but has no `format`, and its "No .NET SDKs were found" exit code is
+  # indistinguishable here from a real violation — which reads as a phantom one.
+  if dotnet format --version >/dev/null 2>&1; then
+    # --folder: whitespace-only formatting from .editorconfig, no MSBuild/project needed.
+    # shellcheck disable=SC2086
+    if ! dotnet format whitespace --folder --verify-no-changes --include $cs_files >/dev/null 2>&1; then
+      err "C# whitespace formatting differs from .editorconfig. Fix with:"
+      err "  dotnet format whitespace --folder --include $(printf '%s ' $cs_files)"
+    fi
+  else
+    note "dotnet format unavailable — skipping C# format check (install the .NET SDK to enable it)"
+  fi
+fi
+
+# ------------------------------------------------------------------ result
+if [ "$fail" -ne 0 ]; then
+  printf '\npre-commit: refusing commit. Fix the above or use --no-verify in an emergency.\n' >&2
+  exit 1
+fi
+exit 0

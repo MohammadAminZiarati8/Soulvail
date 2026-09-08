@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Forward to Git LFS (core.hooksPath bypasses the hooks `git lfs install` wrote to .git/hooks).
+command -v git-lfs >/dev/null 2>&1 || { printf 'ERROR: git-lfs not found\n' >&2; exit 2; }
+git lfs post-merge "$@"

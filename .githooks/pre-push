@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+# pre-push — forward to Git LFS, then refuse force-pushes to main/dev.
+#
+# core.hooksPath bypasses the LFS hooks in .git/hooks, so we call LFS explicitly.
+# stdin carries "<local ref> <local sha> <remote ref> <remote sha>" lines; LFS consumes
+# stdin, so capture it first and replay it.
+
+set -u
+remote=$1
+url=$2
+
+input=$(cat)
+
+if command -v git-lfs >/dev/null 2>&1; then
+  printf '%s\n' "$input" | git lfs pre-push "$remote" "$url" || exit 1
+else
+  printf 'ERROR: git-lfs is not installed. Install it and run: git lfs install --local\n' >&2
+  exit 2
+fi
+
+zero=0000000000000000000000000000000000000000
+printf '%s\n' "$input" | while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${remote_ref:-}" ] && continue
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/dev) ;;
+    *) continue ;;
+  esac
+  # new remote branch or branch deletion: nothing to compare
+  [ "$remote_sha" = "$zero" ] && continue
+  [ "$local_sha" = "$zero" ] && continue
+  if ! git cat-file -e "${remote_sha}^{commit}" 2>/dev/null; then
+    printf 'warn:  remote %s not fetched locally; skipping fast-forward check\n' "${remote_ref#refs/heads/}" >&2
+    continue
+  fi
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha"; then
+    printf 'ERROR: non-fast-forward push to %s refused. Merge or rebase first; never force-push %s.\n' \
+      "${remote_ref#refs/heads/}" "${remote_ref#refs/heads/}" >&2
+    exit 1
+  fi
+done || exit 1
+
+exit 0

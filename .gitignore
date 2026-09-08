@@ -58,6 +58,9 @@ ExportedObj/
 .vscode/*.log
 
 # ── Build outputs ────────────────────────────────────────────────
+# The whole output directory, not just the package: an Android build also drops
+# Soulvail_BurstDebugInformation_DoNotShip/ beside the APK, which the patterns below miss.
+/Builds/
 *.apk
 *.aab
 *.unitypackage

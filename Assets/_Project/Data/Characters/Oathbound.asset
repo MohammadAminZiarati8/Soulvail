@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4b819aeab08838a4c901790d46282d7e, type: 3}
   m_Name: Oathbound
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _id: character.oathbound
   _nameKey: character.oathbound.name
   _maxHp: 140
@@ -23,3 +23,9 @@ MonoBehaviour:
   _shieldRechargeDelay: 4
   _shieldRefillPerSecond: 15
   _hitIFrames: 0.5
+  _acquireRange: 12
+  _distanceWeight: 3
+  _eliteBonus: 2
+  _finisherBonus: 1
+  _targetHysteresis: 1.5
+  _targetCadence: 0.1

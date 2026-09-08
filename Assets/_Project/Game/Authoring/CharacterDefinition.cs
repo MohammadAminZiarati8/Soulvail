@@ -48,6 +48,21 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.01f)] private float _shieldRefillPerSecond = 15f;
         [SerializeField, Min(0f)] private float _hitIFrames = 0.5f;
 
+        [Tooltip("Auto-aim (CC §3.2). Every class has these — unlike the shield above, there " +
+                 "is no such thing as a class that does not aim, so none of them may be 0 " +
+                 "except a weight a designer means to switch off.")]
+        [SerializeField, Min(0.01f)] private float _acquireRange = 12f;
+        [SerializeField, Min(0f)] private float _distanceWeight = 3f;
+        [SerializeField, Min(0f)] private float _eliteBonus = 2f;
+        [SerializeField, Min(0f)] private float _finisherBonus = 1f;
+
+        [Tooltip("The current target's bonus — a challenger must beat it by this to steal " +
+                 "focus. Zero makes the character twitch between similar targets (CC §3.3).")]
+        [SerializeField, Min(0f)] private float _targetHysteresis = 1.5f;
+
+        [Tooltip("Seconds between targeting decisions. 0.1 is CC §3.1's 10 Hz loop.")]
+        [SerializeField, Min(0.01f)] private float _targetCadence = 0.1f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -66,6 +81,11 @@ namespace Soulvail.Game.Authoring
         /// "has shield" toggle because the toggle would allow a state the spec cannot
         /// represent — shield on, max zero — and a designer would have to keep the two
         /// agreeing by hand. The delay and refill fields simply go unread at zero.
+        /// <para>
+        /// The <see cref="TargetingSpec"/> has no such switch and is built unconditionally:
+        /// every class aims (CC §3), so there is no "no targeting" state to express, and the
+        /// spec's own constructor is what refuses a range or cadence of zero.
+        /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
         /// Any authored field is invalid. Always this exact type, never one of its subclasses:
@@ -82,6 +102,13 @@ namespace Soulvail.Game.Authoring
                     new LocKey(_nameKey),
                     _maxHp,
                     new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg),
+                    new TargetingSpec(
+                        _acquireRange,
+                        _distanceWeight,
+                        _eliteBonus,
+                        _finisherBonus,
+                        _targetHysteresis,
+                        _targetCadence),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

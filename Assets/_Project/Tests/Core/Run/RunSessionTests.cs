@@ -365,7 +365,11 @@ public sealed class RunSessionTests
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
         100f,
-        new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg));
+        new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg),
+        // Required as of M1-03, and irrelevant to every row in this fixture: the run session
+        // does not target anything yet. CC §7's numbers rather than invented ones, so a future
+        // row that does care starts from the real class.
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f));
 
     /// <summary>One snapshot per call, filled the way M0-16's builder will fill its single one.</summary>
     private static WorldSnapshot Snapshot(float dt, Vector2 input = default, Vector3 position = default)

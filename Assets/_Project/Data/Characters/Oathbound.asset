@@ -19,3 +19,7 @@ MonoBehaviour:
   _accelTime: 0.06
   _decelTime: 0.08
   _turnSpeedDeg: 720
+  _shieldMax: 30
+  _shieldRechargeDelay: 4
+  _shieldRefillPerSecond: 15
+  _hitIFrames: 0.5

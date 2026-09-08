@@ -70,7 +70,7 @@
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M1-01](tasks/M1-01-stat-and-modifier.md) | `Stat` + `Modifier` stack: Flat → PercentAdd → PercentMult, by source, cached, describable | S | M0 | ☑ |
-| [M1-02](tasks/M1-02-health-and-aegis.md) | `Health`, `ShieldSpec`, `DamageResult`: HP, Aegis recharge, hit i-frames | M | 01 | ☐ |
+| [M1-02](tasks/M1-02-health-and-aegis.md) | `Health`, `ShieldSpec`, `DamageResult`: HP, Aegis recharge, hit i-frames | M | 01 | ☑ |
 | [M1-03](tasks/M1-03-target-scorer.md) | `TargetCandidate`, `TargetingSpec`, `TargetScorer` | M | 01 | ☐ |
 | [M1-04](tasks/M1-04-targeter.md) | `Targeter`: cadence, immediate retarget, focus override, all-blocked state | S | 03 | ☐ |
 | [M1-05](tasks/M1-05-enemy-entities.md) | `EnemySpec`, `EnemyAgent`, `EnemyBlackboard`, `EnemyRegistry` | M | 02 | ☐ |

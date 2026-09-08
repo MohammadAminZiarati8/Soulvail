@@ -70,9 +70,9 @@ public sealed class Targeter
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -81,4 +81,15 @@ public sealed class Targeter
 
 ## As built
 
-_Filled at merge._
+Both files as tabled, no third. **232 EditMode tests pass in 5.16 s**, up from 213; zero errors, zero new warnings.
+
+**The two places the spec had to be resolved rather than followed:**
+
+- **Rule 1 is silent on whether the two triggers interact, and they must not.** An immediate re-selection leaves the cadence accumulator untouched — the schedule is a clock, the invalidity check is a fact about the world, and they are independent by construction. Resetting the accumulator on each retarget (the natural implementation) lets a stream of dying targets postpone the scheduled decision indefinitely. `ImmediateRetarget_DoesNotStarveTheSchedule` is a 17th row for it, and was mutation-checked: reinstating the reset fails that row and only that row.
+- **Rule 3 contradicts itself on a focused, invulnerable enemy** — "falls through to rule 4" and `Current = focused` cannot both hold. The test row wins: the focus is held, `IsCurrentBlocked` goes up, and the facing does not swing to the nearest target. `Focus_Invulnerable_ShowsBlockedOnFocused` is arranged so the alternative is both nearer and higher-scoring, so nothing but "hold the focus" produces the expected id.
+
+**Beyond the Public API block:** the 2 s focus drop delay is a private `const`, since the constructor takes only a scorer and a spec and M1-03 deliberately kept `TargetingSpec` to the scoring block. It becomes authored data alongside M1-09's 3 m tap radius if it ever needs to differ per class.
+
+**Beyond the Tests table:** three rows — the starvation row above, `Constructor_RejectsNulls`, and `Tick_RejectsNonFiniteDt` for the `dt` guard this task added, matching `Health.Tick`.
+
+**One behaviour with no row, on purpose:** `IsCurrentBlocked` suppresses the invulnerability trigger, so a Warden standoff does not re-select every frame. A blocked target that becomes vulnerable is therefore picked up on the next scheduled decision rather than the next frame — the selection's outcome is identical either way, only its frequency changes, so there is nothing a test could assert through the public API.

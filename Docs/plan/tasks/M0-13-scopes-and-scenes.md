@@ -79,10 +79,10 @@ None in this task — everything here needs scenes. The PlayMode smoke test "Boo
 
 ## Acceptance
 
-- [ ] Manual steps verified
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Every new asset has its `.meta`; deleted assets' metas are gone (hook enforces)
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [ ] Manual steps verified — **owner, in Play mode; not verifiable from the MCP**
+- [x] Zero errors, zero new analyzer warnings
+- [x] Every new asset has its `.meta`; deleted assets' metas are gone (hook enforces)
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -91,4 +91,48 @@ None in this task — everything here needs scenes. The PlayMode smoke test "Boo
 
 ## As built
 
-_Filled at merge._
+Files are under `Assets/_Project/` per this table's header — so the new `Settings/` and `Scenes/`
+folders sit beside `Core/`, `Game/`, `Data/`, not beside the URP `Assets/Settings/`.
+
+**Deviations, behaviour first:**
+
+1. **`SceneLoader` validates against the build list, not `Application.CanStreamedLevelBeLoaded`.**
+   That API is the obvious one for rule 4 and is inert here: it answered `false` for all three
+   scenes, by name *and* by full path, with `SceneManager.sceneCountInBuildSettings == 3` and the
+   paths correct. A guard built on it rejects every load there is. `IsInBuild` walks
+   `SceneUtility.GetScenePathByBuildIndex` instead and compares both forms.
+2. **`LoadAsync` accepts a scene's name or its full asset path**, as `SceneManager` itself does.
+   Name-only would have made the "not in Build Settings" message a lie for a path.
+3. **`BootFlow` observes the load task** with a `ContinueWith(…, OnlyOnFaulted)` that logs, rather
+   than discarding it. A discarded faulted task surfaces from the finalizer thread, if at all.
+4. **`ProjectSettings.asset` gains `VContainerSettings` in `preloadedAssets`.** Not in the table,
+   and rule 1 is false without it: `VContainerSettings.Instance` is set from `OnEnable`, which in
+   the Editor only fires via `LoadInstanceFromPreloadAssets` at `BeforeSceneLoad`. The package's
+   own Create menu item does this; `AssetDatabase.CreateAsset` alone leaves an asset that looks
+   right and does nothing.
+5. **`Mobile_RPAsset` and `PC_RPAsset` repointed to `DefaultVolumeProfile.asset`** (owner
+   approved). Both used `SampleSceneProfile` as `m_VolumeProfile`, so this task's removal would
+   have left two dangling references in the render pipeline assets. Costs the template's look
+   (Bloom 0.25, Vignette 0.2, Neutral tonemapping → neutral/off); irrelevant to a grey-box
+   skeleton, and M2+ art's call.
+6. **TMP Essential Resources imported** — 44 assets under `Assets/TextMesh Pro/` (owner approved).
+   `TMP_Settings.instance` was null, so rule 5's label could not exist. One-time project setup
+   M0-17 and M1-17 need regardless; M0-13 is just the first task to hit it. This forced a
+   seventh file outside the table: **`.gitattributes` gains `"Assets/TextMesh Pro/**"
+   -whitespace`**, because TMP's shaders carry trailing whitespace and space-before-tab indents
+   that made the pre-commit hook refuse the commit. Editing vendored files to satisfy the hook
+   would be reverted by the next TMP reimport.
+7. **`BootScope` and `RunScope` use block namespaces**, against this file's Public API block —
+   the M0-11 rule for every `UnityEngine.Object`-derived type.
+8. Beyond "a camera and a Canvas": Boot's camera clears to solid black (it is a splash), and both
+   Canvases are `ScaleWithScreenSize` at 1920×1080, match 0.5 — the landscape-mobile default,
+   without which the Boot label renders at a fixed pixel size on a phone.
+
+**Not deviations, but worth knowing:** no `Directional Light` in any scene (nothing is lit yet;
+M0-16 owns the Run scene's contents), and no `EventSystem` on either Canvas (nothing is
+interactive yet; M0-17 owns it).
+
+**Verified:** compile clean, 131/131 EditMode green, meta integrity clean, `LoadAsync` rejection
+paths and `Active` exercised through the real object, prefab and settings YAML checked for the
+M0-11 null-`m_Script` failure. **Not verified:** anything requiring Play mode — rules 1, 2, 3 and
+the Boot → Menu hand-off are the owner's manual steps below.

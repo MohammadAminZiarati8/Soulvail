@@ -1,4 +1,5 @@
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEngine;
 using VContainer;
@@ -32,6 +33,7 @@ namespace Soulvail.Game.Composition
     public sealed class RunScope : LifetimeScope
     {
         [SerializeField] private PlayerView _playerView;
+        [SerializeField] private DebugOverlay _debugOverlay;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -49,6 +51,17 @@ namespace Soulvail.Game.Composition
             // not construct, so registering the live component is exactly right: the container
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
+
+            // Registered only when it is there, and deliberately not guarded like the view above.
+            // The body is load-bearing — without it the run has nothing to move — while the overlay
+            // is a development aid that a scene is entitled not to have, and M0-19's release build
+            // is a scene that effectively does not. RegisterComponent forces the injection through a
+            // build callback, so Construct runs here, during this Awake, rather than whenever
+            // something first resolves it.
+            if (_debugOverlay != null)
+            {
+                builder.RegisterComponent(_debugOverlay);
+            }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated
             // actions asset that must be destroyed with the run (M0-14).

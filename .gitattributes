@@ -17,6 +17,15 @@
 *.uxml      text
 *.uss       text
 
+# ── Vendored: imported verbatim from a package, never hand-edited ─
+# TextMeshPro's essential resources are unpacked into the project by Unity's own
+# importer (Window > TextMeshPro > Import TMP Essential Resources). Its shaders carry
+# trailing whitespace, space-before-tab indents and blank lines at EOF, which the
+# pre-commit whitespace check correctly flags and which we must not "fix": these are
+# third-party files, and any edit is silently reverted the next time TMP is reimported.
+# `-whitespace` unsets the attribute, so `git diff --check` skips the tree entirely.
+"Assets/TextMesh Pro/**" -whitespace
+
 # ── Unity YAML — merged with UnityYAMLMerge (see CLAUDE.md for the git config) ──
 *.unity               merge=unityyaml text
 *.prefab              merge=unityyaml text

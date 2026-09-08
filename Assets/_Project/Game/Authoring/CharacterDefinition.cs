@@ -41,6 +41,13 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.001f)] private float _decelTime = 0.08f;
         [SerializeField, Min(1f)] private float _turnSpeedDeg = 720f;
 
+        [Tooltip("Points of shield. 0 means this class has no shield at all — only the " +
+                 "Oathbound's Aegis has one in V1. The two fields below are ignored at 0.")]
+        [SerializeField, Min(0f)] private float _shieldMax;
+        [SerializeField, Min(0.01f)] private float _shieldRechargeDelay = 4f;
+        [SerializeField, Min(0.01f)] private float _shieldRefillPerSecond = 15f;
+        [SerializeField, Min(0f)] private float _hitIFrames = 0.5f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -52,6 +59,14 @@ namespace Soulvail.Game.Authoring
         /// Builds the immutable spec core consumes. A fresh instance every call — this asset
         /// holds no runtime state and hands out nothing it keeps a reference to.
         /// </summary>
+        /// <remarks>
+        /// A <see cref="_shieldMax"/> of zero means the class has no shield, and produces a
+        /// <see langword="null"/> <see cref="CharacterSpec.Shield"/> rather than a
+        /// <see cref="ShieldSpec"/> full of zeroes. Zero is the switch instead of a separate
+        /// "has shield" toggle because the toggle would allow a state the spec cannot
+        /// represent — shield on, max zero — and a designer would have to keep the two
+        /// agreeing by hand. The delay and refill fields simply go unread at zero.
+        /// </remarks>
         /// <exception cref="ArgumentException">
         /// Any authored field is invalid. Always this exact type, never one of its subclasses:
         /// the caller cannot act on <em>which</em> field failed, only on <em>which asset</em>
@@ -66,7 +81,11 @@ namespace Soulvail.Game.Authoring
                     new ContentId(_id),
                     new LocKey(_nameKey),
                     _maxHp,
-                    new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg));
+                    new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg),
+                    _shieldMax > 0f
+                        ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
+                        : null,
+                    _hitIFrames);
             }
             catch (ArgumentException inner)
             {

@@ -27,6 +27,17 @@ public sealed class CharacterSpec
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="maxHp">Starting maximum health.</param>
     /// <param name="movement">How the class moves.</param>
+    /// <param name="shield">
+    /// The class's regenerating shield, or <see langword="null"/> for a class without one.
+    /// Optional because most classes are in that case: the Aegis is the Oathbound's signature
+    /// (CH §3.1) and the only regeneration in the game, so <see langword="null"/> is the honest
+    /// default rather than a convenience.
+    /// </param>
+    /// <param name="hitIFrames">
+    /// Seconds of invulnerability after a hit lands, or 0 for none. Defaults to 0 so that the
+    /// two optional parameters together describe "no shield, no mercy" — which is what an
+    /// enemy-shaped character would be, and what a class author has to override on purpose.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -34,11 +45,17 @@ public sealed class CharacterSpec
     /// forever. Rejected here, where the data is built, rather than where it is read.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="maxHp"/> is not greater than zero. A class that starts dead is a content
-    /// mistake.
+    /// <paramref name="maxHp"/> is not greater than zero — a class that starts dead is a content
+    /// mistake — or <paramref name="hitIFrames"/> is negative, NaN or infinite.
     /// </exception>
     /// <exception cref="ArgumentNullException"><paramref name="movement"/> is null.</exception>
-    public CharacterSpec(ContentId id, LocKey nameKey, float maxHp, MovementSpec movement)
+    public CharacterSpec(
+        ContentId id,
+        LocKey nameKey,
+        float maxHp,
+        MovementSpec movement,
+        ShieldSpec shield = null,
+        float hitIFrames = 0f)
     {
         if (id.Value is null)
         {
@@ -53,10 +70,23 @@ public sealed class CharacterSpec
             throw new ArgumentOutOfRangeException(nameof(maxHp), maxHp, "maxHp must be greater than zero.");
         }
 
+        // Same spelling, same reason, one rung looser: zero is legal here and means "no
+        // i-frames", so the guard is `>= 0` rather than `> 0`. Infinity is asked about
+        // separately because it passes a `>= 0` test and means permanent invulnerability.
+        if (!(hitIFrames >= 0f) || float.IsInfinity(hitIFrames))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(hitIFrames),
+                hitIFrames,
+                "hitIFrames must be a finite number of seconds, zero or more.");
+        }
+
         Id = id;
         NameKey = nameKey;
         MaxHp = maxHp;
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
+        Shield = shield;
+        HitIFrames = hitIFrames;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -70,4 +100,14 @@ public sealed class CharacterSpec
 
     /// <summary>The class's movement numbers.</summary>
     public MovementSpec Movement { get; }
+
+    /// <summary>
+    /// The class's regenerating shield, or <see langword="null"/> when it has none. Only the
+    /// Oathbound has one in V1 — <c>Health</c> takes it as-is, and null means the shield path
+    /// is skipped entirely rather than run against zeroes.
+    /// </summary>
+    public ShieldSpec Shield { get; }
+
+    /// <summary>Seconds of invulnerability after a hit lands; 0 for none.</summary>
+    public float HitIFrames { get; }
 }

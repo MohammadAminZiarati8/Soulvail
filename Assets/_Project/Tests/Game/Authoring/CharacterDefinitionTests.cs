@@ -75,6 +75,55 @@ public sealed class CharacterDefinitionTests
     }
 
     [Test]
+    public void Oathbound_ToSpec_HasShieldAndIFrames()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {OathboundPath}.");
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Shield, Is.Not.Null, "CH §3.1: the Aegis is the Oathbound's signature.");
+        Assert.That(spec.Shield.Max, Is.EqualTo(30f).Within(Tolerance), "CC §7 Aegis: 30 points.");
+        Assert.That(spec.Shield.RechargeDelay, Is.EqualTo(4f).Within(Tolerance),
+            "CC §7 Aegis: 4 s of quiet, not the refill rate.");
+        Assert.That(spec.Shield.RefillPerSecond, Is.EqualTo(15f).Within(Tolerance),
+            "CC §7 Aegis: 15 per second — a full shield in 2 s.");
+        Assert.That(spec.HitIFrames, Is.EqualTo(0.5f).Within(Tolerance), "CC §7 survivability: 0.5 s.");
+    }
+
+    [Test]
+    public void ToSpec_InvalidHitIFrames_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenIFrames");
+
+        // [Min(0f)] keeps this out of the Inspector, and a SerializedProperty write goes
+        // straight past it — which is the whole reason the guard lives in CharacterSpec.
+        SetFloat(definition, "_hitIFrames", -1f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenIFrames"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void ToSpec_ZeroShieldMax_MeansNoShield()
+    {
+        CharacterDefinition definition = NewDefinition("Shieldless");
+
+        // Zero is the switch, not an invalid number: the Gravecaller and the Emberwright have
+        // no Aegis, and this is how they say so. A separate "has shield" toggle would allow a
+        // state the spec cannot represent — on, with a max of zero.
+        SetFloat(definition, "_shieldMax", 0f);
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Shield, Is.Null,
+            "No shield is a null ShieldSpec, never a spec full of zeroes — Health skips the " +
+            "whole path on null rather than running it against a zero maximum.");
+    }
+
+    [Test]
     public void ToSpec_ReturnsNewInstanceEachCall()
     {
         var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);

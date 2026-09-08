@@ -99,4 +99,28 @@ Device-only (deferred, tracked in PROGRESS):
 
 ## As built
 
-_Filled at merge._
+**Output:** `Builds/Android/Soulvail-dev.apk`, 86,405,170 bytes (82.4 MB), built in 587 s from a warm IL2CPP cache.
+
+**Verified from the Editor:**
+
+| Check | Result |
+|---|---|
+| Menu item registered | `Menu.GetEnabled("Soulvail/Build/Android APK (Development)")` → `True` |
+| Scenes in the build | `Boot`, `Menu`, `Run` — enabled, indices 0/1/2 |
+| Native libraries | 6 `.so`, **all** under `lib/arm64-v8a/`; no other ABI present |
+| Package | `com.soulvail.dev` |
+| Version | `versionName 0.1.0`, `versionCode 1` |
+| API levels | `minSdkVersion 25`, `targetSdkVersion 36` (Automatic → highest installed) |
+| Label | `Soulvail` |
+| Architectures after build | restored to `ARM64` — verified after every build, including the failed ones |
+| Compile state | zero errors; one warning, and it is the stray Unity Connect setting below, not code |
+
+**Player settings applied** (4-line `ProjectSettings.asset` diff): `companyName → Soulvail`, `applicationIdentifier.Android → com.soulvail.dev`, `allowedAutorotateToPortrait → 0`, `allowedAutorotateToPortraitUpsideDown → 0`. Everything else in the table already matched and was left untouched — product name, version, IL2CPP, minSdk 25, targetSdk Automatic, Vulkan + OpenGLES3, and Android's default quality level (`Mobile`, carrying `Mobile_RPAsset`). Active build target switched `StandaloneWindows64` → `Android`.
+
+**Deviations:** three, all forced.
+
+1. **x86-64 is impossible, so both build kinds are ARM64.** Rule 4 cannot be implemented. `AndroidArchitecture.X86_64` in Unity 6.3 is Magic Leap's and is deprecated: the assignment *succeeds and reads back as* `ARM64, X86_64`, then the build fails with `UnityException: x86-64 (Magic Leap) support is now limited … will be unset in player settings`. The pin-and-restore seam is kept (it guarantees the build's ABI regardless of Inspector state) but sets ARM64 for both kinds. **This invalidates the *Emulator setup* section's premise** — BlueStacks cannot run this APK natively and must translate ARM.
+2. **Orientation is Auto Rotation, not Landscape Left.** The table's two halves contradict each other: a fixed `Landscape Left` disables rotation entirely, which would make manual step 8 ("rotating the phone flips to the other landscape") unsatisfiable. Resolved in favour of `AutoRotation` with only the two landscape orientations allowed, which satisfies both step 3 and step 8.
+3. **Directory creation lives in `Build`, not `BuildDevelopmentApk`.** Rule 2's requirement still holds; putting it one level down means any caller gets it.
+
+**Manual verification:** step 1 done (build succeeds, `Succeeded`, ARM64 confirmed — the `lib/x86_64` half of that step is void per deviation 1). Steps 2–7 are the owner's on BlueStacks. Steps 8–9 recorded as device-only deferred in PROGRESS.

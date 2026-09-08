@@ -232,6 +232,7 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _playerView: {fileID: 1102459965}
+  _debugOverlay: {fileID: 5239836669165301809}
 --- !u!4 &929802505
 Transform:
   m_ObjectHideFlags: 0
@@ -315,6 +316,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 502b32579bfb67d43a72e44287580b9d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PlayerView
+--- !u!4 &1102459966 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9015826864778196551, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0
@@ -327,6 +333,7 @@ GameObject:
   - component: {fileID: 1167978316}
   - component: {fileID: 1167978315}
   - component: {fileID: 1167978314}
+  - component: {fileID: 1167978318}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -452,6 +459,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1167978318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1167978313}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5af7e89a6585704e933efb7130eb9b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FollowCamera
+  _target: {fileID: 1102459966}
+  _pitchDeg: 57
+  _yawDeg: 0
+  _distance: 16
+  _smoothTime: 0.12
 --- !u!1 &1406229279
 GameObject:
   m_ObjectHideFlags: 0
@@ -703,6 +727,114 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+--- !u!1001 &5239836669165301808
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7608462652457327402, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_Name
+      value: DebugOverlay
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+--- !u!114 &5239836669165301809 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4371995253044477840, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+  m_PrefabInstance: {fileID: 5239836669165301808}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c2e64dd0ee734642a602c813e0fffe9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.DebugOverlay
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -714,3 +846,4 @@ SceneRoots:
   - {fileID: 2052539124}
   - {fileID: 324137846}
   - {fileID: 1406229281}
+  - {fileID: 5239836669165301808}

@@ -27,6 +27,13 @@ public sealed class CharacterSpec
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="maxHp">Starting maximum health.</param>
     /// <param name="movement">How the class moves.</param>
+    /// <param name="targeting">
+    /// How the class aims itself. Required, unlike <paramref name="shield"/>: auto-aim is the
+    /// default control mode for every class (CC §3), so there is no honest <c>null</c> here the
+    /// way there is for a class without an Aegis. A default in code would be worse still — CC §7
+    /// says every one of these numbers is a designer's knob — so a forgotten spec is a compile
+    /// error rather than a silently mis-aimed class.
+    /// </param>
     /// <param name="shield">
     /// The class's regenerating shield, or <see langword="null"/> for a class without one.
     /// Optional because most classes are in that case: the Aegis is the Oathbound's signature
@@ -48,12 +55,15 @@ public sealed class CharacterSpec
     /// <paramref name="maxHp"/> is not greater than zero — a class that starts dead is a content
     /// mistake — or <paramref name="hitIFrames"/> is negative, NaN or infinite.
     /// </exception>
-    /// <exception cref="ArgumentNullException"><paramref name="movement"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="movement"/> or <paramref name="targeting"/> is null.
+    /// </exception>
     public CharacterSpec(
         ContentId id,
         LocKey nameKey,
         float maxHp,
         MovementSpec movement,
+        TargetingSpec targeting,
         ShieldSpec shield = null,
         float hitIFrames = 0f)
     {
@@ -85,6 +95,7 @@ public sealed class CharacterSpec
         NameKey = nameKey;
         MaxHp = maxHp;
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
+        Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
         Shield = shield;
         HitIFrames = hitIFrames;
     }
@@ -100,6 +111,12 @@ public sealed class CharacterSpec
 
     /// <summary>The class's movement numbers.</summary>
     public MovementSpec Movement { get; }
+
+    /// <summary>
+    /// The class's targeting numbers — never null. <c>TargetScorer</c> is built from this, and
+    /// M1-04's <c>Targeter</c> reads <see cref="TargetingSpec.Cadence"/> from it.
+    /// </summary>
+    public TargetingSpec Targeting { get; }
 
     /// <summary>
     /// The class's regenerating shield, or <see langword="null"/> when it has none. Only the

@@ -8,10 +8,10 @@ namespace Soulvail.Core.Content;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Immutable, and deliberately raw <see cref="float"/>s for now. M1-01 replaces
-/// <see cref="Speed"/> with a <c>Stat</c> so modifiers can apply to it; until a modifier stack
-/// exists there is nothing for one to do, and a <c>Stat</c> here would be a wrapper with no
-/// second implementation to justify it.
+/// Immutable, and deliberately raw <see cref="float"/>s. A <c>Stat</c> stack exists as of
+/// M1-01, but it belongs to the player rather than to the authored data: M1-08 gives
+/// <c>PlayerCombat</c> a <c>Stat</c> for speed, seeded from <see cref="Speed"/>, so modifiers
+/// apply to the live character while this stays what a designer typed.
 /// </para>
 /// <para>
 /// The Oathbound's values (CC §7): speed 5.4, accel 0.06, decel 0.08, turn 720.

@@ -314,12 +314,17 @@ Ten sources touch *damage* alone: tree passives, Pacts, class signatures, Veilro
 public sealed class Stat
 {
     public float Base { get; set; }
-    public float Value { get; }                     // cached; recomputed on change
-    public void Add(Modifier m);                    // Flat → PercentAdd → PercentMult, in that order
-    public void RemoveAll(object source);           // buff ended, node removed, Rot threshold crossed back
-    public IReadOnlyList<Modifier> Modifiers { get; } // for the debug panel: "47 = 13 + 15% (node) + 45% (Pact) × 1.2 (Focus)"
+    public float Value { get; }                     // cached; recomputed on change, reads allocate nothing
+    public int ModifierCount { get; }
+    public void Add(in Modifier modifier);          // Flat → PercentAdd → PercentMult, in that order
+    public int  RemoveAll(object source);           // buff ended, node removed, Rot threshold crossed back
+    public void CopyModifiersTo(List<Modifier> destination);
+    public void Describe(StringBuilder sb);         // the debug panel: "28.80 = (13.00 + 2.00) × 1.60 × 1.20"
+    public event Action<Stat> Changed;              // only when Value actually moved
 }
 ```
+
+As built in M1-01, and two members differ from the sketch this section carried before it: modifiers are handed out by **copying into a caller's list** rather than as an `IReadOnlyList` the caller could reorder or hold past a removal, and `RemoveAll` **returns the count** it removed, which is what makes "a source with nothing on this stat is not an error" observable rather than assumed.
 
 Every gameplay number — damage, fire rate, speed, max HP, cooldown, XP gain — is a `Stat` from the first line of combat code.
 

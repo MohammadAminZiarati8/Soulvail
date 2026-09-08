@@ -6,6 +6,8 @@
         "Soulvail.Game",
         "Soulvail.Tests.Core",
         "VContainer",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

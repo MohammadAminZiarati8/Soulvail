@@ -17,7 +17,7 @@
 
 | | Milestone | Ends when | Tasks |
 |---|---|---|---|
-| **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 20 |
+| **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
 | **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 15 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
@@ -33,6 +33,8 @@
 
 **Goal:** prove the architecture end to end on a real device with the thinnest possible slice: one input, one core system, one intent, one view.
 **Done when:** every item in the [M0-20](tasks/M0-20-acceptance-and-tag.md) device checklist passes and `m0` is tagged on `main`.
+
+**Status: complete, tagged on Editor evidence.** Every architectural claim M0 set out to prove is verified — 153 EditMode + 3 PlayMode tests green, all three scenes playable, zero analyzer warnings — and the feel question is answered. Two things are carried as explicit debt rather than met: the APK does not yet launch outside the Editor ([M0-20a](tasks/M0-20a-apk-runs-on-bluestacks.md), diagnosed to BlueStacks' Vulkan-through-houdini bridge, not to game code), and the four `[device]` rows have no hardware to run on.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
@@ -55,7 +57,8 @@
 | [M0-17](tasks/M0-17-menu-stub.md) | `MenuScope`, `MenuPresenter`, Descend button | S | 13 | ☑ |
 | [M0-18](tasks/M0-18-camera-and-debug-overlay.md) | `FollowCamera`, `DebugOverlay` | S | 16 | ☑ |
 | [M0-19](tasks/M0-19-android-build.md) | Player settings, `AndroidBuild` script, APK on device | S | 13 16 17 18 | ☑ |
-| [M0-20](tasks/M0-20-acceptance-and-tag.md) | M0 device acceptance, tuning, tag `m0` | S | all | ☐ |
+| [M0-20](tasks/M0-20-acceptance-and-tag.md) | M0 device acceptance, tuning, tag `m0` | S | all | ☑ |
+| [M0-20a](tasks/M0-20a-apk-runs-on-bluestacks.md) | Make the APK actually run on BlueStacks (release build / Vulkan deny filter) | S | 19 20 | ☐ |
 
 ---
 
@@ -203,7 +206,7 @@ Unscheduled. Promote into a milestone when it earns it.
 
 - **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). Not adopted yet; revisit once the test suite is worth guarding — likely during M1.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
-- **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them.
+- **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them. **M0-20 raised the price of not having one:** BlueStacks cannot currently run the APK at all (its Vulkan driver faults through `libhoudini.so`), so the emulator is no longer a proven fallback for *anything* outside the Editor. M0-20a works around it; a phone removes the question.
 - **Company name is a placeholder** — `Soulvail`, set in M0-19 with the same status as the application identifier. Both are permanent once uploaded to a store, so M8-06 changes them together before the first upload.
 - **Machine-local Gradle configuration is not in this repo.** `~/.gradle/gradle.properties` (HTTP proxy on 127.0.0.1:10808) and `~/.gradle/init.gradle` (Aliyun mirrors ahead of Google/Central) are what make an Android build resolve its dependencies on this connection. A second clone on another machine needs its own, or none. Revisit before any published build — see the M0-19 entry for why a mirror is in the path at all.
 - **Two raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity`, authored by M0-17 as the one place in the project where a raw user-facing string is allowed. They become `LocKey`s when `ILocalizer` and the English tables land.

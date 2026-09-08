@@ -75,10 +75,10 @@ public sealed class InputAdapter : IDisposable
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Old template asset and its `.meta` removed
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] Old template asset and its `.meta` removed
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -87,4 +87,37 @@ public sealed class InputAdapter : IDisposable
 
 ## As built
 
-_Filled at merge._
+Five files as tabled, plus `ProjectSettings/EditorBuildSettings.asset` (the project-wide actions
+config object, which is where that setting actually lives) and the removal of
+`Assets/InputSystem_Actions.inputactions` + `.meta`. 136 EditMode tests, up from 131. Zero errors,
+zero new warnings — the three the Console shows are the deliberate ones other fixtures assert on.
+
+**Deviations:**
+
+1. **`InputAdapter.Dispose` does not delegate to the generated `SoulvailActions.Dispose()`.** That
+   method calls `Object.Destroy` unconditionally. In the Editor outside play mode `Object.Destroy`
+   destroys nothing and logs an **error** (it does not throw), so delegating would leak the asset
+   *and* fail `Dispose_ThenMove_ReturnsZero` on an unexpected error log. The adapter destroys
+   `_actions.asset` itself, using `DestroyImmediate` when `!Application.isPlaying` under
+   `#if UNITY_EDITOR`. The Public API block above is unchanged.
+2. **The test fixture sets `defaultDeadzoneMin = 0` / `defaultDeadzoneMax = 1` in setup.** Behaviour
+   rule 1's `Move ≈ (0.3, 0.6)` is not reachable otherwise: `StickDeadzone` at its defaults rescales
+   that stick position to ≈(0.305, 0.610), and `InputTestFixture` does not neutralise deadzones.
+   The fixture does snapshot and restore `InputSystem.settings`, so this cannot escape the test.
+3. **`Move_IsClampedToUnit` carries a third assertion recording what it does not prove.**
+   `StickDeadzone` returns exactly 1 for any magnitude above `max`, so a gamepad stick can never
+   hand the adapter a value outside the unit disc and this row would pass with `ClampMagnitude`
+   deleted. The row's Given ("magnitude 1.41") describes a value the action never emits. Kept as a
+   contract test, with the pre-clamp asserted so the gap is on the record rather than latent; the
+   clamp itself stays because both sources being unit-bounded is a fact about today's bindings.
+4. **`Move_ZeroWhileDisabled` and `Dispose_ThenMove_ReturnsZero` call `InputSystem.Update()` after
+   each `Enable`.** A Value action runs its initial state check on the update *after* being enabled,
+   so an action enabled while the stick is held reads zero until then. Not an adapter defect, but a
+   one-frame lag M0-16 will inherit.
+5. **Additive, worth naming:** the composite binding is named `WASD` (matching what the Inspector
+   would write), the `Touch` scheme's three devices are OR'd rather than AND'd, and `Mouse` is
+   optional in `KeyboardMouse` so a keyboard alone satisfies it.
+
+**Method:** the asset was built through `InputActionSetupExtensions` and serialised with
+`ToJson()`, and the wrapper was produced by the importer via a hand-written `.meta` with
+`generateWrapperCode: 1` — neither file's format is hand-authored.

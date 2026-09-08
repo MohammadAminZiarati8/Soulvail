@@ -52,7 +52,7 @@
 | [M0-14](tasks/M0-14-input-actions.md) | `Soulvail.inputactions` + generated class + `InputAdapter` | S | 01 | ☑ |
 | [M0-15](tasks/M0-15-floating-stick.md) | `StickShaper` (pure) + `FloatingStick` control + HUD prefab | M | 14 | ☑ |
 | [M0-16](tasks/M0-16-snapshot-builder-player-view.md) | `SnapshotBuilder`, `PlayerView`, `RunTicker`, player + grey-box prefabs | M | 06 12 14 | ☑ |
-| [M0-17](tasks/M0-17-menu-stub.md) | `MenuScope`, `MenuPresenter`, Descend button | S | 13 | ☐ |
+| [M0-17](tasks/M0-17-menu-stub.md) | `MenuScope`, `MenuPresenter`, Descend button | S | 13 | ☑ |
 | [M0-18](tasks/M0-18-camera-and-debug-overlay.md) | `FollowCamera`, `DebugOverlay` | S | 16 | ☐ |
 | [M0-19](tasks/M0-19-android-build.md) | Player settings, `AndroidBuild` script, APK on device | S | 13 16 17 | ☐ |
 | [M0-20](tasks/M0-20-acceptance-and-tag.md) | M0 device acceptance, tuning, tag `m0` | S | all | ☐ |
@@ -204,6 +204,7 @@ Unscheduled. Promote into a milestone when it earns it.
 - **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). Not adopted yet; revisit once the test suite is worth guarding — likely during M1.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
 - **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them.
+- **Two raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity`, authored by M0-17 as the one place in the project where a raw user-facing string is allowed. They become `LocKey`s when `ILocalizer` and the English tables land.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.

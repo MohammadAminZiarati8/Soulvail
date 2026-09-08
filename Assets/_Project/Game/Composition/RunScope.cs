@@ -1,3 +1,6 @@
+using Soulvail.Game.Adapters;
+using Soulvail.Game.Views;
+using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
@@ -18,15 +21,45 @@ namespace Soulvail.Game.Composition
     /// the Run scene was reached through the Menu or opened directly and played.
     /// </para>
     /// <para>
-    /// Empty of its own registrations by design: <c>RunInstaller</c> holds every one that a
-    /// headless test can build, which is all of them until M0-16 adds the pieces that need
-    /// serialized scene references — <c>SnapshotBuilder</c>, <c>PlayerView</c>, <c>RunTicker</c>
-    /// and the input adapter. Those arrive as <c>[SerializeField]</c>s on this class and are
-    /// registered here, because a scene reference is the one thing a static installer cannot have.
+    /// The split with <c>RunInstaller</c> is by what needs a scene. Everything a headless test can
+    /// build lives there; what is registered here is the half that cannot exist without this
+    /// scene — the view in it, the loop that drives it, and the two adapters that sit either side
+    /// of that loop. <c>SnapshotBuilder</c> and <c>InputAdapter</c> would install cleanly in the
+    /// static half, but the builder needs the view and the adapter is only ever read by the
+    /// ticker, so keeping the frame's four pieces in one place is worth more than the symmetry.
     /// </para>
     /// </remarks>
     public sealed class RunScope : LifetimeScope
     {
-        protected override void Configure(IContainerBuilder builder) => RunInstaller.Install(builder);
+        [SerializeField] private PlayerView _playerView;
+
+        protected override void Configure(IContainerBuilder builder)
+        {
+            RunInstaller.Install(builder);
+
+            if (_playerView == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(PlayerView)} assigned. Drag the Player " +
+                    "object in this scene onto its Player View field — without it the run has no " +
+                    "body to move and no position to report.");
+            }
+
+            // The scene owns this object's lifetime, and VContainer does not dispose what it did
+            // not construct, so registering the live component is exactly right: the container
+            // injects it and destroys nothing.
+            builder.RegisterComponent(_playerView);
+
+            // Types, not instances, so the scope disposes them — the adapter owns a generated
+            // actions asset that must be destroyed with the run (M0-14).
+            builder.Register<InputAdapter>(Lifetime.Scoped);
+            builder.Register<SnapshotBuilder>(Lifetime.Scoped);
+
+            // Scoped rather than the default Singleton. Inside a child scope the two behave
+            // identically — a singleton registered here still resolves and disposes scope-locally
+            // — so the only thing the label can do is tell the truth about the lifetime, and this
+            // object's lifetime is one run.
+            builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped);
+        }
     }
 }

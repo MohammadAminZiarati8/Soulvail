@@ -18,12 +18,13 @@ namespace Soulvail.Core.Run;
 /// <see cref="PlayerPosition"/> is core writing down what it was told, never core deciding.
 /// </para>
 /// <para>
-/// That seal covers this object's own fields, not everything reachable through them.
-/// <see cref="Motor"/> is a live object with a public <c>Tick</c>, so nothing in the compiler
-/// stops a view from advancing it a second time and double-integrating the frame. Nothing outside
-/// core has a reason to — the velocity a view needs arrives in a <see cref="PlayerMoveIntent"/>,
-/// not from here — and once M0-16 has confirmed that, this property can narrow to the two values
-/// anyone actually reads.
+/// That seal now covers what is reachable through this object too. <see cref="Motor"/> used to be
+/// public, and being a live object with a public <c>Tick</c> it let any view advance the player a
+/// second time and double-integrate the frame, with nothing in the compiler to stop it. M0-16
+/// confirmed that nothing in <c>Soulvail.Game</c> reads the handle at all — the velocity a view
+/// needs arrives in a <see cref="PlayerMoveIntent"/>, and its position goes back out through the
+/// snapshot — so the handle is <c>internal</c> and the two values anyone actually reads are
+/// surfaced as <see cref="PlayerVelocity"/> and <see cref="PlayerFacing"/>.
 /// </para>
 /// <para>
 /// The guards that <see cref="CharacterSpec"/> and <see cref="RunConfig"/> carry are absent here
@@ -66,7 +67,29 @@ public sealed class RunState
     public CharacterSpec Character { get; }
 
     /// <summary>The player's movement, ticked every frame. The run owns it; nothing else may.</summary>
-    public PlayerMotor Motor { get; }
+    /// <remarks>
+    /// <c>internal</c> because <c>Tick</c> is public on it and calling that from outside core would
+    /// silently integrate the frame twice. Read <see cref="PlayerVelocity"/> and
+    /// <see cref="PlayerFacing"/> instead; anything that wants to <em>drive</em> the player is
+    /// asking the wrong object.
+    /// </remarks>
+    internal PlayerMotor Motor { get; }
+
+    /// <summary>
+    /// The velocity core decided for the player this tick, in metres per second on the ground
+    /// plane.
+    /// </summary>
+    /// <remarks>
+    /// The same number the tick's <see cref="PlayerMoveIntent"/> carries, and deliberately so:
+    /// this is for anything that wants to <em>read</em> the run's state — a HUD, a debug overlay,
+    /// a save — while the intent is how the body is told to act. Naming matches
+    /// <see cref="PlayerPosition"/> and <c>WorldSnapshot.PlayerVelocity</c>, which is the same
+    /// quantity coming back the other way one frame later.
+    /// </remarks>
+    public Vector3 PlayerVelocity => Motor.Velocity;
+
+    /// <summary>The direction the player is facing: a unit vector on the ground plane.</summary>
+    public Vector3 PlayerFacing => Motor.Facing;
 
     /// <summary>
     /// Seconds of simulated run time, summed from each tick's <c>Dt</c>.

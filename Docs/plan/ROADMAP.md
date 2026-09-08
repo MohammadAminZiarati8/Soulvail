@@ -51,7 +51,7 @@
 | [M0-13](tasks/M0-13-scopes-and-scenes.md) | `BootScope`, `RunScope`, `SceneLoader`, `BootFlow`; Boot/Menu/Run scenes | M | 12 | ☑ |
 | [M0-14](tasks/M0-14-input-actions.md) | `Soulvail.inputactions` + generated class + `InputAdapter` | S | 01 | ☑ |
 | [M0-15](tasks/M0-15-floating-stick.md) | `StickShaper` (pure) + `FloatingStick` control + HUD prefab | M | 14 | ☑ |
-| [M0-16](tasks/M0-16-snapshot-builder-player-view.md) | `SnapshotBuilder`, `PlayerView`, `RunTicker`, player + grey-box prefabs | M | 06 12 14 | ☐ |
+| [M0-16](tasks/M0-16-snapshot-builder-player-view.md) | `SnapshotBuilder`, `PlayerView`, `RunTicker`, player + grey-box prefabs | M | 06 12 14 | ☑ |
 | [M0-17](tasks/M0-17-menu-stub.md) | `MenuScope`, `MenuPresenter`, Descend button | S | 13 | ☐ |
 | [M0-18](tasks/M0-18-camera-and-debug-overlay.md) | `FollowCamera`, `DebugOverlay` | S | 16 | ☐ |
 | [M0-19](tasks/M0-19-android-build.md) | Player settings, `AndroidBuild` script, APK on device | S | 13 16 17 | ☐ |

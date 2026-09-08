@@ -111,8 +111,8 @@ public sealed class RunSessionTests
         Assert.That(_session.State.PlayerPosition, Is.EqualTo(Vector3.Zero));
 
         // +Z exactly: a run starts with the camera behind the character and nothing to aim at.
-        Assert.That(_session.State.Motor.Facing, Is.EqualTo(Vector3.UnitZ));
-        Assert.That(_session.State.Motor.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_session.State.PlayerFacing, Is.EqualTo(Vector3.UnitZ));
+        Assert.That(_session.State.PlayerVelocity, Is.EqualTo(Vector3.Zero));
     }
 
     [Test]
@@ -255,8 +255,8 @@ public sealed class RunSessionTests
 
         // Carried from the motor rather than recomputed: the intent is what core already decided,
         // and deriving either vector a second time is how the two drift apart.
-        Assert.That(last.Velocity, Is.EqualTo(_session.State.Motor.Velocity));
-        Assert.That(last.Facing, Is.EqualTo(_session.State.Motor.Facing));
+        Assert.That(last.Velocity, Is.EqualTo(_session.State.PlayerVelocity));
+        Assert.That(last.Facing, Is.EqualTo(_session.State.PlayerFacing));
     }
 
     [Test]

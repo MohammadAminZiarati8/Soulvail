@@ -109,4 +109,26 @@ public sealed class FloatingStick : OnScreenControl,
 
 ## As built
 
-_Filled at merge._
+**Files — five, not four.** `Game/Controls/SafeAreaFitter.cs` was added with the owner's approval, raised before it was written: rule 10 asks the `SafeArea` child to track `Screen.safeArea`, Unity ships no component that does, and folding it into `FloatingStick` would make every later HUD element under that node depend on the stick existing. Still size M.
+
+| Path (under `Assets/_Project/`) | Assembly | Status |
+|---|---|---|
+| `Game/Controls/StickShaper.cs` | Game | As specced |
+| `Game/Controls/FloatingStick.cs` | Game | As specced, plus runtime dp sizing (below) |
+| `Game/Controls/SafeAreaFitter.cs` | Game | **Added** — rule 10's fitting behaviour |
+| `Prefabs/UI/Hud.prefab` | — | As specced, base is a disc not a ring (below) |
+| `Tests/Game/Controls/StickShaperTests.cs` | Tests.Game | 11 specced rows + 1 allocation test |
+
+**Public API:** exactly as written above, no additions. `FloatingStick` gained only private members.
+
+**Three other deviations**, all recorded in full in the PROGRESS entry:
+
+1. **Rule 11's dp sizes are applied in `OnPointerDown`, not authored in the prefab.** A *Scale With Screen Size* canvas measures reference pixels, so a `sizeDelta` of 120 is 48 dp on a 400 dpi phone — and the ring's diameter is exactly `2 × MaxRadiusDp`, so at the wrong scale it misreports where recentring begins. Sized as `dp × pxPerDp ÷ canvas.scaleFactor`.
+2. **`Base` is a 60 %-alpha disc rather than a ring.** No built-in ring sprite exists and M0 adds no art; both sprites are Unity's built-in `UI/Skin/Knob.psd`, distinguished by alpha. No asset file added.
+3. **A twelfth test, `ShapeAndRecenter_DoNotAllocate`.** Behaviour rule 9 is the only rule the Tests table leaves unmeasured. It covers the `StickShaper` calls the drag path makes per frame; its remark records that the component's own frame — `RectTransformUtility`, event dispatch — is not covered.
+
+**Verified:** 148 EditMode tests green (136 before), zero errors, zero new analyzer warnings, `MonoScript.GetClass()` resolves `FloatingStick` and `SafeAreaFitter`, `Hud.prefab` loads with `_region`/`_base`/`_knob` all wired and no `m_Script: {fileID: 0}`, every `.meta` present, no scene touched.
+
+**Manual verification: not yet run.** Steps 1, 2, 3 and 5 need the Device Simulator and are the owner's to walk; step 4 (multi-touch) stays deferred until a phone exists. Note that the stick cannot be exercised until M0-16 places `Hud.prefab` in a scene and adds an `EventSystem` — so in practice all five steps happen during M0-16, which is what the spec's heading already anticipated.
+
+**Follow-ups:** `SafeAreaFitter` has no tests (its anchor math is reachable only through `Screen`; M0-16 decides whether to extract a pure static or leave it to the simulator's notch profiles), and behaviour rules 4–9 are hand-verified — M0-16 is the first task with the scene, canvas and `EventSystem` a PlayMode test would need.

@@ -174,6 +174,21 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void Run_SessionAndCommands_SameInstance()
+    {
+        IScopedObjectResolver scope = BuildRunScope(seed: 7);
+
+        var session = scope.Resolve<IRunSession>();
+        var commands = scope.Resolve<IPlayerCommands>();
+
+        // Beyond the M1-09 spec's Tests table, and it belongs to this fixture rather than to that
+        // task's core tests: the failure it catches is a registration, not a rule. Two instances
+        // would mean core ticks one brain while the player's taps land on the other — no error
+        // anywhere, and a focus that simply never arrives.
+        Assert.That(commands, Is.SameAs(session));
+    }
+
+    [Test]
     public void Run_Random_SeededFromPendingRun()
     {
         IScopedObjectResolver scope = BuildRunScope(seed: 123);

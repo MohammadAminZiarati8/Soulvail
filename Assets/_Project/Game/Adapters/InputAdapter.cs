@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Game.Input;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Soulvail.Game.Adapters;
 
@@ -18,9 +19,9 @@ namespace Soulvail.Game.Adapters;
 /// the other, which is the whole point of routing through the asset.
 /// </para>
 /// <para>
-/// Only <c>Move</c> is read in M0. The other seven actions are bound in the asset already so
-/// that later tasks add a reader here rather than reopening the actions asset — M1-09 takes
-/// <c>Focus</c>, M1-16 <c>MovementSkill</c>, M3-10 <c>Skill1</c>–<c>Skill4</c>.
+/// <c>Move</c> and <c>Focus</c> are read. The other six actions are bound in the asset already so
+/// that later tasks add a reader here rather than reopening the actions asset — M1-16 takes
+/// <c>MovementSkill</c>, M3-10 <c>Skill1</c>–<c>Skill4</c>, M3-09 <c>Pause</c>.
 /// </para>
 /// </remarks>
 public sealed class InputAdapter : IDisposable
@@ -61,6 +62,74 @@ public sealed class InputAdapter : IDisposable
             }
 
             return Vector2.ClampMagnitude(_actions.Player.Move.ReadValue<Vector2>(), 1f);
+        }
+    }
+
+    /// <summary>
+    /// A tap or a click began this frame, and <see langword="false"/> while disabled or after
+    /// <see cref="Dispose"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The press edge, not the held state: <c>Focus</c> is bound to <c>&lt;Pointer&gt;/press</c>,
+    /// so a thumb resting on the screen while the stick is being dragged would otherwise read as a
+    /// tap on every frame of the drag. One tap, one command.
+    /// </para>
+    /// <para>
+    /// Read once per frame by <c>TapToFocusAdapter</c>, from <c>RunTicker</c>'s command phase.
+    /// <c>WasPressedThisFrame</c> is frame-scoped in the Input System's own sense — it compares the
+    /// action's last change against the current update — so reading it twice in one frame is safe
+    /// and reading it in a later phase of the same frame still answers the same thing.
+    /// </para>
+    /// </remarks>
+    public bool FocusPressedThisFrame
+    {
+        get
+        {
+            if (_disposed || !IsEnabled)
+            {
+                return false;
+            }
+
+            return _actions.Player.Focus.WasPressedThisFrame();
+        }
+    }
+
+    /// <summary>
+    /// Where the pointer is in screen pixels, and <see cref="Vector2.zero"/> while disabled, after
+    /// <see cref="Dispose"/>, or when the device has no pointer at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read from <see cref="Pointer.current"/> rather than through a bound action, because the
+    /// position is not an intent — nothing is being asked for, it is the coordinate the
+    /// <c>Focus</c> press happened at. Binding it as a <c>Value</c> action would add a second
+    /// action to the asset that is polled every frame and means nothing on its own. It still comes
+    /// through this class rather than from <c>Pointer.current</c> at the call site, so the rule
+    /// that this is the only reader of the Input System survives intact.
+    /// </para>
+    /// <para>
+    /// <see cref="Pointer"/>, not <c>Mouse</c> or <c>Touchscreen</c>: a touchscreen's primary touch
+    /// and a mouse are both pointers, so the Editor and the phone answer the same question through
+    /// the same property. Zero is honest for a device with neither — the caller is about to raycast
+    /// through it, and the bottom-left corner of the screen is over the stick region, which is
+    /// exactly where a tap gets ignored.
+    /// </para>
+    /// </remarks>
+    public Vector2 PointerPosition
+    {
+        get
+        {
+            if (_disposed || !IsEnabled)
+            {
+                return Vector2.zero;
+            }
+
+            Pointer pointer = Pointer.current;
+
+            // `is null`, not Unity's ==: an InputDevice is a plain C# object, not a
+            // UnityEngine.Object, so there is no overloaded operator here to reach for.
+            return pointer is null ? Vector2.zero : pointer.position.ReadValue();
         }
     }
 

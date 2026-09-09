@@ -35,7 +35,7 @@ namespace Soulvail.Core.Run;
 /// this and <c>RunScope</c> owns its lifetime.
 /// </para>
 /// </remarks>
-public sealed class RunSession : IRunSession
+public sealed class RunSession : IRunSession, IPlayerCommands
 {
     private readonly ContentCatalog _catalog;
     private readonly IRandom _random;
@@ -194,6 +194,37 @@ public sealed class RunSession : IRunSession
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Resolved against the enemies as of the last <see cref="Tick"/>, because a command lands
+    /// before the frame it belongs to is built (<c>RunTicker</c>'s command phase). Those positions
+    /// are therefore up to one frame old — at most a couple of centimetres of walking against a 3 m
+    /// tap radius, which no thumb can tell apart from exact. The alternative, running commands
+    /// after the ingest, would put the tap *after* the tick it should have influenced and cost a
+    /// whole frame of latency on the one input the player expects to be instant.
+    /// </para>
+    /// <para>
+    /// Throws rather than no-ops when nothing is running, unlike <see cref="End"/>: ending a run
+    /// that never started is scope teardown being tidy, while commanding one is an input adapter
+    /// that is listening when it should not be.
+    /// </para>
+    /// </remarks>
+    public void FocusTarget(Vector3 worldPoint)
+    {
+        RequireRunning(nameof(FocusTarget));
+
+        State.Combat.FocusAt(worldPoint, State.Enemies.Registry.Alive);
+    }
+
+    /// <inheritdoc />
+    public void ClearFocus()
+    {
+        RequireRunning(nameof(ClearFocus));
+
+        State.Combat.ClearFocus();
+    }
+
+    /// <inheritdoc />
     public void End()
     {
         // A no-op rather than a throw, so RunScope's disposal can call it without first asking
@@ -212,5 +243,26 @@ public sealed class RunSession : IRunSession
         // events would be noise — while a listener handling RunEnded can still read the census
         // that was live when the run finished.
         State.Enemies.Clear();
+    }
+
+    /// <summary>
+    /// Refuses a command that arrived outside a run, naming the command that arrived.
+    /// </summary>
+    /// <remarks>
+    /// Named rather than generic, because the two commands reach here from different adapters and
+    /// "FocusTarget was called with no run running" points straight at whichever one is listening
+    /// when it should not be.
+    /// </remarks>
+    private void RequireRunning(string command)
+    {
+        if (IsRunning)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"{command} was called with no run running. Player commands belong to a live run — " +
+            "the input map is disabled outside one, so this is a wiring mistake rather than a " +
+            "player doing something unexpected.");
     }
 }

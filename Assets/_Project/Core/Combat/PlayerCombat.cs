@@ -149,9 +149,10 @@ public sealed class PlayerCombat
 
     /// <summary>Which enemy the character is facing, and why. Ticked from <see cref="Tick"/>.</summary>
     /// <remarks>
-    /// Exposed rather than wrapped, because M1-09's focus commands land on
-    /// <see cref="Targeter.Focus"/> directly and a pair of forwarding methods here would add a
-    /// layer that could only ever disagree with the one underneath it.
+    /// Exposed rather than wrapped: everything the targeter decides is read straight off it, and a
+    /// mirror of its properties here would be a second answer that could only ever disagree with
+    /// the first. <see cref="FocusAt"/> and <see cref="ClearFocus"/> are the one exception, and
+    /// they earn it — see their remarks.
     /// </remarks>
     public Targeter Targeter { get; }
 
@@ -244,6 +245,61 @@ public sealed class PlayerCombat
 
         return result;
     }
+
+    /// <summary>
+    /// The player tapped <paramref name="worldPoint"/>: focus whatever living enemy is nearest it
+    /// within <see cref="FocusResolver.RadiusMetres"/>, or drop the focus when nothing is (CC §3.4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one place a point becomes a focus, which is why it is a method here rather than a
+    /// forward to <see cref="Targeter.Focus"/>: the targeter is handed ids and knows nothing about
+    /// space, and the resolver is pure arithmetic that knows nothing about targeting. Joining them
+    /// is exactly this class's job, the same translation it already does between agents and
+    /// candidates.
+    /// </para>
+    /// <para>
+    /// <b>Tapping bare ground clears.</b> CC §3.4 is explicit, and it is the only way back to
+    /// auto-aim a thumb has: there is no second gesture, and a focus the player cannot cancel would
+    /// be a worse override than none.
+    /// </para>
+    /// <para>
+    /// Nothing lands until the next <see cref="Tick"/> — <see cref="Targeter.Focus"/> defers, for
+    /// the reason it documents — so a tap and its consequence are separated by at most one frame,
+    /// and the <c>TargetChanged</c> that announces it comes out of the tick like every other
+    /// targeting decision rather than from inside an input callback.
+    /// </para>
+    /// </remarks>
+    /// <param name="worldPoint">Where the tap landed on the ground plane, in world metres. Y is ignored.</param>
+    /// <param name="enemies">
+    /// Every registered enemy — <c>EnemyRegistry.Alive</c>, the same span <see cref="Tick"/> is
+    /// handed. Passed in rather than held, because this class deliberately owns no registry: it is
+    /// given the world each time it is asked to think about it, and a retained span would be a
+    /// dangling one the moment anything spawned.
+    /// </param>
+    public void FocusAt(Vector3 worldPoint, ReadOnlySpan<EnemyAgent> enemies)
+    {
+        int id = FocusResolver.Resolve(worldPoint, enemies, FocusResolver.RadiusMetres);
+
+        // Spelled as the two branches rather than relying on Focus(-1) folding into ClearFocus,
+        // because the reader here should not have to know that it does.
+        if (id >= 0)
+        {
+            Targeter.Focus(id);
+            return;
+        }
+
+        Targeter.ClearFocus();
+    }
+
+    /// <summary>Drops the player's focus, returning target selection to scoring.</summary>
+    /// <remarks>
+    /// A forward, and the only one on this class. It exists so that the two halves of the focus
+    /// command arrive through one object — <c>RunSession</c> implements <c>IPlayerCommands</c> by
+    /// calling this pair, and having one of them reach into <see cref="Targeter"/> while the other
+    /// did not would make the port's two members look like they belonged to different systems.
+    /// </remarks>
+    public void ClearFocus() => Targeter.ClearFocus();
 
     /// <summary>
     /// One frame of the player's fight: gather, target, tick health, perceive, face.

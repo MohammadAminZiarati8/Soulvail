@@ -63,6 +63,21 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Seconds between targeting decisions. 0.1 is CC §3.1's 10 Hz loop.")]
         [SerializeField, Min(0.01f)] private float _targetCadence = 0.1f;
 
+        [Tooltip("The basic attack (CC §4.1). Every class has one — like targeting and unlike " +
+                 "the shield above, there is no 'off' here. The Censer's numbers are the " +
+                 "defaults: 13 damage, 3 swings a second, an 8 m 60° arc.")]
+        [SerializeField] private WeaponKind _weaponKind = WeaponKind.Cone;
+        [SerializeField, Min(0.01f)] private float _weaponDamage = 13f;
+        [SerializeField, Min(0.01f)] private float _weaponSwingsPerSecond = 3f;
+        [SerializeField, Min(0.01f)] private float _weaponRange = 8f;
+
+        [Tooltip("The full opening angle of the arc, not the half-angle: 60 means 30° either side.")]
+        [SerializeField, Range(1f, 360f)] private float _weaponConeAngleDeg = 60f;
+
+        [Tooltip("How far through the swing the damage lands, as a fraction of the interval. " +
+                 "0.4 is CC §4.2's readable-but-not-a-commitment windup.")]
+        [SerializeField, Range(0f, 0.99f)] private float _weaponDamageFrame = 0.4f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -84,7 +99,9 @@ namespace Soulvail.Game.Authoring
         /// <para>
         /// The <see cref="TargetingSpec"/> has no such switch and is built unconditionally:
         /// every class aims (CC §3), so there is no "no targeting" state to express, and the
-        /// spec's own constructor is what refuses a range or cadence of zero.
+        /// spec's own constructor is what refuses a range or cadence of zero. The
+        /// <see cref="WeaponSpec"/> is built the same way and for the same reason — CC §4 gives
+        /// every class a basic attack.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -109,6 +126,13 @@ namespace Soulvail.Game.Authoring
                         _finisherBonus,
                         _targetHysteresis,
                         _targetCadence),
+                    new WeaponSpec(
+                        _weaponKind,
+                        _weaponDamage,
+                        _weaponSwingsPerSecond,
+                        _weaponRange,
+                        _weaponConeAngleDeg,
+                        _weaponDamageFrame),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

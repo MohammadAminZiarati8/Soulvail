@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Soulvail.Core.Events;
 
 // The combat module's player-facing domain events. Grouped per module like RunEvents and
@@ -5,10 +7,10 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These four are what happens *to the player*. What happens to an enemy is EnemyEvents' (M1-11's
-// `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same one
-// `Health` makes by publishing nothing at all: one component serves both sides of every fight, so
-// the owner decides which vocabulary a result is spoken in.
+// These five are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
+// (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
+// one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
+// so the owner decides which vocabulary a result is spoken in.
 
 /// <summary>
 /// The character is now facing a different enemy, or the same enemy in a different way. Published
@@ -153,5 +155,36 @@ public readonly struct PlayerShieldChanged
     public PlayerShieldChanged(float fraction)
     {
         Fraction = fraction;
+    }
+}
+
+/// <summary>
+/// The character has started a swing. Published by <c>PlayerCombat.Tick</c> once per swing, at the
+/// moment it begins — not when its damage lands.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The animation and audio cue, and the reason it is separate from the cone request that follows
+/// it: CC §4.2 puts the damage 40 % of the way through the swing, so a view that started the
+/// windup on the damage frame would play the whole animation late and the game would look like it
+/// was hitting before it swung. This is the start of the tell; <c>ConeHitIntent</c> is the payoff.
+/// </para>
+/// <para>
+/// It carries no position — the view is on the player and knows where it is — but it does carry
+/// the facing, because the swing arc has to be drawn along the same direction the cone will be
+/// resolved along. Two answers to "which way did he swing" is one answer too many.
+/// </para>
+/// </remarks>
+public readonly struct PlayerAttacked
+{
+    /// <summary>
+    /// The direction the swing is centred on: a unit vector on the ground plane, <c>X</c> and
+    /// <c>Z</c>. The same facing the tick's <c>ConeHitIntent</c> will carry.
+    /// </summary>
+    public readonly Vector2 FacingXZ;
+
+    public PlayerAttacked(Vector2 facingXZ)
+    {
+        FacingXZ = facingXZ;
     }
 }

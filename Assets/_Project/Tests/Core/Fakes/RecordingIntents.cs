@@ -26,6 +26,7 @@ namespace Soulvail.Tests.Core.Fakes;
 public sealed class RecordingIntents : IIntentSink
 {
     private readonly List<PlayerMoveIntent> _playerMoves = new();
+    private readonly List<ConeHitIntent> _coneHits = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
     /// <remarks>
@@ -56,19 +57,52 @@ public sealed class RecordingIntents : IIntentSink
         }
     }
 
+    /// <summary>Every cone request written, in the order core produced them.</summary>
+    /// <remarks>
+    /// The history matters more here than it does for movement. "One cone per damage frame, and
+    /// none on the ticks between" is a rule about a sequence three times a second inside a stream
+    /// of sixty, and the request ids are only monotonic if you can see them in order.
+    /// </remarks>
+    public IReadOnlyList<ConeHitIntent> ConeHits => _coneHits;
+
+    /// <summary>The most recent cone request.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// Nothing has been written. Louder than a default intent, which would read as a zero-range
+    /// cone at the origin and quietly pass a test whose weapon never swung.
+    /// </exception>
+    public ConeHitIntent LastConeHit
+    {
+        get
+        {
+            if (_coneHits.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No ConeHitIntent has been written to this sink.");
+            }
+
+            return _coneHits[_coneHits.Count - 1];
+        }
+    }
+
     /// <summary>Forgets everything recorded so far, so a test can assert on one phase at a time.</summary>
     /// <remarks>
-    /// The list keeps its capacity, which is what makes it usable inside an allocation test: grow
-    /// it past the measured window first, clear it, and the adds that follow cannot be the thing
-    /// that allocates.
+    /// The lists keep their capacity, which is what makes this usable inside an allocation test:
+    /// grow them past the measured window first, clear them, and the adds that follow cannot be the
+    /// thing that allocates.
     /// </remarks>
     public void Clear()
     {
         _playerMoves.Clear();
+        _coneHits.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
     {
         _playerMoves.Add(intent);
+    }
+
+    void IIntentSink.ConeHit(in ConeHitIntent intent)
+    {
+        _coneHits.Add(intent);
     }
 }

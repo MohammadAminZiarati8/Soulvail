@@ -52,12 +52,20 @@ public sealed class PlayerCombatTests
     /// <summary>60 fps doubled — the rate a phone actually ticks at when it is keeping up.</summary>
     private const float Frame = 1f / 120f;
 
+    /// <summary>
+    /// The body's facing for rows that do not care about it: +Z, where a run starts. It only
+    /// reaches <c>ConeHitIntent.FacingXZ</c>, which M1-10's own fixture is what tests.
+    /// </summary>
+    private static readonly Vector3 Facing = Vector3.UnitZ;
+
     private RecordingEvents _events;
+    private RecordingIntents _intents;
 
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
+        _intents = new RecordingIntents();
     }
 
     // ---- Rule 1 and 2: gathering and the targeting pass ----------------------------------------
@@ -75,7 +83,7 @@ public sealed class PlayerCombatTests
         EnemyAgent important = registry.Spawn(Enemy(priority: 8), new Vector3(0f, 0f, 10f));
         EnemyAgent distant = registry.Spawn(Enemy(priority: 8), new Vector3(0f, 0f, 20f));
 
-        combat.Tick(Frame, 0f, Snapshot(), registry.Alive);
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
 
         // 1 + 3 × (1 − 2/12) = 3.5 against 8 + 3 × (1 − 10/12) = 8.5, and the third scores 8.25
         // but never reaches the comparison — CC §3.1 step 1 gathers within acquireRange.
@@ -94,7 +102,7 @@ public sealed class PlayerCombatTests
 
         for (int i = 0; i < 5; i++)
         {
-            combat.Tick(Frame, i * Frame, Snapshot(), registry.Alive);
+            combat.Tick(Frame, i * Frame, Snapshot(), registry.Alive, Facing);
         }
 
         // One event for the acquisition, and silence for the four ticks that re-confirmed it. A
@@ -116,7 +124,7 @@ public sealed class PlayerCombatTests
         PlayerCombat combat = Combat();
         registry.Spawn(Enemy(), new Vector3(3f, 0f, 4f));
 
-        combat.Tick(Frame, 0f, Snapshot(), registry.Alive);
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
 
         Assert.That(combat.FaceDirection, Is.Not.Null);
 
@@ -134,7 +142,7 @@ public sealed class PlayerCombatTests
         var registry = new EnemyRegistry(EnemyCapacity);
         PlayerCombat combat = Combat();
 
-        combat.Tick(Frame, 0f, Snapshot(), registry.Alive);
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
 
         // Null rather than a stale or invented direction: the motor reads it as "face the way you
         // are moving", which is the whole of M0's behaviour and still correct for an empty arena.
@@ -154,7 +162,7 @@ public sealed class PlayerCombatTests
         // the one half of it a test can spell. It sits in Alive until M1-11 despawns it.
         corpse.Health.ApplyDamage(1000f, 0f);
 
-        combat.Tick(Frame, 0f, Snapshot(), registry.Alive);
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
 
         // Held, not dropped. The character looks at the thing it cannot hurt and the reticle says
         // so — that is the game saying "go around" in its own language, and swinging the facing
@@ -223,6 +231,7 @@ public sealed class PlayerCombatTests
         var combat = new PlayerCombat(
             Character(maxHp: 5f, withShield: false, hitIFrames: 0f),
             _events,
+            _intents,
             EnemyCapacity);
 
         DamageResult first = combat.ApplyDamage(50f, 2f);
@@ -259,11 +268,11 @@ public sealed class PlayerCombatTests
 
         // Up to the recharge deadline and not past it: Health credits only the part of a step that
         // is beyond `lastDamageAt + delay`, so this whole step is worth nothing.
-        combat.Tick(ShieldDelay, ShieldDelay, Snapshot(), registry.Alive);
+        combat.Tick(ShieldDelay, ShieldDelay, Snapshot(), registry.Alive, Facing);
 
         Assert.That(_events.Count<PlayerShieldChanged>(), Is.Zero, "Nothing has refilled yet.");
 
-        combat.Tick(0.1f, ShieldDelay + 0.1f, Snapshot(), registry.Alive);
+        combat.Tick(0.1f, ShieldDelay + 0.1f, Snapshot(), registry.Alive, Facing);
 
         // 15 per second for 0.1 s is 1.5 points of a 30-point shield.
         Assert.That(_events.Single<PlayerShieldChanged>().Fraction, Is.EqualTo(0.05f).Within(1e-4f));
@@ -283,7 +292,7 @@ public sealed class PlayerCombatTests
         registry.Spawn(Enemy(), new Vector3(0f, 0f, 11f));
         registry.Spawn(Enemy(), new Vector3(0f, 0f, 20f));
 
-        combat.Tick(Frame, 0f, Snapshot(), registry.Alive);
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
 
         // Three independent bands rather than nested ones, so a class whose acquire range was
         // narrower than 8 m would still report each honestly.
@@ -307,12 +316,12 @@ public sealed class PlayerCombatTests
         var registry = new EnemyRegistry(EnemyCapacity);
         PlayerCombat combat = Combat();
 
-        combat.Tick(0.25f, 0.25f, Snapshot(), registry.Alive);
-        combat.Tick(0.25f, 0.5f, Snapshot(), registry.Alive);
+        combat.Tick(0.25f, 0.25f, Snapshot(), registry.Alive, Facing);
+        combat.Tick(0.25f, 0.5f, Snapshot(), registry.Alive, Facing);
 
         Assert.That(combat.Blackboard.StationaryTime, Is.EqualTo(0.5f).Within(1e-6f));
 
-        combat.Tick(0.25f, 0.75f, Snapshot(input: new Vector2(1f, 0f)), registry.Alive);
+        combat.Tick(0.25f, 0.75f, Snapshot(input: new Vector2(1f, 0f)), registry.Alive, Facing);
 
         // Cleared outright, not decayed: this is "how long have I been standing still", and a
         // trigger that waits on it must not be nudged over the line by a frame of drift.
@@ -363,7 +372,7 @@ public sealed class PlayerCombatTests
         registry.Spawn(Enemy(), new Vector3(0f, 0f, 4f));
 
         combat.ApplyDamage(50f, 0f);
-        combat.Tick(0.5f, 0.5f, Snapshot(), registry.Alive);
+        combat.Tick(0.5f, 0.5f, Snapshot(), registry.Alive, Facing);
 
         Assert.That(combat.Health.Fraction, Is.LessThan(1f), "Sanity: it was hurt…");
         Assert.That(combat.Targeter.CurrentTargetId, Is.Not.EqualTo(-1), "…and it was aiming at something.");
@@ -377,6 +386,10 @@ public sealed class PlayerCombatTests
         Assert.That(combat.Targeter.CurrentTargetId, Is.EqualTo(-1));
         Assert.That(combat.Targeter.IsCurrentBlocked, Is.False);
         Assert.That(combat.Targeter.HasFocus, Is.False);
+
+        Assert.That(combat.Weapon.IsSwinging, Is.False, "The swing clock goes back to rest with everything else.");
+        Assert.That(combat.PendingConeRequestId, Is.EqualTo(-1), "…and no cone is owed an answer.");
+        Assert.That(combat.DpsOneSecond, Is.EqualTo(0f));
 
         Assert.That(combat.FaceDirection, Is.Null);
 
@@ -395,7 +408,7 @@ public sealed class PlayerCombatTests
     public void Tick_AllocatesNothing()
     {
         var registry = new EnemyRegistry(32);
-        var combat = new PlayerCombat(Character(), _events, 32);
+        var combat = new PlayerCombat(Character(), _events, _intents, 32);
 
         for (int i = 0; i < 32; i++)
         {
@@ -410,14 +423,25 @@ public sealed class PlayerCombatTests
         // and a stray publish would show up here as an allocation, which is the point.
         for (int i = 0; i < 200; i++)
         {
-            combat.Tick(Frame, i * Frame, snapshot, registry.Alive);
+            combat.Tick(Frame, i * Frame, snapshot, registry.Alive, Facing);
         }
 
+        // The measured window sits inside a swing rather than across one, and one tick at the
+        // measurement's own clock is what puts it there: the jump from the warm-up to t = 10
+        // finishes the swing that was running and starts a fresh one, which then has 0.333 s to go
+        // and nothing to say for any of it. A window that spanned a damage frame would measure the
+        // event and the intent that a swing is *supposed* to allocate — M1-10's PlayerAttacked
+        // boxes on publish, three times a second, by design — instead of the per-frame path this
+        // row exists to hold to zero.
+        combat.Tick(Frame, 10f, snapshot, registry.Alive, Facing);
+
         _events.Clear();
+        _intents.Clear();
 
-        AllocationAssert.None(() => combat.Tick(Frame, 10f, snapshot, registry.Alive));
+        AllocationAssert.None(() => combat.Tick(Frame, 10f, snapshot, registry.Alive, Facing));
 
-        Assert.That(_events.All, Is.Empty, "A steady state has nothing to announce.");
+        Assert.That(_events.All, Is.Empty, "A tick inside a swing has nothing to announce.");
+        Assert.That(_intents.ConeHits, Is.Empty, "…and nothing to ask the body.");
     }
 
     [Test]
@@ -426,14 +450,15 @@ public sealed class PlayerCombatTests
         // Beyond the spec's Tests table. The constructor is the one place a mis-wired run would
         // surface early rather than a frame later as an NRE inside Tick, and the capacity is
         // checked here rather than at the first tick for the same reason RunSession checks its own.
-        Assert.Throws<ArgumentNullException>(() => new PlayerCombat(null, _events, EnemyCapacity));
-        Assert.Throws<ArgumentNullException>(() => new PlayerCombat(Character(), null, EnemyCapacity));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PlayerCombat(Character(), _events, 0));
+        Assert.Throws<ArgumentNullException>(() => new PlayerCombat(null, _events, _intents, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new PlayerCombat(Character(), null, _intents, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new PlayerCombat(Character(), _events, null, EnemyCapacity));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new PlayerCombat(Character(), _events, _intents, 0));
     }
 
     // ---- Fixture helpers -----------------------------------------------------------------------
 
-    private PlayerCombat Combat() => new(Character(), _events, EnemyCapacity);
+    private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
 
     /// <summary>The Oathbound of CC §7, with the three numbers a row may need to override.</summary>
     /// <remarks>
@@ -453,6 +478,7 @@ public sealed class PlayerCombatTests
             maxHp,
             new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
             new TargetingSpec(AcquireRange, 3f, 2f, 1f, 1.5f, 0.1f),
+            new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
             withShield ? new ShieldSpec(ShieldMax, ShieldDelay, ShieldRefill) : null,
             hitIFrames);
     }

@@ -34,6 +34,12 @@ public sealed class CharacterSpec
     /// says every one of these numbers is a designer's knob — so a forgotten spec is a compile
     /// error rather than a silently mis-aimed class.
     /// </param>
+    /// <param name="weapon">
+    /// The class's basic attack. Required for exactly the reason <paramref name="targeting"/> is:
+    /// CC §4 gives every class one, with no ammunition and no cost, so a <c>null</c> would be a
+    /// forgotten field rather than a class that does not attack — and it would produce a character
+    /// who aims perfectly and never swings.
+    /// </param>
     /// <param name="shield">
     /// The class's regenerating shield, or <see langword="null"/> for a class without one.
     /// Optional because most classes are in that case: the Aegis is the Oathbound's signature
@@ -56,7 +62,8 @@ public sealed class CharacterSpec
     /// mistake — or <paramref name="hitIFrames"/> is negative, NaN or infinite.
     /// </exception>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="movement"/> or <paramref name="targeting"/> is null.
+    /// <paramref name="movement"/>, <paramref name="targeting"/> or <paramref name="weapon"/> is
+    /// null.
     /// </exception>
     public CharacterSpec(
         ContentId id,
@@ -64,6 +71,7 @@ public sealed class CharacterSpec
         float maxHp,
         MovementSpec movement,
         TargetingSpec targeting,
+        WeaponSpec weapon,
         ShieldSpec shield = null,
         float hitIFrames = 0f)
     {
@@ -96,6 +104,7 @@ public sealed class CharacterSpec
         MaxHp = maxHp;
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
         Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
+        Weapon = weapon ?? throw new ArgumentNullException(nameof(weapon));
         Shield = shield;
         HitIFrames = hitIFrames;
     }
@@ -117,6 +126,12 @@ public sealed class CharacterSpec
     /// M1-04's <c>Targeter</c> reads <see cref="TargetingSpec.Cadence"/> from it.
     /// </summary>
     public TargetingSpec Targeting { get; }
+
+    /// <summary>
+    /// The class's basic attack — never null. <c>Weapon</c> (M1-10) is built from this, and seeds
+    /// its damage and fire-rate <c>Stat</c>s from it.
+    /// </summary>
+    public WeaponSpec Weapon { get; }
 
     /// <summary>
     /// The class's regenerating shield, or <see langword="null"/> when it has none. Only the

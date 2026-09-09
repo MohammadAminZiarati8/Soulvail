@@ -235,6 +235,7 @@ MonoBehaviour:
   _debugOverlay: {fileID: 5239836669165301809}
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
+  _focusGlow: {fileID: 1102459967}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
   _enemyLayer:
@@ -338,6 +339,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 9015826864778196551, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
   m_PrefabInstance: {fileID: 1102459964}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1102459967 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7401882501133620004, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3253bf80c77e5c4f8e2e00e3a35d169, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0

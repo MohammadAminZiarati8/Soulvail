@@ -7,10 +7,15 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These five are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
+// These six are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
 // (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
 // one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
 // so the owner decides which vocabulary a result is spoken in.
+//
+// Two of them say "focus" and mean different things, because the design does: `TargetChanged`'s
+// `IsFocused` is CC §3.4's tap-to-focus, a *target* the player picked, while `FocusRampChanged` is
+// CC §4.3's standing-still ramp, a *fire rate*. The second carries the longer name for that reason
+// alone — a reader who greps `Focus` in this file has to be able to tell them apart on sight.
 
 /// <summary>
 /// The character is now facing a different enemy, or the same enemy in a different way. Published
@@ -41,11 +46,18 @@ public readonly struct TargetChanged
     /// brighter, pulsing ring plus the overhead chevron of CC §3.5.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Narrower than "a focus is held". A focused enemy that has walked out of acquire range keeps
     /// the focus for two seconds while scoring picks something else to shoot at, and during those
     /// seconds the bright ring belongs on neither — so this asks whether the *current* target is
     /// the focused one, not whether a focus exists. <c>CombatBlackboard.HasFocus</c> is the other
     /// question, for the code that wants it.
+    /// </para>
+    /// <para>
+    /// The *tap-to-focus* of CC §3.4, and nothing to do with <see cref="FocusRampChanged"/>, which
+    /// is CC §4.3's standing-still fire-rate ramp. Two mechanics, one word, because the design
+    /// gives both the same name.
+    /// </para>
     /// </remarks>
     public readonly bool IsFocused;
 
@@ -186,5 +198,40 @@ public readonly struct PlayerAttacked
     public PlayerAttacked(Vector2 facingXZ)
     {
         FacingXZ = facingXZ;
+    }
+}
+
+/// <summary>
+/// CC §4.3's Focus ramp has moved: the character has been standing still long enough for the swing
+/// to be speeding up, or has just moved and lost it. Published by <c>FocusTracker.Tick</c>, and by
+/// nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Standing still, not tap-to-focus.</b> The name carries "ramp" so that it cannot be read as a
+/// relative of <see cref="TargetChanged.IsFocused"/> or <c>CombatBlackboard.HasFocus</c>, which are
+/// CC §3.4's picked *target*. This one is a *fire rate*, driven by a centred stick, and the two
+/// mechanics never interact.
+/// </para>
+/// <para>
+/// Not published every frame of the ramp. <c>FocusTracker</c> announces a move of at least a
+/// hundredth, plus either endpoint whatever the step, which is roughly twenty events over the 1.0 s
+/// climb rather than sixty a second — the same bargain <see cref="PlayerShieldChanged"/> makes, for
+/// the same reason.
+/// </para>
+/// <para>
+/// It carries the fraction rather than the resulting fire rate. What a view does with Focus is
+/// show how much of it there is (the ground glow's alpha and radius, GD §16.4), and a listener that
+/// wanted the swings per second would be reading a number it should be getting from the weapon.
+/// </para>
+/// </remarks>
+public readonly struct FocusRampChanged
+{
+    /// <summary>How far into the ramp the character is, in <c>[0, 1]</c>. Zero is no Focus at all.</summary>
+    public readonly float Level;
+
+    public FocusRampChanged(float level)
+    {
+        Level = level;
     }
 }

@@ -460,17 +460,30 @@ public sealed class PlayerCombatTests
 
     private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
 
-    /// <summary>The Oathbound of CC §7, with the three numbers a row may need to override.</summary>
+    /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>
     /// <remarks>
+    /// <para>
     /// The Aegis is asked for as a <see cref="bool"/> rather than passed in as a
     /// <see cref="ShieldSpec"/>, because a default argument cannot be a constructed object and a
     /// <c>null</c> default would make "no shield" and "you did not say" the same request — which
     /// is exactly the distinction the kill row depends on.
+    /// </para>
+    /// <para>
+    /// <b>Focus is switched off by default</b> — a <c>MaxMultiplier</c> of 1, which
+    /// <see cref="FocusSpec"/> documents as "this class does not ramp". Every row in this fixture
+    /// ticks a centred stick, so the real ×1.3 would have CC §4.3's ramp quietly speeding the
+    /// Censer up under tests that are about targeting, damage and cone requests and were written
+    /// against a weapon at 3 swings a second. The ramp's own behaviour is
+    /// <c>FocusTrackerTests</c>' subject; here it is background, and background is exactly what a
+    /// fixture should be able to hold still. The same isolation <paramref name="withShield"/>
+    /// gives the Aegis.
+    /// </para>
     /// </remarks>
     private static CharacterSpec Character(
         float maxHp = MaxHp,
         bool withShield = true,
-        float hitIFrames = HitIFrames)
+        float hitIFrames = HitIFrames,
+        float focusMaxMultiplier = 1f)
     {
         return new CharacterSpec(
             new ContentId(OathboundId),
@@ -479,6 +492,7 @@ public sealed class PlayerCombatTests
             new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
             new TargetingSpec(AcquireRange, 3f, 2f, 1f, 1.5f, 0.1f),
             new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+            new FocusSpec(0.4f, 1f, focusMaxMultiplier),
             withShield ? new ShieldSpec(ShieldMax, ShieldDelay, ShieldRefill) : null,
             hitIFrames);
     }

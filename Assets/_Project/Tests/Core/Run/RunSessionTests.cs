@@ -394,7 +394,12 @@ public sealed class RunSessionTests
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         // Required as of M1-10, and irrelevant here for the same reason one step along: with no
         // enemies in any of these rows there is never a target, so the weapon never swings.
-        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f));
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+        // Required as of M1-13, and switched off with a MaxMultiplier of 1 for the same reason
+        // one step along: these rows tick a stick that is usually centred, and a ramp would put
+        // a modifier and a stream of events into a fixture measuring neither — including the
+        // allocation row, which is about what one Tick costs when nothing is happening.
+        new FocusSpec(0.4f, 1f, 1f));
 
     /// <summary>One snapshot per call, filled the way M0-16's builder will fill its single one.</summary>
     private static WorldSnapshot Snapshot(float dt, Vector2 input = default, Vector3 position = default)

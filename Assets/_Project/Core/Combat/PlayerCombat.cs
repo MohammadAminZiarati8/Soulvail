@@ -17,7 +17,8 @@ namespace Soulvail.Core.Combat;
 /// <para>
 /// <b>It composes, it does not reimplement.</b> <see cref="Health"/> owns HP, the Aegis and
 /// i-frames (M1-02); <see cref="Targeter"/> owns the 10 Hz decision and the focus override
-/// (M1-04); <see cref="TargetScorer"/> owns the arithmetic (M1-03). What is new here is the wiring
+/// (M1-04); <see cref="TargetScorer"/> owns the arithmetic (M1-03); <see cref="FocusTracker"/> owns
+/// the stationary clock and the ramp it is worth (M1-13). What is new here is the wiring
 /// none of them is allowed to know about: turning live <c>EnemyAgent</c>s into the plain numbers
 /// the scorer reads, turning a chosen id into a direction the motor can turn towards, and turning
 /// a <see cref="DamageResult"/> into the player's vocabulary of events. Each of those is a
@@ -187,6 +188,11 @@ public sealed class PlayerCombat
         // every damage and fire-rate modifier in the game lands, M1-13's Focus ramp first.
         Weapon = new Weapon(spec.Weapon);
 
+        // Built after the weapon and handed its fire rate, which is the whole of the coupling: the
+        // tracker moves one Stat and has no idea it belongs to a weapon. ADR-0008's first live
+        // modifier, and the shape every later source of "+attack speed" copies.
+        Focus = new FocusTracker(spec.Focus, Weapon.FireRate, _events);
+
         Blackboard = new CombatBlackboard();
 
         // A full Aegis is fraction 1, and a class without one is 0. Either way the baseline starts
@@ -212,6 +218,18 @@ public sealed class PlayerCombat
     /// a modifier has to reach.
     /// </summary>
     public Weapon Weapon { get; }
+
+    /// <summary>
+    /// CC §4.3's Focus ramp: the stationary clock, the level it is worth, and the modifier that
+    /// puts it on <see cref="Weapon"/>'s fire rate. Ticked first in <see cref="Tick"/>; exposed for
+    /// the same reason <see cref="Targeter"/> is.
+    /// </summary>
+    /// <remarks>
+    /// Standing still, not the tap-to-focus of <see cref="FocusAt"/> — the design gives the two
+    /// mechanics one word and this class holds both, so they are worth telling apart here: this
+    /// property is a fire rate, <see cref="FocusAt"/> is a target.
+    /// </remarks>
+    public FocusTracker Focus { get; }
 
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
@@ -515,6 +533,20 @@ public sealed class PlayerCombat
         ReadOnlySpan<EnemyAgent> enemies,
         Vector3 bodyFacing)
     {
+        // First, and before DpsOneSecond is read below. The ramp is the only thing in the tick that
+        // changes the fire rate, so running it here is what lets the rest of the tick — the
+        // finisher bonus, the swing cadence — see this frame's rate rather than last frame's.
+        //
+        // The stick alone decides "moving" today. M1-15 adds `|| Charge.IsInFlight` here: CC §5's
+        // dash is movement whatever the stick is doing, and a ramp that survived one would pay out
+        // for the dodge it is supposed to be the alternative to. The seam is this one expression.
+        //
+        // Spelled as "not exactly zero" rather than "greater than zero", which is the same
+        // direction the old inline clock took and matters for one input: a NaN stick fails the
+        // equality and counts as movement, so a broken input resets the ramp instead of quietly
+        // ramping forever. See FocusTracker.LevelAt for the other half of the same care.
+        Focus.Tick(dt, snapshot.MoveInput.LengthSquared() != 0f);
+
         DpsOneSecond = Weapon.DpsOneSecond;
 
         int count = BuildCandidates(snapshot.PlayerPosition, enemies);
@@ -535,15 +567,15 @@ public sealed class PlayerCombat
         Health.Tick(dt, now);
         PublishShieldIfDrifted();
 
-        UpdateBlackboard(dt, snapshot, count);
+        UpdateBlackboard(count);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
         TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count);
     }
 
     /// <summary>
-    /// Back to the start of a run: full health, no target, no focus, a weapon at rest, a blank
-    /// blackboard and no facing.
+    /// Back to the start of a run: full health, no target, no focus of either kind, a weapon at
+    /// rest, a blank blackboard and no facing.
     /// </summary>
     /// <remarks>
     /// What a respawn or a new stage gets instead of a rebuilt <see cref="PlayerCombat"/>, for the
@@ -557,6 +589,13 @@ public sealed class PlayerCombat
         Health.Reset();
         Targeter.Reset();
         Weapon.Reset();
+
+        // After the weapon, and it does take its modifier off where Weapon.Reset deliberately does
+        // not: the tracker is the source of that modifier, so it is the one thing entitled to
+        // decide it should go. A ramp left on the stat would be +30 % fire rate earned by standing
+        // still once, before a stage that has not started yet.
+        Focus.Reset();
+
         Blackboard.Reset();
 
         FaceDirection = null;
@@ -702,7 +741,13 @@ public sealed class PlayerCombat
     }
 
     /// <summary>Rule 2's last step: everything a trigger condition may ask about, refilled.</summary>
-    private void UpdateBlackboard(float dt, WorldSnapshot snapshot, int count)
+    /// <remarks>
+    /// It takes neither the step nor the snapshot any more. Both were here for the stationary
+    /// clock, which M1-13 moved to <see cref="FocusTracker"/> — the object that has to know what
+    /// counts as movement — leaving this method to copy the answer rather than compute a second
+    /// one. See <see cref="CombatBlackboard.StationaryTime"/>.
+    /// </remarks>
+    private void UpdateBlackboard(int count)
     {
         int within6 = 0;
         int within8 = 0;
@@ -750,12 +795,10 @@ public sealed class PlayerCombat
         Blackboard.IsTargetBlocked = Targeter.IsCurrentBlocked;
         Blackboard.HasFocus = Targeter.HasFocus;
 
-        // Cleared by any frame with input rather than decayed, so this really is "how long have I
-        // been standing still". A NaN stick fails the test and resets it, which is the safe
-        // direction: a trigger that waits for stillness should not fire on a broken input.
-        Blackboard.StationaryTime = snapshot.MoveInput.LengthSquared() == 0f
-            ? Blackboard.StationaryTime + dt
-            : 0f;
+        // The ramp's two numbers, mirrored rather than recomputed. The tracker was advanced at the
+        // top of this tick, so both are this frame's.
+        Blackboard.FocusRampLevel = Focus.Level;
+        Blackboard.StationaryTime = Focus.StationaryTime;
 
         // Veilrot and IncomingProjectiles are deliberately untouched — see CombatBlackboard.
     }

@@ -87,12 +87,33 @@ public sealed class CombatBlackboard
     /// <see cref="CurrentTargetId"/> being the focused one: a focused enemy that has walked out of
     /// range keeps the focus while scoring picks something else to shoot.
     /// </summary>
+    /// <remarks>
+    /// A *target*, and unrelated to <see cref="FocusRampLevel"/> below, which is CC §4.3's
+    /// standing-still fire-rate ramp. The design calls both of them Focus; these two fields are
+    /// where that is most likely to mislead, so each names the other.
+    /// </remarks>
     public bool HasFocus;
+
+    /// <summary>
+    /// How far into CC §4.3's Focus ramp the character is, in <c>[0, 1]</c> — a *fire rate*, not
+    /// the tap-to-focus target of <see cref="HasFocus"/>.
+    /// </summary>
+    /// <remarks>
+    /// A mirror of <see cref="FocusTracker.Level"/>, which is the only thing that computes it.
+    /// Here so that a CC §6.4 trigger can ask "am I planted and burning?" as the one-line predicate
+    /// ADR-0005 promises, without reaching through <see cref="PlayerCombat"/> for the tracker.
+    /// </remarks>
+    public float FocusRampLevel;
 
     /// <summary>
     /// Seconds the stick has been continuously centred. Reset to zero by any frame with input, so
     /// this is "how long have I been standing still", not "how long since I last moved".
     /// </summary>
+    /// <remarks>
+    /// A mirror of <see cref="FocusTracker.StationaryTime"/> as of M1-13, not a second count of the
+    /// same thing. See that property: two clocks for one question would diverge the first time only
+    /// one of them learned what M1-15's Charge does to it.
+    /// </remarks>
     public float StationaryTime;
 
     /// <summary>
@@ -127,6 +148,7 @@ public sealed class CombatBlackboard
         CurrentTargetId = -1;
         IsTargetBlocked = false;
         HasFocus = false;
+        FocusRampLevel = 0f;
         StationaryTime = 0f;
         Veilrot = 0f;
         IncomingProjectiles = 0;

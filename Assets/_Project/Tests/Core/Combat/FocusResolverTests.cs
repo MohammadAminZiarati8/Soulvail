@@ -335,6 +335,11 @@ public sealed class FocusResolverTests
         new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
         new TargetingSpec(AcquireRange, 3f, 2f, 1f, 1.5f, 0.1f),
         new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+        // Required as of M1-13, and switched off here with a MaxMultiplier of 1. Worth saying
+        // out loud in this fixture of all of them: the Focus these rows are about is CC §3.4's
+        // tapped *target*, and the one being switched off is CC §4.3's stationary fire-rate
+        // ramp. Two mechanics, one word, and nothing here exercises the second.
+        new FocusSpec(0.4f, 1f, 1f),
         new ShieldSpec(30f, 4f, 15f),
         0.5f);
 

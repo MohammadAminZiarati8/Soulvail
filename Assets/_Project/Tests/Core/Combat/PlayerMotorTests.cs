@@ -304,6 +304,55 @@ public sealed class PlayerMotorTests
     }
 
     [Test]
+    public void Speed_ModifierRaisesTopSpeed_AndTheRampWithIt()
+    {
+        // M1-08's rule 6. Speed is a live Stat seeded from the spec, so this is the one route a
+        // tree node or a Pact will ever take to make the character faster (ADR-0008).
+        var motor = new PlayerMotor(Oathbound(), Vector3.UnitZ);
+        var source = new object();
+
+        Assert.That(motor.Speed.Value, Is.EqualTo(Speed).Within(1e-6f), "Sanity: it starts at what was authored.");
+
+        motor.Speed.Add(new Modifier(ModifierKind.PercentAdd, 0.5f, source));
+
+        // 8 × 1/120 = 0.0667 s, just past the 0.06 s ramp. Both halves of the rule at once: the
+        // new top speed is reached, *and* it is reached in the same 0.06 s — a cached accel rate
+        // would still be climbing at 5.4 m/s² of ramp and land short.
+        Run(motor, Frame, 8, new Vector2(0f, 1f));
+
+        Assert.That(motor.Velocity.Length(), Is.EqualTo(Speed * 1.5f).Within(1e-3f));
+
+        // And removing it takes the speed back down, with the deceleration scaled to match: a
+        // decel rate computed from the raised speed would stop this in 0.08 s, and one computed
+        // from the authored speed would take longer.
+        motor.Speed.RemoveAll(source);
+        Run(motor, Frame, 120, new Vector2(0f, 1f));
+
+        Assert.That(motor.Velocity.Length(), Is.EqualTo(Speed).Within(1e-3f));
+    }
+
+    [Test]
+    public void Stop_ZeroesVelocity_KeepsFacing()
+    {
+        // M1-08's other motor edit. Not deceleration — an instant stop, for the things that take
+        // movement away from the player rather than asking them to stop.
+        var motor = new PlayerMotor(Oathbound(), Vector3.UnitZ);
+        Run(motor, Frame, 120, new Vector2(1f, 0f));
+
+        Vector3 facingBefore = motor.Facing;
+
+        Assert.That(motor.Velocity.Length(), Is.EqualTo(Speed).Within(1e-3f), "Sanity: it was moving.");
+
+        motor.Stop();
+
+        Assert.That(motor.Velocity, Is.EqualTo(Vector3.Zero));
+
+        // Untouched: neither a Charge nor a death turns the character round, and a stop that also
+        // reset the aim would swing the body on the frame the player was hit.
+        Assert.That(motor.Facing, Is.EqualTo(facingBefore));
+    }
+
+    [Test]
     public void Tick_AllocatesNothing()
     {
         var motor = new PlayerMotor(Oathbound(), Vector3.UnitZ);

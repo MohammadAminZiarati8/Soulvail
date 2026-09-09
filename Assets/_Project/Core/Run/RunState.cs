@@ -48,12 +48,14 @@ public sealed class RunState
         int seed,
         CharacterSpec character,
         PlayerMotor motor,
+        PlayerCombat combat,
         EnemySystem enemies)
     {
         CharacterId = characterId;
         Seed = seed;
         Character = character;
         Motor = motor;
+        Combat = combat;
         Enemies = enemies;
     }
 
@@ -97,6 +99,23 @@ public sealed class RunState
 
     /// <summary>The direction the player is facing: a unit vector on the ground plane.</summary>
     public Vector3 PlayerFacing => Motor.Facing;
+
+    /// <summary>
+    /// The player's health, targeting and perception, ticked every frame. The run owns it; nothing
+    /// else may.
+    /// </summary>
+    /// <remarks>
+    /// <c>internal</c> for the third time in this class, and for the reason <see cref="Motor"/> and
+    /// <see cref="Enemies"/> give: it is a live object with a public <c>Tick</c>, a public
+    /// <c>ApplyDamage</c> and a public <c>Reset</c>, so a public handle would let any view advance
+    /// the player's combat a second time, hurt them, or heal them to full, with nothing in the
+    /// compiler to object. Everything outside core learns what happens here from the events
+    /// <c>PlayerCombat</c> publishes — <c>TargetChanged</c>, <c>PlayerDamaged</c>,
+    /// <c>PlayerDied</c>, <c>PlayerShieldChanged</c> — which is what M1-09's reticle and M1-17's
+    /// HUD are built on. Anything that genuinely needs a live number gets a narrow read here rather
+    /// than the handle.
+    /// </remarks>
+    internal PlayerCombat Combat { get; }
 
     /// <summary>Every enemy in the run, and the verbs that create, retire and tick them.</summary>
     /// <remarks>

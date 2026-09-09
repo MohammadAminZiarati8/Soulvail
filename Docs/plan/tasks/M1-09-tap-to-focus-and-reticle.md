@@ -93,10 +93,10 @@ public sealed class ReticleView : MonoBehaviour
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 317 EditMode, 0 failed
+- [x] Zero errors, zero new analyzer warnings
+- [~] Manual steps verified — 1 and 4 verified in Play mode (see *As built*); 2 and 3 are the owner's
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -105,4 +105,19 @@ public sealed class ReticleView : MonoBehaviour
 
 ## As built
 
-_Filled at merge._
+**Six deviations, each small and each said out loud.**
+
+1. **`PlayerCombat.FocusAt` takes the enemy span**, not just a point: `FocusAt(Vector3 worldPoint, ReadOnlySpan<EnemyAgent> enemies)`. `PlayerCombat` owns no registry — `Tick` is handed the world each time — and a retained span would dangle the moment anything spawned. `RunSession` passes `State.Enemies.Registry.Alive`, the same span it hands `Tick`.
+2. **`TapToFocusAdapter.Poll`, not `Tick`.** The Public API block says `Poll`; behaviour rule 3 says `Tick`. `Poll` won, because the spec's own point is that this is *not* an `ITickable` and `Tick` would suggest it is.
+3. **The UI hit test is `EventSystem.RaycastAll`, not `IsPointerOverGameObject(pointerId)`.** That overload needs a pointer id that is `kMouseLeftId` for a mouse and the *touch id* for a finger, so it has to be guessed per device — and the wrong guess fails open: the tap goes through and dragging the stick re-focuses whatever is under it. Raycasting the position the adapter already holds has no id to get wrong. Verified live: a probe at x = 0.2 hits `Region` (tap ignored), at x = 0.75 and 0.95 hits nothing (tap reaches the arena).
+4. **Two assets beyond the table.** `Materials/M_Reticle.mat` — a transparent URP/Unlit the prefab's four line renderers share; the table said "flat ring quad, cyan" without naming the material a quad would need either way. And the `Reticle` instance dressed into `Run.unity`, without which `RunScope` has nothing to register.
+5. **`RunScope` gained a `Camera` field.** `TapToFocusAdapter` needs one and `Camera.main` is a tagged scene lookup — `FindObjectOfType` wearing a hat. Guarded like the player view rather than optional: without it the scope cannot compose at all.
+6. **The reticle is four `LineRenderer`s, not a ring quad.** A quad needs a ring *texture*, which is a fifth asset and a hand-drawn one; line renderers give a true ring whose width is a number, which is exactly what the blocked state needs ("hollow, thin"). Geometry is generated in `Awake` from the serialized radius, so the prefab carries no baked circle to disagree with it.
+
+**Two additions beyond the Tests table**, both named in the files: three extra resolver rows (empty span, meaningless radius, XZ-only distance — the radius one earns its place, since −1 squared is 1 and without a guard a nonsense radius becomes a plausible one-metre one), and `Run_SessionAndCommands_SameInstance` in `InstallerTests`, which belongs there rather than here because it catches a registration rather than a rule.
+
+**The command rows assert through `TargetChanged`, not through `Targeter`.** `RunState.Combat` and `.Enemies` are `internal` and `Soulvail.Tests.Core` has no `InternalsVisibleTo` (M0-10), so the event *is* the public surface — which is the right thing to be testing anyway, since it is what the reticle and the overlay both read.
+
+**Verified in Play mode**, on the Run scene with eight dummies: the ring appears under the auto-selected dummy at ground level (`reticle pos = (8.00, 0.02, 0.00)`, ring on, chevron off, × off, scale 1.000), the overlay reads `target 1`, and a tap switches it to the focused look — chevron on, scale pulsing at 1.148 — with the overlay reading `target 1 focus`. Manual steps 2 and 3 (tapping a far dummy, tapping empty ground, both by hand) are the owner's; synthetic input could not be made deterministic with a live physical mouse present, since a real device event overwrites the queued state in the same update.
+
+**One incidental file:** `ProjectSettings/URPProjectSettings.asset` gained `m_ProjectSettingFolderPath: URPDefaultResources`, written by Unity when the first URP material was created. Not a behaviour change, and it will happen again to whoever next creates one.

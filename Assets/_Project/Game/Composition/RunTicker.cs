@@ -36,6 +36,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly PlayerView _player;
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
+    private readonly TapToFocusAdapter _tapToFocus;
 
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <remarks>
@@ -53,7 +54,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         IntentBuffer intents,
         PlayerView player,
         InputAdapter input,
-        SpawnPlan spawnPlan)
+        SpawnPlan spawnPlan,
+        TapToFocusAdapter tapToFocus)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
@@ -63,6 +65,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
+        _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
 
         // Unity's == rather than `is null`: RunScope supplies this from a serialized field, so a
         // destroyed or unassigned object is a live reference that only compares equal to null
@@ -99,9 +102,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
-    /// One frame: sense, decide, act.
+    /// One frame: ask, sense, decide, act.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <see cref="CommandPhase"/> is first, before the snapshot exists. What the player asked for
+    /// has to be in core's hands before the tick it should influence, or a tap would be acted on a
+    /// frame after the one it was made in — the most visible latency in the game, on the one input
+    /// that is expected to be instant.
+    /// </para>
     /// <para>
     /// The order is the contract. <see cref="IntentBuffer.Clear"/> runs *before*
     /// <c>session.Tick</c>, never after — clearing afterwards would erase the intent the body has
@@ -120,6 +129,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </remarks>
     public void Tick()
     {
+        CommandPhase();
+
         _builder.Build(_snapshot, Time.deltaTime);
 
         _intents.Clear();
@@ -130,6 +141,27 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         {
             _player.Apply(_intents.PlayerMove, _snapshot.Dt);
         }
+    }
+
+    /// <summary>
+    /// Everything the player asked for this frame, in one list.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The reason command adapters are not <c>ITickable</c>s of their own: registered that way,
+    /// the order commands land in — and whether they land before or after the snapshot — would be
+    /// whatever order <c>RunScope</c> happened to register them in, decided by an edit somewhere
+    /// else entirely and invisible until something went subtly wrong. Here it is four lines in the
+    /// file that already owns the frame.
+    /// </para>
+    /// <para>
+    /// One member today; M1-16's movement-skill press is the next, and the shape is what makes
+    /// that a line rather than a decision.
+    /// </para>
+    /// </remarks>
+    private void CommandPhase()
+    {
+        _tapToFocus.Poll();
     }
 
     /// <summary>

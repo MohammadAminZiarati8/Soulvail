@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text;
+using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using TMPro;
@@ -23,6 +24,14 @@ namespace Soulvail.Game.Presentation
     /// of AR §4.3, so if the capsule is doing something the numbers do not explain, the fault is in
     /// the body, and if the numbers themselves are wrong, the fault is upstream of core. Reading
     /// <c>PlayerView</c> instead would collapse both cases into one.
+    /// </para>
+    /// <para>
+    /// The target line (M1-09) keeps that rule rather than breaking it. It comes from
+    /// <c>TargetChanged</c> — an outbound event, the third side of the same boundary — and not from
+    /// <c>IRunSession.State</c>. Reaching into core's state would make the overlay agree with core
+    /// by construction, so it could never show the boundary disagreeing with itself, which is the
+    /// one thing it is for. It also means the line and the reticle are fed by the same event: if
+    /// they ever disagree, the fault is in a view rather than in targeting.
     /// </para>
     /// <para>
     /// Development only. It removes itself in <see cref="Awake"/> outside the Editor and
@@ -57,17 +66,32 @@ namespace Soulvail.Game.Presentation
 
         private WorldSnapshot _snapshot;
         private IntentBuffer _intents;
+        private IDisposable _targetSubscription;
         private float _untilRefresh;
         private float _fps;
 
+        /// <summary>The last target core announced, or −1. Written by the event, read by the line.</summary>
+        private int _targetId = -1;
+
+        private bool _isFocused;
+        private bool _isBlocked;
+
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
+        /// <param name="hub">The run's event hub, for the target line. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
-        public void Construct(WorldSnapshot snapshot, IntentBuffer intents)
+        public void Construct(WorldSnapshot snapshot, IntentBuffer intents, DomainEventHub hub)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+
+            if (hub is null)
+            {
+                throw new ArgumentNullException(nameof(hub));
+            }
+
+            _targetSubscription = hub.Subscribe<TargetChanged>(OnTargetChanged);
         }
 
         private void Awake()
@@ -113,6 +137,24 @@ namespace Soulvail.Game.Presentation
             // Written once immediately, so an overlay that shows nothing is unambiguous evidence
             // that the run never started, rather than a refresh that has not come round yet.
             Refresh();
+        }
+
+        /// <remarks>
+        /// Explicit, rather than left to the hub's disposal: an overlay destroyed before its scope
+        /// — a scene reload, or the release build's own <c>Awake</c> disabling it — would otherwise
+        /// stay in the subscriber list and be handed events for a component Unity has killed.
+        /// </remarks>
+        private void OnDestroy()
+        {
+            _targetSubscription?.Dispose();
+            _targetSubscription = null;
+        }
+
+        private void OnTargetChanged(TargetChanged evt)
+        {
+            _targetId = evt.Id;
+            _isFocused = evt.IsFocused;
+            _isBlocked = evt.IsBlocked;
         }
 
         /// <remarks>
@@ -178,6 +220,21 @@ namespace Soulvail.Game.Presentation
             // fuller or emptier than it should. A count read from core would agree with core by
             // construction and so could never show the boundary disagreeing with itself.
             _line.Append("  enemies ").Append(_snapshot.EnemyCount.ToString(CultureInfo.InvariantCulture));
+
+            // The id and how it was chosen — the two questions a tuning session asks of targeting.
+            // "target -1" is a real answer and worth showing: it is the difference between "the aim
+            // picked badly" and "the aim found nothing at all".
+            _line.Append("  target ").Append(_targetId.ToString(CultureInfo.InvariantCulture));
+
+            if (_targetId >= 0 && _isFocused)
+            {
+                _line.Append(" focus");
+            }
+
+            if (_targetId >= 0 && _isBlocked)
+            {
+                _line.Append(" blocked");
+            }
 
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 

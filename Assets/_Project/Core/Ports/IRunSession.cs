@@ -23,8 +23,10 @@ namespace Soulvail.Core.Ports;
 /// <para>
 /// M0's surface is deliberately this small. The facts AR §6 lists —
 /// <c>ReportConeHits</c>, <c>ReportContact</c>, <c>ReportProjectileHit</c> — arrive with the
-/// mechanics that produce them in M1, and player commands with tap-to-focus in M1-09. Movement
-/// needs none of them: the stick rides in on the snapshot.
+/// mechanics that produce them in M1. Player commands have their own port,
+/// <see cref="IPlayerCommands"/> (M1-09), which <c>RunSession</c> also implements: lifecycle is
+/// what the frame loop holds, commands are what an input adapter holds, and an adapter able to
+/// <see cref="End"/> the run would have a reach it has no business having.
 /// </para>
 /// </remarks>
 public interface IRunSession

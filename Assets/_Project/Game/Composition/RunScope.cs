@@ -27,10 +27,11 @@ namespace Soulvail.Game.Composition
     /// <para>
     /// The split with <c>RunInstaller</c> is by what needs a scene. Everything a headless test can
     /// build lives there; what is registered here is the half that cannot exist without this
-    /// scene — the view in it, the loop that drives it, and the two adapters that sit either side
-    /// of that loop. <c>SnapshotBuilder</c> and <c>InputAdapter</c> would install cleanly in the
+    /// scene — the view in it, the loop that drives it, and the adapters that sit either side of
+    /// that loop. <c>SnapshotBuilder</c> and <c>InputAdapter</c> would install cleanly in the
     /// static half, but the builder needs the view and the adapter is only ever read by the
-    /// ticker, so keeping the frame's four pieces in one place is worth more than the symmetry.
+    /// ticker, so keeping the frame's pieces in one place is worth more than the symmetry.
+    /// <c>TapToFocusAdapter</c> has no choice: it needs this scene's camera (M1-09).
     /// <c>EnemyViews</c> and the run's <c>SpawnPlan</c> join them for the same reason (M1-07):
     /// both are made of references to this scene's prefab, its parent transform and the positions
     /// dressed into it.
@@ -40,6 +41,14 @@ namespace Soulvail.Game.Composition
     {
         [SerializeField] private PlayerView _playerView;
         [SerializeField] private DebugOverlay _debugOverlay;
+
+        [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
+                 "is a tagged scene lookup, which is FindObjectOfType wearing a hat.")]
+        [SerializeField] private Camera _camera;
+
+        [Tooltip("The ring drawn under the current target. Optional, like the overlay — an arena " +
+                 "without one is playable, just harder to read.")]
+        [SerializeField] private ReticleView _reticle;
 
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
@@ -82,6 +91,18 @@ namespace Soulvail.Game.Composition
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
 
+            // Guarded like the player view rather than treated as optional, because the tap-to-focus
+            // adapter cannot be built without it and the whole run scope would fail to compose. The
+            // message names the field, so the fix is obvious rather than a null deep inside
+            // VContainer's resolution.
+            if (_camera == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(Camera)} assigned. Drag Main Camera in " +
+                    "this scene onto its Camera field — without it a tap on the arena cannot be " +
+                    "turned into a place on the ground, so tap-to-focus has nothing to resolve.");
+            }
+
             // Registered only when it is there, and deliberately not guarded like the view above.
             // The body is load-bearing — without it the run has nothing to move — while the overlay
             // is a development aid that a scene is entitled not to have, and M0-19's release build
@@ -93,11 +114,24 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_debugOverlay);
             }
 
+            // Optional for the same reason and on the same terms: a scene dressed without a
+            // reticle plays, it just cannot show what the gun is aimed at, and a test scene is
+            // entitled to be that.
+            if (_reticle != null)
+            {
+                builder.RegisterComponent(_reticle);
+            }
+
             // Types, not instances, so the scope disposes them — the adapter owns a generated
             // actions asset that must be destroyed with the run (M0-14), and EnemyViews owns two
             // subscriptions and every body standing in the arena.
             builder.Register<InputAdapter>(Lifetime.Scoped);
             builder.Register<SnapshotBuilder>(Lifetime.Scoped);
+
+            // By name, like the enemy prefab below: WithParameter<Camera> would be the same kind of
+            // fragile type match, and this adapter's other two arguments are already resolved.
+            builder.Register<TapToFocusAdapter>(Lifetime.Scoped)
+                .WithParameter("camera", _camera);
 
             // The two scene references go by name rather than by type: WithParameter<Transform>
             // would break the moment a second Transform parameter appeared, and the enemy prefab

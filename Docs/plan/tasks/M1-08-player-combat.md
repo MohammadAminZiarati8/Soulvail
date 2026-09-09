@@ -91,9 +91,9 @@ public readonly struct PlayerShieldChanged{ public readonly float Fraction; }
 
 ## Acceptance
 
-- [ ] All tests green (including unchanged M0-07 motor tests)
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green (including unchanged M0-07 motor tests) — 305 EditMode, 0 failed, 0 skipped
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -101,4 +101,18 @@ public readonly struct PlayerShieldChanged{ public readonly float Fraction; }
 
 ## As built
 
-_Filled at merge._
+Built as specified, with four deviations — all four recorded in full in the PROGRESS entry.
+
+**Rule 2's candidate gathering includes the dead**, carrying `Hp` 0 and `IsVulnerable` false. `IsVulnerable = agent.IsAlive && agent.IsVulnerable` only means anything if a dead agent reaches the buffer, and `Targeter` reads exactly those two facts to drop a focus and force an immediate retarget — filtering here would hide a death from the code whose job is to react to it. It follows that with a corpse as the only candidate, `SelectNearest` picks it and facing is held on it as blocked until M1-11's despawn lands. That is CC §3.6 applied to the right fact, a frame long in practice, and the only route a test in `Soulvail.Tests.Core` has to a blocked target at all — `EnemyAgent.IsVulnerable` is `internal set`, and the Warden that lowers it is M7-01.
+
+**`TargetChanged.IsFocused` asks whether the current target *is* the focused one**, not whether a focus is held. A focused enemy that leaves acquire range keeps the focus for two seconds while scoring shoots something else, and CC §3.5's brighter pulsing ring belongs on neither during those seconds. The wider question is `CombatBlackboard.HasFocus`, which is the field AR §9 names for it.
+
+**`RunState.Combat` is `internal`**, the third application of the rule `Motor` and `Enemies` already follow: a live object with a public `Tick`, `ApplyDamage` and `Reset` would let a view hurt or heal the player. Everything outside core learns what happens here from the four events. `RunState.PlayerPosition` also stays where M0-10 put it, immediately after `Time` and before `Ingest`, though rule 5's order does not list it — it is core writing down a report, not a step of the frame.
+
+**Two rows were added to `PlayerMotorTests.cs`, outside the Files table**, because rule 6 gives the motor public API the Tests table has no row for: `Speed_ModifierRaisesTopSpeed_AndTheRampWithIt` and `Stop_ZeroesVelocity_KeepsFacing`. Every M0-07 row is unchanged and green. One line of `MovementSpec`'s XML doc was corrected in passing — it predicted the speed stat would live on `PlayerCombat`, and rule 6 puts it on the motor.
+
+Two rows beyond the Tests table inside the specified file: `Ctor_NullDependency_Throws`, and the assertions that `Veilrot` and `IncomingProjectiles` are left untouched, folded into `Blackboard_CountsByDistance`.
+
+The one number the spec left ambiguous and this task had to decide: **the 0.005 shield threshold is measured against the last *reported* fraction, not the previous tick's.** At CC §7's refill rate a 120 fps frame moves it by 0.0042, so a tick-to-tick comparison would never fire at any frame rate a phone runs at, and the Aegis would refill behind a HUD that never redrew it.
+
+**Manual step for the owner:** none required by the code — nothing visual changed, and the arena still holds eight motionless Husks. Worth one Play in Run all the same: with the stick centred the capsule should now turn to face the nearest Husk and hold that facing, and walking past the ring of them should make the facing hand off from one to the next without twitching. That is CC §3.3's hysteresis and the 10 Hz cadence being felt for the first time, and it is the only part of this task a test cannot judge.

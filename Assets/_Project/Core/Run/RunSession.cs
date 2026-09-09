@@ -121,11 +121,15 @@ public sealed class RunSession : IRunSession
         // at. The first stick input turns them within a frame or two at 720°/s.
         var motor = new PlayerMotor(character.Movement, Vector3.UnitZ);
 
+        // The same capacity the registry and the snapshot use, from the same constant, because the
+        // candidate buffer it preallocates has to be able to hold every enemy the run may spawn.
+        var combat = new PlayerCombat(character, _events, _enemyCapacity);
+
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list.
         var enemies = new EnemySystem(_catalog, _events, _enemyCapacity);
 
-        State = new RunState(config.CharacterId, seed, character, motor, enemies);
+        State = new RunState(config.CharacterId, seed, character, motor, combat, enemies);
 
         // Published before IsRunning flips, so a handler that reads the session from inside this
         // event sees a run that is announced and not yet live. The alternative — flip, then
@@ -164,18 +168,24 @@ public sealed class RunSession : IRunSession
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
 
-        // Enemies before the player, and both before the intents. Ingest is what makes every
-        // position in core this frame's rather than last frame's, so anything that reads an enemy
-        // — perception now, targeting in M1-08, cone hits in M1-11 — has to come after it. Ticking
-        // them before the player's motor is the cheaper half of the same rule: the player's facing
-        // will be chosen from a target (M1-08), and a target chosen from stale positions is the
-        // whole bug the snapshot exists to prevent.
+        // Ingest first, always. It is what makes every position in core this frame's rather than
+        // last frame's, so anything that reads an enemy — perception, targeting, cone hits in
+        // M1-11 — has to come after it, and a target chosen from stale positions is the whole bug
+        // the snapshot exists to prevent.
         State.Enemies.Ingest(snapshot);
+
+        // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
+        // Before the behaviours, so the target is chosen from the same positions the enemies were
+        // just seen at rather than from wherever this tick's AI moved them; and before the motor,
+        // because the motor needs the facing this decides.
+        State.Combat.Tick(snapshot.Dt, State.Time, snapshot, State.Enemies.Registry.Alive);
+
         State.Enemies.Tick(snapshot.Dt, State.Time);
 
-        // Null face direction: M0 has nothing to aim at, so the character faces the way it moves.
-        // M1-08 passes the target's direction here instead.
-        State.Motor.Tick(snapshot.Dt, snapshot.MoveInput, null);
+        // The character now looks at what it is aiming at. Null when there is nothing to aim at,
+        // which the motor reads as "face the way you are moving" — M0's behaviour, still correct
+        // for an empty arena.
+        State.Motor.Tick(snapshot.Dt, snapshot.MoveInput, State.Combat.FaceDirection);
 
         // Exactly one, every tick, including when the stick is centred — the body needs the
         // deceleration velocity just as much as the acceleration one, and a tick that emitted

@@ -10,7 +10,7 @@ namespace Soulvail.Core.Content;
 /// <para>
 /// Immutable, and deliberately raw <see cref="float"/>s. A <c>Stat</c> stack exists as of
 /// M1-01, but it belongs to the player rather than to the authored data: M1-08 gives
-/// <c>PlayerCombat</c> a <c>Stat</c> for speed, seeded from <see cref="Speed"/>, so modifiers
+/// <c>PlayerMotor</c> a <c>Stat</c> for speed, seeded from <see cref="Speed"/>, so modifiers
 /// apply to the live character while this stays what a designer typed.
 /// </para>
 /// <para>

@@ -7,7 +7,7 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These six are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
+// These eight are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
 // (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
 // one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
 // so the owner decides which vocabulary a result is spoken in.
@@ -234,4 +234,61 @@ public readonly struct FocusRampChanged
     {
         Level = level;
     }
+}
+
+/// <summary>
+/// The character has begun a dash. Published by <c>PlayerCombat.Tick</c> on the tick the movement
+/// skill fires, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The cue half of a pair that <c>ChargeIntent</c> is the instruction half of, and separate from it
+/// for the reason <see cref="PlayerAttacked"/> is separate from <c>ConeHitIntent</c>: the intent
+/// goes to exactly one body and tells it where to be, while this goes to anyone with something to
+/// say about a dash — the trail VFX and the sweep of M1-16, the whoosh, M1-20's haptic tap, and any
+/// later node that counts dashes. None of those should have to read the movement instruction to
+/// learn that a dodge happened.
+/// </para>
+/// <para>
+/// It carries the direction and nothing else. The distance and the duration are on the intent
+/// because the body needs them to move; a view drawing a trail is parented to a character that is
+/// already going the right way, and the one thing it cannot infer is which way that is on the frame
+/// the dash begins.
+/// </para>
+/// </remarks>
+public readonly struct ChargeStarted
+{
+    /// <summary>
+    /// The direction of the dash: a unit vector on the ground plane, <c>X</c> and <c>Z</c>. The
+    /// same direction the tick's <c>ChargeIntent</c> carries.
+    /// </summary>
+    public readonly Vector2 DirectionXZ;
+
+    public ChargeStarted(Vector2 directionXZ)
+    {
+        DirectionXZ = directionXZ;
+    }
+}
+
+/// <summary>
+/// The dash is over and the character can be hurt again. Published by <c>PlayerCombat.Tick</c> once
+/// per <see cref="ChargeStarted"/>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It marks the end of the i-frames, not the end of the movement.</b> Those are two moments —
+/// CC §5 protects the dash plus a further 0.05 s — and this is the later one, because it is the one
+/// with something to say. The movement ending is visible: the character stops. The invulnerability
+/// ending is invisible unless the game says so, and it is the thing that decides whether the next
+/// hit lands. Anything that dims a shielded flash or drops a dodge indicator waits for this.
+/// </para>
+/// <para>
+/// <b>Empty on purpose.</b> A time would duplicate <c>RunState.Time</c>, which every listener
+/// already has, and a direction would be the one <see cref="ChargeStarted"/> already carried — a
+/// listener that needs it kept it. What this event is worth is the edge itself, and an edge has no
+/// payload.
+/// </para>
+/// </remarks>
+public readonly struct ChargeEnded
+{
 }

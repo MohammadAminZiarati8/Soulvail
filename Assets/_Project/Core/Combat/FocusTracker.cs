@@ -22,9 +22,9 @@ namespace Soulvail.Core.Combat;
 /// <b>It owns the stationary clock.</b> <c>CombatBlackboard.StationaryTime</c> is a mirror of
 /// <see cref="StationaryTime"/>, written by <c>PlayerCombat</c> each tick and never counted
 /// independently. Two counters for "how long has the stick been centred" would be the duplicated
-/// state AR §10.2 exists to prevent, and they would diverge the first time one of them learned
-/// that M1-15's Charge counts as movement and the other did not. This is the object that has to
-/// know, so this is the object that counts.
+/// state AR §10.2 exists to prevent, and they would have diverged the moment M1-15 taught one of
+/// them that a Charge counts as movement and not the other. This is the object that has to know, so
+/// this is the object that counts.
 /// </para>
 /// <para>
 /// <b>ADR-0008 arrives here.</b> The ramp never writes a fire rate — it adds a
@@ -126,9 +126,11 @@ public sealed class FocusTracker
     /// <param name="dt">Seconds since the previous tick — the snapshot's <c>Dt</c>.</param>
     /// <param name="isMoving">
     /// The character is moving under its own power this tick. <c>PlayerCombat</c> derives it from
-    /// the stick alone today; M1-15 adds "or a Charge is in flight", because CC §5's 10 m dash is
-    /// movement whatever the stick is doing and a ramp that survived one would pay out for the
-    /// dodge it is meant to be the alternative to.
+    /// the stick <em>or</em> a Charge in flight (M1-15), because CC §5's 10 m dash is movement
+    /// whatever the stick is doing and a ramp that survived one would pay out for the dodge it is
+    /// meant to be the alternative to. Anything else that ever moves the character without the
+    /// stick — a knockback, a Shroudstep — joins the same expression there rather than being taught
+    /// to this class.
     /// </param>
     public void Tick(float dt, bool isMoving)
     {

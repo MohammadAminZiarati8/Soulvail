@@ -59,4 +59,32 @@ public interface IPlayerCommands
     /// </remarks>
     /// <exception cref="System.InvalidOperationException">No run is running.</exception>
     void ClearFocus();
+
+    /// <summary>
+    /// The player pressed the movement-skill button: dash now, or as soon as the cooldown allows
+    /// (CC §5).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It takes no direction, and that is the mechanic rather than an omission.</b> CC §5 aims a
+    /// dash with the stick as it stands, or with the character's facing when the stick is neutral,
+    /// and both of those are things core already knows at the moment it decides. A direction
+    /// supplied here would be sampled a frame earlier by an adapter that has no business knowing
+    /// which of the two applies.
+    /// </para>
+    /// <para>
+    /// <b>"Now, or as soon as possible" is the whole of the input buffer.</b> Nothing about a press
+    /// is refused: a tap made while the cooldown still has a seventh of a second to run is kept and
+    /// fires the moment it ends, because a touchscreen dodge that silently ate early inputs would
+    /// feel unreliable, and CC §5 is blunt about what an unreliable dodge does to this game. A tap
+    /// made any earlier than that goes stale and is dropped. Both decisions belong to
+    /// <c>ChargeSkill</c>; this method only says that a thumb landed.
+    /// </para>
+    /// <para>
+    /// It never auto-casts, which is why it is a command at all. CC §5 opens with it: a dash the
+    /// game fires for you is the game taking the one thing the player is actually doing.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.InvalidOperationException">No run is running.</exception>
+    void MovementSkill();
 }

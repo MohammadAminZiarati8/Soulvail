@@ -1,4 +1,5 @@
 using System.Numerics;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 
@@ -42,12 +43,18 @@ namespace Soulvail.Core.Run;
 /// </remarks>
 public sealed class RunState
 {
-    internal RunState(ContentId characterId, int seed, CharacterSpec character, PlayerMotor motor)
+    internal RunState(
+        ContentId characterId,
+        int seed,
+        CharacterSpec character,
+        PlayerMotor motor,
+        EnemySystem enemies)
     {
         CharacterId = characterId;
         Seed = seed;
         Character = character;
         Motor = motor;
+        Enemies = enemies;
     }
 
     /// <summary>The class being played. Same id as <see cref="Character"/>'s, kept for the log line that quotes it before the spec is dereferenced.</summary>
@@ -90,6 +97,30 @@ public sealed class RunState
 
     /// <summary>The direction the player is facing: a unit vector on the ground plane.</summary>
     public Vector3 PlayerFacing => Motor.Facing;
+
+    /// <summary>Every enemy in the run, and the verbs that create, retire and tick them.</summary>
+    /// <remarks>
+    /// <c>internal</c> for exactly the reason <see cref="Motor"/> is, and this is the second time
+    /// the question M0-16 left standing has been asked: it is a live object with a public
+    /// <c>Tick</c>, a public <c>Spawn</c> and a public <c>Clear</c>, so a public handle would let
+    /// any view advance the AI a second time, invent an enemy, or empty the arena, with nothing in
+    /// the compiler to object. Nothing in <c>Soulvail.Game</c> needs it: a view learns that an
+    /// enemy exists from <c>EnemySpawned</c>, learns it is gone from <c>EnemyDespawned</c>, and
+    /// reports its position back through the snapshot. Anything outside core that wants to
+    /// <em>read</em> the census reads <see cref="EnemyCount"/>; the first thing that genuinely
+    /// needs more gets a narrow read here rather than the handle.
+    /// </remarks>
+    internal EnemySystem Enemies { get; }
+
+    /// <summary>
+    /// How many enemies are registered in the run.
+    /// </summary>
+    /// <remarks>
+    /// Registered, not breathing — the wart <c>EnemyRegistry.AliveCount</c> carries, kept rather
+    /// than renamed so the two numbers cannot be mistaken for different quantities. A dead enemy
+    /// counts here until M1-11 has published its death and despawned it.
+    /// </remarks>
+    public int EnemyCount => Enemies.Registry.AliveCount;
 
     /// <summary>
     /// Seconds of simulated run time, summed from each tick's <c>Dt</c>.

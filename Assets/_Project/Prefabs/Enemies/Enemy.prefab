@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1350838798255331985}
   - component: {fileID: 3681388427097971732}
+  - component: {fileID: 7969668158964918824}
   - component: {fileID: 7969668158964918823}
   - component: {fileID: 8204984814412098528}
   m_Layer: 8
@@ -58,6 +59,31 @@ CapsuleCollider:
   m_Height: 1.6
   m_Direction: 1
   m_Center: {x: 0, y: 0.8, z: 0}
+--- !u!143 &7969668158964918824
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1747012703412578570}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 1.6
+  m_Radius: 0.4
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.04
+  m_MinMoveDistance: 0
+  m_Center: {x: 0, y: 0.8, z: 0}
 --- !u!114 &7969668158964918823
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -88,6 +114,7 @@ MonoBehaviour:
   _dissolveSeconds: 0.5
   _dissolveStretch: 1.4
   _flashColour: {r: 1, g: 1, b: 1, a: 1}
+  _telegraphSwell: 1.15
 --- !u!1 &3175284830755176720
 GameObject:
   m_ObjectHideFlags: 0

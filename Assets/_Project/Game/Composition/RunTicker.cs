@@ -144,8 +144,11 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// <para>
     /// The order is the contract. <see cref="IntentBuffer.Clear"/> runs *before*
     /// <c>session.Tick</c>, never after — clearing afterwards would erase the intent the body has
-    /// not read yet. The body is applied *after* core has written, with the snapshot's clamped
-    /// <c>Dt</c> and not <c>Time.deltaTime</c>, so brain and body take the same step.
+    /// not read yet. The bodies are applied *after* core has written, with the snapshot's clamped
+    /// <c>Dt</c> and not <c>Time.deltaTime</c>, so brain and body take the same step. Since M1-18
+    /// that is every body in the arena and not only the player's: <see cref="ApplyEnemyMoves"/> sits
+    /// beside <c>_player.Apply</c> so the whole population steps once, together, before anything
+    /// physical is asked about it.
     /// </para>
     /// <para>
     /// <c>HasPlayerMove</c> is checked rather than assumed. The buffer deliberately leaves the
@@ -202,6 +205,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             _player.Apply(_intents.PlayerMove, _snapshot.Dt);
         }
 
+        ApplyEnemyMoves();
+
         StepCharge();
 
         ResolveConeHits();
@@ -236,6 +241,46 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             int count = _cone.Query(cone, _coneHitIds);
 
             _session.ReportConeHits(new ReadOnlySpan<int>(_coneHitIds, 0, count));
+        }
+    }
+
+    /// <summary>
+    /// Walks every enemy core gave a direction to this tick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Beside the player's move rather than after the fact phase, and that placement is the whole
+    /// point: both bodies take the same step with the same <c>Dt</c>, so the swing and the dash
+    /// resolved below are answered against an arena where <em>everything</em> has finished moving.
+    /// A cone swept before the Husks walked would be answered against where they were last frame,
+    /// which is the class of bug the snapshot exists to prevent — and it would show up as a swing
+    /// that misses an enemy standing in it.
+    /// </para>
+    /// <para>
+    /// An id with no body is skipped in silence, exactly as <see cref="ApplyKnockbacks"/> skips one:
+    /// core is entitled to decide a walk for an enemy whose view has not been created yet, or one
+    /// destroyed earlier in this frame, and neither is an error.
+    /// </para>
+    /// <para>
+    /// A <c>for</c> over the count rather than a <c>foreach</c>: the buffer hands out an
+    /// <c>IReadOnlyList</c>, and enumerating that would box an enumerator on every frame with a live
+    /// enemy in the arena — which, unlike the cone and knockback lists, is very nearly all of them.
+    /// </para>
+    /// </remarks>
+    private void ApplyEnemyMoves()
+    {
+        IReadOnlyList<EnemyMoveIntent> moves = _intents.EnemyMoves;
+
+        for (int i = 0; i < moves.Count; i++)
+        {
+            EnemyMoveIntent move = moves[i];
+
+            if (!_enemyViews.TryGet(move.Id, out EnemyView view) || view == null)
+            {
+                continue;
+            }
+
+            view.Apply(move, _snapshot.Dt);
         }
     }
 

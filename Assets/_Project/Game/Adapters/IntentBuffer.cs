@@ -47,8 +47,16 @@ public sealed class IntentBuffer : IIntentSink
     /// </summary>
     private const int KnockbackCapacity = 16;
 
+    /// <summary>
+    /// Room for one intent per enemy the run may hold at once — GD §11's cap. Every living chaser
+    /// writes one of these every tick, so this is the one list here that is full on a normal frame
+    /// rather than empty, and the one where a resize would land in the middle of a fight.
+    /// </summary>
+    private const int EnemyMoveCapacity = 64;
+
     private readonly List<ConeHitIntent> _coneHits = new(ConeHitCapacity);
     private readonly List<EnemyKnockbackIntent> _knockbacks = new(KnockbackCapacity);
+    private readonly List<EnemyMoveIntent> _enemyMoves = new(EnemyMoveCapacity);
 
     private PlayerMoveIntent _playerMove;
     private ChargeIntent _charge;
@@ -112,6 +120,24 @@ public sealed class IntentBuffer : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyKnockbackIntent> Knockbacks => _knockbacks;
 
+    /// <summary>
+    /// Where core wants each enemy to walk this tick, one entry per living enemy with a behaviour.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="Knockbacks"/>, these are written from inside <c>session.Tick</c> like the
+    /// rest of the buffer, so a reader may run any time after it — <c>RunTicker</c> applies them in
+    /// the same phase it moves the player, which is what keeps every body in the arena stepping with
+    /// the same <c>Dt</c>.
+    /// </para>
+    /// <para>
+    /// Read it with a <c>for</c> over <see cref="IReadOnlyCollection{T}.Count"/>, for the reason
+    /// <see cref="ConeHits"/> gives — and rather more urgently, since this one is sixty entries long
+    /// on a busy frame instead of nought or one.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<EnemyMoveIntent> EnemyMoves => _enemyMoves;
+
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
     {
         _playerMove = intent;
@@ -129,6 +155,11 @@ public sealed class IntentBuffer : IIntentSink
         HasCharge = true;
     }
 
+    void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
+    {
+        _enemyMoves.Add(intent);
+    }
+
     void IIntentSink.EnemyKnockback(in EnemyKnockbackIntent intent)
     {
         _knockbacks.Add(intent);
@@ -140,11 +171,11 @@ public sealed class IntentBuffer : IIntentSink
     /// intents the views have not read yet.
     /// </summary>
     /// <remarks>
-    /// The two lists are genuinely emptied, where the two flags are only lowered, and the asymmetry
-    /// is the two shapes rather than an inconsistency: a list has no flag to check first, so
-    /// leftovers would read as this tick's swings and knockbacks — the body would sweep the same
-    /// cone every frame until the next one replaced it, and shove the same enemy for ever. Emptying
-    /// keeps the capacity, so it allocates nothing.
+    /// The three lists are genuinely emptied, where the two flags are only lowered, and the
+    /// asymmetry is the two shapes rather than an inconsistency: a list has no flag to check first,
+    /// so leftovers would read as this tick's swings, walks and knockbacks — the body would sweep
+    /// the same cone every frame until the next one replaced it, walk a dead enemy for ever, and
+    /// shove the same one repeatedly. Emptying keeps the capacity, so it allocates nothing.
     /// </remarks>
     public void Clear()
     {
@@ -153,5 +184,6 @@ public sealed class IntentBuffer : IIntentSink
 
         _coneHits.Clear();
         _knockbacks.Clear();
+        _enemyMoves.Clear();
     }
 }

@@ -720,6 +720,11 @@ public sealed class ChargeIntegrationTests
             // Deliberately nothing.
         }
 
+        public void EnemyMove(in EnemyMoveIntent intent)
+        {
+            // Deliberately nothing.
+        }
+
         public void EnemyKnockback(in EnemyKnockbackIntent intent)
         {
             // Deliberately nothing.

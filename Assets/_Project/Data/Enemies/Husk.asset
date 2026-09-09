@@ -22,4 +22,4 @@ MonoBehaviour:
   _reach: 1.2
   _windupTime: 0.4
   _recoverTime: 0.6
-  _behaviour: 0
+  _behaviour: 1

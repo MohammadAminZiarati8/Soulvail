@@ -7,11 +7,12 @@ namespace Soulvail.Core.Events;
 // event is three lines, and reading a module's vocabulary in one place is worth more than one type
 // per file. See AR §5, §8 and <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// Two pairs, and the split between them is deliberate. `EnemySpawned` / `EnemyDespawned` are the
-// *census* — an enemy started existing, an enemy stopped — and a view is created and destroyed on
-// them whatever else is said. `EnemyDamaged` / `EnemyDied` are what happens to one while it exists
-// (M1-11). A death is not a despawn: a Husk dies, its dissolve plays for `EnemySystem.CorpseTime`,
-// and only then is it despawned.
+// Two pairs and a single, and the split between them is deliberate. `EnemySpawned` /
+// `EnemyDespawned` are the *census* — an enemy started existing, an enemy stopped — and a view is
+// created and destroyed on them whatever else is said. `EnemyDamaged` / `EnemyDied` are what happens
+// to one while it exists (M1-11). A death is not a despawn: a Husk dies, its dissolve plays for
+// `EnemySystem.CorpseTime`, and only then is it despawned. `EnemyTelegraph` (M1-18) is the odd one
+// out and the only one an enemy publishes about *itself* rather than about something done to it.
 
 /// <summary>
 /// An enemy now exists. Published by <c>EnemySystem.Spawn</c> after the agent is registered, so a
@@ -105,6 +106,46 @@ public readonly struct EnemyDamaged
         Amount = amount;
         HpFraction = hpFraction;
         Killed = killed;
+    }
+}
+
+/// <summary>
+/// An enemy has committed to an attack and is telegraphing it. Published by the agent's behaviour
+/// on the tick the windup begins — <c>ChaserBehaviour</c>'s is the first — and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>GD §9.1 rule 1 made into a fact.</b> Every attack in this game is telegraphed, and a telegraph
+/// only exists if something draws it: this is the event the drawing hangs off. It is published on
+/// entering the windup rather than on the damage frame, for the reason <c>PlayerAttacked</c> is
+/// published at the start of a swing — a tell that arrives with the hit is not a tell.
+/// </para>
+/// <para>
+/// <see cref="Duration"/> rides along so that a view can fill a pulse, a ring or a bar over exactly
+/// the right span without holding a catalog. The view has an id and a number of seconds, which is
+/// all any of those need, and the alternative — looking <c>EnemySpec.WindupTime</c> up — would put a
+/// content lookup in a listener and let the drawn time drift from the real one.
+/// </para>
+/// <para>
+/// <b>There is no matching "telegraph ended".</b> The windup can end three ways — the strike, a
+/// cancel when the player leaves, or the enemy dying mid-windup — and a view that has been told how
+/// long the tell lasts can simply run out on its own, while a second event would have to be
+/// published on all three paths and correlated by id. Anything that needs the strike itself has
+/// <c>PlayerDamaged</c>; anything that needs the death has <c>EnemyDied</c>.
+/// </para>
+/// </remarks>
+public readonly struct EnemyTelegraph
+{
+    /// <summary>Which enemy is winding up.</summary>
+    public readonly int Id;
+
+    /// <summary>How long the windup lasts, in seconds — the archetype's <c>WindupTime</c>. 0.4 for the Husk.</summary>
+    public readonly float Duration;
+
+    public EnemyTelegraph(int id, float duration)
+    {
+        Id = id;
+        Duration = duration;
     }
 }
 

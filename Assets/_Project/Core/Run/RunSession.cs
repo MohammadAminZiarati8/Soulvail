@@ -207,7 +207,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             State.Enemies.Registry.Alive,
             State.Motor.Facing);
 
-        State.Enemies.Tick(snapshot.Dt, State.Time);
+        // After combat, and the order decides who wins a trade. The player's swing this tick is
+        // resolved against enemies as they were seen, and the enemy's strike lands against a player
+        // whose i-frames and Aegis have already been advanced — so a dodge that expired this tick
+        // has expired by the time the Husk swings, rather than protecting one frame past its own
+        // window. The behaviours get the intent sink because a strike is decided here and the walk
+        // it interrupts is a question for the body, which has to leave on the tick that produced it.
+        State.Enemies.Tick(snapshot.Dt, State.Time, State.Combat, _intents);
 
         TickBody(snapshot);
     }

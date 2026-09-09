@@ -10,10 +10,10 @@ using VContainer;
 namespace Soulvail.Game.Views
 {
     /// <summary>
-    /// What a hit and a death look like on one enemy: a white flash on <see cref="EnemyDamaged"/>,
-    /// a stretch-and-fade on <see cref="EnemyDied"/>. Placeholder feel for M1 — GD §16.3's real
-    /// treatment is M8-01's and the art is M7's — but without it a swing is arithmetic nobody can
-    /// see.
+    /// What a hit, a wind-up and a death look like on one enemy: a white flash on
+    /// <see cref="EnemyDamaged"/>, a swell on <see cref="EnemyTelegraph"/>, a stretch-and-fade on
+    /// <see cref="EnemyDied"/>. Placeholder feel for M1 — GD §16.3's real treatment is M8-01's and
+    /// the art is M7's — but without it a swing is arithmetic nobody can see.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -67,6 +67,13 @@ namespace Soulvail.Game.Views
         [Tooltip("The flash colour. White reads as 'hit' on every body colour the game will have.")]
         [SerializeField] private Color _flashColour = Color.white;
 
+        [Tooltip("How far the body swells over a wind-up: 1.15 is 15 % bigger by the damage frame. " +
+                 "PLACEHOLDER for GD §9.1's real telegraph — deliberately a shape change and not a " +
+                 "colour one, because saturated red-orange is reserved for danger (GD §16.4) and " +
+                 "that palette belongs to M7's VFX.")]
+        [Min(1f)]
+        [SerializeField] private float _telegraphSwell = 1.15f;
+
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because
         /// nothing in this project holds static state (AR §7) and the four bytes are free.
@@ -77,12 +84,15 @@ namespace Soulvail.Game.Views
         private MaterialPropertyBlock _block;
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
+        private IDisposable _telegraphSubscription;
 
         private Color _liveColour;
         private Vector3 _liveScale;
 
         private float _flashRemaining;
         private float _dissolveElapsed;
+        private float _telegraphRemaining;
+        private float _telegraphDuration;
         private bool _dissolving;
         private bool _injected;
 
@@ -109,6 +119,7 @@ namespace Soulvail.Game.Views
 
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
+            _telegraphSubscription = hub.Subscribe<EnemyTelegraph>(OnTelegraph);
         }
 
         /// <exception cref="MissingReferenceException">A part of the prefab is unassigned.</exception>
@@ -167,8 +178,10 @@ namespace Soulvail.Game.Views
             // list and be handed events for a component Unity has already killed.
             _damagedSubscription?.Dispose();
             _diedSubscription?.Dispose();
+            _telegraphSubscription?.Dispose();
             _damagedSubscription = null;
             _diedSubscription = null;
+            _telegraphSubscription = null;
         }
 
         private void Update()
@@ -178,6 +191,8 @@ namespace Soulvail.Game.Views
                 TickDissolve();
                 return;
             }
+
+            TickTelegraph();
 
             if (_flashRemaining <= 0f)
             {
@@ -224,6 +239,12 @@ namespace Soulvail.Game.Views
             _dissolveElapsed = 0f;
             _flashRemaining = 0f;
 
+            // A Husk killed mid-windup has had its strike cancelled by core (EnemySystem does not
+            // tick a corpse), so the swell it was in the middle of has to stop too. The dissolve
+            // rewrites the scale from _liveScale every frame anyway; this is what stops the two
+            // fighting over it for the half-second they would otherwise overlap.
+            _telegraphRemaining = 0f;
+
             // Out of the physics query immediately, so the swing that lands in the same frame as the
             // death cannot spend a hit on a corpse. Core would refuse the damage anyway — an id
             // that is already dead is a no-op in ApplyDamage — but a corpse still occupying the
@@ -239,6 +260,60 @@ namespace Soulvail.Game.Views
             _renderer.sharedMaterial = _dissolveMaterial;
 
             TickDissolve();
+        }
+
+        /// <remarks>
+        /// GD §9.1 rule 1 — an attack the player cannot see coming is not a difficulty, it is a
+        /// bug. The duration comes off the event rather than out of a spec lookup, so what is drawn
+        /// and what core is counting are the same 0.4 s by construction.
+        /// </remarks>
+        private void OnTelegraph(EnemyTelegraph evt)
+        {
+            if (evt.Id != _view.Id || _dissolving)
+            {
+                return;
+            }
+
+            // A non-positive windup is a legal archetype — EnemySpec allows zero, meaning an
+            // untelegraphed hit — and there is nothing to draw for it. Guarded rather than divided
+            // by, because the alternative is an infinity in the scale on the frame it arrives.
+            if (!(evt.Duration > 0f))
+            {
+                return;
+            }
+
+            _telegraphDuration = evt.Duration;
+            _telegraphRemaining = evt.Duration;
+        }
+
+        /// <summary>
+        /// Swells the body over the wind-up and drops it back at the damage frame.
+        /// </summary>
+        /// <remarks>
+        /// The snap back is the point: it grows steadily for the whole telegraph and returns to
+        /// normal in one frame, so the eye reads the release as the moment of the strike. Easing it
+        /// out would blur the one instant the player is timing a dodge against.
+        /// </remarks>
+        private void TickTelegraph()
+        {
+            if (_telegraphRemaining <= 0f)
+            {
+                return;
+            }
+
+            _telegraphRemaining -= Time.deltaTime;
+
+            if (_telegraphRemaining <= 0f)
+            {
+                _telegraphRemaining = 0f;
+                transform.localScale = _liveScale;
+
+                return;
+            }
+
+            float t = 1f - (_telegraphRemaining / _telegraphDuration);
+
+            transform.localScale = _liveScale * Mathf.Lerp(1f, _telegraphSwell, t);
         }
 
         private void TickDissolve()

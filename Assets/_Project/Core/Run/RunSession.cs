@@ -123,7 +123,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         // The same capacity the registry and the snapshot use, from the same constant, because the
         // candidate buffer it preallocates has to be able to hold every enemy the run may spawn.
-        var combat = new PlayerCombat(character, _events, _enemyCapacity);
+        // It gets the intent sink because a damage frame is a question for the body, and the
+        // question has to leave on the tick that produced it rather than be relayed through here.
+        var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity);
 
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list.
@@ -178,7 +180,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Before the behaviours, so the target is chosen from the same positions the enemies were
         // just seen at rather than from wherever this tick's AI moved them; and before the motor,
         // because the motor needs the facing this decides.
-        State.Combat.Tick(snapshot.Dt, State.Time, snapshot, State.Enemies.Registry.Alive);
+        //
+        // Which is also why the facing handed over is the one the motor is *currently* in, from
+        // last tick's turn: combat cannot be given a facing that has not been decided yet. A swing
+        // landing mid-turn is therefore aimed up to one frame of rotation behind the pose that gets
+        // drawn — see PlayerCombat.Tick's bodyFacing, which is where that trade is argued.
+        State.Combat.Tick(
+            snapshot.Dt,
+            State.Time,
+            snapshot,
+            State.Enemies.Registry.Alive,
+            State.Motor.Facing);
 
         State.Enemies.Tick(snapshot.Dt, State.Time);
 

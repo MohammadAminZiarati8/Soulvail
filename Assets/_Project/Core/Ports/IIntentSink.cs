@@ -19,8 +19,8 @@ namespace Soulvail.Core.Ports;
 /// would force the sink to work out at run time what it had been handed — a type test, a boxed
 /// payload or a type-keyed lookup on every intent, every frame — and it would let the port grow
 /// by accident, since any new struct would already be accepted. A named method makes adding an
-/// intent a deliberate edit to this file. Later tasks add <c>EnemyMove</c>, <c>EnemyAction</c>,
-/// <c>ConeHitRequest</c> and <c>Spawn</c> (M1).
+/// intent a deliberate edit to this file. Later tasks add <c>EnemyMove</c>, <c>EnemyAction</c>
+/// and <c>Spawn</c> (M1).
 /// </para>
 /// </remarks>
 public interface IIntentSink
@@ -30,4 +30,16 @@ public interface IIntentSink
     /// The session emits exactly one per tick; last write wins.
     /// </summary>
     void PlayerMove(in PlayerMoveIntent intent);
+
+    /// <summary>
+    /// Asks the body to resolve a cone and report who was inside it.
+    /// </summary>
+    /// <remarks>
+    /// Accumulated rather than replaced, unlike <see cref="PlayerMove"/>, and the difference is
+    /// what the two intents are. A movement intent is a state — the body can only be moving one
+    /// way, so the newest is the only one that matters. A cone is an <em>event</em> the body owes
+    /// an answer to, and dropping one because a second arrived in the same tick would lose a whole
+    /// swing's damage. Nothing emits two in one tick today; M1-15's Charge is the first that can.
+    /// </remarks>
+    void ConeHit(in ConeHitIntent intent);
 }

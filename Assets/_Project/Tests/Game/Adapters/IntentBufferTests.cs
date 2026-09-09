@@ -83,13 +83,52 @@ public sealed class IntentBufferTests
     }
 
     [Test]
+    public void Fresh_HasNoConeHits()
+    {
+        Assert.That(_buffer.ConeHits, Is.Empty, "Most ticks have no swing in them — three a second do.");
+    }
+
+    [Test]
+    public void ConeHit_Accumulates_InOrder()
+    {
+        _sink.ConeHit(Cone(1));
+        _sink.ConeHit(Cone(2));
+
+        // Accumulated, not overwritten, and this is the one place the two intents differ. A move
+        // intent is a state and only the newest matters; a cone is a question the body owes an
+        // answer to, so dropping one because a second arrived in the same tick would lose a whole
+        // swing's damage. M1-15's Charge is the first thing that can produce two.
+        Assert.That(_buffer.ConeHits.Count, Is.EqualTo(2));
+        Assert.That(_buffer.ConeHits[0].RequestId, Is.EqualTo(1));
+        Assert.That(_buffer.ConeHits[1].RequestId, Is.EqualTo(2));
+        Assert.That(_buffer.ConeHits[0].Range, Is.EqualTo(8f));
+        Assert.That(_buffer.ConeHits[0].AngleDeg, Is.EqualTo(60f));
+    }
+
+    [Test]
+    public void Clear_EmptiesConeHits()
+    {
+        _sink.ConeHit(Cone(1));
+        Assert.That(_buffer.ConeHits, Is.Not.Empty, "Sanity: there is something to clear.");
+
+        _buffer.Clear();
+
+        // Genuinely emptied, where HasPlayerMove is only lowered — a list has no flag to check
+        // first, so leftovers would read as this tick's swings and the body would sweep the same
+        // cone every frame until the next one replaced it.
+        Assert.That(_buffer.ConeHits, Is.Empty);
+    }
+
+    [Test]
     public void WriteAndClear_AllocateNothing()
     {
         var intent = new PlayerMoveIntent(new Vector3(1f, 0f, 0f), new Vector3(0f, 0f, 1f));
+        ConeHitIntent cone = Cone(1);
 
         AllocationAssert.None(() =>
         {
             _sink.PlayerMove(in intent);
+            _sink.ConeHit(in cone);
             _buffer.Clear();
         });
 
@@ -97,5 +136,17 @@ public sealed class IntentBufferTests
             _buffer.HasPlayerMove,
             Is.False,
             "Sanity: the measured body really ran the whole write-then-clear cycle.");
+
+        // The cone list is preallocated and Clear keeps its capacity, so the add above never grows
+        // an array — which is what makes the measurement above mean anything.
+        Assert.That(_buffer.ConeHits, Is.Empty);
     }
+
+    /// <summary>The Censer's wedge (CC §7), swung from the origin along +Z.</summary>
+    private static ConeHitIntent Cone(int requestId) => new ConeHitIntent(
+        requestId,
+        Vector3.Zero,
+        new Vector2(0f, 1f),
+        8f,
+        60f);
 }

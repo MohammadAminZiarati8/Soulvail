@@ -391,7 +391,10 @@ public sealed class RunSessionTests
         // Required as of M1-03, and irrelevant to every row in this fixture: the run session
         // does not target anything yet. CC §7's numbers rather than invented ones, so a future
         // row that does care starts from the real class.
-        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f));
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        // Required as of M1-10, and irrelevant here for the same reason one step along: with no
+        // enemies in any of these rows there is never a target, so the weapon never swings.
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f));
 
     /// <summary>One snapshot per call, filled the way M0-16's builder will fill its single one.</summary>
     private static WorldSnapshot Snapshot(float dt, Vector2 input = default, Vector3 position = default)

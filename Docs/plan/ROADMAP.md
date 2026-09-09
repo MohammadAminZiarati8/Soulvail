@@ -78,7 +78,7 @@
 | [M1-07](tasks/M1-07-enemy-authoring-and-views.md) | `EnemyDefinition`, `Husk.asset`, `EnemyView`, `EnemyViews`, dummy prefab | M | 06 | ☑ |
 | [M1-08](tasks/M1-08-player-combat.md) | `PlayerCombat`: health, targeting, `CombatBlackboard`, combat events; `RunSession` composes | M | 02 04 06 | ☑ |
 | [M1-09](tasks/M1-09-tap-to-focus-and-reticle.md) | `IPlayerCommands.FocusTarget/ClearFocus`, 3 m resolver, `TapToFocusAdapter`, `ReticleView` | M | 07 08 | ☑ |
-| [M1-10](tasks/M1-10-weapon-and-cone-intent.md) | `WeaponSpec`, `Weapon` cadence + damage frame, `ConeHitIntent` | M | 08 | ☐ |
+| [M1-10](tasks/M1-10-weapon-and-cone-intent.md) | `WeaponSpec`, `Weapon` cadence + damage frame, `ConeHitIntent` | M | 08 | ☑ |
 | [M1-11](tasks/M1-11-cone-hits-to-damage.md) | `ReportConeHits` fact → damage → `EnemyDamaged` / `EnemyDied`, despawn | S | 10 | ☐ |
 | [M1-12](tasks/M1-12-cone-overlap-and-hit-feedback.md) | `ConeOverlapQuery`, `RunTicker` fact loop, hit flash, dissolve death | M | 07 11 | ☐ |
 | [M1-13](tasks/M1-13-focus-ramp.md) | `FocusSpec`, `FocusTracker` → fire-rate modifier; ground glow | M | 10 | ☐ |

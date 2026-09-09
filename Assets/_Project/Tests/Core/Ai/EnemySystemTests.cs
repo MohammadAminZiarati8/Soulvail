@@ -708,7 +708,8 @@ public sealed class EnemySystemTests
         new LocKey("character.oathbound.name"),
         120f,
         new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
-        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f));
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f));
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

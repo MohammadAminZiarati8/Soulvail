@@ -334,6 +334,7 @@ public sealed class FocusResolverTests
         140f,
         new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
         new TargetingSpec(AcquireRange, 3f, 2f, 1f, 1.5f, 0.1f),
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
         new ShieldSpec(30f, 4f, 15f),
         0.5f);
 

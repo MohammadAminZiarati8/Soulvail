@@ -103,9 +103,9 @@ TTK sanity: 13 damage × 3 swings = 39 ≥ 36 → a Husk dies on the third damag
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 341 EditMode, 3 PlayMode, 0 failed
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -114,4 +114,14 @@ TTK sanity: 13 damage × 3 swings = 39 ≥ 36 → a Husk dies on the third damag
 
 ## As built
 
-_Filled at merge._
+Built as specified. All fourteen rows of the Tests table exist under those names and pass; the eight behaviour rules are implemented as written. Three departures, each argued in the code:
+
+1. **`PlayerCombat.Tick` gained a `bodyFacing` parameter** — `Tick(dt, now, snapshot, enemies, bodyFacing)`. Rule 6 says the cone carries the motor's facing, and `PlayerCombat` holds no motor: `RunState.Motor` is `internal` so that no one can advance it twice, and injecting it here would rebuild that hazard inside core. A snapshot field was the other option and was rejected as duplicated state — `PlayerView` sets the transform straight from `intent.Facing` with no smoothing, so core already knows the rendered facing exactly. It is **last tick's facing**, because the run turns the motor after combat decides where to look: up to 12° behind the drawn pose at 60 fps, inside a 60° arc, only while turning. Cost: fifteen mechanical call-site updates in `PlayerCombatTests`.
+2. **A `FireRate` of zero or below refuses to start a swing.** `Stat` clamps nothing, so a −100 % `PercentMult` would otherwise schedule a swing ending at infinity and leave `IsSwinging` true for the rest of the run. Extra row: `FireRateAtZero_DoesNotSwing`.
+3. **A dead player still swings.** Rule 5's three conditions are implemented exactly; there is nothing to stop until M1-17 wires the death flow, and a fourth condition here would be a second opinion on when a run is over. Named in `PlayerCombat`'s remarks.
+
+Additions the table implies rather than lists: `PlayerCombat.PendingConeRequestId` (rule 6's "remembers the request as pending", exposed so M1-11 can match a fact against it rather than sitting as a dead field), and `Weapon.Reset` joining `PlayerCombat.Reset`.
+
+Four extra rows in `WeaponTests` (`Reset_ReturnsToRest`, `FireRateAtZero_DoesNotSwing`, `Spec_InvalidNumbers_Throw`, `Ctor_NullSpec_Throws`) and edits to six existing test files, all of which guard a listed small edit — see the PROGRESS entry for the list and the reasons.
+
+**Manual verification:** none possible or needed. There is nothing on screen yet — M1-12 draws the swing and resolves the cone. `Tick_AllocatesNothing` covers the per-frame budget; the TTK invariant is pinned twice, in `ThreeSwingsPerSecond` and in `CharacterDefinitionTests.Oathbound_ToSpec_HasWeapon`.

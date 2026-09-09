@@ -121,6 +121,55 @@ public sealed class CharacterDefinitionTests
     }
 
     [Test]
+    public void Oathbound_ToSpec_HasWeapon()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {OathboundPath}.");
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Weapon, Is.Not.Null,
+            "Every class has a basic attack (CC §4), so this is required rather than optional — a " +
+            "null here would mean the field was forgotten, not that the class does not attack.");
+
+        // CC §7's attack table, each number against its own property. 13 and 3 are the pair that
+        // must not swap: 3 damage at 13 /s is 39 DPS too, so no behaviour row would notice — and
+        // the Husk would die in twelve swings instead of three.
+        Assert.That(spec.Weapon.Kind, Is.EqualTo(WeaponKind.Cone), "CC §4.1: the Censer is a cone.");
+        Assert.That(spec.Weapon.Damage, Is.EqualTo(13f).Within(Tolerance),
+            "CC §7 attack: 13 damage a swing, not the swing rate.");
+        Assert.That(spec.Weapon.SwingsPerSecond, Is.EqualTo(3f).Within(Tolerance),
+            "CC §7 attack: 3.0 swings a second, not the damage.");
+        Assert.That(spec.Weapon.Range, Is.EqualTo(8f).Within(Tolerance),
+            "CC §7 attack: 8 m — and the acquire range above is this × 1.5.");
+        Assert.That(spec.Weapon.ConeAngleDeg, Is.EqualTo(60f).Within(Tolerance),
+            "CC §7 attack: a 60° full arc, not a 60° half-angle.");
+        Assert.That(spec.Weapon.DamageFrame, Is.EqualTo(0.4f).Within(Tolerance),
+            "CC §4.2: the damage lands 40 % through the swing.");
+
+        // The invariant all five of them exist to serve (GD §6.2): 13 × 3 = 39 ≥ 36, so a Husk
+        // dies on the third damage frame. Any drift above has to be checked against this.
+        Assert.That(spec.Weapon.Damage * spec.Weapon.SwingsPerSecond, Is.GreaterThanOrEqualTo(36f),
+            "A Husk has 36 HP and must die within a second of fire.");
+    }
+
+    [Test]
+    public void ToSpec_InvalidWeapon_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenWeapon");
+
+        // [Range(0f, 0.99f)] keeps this out of the Inspector; a SerializedProperty write goes
+        // straight past it, which is the hole WeaponSpec's constructor closes. A damage frame at 1
+        // would land on the tick that ends the swing.
+        SetFloat(definition, "_weaponDamageFrame", 1f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenWeapon"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
     public void ToSpec_InvalidTargeting_ThrowsNamingAsset()
     {
         CharacterDefinition definition = NewDefinition("BrokenTargeting");

@@ -32,11 +32,16 @@ namespace Soulvail.Core.Combat;
 /// enemies may exist is three chances to be blind to one.
 /// </para>
 /// <para>
-/// <b>Nothing here ends the run, and nothing here fires a weapon.</b> A death is published and
-/// then let go of (M1-17 wires the flow), and <see cref="DpsOneSecond"/> stays zero until M1-10
-/// gives the character something to shoot with. Both are seams rather than omissions: the finisher
-/// bonus of CC §3.2 is already read by the scorer through that number, so the day a weapon exists
-/// the targeting starts preferring wounded enemies without a line changing here.
+/// <b>It fires a weapon but resolves nothing.</b> The <see cref="Weapon"/> decides when a swing
+/// starts and when its damage lands; what that damage touches is a physical question, so the
+/// damage frame leaves as a <see cref="ConeHitIntent"/> and the answer comes back as a fact in
+/// M1-11. Between the two, this class knows only that it asked.
+/// </para>
+/// <para>
+/// <b>Nothing here ends the run.</b> A death is published and then let go of (M1-17 wires the
+/// flow), which is also why the weapon keeps its cadence through it: until the death flow exists
+/// there is nothing to stop, and a rule here about not swinging while dead would be a second
+/// opinion on when a run is over.
 /// </para>
 /// </remarks>
 public sealed class PlayerCombat
@@ -73,6 +78,7 @@ public sealed class PlayerCombat
     private const float MinDirectionDistanceSquared = MinDirectionDistance * MinDirectionDistance;
 
     private readonly IDomainEvents _events;
+    private readonly IIntentSink _intents;
     private readonly TargetingSpec _targeting;
 
     /// <summary>
@@ -94,20 +100,32 @@ public sealed class PlayerCombat
     /// </remarks>
     private float _lastReportedShieldFraction;
 
+    /// <summary>
+    /// The last <see cref="ConeHitIntent.RequestId"/> issued. Pre-incremented, so the first swing
+    /// of a run asks question 1 and 0 is never a real request.
+    /// </summary>
+    private int _lastConeRequestId;
+
     /// <param name="spec">
-    /// The class being played. Read once, here: its health numbers seed <see cref="Health"/> and
-    /// its <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which
-    /// both need it and must agree about it.
+    /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
+    /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
+    /// need it and must agree about it, and its <see cref="CharacterSpec.Weapon"/> seeds
+    /// <see cref="Weapon"/>.
     /// </param>
-    /// <param name="events">Where the four combat events go.</param>
+    /// <param name="events">Where the five combat events go.</param>
+    /// <param name="intents">
+    /// Where each damage frame's <see cref="ConeHitIntent"/> is written. Held here rather than
+    /// reached through the run, because this is the object that knows a swing landed and the
+    /// question has to leave on the tick that produced it.
+    /// </param>
     /// <param name="enemyCapacity">
     /// The most enemies a run may hold at once, which is how long the candidate buffer is. It must
     /// be the number the enemy registry and the <c>WorldSnapshot</c> were built with — see the
     /// class remarks.
     /// </param>
-    /// <exception cref="ArgumentNullException"><paramref name="spec"/> or <paramref name="events"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Any of the three references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
-    public PlayerCombat(CharacterSpec spec, IDomainEvents events, int enemyCapacity)
+    public PlayerCombat(CharacterSpec spec, IDomainEvents events, IIntentSink intents, int enemyCapacity)
     {
         if (spec is null)
         {
@@ -115,6 +133,7 @@ public sealed class PlayerCombat
         }
 
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _intents = intents ?? throw new ArgumentNullException(nameof(intents));
 
         if (enemyCapacity <= 0)
         {
@@ -137,6 +156,10 @@ public sealed class PlayerCombat
         // would be two chances for the override to disagree with the scoring it overrides.
         Targeter = new Targeter(new TargetScorer(spec.Targeting), spec.Targeting);
 
+        // The class's basic attack, live. Its two Stats are seeded from the spec and are where
+        // every damage and fire-rate modifier in the game lands, M1-13's Focus ramp first.
+        Weapon = new Weapon(spec.Weapon);
+
         Blackboard = new CombatBlackboard();
 
         // A full Aegis is fraction 1, and a class without one is 0. Either way the baseline starts
@@ -155,6 +178,13 @@ public sealed class PlayerCombat
     /// they earn it — see their remarks.
     /// </remarks>
     public Targeter Targeter { get; }
+
+    /// <summary>
+    /// The character's basic attack and its cadence. Ticked from <see cref="Tick"/>; exposed for
+    /// the same reason <see cref="Targeter"/> is, and because its two <see cref="Stat"/>s are what
+    /// a modifier has to reach.
+    /// </summary>
+    public Weapon Weapon { get; }
 
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
@@ -185,12 +215,26 @@ public sealed class PlayerCombat
     /// What one second of fire is expected to do — CC §3.2's threshold for the finisher bonus.
     /// </summary>
     /// <remarks>
-    /// Zero until M1-10, which is the first task that gives the character a weapon to estimate it
-    /// from. Zero is the correct value meanwhile rather than a placeholder: with no weapon, no
-    /// enemy can be finished within a second, so no candidate earns the bonus and targeting falls
-    /// back to priority and distance — exactly what it should do for a character that cannot shoot.
+    /// Copied off the <see cref="Weapon"/> at the top of every tick rather than read through it on
+    /// demand, so the number the scorer weighs and the number a debug overlay shows are the same
+    /// one, taken at the same moment. It is a mirror of a live stat and therefore has to be
+    /// refreshed; the alternative — a property forwarding to the weapon — would be one fewer field
+    /// and one more way for <see cref="Reset"/> to disagree with itself.
     /// </remarks>
     public float DpsOneSecond { get; private set; }
+
+    /// <summary>
+    /// The <see cref="ConeHitIntent.RequestId"/> of the swing waiting on an answer, or −1 when
+    /// nothing is in flight.
+    /// </summary>
+    /// <remarks>
+    /// What M1-11's <c>ReportConeHits</c> matches a fact against. Kept because the round trip is
+    /// asynchronous by construction: the body answers at least a frame later, and by then the only
+    /// way to know whether a report belongs to the swing that is still owed one is to have written
+    /// down which swing that was. A report carrying any other id is stale and can be dropped
+    /// without guessing.
+    /// </remarks>
+    public int PendingConeRequestId { get; private set; } = -1;
 
     /// <summary>
     /// Applies <paramref name="amount"/> to the player at time <paramref name="now"/> and announces
@@ -302,15 +346,21 @@ public sealed class PlayerCombat
     public void ClearFocus() => Targeter.ClearFocus();
 
     /// <summary>
-    /// One frame of the player's fight: gather, target, tick health, perceive, face.
+    /// One frame of the player's fight: gather, target, tick health, perceive, face, swing.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>The order is the rule.</b> Candidates are built from positions the run has already
     /// ingested this frame, so targeting decides on where enemies are now rather than where they
-    /// were; the target is chosen before the blackboard records it; and the facing is derived last,
-    /// from the decision the targeter just made. Reversing any pair would leave one of the three
-    /// answering with last frame's world.
+    /// were; the target is chosen before the blackboard records it; the facing is derived from the
+    /// decision the targeter just made; and the weapon swings last, at whatever that decision left
+    /// it pointing at. Reversing any pair would leave one of them answering with last frame's
+    /// world.
+    /// </para>
+    /// <para>
+    /// <see cref="DpsOneSecond"/> is refreshed before the targeting pass rather than after it, so
+    /// CC §3.2's finisher bonus is weighed against this tick's fire rate. A weapon that just got
+    /// 30 % faster should start preferring the wounded enemy immediately, not next frame.
     /// </para>
     /// <para>
     /// No null guard on <paramref name="snapshot"/>, for the reason <c>RunSession.Tick</c> gives:
@@ -326,13 +376,35 @@ public sealed class PlayerCombat
     /// Every registered enemy, the dead included — <c>EnemyRegistry.Alive</c>. Borrowed for the
     /// duration of the call and never retained.
     /// </param>
+    /// <param name="bodyFacing">
+    /// Which way the character is currently pointing: <c>PlayerMotor.Facing</c>, a unit vector on
+    /// the ground plane. The swing arc is centred on it, so it is the body's facing rather than the
+    /// direction to the target — a cone that always landed on the target regardless of where the
+    /// character was pointing is exactly the auto-aim CC §3.5 says players stop trusting.
+    /// <para>
+    /// Passed in rather than read, because the motor is the run's to tick and this class must not
+    /// hold a handle it could advance. It is the facing as of the previous tick — the run turns the
+    /// motor <em>after</em> combat decides where to look — so a swing that lands while the
+    /// character is still turning is aimed up to one frame of rotation behind the pose that gets
+    /// drawn: 12° at 60 fps, inside a 60° arc, and only while turning. The same one-frame lag
+    /// ADR-0003 accepts on positions, and cheaper than the alternative, which is a frame of latency
+    /// on the targeting decision itself.
+    /// </para>
+    /// </param>
     /// <exception cref="InvalidOperationException">
     /// There are more enemies than the capacity this was built with. Loud rather than truncated:
     /// silently dropping the tail would make the character blind to enemies the run knows about,
     /// and the two numbers come from one constant precisely so this cannot happen.
     /// </exception>
-    public void Tick(float dt, float now, WorldSnapshot snapshot, ReadOnlySpan<EnemyAgent> enemies)
+    public void Tick(
+        float dt,
+        float now,
+        WorldSnapshot snapshot,
+        ReadOnlySpan<EnemyAgent> enemies,
+        Vector3 bodyFacing)
     {
+        DpsOneSecond = Weapon.DpsOneSecond;
+
         int count = BuildCandidates(snapshot.PlayerPosition, enemies);
 
         Targeter.Tick(dt, new ReadOnlySpan<TargetCandidate>(_candidates, 0, count), DpsOneSecond);
@@ -353,11 +425,13 @@ public sealed class PlayerCombat
 
         UpdateBlackboard(dt, snapshot, count);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
+
+        TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count);
     }
 
     /// <summary>
-    /// Back to the start of a run: full health, no target, no focus, a blank blackboard and no
-    /// facing.
+    /// Back to the start of a run: full health, no target, no focus, a weapon at rest, a blank
+    /// blackboard and no facing.
     /// </summary>
     /// <remarks>
     /// What a respawn or a new stage gets instead of a rebuilt <see cref="PlayerCombat"/>, for the
@@ -370,10 +444,106 @@ public sealed class PlayerCombat
     {
         Health.Reset();
         Targeter.Reset();
+        Weapon.Reset();
         Blackboard.Reset();
 
         FaceDirection = null;
+        DpsOneSecond = 0f;
         _lastReportedShieldFraction = Health.ShieldFraction;
+
+        // The counter goes back to zero with everything else, so request ids stay monotonic within
+        // the stretch of run they have to be matched across. Nothing can be in flight: a reset
+        // happens between stages, and a report that arrives after one belongs to a swing whose
+        // enemies have been cleared out from under it.
+        PendingConeRequestId = -1;
+        _lastConeRequestId = 0;
+    }
+
+    /// <summary>Rules 1–7 of M1-10: swing, announce, and ask the body what the swing touched.</summary>
+    /// <remarks>
+    /// <para>
+    /// Last in the tick, because everything it needs was decided earlier in the same tick: the
+    /// target comes from the targeting pass, and the distance from the candidate buffer that pass
+    /// read. The weapon itself knows none of that — it is handed one <see cref="bool"/> and
+    /// answers with timing.
+    /// </para>
+    /// <para>
+    /// The two moments leave by different doors on purpose. A swing start is news, so it is
+    /// published; a damage frame is a question only the body can answer, so it is an intent. That
+    /// is ADR-0003's split, and it is why the view can play a windup on a swing that ends up
+    /// hitting nothing.
+    /// </para>
+    /// </remarks>
+    private void TickWeapon(float dt, float now, Vector3 playerPosition, Vector3 bodyFacing, int count)
+    {
+        WeaponTick tick = Weapon.Tick(dt, now, IsTargetInWeaponRange(count));
+
+        // Read once and shared by both, so the arc a view draws and the wedge the body sweeps
+        // cannot describe two different swings.
+        var facingXZ = new Vector2(bodyFacing.X, bodyFacing.Z);
+
+        if (tick.SwingStarted)
+        {
+            _events.Publish(new PlayerAttacked(facingXZ));
+        }
+
+        if (!tick.DamageFrame)
+        {
+            return;
+        }
+
+        _lastConeRequestId++;
+        PendingConeRequestId = _lastConeRequestId;
+
+        _intents.ConeHit(new ConeHitIntent(
+            _lastConeRequestId,
+            playerPosition,
+            facingXZ,
+            Weapon.Range,
+            Weapon.ConeAngleDeg));
+    }
+
+    /// <summary>
+    /// Rule 5: is there something worth swinging at — a live, unblocked target inside the weapon's
+    /// reach?
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The distance comes from the candidate buffer rather than from a fresh subtraction, because
+    /// the buffer's is the number targeting just decided on. Deriving it again from the agents
+    /// would be a second answer to the same question, and the two would differ on exactly the tick
+    /// an enemy crossed the boundary.
+    /// </para>
+    /// <para>
+    /// Blocked targets are excluded, which is CC §3.6 arriving where it matters: the character
+    /// keeps facing the Warden it cannot hurt — see <see cref="FaceDirection"/> — and stops
+    /// swinging at it, so the game says "go around" without the weapon pretending to connect. The
+    /// blocked enemy is not swung *through* either; a cone that fired anyway would kill whatever
+    /// stood behind it and make the block look like a lie.
+    /// </para>
+    /// </remarks>
+    private bool IsTargetInWeaponRange(int count)
+    {
+        int id = Targeter.CurrentTargetId;
+
+        if (id < 0 || Targeter.IsCurrentBlocked)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            ref readonly TargetCandidate candidate = ref _candidates[i];
+
+            if (candidate.Id == id)
+            {
+                return candidate.Distance <= Weapon.Range;
+            }
+        }
+
+        // Unreachable while the targeter is fed from this same buffer, and cheap to be right about:
+        // a target with no candidate behind it is nothing to swing at.
+        return false;
     }
 
     /// <summary>

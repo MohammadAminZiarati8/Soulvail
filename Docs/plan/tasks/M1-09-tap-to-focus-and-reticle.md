@@ -95,7 +95,7 @@ public sealed class ReticleView : MonoBehaviour
 
 - [x] All tests green — 317 EditMode, 0 failed
 - [x] Zero errors, zero new analyzer warnings
-- [~] Manual steps verified — 1 and 4 verified in Play mode (see *As built*); 2 and 3 are the owner's
+- [x] Manual steps verified — 1 and 4 in Play mode by probe, 2 by the owner playtesting (clicking different dummies switches the target); 3 not separately called out
 - [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
@@ -120,4 +120,6 @@ public sealed class ReticleView : MonoBehaviour
 
 **Verified in Play mode**, on the Run scene with eight dummies: the ring appears under the auto-selected dummy at ground level (`reticle pos = (8.00, 0.02, 0.00)`, ring on, chevron off, × off, scale 1.000), the overlay reads `target 1`, and a tap switches it to the focused look — chevron on, scale pulsing at 1.148 — with the overlay reading `target 1 focus`. Manual steps 2 and 3 (tapping a far dummy, tapping empty ground, both by hand) are the owner's; synthetic input could not be made deterministic with a live physical mouse present, since a real device event overwrites the queued state in the same update.
 
-**One incidental file:** `ProjectSettings/URPProjectSettings.asset` gained `m_ProjectSettingFolderPath: URPDefaultResources`, written by Unity when the first URP material was created. Not a behaviour change, and it will happen again to whoever next creates one.
+**The owner playtested it and found the one rough edge**: tapping an enemy far from the character does nothing. That is M1-04 working as specified rather than a fault here — `FocusResolver` has no distance limit, but `Targeter.Select` lets the override take the target only inside the class's `acquireRange` (12 m for the Oathbound), and drops the focus after 2 s outside it, per CC §3.4. The rule is right; the *silence* is not, since `TargetChanged` goes out with `IsFocused: false` and nothing on screen moves, which CC §3.5 exists to prevent. **Left as is by the owner's decision** and parked in the ROADMAP for a later pass — M1-18's chasers may shrink the problem to nothing by closing the distance themselves.
+
+**One incidental file:** creating the first URP material made Unity write `m_ProjectSettingFolderPath: URPDefaultResources` into `ProjectSettings/URPProjectSettings.asset` by itself. The owner reverted it, so it is not in this PR; expect it again from whoever next creates one.

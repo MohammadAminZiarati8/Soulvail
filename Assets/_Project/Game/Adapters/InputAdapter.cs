@@ -19,9 +19,9 @@ namespace Soulvail.Game.Adapters;
 /// the other, which is the whole point of routing through the asset.
 /// </para>
 /// <para>
-/// <c>Move</c> and <c>Focus</c> are read. The other six actions are bound in the asset already so
-/// that later tasks add a reader here rather than reopening the actions asset — M1-16 takes
-/// <c>MovementSkill</c>, M3-10 <c>Skill1</c>–<c>Skill4</c>, M3-09 <c>Pause</c>.
+/// <c>Move</c>, <c>Focus</c> and <c>MovementSkill</c> are read. The other five actions are bound in
+/// the asset already so that later tasks add a reader here rather than reopening the actions asset
+/// — M3-10 takes <c>Skill1</c>–<c>Skill4</c>, M3-09 <c>Pause</c>.
 /// </para>
 /// </remarks>
 public sealed class InputAdapter : IDisposable
@@ -92,6 +92,39 @@ public sealed class InputAdapter : IDisposable
             }
 
             return _actions.Player.Focus.WasPressedThisFrame();
+        }
+    }
+
+    /// <summary>
+    /// The movement-skill button went down this frame, and <see langword="false"/> while disabled
+    /// or after <see cref="Dispose"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The press edge, exactly like <see cref="FocusPressedThisFrame"/>: a thumb held on the button
+    /// is one dash asked for, not a dash asked for on every frame of the hold. Core would refuse
+    /// the repeats anyway — <c>ChargeSkill</c> keeps only the latest press and drops it once it
+    /// fires — but sending them would mean every frame of a hold overwrote the buffered press with
+    /// a fresher one, which is precisely how a tap made <em>before</em> the cooldown ended would
+    /// stop being the tap that fires when it does.
+    /// </para>
+    /// <para>
+    /// The action is bound to <c>&lt;Keyboard&gt;/space</c> and <c>&lt;Gamepad&gt;/buttonSouth</c>
+    /// (M0-14). On a phone the second of those is the on-screen <c>SkillButton</c>, which feeds the
+    /// virtual gamepad the same way the floating stick feeds the left stick — so this one property
+    /// is read identically in the Editor and under a thumb.
+    /// </para>
+    /// </remarks>
+    public bool MovementSkillPressedThisFrame
+    {
+        get
+        {
+            if (_disposed || !IsEnabled)
+            {
+                return false;
+            }
+
+            return _actions.Player.MovementSkill.WasPressedThisFrame();
         }
     }
 

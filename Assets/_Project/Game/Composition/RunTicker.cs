@@ -29,12 +29,23 @@ namespace Soulvail.Game.Composition;
 public sealed class RunTicker : IStartable, ITickable, IDisposable
 {
     private readonly IRunSession _session;
+
+    /// <summary>
+    /// The same run seen through the command port. A second handle rather than a cast, for the
+    /// reason <c>TapToFocusAdapter</c> takes one: what the player asks for and what the frame does
+    /// to the run are different privileges, and the press below has no business being able to end a
+    /// run.
+    /// </summary>
+    private readonly IPlayerCommands _commands;
+
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
     private readonly WorldSnapshot _snapshot;
     private readonly SnapshotBuilder _builder;
     private readonly IntentBuffer _intents;
     private readonly PlayerView _player;
+    private readonly ChargeMotion _charge;
+    private readonly EnemyViews _enemyViews;
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -56,23 +67,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </remarks>
     public RunTicker(
         IRunSession session,
+        IPlayerCommands commands,
         PendingRun pending,
         ContentCatalog catalog,
         WorldSnapshot snapshot,
         SnapshotBuilder builder,
         IntentBuffer intents,
         PlayerView player,
+        ChargeMotion charge,
+        EnemyViews enemyViews,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
         ConeOverlapQuery cone)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+        _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
@@ -80,10 +96,11 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _coneHitIds = new int[cone.Capacity];
 
-        // Unity's == rather than `is null`: RunScope supplies this from a serialized field, so a
+        // Unity's == rather than `is null`: RunScope supplies these from serialized fields, so a
         // destroyed or unassigned object is a live reference that only compares equal to null
         // through the engine's operator.
         _player = player == null ? throw new ArgumentNullException(nameof(player)) : player;
+        _charge = charge == null ? throw new ArgumentNullException(nameof(charge)) : charge;
     }
 
     /// <summary>
@@ -136,16 +153,25 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// last frame's velocity on any frame core stayed silent — a player who keeps sliding.
     /// </para>
     /// <para>
-    /// <see cref="ResolveConeHits"/> is last, and it is AR §4.3's step 5: the physics a swing
-    /// asked for runs <em>after</em> the body has been moved, so the sweep is resolved against the
+    /// <b>The fact phase is last, and it is AR §4.3's step 5:</b> the physics a swing or a dash
+    /// asked for runs <em>after</em> the body has been moved, so both are resolved against the
     /// arena as it stands at the end of this frame rather than against the one the frame started
-    /// with. It comes back in through a fact, and the damage it causes is published before this
+    /// with. Both come back in through a fact, and everything they cause is published before this
     /// method returns.
     /// </para>
     /// <para>
-    /// Allocates nothing: everything below is a call on an object built once per run, the intent
-    /// is a <c>readonly struct</c> taken by <c>in</c>, and the swing's answer goes back as a span
-    /// over an array owned since the run started.
+    /// <b><see cref="ApplyKnockbacks"/> is last of all, and that is not tidiness.</b> The shoves it
+    /// applies are written by core while it answers <c>ReportChargeHits</c> — that is, from inside
+    /// <see cref="StepCharge"/>, later in the frame than every other intent in the buffer. A reader
+    /// placed anywhere above this line would look at an empty list every single frame and find the
+    /// entries already cleared by the time it looked again. <c>IntentBuffer.Knockbacks</c> carries
+    /// the same warning from the other end.
+    /// </para>
+    /// <para>
+    /// Allocates nothing: everything below is a call on an object built once per run, the intents
+    /// are <c>readonly struct</c>s taken by <c>in</c>, the two lists are walked by index rather than
+    /// enumerated, and the swing's answer goes back as a span over an array owned since the run
+    /// started.
     /// </para>
     /// </remarks>
     public void Tick()
@@ -158,12 +184,29 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _session.Tick(_snapshot);
 
-        if (_intents.HasPlayerMove)
+        // Before the move below, so that the dash this starts is already in flight when the guard
+        // there asks whether one is. Core suspends the motor on the same tick, so there is no
+        // PlayerMove to suppress today — but the two would only have to disagree once.
+        if (_intents.HasCharge)
+        {
+            _charge.Begin(_intents.Charge, _session);
+        }
+
+        // The guard is belt and braces, and deliberately so. Core already withholds PlayerMove for
+        // every tick of a dash (M1-15 rule 3), so this can only matter if the two clocks ever drift
+        // apart by a frame at the end of one — and the cost of them doing so would be the body
+        // being pushed in two directions on the frame a dodge finishes, which is precisely the frame
+        // a player is judging the dodge on.
+        if (_intents.HasPlayerMove && !_charge.IsActive)
         {
             _player.Apply(_intents.PlayerMove, _snapshot.Dt);
         }
 
+        StepCharge();
+
         ResolveConeHits();
+
+        ApplyKnockbacks();
     }
 
     /// <summary>
@@ -197,6 +240,62 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
+    /// Walks this frame's slice of a dash, if one is in flight, and reports whoever it passed
+    /// through.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Placed between the body being moved and the swing being resolved, because a dash <em>is</em>
+    /// the body being moved on the frames it runs — core sends no <c>PlayerMoveIntent</c> while one
+    /// is in flight, so this line and the one above it are the same step of AR §4.3 taken two ways.
+    /// A swing resolved before it would be answered against a player who had not finished moving.
+    /// </para>
+    /// <para>
+    /// The snapshot's clamped <c>Dt</c>, never <c>Time.deltaTime</c>: it is the step core's own
+    /// dash clock is summed from, and handing the body a different one is how a 10 m dash quietly
+    /// becomes 11 m on a hitching frame.
+    /// </para>
+    /// </remarks>
+    private void StepCharge()
+    {
+        _charge.Step(_snapshot.Dt);
+    }
+
+    /// <summary>
+    /// Shoves every enemy core decided to shove while it was answering the dash's sweep.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An id with no body is skipped in silence, and that is normal rather than exceptional: the
+    /// same report that produced the shove may have killed the enemy, and <c>EnemyViews</c> destroys
+    /// a body the moment <c>EnemyDespawned</c> arrives — which happens inside
+    /// <see cref="StepCharge"/>, a line above this one. A corpse that is gone cannot be pushed, and
+    /// there is nothing wrong with that.
+    /// </para>
+    /// <para>
+    /// A <c>for</c> over the count rather than a <c>foreach</c>: the buffer hands out an
+    /// <c>IReadOnlyList</c>, and enumerating that would box an enumerator — rarely, but on exactly
+    /// the frames a dash is ploughing through a crowd.
+    /// </para>
+    /// </remarks>
+    private void ApplyKnockbacks()
+    {
+        IReadOnlyList<EnemyKnockbackIntent> knockbacks = _intents.Knockbacks;
+
+        for (int i = 0; i < knockbacks.Count; i++)
+        {
+            EnemyKnockbackIntent shove = knockbacks[i];
+
+            if (!_enemyViews.TryGet(shove.Id, out EnemyView view) || view == null)
+            {
+                continue;
+            }
+
+            view.Knockback(shove.DirectionXZ.ToUnity(), shove.Distance);
+        }
+    }
+
+    /// <summary>
     /// Everything the player asked for this frame, in one list.
     /// </summary>
     /// <remarks>
@@ -208,13 +307,20 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// file that already owns the frame.
     /// </para>
     /// <para>
-    /// One member today; M1-16's movement-skill press is the next, and the shape is what makes
-    /// that a line rather than a decision.
+    /// Two members now, and the second is exactly the line the shape was built for. The dash press
+    /// is read here rather than acted on by the button that made it, so that "a tap became a
+    /// command" happens at a known point in the frame — which is what makes CC §5's 0.15 s input
+    /// buffer measure the age of the press against the same clock core ends the cooldown on.
     /// </para>
     /// </remarks>
     private void CommandPhase()
     {
         _tapToFocus.Poll();
+
+        if (_input.MovementSkillPressedThisFrame)
+        {
+            _commands.MovementSkill();
+        }
     }
 
     /// <summary>
@@ -222,11 +328,26 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// the Run scene does.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// The dash is dropped first, and it is the only line here that is not bookkeeping: a Charge in
+    /// flight holds the session it reports into, and a body destroyed mid-dash would otherwise be
+    /// carrying a handle to a run that has ended. Nothing moves — the capsule stays wherever the
+    /// dodge got to, which is where the run ended.
+    /// </para>
+    /// <para>
     /// The adapter is disabled but not disposed: it was registered as a type, so the scope that
     /// built it disposes it, and doing it twice from two owners is how a double-free starts.
+    /// </para>
     /// </remarks>
     public void Dispose()
     {
+        // Unity's ==: by the time a scene unloads the component may already be destroyed, which is
+        // a live reference that only compares equal to null through the engine's operator.
+        if (_charge != null)
+        {
+            _charge.Cancel();
+        }
+
         _session.End();
         _input.Disable();
         Screen.sleepTimeout = SleepTimeout.SystemSetting;

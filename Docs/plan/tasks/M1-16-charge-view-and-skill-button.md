@@ -77,4 +77,59 @@ None beyond M1-15's core tests — this is body and UI. Verified on device.
 
 ## As built
 
-_Filled at merge._
+Built to the Files table. 414 EditMode + 3 PlayMode, zero errors, zero new warnings. The dash was
+measured in the Editor rather than left for the playtest — see *Measured* below.
+
+**Five places the code says something the spec did not.**
+
+1. **`State.Combat` is `internal`, so rule 5's `State.Combat.Charge.CooldownFraction` does not
+   compile from `Soulvail.Game`.** `RunState` gained one narrow read instead —
+   `MovementSkillCooldownFraction` — which is exactly the escape hatch that property's own remarks
+   promised ("anything that genuinely needs a live number gets a narrow read here rather than the
+   handle"). The handle stays internal, so nothing in the body can still advance, hurt or heal the
+   player. This is the only Core change in the task.
+2. **`ChargeMotion` is stepped by `RunTicker`, not by an `Update` of its own**, so it gained a
+   `Step(dt)` beyond the spec's two members (and a `Cancel()` for teardown). Forced by the first
+   trap: the sweep calls `ReportChargeHits`, which is what makes core write the knockbacks, so
+   "when the sweep runs" and "when the shoves are applied" have to be adjacent lines in the file
+   that owns the frame. With two `Update`s the order would have been Unity's to pick.
+3. **The `PlayerMove` guard is in `RunTicker`, not in `PlayerView`.** The spec puts "ignores
+   `PlayerMove` while charging" on the view, which would need the view to hold a reference to the
+   other view. `RunTicker` already holds both and already owns the order, and this keeps
+   `PlayerView` dumb.
+4. **`RunTicker` takes `IPlayerCommands` as a second handle on the session.** `IRunSession` has no
+   `MovementSkill` — commands are a separate port (M1-09) — so the press could not be forwarded
+   without it. Same shape `TapToFocusAdapter` already uses, and it keeps the frame loop unable to
+   end a run through the door the player presses.
+5. **`RunScope` gained the two serialized fields these components are registered through**
+   (`_chargeMotion`, `_skillButton`), which the spec's small-edits row does not list. Nothing in a
+   scene is injected unless the scope registers it. The mask reaches the sweep as
+   `RegisterComponent(_chargeMotion).WithParameter("enemyLayer", _enemyLayer)` — the same field that
+   arms the cone query, passed rather than registered as a bare `LayerMask`, so M1-19's wall layer
+   cannot later be resolved into the wrong one by type.
+
+**The button stays tappable while it is cooling**, which is CC §6.2's "no tap response" deliberately
+not followed. CC §5's 0.15 s input buffer only exists if the early press reaches core, and a button
+that swallowed it would make the buffer unreachable through the control it was written for. Core is
+what refuses a stale press. The 40 % dimming is the whole of the feedback, and manual steps 2 and 3
+are the two halves of that being right.
+
+**Two moments, still.** `ChargeMotion.IsActive` is the *movement* ending (0.22 s); `ChargeEnded` is
+the i-frames lapsing (0.27 s). Nothing in this task reads the later one — M1-17's HUD is the first
+that will — but every place the earlier one is read says which it means.
+
+**`EnemyView.Velocity` is now written by a shove.** It had been documented as "zero until M1-18".
+Leaving it zero would have the snapshot report a body standing still while its position moved 5 m,
+which is two senses about one enemy contradicting each other. A knockback is core's decision
+arriving as an intent, so the slide is still "what core asked for" and the M1-07 rule is intact.
+
+**Beyond the Files table:** `IntentBufferTests` gained five rows covering `HasCharge`, `Charge`,
+`Knockbacks` and their clearing — the coverage M1-15's footer explicitly left to this task — and its
+allocation row now writes all four intent kinds.
+
+**Measured, in play mode, through the real command port** (`Temp/soulvail-dash-trace.txt` at the
+time): press → **10.00 m travelled exactly**, then `IsActive` false; ~45 m/s along the way
+(7.73 m in 0.172 s); cooldown fraction 1.000 at the start decaying to 0.784 over 0.54 s, which is a
+2.5 s cooldown to three figures; the capsule passed *through* the enemy on its line rather than
+being stopped by it; and that enemy moved exactly **5.00 m** in a direction identical to the dash's.
+Every number in CC §5 that this task is responsible for, checked against the running game.

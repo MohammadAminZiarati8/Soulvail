@@ -232,6 +232,8 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _playerView: {fileID: 1102459965}
+  _chargeMotion: {fileID: 1102459968}
+  _skillButton: {fileID: 2052539125}
   _debugOverlay: {fileID: 5239836669165301809}
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
@@ -350,6 +352,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3253bf80c77e5c4f8e2e00e3a35d169, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
+--- !u!114 &1102459968 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4401292794507055000, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5581812873d4648983e7bc36c4385b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ChargeMotion
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0
@@ -854,6 +867,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+--- !u!114 &2052539125 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7325317697016450467, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3316ffa22f6ad3438ddcf9b871c7a97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.SkillButton
 --- !u!1 &2056789030
 GameObject:
   m_ObjectHideFlags: 0

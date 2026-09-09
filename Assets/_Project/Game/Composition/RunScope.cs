@@ -2,6 +2,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
+using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEngine;
@@ -40,6 +41,15 @@ namespace Soulvail.Game.Composition
     public sealed class RunScope : LifetimeScope
     {
         [SerializeField] private PlayerView _playerView;
+
+        [Tooltip("The dash, on the Player object. Not optional, unlike the reticle and the glow: " +
+                 "without it a Charge moves nothing and sweeps nobody, and it would fail silently.")]
+        [SerializeField] private ChargeMotion _chargeMotion;
+
+        [Tooltip("The Charge button on the HUD. Optional — an arena without a HUD is playable " +
+                 "from a keyboard, it just cannot be dashed with a thumb.")]
+        [SerializeField] private SkillButton _skillButton;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -86,6 +96,14 @@ namespace Soulvail.Game.Composition
                     $"{nameof(RunScope)} has no {nameof(PlayerView)} assigned. Drag the Player " +
                     "object in this scene onto its Player View field — without it the run has no " +
                     "body to move and no position to report.");
+            }
+
+            if (_chargeMotion == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(ChargeMotion)} assigned. Drag the Player " +
+                    "object in this scene onto its Charge Motion field — without it a Charge is " +
+                    "decided by core, paid for on the cooldown, and never happens to the body.");
             }
 
             if (_enemyPrefab == null)
@@ -140,6 +158,16 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_focusGlow);
             }
 
+            // Optional, and the odd one out among these: it is not a decoration but an *input*, so
+            // a scene without it is one the Charge can only be pressed on with a keyboard. That is
+            // exactly the Editor iteration workflow, which is why it is allowed to be missing —
+            // and why the phone build having one is an M1-16 manual step rather than a compile-time
+            // guarantee.
+            if (_skillButton != null)
+            {
+                builder.RegisterComponent(_skillButton);
+            }
+
             // Types, not instances, so the scope disposes them — the adapter owns a generated
             // actions asset that must be destroyed with the run (M0-14), and EnemyViews owns two
             // subscriptions and every body standing in the arena.
@@ -175,6 +203,14 @@ namespace Soulvail.Game.Composition
             // would hand any other LayerMask argument as well.
             builder.Register<ConeOverlapQuery>(Lifetime.Scoped)
                 .WithParameter("capacity", ConeOverlapQuery.DefaultCapacity)
+                .WithParameter("enemyLayer", _enemyLayer);
+
+            // The same mask, from the same field, handed to the dash's sweep. Passed rather than
+            // registered as a LayerMask of its own: a bare mask in the container would be resolved
+            // by type, and the first task that needs a second one — M1-19's walls — would silently
+            // hand the wrong layers to whichever of the two asked first. Registered here and not
+            // above because the guard the mask has to pass is a few lines up.
+            builder.RegisterComponent(_chargeMotion)
                 .WithParameter("enemyLayer", _enemyLayer);
 
             // An instance, and safe to be one — the M0-12 rule is about things the scope must

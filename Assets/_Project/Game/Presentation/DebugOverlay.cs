@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using TMPro;
@@ -32,6 +33,15 @@ namespace Soulvail.Game.Presentation
     /// by construction, so it could never show the boundary disagreeing with itself, which is the
     /// one thing it is for. It also means the line and the reticle are fed by the same event: if
     /// they ever disagree, the fault is in a view rather than in targeting.
+    /// </para>
+    /// <para>
+    /// The charge line (M1-16) is the one number here that comes from core's own state, through
+    /// <c>RunState.MovementSkillCooldownFraction</c>, and it is worth saying why it does not break
+    /// the rule above. There is no event that could carry it — a fill slides continuously for two
+    /// and a half seconds, so publishing it would mean an event a frame — and it is read from
+    /// exactly the property <c>SkillButton</c> reads. That makes it the same kind of check as the
+    /// target line rather than the opposite one: if the line and the button ever disagree, the
+    /// fault is in the button, because the number they are shown is one number.
     /// </para>
     /// <para>
     /// Development only. It removes itself in <see cref="Awake"/> outside the Editor and
@@ -66,6 +76,7 @@ namespace Soulvail.Game.Presentation
 
         private WorldSnapshot _snapshot;
         private IntentBuffer _intents;
+        private IRunSession _session;
         private IDisposable _targetSubscription;
         private float _untilRefresh;
         private float _fps;
@@ -78,13 +89,19 @@ namespace Soulvail.Game.Presentation
 
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
+        /// <param name="session">The run, for the one number that has no other way out. See the class remarks.</param>
         /// <param name="hub">The run's event hub, for the target line. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
-        public void Construct(WorldSnapshot snapshot, IntentBuffer intents, DomainEventHub hub)
+        public void Construct(
+            WorldSnapshot snapshot,
+            IntentBuffer intents,
+            IRunSession session,
+            DomainEventHub hub)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+            _session = session ?? throw new ArgumentNullException(nameof(session));
 
             if (hub is null)
             {
@@ -126,7 +143,7 @@ namespace Soulvail.Game.Presentation
                     "nowhere to write.");
             }
 
-            if (_snapshot is null || _intents is null)
+            if (_snapshot is null || _intents is null || _session is null)
             {
                 throw new InvalidOperationException(
                     $"{nameof(DebugOverlay)} was never injected. Drag this object onto " +
@@ -235,6 +252,13 @@ namespace Soulvail.Game.Presentation
             {
                 _line.Append(" blocked");
             }
+
+            // The cooldown, not the readiness: "charge 0.00" is the button being live, and the
+            // number climbing back down from 1 is the only way to see on a phone whether a dash
+            // that felt like it should have fired was actually inside CC §5's input buffer.
+            RunState state = _session.State;
+
+            _line.Append("  charge ").Append(Fixed(state is null ? 0f : state.MovementSkillCooldownFraction));
 
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 

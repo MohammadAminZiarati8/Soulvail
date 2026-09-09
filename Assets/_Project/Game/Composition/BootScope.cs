@@ -33,16 +33,19 @@ namespace Soulvail.Game.Composition
     /// </para>
     /// <para>
     /// This prefab is the only place in the project that names content assets for the container.
-    /// A class that is not in this array does not exist as far as a run is concerned.
+    /// A class or an enemy archetype that is not in one of these arrays does not exist as far as a
+    /// run is concerned — a spawn plan naming it fails at <c>Start</c> as missing content.
     /// </para>
     /// </remarks>
     public sealed class BootScope : LifetimeScope
     {
         [SerializeField] private CharacterDefinition[] _characters;
 
+        [SerializeField] private EnemyDefinition[] _enemies;
+
         protected override void Configure(IContainerBuilder builder)
         {
-            BootInstaller.Install(builder, _characters);
+            BootInstaller.Install(builder, _characters, _enemies);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

@@ -528,6 +528,11 @@ public sealed class ConeHitsToDamageTests
             // Deliberately nothing. Nothing in this fixture presses the movement-skill button.
         }
 
+        public void EnemyMove(in EnemyMoveIntent intent)
+        {
+            // Deliberately nothing. Every Husk in this fixture is a Static dummy.
+        }
+
         public void EnemyKnockback(in EnemyKnockbackIntent intent)
         {
             // Deliberately nothing.

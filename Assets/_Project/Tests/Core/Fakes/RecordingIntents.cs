@@ -29,6 +29,7 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<ConeHitIntent> _coneHits = new();
     private readonly List<ChargeIntent> _charges = new();
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
+    private readonly List<EnemyMoveIntent> _enemyMoves = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
     /// <remarks>
@@ -121,6 +122,53 @@ public sealed class RecordingIntents : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyKnockbackIntent> Knockbacks => _knockbacks;
 
+    /// <summary>Every enemy walk written, in the order core decided them.</summary>
+    /// <remarks>
+    /// The busiest record here by far — one per living chaser per tick — which is what makes
+    /// <see cref="Clear"/> the usual first line of a chaser assertion: "what did it decide *this*
+    /// tick" is otherwise buried under everything it decided before.
+    /// </remarks>
+    public IReadOnlyList<EnemyMoveIntent> EnemyMoves => _enemyMoves;
+
+    /// <summary>The most recent enemy walk.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// Nothing has been written. Louder than a default intent, which would read as enemy 0 standing
+    /// still and quietly pass a test whose behaviour never ran.
+    /// </exception>
+    public EnemyMoveIntent LastEnemyMove
+    {
+        get
+        {
+            if (_enemyMoves.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No EnemyMoveIntent has been written to this sink.");
+            }
+
+            return _enemyMoves[_enemyMoves.Count - 1];
+        }
+    }
+
+    /// <summary>How many walks were written for <paramref name="enemyId"/>.</summary>
+    /// <remarks>
+    /// The question "did this enemy act at all" — which is what a dead agent's row asks — cannot be
+    /// answered by the count alone once a fixture holds more than one enemy.
+    /// </remarks>
+    public int CountEnemyMoves(int enemyId)
+    {
+        int count = 0;
+
+        for (int i = 0; i < _enemyMoves.Count; i++)
+        {
+            if (_enemyMoves[i].Id == enemyId)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     /// <summary>Forgets everything recorded so far, so a test can assert on one phase at a time.</summary>
     /// <remarks>
     /// The lists keep their capacity, which is what makes this usable inside an allocation test:
@@ -133,6 +181,7 @@ public sealed class RecordingIntents : IIntentSink
         _coneHits.Clear();
         _charges.Clear();
         _knockbacks.Clear();
+        _enemyMoves.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
@@ -148,6 +197,11 @@ public sealed class RecordingIntents : IIntentSink
     void IIntentSink.Charge(in ChargeIntent intent)
     {
         _charges.Add(intent);
+    }
+
+    void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
+    {
+        _enemyMoves.Add(intent);
     }
 
     void IIntentSink.EnemyKnockback(in EnemyKnockbackIntent intent)

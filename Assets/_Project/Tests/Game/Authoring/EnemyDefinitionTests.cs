@@ -80,9 +80,11 @@ public sealed class EnemyDefinitionTests
         Assert.That(spec.WindupTime, Is.EqualTo(0.4f).Within(Tolerance), "M1-05: windup 0.4 s, not recover.");
         Assert.That(spec.RecoverTime, Is.EqualTo(0.6f).Within(Tolerance), "M1-05: recover 0.6 s, not windup.");
 
-        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Static),
-            "A dummy that holds still until M1-18 writes ChaserBehaviour — which is what makes " +
-            "targeting, cone hits and damage judgeable on their own.");
+        // Static until M1-18, and a Chaser from it. The dummy that held still was scaffolding —
+        // it is what made targeting, cone hits and damage judgeable on their own — and this is the
+        // asset edit that ends it: the Husk of GD §8.1 beelines and strikes.
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Chaser),
+            "GD §8.1's Husk chases and strikes; ChaserBehaviour is what moves it (M1-18).");
     }
 
     [Test]

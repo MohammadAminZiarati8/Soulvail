@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -49,12 +50,24 @@ public sealed class EnemySystemTests
     private ContentCatalog _catalog;
     private EnemySystem _system;
 
+    /// <summary>
+    /// What <c>Tick</c> hands the behaviours as of M1-18. Inert in every row in this fixture — its
+    /// Husks are all <c>Static</c>, and a static behaviour never reaches either — but the signature
+    /// requires them, and building them in <c>SetUp</c> keeps them out of the allocation row's
+    /// measured body.
+    /// </summary>
+    private PlayerCombat _player;
+
+    private RecordingIntents _intents;
+
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
         _catalog = Catalog();
         _system = new EnemySystem(_catalog, _events, Capacity);
+        _intents = new RecordingIntents();
+        _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
     }
 
     [Test]
@@ -407,13 +420,18 @@ public sealed class EnemySystemTests
     {
         EnemyAgent agent = _system.Spawn(new ContentId(HuskId), new Vector3(3f, 0f, 0f));
 
-        _system.Tick(Frame, now: 1f);
+        _system.Tick(Frame, now: 1f, _player, _intents);
 
         // The whole of M1-06's behaviour: a dummy that holds still, which is what makes targeting,
         // cone hits and damage judgeable on their own.
         Assert.That(agent.Position, Is.EqualTo(new Vector3(3f, 0f, 0f)));
         Assert.That(agent.Velocity, Is.EqualTo(Vector3.Zero));
         Assert.That(agent.Blackboard.StateTimer, Is.Zero);
+
+        // Static means static in the strongest sense as of M1-18: no behaviour object was ever
+        // built for it, so it cannot have walked, and it wrote no intent for a body to read.
+        Assert.That(agent.Behaviour, Is.Null);
+        Assert.That(_intents.EnemyMoves, Is.Empty);
     }
 
     [Test]
@@ -431,7 +449,7 @@ public sealed class EnemySystemTests
         system.Spawn(new ContentId("enemy.unhandled"), Vector3.Zero);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => system.Tick(Frame, now: 0f));
+            () => system.Tick(Frame, now: 0f, _player, _intents));
 
         Assert.That(ex.Message, Does.Contain("enemy.unhandled"));
     }
@@ -573,7 +591,7 @@ public sealed class EnemySystemTests
         AllocationAssert.None(() =>
         {
             system.Ingest(snapshot);
-            system.Tick(Frame, 1f);
+            system.Tick(Frame, 1f, _player, _intents);
         });
     }
 

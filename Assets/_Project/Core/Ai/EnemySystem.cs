@@ -290,22 +290,36 @@ public sealed class EnemySystem
     /// Simulated run time, the same seconds <c>Health</c> and <c>Targeter</c> are handed — never a
     /// wall clock.
     /// </param>
+    /// <param name="player">
+    /// Who the enemies are fighting. Handed down rather than held as a field, because it belongs to
+    /// the run and is rebuilt with it — a reference kept here would outlive the player it names the
+    /// first time <c>RunSession.Start</c> is called twice.
+    /// </param>
+    /// <param name="intents">Where each behaviour's <c>EnemyMoveIntent</c> goes.</param>
     /// <remarks>
     /// <para>
-    /// Both archetypes stand still in M1-06, so this only dispatches: <c>Static</c> does nothing
-    /// by definition, and <c>Chaser</c> does nothing until M1-18 writes <c>ChaserBehaviour</c>.
-    /// The loop and the switch exist now because this is the one site that knows the full set of
-    /// behaviours, which is why <c>EnemyBehaviourKind</c> is deliberately unvalidated where it is
-    /// authored (M1-05) — a third kind added without teaching this method about it fails loudly
-    /// here instead of standing motionless in the arena with nothing in the log.
+    /// This dispatches and nothing else: <c>Static</c> does nothing by definition — that is what the
+    /// kind means, and it is why a dummy holds still — and <c>Chaser</c> is
+    /// <c>ChaserBehaviour</c>'s (M1-18). The switch is here because this is the one site that knows
+    /// the full set of behaviours, which is why <c>EnemyBehaviourKind</c> is deliberately unvalidated
+    /// where it is authored (M1-05) — a third kind added without teaching this method about it fails
+    /// loudly here instead of standing motionless in the arena with nothing in the log.
     /// </para>
     /// <para>
     /// The corpse sweep runs first, so the behaviour pass walks a registry nothing is about to
     /// remove from. Order between the two is otherwise free — a corpse does not act either way —
     /// and this way there is only one span to reason about.
     /// </para>
+    /// <para>
+    /// <b>The span is re-read after the pass rather than hoisted across it, and that is not
+    /// optional.</b> A strike can kill the player but never an enemy, so nothing in this loop can
+    /// despawn anything and the span stays valid throughout — but the loop is written against
+    /// <c>Registry.Alive</c> taken once *after* the sweep for exactly that reason, and the day a
+    /// behaviour gains the power to retire an agent (a Bloater exploding, M2-08) it has to walk
+    /// backwards the way <see cref="SweepCorpses"/> does.
+    /// </para>
     /// </remarks>
-    public void Tick(float dt, float now)
+    public void Tick(float dt, float now, PlayerCombat player, IIntentSink intents)
     {
         SweepCorpses(now);
 
@@ -316,7 +330,9 @@ public sealed class EnemySystem
             EnemyAgent agent = agents[i];
 
             // Registered is not breathing (EnemyRegistry rule 4): a corpse sits in the span until
-            // M1-11 has published its death, and a corpse does not act.
+            // M1-11 has published its death, and a corpse does not act. This is also what makes a
+            // Husk killed mid-windup cancel its strike — there is no path from here to the damage
+            // frame for something that is not alive.
             if (!agent.IsAlive)
             {
                 continue;
@@ -328,8 +344,7 @@ public sealed class EnemySystem
                     break;
 
                 case EnemyBehaviourKind.Chaser:
-                    // M1-18. Until then a Husk is a dummy that holds still, which is what makes
-                    // targeting, cone hits and damage judgeable on their own.
+                    agent.Behaviour.Tick(dt, now, player, intents, _events);
                     break;
 
                 default:

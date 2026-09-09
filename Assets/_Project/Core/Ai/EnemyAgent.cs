@@ -77,6 +77,35 @@ public sealed class EnemyAgent
     /// <summary>Its perception and working memory. The instance is stable across recycling.</summary>
     public EnemyBlackboard Blackboard { get; }
 
+    /// <summary>
+    /// The state machine that decides what this enemy does, or <see langword="null"/> for an
+    /// archetype that decides nothing — <see cref="EnemyBehaviourKind.Static"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Not to be confused with <c>Spec.Behaviour</c>, which is the <em>kind</em>.</b> That enum is
+    /// authored data naming which code moves this archetype; this is the live object that does the
+    /// moving. <c>EnemySystem.Tick</c> reads the first to decide whether to tick the second, which is
+    /// the one place in the project that knows the full set of kinds (M1-06).
+    /// </para>
+    /// <para>
+    /// <b>Typed as <see cref="ChaserBehaviour"/> rather than as an interface, deliberately.</b> There
+    /// is one behaviour in the game today and an <c>IEnemyBehaviour</c> with a single implementer
+    /// would be an abstraction invented for a second one nobody has written yet — M2-07's Spitter and
+    /// M2-08's Bloater are where the shape of the seam becomes knowable. The dispatch that has to
+    /// change with it is a single <c>switch</c> in <c>EnemySystem.Tick</c>.
+    /// </para>
+    /// <para>
+    /// <b>Created once and reset, never rebuilt.</b> The same bargain <see cref="Health"/> and
+    /// <see cref="Blackboard"/> make, and for a sharper reason: a <c>StateMachine</c> allocates three
+    /// dictionaries and a delegate per handler, and <see cref="EnemyRegistry"/> recycles an agent on
+    /// every spawn of a wave. So it is built on the first spawn whose archetype wants one and kept
+    /// afterwards — a Chaser recycled as a Static keeps the object and stops being ticked, and comes
+    /// back to it if it is recycled as a Chaser again.
+    /// </para>
+    /// </remarks>
+    public ChaserBehaviour Behaviour { get; private set; }
+
     /// <summary>Where it is, as last ingested from the snapshot (M1-06).</summary>
     public Vector3 Position { get; internal set; }
 
@@ -140,6 +169,19 @@ public sealed class EnemyAgent
         DiedAt = float.NegativeInfinity;
 
         Blackboard.Reset();
+
+        // After the blackboard, and the order is load-bearing the same way the two health lines
+        // below are: ChaserBehaviour.Reset clears StateTimer, and doing it before Blackboard.Reset
+        // would simply have that clear it again — harmless today, and exactly the kind of ordering
+        // that stops being harmless the first time a behaviour remembers something Reset does not.
+        if (spec.Behaviour == EnemyBehaviourKind.Chaser)
+        {
+            Behaviour ??= new ChaserBehaviour(this);
+        }
+
+        // Reset whatever exists, including on an agent recycled as a Static: a behaviour left in
+        // Windup would come back mid-telegraph the next time this agent is a Chaser.
+        Behaviour?.Reset();
 
         // Base before Reset, and the order is load-bearing: Health.Reset refills Current from
         // MaxHp.Value, so re-basing afterwards would leave a recycled agent at the previous

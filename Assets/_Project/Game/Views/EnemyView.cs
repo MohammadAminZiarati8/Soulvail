@@ -1,4 +1,6 @@
 using System;
+using Soulvail.Core.Run;
+using Soulvail.Game.Adapters;
 using UnityEngine;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
@@ -14,15 +16,25 @@ namespace Soulvail.Game.Views
     /// <para>
     /// The enemy counterpart of <see cref="PlayerView"/> and just as dumb: it holds an id, a
     /// transform and a velocity, and every one of those is reported back to core through the
-    /// snapshot rather than acted on here. No health and no state machine — a Husk's hit points
-    /// live on core's <c>EnemyAgent</c>, and the day it walks (M1-18) the direction will arrive as
-    /// an intent.
+    /// snapshot rather than acted on here. No health and no state machine — a Husk's hit points live
+    /// on core's <c>EnemyAgent</c> and its state machine is <c>ChaserBehaviour</c>. Which way it
+    /// walks and which way it looks arrive every tick in an <see cref="EnemyMoveIntent"/> (M1-18),
+    /// and this applies them without asking why.
     /// </para>
     /// <para>
     /// The one timer on it is <see cref="Knockback"/>'s, and it decides nothing: core decided the
     /// direction and the distance and sent them as an <c>EnemyKnockbackIntent</c> (M1-15), so all
     /// that is owned here is the tenth of a second it takes to look like an impact rather than a
     /// teleport.
+    /// </para>
+    /// <para>
+    /// <b>Two colliders, and each answers a different question.</b> The
+    /// <see cref="CharacterController"/> is what moves — it is what makes a Husk bump into walls,
+    /// pillars, the player and other Husks instead of walking through them — while the trigger
+    /// <see cref="CapsuleCollider"/> stays exactly as M1-07 authored it, because that is the shape
+    /// M1-12's cone sweep and M1-15's dash sweep query against and <see cref="EnemyViews"/> indexes
+    /// by. A controller's own collider is not a <see cref="CapsuleCollider"/> and is not in that
+    /// index, so it is invisible to both sweeps and cannot double-report a hit.
     /// </para>
     /// <para>
     /// <b>An unbound view is not a live enemy.</b> <see cref="EnemyViews"/> creates one per
@@ -33,6 +45,7 @@ namespace Soulvail.Game.Views
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(CapsuleCollider))]
+    [RequireComponent(typeof(CharacterController))]
     public sealed class EnemyView : MonoBehaviour
     {
         /// <summary>
@@ -49,9 +62,26 @@ namespace Soulvail.Game.Views
         /// </summary>
         private const float KnockbackSeconds = 0.15f;
 
+        /// <summary>
+        /// Downward acceleration while airborne, in m/s². The same number
+        /// <see cref="PlayerView"/> uses and for the same reason: it is not a gameplay decision,
+        /// only what keeps a <see cref="CharacterController"/> in contact with the floor. Nothing in
+        /// core can observe it — the position comes back through the snapshot either way.
+        /// </summary>
+        private const float Gravity = -20f;
+
+        /// <summary>
+        /// The downward speed held while grounded, matching <see cref="PlayerView"/>: a controller
+        /// pushed with no vertical component drifts off the ground for a frame at a time and
+        /// <c>isGrounded</c> flickers.
+        /// </summary>
+        private const float GroundedFallSpeed = -1f;
+
         private CapsuleCollider _body;
+        private CharacterController _controller;
         private int _id = Unbound;
         private Vector3 _velocity;
+        private float _fallSpeed;
 
         private Vector3 _knockbackFrom;
         private Vector3 _knockbackTo;
@@ -68,8 +98,7 @@ namespace Soulvail.Game.Views
         public Vector3 Position => transform.position;
 
         /// <summary>
-        /// The horizontal velocity last applied — a shove's slide today, and the chaser's own
-        /// walking from M1-18.
+        /// The horizontal velocity last applied — the chaser's own walking, or a shove's slide.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -124,6 +153,72 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
+        /// This body's character controller, cached once.
+        /// </summary>
+        /// <remarks>
+        /// Resolved lazily when <see cref="Awake"/> has not run, exactly as <see cref="Body"/> is
+        /// and for the same reason: outside play mode <c>Awake</c> never runs on an instantiated
+        /// prefab, and an EditMode test that builds one must still get a whole object rather than a
+        /// half-null one. Nothing calls the movement paths from a test, so at runtime this branch is
+        /// never taken.
+        /// </remarks>
+        private CharacterController Controller
+        {
+            get
+            {
+                // Unity's == rather than `is null`: a destroyed component is a live reference that
+                // only compares equal to null through the engine's operator.
+                if (_controller == null)
+                {
+                    _controller = GetComponent<CharacterController>();
+                }
+
+                return _controller;
+            }
+        }
+
+        /// <summary>
+        /// Applies one tick's intent: walk at this velocity, look this way.
+        /// </summary>
+        /// <param name="intent">What core decided for this enemy this tick.</param>
+        /// <param name="dt">
+        /// The same step core integrated with — <c>snapshot.Dt</c>, clamped by
+        /// <c>SnapshotBuilder.MaxDt</c>, never <c>Time.deltaTime</c>. The rule
+        /// <see cref="PlayerView.Apply"/> states: brain and body disagreeing about how much time
+        /// passed is how a hitch becomes a teleport.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// <b>A shove outranks a walk, and that is the only priority rule in this class.</b> While a
+        /// <see cref="Knockback"/> is playing this returns without moving anything, so the body is
+        /// never pushed by two things in one frame — which would resolve collision twice and let a
+        /// Husk walk out of the knockback that was meant to punish it. Core is not told and does not
+        /// need to be: where the enemy ended up comes back in the next snapshot, which is the whole
+        /// contract for positions (AR §4.2).
+        /// </para>
+        /// <para>
+        /// The id on the intent is deliberately not checked against <see cref="Id"/>. Routing an
+        /// intent to the right body is <c>RunTicker</c>'s job and it does it by looking this object
+        /// up by that same id, so a check here could only ever be true.
+        /// </para>
+        /// </remarks>
+        public void Apply(in EnemyMoveIntent intent, float dt)
+        {
+            if (_isKnockedBack)
+            {
+                return;
+            }
+
+            Vector3 horizontal = intent.Velocity.ToUnity();
+
+            MoveBody(horizontal, dt);
+
+            _velocity = horizontal;
+
+            Face(intent.FacingXZ);
+        }
+
+        /// <summary>
         /// Puts this body into service as <paramref name="id"/>, standing at
         /// <paramref name="position"/>.
         /// </summary>
@@ -145,6 +240,11 @@ namespace Soulvail.Game.Views
 
             _id = id;
             _velocity = Vector3.zero;
+
+            // Back to rest, so a body pooled while it was falling (M1-19) does not arrive at its
+            // next spawn still carrying the previous life's downward speed.
+            _fallSpeed = 0f;
+
             transform.position = position;
 
             // Cleared here as well as on the way out, because M1-19 hands the same object back to a
@@ -158,6 +258,7 @@ namespace Soulvail.Game.Views
         {
             _id = Unbound;
             _velocity = Vector3.zero;
+            _fallSpeed = 0f;
 
             CancelKnockback();
         }
@@ -177,11 +278,13 @@ namespace Soulvail.Game.Views
         /// </param>
         /// <remarks>
         /// <para>
-        /// <b>A transform move, not a controller one.</b> The dummies of M1 have a collider and no
-        /// <c>CharacterController</c>, so there is nothing here to resolve a collision with — a
-        /// shoved dummy will slide through a wall, and it is meant to, until M1-18 gives these
-        /// bodies something to walk with. The single line this becomes then is the reason it is
-        /// written as a target position rather than as a per-frame delta.
+        /// <b>Written as a target position, walked to through the controller.</b> M1-15 left this as
+        /// a straight transform move because the dummies had nothing to collide with; now they do,
+        /// so each frame's step is the gap between where the slide should have reached and where the
+        /// body actually is, pushed through <see cref="CharacterController.Move"/>. A shove into a
+        /// wall therefore stops at the wall and keeps leaning on it for the rest of the 0.15 s,
+        /// which is what "pushed 5 m" has always meant (see <c>EnemyKnockbackIntent</c>) — and it is
+        /// why the target is still stored as a position rather than as a per-frame delta.
         /// </para>
         /// <para>
         /// <b>A second shove restarts from where the body is now</b> rather than compounding onto
@@ -220,6 +323,7 @@ namespace Soulvail.Game.Views
             // Cached once. Rule: never GetComponent in a per-frame path — and M1-12's overlap
             // query is worse than per-frame, it is per-collider-per-swing.
             _body = GetComponent<CapsuleCollider>();
+            _controller = GetComponent<CharacterController>();
         }
 
         /// <remarks>
@@ -247,26 +351,66 @@ namespace Soulvail.Game.Views
             _knockbackElapsed += dt;
 
             float t = _knockbackElapsed / KnockbackSeconds;
+            bool finished = t >= 1f;
 
-            if (t >= 1f)
+            Vector3 target = finished ? _knockbackTo : Vector3.Lerp(_knockbackFrom, _knockbackTo, t);
+
+            // The gap between where the slide should have reached and where the body actually is,
+            // which is what makes a blocked shove keep pushing instead of silently teleporting past
+            // the wall on the last frame. Flattened, because the lerp runs along the ground and the
+            // vertical component belongs to gravity alone.
+            Vector3 delta = target - transform.position;
+            delta.y = 0f;
+
+            // Zero dt would divide by nothing; the frame is skipped rather than guessed at.
+            Vector3 horizontal = dt > 0f ? delta / dt : Vector3.zero;
+
+            MoveBody(horizontal, dt);
+
+            _velocity = horizontal;
+
+            if (finished)
             {
-                transform.position = _knockbackTo;
-
                 CancelKnockback();
-
-                return;
             }
+        }
 
-            Vector3 previous = transform.position;
+        /// <summary>
+        /// Moves the body by <paramref name="horizontal"/> for <paramref name="dt"/> seconds, with
+        /// gravity folded in. The one place this object touches the controller.
+        /// </summary>
+        /// <remarks>
+        /// One <c>Move</c> per frame with both components together, exactly as
+        /// <see cref="PlayerView.Apply"/> does it: two calls would resolve collision twice and let a
+        /// horizontal push climb what a vertical one had just settled onto.
+        /// </remarks>
+        private void MoveBody(Vector3 horizontal, float dt)
+        {
+            CharacterController controller = Controller;
 
-            transform.position = Vector3.Lerp(_knockbackFrom, _knockbackTo, t);
+            _fallSpeed = controller.isGrounded ? GroundedFallSpeed : _fallSpeed + (Gravity * dt);
 
-            // Measured rather than derived from the lerp, so it stays right on the frame the slide
-            // is clipped by its own end. Zero dt leaves the previous reading rather than dividing
-            // by nothing.
-            if (dt > 0f)
+            controller.Move((horizontal + new Vector3(0f, _fallSpeed, 0f)) * dt);
+        }
+
+        /// <summary>
+        /// Turns the body to look along <paramref name="facingXZ"/>, or leaves it alone when core
+        /// has no opinion.
+        /// </summary>
+        /// <remarks>
+        /// A zero facing is core saying "keep the rotation you have" — an idle enemy, or one
+        /// standing exactly where the player is — and is the normal reason this does nothing. It is
+        /// also what stops <c>LookRotation</c> logging an error over a zero vector. No smoothing,
+        /// for the reason <see cref="PlayerView"/> gives: any easing here would be a second rotation
+        /// curve on top of whatever core decided.
+        /// </remarks>
+        private void Face(System.Numerics.Vector2 facingXZ)
+        {
+            var facing = new Vector3(facingXZ.X, 0f, facingXZ.Y);
+
+            if (facing.sqrMagnitude > 0f)
             {
-                _velocity = (transform.position - previous) / dt;
+                transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
             }
         }
 

@@ -19,8 +19,8 @@ namespace Soulvail.Core.Ports;
 /// would force the sink to work out at run time what it had been handed — a type test, a boxed
 /// payload or a type-keyed lookup on every intent, every frame — and it would let the port grow
 /// by accident, since any new struct would already be accepted. A named method makes adding an
-/// intent a deliberate edit to this file. Later tasks add <c>EnemyMove</c>, <c>EnemyAction</c>
-/// and <c>Spawn</c> (M1).
+/// intent a deliberate edit to this file — <see cref="EnemyMove"/> was the fourth such edit
+/// (M1-18), and <c>EnemyAction</c> and <c>Spawn</c> are still to come.
 /// </para>
 /// </remarks>
 public interface IIntentSink
@@ -62,6 +62,25 @@ public interface IIntentSink
     /// </para>
     /// </remarks>
     void Charge(in ChargeIntent intent);
+
+    /// <summary>
+    /// Tells one enemy's body where to walk and where to look this tick. Written once per living
+    /// enemy that has a behaviour driving it, every tick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Accumulated, like <see cref="ConeHit"/> and <see cref="EnemyKnockback"/> rather than replaced
+    /// like <see cref="PlayerMove"/>, and the reason is the id: these are instructions to sixty
+    /// different bodies, not sixty opinions about one. Keeping only the newest would move the last
+    /// enemy in the registry and freeze every other.
+    /// </para>
+    /// <para>
+    /// Within a tick each enemy is named at most once, so per body this is still "last write wins"
+    /// in the sense <see cref="PlayerMove"/> means it — the accumulation is across enemies, never
+    /// across opinions.
+    /// </para>
+    /// </remarks>
+    void EnemyMove(in EnemyMoveIntent intent);
 
     /// <summary>
     /// Tells the body to shove an enemy: this far, this way. Written while core resolves a

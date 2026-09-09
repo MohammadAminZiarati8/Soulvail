@@ -88,6 +88,27 @@ namespace Soulvail.Game.Authoring
                  "130%: the Censer's 3 swings a second becoming 3.9.")]
         [SerializeField, Min(1f)] private float _focusMaxMultiplier = 1.3f;
 
+        [Tooltip("The movement skill (CC §5). Every class has exactly one, on a permanent " +
+                 "button, and it never auto-casts. The Charge's numbers are the defaults: 10 m " +
+                 "in 0.22 s, 20 damage and 5 m of knockback to everything passed through.")]
+        [SerializeField] private MovementSkillKind _movementSkillKind = MovementSkillKind.Charge;
+        [SerializeField, Min(0.01f)] private float _movementSkillDistance = 10f;
+        [SerializeField, Min(0.01f)] private float _movementSkillDuration = 0.22f;
+        [SerializeField, Min(0.01f)] private float _movementSkillCooldown = 2.5f;
+
+        [Tooltip("Seconds a press stays live while the dash is unavailable — 0.15, so a tap " +
+                 "just before the cooldown ends still fires. This and the i-frame trail below " +
+                 "absorb touch latency; CC §5 says the dodge feels unreliable without them.")]
+        [SerializeField, Min(0f)] private float _movementSkillInputBuffer = 0.15f;
+
+        [Tooltip("Damage and knockback dealt to everything the dash passes through. Both may be " +
+                 "0 for a movement skill that only repositions.")]
+        [SerializeField, Min(0f)] private float _movementSkillDamage = 20f;
+        [SerializeField, Min(0f)] private float _movementSkillKnockback = 5f;
+
+        [Tooltip("Extra seconds of invulnerability after the dash ends — 0.05.")]
+        [SerializeField, Min(0f)] private float _movementSkillIFrameTrail = 0.05f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -113,7 +134,9 @@ namespace Soulvail.Game.Authoring
         /// <see cref="WeaponSpec"/> is built the same way and for the same reason — CC §4 gives
         /// every class a basic attack — and so is the <see cref="FocusSpec"/>, one step further
         /// out: every character can stand still, so the ramp's off switch is a multiplier of 1
-        /// rather than the absence of a spec.
+        /// rather than the absence of a spec. The <see cref="MovementSkillSpec"/> joins them:
+        /// CC §5 opens with "every class has exactly one, on a permanent button", so there is no
+        /// "no dash" to author either.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -146,6 +169,15 @@ namespace Soulvail.Game.Authoring
                         _weaponConeAngleDeg,
                         _weaponDamageFrame),
                     new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
+                    new MovementSkillSpec(
+                        _movementSkillKind,
+                        _movementSkillDistance,
+                        _movementSkillDuration,
+                        _movementSkillCooldown,
+                        _movementSkillInputBuffer,
+                        _movementSkillDamage,
+                        _movementSkillKnockback,
+                        _movementSkillIFrameTrail),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

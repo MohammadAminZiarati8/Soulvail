@@ -399,7 +399,11 @@ public sealed class RunSessionTests
         // one step along: these rows tick a stick that is usually centred, and a ramp would put
         // a modifier and a stream of events into a fixture measuring neither — including the
         // allocation row, which is about what one Tick costs when nothing is happening.
-        new FocusSpec(0.4f, 1f, 1f));
+        new FocusSpec(0.4f, 1f, 1f),
+        // Required as of M1-14, and irrelevant here for the same reason again: no row in this
+        // fixture presses anything, so the dash never starts and the allocation row stays a
+        // measurement of an idle Tick.
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f));
 
     /// <summary>One snapshot per call, filled the way M0-16's builder will fill its single one.</summary>
     private static WorldSnapshot Snapshot(float dt, Vector2 input = default, Vector3 position = default)

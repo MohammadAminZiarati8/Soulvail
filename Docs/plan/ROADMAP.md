@@ -82,7 +82,7 @@
 | [M1-11](tasks/M1-11-cone-hits-to-damage.md) | `ReportConeHits` fact → damage → `EnemyDamaged` / `EnemyDied`, despawn | S | 10 | ☑ |
 | [M1-12](tasks/M1-12-cone-overlap-and-hit-feedback.md) | `ConeOverlapQuery`, `RunTicker` fact loop, hit flash, dissolve death | M | 07 11 | ☑ |
 | [M1-13](tasks/M1-13-focus-ramp.md) | `FocusSpec`, `FocusTracker` → fire-rate modifier; ground glow | M | 10 | ☑ |
-| [M1-14](tasks/M1-14-charge-skill.md) | `MovementSkillSpec`, `ChargeSkill` (pure): cooldown, buffer, i-frame window | S | 02 | ☐ |
+| [M1-14](tasks/M1-14-charge-skill.md) | `MovementSkillSpec`, `ChargeSkill` (pure): cooldown, buffer, i-frame window | S | 02 | ☑ |
 | [M1-15](tasks/M1-15-charge-integration.md) | `ChargeIntent`, `IPlayerCommands.MovementSkill`, `ReportChargeHits`, knockback intent | M | 11 14 | ☐ |
 | [M1-16](tasks/M1-16-charge-view-and-skill-button.md) | `PlayerView` charge motion + sweep, `SkillButton`, movement-skill input | M | 15 | ☐ |
 | [M1-17](tasks/M1-17-hud.md) | `HudPresenter`, HP bar with ghost trail, shield ring, cooldown, death → Menu | M | 08 16 | ☐ |

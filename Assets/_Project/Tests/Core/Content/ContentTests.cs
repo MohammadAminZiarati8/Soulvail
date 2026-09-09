@@ -210,8 +210,9 @@ public sealed class ContentTests
         TargetingSpec targeting = OathboundTargeting();
         WeaponSpec weapon = OathboundWeapon();
         FocusSpec focus = OathboundFocus();
+        MovementSkillSpec movementSkill = OathboundMovementSkill();
 
-        var spec = new CharacterSpec(id, nameKey, 120f, movement, targeting, weapon, focus);
+        var spec = new CharacterSpec(id, nameKey, 120f, movement, targeting, weapon, focus, movementSkill);
 
         Assert.That(spec.Id, Is.EqualTo(id));
         Assert.That(spec.NameKey, Is.EqualTo(nameKey));
@@ -220,29 +221,30 @@ public sealed class ContentTests
         Assert.That(spec.Targeting, Is.SameAs(targeting));
         Assert.That(spec.Weapon, Is.SameAs(weapon));
         Assert.That(spec.Focus, Is.SameAs(focus));
+        Assert.That(spec.MovementSkill, Is.SameAs(movementSkill));
     }
 
     [Test]
     public void CharacterSpec_InvalidHp_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 0f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 0f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), -1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), -1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
 
         // Same NaN hole as MovementSpec's guard, and the same spelling closes it.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), float.NaN, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), float.NaN, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
 
         Assert.DoesNotThrow(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
     public void CharacterSpec_NullMovement_Throws()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, null, OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, null, OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -253,7 +255,7 @@ public sealed class ContentTests
         // that does not aim. The guard is what stops it becoming a NullReferenceException
         // somewhere inside M1-04's targeting loop instead.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), null, OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), null, OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -264,7 +266,7 @@ public sealed class ContentTests
         // class that does not attack. Without the guard it would be a character who aims perfectly
         // and never swings — a bug that looks like broken targeting rather than missing content.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), null, OathboundFocus()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), null, OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -276,7 +278,19 @@ public sealed class ContentTests
         // the stationary clock CombatBlackboard.StationaryTime mirrors, and a class without one
         // would silently stop counting a CC §6.4 trigger field.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), null));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), null, OathboundMovementSkill()));
+    }
+
+    [Test]
+    public void CharacterSpec_NullMovementSkill_Throws()
+    {
+        // Required for the reason the weapon is (M1-14), and CC §5 says it in its opening line:
+        // every class has exactly one movement skill, on a permanent button. A null is a forgotten
+        // field rather than a class that cannot dash, and it would produce a dead button in the one
+        // place the design has no fallback for — the dodge is the whole defensive layer for a class
+        // without an Aegis.
+        Assert.Throws<ArgumentNullException>(
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), null));
     }
 
     [Test]
@@ -285,7 +299,7 @@ public sealed class ContentTests
         // A spec with no id would sit in the catalog under a key that Character() reports as
         // missing, so it is refused where the data is built.
         Assert.Throws<ArgumentException>(
-            () => new CharacterSpec(default, OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus()));
+            () => new CharacterSpec(default, OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -337,8 +351,8 @@ public sealed class ContentTests
     [Test]
     public void Catalog_DuplicateId_Throws_NamingId()
     {
-        var first = new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus());
-        var second = new CharacterSpec(OathboundId(), OathboundNameKey(), 200f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus());
+        var first = new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
+        var second = new CharacterSpec(OathboundId(), OathboundNameKey(), 200f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
 
         ArgumentException ex = Assert.Throws<ArgumentException>(
             () => new ContentCatalog(new[] { first, second }));
@@ -381,6 +395,10 @@ public sealed class ContentTests
     /// <summary>CC §7's "Focus delay / cap / ramp" row: 0.4 s, ×1.3, over 1.0 s.</summary>
     private static FocusSpec OathboundFocus() => new FocusSpec(0.4f, 1f, 1.3f);
 
+    /// <summary>CC §7's Charge table: 10 m / 0.22 s, 2.5 s, 20 / 5 m, buffer 0.15, trail 0.05.</summary>
+    private static MovementSkillSpec OathboundMovementSkill() =>
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f);
+
     private static CharacterSpec Oathbound() =>
         new CharacterSpec(
             OathboundId(),
@@ -389,5 +407,6 @@ public sealed class ContentTests
             OathboundMovement(),
             OathboundTargeting(),
             OathboundWeapon(),
-            OathboundFocus());
+            OathboundFocus(),
+            OathboundMovementSkill());
 }

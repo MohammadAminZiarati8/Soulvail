@@ -50,6 +50,12 @@ namespace Soulvail.Game.Composition
                  "from a keyboard, it just cannot be dashed with a thumb.")]
         [SerializeField] private SkillButton _skillButton;
 
+        [Tooltip("The player's row on the HUD: health, the Aegis, and the death overlay. Optional " +
+                 "on the same terms as the reticle — an arena without one plays exactly the same, " +
+                 "it just cannot say how the player is doing and has no way out of a death except " +
+                 "leaving the scene.")]
+        [SerializeField] private HudPresenter _hudPresenter;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -140,6 +146,16 @@ namespace Soulvail.Game.Composition
             if (_debugOverlay != null)
             {
                 builder.RegisterComponent(_debugOverlay);
+            }
+
+            // Optional on the same terms, and the one here with the most to lose by being absent:
+            // without it nothing says how much health is left, and a death leaves an arena that has
+            // stopped ticking with no tap back to the menu. It stays optional anyway, because
+            // pressing Play in an undressed Run scene is the iteration workflow every other
+            // optional field on this scope exists to protect.
+            if (_hudPresenter != null)
+            {
+                builder.RegisterComponent(_hudPresenter);
             }
 
             // Optional for the same reason and on the same terms: a scene dressed without a

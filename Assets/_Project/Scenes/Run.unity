@@ -234,6 +234,7 @@ MonoBehaviour:
   _playerView: {fileID: 1102459965}
   _chargeMotion: {fileID: 1102459968}
   _skillButton: {fileID: 2052539125}
+  _hudPresenter: {fileID: 2052539126}
   _debugOverlay: {fileID: 5239836669165301809}
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
@@ -878,6 +879,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3316ffa22f6ad3438ddcf9b871c7a97, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.SkillButton
+--- !u!114 &2052539126 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8209328574051453634, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34fc7d8a959ec2b4a9ea45218112f71c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HudPresenter
 --- !u!1 &2056789030
 GameObject:
   m_ObjectHideFlags: 0
@@ -917,6 +929,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2461285943360926498, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -1000,6 +1016,14 @@ PrefabInstance:
     - target: {fileID: 7608462652457327402, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
       propertyPath: m_Name
       value: DebugOverlay
+      objectReference: {fileID: 0}
+    - target: {fileID: 9122304093899072055, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 3657433087
+      objectReference: {fileID: 0}
+    - target: {fileID: 9122304093899072055, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

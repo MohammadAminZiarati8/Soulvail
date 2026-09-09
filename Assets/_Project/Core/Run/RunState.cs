@@ -142,6 +142,54 @@ public sealed class RunState
     public int EnemyCount => Enemies.Registry.AliveCount;
 
     /// <summary>
+    /// The player's current hit points, in <c>[0, <see cref="PlayerMaxHp"/>]</c>. The left-hand
+    /// number of M1-17's <c>current/max</c> readout.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One of the "narrow reads" <see cref="Combat"/> promises instead of the handle, and the four
+    /// health ones are here for a different reason from
+    /// <see cref="MovementSkillCooldownFraction"/> below. That number has no event that could carry
+    /// it; these do — <c>PlayerDamaged</c> carries both fractions after every hit — but no event
+    /// carries the state a HUD has to <em>start</em> from. A presenter handling <c>RunStarted</c>
+    /// has a full bar to draw and nothing to draw it from, and a run's opening numbers are exactly
+    /// the ones an event cannot report because nothing has happened yet.
+    /// </para>
+    /// <para>
+    /// Reads, not a handle. <c>Health</c> has a public <c>ApplyDamage</c>, <c>Heal</c> and
+    /// <c>Reset</c>, so exposing it whole would let any view hurt the player or heal them to full —
+    /// the precise thing <see cref="Combat"/>'s seal exists to prevent.
+    /// </para>
+    /// </remarks>
+    public float PlayerHp => Combat.Health.Current;
+
+    /// <summary>
+    /// The player's live maximum hit points — the right-hand number of the readout, and what
+    /// <see cref="PlayerHpFraction"/> is over.
+    /// </summary>
+    /// <remarks>
+    /// The <see cref="Stat"/>'s value as it stands, so a tree node that raises max HP moves the
+    /// readout the moment it lands. <c>Health</c> floors the same number at zero for its own
+    /// arithmetic and this deliberately does not: the two can only differ for a maximum driven
+    /// <em>negative</em>, which nothing in the game does and which is a content mistake better seen
+    /// on the HUD than hidden by a second clamp written here.
+    /// </remarks>
+    public float PlayerMaxHp => Combat.Health.MaxHp.Value;
+
+    /// <summary>
+    /// <see cref="PlayerHp"/> over <see cref="PlayerMaxHp"/>, in <c>[0, 1]</c> — what M1-17's HP
+    /// bar fills to. The same number <c>PlayerDamaged.HpFraction</c> carries.
+    /// </summary>
+    public float PlayerHpFraction => Combat.Health.Fraction;
+
+    /// <summary>
+    /// The Aegis as a fraction of its maximum, in <c>[0, 1]</c>, and zero for a class without one —
+    /// what M1-17's shield ring fills to. The same number <c>PlayerShieldChanged.Fraction</c>
+    /// carries.
+    /// </summary>
+    public float PlayerShieldFraction => Combat.Health.ShieldFraction;
+
+    /// <summary>
     /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the
     /// instant a dash starts, 0 while the button is live. What M1-16's radial fill draws.
     /// </summary>

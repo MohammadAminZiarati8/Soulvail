@@ -362,6 +362,80 @@ public sealed class PlayerCombatTests
         Assert.That(_events.Count<TargetChanged>(), Is.EqualTo(1), "One acquisition, not one a frame.");
     }
 
+    [Test]
+    public void PlayerDied_EndsRun()
+    {
+        // M1-17 rule 3. Five hit points against a Husk that swings for eight, no Aegis and no
+        // i-frames, so the first strike that connects is the last thing that happens in the run —
+        // and every step of it goes through the public surface: a chaser walks up and hits, exactly
+        // as it does in the game.
+        var catalog = new ContentCatalog(
+            new[] { Character(maxHp: 5f, withShield: false, hitIFrames: 0f) },
+            new[] { Chaser() });
+
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+
+        // A metre away: inside the Husk's 1.2 m reach on the tick it starts chasing, so the run is
+        // over inside the 0.4 s wind-up plus a handful of frames rather than after a walk across
+        // the arena. Nothing moves it — no body reports a position in a headless test — so the
+        // distance the behaviour reads stays exactly this.
+        session.Start(new RunConfig(
+            new ContentId(OathboundId),
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) })));
+
+        var snapshot = new WorldSnapshot(EnemyCapacity);
+        snapshot.Dt = Frame;
+
+        // A second of simulated time, which is twice what the wind-up needs. The loop stops itself
+        // rather than running to the end, because ticking a session that has finished is exactly
+        // the mistake this row exists to prove core no longer makes.
+        for (int i = 0; i < 120 && session.IsRunning; i++)
+        {
+            session.Tick(snapshot);
+        }
+
+        Assert.That(session.IsRunning, Is.False, "A dead player ends the run.");
+
+        PlayerDied died = _events.Single<PlayerDied>();
+        RunEnded ended = _events.Single<RunEnded>();
+
+        int diedAt = -1;
+        int endedAt = -1;
+
+        for (int i = 0; i < _events.All.Count; i++)
+        {
+            if (diedAt < 0 && _events.All[i] is PlayerDied)
+            {
+                diedAt = i;
+            }
+
+            if (endedAt < 0 && _events.All[i] is RunEnded)
+            {
+                endedAt = i;
+            }
+        }
+
+        // Published in that order and on the same tick: the strike announces the death, and the run
+        // closes behind it. A listener handling PlayerDied can still read a session that is ending
+        // rather than one that has already gone.
+        Assert.That(
+            endedAt,
+            Is.GreaterThan(diedAt),
+            "PlayerDied comes first — the death is the cause, RunEnded is the consequence.");
+
+        Assert.That(ended.Time, Is.EqualTo(died.Time).Within(1e-6f), "…and neither waited a tick.");
+
+        // The state is still readable after the end, which is what M4-06's payout screen will need,
+        // and it says what killed the run.
+        Assert.That(session.State.PlayerHp, Is.EqualTo(0f));
+        Assert.That(session.State.PlayerHpFraction, Is.EqualTo(0f));
+        Assert.That(session.State.PlayerMaxHp, Is.EqualTo(5f).Within(1e-6f));
+
+        // And the run really is over: the frame loop's guard is what normally stops this, and core
+        // refuses it either way rather than quietly ticking a finished run.
+        Assert.That(() => session.Tick(snapshot), Throws.InvalidOperationException);
+    }
+
     // ---- Reset and the allocation budget -------------------------------------------------------
 
     [Test]
@@ -501,6 +575,11 @@ public sealed class PlayerCombatTests
     }
 
     /// <summary>GD §8.1's Husk, with the one number the scoring rows vary.</summary>
+    /// <remarks>
+    /// <c>Static</c>, so that every row about targeting, damage and cone requests is written
+    /// against enemies that stand exactly where they were put. The one row that needs a Husk which
+    /// fights back asks for <see cref="Chaser"/>.
+    /// </remarks>
     private static EnemySpec Enemy(int priority = 1) => new(
         new ContentId(HuskId),
         new LocKey("enemy.husk.name"),
@@ -513,6 +592,20 @@ public sealed class PlayerCombatTests
         0.4f,
         0.6f,
         EnemyBehaviourKind.Static);
+
+    /// <summary>The same Husk, with M1-18's brain switched on: it walks up, telegraphs, and hits.</summary>
+    private static EnemySpec Chaser() => new(
+        new ContentId(HuskId),
+        new LocKey("enemy.husk.name"),
+        36f,
+        3.5f,
+        1,
+        isElite: false,
+        8f,
+        1.2f,
+        0.4f,
+        0.6f,
+        EnemyBehaviourKind.Chaser);
 
     /// <summary>
     /// A snapshot with the player at the origin, so every enemy's spawn position is also its

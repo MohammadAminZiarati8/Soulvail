@@ -176,9 +176,26 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// enumerated, and the swing's answer goes back as a span over an array owned since the run
     /// started.
     /// </para>
+    /// <para>
+    /// <b>Two guards, and they are the same rule read at two moments (M1-17).</b> A run can now end
+    /// from inside itself — the player dies, core publishes <c>RunEnded</c> and stops running —
+    /// while this object keeps being ticked until the scene unloads. The first guard is every frame
+    /// after that one: nothing is asked, nothing is sensed, and the capsule stands where it fell.
+    /// The second is the death frame itself, and it is the one that matters, because the lines below
+    /// <c>session.Tick</c> report physical facts back into core: <see cref="ResolveConeHits"/> and
+    /// <see cref="StepCharge"/> both call into a session that would now refuse them, loudly, for a
+    /// swing that was thrown a few milliseconds before the killing blow landed.
+    /// </para>
     /// </remarks>
     public void Tick()
     {
+        // Every frame after the run ended. The scope is still alive — the death overlay is on
+        // screen waiting for a tap — so this object is still an ITickable with nothing to do.
+        if (!_session.IsRunning)
+        {
+            return;
+        }
+
         CommandPhase();
 
         _builder.Build(_snapshot, Time.deltaTime);
@@ -186,6 +203,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _intents.Clear();
 
         _session.Tick(_snapshot);
+
+        // The death frame. Core ended the run mid-tick, so the swing and the dash still sitting in
+        // the buffer have nobody left to report to — see the class remarks. Dropping them costs a
+        // single frame of a fight that is already over.
+        if (!_session.IsRunning)
+        {
+            return;
+        }
 
         // Before the move below, so that the dash this starts is already in flight when the guard
         // there asks whether one is. Core suspends the motor on the same tick, so there is no

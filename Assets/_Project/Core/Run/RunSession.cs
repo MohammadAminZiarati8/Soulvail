@@ -215,6 +215,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // it interrupts is a question for the body, which has to leave on the tick that produced it.
         State.Enemies.Tick(snapshot.Dt, State.Time, State.Combat, _intents);
 
+        // The first thing that ends a run from inside one (M1-17). Asked here rather than
+        // subscribed to, because core has no business listening to its own events: PlayerCombat
+        // publishes PlayerDied for everyone with something to say about a death, and this class
+        // reads the state it already owns.
+        //
+        // After the enemy pass, because that is where a strike lands and where the death was
+        // therefore announced — so RunEnded follows PlayerDied on the same tick, in that order.
+        // And before TickBody, because a corpse is not steered: the intent it would write is a
+        // velocity for a run that is over, and RunTicker would apply it to a body nobody is
+        // driving any more.
+        if (State.Combat.IsDead)
+        {
+            End();
+            return;
+        }
+
         TickBody(snapshot);
     }
 

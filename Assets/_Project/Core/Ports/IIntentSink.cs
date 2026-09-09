@@ -42,4 +42,41 @@ public interface IIntentSink
     /// swing's damage. Nothing emits two in one tick today; M1-15's Charge is the first that can.
     /// </remarks>
     void ConeHit(in ConeHitIntent intent);
+
+    /// <summary>
+    /// Tells the body to dash: this way, this far, over this long. Written on the tick a movement
+    /// skill fires and on no other.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Replaced rather than accumulated, like <see cref="PlayerMove"/> and unlike
+    /// <see cref="ConeHit"/>, and for the same reason movement is a state: a character can only be
+    /// dashing one way. Two in a tick is unreachable — <c>ChargeSkill</c> starts at most one dash
+    /// per tick and refuses to start another while one is in flight — so "last write wins" is a
+    /// statement about the shape of the intent rather than a policy anything relies on.
+    /// </para>
+    /// <para>
+    /// While the dash is in flight core writes no <see cref="PlayerMove"/> at all. The two are the
+    /// only instructions about where the player goes, and a body handed both would have to decide
+    /// which of them core meant.
+    /// </para>
+    /// </remarks>
+    void Charge(in ChargeIntent intent);
+
+    /// <summary>
+    /// Tells the body to shove an enemy: this far, this way. Written while core resolves a
+    /// pass-through fact, once per enemy hit.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Accumulated, like <see cref="ConeHit"/>: a dash through four Husks writes four of these, and
+    /// keeping only the newest would leave three of them standing where they were.
+    /// </para>
+    /// <para>
+    /// The first intent about something that is not the player, and the reason the port names the
+    /// subject: everything above is implicitly about the character, and everything after M1-18 will
+    /// not be.
+    /// </para>
+    /// </remarks>
+    void EnemyKnockback(in EnemyKnockbackIntent intent);
 }

@@ -27,6 +27,8 @@ public sealed class RecordingIntents : IIntentSink
 {
     private readonly List<PlayerMoveIntent> _playerMoves = new();
     private readonly List<ConeHitIntent> _coneHits = new();
+    private readonly List<ChargeIntent> _charges = new();
+    private readonly List<EnemyKnockbackIntent> _knockbacks = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
     /// <remarks>
@@ -84,6 +86,41 @@ public sealed class RecordingIntents : IIntentSink
         }
     }
 
+    /// <summary>Every dash written, in the order core started them.</summary>
+    /// <remarks>
+    /// The count is most of what a test wants from this one. "One Charge intent per press, and none
+    /// on any of the ticks the dash is still in flight" is the rule that stops a body dashing every
+    /// frame for 0.22 s, and only a history can tell that apart from a dash that fired once.
+    /// </remarks>
+    public IReadOnlyList<ChargeIntent> Charges => _charges;
+
+    /// <summary>The most recent dash.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// Nothing has been written. Louder than a default intent, which would read as a dash of no
+    /// length in no direction and quietly pass a test whose skill never fired.
+    /// </exception>
+    public ChargeIntent LastCharge
+    {
+        get
+        {
+            if (_charges.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No ChargeIntent has been written to this sink.");
+            }
+
+            return _charges[_charges.Count - 1];
+        }
+    }
+
+    /// <summary>Every knockback written, in the order core decided them.</summary>
+    /// <remarks>
+    /// The one record here where the order carries meaning beyond counting: a dash reports the
+    /// enemies it passed through in the order the body found them, and each is knocked back exactly
+    /// once per Charge, so this list read end to end is the dedupe rule made visible.
+    /// </remarks>
+    public IReadOnlyList<EnemyKnockbackIntent> Knockbacks => _knockbacks;
+
     /// <summary>Forgets everything recorded so far, so a test can assert on one phase at a time.</summary>
     /// <remarks>
     /// The lists keep their capacity, which is what makes this usable inside an allocation test:
@@ -94,6 +131,8 @@ public sealed class RecordingIntents : IIntentSink
     {
         _playerMoves.Clear();
         _coneHits.Clear();
+        _charges.Clear();
+        _knockbacks.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
@@ -104,5 +143,15 @@ public sealed class RecordingIntents : IIntentSink
     void IIntentSink.ConeHit(in ConeHitIntent intent)
     {
         _coneHits.Add(intent);
+    }
+
+    void IIntentSink.Charge(in ChargeIntent intent)
+    {
+        _charges.Add(intent);
+    }
+
+    void IIntentSink.EnemyKnockback(in EnemyKnockbackIntent intent)
+    {
+        _knockbacks.Add(intent);
     }
 }

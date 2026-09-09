@@ -69,4 +69,16 @@ public readonly struct ChargeEnded   { }
 
 ## As built
 
-_Filled at merge._
+Built to the Files table. Twelve rows, all green; 409 EditMode + 3 PlayMode, zero errors, zero new warnings.
+
+**Three places the code says something the spec did not.**
+
+1. **The dedupe is a list of ids, not a bitset** (rule 5 says "bitset cleared at start"). Enemy ids rise for the whole run and are never reused — `EnemyRegistry` rule 1 — so by the hundredth spawn they are far past any bit index a capacity-sized set could offer. `_chargeHitIds` is the same shape `ResolveConeHits` already uses and was documented as such in M1-11, scanned linearly at most 64 × 64 times per dash. What is genuinely new is its *lifetime*: it is cleared when a dash starts and not when a report is answered, which is what makes "once per Charge" survive a sweep the body reports frame by frame.
+2. **Aliveness is asked of the registry rather than inferred from the damage.** `ResolveConeHits` treats "nothing landed" as "nobody was there", which is true for a weapon that always damages. A Charge always damages too — but `MovementSkillSpec.Damage` is documented as legally zero (M5-03's Shroudstep), and reading aliveness off the damage would leave a zero-damage movement skill knocking nothing back. One `Registry.TryGet` per id, no allocation.
+3. **The motor is not ticked at all while a dash is active, and the tick it ends on moves nowhere.** Rule 4 asks for `Motor.Stop()` at the end, which is only load-bearing if the motor kept its pre-dash velocity throughout — so `RunSession.TickBody` skips `Motor.Tick` for the length of the dash, and on the first tick after `IsActive` clears it stops the motor and emits that zero rather than accelerating within the same tick. One frame at rest, 16 ms, against a carry-over at running speed. `PlayerMove_ResumesAfter_WithZeroVelocity` is the row that pins it.
+
+**Two moments, not one.** `ChargeEnded` is tied to the i-frames lapsing (0.27 s), while the motor is handed back when the movement ends (0.22 s). Rule 3 and rule 4 say exactly this; it is worth restating because the names suggest a single event.
+
+**Beyond the Files table:** `SilentIntents` in `ConeHitsToDamageTests` gained two no-op methods — widening `IIntentSink` forces every implementer, and that private fake is the third. Two lines, no behaviour.
+
+**Not covered by a test:** `IntentBuffer`'s new `HasCharge` / `Knockbacks` storage has no row in `IntentBufferTests` — the spec's Tests table has none and the core fixture proves the intents core writes, not the buffer that receives them. M1-16 is the first thing that reads them and is where they earn coverage.

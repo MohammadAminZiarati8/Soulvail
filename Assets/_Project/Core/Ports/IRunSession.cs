@@ -86,6 +86,41 @@ public interface IRunSession
     void ReportConeHits(ReadOnlySpan<int> enemyIds);
 
     /// <summary>
+    /// The body's answer to a <c>ChargeIntent</c> in flight: these are the enemies the dash has
+    /// passed through. Core turns it into damage, deaths and knockback.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Reported repeatedly, unlike <see cref="ReportConeHits"/>, and that is the shape of the
+    /// question.</b> A cone is one wedge at one instant, so it is asked once and answered once. A
+    /// dash is a line swept over 0.22 s, which no single overlap can describe — the body sweeps it
+    /// per frame and reports whatever it touched — so core accepts every report inside the dash's
+    /// window and damages each enemy only the first time it is named. Reporting the same enemy on
+    /// ten consecutive frames costs it 20 hit points, not 200.
+    /// </para>
+    /// <para>
+    /// <b>The window is a little wider than the dash</b>, by a tenth of a second, so that the frame
+    /// which finishes the sweep is still heard after the dash itself has ended. Anything later is
+    /// dropped in silence, like a stale cone report: the body never has to know when core stopped
+    /// listening.
+    /// </para>
+    /// <para>
+    /// Fire and forget in both directions, again. What the damage did leaves as <c>EnemyDamaged</c>
+    /// and <c>EnemyDied</c>, and where the shove sends anyone is the body's business — core writes
+    /// an <c>EnemyKnockbackIntent</c> per enemy and reads the result back as a position in the next
+    /// snapshot.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyIds">
+    /// The ids the dash has passed through so far. A <see cref="ReadOnlySpan{T}"/> for the reason
+    /// <see cref="ReportConeHits"/> takes one: nothing is copied and nothing is retained.
+    /// Duplicates, ids already reported by an earlier frame of the same dash, unknown ids and ids
+    /// that have since died are all harmless.
+    /// </param>
+    /// <exception cref="System.InvalidOperationException">No run is running.</exception>
+    void ReportChargeHits(ReadOnlySpan<int> enemyIds);
+
+    /// <summary>
     /// Ends the run and publishes <c>RunEnded</c>. A no-op when no run is running, so scope
     /// disposal can call it without first asking whether it needs to.
     /// </summary>

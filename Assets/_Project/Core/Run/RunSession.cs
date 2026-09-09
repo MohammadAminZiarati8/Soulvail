@@ -43,6 +43,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     private readonly IIntentSink _intents;
     private readonly int _enemyCapacity;
 
+    /// <summary>
+    /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
+    /// to hand movement back to the stick — see the remarks there.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than on <c>PlayerCombat</c> because it is about the motor, and the motor is this
+    /// object's to tick. <c>PlayerCombat</c> watches the other edge of the same dash, the one where
+    /// the i-frames lapse, and the two are deliberately not the same moment.
+    /// </remarks>
+    private bool _wasCharging;
+
     /// <param name="catalog">Where <c>config.CharacterId</c> is resolved.</param>
     /// <param name="random">The run's generator; its <see cref="IRandom.Seed"/> is recorded in the state.</param>
     /// <param name="events">Where run lifecycle events go.</param>
@@ -133,6 +144,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         State = new RunState(config.CharacterId, seed, character, motor, combat, enemies);
 
+        // With the state, not with the session: a run that ended mid-dash must not make the first
+        // tick of the next one think it has a motor to stop.
+        _wasCharging = false;
+
         // Published before IsRunning flips, so a handler that reads the session from inside this
         // event sees a run that is announced and not yet live. The alternative — flip, then
         // publish — would let a listener tick or end a run whose composition is still mid-flight.
@@ -194,15 +209,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         State.Enemies.Tick(snapshot.Dt, State.Time);
 
-        // The character now looks at what it is aiming at. Null when there is nothing to aim at,
-        // which the motor reads as "face the way you are moving" — M0's behaviour, still correct
-        // for an empty arena.
-        State.Motor.Tick(snapshot.Dt, snapshot.MoveInput, State.Combat.FaceDirection);
-
-        // Exactly one, every tick, including when the stick is centred — the body needs the
-        // deceleration velocity just as much as the acceleration one, and a tick that emitted
-        // nothing would leave the view applying whatever it last read.
-        _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
+        TickBody(snapshot);
     }
 
     /// <inheritdoc />
@@ -228,6 +235,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         RequireRunning(nameof(ReportConeHits));
 
         State.Combat.ResolveConeHits(enemyIds, State.Time, State.Enemies);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// A forward, for the reason <see cref="ReportConeHits"/> is one: every rule about which reports
+    /// count — the window, the per-dash dedupe, whether an id is still breathing — belongs to the
+    /// object that started the dash. This one adds the clock, and the clock is the same one a swing
+    /// lands on: <see cref="RunState.Time"/> as of the last <see cref="Tick"/>, at most a frame
+    /// behind the sweep that produced the report and measured against the same simulated seconds the
+    /// dash's own window was.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="ReportConeHits"/>, several of these per dash is the normal case rather than
+    /// a mistake — see the port.
+    /// </para>
+    /// </remarks>
+    public void ReportChargeHits(ReadOnlySpan<int> enemyIds)
+    {
+        RequireRunning(nameof(ReportChargeHits));
+
+        State.Combat.ResolveChargeHits(enemyIds, State.Time, State.Enemies);
     }
 
     /// <inheritdoc />
@@ -262,6 +291,30 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// A press is <em>recorded</em>, never acted on. Nothing about the dash happens here: whether it
+    /// fires at all, which way it goes and whether the press is still worth honouring are all
+    /// decided on the next <see cref="Tick"/>, by the one object holding CC §5's clock. The reason
+    /// is <c>Targeter.Focus</c>'s: a thumb lands between ticks, and a command that resolved itself
+    /// where it arrived would put a gameplay decision at whatever point in the frame the input
+    /// system happened to read the screen.
+    /// </para>
+    /// <para>
+    /// Stamped with <see cref="RunState.Time"/>, which is the clock the input buffer is measured
+    /// against — so a press is at most one frame older than it says it is, and the 0.15 s it stays
+    /// live is 0.15 s of simulated time rather than of a wall clock that keeps running while the
+    /// game is paused.
+    /// </para>
+    /// </remarks>
+    public void MovementSkill()
+    {
+        RequireRunning(nameof(MovementSkill));
+
+        State.Combat.Charge.Request(State.Time);
+    }
+
+    /// <inheritdoc />
     public void End()
     {
         // A no-op rather than a throw, so RunScope's disposal can call it without first asking
@@ -280,6 +333,62 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // events would be noise — while a listener handling RunEnded can still read the census
         // that was live when the run finished.
         State.Enemies.Clear();
+    }
+
+    /// <summary>
+    /// Moves the player — or deliberately does not, while a dash is doing it instead.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two instructions about where the character goes, and never both at once.</b> A
+    /// <see cref="ChargeIntent"/> has already told the body to travel 10 m in a fixed direction over
+    /// 0.22 s; a <see cref="PlayerMoveIntent"/> alongside it would be a second opinion arriving
+    /// sixty times a second, and the body would have to invent a rule about which of them core
+    /// meant. So for the length of the dash core says nothing about movement at all, and the motor
+    /// is not ticked either — it would be integrating a stick nobody is being moved by.
+    /// </para>
+    /// <para>
+    /// <b>The tick the dash ends on stops the motor and moves nowhere.</b> A suspended motor still
+    /// holds whatever velocity it had when the dash began, and letting that out would fling the
+    /// character on for another frame at the speed they were running before they dodged. So
+    /// <c>Stop</c> first, and the intent that goes out carries the zero — one frame at rest, which
+    /// is 16 ms nobody can feel, against a carry-over everybody can. Acceleration resumes from rest
+    /// on the next tick, which is what CC §2.4's 0.06 s ramp is for.
+    /// </para>
+    /// <para>
+    /// The facing survives all of it. <c>PlayerMotor.Stop</c> leaves it alone on purpose, and
+    /// nothing here turns the character round: a dash that ended with the body snapping back to
+    /// where it was looking before would undo the one thing the player just committed to.
+    /// </para>
+    /// <para>
+    /// Exactly one <see cref="PlayerMoveIntent"/> per tick otherwise, including when the stick is
+    /// centred — the body needs the deceleration velocity just as much as the acceleration one, and
+    /// a tick that emitted nothing would leave the view applying whatever it last read.
+    /// </para>
+    /// </remarks>
+    private void TickBody(WorldSnapshot snapshot)
+    {
+        if (State.Combat.Charge.IsActive)
+        {
+            _wasCharging = true;
+            return;
+        }
+
+        if (_wasCharging)
+        {
+            _wasCharging = false;
+
+            State.Motor.Stop();
+        }
+        else
+        {
+            // The character now looks at what it is aiming at. Null when there is nothing to aim
+            // at, which the motor reads as "face the way you are moving" — M0's behaviour, still
+            // correct for an empty arena.
+            State.Motor.Tick(snapshot.Dt, snapshot.MoveInput, State.Combat.FaceDirection);
+        }
+
+        _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
     }
 
     /// <summary>

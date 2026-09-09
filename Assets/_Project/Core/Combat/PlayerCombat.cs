@@ -41,6 +41,15 @@ namespace Soulvail.Core.Combat;
 /// named.
 /// </para>
 /// <para>
+/// <b>The dash is the same round trip, asked twice as long.</b> <see cref="Charge"/> decides when
+/// CC §5's dodge fires and which way it goes and nothing else (M1-14); this class raises the
+/// i-frames it implies, sends the movement out as a <see cref="ChargeIntent"/>, and turns the ids
+/// the body reports back through <see cref="ResolveChargeHits"/> into damage and knockback. Where a
+/// cone is one wedge asked about once, a dash is a line swept over 0.22 s and reported many times,
+/// so what makes the answer safe is not a request id but a window and a memory of who has already
+/// been hit.
+/// </para>
+/// <para>
 /// <b>Nothing here ends the run.</b> A death is published and then let go of (M1-17 wires the
 /// flow), which is also why the weapon keeps its cadence through it: until the death flow exists
 /// there is nothing to stop, and a rule here about not swinging while dead would be a second
@@ -80,9 +89,30 @@ public sealed class PlayerCombat
     /// <summary>Compared squared, so the facing never takes a square root it will discard.</summary>
     private const float MinDirectionDistanceSquared = MinDirectionDistance * MinDirectionDistance;
 
+    /// <summary>
+    /// How long after a dash ends core still accepts a <see cref="ResolveChargeHits"/> report, in
+    /// seconds.
+    /// </summary>
+    /// <remarks>
+    /// The sweep is resolved at the end of the body's frame, after core has already advanced its
+    /// clock past the dash's last instant, so a window that closed exactly on
+    /// <c>Duration</c> would throw away the frame that finishes the movement. A tenth of a second is
+    /// six frames at 60 fps and three at 30 — wide enough for a phone that is struggling, and far
+    /// too narrow for the next dash, which cannot arrive for another 2.5 s.
+    /// </remarks>
+    private const float ChargeReportGrace = 0.1f;
+
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly TargetingSpec _targeting;
+
+    /// <summary>
+    /// The class's authored movement skill: the four numbers <see cref="Charge"/> deliberately does
+    /// not read — <see cref="MovementSkillSpec.Distance"/>, <see cref="MovementSkillSpec.Duration"/>,
+    /// <see cref="MovementSkillSpec.Damage"/> and <see cref="MovementSkillSpec.Knockback"/> — which
+    /// are exactly the ones that describe what happens in the world rather than when.
+    /// </summary>
+    private readonly MovementSkillSpec _movementSkill;
 
     /// <summary>
     /// Preallocated at the run's enemy capacity and refilled in place every tick. Never handed out
@@ -115,6 +145,39 @@ public sealed class PlayerCombat
     private int _hitCount;
 
     /// <summary>
+    /// The enemies the dash in progress has already damaged, in
+    /// <c>[0, <see cref="_chargeHitCount"/>)</c>. The same buffer <see cref="_hitIds"/> is, sized
+    /// and scanned the same way and for the same reasons.
+    /// </summary>
+    /// <remarks>
+    /// It lives for a whole dash rather than for one call, and that is the difference between the
+    /// two mechanics. A cone is asked about once, so its dedupe only has to survive a single report;
+    /// a dash is swept frame by frame and reported over and over, so "each enemy takes 20 once per
+    /// Charge" is a memory that has to outlast every report inside the window. Cleared when a dash
+    /// starts, never when one is answered.
+    /// </remarks>
+    private readonly int[] _chargeHitIds;
+
+    /// <summary>How many entries of <see cref="_chargeHitIds"/> the dash in progress has filled.</summary>
+    private int _chargeHitCount;
+
+    /// <summary>
+    /// The last moment a <see cref="ResolveChargeHits"/> report will be believed:
+    /// <c>start + Duration + <see cref="ChargeReportGrace"/></c>. Negative infinity before the first
+    /// dash of a run, which is in the past for any clock — so a report that arrives before anyone
+    /// has dashed is refused by the same comparison that refuses a late one, without a flag to say
+    /// so.
+    /// </summary>
+    private float _chargeHitWindowUntil = float.NegativeInfinity;
+
+    /// <summary>
+    /// Whether <see cref="ChargeSkill.IsInvulnerable"/> was true as of the previous tick. The edge
+    /// this class watches for: it is what turns a property anyone can read into the one
+    /// <see cref="ChargeEnded"/> a run gets per dash.
+    /// </summary>
+    private bool _wasChargeInvulnerable;
+
+    /// <summary>
     /// The shield fraction as last announced, by either a <see cref="PlayerShieldChanged"/> or the
     /// <see cref="PlayerDamaged"/> that carried one.
     /// </summary>
@@ -141,9 +204,10 @@ public sealed class PlayerCombat
     /// </param>
     /// <param name="events">Where the five combat events go.</param>
     /// <param name="intents">
-    /// Where each damage frame's <see cref="ConeHitIntent"/> is written. Held here rather than
-    /// reached through the run, because this is the object that knows a swing landed and the
-    /// question has to leave on the tick that produced it.
+    /// Where each damage frame's <see cref="ConeHitIntent"/>, each dash's <see cref="ChargeIntent"/>
+    /// and every <see cref="EnemyKnockbackIntent"/> a dash causes are written. Held here rather than
+    /// reached through the run, because this is the object that knows a swing landed and a dash
+    /// began, and both have to leave on the tick that produced them.
     /// </param>
     /// <param name="enemyCapacity">
     /// The most enemies a run may hold at once, which is how long the candidate buffer and the
@@ -171,8 +235,10 @@ public sealed class PlayerCombat
         }
 
         _targeting = spec.Targeting;
+        _movementSkill = spec.MovementSkill;
         _candidates = new TargetCandidate[enemyCapacity];
         _hitIds = new int[enemyCapacity];
+        _chargeHitIds = new int[enemyCapacity];
 
         // MaxHp is a fresh Stat rather than the spec's raw number, because this is the live
         // maximum a tree node or a Pact applies to (ADR-0008). The spec stays what a designer
@@ -192,6 +258,11 @@ public sealed class PlayerCombat
         // tracker moves one Stat and has no idea it belongs to a weapon. ADR-0008's first live
         // modifier, and the shape every later source of "+attack speed" copies.
         Focus = new FocusTracker(spec.Focus, Weapon.FireRate, _events);
+
+        // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
+        // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
+        // M6-07's Blink are the same clock with a different payload — see MovementSkillKind.
+        Charge = new ChargeSkill(spec.MovementSkill);
 
         Blackboard = new CombatBlackboard();
 
@@ -230,6 +301,32 @@ public sealed class PlayerCombat
     /// property is a fire rate, <see cref="FocusAt"/> is a target.
     /// </remarks>
     public FocusTracker Focus { get; }
+
+    /// <summary>
+    /// CC §5's dodge: when it may fire, which way it goes, how long it protects, and how much of
+    /// the cooldown is left. Ticked first in <see cref="Tick"/>; exposed for the same reason
+    /// <see cref="Targeter"/> is, and because a press has to be able to reach
+    /// <see cref="ChargeSkill.Request"/> from the command port.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one property here a caller is expected to <em>write</em> to, through
+    /// <see cref="ChargeSkill.Request"/> — which is a request rather than a trigger, so what it
+    /// actually does is still this class's to decide on the next tick. Everything else on it is a
+    /// read: <see cref="ChargeSkill.IsActive"/> is what suspends the motor (<c>RunSession</c>),
+    /// <see cref="ChargeSkill.CooldownFraction"/> is what M1-16's button fills, and
+    /// <see cref="ChargeSkill.IsInvulnerable"/> is deliberately *not* read by anything outside —
+    /// the i-frames it implies are already on <see cref="Health"/>, and a second reader would be a
+    /// second opinion on whether the player can be hurt.
+    /// </para>
+    /// <para>
+    /// Named for the Oathbound's version because that is the only one V1 ships, and typed as the
+    /// concrete class for the same reason: a <c>IMovementSkill</c> with one implementation would be
+    /// an abstraction invented for a Shroudstep nobody has written yet, and M5-03 is where the
+    /// second one gets to say what the two have in common.
+    /// </para>
+    /// </remarks>
+    public ChargeSkill Charge { get; }
 
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
@@ -421,6 +518,103 @@ public sealed class PlayerCombat
     }
 
     /// <summary>
+    /// The body has swept part of a dash: everyone in <paramref name="enemyIds"/> is passed
+    /// through, for one Charge's damage and one Charge's shove.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The other half of a round trip, and a different shape from
+    /// <see cref="ResolveConeHits"/>.</b> A cone is one wedge at one instant, matched by a pending
+    /// request and spent by the first answer. A dash is a line swept over 0.22 s that no single
+    /// overlap describes, so the body reports it frame by frame and this method is called several
+    /// times per dash on purpose. What keeps that safe is not a request id but the two things below:
+    /// a window, and a memory.
+    /// </para>
+    /// <para>
+    /// <b>The window is a clock, not a flag</b> — <see cref="_chargeHitWindowUntil"/>, which is the
+    /// dash's end plus <see cref="ChargeReportGrace"/>. A report from before anyone dashed and a
+    /// report from a dash that finished last second are refused by the same comparison, so there is
+    /// no state to get out of step with the skill's own.
+    /// </para>
+    /// <para>
+    /// <b>The memory is per dash, not per report.</b> <see cref="_chargeHitIds"/> is cleared when a
+    /// dash starts and holds until the next one, which is what makes CC §5's "20 to everything
+    /// passed through" a per-Charge promise: an enemy the body names on ten consecutive frames of
+    /// one sweep takes 20, not 200.
+    /// </para>
+    /// <para>
+    /// <b>Aliveness is asked here rather than inferred from the damage</b>, unlike
+    /// <see cref="ResolveConeHits"/>, and the difference matters for a skill nobody has written yet.
+    /// A Charge always damages, so "did anything land" and "was there anyone there" are the same
+    /// question for it — but M5-03's Shroudstep is authored at zero damage with knockback of its
+    /// own, and reading the answer off the damage would leave it shoving nothing. The registry is
+    /// asked directly, which costs one dictionary lookup per id and never allocates.
+    /// </para>
+    /// <para>
+    /// The knockback goes out even for an enemy this hit killed. It was passed through, the shove
+    /// is what that looks like, and a corpse sliding a metre while it dissolves is better than one
+    /// that plants itself the instant it dies.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyIds">
+    /// Who the body has swept through so far. Duplicates, ids an earlier frame of this dash already
+    /// reported, unknown ids and corpses are all no-ops. Borrowed for the call and never retained.
+    /// </param>
+    /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>.</param>
+    /// <param name="enemies">
+    /// The run's enemies, for the aliveness check and the damage. Passed in rather than held, for
+    /// the reason <see cref="ResolveConeHits"/> gives.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// One dash damaged more distinct enemies than this was built for — unreachable while the
+    /// capacities agree, and loud rather than silently un-deduplicated if they ever do not.
+    /// </exception>
+    public void ResolveChargeHits(ReadOnlySpan<int> enemyIds, float now, EnemySystem enemies)
+    {
+        // Negated rather than `now > _chargeHitWindowUntil`, so a report stamped with a clock that
+        // has gone non-finite is refused rather than believed. The same direction every comparison
+        // in this class takes.
+        if (!(now <= _chargeHitWindowUntil))
+        {
+            return;
+        }
+
+        // Read once for the whole report, like the cone's damage and for the same reason: one dash
+        // is one number, whatever a handler does to the spec in between. These come off the spec
+        // rather than off a Stat because CC §5's damage and knockback have no modifier stack yet —
+        // when M3-12 gives them one, this is the line that changes and nothing else.
+        float damage = _movementSkill.Damage;
+        float knockback = _movementSkill.Knockback;
+
+        // The dash's direction, not the direction to each enemy: everything a Charge passes through
+        // is swept the same way. See EnemyKnockbackIntent.DirectionXZ.
+        Vector2 direction = Charge.Direction;
+
+        for (int i = 0; i < enemyIds.Length; i++)
+        {
+            int id = enemyIds[i];
+
+            if (AlreadyChargeHit(id))
+            {
+                continue;
+            }
+
+            if (!enemies.Registry.TryGet(id, out EnemyAgent agent) || !agent.IsAlive)
+            {
+                continue;
+            }
+
+            // Recorded before the damage lands, so that nothing a handler does from inside an
+            // EnemyDamaged can get the same enemy hit twice by this dash.
+            RecordChargeHit(id);
+
+            enemies.ApplyDamage(id, damage, now);
+
+            _intents.EnemyKnockback(new EnemyKnockbackIntent(id, direction, knockback));
+        }
+    }
+
+    /// <summary>
     /// The player tapped <paramref name="worldPoint"/>: focus whatever living enemy is nearest it
     /// within <see cref="FocusResolver.RadiusMetres"/>, or drop the focus when nothing is (CC §3.4).
     /// </summary>
@@ -533,19 +727,25 @@ public sealed class PlayerCombat
         ReadOnlySpan<EnemyAgent> enemies,
         Vector3 bodyFacing)
     {
-        // First, and before DpsOneSecond is read below. The ramp is the only thing in the tick that
-        // changes the fire rate, so running it here is what lets the rest of the tick — the
+        // Before the ramp, because the ramp asks it a question. A dash that started this tick has
+        // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
+        // counted as another tick of standing still.
+        TickCharge(dt, now, snapshot.MoveInput, bodyFacing);
+
+        // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
+        // that changes the fire rate, so running it here is what lets the rest of the tick — the
         // finisher bonus, the swing cadence — see this frame's rate rather than last frame's.
         //
-        // The stick alone decides "moving" today. M1-15 adds `|| Charge.IsInFlight` here: CC §5's
-        // dash is movement whatever the stick is doing, and a ramp that survived one would pay out
-        // for the dodge it is supposed to be the alternative to. The seam is this one expression.
+        // Two ways to be moving, and the dash is the one that is invisible to the stick: CC §5's
+        // 10 m happen with the thumb wherever it likes, including nowhere, and a ramp that survived
+        // one would pay out for the dodge it is supposed to be the alternative to. M1-13 left this
+        // expression as the seam and this is it being used.
         //
         // Spelled as "not exactly zero" rather than "greater than zero", which is the same
         // direction the old inline clock took and matters for one input: a NaN stick fails the
         // equality and counts as movement, so a broken input resets the ramp instead of quietly
         // ramping forever. See FocusTracker.LevelAt for the other half of the same care.
-        Focus.Tick(dt, snapshot.MoveInput.LengthSquared() != 0f);
+        Focus.Tick(dt, snapshot.MoveInput.LengthSquared() != 0f || Charge.IsActive);
 
         DpsOneSecond = Weapon.DpsOneSecond;
 
@@ -575,7 +775,7 @@ public sealed class PlayerCombat
 
     /// <summary>
     /// Back to the start of a run: full health, no target, no focus of either kind, a weapon at
-    /// rest, a blank blackboard and no facing.
+    /// rest, a dodge off cooldown, a blank blackboard and no facing.
     /// </summary>
     /// <remarks>
     /// What a respawn or a new stage gets instead of a rebuilt <see cref="PlayerCombat"/>, for the
@@ -596,6 +796,18 @@ public sealed class PlayerCombat
         // still once, before a stage that has not started yet.
         Focus.Reset();
 
+        // The dash goes back to rest with everything else, and the three fields that track it here
+        // go with it. Health.Reset above has already lowered the external flag — a dash interrupted
+        // by a reset would otherwise leave the next life invulnerable with nothing holding the flag
+        // to lower it — so this is the other half of that: the tracker of the edge, so the next dash
+        // is what publishes the next ChargeEnded, and the window, so a report from the dash that
+        // was interrupted cannot damage enemies the reset has cleared out from under it.
+        Charge.Reset();
+
+        _wasChargeInvulnerable = false;
+        _chargeHitWindowUntil = float.NegativeInfinity;
+        _chargeHitCount = 0;
+
         Blackboard.Reset();
 
         FaceDirection = null;
@@ -608,6 +820,70 @@ public sealed class PlayerCombat
         // enemies have been cleared out from under it.
         PendingConeRequestId = -1;
         _lastConeRequestId = 0;
+    }
+
+    /// <summary>
+    /// Rules 1–3 of M1-15: advance the dodge, and act on the two edges it has — the tick it starts
+    /// on, and the tick its protection runs out.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two edges, not one, because CC §5 protects a dash for longer than it lasts.</b> The
+    /// movement ends at <c>Duration</c>; the i-frames end 0.05 s later, and this method is written
+    /// around the second of those — that is where the external flag comes down and where
+    /// <see cref="ChargeEnded"/> goes out. The first edge is nobody's business here: the motor is
+    /// <c>RunSession</c>'s, and it reads <see cref="ChargeSkill.IsActive"/> for itself.
+    /// </para>
+    /// <para>
+    /// <b>The start branch and the end branch are exclusive.</b> A dash starting on the very tick
+    /// another's protection lapses would otherwise lower the flag it had just raised. It cannot
+    /// happen while the cooldown is twenty times the i-frame window, but the shape costs nothing and
+    /// means a shorter cooldown from M3-12 can never open the hole: while a dash is starting, the
+    /// only edge that exists is the start.
+    /// </para>
+    /// <para>
+    /// <b>Invulnerability is set here and read from <see cref="Health"/>.</b> The dash does not check
+    /// itself when damage arrives — <c>Health.IsInvulnerable</c> is the one answer to "can the player
+    /// be hurt", and this is a caller raising a flag it is also responsible for lowering, exactly as
+    /// <c>Health.SetExternalInvulnerable</c> asks.
+    /// </para>
+    /// </remarks>
+    private void TickCharge(float dt, float now, Vector2 stickXZ, Vector3 bodyFacing)
+    {
+        // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
+        // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
+        // turn, for the reason TickWeapon's is: combat runs before the motor.
+        bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z));
+        bool invulnerable = Charge.IsInvulnerable;
+
+        if (started)
+        {
+            Health.SetExternalInvulnerable(true);
+
+            // Both cleared on the start rather than on the end of the previous dash, so a report
+            // that arrives late is refused by a window that has already closed rather than by state
+            // some earlier tick had to remember to tidy.
+            _chargeHitWindowUntil = now + _movementSkill.Duration + ChargeReportGrace;
+            _chargeHitCount = 0;
+
+            // The instruction and the announcement, in that order and by different doors: the body
+            // is told where to go, everyone else is told that a dodge happened. ADR-0003's split,
+            // the same one a swing makes.
+            _intents.Charge(new ChargeIntent(
+                Charge.Direction,
+                _movementSkill.Distance,
+                _movementSkill.Duration));
+
+            _events.Publish(new ChargeStarted(Charge.Direction));
+        }
+        else if (_wasChargeInvulnerable && !invulnerable)
+        {
+            Health.SetExternalInvulnerable(false);
+
+            _events.Publish(new ChargeEnded());
+        }
+
+        _wasChargeInvulnerable = invulnerable;
     }
 
     /// <summary>Rules 1–7 of M1-10: swing, announce, and ask the body what the swing touched.</summary>
@@ -877,6 +1153,35 @@ public sealed class PlayerCombat
 
         _hitIds[_hitCount] = id;
         _hitCount++;
+    }
+
+    /// <summary>Whether the dash in progress has already spent itself on <paramref name="id"/>.</summary>
+    private bool AlreadyChargeHit(int id)
+    {
+        for (int i = 0; i < _chargeHitCount; i++)
+        {
+            if (_chargeHitIds[i] == id)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Remembers that <paramref name="id"/> has taken this dash's damage.</summary>
+    private void RecordChargeHit(int id)
+    {
+        if (_chargeHitCount >= _chargeHitIds.Length)
+        {
+            throw new InvalidOperationException(
+                $"PlayerCombat was built for {_chargeHitIds.Length} enemies but one Charge passed "
+                    + "through more than that. The dedupe buffer, the enemy registry and the world "
+                    + "snapshot must all be built with the same capacity.");
+        }
+
+        _chargeHitIds[_chargeHitCount] = id;
+        _chargeHitCount++;
     }
 
     /// <summary>Rule 2's shield event: published on drift from the last reported value, not per frame.</summary>

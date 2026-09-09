@@ -142,6 +142,25 @@ public sealed class RunState
     public int EnemyCount => Enemies.Registry.AliveCount;
 
     /// <summary>
+    /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the
+    /// instant a dash starts, 0 while the button is live. What M1-16's radial fill draws.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The first of the "narrow reads" <see cref="Combat"/> promises instead of the handle, and it
+    /// is here rather than on an event because there is no event that could carry it: a fill slides
+    /// continuously for two and a half seconds, so publishing it would mean an event per frame for
+    /// a number the reader is already sampling per frame. The handle stays <c>internal</c>, so this
+    /// still cannot be used to advance, hurt or heal anything.
+    /// </para>
+    /// <para>
+    /// Zero when nothing is cooling, which is the same answer a run that has never dashed gives —
+    /// the button is live in both cases, and there is nothing else it could usefully say.
+    /// </para>
+    /// </remarks>
+    public float MovementSkillCooldownFraction => Combat.Charge.CooldownFraction;
+
+    /// <summary>
     /// Seconds of simulated run time, summed from each tick's <c>Dt</c>.
     /// </summary>
     /// <remarks>

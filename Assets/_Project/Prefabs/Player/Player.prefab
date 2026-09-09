@@ -372,6 +372,7 @@ GameObject:
   - component: {fileID: 103716121360847215}
   - component: {fileID: 4832730137514638687}
   - component: {fileID: 7401882501133620004}
+  - component: {fileID: 4401292794507055000}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -450,7 +451,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3253bf80c77e5c4f8e2e00e3a35d169, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
   _glow: {fileID: 7401882501133620002}
   _colour: {r: 0.3, g: 0.9, b: 1, a: 1}
@@ -458,3 +459,15 @@ MonoBehaviour:
   _baseRadius: 1
   _radiusGain: 0.5
   _groundOffset: 0.015
+--- !u!114 &4401292794507055000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8863278875096038193}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5581812873d4648983e7bc36c4385b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ChargeMotion

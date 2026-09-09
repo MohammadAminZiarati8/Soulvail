@@ -62,10 +62,10 @@ public sealed class ConeOverlapQuery
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 362 EditMode, 11 of them this task's (confirmed by a filtered re-run)
+- [x] Zero errors, zero new analyzer warnings
+- [ ] Manual steps verified — **owner's, below**
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -75,4 +75,16 @@ public sealed class ConeOverlapQuery
 
 ## As built
 
-_Filled at merge._
+**Files:** three new (`ConeOverlapQuery`, `EnemyHitFeedback`, `ConeOverlapQueryTests`), one new asset (`Materials/M_BoneGrey_Dissolve.mat`), and small edits to `RunTicker`, `RunScope`, `PlayerView`, `EnemyView`, `EnemyViews`, `Enemy.prefab`, `Player.prefab` and `Run.unity`. `TagManager` needed nothing — M1-07's `Enemy` layer (index 8) was already there and was verified rather than added.
+
+**Five deviations, two of them defects in this spec.** The full account is in the PROGRESS entry; in short:
+
+1. **`EnemyView.FromCollider` (rule 1) does not exist and should not.** M1-07 shipped `EnemyViews.TryGetId(Collider, out int)` instead, because a static dictionary is banned mutable static state and — with domain reload disabled on Play — would carry one session's colliders into the next silently. `ConeOverlapQuery`'s constructor therefore takes a third argument, `EnemyViews`, where the Public API block above shows two.
+2. **The Public API block is in `UnityEngine` vectors; `ConeHitIntent` is `System.Numerics`.** Converted once per swing through `Num`; `IsInCone` is `UnityEngine`-only.
+3. **Rule 4's `OnEnable` subscription is impossible.** `IObjectResolver.Instantiate` runs `Awake`/`OnEnable` *during* the instantiate, before VContainer injects, so the hub would be null on every enemy. Subscribed from `[Inject] Construct`, with `Start` checking that injection happened.
+4. **Rule 4's alpha fade needed a material that did not exist.** `M_BoneGrey` is opaque URP/Lit, so a property-block alpha on it is a silent no-op, and it is shared with `GreyBox.prefab` — flipping it would have made the arena see-through. Owner chose a transparent copy, swapped in by `sharedMaterial` only while a corpse fades.
+5. **Rule 5's "quad" is a generated wedge mesh**, built in `Awake` from the serialized range and angle so it cannot disagree with them, reusing `M_Reticle.mat`.
+
+**Beyond the table:** `EnemyView.Body` resolves lazily when `Awake` has not run (without it the collider index is empty in EditMode and the query would assert zero — a passing test of a broken feature); `RunScope` gained a serialized `_enemyLayer` and the query's registration; `PlayerView` gained injection, an `Update` and the wedge. Three test rows beyond the Tests table.
+
+**Placeholder to keep honest:** `PlayerView`'s swing range and angle duplicate the Censer's `WeaponSpec` numbers and must be kept equal by hand until M7. `PlayerAttacked` carries only the facing on purpose — the tell starts before the cone that answers it exists.

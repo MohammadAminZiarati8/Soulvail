@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -37,6 +38,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
+    private readonly ConeOverlapQuery _cone;
+
+    /// <summary>
+    /// Where a swing's answer is assembled before it is handed back to core. One array for the
+    /// life of the run, sized to what the query can see, so the fact costs no allocation on the
+    /// frames that already have the most happening in them (AR §14).
+    /// </summary>
+    private readonly int[] _coneHitIds;
 
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <remarks>
@@ -55,7 +64,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         PlayerView player,
         InputAdapter input,
         SpawnPlan spawnPlan,
-        TapToFocusAdapter tapToFocus)
+        TapToFocusAdapter tapToFocus,
+        ConeOverlapQuery cone)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
@@ -66,6 +76,9 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
+        _cone = cone ?? throw new ArgumentNullException(nameof(cone));
+
+        _coneHitIds = new int[cone.Capacity];
 
         // Unity's == rather than `is null`: RunScope supplies this from a serialized field, so a
         // destroyed or unassigned object is a live reference that only compares equal to null
@@ -123,8 +136,16 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// last frame's velocity on any frame core stayed silent — a player who keeps sliding.
     /// </para>
     /// <para>
-    /// Allocates nothing: everything below is a call on an object built once per run, and the
-    /// intent is a <c>readonly struct</c> taken by <c>in</c>.
+    /// <see cref="ResolveConeHits"/> is last, and it is AR §4.3's step 5: the physics a swing
+    /// asked for runs <em>after</em> the body has been moved, so the sweep is resolved against the
+    /// arena as it stands at the end of this frame rather than against the one the frame started
+    /// with. It comes back in through a fact, and the damage it causes is published before this
+    /// method returns.
+    /// </para>
+    /// <para>
+    /// Allocates nothing: everything below is a call on an object built once per run, the intent
+    /// is a <c>readonly struct</c> taken by <c>in</c>, and the swing's answer goes back as a span
+    /// over an array owned since the run started.
     /// </para>
     /// </remarks>
     public void Tick()
@@ -140,6 +161,38 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         if (_intents.HasPlayerMove)
         {
             _player.Apply(_intents.PlayerMove, _snapshot.Dt);
+        }
+
+        ResolveConeHits();
+    }
+
+    /// <summary>
+    /// Answers every cone core asked about this tick: sweep it, and report who was standing in it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A swing with no answer is still answered.</b> A count of zero is reported exactly like a
+    /// count of five, because the report is what retires <c>PlayerCombat.PendingConeRequestId</c> —
+    /// stay silent on a miss and core waits for an answer that never comes, and the next swing's
+    /// hits would be credited to the one before it.
+    /// </para>
+    /// <para>
+    /// A <c>for</c> over the count rather than a <c>foreach</c>: the buffer hands out an
+    /// <c>IReadOnlyList</c>, and enumerating that would box an enumerator on every frame the player
+    /// is attacking, which on a phone is most of them.
+    /// </para>
+    /// </remarks>
+    private void ResolveConeHits()
+    {
+        IReadOnlyList<ConeHitIntent> cones = _intents.ConeHits;
+
+        for (int i = 0; i < cones.Count; i++)
+        {
+            ConeHitIntent cone = cones[i];
+
+            int count = _cone.Query(cone, _coneHitIds);
+
+            _session.ReportConeHits(new ReadOnlySpan<int>(_coneHitIds, 0, count));
         }
     }
 

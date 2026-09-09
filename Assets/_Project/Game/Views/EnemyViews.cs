@@ -211,9 +211,10 @@ public sealed class EnemyViews : IDisposable
 
         _byId[evt.Id] = view;
 
-        // Null in EditMode, where Awake never runs and so nothing cached the collider. Guarded
-        // rather than asserted because the lookup this feeds is a convenience for M1-12, not
-        // something a run depends on.
+        // Body resolves itself when Awake has not run, which outside play mode it never does
+        // (M1-12), so this index is filled in an EditMode test as well as in a run. Still guarded:
+        // a prefab that somehow carries no collider should leave that enemy unhittable rather than
+        // take the whole run down at the first spawn.
         if (view.Body != null)
         {
             _idByColliderInstance[view.Body.GetInstanceID()] = evt.Id;

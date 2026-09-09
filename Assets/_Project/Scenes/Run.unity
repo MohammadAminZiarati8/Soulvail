@@ -237,6 +237,9 @@ MonoBehaviour:
   _reticle: {fileID: 2001746810}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
+  _enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
   _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   _dummyPositions:
   - {x: 8, y: 0, z: 0}

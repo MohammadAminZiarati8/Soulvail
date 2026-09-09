@@ -66,11 +66,35 @@ namespace Soulvail.Game.Views
         /// This body's trigger collider, cached once.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Exposed so <see cref="EnemyViews"/> can index it and answer "which enemy is this
         /// collider?" without a <c>GetComponent</c> inside M1-12's cone-overlap loop, which runs
         /// once per swing against every collider in the sweep.
+        /// </para>
+        /// <para>
+        /// Resolved lazily when <see cref="Awake"/> has not run, which outside play mode it never
+        /// does. That is not a test convenience: it is the only reason an EditMode test can build a
+        /// body whose collider physics can actually find, and without it M1-12's overlap query
+        /// would have no automated coverage at all — the index would be empty and every query would
+        /// correctly return nothing, which looks exactly like a passing test of a broken feature.
+        /// At runtime <c>Awake</c> has always already filled it, so the branch is never taken on a
+        /// path that matters.
+        /// </para>
         /// </remarks>
-        public Collider Body => _body;
+        public Collider Body
+        {
+            get
+            {
+                // Unity's == rather than `is null`: a destroyed collider is a live reference that
+                // only compares equal to null through the engine's operator.
+                if (_body == null)
+                {
+                    _body = GetComponent<CapsuleCollider>();
+                }
+
+                return _body;
+            }
+        }
 
         /// <summary>
         /// Puts this body into service as <paramref name="id"/>, standing at

@@ -58,6 +58,11 @@ namespace Soulvail.Game.Composition
                  "without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _enemyParent;
 
+        [Tooltip("The layers a swing sweeps: the Enemy layer, and nothing else. Authored rather " +
+                 "than looked up by name, so a renamed layer is a visible diff instead of a " +
+                 "string that stops resolving.")]
+        [SerializeField] private LayerMask _enemyLayer;
+
         [Tooltip("The archetype the dummies below are spawned as. Leave empty for an arena that " +
                  "starts bare.")]
         [SerializeField] private EnemyDefinition _dummySpec;
@@ -139,6 +144,25 @@ namespace Soulvail.Game.Composition
             builder.Register<EnemyViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent);
+
+            // Guarded here as well as in the query's own constructor, because the two failures read
+            // differently: the constructor can only say "this mask is empty", while this can say
+            // which field on which object to fix. An empty mask is not a degraded run — it is a
+            // Censer that swings three times a second and never touches anything.
+            if (_enemyLayer.value == 0)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no Enemy Layer set. Choose the Enemy layer on its " +
+                    "Enemy Layer field — a swing sweeps that mask, so an empty one means no " +
+                    "attack in the game can ever hit anything.");
+            }
+
+            // By name like the two above: WithParameter<int> would break the moment a second int
+            // parameter appeared, and the mask is a LayerMask, which is what a plain type match
+            // would hand any other LayerMask argument as well.
+            builder.Register<ConeOverlapQuery>(Lifetime.Scoped)
+                .WithParameter("capacity", ConeOverlapQuery.DefaultCapacity)
+                .WithParameter("enemyLayer", _enemyLayer);
 
             // An instance, and safe to be one — the M0-12 rule is about things the scope must
             // dispose, and a SpawnPlan is immutable, holds no resource and is not IDisposable, as

@@ -55,9 +55,9 @@ public readonly struct EnemyDied    { public readonly int Id; public readonly Co
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -66,4 +66,14 @@ public readonly struct EnemyDied    { public readonly int Id; public readonly Co
 
 ## As built
 
-_Filled at merge._
+Built as specified, with three departures — see the PROGRESS entry for the full argument.
+
+1. **`ResolveConeHits(ids, now, enemies)`** takes the `EnemySystem` as a parameter. `PlayerCombat` owns no registry by design (M1-08); holding one would let the player's combat brain spawn and despawn.
+2. **The dedupe is a capacity-sized `int[]`, scanned linearly — not a bitset.** *The spec's phrasing cannot be implemented:* enemy ids are monotonic for a whole run and never reused (`EnemyRegistry` rule 1), so they outgrow any capacity-sized bit index within a hundred spawns. The array keeps what the rule was asking for — a fixed structure sized to the world, not to the report — and cannot overflow, because an entry is written only for an id that damage actually reached.
+3. **`EnemySystem.ApplyDamage` publishes nothing when nothing landed**, matching `PlayerCombat.ApplyDamage` rather than rule 3's literal text. A `Stat` can be driven to zero (ADR-0008) and `Health` refuses NaN, and an `EnemyDamaged` of zero would flash a hit that never arrived. One test row beyond the table covers it.
+
+Beyond the Files table: `EnemyAgent` gained an `internal float DiedAt` (the corpse timer had to live with the agent, or a recycled one would inherit the previous life's stamp), and `RunSession.RequireRunning`'s message widened to cover facts as well as commands.
+
+All nine rows of the Tests table pass, plus `ApplyDamage_NothingLanded_PublishesNothing`. 351 EditMode and 3 PlayMode green; zero errors and zero warnings on a clean recompile.
+
+**Not observable in the Editor.** No physics query answers the `ConeHitIntent` until M1-12, so nothing here has ever hit a real enemy outside the suite.

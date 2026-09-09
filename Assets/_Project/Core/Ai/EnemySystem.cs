@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -42,6 +43,18 @@ namespace Soulvail.Core.Ai;
 /// </remarks>
 public sealed class EnemySystem
 {
+    /// <summary>
+    /// Seconds a corpse stays registered after it dies, before <see cref="Tick"/> retires it.
+    /// </summary>
+    /// <remarks>
+    /// The gap between <see cref="EnemyDied"/> and <see cref="EnemyDespawned"/>, and the whole
+    /// reason the two are separate events: it is how long M1-12's dissolve has to play before the
+    /// id it is animating stops resolving. A number rather than a per-archetype field because it
+    /// is a property of the death <em>effect</em>, which is shared — the day an archetype wants a
+    /// longer one, it moves onto <see cref="EnemySpec"/> along with the effect that needs it.
+    /// </remarks>
+    public const float CorpseTime = 0.6f;
+
     /// <summary>
     /// Metres within which another enemy counts as an ally, for
     /// <see cref="EnemyBlackboard.AlliesNearby"/> — GD §8.1's clustering pressure.
@@ -162,6 +175,72 @@ public sealed class EnemySystem
     }
 
     /// <summary>
+    /// Applies <paramref name="amount"/> to the enemy with <paramref name="enemyId"/> at time
+    /// <paramref name="now"/> and announces what happened.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The single door damage reaches an enemy through, so that "an enemy was hurt" and "an enemy
+    /// died" each have exactly one publisher. <c>PlayerCombat.ResolveConeHits</c> calls it for the
+    /// Censer's arc (M1-11); M1-15's Charge and M5-01's projectiles will for theirs. The mirror of
+    /// <c>PlayerCombat.ApplyDamage</c>, and deliberately the same shape: <see cref="Health"/> stays
+    /// event-free and its owner decides what the result means.
+    /// </para>
+    /// <para>
+    /// <b>A call that did nothing says nothing.</b> An unknown id and a corpse both report
+    /// <see cref="DamageResult.None"/> without publishing — a second death for something already
+    /// dead would make the kill arrive twice, and an <see cref="EnemyDamaged"/> of zero would flash
+    /// a hit that never landed. The same silence covers a non-positive or NaN
+    /// <paramref name="amount"/>, which <see cref="Health"/> refuses at the door; a
+    /// <see cref="DamageResult.Blocked"/> result <em>is</em> published, because something arrived
+    /// and was turned away, which is the one thing M7-01's Warden needs the game to say out loud.
+    /// </para>
+    /// <para>
+    /// The corpse is left registered. <see cref="Tick"/> retires it <see cref="CorpseTime"/>
+    /// seconds later, which is what gives the view its dissolve and what makes the id in
+    /// <see cref="EnemyDied"/> still resolvable while the event is being handled.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyId">Who to hurt. An id that is not registered is not an error.</param>
+    /// <param name="amount">Damage to apply. Zero, negative and NaN all do nothing.</param>
+    /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>
+    /// <returns>What <see cref="Health"/> did, unchanged, for a caller with its own conclusions to draw.</returns>
+    public DamageResult ApplyDamage(int enemyId, float amount, float now)
+    {
+        // Registered *and* breathing. TryGet finds a corpse on purpose (that is what lets a death
+        // event name a resolvable id), so aliveness is the second half of the question here.
+        if (!Registry.TryGet(enemyId, out EnemyAgent agent) || !agent.IsAlive)
+        {
+            return DamageResult.None;
+        }
+
+        DamageResult result = agent.Health.ApplyDamage(amount, now);
+
+        // Spelled as "nothing arrived" rather than as a comparison against None, so a future
+        // DamageResult field cannot quietly change what counts as silence. The same spelling, for
+        // the same reason, as PlayerCombat.ApplyDamage.
+        if (!result.Blocked && !(result.Applied > 0f))
+        {
+            return result;
+        }
+
+        _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed));
+
+        // Exactly once per life without a flag to remember it: Killed is true only on the call that
+        // took HP to zero, and every later call finds a corpse and returns None above.
+        if (result.Killed)
+        {
+            // Stamped before the announcement, so the corpse is already on the clock by the time
+            // anything handles the death — the same order as Spawn's register-then-announce.
+            agent.DiedAt = now;
+
+            _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// One frame of senses: copies the snapshot's positions onto the agents it names, then fills
     /// every living agent's perception.
     /// </summary>
@@ -212,15 +291,24 @@ public sealed class EnemySystem
     /// wall clock.
     /// </param>
     /// <remarks>
+    /// <para>
     /// Both archetypes stand still in M1-06, so this only dispatches: <c>Static</c> does nothing
     /// by definition, and <c>Chaser</c> does nothing until M1-18 writes <c>ChaserBehaviour</c>.
     /// The loop and the switch exist now because this is the one site that knows the full set of
     /// behaviours, which is why <c>EnemyBehaviourKind</c> is deliberately unvalidated where it is
     /// authored (M1-05) — a third kind added without teaching this method about it fails loudly
     /// here instead of standing motionless in the arena with nothing in the log.
+    /// </para>
+    /// <para>
+    /// The corpse sweep runs first, so the behaviour pass walks a registry nothing is about to
+    /// remove from. Order between the two is otherwise free — a corpse does not act either way —
+    /// and this way there is only one span to reason about.
+    /// </para>
     /// </remarks>
     public void Tick(float dt, float now)
     {
+        SweepCorpses(now);
+
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
 
         for (int i = 0; i < agents.Length; i++)
@@ -263,6 +351,46 @@ public sealed class EnemySystem
     public void Clear()
     {
         Registry.Clear();
+    }
+
+    /// <summary>
+    /// Retires every corpse that has been dead for at least <see cref="CorpseTime"/> seconds.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Walked backwards, and that is the whole of why this is its own method.
+    /// <see cref="Despawn"/> compacts the registry in place, so a forward loop over a span taken
+    /// once would read a nulled slot the moment anything was removed. Removing index <c>i</c>
+    /// shifts only what came after it, so every index below is still the agent it was — which
+    /// makes the backwards walk correct without copying anything out first.
+    /// </para>
+    /// <para>
+    /// <c>Registry.Alive</c> is re-read each step rather than hoisted, for the same reason: the
+    /// span carries the count it was taken with. It is a struct over an array the registry already
+    /// owns, so re-taking it allocates nothing.
+    /// </para>
+    /// </remarks>
+    private void SweepCorpses(float now)
+    {
+        for (int i = Registry.AliveCount - 1; i >= 0; i--)
+        {
+            EnemyAgent agent = Registry.Alive[i];
+
+            if (agent.IsAlive)
+            {
+                continue;
+            }
+
+            // `< CorpseTime` rather than a negated `>=`, so a corpse whose stamp is negative
+            // infinity — one that died without going through ApplyDamage — fails this test and is
+            // retired now. See EnemyAgent.DiedAt.
+            if (now - agent.DiedAt < CorpseTime)
+            {
+                continue;
+            }
+
+            Despawn(agent.Id);
+        }
     }
 
     /// <summary>

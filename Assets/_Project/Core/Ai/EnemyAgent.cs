@@ -91,6 +91,26 @@ public sealed class EnemyAgent
     public bool IsAlive => !Health.IsDead;
 
     /// <summary>
+    /// Simulated run time at which this agent's HP reached zero, or negative infinity while it is
+    /// alive. Read only by <c>EnemySystem</c>'s corpse sweep, which retires it
+    /// <c>EnemySystem.CorpseTime</c> seconds later.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Kept here rather than in a table beside the registry because it is per-agent state with the
+    /// same lifetime as every other field on this class — and because a side table keyed by id
+    /// would have to be pruned in exactly the places <see cref="Initialise"/> already resets.
+    /// </para>
+    /// <para>
+    /// Negative infinity, not zero, so "has never died" is unambiguous. It matters for a corpse
+    /// that appeared without going through <c>EnemySystem.ApplyDamage</c> — the one door that
+    /// stamps this: such an agent is retired on the next tick rather than lingering until the
+    /// clock happens to pass 0.6, which is the loud direction to fail in.
+    /// </para>
+    /// </remarks>
+    internal float DiedAt { get; set; } = float.NegativeInfinity;
+
+    /// <summary>
     /// Whether damage can land on it right now. True for everything in M1 — the first archetype
     /// that lowers it is the Warden, whose front shield blocks all damage (GD §8.1, M7-01) — and
     /// read by <c>TargetScorer</c> through a candidate, which never selects an enemy it cannot
@@ -114,6 +134,10 @@ public sealed class EnemyAgent
         Position = position;
         Velocity = Vector3.Zero;
         IsVulnerable = true;
+
+        // Back to "has never died", so a recycled agent cannot inherit the previous life's death
+        // stamp and be swept the moment it spawns.
+        DiedAt = float.NegativeInfinity;
 
         Blackboard.Reset();
 

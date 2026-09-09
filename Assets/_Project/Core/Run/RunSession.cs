@@ -208,6 +208,31 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// <inheritdoc />
     /// <remarks>
     /// <para>
+    /// A forward, and the shortest method here on purpose: everything a report has to be sceptical
+    /// about — whether a swing is owed an answer at all, duplicate ids, ids that have since died —
+    /// belongs to the object that asked the question, and putting any of it here would split one
+    /// rule across two classes. This one adds only what it alone knows: that there is a run, and
+    /// what time it is.
+    /// </para>
+    /// <para>
+    /// Damage lands at <see cref="RunState.Time"/> — the simulated clock as of the last
+    /// <see cref="Tick"/> — rather than at some interpolated moment between ticks, for the reason
+    /// <see cref="FocusTarget"/> gives: a fact arrives between frames, and core has exactly one
+    /// clock. The lag is at most one frame and it is the same lag the i-frames and the Aegis
+    /// recharge are already measured against, which matters more than being right to the
+    /// millisecond about a swing nobody can see the timing of.
+    /// </para>
+    /// </remarks>
+    public void ReportConeHits(ReadOnlySpan<int> enemyIds)
+    {
+        RequireRunning(nameof(ReportConeHits));
+
+        State.Combat.ResolveConeHits(enemyIds, State.Time, State.Enemies);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
     /// Resolved against the enemies as of the last <see cref="Tick"/>, because a command lands
     /// before the frame it belongs to is built (<c>RunTicker</c>'s command phase). Those positions
     /// are therefore up to one frame old — at most a couple of centimetres of walking against a 3 m
@@ -258,14 +283,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     }
 
     /// <summary>
-    /// Refuses a command that arrived outside a run, naming the command that arrived.
+    /// Refuses a command or a fact that arrived outside a run, naming what arrived.
     /// </summary>
     /// <remarks>
-    /// Named rather than generic, because the two commands reach here from different adapters and
+    /// Named rather than generic, because these reach here from different adapters and
     /// "FocusTarget was called with no run running" points straight at whichever one is listening
     /// when it should not be.
     /// </remarks>
-    private void RequireRunning(string command)
+    private void RequireRunning(string member)
     {
         if (IsRunning)
         {
@@ -273,8 +298,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         }
 
         throw new InvalidOperationException(
-            $"{command} was called with no run running. Player commands belong to a live run — " +
-            "the input map is disabled outside one, so this is a wiring mistake rather than a " +
-            "player doing something unexpected.");
+            $"{member} was called with no run running. Player commands and physical facts both " +
+            "belong to a live run — the input map is disabled outside one and the ticker stops " +
+            "reporting — so this is a wiring mistake rather than something the player or the " +
+            "world did.");
     }
 }

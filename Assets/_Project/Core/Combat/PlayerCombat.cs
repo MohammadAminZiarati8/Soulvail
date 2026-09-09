@@ -32,10 +32,12 @@ namespace Soulvail.Core.Combat;
 /// enemies may exist is three chances to be blind to one.
 /// </para>
 /// <para>
-/// <b>It fires a weapon but resolves nothing.</b> The <see cref="Weapon"/> decides when a swing
-/// starts and when its damage lands; what that damage touches is a physical question, so the
-/// damage frame leaves as a <see cref="ConeHitIntent"/> and the answer comes back as a fact in
-/// M1-11. Between the two, this class knows only that it asked.
+/// <b>It fires a weapon but decides nothing about geometry.</b> The <see cref="Weapon"/> decides
+/// when a swing starts and when its damage lands; what that damage touches is a physical question,
+/// so the damage frame leaves as a <see cref="ConeHitIntent"/> and the answer comes back as a list
+/// of ids through <see cref="ResolveConeHits"/> (M1-11). Between the two, this class knows only
+/// that it asked — and when the answer arrives it still never looks at a position, only at who was
+/// named.
 /// </para>
 /// <para>
 /// <b>Nothing here ends the run.</b> A death is published and then let go of (M1-17 wires the
@@ -88,6 +90,30 @@ public sealed class PlayerCombat
     private readonly TargetCandidate[] _candidates;
 
     /// <summary>
+    /// The enemies this report has already damaged, in <c>[0, <see cref="_hitCount"/>)</c>. Rule
+    /// 2's dedupe, and it lives for the length of one <see cref="ResolveConeHits"/> call.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Sized to the enemy capacity rather than to the report, because the report's length is the
+    /// body's to choose and this array's is not allowed to be. It cannot overflow: an entry is
+    /// written only for an id that damage actually reached, which means a registered, living
+    /// agent, and there are at most a capacity of those.
+    /// </para>
+    /// <para>
+    /// A list of ids rather than a bitset, which the spec asked for and this cannot be: enemy ids
+    /// increase for the whole run and are never reused (<c>EnemyRegistry</c> rule 1), so by the
+    /// hundredth spawn they are far past any bit index a capacity-sized set could offer. Scanning
+    /// it is O(k²) in the number of enemies one swing hits — at most 64 × 64 comparisons, three
+    /// times a second, against a dictionary that would allocate.
+    /// </para>
+    /// </remarks>
+    private readonly int[] _hitIds;
+
+    /// <summary>How many entries of <see cref="_hitIds"/> the current report has filled.</summary>
+    private int _hitCount;
+
+    /// <summary>
     /// The shield fraction as last announced, by either a <see cref="PlayerShieldChanged"/> or the
     /// <see cref="PlayerDamaged"/> that carried one.
     /// </summary>
@@ -119,9 +145,9 @@ public sealed class PlayerCombat
     /// question has to leave on the tick that produced it.
     /// </param>
     /// <param name="enemyCapacity">
-    /// The most enemies a run may hold at once, which is how long the candidate buffer is. It must
-    /// be the number the enemy registry and the <c>WorldSnapshot</c> were built with — see the
-    /// class remarks.
+    /// The most enemies a run may hold at once, which is how long the candidate buffer and the
+    /// cone-hit dedupe buffer are. It must be the number the enemy registry and the
+    /// <c>WorldSnapshot</c> were built with — see the class remarks.
     /// </param>
     /// <exception cref="ArgumentNullException">Any of the three references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
@@ -145,6 +171,7 @@ public sealed class PlayerCombat
 
         _targeting = spec.Targeting;
         _candidates = new TargetCandidate[enemyCapacity];
+        _hitIds = new int[enemyCapacity];
 
         // MaxHp is a fresh Stat rather than the spec's raw number, because this is the live
         // maximum a tree node or a Pact applies to (ADR-0008). The spec stays what a designer
@@ -288,6 +315,91 @@ public sealed class PlayerCombat
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The body has answered the outstanding <see cref="ConeHitIntent"/>: everyone in
+    /// <paramref name="enemyIds"/> takes one swing's damage.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Half of a round trip, and the half that has to be suspicious.</b> The question left on a
+    /// damage frame and the answer arrives at least a frame later, so a report can be stale, a
+    /// duplicate, or name enemies that have died in between. Each of those is handled by refusing
+    /// rather than by guessing: no pending request means nothing is owed an answer and this report
+    /// is dropped whole (which is also what makes a second report for one swing a no-op), and the
+    /// pending id is cleared before any damage lands so that nothing a handler does from inside an
+    /// <c>EnemyDamaged</c> can spend the same swing twice.
+    /// </para>
+    /// <para>
+    /// <b>The report is matched by "is one owed", not by id.</b> Only one cone can be outstanding
+    /// — a second damage frame overwrites <see cref="PendingConeRequestId"/> rather than queueing,
+    /// because a swing whose answer arrives after the next swing has already been thrown is a
+    /// swing whose geometry is two frames stale and worth less than the newest one. The id
+    /// therefore rides on the intent for the body's own bookkeeping and for a log to make sense
+    /// of, and this method needs only the flag. M1-15's Charge is the first thing that can put two
+    /// requests in one tick, and it brings its own fact rather than sharing this one.
+    /// </para>
+    /// <para>
+    /// <b>Damage is read once, for the whole report.</b> One swing is one number, so an enemy hit
+    /// at the start of the arc and one at the end take the same 13 even if a modifier lands
+    /// between them — which cannot happen inside this loop today, and would be a bug the day
+    /// something publishes into a stat from an <c>EnemyDamaged</c> handler.
+    /// </para>
+    /// <para>
+    /// Nothing here allocates: a span in, a preallocated dedupe buffer, and a struct result per id.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyIds">
+    /// Who the body found standing in the wedge. Duplicates are ignored, ids it does not recognise
+    /// and ids that are already dead are no-ops — a view lagging a frame behind a death is normal
+    /// and must not be an error. Borrowed for the duration of the call and never retained.
+    /// </param>
+    /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>.</param>
+    /// <param name="enemies">
+    /// The run's enemies, for the one thing this needs from them. Passed in rather than held, for
+    /// the reason <see cref="FocusAt"/> gives: this class deliberately owns no registry and is
+    /// handed the world each time it is asked to think about it.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// More distinct enemies were damaged by one swing than this was built for — see
+    /// <see cref="_hitIds"/>, which is unreachable while the capacities agree, and loud rather than
+    /// silently un-deduplicated if they ever do not.
+    /// </exception>
+    public void ResolveConeHits(ReadOnlySpan<int> enemyIds, float now, EnemySystem enemies)
+    {
+        if (PendingConeRequestId < 0)
+        {
+            return;
+        }
+
+        PendingConeRequestId = -1;
+
+        float damage = Weapon.Damage.Value;
+
+        _hitCount = 0;
+
+        for (int i = 0; i < enemyIds.Length; i++)
+        {
+            int id = enemyIds[i];
+
+            if (AlreadyHit(id))
+            {
+                continue;
+            }
+
+            DamageResult result = enemies.ApplyDamage(id, damage, now);
+
+            // Recorded only when the hit reached something, which is what bounds the buffer: an
+            // id that resolved to nothing costs nothing to process again, and one that was
+            // already a corpse is a no-op the second time for the same reason it was the first.
+            if (!result.Blocked && !(result.Applied > 0f))
+            {
+                continue;
+            }
+
+            RecordHit(id);
+        }
     }
 
     /// <summary>
@@ -693,6 +805,35 @@ public sealed class PlayerCombat
         // Unreachable while the targeter is fed from this same span, and cheap to be right about:
         // an id with no agent behind it is nothing to look at.
         FaceDirection = null;
+    }
+
+    /// <summary>Whether this report has already spent its swing on <paramref name="id"/>.</summary>
+    private bool AlreadyHit(int id)
+    {
+        for (int i = 0; i < _hitCount; i++)
+        {
+            if (_hitIds[i] == id)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Remembers that <paramref name="id"/> has taken this swing's damage.</summary>
+    private void RecordHit(int id)
+    {
+        if (_hitCount >= _hitIds.Length)
+        {
+            throw new InvalidOperationException(
+                $"PlayerCombat was built for {_hitIds.Length} enemies but one swing damaged more "
+                    + "than that. The dedupe buffer, the enemy registry and the world snapshot "
+                    + "must all be built with the same capacity.");
+        }
+
+        _hitIds[_hitCount] = id;
+        _hitCount++;
     }
 
     /// <summary>Rule 2's shield event: published on drift from the last reported value, not per frame.</summary>

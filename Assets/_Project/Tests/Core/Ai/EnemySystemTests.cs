@@ -709,7 +709,11 @@ public sealed class EnemySystemTests
         120f,
         new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
-        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f));
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+        // Required as of M1-13, and switched off with a MaxMultiplier of 1: no row here is
+        // about the player's swing rate, and a live ramp would be background noise in a fixture
+        // about enemies.
+        new FocusSpec(0.4f, 1f, 1f));
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

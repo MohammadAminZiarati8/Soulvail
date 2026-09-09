@@ -35,3 +35,6 @@ MonoBehaviour:
   _weaponRange: 8
   _weaponConeAngleDeg: 60
   _weaponDamageFrame: 0.4
+  _focusDelay: 0.4
+  _focusRampTime: 1
+  _focusMaxMultiplier: 1.3

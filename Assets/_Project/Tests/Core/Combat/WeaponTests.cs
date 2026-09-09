@@ -554,6 +554,11 @@ public sealed class WeaponTests
         new MovementSpec(5.4f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         Spec(),
+        // Required as of M1-13, and switched off here with a MaxMultiplier of 1: every row in
+        // this fixture ticks a centred stick, and CC §4.3's ramp would quietly speed the Censer
+        // up under assertions written against 3 swings a second. FocusTrackerTests is the ramp's
+        // fixture; here it is background, held still.
+        new FocusSpec(0.4f, 1f, 1f),
         new ShieldSpec(30f, 4f, 15f),
         0.5f);
 

@@ -50,6 +50,11 @@ namespace Soulvail.Game.Composition
                  "without one is playable, just harder to read.")]
         [SerializeField] private ReticleView _reticle;
 
+        [Tooltip("The cyan disc under a planted character (CC §4.3). On the Player object, and " +
+                 "optional on the same terms as the reticle: without it the Focus ramp still " +
+                 "runs, it is just invisible.")]
+        [SerializeField] private FocusGlowView _focusGlow;
+
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
         [SerializeField] private EnemyView _enemyPrefab;
@@ -125,6 +130,14 @@ namespace Soulvail.Game.Composition
             if (_reticle != null)
             {
                 builder.RegisterComponent(_reticle);
+            }
+
+            // Optional on the same terms, and for a slightly stronger reason: the ramp is core's
+            // and runs whether or not anything draws it, so a scene without a glow plays at
+            // exactly the same speed — it just cannot show the player why.
+            if (_focusGlow != null)
+            {
+                builder.RegisterComponent(_focusGlow);
             }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated

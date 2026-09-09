@@ -76,10 +76,10 @@ public readonly struct FocusChanged { public readonly float Level; }   // in Com
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 380 EditMode, 3 PlayMode
+- [x] Zero errors, zero new analyzer warnings
+- [x] Manual steps verified — owner playtested in the Editor: the disc appears on standing still and vanishes the moment the stick moves. The fire-rate half is a tuning question, not a pass/fail one — see *As built*
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -88,4 +88,15 @@ public readonly struct FocusChanged { public readonly float Level; }   // in Com
 
 ## As built
 
-_Filled at merge._
+**Four deviations, one of them a defect in this spec's own pointers.**
+
+1. **`FocusChanged` shipped as `FocusRampChanged`, and `CombatBlackboard.FocusLevel` as `FocusRampLevel`.** M1-09 already spent the word "focus" on tap-to-focus — `FocusResolver`, `Targeter.FocusedTargetId`, `CombatBlackboard.HasFocus`, `TargetChanged.IsFocused` — and the two names above would have sat directly alongside those, meaning something else. The rename is confined to exactly those two members: `FocusSpec` and `FocusTracker` collide with no existing type and keep the names in the Public API block. Every one of the six members now cross-references its namesake in XML.
+2. **`FocusTracker` owns the stationary clock outright** and `CombatBlackboard.StationaryTime` mirrors it; behaviour rule 5's `FocusLevel` write became two writes in `PlayerCombat.UpdateBlackboard`, which lost its now-unused `dt` and `snapshot` arguments. M1-08 had been counting the same seconds inline, and two clocks would have diverged the moment M1-15 taught one of them about Charge. **This is why `CharacterSpec.Focus` is required rather than nullable** (positioned after `weapon`, before the optional `shield`): a class with no tracker would silently stop counting a CC §6.4 trigger field.
+3. **A `MaxMultiplier` of exactly 1 makes the tracker inert**, not merely arithmetically zero — no level, no modifier, no event, no glow. Rule 2 read literally would climb a level for a class that ramps nothing, publish twenty events and light the disc. CC §4.3's "cut it if it doesn't feel good" has to be one number in one asset, so `Tick` counts the clock and returns before the level when the gain is zero.
+4. **CC §5.5, in the design refs above, does not exist** — §5 is "Movement skill — Charge" and has no subsections. §4.3 and §7's Attack table were the sources, and they agree exactly.
+
+**Beyond the Files table:** `RunScope` gained a serialized `_focusGlow` and registers it optionally (the `_reticle` pattern), with the one reference in `Run.unity`; six existing test fixtures gained a `FocusSpec`, five authored at ×1 so their rows still measure what they were written to measure; `ContentTests` gained `CharacterSpec_NullFocus_Throws`. The Tests table's nine rows all exist; `FocusTrackerTests` carries eight more — the two constructors' guards, `FocusSpec`'s validation, the modifier's kind and source, the inert class, `Reset`, the NaN stick, and a second allocation row for the moving case, which is the state a player is actually in most of the time. 18 new tests in total.
+
+**Rule 1's Charge seam is the `isMoving` expression in `PlayerCombat.Tick` and nothing else.** M1-15 changes one line there.
+
+**Tuning lives in `Oathbound.asset`:** `_focusDelay`, `_focusRampTime`, `_focusMaxMultiplier`. No recompile.

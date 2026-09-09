@@ -40,6 +40,19 @@ public sealed class CharacterSpec
     /// forgotten field rather than a class that does not attack — and it would produce a character
     /// who aims perfectly and never swings.
     /// </param>
+    /// <param name="focus">
+    /// The class's Focus ramp (CC §4.3) — how standing still speeds the swing up. Required for the
+    /// reason <paramref name="weapon"/> is, one step further out: standing still is not a class
+    /// feature but something every character does, so there is no "this class has no Focus" state
+    /// to express with a null. A class that should not ramp authors a
+    /// <see cref="FocusSpec.MaxMultiplier"/> of 1, which is also how CC §4.3's own "cut it if it
+    /// doesn't feel good" is spent — one number in one asset.
+    /// <para>
+    /// It is required for a second, load-bearing reason: <c>FocusTracker</c> owns the stationary
+    /// clock that <c>CombatBlackboard.StationaryTime</c> mirrors, and that clock is a CC §6.4
+    /// trigger field in its own right. A class with no tracker would silently stop counting it.
+    /// </para>
+    /// </param>
     /// <param name="shield">
     /// The class's regenerating shield, or <see langword="null"/> for a class without one.
     /// Optional because most classes are in that case: the Aegis is the Oathbound's signature
@@ -62,8 +75,8 @@ public sealed class CharacterSpec
     /// mistake — or <paramref name="hitIFrames"/> is negative, NaN or infinite.
     /// </exception>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="movement"/>, <paramref name="targeting"/> or <paramref name="weapon"/> is
-    /// null.
+    /// <paramref name="movement"/>, <paramref name="targeting"/>, <paramref name="weapon"/> or
+    /// <paramref name="focus"/> is null.
     /// </exception>
     public CharacterSpec(
         ContentId id,
@@ -72,6 +85,7 @@ public sealed class CharacterSpec
         MovementSpec movement,
         TargetingSpec targeting,
         WeaponSpec weapon,
+        FocusSpec focus,
         ShieldSpec shield = null,
         float hitIFrames = 0f)
     {
@@ -105,6 +119,7 @@ public sealed class CharacterSpec
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
         Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
         Weapon = weapon ?? throw new ArgumentNullException(nameof(weapon));
+        Focus = focus ?? throw new ArgumentNullException(nameof(focus));
         Shield = shield;
         HitIFrames = hitIFrames;
     }
@@ -132,6 +147,16 @@ public sealed class CharacterSpec
     /// its damage and fire-rate <c>Stat</c>s from it.
     /// </summary>
     public WeaponSpec Weapon { get; }
+
+    /// <summary>
+    /// The class's Focus ramp — never null. <c>FocusTracker</c> (M1-13) is built from this and
+    /// turns it into a modifier on <see cref="Weapon"/>'s fire rate.
+    /// </summary>
+    /// <remarks>
+    /// CC §4.3's Focus, which is standing still. Not CC §3.4's tap-to-focus, which is a target and
+    /// is governed by <see cref="Targeting"/>.
+    /// </remarks>
+    public FocusSpec Focus { get; }
 
     /// <summary>
     /// The class's regenerating shield, or <see langword="null"/> when it has none. Only the

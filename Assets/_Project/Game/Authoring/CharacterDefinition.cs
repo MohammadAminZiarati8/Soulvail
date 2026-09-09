@@ -78,6 +78,16 @@ namespace Soulvail.Game.Authoring
                  "0.4 is CC §4.2's readable-but-not-a-commitment windup.")]
         [SerializeField, Range(0f, 0.99f)] private float _weaponDamageFrame = 0.4f;
 
+        [Tooltip("The Focus ramp (CC §4.3): standing still speeds the swing up. Nothing to do " +
+                 "with tap-to-focus, which is the targeting block above. Every class has one — " +
+                 "set the multiplier to 1 for a class that should not ramp at all.")]
+        [SerializeField, Min(0f)] private float _focusDelay = 0.4f;
+        [SerializeField, Min(0.01f)] private float _focusRampTime = 1f;
+
+        [Tooltip("Fire rate at full Focus as a multiple of the resting rate. 1.3 is CC §4.3's " +
+                 "130%: the Censer's 3 swings a second becoming 3.9.")]
+        [SerializeField, Min(1f)] private float _focusMaxMultiplier = 1.3f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -101,7 +111,9 @@ namespace Soulvail.Game.Authoring
         /// every class aims (CC §3), so there is no "no targeting" state to express, and the
         /// spec's own constructor is what refuses a range or cadence of zero. The
         /// <see cref="WeaponSpec"/> is built the same way and for the same reason — CC §4 gives
-        /// every class a basic attack.
+        /// every class a basic attack — and so is the <see cref="FocusSpec"/>, one step further
+        /// out: every character can stand still, so the ramp's off switch is a multiplier of 1
+        /// rather than the absence of a spec.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -133,6 +145,7 @@ namespace Soulvail.Game.Authoring
                         _weaponRange,
                         _weaponConeAngleDeg,
                         _weaponDamageFrame),
+                    new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

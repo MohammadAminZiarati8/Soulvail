@@ -1,10 +1,13 @@
 using NUnit.Framework;
+using Soulvail.Core.Content;
+using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Support;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using VContainer;
 
 namespace Soulvail.Tests.Game.Adapters;
 
@@ -29,12 +32,18 @@ namespace Soulvail.Tests.Game.Adapters;
 [TestFixture]
 public sealed class SnapshotBuilderTests : InputTestFixture
 {
+    private static readonly ContentId HuskId = new ContentId("enemy.husk");
+
     private GameObject _playerObject;
     private PlayerView _player;
     private Gamepad _gamepad;
     private InputAdapter _input;
     private SnapshotBuilder _builder;
     private WorldSnapshot _snapshot;
+    private GameObject _enemyTemplateObject;
+    private IObjectResolver _container;
+    private DomainEventHub _hub;
+    private EnemyViews _enemyViews;
 
     [SetUp]
     public void CreateBuilder()
@@ -49,14 +58,40 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         _playerObject = new GameObject("Player");
         _player = _playerObject.AddComponent<PlayerView>();
 
+        // A scene object standing in for the prefab, which is all VContainer's Instantiate needs —
+        // it takes a Component, not an asset. AddComponent brings the CapsuleCollider with it, per
+        // EnemyView's [RequireComponent]; Awake still never runs in edit mode, so the cached Body
+        // stays null and EnemyViews' collider index stays empty. That is the one thing about these
+        // views an EditMode test cannot reach, and M1-12 is where it starts to matter.
+        _enemyTemplateObject = new GameObject("EnemyTemplate");
+        EnemyView template = _enemyTemplateObject.AddComponent<EnemyView>();
+
+        // An empty container is enough: Instantiate injects the new object, and nothing on an
+        // EnemyView asks to be injected. A real run's resolver differs only in what it holds.
+        _container = new ContainerBuilder().Build();
+        _hub = new DomainEventHub();
+        _enemyViews = new EnemyViews(_container, template, null, _hub);
+
         _input = new InputAdapter();
-        _builder = new SnapshotBuilder(_player, _input);
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews);
         _snapshot = new WorldSnapshot(8);
     }
 
     [TearDown]
     public void DestroyBuilder()
     {
+        // Views before the hub: disposing the views unsubscribes them, and disposing the hub first
+        // would leave that dispose pointing at an orphaned channel — harmless here, and the wrong
+        // order to write down anywhere.
+        _enemyViews?.Dispose();
+        _enemyViews = null;
+
+        _hub?.Dispose();
+        _hub = null;
+
+        _container?.Dispose();
+        _container = null;
+
         _input?.Dispose();
         _input = null;
 
@@ -68,6 +103,13 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         }
 
         _playerObject = null;
+
+        if (_enemyTemplateObject != null)
+        {
+            Object.DestroyImmediate(_enemyTemplateObject);
+        }
+
+        _enemyTemplateObject = null;
     }
 
     [Test]
@@ -83,7 +125,7 @@ public sealed class SnapshotBuilderTests : InputTestFixture
             "Z must come from Z — a component swapped at the boundary is a game that walks sideways.");
 
         Assert.That(_snapshot.Dt, Is.EqualTo(0.02f));
-        Assert.That(_snapshot.EnemyCount, Is.Zero, "M0 has no enemies to report.");
+        Assert.That(_snapshot.EnemyCount, Is.Zero, "Nothing has been spawned, so there is nothing to report.");
 
         // Honesty note, asserted rather than left as a comment: a view that has never applied an
         // intent really does report zero velocity, so this line cannot distinguish a copied zero
@@ -142,6 +184,59 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     }
 
     [Test]
+    public void Build_CopiesEnemiesFromViews()
+    {
+        // Published through the hub rather than by calling EnemyViews directly, because the
+        // subscription is half of what M1-07 wired: core announces a spawn and a body appears.
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(4f, 0f, -6f)));
+        _hub.Publish(new EnemySpawned(2, HuskId, new System.Numerics.Vector3(-3f, 0f, 5f)));
+
+        Assert.That(_enemyViews.Count, Is.EqualTo(2), "Sanity: two bodies exist to report.");
+
+        _builder.Build(_snapshot, 0.016f);
+
+        Assert.That(_snapshot.EnemyCount, Is.EqualTo(2));
+
+        // By id, never by slot: the order these were written in is the dictionary's, and nothing
+        // downstream reads it — core's Ingest looks every entry up by id. A row that asserted
+        // Enemies[0].Id == 1 would be pinning an implementation detail that is free to change.
+        Assert.That(FindEnemy(1).Position.X, Is.EqualTo(4f));
+        Assert.That(FindEnemy(1).Position.Z, Is.EqualTo(-6f),
+            "Z from Z — a component swapped here puts every enemy somewhere core cannot reach.");
+        Assert.That(FindEnemy(2).Position.X, Is.EqualTo(-3f));
+        Assert.That(FindEnemy(2).Position.Z, Is.EqualTo(5f));
+    }
+
+    [Test]
+    public void Build_OverwritesEveryEnemyFieldOfAReusedSlot()
+    {
+        // A slot with a previous occupant's senses still in it. Clear() does not zero the array
+        // (AR §4.2), so any field CopyInto forgets to assign is silently inherited — and a stale
+        // HasLineOfSight belonging to an enemy that despawned two frames ago is the kind of fault
+        // that reads as an AI bug for a week.
+        ref EnemySense stale = ref _snapshot.AddEnemy();
+        stale.Id = 99;
+        stale.HasLineOfSight = true;
+        stale.PathDirectionToPlayer = new System.Numerics.Vector2(0.6f, 0.8f);
+        stale.Velocity = new System.Numerics.Vector3(9f, 9f, 9f);
+
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(1f, 0f, 2f)));
+
+        _builder.Build(_snapshot, 0.016f);
+
+        Assert.That(_snapshot.EnemyCount, Is.EqualTo(1));
+
+        EnemySense written = _snapshot.Enemies[0];
+
+        Assert.That(written.Id, Is.EqualTo(1));
+        Assert.That(written.HasLineOfSight, Is.False,
+            "M1-19 fills this for real; until then it must be written as false, not left alone.");
+        Assert.That(written.PathDirectionToPlayer, Is.EqualTo(System.Numerics.Vector2.Zero));
+        Assert.That(written.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero),
+            "An EnemyView reports zero velocity until M1-18 moves it — zero written, not inherited.");
+    }
+
+    [Test]
     public void Build_ClampsDt()
     {
         // A hitch, a scene load or a phone waking up. Unclamped, core would advance the player
@@ -167,6 +262,30 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         Set(_gamepad.leftStick, new UnityEngine.Vector2(0.3f, 0.6f));
         InputSystem.Update();
 
+        // Two bodies in the census, deliberately: an empty dictionary would skip the loop body
+        // entirely and the row would prove nothing about CopyInto. The concrete dictionary's value
+        // enumerator is a struct, so walking it must cost nothing per frame.
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(4f, 0f, -6f)));
+        _hub.Publish(new EnemySpawned(2, HuskId, new System.Numerics.Vector3(-3f, 0f, 5f)));
+
         AllocationAssert.None(() => _builder.Build(_snapshot, 0.016f));
+    }
+
+    /// <summary>
+    /// The snapshot entry for <paramref name="id"/>, or a failed assertion naming it.
+    /// </summary>
+    private EnemySense FindEnemy(int id)
+    {
+        // Stops at EnemyCount, never at Enemies.Length: anything past the count is last frame's.
+        for (int i = 0; i < _snapshot.EnemyCount; i++)
+        {
+            if (_snapshot.Enemies[i].Id == id)
+            {
+                return _snapshot.Enemies[i];
+            }
+        }
+
+        Assert.Fail($"No enemy with id {id} in the snapshot.");
+        return default;
     }
 }

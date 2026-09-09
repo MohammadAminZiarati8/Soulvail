@@ -172,6 +172,13 @@ namespace Soulvail.Game.Presentation
             _line.Append("in ").Append(Fixed(input.X)).Append(' ').Append(Fixed(input.Y));
             _line.Append("  |v| ").Append(Fixed(speed));
             _line.Append("  face ").Append(Fixed(faceX)).Append(' ').Append(Fixed(faceZ));
+
+            // The snapshot's count, not the run's: this line answers "how many enemies did core
+            // get told about this frame", which is the number that matters when the arena looks
+            // fuller or emptier than it should. A count read from core would agree with core by
+            // construction and so could never show the boundary disagreeing with itself.
+            _line.Append("  enemies ").Append(_snapshot.EnemyCount.ToString(CultureInfo.InvariantCulture));
+
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 
             _text.SetText(_line);

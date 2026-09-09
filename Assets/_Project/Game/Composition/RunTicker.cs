@@ -35,6 +35,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly IntentBuffer _intents;
     private readonly PlayerView _player;
     private readonly InputAdapter _input;
+    private readonly SpawnPlan _spawnPlan;
 
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <remarks>
@@ -51,7 +52,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         SnapshotBuilder builder,
         IntentBuffer intents,
         PlayerView player,
-        InputAdapter input)
+        InputAdapter input,
+        SpawnPlan spawnPlan)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
@@ -60,6 +62,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _input = input ?? throw new ArgumentNullException(nameof(input));
+        _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
 
         // Unity's == rather than `is null`: RunScope supplies this from a serialized field, so a
         // destroyed or unassigned object is a live reference that only compares equal to null
@@ -69,8 +72,16 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
     /// <summary>
     /// Starts the run: the screen stays awake, the stick starts being read, and core is told which
-    /// class to play.
+    /// class to play and what is standing in the arena.
     /// </summary>
+    /// <remarks>
+    /// By the time this runs, <c>EnemyViews</c> is already listening. That is guaranteed by
+    /// construction rather than by ordering luck: this object takes <c>SnapshotBuilder</c>, which
+    /// takes <c>EnemyViews</c>, which subscribes in its own constructor — so the whole chain is
+    /// built before VContainer's dispatcher can call this, and none of the plan's spawn events can
+    /// be published into an empty room. Anything that later needs to hear <c>RunStarted</c> must
+    /// establish its own subscription the same way, not from a <c>Start</c> of its own.
+    /// </remarks>
     public void Start()
     {
         // Only for the length of a run, never app-wide — a menu has no business burning battery.
@@ -79,12 +90,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _input.Enable();
 
-        // SpawnPlan.Empty until something authors one: EnemyDefinition and the first Husk asset
-        // arrive in M1-07, the arena's arrival set in M2-05. Empty rather than omitted, so this
-        // line says out loud that the arena starts bare — see RunConfig.
+        // The plan is the scene's, built by RunScope from the dummies dressed into it (M1-07). It
+        // is SpawnPlan.Empty when nothing is dressed, never null, so this line always says out
+        // loud what the arena starts with — see RunConfig. M2-05's director takes it over.
         _session.Start(new RunConfig(
             _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
-            SpawnPlan.Empty));
+            _spawnPlan));
     }
 
     /// <summary>

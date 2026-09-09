@@ -17,9 +17,9 @@ namespace Soulvail.Game.Adapters;
 /// because which way is "up" on screen is a camera question and the camera is Unity's.
 /// </para>
 /// <para>
-/// Enemies land here in M1-06. Until then <see cref="WorldSnapshot.EnemyCount"/> stays at zero,
-/// which <see cref="WorldSnapshot.Clear"/> already guarantees — there is nothing to add and
-/// nothing to skip.
+/// Enemies arrive the same way as of M1-07, through <see cref="EnemyViews.CopyInto"/>: one
+/// <c>EnemySense</c> per body standing in the scene, written after the player's fields so the
+/// single <see cref="WorldSnapshot.Clear"/> that opens the frame is unambiguously this method's.
 /// </para>
 /// </remarks>
 public sealed class SnapshotBuilder
@@ -39,13 +39,20 @@ public sealed class SnapshotBuilder
 
     private readonly PlayerView _player;
     private readonly InputAdapter _input;
+    private readonly EnemyViews _enemies;
 
     /// <param name="player">The body, asked where it is and what it was told to do.</param>
     /// <param name="input">The one reader of the Input System (M0-14).</param>
-    public SnapshotBuilder(PlayerView player, InputAdapter input)
+    /// <param name="enemies">
+    /// Every enemy body in the scene, asked the same two questions (M1-07). Taken as a
+    /// dependency rather than found, so the builder never searches a scene and the run's census
+    /// has exactly one owner.
+    /// </param>
+    public SnapshotBuilder(PlayerView player, InputAdapter input, EnemyViews enemies)
     {
         _player = player;
         _input = input;
+        _enemies = enemies;
     }
 
     /// <summary>
@@ -79,5 +86,10 @@ public sealed class SnapshotBuilder
         // ended up, which core records and never overrides.
         snapshot.PlayerPosition = _player.Position.ToNum();
         snapshot.PlayerVelocity = _player.Velocity.ToNum();
+
+        // Last, and after the Clear above rather than owning one of its own: the enemies are the
+        // only variable-length part of the frame, and the count they leave behind is what core
+        // reads to know how many of the array's slots are this frame's (AR §4.2).
+        _enemies.CopyInto(snapshot);
     }
 }

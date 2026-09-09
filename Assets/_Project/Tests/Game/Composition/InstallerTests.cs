@@ -37,7 +37,9 @@ namespace Soulvail.Tests.Game.Composition;
 public sealed class InstallerTests
 {
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
+    private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private static readonly ContentId OathboundId = new ContentId("character.oathbound");
+    private static readonly ContentId HuskId = new ContentId("enemy.husk");
 
     private readonly List<CharacterDefinition> _created = new List<CharacterDefinition>();
     private readonly List<IDisposable> _containers = new List<IDisposable>();
@@ -70,7 +72,7 @@ public sealed class InstallerTests
     [Test]
     public void Boot_ResolvesCatalog_WithOathbound()
     {
-        IObjectResolver container = BuildBoot(LoadOathbound());
+        IObjectResolver container = BuildBoot();
 
         var catalog = container.Resolve<ContentCatalog>();
 
@@ -84,6 +86,36 @@ public sealed class InstallerTests
 
         Assert.That(oathbound.Id, Is.EqualTo(OathboundId));
         Assert.That(catalog.Characters, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Boot_ResolvesCatalog_WithHusk()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var catalog = container.Resolve<ContentCatalog>();
+
+        // The wire M1-07 added, and the one whose failure is quietest: a catalog installed without
+        // its enemies resolves, builds, starts a run and produces an empty arena, which reads as a
+        // broken spawner rather than as missing content (M1-06).
+        EnemySpec husk = null;
+        Assert.That(() => husk = catalog.Enemy(HuskId), Throws.Nothing,
+            "The shipped Husk must resolve through the catalog the installer built.");
+
+        Assert.That(husk.Id, Is.EqualTo(HuskId));
+        Assert.That(catalog.Enemies, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Boot_NullEnemyList_Throws()
+    {
+        var builder = new ContainerBuilder();
+
+        // Required rather than optional, so that a boot list with no enemies has to say so with an
+        // empty array. A silently-omitted list would be indistinguishable from an authored one
+        // until a spawn plan named an archetype the catalog had never heard of.
+        Assert.Throws<ArgumentNullException>(() =>
+            BootInstaller.Install(builder, new[] { LoadOathbound() }, null));
     }
 
     [Test]
@@ -102,7 +134,7 @@ public sealed class InstallerTests
         // below rather than assumed: the catalog is built eagerly, so it is Install.
         var thrown = Assert.Throws<ArgumentException>(() =>
         {
-            BootInstaller.Install(builder, new[] { broken });
+            BootInstaller.Install(builder, new[] { broken }, Array.Empty<EnemyDefinition>());
             Track(builder.Build());
         });
 
@@ -118,7 +150,7 @@ public sealed class InstallerTests
     [Test]
     public void Boot_PendingRun_IsSingleton()
     {
-        IObjectResolver container = BuildBoot(LoadOathbound());
+        IObjectResolver container = BuildBoot();
 
         var first = container.Resolve<PendingRun>();
         var second = container.Resolve<PendingRun>();
@@ -156,7 +188,7 @@ public sealed class InstallerTests
     [Test]
     public void Run_WithoutPendingRun_UsesFallbackSeed()
     {
-        IObjectResolver boot = BuildBoot(LoadOathbound());
+        IObjectResolver boot = BuildBoot();
         IScopedObjectResolver scope = Track(boot.CreateScope(RunInstaller.Install));
 
         // Before the Resolve, because the factory is lazy: nothing has run yet, and the warning
@@ -264,10 +296,21 @@ public sealed class InstallerTests
         return definition;
     }
 
-    private IObjectResolver BuildBoot(params CharacterDefinition[] definitions)
+    private static EnemyDefinition LoadHusk()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath);
+        Assert.That(definition, Is.Not.Null, $"No EnemyDefinition at {HuskPath}.");
+        return definition;
+    }
+
+    /// <summary>
+    /// A boot container carrying the project's shipped content — the Oathbound and the Husk —
+    /// which is what <c>BootScope</c> hands the installer.
+    /// </summary>
+    private IObjectResolver BuildBoot()
     {
         var builder = new ContainerBuilder();
-        BootInstaller.Install(builder, definitions);
+        BootInstaller.Install(builder, new[] { LoadOathbound() }, new[] { LoadHusk() });
         return Track(builder.Build());
     }
 
@@ -277,7 +320,7 @@ public sealed class InstallerTests
     /// </summary>
     private IScopedObjectResolver BuildRunScope(int seed)
     {
-        IObjectResolver boot = BuildBoot(LoadOathbound());
+        IObjectResolver boot = BuildBoot();
         boot.Resolve<PendingRun>().Set(OathboundId, seed);
         return Track(boot.CreateScope(RunInstaller.Install));
     }

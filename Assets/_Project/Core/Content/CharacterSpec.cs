@@ -53,6 +53,14 @@ public sealed class CharacterSpec
     /// trigger field in its own right. A class with no tracker would silently stop counting it.
     /// </para>
     /// </param>
+    /// <param name="movementSkill">
+    /// The class's dash (CC §5) — how far, how long, how often, and what it does to whatever is in
+    /// the way. Required for the reason <paramref name="weapon"/> is, and CC §5 says it in its first
+    /// line: every class has exactly one, on a permanent button. A <see langword="null"/> would be a
+    /// forgotten field rather than a class that cannot dash, and it would produce a character with a
+    /// dead button in the one place the design has no fallback for — CC §5's dodge is the whole of
+    /// the defensive layer for a class without an Aegis.
+    /// </param>
     /// <param name="shield">
     /// The class's regenerating shield, or <see langword="null"/> for a class without one.
     /// Optional because most classes are in that case: the Aegis is the Oathbound's signature
@@ -75,8 +83,8 @@ public sealed class CharacterSpec
     /// mistake — or <paramref name="hitIFrames"/> is negative, NaN or infinite.
     /// </exception>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="movement"/>, <paramref name="targeting"/>, <paramref name="weapon"/> or
-    /// <paramref name="focus"/> is null.
+    /// <paramref name="movement"/>, <paramref name="targeting"/>, <paramref name="weapon"/>,
+    /// <paramref name="focus"/> or <paramref name="movementSkill"/> is null.
     /// </exception>
     public CharacterSpec(
         ContentId id,
@@ -86,6 +94,7 @@ public sealed class CharacterSpec
         TargetingSpec targeting,
         WeaponSpec weapon,
         FocusSpec focus,
+        MovementSkillSpec movementSkill,
         ShieldSpec shield = null,
         float hitIFrames = 0f)
     {
@@ -120,6 +129,7 @@ public sealed class CharacterSpec
         Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
         Weapon = weapon ?? throw new ArgumentNullException(nameof(weapon));
         Focus = focus ?? throw new ArgumentNullException(nameof(focus));
+        MovementSkill = movementSkill ?? throw new ArgumentNullException(nameof(movementSkill));
         Shield = shield;
         HitIFrames = hitIFrames;
     }
@@ -157,6 +167,12 @@ public sealed class CharacterSpec
     /// is governed by <see cref="Targeting"/>.
     /// </remarks>
     public FocusSpec Focus { get; }
+
+    /// <summary>
+    /// The class's dash — never null. <c>ChargeSkill</c> (M1-14) is built from this and seeds its
+    /// cooldown <c>Stat</c> from it.
+    /// </summary>
+    public MovementSkillSpec MovementSkill { get; }
 
     /// <summary>
     /// The class's regenerating shield, or <see langword="null"/> when it has none. Only the

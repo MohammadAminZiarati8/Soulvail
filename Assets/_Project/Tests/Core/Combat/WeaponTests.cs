@@ -559,6 +559,8 @@ public sealed class WeaponTests
         // up under assertions written against 3 swings a second. FocusTrackerTests is the ramp's
         // fixture; here it is background, held still.
         new FocusSpec(0.4f, 1f, 1f),
+        // Required as of M1-14, and inert in every row here: nothing in this fixture dashes.
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
         new ShieldSpec(30f, 4f, 15f),
         0.5f);
 

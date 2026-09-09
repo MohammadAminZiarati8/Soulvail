@@ -38,3 +38,11 @@ MonoBehaviour:
   _focusDelay: 0.4
   _focusRampTime: 1
   _focusMaxMultiplier: 1.3
+  _movementSkillKind: 0
+  _movementSkillDistance: 10
+  _movementSkillDuration: 0.22
+  _movementSkillCooldown: 2.5
+  _movementSkillInputBuffer: 0.15
+  _movementSkillDamage: 20
+  _movementSkillKnockback: 5
+  _movementSkillIFrameTrail: 0.05

@@ -86,9 +86,9 @@ public sealed class ChargeSkill
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — **run by the owner**; the MCP cannot start a test run (see *As built*).
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -97,4 +97,12 @@ public sealed class ChargeSkill
 
 ## As built
 
-_Filled at merge._
+Built to the Files table. Sixteen test rows rather than fourteen: `MovementSkillSpec` is a new spec type, and `Ctor_NullSpec_Throws` and `Spec_Invalid_Throws` are where its eight guards get their only coverage — including that zero damage and zero knockback are legal (M5-03's Shroudstep repositions and does nothing else) while a negative i-frame trail is not.
+
+**One rule needed a guard the spec's formula does not have.** `CooldownFraction`'s `clamp((readyAt − now) / Cooldown.Value, 0, 1)` divides by a live `Stat`, and `Stat` clamps nothing by design (ADR-0008) — a modifier stack can drive the denominator to zero or below while a real wait is still running, since `readyAt` was fixed when the dash started. That is `Infinity` or `NaN` handed to M1-16's radial fill. A non-positive or infinite cooldown now returns a full fill, and the numerator is tested with `!(remaining > 0f)` so a non-finite clock reads as ready.
+
+**`CharacterSpec.MovementSkill` is required, not nullable**, on CC §5's opening line — every class has exactly one, on a permanent button — which forced a one-line argument into eight existing test fixtures, the same way M1-13's `FocusSpec` did. `ContentTests` gained `CharacterSpec_NullMovementSkill_Throws` to match.
+
+**The M1-13 debt was left to M1-15, where this spec's own Out of scope puts it.** PROGRESS's Current State claimed M1-14 owed `Focus.Tick`'s `isMoving` argument the line "or a Charge is in flight"; the M1-13 entry and `FocusTracker`'s XML both say M1-15, and they are right — `PlayerCombat` composes no `ChargeSkill` here, so there is nothing to ask and no real path to test it through. Current State was corrected.
+
+**The suite is green, but the owner had to run it.** The MCP refuses `TestRunnerApi.Execute` ("User interactions are not supported for MCP tool calls"), before the command executes, so no deferral works; `System.Reflection` is blocked too. Everything short of the run *was* verified from here — zero errors, zero warnings, all six assemblies rebuilt, and `Oathbound.asset` round-tripping through `ToSpec()` with all eight CC §7 numbers — and the owner ran Test Runner → EditMode → Run All to close it. Expect this split on every task until the MCP limitation is worked around.

@@ -713,7 +713,10 @@ public sealed class EnemySystemTests
         // Required as of M1-13, and switched off with a MaxMultiplier of 1: no row here is
         // about the player's swing rate, and a live ramp would be background noise in a fixture
         // about enemies.
-        new FocusSpec(0.4f, 1f, 1f));
+        new FocusSpec(0.4f, 1f, 1f),
+        // Required as of M1-14, and inert here for the same reason: this fixture is about enemies,
+        // and the player never dashes in any of its rows.
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f));
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

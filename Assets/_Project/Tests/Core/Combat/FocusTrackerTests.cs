@@ -503,6 +503,9 @@ public sealed class FocusTrackerTests
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         new WeaponSpec(WeaponKind.Cone, 13f, SwingsPerSecond, 8f, 60f, 0.4f),
         Spec(),
+        // Required as of M1-14, and inert in every row here: nothing in this fixture dashes, and
+        // the Charge does not reach the ramp until M1-15 teaches it that a dash counts as movement.
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
         new ShieldSpec(30f, 4f, 15f),
         0.5f);
 }

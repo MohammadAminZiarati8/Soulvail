@@ -493,6 +493,9 @@ public sealed class PlayerCombatTests
             new TargetingSpec(AcquireRange, 3f, 2f, 1f, 1.5f, 0.1f),
             new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
             new FocusSpec(0.4f, 1f, focusMaxMultiplier),
+            // Required as of M1-14, and inert in every row here: PlayerCombat does not compose a
+            // ChargeSkill until M1-15, so this is authored data nothing yet reads.
+            new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
             withShield ? new ShieldSpec(ShieldMax, ShieldDelay, ShieldRefill) : null,
             hitIFrames);
     }

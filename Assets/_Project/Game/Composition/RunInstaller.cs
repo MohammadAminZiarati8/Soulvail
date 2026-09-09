@@ -59,7 +59,12 @@ public static class RunInstaller
 
         builder.Register<IRandom>(CreateRandom, Lifetime.Scoped);
 
-        builder.Register<IRunSession, RunSession>(Lifetime.Scoped);
+        // The enemy capacity comes from the same constant the snapshot above was built with, and
+        // by name rather than by type: core's registry has to be able to hold every enemy the
+        // snapshot can carry, or an enemy exists that core cannot see the position of. A second
+        // int parameter later would make WithParameter<int> ambiguous, so the name is the wire.
+        builder.Register<IRunSession, RunSession>(Lifetime.Scoped)
+            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity);
     }
 
     /// <summary>

@@ -49,7 +49,11 @@ public sealed class EnemyBlackboard
     /// <summary>Where the player is.</summary>
     public Vector3 PlayerPosition;
 
-    /// <summary>Metres to the player, straight line.</summary>
+    /// <summary>
+    /// Metres to the player on the ground plane, straight line. XZ only — the height difference
+    /// between a player capsule's centre and an enemy's is a rendering detail, and counting it
+    /// would inflate every distance a strike or a spell is checked against (M1-06).
+    /// </summary>
     public float DistanceToPlayer;
 
     /// <summary>

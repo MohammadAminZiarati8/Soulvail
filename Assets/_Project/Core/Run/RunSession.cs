@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
@@ -40,25 +41,50 @@ public sealed class RunSession : IRunSession
     private readonly IRandom _random;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
+    private readonly int _enemyCapacity;
 
     /// <param name="catalog">Where <c>config.CharacterId</c> is resolved.</param>
     /// <param name="random">The run's generator; its <see cref="IRandom.Seed"/> is recorded in the state.</param>
     /// <param name="events">Where run lifecycle events go.</param>
     /// <param name="intents">Where each tick's <see cref="PlayerMoveIntent"/> is written.</param>
+    /// <param name="enemyCapacity">
+    /// The most enemies a run may hold at once, for the <see cref="EnemySystem"/> each
+    /// <see cref="Start"/> builds. It must be the number the <c>WorldSnapshot</c> was built with,
+    /// which is why both come from one constant in <c>BootInstaller</c>: an enemy core knows about
+    /// but the snapshot cannot carry is one core is blind to the position of.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
     /// <remarks>
     /// Guarded, where <see cref="RunState"/>'s constructor is not, and the difference is the
     /// boundary: this one is public and called from another assembly, so a null arrives from code
     /// core cannot see. Without the guards a missing <paramref name="intents"/> would surface a
     /// frame later as a <see cref="NullReferenceException"/> inside <see cref="Tick"/>, pointing
-    /// at the tick rather than at the registration that forgot it.
+    /// at the tick rather than at the registration that forgot it. The capacity is checked here
+    /// rather than at the first <see cref="Start"/>, so a mis-wired scope fails while it is being
+    /// built rather than one scene later.
     /// </remarks>
-    public RunSession(ContentCatalog catalog, IRandom random, IDomainEvents events, IIntentSink intents)
+    public RunSession(
+        ContentCatalog catalog,
+        IRandom random,
+        IDomainEvents events,
+        IIntentSink intents,
+        int enemyCapacity)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+
+        if (enemyCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(enemyCapacity),
+                enemyCapacity,
+                "enemyCapacity must be greater than zero.");
+        }
+
+        _enemyCapacity = enemyCapacity;
     }
 
     /// <inheritdoc />
@@ -95,7 +121,11 @@ public sealed class RunSession : IRunSession
         // at. The first stick input turns them within a frame or two at 720°/s.
         var motor = new PlayerMotor(character.Movement, Vector3.UnitZ);
 
-        State = new RunState(config.CharacterId, seed, character, motor);
+        // One per run, not one per session: End leaves the finished registry readable and a second
+        // Start must not inherit the first run's enemies, ids or free list.
+        var enemies = new EnemySystem(_catalog, _events, _enemyCapacity);
+
+        State = new RunState(config.CharacterId, seed, character, motor, enemies);
 
         // Published before IsRunning flips, so a handler that reads the session from inside this
         // event sees a run that is announced and not yet live. The alternative — flip, then
@@ -105,6 +135,14 @@ public sealed class RunSession : IRunSession
         _events.Publish(new RunStarted(config.CharacterId, seed));
 
         IsRunning = true;
+
+        // After RunStarted, and the order is asserted by a test. Subscribers are wired when the
+        // scope is built, well before this — so the reason is not "so that anyone is listening",
+        // it is that a run has to be announced before the things inside it are: a view handling
+        // EnemySpawned may reasonably assume there is a run to put an enemy in. It is also after
+        // IsRunning flips, so a handler that ticks or reads the session from inside a spawn event
+        // finds a live run rather than one that has not begun.
+        enemies.SpawnAll(config.SpawnPlan);
     }
 
     /// <inheritdoc />
@@ -125,6 +163,15 @@ public sealed class RunSession : IRunSession
         // Written down, not decided: Unity resolves collision and reports where the player ended
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
+
+        // Enemies before the player, and both before the intents. Ingest is what makes every
+        // position in core this frame's rather than last frame's, so anything that reads an enemy
+        // — perception now, targeting in M1-08, cone hits in M1-11 — has to come after it. Ticking
+        // them before the player's motor is the cheaper half of the same rule: the player's facing
+        // will be chosen from a target (M1-08), and a target chosen from stale positions is the
+        // whole bug the snapshot exists to prevent.
+        State.Enemies.Ingest(snapshot);
+        State.Enemies.Tick(snapshot.Dt, State.Time);
 
         // Null face direction: M0 has nothing to aim at, so the character faces the way it moves.
         // M1-08 passes the target's direction here instead.
@@ -149,5 +196,11 @@ public sealed class RunSession : IRunSession
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;
+
+        // Cleared without announcing a despawn each, and after RunEnded rather than before: the
+        // scope is going away and with it every subscriber a despawn could reach, so 64 farewell
+        // events would be noise — while a listener handling RunEnded can still read the census
+        // that was live when the run finished.
+        State.Enemies.Clear();
     }
 }

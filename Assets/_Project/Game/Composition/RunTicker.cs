@@ -79,7 +79,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _input.Enable();
 
-        _session.Start(new RunConfig(_pending.IsSet ? _pending.CharacterId : FallbackCharacterId()));
+        // SpawnPlan.Empty until something authors one: EnemyDefinition and the first Husk asset
+        // arrive in M1-07, the arena's arrival set in M2-05. Empty rather than omitted, so this
+        // line says out loud that the arena starts bare — see RunConfig.
+        _session.Start(new RunConfig(
+            _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
+            SpawnPlan.Empty));
     }
 
     /// <summary>

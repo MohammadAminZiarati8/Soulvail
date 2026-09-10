@@ -221,6 +221,7 @@ public sealed class ModeSpecTests
             1,
             false,
             10,
+            Scalings.Design(),
             DesignRoster);
 
         Assert.That(mode.IsEndless, Is.False);
@@ -238,6 +239,7 @@ public sealed class ModeSpecTests
             3,
             true,
             0,
+            Scalings.Design(),
             DesignRoster);
 
         Assert.That(mode.StartingStage, Is.EqualTo(3));
@@ -249,23 +251,42 @@ public sealed class ModeSpecTests
     public void Ctor_Guards()
     {
         Assert.Throws<ArgumentException>(
-            () => new ModeSpec(default, Name(), 1, true, 0, DesignRoster));
+            () => new ModeSpec(default, Name(), 1, true, 0, Scalings.Design(), DesignRoster));
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new ModeSpec(Id(), Name(), 0, true, 0, DesignRoster));
+            () => new ModeSpec(Id(), Name(), 0, true, 0, Scalings.Design(), DesignRoster));
 
         // A finite mode whose last stage is before its first has no stages at all — which would
         // otherwise be a run that starts and immediately has nowhere to be.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new ModeSpec(Id(), Name(), 5, false, 4, DesignRoster));
+            () => new ModeSpec(Id(), Name(), 5, false, 4, Scalings.Design(), DesignRoster));
 
         Assert.Throws<ArgumentNullException>(
-            () => new ModeSpec(Id(), Name(), 1, true, 0, null));
+            () => new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), null));
+
+        // The scaling is required as of M2-03, and null rather than a default is the one shape
+        // that could arrive: a mode with no difficulty model affords nothing at every depth and
+        // its enemies never get harder, which reads as a director bug rather than as content.
+        Assert.Throws<ArgumentNullException>(
+            () => new ModeSpec(Id(), Name(), 1, true, 0, null, DesignRoster));
 
         // The endless flag wins over the number beside it: an endless mode ignores finalStage
         // rather than being refused for it, because "endless" is what the designer said.
         Assert.DoesNotThrow(
-            () => new ModeSpec(Id(), Name(), 5, true, 0, DesignRoster));
+            () => new ModeSpec(Id(), Name(), 5, true, 0, Scalings.Design(), DesignRoster));
+    }
+
+    [Test]
+    public void Scaling_IsWhatItWasGiven()
+    {
+        // The mode's, not the game's — GD §4.5's rule, and the reason the curves sit here rather
+        // than in the director: a Boss Rush would have a flat budget and no concurrency ramp.
+        ScalingSpec scaling = Scalings.Design();
+
+        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, scaling, DesignRoster);
+
+        Assert.That(mode.Scaling, Is.SameAs(scaling),
+            "Held, not copied: a ScalingSpec is immutable, so sharing one is what a spec does.");
     }
 
     [Test]
@@ -308,5 +329,5 @@ public sealed class ModeSpecTests
     private static LocKey Name() => new LocKey("mode.descent.name");
 
     private static ModeSpec Mode(IReadOnlyList<RosterEntry> roster) =>
-        new ModeSpec(Id(), Name(), 1, true, 0, roster);
+        new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), roster);
 }

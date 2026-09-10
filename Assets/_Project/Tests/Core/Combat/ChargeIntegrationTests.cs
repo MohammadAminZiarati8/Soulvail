@@ -659,6 +659,7 @@ public sealed class ChargeIntegrationTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the two numbers a row overrides.</summary>

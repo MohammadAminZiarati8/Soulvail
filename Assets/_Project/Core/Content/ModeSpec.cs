@@ -91,11 +91,12 @@ public readonly struct RosterEntry
 /// live depth is <c>RunState.StageIndex</c>, never a field here.
 /// </para>
 /// <para>
-/// <b>Three things GD §4.5 lists as the mode's are deliberately absent.</b> The difficulty curve
-/// arrives in M2-03, which is the task that invents the curve types; which classes are legal and
-/// what starting modifiers a mode carries wait for M5-08 and M6, because one class exists and no
-/// effect system does. AR §6's rule for ports is the rule here too — a field with no reader is a
-/// guess about what its reader will want.
+/// <b>The difficulty curve arrived in M2-03</b>, as <see cref="Scaling"/> — deliberately left out
+/// of M2-02 because the curve types did not exist yet and inventing their shape ahead of a caller
+/// would have fixed it by guess. Two of the things GD §4.5 lists as the mode's are still absent:
+/// which classes are legal, and what starting modifiers a mode carries, both waiting for M5-08 and
+/// M6 because one class exists and no effect system does. AR §6's rule for ports is the rule here
+/// too — a field with no reader is a guess about what its reader will want.
 /// </para>
 /// </remarks>
 public sealed class ModeSpec
@@ -126,6 +127,12 @@ public sealed class ModeSpec
     /// The last stage a finite mode has. Ignored — and replaced by <c>int.MaxValue</c> — when
     /// <paramref name="isEndless"/> is true.
     /// </param>
+    /// <param name="scaling">
+    /// GD §12's five curves for this mode — how much threat a stage costs, how many waves it comes
+    /// in, how many enemies may stand in it, and how much tougher, harder-hitting and faster each
+    /// of them is for being deep. The mode's, not the game's: a Boss Rush would have a flat budget
+    /// and no concurrency ramp at all (GD §4.5).
+    /// </param>
     /// <param name="roster">
     /// Every archetype the mode may spawn, with the depth each is introduced at. Copied; the
     /// caller's list is not retained. Order is meaningful: <see cref="RosterFor"/> answers in it.
@@ -141,13 +148,16 @@ public sealed class ModeSpec
     /// <paramref name="startingStage"/> is not positive, or a finite mode's
     /// <paramref name="finalStage"/> is before it — a mode with no stages at all.
     /// </exception>
-    /// <exception cref="ArgumentNullException"><paramref name="roster"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="scaling"/> or <paramref name="roster"/> is null.
+    /// </exception>
     public ModeSpec(
         ContentId id,
         LocKey nameKey,
         int startingStage,
         bool isEndless,
         int finalStage,
+        ScalingSpec scaling,
         IReadOnlyList<RosterEntry> roster)
     {
         if (id.Value is null)
@@ -178,6 +188,11 @@ public sealed class ModeSpec
                     + "has no stages at all. An endless mode passes isEndless: true instead.");
         }
 
+        if (scaling is null)
+        {
+            throw new ArgumentNullException(nameof(scaling));
+        }
+
         if (roster is null)
         {
             throw new ArgumentNullException(nameof(roster));
@@ -188,6 +203,7 @@ public sealed class ModeSpec
         StartingStage = startingStage;
         IsEndless = isEndless;
         FinalStage = effectiveFinal;
+        Scaling = scaling;
 
         _roster = CopyRoster(roster, id);
 
@@ -217,6 +233,17 @@ public sealed class ModeSpec
     /// The last stage the mode has, or <c>int.MaxValue</c> when <see cref="IsEndless"/>.
     /// </summary>
     public int FinalStage { get; }
+
+    /// <summary>
+    /// GD §12's difficulty model for this mode. Shared and immutable; a stage number is always an
+    /// argument to it, never a field on it.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>RunSession.Start</c>, which builds the run's one <c>DepthScaling</c> from it, and
+    /// by M2-04's composer through a <c>ThreatBudget</c>. Nothing in the director holds a curve of
+    /// its own.
+    /// </remarks>
+    public ScalingSpec Scaling { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

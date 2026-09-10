@@ -69,8 +69,14 @@ public sealed class EnemyDefinitionTests
 
         // The five M1-05 invented, which no design document owns — so this row is the only thing
         // that cross-checks them, and the only place they are written down twice on purpose.
-        Assert.That(spec.MoveSpeed, Is.EqualTo(3.5f).Within(Tolerance),
-            "M1-05: 3.5 m/s, slower than the Oathbound's 5.4 — a Husk must be outrunnable.");
+        // Retuned 3.5 → 2 by the owner after playtesting, alongside the Oathbound's 5.4 → 3. The
+        // *reason* for the assertion survives the numbers unchanged: 3 / 2 is a 1.5× margin where
+        // 5.4 / 3.5 was 1.543×, so a Husk is still outrunnable by very nearly the same amount.
+        // The margin is what matters here, not the pair — if a future retune ever takes it below
+        // 1, GD §6.1's "every class must feel faster than almost every enemy" is broken and this is
+        // the row that has to say so.
+        Assert.That(spec.MoveSpeed, Is.EqualTo(2f).Within(Tolerance),
+            "M1-05, retuned: 2 m/s, slower than the Oathbound's 3 — a Husk must be outrunnable.");
         Assert.That(spec.ContactDamage, Is.EqualTo(8f).Within(Tolerance), "M1-05: 8 per strike.");
         Assert.That(spec.Reach, Is.EqualTo(1.2f).Within(Tolerance), "M1-05: reach 1.2 m, not the windup.");
 

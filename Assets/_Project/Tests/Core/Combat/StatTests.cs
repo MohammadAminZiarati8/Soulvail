@@ -153,6 +153,66 @@ public sealed class StatTests
     }
 
     [Test]
+    public void RemoveAll_ReturnsCountAndRaisesOnce()
+    {
+        var stat = new Stat(10f);
+        var node = new object();
+        var pact = new object();
+
+        stat.Add(new Modifier(ModifierKind.Flat, 2f, node));
+        stat.Add(new Modifier(ModifierKind.PercentAdd, 0.15f, pact));
+        stat.Add(new Modifier(ModifierKind.PercentMult, 0.2f, new object()));
+
+        int fired = 0;
+        stat.Changed += _ => fired++;
+
+        // Three sources, one call, one event. The no-argument overload is M2-03's, and it exists
+        // because a pooled EnemyAgent has to forget *everything* — a list of known sources to
+        // remove is the list that ends up one entry short (ledger row 2).
+        Assert.That(stat.RemoveAll(), Is.EqualTo(3));
+        Assert.That(fired, Is.EqualTo(1), "Once for the whole wipe, not once per modifier.");
+
+        Assert.That(stat.ModifierCount, Is.Zero);
+        Assert.That(stat.Value, Is.EqualTo(10f).Within(1e-4f), "Back to the base, exactly.");
+    }
+
+    [Test]
+    public void RemoveAll_Empty_RaisesNothing()
+    {
+        var stat = new Stat(10f);
+
+        int fired = 0;
+        stat.Changed += _ => fired++;
+
+        // Zero rather than an error, which is what lets a recycle point wipe unconditionally
+        // without first asking whether there was anything to wipe.
+        Assert.That(stat.RemoveAll(), Is.EqualTo(0));
+        Assert.That(fired, Is.EqualTo(0));
+        Assert.That(stat.Value, Is.EqualTo(10f).Within(1e-4f));
+    }
+
+    [Test]
+    public void RemoveAll_NoArgument_IsNotTheSourceOverload()
+    {
+        // The two overloads are deliberately not one method with a nullable source: taking a
+        // source back when a buff ends is a different question from wiping a rental clean, and one
+        // call site must never be able to mean the other by omission. This row is what says the
+        // distinction is real rather than a comment.
+        var stat = new Stat(10f);
+        var mine = new object();
+        var theirs = new object();
+
+        stat.Add(new Modifier(ModifierKind.Flat, 2f, mine));
+        stat.Add(new Modifier(ModifierKind.Flat, 5f, theirs));
+
+        Assert.That(stat.RemoveAll(mine), Is.EqualTo(1), "By source: only mine went.");
+        Assert.That(stat.ModifierCount, Is.EqualTo(1));
+
+        Assert.That(stat.RemoveAll(), Is.EqualTo(1), "No argument: whoever added it.");
+        Assert.That(stat.ModifierCount, Is.Zero);
+    }
+
+    [Test]
     public void NullSource_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new Modifier(ModifierKind.Flat, 1f, null));

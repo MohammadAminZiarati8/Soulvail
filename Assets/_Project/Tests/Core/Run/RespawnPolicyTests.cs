@@ -7,6 +7,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Run;
 
@@ -57,7 +58,7 @@ public sealed class RespawnPolicyTests
         _events = new RecordingEvents();
         _catalog = Catalog();
         _random = new FixedRandom();
-        _system = new EnemySystem(_catalog, _events, _random, Capacity);
+        _system = new EnemySystem(_catalog, _events, _random, Scaling(), Capacity);
     }
 
     [Test]
@@ -142,7 +143,7 @@ public sealed class RespawnPolicyTests
         // Every other stream says "the first one"; Spawn says "the last one". Only one of those
         // answers can show up in the result, and which it is proves which stream was drawn from.
         _random = new FixedRandom(0f).SetSpawn(0.99f);
-        _system = new EnemySystem(_catalog, _events, _random, Capacity);
+        _system = new EnemySystem(_catalog, _events, _random, Scaling(), Capacity);
 
         EnemyAgent spawned = Respawn(Policy(a, b, c, d), player: FarAway, now: 10f);
 
@@ -283,4 +284,16 @@ public sealed class RespawnPolicyTests
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },
         new[] { Husk() });
+
+    /// <summary>
+    /// The depth scaling every <c>EnemySystem</c> in this fixture is built with, required as of
+    /// M2-03.
+    /// </summary>
+    /// <remarks>
+    /// Inert in every row here, and that is by construction rather than by luck: the system's
+    /// <c>Depth</c> defaults to 1, where GD §12.3's three multipliers are all exactly 1, so an
+    /// enemy spawned by this fixture wears its archetype's authored numbers. The rows that are
+    /// about depth are <c>DepthScalingTests</c>' and <c>EnemySystemTests.Spawn_AppliesDepth</c>.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 }

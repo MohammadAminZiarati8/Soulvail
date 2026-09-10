@@ -230,6 +230,7 @@ public sealed class RunSessionTests
             1,
             false,
             5,
+            Scalings.Design(),
             Array.Empty<RosterEntry>());
 
         var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { finite });
@@ -287,6 +288,7 @@ public sealed class RunSessionTests
             1,
             true,
             0,
+            Scalings.Design(),
             new[] { new RosterEntry(new ContentId(GhostId), 1) });
 
         var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { mode });
@@ -691,6 +693,7 @@ public sealed class RunSessionTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Husk, for the two rows that need something to spawn (GD §8.1).</summary>

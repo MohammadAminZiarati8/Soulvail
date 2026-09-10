@@ -17,6 +17,31 @@ MonoBehaviour:
   _startingStage: 1
   _isEndless: 1
   _finalStage: 1
+  _scaling:
+    _budgetBase: 40
+    _budgetLinear: 12
+    _budgetQuadratic: 0.9
+    _waveBase: 2
+    _waveStagesPerStep: 5
+    _waveMin: 2
+    _waveMax: 5
+    _concurrencyBase: 10
+    _concurrencyStagesPerStep: 2
+    _hp:
+      _perStep: 0.06
+      _cap: 4
+      _stageStep: 1
+      _stageOffset: 1
+    _damage:
+      _perStep: 0.035
+      _cap: 3
+      _stageStep: 1
+      _stageOffset: 1
+    _speed:
+      _perStep: 0.02
+      _cap: 1.3
+      _stageStep: 5
+      _stageOffset: 0
   _roster:
   - _specId: enemy.husk
     _introducedAtStage: 1

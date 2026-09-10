@@ -26,14 +26,14 @@ namespace Soulvail.Core.Ai;
 /// fresh one per spawn would allocate and leave the old one wired to a stat nobody owns.
 /// </para>
 /// <para>
-/// <b>A recycled agent inherits its previous life's stat modifiers, and nothing here can stop
-/// that.</b> <c>Stat</c> removes modifiers by source reference only; there is no "drop
-/// everything". Nothing applies a modifier to an enemy's <see cref="Health.MaxHp"/> today, so the
-/// reuse is sound as built — but the first thing that does (depth scaling, M2-03; Elite affixes,
-/// M7-02) must either remove its own modifiers at despawn or give <c>Stat</c> a way to clear them,
-/// or every recycled Husk will arrive wearing the last one's affixes. Carried on the PROGRESS
-/// watch list rather than pre-solved here, because an API with no caller is one no test can
-/// honestly exercise.
+/// <b>A recycled agent forgets everything, and <see cref="Initialise"/> is where.</b> All three of
+/// its stats are wiped with <c>Stat.RemoveAll()</c> — the no-argument overload — before they are
+/// re-based, so an agent handed back out cannot arrive wearing the previous life's depth scaling
+/// (M2-03) or, later, the previous life's Elite affixes (M7-02) and player-inflicted debuffs (M3).
+/// This was ledger row 2 and it is closed here. A source token cleared at despawn was the
+/// alternative and it was rejected for the reason <c>Stat.RemoveAll()</c> documents: a token
+/// covers only its own source, so every future source would have to be enumerated at this exact
+/// line, and that list gets one entry too short.
 /// </para>
 /// </remarks>
 public sealed class EnemyAgent
@@ -53,6 +53,13 @@ public sealed class EnemyAgent
         // shield and no i-frames: an enemy takes every hit that reaches it, which is what makes
         // the player's damage legible.
         Health = new Health(new Stat(spec.MaxHp), shield: null, hitIFrames: 0f);
+
+        // The other two numbers depth and affixes move. Built here rather than in Initialise for
+        // Health's reason: a fresh Stat per spawn would allocate on a path a wave walks sixty
+        // times, and Initialise re-bases these two exactly as it re-bases MaxHp.
+        MoveSpeed = new Stat(spec.MoveSpeed);
+        ContactDamage = new Stat(spec.ContactDamage);
+
         Blackboard = new EnemyBlackboard();
 
         Initialise(id, spec, position);
@@ -73,6 +80,30 @@ public sealed class EnemyAgent
     /// spawn.
     /// </summary>
     public Health Health { get; }
+
+    /// <summary>
+    /// How fast it walks, in metres per second — GD §12.3's s(n) applied to
+    /// <see cref="EnemySpec.MoveSpeed"/>. Read by <c>ChaserBehaviour</c> every tick it moves.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="Stat"/> rather than a read of the spec, ruled by the owner at M2-00b: the
+    /// architecture's rule is that every gameplay number carries a modifier stack (ADR-0008), and
+    /// the alternative — a scalar the behaviour multiplies by — has no answer for M7-02's Hasted
+    /// affix except a second mechanism. <see cref="EnemySpec"/>'s float stays what a designer
+    /// typed and seeds the base.
+    /// </remarks>
+    public Stat MoveSpeed { get; }
+
+    /// <summary>
+    /// What one strike costs the player — GD §12.3's d(n) applied to
+    /// <see cref="EnemySpec.ContactDamage"/>. Read by <c>ChaserBehaviour</c> on its damage frame.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="Stat"/> for <see cref="MoveSpeed"/>'s reason, and with GD §12.4's one-shot
+    /// rule sitting over it: no non-boss attack may exceed 35 % of the player's max HP at any
+    /// depth, which is an acceptance check against d(n) rather than a clamp here (M2-15).
+    /// </remarks>
+    public Stat ContactDamage { get; }
 
     /// <summary>Its perception and working memory. The instance is stable across recycling.</summary>
     public EnemyBlackboard Blackboard { get; }
@@ -148,8 +179,8 @@ public sealed class EnemyAgent
     public bool IsVulnerable { get; internal set; }
 
     /// <summary>
-    /// Establishes a fresh agent: a new id, an archetype, a position, full health and a blank
-    /// blackboard.
+    /// Establishes a fresh agent: a new id, an archetype, a position, three stats wiped and
+    /// re-based to that archetype, full health and a blank blackboard.
     /// </summary>
     /// <remarks>
     /// The single place a spawned agent's state is set, whether it was just constructed or pulled
@@ -182,6 +213,19 @@ public sealed class EnemyAgent
         // Reset whatever exists, including on an agent recycled as a Static: a behaviour left in
         // Windup would come back mid-telegraph the next time this agent is a Chaser.
         Behaviour?.Reset();
+
+        // Ledger row 2, and the whole of its answer. Every modifier goes, whoever put it there:
+        // this agent may have died at stage 40 wearing DepthScaling's three PercentMults, and it
+        // is about to be handed back out as a fresh Husk at whatever depth the arena is on now.
+        // Wiped *before* the re-basing below rather than after, so nothing is ever briefly true —
+        // and with the no-argument overload rather than a list of known sources, because a list is
+        // what gets one entry short the first time something else buffs an enemy (Stat.RemoveAll).
+        Health.MaxHp.RemoveAll();
+        MoveSpeed.RemoveAll();
+        ContactDamage.RemoveAll();
+
+        MoveSpeed.Base = spec.MoveSpeed;
+        ContactDamage.Base = spec.ContactDamage;
 
         // Base before Reset, and the order is load-bearing: Health.Reset refills Current from
         // MaxHp.Value, so re-basing afterwards would leave a recycled agent at the previous

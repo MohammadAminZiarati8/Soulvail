@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Content;
 
@@ -426,6 +427,7 @@ public sealed class ContentTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     private static ContentId OathboundId() => new ContentId("character.oathbound");

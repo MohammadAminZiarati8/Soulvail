@@ -76,6 +76,82 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Descent_CarriesDesignScaling()
+    {
+        // GD §12's numbers as the shipped mode holds them. Every expectation is computed from the
+        // formula rather than copied from a table — and B(40) is why that matters: GD §12.1's own
+        // table says 1,772 where the formula gives 1,876.9, and the row is the error (M2-03 rule
+        // 1, still to be corrected in the design doc by the owner).
+        //
+        // Traps §7 applies to this whole row: ScalingBlock's C# initialisers are these same
+        // numbers, so a YAML key that bound to nothing would leave the field holding the value
+        // this asserts and the row would pass anyway. Descent_EveryYamlKeyBindsToAField is what
+        // closes that hole, for this block along with every other field.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        ScalingSpec scaling = definition.ToSpec().Scaling;
+
+        Assert.That(scaling.Budget.At(1), Is.EqualTo(40f).Within(0.05f));
+        Assert.That(scaling.Budget.At(10), Is.EqualTo(220.9f).Within(0.05f));
+        Assert.That(scaling.Budget.At(40), Is.EqualTo(1876.9f).Within(0.05f));
+
+        Assert.That(scaling.Waves.At(1), Is.EqualTo(2));
+        Assert.That(scaling.Waves.At(15), Is.EqualTo(5));
+        Assert.That(scaling.Waves.At(40), Is.EqualTo(5), "GD §12.2 clamps at 5.");
+
+        // The device cap is not authored — it is a fact about the phone (GD §11.1), so the curve
+        // is asked with one rather than holding one.
+        Assert.That(scaling.Concurrency.At(1, 28), Is.EqualTo(10));
+        Assert.That(scaling.Concurrency.At(20, 28), Is.EqualTo(20));
+        Assert.That(scaling.Concurrency.At(80, 28), Is.EqualTo(28));
+
+        Assert.That(scaling.Hp.At(40), Is.EqualTo(3.34f).Within(1e-4f));
+        Assert.That(scaling.Hp.At(99), Is.EqualTo(4f).Within(1e-4f), "GD §12.3's soft cap.");
+        Assert.That(scaling.Damage.At(20), Is.EqualTo(1.665f).Within(1e-4f));
+        Assert.That(scaling.Damage.At(99), Is.EqualTo(3f).Within(1e-4f), "GD §12.3's hard cap.");
+        Assert.That(scaling.Speed.At(4), Is.EqualTo(1f).Within(1e-4f));
+        Assert.That(scaling.Speed.At(5), Is.EqualTo(1.02f).Within(1e-4f), "Steps every fifth stage.");
+        Assert.That(scaling.Speed.At(99), Is.EqualTo(1.3f).Within(1e-4f));
+    }
+
+    [Test]
+    public void ToSpec_CapBelowOne_ThrowsNamingAsset()
+    {
+        // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and
+        // every other number in the game still looks right. [Min(1f)] clamps the Inspector GUI and
+        // nothing else (Traps §5), which is why StatCurve carries the real guard — and why this
+        // row writes the value through SerializedObject, which goes straight past the attribute.
+        ModeDefinition definition = NewDefinition("BrokenHpCap");
+
+        SetString(definition, "_id", "mode.broken");
+        SetString(definition, "_nameKey", "mode.broken.name");
+        SetFloat(definition, "_scaling._hp._cap", 0.5f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenHpCap"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void ToSpec_ZeroWaveStep_ThrowsNamingAsset()
+    {
+        // A zero step would be a division by zero on the first stage composed — an exception from
+        // inside a curve, one call stack away from the asset that was actually wrong.
+        ModeDefinition definition = NewDefinition("BrokenWaveStep");
+
+        SetString(definition, "_id", "mode.broken");
+        SetString(definition, "_nameKey", "mode.broken.name");
+        SetInt(definition, "_scaling._waveStagesPerStep", 0);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenWaveStep"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
     public void Descent_ToSpec_ReturnsNewInstanceEachCall()
     {
         var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
@@ -313,10 +389,34 @@ public sealed class ModeDefinitionTests
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    private static void SetInt(ModeDefinition definition, string field, int value)
+    /// <remarks>
+    /// Takes a dotted path as well as a bare field name — see <see cref="SetFloat"/>.
+    /// </remarks>
+    private static void SetInt(ModeDefinition definition, string path, int value)
     {
         var serialized = new SerializedObject(definition);
-        serialized.FindProperty(field).intValue = value;
+        SerializedProperty property = serialized.FindProperty(path);
+
+        Assert.That(property, Is.Not.Null, $"No serialized property at '{path}'.");
+
+        property.intValue = value;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <remarks>
+    /// Takes a dotted path — <c>"_scaling._hp._cap"</c> — because the curves live in nested
+    /// <c>[Serializable]</c> types a test cannot name: <c>ScalingBlock</c> and
+    /// <c>StatCurveRow</c> are both private. <c>FindProperty</c> understands the path, which is
+    /// the only route in.
+    /// </remarks>
+    private static void SetFloat(ModeDefinition definition, string path, float value)
+    {
+        var serialized = new SerializedObject(definition);
+        SerializedProperty property = serialized.FindProperty(path);
+
+        Assert.That(property, Is.Not.Null, $"No serialized property at '{path}'.");
+
+        property.floatValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 

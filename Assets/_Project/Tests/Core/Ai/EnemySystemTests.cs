@@ -82,7 +82,7 @@ public sealed class EnemySystemTests
         _events = new RecordingEvents();
         _catalog = Catalog();
         _random = new FixedRandom();
-        _system = new EnemySystem(_catalog, _events, _random, Capacity);
+        _system = new EnemySystem(_catalog, _events, _random, Scaling(), Capacity);
         _intents = new RecordingIntents();
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
     }
@@ -90,13 +90,90 @@ public sealed class EnemySystemTests
     [Test]
     public void Ctor_NullDependency_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, _random, Capacity));
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, _random, Capacity));
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, null, Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, _random, Scaling(), Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, _random, Scaling(), Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, null, Scaling(), Capacity));
+
+        // Required as of M2-03, and a constructor argument rather than something adopted from a
+        // plan on purpose: it means Spawn cannot run without one. An unscaled enemy is not a loud
+        // failure, it is a stage-20 Husk that dies in two hits.
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, _random, null, Capacity));
 
         // The registry's own guard, surfaced through this constructor: a system that can hold no
         // enemies is a configuration mistake rather than a valid state to run with.
-        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, _random, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, _random, Scaling(), 0));
+    }
+
+    [Test]
+    public void Spawn_AppliesDepth()
+    {
+        _system.Depth = 10;
+
+        EnemyAgent agent = _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        // h(10) = 1 + 0.06·9 = 1.54, on GD §8.1's 36. The scaling happens inside Spawn, which is
+        // why there is nowhere to forget it: every enemy in the game — a plan, a respawn, M2-05's
+        // director — comes into being through that one method (M2-03 rule 12).
+        Assert.That(agent.Health.MaxHp.Value, Is.EqualTo(36f * 1.54f).Within(1e-3f));
+
+        // And full at the number it now has, not at the one it was authored with.
+        Assert.That(agent.Health.Current, Is.EqualTo(agent.Health.MaxHp.Value).Within(1e-3f));
+
+        // The other two go with it, so a stage-10 Husk is not merely a bigger health bar.
+        Assert.That(agent.ContactDamage.Value, Is.EqualTo(8f * 1.315f).Within(1e-3f));
+        Assert.That(agent.MoveSpeed.Value, Is.EqualTo(3.5f * 1.04f).Within(1e-3f));
+    }
+
+    [Test]
+    public void Spawn_ScaledBeforeAnnounced()
+    {
+        // The order inside Spawn, and it is observable: a health bar built on EnemySpawned would
+        // otherwise be sized to the unscaled maximum for its first frame.
+        var events = new CallbackEvents();
+        var system = new EnemySystem(_catalog, events, _random, Scaling(), Capacity) { Depth = 10 };
+
+        float? maxDuringEvent = null;
+
+        events.OnPublish = evt =>
+        {
+            if (evt is EnemySpawned spawned && system.Registry.TryGet(spawned.Id, out EnemyAgent agent))
+            {
+                maxDuringEvent = agent.Health.MaxHp.Value;
+            }
+        };
+
+        system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        Assert.That(maxDuringEvent, Is.Not.Null, "Sanity: the spawn event resolved its own id.");
+        Assert.That(maxDuringEvent.Value, Is.EqualTo(36f * 1.54f).Within(1e-3f));
+    }
+
+    [Test]
+    public void Depth_DefaultsToOne_AndRefusesLess()
+    {
+        // Stages are numbered from 1 (GD §8.2), so the default is the shallowest depth there is
+        // rather than zero: a system asked to spawn before anything set a depth scales to the
+        // first stage instead of throwing from inside a curve.
+        Assert.That(_system.Depth, Is.EqualTo(1));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _system.Depth = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => _system.Depth = -4);
+
+        Assert.That(_system.Depth, Is.EqualTo(1), "A refused assignment changes nothing.");
+    }
+
+    [Test]
+    public void Depth_SurvivesClear()
+    {
+        // Deliberate, and the reason is M2-10: a stage boundary clears the arena and the next
+        // stage's depth is the point of the transition, so zeroing it here would put the two in an
+        // order this method could not state.
+        _system.Depth = 7;
+        _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        _system.Clear();
+
+        Assert.That(_system.Depth, Is.EqualTo(7));
     }
 
     [Test]
@@ -188,7 +265,7 @@ public sealed class EnemySystemTests
     public void Despawn_PublishesAfterRemoval()
     {
         var events = new CallbackEvents();
-        var system = new EnemySystem(_catalog, events, _random, Capacity);
+        var system = new EnemySystem(_catalog, events, _random, Scaling(), Capacity);
         system.Spawn(new ContentId(HuskId), Vector3.Zero);
 
         int? countDuringEvent = null;
@@ -463,7 +540,7 @@ public sealed class EnemySystemTests
             Array.Empty<CharacterSpec>(),
             new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) });
 
-        var system = new EnemySystem(catalog, _events, _random, Capacity);
+        var system = new EnemySystem(catalog, _events, _random, Scaling(), Capacity);
         system.Spawn(new ContentId("enemy.unhandled"), Vector3.Zero);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
@@ -589,7 +666,7 @@ public sealed class EnemySystemTests
     {
         const int count = 32;
         var catalog = Catalog();
-        var system = new EnemySystem(catalog, new RecordingEvents(), new FixedRandom(), 64);
+        var system = new EnemySystem(catalog, new RecordingEvents(), new FixedRandom(), Scaling(), 64);
         var snapshot = new WorldSnapshot(64);
 
         snapshot.PlayerPosition = new Vector3(3f, 0f, 3f);
@@ -779,7 +856,18 @@ public sealed class EnemySystemTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
+
+    /// <summary>
+    /// The depth scaling every <c>EnemySystem</c> here is built with, required as of M2-03.
+    /// </summary>
+    /// <remarks>
+    /// GD §12's curves, so the rows about depth can state a real multiplier. Every other row is
+    /// unaffected by construction rather than by luck: <c>Depth</c> defaults to 1, where GD §12.3's
+    /// three multipliers are all exactly 1.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>

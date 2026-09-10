@@ -558,6 +558,7 @@ public sealed class PlayerCombatTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>

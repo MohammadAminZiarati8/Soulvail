@@ -25,7 +25,7 @@ public enum ChaserState
     /// <summary>Spawned and unaware. Nothing moves; the player is too far away to have been noticed.</summary>
     Idle,
 
-    /// <summary>Walking at the player at <c>EnemySpec.MoveSpeed</c>.</summary>
+    /// <summary>Walking at the player at <c>EnemyAgent.MoveSpeed</c>, depth scaling included.</summary>
     Chase,
 
     /// <summary>Stopped, facing the player, telegraphing the strike for <c>EnemySpec.WindupTime</c>.</summary>
@@ -45,12 +45,14 @@ public enum ChaserState
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The whole fight is in the four numbers on <see cref="EnemySpec"/>, and none of them is
-/// repeated here.</b> Speed, contact damage, reach, windup and recovery are read off the agent's
-/// spec every time they are used, so an archetype that wants a slower windup edits its asset and
-/// nothing else. The two constants below are the ones that belong to the <em>behaviour</em> rather
-/// than to any archetype — how far it can notice you, and how far you have to get for a windup to
-/// be abandoned — and both are commented where they are declared.
+/// <b>The whole fight is in the numbers the archetype carries, and none of them is repeated
+/// here.</b> Reach, windup and recovery are read off the agent's spec every time they are used;
+/// speed and contact damage are read off the agent's own <c>Stat</c>s, whose bases the spec seeds
+/// and whose stacks depth scaling (M2-03) and Elite affixes (M7-02) write to. Either way an
+/// archetype that wants a slower windup edits its asset and nothing else. The two constants below
+/// are the ones that belong to the <em>behaviour</em> rather than to any archetype — how far it can
+/// notice you, and how far you have to get for a windup to be abandoned — and both are commented
+/// where they are declared.
 /// </para>
 /// <para>
 /// <b>It reads perception and writes working memory, and never the other way round.</b> Everything
@@ -264,7 +266,9 @@ public sealed class ChaserBehaviour
             ? blackboard.PathDirectionToPlayer
             : blackboard.DirectionToPlayer;
 
-        float speed = _agent.Spec.MoveSpeed;
+        // The agent's stat, not the spec's float: depth scaling and M7-02's affixes live on the
+        // stack behind it, and the spec's number is only its base (M2-03 rule 7).
+        float speed = _agent.MoveSpeed.Value;
 
         Emit(new Vector3(direction.X * speed, 0f, direction.Y * speed), direction);
 
@@ -346,7 +350,9 @@ public sealed class ChaserBehaviour
 
         if (_agent.Blackboard.DistanceToPlayer <= _agent.Spec.Reach)
         {
-            _player.ApplyDamage(_agent.Spec.ContactDamage, _now);
+            // The agent's stat rather than the spec's float, for the reason TickChase's speed is
+            // one: a stage-40 Husk hits for 8 × d(40), and the 8 is the base.
+            _player.ApplyDamage(_agent.ContactDamage.Value, _now);
         }
     }
 

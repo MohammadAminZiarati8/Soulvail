@@ -40,6 +40,14 @@ namespace Soulvail.Core.Ai;
 /// which is cheaper than the spatial hash that would replace it and has no bucket to get stale.
 /// Revisit when a profile says so, not before.
 /// </para>
+/// <para>
+/// <b>A spawn is the exception, and only on an agent's first life.</b> <see cref="Spawn"/> puts
+/// three depth modifiers on the agent, which grows three <c>List&lt;Modifier&gt;</c> backing arrays
+/// the first time — after that <c>Stat.RemoveAll()</c> clears without releasing capacity, so a
+/// recycled agent's three modifiers go back into storage that already exists. That matters because
+/// a respawn is decided from inside <see cref="Tick"/>: without it, GD §12's scaling would put a
+/// small GC spike behind every refill.
+/// </para>
 /// </remarks>
 public sealed class EnemySystem
 {
@@ -65,6 +73,13 @@ public sealed class EnemySystem
     private const float AllyRadiusSquared = AllyRadius * AllyRadius;
 
     /// <summary>
+    /// The shallowest depth there is. Stages are numbered from 1 (GD §8.2), so this is also what
+    /// <see cref="Depth"/> starts at — every mode in V1 begins there, and a system asked to spawn
+    /// before anything set a depth scales to the first stage rather than throwing.
+    /// </summary>
+    private const int MinDepth = 1;
+
+    /// <summary>
     /// Below this distance the player and the enemy are the same point and there is no direction
     /// to give. Not zero: dividing by a distance of 1e-9 yields a unit vector made of noise, which
     /// is worse than admitting there is no answer.
@@ -74,6 +89,14 @@ public sealed class EnemySystem
     private readonly ContentCatalog _catalog;
     private readonly IDomainEvents _events;
     private readonly IRandom _random;
+
+    /// <summary>
+    /// What makes a spawned enemy as tough as its depth says. One per run, built by
+    /// <c>RunSession.Start</c> from the mode's curves.
+    /// </summary>
+    private readonly DepthScaling _scaling;
+
+    private int _depth = MinDepth;
 
     /// <summary>
     /// What replaces the dead, adopted from the plan by <see cref="SpawnAll"/>, or null for an
@@ -109,6 +132,12 @@ public sealed class EnemySystem
     /// enemies appear and where is exactly what that stream is for, and drawing from another would
     /// make a new mechanic elsewhere shift every seeded run's spawns (ADR-0011).
     /// </param>
+    /// <param name="scaling">
+    /// What makes every spawned enemy as tough, as dangerous and as fast as <see cref="Depth"/>
+    /// says (GD §12.3). A constructor argument rather than something adopted from a plan, so that
+    /// <see cref="Spawn"/> cannot run without one: an unscaled enemy is not a loud failure, it is
+    /// a stage-20 Husk that dies in two hits.
+    /// </param>
     /// <param name="capacity">
     /// The most enemies that may exist at once. Passed straight to the registry, which guards it,
     /// and it must match the snapshot's enemy capacity — an enemy core knows about but the
@@ -116,11 +145,17 @@ public sealed class EnemySystem
     /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
-    public EnemySystem(ContentCatalog catalog, IDomainEvents events, IRandom random, int capacity)
+    public EnemySystem(
+        ContentCatalog catalog,
+        IDomainEvents events,
+        IRandom random,
+        DepthScaling scaling,
+        int capacity)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _random = random ?? throw new ArgumentNullException(nameof(random));
+        _scaling = scaling ?? throw new ArgumentNullException(nameof(scaling));
 
         Registry = new EnemyRegistry(capacity);
     }
@@ -133,14 +168,64 @@ public sealed class EnemySystem
     public EnemyRegistry Registry { get; }
 
     /// <summary>
-    /// Brings one enemy of <paramref name="specId"/> into being at <paramref name="position"/> and
-    /// announces it.
+    /// The depth everything spawned from now on is scaled to (GD §12.3).
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Set by <c>RunSession.Start</c> from <c>RunConfig.StageIndex</c>, and by M2-10 at each stage
+    /// boundary. Held here rather than passed to <see cref="Spawn"/> because it is a property of
+    /// the arena the enemies are appearing in: a respawn decided inside <see cref="Tick"/> has no
+    /// caller to ask, and a stage number threaded through every spawn site is a stage number one
+    /// of them will forget.
+    /// </para>
+    /// <para>
+    /// Not the same number as <c>RunState.StageIndex</c> and deliberately a copy: that one is what
+    /// the run reports and saves, this one is what a spawn is priced against. They agree because
+    /// the two places that move a stage move both.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is below 1. Stages are numbered from 1, and a zero here would make the next spawn
+    /// throw from inside a curve — one frame and one call stack away from the assignment that was
+    /// actually wrong.
+    /// </exception>
+    public int Depth
+    {
+        get => _depth;
+
+        set
+        {
+            if (value < MinDepth)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    $"Depth must be at least {MinDepth}. Stages are numbered from 1 (GD §8.2).");
+            }
+
+            _depth = value;
+        }
+    }
+
+    /// <summary>
+    /// Brings one enemy of <paramref name="specId"/> into being at <paramref name="position"/>,
+    /// scales it to <see cref="Depth"/>, and announces it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
     /// The archetype is resolved before the agent is registered, so an unknown id leaves the
     /// registry untouched and publishes nothing — the same order, for the same reason, as
     /// <c>RunSession.Start</c> reading the catalog before it assigns any state. The event goes out
     /// *after* registration, so a handler that resolves the id it carries finds the agent.
+    /// </para>
+    /// <para>
+    /// <b>The scaling happens here, which is why there is nowhere to forget it.</b> Every enemy in
+    /// the game comes into being through this method — a plan, a respawn, M2-05's director — so
+    /// depth is applied once, in the one place, rather than by each caller remembering to. It runs
+    /// after registration and before the announcement, so a handler reading the agent's hit points
+    /// from inside <see cref="EnemySpawned"/> sees the scaled ones: a health bar built on the spawn
+    /// event would otherwise be sized to the unscaled maximum for its first frame.
+    /// </para>
     /// </remarks>
     /// <exception cref="KeyNotFoundException">
     /// The catalog holds no enemy with that id. Let through rather than rewrapped: it is the
@@ -154,6 +239,11 @@ public sealed class EnemySystem
         EnemySpec spec = _catalog.Enemy(specId);
 
         EnemyAgent agent = Registry.Spawn(spec, position);
+
+        // The registry has just wiped and re-based all three of this agent's stats
+        // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
+        // authored numbers and never on top of a previous life's.
+        _scaling.Apply(agent, _depth);
 
         _events.Publish(new EnemySpawned(agent.Id, spec.Id, position));
 
@@ -539,6 +629,11 @@ public sealed class EnemySystem
         _respawn = null;
         _lastDeathAt = float.NegativeInfinity;
         _playerPosition = Vector3.Zero;
+
+        // Depth is deliberately *not* reset. It belongs to whoever advances the stage, not to the
+        // census: M2-10 clears an arena at a stage boundary and the next stage's depth is the
+        // point of the transition, so zeroing it here would mean the two had to happen in an order
+        // this method could not state.
     }
 
     /// <summary>How many registered agents are breathing.</summary>

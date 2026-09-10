@@ -15,7 +15,7 @@ MonoBehaviour:
   _id: enemy.husk
   _nameKey: enemy.husk.name
   _maxHp: 36
-  _moveSpeed: 3.5
+  _moveSpeed: 2
   _targetPriority: 1
   _isElite: 0
   _contactDamage: 8

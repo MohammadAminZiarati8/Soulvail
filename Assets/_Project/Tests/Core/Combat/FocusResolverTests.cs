@@ -9,6 +9,7 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Combat;
 
@@ -349,6 +350,7 @@ public sealed class FocusResolverTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7.</summary>

@@ -320,6 +320,7 @@ public sealed class Stat
     public int ModifierCount { get; }
     public void Add(in Modifier modifier);          // Flat → PercentAdd → PercentMult, in that order
     public int  RemoveAll(object source);           // buff ended, node removed, Rot threshold crossed back
+    public int  RemoveAll();                        // wipe a pooled object clean — never "the buff ended"
     public void CopyModifiersTo(List<Modifier> destination);
     public void Describe(StringBuilder sb);         // the debug panel: "28.80 = (13.00 + 2.00) × 1.60 × 1.20"
     public event Action<Stat> Changed;              // only when Value actually moved
@@ -327,6 +328,8 @@ public sealed class Stat
 ```
 
 As built in M1-01, and two members differ from the sketch this section carried before it: modifiers are handed out by **copying into a caller's list** rather than as an `IReadOnlyList` the caller could reorder or hold past a removal, and `RemoveAll` **returns the count** it removed, which is what makes "a source with nothing on this stat is not an error" observable rather than assumed.
+
+The no-argument `RemoveAll()` arrived in M2-03 as a **second overload, never a replacement**: taking a source back when a buff ends is a different question from wiping a rental clean, and one call site must not be able to mean the other by omission. Its only caller is `EnemyAgent.Initialise` — see §18.1.
 
 Every gameplay number — damage, fire rate, speed, max HP, cooldown, XP gain — is a `Stat` from the first line of combat code.
 
@@ -463,6 +466,9 @@ is about Unity's.
 | `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance computed from the previous frame's position | M1-06 |
 | `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation is discarded every time the player starts moving, and no test written from rest would see it | M0-07 |
 | `EnemyAgent.Initialise` re-bases `Health.MaxHp` **before** `Health.Reset()` | a recycled enemy arrives at the previous archetype's hit points, with nothing reporting it | M1-05 |
+| `EnemyAgent.Initialise` calls `Stat.RemoveAll()` on all three stats **before** re-basing them, with the **no-argument** overload | a recycled Husk wears the last one's depth scaling — and later its affixes and debuffs. A source token would cover only its own source, so every future source would have to be listed at this line, and that list gets one entry short | M2-03 |
+| `EnemySystem.Spawn` applies depth **after** registration and **before** `EnemySpawned` | a health bar built on the spawn event is sized to the unscaled maximum for its first frame | M2-03 |
+| `DepthScaling.Apply` refills health **after** the `MaxHp` modifier goes on | a stage-20 Husk stands at stage-1 hit points behind a part-filled bar, and nothing reports it — `Health.Reset` fills `Current` from `MaxHp.Value` | M2-03 |
 | `EnemyHitFeedback.ResetVisuals` restores the opaque material **before** writing the colour | the dissolve's alpha is honoured for one frame by the transparent material | M1-12 |
 | Both run lifecycle events publish **before** `IsRunning` moves | anything reading the session from inside a lifecycle event is reading the state it is *leaving* — deliberately | M0-10 |
 | `EnemySpawned` is published **after** registration; `EnemyDespawned` **after** removal | a handler resolving the id finds nothing, or finds a ghost | M1-06 |
@@ -526,6 +532,17 @@ is about Unity's.
   **tightening it invalidates content references already written to disk** (M0-08).
 - **`SeededRandom`'s stream indices — Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4 — are part of
   what a seed means.** Never reorder or renumber; a new stream takes the next free index (M0-04).
+- **GD §12's formulas are authoritative and GD §12.1's own table is not.** `B(40)` is 1,876.9;
+  the table's stage-40 row says 1,772 and the "44×" beneath it follows from the same wrong number.
+  Stages 1, 5, 10 and 20 all agree to a rounding, which is what makes the row the error. The code
+  and its tests assert the formula; **do not "fix" them to match the table.** GameDesign.md wants a
+  one-line correction, flagged for the owner in M2-03 and not made there (M2-03).
+- **Depth scaling is `PercentMult`, never `PercentAdd`.** Depth must multiply with an Elite's 2.2×
+  rather than pool with it (GD §8.3) — pooling would make a deep Elite markedly weaker than the
+  design says, and every individual number would still look right (M2-03).
+- **`StatCurve`'s `stageOffset` is 0 or 1 and nothing else.** It exists only to spell the
+  difference between GD §12.3's `h`/`d`, which step from `n−1`, and `s`, which steps on `n`. A free
+  shift would silently give the first few stages no scaling at all (M2-03).
 - **Enemy despawn compacts rather than swapping with the last.** Spawn order feeds
   `TargetScorer`'s tie-break, so a swap would let two runs from one seed diverge on the strength of
   who died first (M1-05).

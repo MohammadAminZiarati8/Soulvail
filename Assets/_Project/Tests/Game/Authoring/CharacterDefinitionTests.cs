@@ -68,7 +68,11 @@ public sealed class CharacterDefinitionTests
         // constructor's likeliest defect is transposition, and that behaviour rows do not catch
         // it: 0.06 and 0.08 are close enough to pass a motor test while swapped, so this is the
         // row that has to tell accel from decel.
-        Assert.That(spec.Movement.Speed, Is.EqualTo(5.4f).Within(Tolerance), "CC §7 move speed.");
+        // Retuned 5.4 → 3 by the owner after playtesting, with the Husk dropped 3.5 → 2 in the
+        // same pass: the whole game got slower and the speed *ratio* barely moved (1.543× → 1.5×),
+        // which is what keeps GD §6.1's "every class must feel faster than almost every enemy"
+        // true. CC §2.5 and §7 were updated with the assets.
+        Assert.That(spec.Movement.Speed, Is.EqualTo(3f).Within(Tolerance), "CC §7 move speed.");
         Assert.That(spec.Movement.AccelTime, Is.EqualTo(0.06f).Within(Tolerance), "CC §7 accel, not decel.");
         Assert.That(spec.Movement.DecelTime, Is.EqualTo(0.08f).Within(Tolerance), "CC §7 decel, not accel.");
         Assert.That(spec.Movement.TurnSpeedDeg, Is.EqualTo(720f).Within(Tolerance), "CC §7 turn speed.");

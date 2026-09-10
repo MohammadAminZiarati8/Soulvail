@@ -199,7 +199,21 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
         // generator because respawning draws a position (M1-19) — from the Spawn stream and no
         // other, which is the system's own rule to keep rather than this class's to enforce.
-        var enemies = new EnemySystem(_catalog, _events, _random, _enemyCapacity);
+        //
+        // The scaling is built here and handed straight in, and nothing else in the run holds one:
+        // the curves belong to the mode, the mode is resolved above, and the only thing that ever
+        // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
+        // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
+        // it at each boundary.
+        var enemies = new EnemySystem(
+            _catalog,
+            _events,
+            _random,
+            new DepthScaling(mode.Scaling),
+            _enemyCapacity)
+        {
+            Depth = config.StageIndex,
+        };
 
         State = new RunState(
             config.ModeId,

@@ -345,7 +345,7 @@ public sealed class ConeHitsToDamageTests
         // Reached through EnemySystem directly because the weapon's Damage stat sits behind
         // RunState.Combat, which is internal — there is no route to a zero-damage swing from
         // outside core.
-        var enemies = new EnemySystem(_catalog, _events, new FixedRandom(), EnemyCapacity);
+        var enemies = new EnemySystem(_catalog, _events, new FixedRandom(), Scaling(), EnemyCapacity);
         EnemyAgent husk = enemies.Spawn(new ContentId(HuskId), At(5f));
 
         _events.Clear();
@@ -472,6 +472,7 @@ public sealed class ConeHitsToDamageTests
         1,
         true,
         0,
+        Scalings.Design(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7 — the Censer is the only block any row here reads.</summary>
@@ -561,4 +562,16 @@ public sealed class ConeHitsToDamageTests
             // Deliberately nothing.
         }
     }
+
+    /// <summary>
+    /// The depth scaling every <c>EnemySystem</c> in this fixture is built with, required as of
+    /// M2-03.
+    /// </summary>
+    /// <remarks>
+    /// Inert in every row here, and that is by construction rather than by luck: the system's
+    /// <c>Depth</c> defaults to 1, where GD §12.3's three multipliers are all exactly 1, so an
+    /// enemy spawned by this fixture wears its archetype's authored numbers. The rows that are
+    /// about depth are <c>DepthScalingTests</c>' and <c>EnemySystemTests.Spawn_AppliesDepth</c>.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 }

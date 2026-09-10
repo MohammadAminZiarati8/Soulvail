@@ -87,7 +87,7 @@ public sealed class ChaserBehaviourTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Capacity);
+        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Scaling(), Capacity);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
         _allocationClock = 0f;
         _clock = 0f;
@@ -364,8 +364,46 @@ public sealed class ChaserBehaviourTests
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
 
+    // ---- M2-03: the fight reads the agent's stats, not the archetype's floats -------------------
+
     [Test]
-    public void Tick_AllocatesNothing()
+    public void Chaser_WalksAtScaledSpeed()
+    {
+        // s(40) = 1 + 0.02·floor(40/5) = 1.16, on GD §8.1's 3.5 m/s. The read that makes this true
+        // is one line in TickChase — _agent.MoveSpeed.Value rather than _agent.Spec.MoveSpeed —
+        // and without it a stage-40 Husk would walk at exactly the speed a stage-1 one does.
+        ChaserBehaviour chaser = ChaseAtDepth(40, direction: new Vector2(1f, 0f));
+
+        _intents.Clear();
+
+        Tick(chaser);
+
+        Assert.That(
+            _intents.LastEnemyMove.Velocity.X,
+            Is.EqualTo(MoveSpeed * 1.16f).Within(1e-3f),
+            "GD §12.3's s(40) applied to the Husk's authored 3.5 m/s.");
+    }
+
+    [Test]
+    public void Chaser_StrikesForScaledDamage()
+    {
+        // d(40) = 1 + 0.035·39 = 2.365, on GD §8.1's 8. The Oathbound's Aegis has 30 points, so
+        // 18.92 lands entirely on the shield — which is what makes the number readable in one
+        // field rather than split across two.
+        ChaserBehaviour chaser = WindupAtDepth(40);
+
+        TickUntil(chaser, ChaserState.Strike, budgetSeconds: WindupTime + (2f * Frame));
+
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
+
+        PlayerDamaged hit = LastEvent<PlayerDamaged>();
+
+        Assert.That(hit.ToShield, Is.EqualTo(ContactDamage * 2.365f).Within(1e-3f));
+        Assert.That(hit.ToHp, Is.Zero, "The Aegis has 30 points; 18.92 does not get through it.");
+    }
+
+    [Test]
+    public void Tick_StillAllocatesNothing()
     {
         // Neither the recording events fake nor the callback one can be used here: both box every
         // payload, so a telegraph or a strike published inside the measured body would be counted as
@@ -373,8 +411,17 @@ public sealed class ChaserBehaviourTests
         // exactly what "core allocates nothing while publishing" needs on the other end.
         var silent = new SilentEvents();
         var intents = new RecordingIntents();
-        var system = new EnemySystem(Catalog(), silent, new FixedRandom(), Capacity);
         var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
+
+        // Depth 40, so every enemy in the crowd carries GD §12.3's three PercentMult modifiers and
+        // the tick below is reading a *modified* Stat rather than a bare base. That is what rule 13
+        // is about: ChaserBehaviour now reads MoveSpeed.Value and ContactDamage.Value per frame,
+        // and Stat's cache keeps its laziness only while nothing is subscribed — a recompute that
+        // allocated on read would put a GC spike behind every enemy in the arena (M1-01).
+        var system = new EnemySystem(Catalog(), silent, new FixedRandom(), Scaling(), Capacity)
+        {
+            Depth = 40,
+        };
 
         var snapshot = new WorldSnapshot(Capacity);
         snapshot.Dt = Frame;
@@ -465,6 +512,62 @@ public sealed class ChaserBehaviourTests
         Assert.That(chaser.State, Is.EqualTo(ChaserState.Windup), "Sanity: the fixture starts in Windup.");
 
         return chaser;
+    }
+
+    /// <summary>
+    /// A Husk spawned at <paramref name="depth"/> and ticked into <see cref="ChaserState.Chase"/>,
+    /// looking <paramref name="direction"/>.
+    /// </summary>
+    /// <remarks>
+    /// A system of its own rather than the fixture's, because <c>EnemySystem.Depth</c> is read at
+    /// spawn and the fixture's own Husks must stay unscaled — every other row here asserts GD
+    /// §8.1's authored numbers, and they are only true at depth 1.
+    /// </remarks>
+    private ChaserBehaviour ChaseAtDepth(int depth, Vector2 direction)
+    {
+        EnemyAgent agent = SpawnAtDepth(depth);
+
+        agent.Blackboard.DistanceToPlayer = 10f;
+        agent.Blackboard.DirectionToPlayer = direction;
+
+        Tick(agent.Behaviour);
+
+        Assert.That(agent.Behaviour.State, Is.EqualTo(ChaserState.Chase), "Sanity: it is walking.");
+
+        agent.Blackboard.DirectionToPlayer = direction;
+
+        return agent.Behaviour;
+    }
+
+    /// <summary>The same, walked into reach so it is mid-telegraph.</summary>
+    private ChaserBehaviour WindupAtDepth(int depth)
+    {
+        ChaserBehaviour chaser = ChaseAtDepth(depth, direction: new Vector2(0f, 1f));
+
+        Blackboard(chaser).DistanceToPlayer = 1f;
+
+        Tick(chaser);
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Windup), "Sanity: it is winding up.");
+
+        return chaser;
+    }
+
+    /// <summary>
+    /// Spawns a Husk into a system set to <paramref name="depth"/>, and points the fixture at it.
+    /// </summary>
+    private EnemyAgent SpawnAtDepth(int depth)
+    {
+        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Scaling(), Capacity)
+        {
+            Depth = depth,
+        };
+
+        EnemyAgent agent = _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        Assert.That(agent.Behaviour, Is.Not.Null, "A Chaser archetype must have been given a behaviour.");
+
+        return agent;
     }
 
     /// <summary>One tick at <see cref="Frame"/>, advancing the fixture's clock with it.</summary>
@@ -583,6 +686,17 @@ public sealed class ChaserBehaviourTests
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },
         new[] { Husk() });
+
+    /// <summary>
+    /// GD §12's curves, required by every <c>EnemySystem</c> as of M2-03.
+    /// </summary>
+    /// <remarks>
+    /// The fixture's own system is left at <c>Depth</c> 1, where all three of GD §12.3's
+    /// multipliers are exactly 1 — so every row that asserts GD §8.1's authored numbers still
+    /// asserts them. The two rows that are about depth build their own system through
+    /// <see cref="SpawnAtDepth"/>.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 
     /// <summary>GD §8.1's Husk, with M1-05's five numbers and a chaser driving it.</summary>
     private static EnemySpec Husk() => new EnemySpec(

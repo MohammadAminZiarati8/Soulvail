@@ -105,18 +105,23 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 |---|---|---|---|---|
 | M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☑ |
 | M2-00f | Doc-system audit: template precedence and self-check, PROGRESS entry cap, §18.5 → ledger, staleness after #46 | S | 00a | ☑ |
-| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☐ |
+| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☑ |
 | M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☐ |
 | M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☐ |
 | M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00f | ☐ |
 
+**Specced by M2-00b:** the spawning spine, M2-01…M2-05. Sizes, dependencies and boxes below; the rest of the milestone stays titles until 00c–e write them.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| [M2-01](tasks/M2-01-clock.md) | `IClock` + `UnityClock`: wall-clock, for persistence only | M | — | ☐ |
+| [M2-02](tasks/M2-02-mode-spec.md) | `ModeSpec` + `ModeDefinition`, Descent, and the `RunConfig` reshape | M | 01 | ☐ |
+| [M2-03](tasks/M2-03-threat-budget.md) | `ScalingSpec` + `ThreatBudget`, and depth scaling a recycled enemy forgets | M | 02 | ☐ |
+| [M2-04](tasks/M2-04-wave-composer.md) | `WaveComposer`: budget → waves, under a cap that is priced | M | 03 | ☐ |
+| [M2-05](tasks/M2-05-spawn-director.md) | `SpawnDirector`: waves, telegraphs, spawn safety, path budget | M | 04 | ☐ |
+
 | ID | Task |
 |---|---|
-| M2-01 | `IClock` + `UnityClock` (wall-clock for persistence) |
-| M2-02 | `ModeSpec` + `ModeDefinition`; Descent as the first instance (GD §4.5) |
-| M2-03 | `ThreatBudget` + scaling curves B(n), h(n), d(n), s(n) (GD §12) |
-| M2-04 | `WaveComposer`: budget → composition, threat costs, concurrency cap, quality-over-quantity rule |
-| M2-05 | `SpawnDirector`: waves, 25 % overlap, 6 m spawn safety, telegraph timing |
 | M2-06 | `EnemySpec` + `EnemyDefinition` authoring: Husk, Spitter, Bloater |
 | M2-07 | Spitter AI + projectile intent/fact |
 | M2-08 | Bloater AI: explode on death/contact |
@@ -246,6 +251,8 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **Four raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity` (M0-17), and `"You died"` and `"Tap to return"` on `Hud.prefab`'s `DeathOverlay` (M1-17). Between them they are the whole of the raw user-facing English in the project; they become `LocKey`s when `ILocalizer` and the English tables land. The HP readout is deliberately *not* on this list — `"{0:0}/{1:0}"` is a number format rather than a sentence, and it survives localisation unchanged.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
 - **Out-of-range focus tap** → [ledger row 12](#carry-forward-into-m2), owner M2-12. History in the [M1 archive](archive/PROGRESS-M1.md) (M1-09, M1-21).
+- **A spatial hash for `AlliesNearby`** — its `n² − n` comparisons a frame cost 756 at M2-04's cap of 28 and 4,032 at the registry's 64. Promoted the day a device cap above 40 ships (M8-03), and not before.
+- **GD §12.1's stage-40 budget row says 1,772 where its own formula gives 1,876.9** (stages 5, 10 and 20 all agree). The formula is what M2-03 builds; the table row and the "44×" beneath it want a one-line correction from the owner.
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.
 - `dotnet` SDK on the dev machine → activates the pre-commit format check.

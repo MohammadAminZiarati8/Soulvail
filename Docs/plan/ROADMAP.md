@@ -114,7 +114,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| [M2-01](tasks/M2-01-clock.md) | `IClock` + `UnityClock`: wall-clock, for persistence only | M | — | ☐ |
+| [M2-01](tasks/M2-01-clock.md) | `IClock` + `UnityClock`: wall-clock, for persistence only | M | — | ☑ |
 | [M2-02](tasks/M2-02-mode-spec.md) | `ModeSpec` + `ModeDefinition`, Descent, and the `RunConfig` reshape | M | 01 | ☐ |
 | [M2-03](tasks/M2-03-threat-budget.md) | `ScalingSpec` + `ThreatBudget`, and depth scaling a recycled enemy forgets | M | 02 | ☐ |
 | [M2-04](tasks/M2-04-wave-composer.md) | `WaveComposer`: budget → waves, under a cap that is priced | M | 03 | ☐ |

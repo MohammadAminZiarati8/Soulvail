@@ -177,7 +177,7 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 | Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the facts as they land: `ReportConeHits` (M1-11), `ReportChargeHits` (M1-15), a projectile fact with M2-07. Contact is ledger row 7 — M1-18 chose a core-side call over a fact; M2-08 settles it | Core |
 | Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
-| Outbound | `IClock` | `Now` (core time, seconds) | `UnityClock` |
+| Outbound | `IClock` | `UtcNow` (wall-clock, `DateTimeOffset`) — **and nothing else** (M2-01). Never simulated time: that is the sum of each tick's `Dt` (§18.2) | `UnityClock` |
 | Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc` | `SeededRandom` (xorshift/PCG, seedable) |
 | Outbound | `IDomainEvents` | `Publish<T>(in T evt)` | `DomainEventHub` (scoped, typed fan-out) |
 | Outbound | `ISaveStore` | Async load/save of profile and run snapshot | `LocalJsonSaveStore` now, `SyncingSaveStore` later |

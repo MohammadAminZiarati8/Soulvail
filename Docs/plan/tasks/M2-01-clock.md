@@ -96,4 +96,33 @@ None. Nothing is visible, nothing renders, and no behaviour changes — the one 
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+As specified in every rule. Three notes, one of them a correction to this spec's own prose.
+
+**1 — Three test rows had no file in the Files table, and went into the fixtures that already own
+their kind of assertion rather than into a sixth file.** The table names `UnityClockTests.cs`
+("the adapter forwards and does not cache", rows 1–3) and `FixedClockTests.cs` ("the fake's own
+rules", rows 6–9); rows 4, 5 and 10 are neither. They landed as additive edits:
+
+- `IClock_HasExactlyOneMember` and `RunSession_TakesNoClock` → `Tests/Core/AssemblyPurityTests.cs`,
+  the existing reflection-over-`Soulvail.Core` fixture. Deliberately **not** `Tests.Game`: an AR
+  §18.2 invariant about core must not become hostage to the Game assembly compiling, and M2-14a's
+  widening lands here too. `RunSession_TakesNoClock` is written as a loop over a `Type[]` holding
+  one entry, so that widening replaces one literal and leaves the loop alone.
+- `Container_ResolvesClock` → `Tests/Game/Composition/InstallerTests.cs`, which already owns
+  `BuildBoot` and every other "this registration exists and is a singleton" row. Kept under the
+  spec's name rather than renamed to the fixture's `Boot_` convention, so the spec ↔ test mapping
+  stays literal.
+
+**2 — Rule 7's *"beside `IRandom`"* is wrong about `IRandom`, and the registration follows the
+Files table instead.** `IRandom` is registered **`Lifetime.Scoped` in `RunInstaller`**, not in
+`BootScope`: a seed *is* a run. `UnityClock` is registered where the table says — `BootInstaller`,
+`Lifetime.Singleton` — and the comment there argues from the vibrator (one shared device) and
+names `IRandom` as the contrast rather than the precedent.
+
+**3 — No implied guard row applies.** There is no new spec type to validate, no `float` door, and
+`FixedClock`'s only constructor parameter is a `DateTimeOffset` — a struct, so there is no null to
+refuse. Said out loud because "the implied rows were considered" and "the implied rows were
+forgotten" look identical in a diff.
+
+**Verified:** 462 EditMode green, 0 failed, 8.6 s (2026-09-11, through `TestRunnerApi`); baseline
+452 + the ten rows above. Zero errors, zero analyzer warnings, `git diff ProjectSettings/` empty.

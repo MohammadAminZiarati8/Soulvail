@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
-| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 23 |
+| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 25 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
@@ -97,9 +97,9 @@
 
 ## M2 — Stage loop
 
-**Detailing is overdue and is its own task, split: hygiene first (00a, 00f), then the specs in four themed groups (00b–e).** The ~75 % trigger passed unfired during M1, so the fifteen specs below are written before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
+**Detailing is overdue and is its own task, split: hygiene first (00a, 00f), then the specs in four themed groups (00b–e).** The ~75 % trigger passed unfired during M1, so every spec below is written before M2-01 starts — fifteen tasks as first counted, eighteen after M2-07, M2-11 and M2-12 were each split before starting — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
 
-Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, seven findings from the M0+M1 audit, and the one playtest row that failed on behaviour. **A spec that does not name its ledger rows is not finished.**
+Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, seven findings from the M0+M1 audit, the one playtest row that failed on behaviour, and the two prices M2-00c's ruling named out loud. **A spec that does not name its ledger rows is not finished.**
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
@@ -107,7 +107,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | M2-00f | Doc-system audit: template precedence and self-check, PROGRESS entry cap, §18.5 → ledger, staleness after #46 | S | 00a | ☑ |
 | M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☑ |
 | M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☑ |
-| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☐ |
+| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☑ |
 | M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00f | ☐ |
 
 **Specced by M2-00b:** the spawning spine, M2-01…M2-05. Sizes, dependencies and boxes below; the rest of the milestone stays titles until 00c–e write them.
@@ -139,18 +139,25 @@ was therefore nowhere.
 | [M2-08](tasks/M2-08-bloater-ai.md) | `BloaterBehaviour`: a fuse you have to walk away from, and a blast the corpse owns | S | 07b | ☐ |
 | [M2-09](tasks/M2-09-projectile-views-and-pooling.md) | Projectile views, and the first test that proves a pooled body forgets its last life | M | 07b | ☐ |
 
+**Specced by M2-00d:** stage flow, arenas and telegraphs, M2-10…M2-12. **Both M2-11 and M2-12 are split before they start.** M2-11 is the arena as a *place* and the arena as something core can *ask about*, which is seven files together and two different reviews; the sense also has to land after the pillars it raycasts against exist. M2-12 is split by machinery, not by ledger row — rows 12 and 14 stay together in 12a because [the ledger](#carry-forward-into-m2) says answering them apart gets two indicators that disagree, while the ground decals share M2-09's pool and none of that question.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| [M2-10](tasks/M2-10-stage-flow.md) | `StageFlow`: arrival, seal, clear, a door that opens once — and `RespawnPolicy` retired | M | 05 04 02 | ☐ |
+| [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) | The arena as a contract: a pool of them, a barrier, and a door | M | 10 | ☐ |
+| [M2-11b](tasks/M2-11b-line-of-sight-sense.md) | `LineOfSightSense`: a pillar you can hide behind, and the frame order under test | S | 11a 07b | ☐ |
+| [M2-12a](tasks/M2-12a-threat-arrows-and-held-focus.md) | Screen-edge threat arrows, and a focus that reads as held | M | 07b | ☐ |
+| [M2-12b](tasks/M2-12b-telegraph-rings.md) | The ring that says *something is about to happen here* | S | 05 08 09 | ☐ |
+
 | ID | Task |
 |---|---|
-| M2-10 | `StageFlow` FSM: Arrival → Waves → Clear → Gate → next |
-| M2-11 | Arena prefab contract, arena pool, barrier + gate views |
-| M2-12 | Off-screen threat arrows, spawn telegraph rings |
 | M2-13 | Persistence: DTOs, `ISaveStore`, `LocalJsonSaveStore`, versioning + migration test harness |
 | M2-14 | Run snapshot at stage boundary, resume flow, app-kill handling |
 | M2-15 | M2 acceptance, tag `m2` |
 
 ### Carry-forward into M2
 
-**What M2's specs must absorb.** Four rows are measurements M1 took; the rest are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. Row 12 is the parking lot's one behavioural open item, moved here once it had an owner. **Every row names the task that must deal with it, and a spec is not finished until it says how.** A row leaves this table when its owner's *As built* says it is answered. Ranked by what it costs to fix later rather than now.
+**What M2's specs must absorb.** Fourteen rows: four are measurements M1 took, seven are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. Row 12 is the parking lot's one behavioural open item, moved here once it had an owner; rows 13 and 14 were added at M2-00c as the named price of ledger row 7's ruling. **Every row names the task that must deal with it, and a spec is not finished until it says how.** A row leaves this table when its owner's *As built* says it is answered. Ranked by what it costs to fix later rather than now.
 
 | # | Finding | Owner | Cost of leaving it |
 |---|---|---|---|
@@ -161,13 +168,13 @@ was therefore nowhere.
 | 5 | **Path refresh is hard-capped at 4 a frame against a 10 Hz cadence, so routes go stale silently above 24 concurrent enemies.** Nothing reports it at runtime. | **M2-04**, **M2-05** | Medium. A ceiling that is invisible until enemies visibly walk into walls. |
 | 6 | **`RunConfig` is two fields** (`CharacterId`, `SpawnPlan`) and M2 needs mode id, stage index, an **inbound** seed and a restored snapshot. The seed currently flows *out* of the injected `IRandom`, which is backwards for resume. | **M2-02**, with **M2-14** in mind | Medium. Reshape once, deliberately, rather than accreting a parameter per task across four PRs. |
 | 7 | **The fact-versus-direct-call rule is unsettled.** `IRunSession`'s comment still promises a `ReportContact` fact for chasers; M1-18 instead had `ChaserBehaviour` call `PlayerCombat.ApplyDamage` from core-perceived distance. Both are defensible — **but three enemies must not answer it three ways.** **Ruled at M2-00c** ([M2-07a](tasks/M2-07a-projectile-system.md) rule 1): core decides every enemy outcome and calls `ApplyDamage` directly; Unity owes a *fact* only when the answer depends on colliders core cannot see, and a *sense* when the geometric question is a standing one. `IRunSession` gains no member in M2 and the stale comment goes with it. | **M2-07a** (the ruling and the comment), applied by **M2-07b** and **M2-08** | Medium. Divergence here is the kind that never gets unpicked. The row leaves when M2-07a's *As built* says the comment is fixed. |
-| 8 | **Views and `RunTicker`'s frame order have no automated coverage at all.** The adapter layer is well covered; `Views/`, most of `Presentation/` and the frame order have nothing. `EnemyView.OnDespawn` — which the code itself calls "the most dangerous method here" — is exercised only through a fake `IPoolable`. Its reset chain was **verified complete by hand** during the audit, so this is a coverage gap, not a live bug. | **M2-09**, **M2-11** | Medium, rising. One PlayMode rent → damage → kill → despawn → re-rent test covers the whole family, and M2 triples the number of pooled things. |
+| 8 | **Views and `RunTicker`'s frame order have no automated coverage at all.** The adapter layer is well covered; `Views/`, most of `Presentation/` and the frame order have nothing. `EnemyView.OnDespawn` — which the code itself calls "the most dangerous method here" — is exercised only through a fake `IPoolable`. Its reset chain was **verified complete by hand** during the audit, so this is a coverage gap, not a live bug. **Split at M2-00d:** the pooled-view half is [M2-09](tasks/M2-09-projectile-views-and-pooling.md) rule 10, the frame-order half is [M2-11b](tasks/M2-11b-line-of-sight-sense.md) rules 10–12, which is the task that adds a step to the order and so makes asserting it worth a file. | **M2-09**, **M2-11b** | Medium, rising. One PlayMode rent → damage → kill → despawn → re-rent test covers the whole family, and M2 triples the number of pooled things. |
 | 9 | **Spawn-position occupancy is unmodelled** — nothing stops two spawns landing on the same point. | **M2-05** | Low now, visible the first time a wave doubles up. |
 | 10 | **`PendingRun.Clear()` still has no caller**, and needs a "the run has read everything it needs" point that does not exist yet. | **M2-14** | Low. Resume is where that point finally exists. |
 | 11 | **`HapticsSettings` persists through `PlayerPrefs`** as an explicit stopgap. | **M2-13** | Low. Move it onto `ISaveStore` as the first consumer. |
-| 12 | **A focus tap beyond `acquireRange` is silent.** `FocusResolver` has no range limit and `Targeter` honours the override only inside `acquireRange` (CC §3.4 as built in M1-04 — rightly), but `TargetChanged` carries nothing that lets the reticle show *held but inactive*, so the tap is indistinguishable from a miss, which CC §3.5 exists to prevent. Owner-playtested in M1-09 and again in M1-21 with chasers closing the distance; **the only CC §8 row failing on behaviour rather than on missing hardware.** Three ways out, cheapest first: a fourth reticle state (one field on `TargetChanged`, one branch in `ReticleView`, one publish site in `PlayerCombat`); hold the focus regardless of range (reintroduces the turn-away M1-04 rejected); raise `acquireRange` (moves auto-targeting everywhere). | **M2-12** | Medium. Threat arrows are the next thing that answers "where is the thing you cannot see"; decide both at once rather than retrofit one to the other. |
-| 13 | **Cover does not block enemy projectiles.** GD §7.2 makes it an arena design rule — *"cover blocks enemy projectiles but not pathing"* — and row 7's ruling means core holds no walls, so a Spitter shoots through a pillar. The cheapest honest fix is a **sense, not a fact**: `EnemySense.HasLineOfSight` has been carried unfilled since M0-05, and a `LineOfSightSense` adapter on `NavPathSense`'s pattern (a population-scaled per-frame budget, ~5 raycasts a frame at 28 enemies) lets a Spitter simply not fire through one. Rejected: the projectile view raycasting and reporting a block, which is the fact route row 7 declined; and core holding a wall list, which is a second world model. | **M2-11** | Medium. It is where pillars stop being scene dressing and become an arena contract, so the raycast has something to be true about. Cheap now, and the field it fills already exists. |
-| 14 | **A Spitter can damage the player from off-screen.** It fires from 14 m, which is past the play camera's comfortable frame behind the player, and GD §12.4's on-screen rule forbids damage originating outside the frustum without a visible edge indicator — *"tighter than the PC version of this rule, a phone screen shows less."* The first archetype that can break it; the Husk had to walk into view to hurt anybody. | **M2-12** | Medium. Same task and the same session as row 12: both are "where is the thing you cannot see", and answering them separately gets two indicators that do not agree. |
+| 12 | **A focus tap beyond `acquireRange` is silent.** `FocusResolver` has no range limit and `Targeter` honours the override only inside `acquireRange` (CC §3.4 as built in M1-04 — rightly), but `TargetChanged` carries nothing that lets the reticle show *held but inactive*, so the tap is indistinguishable from a miss, which CC §3.5 exists to prevent. Owner-playtested in M1-09 and again in M1-21 with chasers closing the distance; **the only CC §8 row failing on behaviour rather than on missing hardware.** Three ways out, cheapest first: a fourth reticle state (one field on `TargetChanged`, one branch in `ReticleView`, one publish site in `PlayerCombat`); hold the focus regardless of range (reintroduces the turn-away M1-04 rejected); raise `acquireRange` (moves auto-targeting everywhere). **Ruled by the owner at M2-00d: the fourth reticle state**, spelled as `TargetChanged.HeldFocusId` and a second, dimmer, non-pulsing marker parked on the enemy the player actually tapped ([M2-12a](tasks/M2-12a-threat-arrows-and-held-focus.md) rules 1–3). | **M2-12a** | Medium. Threat arrows are the next thing that answers "where is the thing you cannot see"; decide both at once rather than retrofit one to the other. |
+| 13 | **Cover does not block enemy projectiles.** GD §7.2 makes it an arena design rule — *"cover blocks enemy projectiles but not pathing"* — and row 7's ruling means core holds no walls, so a Spitter shoots through a pillar. The cheapest honest fix is a **sense, not a fact**: `EnemySense.HasLineOfSight` has been carried unfilled since M0-05, and a `LineOfSightSense` adapter on `NavPathSense`'s pattern (a population-scaled per-frame budget, ~5 raycasts a frame at 28 enemies) lets a Spitter simply not fire through one. Rejected: the projectile view raycasting and reporting a block, which is the fact route row 7 declined; and core holding a wall list, which is a second world model. **Ruled by the owner at M2-00d: the sense.** [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) rule 9 puts the pillars on a `Cover` layer so there is something to be true about; [M2-11b](tasks/M2-11b-line-of-sight-sense.md) fills the sense and a Spitter will not begin a wind-up it cannot see through. **The row leaves when 11b's *As built* says so**, not 11a's. | **M2-11a** (the layer), **M2-11b** (the sense) | Medium. It is where pillars stop being scene dressing and become an arena contract, so the raycast has something to be true about. Cheap now, and the field it fills already exists. |
+| 14 | **A Spitter can damage the player from off-screen.** It fires from 14 m, which is past the play camera's comfortable frame behind the player, and GD §12.4's on-screen rule forbids damage originating outside the frustum without a visible edge indicator — *"tighter than the PC version of this rule, a phone screen shows less."* The first archetype that can break it; the Husk had to walk into view to hurt anybody. **Answered with row 12 in one spec at M2-00d** ([M2-12a](tasks/M2-12a-threat-arrows-and-held-focus.md) rules 5–9): one screen-edge arrow renderer, one border rect that dodges GD §12.4's thumb corners, and GD §16.4's palette carrying the distinction — red-orange for a threat, cyan for the held focus. An enemy that is both gets both. | **M2-12a** | Medium. Same task and the same session as row 12: both are "where is the thing you cannot see", and answering them separately gets two indicators that do not agree. |
 
 ## M3 — Levelling and the tree *(titles only)*
 
@@ -273,7 +280,11 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   [M2-06](tasks/M2-06-enemy-authoring.md) rule 9 buys legibility with a per-archetype tint and
   scale on the one shared body instead, which is what GD §11.3 asks for anyway. Promoted when the
   owner brings enemy art in, the way M2-art was brought in. `Rig_Medium_Special`'s
-  `Skeletons_Awaken_Floor` is a diegetic spawn telegraph that M2-05 currently specs as a ring decal.
+  `Skeletons_Awaken_Floor` is a diegetic spawn telegraph that would replace
+  [M2-12b](tasks/M2-12b-telegraph-rings.md)'s ring decal.
+- **Arenas 3 through 12.** [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) rule 11 ships two —
+  the contract's proof, not its content — against GD §7.2's target of 8–12 per biome. Promoted by
+  M7-05/06's art pass, or the day a playtest says two rooms is where a run starts feeling repetitive.
 - **`EnemyRegistry` could prefer a free agent whose behaviour already matches the requested kind**,
   which would make [M2-07b](tasks/M2-07b-spitter-ai.md) rule 4's one-object-per-changed-rental churn
   rare in a mixed arena. Promoted by a profile that says so, not by a hunch — it is a spawn-path
@@ -285,7 +296,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **Machine-local Gradle configuration is not in this repo** — `~/.gradle/gradle.properties` (HTTP proxy) and `~/.gradle/init.gradle` (Aliyun mirrors) are what make an Android build resolve on this connection; a second machine needs its own. The why, including the SOCKS-vs-HTTP trap, is [Traps.md §10](../Traps.md).
 - **Four raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity` (M0-17), and `"You died"` and `"Tap to return"` on `Hud.prefab`'s `DeathOverlay` (M1-17). Between them they are the whole of the raw user-facing English in the project; they become `LocKey`s when `ILocalizer` and the English tables land. The HP readout is deliberately *not* on this list — `"{0:0}/{1:0}"` is a number format rather than a sentence, and it survives localisation unchanged.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
-- **Out-of-range focus tap** → [ledger row 12](#carry-forward-into-m2), owner M2-12. History in the [M1 archive](archive/PROGRESS-M1.md) (M1-09, M1-21).
+- **Out-of-range focus tap** → [ledger row 12](#carry-forward-into-m2), owner M2-12a, ruled at M2-00d. History in the [M1 archive](archive/PROGRESS-M1.md) (M1-09, M1-21).
 - **A spatial hash for `AlliesNearby`** — its `n² − n` comparisons a frame cost 756 at M2-04's cap of 28 and 4,032 at the registry's 64. Promoted the day a device cap above 40 ships (M8-03), and not before.
 - **GD §12.1's stage-40 budget row says 1,772 where its own formula gives 1,876.9** (stages 5, 10 and 20 all agree). The formula is what M2-03 builds; the table row and the "44×" beneath it want a one-line correction from the owner.
 - Business model decision (GD §21.1) — needed before M6.

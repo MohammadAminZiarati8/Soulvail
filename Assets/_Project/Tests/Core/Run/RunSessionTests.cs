@@ -31,6 +31,12 @@ public sealed class RunSessionTests
 
     private const int Seed = 99;
 
+    /// <summary>
+    /// Small on purpose. Every row here is about the player, and the enemy system a run now
+    /// composes needs only to exist — M1-06's own fixture is where its capacity matters.
+    /// </summary>
+    private const int EnemyCapacity = 8;
+
     // The Oathbound's numbers (CC §7), so a failure reads as "the class we ship stopped moving".
     private const float Speed = 5.4f;
     private const float AccelTime = 0.06f;
@@ -53,7 +59,7 @@ public sealed class RunSessionTests
         _intents = new RecordingIntents();
         _random = new FixedRandom(Seed);
         _catalog = new ContentCatalog(new[] { Oathbound() });
-        _session = new RunSession(_catalog, _random, _events, _intents);
+        _session = new RunSession(_catalog, _random, _events, _intents, EnemyCapacity);
     }
 
     [Test]
@@ -62,12 +68,12 @@ public sealed class RunSessionTests
         // Built in M0-09, tested here because that task was contracts with no fixture of its own.
         // `default(ContentId)` means nobody chose a class — a composition mistake — so it is
         // named here rather than left to surface as the catalog's "no character with id ''".
-        Assert.Throws<ArgumentException>(() => new RunConfig(default));
+        Assert.Throws<ArgumentException>(() => new RunConfig(default, SpawnPlan.Empty));
 
         // The other half of the pair, and the reason the guard is narrow: a well-formed id the
         // catalog happens not to hold is missing *content*, which is the catalog's question to
         // answer at Start. See Start_UnknownCharacter_Throws_NotRunning.
-        Assert.DoesNotThrow(() => new RunConfig(new ContentId(UnknownId)));
+        Assert.DoesNotThrow(() => new RunConfig(new ContentId(UnknownId), SpawnPlan.Empty));
     }
 
     [Test]
@@ -76,10 +82,25 @@ public sealed class RunSessionTests
         // Beyond the spec's Tests table. The constructor is public and called from another
         // assembly (M0-12's RunInstaller), so it is a boundary; without these a forgotten
         // registration would surface a frame later, inside Tick, as an NRE that names the tick.
-        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null, EnemyCapacity));
+
+        // Same family, added with the capacity in M1-06: a registry that can hold no enemies is a
+        // configuration mistake, and checking it here rather than at the first Start means a
+        // mis-wired scope fails while it is being built instead of one scene later.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunSession(_catalog, _random, _events, _intents, 0));
+    }
+
+    [Test]
+    public void Config_NullSpawnPlan_Throws()
+    {
+        // Required rather than optional (M1-06): a run that starts empty says so with
+        // SpawnPlan.Empty. An omitted plan and a broken spawner look identical in a playtest.
+        Assert.Throws<ArgumentNullException>(
+            () => new RunConfig(new ContentId(OathboundId), null));
     }
 
     [Test]
@@ -129,7 +150,8 @@ public sealed class RunSessionTests
     [Test]
     public void Start_UnknownCharacter_Throws_NotRunning()
     {
-        Assert.Throws<KeyNotFoundException>(() => _session.Start(new RunConfig(new ContentId(UnknownId))));
+        Assert.Throws<KeyNotFoundException>(
+            () => _session.Start(new RunConfig(new ContentId(UnknownId), SpawnPlan.Empty)));
 
         // Nothing half-started: the catalog is read before anything is assigned, so a bad id
         // leaves the session exactly as it was.
@@ -153,7 +175,7 @@ public sealed class RunSessionTests
     public void Start_EventPublishedBeforeIsRunningFlips()
     {
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents);
+        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity);
         object payload = null;
         bool? runningDuringEvent = null;
 
@@ -163,7 +185,7 @@ public sealed class RunSessionTests
             runningDuringEvent = session.IsRunning;
         };
 
-        session.Start(new RunConfig(new ContentId(OathboundId)));
+        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
 
         Assert.That(payload, Is.InstanceOf<RunStarted>());
 
@@ -322,8 +344,8 @@ public sealed class RunSessionTests
         // documents: during either lifecycle event the session still reports the state it is
         // leaving, so a handler reading IsRunning gets a consistent answer at both ends.
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents);
-        session.Start(new RunConfig(new ContentId(OathboundId)));
+        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity);
+        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
 
         object payload = null;
         bool? runningDuringEvent = null;
@@ -365,7 +387,23 @@ public sealed class RunSessionTests
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
         100f,
-        new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg));
+        new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg),
+        // Required as of M1-03, and irrelevant to every row in this fixture: the run session
+        // does not target anything yet. CC §7's numbers rather than invented ones, so a future
+        // row that does care starts from the real class.
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        // Required as of M1-10, and irrelevant here for the same reason one step along: with no
+        // enemies in any of these rows there is never a target, so the weapon never swings.
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+        // Required as of M1-13, and switched off with a MaxMultiplier of 1 for the same reason
+        // one step along: these rows tick a stick that is usually centred, and a ramp would put
+        // a modifier and a stream of events into a fixture measuring neither — including the
+        // allocation row, which is about what one Tick costs when nothing is happening.
+        new FocusSpec(0.4f, 1f, 1f),
+        // Required as of M1-14, and irrelevant here for the same reason again: no row in this
+        // fixture presses anything, so the dash never starts and the allocation row stays a
+        // measurement of an idle Tick.
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f));
 
     /// <summary>One snapshot per call, filled the way M0-16's builder will fill its single one.</summary>
     private static WorldSnapshot Snapshot(float dt, Vector2 input = default, Vector3 position = default)
@@ -379,7 +417,7 @@ public sealed class RunSessionTests
 
     private void StartRun()
     {
-        _session.Start(new RunConfig(new ContentId(OathboundId)));
+        _session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
     }
 
     /// <summary>

@@ -90,9 +90,9 @@ Worked example (the design's own): Choir (priority 8) at 11 m vs Husk (priority 
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -101,4 +101,11 @@ Worked example (the design's own): Choir (priority 8) at 11 m vs Husk (priority 
 
 ## As built
 
-_Filled at merge._
+Built as specced, with four deviations — all recorded in the PROGRESS entry for 2026-09-09.
+
+- **`CharacterSpec.Targeting` is required, not optional.** The opposite of M1-02's call for `shield`, and for the opposite reason: every class aims (CC §3), so a null is a forgotten field rather than a design statement, and a default in code would be balance data CC §7 says must be authored. The cost is two files beyond the Files table — `Tests/Core/Content/ContentTests.cs` and `Tests/Core/Run/RunSessionTests.cs` — mechanically updated at ten call sites.
+- **Rules 2 and 3 disagree at an exact tie; rule 2 won.** A dead heat resolves to the lowest id whether or not one of the tied candidates is the incumbent. Hysteresis is a bonus applied before the comparison, not a veto after it, and nothing oscillates either way. `Hysteresis_ExactTie_FallsToLowestId` pins it in both directions.
+- **Four guard rows beyond the Tests table**, for decisions this task made rather than inherited: `TargetingSpec` refuses a non-positive or non-finite range and cadence, and a negative or non-finite weight, while allowing a zero weight (which switches that term off); `TargetScorer` refuses a null spec; `ToSpec` names the asset when a targeting field is bad. Plus `NonFiniteDistance_IsNeverSelected`, which is why both loops are spelled so that a candidate must *win* a comparison rather than merely fail to lose one.
+- **`TargetCandidate` validates nothing**, following `PlayerMoveIntent` and `EnemySense`: it is built per enemy per targeting tick from numbers core already owns.
+
+**Measured:** 213 EditMode tests pass in 4.57 s (up from 196), 3 PlayMode in 3.04 s, zero errors and zero warnings across all six assemblies. The six new `Oathbound.asset` keys were proved to bind with `AssetDatabase.ForceReserializeAssets` — the field defaults are CC §7's numbers, so the asset test alone could not have told a bound key from an unbound one.

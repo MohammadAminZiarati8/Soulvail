@@ -232,7 +232,31 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _playerView: {fileID: 1102459965}
+  _chargeMotion: {fileID: 1102459968}
+  _skillButton: {fileID: 2052539125}
+  _hudPresenter: {fileID: 2052539126}
   _debugOverlay: {fileID: 5239836669165301809}
+  _camera: {fileID: 1167978316}
+  _reticle: {fileID: 2001746810}
+  _focusGlow: {fileID: 1102459967}
+  _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+  _enemyParent: {fileID: 2056789031}
+  _enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
+  _dummyPositions:
+  - {x: 8, y: 0, z: 0}
+  - {x: 5.66, y: 0, z: 5.66}
+  - {x: 0, y: 0, z: 8}
+  - {x: -5.66, y: 0, z: 5.66}
+  - {x: -11, y: 0, z: 0}
+  - {x: -7.78, y: 0, z: -7.78}
+  - {x: 0, y: 0, z: -11}
+  - {x: 7.78, y: 0, z: -7.78}
+  _keepAlive: 12
+  _respawnDelay: 2
+  _minSpawnDistance: 6
 --- !u!4 &929802505
 Transform:
   m_ObjectHideFlags: 0
@@ -321,6 +345,28 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 9015826864778196551, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
   m_PrefabInstance: {fileID: 1102459964}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1102459967 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7401882501133620004, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3253bf80c77e5c4f8e2e00e3a35d169, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
+--- !u!114 &1102459968 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4401292794507055000, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5581812873d4648983e7bc36c4385b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ChargeMotion
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0
@@ -486,6 +532,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1406229281}
   - component: {fileID: 1406229280}
+  - component: {fileID: 1406229282}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -573,6 +620,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1406229282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1406229279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1001 &1921197841
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -630,6 +706,74 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f268a216b371723429a00b60c43d2bda, type: 3}
+--- !u!1001 &2001746809
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1006894427974622265, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_Name
+      value: Reticle
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2396208897107319960, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+--- !u!114 &2001746810 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1414705699774518159, guid: 4b885038d0388ea40854ff82ece237ca, type: 3}
+  m_PrefabInstance: {fileID: 2001746809}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21bfc7397dd097c4ab3848e192bc59b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ReticleView
 --- !u!1001 &2052539124
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -727,6 +871,59 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+--- !u!114 &2052539125 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7325317697016450467, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3316ffa22f6ad3438ddcf9b871c7a97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.SkillButton
+--- !u!114 &2052539126 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8209328574051453634, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34fc7d8a959ec2b4a9ea45218112f71c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HudPresenter
+--- !u!1 &2056789030
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2056789031}
+  m_Layer: 0
+  m_Name: Enemies
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2056789031
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2056789030}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &5239836669165301808
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -735,6 +932,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2461285943360926498, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7193374953622819922, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -819,6 +1020,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: DebugOverlay
       objectReference: {fileID: 0}
+    - target: {fileID: 9122304093899072055, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 3657433087
+      objectReference: {fileID: 0}
+    - target: {fileID: 9122304093899072055, guid: 666064ba730e5ee4da87b5de42fbc31a, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -847,3 +1056,5 @@ SceneRoots:
   - {fileID: 324137846}
   - {fileID: 1406229281}
   - {fileID: 5239836669165301808}
+  - {fileID: 2056789031}
+  - {fileID: 2001746809}

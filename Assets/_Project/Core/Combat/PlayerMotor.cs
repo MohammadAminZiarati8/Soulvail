@@ -36,12 +36,6 @@ public sealed class PlayerMotor
 
     private readonly MovementSpec _spec;
 
-    /// <summary>Metres per second per second while the stick is held. Cached: it never changes.</summary>
-    private readonly float _accelRate;
-
-    /// <summary>Metres per second per second while the stick is released.</summary>
-    private readonly float _decelRate;
-
     private Vector3 _velocity;
     private Vector3 _facing;
 
@@ -53,11 +47,30 @@ public sealed class PlayerMotor
     public PlayerMotor(MovementSpec spec, Vector3 initialFacing)
     {
         _spec = spec ?? throw new ArgumentNullException(nameof(spec));
-        _accelRate = spec.Speed / spec.AccelTime;
-        _decelRate = spec.Speed / spec.DecelTime;
+        Speed = new Stat(spec.Speed);
         _velocity = Vector3.Zero;
         _facing = TryFlattenToDirection(initialFacing, out Vector3 facing) ? facing : Vector3.UnitZ;
     }
+
+    /// <summary>
+    /// Top speed in metres per second, as a live <see cref="Stat"/> seeded from
+    /// <see cref="MovementSpec.Speed"/>. Where "+10 % move speed" goes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The acceleration and deceleration rates are derived from it rather than cached, so a
+    /// modifier that raises the top speed raises the ramp with it: the spec's two times are
+    /// "seconds from rest to top speed", and a cached rate would keep the old metres-per-second-per
+    /// -second and quietly stretch a 0.06 s ramp into a longer one every time a node made the
+    /// character faster. Recomputing is two divisions a frame.
+    /// </para>
+    /// <para>
+    /// Owned by the motor rather than by <c>PlayerCombat</c>, because the motor is the only thing
+    /// that reads it and a stat held one object away from its single reader is a stat that can go
+    /// stale in transit.
+    /// </para>
+    /// </remarks>
+    public Stat Speed { get; }
 
     /// <summary>Current velocity in metres per second. Always on the ground plane: <c>Y == 0</c>.</summary>
     public Vector3 Velocity => _velocity;
@@ -96,8 +109,29 @@ public sealed class PlayerMotor
         IntegrateFacing(dt, faceDirection);
     }
 
+    /// <summary>
+    /// Drops the velocity to zero immediately, leaving the facing alone.
+    /// </summary>
+    /// <remarks>
+    /// Not deceleration — an instant stop, for the things that take movement away from the player
+    /// rather than asking them to stop: the Charge of M1-14 replaces the velocity outright for its
+    /// duration, and death (M1-17) ends it. The facing survives because neither of those turns the
+    /// character round, and a stop that also reset the aim would swing the body on the frame the
+    /// player was hit.
+    /// </remarks>
+    public void Stop()
+    {
+        _velocity = Vector3.Zero;
+    }
+
     private void IntegrateVelocity(float dt, Vector2 moveInput)
     {
+        // Floored at zero, because Stat deliberately clamps nothing — a PercentMult of −1 is a
+        // legitimate way to say "this is now zero" — and a negative top speed here would drive the
+        // character backwards while the ramp rate ran the wrong way too. The same floor, for the
+        // same reason, as Health.ClampedMax.
+        float speed = MathF.Max(0f, Speed.Value);
+
         float inputLength = moveInput.Length();
         Vector3 target;
         float rate;
@@ -108,13 +142,16 @@ public sealed class PlayerMotor
             // extra speed. Scaling is proportional, which is what makes a half-pushed stick
             // settle at half speed rather than ramping to full.
             Vector2 clamped = inputLength > 1f ? moveInput / inputLength : moveInput;
-            target = new Vector3(clamped.X * _spec.Speed, 0f, clamped.Y * _spec.Speed);
-            rate = _accelRate;
+            target = new Vector3(clamped.X * speed, 0f, clamped.Y * speed);
+            rate = speed / _spec.AccelTime;
         }
         else
         {
             target = Vector3.Zero;
-            rate = _decelRate;
+
+            // From the live speed rather than the authored one, so "0.08 s from top speed to rest"
+            // stays true of whatever the top speed currently is.
+            rate = speed / _spec.DecelTime;
         }
 
         // Linear, not exponential: an exponential approach never actually arrives, and "0.06 s

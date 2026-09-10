@@ -50,3 +50,5 @@ MonoBehaviour:
   autoInjectGameObjects: []
   _characters:
   - {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}
+  _enemies:
+  - {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}

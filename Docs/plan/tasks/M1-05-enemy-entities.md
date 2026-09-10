@@ -134,4 +134,23 @@ public sealed class EnemyRegistry
 
 ## As built
 
-_Filled at merge._
+Five files as tabled, no sixth. **249 EditMode tests pass in 1.19 s**, up from 232; zero errors, zero new warnings, all six assemblies rebuilt from the source on disk.
+
+**The two places the spec had to be resolved rather than followed:**
+
+- **Rule 4 contradicts itself**: `Alive` holds "only living, registered agents" and then a dead-but-not-despawned agent "is still in `Alive`". The second is what M1-11's death flow needs — the event must be out, and the view must have its frame to start dissolving, before the id stops resolving — so `Alive` and `AliveCount` mean **registered**, and a reader that cares asks `IsAlive`. `Alive_KeepsDeadAgentUntilDespawned` is a row for the clause the table left unpinned.
+- **Rules 1 and 8 read as a conflict and are not one.** A new id on a reused object satisfies both. But it makes the Public API block incomplete: `Id` and `Spec` need setters, because a recycled agent may return as a different archetype. Added as `{ get; private set; }` plus one `internal void Initialise(int, EnemySpec, Vector3)` — the single place a spawned agent's state is established, whether it was just constructed or pulled off the free list, so the two paths cannot drift.
+
+**The order inside `Initialise` is load-bearing:** `Health.MaxHp.Base = spec.MaxHp` before `Health.Reset()`, because `Reset` refills `Current` from `MaxHp.Value`. Reversed, a recycled Husk arrives at the previous archetype's hit points. `Spawn_RecycledAgent_IsFullyReinitialised` pins it with a 36 HP agent hurt to 10, despawned, and respawned as a 90 HP one.
+
+**`Health` is reused, not rebuilt**, and not only for the allocation budget: its constructor subscribes to `Stat.Changed` and never unsubscribes, so a fresh one per spawn would allocate *and* leave the old one wired to a stat nobody owns.
+
+**One hazard that could not be closed here.** `Stat` removes modifiers by source reference only — there is no "drop everything" — so a recycled agent inherits any modifier a previous life left on its `MaxHp`. Nothing applies one today, so the reuse is sound as built; depth scaling (M2-03) and Elite affixes (M7-02) are the first that will, and each owes either a removal at despawn or a `Stat` API to clear them. Deferred to the watch list on purpose rather than pre-solved: an API with no caller is one no test can honestly exercise.
+
+**Beyond the Public API block:** the `Initialise` method above, and `EnemySpec` guards `contactDamage` too — the spec's validation list names hp, speed, priority, reach and the times, but leaving one number unguarded among six would let a NaN reach `Health.ApplyDamage`, where `!(amount > 0f)` makes it a silent no-op.
+
+**Beyond the Tests table:** five rows — `Alive_KeepsDeadAgentUntilDespawned` and `Spawn_RecycledAgent_IsFullyReinitialised` above, `Agent_CarriesSpecAndPosition`, and the two guards on the registry's public surface (`Constructor_RejectsNonPositiveCapacity`, `Spawn_RejectsNullSpec`). The internal constructor and `Initialise` carry no guards, per M0-10: `Soulvail.Tests.Core` has no `InternalsVisibleTo`, so a guard there is unreachable from any test that could prove it works.
+
+**One assertion that is deliberately vacuous today:** the recycling row checks `IsVulnerable` is back to `true`, but nothing outside core can lower it, so no test can yet create the state whose reset it checks. The Warden's facing rule (M7-01) is the task that owes that row its teeth.
+
+**Deliberately absent:** GD §8.1's threat cost, which is the director's currency (M2-03, M2-04) rather than the enemy's own property; and `TagSet`, until affixes need it (M7-02).

@@ -75,6 +75,149 @@ public sealed class CharacterDefinitionTests
     }
 
     [Test]
+    public void Oathbound_ToSpec_HasShieldAndIFrames()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {OathboundPath}.");
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Shield, Is.Not.Null, "CH §3.1: the Aegis is the Oathbound's signature.");
+        Assert.That(spec.Shield.Max, Is.EqualTo(30f).Within(Tolerance), "CC §7 Aegis: 30 points.");
+        Assert.That(spec.Shield.RechargeDelay, Is.EqualTo(4f).Within(Tolerance),
+            "CC §7 Aegis: 4 s of quiet, not the refill rate.");
+        Assert.That(spec.Shield.RefillPerSecond, Is.EqualTo(15f).Within(Tolerance),
+            "CC §7 Aegis: 15 per second — a full shield in 2 s.");
+        Assert.That(spec.HitIFrames, Is.EqualTo(0.5f).Within(Tolerance), "CC §7 survivability: 0.5 s.");
+    }
+
+    [Test]
+    public void Oathbound_ToSpec_HasTargeting()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {OathboundPath}.");
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Targeting, Is.Not.Null,
+            "Every class aims (CC §3), so this is required rather than optional — a null here " +
+            "would mean the field was forgotten, not that the class has no auto-aim.");
+
+        // CC §7's targeting table, each number against its own property. The four weights are
+        // the transposition risk: 3 / 2 / 1 / 1.5 are close enough that a swapped pair would
+        // still produce plausible-looking targeting, and no behaviour row would notice.
+        Assert.That(spec.Targeting.AcquireRange, Is.EqualTo(12f).Within(Tolerance),
+            "CC §7 targeting: acquire range 12 m — weapon range × 1.5.");
+        Assert.That(spec.Targeting.DistanceWeight, Is.EqualTo(3f).Within(Tolerance),
+            "CC §7 targeting: distance weight 3.0, not the elite bonus.");
+        Assert.That(spec.Targeting.EliteBonus, Is.EqualTo(2f).Within(Tolerance),
+            "CC §7 targeting: elite bonus 2.0, not the distance weight.");
+        Assert.That(spec.Targeting.FinisherBonus, Is.EqualTo(1f).Within(Tolerance),
+            "CC §7 targeting: finisher bonus 1.0.");
+        Assert.That(spec.Targeting.Hysteresis, Is.EqualTo(1.5f).Within(Tolerance),
+            "CC §7 targeting: hysteresis 1.5 — the anti-jitter margin of CC §3.3.");
+        Assert.That(spec.Targeting.Cadence, Is.EqualTo(0.1f).Within(Tolerance),
+            "CC §3.1: the targeting loop runs at 10 Hz, not per frame.");
+    }
+
+    [Test]
+    public void Oathbound_ToSpec_HasWeapon()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {OathboundPath}.");
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Weapon, Is.Not.Null,
+            "Every class has a basic attack (CC §4), so this is required rather than optional — a " +
+            "null here would mean the field was forgotten, not that the class does not attack.");
+
+        // CC §7's attack table, each number against its own property. 13 and 3 are the pair that
+        // must not swap: 3 damage at 13 /s is 39 DPS too, so no behaviour row would notice — and
+        // the Husk would die in twelve swings instead of three.
+        Assert.That(spec.Weapon.Kind, Is.EqualTo(WeaponKind.Cone), "CC §4.1: the Censer is a cone.");
+        Assert.That(spec.Weapon.Damage, Is.EqualTo(13f).Within(Tolerance),
+            "CC §7 attack: 13 damage a swing, not the swing rate.");
+        Assert.That(spec.Weapon.SwingsPerSecond, Is.EqualTo(3f).Within(Tolerance),
+            "CC §7 attack: 3.0 swings a second, not the damage.");
+        Assert.That(spec.Weapon.Range, Is.EqualTo(8f).Within(Tolerance),
+            "CC §7 attack: 8 m — and the acquire range above is this × 1.5.");
+        Assert.That(spec.Weapon.ConeAngleDeg, Is.EqualTo(60f).Within(Tolerance),
+            "CC §7 attack: a 60° full arc, not a 60° half-angle.");
+        Assert.That(spec.Weapon.DamageFrame, Is.EqualTo(0.4f).Within(Tolerance),
+            "CC §4.2: the damage lands 40 % through the swing.");
+
+        // The invariant all five of them exist to serve (GD §6.2): 13 × 3 = 39 ≥ 36, so a Husk
+        // dies on the third damage frame. Any drift above has to be checked against this.
+        Assert.That(spec.Weapon.Damage * spec.Weapon.SwingsPerSecond, Is.GreaterThanOrEqualTo(36f),
+            "A Husk has 36 HP and must die within a second of fire.");
+    }
+
+    [Test]
+    public void ToSpec_InvalidWeapon_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenWeapon");
+
+        // [Range(0f, 0.99f)] keeps this out of the Inspector; a SerializedProperty write goes
+        // straight past it, which is the hole WeaponSpec's constructor closes. A damage frame at 1
+        // would land on the tick that ends the swing.
+        SetFloat(definition, "_weaponDamageFrame", 1f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenWeapon"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void ToSpec_InvalidTargeting_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenTargeting");
+
+        // [Min(0.01f)] keeps this out of the Inspector; a SerializedProperty write goes straight
+        // past it, which is the hole TargetingSpec's constructor closes. A zero range would
+        // divide the distance term by nothing and select nobody.
+        SetFloat(definition, "_acquireRange", 0f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenTargeting"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void ToSpec_InvalidHitIFrames_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenIFrames");
+
+        // [Min(0f)] keeps this out of the Inspector, and a SerializedProperty write goes
+        // straight past it — which is the whole reason the guard lives in CharacterSpec.
+        SetFloat(definition, "_hitIFrames", -1f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenIFrames"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void ToSpec_ZeroShieldMax_MeansNoShield()
+    {
+        CharacterDefinition definition = NewDefinition("Shieldless");
+
+        // Zero is the switch, not an invalid number: the Gravecaller and the Emberwright have
+        // no Aegis, and this is how they say so. A separate "has shield" toggle would allow a
+        // state the spec cannot represent — on, with a max of zero.
+        SetFloat(definition, "_shieldMax", 0f);
+
+        CharacterSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Shield, Is.Null,
+            "No shield is a null ShieldSpec, never a spec full of zeroes — Health skips the " +
+            "whole path on null rather than running it against a zero maximum.");
+    }
+
+    [Test]
     public void ToSpec_ReturnsNewInstanceEachCall()
     {
         var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
@@ -88,6 +231,7 @@ public sealed class CharacterDefinitionTests
         // caching just the inner record would pass a reference check on the outer one.
         Assert.That(second, Is.Not.SameAs(first));
         Assert.That(second.Movement, Is.Not.SameAs(first.Movement));
+        Assert.That(second.Targeting, Is.Not.SameAs(first.Targeting));
 
         Assert.That(second.Id, Is.EqualTo(first.Id));
         Assert.That(second.NameKey, Is.EqualTo(first.NameKey));

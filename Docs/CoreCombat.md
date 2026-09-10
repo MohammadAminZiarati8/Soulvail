@@ -362,9 +362,15 @@ Every number in one place. Expose all of these in a ScriptableObject; do not har
 
 ---
 
-## 8. M0 acceptance checklist
+## 8. M1 acceptance checklist
 
 Build to this, run it on a phone, and be honest about the answers.
+
+> **Renamed in M2-00a.** This was headed "M0 acceptance checklist" from the first draft, but every
+> row it lists — auto-target, reticle, tap-to-focus, Charge, haptics — is M1 work, and both
+> [ROADMAP](plan/ROADMAP.md) and [M1-21](plan/tasks/M1-21-acceptance-and-tag.md) have always cited
+> it as M1's gate. The heading was the only thing that disagreed. The closing question below is
+> M1's question, and it is the one M1-21 answered.
 
 - [ ] Stick spawns under the thumb anywhere in the left 45%
 - [ ] Dynamic recentering works — drag far right, then left, and movement reverses immediately
@@ -378,6 +384,8 @@ Build to this, run it on a phone, and be honest about the answers.
 - [ ] Sustained 60 fps on a mid-tier device with 20 capsules
 - [ ] Haptics on hit, damage taken, and Charge
 
-**The one question M0 answers:** *is moving and swinging, with no content around it, fun for two minutes straight?*
+**The one question M1 answers:** *is moving and swinging, with no content around it, fun for two minutes straight?*
 
-If yes, build M1. If no, change these numbers before building anything else — they are far cheaper to change now than after three enemy types and a boss are balanced against them.
+If yes, build M2. If no, change these numbers before building anything else — they are far cheaper to change now than after three enemy types and a boss are balanced against them.
+
+**Answered in [M1-21](plan/tasks/M1-21-acceptance-and-tag.md): yes, on Editor evidence, with no number changed** — every value above already matched the asset shipping it. Three rows are device-only and unanswerable until a phone exists, and one is deliberately unresolved rather than passed: *"tap-to-focus locks on, and the lock is obvious"* fails for a tap beyond `acquireRange`, which is silent. That sits in the [parking lot](plan/ROADMAP.md#parking-lot) with its three ways out.

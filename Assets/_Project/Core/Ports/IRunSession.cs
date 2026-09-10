@@ -1,3 +1,4 @@
+using System;
 using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ports;
@@ -21,10 +22,12 @@ namespace Soulvail.Core.Ports;
 /// passed is one way too many. The sketch predates the snapshot carrying it.
 /// </para>
 /// <para>
-/// M0's surface is deliberately this small. The facts AR §6 lists —
-/// <c>ReportConeHits</c>, <c>ReportContact</c>, <c>ReportProjectileHit</c> — arrive with the
-/// mechanics that produce them in M1, and player commands with tap-to-focus in M1-09. Movement
-/// needs none of them: the stick rides in on the snapshot.
+/// The facts AR §6 lists arrive with the mechanics that produce them:
+/// <see cref="ReportConeHits"/> in M1-11, <c>ReportContact</c> with the chasers of M1-18,
+/// <c>ReportProjectileHit</c> with the Spitter in M2-07. Player commands have their own port,
+/// <see cref="IPlayerCommands"/> (M1-09), which <c>RunSession</c> also implements: lifecycle is
+/// what the frame loop holds, commands are what an input adapter holds, and an adapter able to
+/// <see cref="End"/> the run would have a reach it has no business having.
 /// </para>
 /// </remarks>
 public interface IRunSession
@@ -57,6 +60,65 @@ public interface IRunSession
     /// </summary>
     /// <exception cref="System.InvalidOperationException">No run is running.</exception>
     void Tick(WorldSnapshot snapshot);
+
+    /// <summary>
+    /// The body's answer to the outstanding <c>ConeHitIntent</c>: these are the enemies that were
+    /// standing in the wedge. Core turns it into damage, deaths and events.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The first fact, and the shape every later one follows: a method call carrying a physical
+    /// result the instant it is known, rather than a field on the next snapshot. A hit that waited
+    /// for the following frame would land after the swing that caused it had visibly finished.
+    /// </para>
+    /// <para>
+    /// Fire and forget, in both directions. Nothing is returned — what the damage did leaves as
+    /// <c>EnemyDamaged</c> and <c>EnemyDied</c> — and a report core is not expecting is dropped in
+    /// silence, so the body never has to know which of its swings are still owed an answer.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyIds">
+    /// The ids found in the cone. A <see cref="ReadOnlySpan{T}"/> so that the body can hand over a
+    /// slice of a buffer it reuses every frame: nothing is copied and nothing is retained.
+    /// Duplicates, unknown ids and ids that have since died are all harmless.
+    /// </param>
+    /// <exception cref="System.InvalidOperationException">No run is running.</exception>
+    void ReportConeHits(ReadOnlySpan<int> enemyIds);
+
+    /// <summary>
+    /// The body's answer to a <c>ChargeIntent</c> in flight: these are the enemies the dash has
+    /// passed through. Core turns it into damage, deaths and knockback.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Reported repeatedly, unlike <see cref="ReportConeHits"/>, and that is the shape of the
+    /// question.</b> A cone is one wedge at one instant, so it is asked once and answered once. A
+    /// dash is a line swept over 0.22 s, which no single overlap can describe — the body sweeps it
+    /// per frame and reports whatever it touched — so core accepts every report inside the dash's
+    /// window and damages each enemy only the first time it is named. Reporting the same enemy on
+    /// ten consecutive frames costs it 20 hit points, not 200.
+    /// </para>
+    /// <para>
+    /// <b>The window is a little wider than the dash</b>, by a tenth of a second, so that the frame
+    /// which finishes the sweep is still heard after the dash itself has ended. Anything later is
+    /// dropped in silence, like a stale cone report: the body never has to know when core stopped
+    /// listening.
+    /// </para>
+    /// <para>
+    /// Fire and forget in both directions, again. What the damage did leaves as <c>EnemyDamaged</c>
+    /// and <c>EnemyDied</c>, and where the shove sends anyone is the body's business — core writes
+    /// an <c>EnemyKnockbackIntent</c> per enemy and reads the result back as a position in the next
+    /// snapshot.
+    /// </para>
+    /// </remarks>
+    /// <param name="enemyIds">
+    /// The ids the dash has passed through so far. A <see cref="ReadOnlySpan{T}"/> for the reason
+    /// <see cref="ReportConeHits"/> takes one: nothing is copied and nothing is retained.
+    /// Duplicates, ids already reported by an earlier frame of the same dash, unknown ids and ids
+    /// that have since died are all harmless.
+    /// </param>
+    /// <exception cref="System.InvalidOperationException">No run is running.</exception>
+    void ReportChargeHits(ReadOnlySpan<int> enemyIds);
 
     /// <summary>
     /// Ends the run and publishes <c>RunEnded</c>. A no-op when no run is running, so scope

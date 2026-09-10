@@ -1,6 +1,7 @@
 # ADR-0013 — Git-flow with PR review; the owner makes every commit
 
 **Status:** Accepted · **Date:** 2026-09-06
+**Amended 2026-09-10 (M2-00f):** task branches are named by task ID — `m0-09-run-contracts` — not `feature/<slug>`. The decision is unchanged; naming is mechanics and lives in CLAUDE.md.
 
 ## Context
 

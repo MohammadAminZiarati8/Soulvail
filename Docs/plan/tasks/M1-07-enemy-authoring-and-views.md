@@ -84,10 +84,10 @@ public sealed class EnemyViews : IDisposable
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified
-- [ ] `PROGRESS.md` entry appended (note the Instantiate stopgap); Current State updated; ROADMAP box ticked
+- [x] All tests green — 288 EditMode in 5.35 s (up from 277), 3 PlayMode in 2.54 s
+- [x] Zero errors, zero new analyzer warnings — clean Console after a full recompile of all six assemblies and after a play session
+- [x] Manual steps verified — 1 and 2 automated through the MCP in play mode (eight bodies, ids 1–8, the serialised positions, layer `Enemy`, overlay `enemies 8`); step 3 and the colour read are the owner's
+- [x] `PROGRESS.md` entry appended (note the Instantiate stopgap); Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -96,4 +96,16 @@ public sealed class EnemyViews : IDisposable
 
 ## As built
 
-_Filled at merge._
+Built as specified, with three deviations — all three recorded in full in the PROGRESS entry.
+
+**Rule 5's `EnemyView.FromCollider` was not built.** The collider→id lookup is `EnemyViews.TryGetId(Collider, out int)`, an instance method keyed by `Collider.GetInstanceID()`. A static dictionary is mutable static state, which CLAUDE.md bans, and with domain reload disabled on Play it would carry one session's colliders into the next silently. It answers the same question for M1-12 with no `GetComponent` in the query loop, and it lives on the object that already owns the census. `EnemyView.Body` caches the collider in `Awake` so nothing has to search for it.
+
+**`RunTicker` gained a `SpawnPlan` parameter**, which rule 4 implies without saying. Which dummies stand where is scene data, so `RunScope` builds the plan from `_dummySpec` + `_dummyPositions` and registers it with `RegisterInstance` — safe here for the reason it is safe for `ContentCatalog`, since a `SpawnPlan` is immutable and owns no resource. An unassigned archetype or an empty list yields `SpawnPlan.Empty` rather than throwing, matching the fallbacks M0-12 made for the seed and the class.
+
+**`BootInstaller.Install` requires its enemy list** rather than defaulting it as `ContentCatalog` does: two call sites, and a silently omitted list makes an arena that never fills, which is exactly the failure M1-06 flagged as indistinguishable from a broken spawner. `BuildCatalog` became a generic `Convert` helper shared by both kinds, whose null check casts to `UnityEngine.Object` first — `==` on a type parameter is reference equality, so the un-cast form would compile, read identically, and stop catching a destroyed asset.
+
+Four test rows beyond the Tests table: `Boot_ResolvesCatalog_WithHusk` and `Boot_NullEnemyList_Throws` on the catalog wire, and `Build_CopiesEnemiesFromViews` and `Build_OverwritesEveryEnemyFieldOfAReusedSlot` on `SnapshotBuilder`. The second of those is the one worth keeping: `WorldSnapshot.Clear()` does not zero its array, so `CopyInto` must assign every field of a slot including `PathDirectionToPlayer` and `HasLineOfSight`, or a reused slot hands core a dead enemy's senses. `EnemyViews` is otherwise exercised by the manual steps, as the spec intended — but constructing one is now required to build a `SnapshotBuilder`, so those two rows came almost free.
+
+The prefab reuses `M_BoneGrey`, the arena's own material, rather than adding one: GD §16.4 puts enemies and environment in the same bone-grey band, and a new material is a file this table does not cover. Whether that reads clearly in play is the owner's call.
+
+Layer `Enemy` landed at index 8. Writing it made Unity re-save `TagManager.asset` at `serializedVersion: 3`, dropping 24 empty trailing `m_RenderingLayers` rows — cosmetic, unavoidable, and larger in the diff than the change itself.

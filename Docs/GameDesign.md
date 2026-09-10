@@ -418,7 +418,7 @@ Techniques, in priority order:
 4. **Object pooling everywhere** — enemies, projectiles, VFX, damage numbers. Zero runtime instantiation during a wave.
 5. **Watch overdraw, not compute.** Mobile GPUs are bandwidth-bound. Overlapping transparent VFX are the real killer in a horde game — cap simultaneous particle systems and keep alpha layers few.
 
-The project already has `Mobile_Renderer.asset` and `Mobile_RPAsset.asset` in [Assets/Settings/](Assets/Settings/) — those are the pipeline assets to configure, and the PC ones should be left alone.
+The project already has `Mobile_Renderer.asset` and `Mobile_RPAsset.asset` in [Assets/Settings/](../Assets/Settings/) — those are the pipeline assets to configure, and the PC ones should be left alone.
 
 ### 11.4 Thermal and battery
 

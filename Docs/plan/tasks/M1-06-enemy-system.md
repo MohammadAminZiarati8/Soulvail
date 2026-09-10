@@ -93,9 +93,9 @@ public readonly struct EnemyDespawned { public readonly int Id; }
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green
+- [x] Zero errors, zero new analyzer warnings
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -105,4 +105,16 @@ public readonly struct EnemyDespawned { public readonly int Id; }
 
 ## As built
 
-_Filled at merge._
+**Files:** exactly the table — `Core/Run/SpawnPlan.cs`, `Core/Ai/EnemySystem.cs`, `Core/Events/EnemyEvents.cs`, `Tests/Core/Ai/EnemySystemTests.cs` — plus the small edits it names (`RunConfig`, `RunState`, `RunSession`, `ContentCatalog`) and three it does not: `RunInstaller` and `RunTicker` on the Unity side, which is where the capacity and the empty plan are wired, and one summary line on `EnemyBlackboard.DistanceToPlayer` to say it is ground-plane metres.
+
+**Tests:** 277 EditMode green in 5.50 s (249 before), 3 PlayMode green in 2.38 s. All 16 table rows, plus 9 named as beyond it. Zero errors, zero warnings.
+
+**Five deviations**, four of them corrections to this spec:
+
+1. **Rule 7 argues with itself and the second half wins**: `RunStarted` → `IsRunning = true` → `SpawnAll`. Subscribers are wired at scope build, so the ordering is about meaning, not audience — a run is announced before the things inside it are.
+2. **`Perception_DistanceAndDirection`'s expected direction has the sign backwards.** `DirectionToPlayer` points at the player, so from an enemy at (3, 0, 4) to an origin player it is (−0.6, −0.8). The test keeps the row's numbers by putting the *player* at (3, 0, 4).
+3. **`RunState.Enemies` is `internal`** — M0-16's rule about handing out a live object with a public `Tick`. `RunState.EnemyCount` is the public read. The cost: rule 6's ordering inside `Tick` is unassertable until M1-08.
+4. **`RunSession` gained a fifth constructor parameter, `int enemyCapacity`**, wired from `BootInstaller.SnapshotEnemyCapacity` with `WithParameter("enemyCapacity", …)`, so the registry and the snapshot cannot disagree about the cap.
+5. **`ContentCatalog`'s `enemies` parameter is optional**, defaulting to none — M1-06 genuinely has no authored enemies, and the omission fails loudly at the first `Enemy(id)`.
+
+**Left for later, on purpose:** a mid-plan spawn failure leaves a half-started run (`RunStarted` out, some enemies standing). Nothing authors a plan yet, so no test can reach it honestly — M2-02 either validates the plan before `RunStarted` or accepts the partial spawn deliberately. Carried on the PROGRESS watch list.

@@ -103,10 +103,10 @@ public sealed class NavPathSense
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified; Profiler shows no per-spawn allocation
-- [ ] `PROGRESS.md` entry appended (stopgap from M1-07 closed); Current State updated; ROADMAP box ticked
+- [x] All tests green — 440 EditMode (428 + 12 new), 3 PlayMode
+- [x] Zero errors, zero new analyzer warnings
+- [ ] Manual steps verified; Profiler shows no per-spawn allocation — **owner's, steps 1, 3 and 4**. Step 2 (a chaser walks around a pillar) is verified in the Editor: a path from (13, 0, 13) to the origin comes back `PathComplete` with 4 corners, turning at (7.6, 0, 10.0) — the north face of `Pillar_NE` plus the 0.4 m agent radius
+- [x] `PROGRESS.md` entry appended (stopgap from M1-07 closed); Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -115,4 +115,14 @@ public sealed class NavPathSense
 
 ## As built
 
-_Filled at merge._
+Built as specified, with five differences worth naming.
+
+- **`FixedRandom.SetSpawn`, not `SetStream("Spawn", …)`.** The test table's spelling never existed; M0-04's fake gives each stream its own setter. `Respawn_UsesSpawnStream` scripts the shared stream with `0f` and `Spawn` with `0.99f`, so a draw from the wrong stream lands on the first position instead of the last and the row fails for the right reason.
+- **`EnemySystem` gained three pieces of state, not one.** The policy itself (adopted by `SpawnAll` from `SpawnPlan.Respawn`), `_lastDeathAt` (stamped in `ApplyDamage` beside `agent.DiedAt`), and `_playerPosition` (recorded in `Ingest`). The third is the one the spec did not anticipate: `Tick` is handed a `PlayerCombat`, which owns health and targeting and deliberately not a position, so the spawn-safety check had nowhere else to read it from. `ApplyRespawn` still takes the position as a parameter, which is what lets a test state the geometry instead of building a snapshot to imply it. All three are cleared in `Clear`.
+- **`NavPathSense` answers with the straight line rather than zero.** Rule 6 says so for a partial or invalid path; the same answer is now given before an enemy's first refresh, where the API sketch said zero. The two are indistinguishable downstream — `ChaserBehaviour` falls back to the straight line on a zero — but it keeps the sense honest: what it returns is always a direction towards the player, never an absence. The per-frame budget resets when the `time` argument changes, so there is no begin-frame call for a caller to forget.
+- **`refreshHz` is passed explicitly in `RunScope`.** VContainer resolves every constructor parameter from the container or a `WithParameter` and never falls back to a C# default value, so the default in the signature would have failed to compose the run. Hence `NavPathSense.DefaultRefreshHz`.
+- **`EnemyView.OnDespawn` reaches into `EnemyHitFeedback.ResetVisuals`.** Rule 5 asks the view to reset "scale/alpha/collider from a dissolve", and all three belong to the feedback component. The alternative — the census resetting each component in turn — spreads "what a rental has to forget" across two files, and the file that would not have it is the one holding the pooled object.
+
+**Prewarm is `max(dressed, keepAlive) + 1`,** 13 for the Run scene. The spare covers the overlap every kill has: a corpse holds its body for `CorpseTime`'s 0.6 s while its replacement is already being rented, and without it a steady fight would instantiate once per death.
+
+**Two things outside the Files table.** `ProjectSettings/NavMeshAreas.asset` — the Humanoid agent's radius, 0.5 → 0.4, which is where agent radius lives and the only way to bake at the number this spec asks for; approved by the owner before the edit. And `Assets/_Project/Prefabs/Arenas/NavMeshGreyBox.asset`, the baked data, which a bake necessarily produces.

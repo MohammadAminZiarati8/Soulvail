@@ -59,7 +59,20 @@ public static class RunInstaller
 
         builder.Register<IRandom>(CreateRandom, Lifetime.Scoped);
 
-        builder.Register<IRunSession, RunSession>(Lifetime.Scoped);
+        // One brain behind two ports (M1-09). The frame loop holds IRunSession and can start, tick
+        // and end a run; an input adapter holds IPlayerCommands and can only ask for a focus. Two
+        // registrations of RunSession would be two brains — core would tick one and the player's
+        // taps would land on the other, with no error anywhere and a focus that simply never
+        // arrived — so it is registered once and named twice.
+        //
+        // The enemy capacity comes from the same constant the snapshot above was built with, and
+        // by name rather than by type: core's registry has to be able to hold every enemy the
+        // snapshot can carry, or an enemy exists that core cannot see the position of. A second
+        // int parameter later would make WithParameter<int> ambiguous, so the name is the wire.
+        builder.Register<RunSession>(Lifetime.Scoped)
+            .As<IRunSession>()
+            .As<IPlayerCommands>()
+            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity);
     }
 
     /// <summary>

@@ -7,8 +7,8 @@
 - One milestone at a time. Every milestone ends with something **playable on a phone** and a tag on `main`.
 - A task is **one branch, one PR, 1–5 files.** Size S = 1–3 files, M = 4–5, L = must be split before starting. Size counts **new code files and substantial rewrites**; small additive edits to existing files (a new field on a spec, a registration, an event struct) are listed in the spec but don't count — they're trivial to review.
 - Task IDs are `M<milestone>-<nn>`. Branch = lowercase ID + slug: `m0-03-domain-events`. PR title = the spec's H1.
-- **Full specs exist for the current and next milestone only.** Later milestones are titles + one-line goals; they get specced when the current milestone is ~75% merged, using what we learned.
-- Tick a box when the PR is **merged into `dev`**, not when the code is written.
+- **A milestone's specs are written by its own first tasks** — `M<n>-00a…`, themed groups of 3–5 specs each, against the previous milestone's carry-forward ledger — before its `-01` starts. Later milestones are titles + one-line goals. (The earlier rule, "spec the next milestone when this one is ~75 % merged", missed twice; nothing in the protocol could check it.)
+- A box is ticked **in the PR that closes the task**; it becomes true when that PR merges into `dev`. The PR number lives in the merge commit, not here.
 - Splits keep the parent ID: `M0-07a`, `M0-07b`.
 
 **Spec pointers:** GD = [GameDesign.md](../GameDesign.md) · CH = [Characters.md](../Characters.md) · CC = [CoreCombat.md](../CoreCombat.md) · AR = [Architecture.md](../Architecture.md) · ADR = [adr/](../adr/)
@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
-| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 15 |
+| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 21 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
@@ -67,33 +67,48 @@
 **Goal:** the moment-to-moment loop — target, swing, dodge — feels good on device with untextured capsules.
 **Done when:** [CC §8](../CoreCombat.md) checklist passes on device and `m1` is tagged.
 
+**Status: complete, tagged on Editor evidence — the same terms as `m0`, for the same missing phone.** 452 EditMode + 3 PlayMode tests green, zero errors, zero analyzer warnings, and no tuning edit needed anywhere: every CC §7 number already matched the asset shipping it. The owner playtested the fight and called it good, which is M1's question answered — but answered *in the Editor*, so the feel verdict is provisional and the three `[device]` rows (multi-touch, haptics, sustained 60 fps with 12 chasers) are carried as debt, joined by the whole of M1-20's checklist. One checklist row is deliberately unresolved rather than passed: the out-of-range focus tap, still in the parking lot with its three ways out.
+
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| [M1-01](tasks/M1-01-stat-and-modifier.md) | `Stat` + `Modifier` stack: Flat → PercentAdd → PercentMult, by source, cached, describable | S | M0 | ☐ |
-| [M1-02](tasks/M1-02-health-and-aegis.md) | `Health`, `ShieldSpec`, `DamageResult`: HP, Aegis recharge, hit i-frames | M | 01 | ☐ |
-| [M1-03](tasks/M1-03-target-scorer.md) | `TargetCandidate`, `TargetingSpec`, `TargetScorer` | M | 01 | ☐ |
-| [M1-04](tasks/M1-04-targeter.md) | `Targeter`: cadence, immediate retarget, focus override, all-blocked state | S | 03 | ☐ |
-| [M1-05](tasks/M1-05-enemy-entities.md) | `EnemySpec`, `EnemyAgent`, `EnemyBlackboard`, `EnemyRegistry` | M | 02 | ☐ |
-| [M1-06](tasks/M1-06-enemy-system.md) | `EnemySystem`: spawn plan, snapshot ingestion, perception, enemy events | M | 05 | ☐ |
-| [M1-07](tasks/M1-07-enemy-authoring-and-views.md) | `EnemyDefinition`, `Husk.asset`, `EnemyView`, `EnemyViews`, dummy prefab | M | 06 | ☐ |
-| [M1-08](tasks/M1-08-player-combat.md) | `PlayerCombat`: health, targeting, `CombatBlackboard`, combat events; `RunSession` composes | M | 02 04 06 | ☐ |
-| [M1-09](tasks/M1-09-tap-to-focus-and-reticle.md) | `IPlayerCommands.FocusTarget/ClearFocus`, 3 m resolver, `TapToFocusAdapter`, `ReticleView` | M | 07 08 | ☐ |
-| [M1-10](tasks/M1-10-weapon-and-cone-intent.md) | `WeaponSpec`, `Weapon` cadence + damage frame, `ConeHitIntent` | M | 08 | ☐ |
-| [M1-11](tasks/M1-11-cone-hits-to-damage.md) | `ReportConeHits` fact → damage → `EnemyDamaged` / `EnemyDied`, despawn | S | 10 | ☐ |
-| [M1-12](tasks/M1-12-cone-overlap-and-hit-feedback.md) | `ConeOverlapQuery`, `RunTicker` fact loop, hit flash, dissolve death | M | 07 11 | ☐ |
-| [M1-13](tasks/M1-13-focus-ramp.md) | `FocusSpec`, `FocusTracker` → fire-rate modifier; ground glow | M | 10 | ☐ |
-| [M1-14](tasks/M1-14-charge-skill.md) | `MovementSkillSpec`, `ChargeSkill` (pure): cooldown, buffer, i-frame window | S | 02 | ☐ |
-| [M1-15](tasks/M1-15-charge-integration.md) | `ChargeIntent`, `IPlayerCommands.MovementSkill`, `ReportChargeHits`, knockback intent | M | 11 14 | ☐ |
-| [M1-16](tasks/M1-16-charge-view-and-skill-button.md) | `PlayerView` charge motion + sweep, `SkillButton`, movement-skill input | M | 15 | ☐ |
-| [M1-17](tasks/M1-17-hud.md) | `HudPresenter`, HP bar with ghost trail, shield ring, cooldown, death → Menu | M | 08 16 | ☐ |
-| [M1-18](tasks/M1-18-chaser-ai.md) | `ChaserBehaviour` FSM, `EnemyMoveIntent`, strike damage, telegraph event | M | 06 08 | ☐ |
-| [M1-19](tasks/M1-19-pooling-respawn-navmesh.md) | `ViewPool`, `RespawnPolicy` (keep 12 alive), NavMesh bake + path sense | M | 12 18 | ☐ |
-| [M1-20](tasks/M1-20-haptics.md) | `HapticsListener`, Android vibrator, toggle | S | 11 15 | ☐ |
-| [M1-21](tasks/M1-21-acceptance-and-tag.md) | M1 acceptance: CC §8 on device, tuning, tag `m1` | S | all | ☐ |
+| [M1-01](tasks/M1-01-stat-and-modifier.md) | `Stat` + `Modifier` stack: Flat → PercentAdd → PercentMult, by source, cached, describable | S | M0 | ☑ |
+| [M1-02](tasks/M1-02-health-and-aegis.md) | `Health`, `ShieldSpec`, `DamageResult`: HP, Aegis recharge, hit i-frames | M | 01 | ☑ |
+| [M1-03](tasks/M1-03-target-scorer.md) | `TargetCandidate`, `TargetingSpec`, `TargetScorer` | M | 01 | ☑ |
+| [M1-04](tasks/M1-04-targeter.md) | `Targeter`: cadence, immediate retarget, focus override, all-blocked state | S | 03 | ☑ |
+| [M1-05](tasks/M1-05-enemy-entities.md) | `EnemySpec`, `EnemyAgent`, `EnemyBlackboard`, `EnemyRegistry` | M | 02 | ☑ |
+| [M1-06](tasks/M1-06-enemy-system.md) | `EnemySystem`: spawn plan, snapshot ingestion, perception, enemy events | M | 05 | ☑ |
+| [M1-07](tasks/M1-07-enemy-authoring-and-views.md) | `EnemyDefinition`, `Husk.asset`, `EnemyView`, `EnemyViews`, dummy prefab | M | 06 | ☑ |
+| [M1-08](tasks/M1-08-player-combat.md) | `PlayerCombat`: health, targeting, `CombatBlackboard`, combat events; `RunSession` composes | M | 02 04 06 | ☑ |
+| [M1-09](tasks/M1-09-tap-to-focus-and-reticle.md) | `IPlayerCommands.FocusTarget/ClearFocus`, 3 m resolver, `TapToFocusAdapter`, `ReticleView` | M | 07 08 | ☑ |
+| [M1-10](tasks/M1-10-weapon-and-cone-intent.md) | `WeaponSpec`, `Weapon` cadence + damage frame, `ConeHitIntent` | M | 08 | ☑ |
+| [M1-11](tasks/M1-11-cone-hits-to-damage.md) | `ReportConeHits` fact → damage → `EnemyDamaged` / `EnemyDied`, despawn | S | 10 | ☑ |
+| [M1-12](tasks/M1-12-cone-overlap-and-hit-feedback.md) | `ConeOverlapQuery`, `RunTicker` fact loop, hit flash, dissolve death | M | 07 11 | ☑ |
+| [M1-13](tasks/M1-13-focus-ramp.md) | `FocusSpec`, `FocusTracker` → fire-rate modifier; ground glow | M | 10 | ☑ |
+| [M1-14](tasks/M1-14-charge-skill.md) | `MovementSkillSpec`, `ChargeSkill` (pure): cooldown, buffer, i-frame window | S | 02 | ☑ |
+| [M1-15](tasks/M1-15-charge-integration.md) | `ChargeIntent`, `IPlayerCommands.MovementSkill`, `ReportChargeHits`, knockback intent | M | 11 14 | ☑ |
+| [M1-16](tasks/M1-16-charge-view-and-skill-button.md) | `PlayerView` charge motion + sweep, `SkillButton`, movement-skill input | M | 15 | ☑ |
+| [M1-17](tasks/M1-17-hud.md) | `HudPresenter`, HP bar with ghost trail, shield ring, cooldown, death → Menu | M | 08 16 18 | ☑ |
+| [M1-18](tasks/M1-18-chaser-ai.md) | `ChaserBehaviour` FSM, `EnemyMoveIntent`, strike damage, telegraph event | M | 06 08 | ☑ |
+| [M1-19](tasks/M1-19-pooling-respawn-navmesh.md) | `ViewPool`, `RespawnPolicy` (keep 12 alive), NavMesh bake + path sense | M | 12 18 | ☑ |
+| [M1-20](tasks/M1-20-haptics.md) | `HapticsListener`, Android vibrator, toggle | S | 11 15 | ☑ |
+| [M1-21](tasks/M1-21-acceptance-and-tag.md) | M1 acceptance: CC §8 on device, tuning, tag `m1` | S | all | ☑ |
 
 ---
 
-## M2 — Stage loop *(titles only)*
+## M2 — Stage loop
+
+**Detailing is overdue and is its own task, split: hygiene first (00a, 00f), then the specs in four themed groups (00b–e).** The ~75 % trigger passed unfired during M1, so the fifteen specs below are written before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
+
+Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, seven findings from the M0+M1 audit, and the one playtest row that failed on behaviour. **A spec that does not name its ledger rows is not finished.**
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☑ |
+| M2-00f | Doc-system audit: template precedence and self-check, PROGRESS entry cap, §18.5 → ledger, staleness after #46 | S | 00a | ☑ |
+| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☐ |
+| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☐ |
+| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☐ |
+| M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00f | ☐ |
 
 | ID | Task |
 |---|---|
@@ -112,6 +127,25 @@
 | M2-13 | Persistence: DTOs, `ISaveStore`, `LocalJsonSaveStore`, versioning + migration test harness |
 | M2-14 | Run snapshot at stage boundary, resume flow, app-kill handling |
 | M2-15 | M2 acceptance, tag `m2` |
+
+### Carry-forward into M2
+
+**What M2's specs must absorb.** Four rows are measurements M1 took; the rest are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. Row 12 is the parking lot's one behavioural open item, moved here once it had an owner. **Every row names the task that must deal with it, and a spec is not finished until it says how.** A row leaves this table when its owner's *As built* says it is answered. Ranked by what it costs to fix later rather than now.
+
+| # | Finding | Owner | Cost of leaving it |
+|---|---|---|---|
+| 1 | **Random streams expose no state.** `IRandomStream` has only draw methods and `Pcg32._state` has no accessor, so a resumed run restores the seed but restarts **every stream at draw 0** — a resumed stage re-draws spawn positions it already used, and once M3-04's offers ride the Offers stream, **killing the app becomes a free reroll**. Recorded in neither ADR-0011 nor ADR-0007. | **M2-13** (DTO), **M2-14** (resume) | **Highest.** A `ulong State { get; set; }` per stream and a field per stream in the DTO costs nothing at format v1; after v1 ships it is a migration plus a live exploit. |
+| 2 | **`Stat` removes modifiers by source reference only** — no "drop everything" — and `EnemyAgent` is recycled with its `Health` intact. The first thing to apply one to an enemy makes every recycled Husk wear the last one's scaling. | **M2-03** | High. Either `Stat.RemoveAll()` with no argument, or an agent-owned source token cleared at despawn. Trivial now; a silent balance bug once depth scaling and M7-02 affixes are both live. |
+| 3 | **`EnemySystem.SpawnAll` runs *after* `RunStarted` and after `IsRunning` flips**, so an unauthored archetype mid-plan throws with the run announced and enemies standing. Inert while only `RunScope` authors a plan; mode data is the first thing that can. | **M2-02** | Medium. Validate the plan against the catalog before `RunStarted`, or accept the partial spawn on purpose. |
+| 4 | **`AlliesNearby` is `n² − n` comparisons a frame** over the *registered* count — free at 12, **3,540 a frame at 60**. Priced by the concurrency cap, not by wave size. | **M2-04** | Medium. Choose the cap against this number rather than inferring it. |
+| 5 | **Path refresh is hard-capped at 4 a frame against a 10 Hz cadence, so routes go stale silently above 24 concurrent enemies.** Nothing reports it at runtime. | **M2-04**, **M2-05** | Medium. A ceiling that is invisible until enemies visibly walk into walls. |
+| 6 | **`RunConfig` is two fields** (`CharacterId`, `SpawnPlan`) and M2 needs mode id, stage index, an **inbound** seed and a restored snapshot. The seed currently flows *out* of the injected `IRandom`, which is backwards for resume. | **M2-02**, with **M2-14** in mind | Medium. Reshape once, deliberately, rather than accreting a parameter per task across four PRs. |
+| 7 | **The fact-versus-direct-call rule is unsettled.** `IRunSession`'s comment still promises a `ReportContact` fact for chasers; M1-18 instead had `ChaserBehaviour` call `PlayerCombat.ApplyDamage` from core-perceived distance. Both are defensible — **but three enemies must not answer it three ways.** | **M2-07** (projectile), **M2-08** (contact) | Medium. Settle it in M2-00c and fix the stale comment; divergence here is the kind that never gets unpicked. |
+| 8 | **Views and `RunTicker`'s frame order have no automated coverage at all.** The adapter layer is well covered; `Views/`, most of `Presentation/` and the frame order have nothing. `EnemyView.OnDespawn` — which the code itself calls "the most dangerous method here" — is exercised only through a fake `IPoolable`. Its reset chain was **verified complete by hand** during the audit, so this is a coverage gap, not a live bug. | **M2-09**, **M2-11** | Medium, rising. One PlayMode rent → damage → kill → despawn → re-rent test covers the whole family, and M2 triples the number of pooled things. |
+| 9 | **Spawn-position occupancy is unmodelled** — nothing stops two spawns landing on the same point. | **M2-05** | Low now, visible the first time a wave doubles up. |
+| 10 | **`PendingRun.Clear()` still has no caller**, and needs a "the run has read everything it needs" point that does not exist yet. | **M2-14** | Low. Resume is where that point finally exists. |
+| 11 | **`HapticsSettings` persists through `PlayerPrefs`** as an explicit stopgap. | **M2-13** | Low. Move it onto `ISaveStore` as the first consumer. |
+| 12 | **A focus tap beyond `acquireRange` is silent.** `FocusResolver` has no range limit and `Targeter` honours the override only inside `acquireRange` (CC §3.4 as built in M1-04 — rightly), but `TargetChanged` carries nothing that lets the reticle show *held but inactive*, so the tap is indistinguishable from a miss, which CC §3.5 exists to prevent. Owner-playtested in M1-09 and again in M1-21 with chasers closing the distance; **the only CC §8 row failing on behaviour rather than on missing hardware.** Three ways out, cheapest first: a fourth reticle state (one field on `TargetChanged`, one branch in `ReticleView`, one publish site in `PlayerCombat`); hold the focus regardless of range (reintroduces the turn-away M1-04 rejected); raise `acquireRange` (moves auto-targeting everywhere). | **M2-12** | Medium. Threat arrows are the next thing that answers "where is the thing you cannot see"; decide both at once rather than retrofit one to the other. |
 
 ## M3 — Levelling and the tree *(titles only)*
 
@@ -202,15 +236,16 @@
 
 ## Parking lot
 
-Unscheduled. Promote into a milestone when it earns it.
+Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
-- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). Not adopted yet; revisit once the test suite is worth guarding — likely during M1.
+- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`). Worth it since M1-21 — 455 tests, and M2 adds migration tests, which rot silently. Blocker: a Unity licence activation secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
-- **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them. **M0-20 raised the price of not having one:** BlueStacks cannot currently run the APK at all (its Vulkan driver faults through `libhoudini.so`), so the emulator is no longer a proven fallback for *anything* outside the Editor. M0-20a works around it; a phone removes the question.
+- **A real Android device.** Every **[device]** row is deferred until one exists and the first hardware session runs them all. BlueStacks cannot run the APK (M0-20a), so there is no fallback outside the Editor.
 - **Company name is a placeholder** — `Soulvail`, set in M0-19 with the same status as the application identifier. Both are permanent once uploaded to a store, so M8-06 changes them together before the first upload.
-- **Machine-local Gradle configuration is not in this repo.** `~/.gradle/gradle.properties` (HTTP proxy on 127.0.0.1:10808) and `~/.gradle/init.gradle` (Aliyun mirrors ahead of Google/Central) are what make an Android build resolve its dependencies on this connection. A second clone on another machine needs its own, or none. Revisit before any published build — see the M0-19 entry for why a mirror is in the path at all.
-- **Two raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity`, authored by M0-17 as the one place in the project where a raw user-facing string is allowed. They become `LocKey`s when `ILocalizer` and the English tables land.
+- **Machine-local Gradle configuration is not in this repo** — `~/.gradle/gradle.properties` (HTTP proxy) and `~/.gradle/init.gradle` (Aliyun mirrors) are what make an Android build resolve on this connection; a second machine needs its own. The why, including the SOCKS-vs-HTTP trap, is [Traps.md §10](../Traps.md).
+- **Four raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity` (M0-17), and `"You died"` and `"Tap to return"` on `Hud.prefab`'s `DeathOverlay` (M1-17). Between them they are the whole of the raw user-facing English in the project; they become `LocKey`s when `ILocalizer` and the English tables land. The HP readout is deliberately *not* on this list — `"{0:0}/{1:0}"` is a number format rather than a sentence, and it survives localisation unchanged.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
+- **Out-of-range focus tap** → [ledger row 12](#carry-forward-into-m2), owner M2-12. History in the [M1 archive](archive/PROGRESS-M1.md) (M1-09, M1-21).
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.
 - `dotnet` SDK on the dev machine → activates the pre-commit format check.

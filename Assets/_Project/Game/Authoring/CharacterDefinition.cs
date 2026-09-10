@@ -41,6 +41,74 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.001f)] private float _decelTime = 0.08f;
         [SerializeField, Min(1f)] private float _turnSpeedDeg = 720f;
 
+        [Tooltip("Points of shield. 0 means this class has no shield at all — only the " +
+                 "Oathbound's Aegis has one in V1. The two fields below are ignored at 0.")]
+        [SerializeField, Min(0f)] private float _shieldMax;
+        [SerializeField, Min(0.01f)] private float _shieldRechargeDelay = 4f;
+        [SerializeField, Min(0.01f)] private float _shieldRefillPerSecond = 15f;
+        [SerializeField, Min(0f)] private float _hitIFrames = 0.5f;
+
+        [Tooltip("Auto-aim (CC §3.2). Every class has these — unlike the shield above, there " +
+                 "is no such thing as a class that does not aim, so none of them may be 0 " +
+                 "except a weight a designer means to switch off.")]
+        [SerializeField, Min(0.01f)] private float _acquireRange = 12f;
+        [SerializeField, Min(0f)] private float _distanceWeight = 3f;
+        [SerializeField, Min(0f)] private float _eliteBonus = 2f;
+        [SerializeField, Min(0f)] private float _finisherBonus = 1f;
+
+        [Tooltip("The current target's bonus — a challenger must beat it by this to steal " +
+                 "focus. Zero makes the character twitch between similar targets (CC §3.3).")]
+        [SerializeField, Min(0f)] private float _targetHysteresis = 1.5f;
+
+        [Tooltip("Seconds between targeting decisions. 0.1 is CC §3.1's 10 Hz loop.")]
+        [SerializeField, Min(0.01f)] private float _targetCadence = 0.1f;
+
+        [Tooltip("The basic attack (CC §4.1). Every class has one — like targeting and unlike " +
+                 "the shield above, there is no 'off' here. The Censer's numbers are the " +
+                 "defaults: 13 damage, 3 swings a second, an 8 m 60° arc.")]
+        [SerializeField] private WeaponKind _weaponKind = WeaponKind.Cone;
+        [SerializeField, Min(0.01f)] private float _weaponDamage = 13f;
+        [SerializeField, Min(0.01f)] private float _weaponSwingsPerSecond = 3f;
+        [SerializeField, Min(0.01f)] private float _weaponRange = 8f;
+
+        [Tooltip("The full opening angle of the arc, not the half-angle: 60 means 30° either side.")]
+        [SerializeField, Range(1f, 360f)] private float _weaponConeAngleDeg = 60f;
+
+        [Tooltip("How far through the swing the damage lands, as a fraction of the interval. " +
+                 "0.4 is CC §4.2's readable-but-not-a-commitment windup.")]
+        [SerializeField, Range(0f, 0.99f)] private float _weaponDamageFrame = 0.4f;
+
+        [Tooltip("The Focus ramp (CC §4.3): standing still speeds the swing up. Nothing to do " +
+                 "with tap-to-focus, which is the targeting block above. Every class has one — " +
+                 "set the multiplier to 1 for a class that should not ramp at all.")]
+        [SerializeField, Min(0f)] private float _focusDelay = 0.4f;
+        [SerializeField, Min(0.01f)] private float _focusRampTime = 1f;
+
+        [Tooltip("Fire rate at full Focus as a multiple of the resting rate. 1.3 is CC §4.3's " +
+                 "130%: the Censer's 3 swings a second becoming 3.9.")]
+        [SerializeField, Min(1f)] private float _focusMaxMultiplier = 1.3f;
+
+        [Tooltip("The movement skill (CC §5). Every class has exactly one, on a permanent " +
+                 "button, and it never auto-casts. The Charge's numbers are the defaults: 10 m " +
+                 "in 0.22 s, 20 damage and 5 m of knockback to everything passed through.")]
+        [SerializeField] private MovementSkillKind _movementSkillKind = MovementSkillKind.Charge;
+        [SerializeField, Min(0.01f)] private float _movementSkillDistance = 10f;
+        [SerializeField, Min(0.01f)] private float _movementSkillDuration = 0.22f;
+        [SerializeField, Min(0.01f)] private float _movementSkillCooldown = 2.5f;
+
+        [Tooltip("Seconds a press stays live while the dash is unavailable — 0.15, so a tap " +
+                 "just before the cooldown ends still fires. This and the i-frame trail below " +
+                 "absorb touch latency; CC §5 says the dodge feels unreliable without them.")]
+        [SerializeField, Min(0f)] private float _movementSkillInputBuffer = 0.15f;
+
+        [Tooltip("Damage and knockback dealt to everything the dash passes through. Both may be " +
+                 "0 for a movement skill that only repositions.")]
+        [SerializeField, Min(0f)] private float _movementSkillDamage = 20f;
+        [SerializeField, Min(0f)] private float _movementSkillKnockback = 5f;
+
+        [Tooltip("Extra seconds of invulnerability after the dash ends — 0.05.")]
+        [SerializeField, Min(0f)] private float _movementSkillIFrameTrail = 0.05f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -52,6 +120,25 @@ namespace Soulvail.Game.Authoring
         /// Builds the immutable spec core consumes. A fresh instance every call — this asset
         /// holds no runtime state and hands out nothing it keeps a reference to.
         /// </summary>
+        /// <remarks>
+        /// A <see cref="_shieldMax"/> of zero means the class has no shield, and produces a
+        /// <see langword="null"/> <see cref="CharacterSpec.Shield"/> rather than a
+        /// <see cref="ShieldSpec"/> full of zeroes. Zero is the switch instead of a separate
+        /// "has shield" toggle because the toggle would allow a state the spec cannot
+        /// represent — shield on, max zero — and a designer would have to keep the two
+        /// agreeing by hand. The delay and refill fields simply go unread at zero.
+        /// <para>
+        /// The <see cref="TargetingSpec"/> has no such switch and is built unconditionally:
+        /// every class aims (CC §3), so there is no "no targeting" state to express, and the
+        /// spec's own constructor is what refuses a range or cadence of zero. The
+        /// <see cref="WeaponSpec"/> is built the same way and for the same reason — CC §4 gives
+        /// every class a basic attack — and so is the <see cref="FocusSpec"/>, one step further
+        /// out: every character can stand still, so the ramp's off switch is a multiplier of 1
+        /// rather than the absence of a spec. The <see cref="MovementSkillSpec"/> joins them:
+        /// CC §5 opens with "every class has exactly one, on a permanent button", so there is no
+        /// "no dash" to author either.
+        /// </para>
+        /// </remarks>
         /// <exception cref="ArgumentException">
         /// Any authored field is invalid. Always this exact type, never one of its subclasses:
         /// the caller cannot act on <em>which</em> field failed, only on <em>which asset</em>
@@ -66,7 +153,35 @@ namespace Soulvail.Game.Authoring
                     new ContentId(_id),
                     new LocKey(_nameKey),
                     _maxHp,
-                    new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg));
+                    new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg),
+                    new TargetingSpec(
+                        _acquireRange,
+                        _distanceWeight,
+                        _eliteBonus,
+                        _finisherBonus,
+                        _targetHysteresis,
+                        _targetCadence),
+                    new WeaponSpec(
+                        _weaponKind,
+                        _weaponDamage,
+                        _weaponSwingsPerSecond,
+                        _weaponRange,
+                        _weaponConeAngleDeg,
+                        _weaponDamageFrame),
+                    new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
+                    new MovementSkillSpec(
+                        _movementSkillKind,
+                        _movementSkillDistance,
+                        _movementSkillDuration,
+                        _movementSkillCooldown,
+                        _movementSkillInputBuffer,
+                        _movementSkillDamage,
+                        _movementSkillKnockback,
+                        _movementSkillIFrameTrail),
+                    _shieldMax > 0f
+                        ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
+                        : null,
+                    _hitIFrames);
             }
             catch (ArgumentException inner)
             {

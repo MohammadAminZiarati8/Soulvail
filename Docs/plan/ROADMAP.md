@@ -7,8 +7,8 @@
 - One milestone at a time. Every milestone ends with something **playable on a phone** and a tag on `main`.
 - A task is **one branch, one PR, 1–5 files.** Size S = 1–3 files, M = 4–5, L = must be split before starting. Size counts **new code files and substantial rewrites**; small additive edits to existing files (a new field on a spec, a registration, an event struct) are listed in the spec but don't count — they're trivial to review.
 - Task IDs are `M<milestone>-<nn>`. Branch = lowercase ID + slug: `m0-03-domain-events`. PR title = the spec's H1.
-- **Full specs exist for the current and next milestone only.** Later milestones are titles + one-line goals; they get specced when the current milestone is ~75% merged, using what we learned.
-- Tick a box when the PR is **merged into `dev`**, not when the code is written.
+- **A milestone's specs are written by its own first tasks** — `M<n>-00a…`, themed groups of 3–5 specs each, against the previous milestone's carry-forward ledger — before its `-01` starts. Later milestones are titles + one-line goals. (The earlier rule, "spec the next milestone when this one is ~75 % merged", missed twice; nothing in the protocol could check it.)
+- A box is ticked **in the PR that closes the task**; it becomes true when that PR merges into `dev`. The PR number lives in the merge commit, not here.
 - Splits keep the parent ID: `M0-07a`, `M0-07b`.
 
 **Spec pointers:** GD = [GameDesign.md](../GameDesign.md) · CH = [Characters.md](../Characters.md) · CC = [CoreCombat.md](../CoreCombat.md) · AR = [Architecture.md](../Architecture.md) · ADR = [adr/](../adr/)
@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
-| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 16 |
+| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 21 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
@@ -97,17 +97,18 @@
 
 ## M2 — Stage loop
 
-**Detailing is overdue and is its own task, split five ways.** The ~75 % trigger passed unfired during M1, so the fifteen specs below are written before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
+**Detailing is overdue and is its own task, split: hygiene first (00a, 00f), then the specs in four themed groups (00b–e).** The ~75 % trigger passed unfired during M1, so the fifteen specs below are written before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
 
-Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, and eight findings from the M0+M1 audit. **A spec that does not name its ledger rows is not finished.**
+Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, seven findings from the M0+M1 audit, and the one playtest row that failed on behaviour. **A spec that does not name its ledger rows is not finished.**
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☐ |
-| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00a | ☐ |
-| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00a | ☐ |
-| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00a | ☐ |
-| M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00a | ☐ |
+| M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☑ |
+| M2-00f | Doc-system audit: template precedence and self-check, PROGRESS entry cap, §18.5 → ledger, staleness after #46 | S | 00a | ☑ |
+| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☐ |
+| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☐ |
+| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☐ |
+| M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00f | ☐ |
 
 | ID | Task |
 |---|---|
@@ -129,7 +130,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 ### Carry-forward into M2
 
-**What M2's specs must absorb.** Four rows are measurements M1 took; the rest are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. **Every row names the task that must deal with it, and a spec is not finished until it says how.** Ranked by what it costs to fix later rather than now.
+**What M2's specs must absorb.** Four rows are measurements M1 took; the rest are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. Row 12 is the parking lot's one behavioural open item, moved here once it had an owner. **Every row names the task that must deal with it, and a spec is not finished until it says how.** A row leaves this table when its owner's *As built* says it is answered. Ranked by what it costs to fix later rather than now.
 
 | # | Finding | Owner | Cost of leaving it |
 |---|---|---|---|
@@ -144,6 +145,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | 9 | **Spawn-position occupancy is unmodelled** — nothing stops two spawns landing on the same point. | **M2-05** | Low now, visible the first time a wave doubles up. |
 | 10 | **`PendingRun.Clear()` still has no caller**, and needs a "the run has read everything it needs" point that does not exist yet. | **M2-14** | Low. Resume is where that point finally exists. |
 | 11 | **`HapticsSettings` persists through `PlayerPrefs`** as an explicit stopgap. | **M2-13** | Low. Move it onto `ISaveStore` as the first consumer. |
+| 12 | **A focus tap beyond `acquireRange` is silent.** `FocusResolver` has no range limit and `Targeter` honours the override only inside `acquireRange` (CC §3.4 as built in M1-04 — rightly), but `TargetChanged` carries nothing that lets the reticle show *held but inactive*, so the tap is indistinguishable from a miss, which CC §3.5 exists to prevent. Owner-playtested in M1-09 and again in M1-21 with chasers closing the distance; **the only CC §8 row failing on behaviour rather than on missing hardware.** Three ways out, cheapest first: a fourth reticle state (one field on `TargetChanged`, one branch in `ReticleView`, one publish site in `PlayerCombat`); hold the focus regardless of range (reintroduces the turn-away M1-04 rejected); raise `acquireRange` (moves auto-targeting everywhere). | **M2-12** | Medium. Threat arrows are the next thing that answers "where is the thing you cannot see"; decide both at once rather than retrofit one to the other. |
 
 ## M3 — Levelling and the tree *(titles only)*
 
@@ -234,16 +236,16 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 ## Parking lot
 
-Unscheduled. Promote into a milestone when it earns it.
+Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
-- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). **The "revisit once the suite is worth guarding" condition has now been met** — 452 EditMode + 3 PlayMode as of M1-21, and M2 adds persistence with migration tests, which are exactly the kind that rot silently. Still not adopted; the blocker is the licence secret, not the value.
+- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`). Worth it since M1-21 — 455 tests, and M2 adds migration tests, which rot silently. Blocker: a Unity licence activation secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
-- **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them. **M0-20 raised the price of not having one:** BlueStacks cannot currently run the APK at all (its Vulkan driver faults through `libhoudini.so`), so the emulator is no longer a proven fallback for *anything* outside the Editor. M0-20a works around it; a phone removes the question.
+- **A real Android device.** Every **[device]** row is deferred until one exists and the first hardware session runs them all. BlueStacks cannot run the APK (M0-20a), so there is no fallback outside the Editor.
 - **Company name is a placeholder** — `Soulvail`, set in M0-19 with the same status as the application identifier. Both are permanent once uploaded to a store, so M8-06 changes them together before the first upload.
-- **Machine-local Gradle configuration is not in this repo.** `~/.gradle/gradle.properties` (HTTP proxy on 127.0.0.1:10808) and `~/.gradle/init.gradle` (Aliyun mirrors ahead of Google/Central) are what make an Android build resolve its dependencies on this connection. A second clone on another machine needs its own, or none. Revisit before any published build — the *why*, including the SOCKS-vs-HTTP trap, is in [Traps.md §10](../Traps.md).
+- **Machine-local Gradle configuration is not in this repo** — `~/.gradle/gradle.properties` (HTTP proxy) and `~/.gradle/init.gradle` (Aliyun mirrors) are what make an Android build resolve on this connection; a second machine needs its own. The why, including the SOCKS-vs-HTTP trap, is [Traps.md §10](../Traps.md).
 - **Four raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity` (M0-17), and `"You died"` and `"Tap to return"` on `Hud.prefab`'s `DeathOverlay` (M1-17). Between them they are the whole of the raw user-facing English in the project; they become `LocKey`s when `ILocalizer` and the English tables land. The HP readout is deliberately *not* on this list — `"{0:0}/{1:0}"` is a number format rather than a sentence, and it survives localisation unchanged.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
-- **A tap on an enemy beyond `acquireRange` is silent, and the silence is the problem.** `FocusResolver` has no distance limit, so the focus *is* set — but `Targeter.Select` only lets the override take the target while the enemy is inside the class's `acquireRange` (12 m for the Oathbound), and the focus is dropped after 2 s out of it. Both are CC §3.4 as built in M1-04, and the rule is right: the gun must not stop shooting the enemy in your face because you tapped one across the arena. But `TargetChanged` goes out with `IsFocused: false`, so the reticle never changes and the tap is indistinguishable from a miss — which is exactly what CC §3.5 exists to prevent. Noticed by the owner playtesting M1-09; **left as is deliberately, to revisit.** Three ways out, cheapest last: give the reticle a fourth state for a held-but-inactive focus (truest to §3.4, and the only one that answers "why did nothing happen"); let the focus take hold regardless of range (matches §3.4 read literally, but reintroduces the turn-away M1-04 rejected); or raise `acquireRange` (one number, but it moves auto-targeting everywhere). Feel it again once M1-18's chasers close the distance on their own — the problem may shrink to nothing when enemies come to you. **Update (M1-21): the chasers have landed and the problem did not shrink.** The owner played it and left the row deliberately unresolved rather than passed, so this is now the only CC §8 item failing on *behaviour* rather than on missing hardware. The audit re-confirmed the mechanism: `Targeter.ChangedThisTick` does fire on the focus change, so an event goes out — but `TargetChanged` carries only `(id, isFocused, isBlocked)` and `IsFocused` asks whether the *current* target is the focused one, so the reticle receives an event identical to the one before it. The first option costs one field on `TargetChanged`, one branch in `ReticleView`, and one publish site in `PlayerCombat`. **Decide it before M2-12's threat arrows**, which are the next thing to answer "where is the thing you cannot see".
+- **Out-of-range focus tap** → [ledger row 12](#carry-forward-into-m2), owner M2-12. History in the [M1 archive](archive/PROGRESS-M1.md) (M1-09, M1-21).
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.
 - `dotnet` SDK on the dev machine → activates the pre-commit format check.

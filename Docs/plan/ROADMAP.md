@@ -120,6 +120,15 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M2-04](tasks/M2-04-wave-composer.md) | `WaveComposer`: budget → waves, under a cap that is priced | M | 03 | ☐ |
 | [M2-05](tasks/M2-05-spawn-director.md) | `SpawnDirector`: waves, telegraphs, spawn safety, path budget | M | 04 | ☐ |
 
+**Unplanned, merged out of order.** The owner brought art in mid-milestone, so this ran without a
+spec, the way M2-00a and M2-00f did. It is a row rather than a footnote because the ROADMAP had
+**no home for character art or animation anywhere** — M7-05/06 are biome art only — and "later"
+was therefore nowhere.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| M2-art | KayKit import, `ThirdParty/` layout, Knight as the player, `PlayerAnimatorView` | M | — | ☑ |
+
 | ID | Task |
 |---|---|
 | M2-06 | `EnemySpec` + `EnemyDefinition` authoring: Husk, Spitter, Bloater |
@@ -243,6 +252,16 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
+- **`PlayerAnimatorView` has no tests.** It landed without a spec and so without the behaviour-rules
+  ↔ tests pairing the protocol asks for. Promoted the moment anything else drives an Animator — the
+  derived `AttackSpeed` and the "no flinch on a blocked hit" rule are both testable in isolation.
+- **`handslot.l` / `handslot.r` are empty**, so the Knight swings a fist. The 31 props in
+  `ThirdParty/KayKit/Adventurers/Props` are built to parent there. Promoted when the weapon-ownership
+  question (class property vs swappable) is settled, because the answer decides who owns the socket.
+- **The KayKit skeletons are the enemy roster, and M2-06 should know before it writes a spec:**
+  `Skeleton_Minion` → Husk, `Skeleton_Warrior` → Elite, `Skeleton_Mage` → Spitter, `Skeleton_Rogue`
+  → Lunger, all on `Rig_Medium` so all 139 clips already play on them. `Rig_Medium_Special`'s
+  `Skeletons_Awaken_Floor` is a diegetic spawn telegraph that M2-05 currently specs as a ring decal.
 - **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`). Worth it since M1-21 — 455 tests, and M2 adds migration tests, which rot silently. Blocker: a Unity licence activation secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
 - **A real Android device.** Every **[device]** row is deferred until one exists and the first hardware session runs them all. BlueStacks cannot run the APK (M0-20a), so there is no fallback outside the Editor.

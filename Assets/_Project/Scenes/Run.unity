@@ -239,6 +239,7 @@ MonoBehaviour:
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
   _focusGlow: {fileID: 1102459967}
+  _playerAnimator: {fileID: 1102459969}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
   _enemyLayer:
@@ -367,6 +368,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d5581812873d4648983e7bc36c4385b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ChargeMotion
+--- !u!114 &1102459969 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5810567329881625941, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5404705d816f6843b85404a700adf75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PlayerAnimatorView
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0

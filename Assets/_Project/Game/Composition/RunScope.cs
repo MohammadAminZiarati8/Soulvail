@@ -72,6 +72,11 @@ namespace Soulvail.Game.Composition
                  "runs, it is just invisible.")]
         [SerializeField] private FocusGlowView _focusGlow;
 
+        [Tooltip("Drives the character model's Animator from the fight core has already decided. " +
+                 "On the Player object, and optional on the same terms as the glow: without it " +
+                 "the run plays identically, the body just never changes pose.")]
+        [SerializeField] private PlayerAnimatorView _playerAnimator;
+
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
         [SerializeField] private EnemyView _enemyPrefab;
@@ -189,6 +194,14 @@ namespace Soulvail.Game.Composition
             if (_focusGlow != null)
             {
                 builder.RegisterComponent(_focusGlow);
+            }
+
+            // Optional on the same terms again. Animation is a pure consequence here — it reads
+            // combat events and the body's speed, and publishes nothing back — so an arena with a
+            // grey capsule instead of a character plays exactly the same fight.
+            if (_playerAnimator != null)
+            {
+                builder.RegisterComponent(_playerAnimator);
             }
 
             // Optional, and the odd one out among these: it is not a decoration but an *input*, so

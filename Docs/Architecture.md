@@ -485,6 +485,17 @@ is about Unity's.
 - **`PlayerView.Velocity` is the velocity core asked for, never `CharacterController.velocity`** —
   the latter collapses to zero against a wall, which core would read back as "the player stopped
   trying to move" (M0-16).
+- **Animation never gates a damage frame, and no clip carries an Animation Event.** Core owns the
+  cadence — CC §4.2 puts the damage 40 % of the way through the swing — so `PlayerAnimatorView`
+  hears about a swing only after the decision is made. An event that dealt damage would move the
+  fight into an FBX's timeline, where anyone re-exporting an art asset could retime it. The
+  consequence runs one way: the clip is scaled to the weapon, which is why the view *derives*
+  `AttackSpeed` from the measured interval between real swings rather than holding a constant that
+  M1-13's Focus ramp would silently drift away from (M2-art).
+- **`applyRootMotion` is off on every rig, and every animation importer's root node is left empty.**
+  Core owns velocity; the only thing that may move a body is the intent `PlayerView` applies. Nine
+  of the 173 KayKit clips do carry root translation, so this is a live guard, not a formality
+  (M2-art).
 - **`FollowCamera`'s yaw must stay 0.** It is the only reason `SnapshotBuilder`'s straight-through
   stick mapping is camera-relative. The day the camera can turn, the −yaw rotation goes into the
   builder and **never into core** (M0-18).

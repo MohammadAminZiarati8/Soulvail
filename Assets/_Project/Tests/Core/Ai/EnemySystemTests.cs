@@ -48,6 +48,14 @@ public sealed class EnemySystemTests
 
     private RecordingEvents _events;
     private ContentCatalog _catalog;
+
+    /// <summary>
+    /// The run's generator, required by the system as of M1-19 and drawn from by nothing in this
+    /// fixture: no row here carries a respawn policy, so the only stream that would be touched is
+    /// never reached. <c>RespawnPolicyTests</c> is where the draws are asserted on.
+    /// </summary>
+    private FixedRandom _random;
+
     private EnemySystem _system;
 
     /// <summary>
@@ -65,7 +73,8 @@ public sealed class EnemySystemTests
     {
         _events = new RecordingEvents();
         _catalog = Catalog();
-        _system = new EnemySystem(_catalog, _events, Capacity);
+        _random = new FixedRandom();
+        _system = new EnemySystem(_catalog, _events, _random, Capacity);
         _intents = new RecordingIntents();
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
     }
@@ -73,12 +82,13 @@ public sealed class EnemySystemTests
     [Test]
     public void Ctor_NullDependency_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, Capacity));
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, _random, Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, _random, Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, null, Capacity));
 
         // The registry's own guard, surfaced through this constructor: a system that can hold no
         // enemies is a configuration mistake rather than a valid state to run with.
-        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, _random, 0));
     }
 
     [Test]
@@ -170,7 +180,7 @@ public sealed class EnemySystemTests
     public void Despawn_PublishesAfterRemoval()
     {
         var events = new CallbackEvents();
-        var system = new EnemySystem(_catalog, events, Capacity);
+        var system = new EnemySystem(_catalog, events, _random, Capacity);
         system.Spawn(new ContentId(HuskId), Vector3.Zero);
 
         int? countDuringEvent = null;
@@ -445,7 +455,7 @@ public sealed class EnemySystemTests
             Array.Empty<CharacterSpec>(),
             new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) });
 
-        var system = new EnemySystem(catalog, _events, Capacity);
+        var system = new EnemySystem(catalog, _events, _random, Capacity);
         system.Spawn(new ContentId("enemy.unhandled"), Vector3.Zero);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
@@ -567,7 +577,7 @@ public sealed class EnemySystemTests
     {
         const int count = 32;
         var catalog = Catalog();
-        var system = new EnemySystem(catalog, new RecordingEvents(), 64);
+        var system = new EnemySystem(catalog, new RecordingEvents(), new FixedRandom(), 64);
         var snapshot = new WorldSnapshot(64);
 
         snapshot.PlayerPosition = new Vector3(3f, 0f, 3f);

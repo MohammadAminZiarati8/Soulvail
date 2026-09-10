@@ -340,7 +340,7 @@ public sealed class ConeHitsToDamageTests
         // Reached through EnemySystem directly because the weapon's Damage stat sits behind
         // RunState.Combat, which is internal — there is no route to a zero-damage swing from
         // outside core.
-        var enemies = new EnemySystem(_catalog, _events, EnemyCapacity);
+        var enemies = new EnemySystem(_catalog, _events, new FixedRandom(), EnemyCapacity);
         EnemyAgent husk = enemies.Spawn(new ContentId(HuskId), At(5f));
 
         _events.Clear();

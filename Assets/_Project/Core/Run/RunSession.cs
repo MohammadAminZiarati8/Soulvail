@@ -139,8 +139,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity);
 
         // One per run, not one per session: End leaves the finished registry readable and a second
-        // Start must not inherit the first run's enemies, ids or free list.
-        var enemies = new EnemySystem(_catalog, _events, _enemyCapacity);
+        // Start must not inherit the first run's enemies, ids or free list. It takes the run's
+        // generator because respawning draws a position (M1-19) — from the Spawn stream and no
+        // other, which is the system's own rule to keep rather than this class's to enforce.
+        var enemies = new EnemySystem(_catalog, _events, _random, _enemyCapacity);
 
         State = new RunState(config.CharacterId, seed, character, motor, combat, enemies);
 

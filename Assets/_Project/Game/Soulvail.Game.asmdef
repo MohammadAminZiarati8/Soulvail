@@ -5,6 +5,7 @@
         "Soulvail.Core",
         "VContainer",
         "Unity.InputSystem",
+        "Unity.AI.Navigation",
         "UnityEngine.UI",
         "Unity.TextMeshPro"
     ],

@@ -73,9 +73,42 @@ public sealed class EnemySystem
 
     private readonly ContentCatalog _catalog;
     private readonly IDomainEvents _events;
+    private readonly IRandom _random;
+
+    /// <summary>
+    /// What replaces the dead, adopted from the plan by <see cref="SpawnAll"/>, or null for an
+    /// arena that empties once and stays empty.
+    /// </summary>
+    private RespawnPolicy _respawn;
+
+    /// <summary>
+    /// When the most recent enemy died, in simulated run seconds.
+    /// </summary>
+    /// <remarks>
+    /// Negative infinity until something dies, which is how "or no death yet" in the respawn rule
+    /// is spelled without a second flag: <c>now − (−∞)</c> is infinite, so the delay is always
+    /// already elapsed and an arena that opens under its quota fills immediately.
+    /// </remarks>
+    private float _lastDeathAt = float.NegativeInfinity;
+
+    /// <summary>
+    /// Where the player was as of the last <see cref="Ingest"/>.
+    /// </summary>
+    /// <remarks>
+    /// Kept because <see cref="Tick"/> needs it for spawn safety and is handed a
+    /// <see cref="PlayerCombat"/>, which owns health and targeting and deliberately not a position
+    /// — a position is a fact the snapshot reports, not a thing combat decides. <c>Ingest</c> runs
+    /// immediately before <c>Tick</c> in <c>RunSession</c>, so this is always this frame's.
+    /// </remarks>
+    private Vector3 _playerPosition;
 
     /// <param name="catalog">Where a spawn's <see cref="ContentId"/> becomes an <see cref="EnemySpec"/>.</param>
     /// <param name="events">Where <see cref="EnemySpawned"/> and <see cref="EnemyDespawned"/> go.</param>
+    /// <param name="random">
+    /// The run's generator. Only <see cref="IRandom.Spawn"/> is ever drawn from here — which
+    /// enemies appear and where is exactly what that stream is for, and drawing from another would
+    /// make a new mechanic elsewhere shift every seeded run's spawns (ADR-0011).
+    /// </param>
     /// <param name="capacity">
     /// The most enemies that may exist at once. Passed straight to the registry, which guards it,
     /// and it must match the snapshot's enemy capacity — an enemy core knows about but the
@@ -83,10 +116,11 @@ public sealed class EnemySystem
     /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
-    public EnemySystem(ContentCatalog catalog, IDomainEvents events, int capacity)
+    public EnemySystem(ContentCatalog catalog, IDomainEvents events, IRandom random, int capacity)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _random = random ?? throw new ArgumentNullException(nameof(random));
 
         Registry = new EnemyRegistry(capacity);
     }
@@ -126,11 +160,21 @@ public sealed class EnemySystem
         return agent;
     }
 
-    /// <summary>Spawns every entry of <paramref name="plan"/>, in plan order.</summary>
+    /// <summary>
+    /// Spawns every entry of <paramref name="plan"/>, in plan order, and adopts its respawn policy.
+    /// </summary>
     /// <remarks>
+    /// <para>
     /// Order matters and is the plan's: ids are handed out in spawn order, and spawn order is what
     /// <c>EnemyRegistry.Alive</c> preserves and <c>TargetScorer</c>'s tie-break reads. A plan
     /// spawned in some other order would make the same seed play differently.
+    /// </para>
+    /// <para>
+    /// The policy is adopted here rather than passed to <see cref="Tick"/> every frame, because it
+    /// is authored data that does not change within a run — sixty copies a second of a reference
+    /// the run already owns would be a parameter that could only ever be the same value, and one
+    /// more thing <c>RunSession</c> would have to remember to forward.
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="plan"/> is null.</exception>
     public void SpawnAll(SpawnPlan plan)
@@ -139,6 +183,8 @@ public sealed class EnemySystem
         {
             throw new ArgumentNullException(nameof(plan));
         }
+
+        _respawn = plan.Respawn;
 
         IReadOnlyList<SpawnPlan.Entry> initial = plan.Initial;
 
@@ -234,6 +280,12 @@ public sealed class EnemySystem
             // anything handles the death — the same order as Spawn's register-then-announce.
             agent.DiedAt = now;
 
+            // The respawn rule's other clock, and deliberately the same stamp: the pause the player
+            // reads as "I cleared that" is measured from the most recent death, so a wave killed
+            // one at a time refills steadily while a wipe refills once, two seconds after the last
+            // one falls.
+            _lastDeathAt = now;
+
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
         }
 
@@ -278,6 +330,11 @@ public sealed class EnemySystem
             agent.Blackboard.PathDirectionToPlayer = sense.PathDirectionToPlayer;
             agent.Blackboard.HasLineOfSight = sense.HasLineOfSight;
         }
+
+        // Kept for Tick's spawn-safety check, which runs after this in the same frame — see the
+        // field. Written unconditionally, including when the snapshot names no enemies at all,
+        // because an empty arena is precisely when a respawn is about to be decided.
+        _playerPosition = snapshot.PlayerPosition;
 
         Perceive(snapshot.PlayerPosition);
     }
@@ -352,6 +409,115 @@ public sealed class EnemySystem
                         $"Unhandled enemy behaviour '{agent.Spec.Behaviour}' on '{agent.Spec.Id}'.");
             }
         }
+
+        // Last, and after the span above is finished with: a spawn compacts nothing but it does
+        // write into the registry's array and hand out an agent, and the loop has no business
+        // seeing an enemy that came into being during its own pass. It is also why the span is not
+        // hoisted across this line.
+        if (_respawn != null)
+        {
+            ApplyRespawn(_respawn, _playerPosition, now, _random.Spawn);
+        }
+    }
+
+    /// <summary>
+    /// Puts one enemy back on the floor, if the arena is short of
+    /// <see cref="RespawnPolicy.KeepAlive"/> and the quiet after the last death has elapsed.
+    /// </summary>
+    /// <param name="policy">What to spawn, where, and under what conditions.</param>
+    /// <param name="playerPosition">
+    /// Who to stay away from. Passed rather than read from the last <see cref="Ingest"/>, so a test
+    /// can state the geometry it is asserting about instead of building a snapshot to imply it.
+    /// </param>
+    /// <param name="now">Simulated run time, in seconds — the same clock deaths are stamped with.</param>
+    /// <param name="spawnStream">
+    /// Where the position is drawn from. Always <see cref="IRandom.Spawn"/> in a run; a parameter
+    /// rather than a field read so the one draw this method makes is visible in its signature.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>One per tick, deliberately.</b> A wipe refills over a few frames rather than instantly,
+    /// which is both kinder to the frame that has just resolved eight deaths and better to look at
+    /// — twelve bodies appearing together reads as a glitch, a trickle reads as the arena breathing.
+    /// The cost is that a full refill takes twelve frames, a fifth of a second, which nobody can see.
+    /// </para>
+    /// <para>
+    /// <b>The census counts the living, not the registered.</b> A corpse sits in the registry for
+    /// <see cref="CorpseTime"/> after it dies (rule 4 of <see cref="EnemyRegistry"/>), and counting
+    /// it would make the arena wait six-tenths of a second per kill before it even noticed it was
+    /// short — on top of the delay the policy already asks for.
+    /// </para>
+    /// <para>
+    /// Allocates nothing and takes no square root: a span over the registry, one draw, and at most
+    /// <c>Positions.Count</c> squared-distance comparisons on the frame something spawns.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="policy"/> or <paramref name="spawnStream"/> is null.
+    /// </exception>
+    /// <returns>
+    /// The agent that was spawned, or null when nothing was — under quota is not the only reason,
+    /// and the caller in <see cref="Tick"/> has nothing to do about any of them.
+    /// </returns>
+    public EnemyAgent ApplyRespawn(
+        RespawnPolicy policy,
+        Vector3 playerPosition,
+        float now,
+        IRandomStream spawnStream)
+    {
+        if (policy is null)
+        {
+            throw new ArgumentNullException(nameof(policy));
+        }
+
+        if (spawnStream is null)
+        {
+            throw new ArgumentNullException(nameof(spawnStream));
+        }
+
+        if (LivingCount() >= policy.KeepAlive)
+        {
+            return null;
+        }
+
+        if (now - _lastDeathAt < policy.RespawnDelay)
+        {
+            return null;
+        }
+
+        // The registry throws when it is full, and being full is a legitimate state rather than a
+        // bug here — corpses hold slots, and an arena whose KeepAlive is near its capacity can
+        // reach it during a flurry of deaths. Skipping this tick costs one frame; throwing would
+        // end the run.
+        if (Registry.AliveCount >= Registry.Capacity)
+        {
+            return null;
+        }
+
+        IReadOnlyList<Vector3> positions = policy.Positions;
+
+        // One draw whatever happens next, including when every position is refused. A stream whose
+        // consumption depended on the geometry would replay differently the moment the player stood
+        // somewhere else, which is the whole thing a seed is supposed to survive.
+        int index = spawnStream.NextInt(0, positions.Count);
+
+        for (int i = 0; i < positions.Count; i++)
+        {
+            Vector3 candidate = positions[(index + i) % positions.Count];
+
+            if (!policy.IsSafe(candidate, playerPosition))
+            {
+                continue;
+            }
+
+            return Spawn(policy.SpecId, candidate);
+        }
+
+        // Every position is inside the player's clearance: the player is standing in the middle of
+        // the arena's spawn ring. Nothing appears this tick and nothing is said about it — they
+        // will move, and GD §12.4's rule is that a spawn on top of the player is worse than a
+        // pause.
+        return null;
     }
 
     /// <summary>
@@ -366,6 +532,37 @@ public sealed class EnemySystem
     public void Clear()
     {
         Registry.Clear();
+
+        // The respawn rule's state goes with the census it was about. A policy left behind would
+        // refill an arena that has been torn down, and a death stamp left behind would make the
+        // next run's first quota check measure against a run that is over.
+        _respawn = null;
+        _lastDeathAt = float.NegativeInfinity;
+        _playerPosition = Vector3.Zero;
+    }
+
+    /// <summary>How many registered agents are breathing.</summary>
+    /// <remarks>
+    /// Walked rather than counted incrementally, because the registry deliberately does not track
+    /// it: <c>AliveCount</c> is how many are <em>registered</em>, corpses included, and a second
+    /// counter kept in step with every death and every sweep is a counter that can drift. At GD
+    /// §11's 64-enemy cap this is 64 boolean reads on the one frame a respawn is considered.
+    /// </remarks>
+    private int LivingCount()
+    {
+        ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
+
+        int count = 0;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            if (agents[i].IsAlive)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>

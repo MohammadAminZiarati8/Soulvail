@@ -13,14 +13,15 @@ namespace Soulvail.Game.Presentation
     /// <summary>
     /// The menu, which is one button. Tapping <c>Descend</c> records what the next run should be
     /// and loads the Run scene. See AR §3 — this is presentation: it decides nothing about the run
-    /// beyond which class and which seed, and both of those are choices a player makes, not
-    /// outcomes a simulation computes.
+    /// beyond which mode, which class and which seed, and all three are choices a player makes,
+    /// not outcomes a simulation computes.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The class is the first one the catalog holds, because there is no class-select screen yet
-    /// (M5-07 builds it). The seed is wall-clock derived, because no mode supplies one yet — Daily
-    /// mode is where a seed stops being arbitrary.
+    /// The mode and the class are both the first their kind in the catalog, because there is
+    /// neither a mode-select nor a class-select screen yet (M5-07 builds the second; the first is
+    /// not planned, since V1 ships one mode). The seed is wall-clock derived, because no mode
+    /// supplies one yet — Daily mode is where a seed stops being arbitrary.
     /// </para>
     /// <para>
     /// The two strings on screen are raw English, and this stub is the only place in the project
@@ -93,7 +94,7 @@ namespace Soulvail.Game.Presentation
 
             try
             {
-                _pending.Set(FirstCharacterId(), Environment.TickCount);
+                _pending.Set(FirstModeId(), FirstCharacterId(), Environment.TickCount);
 
                 await _loader.LoadAsync(SceneLoader.Run);
             }
@@ -104,6 +105,30 @@ namespace Soulvail.Game.Presentation
                 _descend.interactable = true;
                 Debug.LogException(exception, this);
             }
+        }
+
+        /// <summary>
+        /// The mode this run plays: the first the catalog holds, which is Descent because it is
+        /// the only one (GD §4.5).
+        /// </summary>
+        /// <remarks>
+        /// The first, rather than <c>mode.descent</c> written here. GD §4.5's rule is that a mode
+        /// is a data object and nothing in the code may assume Descent — an id literal in the
+        /// menu would be exactly that assumption, and it would still compile and still run on the
+        /// day a second mode ships. When there is a mode-select screen this becomes the player's
+        /// choice; until then it is the same stand-in <see cref="FirstCharacterId"/> is.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">The catalog holds no modes.</exception>
+        private ContentId FirstModeId()
+        {
+            if (_catalog.Modes.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "The content catalog holds no modes, so Descend has no mode to start a run " +
+                    "with. Add a ModeDefinition to BootScope's mode list.");
+            }
+
+            return _catalog.Modes[0].Id;
         }
 
         /// <summary>

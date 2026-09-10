@@ -38,8 +38,10 @@ public sealed class InstallerTests
 {
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
+    private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
     private static readonly ContentId OathboundId = new ContentId("character.oathbound");
     private static readonly ContentId HuskId = new ContentId("enemy.husk");
+    private static readonly ContentId DescentId = new ContentId("mode.descent");
 
     private readonly List<CharacterDefinition> _created = new List<CharacterDefinition>();
     private readonly List<IDisposable> _containers = new List<IDisposable>();
@@ -107,6 +109,28 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void Boot_ResolvesCatalog_WithDescent()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var catalog = container.Resolve<ContentCatalog>();
+
+        // The third kind, and the one whose absence is loudest rather than quietest: resolving the
+        // mode is the first thing RunSession.Start does, so a catalog installed without its modes
+        // cannot start any run at all.
+        ModeSpec descent = null;
+        Assert.That(() => descent = catalog.Mode(DescentId), Throws.Nothing,
+            "The shipped Descent must resolve through the catalog the installer built.");
+
+        Assert.That(descent.Id, Is.EqualTo(DescentId));
+        Assert.That(catalog.Modes, Has.Count.EqualTo(1));
+
+        // What MenuPresenter and RunTicker both mean by "the first mode the catalog holds" — the
+        // stand-in they use rather than writing mode.descent into the code (GD 4.5).
+        Assert.That(catalog.Modes[0].Id, Is.EqualTo(DescentId));
+    }
+
+    [Test]
     public void Boot_NullEnemyList_Throws()
     {
         var builder = new ContainerBuilder();
@@ -115,7 +139,19 @@ public sealed class InstallerTests
         // empty array. A silently-omitted list would be indistinguishable from an authored one
         // until a spawn plan named an archetype the catalog had never heard of.
         Assert.Throws<ArgumentNullException>(() =>
-            BootInstaller.Install(builder, new[] { LoadOathbound() }, null));
+            BootInstaller.Install(builder, new[] { LoadOathbound() }, null, new[] { LoadDescent() }));
+    }
+
+    [Test]
+    public void Boot_NullModeList_Throws()
+    {
+        var builder = new ContainerBuilder();
+
+        // The same bargain one kind along (M2-02). Omitted, it would build a container that
+        // resolves everything, boots to the menu, and throws on the tap that starts a run.
+        Assert.Throws<ArgumentNullException>(() =>
+            BootInstaller.Install(
+                builder, new[] { LoadOathbound() }, Array.Empty<EnemyDefinition>(), null));
     }
 
     [Test]
@@ -134,7 +170,11 @@ public sealed class InstallerTests
         // below rather than assumed: the catalog is built eagerly, so it is Install.
         var thrown = Assert.Throws<ArgumentException>(() =>
         {
-            BootInstaller.Install(builder, new[] { broken }, Array.Empty<EnemyDefinition>());
+            BootInstaller.Install(
+                builder,
+                new[] { broken },
+                Array.Empty<EnemyDefinition>(),
+                Array.Empty<ModeDefinition>());
             Track(builder.Build());
         });
 
@@ -324,18 +364,21 @@ public sealed class InstallerTests
 
         // Exact type match (M0-08): rule 9 says InvalidOperationException, and a default id
         // returned quietly instead would surface a scene later as missing content.
+        Assert.Throws<InvalidOperationException>(() => _ = pending.ModeId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.CharacterId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.Seed);
 
-        pending.Set(OathboundId, 42);
+        pending.Set(DescentId, OathboundId, 42);
 
         Assert.That(pending.IsSet, Is.True);
+        Assert.That(pending.ModeId, Is.EqualTo(DescentId));
         Assert.That(pending.CharacterId, Is.EqualTo(OathboundId));
         Assert.That(pending.Seed, Is.EqualTo(42));
 
         pending.Clear();
 
         Assert.That(pending.IsSet, Is.False);
+        Assert.Throws<InvalidOperationException>(() => _ = pending.ModeId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.CharacterId);
     }
 
@@ -361,14 +404,22 @@ public sealed class InstallerTests
         return definition;
     }
 
+    private static ModeDefinition LoadDescent()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+        return definition;
+    }
+
     /// <summary>
-    /// A boot container carrying the project's shipped content — the Oathbound and the Husk —
-    /// which is what <c>BootScope</c> hands the installer.
+    /// A boot container carrying the project's shipped content — the Oathbound, the Husk and
+    /// Descent — which is what <c>BootScope</c> hands the installer.
     /// </summary>
     private IObjectResolver BuildBoot()
     {
         var builder = new ContainerBuilder();
-        BootInstaller.Install(builder, new[] { LoadOathbound() }, new[] { LoadHusk() });
+        BootInstaller.Install(
+            builder, new[] { LoadOathbound() }, new[] { LoadHusk() }, new[] { LoadDescent() });
         return Track(builder.Build());
     }
 
@@ -379,7 +430,7 @@ public sealed class InstallerTests
     private IScopedObjectResolver BuildRunScope(int seed)
     {
         IObjectResolver boot = BuildBoot();
-        boot.Resolve<PendingRun>().Set(OathboundId, seed);
+        boot.Resolve<PendingRun>().Set(DescentId, OathboundId, seed);
         return Track(boot.CreateScope(RunInstaller.Install));
     }
 

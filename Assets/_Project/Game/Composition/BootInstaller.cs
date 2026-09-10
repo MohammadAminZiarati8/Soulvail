@@ -48,6 +48,12 @@ public static class BootInstaller
     /// is an arena that never fills — the one failure a playtest cannot tell apart from a broken
     /// spawner (M1-06). An empty list is how a boot list with no enemies says so out loud.
     /// </param>
+    /// <param name="modes">
+    /// Every authored mode — the assets in <c>Data/Modes/</c>, which is one of them in V1
+    /// (GD §4.5). Required for the reason <paramref name="enemies"/> is, one step sharper: a
+    /// catalog with no modes cannot start any run at all, because resolving the mode is the
+    /// first thing <c>RunSession.Start</c> does.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
     /// A definition is an empty slot, or is not valid content. Thrown from here rather than
@@ -57,7 +63,8 @@ public static class BootInstaller
     public static void Install(
         IContainerBuilder builder,
         IReadOnlyList<CharacterDefinition> characters,
-        IReadOnlyList<EnemyDefinition> enemies)
+        IReadOnlyList<EnemyDefinition> enemies,
+        IReadOnlyList<ModeDefinition> modes)
     {
         if (builder is null)
         {
@@ -74,9 +81,15 @@ public static class BootInstaller
             throw new ArgumentNullException(nameof(enemies));
         }
 
+        if (modes is null)
+        {
+            throw new ArgumentNullException(nameof(modes));
+        }
+
         builder.RegisterInstance(new ContentCatalog(
             Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
-            Convert(enemies, definition => definition.ToSpec(), "enemy", nameof(enemies))));
+            Convert(enemies, definition => definition.ToSpec(), "enemy", nameof(enemies)),
+            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes))));
 
         // The wall clock, at the root: it is a device the whole app shares, not something a run
         // owns — the same argument as the vibrator below, and the opposite of IRandom, which is

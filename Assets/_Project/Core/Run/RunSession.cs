@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
@@ -54,8 +55,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// </remarks>
     private bool _wasCharging;
 
-    /// <param name="catalog">Where <c>config.CharacterId</c> is resolved.</param>
-    /// <param name="random">The run's generator; its <see cref="IRandom.Seed"/> is recorded in the state.</param>
+    /// <param name="catalog">Where the config's mode, class and every archetype it names are resolved.</param>
+    /// <param name="random">
+    /// The run's generator. Its <see cref="IRandom.Seed"/> is no longer what the state records —
+    /// the config states that — but <see cref="Start"/> refuses a config that disagrees with it.
+    /// </param>
     /// <param name="events">Where run lifecycle events go.</param>
     /// <param name="intents">Where each tick's <see cref="PlayerMoveIntent"/> is written.</param>
     /// <param name="enemyCapacity">
@@ -106,6 +110,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">A run is already running.</exception>
+    /// <exception cref="KeyNotFoundException">
+    /// The catalog holds no mode or class with the config's ids, or the plan, the respawn policy
+    /// or the mode's roster names an archetype nobody authored.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// The config's seed disagrees with the generator this session was built with.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The mode has no stage <c>config.StageIndex</c>.
+    /// </exception>
+    /// <remarks>
+    /// The order is the contract, and the first half of it is new in M2-02: resolve the mode,
+    /// resolve the class, check the seed, check the stage, resolve every archetype the run could
+    /// possibly need — and only then build the state, publish <c>RunStarted</c>, flip
+    /// <see cref="IsRunning"/> and spawn. Everything from <c>RunStarted</c> onwards is unchanged
+    /// and is asserted by a test (AR §18.1).
+    /// </remarks>
     public void Start(RunConfig config)
     {
         if (config is null)
@@ -119,14 +141,49 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 "A run is already running. End it before starting another.");
         }
 
-        // Resolved before anything is assigned, so an unknown id leaves the session exactly as it
-        // was: not running, no event published, and whatever State the previous run left still
-        // readable. A half-started run would be worse than no run at all.
+        // Everything below this line and above `new RunState` is validation, and the whole block
+        // runs before a single thing is assigned or announced (ledger row 3). An unauthored mode,
+        // class or archetype therefore leaves the session exactly as it was: not running, no
+        // event published, nothing standing, and whatever State the previous run left still
+        // readable. Until M2-02 the plan was spawned *after* RunStarted and after IsRunning
+        // flipped, so a stranger mid-plan threw with the run announced and half an arena alive —
+        // inert while only RunScope authored a plan, and mode data is the first thing that can.
+        ModeSpec mode = _catalog.Mode(config.ModeId);
+
         CharacterSpec character = _catalog.Character(config.CharacterId);
 
-        // Recorded from the generator rather than chosen here, so the number a bug report quotes
-        // is provably the one the streams are drawing from. See RunConfig's remarks.
-        int seed = _random.Seed;
+        // One truth, checked at the one place both are visible. The config states the seed and the
+        // generator was built from one, so the only way they can differ is a composition mistake —
+        // and the symptom of letting it through would be a run whose recorded seed does not replay
+        // it, which is the one number a bug report is worth having. Core does not reseed the
+        // generator to make them agree: that would be an IRandom.Reseed, widening a port ahead of
+        // its caller (AR §6), and it is half of what restoring stream state rides on — M2-13a
+        // weighs it with ledger row 1.
+        if (config.Seed != _random.Seed)
+        {
+            throw new ArgumentException(
+                $"config.Seed is {config.Seed} but the run's generator was seeded with "
+                    + $"{_random.Seed}. A run has one seed; the composition root builds the "
+                    + "generator and states the same number here.",
+                nameof(config));
+        }
+
+        // Asked of the mode, because whether stage 6 exists is the mode's question — an endless
+        // Descent has every stage from 1, a finite mode does not. RunConfig already refused a
+        // stage below 1 without needing to see a mode.
+        if (!mode.HasStage(config.StageIndex))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(config),
+                config.StageIndex,
+                $"'{mode.Id}' has no stage {config.StageIndex}. It runs from "
+                    + $"{mode.StartingStage} to "
+                    + (mode.IsEndless ? "endless." : $"{mode.FinalStage}."));
+        }
+
+        RequireAuthored(config.SpawnPlan, mode);
+
+        int seed = config.Seed;
 
         // +Z, because a run begins with the camera behind the character and nothing yet to aim
         // at. The first stick input turns them within a frame or two at 720°/s.
@@ -144,7 +201,15 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // other, which is the system's own rule to keep rather than this class's to enforce.
         var enemies = new EnemySystem(_catalog, _events, _random, _enemyCapacity);
 
-        State = new RunState(config.CharacterId, seed, character, motor, combat, enemies);
+        State = new RunState(
+            config.ModeId,
+            config.CharacterId,
+            seed,
+            config.StageIndex,
+            character,
+            motor,
+            combat,
+            enemies);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -165,6 +230,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // EnemySpawned may reasonably assume there is a run to put an enemy in. It is also after
         // IsRunning flips, so a handler that ticks or reads the session from inside a spawn event
         // finds a live run rather than one that has not begun.
+        //
+        // Every id in the plan was resolved above, so this line can no longer fail on content and
+        // the announcement above can no longer be stranded by it (ledger row 3).
         enemies.SpawnAll(config.SpawnPlan);
     }
 
@@ -413,6 +481,58 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         }
 
         _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
+    }
+
+    /// <summary>
+    /// Refuses a run whose plan, respawn policy or roster names an archetype nobody authored,
+    /// before anything about the run has been announced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The roster is walked too, not only the plan</b>, and that is the half worth arguing for.
+    /// The plan fails on the first frame either way, because <c>SpawnAll</c> would hit it
+    /// immediately; the roster is what M2-05's director spawns from, so an unauthored archetype
+    /// there would otherwise surface forty seconds into a run as a wave that threw — at a moment
+    /// that looks like a director bug and points at nothing. A mode's schedule is a statement of
+    /// intent (M2-02 rule 10: Descent ships with Husk alone until M2-06 authors the other two),
+    /// and this is what makes the gap between intent and content loud instead of mysterious.
+    /// </para>
+    /// <para>
+    /// <c>TryGetEnemy</c> rather than <c>Enemy</c>, so the message can say <em>where</em> the
+    /// stranger was named. The catalog's own "no enemy with id 'x'" is true and unhelpful when
+    /// three different lists could have held it.
+    /// </para>
+    /// </remarks>
+    private void RequireAuthored(SpawnPlan plan, ModeSpec mode)
+    {
+        for (int i = 0; i < plan.Initial.Count; i++)
+        {
+            RequireArchetype(plan.Initial[i].SpecId, $"the spawn plan's entry {i}");
+        }
+
+        if (plan.Respawn is not null)
+        {
+            RequireArchetype(plan.Respawn.SpecId, "the spawn plan's respawn policy");
+        }
+
+        for (int i = 0; i < mode.Roster.Count; i++)
+        {
+            RequireArchetype(mode.Roster[i].SpecId, $"'{mode.Id}'s roster");
+        }
+    }
+
+    /// <summary>Refuses one archetype id the catalog does not hold, naming who asked for it.</summary>
+    private void RequireArchetype(ContentId specId, string source)
+    {
+        if (_catalog.TryGetEnemy(specId, out _))
+        {
+            return;
+        }
+
+        throw new KeyNotFoundException(
+            $"No enemy with id '{specId}' in the catalog, and {source} names it. Nothing about "
+                + "this run has been announced; add an EnemyDefinition to BootScope's enemy list "
+                + "or correct the id.");
     }
 
     /// <summary>

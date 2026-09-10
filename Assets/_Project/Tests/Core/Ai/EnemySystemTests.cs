@@ -37,6 +37,14 @@ public sealed class EnemySystemTests
     private const string SpitterId = "enemy.spitter";
     private const string BloaterId = "enemy.bloater";
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
+
+    /// <summary>
+    /// What every session in this fixture is seeded with. Named since M2-02, because a
+    /// <c>RunConfig</c> now states the seed and <c>RunSession.Start</c> refuses one that
+    /// disagrees with the generator — so the two literals have to be the same literal.
+    /// </summary>
+    private const int SessionSeed = 7;
 
     /// <summary>An id of the right shape that the catalog does not hold.</summary>
     private const string UnknownId = "enemy.nobody";
@@ -493,7 +501,8 @@ public sealed class EnemySystemTests
             new SpawnPlan.Entry(new ContentId(SpitterId), new Vector3(2f, 0f, 0f)),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
 
         // A run has to be announced before the things inside it are: a view handling EnemySpawned
         // may reasonably assume there is a run to put an enemy in. Subscribers are wired when the
@@ -522,7 +531,8 @@ public sealed class EnemySystemTests
             new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(1f, 0f, 0f)),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
         Assert.That(session.State.EnemyCount, Is.EqualTo(2));
 
         events.Clear();
@@ -549,11 +559,12 @@ public sealed class EnemySystemTests
         // M1-08's targeting reads a position, and until then it is verified by reading.
         var catalog = new ContentCatalog(
             new[] { Oathbound() },
-            new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) });
+            new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) },
+            new[] { Descent() });
 
         var session = new RunSession(
             catalog,
-            new FixedRandom(7),
+            new FixedRandom(SessionSeed),
             new RecordingEvents(),
             new RecordingIntents(),
             Capacity);
@@ -563,7 +574,8 @@ public sealed class EnemySystemTests
             new SpawnPlan.Entry(new ContentId("enemy.unhandled"), Vector3.Zero),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
 
         var snapshot = new WorldSnapshot(Capacity);
         snapshot.Dt = Frame;
@@ -753,11 +765,25 @@ public sealed class EnemySystemTests
             Enemy(HuskId, EnemyBehaviourKind.Static),
             Enemy(SpitterId, EnemyBehaviourKind.Static),
             Enemy(BloaterId, EnemyBehaviourKind.Static),
-        });
+        },
+        new[] { Descent() });
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, empty roster. Empty because
+    /// <c>RunSession.Start</c> resolves every roster id against the catalog and no row here is
+    /// about a schedule — the archetypes these rows spawn come from a <c>SpawnPlan</c>.
+    /// </summary>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Array.Empty<RosterEntry>());
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>
-        new RunSession(_catalog, new FixedRandom(7), events, new RecordingIntents(), Capacity);
+        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity);
 
     private EnemyBlackboard Blackboard(int id)
     {

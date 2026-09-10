@@ -26,6 +26,13 @@
 # `-whitespace` unsets the attribute, so `git diff --check` skips the tree entirely.
 "Assets/TextMesh Pro/**" -whitespace
 
+# Third-party art packs, on exactly the same terms. The KayKit licences open with a
+# tab on an otherwise blank line, which is a whitespace error the hook is right to see
+# and we are wrong to fix: a licence is a legal document reproduced verbatim, and the
+# rest of the tree is vendor output that any pack update overwrites. Whole tree rather
+# than a file glob, so the next pack is covered without touching this file again.
+Assets/ThirdParty/** -whitespace
+
 # ── Unity YAML — merged with UnityYAMLMerge (see CLAUDE.md for the git config) ──
 *.unity               merge=unityyaml text
 *.prefab              merge=unityyaml text

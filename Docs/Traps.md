@@ -94,6 +94,12 @@ newer than the assembly that already compiled it successfully** — pair the DLL
   with `File.WriteAllText` instead (M0-03). **`TestRunnerApi.Execute` is no longer refused** —
   four direct calls ran clean in M1-19, so the M1-17 method-group workaround is unnecessary.
   Bisect against this list rather than trusting it whole.
+- **The plural `AssetDatabase.DeleteAssets(string[], List<string>)` is *not* refused**, and
+  `AssetDatabase.Refresh()` — including the `ImportAssetOptions.ForceUpdate` overload — ran clean
+  in M2-art across a dozen commands. The refusal list above is per *method*, not per capability, so
+  a blocked call often has a sibling that works. **The failure looks nothing like a refusal**: the
+  whole command returns `UNEXPECTED_ERROR: User interactions are not supported for MCP tool calls`
+  with no hint which line caused it, so bisect by deletion rather than reading the message (M2-art).
 - **Unauthorized namespaces:** `System.Net`, `System.Diagnostics`, `System.Runtime.InteropServices`,
   `System.Reflection` (M0-03, M1-07).
 - **No VContainer reference.** `AddComponent<RunScope>()` will not compile, and a command must not
@@ -195,6 +201,20 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   `m_EditorClassIdentifier: ` survives (M1-03).
 - **Check the Game view aspect before trusting any feel or framing measurement** — it was portrait
   1440 × 2960 during M0-20 while the build is landscape-locked (M0-20).
+- **An edit-mode pose does not survive to the next MCP command.** `AnimationClip.SampleAnimation`
+  appears to work and reports nothing wrong, but an enabled `Animator` rewrites the pose on the
+  next editor tick, and on a prefab instance the sampled transforms are reverted even with the
+  Animator disabled. Two captures in a row came back in T-pose with every log line saying the
+  sample had been applied. **To see an animation, enter Play mode** — nothing in edit mode is
+  worth trusting for this (M2-art).
+- **`Animator.Play` only evaluates while `speed` is non-zero.** `Play(state, 0, t)` then
+  `speed = 0` then `Update(0f)` leaves the body in whatever pose it already held, silently and with
+  the state machine reporting the state you asked for. Set the speed to zero *after* the `Update`
+  that evaluates (M2-art).
+- **Imported animation clips are non-looping by default**, so a blend tree parks on the last frame
+  of `Idle_A` and the character freezes mid-stride. `loopTime` lives on `ModelImporter`'s
+  `clipAnimations`, which must be assigned as a whole array read from `defaultClipAnimations` —
+  there is no per-clip setter (M2-art).
 
 ---
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Soulvail.Core.Content;
+using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using UnityEngine;
 using VContainer;
@@ -79,6 +80,26 @@ public static class BootInstaller
         // Singleton, and deliberately not Scoped: the menu sets it in one scene and the run
         // scope reads it in the next, so it has to outlive both.
         builder.Register<PendingRun>(Lifetime.Singleton);
+
+        // Haptics live at the root rather than in the run, both of them. The vibrator is one
+        // device and holds one JNI handle for the app's life, and the preference has to survive
+        // leaving a run — a toggle that reset itself every time the player descended would be
+        // worse than none. What is scoped to a run is the listener, which RunScope registers.
+        //
+        // The platform decides which vibrator by compilation, not by a runtime check. !UNITY_EDITOR
+        // is the load-bearing half: UNITY_ANDROID is defined in the Editor whenever the active build
+        // target is Android, where UnityPlayer.currentActivity does not exist.
+#if UNITY_ANDROID && !UNITY_EDITOR
+        builder.Register<AndroidVibrator>(Lifetime.Singleton).As<IVibrator>();
+#else
+        builder.Register<NullVibrator>(Lifetime.Singleton).As<IVibrator>();
+#endif
+
+        // A factory rather than a plain type registration, so this reads the platform store rather
+        // than whichever constructor VContainer would have picked — the class has none that are
+        // public, exactly so that the choice between "persisted" and "in memory" has to be made out
+        // loud (M1-20). PlayerPrefs is the stopgap until M2-13's ISaveStore.
+        builder.Register<HapticsSettings>(_ => HapticsSettings.FromPlayerPrefs(), Lifetime.Singleton);
     }
 
     /// <summary>

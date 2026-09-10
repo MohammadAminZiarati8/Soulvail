@@ -184,6 +184,25 @@ public sealed class InstallerTests
             "One toggle, or the listener reads a different answer from the one an options screen set.");
     }
 
+    /// <summary>
+    /// The M2-01 wire, and the one honest check that task has: nothing renders, nothing changes
+    /// behaviour, and the only way the registration can be wrong is by not being there.
+    /// </summary>
+    [Test]
+    public void Container_ResolvesClock()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var clock = container.Resolve<IClock>();
+
+        Assert.That(clock, Is.InstanceOf<UnityClock>());
+
+        // Singleton, like the vibrator above and unlike IRandom: a clock is a device the whole
+        // app shares. Two instances would not be a visible bug today — which is precisely why it
+        // is asserted now rather than discovered when a save's timestamp starts mattering.
+        Assert.That(container.Resolve<IClock>(), Is.SameAs(clock));
+    }
+
     [Test]
     public void Run_ResolvesSession_Scoped()
     {

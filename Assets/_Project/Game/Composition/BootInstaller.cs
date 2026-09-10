@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using UnityEngine;
@@ -76,6 +77,12 @@ public static class BootInstaller
         builder.RegisterInstance(new ContentCatalog(
             Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
             Convert(enemies, definition => definition.ToSpec(), "enemy", nameof(enemies))));
+
+        // The wall clock, at the root: it is a device the whole app shares, not something a run
+        // owns — the same argument as the vibrator below, and the opposite of IRandom, which is
+        // Scoped because a seed *is* a run (RunInstaller). Nothing consumes it yet; the first
+        // reader is the save store's timestamp (M2-13a).
+        builder.Register<UnityClock>(Lifetime.Singleton).As<IClock>();
 
         // Singleton, and deliberately not Scoped: the menu sets it in one scene and the run
         // scope reads it in the next, so it has to outlive both.

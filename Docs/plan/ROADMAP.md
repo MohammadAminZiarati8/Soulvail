@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
-| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 21 |
+| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 23 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
@@ -106,7 +106,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☑ |
 | M2-00f | Doc-system audit: template precedence and self-check, PROGRESS entry cap, §18.5 → ledger, staleness after #46 | S | 00a | ☑ |
 | M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00f | ☑ |
-| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☐ |
+| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00f | ☑ |
 | M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00f | ☐ |
 | M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00f | ☐ |
 
@@ -129,12 +129,18 @@ was therefore nowhere.
 |---|---|---|---|---|
 | M2-art | KayKit import, `ThirdParty/` layout, Knight as the player, `PlayerAnimatorView` | M | — | ☑ |
 
+**Specced by M2-00c:** enemies and projectiles, M2-06…M2-09. **M2-07 is split before it starts, not after** — the shots and the shooter are seven files together, and the projectile system is what settles [ledger row 7](#carry-forward-into-m2) for all three archetypes, so it goes first and alone. The row's title also changed: there is no projectile *fact*, and the reason is M2-07a rule 1.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| [M2-06](tasks/M2-06-enemy-authoring.md) | The Spitter and the Bloater as authored data, and three archetypes you can tell apart | M | 04 | ☐ |
+| [M2-07a](tasks/M2-07a-projectile-system.md) | `ProjectileSystem`: shots already in the air, and who decides they landed | S | 06 | ☐ |
+| [M2-07b](tasks/M2-07b-spitter-ai.md) | `IEnemyBehaviour`, and the Spitter that keeps its distance | S | 07a | ☐ |
+| [M2-08](tasks/M2-08-bloater-ai.md) | `BloaterBehaviour`: a fuse you have to walk away from, and a blast the corpse owns | S | 07b | ☐ |
+| [M2-09](tasks/M2-09-projectile-views-and-pooling.md) | Projectile views, and the first test that proves a pooled body forgets its last life | M | 07b | ☐ |
+
 | ID | Task |
 |---|---|
-| M2-06 | `EnemySpec` + `EnemyDefinition` authoring: Husk, Spitter, Bloater |
-| M2-07 | Spitter AI + projectile intent/fact |
-| M2-08 | Bloater AI: explode on death/contact |
-| M2-09 | Projectile views + pooling |
 | M2-10 | `StageFlow` FSM: Arrival → Waves → Clear → Gate → next |
 | M2-11 | Arena prefab contract, arena pool, barrier + gate views |
 | M2-12 | Off-screen threat arrows, spawn telegraph rings |
@@ -154,12 +160,14 @@ was therefore nowhere.
 | 4 | **`AlliesNearby` is `n² − n` comparisons a frame** over the *registered* count — free at 12, **3,540 a frame at 60**. Priced by the concurrency cap, not by wave size. | **M2-04** | Medium. Choose the cap against this number rather than inferring it. |
 | 5 | **Path refresh is hard-capped at 4 a frame against a 10 Hz cadence, so routes go stale silently above 24 concurrent enemies.** Nothing reports it at runtime. | **M2-04**, **M2-05** | Medium. A ceiling that is invisible until enemies visibly walk into walls. |
 | 6 | **`RunConfig` is two fields** (`CharacterId`, `SpawnPlan`) and M2 needs mode id, stage index, an **inbound** seed and a restored snapshot. The seed currently flows *out* of the injected `IRandom`, which is backwards for resume. | **M2-02**, with **M2-14** in mind | Medium. Reshape once, deliberately, rather than accreting a parameter per task across four PRs. |
-| 7 | **The fact-versus-direct-call rule is unsettled.** `IRunSession`'s comment still promises a `ReportContact` fact for chasers; M1-18 instead had `ChaserBehaviour` call `PlayerCombat.ApplyDamage` from core-perceived distance. Both are defensible — **but three enemies must not answer it three ways.** | **M2-07** (projectile), **M2-08** (contact) | Medium. Settle it in M2-00c and fix the stale comment; divergence here is the kind that never gets unpicked. |
+| 7 | **The fact-versus-direct-call rule is unsettled.** `IRunSession`'s comment still promises a `ReportContact` fact for chasers; M1-18 instead had `ChaserBehaviour` call `PlayerCombat.ApplyDamage` from core-perceived distance. Both are defensible — **but three enemies must not answer it three ways.** **Ruled at M2-00c** ([M2-07a](tasks/M2-07a-projectile-system.md) rule 1): core decides every enemy outcome and calls `ApplyDamage` directly; Unity owes a *fact* only when the answer depends on colliders core cannot see, and a *sense* when the geometric question is a standing one. `IRunSession` gains no member in M2 and the stale comment goes with it. | **M2-07a** (the ruling and the comment), applied by **M2-07b** and **M2-08** | Medium. Divergence here is the kind that never gets unpicked. The row leaves when M2-07a's *As built* says the comment is fixed. |
 | 8 | **Views and `RunTicker`'s frame order have no automated coverage at all.** The adapter layer is well covered; `Views/`, most of `Presentation/` and the frame order have nothing. `EnemyView.OnDespawn` — which the code itself calls "the most dangerous method here" — is exercised only through a fake `IPoolable`. Its reset chain was **verified complete by hand** during the audit, so this is a coverage gap, not a live bug. | **M2-09**, **M2-11** | Medium, rising. One PlayMode rent → damage → kill → despawn → re-rent test covers the whole family, and M2 triples the number of pooled things. |
 | 9 | **Spawn-position occupancy is unmodelled** — nothing stops two spawns landing on the same point. | **M2-05** | Low now, visible the first time a wave doubles up. |
 | 10 | **`PendingRun.Clear()` still has no caller**, and needs a "the run has read everything it needs" point that does not exist yet. | **M2-14** | Low. Resume is where that point finally exists. |
 | 11 | **`HapticsSettings` persists through `PlayerPrefs`** as an explicit stopgap. | **M2-13** | Low. Move it onto `ISaveStore` as the first consumer. |
 | 12 | **A focus tap beyond `acquireRange` is silent.** `FocusResolver` has no range limit and `Targeter` honours the override only inside `acquireRange` (CC §3.4 as built in M1-04 — rightly), but `TargetChanged` carries nothing that lets the reticle show *held but inactive*, so the tap is indistinguishable from a miss, which CC §3.5 exists to prevent. Owner-playtested in M1-09 and again in M1-21 with chasers closing the distance; **the only CC §8 row failing on behaviour rather than on missing hardware.** Three ways out, cheapest first: a fourth reticle state (one field on `TargetChanged`, one branch in `ReticleView`, one publish site in `PlayerCombat`); hold the focus regardless of range (reintroduces the turn-away M1-04 rejected); raise `acquireRange` (moves auto-targeting everywhere). | **M2-12** | Medium. Threat arrows are the next thing that answers "where is the thing you cannot see"; decide both at once rather than retrofit one to the other. |
+| 13 | **Cover does not block enemy projectiles.** GD §7.2 makes it an arena design rule — *"cover blocks enemy projectiles but not pathing"* — and row 7's ruling means core holds no walls, so a Spitter shoots through a pillar. The cheapest honest fix is a **sense, not a fact**: `EnemySense.HasLineOfSight` has been carried unfilled since M0-05, and a `LineOfSightSense` adapter on `NavPathSense`'s pattern (a population-scaled per-frame budget, ~5 raycasts a frame at 28 enemies) lets a Spitter simply not fire through one. Rejected: the projectile view raycasting and reporting a block, which is the fact route row 7 declined; and core holding a wall list, which is a second world model. | **M2-11** | Medium. It is where pillars stop being scene dressing and become an arena contract, so the raycast has something to be true about. Cheap now, and the field it fills already exists. |
+| 14 | **A Spitter can damage the player from off-screen.** It fires from 14 m, which is past the play camera's comfortable frame behind the player, and GD §12.4's on-screen rule forbids damage originating outside the frustum without a visible edge indicator — *"tighter than the PC version of this rule, a phone screen shows less."* The first archetype that can break it; the Husk had to walk into view to hurt anybody. | **M2-12** | Medium. Same task and the same session as row 12: both are "where is the thing you cannot see", and answering them separately gets two indicators that do not agree. |
 
 ## M3 — Levelling and the tree *(titles only)*
 
@@ -258,10 +266,18 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **`handslot.l` / `handslot.r` are empty**, so the Knight swings a fist. The 31 props in
   `ThirdParty/KayKit/Adventurers/Props` are built to parent there. Promoted when the weapon-ownership
   question (class property vs swappable) is settled, because the answer decides who owns the socket.
-- **The KayKit skeletons are the enemy roster, and M2-06 should know before it writes a spec:**
+- **The KayKit skeletons are the enemy roster, and M2-06 decided not to import them yet:**
   `Skeleton_Minion` → Husk, `Skeleton_Warrior` → Elite, `Skeleton_Mage` → Spitter, `Skeleton_Rogue`
-  → Lunger, all on `Rig_Medium` so all 139 clips already play on them. `Rig_Medium_Special`'s
+  → Lunger, all on `Rig_Medium` so all 139 clips already play on them. **The pack has no Bloater**,
+  and three bodies means a prefab, a controller and a `ViewPool` each — an M2-art-sized task.
+  [M2-06](tasks/M2-06-enemy-authoring.md) rule 9 buys legibility with a per-archetype tint and
+  scale on the one shared body instead, which is what GD §11.3 asks for anyway. Promoted when the
+  owner brings enemy art in, the way M2-art was brought in. `Rig_Medium_Special`'s
   `Skeletons_Awaken_Floor` is a diegetic spawn telegraph that M2-05 currently specs as a ring decal.
+- **`EnemyRegistry` could prefer a free agent whose behaviour already matches the requested kind**,
+  which would make [M2-07b](tasks/M2-07b-spitter-ai.md) rule 4's one-object-per-changed-rental churn
+  rare in a mixed arena. Promoted by a profile that says so, not by a hunch — it is a spawn-path
+  allocation, and AR §14's ban is about the frame path.
 - **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`). Worth it since M1-21 — 455 tests, and M2 adds migration tests, which rot silently. Blocker: a Unity licence activation secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
 - **A real Android device.** Every **[device]** row is deferred until one exists and the first hardware session runs them all. BlueStacks cannot run the APK (M0-20a), so there is no fallback outside the Editor.

@@ -35,6 +35,7 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class PlayerCombatTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 99;
 
@@ -333,11 +334,15 @@ public sealed class PlayerCombatTests
     [Test]
     public void RunSession_MotorFacesTarget()
     {
-        var catalog = new ContentCatalog(new[] { Character() }, new[] { Enemy() });
+        var catalog = new ContentCatalog(
+            new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
         var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
 
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
+            Seed,
+            1,
             new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(5f, 0f, 0f)) })));
 
         Assert.That(session.State.PlayerFacing, Is.EqualTo(Vector3.UnitZ), "Sanity: a run starts looking down +Z.");
@@ -371,7 +376,8 @@ public sealed class PlayerCombatTests
         // as it does in the game.
         var catalog = new ContentCatalog(
             new[] { Character(maxHp: 5f, withShield: false, hitIFrames: 0f) },
-            new[] { Chaser() });
+            new[] { Chaser() },
+            new[] { Descent() });
 
         var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
 
@@ -380,7 +386,10 @@ public sealed class PlayerCombatTests
         // the arena. Nothing moves it — no body reports a position in a headless test — so the
         // distance the behaviour reads stays exactly this.
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
+            Seed,
+            1,
             new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) })));
 
         var snapshot = new WorldSnapshot(EnemyCapacity);
@@ -533,6 +542,23 @@ public sealed class PlayerCombatTests
     // ---- Fixture helpers -----------------------------------------------------------------------
 
     private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
+
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>
     /// <remarks>

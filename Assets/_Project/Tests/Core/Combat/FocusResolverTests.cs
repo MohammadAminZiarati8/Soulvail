@@ -36,6 +36,7 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class FocusResolverTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 4;
     private const int EnemyCapacity = 8;
@@ -322,10 +323,33 @@ public sealed class FocusResolverTests
             entries.Add(new SpawnPlan.Entry(new ContentId(HuskId), position));
         }
 
-        return new RunConfig(new ContentId(OathboundId), new SpawnPlan(entries.ToArray()));
+        return new RunConfig(
+            new ContentId(DescentId),
+            new ContentId(OathboundId),
+            Seed,
+            1,
+            new SpawnPlan(entries.ToArray()));
     }
 
-    private static ContentCatalog Catalog() => new(new[] { Character() }, new[] { Enemy() });
+    private static ContentCatalog Catalog() =>
+        new(new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
+
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7.</summary>
     private static CharacterSpec Character() => new(

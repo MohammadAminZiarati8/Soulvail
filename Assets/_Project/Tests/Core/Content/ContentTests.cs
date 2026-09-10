@@ -380,6 +380,54 @@ public sealed class ContentTests
         Assert.Throws<ArgumentException>(() => new ContentCatalog(new CharacterSpec[] { null }));
     }
 
+    [Test]
+    public void Catalog_ModeLookupAndDuplicates()
+    {
+        // The third kind (M2-02), asserted against the same four properties the character rows
+        // above claim: found by value, missed by an unknown id, missed by default, and refused as
+        // a duplicate with the id in the message. One row rather than five, because what is being
+        // checked is that modes went through the same indexer as everything else — if they had
+        // not, the first assertion would already be a different shape.
+        ModeSpec descent = Mode("mode.descent");
+        var catalog = new ContentCatalog(Array.Empty<CharacterSpec>(), null, new[] { descent });
+
+        Assert.That(catalog.Mode(new ContentId("mode.descent")), Is.SameAs(descent));
+        Assert.That(catalog.TryGetMode(descent.Id, out ModeSpec found), Is.True);
+        Assert.That(found, Is.SameAs(descent));
+        Assert.That(catalog.Modes.Count, Is.EqualTo(1));
+        Assert.That(catalog.Modes[0], Is.SameAs(descent));
+
+        Assert.That(catalog.TryGetMode(new ContentId("mode.nothing"), out ModeSpec missing), Is.False);
+        Assert.That(missing, Is.Null);
+        Assert.That(catalog.TryGetMode(default, out _), Is.False);
+
+        KeyNotFoundException unknown = Assert.Throws<KeyNotFoundException>(
+            () => catalog.Mode(new ContentId("mode.nothing")));
+        Assert.That(unknown.Message, Does.Contain("mode.nothing"));
+
+        ArgumentException duplicate = Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(
+                Array.Empty<CharacterSpec>(),
+                null,
+                new[] { Mode("mode.descent"), Mode("mode.descent") }));
+        Assert.That(duplicate.Message, Does.Contain("mode.descent"));
+
+        Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(Array.Empty<CharacterSpec>(), null, new ModeSpec[] { null }));
+
+        // Omitted entirely is a catalog with no modes, not a null one — the same bargain the
+        // enemy list has made since M1-07.
+        Assert.That(new ContentCatalog(Array.Empty<CharacterSpec>()).Modes, Is.Empty);
+    }
+
+    private static ModeSpec Mode(string id) => new ModeSpec(
+        new ContentId(id),
+        new LocKey(id + ".name"),
+        1,
+        true,
+        0,
+        Array.Empty<RosterEntry>());
+
     private static ContentId OathboundId() => new ContentId("character.oathbound");
 
     private static LocKey OathboundNameKey() => new LocKey("character.oathbound.name");

@@ -156,17 +156,19 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Module | Owns | Key types |
 |---|---|---|
-| `Run` | Run lifecycle, stage flow, mode rules | `RunSession` (the inbound façade), `RunState`, `StageFlow` (FSM), `ModeSpec` |
+| `Run` | Run lifecycle, stage flow, mode rules | `RunSession` (the inbound façade), `RunState`, `RunConfig`, `StageFlow` (FSM) |
 | `Combat` | Health, shields, damage, i-frames, targeting, weapons, skills | `Health`, `Stat`, `Targeter`, `TargetScorer`, `Weapon`, `SkillRunner`, `CombatBlackboard` |
 | `Ai` | Enemy and boss behaviour | `EnemyAgent`, `EnemyBlackboard`, `StateMachine<T>`, per-archetype behaviours, boss phases |
 | `Director` | Spawn budget and composition | `ThreatBudget`, `SpawnDirector`, `WaveComposer` |
 | `Progression` | XP, levels, tree, offers, Veilrot | `XpCurve`, `SkillTree`, `OfferGenerator`, `Veilrot` |
 | `Economy` | Essence, Shards, Sanctum services, unlocks | `Wallet`, `Sanctum`, `Unlocks` |
-| `Content` | Immutable spec records + lookup | `ContentCatalog`, `CharacterSpec`, `EnemySpec`, `SkillSpec`, `ContentId`, `TagSet` |
+| `Content` | Immutable spec records + lookup | `ContentCatalog`, `CharacterSpec`, `EnemySpec`, `ModeSpec`, `SkillSpec`, `ContentId`, `TagSet` |
 | `Effects` | Composable effect primitives | `IEffect`, `EffectRegistry`, primitives |
 | `Persistence` | DTOs, versioning, migrations | `PlayerProfile`, `RunSnapshot`, `IMigration` |
 | `Ports` | Every interface the outside implements or calls | see §6 |
 | `Events` | Domain event records | `readonly struct` per event |
+
+`ModeSpec` moved from `Run` to `Content` at M2-02. `Run` owns the *rules* a mode implies — stage flow, what a run does when a stage is cleared — but the mode itself is an immutable spec resolved from a `ContentId`, and §10.1 has always drawn it in the catalog beside `CharacterSpec` and `EnemySpec`. The two sections disagreed; §10.1 was right, and this row was the sketch.
 
 ---
 

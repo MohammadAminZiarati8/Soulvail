@@ -43,9 +43,11 @@ namespace Soulvail.Game.Composition
 
         [SerializeField] private EnemyDefinition[] _enemies;
 
+        [SerializeField] private ModeDefinition[] _modes;
+
         protected override void Configure(IContainerBuilder builder)
         {
-            BootInstaller.Install(builder, _characters, _enemies);
+            BootInstaller.Install(builder, _characters, _enemies, _modes);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

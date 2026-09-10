@@ -44,20 +44,33 @@ namespace Soulvail.Core.Run;
 public sealed class RunState
 {
     internal RunState(
+        ContentId modeId,
         ContentId characterId,
         int seed,
+        int stageIndex,
         CharacterSpec character,
         PlayerMotor motor,
         PlayerCombat combat,
         EnemySystem enemies)
     {
+        ModeId = modeId;
         CharacterId = characterId;
         Seed = seed;
+        StageIndex = stageIndex;
         Character = character;
         Motor = motor;
         Combat = combat;
         Enemies = enemies;
     }
+
+    /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
+    /// <remarks>
+    /// Get-only where <see cref="StageIndex"/> is settable, and the asymmetry is the point: a run
+    /// goes deeper, but it never becomes a different mode. The id rather than the
+    /// <c>ModeSpec</c>, for the reason <see cref="CharacterId"/> is here beside
+    /// <see cref="Character"/> — it is what a save writes and what a log line quotes.
+    /// </remarks>
+    public ContentId ModeId { get; }
 
     /// <summary>The class being played. Same id as <see cref="Character"/>'s, kept for the log line that quotes it before the spec is dereferenced.</summary>
     public ContentId CharacterId { get; }
@@ -66,11 +79,25 @@ public sealed class RunState
     /// What the run's random generator was seeded with.
     /// </summary>
     /// <remarks>
-    /// Recorded, not chosen: <c>IRandom</c> owns the seed and this is a copy of it, so that a
-    /// player reporting a bug — or a Daily being reproduced — has the one number that replays the
-    /// spawns. See <see href="../../../../Docs/adr/0011-random-streams.md">ADR-0011</see>.
+    /// Stated by <c>RunConfig</c> and copied here, since M2-02. It used to be read off
+    /// <c>IRandom</c> — one source of truth, on M0-09's argument — and the truth is still single,
+    /// but it is now checked rather than inherited: <c>RunSession.Start</c> refuses a config
+    /// whose seed disagrees with the generator. What changed is that a resumed run has to state
+    /// the seed it is continuing rather than discover it (ledger row 6). See
+    /// <see href="../../../../Docs/adr/0011-random-streams.md">ADR-0011</see>.
     /// </remarks>
     public int Seed { get; }
+
+    /// <summary>
+    /// How deep the run is, numbered from 1.
+    /// </summary>
+    /// <remarks>
+    /// <c>internal set</c> because M2-10's stage flow advances it, and for the reason every
+    /// setter in this class is internal: a view that could write the depth would be deciding
+    /// something core owns. What a run <em>begins</em> at is <c>RunConfig.StageIndex</c>, checked
+    /// against the mode before the run is announced.
+    /// </remarks>
+    public int StageIndex { get; internal set; }
 
     /// <summary>The class's authored numbers, resolved from the catalog at <c>Start</c>.</summary>
     public CharacterSpec Character { get; }

@@ -40,6 +40,19 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
+
+    /// <summary>
+    /// The run's generator, held for one reason: <see cref="Start"/> has to state the seed in the
+    /// <c>RunConfig</c> (M2-02), and this is the only object that knows it on both paths into a
+    /// run. <c>PendingRun</c> carries the menu's seed, but a direct Play has none and
+    /// <c>RunInstaller.CreateRandom</c> invents one that reaches nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Nothing here ever draws from it. If a frame ever needs a random number, that is a decision
+    /// core makes — a view drawing from the run's streams would consume draws the simulation is
+    /// counting on and break replay from a seed.
+    /// </remarks>
+    private readonly IRandom _random;
     private readonly WorldSnapshot _snapshot;
     private readonly SnapshotBuilder _builder;
     private readonly IntentBuffer _intents;
@@ -70,6 +83,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         IPlayerCommands commands,
         PendingRun pending,
         ContentCatalog catalog,
+        IRandom random,
         WorldSnapshot snapshot,
         SnapshotBuilder builder,
         IntentBuffer intents,
@@ -85,6 +99,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        _random = random ?? throw new ArgumentNullException(nameof(random));
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
@@ -123,11 +138,27 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _input.Enable();
 
+        ContentId modeId = _pending.IsSet ? _pending.ModeId : FallbackModeId();
+
+        // Asked, not assumed. GD §4.5 forbids any code hard-coding "starts at stage 1", so the
+        // depth a fresh run begins at is the mode's to state — and M2-14b's resume passes the
+        // saved depth here instead, with nothing else on this line changing.
+        ModeSpec mode = _catalog.Mode(modeId);
+
+        // The seed comes off the generator this run was built with, which is the one place it is
+        // knowable on both paths: the menu's seed goes through PendingRun, and a direct Play
+        // invents one inside RunInstaller.CreateRandom that nothing else can see. Core checks the
+        // two agree rather than trusting this line (M2-02 rule 5) — so the check has teeth on the
+        // path that matters, which is the resumed run that states a seed from a save file.
+        //
         // The plan is the scene's, built by RunScope from the dummies dressed into it (M1-07). It
         // is SpawnPlan.Empty when nothing is dressed, never null, so this line always says out
         // loud what the arena starts with — see RunConfig. M2-05's director takes it over.
         _session.Start(new RunConfig(
+            modeId,
             _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
+            _random.Seed,
+            mode.StartingStage,
             _spawnPlan));
     }
 
@@ -444,5 +475,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         return _catalog.Characters[0].Id;
+    }
+
+    /// <summary>
+    /// The mode to play when nobody chose one: the first the catalog holds.
+    /// </summary>
+    /// <remarks>
+    /// The matching half of <see cref="FallbackCharacterId"/>, for the same workflow — pressing
+    /// Play with the Run scene already open, which no menu ran before. The first rather than
+    /// <c>mode.descent</c> written here, for the reason <c>MenuPresenter</c> gives: GD §4.5 says
+    /// no code may assume Descent, and an id literal on the direct-Play path would be the copy
+    /// nobody remembered to change.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The catalog holds no modes.</exception>
+    private ContentId FallbackModeId()
+    {
+        if (_catalog.Modes.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No run is pending and the content catalog holds no modes, so there is no mode " +
+                "to play. Add a ModeDefinition to BootScope's mode list.");
+        }
+
+        return _catalog.Modes[0].Id;
     }
 }

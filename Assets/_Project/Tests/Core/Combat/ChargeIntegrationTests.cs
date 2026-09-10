@@ -52,6 +52,7 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class ChargeIntegrationTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 99;
 
@@ -115,7 +116,7 @@ public sealed class ChargeIntegrationTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() });
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
         _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
 
         // The player stands at the origin and — except in the one row that pushes the stick — never
@@ -401,7 +402,7 @@ public sealed class ChargeIntegrationTests
     {
         // 15 HP against the Charge's 20: the one row where a dash finishes something, and the reason
         // CC §5 calls it a damaging dodge rather than an escape.
-        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) });
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) }, new[] { Descent() });
         _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
 
         int husk = StartRun(At(5f))[0];
@@ -436,11 +437,13 @@ public sealed class ChargeIntegrationTests
         // The only row with CC §4.3's ramp switched on, because it is the only one about it.
         var catalog = new ContentCatalog(
             new[] { Oathbound(focusMaxMultiplier: FocusMaxMultiplier) },
-            new[] { Husk() });
+            new[] { Husk() },
+            new[] { Descent() });
 
         var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
 
-        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
 
         // One step past the 0.4 s delay plus the 1.0 s climb, taken whole: this row is about what a
         // dash does to a full ramp, and how many frames it took to earn is FocusTrackerTests'.
@@ -505,12 +508,16 @@ public sealed class ChargeIntegrationTests
         // written.
         var catalog = new ContentCatalog(
             new[] { Oathbound(chargeCooldown: 0.1f) },
-            new[] { Husk(maxHp: 1e9f) });
+            new[] { Husk(maxHp: 1e9f) },
+            new[] { Descent() });
 
         var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity);
 
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
+            Seed,
+            1,
             new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) })));
 
         Assert.That(events.LastSpawnedId, Is.GreaterThan(0), "Sanity: the dummy is out there.");
@@ -563,7 +570,8 @@ public sealed class ChargeIntegrationTests
             entries[i] = new SpawnPlan.Entry(new ContentId(HuskId), positions[i]);
         }
 
-        _session.Start(new RunConfig(new ContentId(OathboundId), new SpawnPlan(entries)));
+        _session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries)));
 
         IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
         var ids = new int[spawned.Count];
@@ -635,6 +643,23 @@ public sealed class ChargeIntegrationTests
 
         _snapshot.Dt = Frame;
     }
+
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the two numbers a row overrides.</summary>
     private static CharacterSpec Oathbound(

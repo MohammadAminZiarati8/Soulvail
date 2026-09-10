@@ -17,7 +17,8 @@ namespace Soulvail.Game.Composition;
 /// prevent.
 /// </para>
 /// <para>
-/// Reading <see cref="CharacterId"/> or <see cref="Seed"/> before <see cref="Set"/> throws
+/// Reading <see cref="ModeId"/>, <see cref="CharacterId"/> or <see cref="Seed"/> before
+/// <see cref="Set"/> throws
 /// rather than returning a default, because the two callers want opposite things from an unset
 /// run and neither is served by a zero. <c>RunInstaller</c> and <c>RunTicker</c> ask
 /// <see cref="IsSet"/> first and fall back deliberately (pressing Play directly in the Run
@@ -34,11 +35,23 @@ namespace Soulvail.Game.Composition;
 /// </remarks>
 public sealed class PendingRun
 {
+    private ContentId _modeId;
     private ContentId _characterId;
     private int _seed;
 
     /// <summary>Whether a run has been configured since the last <see cref="Clear"/>.</summary>
     public bool IsSet { get; private set; }
+
+    /// <summary>The mode the next run plays, e.g. <c>mode.descent</c>.</summary>
+    /// <exception cref="InvalidOperationException">No run is pending.</exception>
+    public ContentId ModeId
+    {
+        get
+        {
+            ThrowIfNotSet(nameof(ModeId));
+            return _modeId;
+        }
+    }
 
     /// <summary>The class the next run plays.</summary>
     /// <exception cref="InvalidOperationException">No run is pending.</exception>
@@ -65,8 +78,14 @@ public sealed class PendingRun
     /// <summary>
     /// Records what the next run should be, replacing anything already pending.
     /// </summary>
-    public void Set(ContentId characterId, int seed)
+    /// <remarks>
+    /// The parameters are in <c>RunConfig</c>'s order — mode, class, seed — because that is the
+    /// object this one is eventually copied into, and two orderings for the same three values is
+    /// an argument swap the compiler cannot see (both ids are <see cref="ContentId"/>).
+    /// </remarks>
+    public void Set(ContentId modeId, ContentId characterId, int seed)
     {
+        _modeId = modeId;
         _characterId = characterId;
         _seed = seed;
         IsSet = true;
@@ -78,6 +97,7 @@ public sealed class PendingRun
     /// </summary>
     public void Clear()
     {
+        _modeId = default;
         _characterId = default;
         _seed = 0;
         IsSet = false;

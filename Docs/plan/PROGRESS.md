@@ -15,33 +15,33 @@ _Updated: 2026-09-10_
 | | |
 |---|---|
 | **Milestone** | **M0 — Walking skeleton: complete, tagged `m0`. M1 — Combat feel: complete (21/21), acceptance passed on Editor evidence; `m1` is the owner's to tag.** Now **M2 — Stage loop**. |
-| **Last merged task** | [M1-21](tasks/M1-21-acceptance-and-tag.md) — M1 acceptance: **no code, no tuning, and the fact that no tuning was needed is the result.** Every number in CC §7 already matched the asset shipping it, so doc and asset never disagreed. Ten checklist rows settled statically; three are device-only; **one row is deliberately unresolved rather than passed** — the out-of-range focus tap, still in the parking lot. |
+| **Last merged task** | **M2-00f** — doc-system audit: the [template](tasks/_TEMPLATE.md) absorbs what every M1 session had to invent before M2-00b writes fifteen specs from it; entries here are capped at twelve lines; AR §18.5 stops duplicating the ledger; Architecture.md says which sketches to trust; CLAUDE.md stops contradicting this table on the device. Before it, [M2-00a](ROADMAP.md#m2--stage-loop) (#46) archived the M0/M1 logs and split the watch list, and [M1-21](tasks/M1-21-acceptance-and-tag.md) closed M1 with no code and no tuning. |
 | **In progress** | — |
-| **Next task** | **[M2-00a](ROADMAP.md#m2--stage-loop)** — plan hygiene (this restructure), then **M2-00b…e** write the fifteen M2 specs, then **M2-01**. M2's ~75 % detailing trigger passed unfired during M1, so its tasks are still titles. The [carry-forward ledger](ROADMAP.md#carry-forward-into-m2) names what each spec must absorb. |
+| **Next task** | **M2-00b** — specs for M2-01…M2-05, the spawning spine, against [ledger](ROADMAP.md#carry-forward-into-m2) rows 2–6 and 9 and the template's self-check; then **00c…e**, then **M2-01**. |
 | **What works** | A run plays end to end from a cold start, and the fight is two-sided. Boot → Menu → tap Descend → a run with a player, eight Husks, a HUD and a death screen. **Core owns every outcome**; Unity reports facts and renders events. Concretely: `RunSession` is the only `IRunSession`; `PlayerMotor` + `PlayerCombat` decide movement, targeting, damage and the Charge; `EnemySystem` + `EnemyRegistry` + `ChaserBehaviour` own the enemies; `Weapon` swings on a clock and asks the body for a cone, which answers through `ReportConeHits`; `ViewPool` + `RespawnPolicy` keep twelve alive and pooled; `NavPathSense` routes them round the pillars; `HudPresenter`, `ReticleView` and `EnemyHitFeedback` render it; `HapticsListener` buzzes it. Composition is `BootScope` → `RunScope`/`MenuScope`, no statics anywhere. **Detail for any of it is in the [M0](archive/PROGRESS-M0.md) and [M1](archive/PROGRESS-M1.md) archives**, task by task. |
-| **Verified** | **452 EditMode + 3 PlayMode green** (2026-09-10), six assemblies clean, zero errors, zero analyzer warnings, one expected Console warning (the direct-Play unseeded-run notice). Working tree clean, no `ProjectSettings/` drift. |
+| **Verified** | **452 EditMode + 3 PlayMode green** (2026-09-10, at M2-00a); no code has changed since — M2-00a and M2-00f are docs only. Six assemblies clean, zero errors, zero analyzer warnings, one expected Console warning (the direct-Play unseeded-run notice). Working tree clean, no `ProjectSettings/` drift. |
 | **Reference device** | **None, and the emulator is not a fallback.** BlueStacks 5 (Android 9 / SDK 28, x86_64) **installs the APK and crashes on launch** in its own Vulkan driver via `libhoudini.so` — an emulator-bridge fault on a development-build Vulkan path, not game code. The APK is ARM64-only and always will be: Unity 6.3 cannot build x86-64 for Android. **Nothing outside the Editor has ever run.** [M0-20a](tasks/M0-20a-apk-runs-on-bluestacks.md) owns it; a phone removes the question. Unity Device Simulator still serves for layout. |
 | **Deferred — device-only** | Multi-touch (stick + button); landscape flip on rotation; touch latency; real frame rate; thermal; kill-from-recents and relaunch; whether the M0/M1 **feel** verdicts survive leaving the Editor. **M1-20's haptics are the largest single block** — the mapping, the off switch, and above all whether the 100 ms coalescing window reads as *late*. Nothing in the Editor can answer any of it: the container resolves `NullVibrator` there by construction. The first session with a phone runs all of them. |
 | **Known issues** | **None outstanding in the working tree.** The one real open issue is the APK crash, which has its own task. Disk sits near full — an IL2CPP Android build wants several GB of headroom. **Before every commit, check `git diff ProjectSettings/`**: Unity backfills defaults and re-serialises settings files behind you, and the Editor holds the rewritten copy in memory until restarted (see [Traps.md §5](../Traps.md)). Three sessions running it has not recurred. |
-| **Where the rules live** | The watch list is gone, and that is deliberate — it had reached 49 KB on **one line** and was read in full every session. It was split by kind: **[Traps.md](../Traps.md)** for things in the toolchain that lie to you (the "an API that echoes your value back has not agreed to honour it" family, the shell probes, the unfocused Editor, the MCP, VContainer, test measurement), and **[Architecture.md §18](../Architecture.md#18-invariants)** for rules the code depends on — orderings, boundary rules, why a field is `internal`, and a **soft-spots table** naming the task each one bites at. Spent milestone incidents stayed in the archives. **Read Traps.md before debugging a probe; read §18 before changing an ordering.** |
+| **Where the rules live** | The watch list is gone, and that is deliberate — it had reached 49 KB on **one line** and was read in full every session. It was split by kind: **[Traps.md](../Traps.md)** for things in the toolchain that lie to you (the "an API that echoes your value back has not agreed to honour it" family, the shell probes, the unfocused Editor, the MCP, VContainer, test measurement), and **[Architecture.md §18](../Architecture.md#18-invariants)** for rules the code depends on — orderings, boundary rules, why a field is `internal`, and the soft spots no task owns yet. Spent milestone incidents stayed in the archives. A future obligation with an owning task is a [ledger](ROADMAP.md#carry-forward-into-m2) row; without one, a parking-lot line. **Read Traps.md before debugging a probe; read §18 before changing an ordering.** |
 
 ---
 
 ## How to write an entry
 
-Append one entry per merged task, newest at the bottom. Keep it factual; the spec has the intent, this has what happened.
+Append one entry per merged task, newest at the bottom. **Twelve lines or fewer.** The spec's *As built* footer owns the full account of what deviated and why; this entry is the index — what happened, and where each lesson was filed. (The archived logs average 7 KB an entry against a template that said "one line"; the cap is what keeps this file readable.)
 
 ```markdown
-### YYYY-MM-DD · M0-03 · Domain events · PR #n
-**Built:** one line — what exists now that didn't.
-**Deviations from spec:** none | list them, with why.
-**Learned:** anything that should change a later spec or the architecture. Link the follow-up if one was created.
-**Follow-ups:** new tasks created, or "none".
+### YYYY-MM-DD · M0-03 · Domain events
+**Built:** one or two lines — what exists now that didn't.
+**Deviations:** none | *n*, in the spec's As built. Name here only one that changes a decision.
+**Learned:** one line each, ending with where it was filed — Traps §n · AR §18.x · ledger row n · spent (stays here).
+**Follow-ups:** tasks created, ledger rows added, or "none".
 ```
 
-After appending, update the Current State table above. If a deviation changes a decision in `Architecture.md`, it needs a superseding ADR — say so here and link it.
+The PR number lives in the merge commit — do not write it here. Current State is written **as of the PR's merge**: the task the PR closes is *Last merged*. If a deviation changes a decision in `Architecture.md`, it needs a superseding ADR — say so here and link it.
 
-**A durable lesson does not go in Current State.** A toolchain trap goes in [Traps.md](../Traps.md); a rule the code now depends on goes in [Architecture.md §18](../Architecture.md#18-invariants); a thing a future task must handle goes in the [carry-forward ledger](ROADMAP.md#carry-forward-into-m2) or the ROADMAP parking lot. The entry says *what happened*, and links.
+**A durable lesson does not go in Current State.** A toolchain trap goes in [Traps.md](../Traps.md); a rule the code now depends on goes in [Architecture.md §18](../Architecture.md#18-invariants); a thing a named task must handle goes in the [carry-forward ledger](ROADMAP.md#carry-forward-into-m2), and one with no owner yet in the ROADMAP parking lot, one line. The entry says *what happened*, and links.
 
 **At the end of a milestone**, move its entries to `archive/PROGRESS-M<n>.md`, promote anything durable out of them first, and leave this Log holding only the milestone in progress.
 
@@ -51,7 +51,7 @@ After appending, update the Current State table above. If a deviation changes a 
 
 _M0 and M1 are archived: [M0](archive/PROGRESS-M0.md) (20 entries) · [M1](archive/PROGRESS-M1.md) (21 entries)._
 
-### 2026-09-10 · M2-00a · Plan hygiene: archive, split the watch list, carry-forward ledger · PR #_n_
+### 2026-09-10 · M2-00a · Plan hygiene: archive, split the watch list, carry-forward ledger
 
 **Built:** the planning docs are readable again, and every durable lesson has a home that is not a table cell. **`PROGRESS.md` went from 381 KB to 6.5 KB** — it could not previously be opened whole by any tool, including the Read tool's 256 KB cap, so reading Current State meant shelling out to `awk` and `fold`. The M0 and M1 logs moved verbatim to `archive/PROGRESS-M0.md` (20 entries) and `archive/PROGRESS-M1.md` (21 entries), links rewritten one level up and each one verified to resolve; a checksum of the rejoined archives against `HEAD` differs from the original by exactly two blank lines and nothing else.
 
@@ -62,5 +62,12 @@ _M0 and M1 are archived: [M0](archive/PROGRESS-M0.md) (20 entries) · [M1](archi
 **Learned:** **a table cell is not a filing system.** The watch list grew one entry per task for 41 tasks without anyone deciding it should become the project's institutional memory, and the failure mode was silent — nothing warns you that a doc has become unreadable, it just gets more expensive every session until a tool refuses it. The fix that mattered was not deleting anything; it was noticing the file held three kinds of thing and only one of them was milestone-scoped. **The new rule is in "How to write an entry": a durable lesson goes to Traps.md or §18, a future obligation goes to the ledger, and the log entry says what happened and links.** At the end of a milestone, promote first, then archive.
 
 **Follow-ups:** [carry-forward ledger](ROADMAP.md#carry-forward-into-m2) — eleven rows, each naming the M2 task that must absorb it, ranked by cost-of-later. Row 1 (random streams expose no state, so a resumed run restarts every stream at draw 0 — and once M3-04's offers ride that stream, killing the app is a free reroll) is the one with no prior home in any doc or ADR and the only free moment to fix it is M2-13's format v1. `CoreCombat.md` §8 renamed M0 → M1, which is what it always described. **M2-00b…e** write the fifteen specs.
+
+### 2026-09-10 · M2-00f · Doc-system audit: template, entry cap, dedupes, staleness
+
+**Built:** the doc system reviewed from the implementer's seat, verdict *small fixes*, applied in one pass. The task [template](tasks/_TEMPLATE.md) now carries what every M1 session had to invent — spec precedence, implied guard rows, a ripple row, an author's self-check — before M2-00b…e write fifteen specs from it. Entries here are capped at twelve lines with the As-built footer owning deviations; AR §18.5 keeps only the soft spots no task owns and points at the ledger for the rest; Architecture.md says which of its sketches to trust; CLAUDE.md stops contradicting Current State on the device.
+**Deviations:** no spec — directed conversationally after the M2-00a review, like M2-00a. Eight files, past the five-file rule, all docs; called out rather than hidden.
+**Learned:** a log format with no length rule is a watch list with extra steps — the M0/M1 entries averaged 7 KB against a template that said "one line" → the cap in *How to write an entry*. A rule nothing checks does not fire — the ~75 % detailing trigger missed twice → `M<n>-00x` spec tasks (ROADMAP). Two lists that mean the same thing drift — §18.5 and the ledger shared seven rows → §18.5 points at the ledger.
+**Follow-ups:** ledger row 12 (the out-of-range focus tap, owner M2-12, moved from the parking lot). `m1` is still the owner's to tag. Next is M2-00b.
 
 _Next M2 entry below._

@@ -8,7 +8,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 - [Docs/GameDesign.md](Docs/GameDesign.md) — what the game is: pillars, loops, enemies, bosses, difficulty math, Veilrot
 - [Docs/Characters.md](Docs/Characters.md) — classes, skills, the in-run skill tree, levelling
 - [Docs/CoreCombat.md](Docs/CoreCombat.md) — movement, targeting, basic attack, skill-cast spec
-- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.** §18 is the invariants: orderings and boundary rules the code depends on, plus a soft-spots table naming the task each one bites at.
+- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.** §18 is the invariants: orderings and boundary rules the code depends on. Soft spots a named task must fix are in the ROADMAP's carry-forward ledger, not there.
 - [Docs/Traps.md](Docs/Traps.md) — **things in this toolchain that lie to you.** Unity, the MCP, VContainer, the Input System, shell probes, allocation measurement. Read before debugging a probe that says "no", and before believing one that says "yes".
 - [Docs/adr/](Docs/adr/) — why each architectural decision was made
 
@@ -19,8 +19,8 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 ## Plan and progress
 
 - [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the map: milestones → tasks (ID, size, dependencies, status)
-- [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **the log: read the Current State block first, every session**
-- [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. Full specs exist for the current and next milestone only.
+- [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **the log: read the Current State block first, every session.** Closed milestones are in [Docs/plan/archive/](Docs/plan/archive/).
+- [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. A milestone's specs are written by its own first tasks (`M<n>-00a…`); later milestones are titles.
 
 ## Session protocol
 
@@ -29,7 +29,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 3. Before handing over: tests green, zero errors, zero new analyzer warnings, manual steps listed for the owner.
 4. Append the PROGRESS entry and update Current State **in the same change**; tick the ROADMAP box; fill the spec's *As built* footer.
 5. Report what changed and give the owner a commit message. **The owner commits and opens the PR.**
-6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after.
+6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after. What counts as a file: [ROADMAP › How to read this](Docs/plan/ROADMAP.md#how-to-read-this).
 
 ## Architecture in five lines (details in Architecture.md)
 
@@ -82,17 +82,17 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 ## Unity
 
 - Force-text serialization, LF line endings for new scripts, root namespace `Soulvail`.
-- **Every asmdef needs a `csc.rsp` containing `-langversion:10` beside it.** Unity 6.3 compiles at C# 9, so file-scoped namespaces don't build without it. It is per-assembly — an `Assets/csc.rsp` does *not* reach asmdef assemblies. Add one with any new asmdef or its first file breaks the build (M0-02).
-- **Every `MonoBehaviour` and `ScriptableObject` needs a block namespace, never a file-scoped one.** Unity 6.3's script importer finds a file's type with its own parser, which does not understand `namespace X;`. Such a type compiles, but Unity never links a `MonoScript` to it: `MonoScript.FromScriptableObject` returns null, every asset referencing it serialises as `m_Script: {fileID: 0}` and loads as null, and **nothing anywhere reports an error** — the asset just shows "The associated script can not be loaded". Writing the correct GUID into the YAML by hand does not fix it; the `MonoScript` itself has no class. Pure C# keeps file-scoped namespaces (M0-11).
-- **Never hand-roll a GC allocation probe.** `GC.GetAllocatedBytesForCurrentThread()` returns 0 always on Unity's Mono and `GC.CollectionCount(0)` barely moves, so both silently pass code that allocates. Use `AllocationAssert.None` (`Tests/Core/Support/`), which measures with Unity's GC recorder (M0-02).
+- **Every asmdef needs a `csc.rsp` with `-langversion:10` beside it** — it is per assembly, and without it the first file-scoped namespace breaks the build ([Traps §5](Docs/Traps.md)).
+- **Every `MonoBehaviour` and `ScriptableObject` uses a block namespace, never a file-scoped one** — otherwise every asset referencing it loads as null and nothing reports an error ([Traps §5](Docs/Traps.md)). Pure C# keeps file-scoped namespaces.
+- **Never hand-roll a GC allocation probe** — `GC.GetAllocatedBytesForCurrentThread()` is inert on Unity's Mono. Use `AllocationAssert.None` (`Tests/Core/Support/`, [Traps §7](Docs/Traps.md)).
 - **Domain reload is disabled on Play** (Enter Play Mode Options). Iteration is instant, and it's safe *only* because the architecture bans static mutable state. If a static is ever unavoidable, reset it in `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`. Scene reload stays enabled.
-- **Reference device: none yet.** Until a phone is available, builds are verified on BlueStacks 5 (dev APKs include x86-64 for it) and layout on the Unity Device Simulator. Multi-touch, haptics, touch latency, 60 fps and thermal checks are **device-only** and tracked as deferred in PROGRESS.
+- **Reference device: none, and nothing has ever run outside the Editor.** BlueStacks installs the APK and crashes on launch ([M0-20a](Docs/plan/tasks/M0-20a-apk-runs-on-bluestacks.md)); the Unity Device Simulator serves for layout only. Device-only checks — multi-touch, haptics, latency, frame rate, thermal — are listed as deferred in PROGRESS → Current State.
 - **Application identifier is a placeholder** (`com.soulvail.dev`) until publishing. It is permanent once uploaded to a store — M8-06 changes it first.
 - `Screen.sleepTimeout` is `NeverSleep` only during a run (set in `RunTicker.Start`, restored on dispose) — never app-wide, menus shouldn't burn battery.
 - **C# lint:** `Microsoft.Unity.Analyzers` (v1.27.0) at `Assets/Plugins/Analyzers/`, labelled `RoslynAnalyzer`, all platforms disabled. Runs inside Unity's compiler (Console) and the IDE. `.editorconfig` carries the style rules the IDE enforces. No `dotnet` SDK on this machine — only a .NET runtime, so `dotnet` is on `PATH` but `dotnet format` does not exist. The pre-commit check probes `dotnet format --version` (not the bare binary) and self-skips; probing the binary alone reports a phantom formatting violation (M0-02).
 - URP: the mobile assets are `Assets/Settings/Mobile_Renderer` / `Mobile_RPAsset`.
-- Unity MCP (`Unity_RunCommand`, `Unity_GetConsoleLogs`) works when the Editor is open and idle.
-- Android module installed; IL2CPP set; active build target still Windows.
+- Unity MCP (`Unity_RunCommand`, `Unity_GetConsoleLogs`) works when the Editor is open and **focused** — an unfocused Editor does not tick, and looks alive ([Traps §3](Docs/Traps.md)).
+- Android module installed; IL2CPP; the APK is ARM64-only (Unity 6.3 cannot build x86-64 for Android).
 - **Verification workflow when implementing:** the Editor must be open. Compile state and Console come through the MCP; the EditMode suite runs through `TestRunnerApi` the same way. No PR is handed over unverified.
 
 ## Ask before

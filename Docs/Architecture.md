@@ -2,7 +2,7 @@
 
 **Version:** 1.0 — decided 2026-09-06
 **Companions:** [GameDesign.md](GameDesign.md) · [Characters.md](Characters.md) · [CoreCombat.md](CoreCombat.md) · [adr/](adr/) (why each decision was made)
-**Status:** Decided. Nothing here is implemented yet. Change it through a superseding ADR, not by routing around it.
+**Status:** Decided; M0 and M1 are built against it. A *decision* changes through a superseding ADR, never by routing around it. The code sketches are the shape at decision time — for anything already built, the code and the task's *As built* footer are the truth, and a sketch is corrected when it misleads (§11.1 was, in M1-01), not kept in step.
 
 ---
 
@@ -174,8 +174,8 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Direction | Port | Purpose | Implemented by |
 |---|---|---|---|
-| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`. M1 adds the facts: `ReportConeHits`, `ReportContact`, `ReportProjectileHit` | Core |
-| Inbound | `IPlayerCommands` | `Charge()`, `CastSkill(slot)`, `FocusTarget(worldPoint)`, `ClearFocus()`, `SetAutoCast(skillId, bool)` | Core |
+| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the facts as they land: `ReportConeHits` (M1-11), `ReportChargeHits` (M1-15), a projectile fact with M2-07. Contact is ledger row 7 — M1-18 chose a core-side call over a fact; M2-08 settles it | Core |
+| Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
 | Outbound | `IClock` | `Now` (core time, seconds) | `UnityClock` |
 | Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc` | `SeededRandom` (xorshift/PCG, seedable) |
@@ -370,7 +370,7 @@ Assets/_Project/
 ├── Editor/                        Soulvail.Editor.asmdef (validation, tooling)
 ├── Tests/Core/                    Soulvail.Tests.Core.asmdef (EditMode, NUnit, → Core only)
 ├── Tests/Game/                    Soulvail.Tests.Game.asmdef (EditMode; adapters, authoring, installers — no scene)
-├── Tests/PlayMode/                Soulvail.Tests.PlayMode.asmdef (one smoke test: Boot reaches Menu)
+├── Tests/PlayMode/                Soulvail.Tests.PlayMode.asmdef (smoke tests only: Boot reaches Menu, Descend starts a run)
 ├── Data/                          SO instances: Characters/ Enemies/ Skills/ Modes/ Tuning/
 ├── Prefabs/  Scenes/  Art/  Audio/  Materials/
 ```
@@ -383,7 +383,7 @@ Assets/_Project/
 ## 13. Conventions and banned patterns
 
 **Conventions**
-- Namespaces mirror folders. Private fields `_camelCase`; `[SerializeField] private`, never public fields. File-scoped namespaces. One class per file. `.editorconfig` enforces.
+- Namespaces mirror folders. Private fields `_camelCase`; `[SerializeField] private`, never public fields. File-scoped namespaces in pure C#; **block namespaces in every `MonoBehaviour` and `ScriptableObject`** ([Traps §5](Traps.md)). One class per file. `.editorconfig` enforces.
 - Core: constructor injection, `readonly` where possible, `System.Numerics` for vectors, no `UnityEngine` ever.
 - Game: `[Inject]` for dependencies; views are dumb — they read intents and render events.
 - Every tunable is a spec field. Every gameplay number is a `Stat`.
@@ -558,18 +558,13 @@ is about Unity's.
 
 ### 18.5 Known soft spots
 
-Not bugs today; each names the task that must deal with it.
+Not bugs today. **Anything a named task must deal with lives in the
+[carry-forward ledger](plan/ROADMAP.md#carry-forward-into-m2), not here** — one list, one owner per
+row, and a row leaves when its owner's *As built* says so. What remains below has no owning task yet:
 
 | Soft spot | Bites at |
 |---|---|
-| `Stat` removes modifiers by source reference only — there is no "drop everything", and `EnemyAgent` is recycled | M2-03 depth scaling, M7-02 affixes |
-| Random streams expose no state, so a resumed run restarts every stream at draw 0 | M2-13 / M2-14 |
-| `EnemySystem.SpawnAll` runs *after* `RunStarted` and after `IsRunning` flips, so a bad plan half-starts a run | M2-02 |
-| `AlliesNearby` is `n² − n` comparisons a frame over the **registered** count | M2-04's concurrency cap |
-| Path refresh is capped at 4/frame against a 10 Hz cadence — routes go stale silently above **24** concurrent enemies | M2-04 / M2-05 |
 | `IsCurrentBlocked` suppressing the invulnerability retarget has **no test** — the outcome is identical, only the frequency changes | whenever a Warden-like enemy exists |
 | `RunSession.Tick`'s ordering rule has no assertion — no public route from session to blackboard | M1-08 made it observable; still unpinned |
 | A `Health` driven to `MaxHp` 0 dies without a `DamageResult` to say so | the first effect that removes max HP |
-| `PendingRun.Clear()` has no caller and needs a "the run has read everything" point that does not exist yet | M2-14 |
 | `Targeter`'s 2 s focus-drop delay and `FocusResolver`'s 3 m radius are `const`s, not authored data | when either must differ per class |
-| Views and `RunTicker`'s frame order have no automated coverage at all | M2-09 / M2-11, as the pool grows |

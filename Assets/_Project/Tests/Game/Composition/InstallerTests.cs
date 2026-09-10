@@ -160,6 +160,30 @@ public sealed class InstallerTests
         Assert.That(second, Is.SameAs(first));
     }
 
+    /// <summary>
+    /// The M1-20 wire. Haptics are the one feature in the game whose absence is invisible — a
+    /// missing registration reads exactly like a phone that does not buzz much — so the
+    /// registration itself is what gets asserted, in the Editor, where the platform must resolve
+    /// the no-op.
+    /// </summary>
+    [Test]
+    public void Boot_ResolvesHaptics_NullVibratorOffAndroid()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var vibrator = container.Resolve<IVibrator>();
+        var settings = container.Resolve<HapticsSettings>();
+
+        Assert.That(vibrator, Is.InstanceOf<NullVibrator>(),
+            "Anywhere but an Android player build the vibrator must be the no-op — an Editor " +
+            "playtest has no device to buzz and must never reach for JNI.");
+
+        // Read, never written: flipping it here would persist to the machine running the tests.
+        Assert.That(settings, Is.Not.Null);
+        Assert.That(container.Resolve<HapticsSettings>(), Is.SameAs(settings),
+            "One toggle, or the listener reads a different answer from the one an options screen set.");
+    }
+
     [Test]
     public void Run_ResolvesSession_Scoped()
     {

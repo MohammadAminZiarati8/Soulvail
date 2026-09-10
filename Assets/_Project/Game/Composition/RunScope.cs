@@ -1,3 +1,4 @@
+using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
@@ -266,6 +267,17 @@ namespace Soulvail.Game.Composition
             // dispose, and a SpawnPlan is immutable, holds no resource and is not IDisposable, as
             // ContentCatalog already is at the root.
             builder.RegisterInstance(BuildSpawnPlan());
+
+            // The one entry point in the run that gameplay knows nothing about: it reads four
+            // events and buzzes a phone (M1-20). Scoped, so a run's subscriptions die with it.
+            //
+            // The clock is passed by name, like every other parameter on this scope, and passed at
+            // all for the reason NavPathSense's refresh rate is: VContainer resolves every argument
+            // from the container or a WithParameter and never falls back to a C# default. Cast to
+            // Func<float> so the by-name (string, object) overload is the one that binds — the
+            // generic overload takes a factory of IObjectResolver, which this is not.
+            builder.RegisterEntryPoint<HapticsListener>(Lifetime.Scoped)
+                .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup));
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

@@ -68,10 +68,10 @@ The listener takes a `Func<float> clock` (defaulting to `Time.realtimeSinceStart
 
 ## Acceptance
 
-- [ ] All tests green
-- [ ] Zero errors, zero new analyzer warnings
-- [ ] Manual steps verified on device
-- [ ] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
+- [x] All tests green — 452 EditMode (11 new), 3 PlayMode
+- [x] Zero errors, zero new analyzer warnings — clean recompile of every assembly, empty Console
+- [ ] Manual steps verified on device — **all four are outstanding and cannot be run here**: the Editor resolves `NullVibrator` by construction, and there is no phone (M0-20a)
+- [x] `PROGRESS.md` entry appended; Current State updated; ROADMAP box ticked
 
 ## Out of scope
 
@@ -80,4 +80,17 @@ The listener takes a `Func<float> clock` (defaulting to `Time.realtimeSinceStart
 
 ## As built
 
-_Filled at merge._
+**Files.** Five rather than four: `Game/Adapters/AndroidVibrator.cs` (`IVibrator`, `AndroidVibrator`, `NullVibrator`), `Game/Adapters/HapticsSettings.cs`, `Game/Presentation/HapticsListener.cs`, `Tests/Game/Presentation/HapticsListenerTests.cs`, plus small edits to `BootInstaller`, `RunScope` and `InstallerTests`.
+
+**Deviations.**
+
+1. **`HapticsSettings` has its own file** rather than sitting in `AndroidVibrator.cs` where this spec's `Public API` block implies it. One class per file is the convention, and a settings toggle buried in a vibrator driver is unfindable. `IVibrator` and `NullVibrator` do share the vibrator's file, as the Files table describes.
+2. **The listener is `IStartable, ITickable, IDisposable`.** Forced by this spec's own tests: `RateLimit_StrongestWins` cannot be satisfied by an immediate pulse, since nothing knows which event in a window is strongest until the window closes. Pulses are therefore deferred to the end of their window and a heartbeat is what flushes them — which means **every pulse is up to 100 ms late, isolated ones included.** Deliberate, and the top row of the device debt below.
+3. **`HapticsSettings` has no public constructor** — `FromPlayerPrefs()` persists, `InMemory(bool)` does not. A test must not be able to turn the developer's own haptics off by accident.
+4. **Eleven tests, not seven.** All seven rows are present; added `EnemyDied_MediumPulse`, `ChargeStarted_MediumPulse` (rule 1's remaining clauses), `RateLimit_WeakerInWindow_Dropped` and `DisabledMidWindow_NoPulse`.
+5. **One row added to `InstallerTests`** — `Boot_ResolvesHaptics_NullVibratorOffAndroid`, outside the Files table. A missing registration would be indistinguishable from a phone that does not buzz much.
+6. **The clock is passed by `RunScope`** despite having a C# default: VContainer never falls back to one (M1-19).
+
+**Verified here.** 452 EditMode + 3 PlayMode tests green; clean recompile of all assemblies with an empty Console. The PlayMode row `Descend_StartsARun_AndRefusesASecondTap` is what proves the `RunScope` entry-point registration composes — no EditMode test can reach a `LifetimeScope`.
+
+**Not verified, and not verifiable here.** Everything in *Manual verification (device)*. The Editor resolves `NullVibrator` by construction, so the mapping, the window and the off switch are proven only against a fake vibrator. Whether 100 ms of coalescing reads as *late* is the first question for the first phone.

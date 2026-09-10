@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Pooling;
 using UnityEngine;
 using VContainer;
-using VContainer.Unity;
 
 namespace Soulvail.Game.Views;
 
@@ -24,11 +24,12 @@ namespace Soulvail.Game.Views;
 /// here can never be one core still expects a position for.
 /// </para>
 /// <para>
-/// <b>Instantiate and Destroy are a stopgap.</b> Creating a GameObject per spawn and destroying it
-/// per despawn is exactly the per-wave garbage AR §14 bans, and it is accepted only because M1
-/// needs eight dummies standing still while targeting and cone hits are built. M1-19's
-/// <c>ViewPool</c> replaces both calls with a rent and a return, and <see cref="EnemyView.Bind"/>
-/// and <c>Unbind</c> already exist so that change is this file and nothing else.
+/// <b>It rents and returns; it never creates or destroys.</b> A GameObject per spawn and a
+/// <c>Destroy</c> per death was M1-07's accepted stopgap — exactly the per-wave garbage AR §14
+/// bans — and M1-19 closed it: a <see cref="ViewPool{T}"/> holds every body for the length of the
+/// run, and <see cref="EnemySpawned"/> and <see cref="EnemyDespawned"/> move them in and out of
+/// service. Nothing allocates after the pool is warm, which is what lets an arena keep replacing
+/// the dead for as long as the player survives.
 /// </para>
 /// <para>
 /// Not a <see cref="MonoBehaviour"/>: it has no frame of its own and nothing in a scene should be
@@ -38,9 +39,7 @@ namespace Soulvail.Game.Views;
 /// </remarks>
 public sealed class EnemyViews : IDisposable
 {
-    private readonly IObjectResolver _resolver;
-    private readonly EnemyView _prefab;
-    private readonly Transform _parent;
+    private readonly ViewPool<EnemyView> _pool;
 
     /// <summary>Core's id → the body standing in for it. The only index anything outside resolves through.</summary>
     private readonly Dictionary<int, EnemyView> _byId = new Dictionary<int, EnemyView>();
@@ -63,38 +62,42 @@ public sealed class EnemyViews : IDisposable
     private bool _disposed;
 
     /// <param name="resolver">
-    /// The run's container, used to instantiate the prefab. <c>resolver.Instantiate</c> rather
-    /// than <c>Object.Instantiate</c>, so an <c>[Inject]</c> on a future enemy component is
-    /// honoured — a health bar (M3-13) is the first that will want one, and a body created the
-    /// plain way would silently never be injected.
+    /// The run's container, handed to the pool so bodies are instantiated through it. That is what
+    /// runs an <c>[Inject]</c> on an enemy component — <c>EnemyHitFeedback</c> takes the event hub
+    /// that way — and a body created the plain way would silently never be injected.
     /// </param>
     /// <param name="prefab">The one enemy body prefab. All archetypes share it until M2-06.</param>
     /// <param name="parent">
-    /// Where instances are parented, or null for the scene root. A tidiness argument today and
-    /// M1-19's pool root tomorrow.
+    /// Where instances are parented, or null for the scene root. The pool's root, and a tidiness
+    /// argument — nothing looks anything up through it.
     /// </param>
     /// <param name="hub">The run's event hub, subscribed to for the length of this object's life.</param>
+    /// <param name="prewarm">
+    /// How many bodies to build before the run starts. The arena's steady-state population, so the
+    /// only <c>Instantiate</c> calls of a whole run happen while the scene is still loading rather
+    /// than on the frame a wave lands.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="resolver"/>, <paramref name="prefab"/> or <paramref name="hub"/> is null.
     /// <paramref name="parent"/> may be null; the others are the run being mis-wired.
     /// </exception>
-    public EnemyViews(IObjectResolver resolver, EnemyView prefab, Transform parent, DomainEventHub hub)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="prewarm"/> is negative.</exception>
+    public EnemyViews(
+        IObjectResolver resolver,
+        EnemyView prefab,
+        Transform parent,
+        DomainEventHub hub,
+        int prewarm = 0)
     {
-        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
-
         if (hub is null)
         {
             throw new ArgumentNullException(nameof(hub));
         }
 
-        // Unity's == rather than `is null`: RunScope supplies this from a serialized field, so an
-        // unassigned or destroyed prefab is a live reference that only compares equal to null
-        // through the engine's operator.
-        _prefab = prefab == null ? throw new ArgumentNullException(nameof(prefab)) : prefab;
-
-        // Normalised to a real null the same way, so `Instantiate(..., parent)` is handed the
-        // scene root rather than a destroyed transform.
-        _parent = parent == null ? null : parent;
+        // The pool makes the same three checks this constructor used to, and in the same way — a
+        // destroyed prefab is a live reference that only compares equal to null through Unity's
+        // operator, and a destroyed parent is normalised to the scene root.
+        _pool = new ViewPool<EnemyView>(resolver, prefab, parent, prewarm);
 
         // Subscribed in the constructor, which is what makes the ordering safe: RunTicker takes
         // SnapshotBuilder, SnapshotBuilder takes this, so this object exists and is listening
@@ -141,11 +144,14 @@ public sealed class EnemyViews : IDisposable
     /// before this ran.
     /// </para>
     /// <para>
-    /// Every field of the slot is assigned, including the two that are still zero. Slots are
+    /// Every field of the slot is assigned, including the two written as zero here. Slots are
     /// reused and <c>Clear</c> leaves their contents alone (AR §4.2), so a field left unwritten
     /// carries whatever the enemy that last occupied that slot put there — a stale line of sight
-    /// belonging to somebody else. <c>PathDirectionToPlayer</c> and <c>HasLineOfSight</c> become
-    /// real senses in M1-19, when the NavMesh exists to answer them.
+    /// belonging to somebody else. <c>PathDirectionToPlayer</c> is overwritten a moment later by
+    /// <see cref="SnapshotBuilder"/>, which is the only place that knows where the player is; the
+    /// zero written here is what a run without a baked NavMesh reports, and it has to be written
+    /// rather than inherited for exactly the reason above. <c>HasLineOfSight</c> stays false until
+    /// something answers it — CC §3.1 still skips line of sight deliberately.
     /// </para>
     /// <para>
     /// Order is the dictionary's and that is safe: core's <c>Ingest</c> looks every entry up by
@@ -177,9 +183,15 @@ public sealed class EnemyViews : IDisposable
     }
 
     /// <summary>
-    /// Stops listening and destroys every body still standing. Called when <c>RunScope</c> is
-    /// disposed, which is what leaving the Run scene does.
+    /// Stops listening and destroys every body — standing, pooled, or mid-dissolve. Called when
+    /// <c>RunScope</c> is disposed, which is what leaving the Run scene does.
     /// </summary>
+    /// <remarks>
+    /// The bodies still in service are not returned first. The pool owns every instance it created
+    /// and destroys the lot, so returning them would be twelve resets on objects about to stop
+    /// existing — and the one thing that must not happen, a body outliving the run, cannot, because
+    /// there is exactly one owner of the whole set.
+    /// </remarks>
     public void Dispose()
     {
         if (_disposed)
@@ -192,10 +204,7 @@ public sealed class EnemyViews : IDisposable
         _spawnedSubscription.Dispose();
         _despawnedSubscription.Dispose();
 
-        foreach (EnemyView view in _byId.Values)
-        {
-            DestroyBody(view);
-        }
+        _pool.Dispose();
 
         _byId.Clear();
         _idByColliderInstance.Clear();
@@ -205,7 +214,11 @@ public sealed class EnemyViews : IDisposable
     {
         Vector3 position = evt.Position.ToUnity();
 
-        EnemyView view = _resolver.Instantiate(_prefab, position, Quaternion.identity, _parent);
+        // Rented, then bound: the pool hands over a clean body and this is the line that tells it
+        // who it is standing in for and where. Bind sets the position, so the body is never drawn
+        // at wherever its previous life ended — the two calls are in the same frame, before
+        // anything renders.
+        EnemyView view = _pool.Get();
 
         view.Bind(evt.Id, position);
 
@@ -244,36 +257,11 @@ public sealed class EnemyViews : IDisposable
             _idByColliderInstance.Remove(view.Body.GetInstanceID());
         }
 
-        DestroyBody(view);
-    }
-
-    /// <remarks>
-    /// <c>Unbind</c> before the destroy, so a view that M1-19 later pools instead of destroying
-    /// takes the same path out of service either way.
-    /// <para>
-    /// The play-mode split is the one <c>InputAdapter</c> makes and for the same reason: in edit
-    /// mode <c>Object.Destroy</c> destroys nothing and logs an <em>error</em> rather than
-    /// throwing, which would both leak the object and redden any EditMode test that disposes one
-    /// (M0-14).
-    /// </para>
-    /// </remarks>
-    private static void DestroyBody(EnemyView view)
-    {
-        if (view == null)
-        {
-            return;
-        }
-
-        view.Unbind();
-
-        if (Application.isPlaying)
-        {
-            UnityEngine.Object.Destroy(view.gameObject);
-        }
-        else
-        {
-            UnityEngine.Object.DestroyImmediate(view.gameObject);
-        }
+        // The collider index is dropped *before* the return, and it goes back in on the next rental
+        // under whatever id this body is given then. The instance id itself does not change — the
+        // object is the same one — so leaving the entry behind would have a corpse in the pool
+        // answering "which enemy is this collider?" with the name of the enemy that died in it.
+        _pool.Release(view);
     }
 
     /// <remarks>

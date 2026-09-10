@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Pooling;
 using UnityEngine;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
@@ -37,16 +38,24 @@ namespace Soulvail.Game.Views
     /// index, so it is invisible to both sweeps and cannot double-report a hit.
     /// </para>
     /// <para>
-    /// <b>An unbound view is not a live enemy.</b> <see cref="EnemyViews"/> creates one per
-    /// <c>EnemySpawned</c> and destroys it on <c>EnemyDespawned</c> today, so <see cref="Bind"/>
-    /// and <see cref="Unbind"/> look redundant — they are the seam M1-19 needs, where the same
-    /// object is handed back to a pool and re-bound to a different id, and building it now costs
-    /// two methods instead of a rewrite.
+    /// <b>An unbound view is not a live enemy.</b> <see cref="EnemyViews"/> rents one from a
+    /// <see cref="ViewPool{T}"/> per <c>EnemySpawned</c> and returns it on <c>EnemyDespawned</c>,
+    /// so the same object stands in for a Husk, then a corpse, then a different Husk with a
+    /// different id. <see cref="Bind"/> and <see cref="Unbind"/> are that seam — built in M1-07
+    /// against the day it would be needed, and used for real as of M1-19.
+    /// </para>
+    /// <para>
+    /// <b>Which is why <see cref="OnDespawn"/> exists and is the most dangerous method here.</b>
+    /// Everything a life leaves behind — the dissolve's stretch and fade, the collider it switched
+    /// off, a shove still in flight — is inherited by the next enemy to be handed this body unless
+    /// it is undone. A reset that is forgotten does not fail: it produces a Husk that spawns
+    /// half-transparent, stretched, and unhittable, which reads as a rendering bug rather than as a
+    /// pooling one.
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(CapsuleCollider))]
     [RequireComponent(typeof(CharacterController))]
-    public sealed class EnemyView : MonoBehaviour
+    public sealed class EnemyView : MonoBehaviour, IPoolable
     {
         /// <summary>
         /// The id of a view that is not standing in for anything. Zero, because
@@ -79,6 +88,8 @@ namespace Soulvail.Game.Views
 
         private CapsuleCollider _body;
         private CharacterController _controller;
+        private EnemyHitFeedback _feedback;
+        private bool _searchedForFeedback;
         private int _id = Unbound;
         private Vector3 _velocity;
         private float _fallSpeed;
@@ -178,6 +189,30 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
+        /// The flash-and-dissolve on this body, or null on a body that has none.
+        /// </summary>
+        /// <remarks>
+        /// Guarded by a flag rather than by a null check, unlike <see cref="Body"/> and
+        /// <see cref="Controller"/>, because here null is a legitimate answer: the component is not
+        /// <c>[RequireComponent]</c>ed, and an EditMode fixture builds bodies without one. Without
+        /// the flag every despawn of such a body would search its components again for something
+        /// that was never there.
+        /// </remarks>
+        private EnemyHitFeedback Feedback
+        {
+            get
+            {
+                if (!_searchedForFeedback)
+                {
+                    _searchedForFeedback = true;
+                    _feedback = GetComponent<EnemyHitFeedback>();
+                }
+
+                return _feedback;
+            }
+        }
+
+        /// <summary>
         /// Applies one tick's intent: walk at this velocity, look this way.
         /// </summary>
         /// <param name="intent">What core decided for this enemy this tick.</param>
@@ -261,6 +296,58 @@ namespace Soulvail.Game.Views
             _fallSpeed = 0f;
 
             CancelKnockback();
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Nothing to do, and deliberately so: <see cref="EnemyViews"/> calls <see cref="Bind"/> on
+        /// the very next line with the id and the position this body is being put into service
+        /// with, and the pool has neither to give. Everything a rental needs undone was undone on
+        /// the way out — see <see cref="OnDespawn"/>, which is where the pooling rule lives so that
+        /// a body is left clean rather than cleaned on collection.
+        /// </remarks>
+        public void OnSpawn()
+        {
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// <para>
+        /// The whole of "put this body back the way you found it", in the order it has to happen.
+        /// The visuals go first because the dissolve owns the scale and the material and would keep
+        /// writing both from its own <c>Update</c>; the collider is switched back on because a death
+        /// switched it off; and the unbind is last, since it is what makes the body stop reporting
+        /// itself into the snapshot.
+        /// </para>
+        /// <para>
+        /// <b>It reaches into <see cref="EnemyHitFeedback"/>, and that is the one direction this
+        /// class ever points outward.</b> The alternative — the census resetting each component in
+        /// turn — spreads "what a rental has to forget" across two files, and the file that would
+        /// not have it is the one holding the pooled object. Anything else added to the prefab that
+        /// remembers something joins the list here.
+        /// </para>
+        /// </remarks>
+        public void OnDespawn()
+        {
+            EnemyHitFeedback feedback = Feedback;
+
+            if (feedback != null)
+            {
+                feedback.ResetVisuals();
+            }
+
+            // Back into the physics query. A death took it out (EnemyHitFeedback.OnDied) so that a
+            // swing in the same frame could not spend a hit on a corpse; leaving it out would make
+            // the next enemy to be handed this body permanently unhittable — a bug that looks like
+            // damage not registering, three systems away from its cause.
+            Collider body = Body;
+
+            if (body != null)
+            {
+                body.enabled = true;
+            }
+
+            Unbind();
         }
 
         /// <summary>

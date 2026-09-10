@@ -44,6 +44,7 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     private IObjectResolver _container;
     private DomainEventHub _hub;
     private EnemyViews _enemyViews;
+    private NavPathSense _paths;
 
     [SetUp]
     public void CreateBuilder()
@@ -73,7 +74,14 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         _enemyViews = new EnemyViews(_container, template, null, _hub);
 
         _input = new InputAdapter();
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews);
+
+        // A real path cache rather than null, so what these rows exercise is the wiring a run
+        // actually has. An EditMode scene has no baked NavMesh, so every search fails and the sense
+        // answers with the straight line — which is the guarantee that made M1 playable for
+        // eighteen tasks before pathing existed, and worth having a row stand on.
+        _paths = new NavPathSense(8);
+
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -230,10 +238,22 @@ public sealed class SnapshotBuilderTests : InputTestFixture
 
         Assert.That(written.Id, Is.EqualTo(1));
         Assert.That(written.HasLineOfSight, Is.False,
-            "M1-19 fills this for real; until then it must be written as false, not left alone.");
-        Assert.That(written.PathDirectionToPlayer, Is.EqualTo(System.Numerics.Vector2.Zero));
+            "Line of sight is still deliberately skipped (CC §3.1), so it must be written as "
+                + "false rather than left alone.");
         Assert.That(written.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero),
             "An EnemyView reports zero velocity until M1-18 moves it — zero written, not inherited.");
+
+        // The stale (0.6, 0.8) is gone, replaced by a direction from this enemy to this player.
+        // With no NavMesh in an EditMode scene the search fails and NavPathSense answers with the
+        // straight line: the body is at (1, 0, 2), the player is at the origin, so the unit XZ
+        // direction is (−1, −2) normalised.
+        System.Numerics.Vector2 path = written.PathDirectionToPlayer;
+
+        Assert.That(path.Length(), Is.EqualTo(1f).Within(1e-4f));
+        Assert.That(path.X, Is.EqualTo(-0.4472136f).Within(1e-4f));
+        Assert.That(path.Y, Is.EqualTo(-0.8944272f).Within(1e-4f),
+            "Y of the XZ direction is world Z. A component swapped here sends every enemy in the "
+                + "game sideways.");
     }
 
     [Test]

@@ -87,7 +87,7 @@ public sealed class ChaserBehaviourTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _system = new EnemySystem(Catalog(), _events, Capacity);
+        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Capacity);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
         _allocationClock = 0f;
         _clock = 0f;
@@ -373,7 +373,7 @@ public sealed class ChaserBehaviourTests
         // exactly what "core allocates nothing while publishing" needs on the other end.
         var silent = new SilentEvents();
         var intents = new RecordingIntents();
-        var system = new EnemySystem(Catalog(), silent, Capacity);
+        var system = new EnemySystem(Catalog(), silent, new FixedRandom(), Capacity);
         var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
 
         var snapshot = new WorldSnapshot(Capacity);

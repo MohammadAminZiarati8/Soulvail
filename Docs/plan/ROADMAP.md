@@ -87,7 +87,7 @@
 | [M1-16](tasks/M1-16-charge-view-and-skill-button.md) | `PlayerView` charge motion + sweep, `SkillButton`, movement-skill input | M | 15 | ☑ |
 | [M1-17](tasks/M1-17-hud.md) | `HudPresenter`, HP bar with ghost trail, shield ring, cooldown, death → Menu | M | 08 16 18 | ☑ |
 | [M1-18](tasks/M1-18-chaser-ai.md) | `ChaserBehaviour` FSM, `EnemyMoveIntent`, strike damage, telegraph event | M | 06 08 | ☑ |
-| [M1-19](tasks/M1-19-pooling-respawn-navmesh.md) | `ViewPool`, `RespawnPolicy` (keep 12 alive), NavMesh bake + path sense | M | 12 18 | ☐ |
+| [M1-19](tasks/M1-19-pooling-respawn-navmesh.md) | `ViewPool`, `RespawnPolicy` (keep 12 alive), NavMesh bake + path sense | M | 12 18 | ☑ |
 | [M1-20](tasks/M1-20-haptics.md) | `HapticsListener`, Android vibrator, toggle | S | 11 15 | ☐ |
 | [M1-21](tasks/M1-21-acceptance-and-tag.md) | M1 acceptance: CC §8 on device, tuning, tag `m1` | S | all | ☐ |
 

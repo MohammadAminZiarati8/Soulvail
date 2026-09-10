@@ -89,8 +89,24 @@ namespace Soulvail.Game.Composition
         [SerializeField] private EnemyDefinition _dummySpec;
 
         [Tooltip("Where the run's dummies stand, in world metres. M1's whole spawner: there is " +
-                 "no director until M2-05, so this is how a playtest gets something to shoot at.")]
+                 "no director until M2-05, so this is how a playtest gets something to shoot at. " +
+                 "Respawns reuse the same positions.")]
         [SerializeField] private Vector3[] _dummyPositions;
+
+        [Tooltip("How many enemies the arena keeps breathing. Zero turns respawning off entirely, " +
+                 "which is what every arena did before M1-19. Replaced by M2-03's threat budget.")]
+        [Min(0)]
+        [SerializeField] private int _keepAlive = 12;
+
+        [Tooltip("Seconds of quiet after the last death before the arena refills. The pause the " +
+                 "player reads as 'I cleared that'.")]
+        [Min(0f)]
+        [SerializeField] private float _respawnDelay = 2f;
+
+        [Tooltip("Metres of clearance a respawn needs from the player (GD §12.4). Nothing should " +
+                 "ever appear on top of you.")]
+        [Min(0f)]
+        [SerializeField] private float _minSpawnDistance = 6f;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -195,12 +211,29 @@ namespace Soulvail.Game.Composition
             builder.Register<TapToFocusAdapter>(Lifetime.Scoped)
                 .WithParameter("camera", _camera);
 
-            // The two scene references go by name rather than by type: WithParameter<Transform>
-            // would break the moment a second Transform parameter appeared, and the enemy prefab
-            // is an EnemyView, which is also what the container would hand a plain type match.
+            // The scene references go by name rather than by type: WithParameter<Transform> would
+            // break the moment a second Transform parameter appeared, and the enemy prefab is an
+            // EnemyView, which is also what the container would hand a plain type match. The
+            // prewarm goes by name for the same reason an int always does here.
+            //
+            // Prewarmed to the arena's steady-state population, so every Instantiate a run will
+            // ever do happens while the scene is still loading. One more than the quota, because a
+            // corpse holds its body for the 0.6 s of its dissolve while the replacement is already
+            // being rented — without the spare, every single kill would instantiate.
             builder.Register<EnemyViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _enemyPrefab)
-                .WithParameter("parent", _enemyParent);
+                .WithParameter("parent", _enemyParent)
+                .WithParameter("prewarm", PrewarmCount());
+
+            // Sized to the snapshot's capacity rather than to the quota above: the cache is keyed
+            // by enemy id and evicts only what stopped asking, so a table smaller than the arena
+            // would thrash on exactly the frames that are already the most expensive.
+            // Both arguments are passed, including the one the constructor has a default for:
+            // VContainer resolves every parameter from the container or a WithParameter and never
+            // falls back to a C# default, so an omitted refreshHz would fail to compose the run.
+            builder.Register<NavPathSense>(Lifetime.Scoped)
+                .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
+                .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz);
 
             // Guarded here as well as in the query's own constructor, because the two failures read
             // differently: the constructor can only say "this mask is empty", while this can say
@@ -258,6 +291,11 @@ namespace Soulvail.Game.Composition
         /// warning, unlike the seed, because an empty arena is visible on screen the instant the
         /// run starts — nothing is standing in it.
         /// </para>
+        /// <para>
+        /// The respawn policy reuses the same positions, and a <c>Keep Alive</c> of zero means an
+        /// arena that empties and stays empty — which is what every arena did before M1-19 and what
+        /// an experiment about a single Husk still wants.
+        /// </para>
         /// </remarks>
         private SpawnPlan BuildSpawnPlan()
         {
@@ -274,12 +312,48 @@ namespace Soulvail.Game.Composition
 
             var entries = new SpawnPlan.Entry[_dummyPositions.Length];
 
+            var positions = new System.Numerics.Vector3[_dummyPositions.Length];
+
             for (int i = 0; i < entries.Length; i++)
             {
-                entries[i] = new SpawnPlan.Entry(specId, _dummyPositions[i].ToNum());
+                positions[i] = _dummyPositions[i].ToNum();
+                entries[i] = new SpawnPlan.Entry(specId, positions[i]);
             }
 
-            return new SpawnPlan(entries);
+            RespawnPolicy respawn = _keepAlive > 0
+                ? new RespawnPolicy(specId, positions, _keepAlive, _respawnDelay, _minSpawnDistance)
+                : null;
+
+            return new SpawnPlan(entries, respawn);
+        }
+
+        /// <summary>
+        /// How many bodies the enemy pool builds before the run starts.
+        /// </summary>
+        /// <remarks>
+        /// The larger of the opening population and the respawn quota, plus one. The quota is what
+        /// the arena settles at; the opening population can exceed it, because an arena is allowed
+        /// to be dressed with more dummies than it keeps alive; and the spare covers the overlap
+        /// every kill has — a corpse holds its body for the 0.6 s of its dissolve while its
+        /// replacement is already being rented, so without it a steady fight would instantiate once
+        /// per death and the pool would have bought nothing.
+        /// <para>
+        /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
+        /// <see cref="SpawnPlan.Empty"/>, so core will never ask for a body — and building twelve
+        /// of them anyway would make an undressed Run scene, the fastest iteration loop in the
+        /// project, the slowest one to enter.
+        /// </para>
+        /// </remarks>
+        private int PrewarmCount()
+        {
+            if (_dummySpec == null)
+            {
+                return 0;
+            }
+
+            int dressed = _dummyPositions is null ? 0 : _dummyPositions.Length;
+
+            return Mathf.Max(dressed, _keepAlive) + 1;
         }
     }
 }

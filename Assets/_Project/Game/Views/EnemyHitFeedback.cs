@@ -82,6 +82,13 @@ namespace Soulvail.Game.Views
 
         private EnemyView _view;
         private MaterialPropertyBlock _block;
+
+        /// <summary>
+        /// The material this body draws with while it is alive, remembered so a pooled body can be
+        /// swapped back off the transparent stand-in a death put it on (M1-19).
+        /// </summary>
+        private Material _liveMaterial;
+
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _telegraphSubscription;
@@ -103,9 +110,14 @@ namespace Soulvail.Game.Views
         /// what the ordering rules out: <c>EnemyViews</c> creates this body with
         /// <c>IObjectResolver.Instantiate</c>, and Unity runs <c>Awake</c> and <c>OnEnable</c>
         /// during the instantiate itself — before VContainer has injected anything. A subscription
-        /// taken there would be taken against a null hub on every enemy in the game. The pooling of
-        /// M1-19 is where an enable-time hook starts to matter, and it will have
-        /// <see cref="EnemyView.Bind"/> to hang off.
+        /// taken there would be taken against a null hub on every enemy in the game.
+        /// <para>
+        /// M1-19's pooling left this exactly as it was, which was the question the placement was
+        /// waiting on: a pooled body is injected once, when the pool creates it, and keeps these
+        /// three subscriptions for the life of the pool rather than of any one enemy. That is safe
+        /// because every handler here filters on <c>_view.Id</c> first, and a body sitting in the
+        /// pool is unbound — so it matches no event, having been handed the id of nobody.
+        /// </para>
         /// </remarks>
         [Inject]
         public void Construct(DomainEventHub hub)
@@ -148,7 +160,8 @@ namespace Soulvail.Game.Views
 
             // sharedMaterial, not material: reading the live asset's colour costs nothing, while
             // the instancing property would clone it on every enemy that ever takes a hit.
-            _liveColour = _renderer.sharedMaterial.GetColor(_baseColorId);
+            _liveMaterial = _renderer.sharedMaterial;
+            _liveColour = _liveMaterial.GetColor(_baseColorId);
             _liveScale = transform.localScale;
         }
 
@@ -169,6 +182,49 @@ namespace Soulvail.Game.Views
                     "every hit and every death. Enemy bodies must be created through " +
                     "EnemyViews — that is what routes VContainer's injection into the prefab.");
             }
+        }
+
+        /// <summary>
+        /// Undoes everything a life did to how this body looks: the dissolve's stretch and fade,
+        /// the transparent material it swapped to, a flash or a wind-up caught mid-play.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Called by <c>EnemyView.OnDespawn</c> as the body goes back to the pool, which is the
+        /// only moment it is correct to run: doing it on a rental instead would leave a corpse
+        /// sitting in the pool fully faded, and one frame of the next Husk drawn transparent is
+        /// exactly the artefact this exists to prevent.
+        /// </para>
+        /// <para>
+        /// Safe before <c>Awake</c>, which outside play mode never runs: with no property block
+        /// there is no colour to write, and there is nothing to undo either, because a body that
+        /// has not woken up has never dissolved. That is what lets an EditMode fixture rent and
+        /// return a body without building a whole prefab.
+        /// </para>
+        /// </remarks>
+        public void ResetVisuals()
+        {
+            _dissolving = false;
+            _dissolveElapsed = 0f;
+            _flashRemaining = 0f;
+            _telegraphRemaining = 0f;
+
+            if (_block is null)
+            {
+                return;
+            }
+
+            transform.localScale = _liveScale;
+
+            // Back onto the opaque asset before the colour is written, so the alpha the dissolve
+            // left in the property block is applied to a material that ignores it rather than to
+            // the transparent one that would honour it for a frame.
+            if (_liveMaterial != null)
+            {
+                _renderer.sharedMaterial = _liveMaterial;
+            }
+
+            SetColour(_liveColour);
         }
 
         private void OnDestroy()

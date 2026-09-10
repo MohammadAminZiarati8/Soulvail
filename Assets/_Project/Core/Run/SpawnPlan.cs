@@ -89,6 +89,11 @@ public sealed class SpawnPlan
     /// retained, so a builder that keeps filling its own list afterwards cannot change what this
     /// plan holds.
     /// </param>
+    /// <param name="respawn">
+    /// What replaces the dead, or null for an arena that empties and stays empty. Optional rather
+    /// than required, unlike <c>RunConfig</c>'s plan: every plan built before M1-19 meant "no
+    /// respawn" and still does, so the default is the behaviour that already existed.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="initial"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// An entry names no archetype. <see cref="Entry"/>'s constructor already refuses that, but
@@ -96,12 +101,14 @@ public sealed class SpawnPlan
     /// form — so the check is repeated here. The same shape as <c>Stat.Add</c>'s second look at
     /// <c>default(Modifier)</c> (M1-01): a struct with an invariant needs the check at both ends.
     /// </exception>
-    public SpawnPlan(IReadOnlyList<Entry> initial)
+    public SpawnPlan(IReadOnlyList<Entry> initial, RespawnPolicy respawn = null)
     {
         if (initial is null)
         {
             throw new ArgumentNullException(nameof(initial));
         }
+
+        Respawn = respawn;
 
         if (initial.Count == 0)
         {
@@ -150,4 +157,14 @@ public sealed class SpawnPlan
 
     /// <summary>The enemies to spawn, in spawn order.</summary>
     public IReadOnlyList<Entry> Initial => _initial;
+
+    /// <summary>
+    /// What replaces the dead, or null for an arena that empties once and stays empty.
+    /// </summary>
+    /// <remarks>
+    /// Adopted by <c>EnemySystem.SpawnAll</c> along with the opening population, so a run's whole
+    /// spawning behaviour arrives in one object from one place. Null is a real answer rather than a
+    /// missing one — M0's empty grey box and M2's arenas that are cleared for good both mean it.
+    /// </remarks>
+    public RespawnPolicy Respawn { get; }
 }

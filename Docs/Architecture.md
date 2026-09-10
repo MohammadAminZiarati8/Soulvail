@@ -438,3 +438,138 @@ Assets/_Project/
 ## 17. What we deliberately do not build now
 
 A mod/plugin system · a scripting language · an effect DSL · a generic ECS · an abstraction over rendering · any netcode hook. Each is complexity paid today for a future that may not arrive. §11 is the opposite: near-zero cost now, near-infinite cost later.
+
+---
+
+## 18. Invariants
+
+**Rules the code currently depends on.** Each was decided in a task, is load-bearing somewhere, and
+breaking it produces a bug that does not look like its cause. This is the answer to *"may I change
+this?"* — the answer is yes, but read the reason first and change the reason with it.
+
+Toolchain traps — things that lie to you rather than rules the code relies on — live in
+[Traps.md](Traps.md). The two files are deliberately separate: one is about our design, the other
+is about Unity's.
+
+### 18.1 Ordering
+
+| Invariant | Break it and | Set in |
+|---|---|---|
+| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15 |
+| `RunSession.Tick`: time → ingest → combat → enemy behaviours → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08 |
+| Ingest runs before anything reads an enemy | every distance is one frame stale, and it reads as an AI bug | M1-06 |
+| `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance computed from the previous frame's position | M1-06 |
+| `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation is discarded every time the player starts moving, and no test written from rest would see it | M0-07 |
+| `EnemyAgent.Initialise` re-bases `Health.MaxHp` **before** `Health.Reset()` | a recycled enemy arrives at the previous archetype's hit points, with nothing reporting it | M1-05 |
+| `EnemyHitFeedback.ResetVisuals` restores the opaque material **before** writing the colour | the dissolve's alpha is honoured for one frame by the transparent material | M1-12 |
+| Both run lifecycle events publish **before** `IsRunning` moves | anything reading the session from inside a lifecycle event is reading the state it is *leaving* — deliberately | M0-10 |
+| `EnemySpawned` is published **after** registration; `EnemyDespawned` **after** removal | a handler resolving the id finds nothing, or finds a ghost | M1-06 |
+| A subscriber that must hear the opening of a run subscribes **from a constructor on the dependency chain**, never from a `Start` of its own | VContainer orders no two entry points' `Start`s, so the opening population is dropped in silence | M1-07 |
+| A view that answers core with a **fact** cannot own its own `Update` — it takes a `Step(dt)` from `RunTicker` | core writes intents later in the frame than the reader that applies them, and the intent list reads empty *every* frame | M1-16 |
+
+### 18.2 The boundary
+
+- **`IRunSession.Tick` takes the snapshot alone.** `Dt` rides on the snapshot; two ways to say how
+  much time passed is one too many. There is **no `IClock` in the session** — simulated time is the
+  sum of each tick's `Dt`. Wall-clock is a different number and a different port (M0-09, M0-10).
+- **A port grows a member when the mechanic that needs it lands, not before** (M0-09).
+- **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.**
+  The clamp only protects the simulation if brain and body take the same step. Purely cosmetic
+  view timers are the deliberate exception (M0-16).
+- **`WorldSnapshot.Clear()` does not zero `Enemies`.** Every reader stops at `EnemyCount`, and
+  **anything writing into a reused slot must assign every field of it, zeroes included** — an
+  unwritten field silently inherits what the enemy that last held that slot put there (M0-05, M1-07).
+- **`IntentBuffer.Clear()` lowers `HasPlayerMove` and leaves the stored intent alone.** Every
+  intent reader checks its flag first, or it applies last frame's velocity and the player slides
+  (M0-06).
+- **`PlayerView.Velocity` is the velocity core asked for, never `CharacterController.velocity`** —
+  the latter collapses to zero against a wall, which core would read back as "the player stopped
+  trying to move" (M0-16).
+- **`FollowCamera`'s yaw must stay 0.** It is the only reason `SnapshotBuilder`'s straight-through
+  stick mapping is camera-relative. The day the camera can turn, the −yaw rotation goes into the
+  builder and **never into core** (M0-18).
+- **A live object is never handed out of `RunState`.** `Motor`, `Combat` and `Enemies` are
+  `internal` with public scalar reads, because a public handle on something with a `Tick` lets a
+  view double-integrate a frame with nothing in the compiler to object. **Every future `RunState`
+  field that hands out a mutable object owes the same question** (M0-16, M1-06, M1-08).
+- **`RunState`'s constructor and setters are `internal`, and `Soulvail.Tests.Core` has no
+  `InternalsVisibleTo`** — deliberately, so tests reach state through `RunSession`, the intended
+  route. It is also why that constructor carries no argument guards: they would be unreachable.
+  The first test that wants to build one directly has a decision to make on purpose (M0-10).
+
+### 18.3 Numbers and identity
+
+- **A non-positive guard on a float is spelled `!(value > 0f)`, never `value <= 0f`.** Every
+  comparison against NaN is false, so the natural spelling admits NaN — and one NaN in a spec or a
+  facing is permanent (M0-07).
+- **Guard the argument *before* the arithmetic that launders it.** `radius * radius` turns −1 into
+  1, so a nonsense radius silently becomes a plausible one-metre one (M1-09).
+- **NaN is refused at every door into a `Stat`** — it does not produce a wrong number, it produces
+  *silence*: `Changed` compares two values, every comparison against NaN is false, and the event
+  stops firing (M1-01).
+- **A struct with an invariant needs the check at both ends.** `default(ContentId)` and
+  `default(Modifier)` both carry an invalid value past the constructor's guard (M0-08, M1-01).
+- **`ContentId`'s grammar is `^[a-z0-9]+(\.[a-z0-9_-]+)+$`.** Loosening it later is safe;
+  **tightening it invalidates content references already written to disk** (M0-08).
+- **`SeededRandom`'s stream indices — Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4 — are part of
+  what a seed means.** Never reorder or renumber; a new stream takes the next free index (M0-04).
+- **Enemy despawn compacts rather than swapping with the last.** Spawn order feeds
+  `TargetScorer`'s tie-break, so a swap would let two runs from one seed diverge on the strength of
+  who died first (M1-05).
+- **A lazy cache and a "fires only when the value changed" event cannot both be lazy** — deciding
+  whether to raise means computing at mutation time. `Stat` keeps laziness only while nothing is
+  subscribed (M1-01).
+
+### 18.4 Combat and perception
+
+- **All perception is XZ** — distances, directions, the 6 m ally radius, spawn safety. The height
+  between a player capsule's centre and an enemy's is a rendering detail, and counting it would
+  inflate every distance `Reach` is checked against. **Any new sense that measures a separation
+  owes the same treatment** (M1-06).
+- **`Health.Tick` credits only the slice of its step past the recharge deadline**, not the whole
+  `dt` — so the Aegis is worth the same at 30 fps as at 120. Anything else that resumes on a
+  deadline mid-step owes the same arithmetic (M1-02).
+- **`Health` publishes nothing.** A component both sides of a fight use cannot name either side's
+  events; its owner turns `DamageResult` into events (M1-02, M1-08, M1-11).
+- **`Health.HasShield` means "has a `ShieldSpec`", not "the shield is up"** — a depleted shield
+  must still recharge. Ask `Shield > 0` for the other question (M1-02).
+- **`EnemyRegistry.Alive` means *registered*, not breathing.** A corpse stays until its death has
+  been published and the view has had its frame. Every reader that cares checks `IsAlive`. The
+  naming is a wart (M1-05).
+- **`Targeter`'s cadence accumulator is never reset or consumed by an immediate retarget** — the
+  schedule and the "current target is invalid" trigger are independent by construction, or a stream
+  of dying targets starves the scheduled decision for ever (M1-04).
+- **`Targeter.FocusedTargetId` lags `Focus(id)` by one tick on purpose** — between ticks there is
+  no candidate span to check the id's liveness, range or existence against (M1-04).
+- **`TargetScorer` resolves an exact tie to the lowest id even when one tied candidate is the
+  incumbent.** Hysteresis is a bonus applied *before* the comparison, not a veto after it (M1-03).
+- **`EnemySpec` deliberately does not validate `EnemyBehaviourKind`.** The loud place for an
+  unrecognised kind is `EnemySystem.Tick`'s dispatch — the one site that knows the full set (M1-05).
+- **A pooled `EnemyView` must forget its last life in `OnDespawn`** — scale, material, alpha,
+  collider, knockback — and **a forgotten reset does not fail, it produces a half-transparent
+  unhittable Husk.** Anything added to `Enemy.prefab` that remembers something joins that list
+  (M1-19).
+- **`EnemyView` carries two colliders and they are not interchangeable**: the `CharacterController`
+  moves the body, the trigger `CapsuleCollider` is what sweeps query and what `EnemyViews` indexes.
+  A sweep mask that started matching the controller would double-report every hit (M1-18).
+- **The floating stick's touch region is the left 45 % of the screen, full height**, so a tap
+  reaches the arena only in the right 55 %. **Every on-screen control added later must be a raycast
+  target**, or it will steal the focus every time it is pressed (M1-09).
+
+### 18.5 Known soft spots
+
+Not bugs today; each names the task that must deal with it.
+
+| Soft spot | Bites at |
+|---|---|
+| `Stat` removes modifiers by source reference only — there is no "drop everything", and `EnemyAgent` is recycled | M2-03 depth scaling, M7-02 affixes |
+| Random streams expose no state, so a resumed run restarts every stream at draw 0 | M2-13 / M2-14 |
+| `EnemySystem.SpawnAll` runs *after* `RunStarted` and after `IsRunning` flips, so a bad plan half-starts a run | M2-02 |
+| `AlliesNearby` is `n² − n` comparisons a frame over the **registered** count | M2-04's concurrency cap |
+| Path refresh is capped at 4/frame against a 10 Hz cadence — routes go stale silently above **24** concurrent enemies | M2-04 / M2-05 |
+| `IsCurrentBlocked` suppressing the invulnerability retarget has **no test** — the outcome is identical, only the frequency changes | whenever a Warden-like enemy exists |
+| `RunSession.Tick`'s ordering rule has no assertion — no public route from session to blackboard | M1-08 made it observable; still unpinned |
+| A `Health` driven to `MaxHp` 0 dies without a `DamageResult` to say so | the first effect that removes max HP |
+| `PendingRun.Clear()` has no caller and needs a "the run has read everything" point that does not exist yet | M2-14 |
+| `Targeter`'s 2 s focus-drop delay and `FocusResolver`'s 3 m radius are `const`s, not authored data | when either must differ per class |
+| Views and `RunTicker`'s frame order have no automated coverage at all | M2-09 / M2-11, as the pool grows |

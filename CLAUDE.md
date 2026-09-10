@@ -8,7 +8,8 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 - [Docs/GameDesign.md](Docs/GameDesign.md) — what the game is: pillars, loops, enemies, bosses, difficulty math, Veilrot
 - [Docs/Characters.md](Docs/Characters.md) — classes, skills, the in-run skill tree, levelling
 - [Docs/CoreCombat.md](Docs/CoreCombat.md) — movement, targeting, basic attack, skill-cast spec
-- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.**
+- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.** §18 is the invariants: orderings and boundary rules the code depends on, plus a soft-spots table naming the task each one bites at.
+- [Docs/Traps.md](Docs/Traps.md) — **things in this toolchain that lie to you.** Unity, the MCP, VContainer, the Input System, shell probes, allocation measurement. Read before debugging a probe that says "no", and before believing one that says "yes".
 - [Docs/adr/](Docs/adr/) — why each architectural decision was made
 
 ## Status

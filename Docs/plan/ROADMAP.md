@@ -95,13 +95,22 @@
 
 ---
 
-## M2 — Stage loop *(titles only)*
+## M2 — Stage loop
 
-**Detailing is overdue and has its own task.** The ~75 % trigger passed unfired during M1, so M2-00 writes the fifteen specs below before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews and nineteen files is past the split rule. Four M1 measurements are inputs to them, recorded in that task's PROGRESS entry: the `AlliesNearby` `n²` curve, the **24-enemy** path-refresh ceiling, spawn-position occupancy, and `SpawnAll` running after `RunStarted`.
+**Detailing is overdue and is its own task, split five ways.** The ~75 % trigger passed unfired during M1, so the fifteen specs below are written before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews. **M2-00 is split for the same reason it was carved out:** fifteen specs in one PR is the review the five-file rule exists to prevent, so it goes out in themed groups of 3–5 that each hang together.
+
+Everything those specs must absorb is in the [carry-forward ledger](#carry-forward-into-m2) below — four measurements M1 took, and eight findings from the M0+M1 audit. **A spec that does not name its ledger rows is not finished.**
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| M2-00a | Plan hygiene: archive M0/M1 logs, split the watch list into `Traps.md` + `Architecture.md §18`, carry-forward ledger | S | — | ☐ |
+| M2-00b | Specs for M2-01…M2-05 — the spawning spine | S | 00a | ☐ |
+| M2-00c | Specs for M2-06…M2-09 — enemies and projectiles | S | 00a | ☐ |
+| M2-00d | Specs for M2-10…M2-12 — stage flow, arenas, telegraphs | S | 00a | ☐ |
+| M2-00e | Specs for M2-13…M2-15 — persistence, resume, acceptance | S | 00a | ☐ |
 
 | ID | Task |
 |---|---|
-| M2-00 | Write the M2 task specs (M2-01…M2-15), informed by what M1 learned |
 | M2-01 | `IClock` + `UnityClock` (wall-clock for persistence) |
 | M2-02 | `ModeSpec` + `ModeDefinition`; Descent as the first instance (GD §4.5) |
 | M2-03 | `ThreatBudget` + scaling curves B(n), h(n), d(n), s(n) (GD §12) |
@@ -117,6 +126,24 @@
 | M2-13 | Persistence: DTOs, `ISaveStore`, `LocalJsonSaveStore`, versioning + migration test harness |
 | M2-14 | Run snapshot at stage boundary, resume flow, app-kill handling |
 | M2-15 | M2 acceptance, tag `m2` |
+
+### Carry-forward into M2
+
+**What M2's specs must absorb.** Four rows are measurements M1 took; the rest are findings from the M0+M1 audit (2026-09-10), which checked spec-against-code across all 42 tasks and found the two milestones sound — these are the exceptions. **Every row names the task that must deal with it, and a spec is not finished until it says how.** Ranked by what it costs to fix later rather than now.
+
+| # | Finding | Owner | Cost of leaving it |
+|---|---|---|---|
+| 1 | **Random streams expose no state.** `IRandomStream` has only draw methods and `Pcg32._state` has no accessor, so a resumed run restores the seed but restarts **every stream at draw 0** — a resumed stage re-draws spawn positions it already used, and once M3-04's offers ride the Offers stream, **killing the app becomes a free reroll**. Recorded in neither ADR-0011 nor ADR-0007. | **M2-13** (DTO), **M2-14** (resume) | **Highest.** A `ulong State { get; set; }` per stream and a field per stream in the DTO costs nothing at format v1; after v1 ships it is a migration plus a live exploit. |
+| 2 | **`Stat` removes modifiers by source reference only** — no "drop everything" — and `EnemyAgent` is recycled with its `Health` intact. The first thing to apply one to an enemy makes every recycled Husk wear the last one's scaling. | **M2-03** | High. Either `Stat.RemoveAll()` with no argument, or an agent-owned source token cleared at despawn. Trivial now; a silent balance bug once depth scaling and M7-02 affixes are both live. |
+| 3 | **`EnemySystem.SpawnAll` runs *after* `RunStarted` and after `IsRunning` flips**, so an unauthored archetype mid-plan throws with the run announced and enemies standing. Inert while only `RunScope` authors a plan; mode data is the first thing that can. | **M2-02** | Medium. Validate the plan against the catalog before `RunStarted`, or accept the partial spawn on purpose. |
+| 4 | **`AlliesNearby` is `n² − n` comparisons a frame** over the *registered* count — free at 12, **3,540 a frame at 60**. Priced by the concurrency cap, not by wave size. | **M2-04** | Medium. Choose the cap against this number rather than inferring it. |
+| 5 | **Path refresh is hard-capped at 4 a frame against a 10 Hz cadence, so routes go stale silently above 24 concurrent enemies.** Nothing reports it at runtime. | **M2-04**, **M2-05** | Medium. A ceiling that is invisible until enemies visibly walk into walls. |
+| 6 | **`RunConfig` is two fields** (`CharacterId`, `SpawnPlan`) and M2 needs mode id, stage index, an **inbound** seed and a restored snapshot. The seed currently flows *out* of the injected `IRandom`, which is backwards for resume. | **M2-02**, with **M2-14** in mind | Medium. Reshape once, deliberately, rather than accreting a parameter per task across four PRs. |
+| 7 | **The fact-versus-direct-call rule is unsettled.** `IRunSession`'s comment still promises a `ReportContact` fact for chasers; M1-18 instead had `ChaserBehaviour` call `PlayerCombat.ApplyDamage` from core-perceived distance. Both are defensible — **but three enemies must not answer it three ways.** | **M2-07** (projectile), **M2-08** (contact) | Medium. Settle it in M2-00c and fix the stale comment; divergence here is the kind that never gets unpicked. |
+| 8 | **Views and `RunTicker`'s frame order have no automated coverage at all.** The adapter layer is well covered; `Views/`, most of `Presentation/` and the frame order have nothing. `EnemyView.OnDespawn` — which the code itself calls "the most dangerous method here" — is exercised only through a fake `IPoolable`. Its reset chain was **verified complete by hand** during the audit, so this is a coverage gap, not a live bug. | **M2-09**, **M2-11** | Medium, rising. One PlayMode rent → damage → kill → despawn → re-rent test covers the whole family, and M2 triples the number of pooled things. |
+| 9 | **Spawn-position occupancy is unmodelled** — nothing stops two spawns landing on the same point. | **M2-05** | Low now, visible the first time a wave doubles up. |
+| 10 | **`PendingRun.Clear()` still has no caller**, and needs a "the run has read everything it needs" point that does not exist yet. | **M2-14** | Low. Resume is where that point finally exists. |
+| 11 | **`HapticsSettings` persists through `PlayerPrefs`** as an explicit stopgap. | **M2-13** | Low. Move it onto `ISaveStore` as the first consumer. |
 
 ## M3 — Levelling and the tree *(titles only)*
 
@@ -209,14 +236,14 @@
 
 Unscheduled. Promote into a milestone when it earns it.
 
-- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). Not adopted yet; revisit once the test suite is worth guarding — likely during M1.
+- **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`; needs a Unity licence activation secret). **The "revisit once the suite is worth guarding" condition has now been met** — 452 EditMode + 3 PlayMode as of M1-21, and M2 adds persistence with migration tests, which are exactly the kind that rot silently. Still not adopted; the blocker is the licence secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
 - **A real Android device.** Every **[device]** checklist item is deferred until one exists; the first hardware session runs all of them. **M0-20 raised the price of not having one:** BlueStacks cannot currently run the APK at all (its Vulkan driver faults through `libhoudini.so`), so the emulator is no longer a proven fallback for *anything* outside the Editor. M0-20a works around it; a phone removes the question.
 - **Company name is a placeholder** — `Soulvail`, set in M0-19 with the same status as the application identifier. Both are permanent once uploaded to a store, so M8-06 changes them together before the first upload.
-- **Machine-local Gradle configuration is not in this repo.** `~/.gradle/gradle.properties` (HTTP proxy on 127.0.0.1:10808) and `~/.gradle/init.gradle` (Aliyun mirrors ahead of Google/Central) are what make an Android build resolve its dependencies on this connection. A second clone on another machine needs its own, or none. Revisit before any published build — see the M0-19 entry for why a mirror is in the path at all.
+- **Machine-local Gradle configuration is not in this repo.** `~/.gradle/gradle.properties` (HTTP proxy on 127.0.0.1:10808) and `~/.gradle/init.gradle` (Aliyun mirrors ahead of Google/Central) are what make an Android build resolve its dependencies on this connection. A second clone on another machine needs its own, or none. Revisit before any published build — the *why*, including the SOCKS-vs-HTTP trap, is in [Traps.md §10](../Traps.md).
 - **Four raw UI strings to localise in M6-10** — `"Soulvail"` and `"Descend"` in `Menu.unity` (M0-17), and `"You died"` and `"Tap to return"` on `Hud.prefab`'s `DeathOverlay` (M1-17). Between them they are the whole of the raw user-facing English in the project; they become `LocKey`s when `ILocalizer` and the English tables land. The HP readout is deliberately *not* on this list — `"{0:0}/{1:0}"` is a number format rather than a sentence, and it survives localisation unchanged.
 - **Application identifier** — placeholder `com.soulvail.dev`; permanent once uploaded, so it changes in M8-06 before the first store build.
-- **A tap on an enemy beyond `acquireRange` is silent, and the silence is the problem.** `FocusResolver` has no distance limit, so the focus *is* set — but `Targeter.Select` only lets the override take the target while the enemy is inside the class's `acquireRange` (12 m for the Oathbound), and the focus is dropped after 2 s out of it. Both are CC §3.4 as built in M1-04, and the rule is right: the gun must not stop shooting the enemy in your face because you tapped one across the arena. But `TargetChanged` goes out with `IsFocused: false`, so the reticle never changes and the tap is indistinguishable from a miss — which is exactly what CC §3.5 exists to prevent. Noticed by the owner playtesting M1-09; **left as is deliberately, to revisit.** Three ways out, cheapest last: give the reticle a fourth state for a held-but-inactive focus (truest to §3.4, and the only one that answers "why did nothing happen"); let the focus take hold regardless of range (matches §3.4 read literally, but reintroduces the turn-away M1-04 rejected); or raise `acquireRange` (one number, but it moves auto-targeting everywhere). Feel it again once M1-18's chasers close the distance on their own — the problem may shrink to nothing when enemies come to you.
+- **A tap on an enemy beyond `acquireRange` is silent, and the silence is the problem.** `FocusResolver` has no distance limit, so the focus *is* set — but `Targeter.Select` only lets the override take the target while the enemy is inside the class's `acquireRange` (12 m for the Oathbound), and the focus is dropped after 2 s out of it. Both are CC §3.4 as built in M1-04, and the rule is right: the gun must not stop shooting the enemy in your face because you tapped one across the arena. But `TargetChanged` goes out with `IsFocused: false`, so the reticle never changes and the tap is indistinguishable from a miss — which is exactly what CC §3.5 exists to prevent. Noticed by the owner playtesting M1-09; **left as is deliberately, to revisit.** Three ways out, cheapest last: give the reticle a fourth state for a held-but-inactive focus (truest to §3.4, and the only one that answers "why did nothing happen"); let the focus take hold regardless of range (matches §3.4 read literally, but reintroduces the turn-away M1-04 rejected); or raise `acquireRange` (one number, but it moves auto-targeting everywhere). Feel it again once M1-18's chasers close the distance on their own — the problem may shrink to nothing when enemies come to you. **Update (M1-21): the chasers have landed and the problem did not shrink.** The owner played it and left the row deliberately unresolved rather than passed, so this is now the only CC §8 item failing on *behaviour* rather than on missing hardware. The audit re-confirmed the mechanism: `Targeter.ChangedThisTick` does fire on the focus change, so an event goes out — but `TargetChanged` carries only `(id, isFocused, isBlocked)` and `IsFocused` asks whether the *current* target is the focused one, so the reticle receives an event identical to the one before it. The first option costs one field on `TargetChanged`, one branch in `ReticleView`, and one publish site in `PlayerCombat`. **Decide it before M2-12's threat arrows**, which are the next thing to answer "where is the thing you cannot see".
 - Business model decision (GD §21.1) — needed before M6.
 - Google Play Games save sync (GD §21.6) — after M2's local save exists.
 - `dotnet` SDK on the dev machine → activates the pre-commit format check.

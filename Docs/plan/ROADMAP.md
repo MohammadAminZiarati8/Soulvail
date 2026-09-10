@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
-| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 15 |
+| **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 16 |
 | **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 15 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
@@ -67,6 +67,8 @@
 **Goal:** the moment-to-moment loop — target, swing, dodge — feels good on device with untextured capsules.
 **Done when:** [CC §8](../CoreCombat.md) checklist passes on device and `m1` is tagged.
 
+**Status: complete, tagged on Editor evidence — the same terms as `m0`, for the same missing phone.** 452 EditMode + 3 PlayMode tests green, zero errors, zero analyzer warnings, and no tuning edit needed anywhere: every CC §7 number already matched the asset shipping it. The owner playtested the fight and called it good, which is M1's question answered — but answered *in the Editor*, so the feel verdict is provisional and the three `[device]` rows (multi-touch, haptics, sustained 60 fps with 12 chasers) are carried as debt, joined by the whole of M1-20's checklist. One checklist row is deliberately unresolved rather than passed: the out-of-range focus tap, still in the parking lot with its three ways out.
+
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M1-01](tasks/M1-01-stat-and-modifier.md) | `Stat` + `Modifier` stack: Flat → PercentAdd → PercentMult, by source, cached, describable | S | M0 | ☑ |
@@ -89,14 +91,17 @@
 | [M1-18](tasks/M1-18-chaser-ai.md) | `ChaserBehaviour` FSM, `EnemyMoveIntent`, strike damage, telegraph event | M | 06 08 | ☑ |
 | [M1-19](tasks/M1-19-pooling-respawn-navmesh.md) | `ViewPool`, `RespawnPolicy` (keep 12 alive), NavMesh bake + path sense | M | 12 18 | ☑ |
 | [M1-20](tasks/M1-20-haptics.md) | `HapticsListener`, Android vibrator, toggle | S | 11 15 | ☑ |
-| [M1-21](tasks/M1-21-acceptance-and-tag.md) | M1 acceptance: CC §8 on device, tuning, tag `m1` | S | all | ☐ |
+| [M1-21](tasks/M1-21-acceptance-and-tag.md) | M1 acceptance: CC §8 on device, tuning, tag `m1` | S | all | ☑ |
 
 ---
 
 ## M2 — Stage loop *(titles only)*
 
+**Detailing is overdue and has its own task.** The ~75 % trigger passed unfired during M1, so M2-00 writes the fifteen specs below before M2-01 starts — carved out of [M1-21](tasks/M1-21-acceptance-and-tag.md), whose Files table originally promised them, because acceptance and design want different reviews and nineteen files is past the split rule. Four M1 measurements are inputs to them, recorded in that task's PROGRESS entry: the `AlliesNearby` `n²` curve, the **24-enemy** path-refresh ceiling, spawn-position occupancy, and `SpawnAll` running after `RunStarted`.
+
 | ID | Task |
 |---|---|
+| M2-00 | Write the M2 task specs (M2-01…M2-15), informed by what M1 learned |
 | M2-01 | `IClock` + `UnityClock` (wall-clock for persistence) |
 | M2-02 | `ModeSpec` + `ModeDefinition`; Descent as the first instance (GD §4.5) |
 | M2-03 | `ThreatBudget` + scaling curves B(n), h(n), d(n), s(n) (GD §12) |

@@ -382,15 +382,16 @@ public sealed class EnemyRegistryTests
             () => new EnemySpec(
                 default,
                 new LocKey("enemy.husk.name"),
-                36f,
-                3.5f,
-                1,
+                maxHp: 36f,
+                moveSpeed: 3.5f,
+                targetPriority: 1,
+                threatCost: 4,
                 isElite: false,
-                8f,
-                1.2f,
-                0.4f,
-                0.6f,
-                EnemyBehaviourKind.Chaser));
+                contactDamage: 8f,
+                reach: 1.2f,
+                windupTime: 0.4f,
+                recoverTime: 0.6f,
+                behaviour: EnemyBehaviourKind.Chaser));
 
         // The legal edges hold: a stationary, harmless, untelegraphed enemy is a coherent thing to
         // author — GD §8.1's Choir never attacks — and zero recovery is a strike with no punish
@@ -398,6 +399,16 @@ public sealed class EnemyRegistryTests
         Assert.DoesNotThrow(
             () => Spec(moveSpeed: 0f, contactDamage: 0f, windupTime: 0f, recoverTime: 0f));
         Assert.DoesNotThrow(() => Spec(targetPriority: 8));
+
+        // M2-04 rule 12: a threat cost of zero is not a cheap archetype, it is a non-terminating
+        // WaveComposer — the fill loop buys while anything is affordable, and a free body is always
+        // affordable. Guarded here rather than in the composer, because the composer cannot report
+        // it in a way that names the asset. Negative is refused by the same comparison; 1 is the
+        // floor rather than GD §8.1's cheapest 4, so a future archetype cheaper than a Husk is a
+        // tuning decision and not a code change.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(threatCost: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(threatCost: -1));
+        Assert.DoesNotThrow(() => Spec(threatCost: 1));
     }
 
     // ---- The guards on the registry's public surface -------------------------------------------
@@ -446,6 +457,7 @@ public sealed class EnemyRegistryTests
         maxHp: 90f,
         moveSpeed: 2f,
         targetPriority: 3,
+        threatCost: 14,
         isElite: false,
         contactDamage: 14f,
         reach: 1.6f,
@@ -463,6 +475,7 @@ public sealed class EnemyRegistryTests
         float maxHp = 36f,
         float moveSpeed = 3.5f,
         int targetPriority = 1,
+        int threatCost = 4,
         float contactDamage = 8f,
         float reach = 1.2f,
         float windupTime = 0.4f,
@@ -470,15 +483,16 @@ public sealed class EnemyRegistryTests
         => new EnemySpec(
             new ContentId("enemy.husk"),
             new LocKey("enemy.husk.name"),
-            maxHp,
-            moveSpeed,
-            targetPriority,
+            maxHp: maxHp,
+            moveSpeed: moveSpeed,
+            targetPriority: targetPriority,
+            threatCost: threatCost,
             isElite: false,
-            contactDamage,
-            reach,
-            windupTime,
-            recoverTime,
-            EnemyBehaviourKind.Chaser);
+            contactDamage: contactDamage,
+            reach: reach,
+            windupTime: windupTime,
+            recoverTime: recoverTime,
+            behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>
     /// The ids in <see cref="EnemyRegistry.Alive"/>, in order. Copied out because a

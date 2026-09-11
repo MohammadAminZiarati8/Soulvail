@@ -60,10 +60,13 @@ public enum EnemyBehaviourKind
 /// — a second copy of a number no document owns is a number that will drift.
 /// </para>
 /// <para>
-/// <b>Threat cost is deliberately absent.</b> GD §8.1 has one per archetype, but it is the
-/// director's currency (M2-03, M2-04) rather than the enemy's own property, and a field with no
-/// reader is a guess about what its reader will want. <c>TagSet</c> is absent for the same reason
-/// until affixes need it (M7-02).
+/// <b><see cref="ThreatCost"/> arrived in M2-04, with its first reader.</b> It was deliberately
+/// absent until then — GD §8.1 has one per archetype, but it is the director's currency rather
+/// than the enemy's own property, and a field with no reader is a guess about what its reader will
+/// want. <c>WaveComposer</c> is that reader, and it settled the question the other way: a cost is
+/// a fact about the creature, which is why it sits here while the depth an archetype is
+/// <em>allowed</em> at stays on the mode's <see cref="RosterEntry"/>. <c>TagSet</c> is still
+/// absent, for the original reason, until affixes need it (M7-02).
 /// </para>
 /// </remarks>
 public sealed class EnemySpec
@@ -73,6 +76,15 @@ public sealed class EnemySpec
 
     /// <summary>The highest legal <see cref="TargetPriority"/> — GD §8.1's Choir.</summary>
     private const int MaxPriority = 8;
+
+    /// <summary>The lowest legal <see cref="ThreatCost"/>. GD §8.1's cheapest archetype is 4.</summary>
+    /// <remarks>
+    /// Not a taste judgement: <c>WaveComposer</c> buys bodies until nothing is affordable, so a
+    /// free archetype is a loop that never ends (M2-04 rule 12). Unbounded above on purpose — GD
+    /// §8.1 stops at the Revenant's 18 and a boss is not paid from this budget at all, so a
+    /// ceiling here would be a number no document owns.
+    /// </remarks>
+    private const int MinThreatCost = 1;
 
     /// <param name="id">The archetype's stable content id, e.g. <c>enemy.husk</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
@@ -86,6 +98,10 @@ public sealed class EnemySpec
     /// Archetype priority, 1–8 (GD §8.1). The knob that makes auto-aim feel intelligent: it
     /// dominates <c>TargetScorer</c>'s formula on purpose, so a Choir at 11 m outranks a Husk at
     /// 3 m. Husk 1, Choir 8.
+    /// </param>
+    /// <param name="threatCost">
+    /// What one of these costs a stage's threat budget, GD §8.1's Threat Cost column: Husk 4,
+    /// Spitter 7, Bloater 8, Revenant 18. At least 1.
     /// </param>
     /// <param name="isElite">Whether this archetype is an Elite (M7-02), worth the scorer's elite bonus.</param>
     /// <param name="contactDamage">
@@ -109,7 +125,8 @@ public sealed class EnemySpec
     /// <paramref name="maxHp"/> or <paramref name="reach"/> is not a finite number greater than
     /// zero; <paramref name="moveSpeed"/>, <paramref name="contactDamage"/>,
     /// <paramref name="windupTime"/> or <paramref name="recoverTime"/> is negative, NaN or
-    /// infinite; or <paramref name="targetPriority"/> is outside 1–8.
+    /// infinite; <paramref name="targetPriority"/> is outside 1–8; or
+    /// <paramref name="threatCost"/> is below 1.
     /// </exception>
     public EnemySpec(
         ContentId id,
@@ -117,6 +134,7 @@ public sealed class EnemySpec
         float maxHp,
         float moveSpeed,
         int targetPriority,
+        int threatCost,
         bool isElite,
         float contactDamage,
         float reach,
@@ -141,11 +159,22 @@ public sealed class EnemySpec
                     + "range would out-shout or under-shout every archetype at once.");
         }
 
+        if (threatCost < MinThreatCost)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(threatCost),
+                threatCost,
+                $"threatCost must be at least {MinThreatCost} — GD §8.1's cheapest archetype, the "
+                    + "Husk, is 4. A free archetype is not a cheap one: WaveComposer buys bodies "
+                    + "until nothing is affordable, so at zero it would never stop.");
+        }
+
         Id = id;
         NameKey = nameKey;
         MaxHp = Positive(maxHp, nameof(maxHp));
         MoveSpeed = NonNegative(moveSpeed, nameof(moveSpeed));
         TargetPriority = targetPriority;
+        ThreatCost = threatCost;
         IsElite = isElite;
         ContactDamage = NonNegative(contactDamage, nameof(contactDamage));
         Reach = Positive(reach, nameof(reach));
@@ -168,6 +197,17 @@ public sealed class EnemySpec
 
     /// <summary>Archetype priority, 1–8 (GD §8.1). Read by <c>TargetScorer</c> through a candidate.</summary>
     public int TargetPriority { get; }
+
+    /// <summary>
+    /// What one of these costs a stage's threat budget — GD §8.1's Threat Cost column. Husk 4.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>WaveComposer</c> and by nothing else. <b>Not a difficulty number for a single
+    /// fight:</b> it prices an archetype against the others so that a stage's budget buys a
+    /// coherent crowd, which is why the Choir's 16 is four Husks rather than a statement that it is
+    /// four times as dangerous alone.
+    /// </remarks>
+    public int ThreatCost { get; }
 
     /// <summary>Whether this archetype is an Elite (M7-02).</summary>
     public bool IsElite { get; }

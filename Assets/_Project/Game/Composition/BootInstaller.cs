@@ -37,6 +37,39 @@ public static class BootInstaller
     /// </summary>
     public const int SnapshotEnemyCapacity = 64;
 
+    /// <summary>
+    /// The most enemies this device may have alive at once — GD §11.1's mid tier. What
+    /// <c>ThreatBudget</c> caps GD §12.2's C(n) at, and so what <c>WaveComposer</c> fills a wave up
+    /// to. A constant until M8-03 detects a tier.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Chosen against two measured costs rather than picked</b> (M2-04 rule 1, ledger rows 4
+    /// and 5), because the mid tier is a claim about a phone and the two systems that scale with
+    /// population are the ones that have to survive it:
+    /// </para>
+    /// <para>
+    /// <b>Ally counting is quadratic and that is fine here.</b> <c>EnemySystem</c>'s
+    /// <c>AlliesNearby</c> is n² − n XZ comparisons a frame over the registered count: <b>756 at
+    /// 28</b>, 1,560 at GD's high tier of 40, and 4,032 at
+    /// <see cref="SnapshotEnemyCapacity"/>. 756 squared-distance comparisons is not worth
+    /// restructuring for, so the O(n²) stays and this is the record of the arithmetic. <b>A cap
+    /// above 40 needs a spatial hash first</b> — ROADMAP parking lot, M8-03's if a high tier ever
+    /// ships.
+    /// </para>
+    /// <para>
+    /// <b>Path refresh cannot currently sustain it, and that is a known debt with an owner.</b>
+    /// <c>NavPathSense</c> refreshes at most <c>MaxRefreshesPerFrame</c> = 4 enemies a frame
+    /// against a 10 Hz cadence, so it sustains <b>24 at 60 fps and 12 at 30</b> — below this cap
+    /// and below GD's low tier of 18. Nothing reports it: routes simply go stale and enemies walk
+    /// into pillars. <b>M2-05 makes that budget scale with population and frame time</b>, and 28 is
+    /// the number both tasks are written against — which is why this is 28 and not 24. Lowering it
+    /// to what the pathfinder manages today would hide the debt in a constant and leave M2-05 with
+    /// nothing to fix.
+    /// </para>
+    /// </remarks>
+    public const int DeviceEnemyCap = 28;
+
     /// <param name="builder">The root container being built.</param>
     /// <param name="characters">
     /// Every authored character. Converted immediately; the list is not retained.

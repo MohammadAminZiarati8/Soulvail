@@ -537,6 +537,15 @@ is about Unity's.
   Stages 1, 5, 10 and 20 all agree to a rounding, which is what makes the row the error. The code
   and its tests assert the formula; **do not "fix" them to match the table.** GameDesign.md wants a
   one-line correction, flagged for the owner in M2-03 and not made there (M2-03).
+- **`WaveComposer` tracks a stage's spend as `int`, and each wave's allowance as the *cumulative*
+  share minus that spend — never as a running `float` remainder.** Threat costs are whole numbers,
+  so a spend is exactly representable and a remainder carried wave to wave is not. Written as a
+  running float, stage 1 composes **nine** Husks instead of GD §12.1's ten: `B·1/3` is 13.333334,
+  less the 12 it buys, plus `B·2/3` = 26.666667 comes to 27.999999, and the tenth Husk costs 4 of
+  the 4 that are not quite there. The cumulative form also makes the last wave's fraction exactly
+  1, so the stage's final allowance is exactly what it has left and `UnspentThreat` conserves the
+  budget to the point. **Anything that divides a budget across steps and spends it in whole units
+  owes the same shape** (M2-04).
 - **Depth scaling is `PercentMult`, never `PercentAdd`.** Depth must multiply with an Elite's 2.2×
   rather than pool with it (GD §8.3) — pooling would make a deep Elite markedly weaker than the
   design says, and every individual number would still look right (M2-03).

@@ -54,6 +54,11 @@ namespace Soulvail.Game.Authoring
                  "Husk at 1 from much further away.")]
         [SerializeField, Range(1, 8)] private int _targetPriority = 1;
 
+        [Tooltip("GD §8.1's Threat Cost column — what one of these costs a stage's threat " +
+                 "budget. Husk 4, Spitter 7, Bloater 8, Revenant 18. It prices this archetype " +
+                 "against the others rather than saying how dangerous one is on its own.")]
+        [SerializeField, Min(1)] private int _threatCost = 4;
+
         [SerializeField] private bool _isElite;
 
         [Tooltip("Damage one strike deals. 0 is legal and means an enemy that never hurts the " +
@@ -104,6 +109,7 @@ namespace Soulvail.Game.Authoring
                     _maxHp,
                     _moveSpeed,
                     _targetPriority,
+                    _threatCost,
                     _isElite,
                     _contactDamage,
                     _reach,

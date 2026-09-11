@@ -28,11 +28,17 @@ namespace Soulvail
         [SerializeField] private float _acceleration = 20f;
         [SerializeField] private float _turnDegreesPerSecond = 720f;
 
+        [Header("Fireball")]
+        [SerializeField] private GameObject _fireballPrefab;
+        [SerializeField] private Transform _muzzle;
+        [SerializeField] private float _castDelay = 0.35f;
+
         private InputActionMap _map;
         private InputAction _move;
         private InputAction _attack;
         private InputAction _sprint;
         private float _speed;
+        private float _castTimer = -1f;
 
         private void Awake()
         {
@@ -65,6 +71,7 @@ namespace Soulvail
 
             Move(deltaTime);
             Attack();
+            Cast(deltaTime);
         }
 
         private void Move(float deltaTime)
@@ -99,7 +106,34 @@ namespace Soulvail
             if (_attack.WasPressedThisFrame())
             {
                 _animator.SetTrigger(AttackParameter);
+                _castTimer = _castDelay;
             }
+        }
+
+        /// <summary>
+        /// Releases the fireball partway through the cast animation. A timer rather than an
+        /// animation event because the clip lives in an imported KayKit FBX, and events on an
+        /// imported clip are an importer setting that a package update can quietly drop.
+        /// </summary>
+        private void Cast(float deltaTime)
+        {
+            if (_castTimer < 0f)
+            {
+                return;
+            }
+
+            _castTimer -= deltaTime;
+            if (_castTimer >= 0f)
+            {
+                return;
+            }
+
+            if (_fireballPrefab == null || _muzzle == null)
+            {
+                return;
+            }
+
+            Instantiate(_fireballPrefab, _muzzle.position, Quaternion.LookRotation(transform.forward, Vector3.up));
         }
     }
 }

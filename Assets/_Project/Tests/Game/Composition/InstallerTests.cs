@@ -301,6 +301,48 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void Run_NullByNameParameter_Resolves()
+    {
+        // M2-10 hands `SnapshotBuilder` a gate `Transform` that an arena dressed without a door
+        // does not have, and `RunScope` passes it by name whether or not it is there — VContainer
+        // never falls back to a C# default, so an *omitted* parameter fails to compose the run.
+        // This row is the check that a **null** one is a value rather than an absence, because the
+        // failure otherwise lands on exactly the workflow every optional field on that scope exists
+        // to protect: pressing Play in a Run scene nobody has dressed yet.
+        var builder = new ContainerBuilder();
+
+        builder.Register<NullParameterProbe>(Lifetime.Scoped)
+            .WithParameter("gate", (Transform)null);
+
+        using (IObjectResolver container = builder.Build())
+        {
+            NullParameterProbe probe = null;
+
+            Assert.DoesNotThrow(() => probe = container.Resolve<NullParameterProbe>());
+
+            Assert.That(probe.GateIsNull, Is.True, "And it arrives as the null it was given.");
+        }
+    }
+
+    /// <summary>
+    /// A one-argument type for <see cref="Run_NullByNameParameter_Resolves"/>, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Nested and private because it exists for that row alone. <c>SnapshotBuilder</c> itself needs
+    /// a <c>PlayerView</c>, an <c>InputAdapter</c> and two adapters to be constructed, none of which
+    /// this row is about — the question is purely what VContainer does with a null.
+    /// </remarks>
+    private sealed class NullParameterProbe
+    {
+        public NullParameterProbe(Transform gate)
+        {
+            GateIsNull = gate == null;
+        }
+
+        public bool GateIsNull { get; }
+    }
+
+    [Test]
     public void Run_EventsPortAndHub_SameInstance()
     {
         IScopedObjectResolver scope = BuildRunScope(seed: 1);

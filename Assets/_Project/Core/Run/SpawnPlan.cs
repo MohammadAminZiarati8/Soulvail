@@ -96,11 +96,6 @@ public sealed class SpawnPlan
     /// retained, so a builder that keeps filling its own list afterwards cannot change what this
     /// plan holds.
     /// </param>
-    /// <param name="respawn">
-    /// What replaces the dead, or null for an arena that empties and stays empty. Optional rather
-    /// than required, unlike <c>RunConfig</c>'s plan: every plan built before M1-19 meant "no
-    /// respawn" and still does, so the default is the behaviour that already existed.
-    /// </param>
     /// <param name="spawnPoints">
     /// Where the director may put a body, in world metres. Copied, like the entries. Empty — and
     /// omitted, which means the same thing — for an arena with no spawning surface, which makes
@@ -120,7 +115,6 @@ public sealed class SpawnPlan
     /// </exception>
     public SpawnPlan(
         IReadOnlyList<Entry> initial,
-        RespawnPolicy respawn = null,
         IReadOnlyList<Vector3> spawnPoints = null)
     {
         if (initial is null)
@@ -128,7 +122,6 @@ public sealed class SpawnPlan
             throw new ArgumentNullException(nameof(initial));
         }
 
-        Respawn = respawn;
         _spawnPoints = CopySpawnPoints(spawnPoints);
 
         if (initial.Count == 0)
@@ -191,24 +184,14 @@ public sealed class SpawnPlan
     /// from M2-11 most arenas will have only the second.
     /// </para>
     /// <para>
-    /// Empty is a real answer rather than a missing one, for <see cref="Respawn"/>'s reason: it is
-    /// what the whole of M1's Run scene meant and what every core fixture that starts a run without
-    /// caring about spawning still means. The cost — an arena dressed without a spawn ring is
+    /// Empty is a real answer rather than a missing one: it is what the whole of M1's Run scene
+    /// meant and what every core fixture that starts a run without caring about spawning still
+    /// means. The cost — an arena dressed without a spawn ring is
     /// silently quiet — is bought back in the Editor, where <c>DebugOverlay</c> says
     /// <c>director: —</c> rather than leaving it a mystery.
     /// </para>
     /// </remarks>
     public IReadOnlyList<Vector3> SpawnPoints => _spawnPoints;
-
-    /// <summary>
-    /// What replaces the dead, or null for an arena that empties once and stays empty.
-    /// </summary>
-    /// <remarks>
-    /// Adopted by <c>EnemySystem.SpawnAll</c> along with the opening population, so a run's whole
-    /// spawning behaviour arrives in one object from one place. Null is a real answer rather than a
-    /// missing one — M0's empty grey box and M2's arenas that are cleared for good both mean it.
-    /// </remarks>
-    public RespawnPolicy Respawn { get; }
 
     /// <summary>
     /// Copies and checks the spawn points, answering an empty list for the absent case.

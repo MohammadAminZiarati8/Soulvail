@@ -108,21 +108,10 @@ namespace Soulvail.Game.Composition
                  "this with points authored on the arena prefab.")]
         [SerializeField] private Vector3[] _dummyPositions;
 
-        [Tooltip("How many enemies the arena keeps breathing. Zero from M2-05 on: the director " +
-                 "is the only thing that spawns, and a respawn policy beside it would be a " +
-                 "second spawner with its own opinion. Retired entirely by M2-10.")]
-        [Min(0)]
-        [SerializeField] private int _keepAlive;
-
-        [Tooltip("Seconds of quiet after the last death before the arena refills. The pause the " +
-                 "player reads as 'I cleared that'.")]
-        [Min(0f)]
-        [SerializeField] private float _respawnDelay = 2f;
-
-        [Tooltip("Metres of clearance a respawn needs from the player (GD §12.4). Nothing should " +
-                 "ever appear on top of you.")]
-        [Min(0f)]
-        [SerializeField] private float _minSpawnDistance = 6f;
+        [Tooltip("The door out of this arena. Optional — an arena without one is playable and " +
+                 "cannot be left, which is what every M0 and M1 grey box was and what a scene " +
+                 "dressed for one experiment still wants. M2-11a moves this onto the arena prefab.")]
+        [SerializeField] private Transform _gate;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -237,7 +226,12 @@ namespace Soulvail.Game.Composition
             // actions asset that must be destroyed with the run (M0-14), and EnemyViews owns two
             // subscriptions and every body standing in the arena.
             builder.Register<InputAdapter>(Lifetime.Scoped);
-            builder.Register<SnapshotBuilder>(Lifetime.Scoped);
+
+            // By name like the prefabs below, and passed even when it is null: VContainer resolves
+            // every parameter from the container or a WithParameter and never falls back to a C#
+            // default, so an omitted one fails to compose the run rather than meaning "no gate".
+            builder.Register<SnapshotBuilder>(Lifetime.Scoped)
+                .WithParameter("gate", _gate);
 
             // By name, like the enemy prefab below: WithParameter<Camera> would be the same kind of
             // fragile type match, and this adapter's other two arguments are already resolved.
@@ -362,11 +356,10 @@ namespace Soulvail.Game.Composition
         /// run starts — nothing is standing in it.
         /// </para>
         /// <para>
-        /// The respawn policy reuses the same positions, and a <c>Keep Alive</c> of zero means an
-        /// arena that empties and stays empty — which is what every arena did before M1-19, what
-        /// an experiment about a single Husk still wants, and what every arena means again from
-        /// M2-05: the director is the only spawner in a run, and a policy refilling behind it
-        /// would be a second one with its own opinion about how many enemies there should be.
+        /// There is no respawn policy any more. M2-05 made the director the only spawner and set
+        /// <c>Keep Alive</c> to zero; M2-10 deleted the type, because a second spawner that keeps
+        /// twelve bodies breathing regardless of the wave plan is a bug waiting for someone to set
+        /// the field back to 12. An arena now empties and stays empty until the next wave is due.
         /// </para>
         /// <para>
         /// <b>The same positions are handed over twice, and they mean two different things.</b> As
@@ -400,29 +393,24 @@ namespace Soulvail.Game.Composition
                 entries[i] = new SpawnPlan.Entry(specId, positions[i]);
             }
 
-            RespawnPolicy respawn = _keepAlive > 0
-                ? new RespawnPolicy(specId, positions, _keepAlive, _respawnDelay, _minSpawnDistance)
-                : null;
-
-            return new SpawnPlan(entries, respawn, positions);
+            return new SpawnPlan(entries, positions);
         }
 
         /// <summary>
         /// How many bodies the enemy pool builds before the run starts.
         /// </summary>
         /// <remarks>
-        /// The largest of the opening population, the respawn quota and the device cap, plus one.
-        /// The quota is what the arena settles at; the opening population can exceed it, because an
-        /// arena is allowed to be dressed with more dummies than it keeps alive; and the spare
-        /// covers the overlap every kill has — a corpse holds its body for the 0.6 s of its
-        /// dissolve while its replacement is already being rented, so without it a steady fight
-        /// would instantiate once per death and the pool would have bought nothing.
+        /// The larger of the opening population and the device cap, plus one. The opening population
+        /// can exceed the cap, because an arena is allowed to be dressed with more dummies than a
+        /// wave may ever hold; and the spare covers the overlap every kill has — a corpse holds its
+        /// body for the 0.6 s of its dissolve while its replacement is already being rented, so
+        /// without it a steady fight would instantiate once per death and the pool would have
+        /// bought nothing.
         /// <para>
-        /// <b>The device cap is in there from M2-05</b>, and it is now the number that decides: with
-        /// the respawn quota at zero the director is the only spawner, and what it may ask for is
-        /// GD §12.2's concurrency bounded by that cap. Sized to the dressed dummies instead, the
-        /// pool would instantiate through the whole of wave 1 — a handful of hitches at exactly the
-        /// moment the first telegraph rings have to be read.
+        /// <b>The device cap is the number that decides.</b> The director is the only spawner, and
+        /// what it may ask for is GD §12.2's concurrency bounded by that cap. Sized to the dressed
+        /// dummies instead, the pool would instantiate through the whole of wave 1 — a handful of
+        /// hitches at exactly the moment the first telegraph rings have to be read.
         /// </para>
         /// <para>
         /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
@@ -440,7 +428,7 @@ namespace Soulvail.Game.Composition
 
             int dressed = _dummyPositions is null ? 0 : _dummyPositions.Length;
 
-            return Mathf.Max(dressed, Mathf.Max(_keepAlive, BootInstaller.DeviceEnemyCap)) + 1;
+            return Mathf.Max(dressed, BootInstaller.DeviceEnemyCap) + 1;
         }
     }
 }

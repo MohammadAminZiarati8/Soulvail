@@ -114,6 +114,9 @@ namespace Soulvail.Game.Presentation
 
         private IDisposable _targetSubscription;
         private IDisposable _waveSubscription;
+        private IDisposable _arrivedSubscription;
+        private IDisposable _clearedSubscription;
+        private IDisposable _transitionSubscription;
         private float _untilRefresh;
         private float _fps;
 
@@ -126,6 +129,18 @@ namespace Soulvail.Game.Presentation
         /// <summary>The wave the director last announced, and how many the stage holds.</summary>
         private int _wave;
         private int _waveCount;
+
+        /// <summary>
+        /// Which beat of the stage the last stage event pointed at.
+        /// </summary>
+        /// <remarks>
+        /// Derived from the three events rather than read from <c>StageFlow.Phase</c>, which is the
+        /// same bargain the target line makes: a phase read out of core would agree with core by
+        /// construction and so could never show the boundary disagreeing with itself. The one thing
+        /// the events cannot see is <c>Clear</c> turning into <c>Gate</c> after 1.5 s — nothing is
+        /// published for it, because nothing outside core has to know — so both read <c>clear</c>.
+        /// </remarks>
+        private string _phase = "—";
 
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
@@ -164,6 +179,14 @@ namespace Soulvail.Game.Presentation
             // agree with core by construction, so it could never show the boundary disagreeing
             // with itself — which is the one thing it exists for.
             _waveSubscription = hub.Subscribe<WaveStarted>(OnWaveStarted);
+
+            // The stage's own three, for the same reason and on the same terms. They are the only
+            // way to see the two seconds of arrival at all: nothing spawns during them, so an
+            // overlay without this line shows a stage that has begun and an arena that is empty,
+            // which is indistinguishable from a director that has quietly stopped.
+            _arrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
+            _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
+            _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
         }
 
         private void Awake()
@@ -223,6 +246,15 @@ namespace Soulvail.Game.Presentation
 
             _waveSubscription?.Dispose();
             _waveSubscription = null;
+
+            _arrivedSubscription?.Dispose();
+            _arrivedSubscription = null;
+
+            _clearedSubscription?.Dispose();
+            _clearedSubscription = null;
+
+            _transitionSubscription?.Dispose();
+            _transitionSubscription = null;
         }
 
         private void OnTargetChanged(TargetChanged evt)
@@ -236,6 +268,30 @@ namespace Soulvail.Game.Presentation
         {
             _wave = evt.Wave;
             _waveCount = evt.WaveCount;
+
+            _phase = "waves";
+        }
+
+        /// <remarks>
+        /// The wave counter is reset with the phase rather than left to the first <c>WaveStarted</c>
+        /// of the new stage, because two seconds pass between them — and "wave 4/4" over an empty
+        /// arena reads as a stage that has stalled rather than one that has just begun.
+        /// </remarks>
+        private void OnStageArrived(StageArrived evt)
+        {
+            _phase = "arrival";
+            _wave = 0;
+            _waveCount = 0;
+        }
+
+        private void OnStageCleared(StageCleared evt)
+        {
+            _phase = "clear";
+        }
+
+        private void OnTransitionStarted(StageTransitionStarted evt)
+        {
+            _phase = "fade";
         }
 
         /// <remarks>
@@ -310,6 +366,8 @@ namespace Soulvail.Game.Presentation
             _line.Append("  enemies ").Append(_snapshot.EnemyCount.ToString(CultureInfo.InvariantCulture));
             _line.Append('/').Append(BootInstaller.DeviceEnemyCap.ToString(CultureInfo.InvariantCulture));
 
+            AppendStage();
+
             AppendDirector();
 
             // Zero while the pathfinder is keeping up with the population, and the number ledger
@@ -362,6 +420,49 @@ namespace Soulvail.Game.Presentation
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 
             _text.SetText(_line);
+        }
+
+        /// <summary>
+        /// Which depth is being played, which beat of it is running, and where the door is.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The depth comes from <c>RunState.StageIndex</c> rather than from an event, which is the
+        /// charge line's bargain rather than the target line's: it is the number a save will record
+        /// (M2-13) and the number every spawn is priced against, so showing anything else here would
+        /// be showing a second opinion about it.
+        /// </para>
+        /// <para>
+        /// <c>gate: —</c> is rule 15 being visible rather than mysterious, exactly as
+        /// <c>director: —</c> is rule 12. An arena dressed without a door is a legal arena and every
+        /// grey box is one; what it costs is a run that reaches <c>clear</c> and then never advances,
+        /// and one dash on screen is the price of never debugging that. When there is a door, the
+        /// number beside it is the XZ metres to it — the same distance core is deciding on, so the
+        /// frame it reads below 1.5 and nothing happens is a frame with a real bug in it.
+        /// </para>
+        /// </remarks>
+        private void AppendStage()
+        {
+            RunState state = _session.State;
+
+            _line.Append("  depth ").Append(
+                (state is null ? 0 : state.StageIndex).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append(' ').Append(_phase);
+
+            if (!_snapshot.HasGate)
+            {
+                _line.Append("  gate: —");
+
+                return;
+            }
+
+            // XZ, because that is what core measures it on (AR §18.4) — a readout that counted the
+            // height would disagree with the rule it exists to make visible.
+            float dx = _snapshot.PlayerPosition.X - _snapshot.GatePosition.X;
+            float dz = _snapshot.PlayerPosition.Z - _snapshot.GatePosition.Z;
+
+            _line.Append("  gate ").Append(Fixed(Mathf.Sqrt((dx * dx) + (dz * dz))));
         }
 
         /// <summary>

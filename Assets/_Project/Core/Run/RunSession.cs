@@ -7,6 +7,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Stage;
 
 namespace Soulvail.Core.Run;
 
@@ -53,6 +54,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// downstream has to ask whether this run has a director.
     /// </summary>
     private SpawnDirector _director;
+
+    /// <summary>
+    /// The stage the run is in the middle of, and what ends it. Null for a mode whose content comes
+    /// entirely from its spawn plan — there is nothing to compose, so there are no waves to pace.
+    /// </summary>
+    /// <remarks>
+    /// Nullable where <see cref="_director"/> is not, and the asymmetry is deliberate: an inert
+    /// director is still a director, because "no spawn points" is a property of the <em>arena</em>
+    /// and every arena has one. An empty roster is a property of the <em>mode</em>, and a mode with
+    /// no waves has no stage to pace through — <c>StageFlow</c> would be holding a plan nothing ever
+    /// composed into.
+    /// </remarks>
+    private StageFlow _flow;
 
     /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
@@ -175,8 +189,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>
     /// <exception cref="InvalidOperationException">A run is already running.</exception>
     /// <exception cref="KeyNotFoundException">
-    /// The catalog holds no mode or class with the config's ids, or the plan, the respawn policy
-    /// or the mode's roster names an archetype nobody authored.
+    /// The catalog holds no mode or class with the config's ids, or the plan or the mode's roster
+    /// names an archetype nobody authored.
     /// </exception>
     /// <exception cref="ArgumentException">
     /// The config's seed disagrees with the generator this session was built with.
@@ -357,12 +371,32 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // of run it is in (rule 12).
         _director = new SpawnDirector(enemies, _events, config.SpawnPlan.SpawnPoints);
 
+        // A mode with an empty roster composed nothing above, so there is no stage to pace: the
+        // arena is whatever the spawn plan dressed into it and it stays that way. The director is
+        // built anyway, one line up, for rule 12's reason — an inert director is a director.
         if (plan is null)
         {
+            _flow = null;
+
             return;
         }
 
-        _director.Begin(plan, State.Time);
+        _flow = new StageFlow(
+            mode,
+            composer,
+            _director,
+            enemies,
+            projectiles,
+            combat,
+            _events,
+            plan,
+            seed);
+
+        // Last, and after RunStarted and SpawnAll for the reason SpawnAll itself is after them: this
+        // publishes StageArrived, and a handler dressing an arena from it may reasonably assume
+        // there is a run to dress one for. It does not begin the director — GD §7.1's two seconds
+        // of arrival come first, and it is the end of those that hands the plan over (M2-10 rule 2).
+        _flow.Begin(config.StageIndex, State.Time);
     }
 
     /// <inheritdoc />
@@ -471,6 +505,35 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // one thing in a run that consumes spawn randomness does so through the run's own
         // generator (ADR-0011).
         _director.Tick(State.Time, State.PlayerPosition, _random.Spawn);
+
+        // After the director and before the motor (M2-10 rule 13, AR §18.1). After, because the
+        // flow ends a stage by reading IsStageComplete, which the director has just this instant
+        // finished deciding — asked one step earlier it would be answering about last frame's
+        // arena. Before the motor, for the director's own reason: the stage is part of the world
+        // the player is moving through rather than part of the move.
+        //
+        // Null for a mode with nothing to compose, which is a run with no waves rather than a run
+        // with no stage — the depth is still the config's and everything priced against it still is.
+        if (_flow is not null)
+        {
+            _flow.Tick(State.Time, snapshot, _random.Spawn);
+
+            // Copied rather than owned, because the two numbers answer different questions: the
+            // flow's is what the stage machine is running, and this is what the run reports and
+            // saves (M2-13). They agree because this is the one line that moves the second one.
+            State.StageIndex = _flow.Stage;
+
+            // A finite mode that has run out of stages. The flow sets the flag and stays in Clear;
+            // ending the run is this class's word and nobody else's (rule 14). Inert for Descent,
+            // which is endless — and written anyway, because ModeSpec.FinalStage exists and the
+            // alternative is a run walking through a door into a stage its mode does not have.
+            if (_flow.IsModeComplete)
+            {
+                End();
+
+                return;
+            }
+        }
 
         TickBody(snapshot);
     }
@@ -664,8 +727,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     }
 
     /// <summary>
-    /// Refuses a run whose plan, respawn policy or roster names an archetype nobody authored,
-    /// before anything about the run has been announced.
+    /// Refuses a run whose plan or roster names an archetype nobody authored, before anything about
+    /// the run has been announced.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -688,11 +751,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         for (int i = 0; i < plan.Initial.Count; i++)
         {
             RequireArchetype(plan.Initial[i].SpecId, $"the spawn plan's entry {i}");
-        }
-
-        if (plan.Respawn is not null)
-        {
-            RequireArchetype(plan.Respawn.SpecId, "the spawn plan's respawn policy");
         }
 
         for (int i = 0; i < mode.Roster.Count; i++)

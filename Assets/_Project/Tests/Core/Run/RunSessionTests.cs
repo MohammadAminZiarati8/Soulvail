@@ -296,19 +296,6 @@ public sealed class RunSessionTests
     }
 
     [Test]
-    public void Start_UnknownRespawnArchetype_NothingAnnounced()
-    {
-        // The plan itself is legal and empty; the stranger is in the policy, which SpawnAll would
-        // have adopted without reading and only tripped over a kill later.
-        var plan = new SpawnPlan(
-            Array.Empty<SpawnPlan.Entry>(),
-            new RespawnPolicy(
-                new ContentId(GhostId), new[] { Vector3.Zero }, 1, 1f, 0f));
-
-        AssertStartRefusedCleanly(plan);
-    }
-
-    [Test]
     public void Start_UnknownRosterArchetype_NothingAnnounced()
     {
         // The half that has no other line of defence: nothing spawns from a roster until M2-05's

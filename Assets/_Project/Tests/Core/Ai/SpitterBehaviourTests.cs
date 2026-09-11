@@ -544,7 +544,7 @@ public sealed class SpitterBehaviourTests
         for (int i = 0; i < 600; i++)
         {
             intents.Clear();
-            spitter.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles));
+            spitter.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles, system));
         }
 
         Assert.That(spitter.State, Is.Not.EqualTo(SpitterState.Idle), "Sanity: the cycle is running.");
@@ -555,7 +555,7 @@ public sealed class SpitterBehaviourTests
 
             _allocationClock += Frame;
 
-            spitter.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles));
+            spitter.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles, system));
         });
     }
 
@@ -664,7 +664,7 @@ public sealed class SpitterBehaviourTests
         for (int i = 0; i < 600; i++)
         {
             intents.Clear();
-            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles));
+            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles, system));
         }
 
         // The context is constructed *inside* the measured body, which is the half of rule 2 this
@@ -676,7 +676,7 @@ public sealed class SpitterBehaviourTests
 
             _allocationClock += Frame;
 
-            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles));
+            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles, system));
         });
 
         // The other half — one reading of the clock for the whole arena — asserted the only way a
@@ -694,7 +694,7 @@ public sealed class SpitterBehaviourTests
 
         for (int i = 0; i < 200 && shots.Count<ProjectileFired>() == 0; i++)
         {
-            arena.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, shots, sky));
+            arena.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, shots, sky, arena));
         }
 
         IReadOnlyList<ProjectileFired> fired = shots.Of<ProjectileFired>();
@@ -815,13 +815,13 @@ public sealed class SpitterBehaviourTests
         // Guarded here rather than in every Tick, which is the other half of why the context is a
         // struct: the checks run once a tick for the whole arena instead of once per enemy.
         Assert.Throws<ArgumentNullException>(
-            () => new EnemyTickContext(Frame, 0f, null, _intents, _events, _projectiles));
+            () => new EnemyTickContext(Frame, 0f, null, _intents, _events, _projectiles, _system));
         Assert.Throws<ArgumentNullException>(
-            () => new EnemyTickContext(Frame, 0f, _player, null, _events, _projectiles));
+            () => new EnemyTickContext(Frame, 0f, _player, null, _events, _projectiles, _system));
         Assert.Throws<ArgumentNullException>(
-            () => new EnemyTickContext(Frame, 0f, _player, _intents, null, _projectiles));
+            () => new EnemyTickContext(Frame, 0f, _player, _intents, null, _projectiles, _system));
         Assert.Throws<ArgumentNullException>(
-            () => new EnemyTickContext(Frame, 0f, _player, _intents, _events, null));
+            () => new EnemyTickContext(Frame, 0f, _player, _intents, _events, null, _system));
     }
 
     [Test]
@@ -833,11 +833,11 @@ public sealed class SpitterBehaviourTests
         foreach (float bad in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
         {
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => new EnemyTickContext(bad, 0f, _player, _intents, _events, _projectiles),
+                () => new EnemyTickContext(bad, 0f, _player, _intents, _events, _projectiles, _system),
                 $"dt {bad}");
 
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => new EnemyTickContext(Frame, bad, _player, _intents, _events, _projectiles),
+                () => new EnemyTickContext(Frame, bad, _player, _intents, _events, _projectiles, _system),
                 $"now {bad}");
         }
     }
@@ -1028,7 +1028,7 @@ public sealed class SpitterBehaviourTests
 
     /// <summary>This frame's context, built from the fixture's own clock and ports.</summary>
     private EnemyTickContext Context() =>
-        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles);
+        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles, _system);
 
     /// <summary>The agent whose behaviour this is, found by walking the registry.</summary>
     private EnemyAgent Agent(SpitterBehaviour spitter)

@@ -142,4 +142,70 @@ private void Explode(EnemyAgent agent, float now, PlayerCombat player);
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+**As specified in every rule.** All thirteen behaviour rules landed as written, including the two the
+spec singled out — the blast triggers off `EnemySpec.Explosion` and never off the kind, and it reaches
+the player and nothing else. `EnemySystem` needed one method and one branch, so the M2-08a/M2-08b
+split was not reached: both production `ApplyDamage` callers are instance methods on `PlayerCombat`
+and pass `this` without anything being unpicked.
+
+**Seven deviations, one of which changes a number the spec asserts.**
+
+1. **The ripple row named the wrong files.** It predicted `ConeHitsToDamageTests`,
+   `ChargeIntegrationTests` and `EnemySystemTests`. The compiler's actual list is
+   `ChaserBehaviourTests` (2 sites), `ConeHitsToDamageTests` (2), `SpawnDirectorTests` (1) and
+   `RespawnPolicyTests` (1). `ChargeIntegrationTests`' `ApplyDamage` calls are `PlayerCombat`'s, which
+   this task did not touch; `EnemySystemTests` has no direct call. Three of the four fixtures had no
+   `PlayerCombat` in scope and now build a `Bystander()` with silent ports, commented in each case
+   with why the player is inert there (every one of them kills Husks, which carry no explosion block).
+2. **A second ripple the spec did not predict: every `new EnemyTickContext(...)` in the tests.** The
+   struct gained a sixth member, so sixteen construction sites across `ChaserBehaviourTests`,
+   `EnemySystemTests` and `SpitterBehaviourTests` were widened. Mechanical, and the compiler
+   enumerated them.
+3. **Rule 9's escape arithmetic is written against a speed the game no longer has.** The rule says
+   0.8 s at *the Oathbound's 5.4 m/s* covers 4.3 m and the player "walks out with a metre to spare".
+   The owner's post-M2-03 retune left the Oathbound at **3 m/s**, where 0.8 s covers 2.4 m — and
+   starting from the 2 m trigger that clears the 3 m radius by **1.4 m**, which is what "a metre to
+   spare" actually describes. At the spec's 5.4 the margin is 3.3 m. **`Fuse_IsEscapable` pins both
+   speeds** rather than picking one, so the archetype has to survive the retune and the doc, and the
+   thin margin is the one that is asserted. **This is the Known-issues doc contradiction surfacing in
+   a third place** — GD §6.1's 5.4–6.2 band, Characters.md §3, and now this rule. Flagged, not fixed:
+   moving the band is the owner's call and M5-02 is the task that cannot avoid it.
+4. **The fixture senses through `EnemySystem.Ingest` instead of hand-writing the blackboard**, which
+   is where it departs from `SpitterBehaviourTests`. A blast is resolved against the *system's* last
+   ingested player position (rule 5), not against the blackboard, so a hand-written perception would
+   have left every explosion measuring its distance to the origin while the row believed it had moved
+   the player — a fixture that passes while proving nothing. Argued in the file's class remarks.
+5. **Row 29 (`Bloater_AssetIsWiredUp`) folded into the existing Tests.Game row** rather than becoming
+   a new one, exactly as M2-07b did with the Spitter's:
+   `EnemyLookTests.Assets_AuthoredStaticUntilTheirBehaviourExists` now asserts `Bloater`, and the
+   radius of 3 was already pinned next door in `Bloater_MatchesDesign`. **That row now has no `Static`
+   subject left** — all three shipped archetypes have a mind — so it was kept with a third assertion
+   and a comment saying why: the rule is not spent, the next archetype authored ahead of its PR
+   re-arms it, and a deleted row has to be remembered instead of failing. **This makes
+   `Tests/Game/Authoring/EnemyLookTests.cs` a sixth touched file, past the Files table**, called out
+   rather than hidden.
+6. **Three implied guard rows, not two.** The spec's implied set gives a null row per public
+   constructor and a non-finite row per float door. `EnemyTickContext`'s float doors were already
+   covered by M2-07b, so this task added `Ctor_NullAgent_Throws`, `Context_NullEnemies_Throws` for the
+   new fifth reference, and **`ApplyDamage_NullPlayer_Throws`** — the widened signature is a new public
+   door and `ApplyDamage` now guards it, which the spec's Public API block did not say it would.
+7. **`EnemyAgent.Initialise`'s comment was corrected, not just extended.** It read "A Static or a
+   Bloater is left with no behaviour at all"; a Bloater now builds one, so the sentence names `Static`
+   alone. This is the same paragraph M2-07b had to rewrite for the same reason — it is the third time
+   that comment has been the thing that went stale, which is worth noticing.
+
+**Two numbers the spec asserted, checked rather than assumed.** `Explode_ObeysTheOneShotRule` runs a
+Bloater at depth 200 where d(n) has capped at 3.0×: 15 × 3 = **45**, inside GD §12.4's ceiling of 49.
+`Explode_UsesTheScaledDamage` reads the agent's own `ContactDamage.Value` rather than typing
+15 × d(20), so the row cannot drift away from the curve it is about.
+
+**Rule 11 held exactly as the spec predicted** and `EnemySystem.Tick`'s warning was updated rather than
+deleted: `System_TickSpanSurvivesADetonation` puts three Bloaters through one pass, all three
+detonating inside it, and the span survives because `ApplyDamage` leaves each corpse registered. The
+paragraph now says the warned-about day came, why it did not apply, and that **the backwards walk is
+still owed by the next behaviour that calls `Despawn` directly**.
+
+**Verified:** 745 EditMode green, 0 failed, 0 skipped, 9.9 s — M2-07b's 714 plus exactly 31, which is
+28 of the spec's 29 rows plus 3 implied guards, with its 29th folded into Tests.Game per deviation 5.
+PlayMode 3 green, 0 failed, 3.9 s. Zero errors, zero analyzer warnings, no `ProjectSettings/` drift,
+and the seven Console warnings are the pre-existing ones the authoring fixtures provoke on purpose.

@@ -465,6 +465,8 @@ is about Unity's.
 | Projectiles tick **after** the enemy behaviours and **before** the death check | a shot fired this tick lands on the tick it left, erasing the flight the player is meant to walk out of; or a killing bolt leaves the player at zero hit points for a frame, still playing | M2-07a |
 | The director ticks **after** the death check and **before** the motor | a wave is telegraphed into an arena whose run ended this tick; or the director sees a player position the rest of the tick did not | M2-05 |
 | `RunSession.Start` composes the stage **before** `RunStarted` and begins the director **after** `SpawnAll` | a mode that introduces nothing at its own starting stage throws with the run announced (ledger row 3 again); or wave 1's concurrency check cannot see the arena's dressed-in enemies | M2-05 |
+| `EnemySystem.ApplyDamage` leaves the corpse **registered**, which is what lets a behaviour kill itself from inside `EnemySystem.Tick`'s own pass | nothing today — this is why the forward walk over `Registry.Alive` is safe across a Bloater's detonation. **The next behaviour that calls `Despawn` directly does owe the backwards walk `SweepCorpses` does**, because that compacts the registry in place and shifts every index after it | M2-08 |
+| An explosion is triggered by the spec carrying an `ExplosionSpec`, **never by the behaviour kind**, and is published after the `EnemyDied` that caused it | "explodes on death" stops being true for a Bloater killed by a Charge, a cone or its own fuse — and M7-02's Volatile affix needs a second mechanism instead of a spec block | M2-08 |
 | Ingest runs before anything reads an enemy | every distance is one frame stale, and it reads as an AI bug | M1-06 |
 | `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance computed from the previous frame's position | M1-06 |
 | `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation is discarded every time the player starts moving, and no test written from rest would see it | M0-07 |
@@ -500,8 +502,12 @@ is about Unity's.
   may store it.** One reading of the clock decides the whole arena, and a behaviour that kept the
   struct would be keeping this tick's clock, this tick's player and this tick's ports; both
   implementers therefore unpack it into fields on the way in and clear them in a `finally` on the way
-  out. It is also the one place the four references and the two floats are guarded, which is what
-  lets `Tick` stay unguarded on a path walked once per enemy per frame (M2-07b).
+  out. It is also the one place the five references and the two floats are guarded, which is what
+  lets `Tick` stay unguarded on a path walked once per enemy per frame (M2-07b). **The census joined
+  it at M2-08** — refused in M2-07b because a handle on it would let a behaviour damage its
+  neighbours, and granted once a Bloater needed to end its *own* life through the one door damage
+  reaches an enemy through. The concession stays bounded because the blast that follows is resolved
+  by `EnemySystem` off the spec, not by the behaviour.
 - **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.**
   The clamp only protects the simulation if brain and body take the same step. Purely cosmetic
   view timers are the deliberate exception (M0-16).

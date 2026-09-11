@@ -334,15 +334,35 @@ public sealed class EnemySystem
     /// <para>
     /// The corpse is left registered. <see cref="Tick"/> retires it <see cref="CorpseTime"/>
     /// seconds later, which is what gives the view its dissolve and what makes the id in
-    /// <see cref="EnemyDied"/> still resolvable while the event is being handled.
+    /// <see cref="EnemyDied"/> still resolvable while the event is being handled. As of M2-08 it is
+    /// also what keeps the behaviour pass's span valid across a detonation — see <see cref="Tick"/>.
+    /// </para>
+    /// <para>
+    /// <b>It takes a <see cref="PlayerCombat"/> as of M2-08, and that is the honest signature.</b>
+    /// Hurting an enemy can now hurt the player: an archetype carrying an
+    /// <see cref="ExplosionSpec"/> goes off where it died, so the one door damage reaches an enemy
+    /// through has to know who the player is. Both production callers are inside
+    /// <c>PlayerCombat</c> and pass <c>this</c>; a Bloater's own fuse passes the player off its tick
+    /// context.
     /// </para>
     /// </remarks>
     /// <param name="enemyId">Who to hurt. An id that is not registered is not an error.</param>
     /// <param name="amount">Damage to apply. Zero, negative and NaN all do nothing.</param>
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>
+    /// <param name="player">
+    /// Who a resulting blast would catch. Required rather than optional, so that the compiler
+    /// enumerates every call site the day an archetype starts exploding rather than letting one
+    /// silently opt out of it.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
     /// <returns>What <see cref="Health"/> did, unchanged, for a caller with its own conclusions to draw.</returns>
-    public DamageResult ApplyDamage(int enemyId, float amount, float now)
+    public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
     {
+        if (player is null)
+        {
+            throw new ArgumentNullException(nameof(player));
+        }
+
         // Registered *and* breathing. TryGet finds a corpse on purpose (that is what lets a death
         // event name a resolvable id), so aliveness is the second half of the question here.
         if (!Registry.TryGet(enemyId, out EnemyAgent agent) || !agent.IsAlive)
@@ -377,9 +397,75 @@ public sealed class EnemySystem
             _lastDeathAt = now;
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
+
+            // After the death and not instead of it (M2-08 rule 1). The trigger is the spec rather
+            // than the kind, which is what makes "explodes on death" true however it died — shot at
+            // range, cut down mid-fuse, killed by a Charge, or killed by its own fuse — and true for
+            // anything that ever gets an explosion block, M7-02's Volatile affix included, with no
+            // switch on an archetype to keep in step.
+            if (agent.Spec.Explosion != null)
+            {
+                Explode(agent, now, player);
+            }
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Resolves <paramref name="agent"/>'s explosion: everything inside
+    /// <see cref="ExplosionSpec.Radius"/> of where it died takes its
+    /// <see cref="EnemyAgent.ContactDamage"/>, and <see cref="EnemyExploded"/> is published.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>"Everything" is the player and nothing else, and that is a ruling rather than an
+    /// omission</b> (M2-08 rule 4). Damaging other enemies is the better <em>moment</em> — a Bloater
+    /// killed in a crowd chaining through it is the best thing the archetype could produce — but it
+    /// would re-enter <see cref="ApplyDamage"/> while <see cref="ApplyDamage"/> is still running,
+    /// which can kill another Bloater, which explodes, and every one of those touches a registry
+    /// that <see cref="Tick"/> may be walking. That wants a work queue and a recursion guard, and it
+    /// is a bigger change than the archetype. Player-only keeps the whole blast a single leaf call:
+    /// one XZ distance test, one <c>PlayerCombat.ApplyDamage</c>, no registry mutation, no
+    /// re-entrancy. M7-02 is where a chain can be afforded.
+    /// </para>
+    /// <para>
+    /// <b>XZ, from where it died</b> (AR §18.4) — the height between two capsule centres is a
+    /// rendering detail, and counting it would shrink every blast by however tall the bodies are.
+    /// The position is the agent's as of this frame's <see cref="Ingest"/>, which is the same one
+    /// <see cref="EnemyDied"/> just carried, so the ring a view draws and the circle that hurt are
+    /// the same circle.
+    /// </para>
+    /// <para>
+    /// <b>The damage is the agent's stat, not a number on the explosion block</b> — so GD §12.3's
+    /// d(n) is already in it and M7-02's affixes reach a blast without a second mechanism. It is the
+    /// same reason a thrown shot carries <c>ContactDamage</c> (M2-07b).
+    /// </para>
+    /// <para>
+    /// <b>The event is published whether or not it caught anybody.</b> A view has to draw the flash
+    /// either way — <see cref="ProjectileImpacted"/>'s reasoning, and <see cref="EnemyDespawned"/>'s.
+    /// </para>
+    /// </remarks>
+    private void Explode(EnemyAgent agent, float now, PlayerCombat player)
+    {
+        float radius = agent.Spec.Explosion.Radius;
+
+        Vector3 centre = agent.Position;
+
+        float dx = _playerPosition.X - centre.X;
+        float dz = _playerPosition.Z - centre.Z;
+
+        // Compared squared, so a blast never takes a square root. Guarded at the door it was
+        // authored through — ExplosionSpec refuses a non-positive or infinite radius — which is what
+        // makes squaring it here safe (AR §18.3).
+        bool caught = (dx * dx) + (dz * dz) <= radius * radius;
+
+        if (caught)
+        {
+            player.ApplyDamage(agent.ContactDamage.Value, now);
+        }
+
+        _events.Publish(new EnemyExploded(agent.Id, agent.Spec.Id, centre, radius, caught));
     }
 
     /// <summary>
@@ -442,10 +528,11 @@ public sealed class EnemySystem
     /// <remarks>
     /// <para>
     /// This dispatches and nothing else: <c>Static</c> does nothing by definition — that is what the
-    /// kind means, and it is why a dummy holds still — while <c>Chaser</c> (M1-18) and
-    /// <c>Spitter</c> (M2-07b) each tick the behaviour the agent was built with. The two share a
-    /// line rather than repeating one, which is the seam earning its keep: what differs between a
-    /// Husk and a Spitter is entirely on the other side of <c>IEnemyBehaviour</c>. The switch is
+    /// kind means, and it is why a dummy holds still — while <c>Chaser</c> (M1-18),
+    /// <c>Spitter</c> (M2-07b) and <c>Bloater</c> (M2-08) each tick the behaviour the agent was
+    /// built with. The three share a line rather than repeating one, which is the seam earning its
+    /// keep: what differs between a Husk, a Spitter and a Bloater is entirely on the other side of
+    /// <c>IEnemyBehaviour</c>. The switch is
     /// here because this is the one site that knows the full set of behaviours, which is why
     /// <c>EnemyBehaviourKind</c> is deliberately unvalidated where it is authored (M1-05) — a kind
     /// added without teaching this method about it fails loudly here instead of standing motionless
@@ -458,11 +545,20 @@ public sealed class EnemySystem
     /// </para>
     /// <para>
     /// <b>The span is re-read after the pass rather than hoisted across it, and that is not
-    /// optional.</b> A strike can kill the player but never an enemy, so nothing in this loop can
-    /// despawn anything and the span stays valid throughout — but the loop is written against
-    /// <c>Registry.Alive</c> taken once *after* the sweep for exactly that reason, and the day a
-    /// behaviour gains the power to retire an agent (a Bloater exploding, M2-08) it has to walk
-    /// backwards the way <see cref="SweepCorpses"/> does.
+    /// optional.</b> The loop is written against <c>Registry.Alive</c> taken once *after* the sweep,
+    /// so that nothing added during the pass is walked by it.
+    /// </para>
+    /// <para>
+    /// <b>M2-08 is the day this warning named, and the warning does not apply — which is worth
+    /// keeping rather than deleting.</b> It used to read: the day a behaviour gains the power to
+    /// retire an agent (a Bloater exploding) it has to walk backwards the way
+    /// <see cref="SweepCorpses"/> does. A Bloater now kills itself from inside this very loop, and
+    /// the span survives it because <see cref="ApplyDamage"/> leaves the corpse <em>registered</em>:
+    /// a death marks an agent not-alive and stamps it, and <see cref="SweepCorpses"/> retires it
+    /// <see cref="CorpseTime"/> seconds later at the top of a subsequent tick. Nothing is removed
+    /// underneath the walk, so no index shifts and no slot is nulled. <b>The backwards walk is still
+    /// owed by the next behaviour that calls <see cref="Despawn"/> directly</b>, which would compact
+    /// the registry in place — that is the case this paragraph is kept for.
     /// </para>
     /// </remarks>
     public void Tick(in EnemyTickContext ctx)
@@ -478,7 +574,10 @@ public sealed class EnemySystem
             // Registered is not breathing (EnemyRegistry rule 4): a corpse sits in the span until
             // M1-11 has published its death, and a corpse does not act. This is also what makes a
             // Husk killed mid-windup cancel its strike — there is no path from here to the damage
-            // frame for something that is not alive.
+            // frame for something that is not alive. A Bloater killed mid-fuse is the deliberate
+            // counter-example and costs nothing here: it stops ticking exactly like the Husk, and it
+            // still goes off, because the blast is a property of the corpse rather than of the fuse
+            // and was already resolved by ApplyDamage on the way in (M2-08 rule 2).
             if (!agent.IsAlive)
             {
                 continue;
@@ -491,6 +590,7 @@ public sealed class EnemySystem
 
                 case EnemyBehaviourKind.Chaser:
                 case EnemyBehaviourKind.Spitter:
+                case EnemyBehaviourKind.Bloater:
                     agent.Behaviour.Tick(ctx);
                     break;
 

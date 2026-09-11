@@ -24,10 +24,14 @@ namespace Soulvail.Core.Ai;
 /// in a <c>finally</c> on the way out, exactly as <c>ChaserBehaviour</c> has since M1-18.
 /// </para>
 /// <para>
-/// <b>What is deliberately not here.</b> No <c>EnemySystem</c> and no <c>EnemyRegistry</c>: a
-/// behaviour drives one enemy and reads the world through its own blackboard (AR §9), and a handle
-/// on the census would let it spawn, despawn or damage its neighbours — which is the census's job
-/// and nobody else's. M2-08's explosion needs exactly that and will argue for it there.
+/// <b><see cref="Enemies"/> is here as of M2-08, and the argument M2-07b deferred is this.</b> It
+/// was left off because a handle on the census would let a behaviour spawn, despawn or damage its
+/// neighbours, which is the census's job and nobody else's. What changed is that a Bloater kills
+/// <em>itself</em> — the fuse ends in <c>ApplyDamage(agent.Id, …)</c> on its own id — and the one
+/// thing an enemy could not previously reach was the door its own death goes through. The concession
+/// is real and bounded: the blast that follows is resolved by <c>EnemySystem</c> off the spec, not
+/// by the behaviour, so nothing here gained the power to hurt a neighbour. The widening is the one
+/// line in the one file this struct exists to make it.
 /// </para>
 /// </remarks>
 public readonly struct EnemyTickContext
@@ -48,7 +52,12 @@ public readonly struct EnemyTickContext
     /// that throw, because the context is the whole of what a tick may reach and a per-kind context
     /// would be a type per archetype.
     /// </param>
-    /// <exception cref="ArgumentNullException">Any of the four references is null.</exception>
+    /// <param name="enemies">
+    /// The census, so that a behaviour can end its own life through the one door damage reaches an
+    /// enemy through (M2-08 rule 8). See the class remarks for why it was refused in M2-07b and what
+    /// changed.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any of the five references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="dt"/> or <paramref name="now"/> is not finite. A NaN clock does not produce a
     /// wrong enemy, it produces a silent one: every comparison a state timer makes against it is
@@ -66,7 +75,8 @@ public readonly struct EnemyTickContext
         PlayerCombat player,
         IIntentSink intents,
         IDomainEvents events,
-        ProjectileSystem projectiles)
+        ProjectileSystem projectiles,
+        EnemySystem enemies)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -74,6 +84,7 @@ public readonly struct EnemyTickContext
         Intents = intents ?? throw new ArgumentNullException(nameof(intents));
         Events = events ?? throw new ArgumentNullException(nameof(events));
         Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+        Enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
@@ -93,6 +104,11 @@ public readonly struct EnemyTickContext
 
     /// <summary>The shots already in the air, and where a new one is fired into.</summary>
     public ProjectileSystem Projectiles { get; }
+
+    /// <summary>
+    /// The census — the one door damage reaches an enemy through, this enemy included (M2-08).
+    /// </summary>
+    public EnemySystem Enemies { get; }
 
     private static float Finite(float value, string paramName)
     {

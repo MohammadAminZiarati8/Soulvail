@@ -415,16 +415,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         //
         // The context is built here and once (M2-07b rule 2), never per agent: every enemy in the
         // arena therefore decides against one reading of the clock, and widening what a behaviour
-        // may reach — M2-08's Bloater is next — is a change to one struct rather than to every
-        // implementer, every dispatch and every test that calls one. It is a struct; it allocates
-        // nothing.
+        // may reach is a change to one struct rather than to every implementer, every dispatch and
+        // every test that calls one. M2-08 is the first time that promise was called in: the census
+        // is the sixth member, added in one line so that a Bloater's fuse can end its own life
+        // through the door damage reaches an enemy through. It is a struct; it allocates nothing.
         var enemies = new EnemyTickContext(
             snapshot.Dt,
             State.Time,
             State.Combat,
             _intents,
             _events,
-            State.Projectiles);
+            State.Projectiles,
+            State.Enemies);
 
         State.Enemies.Tick(enemies);
 

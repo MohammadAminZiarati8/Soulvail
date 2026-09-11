@@ -227,7 +227,11 @@ public sealed class RespawnPolicyTests
     /// <summary>Kills the enemy with <paramref name="id"/> outright at <paramref name="at"/>.</summary>
     private void Kill(int id, float at)
     {
-        _system.ApplyDamage(id, 10_000f, at);
+        // The blast target ApplyDamage requires as of M2-08 rule 3. This fixture spawns Husks, which
+        // carry no explosion block, so the player is inert here — silent ports for that reason.
+        var bystander = new PlayerCombat(Oathbound(), new SilentEvents(), new RecordingIntents(), Capacity);
+
+        _system.ApplyDamage(id, 10_000f, at, bystander);
     }
 
     /// <summary>How many registered enemies are breathing — corpses excluded, which is the census the rule reads.</summary>

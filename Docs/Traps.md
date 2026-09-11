@@ -292,6 +292,13 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
 - **`AllocationAssert` cannot measure a `stackalloc` span** — a lambda cannot close over a ref
   struct. Build the buffer as a heap array outside the measured body and let it convert at the call
   site inside (M1-03).
+- **A fixture that hand-writes perception passes vacuously when the thing under test reads a
+  *different* copy of the same fact.** A Bloater's blast is resolved against the player position
+  `EnemySystem` last *ingested*, not against the blackboard a behaviour test assigns — so a fixture
+  built on `SpitterBehaviourTests`' hand-written `Place` would have had every explosion measuring its
+  distance to the origin while each row believed it had moved the player. Nothing fails; the rows go
+  green. **When two copies of a fact exist, the test has to write the one the code reads** — here, by
+  sensing the whole arena through `Ingest` (M2-08).
 - **`RecordingEvents` may never appear inside an `AllocationAssert` body.** It stores each payload
   in a `List<object>`, so it boxes every struct and the row measures the fake instead of core. Use
   a silent `IDomainEvents`; the real `DomainEventHub` does not box (M1-18).

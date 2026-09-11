@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -364,8 +365,13 @@ public sealed class ConeHitsToDamageTests
 
         _events.Clear();
 
-        Assert.That(enemies.ApplyDamage(husk.Id, 0f, 1f).Applied, Is.EqualTo(0f));
-        Assert.That(enemies.ApplyDamage(husk.Id, float.NaN, 1f).Applied, Is.EqualTo(0f));
+        // The blast target ApplyDamage requires as of M2-08 rule 3. Nothing here can explode — a
+        // Husk carries no explosion block — so this is a bystander the row is not about, and the
+        // assertion below that *nothing* was published covers it.
+        var bystander = new PlayerCombat(Oathbound(), _events, _intents, EnemyCapacity);
+
+        Assert.That(enemies.ApplyDamage(husk.Id, 0f, 1f, bystander).Applied, Is.EqualTo(0f));
+        Assert.That(enemies.ApplyDamage(husk.Id, float.NaN, 1f, bystander).Applied, Is.EqualTo(0f));
 
         Assert.That(_events.All, Is.Empty, "A swing that did nothing has nothing to announce.");
         Assert.That(husk.Health.Current, Is.EqualTo(HuskMaxHp).Within(1e-4f));

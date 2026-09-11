@@ -42,6 +42,13 @@ public sealed class FocusResolverTests
     private const int Seed = 4;
     private const int EnemyCapacity = 8;
 
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
     /// <summary>CC §7's acquire range, wide enough that no row loses a focus to distance.</summary>
     private const float AcquireRange = 12f;
 
@@ -246,7 +253,7 @@ public sealed class FocusResolverTests
     [Test]
     public void Commands_WhenNotRunning_Throw()
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
 
         // Before any run: State is null, so a no-op here would be a NullReferenceException one line
         // later anyway. Throwing says which of the two problems it is.
@@ -275,7 +282,7 @@ public sealed class FocusResolverTests
     /// </summary>
     private RunSession StartedRun(params Vector3[] positions)
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
 
         session.Start(Config(positions));
         Tick(session);

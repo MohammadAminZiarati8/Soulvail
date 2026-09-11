@@ -59,6 +59,13 @@ public sealed class ChargeIntegrationTests
     /// <summary>Room for every row's enemies, and the buffers the run preallocates.</summary>
     private const int EnemyCapacity = 8;
 
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
     // CC §7, Charge.
     private const float Distance = 10f;
     private const float Duration = 0.22f;
@@ -117,7 +124,7 @@ public sealed class ChargeIntegrationTests
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap);
 
         // The player stands at the origin and — except in the one row that pushes the stick — never
         // touches it, so a dash goes where the character is looking and every enemy's spawn position
@@ -403,7 +410,7 @@ public sealed class ChargeIntegrationTests
         // 15 HP against the Charge's 20: the one row where a dash finishes something, and the reason
         // CC §5 calls it a damaging dodge rather than an escape.
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap);
 
         int husk = StartRun(At(5f))[0];
 
@@ -440,7 +447,7 @@ public sealed class ChargeIntegrationTests
             new[] { Husk() },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap);
 
         session.Start(new RunConfig(
             new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
@@ -511,7 +518,7 @@ public sealed class ChargeIntegrationTests
             new[] { Husk(maxHp: 1e9f) },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

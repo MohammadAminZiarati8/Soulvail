@@ -42,6 +42,13 @@ public sealed class PlayerCombatTests
     /// <summary>Room for every row's enemies, and the buffer <c>PlayerCombat</c> preallocates.</summary>
     private const int EnemyCapacity = 8;
 
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
     // CC §7, Survivability and Targeting.
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
@@ -336,7 +343,7 @@ public sealed class PlayerCombatTests
     {
         var catalog = new ContentCatalog(
             new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),
@@ -379,7 +386,7 @@ public sealed class PlayerCombatTests
             new[] { Chaser() },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
 
         // A metre away: inside the Husk's 1.2 m reach on the tick it starts chasing, so the run is
         // over inside the 0.4 s wind-up plus a handful of frames rather than after a walk across

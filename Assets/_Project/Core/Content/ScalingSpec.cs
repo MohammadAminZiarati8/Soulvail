@@ -108,6 +108,16 @@ public readonly struct WaveCurve
     /// <inheritdoc cref="BudgetCurve.IsAuthored" />
     public bool IsAuthored => _stagesPerStep > 0;
 
+    /// <summary>The most waves any stage of this mode can have — GD §12.2's ceiling.</summary>
+    /// <remarks>
+    /// Exposed for the one thing that has to size storage before it knows which stage it will be
+    /// asked about: a run builds one <c>WavePlan</c> for its whole life (M2-04) and every stage is
+    /// composed into it, so the capacity is the curve's maximum rather than the opening stage's
+    /// answer. Reading <see cref="At"/> at some arbitrarily deep stage would give the same number
+    /// by accident and stop doing so the day the curve gains a shape.
+    /// </remarks>
+    public int Max => _max;
+
     /// <summary>How many waves <paramref name="stage"/> is delivered in.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="stage"/> is below 1.</exception>
     public int At(int stage)

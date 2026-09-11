@@ -461,7 +461,9 @@ is about Unity's.
 | Invariant | Break it and | Set in |
 |---|---|---|
 | `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15 |
-| `RunSession.Tick`: time → ingest → combat → enemy behaviours → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08 |
+| `RunSession.Tick`: time → ingest → combat → enemy behaviours → (dead? end) → **director** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05 |
+| The director ticks **after** the death check and **before** the motor | a wave is telegraphed into an arena whose run ended this tick; or the director sees a player position the rest of the tick did not | M2-05 |
+| `RunSession.Start` composes the stage **before** `RunStarted` and begins the director **after** `SpawnAll` | a mode that introduces nothing at its own starting stage throws with the run announced (ledger row 3 again); or wave 1's concurrency check cannot see the arena's dressed-in enemies | M2-05 |
 | Ingest runs before anything reads an enemy | every distance is one frame stale, and it reads as an AI bug | M1-06 |
 | `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance computed from the previous frame's position | M1-06 |
 | `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation is discarded every time the player starts moving, and no test written from rest would see it | M0-07 |
@@ -532,6 +534,13 @@ is about Unity's.
   **tightening it invalidates content references already written to disk** (M0-08).
 - **`SeededRandom`'s stream indices — Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4 — are part of
   what a seed means.** Never reorder or renumber; a new stream takes the next free index (M0-04).
+- **Choosing a position makes exactly one draw, whatever it then finds.** Both spawners — 
+  `EnemySystem.ApplyRespawn` (M1-19) and `SpawnDirector` (M2-05) — draw a starting index once and
+  then *walk* the candidates deterministically, so a refused position costs the same draw as an
+  accepted one. Consumption that depended on where the player was standing, or on how full the
+  arena was, is the one thing a seed cannot survive: the same seed would replay differently the
+  moment the player stood somewhere else. **Anything that later picks a place from a list owes the
+  same shape** (M1-19, M2-05).
 - **GD §12's formulas are authoritative and GD §12.1's own table is not.** `B(40)` is 1,876.9;
   the table's stage-40 row says 1,772 and the "44×" beneath it follows from the same wrong number.
   Stages 1, 5, 10 and 20 all agree to a rounding, which is what makes the row the error. The code
@@ -572,6 +581,12 @@ is about Unity's.
   events; its owner turns `DamageResult` into events (M1-02, M1-08, M1-11).
 - **`Health.HasShield` means "has a `ShieldSpec`", not "the shield is up"** — a depleted shield
   must still recharge. Ask `Shield > 0` for the other question (M1-02).
+- **A telegraph is a promise, and nothing may break it.** `SpawnDirector` never cancels a
+  `SpawnTelegraphed`, never moves one, and does not let the concurrency cap eat one — which is why
+  the cap counts the *pending* as well as the living, refusing new rings instead of dropping issued
+  ones. A ring the player dodged that produced nothing, or produced something two metres away,
+  teaches them not to trust the next one, and GD §7.1's whole warning contract goes with it. The
+  single exception is `Clear`, where there is no arena left for the body to appear in (M2-05).
 - **`EnemyRegistry.Alive` means *registered*, not breathing.** A corpse stays until its death has
   been published and the view has had its frame. Every reader that cares checks `IsAlive`. The
   naming is a wart (M1-05).

@@ -251,7 +251,12 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   calls `ResolveOrParameter` for *every* constructor parameter and throws if nothing answers —
   there is no `HasDefaultValue` branch in the package. It fails at scope construction, not at
   compile time. Pass it with `WithParameter` and name the default as a `const` so the two cannot
-  drift (M1-19).
+  drift (M1-19). **It has now fired twice, and the second time the code carried a comment warning
+  about the first:** M2-05 gave `NavPathSense` a third parameter with a default, `RunScope` passed
+  the other two, and the container went looking for a registration of `System.Int32` and failed to
+  build the whole run scope. **Adding a defaulted parameter to a registered type is a change to its
+  registration**, and nothing in the compiler says so. Every EditMode row was green; the PlayMode
+  smoke test is what caught it (M2-05).
 - **`RegistrationBuilder.WithParameter(string name, object value)` is how a primitive constructor
   argument is wired** — the named overload survives a second parameter of the same type being added
   later, which `WithParameter<int>` would not (M1-06).

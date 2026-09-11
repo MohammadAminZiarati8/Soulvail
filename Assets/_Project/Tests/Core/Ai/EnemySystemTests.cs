@@ -51,6 +51,13 @@ public sealed class EnemySystemTests
 
     private const int Capacity = 8;
 
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). Equal to the capacity, so nothing
+    /// here is quietly bounded by a device tier — and every mode this fixture builds has an empty
+    /// roster, so nothing is composed and the director is inert either way.
+    /// </summary>
+    private const int DeviceCap = 8;
+
     /// <summary>60 fps doubled, matching <c>RunSessionTests</c>.</summary>
     private const float Frame = 1f / 120f;
 
@@ -644,7 +651,8 @@ public sealed class EnemySystemTests
             new FixedRandom(SessionSeed),
             new RecordingEvents(),
             new RecordingIntents(),
-            Capacity);
+            Capacity,
+            DeviceCap);
 
         var plan = new SpawnPlan(new[]
         {
@@ -872,7 +880,7 @@ public sealed class EnemySystemTests
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>
-        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity);
+        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity, DeviceCap);
 
     private EnemyBlackboard Blackboard(int id)
     {

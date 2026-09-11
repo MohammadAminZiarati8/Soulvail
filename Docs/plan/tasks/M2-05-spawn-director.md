@@ -174,4 +174,87 @@ public IReadOnlyList<Vector3> SpawnPoints { get; }
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+**Built as specified**, with the five files of the table, and **seven deviations** — one of which
+changes a decision. Verified at **625 EditMode green (0 failed, 7.6 s)** and **3 PlayMode green**,
+zero errors, zero new analyzer warnings, no `ProjectSettings/` drift. 589 + 36 = 625 exactly, so no
+existing row was quietly replaced by a new one.
+
+### Deviations
+
+1. **`RunSession` gained a sixth constructor parameter, `deviceEnemyCap`** — and this is the one
+   that changes a decision, because it rippled **24 positional `new RunSession(...)` sites across
+   six test fixtures** that the spec's ripple row did not predict. The director's concurrency comes
+   from `ThreatBudget.Concurrency(stage)`, which needs GD §11.1's device cap; core cannot read
+   `BootInstaller`, and the cap cannot be derived from `enemyCapacity` (64 against 28 — one is what
+   the snapshot can carry, the other what the phone can draw). **Ruled by the owner** against the
+   alternative of a settable property with a default (the `EnemySystem.Depth` shape, which needs no
+   ripple): a cap that arrives by constructor fails while the scope is being built, where a property
+   a scope forgets to set composes a whole run at the wrong difficulty in silence. It is guarded
+   twice — non-positive, and *above the capacity*, which is the check that matters, since a stage
+   allowed more bodies than the snapshot can carry is a stage core is partly blind to.
+2. **`ScalingSpec.cs` gained one line: `WaveCurve.Max`.** A run sizes its single `WavePlan` once, at
+   the wave curve's ceiling, and that number had no accessor. The alternative was `At(someDeepStage)`,
+   which gives the right answer today by accident and stops the day the curve gains a shape.
+3. **`RunInstaller.cs`** passes the new cap by name beside `enemyCapacity`, for the reason that file
+   already gives about `WithParameter<int>`.
+4. **`NavPathSense` builds its own `PathRefreshBudget`** from its own `refreshHz` rather than taking
+   one injected. Two sources for one cadence is two numbers that can disagree, and the arithmetic is
+   still tested standalone — which is all the spec asked the class to be for. It gained a third
+   constructor parameter, `maxRefreshesPerFrame`, defaulted to `PathRefreshBudget.DefaultMaxPerFrame`.
+5. **`RunScope.PrewarmCount()` now includes the device cap**, so the pool builds 29 bodies while the
+   scene loads. **Ruled by the owner.** With `keepAlive` at 0 (rule 15) the director is the only
+   spawner and it may ask for up to 28; sized to the dressed dummies instead, the pool would
+   `Instantiate` through the whole of wave 1 — a handful of hitches at exactly the moment the first
+   telegraph rings have to be read, which is what `EnemyViews`' own prewarm promise exists to stop.
+6. **`DebugOverlay` shows `enemies n/28` against the *device cap*, not the stage's composed
+   concurrency.** **Ruled by the owner.** The cap is a composition constant both sides already agree
+   on, it is the number the path budget is asked about, and reading the stage's own `C(n)` would mean
+   dragging core's state out through a new `RunState` read — which is the thing the overlay's class
+   remarks argue against everywhere except the charge line. The cost is stated in the code: an early
+   stage whose cap is below 28 looks emptier than it is allowed to be.
+7. **The three `Session_*` rows live in `SpawnDirectorTests`**, not in `RunSessionTests`. They need a
+   catalog, a mode and a composed stage — a director fixture's furniture — and `RunSessionTests`'
+   `Start_OrderUnchanged` still passes untouched, because its mode has an empty roster.
+
+### Things the spec left open, and how they were decided
+
+- **A mode with an empty roster is not composed at all**, and its director is built anyway and never
+  given a plan. `WaveComposer` refuses such a mode loudly and correctly (M2-04), and M2-02 ruled the
+  empty roster legal — so the two are reconciled by not asking. Every core fixture that starts a run
+  builds exactly such a mode, which is why 589 existing rows were unaffected.
+- **Composition happens inside `Start`'s validation block, before `RunStarted`**, not after
+  `SpawnAll` where rule 13 puts the director. `WaveComposer` throws for a mode that introduces
+  nothing at or before the stage, and composing after the announcement would strand it — ledger row
+  3's failure, re-made. The plan and composer are held in locals until the run is built. The cost,
+  stated in the code: a composition that succeeds and a `Start` that then fails leaves the `Spawn`
+  stream advanced. Accepted, because the run it was drawn for does not exist, and the alternative is
+  a second copy of the composer's eligibility rule.
+- **A wave with no bodies clears the moment it opens.** Only the *stage* is guaranteed a body
+  (M2-04 rule 8); a late wave whose allowance cannot reach the cheapest archetype is empty, and
+  saying so at `StartWave` rather than leaving it to the next tick's sweep keeps the event order
+  honest.
+- **`WaveCleared` is published for every uncleared wave, not only the current one.** The overlap
+  means a wave three back can still be holding a survivor. The per-wave id lists are compacted as
+  bodies die, so the sweep costs one registry lookup per id *still being tracked* — bounded by the
+  living population, which the cap bounds in turn (rule 11).
+- **The claim expires at `firesAt + TelegraphTime`**, i.e. 1.6 s after the ring goes up. Rule 10
+  says "until `TelegraphTime` after its body appears"; this is that, spelled once.
+- **`RunSession.End` clears the director**, at the same moment and with the same silence as
+  `State.Enemies.Clear()`.
+
+### What PlayMode caught that EditMode could not
+
+`NavPathSense`'s new third parameter broke the run's composition outright: **VContainer resolves
+every constructor parameter from the container or a `WithParameter` and never falls back to a C#
+default**, so the container went looking for a registration of `System.Int32` and the whole
+`RunScope` failed to build. 625 EditMode rows were green at the time. The trap is already written
+down in `RunScope`'s own comment about `refreshHz` — this is the second time it has fired, and the
+comment now names the incident. **The spec's instruction to re-run PlayMode is what found it.**
+
+### Manual verification — not run, and why
+
+The four Editor/device steps are the owner's. Note for step 1: the Run scene still dresses **eight
+dummies at the eight positions that are now also the spawn points**, so the arena opens with eight
+standing and stage 1's C(1) is 10 — the director tops up by two and then waits for kills. That is
+the spec's own wiring (rule 15 changes `keepAlive`, not the dressing), and M2-11 is what separates
+"where an arena is dressed" from "where a wave may arrive".

@@ -69,10 +69,15 @@ public static class RunInstaller
         // by name rather than by type: core's registry has to be able to hold every enemy the
         // snapshot can carry, or an enemy exists that core cannot see the position of. A second
         // int parameter later would make WithParameter<int> ambiguous, so the name is the wire.
+        // The device cap joins it, by name for the same reason and from the same place: M2-04
+        // priced 28 against a measured path refresh and ally count, and M2-05 is the first task
+        // with something that spends it — the concurrency curve a stage is composed under. Two
+        // ints on one registration is exactly the ambiguity WithParameter<int> would introduce.
         builder.Register<RunSession>(Lifetime.Scoped)
             .As<IRunSession>()
             .As<IPlayerCommands>()
-            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity);
+            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity)
+            .WithParameter("deviceEnemyCap", BootInstaller.DeviceEnemyCap);
     }
 
     /// <summary>

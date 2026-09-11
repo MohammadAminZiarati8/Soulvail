@@ -6,7 +6,6 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
-using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
@@ -79,6 +78,13 @@ public sealed class ChaserBehaviourTests
     private PlayerCombat _player;
 
     /// <summary>
+    /// The sky every <see cref="EnemyTickContext"/> here is built with. A Husk throws nothing, so no
+    /// row asserts anything about it — it exists because the context is what a behaviour <em>may</em>
+    /// reach rather than what it uses (M2-07b rule 2).
+    /// </summary>
+    private ProjectileSystem _projectiles;
+
+    /// <summary>
     /// The clock <see cref="Tick_AllocatesNothing"/> advances. A field rather than a local, so the
     /// measured closure is built over it once instead of capturing a fresh variable — a closure
     /// created inside the measurement would be the allocation it reported.
@@ -95,6 +101,7 @@ public sealed class ChaserBehaviourTests
         _intents = new RecordingIntents();
         _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Scaling(), Capacity);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
+        _projectiles = new ProjectileSystem(_events, Capacity);
         _allocationClock = 0f;
         _clock = 0f;
     }
@@ -358,7 +365,7 @@ public sealed class ChaserBehaviourTests
         // Through the system rather than the behaviour, because the rule belongs to the dispatch:
         // EnemySystem is what refuses to tick a corpse, and that is also what makes a death
         // mid-windup cancel the strike without the behaviour knowing anything about dying.
-        _system.Tick(Frame, _clock, _player, _intents);
+        _system.Tick(Context());
 
         Assert.That(_intents.CountEnemyMoves(agent.Id), Is.Zero);
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
@@ -385,7 +392,7 @@ public sealed class ChaserBehaviourTests
         // EnemySystem.CorpseTime, so the agent is still registered when the assertion runs.
         for (int i = 0; i < 10; i++)
         {
-            _system.Tick(Frame, _clock, _player, _intents);
+            _system.Tick(Context());
 
             _clock += Frame;
         }
@@ -437,11 +444,13 @@ public sealed class ChaserBehaviourTests
     {
         // Neither the recording events fake nor the callback one can be used here: both box every
         // payload, so a telegraph or a strike published inside the measured body would be counted as
-        // core allocating when it is the fake doing it. This one throws every event away, which is
-        // exactly what "core allocates nothing while publishing" needs on the other end.
+        // core allocating when it is the fake doing it. SilentEvents throws every event away, which
+        // is exactly what "core allocates nothing while publishing" needs on the other end — it
+        // moved to Fakes/ in M2-07b, when SpitterBehaviourTests became the second fixture to need it.
         var silent = new SilentEvents();
         var intents = new RecordingIntents();
         var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
+        var projectiles = new ProjectileSystem(silent, Capacity);
 
         // Depth 40, so every enemy in the crowd carries GD §12.3's three PercentMult modifiers and
         // the tick below is reading a *modified* Stat rather than a bare base. That is what rule 13
@@ -480,7 +489,7 @@ public sealed class ChaserBehaviourTests
         for (int i = 0; i < 600; i++)
         {
             intents.Clear();
-            system.Tick(Frame, i * Frame, player, intents);
+            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles));
         }
 
         // Cleared per iteration, not once: 32 intents a tick across 10 000 ticks would otherwise
@@ -492,7 +501,10 @@ public sealed class ChaserBehaviourTests
 
             _allocationClock += Frame;
 
-            system.Tick(Frame, _allocationClock, player, intents);
+            // The context is built inside the measured body on purpose: rule 2 claims it costs
+            // nothing, and building it outside would be exactly the arrangement that hides a struct
+            // that had quietly become a class.
+            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles));
         });
     }
 
@@ -513,7 +525,9 @@ public sealed class ChaserBehaviourTests
         blackboard.DistanceToPlayer = distance;
         blackboard.DirectionToPlayer = new Vector2(0f, 1f);
 
-        return agent.Behaviour;
+        // Cast, because EnemyAgent.Behaviour is an IEnemyBehaviour as of M2-07b and this fixture is
+        // about the one implementation. SpitterBehaviourTests owns the seam itself.
+        return (ChaserBehaviour)agent.Behaviour;
     }
 
     /// <summary>The same, ticked once so it has noticed the player and is walking.</summary>
@@ -560,13 +574,15 @@ public sealed class ChaserBehaviourTests
         agent.Blackboard.DistanceToPlayer = 10f;
         agent.Blackboard.DirectionToPlayer = direction;
 
-        Tick(agent.Behaviour);
+        var chaser = (ChaserBehaviour)agent.Behaviour;
 
-        Assert.That(agent.Behaviour.State, Is.EqualTo(ChaserState.Chase), "Sanity: it is walking.");
+        Tick(chaser);
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Chase), "Sanity: it is walking.");
 
         agent.Blackboard.DirectionToPlayer = direction;
 
-        return agent.Behaviour;
+        return chaser;
     }
 
     /// <summary>The same, walked into reach so it is mid-telegraph.</summary>
@@ -609,10 +625,21 @@ public sealed class ChaserBehaviourTests
     /// </remarks>
     private void Tick(ChaserBehaviour chaser)
     {
-        chaser.Tick(Frame, _clock, _player, _intents, _events);
+        chaser.Tick(Context());
 
         _clock += Frame;
     }
+
+    /// <summary>
+    /// This frame's <see cref="EnemyTickContext"/>, built from the fixture's own clock and ports.
+    /// </summary>
+    /// <remarks>
+    /// Rebuilt per call rather than cached, which is what a run does: the struct carries
+    /// <see cref="_clock"/>, so a cached one would hand every tick after the first the seconds the
+    /// fixture started at (M2-07b rule 2).
+    /// </remarks>
+    private EnemyTickContext Context() =>
+        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles);
 
     /// <summary>Ticks for at least <paramref name="seconds"/>, a frame at a time.</summary>
     private void TickFor(ChaserBehaviour chaser, float seconds)
@@ -767,27 +794,4 @@ public sealed class ChaserBehaviourTests
         new ShieldSpec(ShieldMax, 4f, 15f),
         HitIFrames);
 
-    /// <summary>
-    /// An <see cref="IDomainEvents"/> that throws every payload away without touching it.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Exists for <see cref="Tick_AllocatesNothing"/> alone. <c>RecordingEvents</c> stores each
-    /// payload in a <c>List&lt;object&gt;</c>, which boxes the struct — so measuring core's tick
-    /// through it would report the fake's allocation as core's, and the row would fail for a reason
-    /// that has nothing to do with the code under test. The real <c>DomainEventHub</c> does not box:
-    /// it fans out through a typed channel per event type, precisely so a publish on a hot path is
-    /// free (ADR-0004).
-    /// </para>
-    /// <para>
-    /// Nested and private rather than in <c>Fakes/</c>, on the same terms as <c>EnemySystemTests</c>'
-    /// <c>CallbackEvents</c>: one fixture needs it. If a second one does, it moves.
-    /// </para>
-    /// </remarks>
-    private sealed class SilentEvents : IDomainEvents
-    {
-        public void Publish<T>(in T evt) where T : struct
-        {
-        }
-    }
 }

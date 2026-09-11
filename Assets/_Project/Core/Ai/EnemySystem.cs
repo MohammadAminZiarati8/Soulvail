@@ -430,27 +430,26 @@ public sealed class EnemySystem
     }
 
     /// <summary>
-    /// Advances every living enemy's behaviour by <paramref name="dt"/> seconds.
+    /// Advances every living enemy's behaviour by <c>ctx.Dt</c> seconds.
     /// </summary>
-    /// <param name="dt">Seconds since the last tick, from the snapshot.</param>
-    /// <param name="now">
-    /// Simulated run time, the same seconds <c>Health</c> and <c>Targeter</c> are handed — never a
-    /// wall clock.
+    /// <param name="ctx">
+    /// Everything a behaviour may reach this tick — the clock, the player, the intent sink, the
+    /// event hub and the sky. Built once per tick by <c>RunSession</c> and passed straight through
+    /// (M2-07b rule 2), which is why this method no longer takes four arguments: the run's player is
+    /// handed down rather than held as a field, because it belongs to the run and is rebuilt with
+    /// it, and one struct is what stops that list growing by one every time an archetype lands.
     /// </param>
-    /// <param name="player">
-    /// Who the enemies are fighting. Handed down rather than held as a field, because it belongs to
-    /// the run and is rebuilt with it — a reference kept here would outlive the player it names the
-    /// first time <c>RunSession.Start</c> is called twice.
-    /// </param>
-    /// <param name="intents">Where each behaviour's <c>EnemyMoveIntent</c> goes.</param>
     /// <remarks>
     /// <para>
     /// This dispatches and nothing else: <c>Static</c> does nothing by definition — that is what the
-    /// kind means, and it is why a dummy holds still — and <c>Chaser</c> is
-    /// <c>ChaserBehaviour</c>'s (M1-18). The switch is here because this is the one site that knows
-    /// the full set of behaviours, which is why <c>EnemyBehaviourKind</c> is deliberately unvalidated
-    /// where it is authored (M1-05) — a third kind added without teaching this method about it fails
-    /// loudly here instead of standing motionless in the arena with nothing in the log.
+    /// kind means, and it is why a dummy holds still — while <c>Chaser</c> (M1-18) and
+    /// <c>Spitter</c> (M2-07b) each tick the behaviour the agent was built with. The two share a
+    /// line rather than repeating one, which is the seam earning its keep: what differs between a
+    /// Husk and a Spitter is entirely on the other side of <c>IEnemyBehaviour</c>. The switch is
+    /// here because this is the one site that knows the full set of behaviours, which is why
+    /// <c>EnemyBehaviourKind</c> is deliberately unvalidated where it is authored (M1-05) — a kind
+    /// added without teaching this method about it fails loudly here instead of standing motionless
+    /// in the arena with nothing in the log.
     /// </para>
     /// <para>
     /// The corpse sweep runs first, so the behaviour pass walks a registry nothing is about to
@@ -466,9 +465,9 @@ public sealed class EnemySystem
     /// backwards the way <see cref="SweepCorpses"/> does.
     /// </para>
     /// </remarks>
-    public void Tick(float dt, float now, PlayerCombat player, IIntentSink intents)
+    public void Tick(in EnemyTickContext ctx)
     {
-        SweepCorpses(now);
+        SweepCorpses(ctx.Now);
 
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
 
@@ -491,7 +490,8 @@ public sealed class EnemySystem
                     break;
 
                 case EnemyBehaviourKind.Chaser:
-                    agent.Behaviour.Tick(dt, now, player, intents, _events);
+                case EnemyBehaviourKind.Spitter:
+                    agent.Behaviour.Tick(ctx);
                     break;
 
                 default:
@@ -506,7 +506,7 @@ public sealed class EnemySystem
         // hoisted across this line.
         if (_respawn != null)
         {
-            ApplyRespawn(_respawn, _playerPosition, now, _random.Spawn);
+            ApplyRespawn(_respawn, _playerPosition, ctx.Now, _random.Spawn);
         }
     }
 

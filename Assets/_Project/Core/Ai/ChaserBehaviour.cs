@@ -65,10 +65,11 @@ public enum ChaserState
 /// <para>
 /// <b>Why the per-tick dependencies are parked in fields.</b> <see cref="StateMachine{TState}"/>
 /// hands its tick handlers an <c>Action&lt;float&gt;</c> — <c>dt</c> and nothing else — so the clock,
-/// the player and the two ports are stored on the way into <see cref="Tick"/> and read by the
-/// handlers. Capturing them in closures instead would allocate a closure per tick per enemy, which
-/// at sixty enemies is exactly the per-frame garbage AR §14 bans. They are cleared on the way out so
-/// that a handler reached from anywhere else cannot read a stale player.
+/// the player and the two ports are unpacked from the <see cref="EnemyTickContext"/> on the way into
+/// <see cref="Tick"/> and read by the handlers. Capturing them in closures instead would allocate a
+/// closure per tick per enemy, which at sixty enemies is exactly the per-frame garbage AR §14 bans.
+/// They are cleared on the way out so that a handler reached from anywhere else cannot read a stale
+/// player — which is also why the context itself is never stored (M2-07b rule 2).
 /// </para>
 /// <para>
 /// <b>One instance per agent, built once and reset.</b> <c>EnemyAgent</c> creates it on the first
@@ -78,7 +79,7 @@ public enum ChaserState
 /// sixty times.
 /// </para>
 /// </remarks>
-public sealed class ChaserBehaviour
+public sealed class ChaserBehaviour : IEnemyBehaviour
 {
     /// <summary>
     /// How far past its reach the player must get for a windup to be abandoned, as a multiple of
@@ -143,21 +144,7 @@ public sealed class ChaserBehaviour
     /// <summary>Which part of the loop this enemy is in.</summary>
     public ChaserState State => _machine.Current;
 
-    /// <summary>
-    /// Advances this enemy by one tick: decide, then say so through an intent, an event, or damage.
-    /// </summary>
-    /// <param name="dt">Seconds since the last tick, from the snapshot.</param>
-    /// <param name="now">
-    /// Simulated run time — the same seconds <c>Health</c>, <c>Targeter</c> and every i-frame window
-    /// are measured in, never a wall clock.
-    /// </param>
-    /// <param name="player">
-    /// Who to hit. Reached directly rather than through a damage intent because the player's health
-    /// is core's own state: routing a strike out to the body and back would put a gameplay decision
-    /// on a round trip through Unity for no gain (AR §3).
-    /// </param>
-    /// <param name="intents">Where this tick's <see cref="EnemyMoveIntent"/> goes.</param>
-    /// <param name="events">Where <see cref="EnemyTelegraph"/> goes.</param>
+    /// <inheritdoc />
     /// <remarks>
     /// <para>
     /// <b>Exactly one <see cref="EnemyMoveIntent"/> per tick, in every state including
@@ -167,29 +154,33 @@ public sealed class ChaserBehaviour
     /// tick with no intent is a tick an enemy is not pinned to the floor by. Making the cadence
     /// unconditional also makes it the same promise <c>RunSession.TickBody</c> makes for the player
     /// — one instruction per tick, never none — which is the rule that stops a body reapplying stale
-    /// velocity for ever.
+    /// velocity for ever. As of M2-07b it is the seam's rule rather than this class's.
     /// </para>
     /// <para>
-    /// Unguarded, unlike a constructor: this runs sixty times a second for every living enemy, and a
-    /// null here could only be the first tick after a mis-wired system — a failure that arrives
-    /// immediately and unmissably either way. The same asymmetry <c>RunSession.Tick</c> draws with
-    /// its snapshot.
+    /// Unguarded, unlike a constructor: this runs sixty times a second for every living enemy, and
+    /// everything a null here could mean was refused once for the whole arena when the
+    /// <see cref="EnemyTickContext"/> was built. The same asymmetry <c>RunSession.Tick</c> draws
+    /// with its snapshot.
+    /// </para>
+    /// <para>
+    /// <see cref="EnemyTickContext.Projectiles"/> is deliberately ignored: a Husk throws nothing.
+    /// The context is what a behaviour <em>may</em> reach, not what it must.
     /// </para>
     /// <para>
     /// Allocates nothing: the machine's <c>Tick</c> is allocation-free by construction, the handlers
     /// are delegates built once, and everything below is struct arithmetic over fields.
     /// </para>
     /// </remarks>
-    public void Tick(float dt, float now, PlayerCombat player, IIntentSink intents, IDomainEvents events)
+    public void Tick(in EnemyTickContext ctx)
     {
-        _now = now;
-        _player = player;
-        _intents = intents;
-        _events = events;
+        _now = ctx.Now;
+        _player = ctx.Player;
+        _intents = ctx.Intents;
+        _events = ctx.Events;
 
         try
         {
-            _machine.Tick(dt);
+            _machine.Tick(ctx.Dt);
         }
         finally
         {

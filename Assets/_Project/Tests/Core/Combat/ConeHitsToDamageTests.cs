@@ -58,6 +58,13 @@ public sealed class ConeHitsToDamageTests
     /// </summary>
     private const int DeviceCap = 8;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     // CC §7's Censer and GD §8.1's Husk. Three swings is 39 against 36: a kill with 3 to spare.
     private const float SwingDamage = 13f;
     private const float HuskMaxHp = 36f;
@@ -89,7 +96,7 @@ public sealed class ConeHitsToDamageTests
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // The player stands at the origin all fixture long and never touches the stick, so every
         // enemy's spawn position is also its distance and the cone's origin is the origin.
@@ -306,7 +313,7 @@ public sealed class ConeHitsToDamageTests
         // measures the same path — the one where damage lands and an event goes out.
         var catalog = new ContentCatalog(
             new[] { Oathbound() }, new[] { Husk(maxHp: 1e9f) }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

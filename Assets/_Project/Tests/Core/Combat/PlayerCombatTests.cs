@@ -49,6 +49,13 @@ public sealed class PlayerCombatTests
     /// </summary>
     private const int DeviceCap = 8;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     // CC §7, Survivability and Targeting.
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
@@ -343,7 +350,7 @@ public sealed class PlayerCombatTests
     {
         var catalog = new ContentCatalog(
             new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),
@@ -386,7 +393,7 @@ public sealed class PlayerCombatTests
             new[] { Chaser() },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // A metre away: inside the Husk's 1.2 m reach on the tick it starts chasing, so the run is
         // over inside the 0.4 s wind-up plus a handful of frames rather than after a walk across

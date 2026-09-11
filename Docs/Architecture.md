@@ -176,7 +176,7 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Direction | Port | Purpose | Implemented by |
 |---|---|---|---|
-| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the facts as they land: `ReportConeHits` (M1-11), `ReportChargeHits` (M1-15), a projectile fact with M2-07. Contact is ledger row 7 — M1-18 chose a core-side call over a fact; M2-08 settles it | Core |
+| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the two facts: `ReportConeHits` (M1-11) and `ReportChargeHits` (M1-15). **It gains no member in M2** — ledger row 7 was settled at M2-07a: core decides every enemy outcome and calls `ApplyDamage` directly, so contact, blast and projectile impact are all core-side calls, and the `ReportContact` / `ReportProjectileHit` this row used to promise are gone rather than deferred (§18.2) | Core |
 | Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
 | Outbound | `IClock` | `UtcNow` (wall-clock, `DateTimeOffset`) — **and nothing else** (M2-01). Never simulated time: that is the sum of each tick's `Dt` (§18.2) | `UnityClock` |
@@ -461,7 +461,8 @@ is about Unity's.
 | Invariant | Break it and | Set in |
 |---|---|---|
 | `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15 |
-| `RunSession.Tick`: time → ingest → combat → enemy behaviours → (dead? end) → **director** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05 |
+| `RunSession.Tick`: time → ingest → combat → enemy behaviours → **projectiles** → (dead? end) → **director** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05, M2-07a |
+| Projectiles tick **after** the enemy behaviours and **before** the death check | a shot fired this tick lands on the tick it left, erasing the flight the player is meant to walk out of; or a killing bolt leaves the player at zero hit points for a frame, still playing | M2-07a |
 | The director ticks **after** the death check and **before** the motor | a wave is telegraphed into an arena whose run ended this tick; or the director sees a player position the rest of the tick did not | M2-05 |
 | `RunSession.Start` composes the stage **before** `RunStarted` and begins the director **after** `SpawnAll` | a mode that introduces nothing at its own starting stage throws with the run announced (ledger row 3 again); or wave 1's concurrency check cannot see the arena's dressed-in enemies | M2-05 |
 | Ingest runs before anything reads an enemy | every distance is one frame stale, and it reads as an AI bug | M1-06 |
@@ -483,6 +484,18 @@ is about Unity's.
   much time passed is one too many. There is **no `IClock` in the session** — simulated time is the
   sum of each tick's `Dt`. Wall-clock is a different number and a different port (M0-09, M0-10).
 - **A port grows a member when the mechanic that needs it lands, not before** (M0-09).
+- **Core decides every outcome an enemy causes, and calls `PlayerCombat.ApplyDamage` directly.
+  Unity owes core a *fact* only when the answer depends on colliders core does not hold; when the
+  geometric question is a standing one rather than an instant, it owes a *sense* on the snapshot
+  instead.** Contact (Husk, M1-18; Bloater, M2-08) is a core-perceived XZ distance; a projectile
+  impact (Spitter, M2-07a) lands at an arrival time core itself computed. `ReportConeHits` and
+  `ReportChargeHits` remain what facts are *for* — a wedge and a swept line, both questions about
+  which colliders a shape touched. The fact route was rejected on three counts: it moves the moment
+  of damage into the frame's physics phase, one step after the tick that decided it; it makes enemy
+  damage non-reproducible from a seed, which is what M2-13 and M2-14 are being built to preserve;
+  and it makes an enemy need a body with a trigger before it can hurt anyone, which inverts §3. **The
+  price is that core holds no walls, so a shot passes through a cover pillar** — ledger row 13, and
+  the fix is the sense M2-11b fills, not a fact (ledger row 7, M2-07a).
 - **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.**
   The clamp only protects the simulation if brain and body take the same step. Purely cosmetic
   view timers are the deliberate exception (M0-16).
@@ -509,10 +522,11 @@ is about Unity's.
 - **`FollowCamera`'s yaw must stay 0.** It is the only reason `SnapshotBuilder`'s straight-through
   stick mapping is camera-relative. The day the camera can turn, the −yaw rotation goes into the
   builder and **never into core** (M0-18).
-- **A live object is never handed out of `RunState`.** `Motor`, `Combat` and `Enemies` are
-  `internal` with public scalar reads, because a public handle on something with a `Tick` lets a
-  view double-integrate a frame with nothing in the compiler to object. **Every future `RunState`
-  field that hands out a mutable object owes the same question** (M0-16, M1-06, M1-08).
+- **A live object is never handed out of `RunState`.** `Motor`, `Combat`, `Enemies` and
+  `Projectiles` are `internal` with public scalar reads, because a public handle on something with a
+  `Tick` lets a view double-integrate a frame with nothing in the compiler to object. **Every future
+  `RunState` field that hands out a mutable object owes the same question** (M0-16, M1-06, M1-08,
+  M2-07a).
 - **`RunState`'s constructor and setters are `internal`, and `Soulvail.Tests.Core` has no
   `InternalsVisibleTo`** — deliberately, so tests reach state through `RunSession`, the intended
   route. It is also why that constructor carries no argument guards: they would be unreachable.

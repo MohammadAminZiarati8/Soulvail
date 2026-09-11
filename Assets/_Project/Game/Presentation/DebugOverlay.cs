@@ -6,6 +6,7 @@ using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Views;
 using TMPro;
 using UnityEngine;
 using VContainer;
@@ -103,6 +104,14 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private SpawnPlan _spawnPlan;
 
+        /// <summary>
+        /// The run's bolt census, for the one number that says whether the pool is working
+        /// (M2-09 rule 2 of the manual steps). Rented plus pooled must stop growing after the first
+        /// few shots; a total that keeps climbing is the pool being bypassed, and nothing else in
+        /// the game can see that.
+        /// </summary>
+        private ProjectileViews _projectileViews;
+
         private IDisposable _targetSubscription;
         private IDisposable _waveSubscription;
         private float _untilRefresh;
@@ -124,6 +133,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
         /// <param name="paths">The run's path cache, for the stale count.</param>
         /// <param name="spawnPlan">The run's plan, for whether this arena can spawn at all.</param>
+        /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
         public void Construct(
@@ -132,13 +142,15 @@ namespace Soulvail.Game.Presentation
             IRunSession session,
             DomainEventHub hub,
             NavPathSense paths,
-            SpawnPlan spawnPlan)
+            SpawnPlan spawnPlan,
+            ProjectileViews projectileViews)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
             _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
+            _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
 
             if (hub is null)
             {
@@ -338,6 +350,14 @@ namespace Soulvail.Game.Presentation
             // number before M2-09 draws one.
             _line.Append("  shots ").Append(
                 (state is null ? 0 : state.InFlightProjectiles).ToString(CultureInfo.InvariantCulture));
+
+            // Rented against pooled, and the pair is the point rather than either number: the sum
+            // is how many bodies exist, and it must stop growing once a fight is under way. The
+            // rented half should also track `shots` above exactly — the two are counted on opposite
+            // sides of the boundary, so the frame they disagree is the frame a bolt was drawn for a
+            // shot core had already landed, or the other way round (M2-09).
+            _line.Append("  bolts ").Append(_projectileViews.Count.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(_projectileViews.PooledCount.ToString(CultureInfo.InvariantCulture));
 
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 

@@ -59,6 +59,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly PlayerView _player;
     private readonly ChargeMotion _charge;
     private readonly EnemyViews _enemyViews;
+
+    /// <summary>
+    /// The bolts in the air. Held for two reasons and both are the same one: it has to be stepped
+    /// with the snapshot's <c>Dt</c> (M2-09 rule 3), and being on this object's dependency chain is
+    /// what guarantees it is listening before <see cref="Start"/> can let core fire anything.
+    /// </summary>
+    private readonly ProjectileViews _projectileViews;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -90,6 +98,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         PlayerView player,
         ChargeMotion charge,
         EnemyViews enemyViews,
+        ProjectileViews projectileViews,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
@@ -104,6 +113,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
+        _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
@@ -262,6 +272,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         ApplyEnemyMoves();
+
+        // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
+        // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on
+        // Time.deltaTime would arrive at the target ahead of the damage it stands for on exactly
+        // the hitching frames the clamp exists for. It is the last cosmetic thing in the frame and
+        // nothing below reads it — a bolt has no body, so no sweep can be answered against one.
+        _projectileViews.Step(_snapshot.Dt);
 
         StepCharge();
 

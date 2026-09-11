@@ -255,7 +255,7 @@ MonoBehaviour:
   - {x: -7.78, y: 0, z: -7.78}
   - {x: 0, y: 0, z: -11}
   - {x: 7.78, y: 0, z: -7.78}
-  _keepAlive: 12
+  _keepAlive: 0
   _respawnDelay: 2
   _minSpawnDistance: 6
 --- !u!4 &929802505

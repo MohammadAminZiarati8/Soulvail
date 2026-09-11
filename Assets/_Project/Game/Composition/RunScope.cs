@@ -94,15 +94,17 @@ namespace Soulvail.Game.Composition
                  "starts bare.")]
         [SerializeField] private EnemyDefinition _dummySpec;
 
-        [Tooltip("Where the run's dummies stand, in world metres. M1's whole spawner: there is " +
-                 "no director until M2-05, so this is how a playtest gets something to shoot at. " +
-                 "Respawns reuse the same positions.")]
+        [Tooltip("Where enemies stand and arrive, in world metres. They are this arena's spawn " +
+                 "points from M2-05 on — the director places every wave at one of them — and " +
+                 "the dummies dressed into the scene stand at the first few. M2-11 replaces " +
+                 "this with points authored on the arena prefab.")]
         [SerializeField] private Vector3[] _dummyPositions;
 
-        [Tooltip("How many enemies the arena keeps breathing. Zero turns respawning off entirely, " +
-                 "which is what every arena did before M1-19. Replaced by M2-03's threat budget.")]
+        [Tooltip("How many enemies the arena keeps breathing. Zero from M2-05 on: the director " +
+                 "is the only thing that spawns, and a respawn policy beside it would be a " +
+                 "second spawner with its own opinion. Retired entirely by M2-10.")]
         [Min(0)]
-        [SerializeField] private int _keepAlive = 12;
+        [SerializeField] private int _keepAlive;
 
         [Tooltip("Seconds of quiet after the last death before the arena refills. The pause the " +
                  "player reads as 'I cleared that'.")]
@@ -242,12 +244,15 @@ namespace Soulvail.Game.Composition
             // Sized to the snapshot's capacity rather than to the quota above: the cache is keyed
             // by enemy id and evicts only what stopped asking, so a table smaller than the arena
             // would thrash on exactly the frames that are already the most expensive.
-            // Both arguments are passed, including the one the constructor has a default for:
+            // All three arguments are passed, including the two the constructor has defaults for:
             // VContainer resolves every parameter from the container or a WithParameter and never
-            // falls back to a C# default, so an omitted refreshHz would fail to compose the run.
+            // falls back to a C# default, so an omitted one fails to compose the run — as an
+            // omitted maxRefreshesPerFrame did the moment M2-05 added it, with the PlayMode smoke
+            // test as the only thing that noticed.
             builder.Register<NavPathSense>(Lifetime.Scoped)
                 .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
-                .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz);
+                .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz)
+                .WithParameter("maxRefreshesPerFrame", PathRefreshBudget.DefaultMaxPerFrame);
 
             // Guarded here as well as in the query's own constructor, because the two failures read
             // differently: the constructor can only say "this mask is empty", while this can say
@@ -318,8 +323,18 @@ namespace Soulvail.Game.Composition
         /// </para>
         /// <para>
         /// The respawn policy reuses the same positions, and a <c>Keep Alive</c> of zero means an
-        /// arena that empties and stays empty — which is what every arena did before M1-19 and what
-        /// an experiment about a single Husk still wants.
+        /// arena that empties and stays empty — which is what every arena did before M1-19, what
+        /// an experiment about a single Husk still wants, and what every arena means again from
+        /// M2-05: the director is the only spawner in a run, and a policy refilling behind it
+        /// would be a second one with its own opinion about how many enemies there should be.
+        /// </para>
+        /// <para>
+        /// <b>The same positions are handed over twice, and they mean two different things.</b> As
+        /// entries they are where the scene's dummies are standing when the player walks in; as
+        /// <c>SpawnPoints</c> they are where the director may put a wave. M2-11 separates them for
+        /// real, when an arena prefab authors its own spawn ring; until then the dressed positions
+        /// are the only geometry anybody knows about, and an arena with no dummy archetype has
+        /// neither (<c>SpawnPlan.Empty</c>), which is rule 12's inert director.
         /// </para>
         /// </remarks>
         private SpawnPlan BuildSpawnPlan()
@@ -349,19 +364,26 @@ namespace Soulvail.Game.Composition
                 ? new RespawnPolicy(specId, positions, _keepAlive, _respawnDelay, _minSpawnDistance)
                 : null;
 
-            return new SpawnPlan(entries, respawn);
+            return new SpawnPlan(entries, respawn, positions);
         }
 
         /// <summary>
         /// How many bodies the enemy pool builds before the run starts.
         /// </summary>
         /// <remarks>
-        /// The larger of the opening population and the respawn quota, plus one. The quota is what
-        /// the arena settles at; the opening population can exceed it, because an arena is allowed
-        /// to be dressed with more dummies than it keeps alive; and the spare covers the overlap
-        /// every kill has — a corpse holds its body for the 0.6 s of its dissolve while its
-        /// replacement is already being rented, so without it a steady fight would instantiate once
-        /// per death and the pool would have bought nothing.
+        /// The largest of the opening population, the respawn quota and the device cap, plus one.
+        /// The quota is what the arena settles at; the opening population can exceed it, because an
+        /// arena is allowed to be dressed with more dummies than it keeps alive; and the spare
+        /// covers the overlap every kill has — a corpse holds its body for the 0.6 s of its
+        /// dissolve while its replacement is already being rented, so without it a steady fight
+        /// would instantiate once per death and the pool would have bought nothing.
+        /// <para>
+        /// <b>The device cap is in there from M2-05</b>, and it is now the number that decides: with
+        /// the respawn quota at zero the director is the only spawner, and what it may ask for is
+        /// GD §12.2's concurrency bounded by that cap. Sized to the dressed dummies instead, the
+        /// pool would instantiate through the whole of wave 1 — a handful of hitches at exactly the
+        /// moment the first telegraph rings have to be read.
+        /// </para>
         /// <para>
         /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
         /// <see cref="SpawnPlan.Empty"/>, so core will never ask for a body — and building twelve
@@ -378,7 +400,7 @@ namespace Soulvail.Game.Composition
 
             int dressed = _dummyPositions is null ? 0 : _dummyPositions.Length;
 
-            return Mathf.Max(dressed, _keepAlive) + 1;
+            return Mathf.Max(dressed, Mathf.Max(_keepAlive, BootInstaller.DeviceEnemyCap)) + 1;
         }
     }
 }

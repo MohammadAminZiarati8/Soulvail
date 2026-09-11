@@ -638,12 +638,21 @@ public sealed class EnemySystem
 
     /// <summary>How many registered agents are breathing.</summary>
     /// <remarks>
+    /// <para>
     /// Walked rather than counted incrementally, because the registry deliberately does not track
     /// it: <c>AliveCount</c> is how many are <em>registered</em>, corpses included, and a second
     /// counter kept in step with every death and every sweep is a counter that can drift. At GD
     /// §11's 64-enemy cap this is 64 boolean reads on the one frame a respawn is considered.
+    /// </para>
+    /// <para>
+    /// Public since M2-05, for the one caller that has to ask it every tick rather than every
+    /// respawn: <c>SpawnDirector</c> holds the arena to the stage's concurrency and the cap is
+    /// about the <em>living</em>, since a corpse is neither a threat nor something the player can
+    /// see is finished with. It stays a method rather than becoming a property, so the walk is
+    /// visible at the call site.
+    /// </para>
     /// </remarks>
-    private int LivingCount()
+    public int LivingCount()
     {
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
 

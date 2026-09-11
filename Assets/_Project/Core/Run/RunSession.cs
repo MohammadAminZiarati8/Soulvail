@@ -4,6 +4,7 @@ using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 
@@ -43,6 +44,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly int _enemyCapacity;
+    private readonly int _deviceEnemyCap;
+
+    /// <summary>
+    /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
+    /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
+    /// downstream has to ask whether this run has a director.
+    /// </summary>
+    private SpawnDirector _director;
 
     /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
@@ -68,8 +77,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// which is why both come from one constant in <c>BootInstaller</c>: an enemy core knows about
     /// but the snapshot cannot carry is one core is blind to the position of.
     /// </param>
+    /// <param name="deviceEnemyCap">
+    /// The most enemies this device may have standing at once — GD §11.1's tier, not a difficulty
+    /// number. It bounds GD §12.2's concurrency curve, so it decides how many bodies a stage is
+    /// delivered in and therefore how much of its budget is spent on <em>quality</em> instead
+    /// (GD §11.2, <see cref="WaveComposer"/>). A separate argument from
+    /// <paramref name="enemyCapacity"/> and always smaller: that one is how many enemies the
+    /// snapshot can carry, this one is how many the phone can draw.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="enemyCapacity"/> or <paramref name="deviceEnemyCap"/> is not positive, or
+    /// the cap exceeds the capacity — an arena allowed to hold more bodies than the snapshot can
+    /// carry is an arena core would be blind to part of.
+    /// </exception>
     /// <remarks>
     /// Guarded, where <see cref="RunState"/>'s constructor is not, and the difference is the
     /// boundary: this one is public and called from another assembly, so a null arrives from code
@@ -84,7 +105,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         IRandom random,
         IDomainEvents events,
         IIntentSink intents,
-        int enemyCapacity)
+        int enemyCapacity,
+        int deviceEnemyCap)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -99,7 +121,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 "enemyCapacity must be greater than zero.");
         }
 
+        if (deviceEnemyCap <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deviceEnemyCap),
+                deviceEnemyCap,
+                "deviceEnemyCap must be greater than zero. A device allowed no enemies is one "
+                    + "every stage composes an empty arena for.");
+        }
+
+        if (deviceEnemyCap > enemyCapacity)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deviceEnemyCap),
+                deviceEnemyCap,
+                $"deviceEnemyCap is {deviceEnemyCap} and enemyCapacity is {enemyCapacity}. A "
+                    + "stage may not be allowed more bodies than the snapshot can carry back — "
+                    + "the surplus would exist in core and be invisible to it.");
+        }
+
         _enemyCapacity = enemyCapacity;
+        _deviceEnemyCap = deviceEnemyCap;
     }
 
     /// <inheritdoc />
@@ -183,6 +225,36 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         RequireAuthored(config.SpawnPlan, mode);
 
+        // The last of the validation, and it is here for ledger row 3's reason rather than for
+        // tidiness: WaveComposer refuses a mode that introduces nothing at or before this stage,
+        // and composing after RunStarted would strand exactly the announcement that row exists to
+        // stop being stranded. Held in locals until the run is built, so a throw below still
+        // leaves this session's own fields as the previous run left them.
+        //
+        // A composition that succeeds and a Start that then fails would leave the Spawn stream
+        // advanced. That is accepted: the run it was drawn for does not exist, and the alternative
+        // — duplicating the composer's eligibility rule here so the real call can happen later —
+        // is two copies of one rule, which is how they come to disagree.
+        WavePlan plan = null;
+        WaveComposer composer = null;
+
+        // An empty roster is legal (M2-02): a mode whose content comes entirely from its spawn
+        // plan has nothing to schedule, so it is not composed at all rather than composed into
+        // nothing — which is what WaveComposer refuses, loudly and correctly.
+        if (mode.Roster.Count > 0)
+        {
+            // Sized once for the whole run, at the wave curve's ceiling by the mode's roster
+            // length, because M2-10 recomposes into this same object at every stage boundary and a
+            // transition is the worst moment in a run to allocate (WavePlan's own reasoning).
+            plan = new WavePlan(mode.Scaling.Waves.Max, mode.Roster.Count);
+
+            composer = new WaveComposer(_catalog, new ThreatBudget(mode.Scaling, _deviceEnemyCap));
+
+            // The first thing in a run to consume the Spawn stream, and it draws from that one and
+            // no other (ADR-0011).
+            composer.Compose(config.StageIndex, mode, plan, _random.Spawn);
+        }
+
         int seed = config.Seed;
 
         // +Z, because a run begins with the camera behind the character and nothing yet to aim
@@ -248,6 +320,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Every id in the plan was resolved above, so this line can no longer fail on content and
         // the announcement above can no longer be stranded by it (ledger row 3).
         enemies.SpawnAll(config.SpawnPlan);
+
+        // Built after SpawnAll (M2-05 rule 13), so the arena's dressed-in enemies are standing
+        // before wave 1 arrives — the ids follow the order the arena reads in, and the director's
+        // concurrency check counts them, which it could not do if it had begun first.
+        //
+        // Built for every run, including one with nowhere to spawn and one whose mode has nothing
+        // to compose: an inert director is a director, so nothing downstream has to ask which kind
+        // of run it is in (rule 12).
+        _director = new SpawnDirector(enemies, _events, config.SpawnPlan.SpawnPoints);
+
+        if (plan is null)
+        {
+            return;
+        }
+
+        _director.Begin(plan, State.Time);
     }
 
     /// <inheritdoc />
@@ -314,6 +402,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             End();
             return;
         }
+
+        // After the death check and before the motor (M2-05 rule 14, AR §18.1). After, because a
+        // run that ended this tick must spawn nothing — a wave arriving on the frame the player
+        // died would be telegraphed into an arena nobody is playing in. Before the motor, because
+        // the director is part of the world the player is moving through rather than part of the
+        // move: it sees the same simulated `now` and the same player position everything else this
+        // tick did.
+        //
+        // The Spawn stream and no other, read here rather than held by the director, so that the
+        // one thing in a run that consumes spawn randomness does so through the run's own
+        // generator (ADR-0011).
+        _director.Tick(State.Time, State.PlayerPosition, _random.Spawn);
 
         TickBody(snapshot);
     }
@@ -439,6 +539,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // events would be noise — while a listener handling RunEnded can still read the census
         // that was live when the run finished.
         State.Enemies.Clear();
+
+        // The same moment and the same silence, for the same reason. It also drops whatever rings
+        // were in flight: a telegraph is a promise to the player, and there is no longer a player
+        // to keep it to.
+        _director.Clear();
     }
 
     /// <summary>

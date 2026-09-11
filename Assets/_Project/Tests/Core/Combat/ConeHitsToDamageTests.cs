@@ -51,6 +51,13 @@ public sealed class ConeHitsToDamageTests
     /// <summary>Room for every row's enemies, and the buffers the run preallocates.</summary>
     private const int EnemyCapacity = 8;
 
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
     // CC §7's Censer and GD §8.1's Husk. Three swings is 39 against 36: a kill with 3 to spare.
     private const float SwingDamage = 13f;
     private const float HuskMaxHp = 36f;
@@ -82,7 +89,7 @@ public sealed class ConeHitsToDamageTests
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap);
 
         // The player stands at the origin all fixture long and never touches the stick, so every
         // enemy's spawn position is also its distance and the cone's origin is the origin.
@@ -299,7 +306,7 @@ public sealed class ConeHitsToDamageTests
         // measures the same path — the one where damage lands and an event goes out.
         var catalog = new ContentCatalog(
             new[] { Oathbound() }, new[] { Husk(maxHp: 1e9f) }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

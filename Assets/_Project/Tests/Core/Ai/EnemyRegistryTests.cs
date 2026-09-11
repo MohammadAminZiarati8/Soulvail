@@ -376,6 +376,15 @@ public sealed class EnemyRegistryTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Spec(contactDamage: -1f));
         Assert.Throws<ArgumentOutOfRangeException>(() => Spec(contactDamage: float.NaN));
 
+        // Aggro range is Positive rather than NonNegative, and the zero case is the one worth
+        // spelling out: an archetype that notices the player at 0 m never leaves Idle, so it is a
+        // Static enemy authored the long way round — which the behaviour field already says
+        // properly (M2-06 rule 4).
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: -1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: float.PositiveInfinity));
+
         // A malformed identity is a different question and gets a different exception, exactly as
         // CharacterSpec does: ArgumentException for the id, ArgumentOutOfRangeException for a number.
         Assert.Throws<ArgumentException>(
@@ -391,6 +400,7 @@ public sealed class EnemyRegistryTests
                 reach: 1.2f,
                 windupTime: 0.4f,
                 recoverTime: 0.6f,
+                aggroRange: 30f,
                 behaviour: EnemyBehaviourKind.Chaser));
 
         // The legal edges hold: a stationary, harmless, untelegraphed enemy is a coherent thing to
@@ -463,6 +473,7 @@ public sealed class EnemyRegistryTests
         reach: 1.6f,
         windupTime: 0.6f,
         recoverTime: 0.8f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
     /// <summary>A position no row depends on, for the rows that are not about positions.</summary>
@@ -479,7 +490,8 @@ public sealed class EnemyRegistryTests
         float contactDamage = 8f,
         float reach = 1.2f,
         float windupTime = 0.4f,
-        float recoverTime = 0.6f)
+        float recoverTime = 0.6f,
+        float aggroRange = 30f)
         => new EnemySpec(
             new ContentId("enemy.husk"),
             new LocKey("enemy.husk.name"),
@@ -492,6 +504,7 @@ public sealed class EnemyRegistryTests
             reach: reach,
             windupTime: windupTime,
             recoverTime: recoverTime,
+            aggroRange: aggroRange,
             behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>

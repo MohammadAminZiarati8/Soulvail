@@ -52,5 +52,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}
   _enemies:
   - {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
+  - {fileID: 11400000, guid: c0721c0db9f90994eb335150497c3400, type: 2}
+  - {fileID: 11400000, guid: 61842ec20ecb9b449bb8eec767fb4de7, type: 2}
   _modes:
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}

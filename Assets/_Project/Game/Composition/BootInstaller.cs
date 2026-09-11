@@ -11,7 +11,8 @@ namespace Soulvail.Game.Composition;
 
 /// <summary>
 /// Everything the app owns for its whole life: the content catalog — characters and enemy
-/// archetypes — and the slot the menu writes the next run into. Scene-free and static so a test
+/// archetypes — the look book that says how those archetypes are drawn, and the slot the menu
+/// writes the next run into. Scene-free and static so a test
 /// can build the real container and resolve from it: a wiring mistake fails in the Test Runner
 /// rather than on a phone. See AR §7 and ADR-0002.
 /// </summary>
@@ -119,10 +120,19 @@ public static class BootInstaller
             throw new ArgumentNullException(nameof(modes));
         }
 
+        EnemySpec[] enemySpecs = Convert(
+            enemies, definition => definition.ToSpec(), "enemy", nameof(enemies));
+
         builder.RegisterInstance(new ContentCatalog(
             Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
-            Convert(enemies, definition => definition.ToSpec(), "enemy", nameof(enemies)),
+            enemySpecs,
             Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes))));
+
+        // After the catalog and not before, so a pair of definitions sharing an id is reported by
+        // ContentCatalog — which is the message that names the failure people already know how to
+        // read. The look book refuses the same duplicate a line later, and would otherwise get
+        // there first with a message about colours.
+        builder.RegisterInstance(BuildLookBook(enemies, enemySpecs));
 
         // The wall clock, at the root: it is a device the whole app shares, not something a run
         // owns — the same argument as the vibrator below, and the opposite of IRandom, which is
@@ -153,6 +163,37 @@ public static class BootInstaller
         // public, exactly so that the choice between "persisted" and "in memory" has to be made out
         // loud (M1-20). PlayerPrefs is the stopgap until M2-13's ISaveStore.
         builder.Register<HapticsSettings>(_ => HapticsSettings.FromPlayerPrefs(), Lifetime.Singleton);
+    }
+
+    /// <summary>
+    /// Builds the archetype → tint-and-scale index the arena draws with (M2-06).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Keyed by the <em>spec's</em> id rather than by <c>EnemyDefinition.Id</c>'s raw text, and the
+    /// two are only the same string once <c>ToSpec</c> has returned: the raw field is not known to
+    /// be a well-formed <see cref="ContentId"/>, which is exactly what that property's own summary
+    /// warns about. Reading it here instead would parse every id a second time and get a different
+    /// exception for a malformed one.
+    /// </para>
+    /// <para>
+    /// The two arrays are index-parallel by construction — <see cref="Convert"/> walks the
+    /// definitions in order and never skips one — which is what lets a spec's id and a definition's
+    /// colour be paired without a second lookup.
+    /// </para>
+    /// </remarks>
+    private static EnemyLookBook BuildLookBook(
+        IReadOnlyList<EnemyDefinition> definitions,
+        EnemySpec[] specs)
+    {
+        var looks = new Dictionary<ContentId, EnemyLook>(specs.Length);
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            looks[specs[i].Id] = definitions[i].ToLook();
+        }
+
+        return new EnemyLookBook(looks);
     }
 
     /// <summary>

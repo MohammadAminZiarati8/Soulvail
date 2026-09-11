@@ -32,6 +32,21 @@ public enum EnemyBehaviourKind
     /// <c>ChaserBehaviour</c> in M1-18.
     /// </summary>
     Chaser,
+
+    /// <summary>
+    /// Keeps its distance and throws — GD §8.1's Spitter. Implemented in M2-07b, and
+    /// <b>nothing authors this until then</b>: <c>Spitter.asset</c> ships <see cref="Static"/>
+    /// with its <see cref="EnemySpec.Projectile"/> block already filled in, and M2-07b flips the
+    /// one field in the PR that can run it. A placeholder case in the dispatch would make a
+    /// Spitter that ignores the player silent instead of loud (M2-06 rule 11).
+    /// </summary>
+    Spitter,
+
+    /// <summary>
+    /// Waddles in, lights a fuse, goes off — GD §8.1's Bloater. Implemented in M2-08, and
+    /// unauthored until then for the reason <see cref="Spitter"/> is.
+    /// </summary>
+    Bloater,
 }
 
 /// <summary>
@@ -58,6 +73,22 @@ public enum EnemyBehaviourKind
 /// <see cref="RecoverTime"/> 0.6 appear in no design document, so nothing cross-checks them. They
 /// are M1-05's, and M1-18's <c>ChaserBehaviour</c> reads them from here rather than restating them
 /// — a second copy of a number no document owns is a number that will drift.
+/// </para>
+/// <para>
+/// <b><see cref="AggroRange"/> arrived in M2-06</b>, off <c>ChaserBehaviour</c>'s
+/// <c>public const AggroRange = 30f</c>, which predicted the move in its own remarks: <em>"the day
+/// an archetype wants to be genuinely unaware until approached, this moves onto the spec with
+/// it."</em> Two behaviours now need it, and a Spitter reaching into the chaser's class for a
+/// constant would be the wrong dependency in the wrong direction. All three authored archetypes
+/// carry 30, so the move changed nothing on screen.
+/// </para>
+/// <para>
+/// <b>An enemy has two optional blocks as of M2-06, where this paragraph used to say it had
+/// none.</b> <see cref="Projectile"/> and <see cref="Explosion"/> are <see langword="null"/> on an
+/// archetype that throws nothing or does not explode — the bargain <see cref="CharacterSpec"/>
+/// makes with its <see cref="ShieldSpec"/>, and for the same reason: a null block says <em>not this
+/// one</em> where a zeroed block says nothing at all. Neither carries damage; both deal
+/// <see cref="ContactDamage"/>, so GD §12.3's depth curve reaches them without a second mechanism.
 /// </para>
 /// <para>
 /// <b><see cref="ThreatCost"/> arrived in M2-04, with its first reader.</b> It was deliberately
@@ -115,18 +146,37 @@ public sealed class EnemySpec
     /// M2-08) has no windup of its own.
     /// </param>
     /// <param name="recoverTime">Seconds of vulnerability after the strike. 0.6 for the Husk.</param>
+    /// <param name="aggroRange">
+    /// Metres within which it notices the player and stops being idle. 30 for all three authored
+    /// archetypes, which is comfortably beyond anything the camera shows — so in practice every
+    /// enemy in the arena is already coming for you, and the unaware state exists for the
+    /// spawner's sake (M2-05) rather than as a stealth mechanic.
+    /// </param>
     /// <param name="behaviour">Which behaviour drives it.</param>
+    /// <param name="projectile">
+    /// What it throws, or <see langword="null"/> for an archetype that throws nothing — which is
+    /// every archetype but the Spitter.
+    /// </param>
+    /// <param name="explosion">
+    /// What it does when it goes off, or <see langword="null"/> for an archetype that does not —
+    /// which is every archetype but the Bloater.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
     /// would sit in the catalog under a key the catalog then reports as missing.
+    /// <para>
+    /// Or <paramref name="behaviour"/> needs a block it was not given — see the remarks on
+    /// <see cref="Projectile"/> for why that direction is checked and the other one is not.
+    /// </para>
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="maxHp"/> or <paramref name="reach"/> is not a finite number greater than
-    /// zero; <paramref name="moveSpeed"/>, <paramref name="contactDamage"/>,
-    /// <paramref name="windupTime"/> or <paramref name="recoverTime"/> is negative, NaN or
-    /// infinite; <paramref name="targetPriority"/> is outside 1–8; or
-    /// <paramref name="threatCost"/> is below 1.
+    /// <paramref name="maxHp"/>, <paramref name="reach"/> or <paramref name="aggroRange"/> is not a
+    /// finite number greater than zero; <paramref name="moveSpeed"/>,
+    /// <paramref name="contactDamage"/>, <paramref name="windupTime"/> or
+    /// <paramref name="recoverTime"/> is negative, NaN or infinite;
+    /// <paramref name="targetPriority"/> is outside 1–8; or <paramref name="threatCost"/> is
+    /// below 1.
     /// </exception>
     public EnemySpec(
         ContentId id,
@@ -140,13 +190,33 @@ public sealed class EnemySpec
         float reach,
         float windupTime,
         float recoverTime,
-        EnemyBehaviourKind behaviour)
+        float aggroRange,
+        EnemyBehaviourKind behaviour,
+        ProjectileSpec projectile = null,
+        ExplosionSpec explosion = null)
     {
         if (id.Value is null)
         {
             throw new ArgumentException(
                 "id must be a valid ContentId; default(ContentId) has none.",
                 nameof(id));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Spitter && projectile is null)
+        {
+            throw new ArgumentException(
+                "A Spitter must carry a ProjectileSpec — throwing is the whole of what it does, " +
+                "and a behaviour with nothing to throw would stand at its standoff range doing " +
+                "nothing for the rest of the run.",
+                nameof(projectile));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Bloater && explosion is null)
+        {
+            throw new ArgumentException(
+                "A Bloater must carry an ExplosionSpec — a fuse with no blast behind it is an " +
+                "enemy that walks up, telegraphs, and then simply stops.",
+                nameof(explosion));
         }
 
         if (targetPriority < MinPriority || targetPriority > MaxPriority)
@@ -180,7 +250,10 @@ public sealed class EnemySpec
         Reach = Positive(reach, nameof(reach));
         WindupTime = NonNegative(windupTime, nameof(windupTime));
         RecoverTime = NonNegative(recoverTime, nameof(recoverTime));
+        AggroRange = Positive(aggroRange, nameof(aggroRange));
         Behaviour = behaviour;
+        Projectile = projectile;
+        Explosion = explosion;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -224,15 +297,49 @@ public sealed class EnemySpec
     /// <summary>Seconds of vulnerability after the strike.</summary>
     public float RecoverTime { get; }
 
+    /// <summary>
+    /// Metres within which it notices the player. 30 for all three authored archetypes.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>ChaserBehaviour</c>'s idle state, and by whatever M2-07b and M2-08 write. It is a
+    /// fact about the creature rather than about the code that moves it, which is why it lives here
+    /// now that a second behaviour needs it — the same question <see cref="ThreatCost"/> settled the
+    /// same way.
+    /// </remarks>
+    public float AggroRange { get; }
+
     /// <summary>Which behaviour drives it.</summary>
     public EnemyBehaviourKind Behaviour { get; }
+
+    /// <summary>
+    /// What it throws, or <see langword="null"/> on an archetype that throws nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>A kind requires its block; a block does not require its kind.</b>
+    /// <see cref="EnemyBehaviourKind.Spitter"/> without one of these is refused, because the
+    /// behaviour cannot run; the reverse is deliberately legal, and it is exactly what
+    /// <c>Spitter.asset</c> is between M2-06 and M2-07b — a filled-in projectile block on an
+    /// archetype authored <see cref="EnemyBehaviourKind.Static"/> until there is code to fire it.
+    /// Refusing that would mean authoring the numbers and the behaviour in one change, which is the
+    /// two-task split this milestone is built on.
+    /// </remarks>
+    public ProjectileSpec Projectile { get; }
+
+    /// <summary>
+    /// What it does when it goes off, or <see langword="null"/> on an archetype that does not.
+    /// </summary>
+    /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Bloater and M2-08.</remarks>
+    public ExplosionSpec Explosion { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too: every
     /// comparison against NaN is false, and the natural spelling waves it through. Infinity is
     /// asked about separately because it passes a <c>&gt; 0</c> test — an infinite
-    /// <see cref="MaxHp"/> is an enemy no amount of damage can kill, and an infinite
-    /// <see cref="Reach"/> is one that strikes from across the arena.
+    /// <see cref="MaxHp"/> is an enemy no amount of damage can kill, an infinite
+    /// <see cref="Reach"/> is one that strikes from across the arena, and an infinite
+    /// <see cref="AggroRange"/> is the one case here that would look perfectly fine — every enemy
+    /// already aggros from further than the camera shows — right up until an archetype wanted to
+    /// wait.
     /// </remarks>
     private static float Positive(float value, string paramName)
     {

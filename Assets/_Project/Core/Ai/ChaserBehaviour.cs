@@ -49,10 +49,11 @@ public enum ChaserState
 /// here.</b> Reach, windup and recovery are read off the agent's spec every time they are used;
 /// speed and contact damage are read off the agent's own <c>Stat</c>s, whose bases the spec seeds
 /// and whose stacks depth scaling (M2-03) and Elite affixes (M7-02) write to. Either way an
-/// archetype that wants a slower windup edits its asset and nothing else. The two constants below
-/// are the ones that belong to the <em>behaviour</em> rather than to any archetype — how far it can
-/// notice you, and how far you have to get for a windup to be abandoned — and both are commented
-/// where they are declared.
+/// archetype that wants a slower windup edits its asset and nothing else. Aggro range joined them
+/// in M2-06, as <see cref="EnemySpec.AggroRange"/>, once a second behaviour needed to ask the same
+/// question. The single constant below is what is left of the numbers that belong to the
+/// <em>behaviour</em> rather than to any archetype — how far you have to get for a windup to be
+/// abandoned — and it is commented where it is declared.
 /// </para>
 /// <para>
 /// <b>It reads perception and writes working memory, and never the other way round.</b> Everything
@@ -79,18 +80,6 @@ public enum ChaserState
 /// </remarks>
 public sealed class ChaserBehaviour
 {
-    /// <summary>
-    /// Metres within which a chaser notices the player and starts walking.
-    /// </summary>
-    /// <remarks>
-    /// The behaviour's number, not the archetype's, which is why it is here rather than on
-    /// <see cref="EnemySpec"/>: 30 m is comfortably beyond anything the camera shows, so in practice
-    /// every enemy in the arena is already coming for you and the state exists for the spawner's
-    /// sake (M2-05) rather than as a stealth mechanic. The day an archetype wants to be genuinely
-    /// unaware until approached, this moves onto the spec with it.
-    /// </remarks>
-    public const float AggroRange = 30f;
-
     /// <summary>
     /// How far past its reach the player must get for a windup to be abandoned, as a multiple of
     /// <see cref="EnemySpec.Reach"/>.
@@ -229,15 +218,23 @@ public sealed class ChaserBehaviour
 
     /// <summary>Rule 1: notice the player and start walking.</summary>
     /// <remarks>
+    /// <para>
     /// No intent of its own beyond the standing-still one every state emits — an idle Husk is not
     /// facing anywhere in particular, so the facing goes out as zero and the body keeps whatever
     /// rotation it was spawned with.
+    /// </para>
+    /// <para>
+    /// The range is the archetype's as of M2-06, off <see cref="EnemySpec.AggroRange"/>, where it
+    /// used to be a <c>const</c> on this class. Nothing changed on screen — all three authored
+    /// archetypes carry the 30 this constant held — and the move is what lets the Spitter of M2-07b
+    /// ask the same question without depending on the chaser.
+    /// </para>
     /// </remarks>
     private void TickIdle(float dt)
     {
         Stand(Vector2.Zero);
 
-        if (_agent.Blackboard.DistanceToPlayer <= AggroRange)
+        if (_agent.Blackboard.DistanceToPlayer <= _agent.Spec.AggroRange)
         {
             _machine.Transition(ChaserState.Chase);
         }

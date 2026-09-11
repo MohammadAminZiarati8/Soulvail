@@ -544,6 +544,7 @@ public sealed class WaveComposerTests
         reach: 1.2f,
         windupTime: 0.4f,
         recoverTime: 0.6f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>Descent's roster as GD §8.2 opens it: the Husk alone.</summary>

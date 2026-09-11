@@ -10,24 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
-  m_Name: Husk
+  m_Name: Spitter
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
-  _id: enemy.husk
-  _nameKey: enemy.husk.name
-  _maxHp: 36
-  _moveSpeed: 2
-  _targetPriority: 1
-  _threatCost: 4
+  _id: enemy.spitter
+  _nameKey: enemy.spitter.name
+  _maxHp: 28
+  _moveSpeed: 2.8
+  _targetPriority: 3
+  _threatCost: 7
   _isElite: 0
-  _contactDamage: 8
+  _contactDamage: 12
   _reach: 1.2
-  _windupTime: 0.4
-  _recoverTime: 0.6
+  _windupTime: 0.7
+  _recoverTime: 0.9
   _aggroRange: 30
-  _behaviour: 1
-  _projectileStandoffRange: 0
+  _behaviour: 0
+  _projectileStandoffRange: 14
   _projectileSpeed: 12
   _projectileRadius: 1.6
   _explosionRadius: 0
-  _tint: {r: 0.43137255, g: 0.41568628, b: 0.3882353, a: 1}
-  _bodyScale: 1
+  _tint: {r: 0.60784316, g: 0.69803923, b: 0.5686275, a: 1}
+  _bodyScale: 0.85

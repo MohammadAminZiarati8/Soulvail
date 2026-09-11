@@ -45,3 +45,7 @@ MonoBehaviour:
   _roster:
   - _specId: enemy.husk
     _introducedAtStage: 1
+  - _specId: enemy.spitter
+    _introducedAtStage: 2
+  - _specId: enemy.bloater
+    _introducedAtStage: 4

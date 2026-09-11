@@ -58,6 +58,13 @@ public sealed class EnemySystemTests
     /// </summary>
     private const int DeviceCap = 8;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     /// <summary>60 fps doubled, matching <c>RunSessionTests</c>.</summary>
     private const float Frame = 1f / 120f;
 
@@ -652,7 +659,8 @@ public sealed class EnemySystemTests
             new RecordingEvents(),
             new RecordingIntents(),
             Capacity,
-            DeviceCap);
+            DeviceCap,
+            ProjectileCapacity);
 
         var plan = new SpawnPlan(new[]
         {
@@ -881,7 +889,7 @@ public sealed class EnemySystemTests
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>
-        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity, DeviceCap);
+        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
 
     private EnemyBlackboard Blackboard(int id)
     {

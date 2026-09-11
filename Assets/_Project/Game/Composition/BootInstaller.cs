@@ -71,6 +71,28 @@ public static class BootInstaller
     /// </remarks>
     public const int DeviceEnemyCap = 28;
 
+    /// <summary>
+    /// The most enemy projectiles that may be in the air at once (M2-07a rule 7). A constant here,
+    /// beside <see cref="DeviceEnemyCap"/>, because it is the same kind of number: what this device
+    /// is allowed to have happening at once, rather than a difficulty one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Chosen against the concurrency cap and deliberately not derived from it.</b> A Spitter
+    /// holds one shot in the air at a time, so at <see cref="DeviceEnemyCap"/> = 28 an arena of
+    /// nothing but Spitters could not exceed 28 — and 32 is that with headroom, because a shot
+    /// <em>outlives its shooter</em> (M2-07a rule 5): the bolts released by a wave that has just
+    /// been wiped are still flying, so the two counts are not the same question and an expression
+    /// tying them together would read as if they were.
+    /// </para>
+    /// <para>
+    /// Reaching it is already a fault rather than a busy fight, and <c>ProjectileSystem.Fire</c>
+    /// treats it that way: the shot is refused in silence and the run carries on, because one lost
+    /// bolt is better than an exception that ends it.
+    /// </para>
+    /// </remarks>
+    public const int ProjectileCapacity = 32;
+
     /// <param name="builder">The root container being built.</param>
     /// <param name="characters">
     /// Every authored character. Converted immediately; the list is not retained.

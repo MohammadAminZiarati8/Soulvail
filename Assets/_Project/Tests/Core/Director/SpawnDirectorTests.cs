@@ -55,6 +55,13 @@ public sealed class SpawnDirectorTests
     private const int Capacity = 64;
     private const int DeviceCap = 28;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     /// <summary>The wave curve's ceiling — what a run sizes its one plan to.</summary>
     private const int MaxWaves = 5;
 
@@ -733,7 +740,7 @@ public sealed class SpawnDirectorTests
         // Every draw takes the last candidate, through the composition and the position alike.
         var random = new CountingRandom(new FixedRandom(0, Repeated(0.99f, 64)));
         var session = new RunSession(
-            _catalog, random, _events, new RecordingIntents(), Capacity, DeviceCap);
+            _catalog, random, _events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
 
         IReadOnlyList<Vector3> points = Points(8);
 
@@ -1021,7 +1028,7 @@ public sealed class SpawnDirectorTests
         _catalog = Catalog(contactDamage, mode);
 
         return new RunSession(
-            _catalog, new FixedRandom(0), _events, new RecordingIntents(), Capacity, DeviceCap);
+            _catalog, new FixedRandom(0), _events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
     }
 
     private static RunConfig Config(int stage, SpawnPlan plan) => new RunConfig(

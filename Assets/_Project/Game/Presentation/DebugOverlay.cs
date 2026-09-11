@@ -328,6 +328,17 @@ namespace Soulvail.Game.Presentation
 
             _line.Append("  charge ").Append(Fixed(state is null ? 0f : state.MovementSkillCooldownFraction));
 
+            // Shots in the air, from core rather than from the snapshot — unlike the enemy count
+            // above, there is no boundary here for the two sides to disagree across: a projectile
+            // has no body and is never reported back in (M2-07a rule 2), so core's number is the
+            // only one there is.
+            //
+            // It reads zero for the whole of M2-07a, and that is what it is for: nothing fires until
+            // M2-07b, so this is the line that makes the first Spitter's first bolt visible as a
+            // number before M2-09 draws one.
+            _line.Append("  shots ").Append(
+                (state is null ? 0 : state.InFlightProjectiles).ToString(CultureInfo.InvariantCulture));
+
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 
             _text.SetText(_line);

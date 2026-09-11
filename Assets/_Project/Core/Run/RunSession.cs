@@ -45,6 +45,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     private readonly IIntentSink _intents;
     private readonly int _enemyCapacity;
     private readonly int _deviceEnemyCap;
+    private readonly int _projectileCapacity;
 
     /// <summary>
     /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
@@ -85,11 +86,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// <paramref name="enemyCapacity"/> and always smaller: that one is how many enemies the
     /// snapshot can carry, this one is how many the phone can draw.
     /// </param>
+    /// <param name="projectileCapacity">
+    /// The most shots that may be in the air at once, for the <see cref="ProjectileSystem"/> each
+    /// <see cref="Start"/> builds. From <c>BootInstaller</c> beside the enemy cap, because it is the
+    /// same kind of number — what this device is allowed to have happening at once — and
+    /// deliberately not derived from the enemy cap: a shot outlives its shooter, so the two counts
+    /// are not the same question.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="enemyCapacity"/> or <paramref name="deviceEnemyCap"/> is not positive, or
-    /// the cap exceeds the capacity — an arena allowed to hold more bodies than the snapshot can
-    /// carry is an arena core would be blind to part of.
+    /// <paramref name="enemyCapacity"/>, <paramref name="deviceEnemyCap"/> or
+    /// <paramref name="projectileCapacity"/> is not positive, or the cap exceeds the capacity — an
+    /// arena allowed to hold more bodies than the snapshot can carry is an arena core would be blind
+    /// to part of.
     /// </exception>
     /// <remarks>
     /// Guarded, where <see cref="RunState"/>'s constructor is not, and the difference is the
@@ -106,7 +115,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         IDomainEvents events,
         IIntentSink intents,
         int enemyCapacity,
-        int deviceEnemyCap)
+        int deviceEnemyCap,
+        int projectileCapacity)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -140,8 +150,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                     + "the surplus would exist in core and be invisible to it.");
         }
 
+        if (projectileCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(projectileCapacity),
+                projectileCapacity,
+                "projectileCapacity must be greater than zero. A run allowed no shots in the air "
+                    + "is one whose Spitters fire in silence — Fire refuses every one of them and "
+                    + "says nothing, which is exactly the failure a playtest cannot see.");
+        }
+
         _enemyCapacity = enemyCapacity;
         _deviceEnemyCap = deviceEnemyCap;
+        _projectileCapacity = projectileCapacity;
     }
 
     /// <inheritdoc />
@@ -287,6 +308,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             Depth = config.StageIndex,
         };
 
+        // One per run, like the registry above and for the same reason: a second Start must not
+        // inherit the first run's shots or its ids. It takes no generator, because a shot goes
+        // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
+        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -295,7 +321,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             character,
             motor,
             combat,
-            enemies);
+            enemies,
+            projectiles);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -387,13 +414,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // it interrupts is a question for the body, which has to leave on the tick that produced it.
         State.Enemies.Tick(snapshot.Dt, State.Time, State.Combat, _intents);
 
+        // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
+        //
+        // After, because a shot fired this tick starts flying now and must not be able to arrive on
+        // the tick it left: the behaviours are where a Spitter releases (M2-07b), and landing in the
+        // same step would erase the flight the whole archetype exists to make the player walk out
+        // of. Before, because a bolt that kills has to end the run on the tick it landed, exactly as
+        // a Husk's strike does — put after the check and the player would keep playing for one
+        // frame with no hit points.
+        //
+        // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
+        // the body (ledger row 7, settled at M2-07a rule 1).
+        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat);
+
         // The first thing that ends a run from inside one (M1-17). Asked here rather than
         // subscribed to, because core has no business listening to its own events: PlayerCombat
         // publishes PlayerDied for everyone with something to say about a death, and this class
         // reads the state it already owns.
         //
-        // After the enemy pass, because that is where a strike lands and where the death was
-        // therefore announced — so RunEnded follows PlayerDied on the same tick, in that order.
+        // After both of the passes that can hurt the player — a Husk's strike and a bolt's arrival —
+        // because that is where the death was announced, so RunEnded follows PlayerDied on the same
+        // tick, in that order, whichever of the two killed them.
         // And before TickBody, because a corpse is not steered: the intent it would write is a
         // velocity for a run that is over, and RunTicker would apply it to a body nobody is
         // driving any more.
@@ -544,6 +585,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // were in flight: a telegraph is a promise to the player, and there is no longer a player
         // to keep it to.
         _director.Clear();
+
+        // And the shots that were still in the air, silently again. A bolt that landed on an ended
+        // run would hurt a corpse and publish an impact into a scope that is being torn down.
+        State.Projectiles.Clear();
     }
 
     /// <summary>

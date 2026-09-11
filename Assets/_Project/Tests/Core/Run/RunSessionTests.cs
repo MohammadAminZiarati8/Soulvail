@@ -51,6 +51,13 @@ public sealed class RunSessionTests
     /// </summary>
     private const int DeviceCap = 8;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     // The Oathbound's numbers (CC §7), so a failure reads as "the class we ship stopped moving".
     private const float Speed = 5.4f;
     private const float AccelTime = 0.06f;
@@ -73,7 +80,7 @@ public sealed class RunSessionTests
         _intents = new RecordingIntents();
         _random = new FixedRandom(Seed);
         _catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { Descent() });
-        _session = new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, DeviceCap);
+        _session = new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
     }
 
     [Test]
@@ -139,27 +146,34 @@ public sealed class RunSessionTests
         // Beyond the spec's Tests table. The constructor is public and called from another
         // assembly (M0-12's RunInstaller), so it is a boundary; without these a forgotten
         // registration would surface a frame later, inside Tick, as an NRE that names the tick.
-        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents, EnemyCapacity, DeviceCap));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents, EnemyCapacity, DeviceCap));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents, EnemyCapacity, DeviceCap));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null, EnemyCapacity, DeviceCap));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null, EnemyCapacity, DeviceCap, ProjectileCapacity));
 
         // Same family, added with the capacity in M1-06: a registry that can hold no enemies is a
         // configuration mistake, and checking it here rather than at the first Start means a
         // mis-wired scope fails while it is being built instead of one scene later.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new RunSession(_catalog, _random, _events, _intents, 0, DeviceCap));
+            () => new RunSession(_catalog, _random, _events, _intents, 0, DeviceCap, ProjectileCapacity));
 
         // The device cap joins the family in M2-05, and it owes two checks rather than one. Zero
         // is the same mistake as a zero capacity — every stage would compose an empty arena.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, 0));
+            () => new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, 0, ProjectileCapacity));
 
         // And a cap above the capacity is the mistake that would otherwise be silent: the stage
         // composes more bodies than the snapshot can carry back, so the surplus exists in core and
         // core is blind to where any of it is standing.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, EnemyCapacity + 1));
+            () => new RunSession(
+                _catalog, _random, _events, _intents, EnemyCapacity, EnemyCapacity + 1, ProjectileCapacity));
+
+        // The projectile capacity joins the family in M2-07a, and it owes only the zero check: it
+        // is bounded by nothing the snapshot carries, because a shot has no body and is never
+        // reported back in. A run allowed none would refuse every bolt in silence.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunSession(_catalog, _random, _events, _intents, EnemyCapacity, DeviceCap, 0));
     }
 
     [Test]
@@ -252,7 +266,7 @@ public sealed class RunSessionTests
             Array.Empty<RosterEntry>());
 
         var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { finite });
-        var session = new RunSession(catalog, _random, _events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, _random, _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         Assert.Throws<ArgumentOutOfRangeException>(
             () => session.Start(new RunConfig(
@@ -310,7 +324,7 @@ public sealed class RunSessionTests
             new[] { new RosterEntry(new ContentId(GhostId), 1) });
 
         var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { mode });
-        var session = new RunSession(catalog, _random, _events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, _random, _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         Assert.Throws<KeyNotFoundException>(
             () => session.Start(new RunConfig(
@@ -400,7 +414,7 @@ public sealed class RunSessionTests
     public void Start_EventPublishedBeforeIsRunningFlips()
     {
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
         object payload = null;
         bool? runningDuringEvent = null;
 
@@ -570,7 +584,7 @@ public sealed class RunSessionTests
         // documents: during either lifecycle event the session still reports the state it is
         // leaving, so a handler reading IsRunning gets a consistent answer at both ends.
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
         session.Start(new RunConfig(
             new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
 
@@ -598,7 +612,7 @@ public sealed class RunSessionTests
         // and the opening population is spawned into a run that is already live.
         var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
         var events = new RecordingEvents();
-        var session = new RunSession(catalog, _random, events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, _random, events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         var plan = new SpawnPlan(new[]
         {
@@ -620,7 +634,7 @@ public sealed class RunSessionTests
         // resolves the session from inside EnemySpawned finds a live run, not one mid-composition.
         var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
         var events = new CapturingEvents();
-        var session = new RunSession(catalog, _random, events, _intents, EnemyCapacity, DeviceCap);
+        var session = new RunSession(catalog, _random, events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
         bool? runningDuringSpawn = null;
 
         events.OnPublish = evt =>

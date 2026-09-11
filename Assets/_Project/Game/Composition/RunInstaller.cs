@@ -71,13 +71,16 @@ public static class RunInstaller
         // int parameter later would make WithParameter<int> ambiguous, so the name is the wire.
         // The device cap joins it, by name for the same reason and from the same place: M2-04
         // priced 28 against a measured path refresh and ally count, and M2-05 is the first task
-        // with something that spends it — the concurrency curve a stage is composed under. Two
-        // ints on one registration is exactly the ambiguity WithParameter<int> would introduce.
+        // with something that spends it — the concurrency curve a stage is composed under. The
+        // projectile capacity is the third, from the same place for the same reason (M2-07a rule 7).
+        // Three ints on one registration is exactly the ambiguity WithParameter<int> would
+        // introduce, and is why every one of them is wired by name.
         builder.Register<RunSession>(Lifetime.Scoped)
             .As<IRunSession>()
             .As<IPlayerCommands>()
             .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity)
-            .WithParameter("deviceEnemyCap", BootInstaller.DeviceEnemyCap);
+            .WithParameter("deviceEnemyCap", BootInstaller.DeviceEnemyCap)
+            .WithParameter("projectileCapacity", BootInstaller.ProjectileCapacity);
     }
 
     /// <summary>

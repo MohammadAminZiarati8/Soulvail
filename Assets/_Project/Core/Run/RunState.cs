@@ -51,7 +51,8 @@ public sealed class RunState
         CharacterSpec character,
         PlayerMotor motor,
         PlayerCombat combat,
-        EnemySystem enemies)
+        EnemySystem enemies,
+        ProjectileSystem projectiles)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -61,6 +62,7 @@ public sealed class RunState
         Motor = motor;
         Combat = combat;
         Enemies = enemies;
+        Projectiles = projectiles;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -157,6 +159,28 @@ public sealed class RunState
     /// needs more gets a narrow read here rather than the handle.
     /// </remarks>
     internal EnemySystem Enemies { get; }
+
+    /// <summary>Every shot currently in the air, and the verb that lands one.</summary>
+    /// <remarks>
+    /// <c>internal</c> for the fourth time in this class, and the question AR §18.2 says every
+    /// future field handing out a mutable object owes: it has a public <c>Tick</c>, a public
+    /// <c>Fire</c> and a public <c>Clear</c>, so a public handle would let a view land every shot in
+    /// the arena a second time, invent one, or quietly empty the sky — with nothing in the compiler
+    /// to object. A view learns a shot exists from <c>ProjectileFired</c> and that it is over from
+    /// <c>ProjectileImpacted</c>, which is everything M2-09 needs; anything outside core that wants
+    /// to <em>read</em> the census reads <see cref="InFlightProjectiles"/>.
+    /// </remarks>
+    internal ProjectileSystem Projectiles { get; }
+
+    /// <summary>
+    /// How many shots are in the air right now — a scalar read, never the handle (AR §18.2).
+    /// </summary>
+    /// <remarks>
+    /// Zero for the whole of M2-07a: nothing fires one until M2-07b's Spitter. It is here now
+    /// because <c>DebugOverlay</c> showing a constant zero is what makes the first Spitter's first
+    /// bolt visible as a number before M2-09 draws one.
+    /// </remarks>
+    public int InFlightProjectiles => Projectiles.InFlightCount;
 
     /// <summary>
     /// How many enemies are registered in the run.

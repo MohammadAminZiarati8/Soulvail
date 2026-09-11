@@ -49,6 +49,13 @@ public sealed class FocusResolverTests
     /// </summary>
     private const int DeviceCap = 8;
 
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
+
     /// <summary>CC §7's acquire range, wide enough that no row loses a focus to distance.</summary>
     private const float AcquireRange = 12f;
 
@@ -253,7 +260,7 @@ public sealed class FocusResolverTests
     [Test]
     public void Commands_WhenNotRunning_Throw()
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // Before any run: State is null, so a no-op here would be a NullReferenceException one line
         // later anyway. Throwing says which of the two problems it is.
@@ -282,7 +289,7 @@ public sealed class FocusResolverTests
     /// </summary>
     private RunSession StartedRun(params Vector3[] positions)
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(Config(positions));
         Tick(session);

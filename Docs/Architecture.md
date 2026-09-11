@@ -496,6 +496,12 @@ is about Unity's.
   and it makes an enemy need a body with a trigger before it can hurt anyone, which inverts §3. **The
   price is that core holds no walls, so a shot passes through a cover pillar** — ledger row 13, and
   the fix is the sense M2-11b fills, not a fact (ledger row 7, M2-07a).
+- **`EnemyTickContext` is built once per tick by `RunSession`, never per agent — and no behaviour
+  may store it.** One reading of the clock decides the whole arena, and a behaviour that kept the
+  struct would be keeping this tick's clock, this tick's player and this tick's ports; both
+  implementers therefore unpack it into fields on the way in and clear them in a `finally` on the way
+  out. It is also the one place the four references and the two floats are guarded, which is what
+  lets `Tick` stay unguarded on a path walked once per enemy per frame (M2-07b).
 - **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.**
   The clamp only protects the simulation if brain and body take the same step. Purely cosmetic
   view timers are the deliberate exception (M0-16).
@@ -601,6 +607,15 @@ is about Unity's.
   ones. A ring the player dodged that produced nothing, or produced something two metres away,
   teaches them not to trust the next one, and GD §7.1's whole warning contract goes with it. The
   single exception is `Clear`, where there is no arena left for the body to appear in (M2-05).
+- **A Spitter's aim never cancels, and that is the deliberate opposite of the Chaser's windup.** The
+  dodge window on a thrown shot is the *flight*, not the telegraph — a Spitter that abandoned its aim
+  whenever the player moved would never fire, because moving is what the player does. Anything ranged
+  after it owes the same shape, and anything melee owes the Chaser's (M2-07b).
+- **A walk *in* follows `PathDirectionToPlayer`; a walk *out* never does.** Negating a path direction
+  points away from the next waypoint rather than away from the player, which walks a retreating enemy
+  into the pillar it was just routed around. A retreat is `−DirectionToPlayer` and nothing else, and
+  it can back into geometry — the `CharacterController` slides it along, and GD §7.2 guarantees no
+  dead ends (M2-07b).
 - **`EnemyRegistry.Alive` means *registered*, not breathing.** A corpse stays until its death has
   been published and the view has had its frame. Every reader that cares checks `IsAlive`. The
   naming is a wart (M1-05).

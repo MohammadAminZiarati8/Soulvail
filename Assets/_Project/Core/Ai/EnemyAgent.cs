@@ -120,22 +120,23 @@ public sealed class EnemyAgent
     /// the one place in the project that knows the full set of kinds (M1-06).
     /// </para>
     /// <para>
-    /// <b>Typed as <see cref="ChaserBehaviour"/> rather than as an interface, deliberately.</b> There
-    /// is one behaviour in the game today and an <c>IEnemyBehaviour</c> with a single implementer
-    /// would be an abstraction invented for a second one nobody has written yet — M2-07's Spitter and
-    /// M2-08's Bloater are where the shape of the seam becomes knowable. The dispatch that has to
-    /// change with it is a single <c>switch</c> in <c>EnemySystem.Tick</c>.
+    /// <b>Typed as <see cref="IEnemyBehaviour"/> since M2-07b</b>, which is the condition the M1-05
+    /// version of this paragraph set: an interface with a single implementer would have been an
+    /// abstraction invented for a second one nobody had written, and the Spitter (M2-07b) and the
+    /// Bloater (M2-08) are where the shape became knowable. The dispatch that changes with it is
+    /// still a single <c>switch</c> in <c>EnemySystem.Tick</c>.
     /// </para>
     /// <para>
-    /// <b>Created once and reset, never rebuilt.</b> The same bargain <see cref="Health"/> and
-    /// <see cref="Blackboard"/> make, and for a sharper reason: a <c>StateMachine</c> allocates three
-    /// dictionaries and a delegate per handler, and <see cref="EnemyRegistry"/> recycles an agent on
-    /// every spawn of a wave. So it is built on the first spawn whose archetype wants one and kept
-    /// afterwards — a Chaser recycled as a Static keeps the object and stops being ticked, and comes
-    /// back to it if it is recycled as a Chaser again.
+    /// <b>Kept across a recycle when the kind still matches, rebuilt when it does not</b> (M2-07b
+    /// rule 4). A <c>StateMachine</c> allocates three dictionaries and a delegate per handler, and
+    /// <see cref="EnemyRegistry"/> recycles an agent on every spawn of a wave — so a wave of one
+    /// archetype costs nothing, and a mixed arena churns one small object per <em>changed</em>
+    /// rental. That is a spawn-path cost rather than a frame-path one, which is what AR §14's ban is
+    /// about; it is a cost all the same, which is why a test pins the free case rather than leaving
+    /// it to be assumed.
     /// </para>
     /// </remarks>
-    public ChaserBehaviour Behaviour { get; private set; }
+    public IEnemyBehaviour Behaviour { get; private set; }
 
     /// <summary>Where it is, as last ingested from the snapshot (M1-06).</summary>
     public Vector3 Position { get; internal set; }
@@ -202,16 +203,24 @@ public sealed class EnemyAgent
         Blackboard.Reset();
 
         // After the blackboard, and the order is load-bearing the same way the two health lines
-        // below are: ChaserBehaviour.Reset clears StateTimer, and doing it before Blackboard.Reset
+        // below are: a behaviour's Reset clears StateTimer, and doing it before Blackboard.Reset
         // would simply have that clear it again — harmless today, and exactly the kind of ordering
         // that stops being harmless the first time a behaviour remembers something Reset does not.
-        if (spec.Behaviour == EnemyBehaviourKind.Chaser)
+        //
+        // Kept when the kind still matches and rebuilt when it does not (rule 4). The `as` is what
+        // asks that question without a second field to keep in step: an agent coming back as the
+        // archetype it just was finds its own behaviour and pays nothing, and one whose archetype
+        // changed finds a null and builds the right kind. A Static or a Bloater is left with no
+        // behaviour at all, which is what makes EnemySystem.Tick's dispatch the loud place for a
+        // kind nobody has written yet (M1-05).
+        Behaviour = spec.Behaviour switch
         {
-            Behaviour ??= new ChaserBehaviour(this);
-        }
+            EnemyBehaviourKind.Chaser => Behaviour as ChaserBehaviour ?? new ChaserBehaviour(this),
+            EnemyBehaviourKind.Spitter => Behaviour as SpitterBehaviour ?? new SpitterBehaviour(this),
+            _ => null,
+        };
 
-        // Reset whatever exists, including on an agent recycled as a Static: a behaviour left in
-        // Windup would come back mid-telegraph the next time this agent is a Chaser.
+        // Reset whatever survived: a behaviour left mid-telegraph would come back mid-telegraph.
         Behaviour?.Reset();
 
         // Ledger row 2, and the whole of its answer. Every modifier goes, whoever put it there:

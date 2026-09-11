@@ -251,6 +251,14 @@ public sealed class EnemyLookTests
         Assert.That(spitter.Projectile.StandoffRange, Is.EqualTo(14f).Within(Tolerance),
             "GD §8.1: it fires from 14 m — well outside the Oathbound's 3 m cone.");
 
+        // The other two numbers of the block, pinned from M2-07b because that is the task that made
+        // them reachable: SpitterBehaviour reads both off the asset on every release, and together
+        // with the standoff they are the dodge window — 14 / 12 is 1.17 s against a 1.6 m blast.
+        Assert.That(spitter.Projectile.Speed, Is.EqualTo(12f).Within(Tolerance),
+            "M2-06: 12 m/s of flight, which is what makes 14 m a shade under 1.2 s to react in.");
+        Assert.That(spitter.Projectile.Radius, Is.EqualTo(1.6f).Within(Tolerance),
+            "M2-06: 1.6 m of forgiveness on an arriving bolt.");
+
         Assert.That(spitter.Explosion, Is.Null, "A Spitter does not explode.");
 
         // M2-06's invented numbers, which no design document owns — so this is the only thing that
@@ -291,11 +299,13 @@ public sealed class EnemyLookTests
     [Test]
     public void Assets_AuthoredStaticUntilTheirBehaviourExists()
     {
-        // Rule 11, and the row that would fail the moment somebody flipped an asset ahead of its
-        // PR: EnemySystem.Tick's dispatch throws on an unhandled kind, deliberately, so an
-        // early-authored Spitter takes the run down rather than standing there ignoring the player.
-        Assert.That(Load(SpitterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Static),
-            "Spitter.asset stays Static until M2-07b can run one.");
+        // M2-06 rule 11, and the row that would fail the moment somebody flipped an asset ahead of
+        // its PR: EnemySystem.Tick's dispatch throws on an unhandled kind, deliberately, so an
+        // early-authored archetype takes the run down rather than standing there ignoring the
+        // player. The Spitter's half of it was flipped by M2-07b — the PR that can run one — and
+        // this is the assertion that moved with it rather than being deleted.
+        Assert.That(Load(SpitterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Spitter),
+            "M2-07b: SpitterBehaviour exists and the dispatch ticks it, so the asset says so.");
         Assert.That(Load(BloaterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Static),
             "Bloater.asset stays Static until M2-08 can run one.");
     }

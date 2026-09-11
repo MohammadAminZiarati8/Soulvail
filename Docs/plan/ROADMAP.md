@@ -135,7 +135,7 @@ was therefore nowhere.
 |---|---|---|---|---|
 | [M2-06](tasks/M2-06-enemy-authoring.md) | The Spitter and the Bloater as authored data, and three archetypes you can tell apart | M | 04 | ☑ |
 | [M2-07a](tasks/M2-07a-projectile-system.md) | `ProjectileSystem`: shots already in the air, and who decides they landed | S | 06 | ☑ |
-| [M2-07b](tasks/M2-07b-spitter-ai.md) | `IEnemyBehaviour`, and the Spitter that keeps its distance | S | 07a | ☐ |
+| [M2-07b](tasks/M2-07b-spitter-ai.md) | `IEnemyBehaviour`, and the Spitter that keeps its distance | S | 07a | ☑ |
 | [M2-08](tasks/M2-08-bloater-ai.md) | `BloaterBehaviour`: a fuse you have to walk away from, and a blast the corpse owns | S | 07b | ☐ |
 | [M2-09](tasks/M2-09-projectile-views-and-pooling.md) | Projectile views, and the first test that proves a pooled body forgets its last life | M | 07b | ☐ |
 

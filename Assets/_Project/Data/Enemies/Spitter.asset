@@ -24,7 +24,7 @@ MonoBehaviour:
   _windupTime: 0.7
   _recoverTime: 0.9
   _aggroRange: 30
-  _behaviour: 0
+  _behaviour: 2
   _projectileStandoffRange: 14
   _projectileSpeed: 12
   _projectileRadius: 1.6

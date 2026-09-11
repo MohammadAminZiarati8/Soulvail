@@ -90,6 +90,9 @@ public sealed class EnemySystemTests
 
     private RecordingIntents _intents;
 
+    /// <summary>The sky the context carries. Nothing in this fixture fires into it.</summary>
+    private ProjectileSystem _projectiles;
+
     [SetUp]
     public void SetUp()
     {
@@ -99,6 +102,7 @@ public sealed class EnemySystemTests
         _system = new EnemySystem(_catalog, _events, _random, Scaling(), Capacity);
         _intents = new RecordingIntents();
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
+        _projectiles = new ProjectileSystem(_events, ProjectileCapacity);
     }
 
     [Test]
@@ -529,7 +533,7 @@ public sealed class EnemySystemTests
     {
         EnemyAgent agent = _system.Spawn(new ContentId(HuskId), new Vector3(3f, 0f, 0f));
 
-        _system.Tick(Frame, now: 1f, _player, _intents);
+        _system.Tick(Context(now: 1f));
 
         // The whole of M1-06's behaviour: a dummy that holds still, which is what makes targeting,
         // cone hits and damage judgeable on their own.
@@ -558,7 +562,7 @@ public sealed class EnemySystemTests
         system.Spawn(new ContentId("enemy.unhandled"), Vector3.Zero);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => system.Tick(Frame, now: 0f, _player, _intents));
+            () => system.Tick(Context(now: 0f)));
 
         Assert.That(ex.Message, Does.Contain("enemy.unhandled"));
     }
@@ -706,7 +710,7 @@ public sealed class EnemySystemTests
         AllocationAssert.None(() =>
         {
             system.Ingest(snapshot);
-            system.Tick(Frame, 1f, _player, _intents);
+            system.Tick(Context(1f));
         });
     }
 
@@ -795,6 +799,12 @@ public sealed class EnemySystemTests
         Assert.That(plan.Initial.Count, Is.EqualTo(1));
         Assert.That(plan.Initial[0].SpecId, Is.EqualTo(new ContentId(HuskId)));
     }
+
+    /// <summary>
+    /// What <c>Tick</c> takes as of M2-07b: one struct rather than four arguments (rule 2).
+    /// </summary>
+    private EnemyTickContext Context(float now) =>
+        new EnemyTickContext(Frame, now, _player, _intents, _events, _projectiles);
 
     /// <summary>
     /// Fills one enemy slot the way M1-07's view sync will fill it.

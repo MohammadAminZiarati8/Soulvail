@@ -85,6 +85,14 @@ namespace Soulvail.Game.Composition
                  "without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _enemyParent;
 
+        [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
+                 "enemy prefab makes — a body per kind of shot arrives with the art.")]
+        [SerializeField] private ProjectileView _projectilePrefab;
+
+        [Tooltip("Where bolts in flight are parented. Optional on the same terms as the enemy " +
+                 "parent — they go to the scene root without it.")]
+        [SerializeField] private Transform _projectileParent;
+
         [Tooltip("The layers a swing sweeps: the Enemy layer, and nothing else. Authored rather " +
                  "than looked up by name, so a renamed layer is a visible diff instead of a " +
                  "string that stops resolving.")]
@@ -142,6 +150,15 @@ namespace Soulvail.Game.Composition
                     $"{nameof(RunScope)} has no {nameof(EnemyView)} prefab assigned. Drag " +
                     "Prefabs/Enemies/Enemy.prefab onto its Enemy Prefab field — without it core " +
                     "spawns enemies that have no body and never report a position.");
+            }
+
+            if (_projectilePrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(ProjectileView)} prefab assigned. Drag " +
+                    "Prefabs/Projectiles/Projectile.prefab onto its Projectile Prefab field — " +
+                    "without it a Spitter's bolt is a swell, a pause, and damage arriving out of " +
+                    "nowhere about a second later.");
             }
 
             // The scene owns this object's lifetime, and VContainer does not dispose what it did
@@ -247,6 +264,22 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent)
                 .WithParameter("prewarm", PrewarmCount());
+
+            // The same three-argument shape as the census above, and registered here rather than in
+            // RunInstaller for the reason EnemyViews is: two of its arguments are references to
+            // this scene, and the static installer is deliberately the half a headless test can
+            // build.
+            //
+            // Prewarmed to core's own projectile capacity — the most shots that may be in the air
+            // at once, so the pool cannot be asked for a body it does not already hold and every
+            // Instantiate a run will ever do happens while the scene is loading. Flat rather than
+            // conditional on the arena being dressed, unlike PrewarmCount below: thirty-two small
+            // bodies with no controller and no collider cost a fraction of one enemy, and a run
+            // that starts firing is exactly the moment a hitch cannot be afforded.
+            builder.Register<ProjectileViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _projectilePrefab)
+                .WithParameter("parent", _projectileParent)
+                .WithParameter("prewarm", BootInstaller.ProjectileCapacity);
 
             // Sized to the snapshot's capacity rather than to the quota above: the cache is keyed
             // by enemy id and evicts only what stopped asking, so a table smaller than the arena

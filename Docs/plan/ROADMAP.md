@@ -136,7 +136,7 @@ was therefore nowhere.
 | [M2-06](tasks/M2-06-enemy-authoring.md) | The Spitter and the Bloater as authored data, and three archetypes you can tell apart | M | 04 | ☑ |
 | [M2-07a](tasks/M2-07a-projectile-system.md) | `ProjectileSystem`: shots already in the air, and who decides they landed | S | 06 | ☑ |
 | [M2-07b](tasks/M2-07b-spitter-ai.md) | `IEnemyBehaviour`, and the Spitter that keeps its distance | S | 07a | ☑ |
-| [M2-08](tasks/M2-08-bloater-ai.md) | `BloaterBehaviour`: a fuse you have to walk away from, and a blast the corpse owns | S | 07b | ☐ |
+| [M2-08](tasks/M2-08-bloater-ai.md) | `BloaterBehaviour`: a fuse you have to walk away from, and a blast the corpse owns | S | 07b | ☑ |
 | [M2-09](tasks/M2-09-projectile-views-and-pooling.md) | Projectile views, and the first test that proves a pooled body forgets its last life | M | 07b | ☐ |
 
 **Specced by M2-00d:** stage flow, arenas and telegraphs, M2-10…M2-12. **Both M2-11 and M2-12 are split before they start.** M2-11 is the arena as a *place* and the arena as something core can *ask about*, which is seven files together and two different reviews; the sense also has to land after the pillars it raycasts against exist. M2-12 is split by machinery, not by ledger row — rows 12 and 14 stay together in 12a because [the ledger](#carry-forward-into-m2) says answering them apart gets two indicators that disagree, while the ground decals share M2-09's pool and none of that question.

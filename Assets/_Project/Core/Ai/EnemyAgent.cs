@@ -210,13 +210,14 @@ public sealed class EnemyAgent
         // Kept when the kind still matches and rebuilt when it does not (rule 4). The `as` is what
         // asks that question without a second field to keep in step: an agent coming back as the
         // archetype it just was finds its own behaviour and pays nothing, and one whose archetype
-        // changed finds a null and builds the right kind. A Static or a Bloater is left with no
-        // behaviour at all, which is what makes EnemySystem.Tick's dispatch the loud place for a
-        // kind nobody has written yet (M1-05).
+        // changed finds a null and builds the right kind. A Static is left with no behaviour at all,
+        // which is what makes EnemySystem.Tick's dispatch the loud place for a kind nobody has
+        // written yet (M1-05).
         Behaviour = spec.Behaviour switch
         {
             EnemyBehaviourKind.Chaser => Behaviour as ChaserBehaviour ?? new ChaserBehaviour(this),
             EnemyBehaviourKind.Spitter => Behaviour as SpitterBehaviour ?? new SpitterBehaviour(this),
+            EnemyBehaviourKind.Bloater => Behaviour as BloaterBehaviour ?? new BloaterBehaviour(this),
             _ => null,
         };
 

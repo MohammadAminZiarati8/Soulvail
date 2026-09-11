@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
 using Soulvail.Core.Events;
@@ -944,13 +945,25 @@ public sealed class SpawnDirectorTests
                 continue;
             }
 
-            enemies.ApplyDamage(ids[i], 10_000f, now);
+            // The blast target ApplyDamage requires as of M2-08 rule 3. Every archetype this fixture
+            // spawns is a Husk, which carries no explosion block, so the player is inert here — but
+            // the parameter is required rather than optional precisely so that a fixture which
+            // starts killing Bloaters has to say who is standing nearby.
+            enemies.ApplyDamage(ids[i], 10_000f, now, Bystander());
 
             killed++;
         }
 
         Assert.That(killed, Is.EqualTo(count), "The fixture ran out of living enemies to kill.");
     }
+
+    /// <summary>A player for <c>EnemySystem.ApplyDamage</c> to resolve a blast against.</summary>
+    /// <remarks>
+    /// Silent ports, because nothing in this fixture asserts about the player: it spawns Husks, and
+    /// a Husk does not explode. It exists only to satisfy the signature M2-08 widened.
+    /// </remarks>
+    private static PlayerCombat Bystander() =>
+        new PlayerCombat(Oathbound(), new SilentEvents(), new RecordingIntents(), Capacity);
 
     /// <summary>What rule 2 says a wave's telegraph order must be: round-robin across its entries.</summary>
     private static List<ContentId> RoundRobin(WavePlan plan, int wave)

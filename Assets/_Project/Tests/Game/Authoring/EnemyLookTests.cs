@@ -306,8 +306,15 @@ public sealed class EnemyLookTests
         // this is the assertion that moved with it rather than being deleted.
         Assert.That(Load(SpitterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Spitter),
             "M2-07b: SpitterBehaviour exists and the dispatch ticks it, so the asset says so.");
-        Assert.That(Load(BloaterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Static),
-            "Bloater.asset stays Static until M2-08 can run one.");
+        Assert.That(Load(BloaterPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Bloater),
+            "M2-08: BloaterBehaviour exists and the dispatch ticks it, so the asset says so.");
+
+        // As of M2-08 no shipped archetype is still waiting for its behaviour, so this row has no
+        // Static subject left. It is kept rather than deleted because the *rule* it enforces is not
+        // spent: the next archetype authored ahead of its PR re-arms it, and a row that had been
+        // deleted would have to be remembered instead of failing.
+        Assert.That(Load(HuskPath).ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Chaser),
+            "M1-18, and the third of three: every archetype we ship now has a mind.");
     }
 
     [Test]

@@ -804,7 +804,7 @@ public sealed class EnemySystemTests
     /// What <c>Tick</c> takes as of M2-07b: one struct rather than four arguments (rule 2).
     /// </summary>
     private EnemyTickContext Context(float now) =>
-        new EnemyTickContext(Frame, now, _player, _intents, _events, _projectiles);
+        new EnemyTickContext(Frame, now, _player, _intents, _events, _projectiles, _system);
 
     /// <summary>
     /// Fills one enemy slot the way M1-07's view sync will fill it.

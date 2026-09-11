@@ -356,7 +356,7 @@ public sealed class ChaserBehaviourTests
 
         EnemyAgent agent = Agent(chaser);
 
-        _system.ApplyDamage(agent.Id, 1000f, _clock);
+        _system.ApplyDamage(agent.Id, 1000f, _clock, _player);
 
         Assert.That(agent.IsAlive, Is.False, "Sanity: it is a corpse.");
 
@@ -384,7 +384,7 @@ public sealed class ChaserBehaviourTests
 
         Assert.That(chaser.State, Is.EqualTo(ChaserState.Windup), "Sanity: a frame or two from the hit.");
 
-        _system.ApplyDamage(agent.Id, 1000f, _clock);
+        _system.ApplyDamage(agent.Id, 1000f, _clock, _player);
 
         // Driven through the system from here, because that is where the rule lives: the behaviour
         // itself knows nothing about being dead, and would happily finish its windup if anything
@@ -489,7 +489,7 @@ public sealed class ChaserBehaviourTests
         for (int i = 0; i < 600; i++)
         {
             intents.Clear();
-            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles));
+            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles, system));
         }
 
         // Cleared per iteration, not once: 32 intents a tick across 10 000 ticks would otherwise
@@ -504,7 +504,7 @@ public sealed class ChaserBehaviourTests
             // The context is built inside the measured body on purpose: rule 2 claims it costs
             // nothing, and building it outside would be exactly the arrangement that hides a struct
             // that had quietly become a class.
-            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles));
+            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles, system));
         });
     }
 
@@ -639,7 +639,7 @@ public sealed class ChaserBehaviourTests
     /// fixture started at (M2-07b rule 2).
     /// </remarks>
     private EnemyTickContext Context() =>
-        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles);
+        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles, _system);
 
     /// <summary>Ticks for at least <paramref name="seconds"/>, a frame at a time.</summary>
     private void TickFor(ChaserBehaviour chaser, float seconds)

@@ -703,6 +703,7 @@ public sealed class RunSessionTests
         36f,
         3.5f,
         1,
+        4,
         false,
         8f,
         1.2f,

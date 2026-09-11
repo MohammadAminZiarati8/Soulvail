@@ -17,6 +17,7 @@ MonoBehaviour:
   _maxHp: 36
   _moveSpeed: 2
   _targetPriority: 1
+  _threatCost: 4
   _isElite: 0
   _contactDamage: 8
   _reach: 1.2

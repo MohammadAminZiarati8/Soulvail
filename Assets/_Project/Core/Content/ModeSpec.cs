@@ -274,8 +274,13 @@ public sealed class ModeSpec
     /// </exception>
     /// <remarks>
     /// <para>
-    /// Allocates nothing. The composer (M2-04) calls it once a stage against a
-    /// <c>stackalloc</c> buffer, so the array is walked by index and no enumerator is created.
+    /// Allocates nothing. <c>WaveComposer</c> calls it once a stage against a buffer it keeps and
+    /// reuses, so the array is walked by index and no enumerator is created. <b>Not a
+    /// <c>stackalloc</c> buffer, which this comment promised until M2-04 tried to write one:</b>
+    /// <see cref="RosterEntry"/> holds a <see cref="ContentId"/>, which holds a
+    /// <see cref="string"/>, so the type is managed and <c>stackalloc RosterEntry[n]</c> does not
+    /// compile. A <see cref="Span{T}"/> parameter is still the right shape — it takes a pooled
+    /// array without the caller having to hand over the array itself.
     /// </para>
     /// <para>
     /// Counted first and written second, so a refused call leaves the caller's buffer untouched

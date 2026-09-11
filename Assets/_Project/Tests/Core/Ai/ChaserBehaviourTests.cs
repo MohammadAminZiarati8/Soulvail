@@ -705,6 +705,7 @@ public sealed class ChaserBehaviourTests
         maxHp: 36f,
         moveSpeed: MoveSpeed,
         targetPriority: 1,
+        threatCost: 4,
         isElite: false,
         contactDamage: ContactDamage,
         reach: Reach,

@@ -65,6 +65,15 @@ public sealed class EnemyDefinitionTests
         Assert.That(spec.MaxHp, Is.EqualTo(36f).Within(Tolerance), "GD §8.1: base HP 36.");
         Assert.That(spec.TargetPriority, Is.EqualTo(1),
             "GD §8.1: the Husk is priority 1, the floor of the 1–8 scale the Choir tops at 8.");
+
+        // The third of them, authored from M2-04. Two ints side by side in the constructor and in
+        // the YAML, so a transposition is the live risk — and 1 against 4 is what makes it visible:
+        // a swapped pair would price the Husk at 1 and spawn four times as many of them, while
+        // every individual number still looked plausible. Same failure mode as windup/recover below.
+        Assert.That(spec.ThreatCost, Is.EqualTo(4),
+            "GD §8.1: the Husk costs 4 threat, the cheapest archetype in the roster — so a " +
+            "stage-1 budget of 40 buys ten of them (GD §12.1).");
+
         Assert.That(spec.IsElite, Is.False, "Elites and their affixes are M7-02.");
 
         // The five M1-05 invented, which no design document owns — so this row is the only thing
@@ -107,6 +116,31 @@ public sealed class EnemyDefinitionTests
         Assert.That(second, Is.Not.SameAs(first));
         Assert.That(second.Id, Is.EqualTo(first.Id));
         Assert.That(second.MaxHp, Is.EqualTo(first.MaxHp));
+    }
+
+    [Test]
+    public void Husk_EveryYamlKeyBindsToAField()
+    {
+        // Traps §7: a serialized field whose C# initialiser equals the value the asset ships makes
+        // an "the asset carries these values" test vacuous — it passes identically if the YAML key
+        // binds to nothing at all. Six of the Husk's ten are in exactly that position, because
+        // EnemyDefinition's defaults *are* the Husk (M0-11), and `_threatCost` joined them in
+        // M2-04: it initialises to 4 and ships 4, so the row above cannot tell a bound key from a
+        // misspelled one.
+        //
+        // ForceReserializeAssets drops keys matching no field, so a reserialise that changes the
+        // file is a key that did not bind. Comparing the text either side is the assertion — and it
+        // leaves no diff behind when it passes, which a bare reserialise would not (M1-03).
+        string before = System.IO.File.ReadAllText(HuskPath);
+
+        AssetDatabase.ForceReserializeAssets(new[] { HuskPath });
+
+        string after = System.IO.File.ReadAllText(HuskPath);
+
+        Assert.That(after, Is.EqualTo(before),
+            "Reserialising Husk.asset changed it, which means at least one of its YAML keys " +
+            "matches no field on EnemyDefinition and was dropped. Compare the two and fix the " +
+            "name — a dropped key reads as a field quietly holding its C# initialiser.");
     }
 
     [Test]

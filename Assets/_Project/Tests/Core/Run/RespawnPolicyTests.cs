@@ -264,6 +264,7 @@ public sealed class RespawnPolicyTests
         maxHp: 36f,
         moveSpeed: 3.5f,
         targetPriority: 1,
+        threatCost: 4,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,

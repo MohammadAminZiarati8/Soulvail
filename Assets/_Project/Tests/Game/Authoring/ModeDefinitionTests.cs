@@ -64,15 +64,24 @@ public sealed class ModeDefinitionTests
         Assert.That(spec.FinalStage, Is.EqualTo(int.MaxValue));
         Assert.That(spec.StartingStage, Is.EqualTo(1), "GD §8.2's schedule starts at stage 1.");
 
-        // The Husk alone, and deliberately not GD §8.2's full Husk 1 / Spitter 2 / Bloater 4:
-        // RunSession.Start resolves every roster id against the catalog before it announces a
-        // run, so a row naming an archetype nobody has authored yet would refuse to start the
-        // game. M2-06 adds the other two rows in the same change that authors them (M2-02 rule
-        // 10). When it does, this assertion is what has to be updated with them.
-        Assert.That(spec.Roster.Count, Is.EqualTo(1),
-            "Descent ships with the Husk alone until M2-06 authors the Spitter and the Bloater.");
+        // GD §8.2's schedule, all three rows, as of M2-06 — which is the task that authored the
+        // Spitter and the Bloater and added them here in the same change (M2-02 rule 10). Until
+        // then this row asserted the Husk alone, because RunSession.Start resolves every roster id
+        // against the catalog before it announces a run: a row naming an archetype nobody had
+        // authored would have refused to start the game.
+        //
+        // Order is meaningful — ModeSpec.RosterFor answers in it — so the rows are asserted by
+        // index rather than searched for.
+        Assert.That(spec.Roster.Count, Is.EqualTo(3), "GD §8.2: Husk, Spitter and Bloater.");
+
         Assert.That(spec.Roster[0].SpecId.Value, Is.EqualTo("enemy.husk"));
         Assert.That(spec.Roster[0].IntroducedAtStage, Is.EqualTo(1), "GD §8.2: Husk at stage 1.");
+
+        Assert.That(spec.Roster[1].SpecId.Value, Is.EqualTo("enemy.spitter"));
+        Assert.That(spec.Roster[1].IntroducedAtStage, Is.EqualTo(2), "GD §8.2: Spitter at stage 2.");
+
+        Assert.That(spec.Roster[2].SpecId.Value, Is.EqualTo("enemy.bloater"));
+        Assert.That(spec.Roster[2].IntroducedAtStage, Is.EqualTo(4), "GD §8.2: Bloater at stage 4.");
     }
 
     [Test]

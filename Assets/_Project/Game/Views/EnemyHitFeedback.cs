@@ -37,6 +37,16 @@ namespace Soulvail.Game.Views
     /// is opaque (<c>M_BoneGrey</c>, URP/Lit, <c>_Surface: 0</c>) and an alpha written into a
     /// property block on it would be a fade that never happens and never says so.
     /// </para>
+    /// <para>
+    /// <b>It owns the archetype's look as of M2-06, because it already owned the reset.</b> Every
+    /// effect here is written relative to two fields — <c>_liveColour</c> and <c>_liveScale</c> —
+    /// and <see cref="SetArchetypeLook"/> re-bases them on the rental so a Bloater flashes, swells
+    /// and dissolves in rust rather than reverting to bone grey mid-effect. Putting the tint
+    /// anywhere else would mean a second writer of the same two shader properties, and the first
+    /// flash to end would undo it. <b>This is AR §18.4's pooled-reset invariant gaining two more
+    /// things to forget</b>: a tint left behind produces a Husk that spawns Bloater-red, which
+    /// reads as a rendering bug three systems from its cause.
+    /// </para>
     /// </remarks>
     [RequireComponent(typeof(EnemyView))]
     public sealed class EnemyHitFeedback : MonoBehaviour
@@ -95,6 +105,18 @@ namespace Soulvail.Game.Views
 
         private Color _liveColour;
         private Vector3 _liveScale;
+
+        /// <summary>
+        /// The scale the prefab itself was authored at, which <see cref="SetArchetypeLook"/>
+        /// multiplies. Kept apart from <see cref="_liveScale"/> so the multiply is idempotent: a
+        /// body rented three times as a Bloater would otherwise end up at 1.35³.
+        /// </summary>
+        /// <remarks>
+        /// The initialiser is what makes this readable in EditMode, where <c>Awake</c> never runs
+        /// (Traps §5) and a zero here would shrink every rented body to nothing. Field initialisers
+        /// run at construction, so play mode still gets the prefab's real scale a moment later.
+        /// </remarks>
+        private Vector3 _prefabScale = Vector3.one;
 
         private float _flashRemaining;
         private float _dissolveElapsed;
@@ -162,7 +184,8 @@ namespace Soulvail.Game.Views
             // the instancing property would clone it on every enemy that ever takes a hit.
             _liveMaterial = _renderer.sharedMaterial;
             _liveColour = _liveMaterial.GetColor(_baseColorId);
-            _liveScale = transform.localScale;
+            _prefabScale = transform.localScale;
+            _liveScale = _prefabScale;
         }
 
         /// <exception cref="InvalidOperationException">Nothing injected this body.</exception>
@@ -185,6 +208,59 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
+        /// Re-bases the colour and the scale this body returns to, so the flash, the telegraph
+        /// swell and the dissolve all play over the archetype's look rather than over the prefab's.
+        /// Called by <c>EnemyViews</c> on the rental, before the body is put into service.
+        /// </summary>
+        /// <param name="tint">The archetype's colour — <c>EnemyLook.Tint</c>.</param>
+        /// <param name="bodyScale">
+        /// A multiple of the prefab's own scale — <c>EnemyLook.BodyScale</c>. Applied against
+        /// <see cref="_prefabScale"/> rather than against the current one, so rentals do not
+        /// compound.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// <b>It sets the two fields every effect in this class is written relative to, which is
+        /// why the look belongs here and not on a component of its own.</b> The hit flash returns
+        /// to <see cref="_liveColour"/>, the telegraph swells from and back to
+        /// <see cref="_liveScale"/>, and the dissolve stretches and fades from both. A second
+        /// component writing the tint straight onto the renderer would be overwritten by the first
+        /// flash that ended, and the enemy would turn grey the first time it was hit.
+        /// </para>
+        /// <para>
+        /// Absolute rather than accumulated on purpose: every rental passes a look — an unauthored
+        /// archetype gets <c>EnemyLook.Default</c> rather than nothing — so the body is told what it
+        /// is each time rather than asked to forget what it was. That is what makes the pooled-reset
+        /// invariant (AR §18.4) hold for these two things without a third field to clear.
+        /// </para>
+        /// <para>
+        /// Safe before <c>Awake</c>, which outside play mode never runs (Traps §5). The scale is
+        /// written directly; the colour needs a renderer and a property block, and this is the one
+        /// place that will build the block itself rather than assume <c>Awake</c> did. That is what
+        /// makes the set-and-restore half of the pooled-look rule provable in EditMode — the other
+        /// half, a real rent → kill → re-rent, is M2-09's and needs PlayMode by construction.
+        /// </para>
+        /// </remarks>
+        public void SetArchetypeLook(Color tint, float bodyScale)
+        {
+            _liveColour = tint;
+            _liveScale = _prefabScale * bodyScale;
+
+            transform.localScale = _liveScale;
+
+            // Unity's == rather than `is null`: an unassigned serialized reference is a live object
+            // that only compares equal to null through the engine's operator.
+            if (_renderer == null)
+            {
+                return;
+            }
+
+            _block ??= new MaterialPropertyBlock();
+
+            SetColour(_liveColour);
+        }
+
+        /// <summary>
         /// Undoes everything a life did to how this body looks: the dissolve's stretch and fade,
         /// the transparent material it swapped to, a flash or a wind-up caught mid-play.
         /// </summary>
@@ -197,9 +273,14 @@ namespace Soulvail.Game.Views
         /// </para>
         /// <para>
         /// Safe before <c>Awake</c>, which outside play mode never runs: with no property block
-        /// there is no colour to write, and there is nothing to undo either, because a body that
-        /// has not woken up has never dissolved. That is what lets an EditMode fixture rent and
-        /// return a body without building a whole prefab.
+        /// there is no colour to write. That is what lets an EditMode fixture rent and return a
+        /// body without building a whole prefab.
+        /// </para>
+        /// <para>
+        /// <b>It restores the <em>archetype's</em> look, not the prefab's</b>, because
+        /// <see cref="SetArchetypeLook"/> is what last said what those are. That is the correct
+        /// half of the pooled-reset rule: the tint a Bloater left behind is undone by the next
+        /// rental being told it is a Husk, not by this method guessing.
         /// </para>
         /// </remarks>
         public void ResetVisuals()
@@ -209,12 +290,21 @@ namespace Soulvail.Game.Views
             _flashRemaining = 0f;
             _telegraphRemaining = 0f;
 
+            // Ahead of the property-block guard below, unlike every other line here, because as of
+            // M2-06 a body can have been rescaled before Awake ever ran — SetArchetypeLook writes
+            // the scale whether or not there is a block to write a colour into. The zero test is
+            // what stops an EditMode fixture that has neither woken up nor been given a look from
+            // being shrunk to nothing: _liveScale is zero on a body in exactly that state and on no
+            // other.
+            if (_liveScale != Vector3.zero)
+            {
+                transform.localScale = _liveScale;
+            }
+
             if (_block is null)
             {
                 return;
             }
-
-            transform.localScale = _liveScale;
 
             // Back onto the opaque asset before the colour is written, so the alpha the dissolve
             // left in the property block is applied to a material that ignores it rather than to

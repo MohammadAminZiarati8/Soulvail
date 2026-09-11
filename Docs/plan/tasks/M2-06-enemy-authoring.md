@@ -164,4 +164,32 @@ public void SetArchetypeLook(Color tint, float bodyScale);
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+Built as specified, with **five deviations**. The split rule did not fire: `EnemyHitFeedback` needed one method and one new field, and `_liveColour`'s capture in `Awake` is untouched.
+
+**1. `BootScope.prefab` was edited, and the Files table did not list it. This is the one that changes a decision.**
+`BootInstaller`'s enemy list is a serialized array on the boot prefab, so a definition that is not in it never reaches the `ContentCatalog` — and `Descent.asset`'s new roster rows then name `enemy.spitter` and `enemy.bloater`, which `RunSession.Start` resolves against the catalog before it announces anything (ledger row 3's guard, M2-02). Authoring the two assets without adding them to the boot list does not produce a run with Husks only; it produces **a game that refuses to start**. So the assets, the roster rows and the boot list are one change or none. Edited through the Editor with `SerializedObject` + `SaveAsPrefabAsset` rather than by hand, and the diff is the two added references and nothing else — the fake-null and re-serialisation traps of Traps §5 are exactly why. **Anything that authors a new content asset owes the same third edit**, which the Files table of the next such task should say out loud.
+
+**2. `EnemyView.Feedback` became public.**
+`EnemyViews.OnSpawned` has to reach the component that owns the look, and this cached, flag-guarded lookup is the only one in the project that does not cost a `GetComponent` per spawn. Made a public read — symmetrical with `Body`, which the census already reads the same way — rather than adding a forwarding method to `EnemyView` for every effect anyone adds later.
+
+**3. `EnemyLook.cs` uses a file-scoped namespace where the spec's Public API block shows a block one.**
+Neither type in it derives from `UnityEngine.Object`, so Traps §5's importer rule does not apply and the project convention for pure C# is file-scoped. The spec's snippet was formatting, not a ruling.
+
+**4. `SetArchetypeLook` builds the `MaterialPropertyBlock` itself when `Awake` has not.**
+Without it the colour half of rule 10 is unobservable in EditMode — `Awake` never runs there, so the block is null and nothing is ever written to a renderer. One `??=` guarded by a Unity null check on `_renderer`; every hot path is untouched, `Awake` still builds the block at load, and the result is that `Look_SurvivesSetAndRestore` asserts the tint as the spec's row asks rather than only the scale. `ResetVisuals` also restores the scale **ahead of** its property-block guard, because a body can now be rescaled before `Awake` — guarded by `_liveScale != Vector3.zero`, which is true only of a fixture that has neither woken up nor been given a look.
+
+**5. `EnemyHitFeedback` gained a second field, `_prefabScale`, beside `_liveScale`.**
+`BodyScale` is a multiple of the prefab's own scale, so multiplying `_liveScale` would compound across rentals — a Bloater at 1.35, then 1.82, then 2.46. The new field is the base the multiply is applied against, initialised to `Vector3.one` so it is readable in EditMode and overwritten by `Awake` with the prefab's real scale. `Look_DoesNotCompoundAcrossRentals` is the row that holds it.
+
+**Three things the spec left to the implementation**
+
+- **`EnemyDefinition.ToLook()` is the second conversion**, beside `ToSpec()`. A `Color` cannot cross into `Soulvail.Core` (AR §2), so the tint and the scale leave the asset by their own door and `BootInstaller` pairs them with the spec ids it has just built.
+- **`EnemyLook.Default` is `M_BoneGrey`'s own base colour**, not an arbitrary grey. That is what makes manual step 1 true — the look system is a genuine no-op for the Husk — and it is asserted by `Husk_TintIsTheSharedMaterialsOwn`, which is also what will say so if the material is ever recoloured.
+- **`ContentTests` needed no change**, despite the ripple row naming it: it builds no `EnemySpec`. `EnemyDefinitionTests` needed none either — its Husk row asserts no new field, and `Husk_EveryYamlKeyBindsToAField` passed unmodified against the hand-written YAML keys, which is what proves all six of them bind.
+
+**Two notes that are not deviations**
+
+- **The invariant list in AR §18.4 grew**, as rule 10 said it would. That is an edit outside the Files table and is deliberate: the rule is now two-sided — `ResetVisuals` restores the *rented* look, and `EnemyViews` re-applies unconditionally on the next rental — and a reader who knows only the first half would conclude a Husk can inherit a Bloater's tint.
+- **`ModeDefinitionTests.Descent_MatchesDesign` failed on the first run and was updated**, which is M2-02 rule 10 working exactly as written: that row asserted a one-entry roster *until M2-06 authors the Spitter and the Bloater*. It now asserts all three of GD §8.2's rows by index, because `ModeSpec.RosterFor` answers in roster order.
+
+**Flagged for the owner, as rule 8 says, and not fixed here:** at the Censer's 13 damage a 24 HP Bloater dies in **2 hits**, one below GD §12.4's TTK band of 3–5. Either the 24 or the band's lower bound wants a one-line ruling; M2-15 is where acceptance fails on it otherwise.

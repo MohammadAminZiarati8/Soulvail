@@ -310,6 +310,7 @@ public sealed class WavePlanTests
         reach: 1.2f,
         windupTime: 0.4f,
         recoverTime: 0.6f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Chaser);
 
     private static ModeSpec HuskOnly() => Mode(Scalings.Design(), (HuskId, 1));

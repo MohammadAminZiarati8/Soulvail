@@ -73,9 +73,42 @@ namespace Soulvail.Game.Authoring
 
         [SerializeField, Min(0f)] private float _recoverTime = 0.6f;
 
+        [Tooltip("Metres within which it notices the player and stops being idle. 30 on all " +
+                 "three archetypes — comfortably beyond what the camera shows, so in practice " +
+                 "everything in the arena is already coming for you.")]
+        [SerializeField, Min(0.01f)] private float _aggroRange = 30f;
+
         [Tooltip("Which code moves it. Static stands where it spawned; Chaser beelines at the " +
-                 "player and is implemented in M1-18.")]
+                 "player and is implemented in M1-18. Spitter (M2-07b) and Bloater (M2-08) are " +
+                 "declared but not yet runnable — both assets ship Static until their PR.")]
         [SerializeField] private EnemyBehaviourKind _behaviour = EnemyBehaviourKind.Static;
+
+        [Header("Projectile — leave the standoff at 0 on an archetype that throws nothing")]
+        [Tooltip("Metres at which it stops approaching and fires. 0 means this archetype has no " +
+                 "projectile at all and the three fields below are ignored. 14 for the Spitter.")]
+        [SerializeField, Min(0f)] private float _projectileStandoffRange;
+
+        [Tooltip("Metres per second of flight. With the standoff above, this is the dodge window.")]
+        [SerializeField, Min(0.01f)] private float _projectileSpeed = 12f;
+
+        [Tooltip("Metres from the impact point that still count as a hit — the forgiveness on a " +
+                 "shot, not the size it is drawn at.")]
+        [SerializeField, Min(0.01f)] private float _projectileRadius = 1.6f;
+
+        [Header("Explosion — leave the radius at 0 on an archetype that does not explode")]
+        [Tooltip("Metres the blast reaches. 0 means this archetype does not explode. 3 for the " +
+                 "Bloater (GD §8.1).")]
+        [SerializeField, Min(0f)] private float _explosionRadius;
+
+        [Header("Look — one shared body, told apart by colour and size (GD §11.3)")]
+        [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
+                 "colour, so the shared prefab is drawn exactly as it was before the look " +
+                 "system existed.")]
+        [SerializeField] private Color _tint = new Color(0.43137255f, 0.41568628f, 0.3882353f, 1f);
+
+        [Tooltip("A multiple of the prefab's own scale. 1 is the Husk; a Bloater is fat and a " +
+                 "Spitter is slight.")]
+        [SerializeField, Min(0.01f)] private float _bodyScale = 1f;
 
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
@@ -89,9 +122,20 @@ namespace Soulvail.Game.Authoring
         /// holds no runtime state and hands out nothing it keeps a reference to.
         /// </summary>
         /// <remarks>
-        /// Every field is passed straight through with no switch and no default: unlike
-        /// <c>CharacterDefinition</c>'s shield, an enemy has no optional block, so there is no
-        /// authored value here that means "this part does not apply".
+        /// <para>
+        /// <b>An enemy has two optional blocks as of M2-06</b>, where this note used to say it had
+        /// none. A <c>_projectileStandoffRange</c> of zero means the archetype throws nothing and
+        /// produces a <see langword="null"/> <see cref="EnemySpec.Projectile"/> rather than a
+        /// <see cref="ProjectileSpec"/> full of zeroes; an <c>_explosionRadius</c> of zero says the
+        /// same about the blast. Zero is the switch instead of a separate "has projectile" toggle
+        /// for the reason <c>CharacterDefinition</c>'s shield gives: a toggle allows a state the
+        /// spec cannot represent — <em>on, and zero</em> — and leaves a designer keeping two fields
+        /// agreeing with each other by hand.
+        /// </para>
+        /// <para>
+        /// The tint and the scale are <em>not</em> passed: core has no opinion about colour, and
+        /// <see cref="ToLook"/> is the door they leave by.
+        /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
         /// Any authored field is invalid. Always this exact type, never one of its subclasses:
@@ -115,7 +159,17 @@ namespace Soulvail.Game.Authoring
                     _reach,
                     _windupTime,
                     _recoverTime,
-                    _behaviour);
+                    _aggroRange,
+                    _behaviour,
+                    _projectileStandoffRange > 0f
+                        ? new ProjectileSpec(
+                            _projectileStandoffRange,
+                            _projectileSpeed,
+                            _projectileRadius)
+                        : null,
+                    _explosionRadius > 0f
+                        ? new ExplosionSpec(_explosionRadius)
+                        : null);
             }
             catch (ArgumentException inner)
             {
@@ -128,6 +182,18 @@ namespace Soulvail.Game.Authoring
                     inner);
             }
         }
+
+        /// <summary>
+        /// The half of this asset core never sees: what colour and size the body is drawn at.
+        /// </summary>
+        /// <remarks>
+        /// A second conversion beside <see cref="ToSpec"/> rather than two more fields on
+        /// <see cref="EnemySpec"/>, because <c>Soulvail.Core</c> has no engine reference and a
+        /// <see cref="Color"/> cannot cross into it (AR §2). Unvalidated for the reason
+        /// <see cref="EnemyLook"/>'s constructor gives: a wrong colour is wrong on screen, where a
+        /// wrong number would be wrong in a rule.
+        /// </remarks>
+        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale);
 
         /// <remarks>
         /// Only the id, and only its shape — the same bargain <c>CharacterDefinition</c> makes. A

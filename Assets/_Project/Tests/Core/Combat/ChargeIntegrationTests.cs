@@ -709,6 +709,7 @@ public sealed class ChargeIntegrationTests
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 
     /// <summary>

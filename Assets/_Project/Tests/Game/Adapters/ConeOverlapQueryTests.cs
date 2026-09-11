@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Support;
 using UnityEngine;
@@ -77,7 +79,7 @@ public sealed class ConeOverlapQueryTests
 
         _container = new ContainerBuilder().Build();
         _hub = new DomainEventHub();
-        _views = new EnemyViews(_container, template, null, _hub);
+        _views = new EnemyViews(_container, template, null, _hub, EmptyLookBook());
 
         _query = new ConeOverlapQuery(ConeOverlapQuery.DefaultCapacity, 1 << enemyLayer, _views);
         _ids = new int[_query.Capacity];
@@ -270,4 +272,13 @@ public sealed class ConeOverlapQueryTests
 
         return ConeOverlapQuery.IsInCone(Vector3.zero, Vector2.up, point, Range, Angle);
     }
+
+    /// <summary>
+    /// A look book with nothing in it, which is all these rows need: every archetype falls back to
+    /// <c>EnemyLook.Default</c> and the bodies here carry no <c>EnemyHitFeedback</c> to apply it to.
+    /// Required rather than optional on <c>EnemyViews</c> (M2-06), so it is passed rather than
+    /// omitted.
+    /// </summary>
+    private static EnemyLookBook EmptyLookBook()
+        => new EnemyLookBook(new Dictionary<ContentId, EnemyLook>());
 }

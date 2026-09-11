@@ -1129,6 +1129,7 @@ public sealed class SpawnDirectorTests
         reach: 1.2f,
         windupTime: 0.4f,
         recoverTime: 0.6f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>

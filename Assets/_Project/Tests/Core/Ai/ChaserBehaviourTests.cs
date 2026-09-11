@@ -62,6 +62,12 @@ public sealed class ChaserBehaviourTests
     private const float WindupTime = 0.4f;
     private const float RecoverTime = 0.6f;
 
+    /// <summary>
+    /// What all three archetypes author (M2-06), and what <c>ChaserBehaviour</c> held as a
+    /// <c>const</c> until it moved onto the spec.
+    /// </summary>
+    private const float AggroRange = 30f;
+
     // CC §7, Survivability — what the strike lands on.
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
@@ -111,6 +117,30 @@ public sealed class ChaserBehaviourTests
         Tick(far);
 
         Assert.That(far.State, Is.EqualTo(ChaserState.Idle));
+    }
+
+    [Test]
+    public void Chaser_UsesSpecAggroRange()
+    {
+        // Five metres, not thirty. The row above passes identically whether the behaviour reads the
+        // spec or the const it used to hold — both say 30 — so this is the only thing that can
+        // tell them apart, and without it M2-06's move would be untested (rule 4).
+        _system = new EnemySystem(Catalog(aggroRange: 5f), _events, new FixedRandom(), Scaling(), Capacity);
+
+        ChaserBehaviour outside = Chaser(distance: 6f);
+
+        Tick(outside);
+
+        Assert.That(outside.State, Is.EqualTo(ChaserState.Idle),
+            "At 6 m a Husk that notices at 5 has not noticed. A behaviour still reading its own " +
+            "30 m const would already be walking.");
+
+        ChaserBehaviour inside = Chaser(distance: 4f);
+
+        Tick(inside);
+
+        Assert.That(inside.State, Is.EqualTo(ChaserState.Chase),
+            "Inside the archetype's own range it notices, exactly as it does at 29 m of 30.");
     }
 
     // ---- Rule 2: the walk ----------------------------------------------------------------------
@@ -683,9 +713,9 @@ public sealed class ChaserBehaviourTests
         sense.HasLineOfSight = true;
     }
 
-    private static ContentCatalog Catalog() => new ContentCatalog(
+    private static ContentCatalog Catalog(float aggroRange = AggroRange) => new ContentCatalog(
         new[] { Oathbound() },
-        new[] { Husk() });
+        new[] { Husk(aggroRange) });
 
     /// <summary>
     /// GD §12's curves, required by every <c>EnemySystem</c> as of M2-03.
@@ -699,7 +729,12 @@ public sealed class ChaserBehaviourTests
     private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 
     /// <summary>GD §8.1's Husk, with M1-05's five numbers and a chaser driving it.</summary>
-    private static EnemySpec Husk() => new EnemySpec(
+    /// <remarks>
+    /// <paramref name="aggroRange"/> is the one number a row is allowed to vary, because as of
+    /// M2-06 it is the archetype's rather than the behaviour's (rule 4) and
+    /// <see cref="Chaser_UsesSpecAggroRange"/> is what proves the const is really gone.
+    /// </remarks>
+    private static EnemySpec Husk(float aggroRange = AggroRange) => new EnemySpec(
         new ContentId(HuskId),
         new LocKey("enemy.husk.name"),
         maxHp: 36f,
@@ -711,6 +746,7 @@ public sealed class ChaserBehaviourTests
         reach: Reach,
         windupTime: WindupTime,
         recoverTime: RecoverTime,
+        aggroRange: aggroRange,
         behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>The Oathbound of CC §7 — what the strikes land on.</summary>

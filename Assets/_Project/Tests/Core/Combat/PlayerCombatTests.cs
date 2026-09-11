@@ -626,6 +626,7 @@ public sealed class PlayerCombatTests
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 
     /// <summary>The same Husk, with M1-18's brain switched on: it walks up, telegraphs, and hits.</summary>
@@ -641,6 +642,7 @@ public sealed class PlayerCombatTests
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Chaser);
 
     /// <summary>

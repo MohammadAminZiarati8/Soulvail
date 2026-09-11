@@ -270,6 +270,7 @@ public sealed class RespawnPolicyTests
         reach: 1.2f,
         windupTime: 0.4f,
         recoverTime: 0.6f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
     private static CharacterSpec Oathbound() => new CharacterSpec(

@@ -236,6 +236,13 @@ namespace Soulvail.Game.Composition
             // ever do happens while the scene is still loading. One more than the quota, because a
             // corpse holds its body for the 0.6 s of its dissolve while the replacement is already
             // being rented — without the spare, every single kill would instantiate.
+            //
+            // The look book is the one argument here with no WithParameter and that is deliberate:
+            // it is registered at the root by BootInstaller, built from the same definitions the
+            // catalog is, and resolving it by type from the parent scope is what stops the run
+            // owning a second copy of what an archetype looks like (M2-06). It is also the one
+            // argument whose absence fails loudly — a run scope built against a container with no
+            // EnemyLookBook does not compose at all.
             builder.Register<EnemyViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent)

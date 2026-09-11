@@ -603,6 +603,13 @@ is about Unity's.
   collider, knockback — and **a forgotten reset does not fail, it produces a half-transparent
   unhittable Husk.** Anything added to `Enemy.prefab` that remembers something joins that list
   (M1-19).
+- **The archetype's tint and body scale are on that list as of M2-06, and they are the entry
+  `OnDespawn` does not undo by itself.** `EnemyHitFeedback.ResetVisuals` restores the look the body
+  was *rented* with, not the prefab's; what undoes a Bloater is `EnemyViews` telling the next
+  rental it is a Husk, which it does on **every** spawn — an archetype with no authored look gets
+  `EnemyLook.Default` rather than being skipped. Both halves are load-bearing: without the reset a
+  corpse returns to the pool mid-dissolve, without the unconditional re-apply the next Husk spawns
+  Bloater-red, **which reads as a rendering bug three systems from its cause** (M2-06).
 - **`EnemyView` carries two colliders and they are not interchangeable**: the `CharacterController`
   moves the body, the trigger `CapsuleCollider` is what sweeps query and what `EnemyViews` indexes.
   A sweep mask that started matching the controller would double-report every hit (M1-18).

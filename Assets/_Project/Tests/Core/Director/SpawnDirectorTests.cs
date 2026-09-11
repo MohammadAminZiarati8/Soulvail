@@ -688,10 +688,15 @@ public sealed class SpawnDirectorTests
 
         var plan = new SpawnPlan(
             new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(Ring, 0f, 0f)) },
-            null,
             Points(8));
 
         session.Start(Config(4, plan));
+
+        Assert.That(_events.Count<WaveStarted>(), Is.Zero,
+            "Wave 1 waits out GD §7.1's arrival as of M2-10 — the director is handed its plan when "
+                + "the two seconds are up, not when the run starts.");
+
+        TickThroughArrival(session);
 
         WaveStarted started = _events.Single<WaveStarted>();
 
@@ -717,9 +722,11 @@ public sealed class SpawnDirectorTests
 
         session.Start(Config(1, SpawnPlan.Empty));
 
+        // Well past the two seconds of arrival, or this row would be asserting that nothing spawns
+        // during a pause — which is rule 1's job and true of every arena, inert or not.
         Assert.DoesNotThrow(() =>
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 400; i++)
             {
                 session.Tick(Snapshot(1f / 60f));
             }
@@ -745,7 +752,10 @@ public sealed class SpawnDirectorTests
 
         IReadOnlyList<Vector3> points = Points(8);
 
-        session.Start(Config(1, new SpawnPlan(Array.Empty<SpawnPlan.Entry>(), null, points)));
+        session.Start(Config(1, new SpawnPlan(Array.Empty<SpawnPlan.Entry>(), points)));
+
+        TickThroughArrival(session);
+
         session.Tick(Snapshot(1f / 60f));
 
         Assert.That(_events.Single<SpawnTelegraphed>().Position, Is.EqualTo(points[points.Count - 1]));
@@ -764,23 +774,32 @@ public sealed class SpawnDirectorTests
         ModeSpec mode = Mode(budget: 32f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
         RunSession session = Session(mode, contactDamage: 10_000f);
 
+        // Dressed well out of reach, and the player walks onto it rather than it onto them: an
+        // enemy in a core fixture never moves, because a move is an *intent* and only a body
+        // reporting back through the snapshot changes a position. Out of reach matters as of
+        // M2-10 — a Husk standing next to the player would kill them during the two seconds of
+        // arrival, ending the run on a tick no wave had ever been due on, which is the one thing
+        // this row must not be measuring.
+        var ambush = new Vector3(12f, 0f, 0f);
+
         var plan = new SpawnPlan(
-            new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(1f, 0f, 0f)) },
-            null,
+            new[] { new SpawnPlan.Entry(new ContentId(HuskId), ambush) },
             Points(8));
 
         session.Start(Config(1, plan));
 
-        // Half a second a tick, which is longer than the spawn interval: from the second tick on, a
-        // body is due on every one of them. So the tick the run ends on is unambiguously a tick the
-        // director would have telegraphed on.
+        TickThroughArrival(session);
+
+        // Half a second a tick, which is longer than the spawn interval: once the director is
+        // running, a body is due on every one of them. So the tick the run ends on is unambiguously
+        // a tick the director would have telegraphed on.
         int before = 0;
 
-        for (int i = 0; i < 20 && _events.Count<RunEnded>() == 0; i++)
+        for (int i = 0; i < 40 && _events.Count<RunEnded>() == 0; i++)
         {
             before = _events.Count<SpawnTelegraphed>();
 
-            session.Tick(Snapshot(0.5f));
+            session.Tick(Snapshot(0.5f, ambush));
         }
 
         Assert.That(_events.Count<RunEnded>(), Is.EqualTo(1), "The strike landed and the run ended.");
@@ -851,6 +870,22 @@ public sealed class SpawnDirectorTests
     }
 
     // ---- Helpers -------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Ticks a run past GD §7.1's arrival, so the director has been handed its plan.
+    /// </summary>
+    /// <remarks>
+    /// Exactly to the two seconds and not past them. The flow ticks after the director (M2-10 rule
+    /// 13), so the tick that <em>ends</em> arrival hands the plan over and the director's first look
+    /// at it is the one after — which is what lets a caller assert on that one tick.
+    /// </remarks>
+    private static void TickThroughArrival(RunSession session)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            session.Tick(Snapshot(0.5f));
+        }
+    }
 
     /// <summary>Ticks until <paramref name="bodies"/> of them are standing, and answers the clock.</summary>
     /// <remarks>
@@ -1051,11 +1086,12 @@ public sealed class SpawnDirectorTests
         stage,
         plan);
 
-    private static WorldSnapshot Snapshot(float dt)
+    private static WorldSnapshot Snapshot(float dt, Vector3 playerPosition = default)
     {
         var snapshot = new WorldSnapshot(Capacity);
 
         snapshot.Dt = dt;
+        snapshot.PlayerPosition = playerPosition;
 
         return snapshot;
     }

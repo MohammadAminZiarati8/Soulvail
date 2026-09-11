@@ -47,6 +47,7 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     private DomainEventHub _hub;
     private EnemyViews _enemyViews;
     private NavPathSense _paths;
+    private GameObject _gateObject;
 
     [SetUp]
     public void CreateBuilder()
@@ -83,7 +84,12 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // eighteen tasks before pathing existed, and worth having a row stand on.
         _paths = new NavPathSense(8);
 
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths);
+        // The arena's door (M2-10). A plain transform, because that is all a gate is to core: a
+        // place, reported every frame like every other place in a snapshot.
+        _gateObject = new GameObject("Gate");
+        _gateObject.transform.position = new UnityEngine.Vector3(0f, 0f, 18f);
+
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _gateObject.transform);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -120,6 +126,58 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         }
 
         _enemyTemplateObject = null;
+
+        if (_gateObject != null)
+        {
+            Object.DestroyImmediate(_gateObject);
+        }
+
+        _gateObject = null;
+    }
+
+    [Test]
+    public void Build_ReportsTheGate()
+    {
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.True);
+        Assert.That(_snapshot.GatePosition.Z, Is.EqualTo(18f));
+
+        // Read every frame rather than cached at composition, so an arena that moves its door — one
+        // that slides open, one positioned at runtime by M2-11a — is answered on the frame it moves.
+        _gateObject.transform.position = new UnityEngine.Vector3(4f, 0f, 1f);
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.GatePosition.X, Is.EqualTo(4f));
+        Assert.That(_snapshot.GatePosition.Z, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void Build_NoGate_SaysSo()
+    {
+        // An arena dressed without a door is the M0 grey box, and it is a legal arena: core reads
+        // HasGate false and parks its stage flow rather than throwing (M2-10 rule 15).
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null);
+
+        builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.False);
+        Assert.That(_snapshot.GatePosition, Is.EqualTo(System.Numerics.Vector3.Zero),
+            "And the position is cleared with it, so a stale door cannot be walked through.");
+    }
+
+    [Test]
+    public void Build_DestroyedGate_SaysSo()
+    {
+        // Unity's lifetime check rather than C#'s: a destroyed Transform is a live C# reference and
+        // a dead object, and a plain null comparison would report a door that is not there.
+        Object.DestroyImmediate(_gateObject);
+        _gateObject = null;
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.False);
     }
 
     [Test]

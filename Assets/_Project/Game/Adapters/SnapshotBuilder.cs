@@ -48,6 +48,17 @@ public sealed class SnapshotBuilder
     private readonly NavPathSense _paths;
 
     /// <summary>
+    /// The door out of this arena, or null for an arena dressed without one.
+    /// </summary>
+    /// <remarks>
+    /// A <c>Transform</c> rather than a cached position, so an arena that moves its gate — a door
+    /// that slides open, an arena prefab positioned at runtime by M2-11a — is answered on the frame
+    /// it moves it. It is read every frame for the price of one <c>transform.position</c>, which is
+    /// the same price the player's own position already costs.
+    /// </remarks>
+    private readonly Transform _gate;
+
+    /// <summary>
     /// Simulated seconds since the run's first frame — the sum of the clamped <c>Dt</c> this class
     /// hands core, which is the same number <c>RunState.Time</c> arrives at from the other side.
     /// </summary>
@@ -71,16 +82,24 @@ public sealed class SnapshotBuilder
     /// The NavMesh, asked which way each enemy should walk (M1-19). A dependency like the rest, so
     /// a headless test can build a frame without one — see <see cref="Build"/>.
     /// </param>
+    /// <param name="gate">
+    /// The door out of the arena, or null for one dressed without a door (M2-10). Null is a real
+    /// answer rather than a missing one, for the reason a null <paramref name="paths"/> is: the M0
+    /// grey box has no gate, and a run in it is a workflow rather than a fault — core reads
+    /// <c>HasGate</c> false and parks its stage flow at the door it has not got.
+    /// </param>
     public SnapshotBuilder(
         PlayerView player,
         InputAdapter input,
         EnemyViews enemies,
-        NavPathSense paths)
+        NavPathSense paths,
+        Transform gate)
     {
         _player = player;
         _input = input;
         _enemies = enemies;
         _paths = paths;
+        _gate = gate;
     }
 
     /// <summary>
@@ -116,6 +135,17 @@ public sealed class SnapshotBuilder
         // ended up, which core records and never overrides.
         snapshot.PlayerPosition = _player.Position.ToNum();
         snapshot.PlayerVelocity = _player.Velocity.ToNum();
+
+        // Reported every frame rather than once at composition, and the `!= null` is Unity's
+        // lifetime check rather than C#'s: a gate destroyed mid-run is a null the operator catches
+        // and a plain reference comparison does not. An arena with no door says so, and core parks
+        // its stage flow rather than throwing (M2-10 rule 15).
+        snapshot.HasGate = _gate != null;
+
+        if (snapshot.HasGate)
+        {
+            snapshot.GatePosition = _gate.position.ToNum();
+        }
 
         // Last, and after the Clear above rather than owning one of its own: the enemies are the
         // only variable-length part of the frame, and the count they leave behind is what core

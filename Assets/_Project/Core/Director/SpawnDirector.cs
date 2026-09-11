@@ -37,8 +37,7 @@ namespace Soulvail.Core.Director;
 /// <b>Every draw comes from the <c>Spawn</c> stream and there is exactly one per attempt</b>
 /// (ADR-0011, rule 9). Stream consumption that depended on where the player happened to be
 /// standing is the one thing a seed cannot survive, so a refused position costs the same single
-/// draw as an accepted one — the same rule <c>EnemySystem.ApplyRespawn</c> keeps for the same
-/// reason.
+/// draw as an accepted one.
 /// </para>
 /// </remarks>
 public sealed class SpawnDirector
@@ -240,6 +239,16 @@ public sealed class SpawnDirector
     /// <param name="plan">The stage's composition. Held, not copied — the run owns one for its life.</param>
     /// <param name="now">Simulated run seconds, the same clock everything else in core counts.</param>
     /// <remarks>
+    /// <para>
+    /// <b>Held, not copied — so the plan may not be recomposed while this object still has it.</b>
+    /// The per-wave bookkeeping below is sized from the plan's dimensions <em>here</em>, once, and
+    /// every later read trusts them: <c>SweepTheDead</c> walks <c>w &lt; _plan.WaveCount</c> and
+    /// indexes arrays that are as long as the wave count this call saw. A plan that grows a wave
+    /// underneath a live director therefore walks off the end of them — which is not hypothetical,
+    /// because GD §12.2's W(n) goes from two waves to three at stage 5. <b>Whoever recomposes calls
+    /// <see cref="Clear"/> first</b> (M2-10's `StageFlow.Advance`), and a director with no plan
+    /// ticks to nothing.
+    /// </para>
     /// <b>Wave 1 starts immediately, with no arrival beat.</b> GD §7.1's two seconds of arrival
     /// belong to M2-10, which has a door to shut and a camera to settle first; a delay inserted
     /// here would be a pause with nothing to explain it, and two tasks would then each own a piece
@@ -305,7 +314,7 @@ public sealed class SpawnDirector
     /// <param name="spawn">
     /// The <c>Spawn</c> stream, and only ever that one (ADR-0011). A parameter rather than a field
     /// read, so the one draw this method can make is visible in its signature — the shape
-    /// <c>EnemySystem.ApplyRespawn</c> already uses.
+    /// <c>StageFlow.Tick</c> keeps for the composition it makes at a boundary.
     /// </param>
     /// <remarks>
     /// <para>

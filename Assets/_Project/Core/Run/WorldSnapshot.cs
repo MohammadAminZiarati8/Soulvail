@@ -43,6 +43,29 @@ public sealed class WorldSnapshot
 
     public Vector3 PlayerVelocity;
 
+    /// <summary>
+    /// Where the door out of this arena is, in world metres. Meaningless when <see cref="HasGate"/>
+    /// is false.
+    /// </summary>
+    /// <remarks>
+    /// The arena's standing geometry, and the only part of it core can see. It is reported every
+    /// frame rather than once, like every other field here: a gate is a fact about the world, and
+    /// the moment core started remembering one it would be holding a copy that an arena swap could
+    /// leave stale (M2-10 rule 8).
+    /// </remarks>
+    public Vector3 GatePosition;
+
+    /// <summary>
+    /// This arena has a door.
+    /// </summary>
+    /// <remarks>
+    /// False in a scene dressed without one, which parks <c>StageFlow</c> in its <c>Gate</c> phase
+    /// rather than throwing — the same bargain <c>SpawnPlan.SpawnPoints</c> makes for an arena with
+    /// nowhere to spawn (M2-05 rule 12), and for the same reason: the M0 grey box and every core
+    /// fixture that never intends to leave stage 1 are both legal arenas.
+    /// </remarks>
+    public bool HasGate;
+
     /// <summary>How many entries of <see cref="Enemies"/> are live: <c>[0, EnemyCount)</c>.</summary>
     public int EnemyCount;
 
@@ -115,6 +138,13 @@ public sealed class WorldSnapshot
         MoveInput = Vector2.Zero;
         PlayerPosition = Vector3.Zero;
         PlayerVelocity = Vector3.Zero;
+
+        // Cleared like the rest, though the builder rewrites both every frame from a reference it
+        // holds for the run. A gate left standing in a snapshot nobody refilled would be a door in
+        // an arena that no longer has one, and the flow would walk the player through it.
+        GatePosition = Vector3.Zero;
+        HasGate = false;
+
         EnemyCount = 0;
     }
 }

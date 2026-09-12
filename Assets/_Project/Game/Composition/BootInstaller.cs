@@ -180,11 +180,19 @@ public static class BootInstaller
         builder.Register<NullVibrator>(Lifetime.Singleton).As<IVibrator>();
 #endif
 
-        // A factory rather than a plain type registration, so this reads the platform store rather
-        // than whichever constructor VContainer would have picked — the class has none that are
-        // public, exactly so that the choice between "persisted" and "in memory" has to be made out
-        // loud (M1-20). PlayerPrefs is the stopgap until M2-13's ISaveStore.
-        builder.Register<HapticsSettings>(_ => HapticsSettings.FromPlayerPrefs(), Lifetime.Singleton);
+        // Persistence, at the root and singleton: one directory, one pair of files, for the app's
+        // whole life. A factory because the path is a Unity API and the adapter deliberately takes
+        // its directory rather than reading it — which is the only reason it is testable at all
+        // (M2-13b). Nothing on disk is touched until something saves.
+        builder.Register<ISaveStore>(
+            _ => new LocalJsonSaveStore(Application.persistentDataPath), Lifetime.Singleton);
+
+        // A factory rather than a plain type registration, so the choice between "persisted" and
+        // "in memory" is made out loud — the class has no public constructor, exactly so that it
+        // has to be (M1-20). The value it starts at is GD §16.3's default; BootFlow loads the
+        // profile and hands the stored one over before the Menu appears (M2-13b rule 9).
+        builder.Register<HapticsSettings>(
+            resolver => HapticsSettings.FromStore(resolver.Resolve<ISaveStore>()), Lifetime.Singleton);
     }
 
     /// <summary>

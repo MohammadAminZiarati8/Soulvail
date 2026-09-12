@@ -172,6 +172,21 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   file-scoped namespace breaks the build. It is per-assembly — an `Assets/csc.rsp` does not reach
   asmdef assemblies. All six have one; add it with any seventh. An asmdef with no `.cs` files
   produces no assembly (M0-02).
+- **`File.Move(source, destination, overwrite)` does not exist at this project's API compatibility
+  level**, despite the setting reading as .NET Standard and the overload being part of .NET
+  Standard 2.1. It fails as `CS1501: No overload for method 'Move' takes 3 arguments`, in
+  `Soulvail.Game` and not only in the MCP's scratch assembly — verified in both. The atomic-rename
+  spelling that does compile is `File.Replace(tmp, target, null)` when the destination exists and
+  the two-argument `File.Move` when it does not; `File.Replace` throws `FileNotFoundException`
+  rather than creating the destination (M2-13b).
+- **`JsonUtility` honours `ulong` and `float` exactly, and that is worth knowing because §1 says to
+  assume it does not.** Probed before the save format was written: `ulong.MaxValue` round-trips to
+  the digit, a `float` is written as the full expansion of its double value (`0.1f` →
+  `0.10000000149011612`) and compares equal on the way back, `ToJson` emits fields in declaration
+  order with no whitespace, `FromJson<T>("{}")` yields every field at its default rather than
+  throwing — which is what makes a version field of 0 mean *never written* — and malformed JSON
+  throws `ArgumentException`. What it cannot see is a **property**, so a `readonly struct` DTO
+  serialises as `{}` in silence and needs a field-only mirror type (M2-13b).
 - **A branch switch rewrites every file's mtime, and an unfocused Editor can stall halfway through
   the reimport it triggers** — leaving a script→assembly map that is *wrong* rather than empty.
   Symptom: `CS8773 file-scoped namespace … C# 9.0` on a brand-new file whose `csc.rsp` is present

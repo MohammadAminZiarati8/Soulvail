@@ -206,6 +206,13 @@ public sealed class InstallerTests
     /// registration itself is what gets asserted, in the Editor, where the platform must resolve
     /// the no-op.
     /// </summary>
+    /// <remarks>
+    /// As of M2-13b the toggle is built over <see cref="ISaveStore"/> rather than read out of
+    /// <c>PlayerPrefs</c>, which is what makes it safe to resolve here at all: constructing it
+    /// touches no disk and no registry, and it starts at GD §16.3's default until <c>BootFlow</c>
+    /// hands it a loaded profile. Still never written — a flip here would put a file under
+    /// <c>persistentDataPath</c> on the machine running the tests.
+    /// </remarks>
     [Test]
     public void Boot_ResolvesHaptics_NullVibratorOffAndroid()
     {
@@ -218,10 +225,29 @@ public sealed class InstallerTests
             "Anywhere but an Android player build the vibrator must be the no-op — an Editor " +
             "playtest has no device to buzz and must never reach for JNI.");
 
-        // Read, never written: flipping it here would persist to the machine running the tests.
         Assert.That(settings, Is.Not.Null);
+        Assert.That(settings.Enabled, Is.True, "GD §16.3's default, before a profile has been applied.");
         Assert.That(container.Resolve<HapticsSettings>(), Is.SameAs(settings),
             "One toggle, or the listener reads a different answer from the one an options screen set.");
+    }
+
+    /// <summary>
+    /// The M2-13b wire. Like the clock before it, the only way this registration can be wrong is
+    /// by not being there — and the consequence of that would be a save store resolved twice,
+    /// which two adapters pointed at one directory would make a race rather than a bug.
+    /// </summary>
+    [Test]
+    public void Container_ResolvesSaveStore()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var store = container.Resolve<ISaveStore>();
+
+        Assert.That(store, Is.InstanceOf<LocalJsonSaveStore>());
+
+        // Resolving it creates nothing on disk: the directory appears at the first write, which is
+        // the first time a player has actually saved something.
+        Assert.That(container.Resolve<ISaveStore>(), Is.SameAs(store));
     }
 
     /// <summary>

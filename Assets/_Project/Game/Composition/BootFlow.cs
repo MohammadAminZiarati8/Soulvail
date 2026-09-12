@@ -1,6 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
+using Soulvail.Game.Adapters;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VContainer.Unity;
@@ -45,22 +48,28 @@ public sealed class BootFlow : IStartable, IDisposable
     private const int TargetFrameRate = 60;
 
     private readonly SceneLoader _loader;
+    private readonly ISaveStore _store;
+    private readonly HapticsSettings _haptics;
 
-    /// <exception cref="ArgumentNullException"><paramref name="loader"/> is null.</exception>
-    public BootFlow(SceneLoader loader)
+    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
+    public BootFlow(SceneLoader loader, ISaveStore store, HapticsSettings haptics)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _haptics = haptics ?? throw new ArgumentNullException(nameof(haptics));
     }
 
     /// <summary>
-    /// Sets the frame rate, then leaves Boot for the Menu if that is where the app started, and
-    /// listens for Boot being loaded later.
+    /// Sets the frame rate, loads the player's profile, then leaves Boot for the Menu if that is
+    /// where the app started, and listens for Boot being loaded later.
     /// </summary>
     public void Start()
     {
         Application.targetFrameRate = TargetFrameRate;
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+
+        LoadProfile();
 
         if (_loader.Active == SceneLoader.Boot)
         {
@@ -88,6 +97,50 @@ public sealed class BootFlow : IStartable, IDisposable
         {
             LeaveBoot();
         }
+    }
+
+    /// <summary>
+    /// Reads the stored profile once and hands it to whatever holds a setting from it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Here, because this is the one place in the app with a legitimate reason to wait on the
+    /// disk.</b> Every later reader of a setting gets a value that is already correct, and no
+    /// screen has to cope with one arriving late.
+    /// </para>
+    /// <para>
+    /// <b>The continuation is synchronous, so with today's local store the profile is applied
+    /// before <see cref="LeaveBoot"/> runs on the line below.</b> Against a future asynchronous
+    /// store it would land whenever the disk answered, which is the honest degradation: the
+    /// settings are at GD §16.3's defaults until then, never at a wrong stored value.
+    /// </para>
+    /// <para>
+    /// A missing profile is <see cref="PlayerProfile.Default"/> and is deliberately not written
+    /// back on the spot — the first file appears when the player first changes something, and
+    /// until then a fresh install has no profile, which is the truth.
+    /// </para>
+    /// </remarks>
+    private void LoadProfile()
+    {
+        _store.LoadProfile().ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted)
+                {
+                    // The app still starts, at the defaults. A profile that cannot be read is a
+                    // lost preference, not a reason to refuse to launch.
+                    Debug.LogError(
+                        "Could not load the player profile: " +
+                        task.Exception?.GetBaseException().Message);
+
+                    return;
+                }
+
+                _haptics.Apply(task.Result ?? PlayerProfile.Default);
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private void LeaveBoot()

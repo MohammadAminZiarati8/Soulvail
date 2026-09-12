@@ -143,6 +143,18 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private ThreatArrows _arrows;
 
+        /// <summary>
+        /// The run's ground rings, for the pair that says whether their pool is working (M2-12b
+        /// manual step 4).
+        /// </summary>
+        /// <remarks>
+        /// The <c>bolts</c> reading beside it, for its reason: rented plus pooled must stop growing
+        /// once a fight is under way, and a total that keeps climbing is the pool being bypassed —
+        /// which on this census is the one failure that would cost frames on a phone, because rings
+        /// are the additive overdraw GD §11.3 warns about.
+        /// </remarks>
+        private TelegraphRings _rings;
+
         private IDisposable _targetSubscription;
         private IDisposable _waveSubscription;
         private IDisposable _arrivedSubscription;
@@ -193,6 +205,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
         /// <param name="sight">The run's cover raycasts, for the budget and the blocked count.</param>
         /// <param name="arrows">The run's screen-edge arrows, for how many are drawn right now.</param>
+        /// <param name="rings">The run's ground rings, for rented against pooled.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// The run's <c>SpawnPlan</c> came in here until M2-11a, for one question — whether this
@@ -208,7 +221,8 @@ namespace Soulvail.Game.Presentation
             NavPathSense paths,
             ProjectileViews projectileViews,
             LineOfSightSense sight,
-            ThreatArrows arrows)
+            ThreatArrows arrows,
+            TelegraphRings rings)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
@@ -217,6 +231,7 @@ namespace Soulvail.Game.Presentation
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
             _sight = sight ?? throw new ArgumentNullException(nameof(sight));
             _arrows = arrows ?? throw new ArgumentNullException(nameof(arrows));
+            _rings = rings ?? throw new ArgumentNullException(nameof(rings));
 
             if (hub is null)
             {
@@ -491,6 +506,15 @@ namespace Soulvail.Game.Presentation
             // safe area, and it staying at zero while a bolt arrives from nowhere is GD §12.4's
             // on-screen rule failing (M2-12a).
             _line.Append("  arrows ").Append(_arrows.Count.ToString(CultureInfo.InvariantCulture));
+
+            // Rented against pooled, the `bolts` pair's shape for its reason — the sum is how many
+            // bodies exist and must stop growing once a fight is under way. The rented half is also
+            // the only way to see the two kinds of ring at all as numbers: it should sit at two or
+            // three through a wave's arrival, spike by one per Bloater that goes off, and return to
+            // zero in the gap between waves. Anything standing at a steady non-zero between waves is
+            // a ring that never ran out, which nothing else would report.
+            _line.Append("  rings ").Append(_rings.Count.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(_rings.PooledCount.ToString(CultureInfo.InvariantCulture));
 
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 

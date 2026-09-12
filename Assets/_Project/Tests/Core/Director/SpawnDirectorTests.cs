@@ -1117,7 +1117,7 @@ public sealed class SpawnDirectorTests
         new ContentId(OathboundId),
         0,
         stage,
-        plan);
+        plan, restore: null);
 
     /// <summary>
     /// One frame, in the eight-point arena — or in <paramref name="points"/> when a row is about an

@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Save;
 
 namespace Soulvail.Core.Run;
 
@@ -25,8 +26,15 @@ namespace Soulvail.Core.Run;
 /// <para>
 /// A class rather than a struct, still, and for the reason M0-09 gave: growing a class is a
 /// field, while growing a struct passed by value is a copy that gets wider every milestone. The
-/// sixth field is already known — M2-14b's <c>RunSnapshot Restore</c> — and "reshape once" means
-/// these five are right, not that a sixth is forbidden.
+/// sixth field arrived at M2-14b, exactly as named above — <see cref="Restore"/> — and "reshape
+/// once" meant those five were right, not that a sixth was forbidden.
+/// </para>
+/// <para>
+/// <b>The sixth is required rather than defaulted</b>, which is why M2-14b swept the same call
+/// sites M2-02 did. The reason is <see cref="SpawnPlan"/>'s: a run that is <em>not</em> a resume
+/// says so with <see langword="null"/> rather than by omission, and a defaulted parameter would
+/// make "fresh" the answer a call site gives by not thinking about it. The compiler enumerating
+/// every caller is the point of the sweep, not its cost.
 /// </para>
 /// </remarks>
 public sealed class RunConfig
@@ -49,6 +57,12 @@ public sealed class RunConfig
     /// </param>
     /// <param name="spawnPlan">
     /// The enemies the run starts with, or <see cref="SpawnPlan.Empty"/> for none.
+    /// </param>
+    /// <param name="restore">
+    /// The run this one is continuing, or <see langword="null"/> for a fresh one. Nothing is
+    /// validated here: whether the snapshot agrees with the rest of this config is a question
+    /// about two objects, and it is asked at <c>RunSession.Start</c>, where the generator is
+    /// visible as well (rule 4).
     /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="modeId"/> or <paramref name="characterId"/> is
@@ -76,7 +90,8 @@ public sealed class RunConfig
         ContentId characterId,
         int seed,
         int stageIndex,
-        SpawnPlan spawnPlan)
+        SpawnPlan spawnPlan,
+        RunSnapshot? restore)
     {
         if (modeId.Value is null)
         {
@@ -105,6 +120,7 @@ public sealed class RunConfig
         Seed = seed;
         StageIndex = stageIndex;
         SpawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
+        Restore = restore;
     }
 
     /// <summary>The mode being played. Resolved against the <see cref="ContentCatalog"/> at <c>Start</c>.</summary>
@@ -141,4 +157,26 @@ public sealed class RunConfig
     /// only what an arena has standing in it on arrival.
     /// </remarks>
     public SpawnPlan SpawnPlan { get; }
+
+    /// <summary>
+    /// The run this one is continuing, or <see langword="null"/> for a fresh one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Its <c>Seed</c> and <c>StageIndex</c> must agree with <see cref="Seed"/> and
+    /// <see cref="StageIndex"/>, and <c>RunSession.Start</c> is where that is checked — the same
+    /// shape and the same moment as the seed check against the generator, because all three are
+    /// one question: <em>does everything about to build this run agree about which run it is?</em>
+    /// </para>
+    /// <para>
+    /// <b>What a restore puts back is HP, shield and run time, and nothing else.</b> The
+    /// generator's position is restored by the composition root onto the generator itself, before
+    /// this config exists (M2-14b rule 3) — core is handed a generator already standing where the
+    /// save left it, which is what keeps <c>IRandom</c> free of the reseed door M2-13a declined to
+    /// open. Everything else a resumed run needs — the arena, the wave plan, the population — is
+    /// rebuilt from the stage and the seed rather than read back, which is what makes the DTO ten
+    /// fields instead of a hundred.
+    /// </para>
+    /// </remarks>
+    public RunSnapshot? Restore { get; }
 }

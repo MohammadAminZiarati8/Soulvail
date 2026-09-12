@@ -707,7 +707,7 @@ public sealed class ProjectileSystemTests
     }
 
     private static RunConfig Config() => new(
-        new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty);
+        new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null);
 
     private static WorldSnapshot Snapshot()
     {

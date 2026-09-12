@@ -166,6 +166,12 @@ public static class BootInstaller
         // scope reads it in the next, so it has to outlive both.
         builder.Register<PendingRun>(Lifetime.Singleton);
 
+        // Its sibling, and a different question (M2-14b rule 8): what the disk said at launch,
+        // rather than what the player chose. Singleton for a stronger reason than PendingRun's —
+        // it is written exactly once per app launch, by BootFlow, and every later reader is asking
+        // about that one read.
+        builder.Register<SavedRun>(Lifetime.Singleton);
+
         // Haptics live at the root rather than in the run, both of them. The vibrator is one
         // device and holds one JNI handle for the app's life, and the preference has to survive
         // leaving a run — a toggle that reset itself every time the player descended would be

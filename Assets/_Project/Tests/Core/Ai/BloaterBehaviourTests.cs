@@ -1130,7 +1130,7 @@ public sealed class BloaterBehaviourTests
         new SpawnPlan(new[]
         {
             new SpawnPlan.Entry(new ContentId(BloaterId), new Vector3(0f, 0f, 1f)),
-        }));
+        }), restore: null);
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

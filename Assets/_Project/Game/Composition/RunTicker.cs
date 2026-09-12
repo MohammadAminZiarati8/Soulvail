@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
 using UnityEngine;
@@ -169,9 +170,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ContentId modeId = _pending.IsSet ? _pending.ModeId : FallbackModeId();
 
         // Asked, not assumed. GD §4.5 forbids any code hard-coding "starts at stage 1", so the
-        // depth a fresh run begins at is the mode's to state — and M2-14b's resume passes the
-        // saved depth here instead, with nothing else on this line changing.
+        // depth a fresh run begins at is the mode's to state — and a resume passes the saved depth
+        // instead (M2-14b). The mode is still resolved on both paths, because a save naming a mode
+        // this build no longer ships has to fail here rather than at the first thing that assumes
+        // one.
         ModeSpec mode = _catalog.Mode(modeId);
+
+        // Null on every path but a Continue, and passed straight through on both — the branch is
+        // the depth below, not this line.
+        RunSnapshot? restore = _pending.IsSet ? _pending.Snapshot : null;
 
         // The seed comes off the generator this run was built with, which is the one place it is
         // knowable on both paths: the menu's seed goes through PendingRun, and a direct Play
@@ -186,8 +193,24 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             modeId,
             _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
             _random.Seed,
-            mode.StartingStage,
-            _spawnPlan));
+            restore?.StageIndex ?? mode.StartingStage,
+            _spawnPlan,
+            restore));
+
+        // **`PendingRun.Clear()`'s first caller, and it has been owed one since M0-12** — the
+        // method's own doc says "called once the run has started, so a second trip through the Run
+        // scene cannot silently reuse the previous run's seed", and nothing called it.
+        //
+        // **After `_session.Start` returns, never before.** This is the last read: RunInstaller
+        // .CreateRandom resolves the pending run when IRandom is first built, which happens while
+        // RunSession is being constructed — and this object takes that session, so the whole chain
+        // is built before VContainer can call this method. Clearing in the installer would pull the
+        // seed out from under the config being assembled three lines up.
+        //
+        // After rather than before for a second reason as well: Start throws on an unauthored mode,
+        // a disagreeing seed and a restore that names another run, and a pending run cleared ahead
+        // of a throw would leave nothing to diagnose the failure from.
+        _pending.Clear();
     }
 
     /// <summary>

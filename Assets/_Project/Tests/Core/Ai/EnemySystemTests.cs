@@ -598,7 +598,7 @@ public sealed class EnemySystemTests
         });
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
 
         // A run has to be announced before the things inside it are: a view handling EnemySpawned
         // may reasonably assume there is a run to put an enemy in. Subscribers are wired when the
@@ -632,7 +632,7 @@ public sealed class EnemySystemTests
         });
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
         Assert.That(session.State.EnemyCount, Is.EqualTo(2));
 
         events.Clear();
@@ -678,7 +678,7 @@ public sealed class EnemySystemTests
         });
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan));
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
 
         var snapshot = new WorldSnapshot(Capacity);
         snapshot.Dt = Frame;

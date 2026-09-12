@@ -268,6 +268,38 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                     + (mode.IsEndless ? "endless." : $"{mode.FinalStage}."));
         }
 
+        // The third question of the same shape as the two above, and the last one this method can
+        // ask before it starts building: the config states a seed and a depth, the snapshot states
+        // the ones it was written at, and a resume is only a resume if they are the same run. A
+        // mismatch is a composition mistake — the Menu handing over one run's snapshot with another
+        // run's seed — and letting it through would put the streams on the right sequence at the
+        // wrong position, or replay a stage at a depth it was never composed for. Neither has a
+        // symptom that points here.
+        //
+        // After the content checks and before anything is built, so an unauthored mode named by an
+        // old save still fails with the catalog's diagnostic rather than with this one: the
+        // question "does this build still ship that mode" comes before "do these two agree".
+        if (config.Restore is RunSnapshot restore)
+        {
+            if (restore.Seed != config.Seed)
+            {
+                throw new ArgumentException(
+                    $"config.Restore was written for seed {restore.Seed} but this config states "
+                        + $"{config.Seed}. A resumed run continues one run, and the snapshot's "
+                        + "seed is the one the generator must have been built from.",
+                    nameof(config));
+            }
+
+            if (restore.StageIndex != config.StageIndex)
+            {
+                throw new ArgumentException(
+                    $"config.Restore resumes at stage {restore.StageIndex} but this config starts "
+                        + $"at {config.StageIndex}. The saved depth is the depth a resumed run "
+                        + "begins at; nothing may start it somewhere else.",
+                    nameof(config));
+            }
+        }
+
         RequireAuthored(config.SpawnPlan, mode);
 
         // The last of the validation, and it is here for ledger row 3's reason rather than for
@@ -364,6 +396,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
         _wasCharging = false;
+
+        // **Before RunStarted, and that is the whole of rule 2.** M1-17's HUD draws the bar it is
+        // told about from inside that handler — it reads State.PlayerHp there — so applying the
+        // restore afterwards would show a resumed run a full bar that drops to 62 % on the next
+        // frame. A resumed run's first impression is the one frame nothing gets to be wrong in.
+        //
+        // Three values and no more (rule 3): hit points, shield and simulated seconds. The
+        // generator is already standing where the save left it — the composition root restored it
+        // when it built the generator, before this session existed — and everything else is
+        // rebuilt rather than read back: the arena from ArenaFor(stage, seed), the wave plan from
+        // the restored stream position a few lines above, and the population from nothing at all,
+        // because a boundary has none.
+        if (config.Restore is RunSnapshot resumed)
+        {
+            combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
+
+            State.Time = resumed.RunTime;
+        }
 
         // Published before IsRunning flips, so a handler that reads the session from inside this
         // event sees a run that is announced and not yet live. The alternative — flip, then

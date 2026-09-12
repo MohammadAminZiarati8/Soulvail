@@ -1191,7 +1191,7 @@ public sealed class SpitterBehaviourTests
         new ContentId(OathboundId),
         Seed,
         1,
-        new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(SpitterId), Vector3.Zero) }));
+        new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(SpitterId), Vector3.Zero) }), restore: null);
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

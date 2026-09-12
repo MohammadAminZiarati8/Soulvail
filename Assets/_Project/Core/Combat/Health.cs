@@ -366,11 +366,69 @@ public sealed class Health
     }
 
     /// <summary>
+    /// <see cref="Reset"/>'s sibling for a resumed run: back to stated absolute values rather than
+    /// to full, with the same clean slate of timers behind them (M2-14b rule 3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It exists because a save carries absolutes and nothing else here accepts one.</b>
+    /// <see cref="ApplyDamage"/> is the only other route to a non-full bar and it cannot be used:
+    /// it spends the shield before it touches HP, so one call cannot land on a stated pair, and it
+    /// starts i-frames and holds off the shield's refill — a resumed run would begin invulnerable
+    /// for a beat it did not earn.
+    /// </para>
+    /// <para>
+    /// <b>Both values are clamped rather than refused.</b> <c>RunSnapshot</c>'s constructor has
+    /// already refused negatives and non-finite values at the boundary they arrive through, so
+    /// what is left is a save whose numbers were legal under a <em>different</em> maximum — a
+    /// stage-12 run restored after M3's tree moved <see cref="MaxHp"/>, which is a migration's
+    /// problem and not a reason to refuse the run. Clamping lands the player at full instead of
+    /// above it.
+    /// </para>
+    /// <para>
+    /// <b>The timers are cleared, deliberately</b>, exactly as <see cref="Reset"/> clears them. A
+    /// snapshot is taken at a stage boundary — the player has been standing at a door — so i-frames
+    /// from a hit in the previous stage are long expired, and a shield already at its stated value
+    /// should recharge from the first frame rather than wait out a delay measured against a run
+    /// time that no longer exists.
+    /// </para>
+    /// </remarks>
+    /// <param name="hp">Hit points to stand at, clamped into <c>[0, MaxHp.Value]</c>.</param>
+    /// <param name="shield">Shield points to stand at, clamped into <c>[0, ShieldMax]</c>.</param>
+    internal void Restore(float hp, float shield)
+    {
+        _current = Clamp(hp, ClampedMax);
+        _shieldCurrent = Clamp(shield, ShieldMax);
+        _externalInvulnerable = false;
+        _iFramesUntil = float.NegativeInfinity;
+        _lastDamageAt = float.NegativeInfinity;
+    }
+
+    /// <summary>
     /// The maximum, floored at zero. <see cref="Stat"/> deliberately clamps nothing — a
     /// <c>PercentMult</c> of −1 is a legitimate way to say "this is now zero" — so the floor
     /// belongs here, where the number means hit points.
     /// </summary>
     private float ClampedMax => MathF.Max(0f, MaxHp.Value);
+
+    /// <summary>
+    /// <paramref name="value"/> into <c>[0, max]</c>, reading NaN as zero.
+    /// </summary>
+    /// <remarks>
+    /// Spelled as <c>!(value &gt; 0f)</c> for the reason every guard in this class is: every
+    /// comparison against NaN is false, so the natural spelling would let one through and a NaN
+    /// in <see cref="Current"/> is permanent — <see cref="IsDead"/> would read true for the rest
+    /// of the run, with nothing logged.
+    /// </remarks>
+    private static float Clamp(float value, float max)
+    {
+        if (!(value > 0f))
+        {
+            return 0f;
+        }
+
+        return value > max ? max : value;
+    }
 
     /// <remarks>
     /// A run's time is the sum of each tick's <c>Dt</c>, so one NaN or infinity would poison it

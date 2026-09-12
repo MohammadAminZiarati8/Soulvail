@@ -458,7 +458,7 @@ public sealed class ChargeIntegrationTests
         var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         // One step past the 0.4 s delay plus the 1.0 s climb, taken whole: this row is about what a
         // dash does to a full ramp, and how many frames it took to earn is FocusTrackerTests'.
@@ -533,7 +533,7 @@ public sealed class ChargeIntegrationTests
             new ContentId(OathboundId),
             Seed,
             1,
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) })));
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) }), restore: null));
 
         Assert.That(events.LastSpawnedId, Is.GreaterThan(0), "Sanity: the dummy is out there.");
 
@@ -586,7 +586,7 @@ public sealed class ChargeIntegrationTests
         }
 
         _session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries)));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries), restore: null));
 
         IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
         var ids = new int[spawned.Count];

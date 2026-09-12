@@ -99,20 +99,20 @@ public sealed class RunSessionTests
         // `default(ContentId)` means nobody chose a class — a composition mistake — so it is
         // named here rather than left to surface as the catalog's "no character with id ''".
         Assert.Throws<ArgumentException>(
-            () => new RunConfig(new ContentId(DescentId), default, Seed, 1, SpawnPlan.Empty));
+            () => new RunConfig(new ContentId(DescentId), default, Seed, 1, SpawnPlan.Empty, restore: null));
 
         // The same guard on the mode, added with the field in M2-02: nobody chose a mode is the
         // same kind of mistake as nobody chose a class, and GD §4.5's whole point is that Descent
         // is not a default anything is entitled to assume.
         Assert.Throws<ArgumentException>(
-            () => new RunConfig(default, new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
+            () => new RunConfig(default, new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         // The other half of the pair, and the reason the guard is narrow: a well-formed id the
         // catalog happens not to hold is missing *content*, which is the catalog's question to
         // answer at Start. See Start_UnknownCharacter_Throws_NotRunning.
         Assert.DoesNotThrow(
             () => new RunConfig(
-                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty));
+                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty, restore: null));
     }
 
     [Test]
@@ -121,7 +121,7 @@ public sealed class RunSessionTests
         var plan = new SpawnPlan(Array.Empty<SpawnPlan.Entry>());
 
         var config = new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), -7, 4, plan);
+            new ContentId(DescentId), new ContentId(OathboundId), -7, 4, plan, restore: null);
 
         Assert.That(config.ModeId, Is.EqualTo(new ContentId(DescentId)));
         Assert.That(config.CharacterId, Is.EqualTo(new ContentId(OathboundId)));
@@ -142,11 +142,11 @@ public sealed class RunSessionTests
         // depth scaling that would quietly compute a stage-zero curve from it.
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed, 0, SpawnPlan.Empty));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 0, SpawnPlan.Empty, restore: null));
 
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed, -1, SpawnPlan.Empty));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, -1, SpawnPlan.Empty, restore: null));
     }
 
     [Test]
@@ -199,7 +199,7 @@ public sealed class RunSessionTests
         // SpawnPlan.Empty. An omitted plan and a broken spawner look identical in a playtest.
         Assert.Throws<ArgumentNullException>(
             () => new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, null));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, null, restore: null));
     }
 
     [Test]
@@ -235,7 +235,7 @@ public sealed class RunSessionTests
         // recorded seed does not replay it — which is the one number worth having in a bug report.
         Assert.Throws<ArgumentException>(
             () => _session.Start(new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed + 1, 1, SpawnPlan.Empty)));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed + 1, 1, SpawnPlan.Empty, restore: null)));
 
         Assert.That(_session.IsRunning, Is.False);
         Assert.That(_session.State, Is.Null);
@@ -246,7 +246,7 @@ public sealed class RunSessionTests
     public void Start_RecordsModeAndStage()
     {
         _session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 4, SpawnPlan.Empty));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 4, SpawnPlan.Empty, restore: null));
 
         Assert.That(_session.State.ModeId, Is.EqualTo(new ContentId(DescentId)));
 
@@ -260,7 +260,7 @@ public sealed class RunSessionTests
     {
         Assert.Throws<KeyNotFoundException>(
             () => _session.Start(new RunConfig(
-                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty)));
+                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
 
         Assert.That(_session.IsRunning, Is.False);
         Assert.That(_session.State, Is.Null);
@@ -286,7 +286,7 @@ public sealed class RunSessionTests
 
         Assert.Throws<ArgumentOutOfRangeException>(
             () => session.Start(new RunConfig(
-                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 6, SpawnPlan.Empty)));
+                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 6, SpawnPlan.Empty, restore: null)));
 
         Assert.That(session.IsRunning, Is.False);
         Assert.That(session.State, Is.Null);
@@ -295,7 +295,7 @@ public sealed class RunSessionTests
         // The last stage it does have starts fine, so the guard is a boundary rather than a ban.
         Assert.DoesNotThrow(
             () => session.Start(new RunConfig(
-                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 5, SpawnPlan.Empty)));
+                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 5, SpawnPlan.Empty, restore: null)));
     }
 
     [Test]
@@ -331,7 +331,7 @@ public sealed class RunSessionTests
 
         Assert.Throws<KeyNotFoundException>(
             () => session.Start(new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty)));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
 
         Assert.That(session.IsRunning, Is.False);
         Assert.That(session.State, Is.Null);
@@ -350,7 +350,7 @@ public sealed class RunSessionTests
 
         Assert.Throws<KeyNotFoundException>(
             () => _session.Start(new RunConfig(
-                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty)));
+                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
 
         // The previous run's state is still there and still says what it said. A half-started run
         // that had overwritten State would take the run-end screen's numbers with it.
@@ -393,7 +393,7 @@ public sealed class RunSessionTests
     {
         Assert.Throws<KeyNotFoundException>(
             () => _session.Start(new RunConfig(
-                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty)));
+                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty, restore: null)));
 
         // Nothing half-started: the catalog is read before anything is assigned, so a bad id
         // leaves the session exactly as it was.
@@ -436,7 +436,7 @@ public sealed class RunSessionTests
         };
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         Assert.That(payload, Is.InstanceOf<RunStarted>());
 
@@ -597,7 +597,7 @@ public sealed class RunSessionTests
         var events = new CapturingEvents();
         var session = new RunSession(_catalog, _random, events, _intents, Recorder(events), EnemyCapacity, DeviceCap, ProjectileCapacity);
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         object payload = null;
         bool? runningDuringEvent = null;
@@ -631,7 +631,7 @@ public sealed class RunSessionTests
         });
 
         session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan, restore: null));
 
         Assert.That(events.All[0], Is.InstanceOf<RunStarted>());
 
@@ -670,7 +670,7 @@ public sealed class RunSessionTests
             new SpawnPlan(new[]
             {
                 new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(3f, 0f, 0f)),
-            })));
+            }), restore: null));
 
         Assert.That(runningDuringSpawn, Is.True);
     }
@@ -769,7 +769,7 @@ public sealed class RunSessionTests
     {
         Assert.Throws<KeyNotFoundException>(
             () => _session.Start(new RunConfig(
-                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan)));
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan, restore: null)));
 
         Assert.That(_session.IsRunning, Is.False);
         Assert.That(_session.State, Is.Null);
@@ -779,7 +779,7 @@ public sealed class RunSessionTests
     private void StartRun()
     {
         _session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
     }
 
     /// <summary>

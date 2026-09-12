@@ -767,7 +767,14 @@ public sealed class PlayerCombat
                 // remarks. Guarded against −1 so that no target and no focus cannot both be −1 and
                 // read as a match.
                 Targeter.CurrentTargetId >= 0 && Targeter.CurrentTargetId == Targeter.FocusedTargetId,
-                Targeter.IsCurrentBlocked));
+                Targeter.IsCurrentBlocked,
+                // The other half of the same question, and the only one the event never carried
+                // (M2-12a): a focus is held, and it is not what the gun is on. Guarded against the
+                // focused-and-current case above rather than duplicating it, so the two fields are
+                // never both set and a view can render them as two states instead of three.
+                Targeter.FocusedTargetId >= 0 && Targeter.FocusedTargetId != Targeter.CurrentTargetId
+                    ? Targeter.FocusedTargetId
+                    : -1));
         }
 
         Health.Tick(dt, now);

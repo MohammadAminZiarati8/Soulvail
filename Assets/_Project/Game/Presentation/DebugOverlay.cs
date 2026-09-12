@@ -97,7 +97,7 @@ namespace Soulvail.Game.Presentation
         /// whole job is measuring frames.
         /// </para>
         /// </remarks>
-        private readonly StringBuilder _line = new StringBuilder(224);
+        private readonly StringBuilder _line = new StringBuilder(240);
 
         private WorldSnapshot _snapshot;
         private IntentBuffer _intents;
@@ -129,6 +129,19 @@ namespace Soulvail.Game.Presentation
         /// throttle is alive; <c>blocked</c> says the geometry is.
         /// </remarks>
         private LineOfSightSense _sight;
+
+        /// <summary>
+        /// The run's screen-edge arrows, for the one number that says the census behind them is
+        /// alive (M2-12a).
+        /// </summary>
+        /// <remarks>
+        /// A boundary read on the same terms as the stale count and the raycast count beside it,
+        /// and it earns the category the same way: an arrow set that never draws anything and an
+        /// arena with nothing off screen look identical, and neither publishes an event or reaches
+        /// core. It is also the only way to see the GD §7.3 stall rule fire at all — the moment
+        /// <c>arrows</c> moves off zero with two survivors is the eight seconds elapsing.
+        /// </remarks>
+        private ThreatArrows _arrows;
 
         private IDisposable _targetSubscription;
         private IDisposable _waveSubscription;
@@ -179,6 +192,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="paths">The run's path cache, for the stale count.</param>
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
         /// <param name="sight">The run's cover raycasts, for the budget and the blocked count.</param>
+        /// <param name="arrows">The run's screen-edge arrows, for how many are drawn right now.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// The run's <c>SpawnPlan</c> came in here until M2-11a, for one question — whether this
@@ -193,7 +207,8 @@ namespace Soulvail.Game.Presentation
             DomainEventHub hub,
             NavPathSense paths,
             ProjectileViews projectileViews,
-            LineOfSightSense sight)
+            LineOfSightSense sight,
+            ThreatArrows arrows)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
@@ -201,6 +216,7 @@ namespace Soulvail.Game.Presentation
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
             _sight = sight ?? throw new ArgumentNullException(nameof(sight));
+            _arrows = arrows ?? throw new ArgumentNullException(nameof(arrows));
 
             if (hub is null)
             {
@@ -468,6 +484,13 @@ namespace Soulvail.Game.Presentation
             // shot core had already landed, or the other way round (M2-09).
             _line.Append("  bolts ").Append(_projectileViews.Count.ToString(CultureInfo.InvariantCulture));
             _line.Append('/').Append(_projectileViews.PooledCount.ToString(CultureInfo.InvariantCulture));
+
+            // How many things the player cannot see are being pointed at. Zero is the ordinary
+            // reading and is what makes the number worth having: it moving off zero with nothing
+            // visible on the edge of the screen is an arrow drawn behind the HUD or outside the
+            // safe area, and it staying at zero while a bolt arrives from nowhere is GD §12.4's
+            // on-screen rule failing (M2-12a).
+            _line.Append("  arrows ").Append(_arrows.Count.ToString(CultureInfo.InvariantCulture));
 
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 

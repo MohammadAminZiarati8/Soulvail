@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -603,13 +604,17 @@ public sealed class EnemySystemTests
         // may reasonably assume there is a run to put an enemy in. Subscribers are wired when the
         // scope is built, long before Start, so the ordering is about meaning rather than about
         // who is listening.
-        Assert.That(events.All.Count, Is.EqualTo(3));
+        //
+        // The snapshot sits between them as of M2-14a: a run is written down the moment it is
+        // announced, before anything is standing in it.
+        Assert.That(events.All.Count, Is.EqualTo(4));
         Assert.That(events.All[0], Is.InstanceOf<RunStarted>());
-        Assert.That(events.All[1], Is.InstanceOf<EnemySpawned>());
+        Assert.That(events.All[1], Is.InstanceOf<RunSnapshotTaken>());
         Assert.That(events.All[2], Is.InstanceOf<EnemySpawned>());
+        Assert.That(events.All[3], Is.InstanceOf<EnemySpawned>());
 
-        Assert.That(((EnemySpawned)events.All[1]).SpecId, Is.EqualTo(new ContentId(HuskId)));
-        Assert.That(((EnemySpawned)events.All[2]).SpecId, Is.EqualTo(new ContentId(SpitterId)));
+        Assert.That(((EnemySpawned)events.All[2]).SpecId, Is.EqualTo(new ContentId(HuskId)));
+        Assert.That(((EnemySpawned)events.All[3]).SpecId, Is.EqualTo(new ContentId(SpitterId)));
 
         Assert.That(session.State.EnemyCount, Is.EqualTo(2));
     }
@@ -662,6 +667,7 @@ public sealed class EnemySystemTests
             new FixedRandom(SessionSeed),
             new RecordingEvents(),
             new RecordingIntents(),
+            new RunRecorder(new FixedRandom(SessionSeed), new FixedClock(default), new RecordingEvents()),
             Capacity,
             DeviceCap,
             ProjectileCapacity);
@@ -899,7 +905,7 @@ public sealed class EnemySystemTests
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>
-        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
+        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), new RunRecorder(new FixedRandom(SessionSeed), new FixedClock(default), events), Capacity, DeviceCap, ProjectileCapacity);
 
     private EnemyBlackboard Blackboard(int id)
     {

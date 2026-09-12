@@ -9,6 +9,7 @@ using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -759,7 +760,8 @@ public sealed class SpawnDirectorTests
         // Every draw takes the last candidate, through the composition and the position alike.
         var random = new CountingRandom(new FixedRandom(0, Repeated(0.99f, 64)));
         var session = new RunSession(
-            _catalog, random, _events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
+            _catalog, random, _events, new RecordingIntents(),
+            new RunRecorder(random, new FixedClock(default), _events), Capacity, DeviceCap, ProjectileCapacity);
 
         IReadOnlyList<Vector3> points = Points(8);
 
@@ -1106,7 +1108,8 @@ public sealed class SpawnDirectorTests
         _catalog = Catalog(contactDamage, mode);
 
         return new RunSession(
-            _catalog, new FixedRandom(0), _events, new RecordingIntents(), Capacity, DeviceCap, ProjectileCapacity);
+            _catalog, new FixedRandom(0), _events, new RecordingIntents(),
+            new RunRecorder(new FixedRandom(0), new FixedClock(default), _events), Capacity, DeviceCap, ProjectileCapacity);
     }
 
     private static RunConfig Config(int stage, SpawnPlan plan) => new RunConfig(

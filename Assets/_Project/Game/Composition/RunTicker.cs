@@ -108,6 +108,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         EnemyViews enemyViews,
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
+        SaveWriter saveWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
@@ -124,6 +125,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
+        // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
+        // announced as an event — so the parameter exists for one reason: being on this object's
+        // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
+        // the opening snapshot, the same guarantee the three views above rely on (AR §18.1). A
+        // field would be assigned and never read, which the compiler is right to object to.
+        _ = saveWriter ?? throw new ArgumentNullException(nameof(saveWriter));
+
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));

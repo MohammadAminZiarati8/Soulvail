@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using UnityEngine;
 using VContainer;
@@ -58,6 +59,22 @@ public static class RunInstaller
             Lifetime.Scoped);
 
         builder.Register<IRandom>(CreateRandom, Lifetime.Scoped);
+
+        // What composes a snapshot, and the reason RunSession does not hold a clock (M2-14a rule
+        // 12). Scoped rather than singleton: it captures *this* run's generator, so a recorder that
+        // outlived the run would be holding the streams of a run that is over.
+        builder.Register<RunRecorder>(Lifetime.Scoped);
+
+        // And what puts one somewhere. Scoped so its subscriptions die with the run, and registered
+        // as a plain type rather than an entry point because it has no frame to be part of — it
+        // subscribes in its constructor and is constructed by being on RunTicker's dependency
+        // chain, which is what guarantees it is listening before the opening snapshot is taken
+        // (AR §18.1).
+        //
+        // ISaveStore is resolved from the parent scope: BootInstaller registers the one
+        // LocalJsonSaveStore the app owns, and a run writing through a second one would be two
+        // objects renaming the same file.
+        builder.Register<SaveWriter>(Lifetime.Scoped);
 
         // One brain behind two ports (M1-09). The frame loop holds IRunSession and can start, tick
         // and end a run; an input adapter holds IPlayerCommands and can only ask for a focus. Two

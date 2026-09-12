@@ -6,6 +6,7 @@ using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -576,7 +577,7 @@ public sealed class PlayerCombatTests
     {
         var catalog = new ContentCatalog(
             new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),
@@ -619,7 +620,7 @@ public sealed class PlayerCombatTests
             new[] { Chaser() },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // A metre away: inside the Husk's 1.2 m reach on the tick it starts chasing, so the run is
         // over inside the 0.4 s wind-up plus a handful of frames rather than after a walk across

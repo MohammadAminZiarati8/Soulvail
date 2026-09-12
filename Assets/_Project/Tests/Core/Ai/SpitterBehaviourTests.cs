@@ -8,6 +8,7 @@ using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -1179,6 +1180,7 @@ public sealed class SpitterBehaviourTests
         new FixedRandom(Seed),
         _events,
         _intents,
+        new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events),
         Capacity,
         Capacity,
         ProjectileCapacity);

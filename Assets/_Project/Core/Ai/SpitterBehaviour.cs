@@ -213,6 +213,16 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     /// <summary>Rule 6: a band, not a point — walk in, back out, or plant and aim.</summary>
     /// <remarks>
     /// <para>
+    /// <b>It will not start a wind-up it cannot see through</b> (M2-11b rule 6). GD §7.2 makes cover
+    /// block an enemy projectile, and the honest place to block it is <em>before</em> the telegraph
+    /// rather than by deleting a bolt in flight — a ring that produced nothing is exactly what
+    /// AR §18.4's "a telegraph is a promise" forbids. So a Spitter standing in its band with a
+    /// pillar in the way plants, faces, and waits: the pillar is a shield the player has to be
+    /// behind <em>before</em> the wind-up starts, which is what makes it a positioning decision
+    /// instead of a reflex. The other half of the rule is in <see cref="TickAim"/>, which does not
+    /// look at this at all.
+    /// </para>
+    /// <para>
     /// <b>Walking in follows the NavMesh path; walking out does not</b> (rule 11). A retreat is
     /// <c>−DirectionToPlayer</c> and nothing else, because negating a path direction points away from
     /// the <em>next waypoint</em> rather than away from the player, and would walk a Spitter into the
@@ -261,6 +271,15 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         // the transition for TickChase's reason — one instruction per tick, whatever else happens.
         Stand(blackboard.DirectionToPlayer);
 
+        // Planted but not committed. The stand above has already gone out, so a Spitter waiting out
+        // a pillar looks like a Spitter waiting — facing, not walking — rather than like one that
+        // has lost interest. It does not retreat and it does not reposition: flanking is a mind this
+        // archetype has not got, and GD §8.1 gives the repositioning to the player.
+        if (!blackboard.HasLineOfSight)
+        {
+            return;
+        }
+
         _machine.Transition(SpitterState.Aim);
     }
 
@@ -284,6 +303,14 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     /// what the player does — the dodge window is the <em>flight</em>, not the telegraph (M2-07a
     /// rule 3). So there is no distance test here at all: it stands and faces for the whole windup,
     /// including while the player walks into melee range or out of aggro entirely.
+    /// <para>
+    /// <b>And no line-of-sight test either, which is the half of M2-11b rule 6 that looks wrong and
+    /// is not.</b> A player who steps behind a pillar mid-wind-up is shot at anyway, and the bolt
+    /// arrives where they were. An aim that could be broken by stepping behind something would be
+    /// breakable by the same input the dodge already uses, and the archetype would never fire at a
+    /// moving target. Cover is checked once, in <see cref="TickApproach"/>, before the promise is
+    /// made.
+    /// </para>
     /// </remarks>
     private void TickAim(float dt)
     {

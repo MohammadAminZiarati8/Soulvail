@@ -49,6 +49,10 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     private EnemyViews _enemyViews;
     private NavPathSense _paths;
 
+    /// <summary>The cover raycasts (M2-11b), and the pillar one row puts in the way.</summary>
+    private LineOfSightSense _sight;
+    private GameObject _pillar;
+
     /// <summary>The arena prefab this scene raises, and the pool that raises it (M2-11a).</summary>
     private GameObject _arenaTemplateObject;
     private ArenaPool _arenas;
@@ -99,7 +103,18 @@ public sealed class SnapshotBuilderTests : InputTestFixture
             _hub,
             _player);
 
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _arenas);
+        // A real cover sense rather than null, for the reason the path cache is real: what these
+        // rows exercise is the wiring a run actually has. Nothing is on the Cover layer unless a row
+        // puts it there, so every enemy can see and the arena behaves as it did before M2-11b.
+        _sight = new LineOfSightSense(
+            8,
+            1 << LayerMask.NameToLayer(ArenaView.CoverLayerName),
+            new PathRefreshBudget(
+                LineOfSightSense.DefaultRefreshHz,
+                PathRefreshBudget.DefaultMaxPerFrame),
+            LineOfSightSense.DefaultRefreshHz);
+
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _arenas, _sight);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -123,6 +138,14 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         }
 
         _arenaTemplateObject = null;
+
+        if (_pillar != null)
+        {
+            Object.DestroyImmediate(_pillar);
+        }
+
+        _pillar = null;
+        _sight = null;
 
         _hub?.Dispose();
         _hub = null;
@@ -204,13 +227,20 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     public void Build_NoPool_SaysSo()
     {
         // A builder composed without a pool at all — a fixture rather than a run, and the same
-        // bargain a null NavPathSense makes.
-        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null);
+        // bargain a null NavPathSense makes. The cover sense goes with it, which is the M2-11b half
+        // of the same row: an arena with no geometry to raycast is one where everybody can see.
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null, null);
+
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 4f)));
 
         Assert.DoesNotThrow(() => builder.Build(_snapshot, 0.02f));
 
         Assert.That(_snapshot.HasGate, Is.False);
         Assert.That(_snapshot.SpawnPoints.Count, Is.Zero);
+
+        Assert.That(FindEnemy(1).HasLineOfSight, Is.True,
+            "A null sense answers `can see`, never `cannot` — a mis-wired run degrades to the "
+                + "arena M2-07b shipped rather than to one where no Spitter ever fires (rule 3).");
     }
 
     [Test]
@@ -331,9 +361,13 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // that reads as an AI bug for a week.
         ref EnemySense stale = ref _snapshot.AddEnemy();
         stale.Id = 99;
-        stale.HasLineOfSight = true;
         stale.PathDirectionToPlayer = new System.Numerics.Vector2(0.6f, 0.8f);
         stale.Velocity = new System.Numerics.Vector3(9f, 9f, 9f);
+
+        // Stale *false* since M2-11b, which is the way round that has teeth: `true` is now the
+        // answer an enemy on open ground gets, so a leftover `true` would be indistinguishable from
+        // a correct one and the row would pass with the assignment deleted.
+        stale.HasLineOfSight = false;
 
         _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(1f, 0f, 2f)));
 
@@ -344,9 +378,10 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         EnemySense written = _snapshot.Enemies[0];
 
         Assert.That(written.Id, Is.EqualTo(1));
-        Assert.That(written.HasLineOfSight, Is.False,
-            "Line of sight is still deliberately skipped (CC §3.1), so it must be written as "
-                + "false rather than left alone.");
+        Assert.That(written.HasLineOfSight, Is.True,
+            "Nothing is on the Cover layer, so this enemy can see — and it has to be *written* "
+                + "that way rather than inherited. EnemyViews stopped writing the field at M2-11b, "
+                + "so this assignment is the only one a reused slot gets (AR §18.2).");
         Assert.That(written.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero),
             "An EnemyView reports zero velocity until M1-18 moves it — zero written, not inherited.");
 
@@ -361,6 +396,37 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         Assert.That(path.Y, Is.EqualTo(-0.8944272f).Within(1e-4f),
             "Y of the XZ direction is world Z. A component swapped here sends every enemy in the "
                 + "game sideways.");
+    }
+
+    [Test]
+    public void Snapshot_CarriesLineOfSight()
+    {
+        // M2-11b, from this side of the boundary: the pillar is real, the raycast is real, and what
+        // reaches core is one bool on the slot beside the path direction. The pair with the row
+        // above is what proves the wiring rather than the sense — that one has open ground and
+        // arrives `true`, this one has cover and arrives `false`, and neither can pass if
+        // EnemyViews is still writing a hard answer of its own.
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 10f)));
+
+        // Halfway between the player at the origin and the body at ten metres, 1.5 m tall so it
+        // stands across the 1.1 m the ray runs at.
+        _pillar = new GameObject("Pillar")
+        {
+            layer = LayerMask.NameToLayer(ArenaView.CoverLayerName),
+        };
+
+        _pillar.transform.position = new UnityEngine.Vector3(0f, 0.75f, 5f);
+        _pillar.AddComponent<BoxCollider>().size = new UnityEngine.Vector3(8f, 1.5f, 0.5f);
+
+        Physics.SyncTransforms();
+
+        _builder.Build(_snapshot, 0.016f);
+
+        Assert.That(
+            FindEnemy(1).HasLineOfSight,
+            Is.False,
+            "A pillar between the body and the player has to reach core as a sense, because core "
+                + "holds no walls and never will (AR §18.2, ledger row 13).");
     }
 
     [Test]

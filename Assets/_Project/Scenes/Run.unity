@@ -278,6 +278,9 @@ MonoBehaviour:
   _enemyLayer:
     serializedVersion: 2
     m_Bits: 256
+  _coverLayer:
+    serializedVersion: 2
+    m_Bits: 512
   _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   _dummyPositions:
   - {x: 8, y: 0, z: 0}

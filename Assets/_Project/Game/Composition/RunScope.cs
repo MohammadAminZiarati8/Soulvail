@@ -100,6 +100,11 @@ namespace Soulvail.Game.Composition
                  "string that stops resolving.")]
         [SerializeField] private LayerMask _enemyLayer;
 
+        [Tooltip("The layers that block an enemy's shot: the Cover layer M2-11a puts an arena's " +
+                 "pillars on, and nothing else. Never the Enemy layer — a Spitter that could not " +
+                 "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
+        [SerializeField] private LayerMask _coverLayer;
+
         [Tooltip("The archetype the dummies below are spawned as. Leave empty for an arena that " +
                  "starts bare.")]
         [SerializeField] private EnemyDefinition _dummySpec;
@@ -303,6 +308,39 @@ namespace Soulvail.Game.Composition
                 .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
                 .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz)
                 .WithParameter("maxRefreshesPerFrame", PathRefreshBudget.DefaultMaxPerFrame);
+
+            // Guarded here as well as in the sense's own constructor, for the reason the enemy
+            // layer below is guarded twice: the constructor can only say "this mask is empty", and
+            // this can say which field on which object to fix. An empty cover mask is not a
+            // degraded run — it is the game M2-11a shipped, where a pillar is scenery and a Spitter
+            // shoots through it, and the failure is completely silent.
+            if (_coverLayer.value == 0)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no Cover Layer set. Choose the " +
+                    $"'{ArenaView.CoverLayerName}' layer on its Cover Layer field — a Spitter " +
+                    "raycasts that mask before it winds up, so an empty one means cover blocks " +
+                    "nothing (GD §7.2).");
+            }
+
+            // The cover raycasts (M2-11b). Sized to the snapshot's capacity for NavPathSense's
+            // reason — the cache is keyed by enemy id and evicts only what stopped asking — and
+            // given a budget of its own rather than sharing the path cache's: the two spend their
+            // allowances on different frames and a shared counter would let a busy frame of
+            // pathfinding silently switch cover off.
+            //
+            // The cadence is written once and read twice, which is deliberate. The budget is sized
+            // for the rate the cache is kept at, and the two disagreeing is a fault nothing would
+            // report: the sense would simply fall behind its own cadence.
+            builder.Register<LineOfSightSense>(Lifetime.Scoped)
+                .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
+                .WithParameter("cover", _coverLayer)
+                .WithParameter(
+                    "budget",
+                    new PathRefreshBudget(
+                        LineOfSightSense.DefaultRefreshHz,
+                        PathRefreshBudget.DefaultMaxPerFrame))
+                .WithParameter("refreshHz", LineOfSightSense.DefaultRefreshHz);
 
             // Guarded here as well as in the query's own constructor, because the two failures read
             // differently: the constructor can only say "this mask is empty", while this can say

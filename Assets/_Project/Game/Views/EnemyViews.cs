@@ -164,14 +164,20 @@ public sealed class EnemyViews : IDisposable
     /// before this ran.
     /// </para>
     /// <para>
-    /// Every field of the slot is assigned, including the two written as zero here. Slots are
-    /// reused and <c>Clear</c> leaves their contents alone (AR §4.2), so a field left unwritten
-    /// carries whatever the enemy that last occupied that slot put there — a stale line of sight
+    /// Every field this census is the authority on is assigned, including the zero written here.
+    /// Slots are reused and <c>Clear</c> leaves their contents alone (AR §4.2), so a field left
+    /// unwritten carries whatever the enemy that last occupied that slot put there — a stale sense
     /// belonging to somebody else. <c>PathDirectionToPlayer</c> is overwritten a moment later by
     /// <see cref="SnapshotBuilder"/>, which is the only place that knows where the player is; the
     /// zero written here is what a run without a baked NavMesh reports, and it has to be written
-    /// rather than inherited for exactly the reason above. <c>HasLineOfSight</c> stays false until
-    /// something answers it — CC §3.1 still skips line of sight deliberately.
+    /// rather than inherited for exactly the reason above.
+    /// </para>
+    /// <para>
+    /// <b><c>HasLineOfSight</c> is not written here any more</b> (M2-11b). It used to be a hard
+    /// <c>false</c>, which was honest while CC §3.1 still skipped the question and is a lie now that
+    /// cover answers it: the census knows where its bodies are and nothing else, so whether a pillar
+    /// stands between one of them and the player is not a fact it is entitled to state. The builder
+    /// writes it for every slot on every path, which is what keeps the rule above true.
     /// </para>
     /// <para>
     /// Order is the dictionary's and that is safe: core's <c>Ingest</c> looks every entry up by
@@ -198,7 +204,6 @@ public sealed class EnemyViews : IDisposable
             sense.Position = view.Position.ToNum();
             sense.Velocity = view.Velocity.ToNum();
             sense.PathDirectionToPlayer = System.Numerics.Vector2.Zero;
-            sense.HasLineOfSight = false;
         }
     }
 

@@ -4,6 +4,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Support;
@@ -47,7 +48,10 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     private DomainEventHub _hub;
     private EnemyViews _enemyViews;
     private NavPathSense _paths;
-    private GameObject _gateObject;
+
+    /// <summary>The arena prefab this scene raises, and the pool that raises it (M2-11a).</summary>
+    private GameObject _arenaTemplateObject;
+    private ArenaPool _arenas;
 
     [SetUp]
     public void CreateBuilder()
@@ -84,12 +88,18 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // eighteen tasks before pathing existed, and worth having a row stand on.
         _paths = new NavPathSense(8);
 
-        // The arena's door (M2-10). A plain transform, because that is all a gate is to core: a
-        // place, reported every frame like every other place in a snapshot.
-        _gateObject = new GameObject("Gate");
-        _gateObject.transform.position = new UnityEngine.Vector3(0f, 0f, 18f);
+        // The arena, and the pool that raises it (M2-11a). Where the door is and where a body may
+        // be put are both facts about whichever room is standing, so the builder asks the pool
+        // rather than holding a transform the scene dressed once.
+        _arenaTemplateObject = BuildArena("arena.test", new UnityEngine.Vector3(0f, 0f, 18f));
+        _arenas = new ArenaPool(
+            _container,
+            new[] { _arenaTemplateObject.GetComponent<ArenaView>() },
+            null,
+            _hub,
+            _player);
 
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _gateObject.transform);
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _arenas);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -101,6 +111,18 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // order to write down anywhere.
         _enemyViews?.Dispose();
         _enemyViews = null;
+
+        // With the views and for their reason: the pool holds two subscriptions, and disposing the
+        // hub first would leave them pointing at an orphaned channel.
+        _arenas?.Dispose();
+        _arenas = null;
+
+        if (_arenaTemplateObject != null)
+        {
+            Object.DestroyImmediate(_arenaTemplateObject);
+        }
+
+        _arenaTemplateObject = null;
 
         _hub?.Dispose();
         _hub = null;
@@ -127,25 +149,21 @@ public sealed class SnapshotBuilderTests : InputTestFixture
 
         _enemyTemplateObject = null;
 
-        if (_gateObject != null)
-        {
-            Object.DestroyImmediate(_gateObject);
-        }
-
-        _gateObject = null;
     }
 
     [Test]
-    public void Build_ReportsTheGate()
+    public void Build_ReportsTheStandingArenasGate()
     {
+        Raise("arena.test");
+
         _builder.Build(_snapshot, 0.02f);
 
         Assert.That(_snapshot.HasGate, Is.True);
         Assert.That(_snapshot.GatePosition.Z, Is.EqualTo(18f));
 
         // Read every frame rather than cached at composition, so an arena that moves its door — one
-        // that slides open, one positioned at runtime by M2-11a — is answered on the frame it moves.
-        _gateObject.transform.position = new UnityEngine.Vector3(4f, 0f, 1f);
+        // that slides open, one raised at a stage boundary — is answered on the frame it moves.
+        _arenas.Active.transform.Find("Gate").position = new UnityEngine.Vector3(4f, 0f, 1f);
 
         _builder.Build(_snapshot, 0.02f);
 
@@ -154,26 +172,55 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     }
 
     [Test]
-    public void Build_NoGate_SaysSo()
+    public void Build_ReportsTheStandingArenasSpawnPoints()
     {
-        // An arena dressed without a door is the M0 grey box, and it is a legal arena: core reads
-        // HasGate false and parks its stage flow rather than throwing (M2-10 rule 15).
-        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null);
+        Raise("arena.test");
 
-        builder.Build(_snapshot, 0.02f);
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.SpawnPoints.Count, Is.EqualTo(3),
+            "Where a body may be put is a fact about the room that is standing, and it reaches " +
+            "core the same way the door does (M2-11a rule 6).");
+
+        Assert.That(_snapshot.SpawnPoints[0].X, Is.EqualTo(9f));
+    }
+
+    [Test]
+    public void Build_NoArenaRaised_SaysSo()
+    {
+        // Nothing has arrived, so nothing is standing. An undressed scene is a legal arena: core
+        // reads HasGate false, sees nowhere to spawn, and parks its stage flow rather than
+        // throwing (M2-10 rule 15, M2-05 rule 12).
+        _builder.Build(_snapshot, 0.02f);
 
         Assert.That(_snapshot.HasGate, Is.False);
         Assert.That(_snapshot.GatePosition, Is.EqualTo(System.Numerics.Vector3.Zero),
             "And the position is cleared with it, so a stale door cannot be walked through.");
+
+        Assert.That(_snapshot.SpawnPoints.Count, Is.Zero);
     }
 
     [Test]
-    public void Build_DestroyedGate_SaysSo()
+    public void Build_NoPool_SaysSo()
     {
-        // Unity's lifetime check rather than C#'s: a destroyed Transform is a live C# reference and
+        // A builder composed without a pool at all — a fixture rather than a run, and the same
+        // bargain a null NavPathSense makes.
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null);
+
+        Assert.DoesNotThrow(() => builder.Build(_snapshot, 0.02f));
+
+        Assert.That(_snapshot.HasGate, Is.False);
+        Assert.That(_snapshot.SpawnPoints.Count, Is.Zero);
+    }
+
+    [Test]
+    public void Build_DestroyedArena_SaysSo()
+    {
+        Raise("arena.test");
+
+        // Unity's lifetime check rather than C#'s: a destroyed component is a live C# reference and
         // a dead object, and a plain null comparison would report a door that is not there.
-        Object.DestroyImmediate(_gateObject);
-        _gateObject = null;
+        Object.DestroyImmediate(_arenas.Active.gameObject);
 
         _builder.Build(_snapshot, 0.02f);
 
@@ -377,4 +424,79 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     /// </summary>
     private static EnemyLookBook EmptyLookBook()
         => new EnemyLookBook(new Dictionary<ContentId, EnemyLook>());
+
+    /// <summary>Raises an arena the way a run does — by arriving at a stage in it.</summary>
+    private void Raise(string arenaId) =>
+        _hub.Publish(new StageArrived(1, new ContentId(arenaId)));
+
+    /// <summary>
+    /// An arena that passes its own validation: a start, a door, three points well clear of the
+    /// start, three pillars on the <c>Cover</c> layer, and a surface with data on it.
+    /// </summary>
+    /// <remarks>
+    /// Dressed in full rather than to the minimum, because <c>ArenaView.OnValidate</c> warns about
+    /// a half-authored arena and a fixture has no business producing that warning. The NavMesh data
+    /// is an empty instance: what is being asserted is that the surface <em>has</em> some, which is
+    /// the thing a designer forgets — baking one here would be measuring Unity's navigation build.
+    /// </remarks>
+    private static GameObject BuildArena(string id, UnityEngine.Vector3 gate)
+    {
+        var root = new GameObject(id);
+
+        var start = new GameObject("PlayerStart");
+        start.transform.SetParent(root.transform, false);
+
+        var door = new GameObject("Gate");
+        door.transform.SetParent(root.transform, false);
+        door.transform.localPosition = gate;
+
+        var points = new Transform[3];
+
+        var offsets = new[]
+        {
+            new UnityEngine.Vector3(9f, 0f, 0f),
+            new UnityEngine.Vector3(0f, 0f, 9f),
+            new UnityEngine.Vector3(-9f, 0f, 0f),
+        };
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            var marker = new GameObject($"Spawn_{i}");
+            marker.transform.SetParent(root.transform, false);
+            marker.transform.localPosition = offsets[i];
+            points[i] = marker.transform;
+
+            var pillar = new GameObject($"Pillar_{i}")
+            {
+                layer = LayerMask.NameToLayer(ArenaView.CoverLayerName),
+            };
+
+            pillar.transform.SetParent(root.transform, false);
+        }
+
+        var surface = root.AddComponent<Unity.AI.Navigation.NavMeshSurface>();
+        surface.navMeshData = new UnityEngine.AI.NavMeshData();
+
+        ArenaView view = root.AddComponent<ArenaView>();
+
+        var serialized = new UnityEditor.SerializedObject(view);
+
+        serialized.FindProperty("_id").stringValue = id;
+        serialized.FindProperty("_playerStart").objectReferenceValue = start.transform;
+        serialized.FindProperty("_gate").objectReferenceValue = door.transform;
+        serialized.FindProperty("_surface").objectReferenceValue = surface;
+
+        UnityEditor.SerializedProperty array = serialized.FindProperty("_spawnPoints");
+
+        array.arraySize = points.Length;
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            array.GetArrayElementAtIndex(i).objectReferenceValue = points[i];
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return root;
+    }
 }

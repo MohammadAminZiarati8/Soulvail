@@ -61,6 +61,12 @@ namespace Soulvail.Game.Authoring
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
 
+        [Tooltip("The arenas this mode's stages are fought in (GD §7.2's pool of 8–12 per biome, " +
+                 "two in V1). Which one a stage uses is derived from the run's seed and the " +
+                 "depth — never drawn — so a resumed run lands in the room it left. Empty leaves " +
+                 "every stage in whatever the scene was dressed with.")]
+        [SerializeField] private string[] _arenas = Array.Empty<string>();
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -89,7 +95,8 @@ namespace Soulvail.Game.Authoring
                     _isEndless,
                     _finalStage,
                     BuildScaling(),
-                    BuildRoster());
+                    BuildRoster(),
+                    BuildArenas());
             }
             catch (ArgumentException inner)
             {
@@ -151,6 +158,32 @@ namespace Soulvail.Game.Authoring
             }
 
             return entries;
+        }
+
+        /// <summary>
+        /// Turns the authored arena ids into <see cref="ContentId"/>s, in the order authored.
+        /// </summary>
+        /// <remarks>
+        /// A null or empty array is a legal mode, for <see cref="BuildRoster"/>'s reason: a mode
+        /// with no arena roster leaves every stage in whatever the scene was dressed with, which is
+        /// what every M0 and M1 grey box was. <see cref="ContentId"/>'s constructor refuses a
+        /// malformed id and <see cref="ModeSpec"/> refuses a duplicate — neither is repeated here.
+        /// </remarks>
+        private IReadOnlyList<ContentId> BuildArenas()
+        {
+            if (_arenas is null || _arenas.Length == 0)
+            {
+                return Array.Empty<ContentId>();
+            }
+
+            var ids = new ContentId[_arenas.Length];
+
+            for (int i = 0; i < _arenas.Length; i++)
+            {
+                ids[i] = new ContentId(_arenas[i]);
+            }
+
+            return ids;
         }
 
         /// <remarks>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace Soulvail.Core.Run;
@@ -66,6 +67,33 @@ public sealed class WorldSnapshot
     /// </remarks>
     public bool HasGate;
 
+    /// <summary>
+    /// Where the director may put a body in the arena that is standing right now, in world metres.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A property of the arena, which is why it arrives here rather than on the run's
+    /// <see cref="SpawnPlan"/>.</b> M2-05 put the points on the plan because a run had one room; a
+    /// run has one room <em>per stage</em> from M2-11a, so a per-run field would describe the arena
+    /// the player is no longer standing in. <c>StageFlow</c> reads this when a stage enters its
+    /// wave phase and hands it to <c>SpawnDirector.Begin</c> — the same handover, one scope
+    /// narrower.
+    /// </para>
+    /// <para>
+    /// A reference rather than a copy, and rebound every frame like every other field here. The
+    /// list on the other end belongs to the arena and does not change while one is standing, so
+    /// nothing is copied per frame and nothing is allocated; the director takes its own copy at
+    /// <c>Begin</c> precisely so that it is not holding a buffer somebody else may refill (M2-10's
+    /// rule about a plan a director is still holding).
+    /// </para>
+    /// <para>
+    /// Empty is a real answer rather than a missing one: an arena with no spawning surface makes
+    /// the director inert rather than being an error (M2-05 rule 12), and so does an undressed Run
+    /// scene with no arena raised at all.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<Vector3> SpawnPoints = NoSpawnPoints;
+
     /// <summary>How many entries of <see cref="Enemies"/> are live: <c>[0, EnemyCount)</c>.</summary>
     public int EnemyCount;
 
@@ -101,6 +129,16 @@ public sealed class WorldSnapshot
     /// the two can never disagree.
     /// </summary>
     public int EnemyCapacity => Enemies.Length;
+
+    /// <summary>An arena with nowhere to put a body — what <see cref="Clear"/> leaves behind.</summary>
+    /// <remarks>
+    /// Static, and safe to be, for <c>SpawnPlan.Empty</c>'s reason: it is immutable, so there is no
+    /// mutable static state for a disabled domain reload to carry between plays. A property rather
+    /// than a <c>static readonly</c> field for that type's other reason — which naming rule wins
+    /// there is not obvious from reading <c>.editorconfig</c>.
+    /// </remarks>
+    public static IReadOnlyList<Vector3> NoSpawnPoints { get; } =
+        Array.AsReadOnly(Array.Empty<Vector3>());
 
     /// <summary>
     /// Claims the next enemy slot and returns it by reference, for the caller to fill in place.
@@ -144,6 +182,11 @@ public sealed class WorldSnapshot
         // an arena that no longer has one, and the flow would walk the player through it.
         GatePosition = Vector3.Zero;
         HasGate = false;
+
+        // Dropped with the gate and for the same reason: an arena's spawn points left standing in a
+        // snapshot nobody refilled would be places in a room that has been torn down, and the
+        // director would put the next stage's wave in them.
+        SpawnPoints = NoSpawnPoints;
 
         EnemyCount = 0;
     }

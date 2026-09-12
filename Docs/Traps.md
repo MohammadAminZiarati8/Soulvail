@@ -196,6 +196,12 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   not decisions anyone made. **The Editor holds the rewritten copy in memory afterwards, so the
   next write repeats it — restart to clear, and check `git diff ProjectSettings/` before every
   commit.**
+- **`OnValidate` runs the frame a component is added, before a single field could have been
+  filled in** — and again on every `SerializedObject.ApplyModifiedProperties`. A validation rule
+  that calls `Debug.LogError` there therefore makes *adding the component* a failure, and fails
+  every test that builds one: Unity's test framework treats an unexpected `LogError` as a failed
+  test. Warn, and stay silent while nothing has been dressed (M2-11a). The project's four
+  `OnValidate`s all warn, for this reason.
 - **`[Min]` / `[Range]` on a `[SerializeField]` clamp the Inspector GUI only.** A
   `SerializedObject` write, a merge or a hand-edited YAML goes straight past them, which is why the
   real guards are in the core constructors `ToSpec()` calls (M0-11).

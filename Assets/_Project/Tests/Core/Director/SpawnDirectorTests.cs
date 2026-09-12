@@ -72,11 +72,20 @@ public sealed class SpawnDirectorTests
     private RecordingEvents _events;
     private ContentCatalog _catalog;
 
+    /// <summary>
+    /// The arena the fixture's director is running in — where a body may be put, handed to
+    /// <c>Begin</c> rather than to the constructor as of M2-11a, because a run has one room per
+    /// stage. The eight-point ring is the default; a row that wants a different arena says so
+    /// through <see cref="Director"/>.
+    /// </summary>
+    private IReadOnlyList<Vector3> _arena;
+
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
         _catalog = Catalog();
+        _arena = Points(8);
     }
 
     // ---- Waves (rules 1, 2, 4, 5, 6) -----------------------------------------------------------
@@ -88,7 +97,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         Assert.That(director.Stage, Is.EqualTo(1));
         Assert.That(director.Wave, Is.EqualTo(1), "Begin starts wave 1 immediately (rule 1).");
@@ -120,7 +129,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(plan, 0f);
+        director.Begin(plan, _arena, 0f);
 
         TickThrough(director, enemies, plan.BodyCount(1));
 
@@ -140,7 +149,7 @@ public sealed class SpawnDirectorTests
 
         Assert.That(plan.BodyCount(1), Is.EqualTo(8), "B(1)/3 = 32, and a Husk costs 4.");
 
-        director.Begin(plan, 0f);
+        director.Begin(plan, _arena, 0f);
 
         float now = TickThrough(director, enemies, 8);
 
@@ -172,7 +181,7 @@ public sealed class SpawnDirectorTests
 
         Assert.That(plan.BodyCount(1), Is.EqualTo(3));
 
-        director.Begin(plan, 0f);
+        director.Begin(plan, _arena, 0f);
 
         float now = TickThrough(director, enemies, 3);
 
@@ -195,7 +204,7 @@ public sealed class SpawnDirectorTests
         // part-way through. Eight points would have five rings in the air by now.
         SpawnDirector director = Director(enemies, Points(1));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         // A ring at 0, 1.6 and 3.2; a body at 0.8, 2.4 and 4.0. Three of the wave's eight have
         // arrived and five are still queued.
@@ -226,7 +235,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         float now = TickThrough(director, enemies, 3);
         List<int> wave1 = SpawnedIds();
@@ -258,7 +267,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         Assert.That(director.IsStageComplete, Is.False, "Nothing has even arrived yet.");
 
@@ -283,7 +292,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         float now = TickThrough(director, enemies, 2);
 
@@ -322,7 +331,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         SpawnTelegraphed ring = _events.Single<SpawnTelegraphed>();
@@ -349,7 +358,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         Assert.That(director.PendingCount, Is.EqualTo(1));
@@ -375,7 +384,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         director.Tick(0f, Vector3.Zero, Stream());
         director.Tick(0f, Vector3.Zero, Stream());
@@ -406,7 +415,7 @@ public sealed class SpawnDirectorTests
             enemies.Spawn(new ContentId(HuskId), new Vector3(Ring, 0f, i));
         }
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         Assert.That(director.PendingCount, Is.EqualTo(1));
@@ -431,7 +440,7 @@ public sealed class SpawnDirectorTests
             standing.Add(enemies.Spawn(new ContentId(HuskId), new Vector3(Ring, 0f, i)).Id);
         }
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
         director.Tick(SpawnDirector.SpawnInterval, Vector3.Zero, Stream());
 
@@ -456,7 +465,7 @@ public sealed class SpawnDirectorTests
 
         SpawnDirector director = Director(enemies, new[] { near, far });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         // 0.1 picks index 0, which is the point three metres from the player.
         director.Tick(0f, Vector3.Zero, Stream(0.1f));
@@ -476,7 +485,7 @@ public sealed class SpawnDirectorTests
             enemies,
             new[] { new Vector3(3f, 0f, 0f), new Vector3(0f, 0f, 3f) });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         Assert.DoesNotThrow(() => director.Tick(0f, Vector3.Zero, Stream()));
         Assert.That(_events.Count<SpawnTelegraphed>(), Is.Zero,
@@ -501,7 +510,7 @@ public sealed class SpawnDirectorTests
             enemies,
             new[] { new Vector3(3f, 0f, 0f), new Vector3(0f, 0f, 3f) });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         var counted = new CountingStream(Stream());
 
@@ -525,7 +534,7 @@ public sealed class SpawnDirectorTests
             enemies,
             new[] { new Vector3(Ring, 0f, 0f), new Vector3(Ring + 1f, 0f, 0f) });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         Assert.That(_events.Count<SpawnTelegraphed>(), Is.EqualTo(1));
@@ -546,7 +555,7 @@ public sealed class SpawnDirectorTests
         var only = new Vector3(Ring, 0f, 0f);
         SpawnDirector director = Director(enemies, new[] { only });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         director.Tick(0f, Vector3.Zero, Stream());
         director.Tick(SpawnDirector.TelegraphTime, Vector3.Zero, Stream());
@@ -594,12 +603,12 @@ public sealed class SpawnDirectorTests
         var events = new SilentEvents();
         ModeSpec mode = Mode(budget: 112f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
         EnemySystem enemies = Enemies(mode, events);
-        var director = new SpawnDirector(enemies, events, Points(8));
+        var director = new SpawnDirector(enemies, events);
         WavePlan plan = Composed(mode, 1);
 
         Assert.That(plan.BodyCount(1), Is.EqualTo(DeviceCap), "A full 28-body stage (M2-04's cap).");
 
-        director.Begin(plan, 0f);
+        director.Begin(plan, _arena, 0f);
 
         // The whole wave arrives during the warm-up, so every array this object grows has been
         // grown and every agent in the registry has lived once — a first life is the one spawn
@@ -632,7 +641,7 @@ public sealed class SpawnDirectorTests
         EnemySystem enemies = Enemies(mode);
         SpawnDirector director = Director(enemies, Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
         director.Tick(SpawnDirector.SpawnInterval, Vector3.Zero, Stream());
 
@@ -664,13 +673,13 @@ public sealed class SpawnDirectorTests
         var only = new Vector3(Ring, 0f, 0f);
         SpawnDirector director = Director(enemies, new[] { only });
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         Assert.That(_events.Count<SpawnTelegraphed>(), Is.EqualTo(1));
 
         director.Clear();
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
         director.Tick(0f, Vector3.Zero, Stream());
 
         Assert.That(_events.Count<SpawnTelegraphed>(), Is.EqualTo(2),
@@ -687,8 +696,7 @@ public sealed class SpawnDirectorTests
         RunSession session = Session(mode);
 
         var plan = new SpawnPlan(
-            new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(Ring, 0f, 0f)) },
-            Points(8));
+            new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(Ring, 0f, 0f)) });
 
         session.Start(Config(4, plan));
 
@@ -724,11 +732,14 @@ public sealed class SpawnDirectorTests
 
         // Well past the two seconds of arrival, or this row would be asserting that nothing spawns
         // during a pause — which is rule 1's job and true of every arena, inert or not.
+        //
+        // The arena reports no points at all, which is where "nowhere to put anything" lives as of
+        // M2-11a: an arena raised without markers, or no arena raised at all.
         Assert.DoesNotThrow(() =>
         {
             for (int i = 0; i < 400; i++)
             {
-                session.Tick(Snapshot(1f / 60f));
+                session.Tick(Snapshot(1f / 60f, points: Array.Empty<Vector3>()));
             }
         });
 
@@ -752,11 +763,11 @@ public sealed class SpawnDirectorTests
 
         IReadOnlyList<Vector3> points = Points(8);
 
-        session.Start(Config(1, new SpawnPlan(Array.Empty<SpawnPlan.Entry>(), points)));
+        session.Start(Config(1, SpawnPlan.Empty));
 
         TickThroughArrival(session);
 
-        session.Tick(Snapshot(1f / 60f));
+        session.Tick(Snapshot(1f / 60f, points: points));
 
         Assert.That(_events.Single<SpawnTelegraphed>().Position, Is.EqualTo(points[points.Count - 1]));
 
@@ -783,8 +794,7 @@ public sealed class SpawnDirectorTests
         var ambush = new Vector3(12f, 0f, 0f);
 
         var plan = new SpawnPlan(
-            new[] { new SpawnPlan.Entry(new ContentId(HuskId), ambush) },
-            Points(8));
+            new[] { new SpawnPlan.Entry(new ContentId(HuskId), ambush) });
 
         session.Start(Config(1, plan));
 
@@ -817,23 +827,30 @@ public sealed class SpawnDirectorTests
     {
         EnemySystem enemies = Enemies(Mode(budget: 4f, waves: 1, concurrency: DeviceCap, (HuskId, 1)));
 
-        Assert.Throws<ArgumentNullException>(() => new SpawnDirector(null, _events, Points(1)));
-        Assert.Throws<ArgumentNullException>(() => new SpawnDirector(enemies, null, Points(1)));
-        Assert.Throws<ArgumentNullException>(() => new SpawnDirector(enemies, _events, null));
+        Assert.Throws<ArgumentNullException>(() => new SpawnDirector(null, _events));
+        Assert.Throws<ArgumentNullException>(() => new SpawnDirector(enemies, null));
     }
 
     [Test]
-    public void Ctor_NonFiniteSpawnPoint_Throws()
+    public void Begin_NonFiniteSpawnPoint_Throws()
     {
-        EnemySystem enemies = Enemies(Mode(budget: 4f, waves: 1, concurrency: DeviceCap, (HuskId, 1)));
+        ModeSpec mode = Mode(budget: 4f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
+        SpawnDirector director = Director(Enemies(mode), Points(8));
 
         // Not a wrong position — a silent one. Every comparison against a NaN is false, so the
         // point is neither accepted nor refused out loud: it simply never receives anything.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new SpawnDirector(enemies, _events, new[] { new Vector3(float.NaN, 0f, 0f) }));
+            () => director.Begin(Composed(mode, 1), new[] { new Vector3(float.NaN, 0f, 0f) }, 0f));
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new SpawnDirector(enemies, _events, new[] { new Vector3(0f, 0f, float.PositiveInfinity) }));
+            () => director.Begin(
+                Composed(mode, 1),
+                new[] { new Vector3(0f, 0f, float.PositiveInfinity) },
+                0f));
+
+        // And the arena it already had is untouched, because the points are checked in full before
+        // one of them is written (M2-11a).
+        Assert.That(director.Stage, Is.Zero, "A refused Begin adopts nothing at all.");
     }
 
     [Test]
@@ -842,12 +859,17 @@ public sealed class SpawnDirectorTests
         ModeSpec mode = Mode(budget: 4f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
         SpawnDirector director = Director(Enemies(mode), Points(8));
 
-        Assert.Throws<ArgumentNullException>(() => director.Begin(null, 0f));
-        Assert.Throws<ArgumentOutOfRangeException>(() => director.Begin(Composed(mode, 1), float.NaN));
+        Assert.Throws<ArgumentNullException>(() => director.Begin(null, _arena, 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => director.Begin(Composed(mode, 1), _arena, float.NaN));
 
         // A plan nothing has been composed into reports no waves at all, so it would leave this
         // object claiming a stage it cannot run.
-        Assert.Throws<ArgumentException>(() => director.Begin(new WavePlan(MaxWaves, 1), 0f));
+        Assert.Throws<ArgumentException>(() => director.Begin(new WavePlan(MaxWaves, 1), _arena, 0f));
+
+        // Null points are an arena with nowhere to put anything rather than a mistake — the same
+        // answer an empty list gives, and rule 12's inert director.
+        Assert.DoesNotThrow(() => director.Begin(Composed(mode, 1), null, 0f));
     }
 
     [Test]
@@ -856,7 +878,7 @@ public sealed class SpawnDirectorTests
         ModeSpec mode = Mode(budget: 4f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
         SpawnDirector director = Director(Enemies(mode), Points(8));
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         Assert.Throws<ArgumentNullException>(() => director.Tick(0f, Vector3.Zero, null));
         Assert.Throws<ArgumentOutOfRangeException>(() => director.Tick(float.NaN, Vector3.Zero, Stream()));
@@ -921,9 +943,9 @@ public sealed class SpawnDirectorTests
     {
         var events = new RecordingEvents();
         EnemySystem enemies = Enemies(mode, events);
-        var director = new SpawnDirector(enemies, events, Points(8));
+        var director = new SpawnDirector(enemies, events);
 
-        director.Begin(Composed(mode, 1), 0f);
+        director.Begin(Composed(mode, 1), _arena, 0f);
 
         IRandomStream stream = Stream(Alternating(64));
 
@@ -1057,8 +1079,16 @@ public sealed class SpawnDirectorTests
         return -1;
     }
 
-    private SpawnDirector Director(EnemySystem enemies, IReadOnlyList<Vector3> points) =>
-        new SpawnDirector(enemies, _events, points);
+    /// <summary>
+    /// A director, and the arena it will be begun in — remembered as <see cref="_arena"/> so every
+    /// row's <c>Begin</c> reads the same whether it took the fixture's default ring or its own.
+    /// </summary>
+    private SpawnDirector Director(EnemySystem enemies, IReadOnlyList<Vector3> points)
+    {
+        _arena = points;
+
+        return new SpawnDirector(enemies, _events);
+    }
 
     private EnemySystem Enemies(ModeSpec mode) => Enemies(mode, _events);
 
@@ -1086,12 +1116,25 @@ public sealed class SpawnDirectorTests
         stage,
         plan);
 
-    private static WorldSnapshot Snapshot(float dt, Vector3 playerPosition = default)
+    /// <summary>
+    /// One frame, in the eight-point arena — or in <paramref name="points"/> when a row is about an
+    /// arena with somewhere else, or nowhere, to put a body.
+    /// </summary>
+    /// <remarks>
+    /// The points ride in on the frame as of M2-11a, where they used to ride on the run's
+    /// <c>SpawnPlan</c>: a run has one room per stage, so this is the channel that can change its
+    /// answer at a boundary. A session's director is handed them when its stage leaves arrival.
+    /// </remarks>
+    private static WorldSnapshot Snapshot(
+        float dt,
+        Vector3 playerPosition = default,
+        IReadOnlyList<Vector3> points = null)
     {
         var snapshot = new WorldSnapshot(Capacity);
 
         snapshot.Dt = dt;
         snapshot.PlayerPosition = playerPosition;
+        snapshot.SpawnPoints = points ?? Points(8);
 
         return snapshot;
     }

@@ -1,4 +1,5 @@
 using Soulvail.Core.Run;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Views;
 using UnityEngine;
 
@@ -48,15 +49,17 @@ public sealed class SnapshotBuilder
     private readonly NavPathSense _paths;
 
     /// <summary>
-    /// The door out of this arena, or null for an arena dressed without one.
+    /// The arenas, asked once a frame which room is standing and where its door and spawn points
+    /// are.
     /// </summary>
     /// <remarks>
-    /// A <c>Transform</c> rather than a cached position, so an arena that moves its gate — a door
-    /// that slides open, an arena prefab positioned at runtime by M2-11a — is answered on the frame
-    /// it moves it. It is read every frame for the price of one <c>transform.position</c>, which is
-    /// the same price the player's own position already costs.
+    /// The pool rather than a <c>Transform</c> dressed into the scene, which is what M2-10 had and
+    /// what M2-11a replaces: a run has one room per stage now, so "where is the door" is a question
+    /// about whichever arena is currently raised. Both answers are read every frame rather than
+    /// remembered, for the price of one <c>transform.position</c> — the moment core remembered
+    /// either, it would be holding a copy an arena swap could leave stale.
     /// </remarks>
-    private readonly Transform _gate;
+    private readonly ArenaPool _arenas;
 
     /// <summary>
     /// Simulated seconds since the run's first frame — the sum of the clamped <c>Dt</c> this class
@@ -82,24 +85,24 @@ public sealed class SnapshotBuilder
     /// The NavMesh, asked which way each enemy should walk (M1-19). A dependency like the rest, so
     /// a headless test can build a frame without one — see <see cref="Build"/>.
     /// </param>
-    /// <param name="gate">
-    /// The door out of the arena, or null for one dressed without a door (M2-10). Null is a real
-    /// answer rather than a missing one, for the reason a null <paramref name="paths"/> is: the M0
-    /// grey box has no gate, and a run in it is a workflow rather than a fault — core reads
-    /// <c>HasGate</c> false and parks its stage flow at the door it has not got.
+    /// <param name="arenas">
+    /// The run's arenas (M2-11a), asked which room is standing. Null is a real answer rather than a
+    /// missing one, for the reason a null <paramref name="paths"/> is: a scene with no arena pool at
+    /// all is a fixture, and core reads <c>HasGate</c> false and no spawn points — which parks its
+    /// stage flow at the door it has not got and makes its director inert.
     /// </param>
     public SnapshotBuilder(
         PlayerView player,
         InputAdapter input,
         EnemyViews enemies,
         NavPathSense paths,
-        Transform gate)
+        ArenaPool arenas)
     {
         _player = player;
         _input = input;
         _enemies = enemies;
         _paths = paths;
-        _gate = gate;
+        _arenas = arenas;
     }
 
     /// <summary>
@@ -137,14 +140,24 @@ public sealed class SnapshotBuilder
         snapshot.PlayerVelocity = _player.Velocity.ToNum();
 
         // Reported every frame rather than once at composition, and the `!= null` is Unity's
-        // lifetime check rather than C#'s: a gate destroyed mid-run is a null the operator catches
-        // and a plain reference comparison does not. An arena with no door says so, and core parks
-        // its stage flow rather than throwing (M2-10 rule 15).
-        snapshot.HasGate = _gate != null;
+        // lifetime check rather than C#'s: an arena destroyed mid-run is a null the operator catches
+        // and a plain reference comparison does not. An arena with no door — or no arena at all —
+        // says so, and core parks its stage flow rather than throwing (M2-10 rule 15).
+        ArenaView arena = _arenas is null ? null : _arenas.Active;
+
+        snapshot.HasGate = arena != null && arena.HasGate;
 
         if (snapshot.HasGate)
         {
-            snapshot.GatePosition = _gate.position.ToNum();
+            snapshot.GatePosition = arena.GatePosition.ToNum();
+        }
+
+        // The standing arena's own list, by reference and converted once when it was raised. Core
+        // reads it at one moment — the frame a stage enters its waves — and the director copies it
+        // then, so nothing downstream is holding a buffer this class refills (M2-11a rule 6).
+        if (_arenas is not null)
+        {
+            snapshot.SpawnPoints = _arenas.SpawnPoints;
         }
 
         // Last, and after the Clear above rather than owning one of its own: the enemies are the

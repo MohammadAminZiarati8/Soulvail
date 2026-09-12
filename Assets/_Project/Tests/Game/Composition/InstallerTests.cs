@@ -303,16 +303,17 @@ public sealed class InstallerTests
     [Test]
     public void Run_NullByNameParameter_Resolves()
     {
-        // M2-10 hands `SnapshotBuilder` a gate `Transform` that an arena dressed without a door
-        // does not have, and `RunScope` passes it by name whether or not it is there — VContainer
-        // never falls back to a C# default, so an *omitted* parameter fails to compose the run.
-        // This row is the check that a **null** one is a value rather than an absence, because the
-        // failure otherwise lands on exactly the workflow every optional field on that scope exists
-        // to protect: pressing Play in a Run scene nobody has dressed yet.
+        // `RunScope` hands `ArenaPool` the `Transform` its bodies are parented under — a scene
+        // reference an undressed Run scene does not have — and passes it by name whether or not it
+        // is there. VContainer never falls back to a C# default, so an *omitted* parameter fails to
+        // compose the run. This row is the check that a **null** one is a value rather than an
+        // absence, because the failure otherwise lands on exactly the workflow every optional field
+        // on that scope exists to protect: pressing Play in a Run scene nobody has dressed yet.
+        // M2-10 had the same row for the gate `Transform` that moved onto the arena prefab.
         var builder = new ContainerBuilder();
 
         builder.Register<NullParameterProbe>(Lifetime.Scoped)
-            .WithParameter("gate", (Transform)null);
+            .WithParameter("parent", (Transform)null);
 
         using (IObjectResolver container = builder.Build())
         {
@@ -320,7 +321,7 @@ public sealed class InstallerTests
 
             Assert.DoesNotThrow(() => probe = container.Resolve<NullParameterProbe>());
 
-            Assert.That(probe.GateIsNull, Is.True, "And it arrives as the null it was given.");
+            Assert.That(probe.ParentIsNull, Is.True, "And it arrives as the null it was given.");
         }
     }
 
@@ -328,18 +329,18 @@ public sealed class InstallerTests
     /// A one-argument type for <see cref="Run_NullByNameParameter_Resolves"/>, and nothing else.
     /// </summary>
     /// <remarks>
-    /// Nested and private because it exists for that row alone. <c>SnapshotBuilder</c> itself needs
-    /// a <c>PlayerView</c>, an <c>InputAdapter</c> and two adapters to be constructed, none of which
-    /// this row is about — the question is purely what VContainer does with a null.
+    /// Nested and private because it exists for that row alone. <c>ArenaPool</c> itself needs a
+    /// resolver, a prefab list, an event hub and a <c>PlayerView</c> to be constructed, none of
+    /// which this row is about — the question is purely what VContainer does with a null.
     /// </remarks>
     private sealed class NullParameterProbe
     {
-        public NullParameterProbe(Transform gate)
+        public NullParameterProbe(Transform parent)
         {
-            GateIsNull = gate == null;
+            ParentIsNull = parent == null;
         }
 
-        public bool GateIsNull { get; }
+        public bool ParentIsNull { get; }
     }
 
     [Test]

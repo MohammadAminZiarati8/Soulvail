@@ -49,3 +49,6 @@ MonoBehaviour:
     _introducedAtStage: 2
   - _specId: enemy.bloater
     _introducedAtStage: 4
+  _arenas:
+  - arena.pillars
+  - arena.tiered

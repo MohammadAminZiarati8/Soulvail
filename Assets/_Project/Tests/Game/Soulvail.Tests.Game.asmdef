@@ -8,6 +8,7 @@
         "VContainer",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
+        "Unity.AI.Navigation",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

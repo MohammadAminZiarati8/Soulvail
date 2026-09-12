@@ -114,6 +114,14 @@ public sealed class ModeSpec
 
     private readonly ReadOnlyCollection<RosterEntry> _rosterView;
 
+    /// <summary>
+    /// The arena ids, as an array for <see cref="ArenaFor"/>'s walk. <see cref="Arenas"/> hands out
+    /// the wrapper, for <see cref="_roster"/>'s reason.
+    /// </summary>
+    private readonly ContentId[] _arenas;
+
+    private readonly ReadOnlyCollection<ContentId> _arenasView;
+
     /// <param name="id">The mode's stable content id, e.g. <c>mode.descent</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="startingStage">The depth a fresh run of this mode begins at. Usually 1.</param>
@@ -137,12 +145,19 @@ public sealed class ModeSpec
     /// Every archetype the mode may spawn, with the depth each is introduced at. Copied; the
     /// caller's list is not retained. Order is meaningful: <see cref="RosterFor"/> answers in it.
     /// </param>
+    /// <param name="arenas">
+    /// The arenas this mode draws its stages' rooms from — GD §7.2's pool of 8–12 per biome.
+    /// Copied, like the roster. Null and empty mean the same thing and are both legal: a mode with
+    /// no arena roster leaves every stage in whatever the scene was dressed with, which is what
+    /// every M0 and M1 grey box was.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
     /// same stage. The last is GD §8.2's rule — <em>"new enemies arrive one at a time, in a wave
     /// where they're the only new thing"</em> — and it is what lets
-    /// <see cref="TryGetIntroduction"/> answer with a single id rather than a list.
+    /// <see cref="TryGetIntroduction"/> answer with a single id rather than a list. Also when an
+    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="startingStage"/> is not positive, or a finite mode's
@@ -158,7 +173,8 @@ public sealed class ModeSpec
         bool isEndless,
         int finalStage,
         ScalingSpec scaling,
-        IReadOnlyList<RosterEntry> roster)
+        IReadOnlyList<RosterEntry> roster,
+        IReadOnlyList<ContentId> arenas = null)
     {
         if (id.Value is null)
         {
@@ -211,6 +227,10 @@ public sealed class ModeSpec
         // IReadOnlyList<T> casts straight back to RosterEntry[], and then the copy protects
         // nothing. The same guard ContentCatalog and SpawnPlan make, for the same reason.
         _rosterView = Array.AsReadOnly(_roster);
+
+        _arenas = CopyArenas(arenas, id);
+
+        _arenasView = Array.AsReadOnly(_arenas);
     }
 
     /// <summary>The mode's stable content id, e.g. <c>mode.descent</c>.</summary>
@@ -247,6 +267,17 @@ public sealed class ModeSpec
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;
+
+    /// <summary>
+    /// The arenas this mode draws from — GD §7.2's pool of 8–12 per biome, two of them in V1.
+    /// </summary>
+    /// <remarks>
+    /// May be empty, which makes <see cref="ArenaFor"/> answer <c>default</c> and leaves the run in
+    /// whatever the scene was dressed with. Walked by <c>RunSession.Start</c> beside the roster, so
+    /// an unauthored arena id refuses the run at its first frame rather than forty seconds in at a
+    /// door (M2-11a rule 4).
+    /// </remarks>
+    public IReadOnlyList<ContentId> Arenas => _arenasView;
 
     /// <summary>
     /// Whether <paramref name="stage"/> is a stage this mode has.
@@ -344,6 +375,154 @@ public sealed class ModeSpec
 
         specId = default;
         return false;
+    }
+
+    /// <summary>
+    /// Which arena <paramref name="stage"/> is fought in — a pure function of the run's seed and
+    /// the depth, and never a draw.
+    /// </summary>
+    /// <param name="stage">The depth being entered. Numbered from 1 (GD §8.2).</param>
+    /// <param name="seed">The run's seed. Every <see langword="int"/> is legal — it is a bit
+    /// pattern rather than a quantity — so there is nothing here for a guard to reject.</param>
+    /// <returns>
+    /// The arena's id, or <c>default(ContentId)</c> for a mode with no arena roster.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="stage"/> is below 1.</exception>
+    /// <remarks>
+    /// <para>
+    /// <b>Derived, never drawn, and the two consequences are the reason for it.</b> A run
+    /// <em>resumed</em> at stage 7 lands in the arena stage 7 always had, without a byte of saved
+    /// state; and arena identity does not depend on how many spawn positions the previous six
+    /// stages happened to reject. <b>Rejected:</b> <c>spawn.NextInt(0, Arenas.Count)</c>, which is
+    /// the obvious shape and makes the arena a function of stream position — i.e. of
+    /// <see href="../../../../Docs/plan/ROADMAP.md">ledger row 1</see> being fixed first (M2-11a
+    /// rule 3).
+    /// </para>
+    /// <para>
+    /// <b>The same room never appears twice running</b>, and that rule is what makes this a walk
+    /// rather than one hash. A stage's raw index is a hash of the pair modulo the roster; it is
+    /// stepped forward by one when it lands on the arena the <em>previous</em> stage used — and
+    /// the previous stage's arena may itself have been stepped, so the chain has to be replayed
+    /// from stage 1. Comparing against the previous stage's <em>raw</em> index instead would be
+    /// O(1) and wrong: with a roster of two, raw indices 0, 0, 1 give 0, 1, 1 — a repeat, at the
+    /// one place the rule exists to prevent one.
+    /// </para>
+    /// <para>
+    /// So it costs one integer hash per stage below the one asked about, twice per stage boundary
+    /// (the arriving arena and the one named on the way out) and never per frame. At GD §7.3's
+    /// 40–75 s a stage, an eleven-hour run reaches stage 1,000 and pays two thousand integer
+    /// multiplies at its boundary. It allocates nothing at any depth.
+    /// </para>
+    /// </remarks>
+    public ContentId ArenaFor(int stage, int seed)
+    {
+        if (stage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(stage),
+                stage,
+                $"Stages are numbered from 1 (GD §8.2), and '{Id}' was asked for stage {stage}.");
+        }
+
+        if (_arenas.Length == 0)
+        {
+            return default;
+        }
+
+        // A roster of one repeats by necessity, and says so rather than throwing: the no-repeat
+        // rule cannot apply when there is nowhere else to go (M2-11a rule 3).
+        if (_arenas.Length == 1)
+        {
+            return _arenas[0];
+        }
+
+        int previous = -1;
+
+        for (int s = 1; s <= stage; s++)
+        {
+            int index = (int)(Mix(s, seed) % (uint)_arenas.Length);
+
+            if (index == previous)
+            {
+                index++;
+
+                if (index == _arenas.Length)
+                {
+                    index = 0;
+                }
+            }
+
+            previous = index;
+        }
+
+        return _arenas[previous];
+    }
+
+    /// <summary>
+    /// Copies the arena roster, refusing an entry that names nothing and a duplicated id.
+    /// </summary>
+    /// <remarks>
+    /// Duplicates are refused rather than tolerated because <see cref="ArenaFor"/>'s step is by
+    /// <em>index</em>: two rows naming one arena would let the step land on the same room it was
+    /// stepping away from, and the no-repeat rule would be quietly false for that pair alone.
+    /// </remarks>
+    private static ContentId[] CopyArenas(IReadOnlyList<ContentId> arenas, ContentId id)
+    {
+        if (arenas is null || arenas.Count == 0)
+        {
+            return Array.Empty<ContentId>();
+        }
+
+        var copy = new ContentId[arenas.Count];
+        var seen = new HashSet<ContentId>();
+
+        for (int i = 0; i < arenas.Count; i++)
+        {
+            ContentId arena = arenas[i];
+
+            if (arena.Value is null)
+            {
+                throw new ArgumentException(
+                    $"arenas[{i}] of '{id}' names no arena. A default(ContentId) is not a room.",
+                    nameof(arenas));
+            }
+
+            if (!seen.Add(arena))
+            {
+                throw new ArgumentException(
+                    $"'{id}' lists arena '{arena}' twice. ArenaFor steps by index to avoid "
+                        + "repeating a room, so a duplicate would let it step onto itself.",
+                    nameof(arenas));
+            }
+
+            copy[i] = arena;
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Hashes a (stage, seed) pair into a well-spread <see langword="uint"/>.
+    /// </summary>
+    /// <remarks>
+    /// Murmur3's finaliser over the two mixed together. It is not the run's <c>IRandom</c> and must
+    /// not be: this answer has to be the same for a resumed run as for the one that saved it, which
+    /// a stream position cannot promise (ADR-0011 covers the draws; this is not one).
+    /// </remarks>
+    private static uint Mix(int stage, int seed)
+    {
+        unchecked
+        {
+            uint h = (uint)seed ^ ((uint)stage * 2654435761u);
+
+            h ^= h >> 16;
+            h *= 2246822519u;
+            h ^= h >> 13;
+            h *= 3266489917u;
+            h ^= h >> 16;
+
+            return h;
+        }
     }
 
     /// <summary>

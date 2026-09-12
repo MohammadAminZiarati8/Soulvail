@@ -97,14 +97,6 @@ namespace Soulvail.Game.Presentation
         private NavPathSense _paths;
 
         /// <summary>
-        /// The run's plan, read for one question only: whether this arena has anywhere to spawn.
-        /// An arena dressed without spawn points makes the director inert by design (M2-05 rule
-        /// 12), and the whole cost of that decision is that it is invisible — so the overlay is
-        /// where it stops being.
-        /// </summary>
-        private SpawnPlan _spawnPlan;
-
-        /// <summary>
         /// The run's bolt census, for the one number that says whether the pool is working
         /// (M2-09 rule 2 of the manual steps). Rented plus pooled must stop growing after the first
         /// few shots; a total that keeps climbing is the pool being bypassed, and nothing else in
@@ -142,14 +134,30 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private string _phase = "—";
 
+        /// <summary>
+        /// Which arena the last <c>StageArrived</c> named, or a dash for a run whose mode rosters
+        /// none.
+        /// </summary>
+        /// <remarks>
+        /// From the event rather than from <c>ArenaPool.Active</c>, which is the target line's
+        /// bargain again: core decides which room a stage is fought in, the pool obeys, and the one
+        /// failure worth seeing is the two disagreeing. Held as the string it will be printed as, so
+        /// a refresh ten times a second allocates nothing.
+        /// </remarks>
+        private string _arena = "—";
+
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
         /// <param name="session">The run, for the one number that has no other way out. See the class remarks.</param>
         /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
         /// <param name="paths">The run's path cache, for the stale count.</param>
-        /// <param name="spawnPlan">The run's plan, for whether this arena can spawn at all.</param>
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+        /// <remarks>
+        /// The run's <c>SpawnPlan</c> came in here until M2-11a, for one question — whether this
+        /// arena has anywhere to spawn. The answer moved onto the snapshot with the points
+        /// themselves, so the overlay now reads it from the same place core does.
+        /// </remarks>
         [Inject]
         public void Construct(
             WorldSnapshot snapshot,
@@ -157,14 +165,12 @@ namespace Soulvail.Game.Presentation
             IRunSession session,
             DomainEventHub hub,
             NavPathSense paths,
-            SpawnPlan spawnPlan,
             ProjectileViews projectileViews)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
-            _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
 
             if (hub is null)
@@ -282,6 +288,11 @@ namespace Soulvail.Game.Presentation
             _phase = "arrival";
             _wave = 0;
             _waveCount = 0;
+
+            // A dash for a mode with no arena roster, which is every fixture and every scene that
+            // dresses its own grey box — and the difference between "the swap did nothing" and
+            // "there was nothing to swap" (M2-11a rule 3).
+            _arena = evt.ArenaId.Value ?? "—";
         }
 
         private void OnStageCleared(StageCleared evt)
@@ -450,6 +461,11 @@ namespace Soulvail.Game.Presentation
 
             _line.Append(' ').Append(_phase);
 
+            // The room, beside the depth it is being played at. It is the only way to see the swap
+            // happen at all when two arenas look alike from a fixed camera, and the only way to see
+            // the no-repeat rule holding across a boundary (M2-11a rule 3).
+            _line.Append(' ').Append(_arena);
+
             if (!_snapshot.HasGate)
             {
                 _line.Append("  gate: —");
@@ -473,10 +489,15 @@ namespace Soulvail.Game.Presentation
         /// spawn points is a legal arena, and every core fixture that starts a run without caring
         /// about spawning is one; the failure mode it buys is a dressed scene that stays silent for
         /// no stated reason, and one dash on screen is the price of never debugging that.
+        /// <para>
+        /// Read off the snapshot from M2-11a, where the points now arrive, rather than off the run's
+        /// <c>SpawnPlan</c>, which no longer carries any. It therefore also shows the one new way to
+        /// be silent: an arena raised without markers, or no arena raised at all.
+        /// </para>
         /// </remarks>
         private void AppendDirector()
         {
-            if (_spawnPlan.SpawnPoints.Count == 0)
+            if (_snapshot.SpawnPoints.Count == 0)
             {
                 _line.Append("  director: —");
 

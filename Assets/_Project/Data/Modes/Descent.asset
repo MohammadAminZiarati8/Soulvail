@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.ModeDefinition
   _id: mode.descent
   _nameKey: mode.descent.name
-  _startingStage: 5
+  _startingStage: 1
   _isEndless: 1
   _finalStage: 1
   _scaling:

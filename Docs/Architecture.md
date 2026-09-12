@@ -180,7 +180,7 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 | Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
 | Outbound | `IClock` | `UtcNow` (wall-clock, `DateTimeOffset`) — **and nothing else** (M2-01). Never simulated time: that is the sum of each tick's `Dt` (§18.2) | `UnityClock` |
-| Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc` | `SeededRandom` (xorshift/PCG, seedable) |
+| Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc`, plus `Capture()` / `Restore(in RandomState)` — where every stream stands, so a resumed run carries on instead of restarting each stream at draw 0 (M2-13a). On the port, never on `IRandomStream` | `SeededRandom` (xorshift/PCG, seedable) |
 | Outbound | `IDomainEvents` | `Publish<T>(in T evt)` | `DomainEventHub` (scoped, typed fan-out) |
 | Outbound | `ISaveStore` | Async load/save of profile and run snapshot | `LocalJsonSaveStore` now, `SyncingSaveStore` later |
 | Outbound | `ILocalizer` | `string Get(LocKey key, params)` | `TableLocalizer` |
@@ -289,17 +289,20 @@ Core defines the DTOs and the port; the adapter owns the medium. See [ADR-0007](
 ```csharp
 public interface ISaveStore
 {
-    Task<PlayerProfile?> LoadProfile();
+    Task<PlayerProfile?> LoadProfile();   // Nullable<PlayerProfile> — null means "no save"
     Task SaveProfile(PlayerProfile profile);
-    Task<RunSnapshot?>  LoadRun();
+    Task<RunSnapshot?>  LoadRun();        // Nullable<RunSnapshot>
     Task SaveRun(RunSnapshot run);
     Task ClearRun();
 }
 ```
 
 - **Async from day one**, even though the local adapter is a synchronous file write — a server adapter must not change a signature.
-- `PlayerProfile` (Shards, unlocks, settings) and `RunSnapshot` (written at every stage boundary, deleted on death — Android kills backgrounded apps).
-- **Every DTO carries `int Version`.** Migrations are pure core functions with a fixture test per version.
+- **The two `?`s are `Nullable<T>`, not nullable references.** Both DTOs are `readonly struct`s, which is what makes these signatures compile as written: this project enables nullable reference types nowhere, so reading them as nullable references would mean switching the language feature on for one file on the strength of two return types (M2-13a).
+- **No parameter is taken by `in`, deliberately, though both DTOs are structs.** An `async` method cannot have a by-ref parameter, so `SaveRun(in RunSnapshot)` would compile only while the adapter stays synchronous and would refuse the first `async` one — which is the one this ADR says is coming. `IRandom.Restore` *is* `in`: it is a core call with no async implementation imaginable (M2-13a).
+- `PlayerProfile` (settings now; Shards and unlocks when the mechanics that own them land — M4-06, M6-08) and `RunSnapshot` (written at every stage boundary, deleted on death — Android kills backgrounded apps).
+- **A run snapshot carries the seed *and* `RandomState`** — five stream positions, one per stream in index order. The seed selects each stream's sequence and the state says how far along it is; a resume needs both, and restoring position onto a generator built from the same seed is a complete restore. `IRandom.Capture()` / `Restore(in RandomState)` are the only door to it, deliberately not a settable position on `IRandomStream` (M2-13a, §11.4).
+- **Every DTO carries `int Version`.** Migrations are pure core functions with a fixture test per version. `CurrentVersion` starts at 1, so `default(T)`'s version 0 is the value no writer can produce and every reader refuses — which is how §18.3's both-ends problem is closed here without a second concept (M2-13a).
 - Server later: **local-first with sync.** Write locally (instant, offline-safe), push in the background, reconcile on launch. That is `SyncingSaveStore` wrapping `LocalJsonSaveStore`; core never learns it happened.
 
 ---

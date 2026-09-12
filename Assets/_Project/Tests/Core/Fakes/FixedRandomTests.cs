@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Soulvail.Core.Ports;
 
 namespace Soulvail.Tests.Core.Fakes;
 
@@ -45,5 +46,26 @@ public sealed class FixedRandomTests
         // Spawn's own script was one value long, and the shared script it no longer uses is not
         // a fallback — it falls through to the default like any exhausted stream.
         Assert.That(random.Spawn.NextFloat(), Is.EqualTo(0.5f));
+    }
+
+    [Test]
+    public void FixedRandom_CaptureRestore_ReplaysTheScript()
+    {
+        var random = new FixedRandom(0.1f, 0.2f, 0.3f, 0.4f).SetSpawn(0.9f, 0.8f, 0.7f);
+
+        random.Spawn.NextFloat();
+        random.Offers.NextFloat();
+
+        RandomState captured = random.Capture();
+        float spawnNext = random.Spawn.NextFloat();
+        float offersNext = random.Offers.NextFloat();
+
+        random.Restore(captured);
+
+        // A scripted stream's position is how far down its list it has read, so a round trip here
+        // replays the script rather than reproducing a generator. That is all a system under test
+        // needs from it — and an unverified fake would make every M2-14 resume claim vacuous.
+        Assert.That(random.Spawn.NextFloat(), Is.EqualTo(spawnNext));
+        Assert.That(random.Offers.NextFloat(), Is.EqualTo(offersNext));
     }
 }

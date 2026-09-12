@@ -291,6 +291,8 @@ MonoBehaviour:
   - {x: -7.78, y: 0, z: -7.78}
   - {x: 0, y: 0, z: -11}
   - {x: 7.78, y: 0, z: -7.78}
+  _threatArrowPrefab: {fileID: 3318980382163284144, guid: 0981ac6eefc5b634ea7eeda8652c008a, type: 3}
+  _threatArrowRoot: {fileID: 2052539127}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}
   - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}
@@ -916,6 +918,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34fc7d8a959ec2b4a9ea45218112f71c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HudPresenter
+--- !u!224 &2052539127 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 2992991911888828424, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2056789030
 GameObject:
   m_ObjectHideFlags: 0

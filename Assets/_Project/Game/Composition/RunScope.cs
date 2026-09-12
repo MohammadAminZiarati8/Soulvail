@@ -43,6 +43,19 @@ namespace Soulvail.Game.Composition
     /// </remarks>
     public sealed class RunScope : LifetimeScope
     {
+        /// <summary>
+        /// How many screen-edge arrows exist before the run starts.
+        /// </summary>
+        /// <remarks>
+        /// Eight rather than the device cap: every arrow is an off-screen threat inside 16 m, and a
+        /// wave that puts more than eight of those behind the camera at once is a wave the player
+        /// has already lost. The set grows past this if it ever happens and keeps what it grew, so
+        /// the number is a prediction rather than a limit — it only decides whether the
+        /// <c>Instantiate</c> happens while the scene loads or on a frame a Spitter is winding up
+        /// (AR §14, GD §11.3).
+        /// </remarks>
+        private const int ThreatArrowPrewarm = 8;
+
         [SerializeField] private PlayerView _playerView;
 
         [Tooltip("The dash, on the Player object. Not optional, unlike the reticle and the glow: " +
@@ -113,6 +126,16 @@ namespace Soulvail.Game.Composition
                  "world metres. Not spawn points: where a wave may arrive is authored on the " +
                  "arena prefab from M2-11a on, because a run has one room per stage.")]
         [SerializeField] private Vector3[] _dummyPositions;
+
+        [Tooltip("One screen-edge arrow (GD §16.1). Optional on the same terms as the reticle — " +
+                 "an arena without one plays identically, it just cannot say where the thing " +
+                 "shooting at you from off screen is standing.")]
+        [SerializeField] private RectTransform _threatArrowPrefab;
+
+        [Tooltip("Where arrows are parented: the Arrows object on the HUD, under SafeArea. Its " +
+                 "rect is the border they are placed on, which is how a notch is avoided without " +
+                 "a second copy of the safe-area arithmetic.")]
+        [SerializeField] private RectTransform _threatArrowRoot;
 
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
@@ -384,6 +407,47 @@ namespace Soulvail.Game.Composition
             // generic overload takes a factory of IObjectResolver, which this is not.
             builder.RegisterEntryPoint<HapticsListener>(Lifetime.Scoped)
                 .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup));
+
+            // The screen-edge arrows (M2-12a). Registered here rather than in RunInstaller, which
+            // is where the spec put it, for the reason ArenaPool and the two view censuses are
+            // here: four of its arguments are references to *this scene* — the arrow prefab, the
+            // HUD root they hang under, the camera and the player's body — and the static installer
+            // is deliberately the half a headless test can build. There is no version of this
+            // registration that fits there.
+            //
+            // Required rather than optional like the reticle and the glow, and the reason is that
+            // this one is not a decoration: GD §12.4's on-screen rule is an invariant — "no damage
+            // originates from outside the camera frustum without a visible edge indicator" — and a
+            // Spitter has been able to break it since M2-07b. A run composed without arrows is a
+            // run that is unfair in a way nothing on screen would report, so the scope refuses it
+            // the way it already refuses an empty cover mask.
+            if (_threatArrowPrefab == null || _threatArrowRoot == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no threat arrow prefab or arrow root assigned. Drag " +
+                    "Prefabs/UI/ThreatArrow.prefab onto its Threat Arrow Prefab field and the " +
+                    "HUD's Arrows object onto its Threat Arrow Root field — without them an enemy " +
+                    "can damage the player from outside the camera frustum with nothing on screen " +
+                    "to say where it is (GD §12.4).");
+            }
+
+            // The clock is a wall clock and is passed the same way HapticsListener's is, cast to
+            // Func<float> so the by-name (string, object) overload binds rather than the generic
+            // one, which takes a factory of IObjectResolver. GD §7.3's eight seconds are a cosmetic
+            // view timer — AR §18.2's named exception to snapshot.Dt — so a wall clock is the right
+            // clock here rather than a shortcut.
+            //
+            // AsSelf() alongside the entry point, because DebugOverlay resolves the concrete type
+            // for its arrow count: RegisterEntryPoint alone registers only the ILateTickable it is
+            // driven through, and a Resolve<ThreatArrows> on a container that plainly holds one
+            // would fail.
+            builder.RegisterEntryPoint<ThreatArrows>(Lifetime.Scoped)
+                .AsSelf()
+                .WithParameter("arrowPrefab", _threatArrowPrefab)
+                .WithParameter("parent", _threatArrowRoot)
+                .WithParameter("camera", _camera)
+                .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup))
+                .WithParameter("prewarm", ThreatArrowPrewarm);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

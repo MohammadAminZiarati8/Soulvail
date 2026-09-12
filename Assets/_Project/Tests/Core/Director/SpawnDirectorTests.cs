@@ -1319,6 +1319,8 @@ public sealed class SpawnDirectorTests
     /// <summary>Every stream counted separately, so "the Spawn stream and no other" is checkable.</summary>
     private sealed class CountingRandom : IRandom
     {
+        private readonly IRandom _inner;
+
         private readonly CountingStream _spawn;
         private readonly CountingStream _offers;
         private readonly CountingStream _affixes;
@@ -1327,6 +1329,7 @@ public sealed class SpawnDirectorTests
 
         public CountingRandom(IRandom inner)
         {
+            _inner = inner;
             Seed = inner.Seed;
 
             _spawn = new CountingStream(inner.Spawn);
@@ -1351,6 +1354,16 @@ public sealed class SpawnDirectorTests
         public int SpawnDraws => _spawn.Draws;
 
         public int OtherDraws => _offers.Draws + _affixes.Draws + _drops.Draws + _misc.Draws;
+
+        /// <summary>
+        /// Straight through to the wrapped generator, and deliberately not counted: a capture is
+        /// a read of where a stream stands, not a draw from it, so counting one here would make
+        /// "the Spawn stream and no other" answer a different question.
+        /// </summary>
+        public RandomState Capture() => _inner.Capture();
+
+        /// <inheritdoc cref="Capture" />
+        public void Restore(in RandomState state) => _inner.Restore(state);
     }
 
     /// <summary>

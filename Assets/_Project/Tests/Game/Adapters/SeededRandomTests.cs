@@ -185,6 +185,122 @@ public sealed class SeededRandomTests
         Assert.That(rangeSink, Is.Not.EqualTo(float.NaN));
     }
 
+    [Test]
+    public void Capture_Restore_ReplaysTheSameDraws()
+    {
+        var random = new SeededRandom(7);
+        Draw(random.Spawn, 100);
+
+        RandomState captured = random.Capture();
+        float[] recorded = Draw(random.Spawn, 100);
+
+        random.Restore(captured);
+
+        // The whole point of the pair, in one row: a run put back where it was draws what it was
+        // going to draw. Exact equality, because resuming a seeded run means bit-for-bit.
+        Assert.That(Draw(random.Spawn, 100), Is.EqualTo(recorded));
+    }
+
+    [Test]
+    public void Capture_CoversEveryStream()
+    {
+        var random = new SeededRandom(7);
+        IRandomStream[] streams = StreamsOf(random);
+
+        foreach (IRandomStream stream in streams)
+        {
+            stream.NextFloat();
+        }
+
+        RandomState captured = random.Capture();
+        var expected = new float[streams.Length];
+
+        for (int i = 0; i < streams.Length; i++)
+        {
+            expected[i] = streams[i].NextFloat();
+        }
+
+        // Advance all five past the capture, so a Restore that put back only one — or that
+        // transposed two — cannot pass by accident.
+        foreach (IRandomStream stream in streams)
+        {
+            Draw(stream, 10);
+        }
+
+        random.Restore(captured);
+
+        for (int i = 0; i < streams.Length; i++)
+        {
+            Assert.That(
+                streams[i].NextFloat(),
+                Is.EqualTo(expected[i]),
+                $"Stream {i} did not come back to where it was captured.");
+        }
+    }
+
+    [Test]
+    public void Restore_IsCompleteAcrossAFreshGenerator()
+    {
+        var original = new SeededRandom(7);
+        Draw(original.Spawn, 500);
+
+        RandomState captured = original.Capture();
+        float next = original.Spawn.NextFloat();
+
+        // A different object, built the way a resumed run builds one: the seed from the snapshot
+        // through the constructor, the position through Restore. The increment — which selects
+        // which of 2^63 sequences each stream walks — is derived from the seed and is never
+        // captured, so this is the row that shows position alone is a *complete* restore.
+        var resumed = new SeededRandom(7);
+        resumed.Restore(captured);
+
+        Assert.That(resumed.Spawn.NextFloat(), Is.EqualTo(next));
+    }
+
+    [Test]
+    public void Restore_UnderADifferentSeed_DoesNotThrow()
+    {
+        var seven = new SeededRandom(7);
+        Draw(seven.Spawn, 50);
+        RandomState fromSeven = seven.Capture();
+
+        var eight = new SeededRandom(8);
+        float beforeRestore = new SeededRandom(8).Spawn.NextFloat();
+
+        // Refuses nothing, deliberately: every 64-bit word is a legal generator position, so a
+        // guard here would be a check that cannot fail correctly. The agreement between a seed
+        // and a state is checkable only where both are visible, which is RunSession.Start.
+        Assert.DoesNotThrow(() => eight.Restore(fromSeven));
+
+        // And it did land somewhere else on seed 8's own sequence, so the restore was not a no-op.
+        Assert.That(eight.Spawn.NextFloat(), Is.Not.EqualTo(beforeRestore));
+    }
+
+    [Test]
+    public void Capture_AllocatesNothing()
+    {
+        var random = new SeededRandom(11);
+        ulong sink = 0UL;
+
+        AllocationAssert.None(() => sink += random.Capture().Spawn);
+
+        Assert.That(sink, Is.Not.EqualTo(0UL), "Sanity: the measured body actually captured.");
+    }
+
+    [Test]
+    public void Restore_AllocatesNothing()
+    {
+        var random = new SeededRandom(11);
+        Draw(random.Spawn, 10);
+        RandomState captured = random.Capture();
+
+        // Built outside the measured body: `in` takes it by reference, so nothing is copied and
+        // nothing is boxed on the way in.
+        AllocationAssert.None(() => random.Restore(captured));
+
+        Assert.That(random.Capture().Spawn, Is.EqualTo(captured.Spawn));
+    }
+
     /// <summary>The five streams in their fixed index order, so a test can sweep all of them.</summary>
     private static IRandomStream[] StreamsOf(IRandom random)
     {

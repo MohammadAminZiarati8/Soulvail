@@ -69,15 +69,57 @@ public sealed class FixedRandom : IRandom
     /// </summary>
     public int Seed { get; }
 
-    public IRandomStream Spawn => _spawn ?? _shared;
+    public IRandomStream Spawn => SpawnStream;
 
-    public IRandomStream Offers => _offers ?? _shared;
+    public IRandomStream Offers => OffersStream;
 
-    public IRandomStream Affixes => _affixes ?? _shared;
+    public IRandomStream Affixes => AffixesStream;
 
-    public IRandomStream Drops => _drops ?? _shared;
+    public IRandomStream Drops => DropsStream;
 
-    public IRandomStream Misc => _misc ?? _shared;
+    public IRandomStream Misc => MiscStream;
+
+    private ScriptedStream SpawnStream => _spawn ?? _shared;
+
+    private ScriptedStream OffersStream => _offers ?? _shared;
+
+    private ScriptedStream AffixesStream => _affixes ?? _shared;
+
+    private ScriptedStream DropsStream => _drops ?? _shared;
+
+    private ScriptedStream MiscStream => _misc ?? _shared;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A scripted stream's position is how far down its list it has read, so that is what this
+    /// captures. It is not a generator state and no arithmetic reproduces the values from it —
+    /// the point is only that <c>Capture</c> then <c>Restore</c> puts this fake back where it was,
+    /// so a system that saves and resumes can be tested without a real generator.
+    /// </remarks>
+    public RandomState Capture()
+    {
+        return new RandomState(
+            SpawnStream.Position,
+            OffersStream.Position,
+            AffixesStream.Position,
+            DropsStream.Position,
+            MiscStream.Position);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Every stream that has not been scripted individually is the same instance, so restoring
+    /// writes the shared position several times — with the values <see cref="Capture"/> read from
+    /// it, which are equal, so a round trip is exact either way.
+    /// </remarks>
+    public void Restore(in RandomState state)
+    {
+        SpawnStream.Position = state.Spawn;
+        OffersStream.Position = state.Offers;
+        AffixesStream.Position = state.Affixes;
+        DropsStream.Position = state.Drops;
+        MiscStream.Position = state.Misc;
+    }
 
     /// <summary>Scripts <see cref="Spawn"/> on its own. Returns this, so setters chain.</summary>
     public FixedRandom SetSpawn(params float[] floats)
@@ -124,6 +166,18 @@ public sealed class FixedRandom : IRandom
         public ScriptedStream(float[] values)
         {
             _values = values ?? Array.Empty<float>();
+        }
+
+        /// <summary>
+        /// How many scripted values have been read. Clamped into <see cref="int"/> on the way in,
+        /// because a <see cref="RandomState"/> captured from a real generator holds an LCG state
+        /// word rather than an index, and being handed one here should exhaust the script rather
+        /// than overflow into a negative index.
+        /// </summary>
+        public ulong Position
+        {
+            get => (ulong)_index;
+            set => _index = value > int.MaxValue ? int.MaxValue : (int)value;
         }
 
         public float NextFloat()

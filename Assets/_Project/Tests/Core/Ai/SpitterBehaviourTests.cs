@@ -222,6 +222,93 @@ public sealed class SpitterBehaviourTests
         }
     }
 
+    // ---- M2-11b rule 6: cover, and the promise a telegraph makes --------------------------------
+
+    [Test]
+    public void Spitter_HoldsFireWithoutSight()
+    {
+        // Inside the band, with a pillar in the way. GD §7.2 says cover blocks an enemy projectile,
+        // and the honest place to block it is before the telegraph: a ring that produced nothing is
+        // what AR §18.4's "a telegraph is a promise" forbids.
+        SpitterBehaviour spitter = Approaching(distance: 12f);
+
+        Blackboard(spitter).HasLineOfSight = false;
+
+        _events.Clear();
+        _intents.Clear();
+
+        Tick(spitter);
+
+        Assert.That(
+            spitter.State,
+            Is.EqualTo(SpitterState.Approach),
+            "A Spitter that cannot see the player does not start a wind-up it cannot finish.");
+
+        Assert.That(
+            _events.Count<EnemyTelegraph>(),
+            Is.EqualTo(0),
+            "And it promises nothing, which is the whole reason the check is here and not in Aim.");
+
+        // Planted, not walking and not retreating: flanking is a mind this archetype has not got,
+        // and a Spitter waiting out a pillar has to read as waiting rather than as one that lost
+        // interest.
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_intents.LastEnemyMove.FacingXZ.Y, Is.EqualTo(1f).Within(1e-4f));
+    }
+
+    [Test]
+    public void Spitter_AimsWhenSightReturns()
+    {
+        SpitterBehaviour spitter = Approaching(distance: 12f);
+
+        Blackboard(spitter).HasLineOfSight = false;
+
+        Tick(spitter);
+
+        Assert.That(spitter.State, Is.EqualTo(SpitterState.Approach), "Sanity: it is waiting.");
+
+        // The player steps out from behind the pillar. Nothing else about the arena changed.
+        Blackboard(spitter).HasLineOfSight = true;
+
+        _events.Clear();
+
+        Tick(spitter);
+
+        Assert.That(spitter.State, Is.EqualTo(SpitterState.Aim));
+
+        Assert.That(
+            _events.Count<EnemyTelegraph>(),
+            Is.EqualTo(1),
+            "One ring, on the tick the sight line opened.");
+    }
+
+    [Test]
+    public void Spitter_AimingIgnoresLostSight()
+    {
+        // The half of rule 6 that looks wrong and is not, and it is M2-07b rule 7 kept verbatim: an
+        // aim never cancels. A wind-up breakable by stepping behind something would be breakable by
+        // the same input the dodge already uses, and the archetype would never fire at a moving
+        // target — so the pillar is a shield you have to be behind *before* the wind-up starts.
+        SpitterBehaviour spitter = Aiming(distance: 12f);
+
+        Blackboard(spitter).HasLineOfSight = false;
+
+        _events.Clear();
+
+        TickUntil(spitter, SpitterState.Release, budgetSeconds: WindupTime + (2f * Frame));
+
+        Assert.That(
+            spitter.State,
+            Is.EqualTo(SpitterState.Release),
+            "It still reaches the release with the player behind cover.");
+
+        Assert.That(
+            _events.Count<ProjectileFired>(),
+            Is.EqualTo(1),
+            "And the shot leaves. It arrives where the player was standing, which is the price of "
+                + "the promise.");
+    }
+
     // ---- Rule 11: the path in, the straight line out --------------------------------------------
 
     [Test]
@@ -936,9 +1023,19 @@ public sealed class SpitterBehaviourTests
     /// <c>EnemySystem.Perceive</c> would have.
     /// </summary>
     /// <remarks>
-    /// All four fields together, never one of them: a distance that disagrees with the two positions
+    /// <para>
+    /// All five fields together, never one of them: a distance that disagrees with the two positions
     /// would make a release aim somewhere its own arithmetic says the player is not, and the row
     /// that then failed would be about the fixture rather than the behaviour.
+    /// </para>
+    /// <para>
+    /// <b>Line of sight is the fifth, and it has to be stated</b> (M2-11b). <c>EnemyBlackboard.Reset</c>
+    /// leaves it <see langword="false"/>, and a Spitter with no sight does not enter <c>Aim</c> —
+    /// so every row in this file that reaches a telegraph would be asserting that cover was in the
+    /// way rather than that the archetype works. Open ground is what the rest of the fixture
+    /// describes, so open ground is what this says; the rows that want a pillar clear it after
+    /// calling this.
+    /// </para>
     /// </remarks>
     private static void Place(EnemyAgent agent, float distance)
     {
@@ -948,6 +1045,7 @@ public sealed class SpitterBehaviourTests
         blackboard.PlayerPosition = agent.Position + new Vector3(0f, 0f, distance);
         blackboard.DistanceToPlayer = distance;
         blackboard.DirectionToPlayer = new Vector2(0f, 1f);
+        blackboard.HasLineOfSight = true;
     }
 
     private void Place(SpitterBehaviour spitter, float distance) => Place(Agent(spitter), distance);

@@ -460,7 +460,7 @@ is about Unity's.
 
 | Invariant | Break it and | Set in |
 |---|---|---|
-| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15 |
+| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15. **Asserted since M2-11b** by `Tests/PlayMode/FrameOrderTests.cs`, by observation rather than by reading the method — every step but *commands*, which reaches core only through the Input System |
 | `RunSession.Tick`: time → ingest → combat → enemy behaviours → **projectiles** → (dead? end) → **director** → **stage flow** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05, M2-07a, M2-10 |
 | `StageFlow` ticks **after** the director and **before** the motor | the flow reads `IsStageComplete` one frame stale, so every stage ends a frame late; or a stage ends in an arena whose run ended this tick, because the death check is upstream of both | M2-10 |
 | A stage boundary calls `SpawnDirector.Clear()` **before** recomposing the run's one `WavePlan` | the director keeps ticking against a plan being rewritten underneath it: it sizes its per-wave arrays from the plan's dimensions at `Begin` and trusts them for ever, so a stage that grows a wave — GD §12.2's W(n) does, from two to three at stage 5 — walks `SweepTheDead` off the end of them on the first frame of the new arrival. **Nobody may recompose a plan a director is still holding** | M2-10 |
@@ -500,8 +500,10 @@ is about Unity's.
   of damage into the frame's physics phase, one step after the tick that decided it; it makes enemy
   damage non-reproducible from a seed, which is what M2-13 and M2-14 are being built to preserve;
   and it makes an enemy need a body with a trigger before it can hurt anyone, which inverts §3. **The
-  price is that core holds no walls, so a shot passes through a cover pillar** — ledger row 13, and
-  the fix is the sense M2-11b fills, not a fact (ledger row 7, M2-07a).
+  price was that core holds no walls, so a shot passed through a cover pillar** — ledger row 13,
+  **paid at M2-11b with a sense and not a fact**: `LineOfSightSense` fills
+  `EnemySense.HasLineOfSight` and a Spitter simply does not begin a wind-up it cannot see through.
+  Core still holds no walls and never will (ledger row 7, M2-07a; §18.4).
 - **`EnemyTickContext` is built once per tick by `RunSession`, never per agent — and no behaviour
   may store it.** One reading of the clock decides the whole arena, and a behaviour that kept the
   struct would be keeping this tick's clock, this tick's player and this tick's ports; both
@@ -617,6 +619,23 @@ is about Unity's.
   between a player capsule's centre and an enemy's is a rendering detail, and counting it would
   inflate every distance `Reach` is checked against. **Any new sense that measures a separation
   owes the same treatment** (M1-06).
+- **`LineOfSightSense` is the one named exception, and it measures occlusion rather than
+  separation.** A pillar is a solid with a height, so "is there something in between" is asked in
+  full 3D — both ends of the ray lifted to `EyeHeight` (1.1 m, chest height on a 2 m capsule), which
+  is low enough that GD §7.2's 1.5 m pillar blocks it and high enough that the floor, a kerb or a
+  tier's lip does not. **Every *distance* a Spitter uses stays XZ**; only this question leaves the
+  ground plane, and a ray taken between the raw positions would have the arena's own floor deciding
+  fights (M2-11b).
+- **That sense's mask is `Cover` and nothing else — never the Enemy layer.** GD §7.2 makes cover a
+  property of the arena, not of the crowd, and a Spitter that could not fire because a Husk was
+  standing in front of it would read as broken three systems from its cause. M2-11a putting the
+  pillars on a layer of their own is what makes one mask sufficient (M2-11b).
+- **An unmeasured sight line means "can see", and the failure mode is why.** A sense answering
+  *false* when it has not looked switches the whole ranged archetype off in silence; one answering
+  *true* degrades to the arena M2-07b shipped, which is visible and already playtested. The same
+  choice `NavPathSense` makes — no path yet is the straight line, not paralysis — and it is why
+  `SnapshotBuilder` writes `true` for every slot when no sense is composed, rather than leaving the
+  `false` `EnemyViews` used to put there (M2-11b).
 - **`Health.Tick` credits only the slice of its step past the recharge deadline**, not the whole
   `dt` — so the Aegis is worth the same at 30 fps as at 120. Anything else that resumes on a
   deadline mid-step owes the same arithmetic (M1-02).

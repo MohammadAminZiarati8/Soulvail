@@ -283,6 +283,25 @@ public sealed class ChaserBehaviourTests
     }
 
     [Test]
+    public void Chaser_UnaffectedByCover()
+    {
+        // M2-11b rule 7. GD §7.2 gives cover exactly one job — *"cover blocks enemy projectiles but
+        // not pathing"* — and contact damage is neither: a Husk walks around a pillar to reach you
+        // and then hits you, and nothing in between matters because there is nothing in between by
+        // the time it is in reach. The sight line is explicitly false here, which is also what
+        // EnemyBlackboard.Reset leaves it, so this row fails the moment somebody generalises the
+        // Spitter's check onto the shared blackboard read.
+        ChaserBehaviour chaser = Windup(distance: 1f);
+
+        Blackboard(chaser).HasLineOfSight = false;
+
+        TickUntil(chaser, ChaserState.Strike, budgetSeconds: WindupTime + (2f * Frame));
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Strike), "It swings.");
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1), "And it lands.");
+    }
+
+    [Test]
     public void Strike_MissesOutOfReach()
     {
         ChaserBehaviour chaser = Windup(distance: 1f);

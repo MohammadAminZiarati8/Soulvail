@@ -55,6 +55,13 @@ namespace Soulvail.Game.Presentation
     /// direction.
     /// </para>
     /// <para>
+    /// <c>los n/m</c> (M2-11b) is a boundary read of the same kind and the clearest case for the
+    /// category: a cover raycast throttled to nothing and a cover mask that matches nothing both
+    /// produce exactly the game that shipped before the sense existed, and neither publishes an
+    /// event, reaches core, or fails a test. The first number is the frame's raycasts, the second
+    /// how many of them found a pillar.
+    /// </para>
+    /// <para>
     /// Development only. It removes itself in <see cref="Awake"/> outside the Editor and
     /// development builds, so the release APK never carries it on screen — M0-19's manual step 3 is
     /// the check that this actually holds.
@@ -82,8 +89,15 @@ namespace Soulvail.Game.Presentation
         /// Preallocated and rewritten in place. <c>SetText(StringBuilder)</c> copies straight into
         /// TMP's backing array, so the text never becomes a new string — which is the whole reason
         /// the spec asks for a builder rather than concatenation.
+        /// <para>
+        /// Sized ahead of the line rather than to it: the capacity is 160 in the spec and the line
+        /// has grown four times since, so it is raised with each addition. A builder that has to
+        /// grow allocates once and then never again, which is harmless — and is also precisely the
+        /// kind of "it only leaks on the first frame" that is not worth leaving in a file whose
+        /// whole job is measuring frames.
+        /// </para>
         /// </remarks>
-        private readonly StringBuilder _line = new StringBuilder(160);
+        private readonly StringBuilder _line = new StringBuilder(224);
 
         private WorldSnapshot _snapshot;
         private IntentBuffer _intents;
@@ -103,6 +117,18 @@ namespace Soulvail.Game.Presentation
         /// the game can see that.
         /// </summary>
         private ProjectileViews _projectileViews;
+
+        /// <summary>
+        /// The run's cover raycasts, for the two numbers M2-11b's manual steps are read off
+        /// (rule 3 and manual step 3).
+        /// </summary>
+        /// <remarks>
+        /// A boundary read on the same terms as the stale count beside it, and for a stronger
+        /// reason: a budget that is not being applied and a mask that matches nothing both produce
+        /// a game that looks exactly like the one before this feature existed. <c>los</c> says the
+        /// throttle is alive; <c>blocked</c> says the geometry is.
+        /// </remarks>
+        private LineOfSightSense _sight;
 
         private IDisposable _targetSubscription;
         private IDisposable _waveSubscription;
@@ -152,6 +178,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
         /// <param name="paths">The run's path cache, for the stale count.</param>
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
+        /// <param name="sight">The run's cover raycasts, for the budget and the blocked count.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// The run's <c>SpawnPlan</c> came in here until M2-11a, for one question — whether this
@@ -165,13 +192,15 @@ namespace Soulvail.Game.Presentation
             IRunSession session,
             DomainEventHub hub,
             NavPathSense paths,
-            ProjectileViews projectileViews)
+            ProjectileViews projectileViews,
+            LineOfSightSense sight)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
+            _sight = sight ?? throw new ArgumentNullException(nameof(sight));
 
             if (hub is null)
             {
@@ -386,6 +415,18 @@ namespace Soulvail.Game.Presentation
             // just lets routes age until enemies walk into pillars. Anything but zero with a full
             // wave up means the enemy cap and the path budget disagree (M2-05 rule 19).
             _line.Append("  stale ").Append(_paths.StalePathCount.ToString(CultureInfo.InvariantCulture));
+
+            // Raycasts this frame over how many of them found cover — the `bolts rented/pooled`
+            // shape, because the two are read together or not at all. The first should be about
+            // five with a full arena at 60 fps and ten at 30; 28 means the budget is not being
+            // applied. The second is what says the raycast is measuring the right thing: standing
+            // behind a pillar has to move it off zero, and nothing else in the game can show that
+            // it did (M2-11b manual step 3). Spelled `los` rather than `blocked` because the target
+            // line below already owns that word for a focus outside acquire range.
+            _line.Append("  los ").Append(
+                _sight.RaycastsLastFrame.ToString(CultureInfo.InvariantCulture));
+
+            _line.Append('/').Append(_sight.BlockedCount.ToString(CultureInfo.InvariantCulture));
 
             // The id and how it was chosen — the two questions a tuning session asks of targeting.
             // "target -1" is a real answer and worth showing: it is the difference between "the aim

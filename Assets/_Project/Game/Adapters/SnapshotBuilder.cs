@@ -49,6 +49,16 @@ public sealed class SnapshotBuilder
     private readonly NavPathSense _paths;
 
     /// <summary>
+    /// The colliders, asked which enemies have a pillar between them and the player (M2-11b).
+    /// </summary>
+    /// <remarks>
+    /// Beside the path cache and for the same reason it is here rather than in
+    /// <see cref="EnemyViews"/>: occlusion is measured from an enemy <em>to the player</em>, and the
+    /// census knows only where its own bodies are.
+    /// </remarks>
+    private readonly LineOfSightSense _sight;
+
+    /// <summary>
     /// The arenas, asked once a frame which room is standing and where its door and spawn points
     /// are.
     /// </summary>
@@ -74,6 +84,18 @@ public sealed class SnapshotBuilder
     /// </remarks>
     private float _elapsed;
 
+    /// <summary>
+    /// The arena the last frame was sensed in, so that a swap can be noticed rather than announced.
+    /// </summary>
+    /// <remarks>
+    /// What calls <see cref="LineOfSightSense.Clear"/> (M2-11b rule 8). Noticed here rather than
+    /// subscribed to <c>StageArrived</c>, because this class already holds both the pool and the
+    /// sense and because the thing that actually invalidates a cached answer is the <em>geometry</em>
+    /// changing, which is exactly what this field compares. A run that never swaps rooms — a fixture,
+    /// or a mode with one arena — never clears, which is correct.
+    /// </remarks>
+    private ArenaView _sensedArena;
+
     /// <param name="player">The body, asked where it is and what it was told to do.</param>
     /// <param name="input">The one reader of the Input System (M0-14).</param>
     /// <param name="enemies">
@@ -91,18 +113,26 @@ public sealed class SnapshotBuilder
     /// all is a fixture, and core reads <c>HasGate</c> false and no spawn points — which parks its
     /// stage flow at the door it has not got and makes its director inert.
     /// </param>
+    /// <param name="sight">
+    /// The cover raycasts (M2-11b). Null is a real answer on the same terms as a null
+    /// <paramref name="paths"/> — but it reads as <em>everyone can see</em> rather than as a zero,
+    /// because the permissive default is the whole of M2-11b rule 3: a fixture with no sense wired
+    /// gets the arena M2-07b shipped, not one where no Spitter ever fires.
+    /// </param>
     public SnapshotBuilder(
         PlayerView player,
         InputAdapter input,
         EnemyViews enemies,
         NavPathSense paths,
-        ArenaPool arenas)
+        ArenaPool arenas,
+        LineOfSightSense sight)
     {
         _player = player;
         _input = input;
         _enemies = enemies;
         _paths = paths;
         _arenas = arenas;
+        _sight = sight;
     }
 
     /// <summary>
@@ -145,6 +175,20 @@ public sealed class SnapshotBuilder
         // says so, and core parks its stage flow rather than throwing (M2-10 rule 15).
         ArenaView arena = _arenas is null ? null : _arenas.Active;
 
+        // A different room means different pillars, so every cached answer about the old ones is
+        // worse than no answer at all (M2-11b rule 8). Compared rather than subscribed to, and
+        // compared here rather than in WriteSenses so that it happens once a frame instead of once
+        // an enemy. Unity's == on both sides: a destroyed arena is a live reference.
+        if (arena != _sensedArena)
+        {
+            _sensedArena = arena;
+
+            if (_sight is not null)
+            {
+                _sight.Clear();
+            }
+        }
+
         snapshot.HasGate = arena != null && arena.HasGate;
 
         if (snapshot.HasGate)
@@ -165,20 +209,21 @@ public sealed class SnapshotBuilder
         // reads to know how many of the array's slots are this frame's (AR §4.2).
         _enemies.CopyInto(snapshot);
 
-        WritePathDirections(snapshot);
+        WriteSenses(snapshot);
     }
 
     /// <summary>
-    /// Fills every enemy slot's <c>PathDirectionToPlayer</c> from the NavMesh.
+    /// Fills every enemy slot's two derived senses: which way the NavMesh says to walk, and whether
+    /// anything is in the way of a shot.
     /// </summary>
     /// <remarks>
     /// <para>
     /// A second pass over the slots <see cref="EnemyViews.CopyInto"/> has just written, rather than
-    /// a line inside it, because the two answers come from different places: the census knows where
-    /// its bodies are, and only this class also knows where the player is. It reads the position
-    /// back out of the slot instead of asking the view again, so the route is measured from exactly
-    /// the position core is about to be told about — the alternative would be a direction computed
-    /// from one place and a position reported from another.
+    /// lines inside it, because the answers come from different places: the census knows where its
+    /// bodies are, and only this class also knows where the player is. It reads the position back
+    /// out of the slot instead of asking the view again, so both are measured from exactly the
+    /// position core is about to be told about — the alternative would be a route and an occlusion
+    /// computed from one place and a position reported from another.
     /// </para>
     /// <para>
     /// A null <c>NavPathSense</c> leaves the zero <c>CopyInto</c> already wrote, which core reads as
@@ -187,26 +232,46 @@ public sealed class SnapshotBuilder
     /// the whole of M1 before this.
     /// </para>
     /// <para>
-    /// Allocates nothing: a <c>ref</c> into the snapshot's array, two struct conversions per enemy,
-    /// and a cache lookup that only occasionally becomes a path search.
+    /// <b>Line of sight is written on every path through this method, including the null one</b>, and
+    /// that is not symmetry with the line above — it is AR §18.2. <c>CopyInto</c> no longer writes
+    /// the field at all (M2-11b), so this is the only assignment a reused slot gets, and a slot left
+    /// unwritten would inherit an answer about an enemy that despawned two frames ago. The value
+    /// when there is no sense is <see langword="true"/>, for the reason the constructor's parameter
+    /// gives.
+    /// </para>
+    /// <para>
+    /// Allocates nothing: a <c>ref</c> into the snapshot's array, struct conversions per enemy, and
+    /// two cache lookups that only occasionally become a path search and a raycast.
     /// </para>
     /// </remarks>
-    private void WritePathDirections(WorldSnapshot snapshot)
+    private void WriteSenses(WorldSnapshot snapshot)
     {
-        if (_paths is null)
-        {
-            return;
-        }
-
         Vector3 player = snapshot.PlayerPosition.ToUnity();
 
         for (int i = 0; i < snapshot.EnemyCount; i++)
         {
             ref EnemySense sense = ref snapshot.Enemies[i];
 
-            sense.PathDirectionToPlayer = _paths
-                .DirectionFor(sense.Id, sense.Position.ToUnity(), player, _elapsed)
-                .ToNum();
+            Vector3 self = sense.Position.ToUnity();
+
+            if (_paths is not null)
+            {
+                sense.PathDirectionToPlayer = _paths
+                    .DirectionFor(sense.Id, self, player, _elapsed)
+                    .ToNum();
+            }
+
+            // The population is this frame's own census rather than the previous frame's, which is
+            // the one place this sense differs from the path cache: the count is settled by the
+            // line above this method's call site, so the budget can be sized from it.
+            sense.HasLineOfSight = _sight is null
+                || _sight.HasLineOfSight(
+                    sense.Id,
+                    self,
+                    player,
+                    _elapsed,
+                    snapshot.EnemyCount,
+                    snapshot.Dt);
         }
     }
 }

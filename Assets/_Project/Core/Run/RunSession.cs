@@ -7,6 +7,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 
 namespace Soulvail.Core.Run;
@@ -44,6 +45,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     private readonly IRandom _random;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
+    private readonly RunRecorder _recorder;
     private readonly int _enemyCapacity;
     private readonly int _deviceEnemyCap;
     private readonly int _projectileCapacity;
@@ -86,6 +88,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// </param>
     /// <param name="events">Where run lifecycle events go.</param>
     /// <param name="intents">Where each tick's <see cref="PlayerMoveIntent"/> is written.</param>
+    /// <param name="recorder">
+    /// What writes the run down at the two moments a resume can be built from (M2-14a). Injected
+    /// rather than constructed here, and that is rule 12 rather than a preference: a recorder holds
+    /// the wall clock, so a session that built its own would have to take an <see cref="IClock"/> —
+    /// which is the one dependency <c>Soulvail.Core.Run</c> is asserted not to have (AR §18.2).
+    /// </param>
     /// <param name="enemyCapacity">
     /// The most enemies a run may hold at once, for the <see cref="EnemySystem"/> each
     /// <see cref="Start"/> builds. It must be the number the <c>WorldSnapshot</c> was built with,
@@ -128,6 +136,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         IRandom random,
         IDomainEvents events,
         IIntentSink intents,
+        RunRecorder recorder,
         int enemyCapacity,
         int deviceEnemyCap,
         int projectileCapacity)
@@ -136,6 +145,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+        _recorder = recorder ?? throw new ArgumentNullException(nameof(recorder));
 
         if (enemyCapacity <= 0)
         {
@@ -270,6 +280,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // advanced. That is accepted: the run it was drawn for does not exist, and the alternative
         // — duplicating the composer's eligibility rule here so the real call can happen later —
         // is two copies of one rule, which is how they come to disagree.
+        // **Before the composition below, and this line is the whole of M2-14a rule 5.** The
+        // opening snapshot has to describe the streams as they stood *before* anything drew for the
+        // stage it names, because a resume restores this position and composes that same stage from
+        // it — a position read after the composition would deal the resumed run a different opening
+        // stage under the same number, which is ledger row 1's bug with the numbers swapped.
+        //
+        // It is read here and announced much further down rather than both at once, because those
+        // are two different moments and cannot be made one: the composition sits inside this
+        // validation block so that an ineligible mode throws with nothing announced (ledger row 3,
+        // AR §18.1), while a snapshot must not be announced before the run it belongs to is. The
+        // gap between the two is exactly the composition the snapshot must not include.
+        RandomState opening = _random.Capture();
+
         WavePlan plan = null;
         WaveComposer composer = null;
 
@@ -350,6 +373,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         _events.Publish(new RunStarted(config.CharacterId, seed));
 
         IsRunning = true;
+
+        // The run is on disk from its first frame (rule 1), carrying the position captured at the
+        // top of this method rather than one read here (rule 5).
+        //
+        // **The opening write is what stops a stale run being resumed** (rule 2). Without it, a
+        // player who abandons a stage-12 run, starts a fresh one and loses the phone in stage 1
+        // resumes into stage 12 — the file on disk describes a run nobody is playing until the new
+        // one reaches its own first boundary, forty to seventy-five seconds later. The alternative
+        // was the Menu deleting the file when Descend is tapped, which puts an ISaveStore and a
+        // fire-and-forget delete into a presenter; writing the new run down instead needs no new
+        // dependency anywhere and makes the file describe the run in progress at all times.
+        //
+        // The stage is the config's, never assumed to be 1: a run that begins at 7 resumes at 7.
+        _recorder.Take(State, config.StageIndex, opening);
 
         // After RunStarted, and the order is asserted by a test. Subscribers are wired when the
         // scope is built, well before this — so the reason is not "so that anyone is listening",
@@ -519,6 +556,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // with no stage — the depth is still the config's and everything priced against it still is.
         if (_flow is not null)
         {
+            // Read before the flow moves, compared after: the *edge* into Clear is the write point,
+            // and a flow parked in Clear for a second and a half must not write once a frame
+            // (M2-14a rule 1). Rejected: a parameter on StageFlow's constructor, which would widen
+            // a shape M2-10 fixed for a caller that only wants to know when.
+            StagePhase phaseBefore = _flow.Phase;
+
             _flow.Tick(State.Time, snapshot, _random.Spawn);
 
             // Copied rather than owned, because the two numbers answer different questions: the
@@ -535,6 +578,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 End();
 
                 return;
+            }
+
+            // The stage boundary, and GD §7.3's "run state persists to disk at every stage
+            // boundary" in one line. The moment is the frame the last body of a stage drops —
+            // M2-10 rule 3's — rather than the next stage's arrival, because the beat in between is
+            // the gate wait, and that is the natural "put the phone down" point. A phone put down
+            // at the door must already be saved.
+            //
+            // The snapshot describes the stage the player is about to play, so the next one (rule
+            // 3) — and it is taken here, upstream of the recompose that happens three phases later
+            // at the end of Transition, which is what makes a resumed run compose byte-identical
+            // waves (rule 5). Nothing draws during Clear, Gate or Transition: the director's queue
+            // is spent, so MaybeTelegraph returns before its one draw, and StageFlowTests'
+            // Tick_DrawsNoRandomOutsideComposition is the assertion from the other side.
+            //
+            // After the IsModeComplete check above, deliberately (rule 6): a finite mode that has
+            // just cleared its final stage is a run that is over, and a snapshot of it would be a
+            // resume into a stage the mode does not have. Inert while Descent is endless, and
+            // written anyway for M2-10 rule 14's reason.
+            if (phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear)
+            {
+                _recorder.Take(State, _flow.Stage + 1);
             }
         }
 

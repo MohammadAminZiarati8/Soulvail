@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -131,7 +132,7 @@ public sealed class ChargeIntegrationTests
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // The player stands at the origin and — except in the one row that pushes the stick — never
         // touches it, so a dash goes where the character is looking and every enemy's spawn position
@@ -417,7 +418,7 @@ public sealed class ChargeIntegrationTests
         // 15 HP against the Charge's 20: the one row where a dash finishes something, and the reason
         // CC §5 calls it a damaging dodge rather than an escape.
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         int husk = StartRun(At(5f))[0];
 
@@ -454,7 +455,7 @@ public sealed class ChargeIntegrationTests
             new[] { Husk() },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty));
@@ -525,7 +526,7 @@ public sealed class ChargeIntegrationTests
             new[] { Husk(maxHp: 1e9f) },
             new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

@@ -241,6 +241,26 @@ public sealed class RunState
     public float PlayerShieldFraction => Combat.Health.ShieldFraction;
 
     /// <summary>
+    /// The Aegis in absolute points, and zero for a class without one — what a save writes down.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A second narrow read of the same number as <see cref="PlayerShieldFraction"/>, added at
+    /// M2-14a, and the duplication is the point rather than an oversight: a fraction is what a ring
+    /// fills to, and it cannot be restored without the maximum that produced it. That maximum is a
+    /// <see cref="Stat"/>, so M3's first shield node moves it — and a run resumed against a moved
+    /// maximum would come back with a different number of points than it was saved with, silently
+    /// and in the player's favour or against it depending on which way the node went.
+    /// </para>
+    /// <para>
+    /// A read, never the handle, for the reason every entry in this block gives (AR §18.2):
+    /// <c>Health</c> has a public <c>ApplyDamage</c>. <see cref="PlayerHp"/> is absolute for the
+    /// same reason and has been since M1-17, which is why it needed nothing doing to it here.
+    /// </para>
+    /// </remarks>
+    public float PlayerShield => Combat.Health.Shield;
+
+    /// <summary>
     /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the
     /// instant a dash starts, 0 while the button is live. What M1-16's radial fill draws.
     /// </summary>

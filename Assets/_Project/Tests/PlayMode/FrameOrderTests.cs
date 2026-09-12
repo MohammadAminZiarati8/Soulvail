@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
@@ -174,6 +176,11 @@ public sealed class FrameOrderTests
             _enemyViews,
             _projectileViews,
             _telegraphRings,
+
+            // Nothing here takes a snapshot, so this writes nothing — it is on the constructor for
+            // the reason the rings above are (M2-14a rule 8): being on that constructor is what
+            // guarantees the writer is subscribed before a run can announce its opening snapshot.
+            new SaveWriter(new InertSaveStore(), _hub),
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
@@ -498,6 +505,29 @@ public sealed class FrameOrderTests
     /// that is where <c>PlayerCombat</c> writes one, later in the frame than every other intent in
     /// the buffer, and it is the entire reason <c>ApplyKnockbacks</c> is the last line of the tick.
     /// </remarks>
+    /// <summary>
+    /// An <see cref="ISaveStore"/> that accepts everything and keeps nothing.
+    /// </summary>
+    /// <remarks>
+    /// Nested rather than borrowed from <c>Soulvail.Tests.Core</c>'s fakes shelf, which this
+    /// assembly deliberately does not reference: <c>Soulvail.Tests.PlayMode</c> sees core and the
+    /// game and nothing else, and opening it to another test assembly to save eight lines would be
+    /// the wrong trade. Nothing in this fixture publishes a snapshot, so every method here is a
+    /// stand-in for a dependency rather than a behaviour under test.
+    /// </remarks>
+    private sealed class InertSaveStore : ISaveStore
+    {
+        public Task<PlayerProfile?> LoadProfile() => Task.FromResult<PlayerProfile?>(null);
+
+        public Task SaveProfile(PlayerProfile profile) => Task.CompletedTask;
+
+        public Task<RunSnapshot?> LoadRun() => Task.FromResult<RunSnapshot?>(null);
+
+        public Task SaveRun(RunSnapshot run) => Task.CompletedTask;
+
+        public Task ClearRun() => Task.CompletedTask;
+    }
+
     private sealed class RecordingCore : IRunSession, IPlayerCommands
     {
         private readonly IntentBuffer _intents;

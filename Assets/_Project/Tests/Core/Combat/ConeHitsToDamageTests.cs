@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -97,7 +98,7 @@ public sealed class ConeHitsToDamageTests
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // The player stands at the origin all fixture long and never touches the stick, so every
         // enemy's spawn position is also its distance and the cone's origin is the origin.
@@ -314,7 +315,7 @@ public sealed class ConeHitsToDamageTests
         // measures the same path — the one where damage lands and an event goes out.
         var catalog = new ContentCatalog(
             new[] { Oathbound() }, new[] { Husk(maxHp: 1e9f) }, new[] { Descent() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

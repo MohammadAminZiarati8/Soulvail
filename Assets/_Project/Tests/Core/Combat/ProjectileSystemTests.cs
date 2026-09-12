@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -699,6 +700,7 @@ public sealed class ProjectileSystemTests
             new FixedRandom(Seed),
             _events,
             _intents,
+            new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events),
             EnemyCapacity,
             DeviceCap,
             Capacity);

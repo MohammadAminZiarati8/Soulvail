@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Soulvail.Core.Common;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 
 namespace Soulvail.Tests.Core;
 
@@ -78,13 +79,34 @@ public sealed class AssemblyPurityTests
     /// nobody questions.
     /// </summary>
     /// <remarks>
-    /// The array is the seam: M2-14a widens this to every type in <c>Soulvail.Core.Run</c>, at
-    /// which point the literal below becomes a namespace sweep and the loop stays as it is.
+    /// <para>
+    /// <b>Widened at M2-14a from <c>RunSession</c> to every type in <c>Soulvail.Core.Run</c></b>,
+    /// which is what the array was a seam for. An invariant that names one class is one refactor
+    /// away from being decorative, and M2-14a is the task that gave it something to be tempted by:
+    /// a snapshot is stamped with wall-clock, and the obvious way to reach one from
+    /// <c>RunSession.Start</c> is a constructor parameter nobody would question. It takes a
+    /// <c>RunRecorder</c> instead — see <see cref="Recorder_MayTakeAClock"/>, which is the
+    /// exception stated out loud so this row cannot be read as a ban on the recorder too.
+    /// </para>
+    /// <para>
+    /// The sweep is over the loaded assembly rather than a list, so a type added to the namespace
+    /// tomorrow is covered without anyone remembering to add it here — which is the whole
+    /// difference between an invariant and a note.
+    /// </para>
     /// </remarks>
     [Test]
-    public void RunSession_TakesNoClock()
+    public void Run_NoTypeTakesAClock()
     {
-        Type[] runTypes = { typeof(RunSession) };
+        Type[] runTypes = RunNamespaceTypes();
+
+        Assert.That(
+            runTypes,
+            Is.Not.Empty,
+            "The namespace sweep found nothing, so this row would pass against any code at all.");
+
+        // The seam it replaced, kept as an explicit member of the set: whatever else the sweep
+        // finds, it has to find this one.
+        Assert.That(runTypes, Contains.Item(typeof(RunSession)));
 
         foreach (Type type in runTypes)
         {
@@ -100,5 +122,58 @@ public sealed class AssemblyPurityTests
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// The exception <see cref="Run_NoTypeTakesAClock"/>'s rule states, asserted rather than
+    /// assumed: <c>RunRecorder</c> takes an <see cref="IClock"/>, and is allowed to.
+    /// </summary>
+    /// <remarks>
+    /// AR §18.2's rule is about the <em>simulation</em> reading wall-clock. A save stamp is not
+    /// simulation — it is the one number that says when a file was written — and the recorder is in
+    /// <c>Soulvail.Core.Save</c> precisely so that the sweep above can be as wide as it is. Without
+    /// this row, the next reader of that sweep would reasonably conclude that core may not hold a
+    /// clock anywhere, and the fix for the bug they were chasing would be to delete the stamp.
+    /// </remarks>
+    [Test]
+    public void Recorder_MayTakeAClock()
+    {
+        var found = false;
+
+        foreach (ConstructorInfo constructor in typeof(RunRecorder).GetConstructors())
+        {
+            foreach (ParameterInfo parameter in constructor.GetParameters())
+            {
+                found |= parameter.ParameterType == typeof(IClock);
+            }
+        }
+
+        Assert.That(
+            found,
+            Is.True,
+            "RunRecorder is the one type in core that holds wall-clock. If it stopped taking one, "
+            + "either the stamp moved or it moved — and the sweep above would need re-reading.");
+
+        Assert.That(
+            typeof(RunRecorder).Namespace,
+            Is.EqualTo("Soulvail.Core.Save"),
+            "It is outside Soulvail.Core.Run on purpose: that is what lets the sweep be a "
+            + "namespace rather than a list with an exception in it.");
+    }
+
+    /// <summary>Every type declared in <c>Soulvail.Core.Run</c>, from the compiled assembly.</summary>
+    private static Type[] RunNamespaceTypes()
+    {
+        var types = new List<Type>();
+
+        foreach (Type type in typeof(RunSession).Assembly.GetTypes())
+        {
+            if (type.Namespace == "Soulvail.Core.Run")
+            {
+                types.Add(type);
+            }
+        }
+
+        return types.ToArray();
     }
 }

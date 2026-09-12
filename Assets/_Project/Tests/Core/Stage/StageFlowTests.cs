@@ -9,6 +9,7 @@ using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
@@ -1182,6 +1183,7 @@ public sealed class StageFlowTests
             new FixedRandom(0, Alternating(8_192)),
             _events,
             intents,
+            new RunRecorder(new FixedRandom(0, Alternating(8_192)), new FixedClock(default), _events),
             Capacity,
             DeviceCap,
             ProjectileCapacity);

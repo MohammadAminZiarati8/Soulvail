@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -260,7 +261,7 @@ public sealed class FocusResolverTests
     [Test]
     public void Commands_WhenNotRunning_Throw()
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // Before any run: State is null, so a no-op here would be a NullReferenceException one line
         // later anyway. Throwing says which of the two problems it is.
@@ -289,7 +290,7 @@ public sealed class FocusResolverTests
     /// </summary>
     private RunSession StartedRun(params Vector3[] positions)
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(Config(positions));
         Tick(session);

@@ -136,4 +136,37 @@ public sealed class TelegraphRings : IDisposable
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+**Built as specified in behaviour; eleven deviations, three of which change a decision. Two items are reported rather than answered and both are the owner's — see the last section.**
+
+### Deviations that change a decision
+
+1. **`TelegraphRings` is registered in `RunScope`, not `RunInstaller`, and it is *required* rather than optional — with a second guard nothing in the spec asked for.** The registration half is forced for the reason `ArenaPool`, `EnemyViews`, `ProjectileViews` and M2-12a's `ThreatArrows` all moved: two of its four arguments are references to *this scene*, and `RunInstaller` is deliberately the half a headless test can build. The *required* half is M2-12a's argument transplanted: GD §9.1 rule 1 — everything is telegraphed — is an **invariant**, and this is the only thing in the game that draws a spawn telegraph, so a run composed without rings is one where bodies appear from nowhere. The second guard is the one worth naming: **a prefab whose quad was never dragged into its field rents, binds, steps and returns perfectly and draws nothing at all**, so the feature would be silently absent rather than broken. `TelegraphRingView.IsDrawable` exists solely so the composition root can say that out loud, once, instead of the run looking exactly like the one before this task.
+
+2. **A spawn ring is 1 m in radius, and the number is derived rather than chosen.** Rule 8 asks for "exactly the clearance the director promised" without naming it, and `SpawnTelegraphed` carries no radius. The only circle core actually tests for a spawn is `SpawnDirector.MinSpawnSeparation` (2 m), and **its own note says the thing it prevents is "two rings on one patch of floor"** — so half of it is precisely the disc the director reserved for this body and nobody else, and two spawn rings therefore can never overlap. Spelled `TelegraphRings.SpawnRingRadius = SpawnDirector.MinSpawnSeparation / 2f` so the two cannot drift apart, with a test row asserting exactly that. The alternative readings — `MinPlayerDistance`'s 6 m, or an authored constant — would each draw a circle core never tested.
+
+3. **The fill is the quad's own scale, not a shader property, so "one quad per ring" is literal.** Rule 5 describes "a disc growing from the centre to the rim", which a scaled quad *is* — so no shader, no second draw call, no `S_` asset, and the additive overdraw rule 10 is about stays at one quad per ring. **The cost is real and is the one thing to look at on a device:** there is no rim outline at full radius, so a spawn ring shows *where* the body will land only as the disc arrives, rather than marking the full extent from the first frame. Manual step 5 is where that gets judged; a rim would be a second quad and double the overdraw the rule exists to bound.
+
+### Deviations in shape
+
+4. **`TelegraphRingView` exposes five members the spec's API block does not list:** `Radius`, `Fill`, `Alpha`, `Colour` and `IsDrawable`. The first four are what let the behaviour rows assert the arithmetic without reaching through a renderer into a material — the claim in rule 5 is about the countdown, not about URP — and the fifth is deviation 1's guard.
+5. **`TelegraphRings` exposes `PooledCount` and `SpawnRingRadius`.** `PooledCount` is what the spec's own Files table asks for two lines later ("`DebugOverlay` shows rented-versus-pooled"); it could not be met without it.
+6. **`InstallerTests` gained nothing**, against the ripple row. It covers `RunInstaller`, and the registration is on `RunScope`, whose `Configure` runs only when a scene loads. Exactly what happened to M2-12a for the same reason.
+7. **One asset the Files table does not name: `Materials/M_TelegraphRing.mat`.** A `MeshRenderer` with no material draws magenta, and rule 10's "additive-transparent" has to be serialised somewhere. URP/Unlit, `_Surface` transparent, `SrcAlpha`/`One` additive, `ZWrite` off, double-sided, queue 3000 — the `M_Reticle` recipe with the blend swapped.
+8. **The `MaterialPropertyBlock` is built on first paint, and neither obvious place works.** A field initialiser throws `"CreateImpl is not allowed to be called from a MonoBehaviour constructor (or instance field initializer)"` — and it throws **at import**, from inside `AddComponent` and prefab serialisation, which is how it was found: four exceptions while saving the prefab, from code that compiles cleanly and that no test would have run. `ReticleView` builds its own in `Awake` for that reason, but `Awake` never runs in EditMode (Traps §5) and a fixture-bound body would then paint through a null. Filed as a Traps candidate — see the PROGRESS entry.
+9. **`Rings_ElevenAtOnce` asserts `Count + PooledCount == 11`** rather than counting `Instantiate` calls, which nothing in the project can observe. Same shape as `Prewarm_InstantiatesUpFront`.
+10. **Twenty test rows rather than the spec's sixteen plus implied guards** — the extra is `SpawnRingRadius_IsHalfTheDirectorsSeparation`, which is deviation 2 under test.
+11. **The step sits immediately after `_projectileViews.Step`, and that neighbour's comment was rewritten.** It claimed to be "the last cosmetic thing in the frame", which stopped being true. Both are now described as the frame's two purely cosmetic steps, read by nothing below.
+
+### Reported, not answered — both the owner's
+
+**The physics-sync question, now with a measurement.** M2-12a left `Physics.SyncTransforms()` as a recommendation the owner had not ruled on, and this task was told not to touch it. It was not touched. What this task can add is evidence, taken three ways with the Run scene open:
+
+| Tree | PlayMode |
+|---|---|
+| `dev` (12a merged) | **10 passed, 1 failed** — `Ticker_RunsTheStepsInOrder`. Reproduced twice, once with the fixture in isolation. |
+| this branch | **9 passed, 2 failed** — that row plus `Ticker_ReportsFactsAfterBodiesMoved`. Both are only the `ConeReport` assertion; every ordering assertion passes. |
+| this branch **+ the one line**, temporarily, then reverted | **11 passed, 0 failed.** |
+
+So: **`dev` is not green either** — the merged baseline fails one of these rows, which Current State did not yet say — and this branch moves the count by one. That is expected from the mechanism rather than from the rings: with `m_AutoSyncTransforms` at 0, whether the sweep sees a body that moved this frame depends on whether a `FixedUpdate` happened to intervene, and **the ring step lands inside exactly that window** (between `ApplyEnemyMoves` and the fact phase), so it changes the load either side of an assertion that was already decided by timing. It touches no collider and asks physics nothing. **The one line makes all eleven green, which is the AR §18.1 invariant becoming true of the code rather than only of the call order.** `RunTicker`'s step order is outside this task's remit and nothing was kept: `grep SyncTransforms` over the branch returns nothing.
+
+**The palette now couples two namespaces both ways.** Rule 7's colour is read from `ThreatArrows.Danger` rather than copied, which is what the owner asked for and keeps `#FF4A1F` in one place. But `Presentation` already depends on `Views` (both `ThreatArrows` and `DebugOverlay` do), so `Views → Presentation` makes the two mutually dependent — legal inside one assembly, and untidy. The one-line fix is a shared `Palette` holding GD §16.4's two colours, which is a file outside this task's table. Left as is, flagged.

@@ -67,6 +67,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly ProjectileViews _projectileViews;
 
+    /// <summary>
+    /// The rings on the floor. Held for the two reasons the bolts above are, and they are the same
+    /// one: it has to be stepped with the snapshot's <c>Dt</c> (M2-12b rule 4), and being on this
+    /// object's dependency chain is what guarantees it is listening before <see cref="Start"/> can
+    /// let the director telegraph anything.
+    /// </summary>
+    private readonly TelegraphRings _telegraphRings;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -99,6 +107,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ChargeMotion charge,
         EnemyViews enemyViews,
         ProjectileViews projectileViews,
+        TelegraphRings telegraphRings,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
@@ -114,6 +123,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
+        _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
@@ -276,9 +286,16 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
         // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on
         // Time.deltaTime would arrive at the target ahead of the damage it stands for on exactly
-        // the hitching frames the clamp exists for. It is the last cosmetic thing in the frame and
-        // nothing below reads it — a bolt has no body, so no sweep can be answered against one.
+        // the hitching frames the clamp exists for. Nothing below reads it — a bolt has no body, so
+        // no sweep can be answered against one.
         _projectileViews.Step(_snapshot.Dt);
+
+        // The rings, for the same reason and on the same clock (M2-12b rule 4). Core runs the
+        // telegraph's own 0.8 s countdown on the clamped step, so a ring filled on the wall clock
+        // would finish before — or after — the body it promises actually lands, which is the one
+        // thing a telegraph is not allowed to do. Read by nothing below either: a decal has no
+        // collider, so the pair of them are the frame's two purely cosmetic steps.
+        _telegraphRings.Step(_snapshot.Dt);
 
         StepCharge();
 

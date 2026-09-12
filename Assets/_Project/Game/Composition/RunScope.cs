@@ -56,6 +56,21 @@ namespace Soulvail.Game.Composition
         /// </remarks>
         private const int ThreatArrowPrewarm = 8;
 
+        /// <summary>
+        /// How many ground rings exist before the run starts.
+        /// </summary>
+        /// <remarks>
+        /// Eight, and the arithmetic is the director's: a spawn ring is up for
+        /// <c>SpawnDirector.TelegraphTime</c> (0.8 s) and the bodies of a wave are spaced
+        /// <c>SpawnInterval</c> (0.35 s) apart, so a wave has three of them on the floor at once at
+        /// the very most. The rest is headroom for blast rings, which arrive with deaths rather than
+        /// on a clock and so have no ceiling worth computing — several Bloaters can be killed in one
+        /// swing. The set grows past this if it ever happens and keeps what it grew, so the number
+        /// only decides whether the <c>Instantiate</c> happens while the scene loads or on the frame
+        /// a wave is announced (AR §14, GD §11.3).
+        /// </remarks>
+        private const int TelegraphRingPrewarm = 8;
+
         [SerializeField] private PlayerView _playerView;
 
         [Tooltip("The dash, on the Player object. Not optional, unlike the reticle and the glow: " +
@@ -136,6 +151,14 @@ namespace Soulvail.Game.Composition
                  "rect is the border they are placed on, which is how a notch is avoided without " +
                  "a second copy of the safe-area arithmetic.")]
         [SerializeField] private RectTransform _threatArrowRoot;
+
+        [Tooltip("The one ground ring prefab (GD §7.1). Both kinds of ring — the spawn countdown " +
+                 "and the blast flash — are the same body, told apart by how they are bound.")]
+        [SerializeField] private TelegraphRingView _telegraphRingPrefab;
+
+        [Tooltip("Where ground decals are parented: the Decals object in this scene. Optional — " +
+                 "they go to the scene root without it, which is untidy rather than wrong.")]
+        [SerializeField] private Transform _decalRoot;
 
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
@@ -448,6 +471,47 @@ namespace Soulvail.Game.Composition
                 .WithParameter("camera", _camera)
                 .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup))
                 .WithParameter("prewarm", ThreatArrowPrewarm);
+
+            // The ground rings (M2-12b). Registered here rather than in RunInstaller, which is where
+            // the spec put it, for the reason ArenaPool, the two view censuses and the arrows above
+            // are here: two of its arguments are references to *this scene*, and the static installer
+            // is deliberately the half a headless test can build.
+            //
+            // Required rather than optional like the reticle and the glow, on the arrows' argument
+            // rather than on theirs: GD §9.1 rule 1 — everything is telegraphed — is an invariant,
+            // and this is the only thing in the game that draws a spawn telegraph. A run composed
+            // without rings is a run where bodies appear out of nowhere, which is unfair in a way
+            // nothing on screen would report.
+            //
+            // The second half of the guard is the one that would otherwise be silent. A prefab whose
+            // quad was never dragged into its field rents, binds, steps and returns perfectly and
+            // draws nothing at all, so the run looks exactly like the one before this task existed.
+            if (_telegraphRingPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(TelegraphRingView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_TelegraphRing.prefab onto its Telegraph Ring Prefab field — " +
+                    "without it a wave's bodies appear with no ring first and a Bloater's blast has " +
+                    "no circle, so neither is something the player could have read (GD §7.1, §9.1).");
+            }
+
+            if (!_telegraphRingPrefab.IsDrawable)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)}'s telegraph ring prefab has no quad assigned. Drag the " +
+                    $"{nameof(MeshRenderer)} on VFX_TelegraphRing.prefab onto its own Quad field — " +
+                    "without it every ring in the run is timed, sized and returned correctly and " +
+                    "none of them is ever visible.");
+            }
+
+            // Prewarmed for the reason the two censuses above are, and parented under the scene's
+            // decal root rather than the arena's: an arena is torn down and raised again at every
+            // stage boundary (M2-11a), and a ring parented to one would be destroyed mid-life by a
+            // swap it has nothing to do with.
+            builder.Register<TelegraphRings>(Lifetime.Scoped)
+                .WithParameter("prefab", _telegraphRingPrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", TelegraphRingPrewarm);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

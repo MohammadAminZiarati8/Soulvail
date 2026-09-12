@@ -103,6 +103,7 @@ public sealed class FrameOrderTests
     private WorldSnapshot _snapshot;
     private EnemyViews _enemyViews;
     private ProjectileViews _projectileViews;
+    private TelegraphRings _telegraphRings;
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
@@ -136,6 +137,12 @@ public sealed class FrameOrderTests
 
         _projectileViews = new ProjectileViews(_container, ProjectileTemplate(), null, _hub);
 
+        // Nothing in this fixture publishes a telegraph or a blast, so the census stays empty and
+        // steps nothing. It is here because the ticker takes one, which is M2-12b rule 4's other
+        // half: being on that constructor is what guarantees the rings are listening before a run
+        // can announce a wave.
+        _telegraphRings = new TelegraphRings(_container, RingTemplate(), null, _hub, prewarm: 0);
+
         _input = new InputAdapter();
 
         // Never enabled, which is what makes the command phase a no-op: both properties the ticker
@@ -166,6 +173,7 @@ public sealed class FrameOrderTests
             charge,
             _enemyViews,
             _projectileViews,
+            _telegraphRings,
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
@@ -191,6 +199,9 @@ public sealed class FrameOrderTests
 
         _projectileViews?.Dispose();
         _projectileViews = null;
+
+        _telegraphRings?.Dispose();
+        _telegraphRings = null;
 
         _input?.Dispose();
         _input = null;
@@ -457,6 +468,17 @@ public sealed class FrameOrderTests
         Track(root);
 
         return root.AddComponent<ProjectileView>();
+    }
+
+    private TelegraphRingView RingTemplate()
+    {
+        var root = new GameObject("RingTemplate");
+
+        root.SetActive(false);
+
+        Track(root);
+
+        return root.AddComponent<TelegraphRingView>();
     }
 
     private T Track<T>(T o)

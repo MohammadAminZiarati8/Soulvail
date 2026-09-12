@@ -293,6 +293,8 @@ MonoBehaviour:
   - {x: 7.78, y: 0, z: -7.78}
   _threatArrowPrefab: {fileID: 3318980382163284144, guid: 0981ac6eefc5b634ea7eeda8652c008a, type: 3}
   _threatArrowRoot: {fileID: 2052539127}
+  _telegraphRingPrefab: {fileID: 6128909648785952691, guid: 31a893a7d849acf4cb6a1b2fabda5955, type: 3}
+  _decalRoot: {fileID: 1484466969}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}
   - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}
@@ -700,6 +702,37 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &1484466968
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1484466969}
+  m_Layer: 0
+  m_Name: Decals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1484466969
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1484466968}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1668478927
 GameObject:
   m_ObjectHideFlags: 0
@@ -1089,3 +1122,4 @@ SceneRoots:
   - {fileID: 2001746809}
   - {fileID: 894525614}
   - {fileID: 1668478928}
+  - {fileID: 1484466969}

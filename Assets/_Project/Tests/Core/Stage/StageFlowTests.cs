@@ -1197,7 +1197,7 @@ public sealed class StageFlowTests
         new SpawnPlan(
             executionerAt is null
                 ? Array.Empty<SpawnPlan.Entry>()
-                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }));
+                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore: null);
 
     private static WorldSnapshot SessionSnapshot(float dt, Vector3 playerPosition, Vector3? gate = null) =>
         new WorldSnapshot(Capacity)

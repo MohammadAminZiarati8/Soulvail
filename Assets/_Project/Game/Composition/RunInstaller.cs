@@ -119,7 +119,30 @@ public static class RunInstaller
 
         if (pending.IsSet)
         {
-            return new SeededRandom(pending.Seed);
+            var seeded = new SeededRandom(pending.Seed);
+
+            // **The restore happens here and nowhere else** (M2-14b rule 3). The seed selects
+            // which sequence each stream walks and the captured state says how far along it is, so
+            // a generator built from the snapshot's seed and then put back where it stood is a
+            // complete restore — and by the time RunSession.Start runs, the streams are already
+            // there. Core never learns that anything was rewound.
+            //
+            // The alternative was core applying it from RunConfig.Restore, which needs an
+            // IRandom.Reseed or a position setter reachable from every system holding a stream —
+            // precisely the door M2-13a rule 7 declined to open, and for the reason IRandomStream's
+            // own remarks give: a behaviour that could rewind the sequence it draws from produces
+            // a determinism bug that reads as a content bug for a week.
+            //
+            // Nothing is checked against the seed here, because nothing can be: every 64-bit value
+            // is a legal position, so a state captured under a different seed is indistinguishable
+            // from a legitimate one. The agreement is checked where both are visible and named —
+            // RunSession.Start, rule 4.
+            if (pending.Snapshot is RunSnapshot snapshot)
+            {
+                seeded.Restore(snapshot.Random);
+            }
+
+            return seeded;
         }
 
         int fallbackSeed = Environment.TickCount;

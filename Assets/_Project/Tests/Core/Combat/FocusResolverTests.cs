@@ -344,7 +344,7 @@ public sealed class FocusResolverTests
             new ContentId(OathboundId),
             Seed,
             1,
-            new SpawnPlan(entries.ToArray()));
+            new SpawnPlan(entries.ToArray()), restore: null);
     }
 
     private static ContentCatalog Catalog() =>

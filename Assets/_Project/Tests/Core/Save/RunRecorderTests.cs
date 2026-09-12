@@ -662,7 +662,7 @@ public sealed class RunRecorderTests
         new SpawnPlan(
             executionerAt is null
                 ? Array.Empty<SpawnPlan.Entry>()
-                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }));
+                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore: null);
 
     private void TickFor(int ticks)
     {

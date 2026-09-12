@@ -584,7 +584,7 @@ public sealed class PlayerCombatTests
             new ContentId(OathboundId),
             Seed,
             1,
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(5f, 0f, 0f)) })));
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(5f, 0f, 0f)) }), restore: null));
 
         Assert.That(session.State.PlayerFacing, Is.EqualTo(Vector3.UnitZ), "Sanity: a run starts looking down +Z.");
 
@@ -631,7 +631,7 @@ public sealed class PlayerCombatTests
             new ContentId(OathboundId),
             Seed,
             1,
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) })));
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) }), restore: null));
 
         var snapshot = new WorldSnapshot(EnemyCapacity);
         snapshot.Dt = Frame;

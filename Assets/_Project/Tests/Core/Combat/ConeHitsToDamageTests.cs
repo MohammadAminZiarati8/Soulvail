@@ -322,7 +322,7 @@ public sealed class ConeHitsToDamageTests
             new ContentId(OathboundId),
             Seed,
             1,
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) })));
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) }), restore: null));
 
         Assert.That(events.LastSpawnedId, Is.GreaterThan(0), "Sanity: the dummy is out there.");
 
@@ -407,7 +407,7 @@ public sealed class ConeHitsToDamageTests
         }
 
         _session.Start(new RunConfig(
-            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries)));
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries), restore: null));
 
         IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
         var ids = new int[spawned.Count];

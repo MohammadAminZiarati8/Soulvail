@@ -19,6 +19,12 @@ namespace Soulvail.Core.Run;
 /// arenas is <see cref="Empty"/>.
 /// </para>
 /// <para>
+/// <b>It carried the arena's spawn points until M2-11a and no longer does.</b> They were here
+/// because a run had one room; a run has one room per stage now, so a per-run field would have
+/// described the arena the player is no longer standing in. They belong to the arena, arrive on
+/// <c>WorldSnapshot.SpawnPoints</c>, and reach the director at <c>Begin</c>.
+/// </para>
+/// <para>
 /// Authored data, not live state: immutable, copied on construction, and safe to hand to two runs
 /// at once. It names archetypes by <see cref="ContentId"/> and never holds an
 /// <c>EnemySpec</c> — resolving content is the catalog's job, and doing it here would mean a plan
@@ -76,12 +82,8 @@ public sealed class SpawnPlan
         /// <summary>Where it starts.</summary>
         public Vector3 Position { get; }
 
-        /// <summary>
-        /// Whether every component is a real number. Shared with the outer class's spawn points,
-        /// which owe the same check for the same reason — hence internal to the file rather than
-        /// private to this struct.
-        /// </summary>
-        internal static bool IsFinite(Vector3 v) =>
+        /// <summary>Whether every component is a real number.</summary>
+        private static bool IsFinite(Vector3 v) =>
             !float.IsNaN(v.X) && !float.IsInfinity(v.X)
             && !float.IsNaN(v.Y) && !float.IsInfinity(v.Y)
             && !float.IsNaN(v.Z) && !float.IsInfinity(v.Z);
@@ -89,17 +91,10 @@ public sealed class SpawnPlan
 
     private readonly ReadOnlyCollection<Entry> _initial;
 
-    private readonly ReadOnlyCollection<Vector3> _spawnPoints;
-
     /// <param name="initial">
     /// The enemies to spawn, in the order they should be spawned. Copied; the caller's list is not
     /// retained, so a builder that keeps filling its own list afterwards cannot change what this
     /// plan holds.
-    /// </param>
-    /// <param name="spawnPoints">
-    /// Where the director may put a body, in world metres. Copied, like the entries. Empty — and
-    /// omitted, which means the same thing — for an arena with no spawning surface, which makes
-    /// the director inert rather than being an error (M2-05 rule 12).
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="initial"/> is null.</exception>
     /// <exception cref="ArgumentException">
@@ -108,21 +103,12 @@ public sealed class SpawnPlan
     /// form — so the check is repeated here. The same shape as <c>Stat.Add</c>'s second look at
     /// <c>default(Modifier)</c> (M1-01): a struct with an invariant needs the check at both ends.
     /// </exception>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// A spawn point has a non-finite component. Refused here for the reason an entry's position
-    /// is: a NaN becomes a position nothing can ever be far enough from, so the point is silently
-    /// never used and the arena appears to have fewer of them than it was dressed with.
-    /// </exception>
-    public SpawnPlan(
-        IReadOnlyList<Entry> initial,
-        IReadOnlyList<Vector3> spawnPoints = null)
+    public SpawnPlan(IReadOnlyList<Entry> initial)
     {
         if (initial is null)
         {
             throw new ArgumentNullException(nameof(initial));
         }
-
-        _spawnPoints = CopySpawnPoints(spawnPoints);
 
         if (initial.Count == 0)
         {
@@ -171,61 +157,4 @@ public sealed class SpawnPlan
 
     /// <summary>The enemies to spawn, in spawn order.</summary>
     public IReadOnlyList<Entry> Initial => _initial;
-
-    /// <summary>
-    /// Where the director may put a body. Empty for an arena with no spawning surface, which makes
-    /// the director inert rather than being an error — see <c>SpawnDirector.Tick</c>, rule 12.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Not the same list as <see cref="Initial"/>, and not the same question.</b> An entry is a
-    /// body standing in the arena when the player walks in; a spawn point is a place a wave may
-    /// arrive at later. An arena can have either without the other — M0's grey box has neither, and
-    /// from M2-11 most arenas will have only the second.
-    /// </para>
-    /// <para>
-    /// Empty is a real answer rather than a missing one: it is what the whole of M1's Run scene
-    /// meant and what every core fixture that starts a run without caring about spawning still
-    /// means. The cost — an arena dressed without a spawn ring is
-    /// silently quiet — is bought back in the Editor, where <c>DebugOverlay</c> says
-    /// <c>director: —</c> rather than leaving it a mystery.
-    /// </para>
-    /// </remarks>
-    public IReadOnlyList<Vector3> SpawnPoints => _spawnPoints;
-
-    /// <summary>
-    /// Copies and checks the spawn points, answering an empty list for the absent case.
-    /// </summary>
-    /// <remarks>
-    /// Wrapped rather than handed out as the array it is, for <see cref="_initial"/>'s reason: an
-    /// array exposed as <c>IReadOnlyList&lt;T&gt;</c> casts straight back to <c>Vector3[]</c>, and
-    /// then the copy protects nothing — which matters here more than there, because the director
-    /// holds this list for the length of a run and indexes its claims by position in it.
-    /// </remarks>
-    private static ReadOnlyCollection<Vector3> CopySpawnPoints(IReadOnlyList<Vector3> spawnPoints)
-    {
-        if (spawnPoints is null || spawnPoints.Count == 0)
-        {
-            return Array.AsReadOnly(Array.Empty<Vector3>());
-        }
-
-        var copy = new Vector3[spawnPoints.Count];
-
-        for (int i = 0; i < copy.Length; i++)
-        {
-            Vector3 point = spawnPoints[i];
-
-            if (!Entry.IsFinite(point))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(spawnPoints),
-                    point,
-                    $"spawnPoints[{i}] must be finite in every component.");
-            }
-
-            copy[i] = point;
-        }
-
-        return Array.AsReadOnly(copy);
-    }
 }

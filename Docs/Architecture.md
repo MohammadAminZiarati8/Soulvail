@@ -535,6 +535,19 @@ is about Unity's.
   Core owns velocity; the only thing that may move a body is the intent `PlayerView` applies. Nine
   of the 173 KayKit clips do carry root translation, so this is a live guard, not a formality
   (M2-art).
+- **An arena the player has not reached is instantiated under a *deactivated* root, never
+  instantiated and then deactivated.** A body built under an inactive parent runs no `Awake` and no
+  `OnEnable`, so nothing of it is drawn, lit or navigable; instantiating into the live scene and
+  switching it off a line later runs both, which enables its renderers for a frame and has its
+  `NavMeshSurface` add and then remove a second set of navigation data **on top of the arena the
+  player is still fighting in**. `ArenaPool` keeps two roots for exactly this, and raising is a
+  reparent plus a `SetActive` (M2-11a). **Every future "build it now, show it later" owes the same
+  shape.**
+- **Where a body may spawn is a property of the arena, not of the run.** It arrives on
+  `WorldSnapshot.SpawnPoints` and reaches `SpawnDirector.Begin` when a stage leaves arrival — and
+  the director **copies** it there, because the snapshot is one buffer refilled every frame and a
+  held reference would be M2-10's "nobody may recompose a plan a director is still holding" with a
+  different noun (M2-11a).
 - **`FollowCamera`'s yaw must stay 0.** It is the only reason `SnapshotBuilder`'s straight-through
   stick mapping is camera-relative. The day the camera can turn, the −yaw rotation goes into the
   builder and **never into core** (M0-18).

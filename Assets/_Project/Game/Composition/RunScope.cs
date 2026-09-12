@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -102,16 +104,19 @@ namespace Soulvail.Game.Composition
                  "starts bare.")]
         [SerializeField] private EnemyDefinition _dummySpec;
 
-        [Tooltip("Where enemies stand and arrive, in world metres. They are this arena's spawn " +
-                 "points from M2-05 on — the director places every wave at one of them — and " +
-                 "the dummies dressed into the scene stand at the first few. M2-11 replaces " +
-                 "this with points authored on the arena prefab.")]
+        [Tooltip("Where the dummies dressed into this scene stand when the player walks in, in " +
+                 "world metres. Not spawn points: where a wave may arrive is authored on the " +
+                 "arena prefab from M2-11a on, because a run has one room per stage.")]
         [SerializeField] private Vector3[] _dummyPositions;
 
-        [Tooltip("The door out of this arena. Optional — an arena without one is playable and " +
-                 "cannot be left, which is what every M0 and M1 grey box was and what a scene " +
-                 "dressed for one experiment still wants. M2-11a moves this onto the arena prefab.")]
-        [SerializeField] private Transform _gate;
+        [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
+                 "the run in whatever the scene was dressed with, which is the M0 grey box and " +
+                 "the undressed-scene iteration workflow.")]
+        [SerializeField] private ArenaView[] _arenaPrefabs = Array.Empty<ArenaView>();
+
+        [Tooltip("Where raised and parked arenas are parented. Optional — they go to the scene " +
+                 "root without it, which is untidy rather than wrong.")]
+        [SerializeField] private Transform _arenaRoot;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -227,11 +232,22 @@ namespace Soulvail.Game.Composition
             // subscriptions and every body standing in the arena.
             builder.Register<InputAdapter>(Lifetime.Scoped);
 
-            // By name like the prefabs below, and passed even when it is null: VContainer resolves
-            // every parameter from the container or a WithParameter and never falls back to a C#
-            // default, so an omitted one fails to compose the run rather than meaning "no gate".
-            builder.Register<SnapshotBuilder>(Lifetime.Scoped)
-                .WithParameter("gate", _gate);
+            // The arenas, and the one registration on this scope whose absence would be silent: the
+            // builder resolves it by type, so a run composed without it would report no door and no
+            // spawn points and simply never leave stage 1.
+            //
+            // Registered here rather than in RunInstaller, which is where the spec put it. Two of
+            // its five arguments are references to *this scene* — the prefab list and the root the
+            // bodies are parented under — and the static installer is deliberately the half a
+            // headless test can build. EnemyViews and ProjectileViews are here for exactly that
+            // reason, and this is the same shape as both.
+            builder.Register<ArenaPool>(Lifetime.Scoped)
+                .WithParameter("prefabs", (IReadOnlyList<ArenaView>)_arenaPrefabs)
+                .WithParameter("parent", _arenaRoot);
+
+            // The gate parameter is gone: where the door is became a question about whichever arena
+            // is standing, so the builder takes the pool above and asks it every frame (M2-11a).
+            builder.Register<SnapshotBuilder>(Lifetime.Scoped);
 
             // By name, like the enemy prefab below: WithParameter<Camera> would be the same kind of
             // fragile type match, and this adapter's other two arguments are already resolved.
@@ -362,12 +378,10 @@ namespace Soulvail.Game.Composition
         /// the field back to 12. An arena now empties and stays empty until the next wave is due.
         /// </para>
         /// <para>
-        /// <b>The same positions are handed over twice, and they mean two different things.</b> As
-        /// entries they are where the scene's dummies are standing when the player walks in; as
-        /// <c>SpawnPoints</c> they are where the director may put a wave. M2-11 separates them for
-        /// real, when an arena prefab authors its own spawn ring; until then the dressed positions
-        /// are the only geometry anybody knows about, and an arena with no dummy archetype has
-        /// neither (<c>SpawnPlan.Empty</c>), which is rule 12's inert director.
+        /// <b>These positions are no longer spawn points as well.</b> Until M2-11a the same list was
+        /// handed over twice and meant two things — where the scene's dummies stand, and where the
+        /// director may put a wave — because a run had one room and nothing else knew any geometry.
+        /// An arena prefab authors its own points now, so this is only the first of those.
         /// </para>
         /// </remarks>
         private SpawnPlan BuildSpawnPlan()
@@ -385,15 +399,12 @@ namespace Soulvail.Game.Composition
 
             var entries = new SpawnPlan.Entry[_dummyPositions.Length];
 
-            var positions = new System.Numerics.Vector3[_dummyPositions.Length];
-
             for (int i = 0; i < entries.Length; i++)
             {
-                positions[i] = _dummyPositions[i].ToNum();
-                entries[i] = new SpawnPlan.Entry(specId, positions[i]);
+                entries[i] = new SpawnPlan.Entry(specId, _dummyPositions[i].ToNum());
             }
 
-            return new SpawnPlan(entries, positions);
+            return new SpawnPlan(entries);
         }
 
         /// <summary>

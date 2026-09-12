@@ -181,6 +181,54 @@ public sealed class StageFlowTests
         Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(spawnedBefore));
     }
 
+    [Test]
+    public void Waves_HandTheDirectorTheArenasSpawnPoints()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+
+        // A room with one place in it, reported the way a raised arena reports one: on the frame
+        // (M2-11a rule 6). Where a body may go is a fact about the arena that is standing, so this
+        // is the only channel that can change its answer at a boundary.
+        var only = new Vector3(0f, 0f, Ring);
+
+        _snapshot.SpawnPoints = new[] { only };
+
+        Step(StageFlow.ArrivalTime);
+        Step(1f / 60f);
+
+        Assert.That(_events.Single<SpawnTelegraphed>().Position, Is.EqualTo(only),
+            "The director places this stage's wave at this arena's points and at no others.");
+    }
+
+    [Test]
+    public void Waves_NextStageTakesTheNextArenasPoints()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+
+        var first = new Vector3(0f, 0f, Ring);
+
+        _snapshot.SpawnPoints = new[] { first };
+
+        CrossTheBoundary();
+
+        // A different room on the other side of the door, which is the whole reason the points are
+        // handed over per stage rather than held for the run: a director built with the opening
+        // arena's points would put stage 2's wave in stage 1's floor.
+        var second = new Vector3(Ring, 0f, 0f);
+
+        _snapshot.SpawnPoints = new[] { second };
+
+        int before = _events.Count<SpawnTelegraphed>();
+
+        Step(StageFlow.ArrivalTime);
+        Step(1f / 60f);
+
+        Assert.That(_events.Count<SpawnTelegraphed>(), Is.EqualTo(before + 1));
+        Assert.That(_events.Of<SpawnTelegraphed>()[before].Position, Is.EqualTo(second));
+    }
+
     // ---- Clear (rules 3, 5, 6, 7) --------------------------------------------------------------
 
     [Test]
@@ -1075,11 +1123,16 @@ public sealed class StageFlowTests
         {
             HasGate = hasGate,
             GatePosition = Door,
+
+            // The arena's own points, on the frame, as of M2-11a: the flow reads them when a stage
+            // leaves arrival and hands them to the director, so a fixture whose snapshot carried
+            // none would compose stages into a room with nowhere to put a body.
+            SpawnPoints = Points(8),
         };
 
         _projectiles = new ProjectileSystem(_events, ProjectileCapacity);
         _player = new PlayerCombat(Oathbound(), _events, new RecordingIntents(), Capacity);
-        _director = new SpawnDirector(_enemies, _events, Points(8));
+        _director = new SpawnDirector(_enemies, _events);
         _composer = new WaveComposer(_catalog, new ThreatBudget(_mode.Scaling, DeviceCap));
         _plan = new WavePlan(MaxWaves, Math.Max(1, _mode.Roster.Count));
         _spawn = new FixedRandom(seed, Alternating(8_192)).Spawn;
@@ -1142,8 +1195,7 @@ public sealed class StageFlowTests
         new SpawnPlan(
             executionerAt is null
                 ? Array.Empty<SpawnPlan.Entry>()
-                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) },
-            Points(8)));
+                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }));
 
     private static WorldSnapshot SessionSnapshot(float dt, Vector3 playerPosition, Vector3? gate = null) =>
         new WorldSnapshot(Capacity)
@@ -1152,6 +1204,7 @@ public sealed class StageFlowTests
             PlayerPosition = playerPosition,
             HasGate = true,
             GatePosition = gate ?? Door,
+            SpawnPoints = Points(8),
         };
 
     /// <summary>

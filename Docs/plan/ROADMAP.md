@@ -144,7 +144,7 @@ was therefore nowhere.
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M2-10](tasks/M2-10-stage-flow.md) | `StageFlow`: arrival, seal, clear, a door that opens once — and `RespawnPolicy` retired | M | 05 04 02 | ☑ |
-| [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) | The arena as a contract: a pool of them, a barrier, and a door | M | 10 | ☐ |
+| [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) | The arena as a contract: a pool of them, a barrier, and a door | M | 10 | ☑ |
 | [M2-11b](tasks/M2-11b-line-of-sight-sense.md) | `LineOfSightSense`: a pillar you can hide behind, and the frame order under test | S | 11a 07b | ☐ |
 | [M2-12a](tasks/M2-12a-threat-arrows-and-held-focus.md) | Screen-edge threat arrows, and a focus that reads as held | M | 07b | ☐ |
 | [M2-12b](tasks/M2-12b-telegraph-rings.md) | The ring that says *something is about to happen here* | S | 05 08 09 | ☐ |

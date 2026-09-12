@@ -96,10 +96,22 @@ public sealed class SpawnDirector
     private readonly IDomainEvents _events;
 
     /// <summary>
-    /// Where a body may be put. Empty for an arena with no spawning surface, which makes this
-    /// object inert rather than an error — see rule 12 on <see cref="Tick"/>.
+    /// Where a body may be put, copied from the arena at <see cref="Begin"/>. Empty before the
+    /// first stage, after <see cref="Clear"/>, and for an arena with no spawning surface — which
+    /// makes this object inert rather than an error (rule 12 on <see cref="Tick"/>).
     /// </summary>
-    private readonly IReadOnlyList<Vector3> _spawnPoints;
+    /// <remarks>
+    /// <b>Copied rather than held, which is the opposite of what the plan beside it is.</b> The
+    /// points arrive on the snapshot, which is one buffer refilled every frame by whoever is
+    /// standing in the arena; holding the caller's list would make this object's claim table depend
+    /// on something else's rewriting schedule. M2-10 paid for the general version of that lesson —
+    /// nobody may recompose a plan a director is still holding — and a copy taken once a stage is
+    /// what stops it recurring here. It grows and is never shrunk, so a run allocates at most once.
+    /// </remarks>
+    private Vector3[] _spawnPoints = Array.Empty<Vector3>();
+
+    /// <summary>How many entries of <see cref="_spawnPoints"/> this stage's arena filled.</summary>
+    private int _spawnPointCount;
 
     /// <summary>
     /// When each spawn point stops being claimed, in simulated run seconds. Negative infinity for
@@ -110,7 +122,7 @@ public sealed class SpawnDirector
     /// spawn at a time: the claim is taken when the ring goes up and released
     /// <see cref="TelegraphTime"/> after the body appears, and nothing can take it in between.
     /// </remarks>
-    private readonly float[] _claimExpiry;
+    private float[] _claimExpiry = Array.Empty<float>();
 
     /// <summary>The stage being run, or 0 when there is no plan.</summary>
     private int _stage;
@@ -153,39 +165,17 @@ public sealed class SpawnDirector
 
     /// <param name="enemies">Who brings a body into being, and who knows how many are breathing.</param>
     /// <param name="events">Where the three events go.</param>
-    /// <param name="spawnPoints">
-    /// Where a body may be put, in world metres. Held rather than copied: it comes from the run's
-    /// immutable <c>SpawnPlan</c>, which already made the copy.
-    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// A spawn point has a non-finite component. A NaN here is permanent and silent: every distance
-    /// comparison against it is false, so the point is neither accepted nor reported — it simply
-    /// never receives anything, and the arena looks like it has fewer spawn points than it does.
-    /// </exception>
-    public SpawnDirector(
-        EnemySystem enemies,
-        IDomainEvents events,
-        IReadOnlyList<Vector3> spawnPoints)
+    /// <remarks>
+    /// <b>It is built with no arena.</b> Where a body may be put came in here until M2-11a, off the
+    /// run's one <c>SpawnPlan</c>, because a run had one room; it arrives at <see cref="Begin"/>
+    /// now, because a run has one room per stage and a director built with the opening arena's
+    /// points would place stage 2's waves in stage 1's floor.
+    /// </remarks>
+    public SpawnDirector(EnemySystem enemies, IDomainEvents events)
     {
         _enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
         _events = events ?? throw new ArgumentNullException(nameof(events));
-        _spawnPoints = spawnPoints ?? throw new ArgumentNullException(nameof(spawnPoints));
-
-        for (int i = 0; i < _spawnPoints.Count; i++)
-        {
-            if (!IsFinite(_spawnPoints[i]))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(spawnPoints),
-                    _spawnPoints[i],
-                    $"spawnPoints[{i}] must be finite in every component.");
-            }
-        }
-
-        _claimExpiry = new float[_spawnPoints.Count];
-
-        ReleaseClaims();
     }
 
     /// <summary>The depth being run, or 0 before <see cref="Begin"/> and after <see cref="Clear"/>.</summary>
@@ -237,6 +227,12 @@ public sealed class SpawnDirector
     /// Adopts a composed stage and starts its first wave.
     /// </summary>
     /// <param name="plan">The stage's composition. Held, not copied — the run owns one for its life.</param>
+    /// <param name="spawnPoints">
+    /// Where a body may be put in <em>this stage's</em> arena, in world metres. Copied, so nothing
+    /// this object decides depends on a buffer somebody else refills — see
+    /// <see cref="_spawnPoints"/>. Null and empty mean the same thing and are both legal: an arena
+    /// with no spawning surface makes this object inert (rule 12).
+    /// </param>
     /// <param name="now">Simulated run seconds, the same clock everything else in core counts.</param>
     /// <remarks>
     /// <para>
@@ -255,13 +251,18 @@ public sealed class SpawnDirector
     /// of the same silence (rule 1).
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="plan"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is not finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="now"/> is not finite, or a spawn point has a non-finite component. A NaN
+    /// point is permanent and silent: every distance comparison against it is false, so it is
+    /// neither accepted nor reported — it simply never receives anything, and the arena looks like
+    /// it has fewer spawn points than it was authored with.
+    /// </exception>
     /// <exception cref="ArgumentException">
     /// Nothing has been composed into <paramref name="plan"/>. A plan with no waves would leave
     /// this object reporting a stage it cannot run, and the failure would surface a frame later as
     /// an arena that stays empty.
     /// </exception>
-    public void Begin(WavePlan plan, float now)
+    public void Begin(WavePlan plan, IReadOnlyList<Vector3> spawnPoints, float now)
     {
         if (plan is null)
         {
@@ -277,6 +278,10 @@ public sealed class SpawnDirector
                     + "waves to run. Call WaveComposer.Compose first.",
                 nameof(plan));
         }
+
+        // Before EnsureCapacity and before anything is assigned, so a NaN point leaves this object
+        // exactly as the previous stage left it rather than half-adopted into a new one.
+        AdoptSpawnPoints(spawnPoints);
 
         EnsureCapacity(plan);
 
@@ -388,10 +393,55 @@ public sealed class SpawnDirector
         _pendingCount = 0;
         _nextSpawnAt = float.NegativeInfinity;
 
+        // The arena goes with the stage. Left standing, this object would be holding places in a
+        // room that has been torn down — and a Clear between two stages is exactly the moment the
+        // next room has not been chosen yet.
+        _spawnPointCount = 0;
+
         // Released rather than left to expire, so the next stage's first tick sees an arena nobody
         // is holding a place in — a claim outlives its stage by 1.6 s otherwise, which is exactly
         // long enough to refuse the opening wave's first position.
         ReleaseClaims();
+    }
+
+    /// <summary>
+    /// Takes this stage's arena's spawn points as the director's own, refusing a non-finite one.
+    /// </summary>
+    /// <remarks>
+    /// Checked in full before a single component is written, so a bad point leaves the previous
+    /// stage's arena intact rather than half-replaced by one that threw — the shape
+    /// <c>ModeSpec.RosterFor</c> uses for the same reason.
+    /// </remarks>
+    private void AdoptSpawnPoints(IReadOnlyList<Vector3> spawnPoints)
+    {
+        int count = spawnPoints?.Count ?? 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            if (!IsFinite(spawnPoints[i]))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(spawnPoints),
+                    spawnPoints[i],
+                    $"spawnPoints[{i}] must be finite in every component.");
+            }
+        }
+
+        // Grown and never shrunk, so the second stage of a run allocates nothing: arenas differ in
+        // how many points they author, and the widest one a run visits is what this ends up sized
+        // to (EnsureCapacity's reasoning, one list over).
+        if (_spawnPoints.Length < count)
+        {
+            _spawnPoints = new Vector3[count];
+            _claimExpiry = new float[count];
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            _spawnPoints[i] = spawnPoints[i];
+        }
+
+        _spawnPointCount = count;
     }
 
     /// <summary>Spawns every body whose ring has finished, in the order they were announced.</summary>
@@ -552,7 +602,7 @@ public sealed class SpawnDirector
             return;
         }
 
-        int points = _spawnPoints.Count;
+        int points = _spawnPointCount;
 
         // Rule 12: an arena with nowhere to put anything makes this object inert rather than
         // broken, and inert has to include drawing nothing — a seed whose stream advanced
@@ -698,7 +748,10 @@ public sealed class SpawnDirector
     /// </remarks>
     private bool IsClearOfClaims(Vector3 candidate, float now)
     {
-        for (int i = 0; i < _claimExpiry.Length; i++)
+        // Bounded by this arena's point count rather than by the array's length: the arrays outlive
+        // the widest arena a run has visited, so a narrower one would otherwise read claims that
+        // belong to a room the player has left.
+        for (int i = 0; i < _spawnPointCount; i++)
         {
             if (_claimExpiry[i] <= now)
             {

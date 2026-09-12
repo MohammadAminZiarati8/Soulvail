@@ -287,7 +287,7 @@ public sealed class StageFlow
             case StagePhase.Arrival:
                 if (PhaseElapsed >= ArrivalTime)
                 {
-                    EnterWaves(now);
+                    EnterWaves(now, snapshot);
                 }
 
                 break;
@@ -357,17 +357,25 @@ public sealed class StageFlow
     /// rule rather than a property of the director's current internals.
     /// </para>
     /// <para>
+    /// <b>The arena's spawn points are handed over here, and this is the only place they are read.</b>
+    /// They come off the frame's snapshot rather than out of the run's plan (M2-11a rule 6): a run
+    /// has one room per stage, so where a body may go is a fact about whichever arena is standing
+    /// now — reported by whatever raised it, the same way the door is. Two seconds of arrival have
+    /// passed by the time this runs, so the room the points belong to is unambiguously the one the
+    /// player is in.
+    /// </para>
+    /// <para>
     /// The director's first <em>tick</em> lands on the next frame, because <c>RunSession</c> ticks
     /// it before this object (rule 13). One frame of delay against a two-second arrival, named here
     /// rather than discovered later.
     /// </para>
     /// </remarks>
-    private void EnterWaves(float now)
+    private void EnterWaves(float now, WorldSnapshot snapshot)
     {
         Enter(StagePhase.Waves, now);
 
         _director.Clear();
-        _director.Begin(_plan, now);
+        _director.Begin(_plan, snapshot.SpawnPoints, now);
     }
 
     /// <summary>
@@ -502,21 +510,12 @@ public sealed class StageFlow
     /// until row 1 is fixed (rule 6).
     /// </para>
     /// <para>
-    /// <b>It answers <c>default</c> until M2-11a authors an arena roster</b>, which is the same way
-    /// <c>SpawnTelegraphed</c> shipped in M2-05 and <c>ProjectileFired</c> in M2-07a: the payload is
-    /// right, and nothing listens yet. The member moves onto <c>ModeSpec</c> when there is a roster
-    /// for it to index — <c>mode.ArenaFor(stage, seed)</c> — and this method becomes the call.
+    /// <b>It answers <c>default</c> for a mode with no arena roster</b>, which is every core
+    /// fixture and every scene dressed with its own grey box. Whatever raises arenas reads that as
+    /// "leave the room standing", so an M0-shaped run is unaffected by any of this (M2-11a rule 3).
     /// </para>
     /// </remarks>
-    private ContentId ArenaFor(int stage)
-    {
-        // Read and discarded, so the seed is a stated dependency rather than a dead field: the
-        // arena is a function of these two and of nothing else in the run, and neither of them has
-        // anything to index until M2-11a authors a roster.
-        _ = _seed + stage;
-
-        return default;
-    }
+    private ContentId ArenaFor(int stage) => _mode.ArenaFor(stage, _seed);
 
     /// <summary>Moves to <paramref name="phase"/> and restarts the phase clock.</summary>
     private void Enter(StagePhase phase, float now)

@@ -369,7 +369,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Built for every run, including one with nowhere to spawn and one whose mode has nothing
         // to compose: an inert director is a director, so nothing downstream has to ask which kind
         // of run it is in (rule 12).
-        _director = new SpawnDirector(enemies, _events, config.SpawnPlan.SpawnPoints);
+        // Where a body may be put no longer comes in here: an arena's spawn points are a fact about
+        // whichever room is standing, so they arrive on the snapshot and reach the director at
+        // Begin, one stage at a time (M2-11a rule 6).
+        _director = new SpawnDirector(enemies, _events);
 
         // A mode with an empty roster composed nothing above, so there is no stage to pace: the
         // arena is whatever the spawn plan dressed into it and it stays that way. The director is

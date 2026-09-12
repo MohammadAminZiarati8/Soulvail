@@ -324,10 +324,136 @@ public sealed class ModeSpecTests
         Assert.That(mode.Roster as RosterEntry[], Is.Null);
     }
 
+    // ---- Arenas (M2-11a rule 3) ----------------------------------------------------------------
+
+    [Test]
+    public void ArenaFor_IsStableForAStage()
+    {
+        ModeSpec mode = WithArenas(8);
+
+        ContentId first = mode.ArenaFor(4, 7);
+
+        Assert.That(mode.ArenaFor(4, 7), Is.EqualTo(first));
+        Assert.That(mode.ArenaFor(4, 7), Is.EqualTo(first),
+            "A pure function of the seed and the depth — which is what lets a run resumed at stage " +
+            "7 land in the arena stage 7 always had, with no saved state at all.");
+    }
+
+    [Test]
+    public void ArenaFor_DiffersBySeed()
+    {
+        // A distribution row rather than an identity one: with eight arenas two seeds agreeing on
+        // one stage would be a one-in-eight coincidence, and these two do not.
+        ModeSpec mode = WithArenas(8);
+
+        Assert.That(mode.ArenaFor(4, 7), Is.Not.EqualTo(mode.ArenaFor(4, 8)));
+    }
+
+    [Test]
+    public void ArenaFor_NeverRepeatsConsecutively()
+    {
+        // Two arenas, twenty stages: the strictest version of the rule, because with a roster this
+        // narrow every raw collision has to be stepped away from.
+        ModeSpec mode = WithArenas(2);
+
+        ContentId previous = default;
+
+        for (int stage = 1; stage <= 20; stage++)
+        {
+            ContentId arena = mode.ArenaFor(stage, 99);
+
+            Assert.That(arena, Is.Not.EqualTo(previous),
+                $"Stage {stage} repeats the room stage {stage - 1} was fought in.");
+
+            previous = arena;
+        }
+    }
+
+    [Test]
+    public void ArenaFor_SingleEntryRosterRepeats()
+    {
+        // The one case the no-repeat rule cannot apply to, and it answers rather than throwing:
+        // there is nowhere else to go.
+        ModeSpec mode = WithArenas(1);
+
+        Assert.That(mode.ArenaFor(1, 3), Is.EqualTo(mode.ArenaFor(2, 3)));
+    }
+
+    [Test]
+    public void ArenaFor_EmptyRoster_IsDefault()
+    {
+        // A mode with no arena roster leaves every stage in whatever the scene was dressed with —
+        // every M0 and M1 grey box, and every core fixture.
+        Assert.That(Mode(DesignRoster).ArenaFor(1, 7).Value, Is.Null);
+    }
+
+    [Test]
+    public void ArenaFor_StageBelowOne_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => WithArenas(2).ArenaFor(0, 7));
+    }
+
+    [Test]
+    public void ArenaFor_AllocatesNothing()
+    {
+        ModeSpec mode = WithArenas(8);
+
+        AllocationAssert.None(() => mode.ArenaFor(4, 7), 10_000);
+    }
+
+    [Test]
+    public void Ctor_CopiesArenas()
+    {
+        var list = new List<ContentId> { new ContentId("arena.a"), new ContentId("arena.b") };
+
+        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, list);
+
+        list.Clear();
+
+        Assert.That(mode.Arenas.Count, Is.EqualTo(2));
+        Assert.That(mode.Arenas as ContentId[], Is.Null,
+            "And handed out as a wrapper rather than as the array, like the roster beside it.");
+    }
+
+    [Test]
+    public void Ctor_BadArena_Throws()
+    {
+        Assert.Throws<ArgumentException>(
+            () => new ModeSpec(
+                Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, new ContentId[1]),
+            "An entry that names no arena is a row somebody left blank.");
+
+        Assert.Throws<ArgumentException>(
+            () => new ModeSpec(
+                Id(),
+                Name(),
+                1,
+                true,
+                0,
+                Scalings.Design(),
+                DesignRoster,
+                new[] { new ContentId("arena.a"), new ContentId("arena.a") }),
+            "ArenaFor steps by index to avoid repeating a room, so a duplicate would let it step " +
+            "onto itself.");
+    }
+
     private static ContentId Id() => new ContentId(DescentId);
 
     private static LocKey Name() => new LocKey("mode.descent.name");
 
     private static ModeSpec Mode(IReadOnlyList<RosterEntry> roster) =>
         new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), roster);
+
+    /// <summary>A mode with <paramref name="count"/> arenas named <c>arena.a0</c> onwards.</summary>
+    private static ModeSpec WithArenas(int count)
+    {
+        var arenas = new ContentId[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            arenas[i] = new ContentId($"arena.a{i}");
+        }
+
+        return new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, arenas);
+    }
 }

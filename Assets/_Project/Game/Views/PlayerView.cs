@@ -144,6 +144,58 @@ namespace Soulvail.Game.Views
             }
         }
 
+        /// <summary>
+        /// Puts the body down at <paramref name="position"/>, with no travel in between.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The controller is switched off around the write, and that is the whole method.</b>
+        /// <see cref="CharacterController"/> keeps its own idea of where it is and resolves
+        /// collisions against it, so a transform written underneath a live one is either ignored or
+        /// resolved back out of the wall it was moved through. Off, write, on is Unity's own
+        /// remedy, and it is why this cannot simply be <c>transform.position = …</c> at the call
+        /// site.
+        /// </para>
+        /// <para>
+        /// <b>Nothing about this is a gameplay decision, which is why it is allowed to exist in a
+        /// view.</b> Core holds no player position — it reads one off the next snapshot (AR §4.3's
+        /// one-frame lag) — so an arena swap needs no intent and tells core nothing. The only
+        /// caller is <c>ArenaPool</c>, on the <c>StageArrived</c> that lands behind an already
+        /// opaque screen.
+        /// </para>
+        /// <para>
+        /// The velocity is not cleared. It is what core last asked for and core is still asking for
+        /// it; the fall speed is, because a body that fell into the previous arena's floor would
+        /// otherwise arrive in the next one still accelerating downwards.
+        /// </para>
+        /// </remarks>
+        public void Teleport(Vector3 position)
+        {
+            // Resolved here as well as in Awake: an EditMode fixture never gets an Awake, and this
+            // is the one public method on this class that a test can reach without one.
+            if (_controller == null)
+            {
+                _controller = GetComponent<CharacterController>();
+            }
+
+            if (_controller == null)
+            {
+                transform.position = position;
+
+                return;
+            }
+
+            bool wasEnabled = _controller.enabled;
+
+            _controller.enabled = false;
+
+            transform.position = position;
+
+            _controller.enabled = wasEnabled;
+
+            _fallSpeed = 0f;
+        }
+
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         /// <remarks>

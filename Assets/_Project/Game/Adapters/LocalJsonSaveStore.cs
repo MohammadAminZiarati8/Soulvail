@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
@@ -120,6 +121,11 @@ public sealed class LocalJsonSaveStore : ISaveStore
             // instant plus wherever the phone happened to be standing. Round-trip format, invariant
             // culture: a save written under a Turkish locale must be readable under an English one.
             writtenAt = run.WrittenAt.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
+
+            level = run.Level,
+            xp = run.Xp,
+            pendingLevelUps = run.PendingLevelUps,
+            takenNodeIds = ToStrings(run.TakenNodeIds),
         };
 
         return Write(_runPath, JsonUtility.ToJson(mirror));
@@ -313,7 +319,11 @@ public sealed class LocalJsonSaveStore : ISaveStore
             mirror.playerHp,
             mirror.playerShield,
             mirror.runTime,
-            ToTimestamp(mirror.writtenAt));
+            ToTimestamp(mirror.writtenAt),
+            mirror.level,
+            mirror.xp,
+            mirror.pendingLevelUps,
+            ToContentIds(mirror.takenNodeIds));
 
         return SaveMigrations.MigrateRun(mirror.version, decoded);
     }
@@ -355,6 +365,57 @@ public sealed class LocalJsonSaveStore : ISaveStore
     private static ContentId ToContentId(string value)
     {
         return ContentId.TryParse(value, out ContentId id) ? id : default;
+    }
+
+    /// <summary>The node ids a file names, as core spells them.</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An unparseable entry becomes <c>default(ContentId)</c> and the constructor refuses it</b>,
+    /// which discards the save. That is deliberately *not* how <see cref="ToContentId"/> treats the
+    /// mode and the character, and the two questions are different: an id that parses but names
+    /// content this build no longer ships is content validation's answer to give at
+    /// <c>RunSession.Start</c>, while an entry that is not an id at all is a document nothing can
+    /// read. Passing it through as a default would put a node named <c>""</c> into a resumed tree.
+    /// </para>
+    /// <para>
+    /// Null-tolerant, for <see cref="RunMirror.takenNodeIds"/>'s initialiser to be a belt rather
+    /// than the only brace: a hand-written <c>"takenNodeIds":null</c> decodes to null, and the
+    /// answer to that is an empty list, not a <see cref="NullReferenceException"/> out of a load.
+    /// </para>
+    /// </remarks>
+    private static ContentId[] ToContentIds(string[] values)
+    {
+        if (values is null || values.Length == 0)
+        {
+            return Array.Empty<ContentId>();
+        }
+
+        var ids = new ContentId[values.Length];
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            ids[i] = ToContentId(values[i]);
+        }
+
+        return ids;
+    }
+
+    /// <summary>The node ids as a file spells them. The inverse of <see cref="ToContentIds"/>.</summary>
+    private static string[] ToStrings(IReadOnlyList<ContentId> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var values = new string[ids.Count];
+
+        for (int i = 0; i < ids.Count; i++)
+        {
+            values[i] = ids[i].Value ?? string.Empty;
+        }
+
+        return values;
     }
 
     /// <summary>The instant a file records, in UTC.</summary>
@@ -452,6 +513,24 @@ public sealed class LocalJsonSaveStore : ISaveStore
         public float playerShield;
         public float runTime;
         public string writtenAt;
+
+        /// <summary>
+        /// v2's four, appended rather than interleaved: field order is key order on disk, and the
+        /// fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <b><c>level</c> is initialised to 1 and that is load-bearing</b> (M3-01b rule 3). A v1
+        /// document has no <c>level</c> key, so the field keeps whatever the default constructor
+        /// left — and <c>RunSnapshot</c> refuses a level below 1, which would turn every v1 save on
+        /// every player's device into "Discarding the save" before the migration ever ran.
+        /// <c>takenNodeIds</c> is initialised for the same reason, one step milder: a null would
+        /// reach the constructor's null guard. The migration is still the authority and overwrites
+        /// all four for a v1 document, whatever these held.
+        /// </remarks>
+        public int level = 1;
+        public float xp;
+        public int pendingLevelUps;
+        public string[] takenNodeIds = Array.Empty<string>();
     }
 
     /// <summary><see cref="PlayerProfile"/> as it is spelled on disk. See <see cref="RunMirror"/>.</summary>

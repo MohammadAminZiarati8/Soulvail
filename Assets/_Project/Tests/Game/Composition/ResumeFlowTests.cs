@@ -685,7 +685,11 @@ public sealed class ResumeFlowTests
             playerHp: 62f,
             playerShield: 9f,
             runTime: 412.5f,
-            writtenAt: Instant);
+            writtenAt: Instant,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: Array.Empty<ContentId>());
 
     private static void Set(MenuPresenter presenter, string field, Object value) =>
         typeof(MenuPresenter).GetField(field, Private).SetValue(presenter, value);

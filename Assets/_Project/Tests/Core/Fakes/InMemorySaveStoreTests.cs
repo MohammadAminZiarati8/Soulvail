@@ -140,6 +140,10 @@ public sealed class InMemorySaveStoreTests
             playerHp,
             playerShield: 0f,
             runTime,
-            Written);
+            Written,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: Array.Empty<ContentId>());
     }
 }

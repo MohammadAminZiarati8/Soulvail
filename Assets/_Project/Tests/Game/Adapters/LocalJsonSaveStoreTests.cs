@@ -24,14 +24,29 @@ namespace Soulvail.Tests.Game.Adapters;
 /// <para>
 /// <b>The fixture strings are typed by hand and are not a re-serialisation.</b> A fixture produced
 /// by the code under test asserts only that the code agrees with itself; these are the literal
-/// bytes a v1 save is, and <c>Fixture_V1Run_IsWhatThisBuildWrites</c> is the row that fails the
-/// day the format drifts without the fixture moving with it (AR §11.6).
+/// bytes a save is, and <c>Fixture_V2Run_IsWhatThisBuildWrites</c> is the row that fails the day
+/// the format drifts without the fixture moving with it (AR §11.6).
+/// </para>
+/// <para>
+/// <b>Two run literals as of M3-01b, and they play different parts.</b> <c>V2Run</c> is what this
+/// build writes and reads. <c>V1Run</c> is untouched and is now the <em>migration's</em> input: the
+/// document a player already has on their device, decoded through the real adapter, which is the
+/// only place the v1 → v2 step and the code that calls it are tested together.
 /// </para>
 /// </remarks>
 [TestFixture]
 public sealed class LocalJsonSaveStoreTests
 {
-    /// <summary>A v1 run, as it is spelled on disk.</summary>
+    /// <summary>
+    /// A v1 run, as it is spelled on disk — and as of M3-01b, the migration's input rather than
+    /// anything this build writes.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not one character of it changed at the bump, deliberately.</b> It is a real v1 document
+    /// with no <c>level</c>, <c>xp</c>, <c>pendingLevelUps</c> or <c>takenNodeIds</c> key, which is
+    /// what makes <c>Fixture_V1Run_DecodesToTheExpectedSnapshot</c> a test of the v1 → v2 step
+    /// through the real adapter instead of a test of the step in isolation.
+    /// </remarks>
     private const string V1Run =
         "{\"version\":1,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
         "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
@@ -39,11 +54,30 @@ public sealed class LocalJsonSaveStoreTests
         "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
         "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"}";
 
+    /// <summary>A v2 run, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// The four new keys follow <c>writtenAt</c>, because field order in <c>RunMirror</c> is key
+    /// order on disk and v2 only appends (rule 9). Typed by hand like its predecessor: a fixture
+    /// produced by the code under test asserts only that the code agrees with itself.
+    /// </remarks>
+    private const string V2Run =
+        "{\"version\":2,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
+        "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
+        "\"randomAffixes\":3,\"randomDrops\":4,\"randomMisc\":18446744073709551615," +
+        "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
+        "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
+        "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
+        "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]}";
+
     /// <summary>A v1 profile, as it is spelled on disk.</summary>
     private const string V1Profile = "{\"version\":1,\"hapticsEnabled\":false}";
 
     private static readonly ContentId Mode = new ContentId("mode.descent");
     private static readonly ContentId Character = new ContentId("character.oathbound");
+
+    /// <summary>The two nodes <see cref="V2Run"/> names.</summary>
+    private static readonly ContentId Bulwark = new ContentId("skill.oathbound.bulwark");
+    private static readonly ContentId Consecrate = new ContentId("skill.oathbound.consecrate");
 
     /// <summary>The instant <see cref="V1Run"/> records.</summary>
     private static readonly DateTimeOffset FixtureWritten =
@@ -109,6 +143,13 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.PlayerShield, Is.EqualTo(original.PlayerShield));
         Assert.That(run.RunTime, Is.EqualTo(original.RunTime));
         Assert.That(run.WrittenAt, Is.EqualTo(original.WrittenAt));
+        Assert.That(run.Level, Is.EqualTo(original.Level));
+        Assert.That(run.Xp, Is.EqualTo(original.Xp));
+        Assert.That(run.PendingLevelUps, Is.EqualTo(original.PendingLevelUps));
+
+        // The one v2 field that is not a scalar, so the one that a mirror could plausibly lose:
+        // JsonUtility sees fields, and ContentId's Value is a property.
+        Assert.That(run.TakenNodeIds, Is.EqualTo(original.TakenNodeIds));
     }
 
     /// <summary>
@@ -343,7 +384,21 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        Assert.That(run.Version, Is.EqualTo(1));
+        // **v2, not v1 — this row is the migration step running through the real adapter.** A v1
+        // document on a device goes through LoadRun, and what comes back is what the rest of the
+        // game gets handed. Asserting it here rather than only on SaveMigrations is the difference
+        // between "the step is correct" and "the step is wired up", and ledger row 2's trap is
+        // precisely that the second can be false while the first is true.
+        Assert.That(run.Version, Is.EqualTo(2));
+
+        // A v1 run was unlevelled by construction (rule 3). The mirror's `level = 1` initialiser is
+        // what lets the document reach the constructor at all — a v1 file has no `level` key, and
+        // RunSnapshot refuses a level below 1 — and the step is what gives it v1's meaning.
+        Assert.That(run.Level, Is.EqualTo(1));
+        Assert.That(run.Xp, Is.EqualTo(0f));
+        Assert.That(run.PendingLevelUps, Is.EqualTo(0));
+        Assert.That(run.TakenNodeIds, Is.Empty);
+
         Assert.That(run.ModeId, Is.EqualTo(Mode));
         Assert.That(run.CharacterId, Is.EqualTo(Character));
         Assert.That(run.Seed, Is.EqualTo(-20260912));
@@ -371,10 +426,35 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Fixture_V1Run_IsWhatThisBuildWrites()
+    public void Fixture_V2Run_DecodesToTheExpectedSnapshot()
+    {
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V2Run);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.Version, Is.EqualTo(2));
+        Assert.That(run.Level, Is.EqualTo(7));
+        Assert.That(run.Xp, Is.EqualTo(33.5f));
+        Assert.That(run.PendingLevelUps, Is.EqualTo(1));
+
+        // In take order, which is what the list means — not a set.
+        Assert.That(run.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+
+        // And the v1 half of the document is still read the same way, which is the half a bump is
+        // most likely to break by shifting a field.
+        Assert.That(run.ModeId, Is.EqualTo(Mode));
+        Assert.That(run.Seed, Is.EqualTo(-20260912));
+        Assert.That(run.StageIndex, Is.EqualTo(4));
+        Assert.That(run.Random.Misc, Is.EqualTo(ulong.MaxValue));
+        Assert.That(run.PlayerHp, Is.EqualTo(72.5f));
+        Assert.That(run.WrittenAt, Is.EqualTo(FixtureWritten));
+    }
+
+    [Test]
+    public void Fixture_V2Run_IsWhatThisBuildWrites()
     {
         Await(_store.SaveRun(new RunSnapshot(
-            version: 1,
+            version: 2,
             Mode,
             Character,
             seed: -20260912,
@@ -383,16 +463,30 @@ public sealed class LocalJsonSaveStoreTests
             playerHp: 72.5f,
             playerShield: 12.25f,
             runTime: 137.75f,
-            FixtureWritten)));
+            FixtureWritten,
+            level: 7,
+            xp: 33.5f,
+            pendingLevelUps: 1,
+            takenNodeIds: new[] { Bulwark, Consecrate })));
 
         string written = File.ReadAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName));
 
         // Byte for byte. A field renamed, reordered or added changes this text, and a save format
         // that drifts without its fixture moving with it is one that stops loading after a release.
-        Assert.That(written, Is.EqualTo(V1Run));
+        //
+        // **Renamed from the v1 row, which is now the migration's input.** This is also the row
+        // that objects if M3-03 bumps the version to write the field v2 already reserved for it
+        // (rule 1): filling takenNodeIds does not change the shape of the document, so the text
+        // here stays true and only its contents move.
+        Assert.That(written, Is.EqualTo(V2Run));
     }
 
     /// <summary>A snapshot with every field distinct, overridable where a row cares.</summary>
+    /// <remarks>
+    /// The v2 fields carry non-default values here — a levelled run with two nodes — because the
+    /// round-trip rows are the ones that would otherwise pass against a mirror that dropped them:
+    /// zero, one and an empty array all survive being lost.
+    /// </remarks>
     private static RunSnapshot Snapshot(
         int stageIndex = 4,
         RandomState? random = null,
@@ -408,7 +502,11 @@ public sealed class LocalJsonSaveStoreTests
             playerHp: 61.5f,
             playerShield: 12.25f,
             runTime: 138.5f,
-            writtenAt ?? FixtureWritten);
+            writtenAt ?? FixtureWritten,
+            level: 7,
+            xp: 33.5f,
+            pendingLevelUps: 1,
+            takenNodeIds: new[] { Bulwark, Consecrate });
     }
 
     /// <summary>

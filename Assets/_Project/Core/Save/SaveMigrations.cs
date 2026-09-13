@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Save;
 
@@ -15,12 +16,13 @@ namespace Soulvail.Core.Save;
 /// <c>Migrations_HoldsNoState</c> is what keeps that true rather than remembered.
 /// </para>
 /// <para>
-/// <b>At v1 the chain is empty and the chain test is why this file ships now.</b> There is nothing
-/// to migrate — the gate admits exactly one version and both <c>Migrate</c> methods are the
-/// identity — so what exists here is the shape and the assertion around it. The day someone bumps
-/// a <c>CurrentVersion</c> to 2 without writing a step,
-/// <c>Chain_IsUnbrokenFromOldestToCurrent</c> fails, which is the only mechanism in the project
-/// that makes AR §11.6's promise self-enforcing.
+/// <b>The run chain has one step, and M3-01b is the first time it ran for real.</b> It shipped at
+/// v1 with nothing to migrate, on the strength of <c>Chain_IsUnbrokenFromOldestToCurrent</c> — the
+/// row that fails the day a <c>CurrentVersion</c> is bumped without a step being written, and the
+/// only mechanism in the project that makes AR §11.6's promise self-enforcing rather than
+/// remembered. It is also the trap ledger row 2 exists for: <b>a field and its step must ship in
+/// one PR</b>, because a PR with only the field merges green — a v1 file still decodes.
+/// <see cref="MigrateProfile"/> is still the identity, and the two formats version independently.
 /// </para>
 /// <para>
 /// <b>The signature takes and returns the current DTO</b>, so a future version that only
@@ -88,9 +90,36 @@ public static class SaveMigrations
                 "before migrating.");
         }
 
-        // v1 is the current version, so there is no step to run. Each later version adds one
-        // `if (version < n) { ... }` here, in order, and a fixture test beside it.
-        return decoded;
+        RunSnapshot current = decoded;
+
+        // **v1 → v2: a run that was unlevelled by construction.** v1 had no level, no experience,
+        // no picks owed and no tree, so its v2 form is the opening state of a run: level 1 and
+        // nothing earned. Written unconditionally rather than from what the adapter decoded — a v1
+        // document that somehow carried a level is still a v1 document, and gets v1's meaning
+        // (M3-01b rule 3). Every v1 field is kept exactly as it was read.
+        //
+        // Each later version adds one `if (version < n) { ... }` below this, in order, rebuilding
+        // at n so the next step is handed the shape it expects — and a fixture test beside it.
+        if (version < 2)
+        {
+            current = new RunSnapshot(
+                2,
+                current.ModeId,
+                current.CharacterId,
+                current.Seed,
+                current.StageIndex,
+                current.Random,
+                current.PlayerHp,
+                current.PlayerShield,
+                current.RunTime,
+                current.WrittenAt,
+                level: 1,
+                xp: 0f,
+                pendingLevelUps: 0,
+                Array.Empty<ContentId>());
+        }
+
+        return current;
     }
 
     /// <summary>

@@ -196,6 +196,20 @@ public sealed class RunState
     public float XpFraction => Progression.XpFraction;
 
     /// <summary>
+    /// Experience into the current level in absolute points — what a save writes down.
+    /// </summary>
+    /// <remarks>
+    /// A second narrow read of the same quantity as <see cref="XpFraction"/>, added at M3-01b, and
+    /// the duplication is the point rather than an oversight — exactly the pair
+    /// <see cref="PlayerShield"/> and <see cref="PlayerShieldFraction"/> make, for the reason M2-14a
+    /// rule 4 gives: a fraction is what a strip fills to, and it cannot be restored without the
+    /// maximum that produced it. That maximum is <c>XpToNext</c>, which moves with the level by
+    /// construction and with the mode's curve whenever CH §5.2's exponent is retuned — so a run
+    /// saved as a fraction would resume at a different number of points, silently.
+    /// </remarks>
+    public float Xp => Progression.Xp;
+
+    /// <summary>
     /// How many picks the player has earned and not yet been given. Read by M3-08's level-up flow
     /// and, until it exists, by the debug overlay alone.
     /// </summary>

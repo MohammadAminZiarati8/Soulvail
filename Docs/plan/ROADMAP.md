@@ -205,7 +205,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M3-01a](tasks/M3-01a-xp-and-levels.md) | `XpCurve`, `LevelTracker`, and the kill that pays for a level | M | — | ☑ |
-| [M3-01b](tasks/M3-01b-save-format-v2.md) | Save format v2: what a levelled run writes down, and the first real migration | S | 01a | ☐ |
+| [M3-01b](tasks/M3-01b-save-format-v2.md) | Save format v2: what a levelled run writes down, and the first real migration | S | 01a | ☑ |
 | [M3-05](tasks/M3-05-effect-registry.md) | Effect primitives: the registry, and `ModifyStat` as the first of them | M | 01a | ☐ |
 | [M3-02a](tasks/M3-02a-skill-specs.md) | `SkillSpec`, `TriggerSpec`, `SkillTreeSpec`: the tree as data | M | 05 | ☐ |
 | [M3-02b](tasks/M3-02b-skill-authoring.md) | Skill authoring: the four definitions and the boot lists | M | 02a | ☐ |
@@ -351,6 +351,13 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 
 - ~~**`PlayerAnimatorView` has no tests.**~~ **Promoted at M2-15** — M3-11's Consecrate and Bulwark
   views are the "anything else drives an Animator" this was waiting for. Now [M3 ledger row 5](#carry-forward-into-m3).
+- **A hand-edited save can hang a frame, and no guard in the project is placed to stop it.**
+  `LevelTracker`'s `while (Xp >= XpToNext)` terminates for any finite XP, but `"xp":1e38` in
+  `run.json` is a legal `RunSnapshot` and settles in ~10^15 iterations; `Grant` has the identical
+  exposure through a content-authored `EnemySpec.XpValue`. Found at M3-01b and deliberately not
+  fixed there: a cap means ruling what a save above it *becomes*, which is a decision rather than an
+  implementation detail. Promoted by the first ruling on it, or by **M3-14b**, which is already the
+  task that refuses content the game cannot survive.
 - **CH §5's tree table says 8 nodes a branch and 27 a class, and 3 × 8 is 24.** The layered shape
   ruled at M3-00a — two a tier × four tiers + a keystone = 9 a branch — is what makes 27 true, so the
   row wants a one-line correction to *9 (8 + 1 Keystone)* and *all 8 preceding*. Flagged, not made,

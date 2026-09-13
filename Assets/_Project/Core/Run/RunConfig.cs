@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Save;
 
 namespace Soulvail.Core.Run;
 
@@ -9,30 +10,74 @@ namespace Soulvail.Core.Run;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The seed is deliberately not here. It comes from <c>IRandom.Seed</c>, which the composition
-/// root creates the generator with — one source of truth, so a run can never be started with a
-/// seed that disagrees with the stream it actually draws from. <see cref="RunState.Seed"/>
-/// records what that generator was seeded with, for the run-end screen and for bug reports.
+/// <b>Five fields, reshaped once and deliberately</b> (M2-02, ledger row 6). Two of them are
+/// M0-09's; the mode, the depth and the seed arrived together because M2 needs all three and
+/// accreting a parameter per task across four PRs would have meant four sweeps of the same
+/// nineteen call sites instead of one.
 /// </para>
 /// <para>
-/// Two fields today, and a class rather than a struct because of what M2 does to it: the mode
-/// (Descent, Daily, Ordeal), the depth to resume at, the modifiers a Daily carries. Growing a
-/// class is a field; growing a struct passed by value is a copy that gets wider every milestone.
+/// <b>The seed now arrives here rather than being read back out of the generator.</b> M0-09 left
+/// it off on the argument that <c>IRandom.Seed</c> was the single source of truth; resume is
+/// what makes that backwards, because a resumed run has to <em>state</em> the seed it is
+/// continuing rather than discover whatever the container happened to build. The single-truth
+/// property is kept by checking instead of by omitting: <c>RunSession.Start</c> refuses a config
+/// whose seed disagrees with the generator it was given, at the one place both are visible.
+/// </para>
+/// <para>
+/// A class rather than a struct, still, and for the reason M0-09 gave: growing a class is a
+/// field, while growing a struct passed by value is a copy that gets wider every milestone. The
+/// sixth field arrived at M2-14b, exactly as named above — <see cref="Restore"/> — and "reshape
+/// once" meant those five were right, not that a sixth was forbidden.
+/// </para>
+/// <para>
+/// <b>The sixth is required rather than defaulted</b>, which is why M2-14b swept the same call
+/// sites M2-02 did. The reason is <see cref="SpawnPlan"/>'s: a run that is <em>not</em> a resume
+/// says so with <see langword="null"/> rather than by omission, and a defaulted parameter would
+/// make "fresh" the answer a call site gives by not thinking about it. The compiler enumerating
+/// every caller is the point of the sweep, not its cost.
 /// </para>
 /// </remarks>
 public sealed class RunConfig
 {
+    /// <param name="modeId">
+    /// The mode to play, e.g. <c>mode.descent</c>. Resolved against the
+    /// <see cref="ContentCatalog"/> at <c>Start</c>, which is where the run learns how deep it
+    /// begins and which archetypes it is allowed to see.
+    /// </param>
     /// <param name="characterId">The class to play, e.g. <c>character.oathbound</c>.</param>
+    /// <param name="seed">
+    /// What the run's generator was seeded with, stated by the caller. Any <see cref="int"/> is a
+    /// legal seed, including zero and negatives, so there is nothing to validate here — the check
+    /// that matters is the one <c>RunSession.Start</c> makes against the generator itself.
+    /// </param>
+    /// <param name="stageIndex">
+    /// The depth this run begins at: the mode's <c>StartingStage</c> for a fresh run, the saved
+    /// depth for a resumed one (M2-14b). Checked against the mode at <c>Start</c>, because
+    /// whether stage 6 exists is the mode's question and this constructor cannot see one.
+    /// </param>
     /// <param name="spawnPlan">
     /// The enemies the run starts with, or <see cref="SpawnPlan.Empty"/> for none.
     /// </param>
+    /// <param name="restore">
+    /// The run this one is continuing, or <see langword="null"/> for a fresh one. Nothing is
+    /// validated here: whether the snapshot agrees with the rest of this config is a question
+    /// about two objects, and it is asked at <c>RunSession.Start</c>, where the generator is
+    /// visible as well (rule 4).
+    /// </param>
     /// <exception cref="ArgumentException">
-    /// <paramref name="characterId"/> is <c>default(ContentId)</c> — the one id no constructor
-    /// can prevent, because a struct always has a zeroed form. It means nobody chose a class,
-    /// which is a composition mistake rather than a missing asset, and saying so here names the
-    /// real problem. Left to the catalog it would surface one layer down as "no character with
-    /// id ''", pointing at content that was never at fault. Any other id is the catalog's
-    /// question to answer, and it answers unknown ids with <c>KeyNotFoundException</c>.
+    /// <paramref name="modeId"/> or <paramref name="characterId"/> is
+    /// <c>default(ContentId)</c> — the one id no constructor can prevent, because a struct always
+    /// has a zeroed form. It means nobody chose a mode or a class, which is a composition mistake
+    /// rather than a missing asset, and saying so here names the real problem. Left to the
+    /// catalog it would surface one layer down as "no character with id ''", pointing at content
+    /// that was never at fault. Any other id is the catalog's question to answer, and it answers
+    /// unknown ids with <c>KeyNotFoundException</c>.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="stageIndex"/> is below 1. Stages are numbered from 1 (GD §8.2), so a zero
+    /// is a caller that meant "the first one" and used an array index — the mistake worth
+    /// catching here, where the number was chosen, rather than at the depth scaling that would
+    /// quietly compute a stage-zero curve from it.
     /// </exception>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="spawnPlan"/> is null. Required rather than optional, so that a run which
@@ -40,8 +85,21 @@ public sealed class RunConfig
     /// arena is the one failure a playtest cannot tell apart from a bug in the spawner, and the
     /// compiler is the right thing to enumerate every call site that has to choose.
     /// </exception>
-    public RunConfig(ContentId characterId, SpawnPlan spawnPlan)
+    public RunConfig(
+        ContentId modeId,
+        ContentId characterId,
+        int seed,
+        int stageIndex,
+        SpawnPlan spawnPlan,
+        RunSnapshot? restore)
     {
+        if (modeId.Value is null)
+        {
+            throw new ArgumentException(
+                "modeId must be a valid ContentId; default(ContentId) means no mode was chosen.",
+                nameof(modeId));
+        }
+
         if (characterId.Value is null)
         {
             throw new ArgumentException(
@@ -49,12 +107,47 @@ public sealed class RunConfig
                 nameof(characterId));
         }
 
+        if (stageIndex < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(stageIndex),
+                stageIndex,
+                "stageIndex must be at least 1. Stages are numbered from 1, not from zero.");
+        }
+
+        ModeId = modeId;
         CharacterId = characterId;
+        Seed = seed;
+        StageIndex = stageIndex;
         SpawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
+        Restore = restore;
     }
+
+    /// <summary>The mode being played. Resolved against the <see cref="ContentCatalog"/> at <c>Start</c>.</summary>
+    public ContentId ModeId { get; }
 
     /// <summary>The class to play. Resolved against the <see cref="ContentCatalog"/> at <c>Start</c>.</summary>
     public ContentId CharacterId { get; }
+
+    /// <summary>
+    /// What the generator was seeded with — inbound, stated by the caller.
+    /// </summary>
+    /// <remarks>
+    /// Not "what to seed the generator with": nothing here reseeds anything. The generator is
+    /// built by the composition root before this config exists, and <c>RunSession.Start</c> only
+    /// checks that the two agree. Driving the generator from core would mean an
+    /// <c>IRandom.Reseed</c>, which widens a port ahead of its caller (AR §6) and is half of what
+    /// restoring stream state rides on — M2-13a weighs that with ledger row 1.
+    /// </remarks>
+    public int Seed { get; }
+
+    /// <summary>The depth this run begins at.</summary>
+    /// <remarks>
+    /// A fresh run passes the mode's <c>StartingStage</c>; nothing in the composition root knows
+    /// the number itself, which is GD §4.5's rule that no code may hard-code "starts at stage 1".
+    /// From here it becomes <c>RunState.StageIndex</c>, which M2-10 advances.
+    /// </remarks>
+    public int StageIndex { get; }
 
     /// <summary>
     /// The enemies to spawn as the run begins, immediately after <c>RunStarted</c>.
@@ -64,4 +157,26 @@ public sealed class RunConfig
     /// only what an arena has standing in it on arrival.
     /// </remarks>
     public SpawnPlan SpawnPlan { get; }
+
+    /// <summary>
+    /// The run this one is continuing, or <see langword="null"/> for a fresh one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Its <c>Seed</c> and <c>StageIndex</c> must agree with <see cref="Seed"/> and
+    /// <see cref="StageIndex"/>, and <c>RunSession.Start</c> is where that is checked — the same
+    /// shape and the same moment as the seed check against the generator, because all three are
+    /// one question: <em>does everything about to build this run agree about which run it is?</em>
+    /// </para>
+    /// <para>
+    /// <b>What a restore puts back is HP, shield and run time, and nothing else.</b> The
+    /// generator's position is restored by the composition root onto the generator itself, before
+    /// this config exists (M2-14b rule 3) — core is handed a generator already standing where the
+    /// save left it, which is what keeps <c>IRandom</c> free of the reseed door M2-13a declined to
+    /// open. Everything else a resumed run needs — the arena, the wave plan, the population — is
+    /// rebuilt from the stage and the seed rather than read back, which is what makes the DTO ten
+    /// fields instead of a hundred.
+    /// </para>
+    /// </remarks>
+    public RunSnapshot? Restore { get; }
 }

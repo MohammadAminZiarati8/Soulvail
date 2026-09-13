@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
 using UnityEngine;
@@ -40,12 +41,41 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
+
+    /// <summary>
+    /// The run's generator, held for one reason: <see cref="Start"/> has to state the seed in the
+    /// <c>RunConfig</c> (M2-02), and this is the only object that knows it on both paths into a
+    /// run. <c>PendingRun</c> carries the menu's seed, but a direct Play has none and
+    /// <c>RunInstaller.CreateRandom</c> invents one that reaches nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Nothing here ever draws from it. If a frame ever needs a random number, that is a decision
+    /// core makes — a view drawing from the run's streams would consume draws the simulation is
+    /// counting on and break replay from a seed.
+    /// </remarks>
+    private readonly IRandom _random;
     private readonly WorldSnapshot _snapshot;
     private readonly SnapshotBuilder _builder;
     private readonly IntentBuffer _intents;
     private readonly PlayerView _player;
     private readonly ChargeMotion _charge;
     private readonly EnemyViews _enemyViews;
+
+    /// <summary>
+    /// The bolts in the air. Held for two reasons and both are the same one: it has to be stepped
+    /// with the snapshot's <c>Dt</c> (M2-09 rule 3), and being on this object's dependency chain is
+    /// what guarantees it is listening before <see cref="Start"/> can let core fire anything.
+    /// </summary>
+    private readonly ProjectileViews _projectileViews;
+
+    /// <summary>
+    /// The rings on the floor. Held for the two reasons the bolts above are, and they are the same
+    /// one: it has to be stepped with the snapshot's <c>Dt</c> (M2-12b rule 4), and being on this
+    /// object's dependency chain is what guarantees it is listening before <see cref="Start"/> can
+    /// let the director telegraph anything.
+    /// </summary>
+    private readonly TelegraphRings _telegraphRings;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -70,12 +100,16 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         IPlayerCommands commands,
         PendingRun pending,
         ContentCatalog catalog,
+        IRandom random,
         WorldSnapshot snapshot,
         SnapshotBuilder builder,
         IntentBuffer intents,
         PlayerView player,
         ChargeMotion charge,
         EnemyViews enemyViews,
+        ProjectileViews projectileViews,
+        TelegraphRings telegraphRings,
+        SaveWriter saveWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
@@ -85,10 +119,20 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        _random = random ?? throw new ArgumentNullException(nameof(random));
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
+        _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
+        _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
+        // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
+        // announced as an event — so the parameter exists for one reason: being on this object's
+        // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
+        // the opening snapshot, the same guarantee the three views above rely on (AR §18.1). A
+        // field would be assigned and never read, which the compiler is right to object to.
+        _ = saveWriter ?? throw new ArgumentNullException(nameof(saveWriter));
+
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
@@ -123,12 +167,50 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _input.Enable();
 
+        ContentId modeId = _pending.IsSet ? _pending.ModeId : FallbackModeId();
+
+        // Asked, not assumed. GD §4.5 forbids any code hard-coding "starts at stage 1", so the
+        // depth a fresh run begins at is the mode's to state — and a resume passes the saved depth
+        // instead (M2-14b). The mode is still resolved on both paths, because a save naming a mode
+        // this build no longer ships has to fail here rather than at the first thing that assumes
+        // one.
+        ModeSpec mode = _catalog.Mode(modeId);
+
+        // Null on every path but a Continue, and passed straight through on both — the branch is
+        // the depth below, not this line.
+        RunSnapshot? restore = _pending.IsSet ? _pending.Snapshot : null;
+
+        // The seed comes off the generator this run was built with, which is the one place it is
+        // knowable on both paths: the menu's seed goes through PendingRun, and a direct Play
+        // invents one inside RunInstaller.CreateRandom that nothing else can see. Core checks the
+        // two agree rather than trusting this line (M2-02 rule 5) — so the check has teeth on the
+        // path that matters, which is the resumed run that states a seed from a save file.
+        //
         // The plan is the scene's, built by RunScope from the dummies dressed into it (M1-07). It
         // is SpawnPlan.Empty when nothing is dressed, never null, so this line always says out
         // loud what the arena starts with — see RunConfig. M2-05's director takes it over.
         _session.Start(new RunConfig(
+            modeId,
             _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
-            _spawnPlan));
+            _random.Seed,
+            restore?.StageIndex ?? mode.StartingStage,
+            _spawnPlan,
+            restore));
+
+        // **`PendingRun.Clear()`'s first caller, and it has been owed one since M0-12** — the
+        // method's own doc says "called once the run has started, so a second trip through the Run
+        // scene cannot silently reuse the previous run's seed", and nothing called it.
+        //
+        // **After `_session.Start` returns, never before.** This is the last read: RunInstaller
+        // .CreateRandom resolves the pending run when IRandom is first built, which happens while
+        // RunSession is being constructed — and this object takes that session, so the whole chain
+        // is built before VContainer can call this method. Clearing in the installer would pull the
+        // seed out from under the config being assembled three lines up.
+        //
+        // After rather than before for a second reason as well: Start throws on an unauthored mode,
+        // a disagreeing seed and a restore that names another run, and a pending run cleared ahead
+        // of a throw would leave nothing to diagnose the failure from.
+        _pending.Clear();
     }
 
     /// <summary>
@@ -231,6 +313,20 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         ApplyEnemyMoves();
+
+        // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
+        // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on
+        // Time.deltaTime would arrive at the target ahead of the damage it stands for on exactly
+        // the hitching frames the clamp exists for. Nothing below reads it — a bolt has no body, so
+        // no sweep can be answered against one.
+        _projectileViews.Step(_snapshot.Dt);
+
+        // The rings, for the same reason and on the same clock (M2-12b rule 4). Core runs the
+        // telegraph's own 0.8 s countdown on the clamped step, so a ring filled on the wall clock
+        // would finish before — or after — the body it promises actually lands, which is the one
+        // thing a telegraph is not allowed to do. Read by nothing below either: a decal has no
+        // collider, so the pair of them are the frame's two purely cosmetic steps.
+        _telegraphRings.Step(_snapshot.Dt);
 
         StepCharge();
 
@@ -444,5 +540,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         return _catalog.Characters[0].Id;
+    }
+
+    /// <summary>
+    /// The mode to play when nobody chose one: the first the catalog holds.
+    /// </summary>
+    /// <remarks>
+    /// The matching half of <see cref="FallbackCharacterId"/>, for the same workflow — pressing
+    /// Play with the Run scene already open, which no menu ran before. The first rather than
+    /// <c>mode.descent</c> written here, for the reason <c>MenuPresenter</c> gives: GD §4.5 says
+    /// no code may assume Descent, and an id literal on the direct-Play path would be the copy
+    /// nobody remembered to change.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The catalog holds no modes.</exception>
+    private ContentId FallbackModeId()
+    {
+        if (_catalog.Modes.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No run is pending and the content catalog holds no modes, so there is no mode " +
+                "to play. Add a ModeDefinition to BootScope's mode list.");
+        }
+
+        return _catalog.Modes[0].Id;
     }
 }

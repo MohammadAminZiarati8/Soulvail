@@ -192,13 +192,22 @@ namespace Soulvail.Game.Views
         /// The flash-and-dissolve on this body, or null on a body that has none.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Guarded by a flag rather than by a null check, unlike <see cref="Body"/> and
         /// <see cref="Controller"/>, because here null is a legitimate answer: the component is not
         /// <c>[RequireComponent]</c>ed, and an EditMode fixture builds bodies without one. Without
         /// the flag every despawn of such a body would search its components again for something
         /// that was never there.
+        /// </para>
+        /// <para>
+        /// Public as of M2-06, for the reason <see cref="Body"/> is: <c>EnemyViews</c> has to tell a
+        /// rented body which archetype it is standing in for, and the cached lookup here is the only
+        /// one in the project that does not cost a <c>GetComponent</c> per spawn. It stays a
+        /// <em>read</em> — the census asks this object for its component and talks to that, rather
+        /// than this class growing a second forwarding method for every effect anyone adds.
+        /// </para>
         /// </remarks>
-        private EnemyHitFeedback Feedback
+        public EnemyHitFeedback Feedback
         {
             get
             {
@@ -325,6 +334,14 @@ namespace Soulvail.Game.Views
         /// turn — spreads "what a rental has to forget" across two files, and the file that would
         /// not have it is the one holding the pooled object. Anything else added to the prefab that
         /// remembers something joins the list here.
+        /// </para>
+        /// <para>
+        /// <b>The archetype's tint and scale are on that list as of M2-06, and they are the one
+        /// entry this method does not restore by itself.</b> <c>ResetVisuals</c> puts the body back
+        /// to the look it was <em>rented</em> with, not to the prefab's; what undoes a Bloater is
+        /// <c>EnemyViews</c> telling the next rental it is a Husk, which it does unconditionally.
+        /// Both halves are needed — without this one a corpse would go back to the pool still
+        /// mid-dissolve, and without that one the next Husk would spawn rust-coloured.
         /// </para>
         /// </remarks>
         public void OnDespawn()

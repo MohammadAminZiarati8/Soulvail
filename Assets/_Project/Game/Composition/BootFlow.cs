@@ -1,6 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
+using Soulvail.Game.Adapters;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VContainer.Unity;
@@ -45,22 +48,31 @@ public sealed class BootFlow : IStartable, IDisposable
     private const int TargetFrameRate = 60;
 
     private readonly SceneLoader _loader;
+    private readonly ISaveStore _store;
+    private readonly HapticsSettings _haptics;
+    private readonly SavedRun _savedRun;
 
-    /// <exception cref="ArgumentNullException"><paramref name="loader"/> is null.</exception>
-    public BootFlow(SceneLoader loader)
+    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
+    public BootFlow(SceneLoader loader, ISaveStore store, HapticsSettings haptics, SavedRun savedRun)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _haptics = haptics ?? throw new ArgumentNullException(nameof(haptics));
+        _savedRun = savedRun ?? throw new ArgumentNullException(nameof(savedRun));
     }
 
     /// <summary>
-    /// Sets the frame rate, then leaves Boot for the Menu if that is where the app started, and
-    /// listens for Boot being loaded later.
+    /// Sets the frame rate, loads the player's profile and the run in progress, then leaves Boot
+    /// for the Menu if that is where the app started, and listens for Boot being loaded later.
     /// </summary>
     public void Start()
     {
         Application.targetFrameRate = TargetFrameRate;
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+
+        LoadProfile();
+        LoadRun();
 
         if (_loader.Active == SceneLoader.Boot)
         {
@@ -88,6 +100,99 @@ public sealed class BootFlow : IStartable, IDisposable
         {
             LeaveBoot();
         }
+    }
+
+    /// <summary>
+    /// Reads the stored profile once and hands it to whatever holds a setting from it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Here, because this is the one place in the app with a legitimate reason to wait on the
+    /// disk.</b> Every later reader of a setting gets a value that is already correct, and no
+    /// screen has to cope with one arriving late.
+    /// </para>
+    /// <para>
+    /// <b>The continuation is synchronous, so with today's local store the profile is applied
+    /// before <see cref="LeaveBoot"/> runs on the line below.</b> Against a future asynchronous
+    /// store it would land whenever the disk answered, which is the honest degradation: the
+    /// settings are at GD §16.3's defaults until then, never at a wrong stored value.
+    /// </para>
+    /// <para>
+    /// A missing profile is <see cref="PlayerProfile.Default"/> and is deliberately not written
+    /// back on the spot — the first file appears when the player first changes something, and
+    /// until then a fresh install has no profile, which is the truth.
+    /// </para>
+    /// </remarks>
+    private void LoadProfile()
+    {
+        _store.LoadProfile().ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted)
+                {
+                    // The app still starts, at the defaults. A profile that cannot be read is a
+                    // lost preference, not a reason to refuse to launch.
+                    Debug.LogError(
+                        "Could not load the player profile: " +
+                        task.Exception?.GetBaseException().Message);
+
+                    return;
+                }
+
+                _haptics.Apply(task.Result ?? PlayerProfile.Default);
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Reads the run in progress once, so the Menu knows whether it has a <c>Continue</c> to offer
+    /// before it is on screen (M2-14b rule 6).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Here rather than in the Menu, and Boot exists for exactly this.</b> A Menu that appeared
+    /// first and then grew a second button a frame later is the shape that gets tapped through by
+    /// accident — the player's thumb is already moving toward where <c>Descend</c> was. The cost is
+    /// a local file read of a few hundred bytes, on the one screen in the game with nothing to be
+    /// smooth about.
+    /// </para>
+    /// <para>
+    /// <b>Three different things all mean "there is nothing to continue", and all three land
+    /// here.</b> A fresh install has no file; a run that ended deleted its own; and a file this
+    /// build cannot read is refused and discarded by the store rather than returned half-understood
+    /// (M2-13b rule 5). <see cref="SavedRun"/> is left absent for each, so the Menu has one
+    /// question to ask instead of three.
+    /// </para>
+    /// <para>
+    /// A faulted load is logged and swallowed for <see cref="LoadProfile"/>'s reason, one step
+    /// sharper: a save that cannot be read has already cost the player the run, and the only thing
+    /// left to decide is whether the app also refuses to start.
+    /// </para>
+    /// </remarks>
+    private void LoadRun()
+    {
+        _store.LoadRun().ContinueWith(
+            task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError(
+                        "Could not load the run in progress: " +
+                        task.Exception?.GetBaseException().Message);
+
+                    return;
+                }
+
+                if (task.Result is RunSnapshot snapshot)
+                {
+                    _savedRun.Set(snapshot);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private void LeaveBoot()

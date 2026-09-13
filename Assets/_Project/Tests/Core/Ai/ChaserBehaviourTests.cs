@@ -6,7 +6,6 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
-using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
@@ -62,6 +61,12 @@ public sealed class ChaserBehaviourTests
     private const float WindupTime = 0.4f;
     private const float RecoverTime = 0.6f;
 
+    /// <summary>
+    /// What all three archetypes author (M2-06), and what <c>ChaserBehaviour</c> held as a
+    /// <c>const</c> until it moved onto the spec.
+    /// </summary>
+    private const float AggroRange = 30f;
+
     // CC §7, Survivability — what the strike lands on.
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
@@ -71,6 +76,13 @@ public sealed class ChaserBehaviourTests
     private RecordingIntents _intents;
     private EnemySystem _system;
     private PlayerCombat _player;
+
+    /// <summary>
+    /// The sky every <see cref="EnemyTickContext"/> here is built with. A Husk throws nothing, so no
+    /// row asserts anything about it — it exists because the context is what a behaviour <em>may</em>
+    /// reach rather than what it uses (M2-07b rule 2).
+    /// </summary>
+    private ProjectileSystem _projectiles;
 
     /// <summary>
     /// The clock <see cref="Tick_AllocatesNothing"/> advances. A field rather than a local, so the
@@ -87,8 +99,9 @@ public sealed class ChaserBehaviourTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Capacity);
+        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Scaling(), Capacity);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
+        _projectiles = new ProjectileSystem(_events, Capacity);
         _allocationClock = 0f;
         _clock = 0f;
     }
@@ -111,6 +124,30 @@ public sealed class ChaserBehaviourTests
         Tick(far);
 
         Assert.That(far.State, Is.EqualTo(ChaserState.Idle));
+    }
+
+    [Test]
+    public void Chaser_UsesSpecAggroRange()
+    {
+        // Five metres, not thirty. The row above passes identically whether the behaviour reads the
+        // spec or the const it used to hold — both say 30 — so this is the only thing that can
+        // tell them apart, and without it M2-06's move would be untested (rule 4).
+        _system = new EnemySystem(Catalog(aggroRange: 5f), _events, new FixedRandom(), Scaling(), Capacity);
+
+        ChaserBehaviour outside = Chaser(distance: 6f);
+
+        Tick(outside);
+
+        Assert.That(outside.State, Is.EqualTo(ChaserState.Idle),
+            "At 6 m a Husk that notices at 5 has not noticed. A behaviour still reading its own " +
+            "30 m const would already be walking.");
+
+        ChaserBehaviour inside = Chaser(distance: 4f);
+
+        Tick(inside);
+
+        Assert.That(inside.State, Is.EqualTo(ChaserState.Chase),
+            "Inside the archetype's own range it notices, exactly as it does at 29 m of 30.");
     }
 
     // ---- Rule 2: the walk ----------------------------------------------------------------------
@@ -246,6 +283,25 @@ public sealed class ChaserBehaviourTests
     }
 
     [Test]
+    public void Chaser_UnaffectedByCover()
+    {
+        // M2-11b rule 7. GD §7.2 gives cover exactly one job — *"cover blocks enemy projectiles but
+        // not pathing"* — and contact damage is neither: a Husk walks around a pillar to reach you
+        // and then hits you, and nothing in between matters because there is nothing in between by
+        // the time it is in reach. The sight line is explicitly false here, which is also what
+        // EnemyBlackboard.Reset leaves it, so this row fails the moment somebody generalises the
+        // Spitter's check onto the shared blackboard read.
+        ChaserBehaviour chaser = Windup(distance: 1f);
+
+        Blackboard(chaser).HasLineOfSight = false;
+
+        TickUntil(chaser, ChaserState.Strike, budgetSeconds: WindupTime + (2f * Frame));
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Strike), "It swings.");
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1), "And it lands.");
+    }
+
+    [Test]
     public void Strike_MissesOutOfReach()
     {
         ChaserBehaviour chaser = Windup(distance: 1f);
@@ -319,7 +375,7 @@ public sealed class ChaserBehaviourTests
 
         EnemyAgent agent = Agent(chaser);
 
-        _system.ApplyDamage(agent.Id, 1000f, _clock);
+        _system.ApplyDamage(agent.Id, 1000f, _clock, _player);
 
         Assert.That(agent.IsAlive, Is.False, "Sanity: it is a corpse.");
 
@@ -328,7 +384,7 @@ public sealed class ChaserBehaviourTests
         // Through the system rather than the behaviour, because the rule belongs to the dispatch:
         // EnemySystem is what refuses to tick a corpse, and that is also what makes a death
         // mid-windup cancel the strike without the behaviour knowing anything about dying.
-        _system.Tick(Frame, _clock, _player, _intents);
+        _system.Tick(Context());
 
         Assert.That(_intents.CountEnemyMoves(agent.Id), Is.Zero);
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
@@ -347,7 +403,7 @@ public sealed class ChaserBehaviourTests
 
         Assert.That(chaser.State, Is.EqualTo(ChaserState.Windup), "Sanity: a frame or two from the hit.");
 
-        _system.ApplyDamage(agent.Id, 1000f, _clock);
+        _system.ApplyDamage(agent.Id, 1000f, _clock, _player);
 
         // Driven through the system from here, because that is where the rule lives: the behaviour
         // itself knows nothing about being dead, and would happily finish its windup if anything
@@ -355,7 +411,7 @@ public sealed class ChaserBehaviourTests
         // EnemySystem.CorpseTime, so the agent is still registered when the assertion runs.
         for (int i = 0; i < 10; i++)
         {
-            _system.Tick(Frame, _clock, _player, _intents);
+            _system.Tick(Context());
 
             _clock += Frame;
         }
@@ -364,17 +420,66 @@ public sealed class ChaserBehaviourTests
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
 
+    // ---- M2-03: the fight reads the agent's stats, not the archetype's floats -------------------
+
     [Test]
-    public void Tick_AllocatesNothing()
+    public void Chaser_WalksAtScaledSpeed()
+    {
+        // s(40) = 1 + 0.02·floor(40/5) = 1.16, on GD §8.1's 3.5 m/s. The read that makes this true
+        // is one line in TickChase — _agent.MoveSpeed.Value rather than _agent.Spec.MoveSpeed —
+        // and without it a stage-40 Husk would walk at exactly the speed a stage-1 one does.
+        ChaserBehaviour chaser = ChaseAtDepth(40, direction: new Vector2(1f, 0f));
+
+        _intents.Clear();
+
+        Tick(chaser);
+
+        Assert.That(
+            _intents.LastEnemyMove.Velocity.X,
+            Is.EqualTo(MoveSpeed * 1.16f).Within(1e-3f),
+            "GD §12.3's s(40) applied to the Husk's authored 3.5 m/s.");
+    }
+
+    [Test]
+    public void Chaser_StrikesForScaledDamage()
+    {
+        // d(40) = 1 + 0.035·39 = 2.365, on GD §8.1's 8. The Oathbound's Aegis has 30 points, so
+        // 18.92 lands entirely on the shield — which is what makes the number readable in one
+        // field rather than split across two.
+        ChaserBehaviour chaser = WindupAtDepth(40);
+
+        TickUntil(chaser, ChaserState.Strike, budgetSeconds: WindupTime + (2f * Frame));
+
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
+
+        PlayerDamaged hit = LastEvent<PlayerDamaged>();
+
+        Assert.That(hit.ToShield, Is.EqualTo(ContactDamage * 2.365f).Within(1e-3f));
+        Assert.That(hit.ToHp, Is.Zero, "The Aegis has 30 points; 18.92 does not get through it.");
+    }
+
+    [Test]
+    public void Tick_StillAllocatesNothing()
     {
         // Neither the recording events fake nor the callback one can be used here: both box every
         // payload, so a telegraph or a strike published inside the measured body would be counted as
-        // core allocating when it is the fake doing it. This one throws every event away, which is
-        // exactly what "core allocates nothing while publishing" needs on the other end.
+        // core allocating when it is the fake doing it. SilentEvents throws every event away, which
+        // is exactly what "core allocates nothing while publishing" needs on the other end — it
+        // moved to Fakes/ in M2-07b, when SpitterBehaviourTests became the second fixture to need it.
         var silent = new SilentEvents();
         var intents = new RecordingIntents();
-        var system = new EnemySystem(Catalog(), silent, new FixedRandom(), Capacity);
         var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
+        var projectiles = new ProjectileSystem(silent, Capacity);
+
+        // Depth 40, so every enemy in the crowd carries GD §12.3's three PercentMult modifiers and
+        // the tick below is reading a *modified* Stat rather than a bare base. That is what rule 13
+        // is about: ChaserBehaviour now reads MoveSpeed.Value and ContactDamage.Value per frame,
+        // and Stat's cache keeps its laziness only while nothing is subscribed — a recompute that
+        // allocated on read would put a GC spike behind every enemy in the arena (M1-01).
+        var system = new EnemySystem(Catalog(), silent, new FixedRandom(), Scaling(), Capacity)
+        {
+            Depth = 40,
+        };
 
         var snapshot = new WorldSnapshot(Capacity);
         snapshot.Dt = Frame;
@@ -403,7 +508,7 @@ public sealed class ChaserBehaviourTests
         for (int i = 0; i < 600; i++)
         {
             intents.Clear();
-            system.Tick(Frame, i * Frame, player, intents);
+            system.Tick(new EnemyTickContext(Frame, i * Frame, player, intents, silent, projectiles, system));
         }
 
         // Cleared per iteration, not once: 32 intents a tick across 10 000 ticks would otherwise
@@ -415,7 +520,10 @@ public sealed class ChaserBehaviourTests
 
             _allocationClock += Frame;
 
-            system.Tick(Frame, _allocationClock, player, intents);
+            // The context is built inside the measured body on purpose: rule 2 claims it costs
+            // nothing, and building it outside would be exactly the arrangement that hides a struct
+            // that had quietly become a class.
+            system.Tick(new EnemyTickContext(Frame, _allocationClock, player, intents, silent, projectiles, system));
         });
     }
 
@@ -436,7 +544,9 @@ public sealed class ChaserBehaviourTests
         blackboard.DistanceToPlayer = distance;
         blackboard.DirectionToPlayer = new Vector2(0f, 1f);
 
-        return agent.Behaviour;
+        // Cast, because EnemyAgent.Behaviour is an IEnemyBehaviour as of M2-07b and this fixture is
+        // about the one implementation. SpitterBehaviourTests owns the seam itself.
+        return (ChaserBehaviour)agent.Behaviour;
     }
 
     /// <summary>The same, ticked once so it has noticed the player and is walking.</summary>
@@ -467,6 +577,64 @@ public sealed class ChaserBehaviourTests
         return chaser;
     }
 
+    /// <summary>
+    /// A Husk spawned at <paramref name="depth"/> and ticked into <see cref="ChaserState.Chase"/>,
+    /// looking <paramref name="direction"/>.
+    /// </summary>
+    /// <remarks>
+    /// A system of its own rather than the fixture's, because <c>EnemySystem.Depth</c> is read at
+    /// spawn and the fixture's own Husks must stay unscaled — every other row here asserts GD
+    /// §8.1's authored numbers, and they are only true at depth 1.
+    /// </remarks>
+    private ChaserBehaviour ChaseAtDepth(int depth, Vector2 direction)
+    {
+        EnemyAgent agent = SpawnAtDepth(depth);
+
+        agent.Blackboard.DistanceToPlayer = 10f;
+        agent.Blackboard.DirectionToPlayer = direction;
+
+        var chaser = (ChaserBehaviour)agent.Behaviour;
+
+        Tick(chaser);
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Chase), "Sanity: it is walking.");
+
+        agent.Blackboard.DirectionToPlayer = direction;
+
+        return chaser;
+    }
+
+    /// <summary>The same, walked into reach so it is mid-telegraph.</summary>
+    private ChaserBehaviour WindupAtDepth(int depth)
+    {
+        ChaserBehaviour chaser = ChaseAtDepth(depth, direction: new Vector2(0f, 1f));
+
+        Blackboard(chaser).DistanceToPlayer = 1f;
+
+        Tick(chaser);
+
+        Assert.That(chaser.State, Is.EqualTo(ChaserState.Windup), "Sanity: it is winding up.");
+
+        return chaser;
+    }
+
+    /// <summary>
+    /// Spawns a Husk into a system set to <paramref name="depth"/>, and points the fixture at it.
+    /// </summary>
+    private EnemyAgent SpawnAtDepth(int depth)
+    {
+        _system = new EnemySystem(Catalog(), _events, new FixedRandom(), Scaling(), Capacity)
+        {
+            Depth = depth,
+        };
+
+        EnemyAgent agent = _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        Assert.That(agent.Behaviour, Is.Not.Null, "A Chaser archetype must have been given a behaviour.");
+
+        return agent;
+    }
+
     /// <summary>One tick at <see cref="Frame"/>, advancing the fixture's clock with it.</summary>
     /// <remarks>
     /// The clock is a field shared by every helper here rather than a counter restarted per call,
@@ -476,10 +644,21 @@ public sealed class ChaserBehaviourTests
     /// </remarks>
     private void Tick(ChaserBehaviour chaser)
     {
-        chaser.Tick(Frame, _clock, _player, _intents, _events);
+        chaser.Tick(Context());
 
         _clock += Frame;
     }
+
+    /// <summary>
+    /// This frame's <see cref="EnemyTickContext"/>, built from the fixture's own clock and ports.
+    /// </summary>
+    /// <remarks>
+    /// Rebuilt per call rather than cached, which is what a run does: the struct carries
+    /// <see cref="_clock"/>, so a cached one would hand every tick after the first the seconds the
+    /// fixture started at (M2-07b rule 2).
+    /// </remarks>
+    private EnemyTickContext Context() =>
+        new EnemyTickContext(Frame, _clock, _player, _intents, _events, _projectiles, _system);
 
     /// <summary>Ticks for at least <paramref name="seconds"/>, a frame at a time.</summary>
     private void TickFor(ChaserBehaviour chaser, float seconds)
@@ -580,22 +759,40 @@ public sealed class ChaserBehaviourTests
         sense.HasLineOfSight = true;
     }
 
-    private static ContentCatalog Catalog() => new ContentCatalog(
+    private static ContentCatalog Catalog(float aggroRange = AggroRange) => new ContentCatalog(
         new[] { Oathbound() },
-        new[] { Husk() });
+        new[] { Husk(aggroRange) });
+
+    /// <summary>
+    /// GD §12's curves, required by every <c>EnemySystem</c> as of M2-03.
+    /// </summary>
+    /// <remarks>
+    /// The fixture's own system is left at <c>Depth</c> 1, where all three of GD §12.3's
+    /// multipliers are exactly 1 — so every row that asserts GD §8.1's authored numbers still
+    /// asserts them. The two rows that are about depth build their own system through
+    /// <see cref="SpawnAtDepth"/>.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 
     /// <summary>GD §8.1's Husk, with M1-05's five numbers and a chaser driving it.</summary>
-    private static EnemySpec Husk() => new EnemySpec(
+    /// <remarks>
+    /// <paramref name="aggroRange"/> is the one number a row is allowed to vary, because as of
+    /// M2-06 it is the archetype's rather than the behaviour's (rule 4) and
+    /// <see cref="Chaser_UsesSpecAggroRange"/> is what proves the const is really gone.
+    /// </remarks>
+    private static EnemySpec Husk(float aggroRange = AggroRange) => new EnemySpec(
         new ContentId(HuskId),
         new LocKey("enemy.husk.name"),
         maxHp: 36f,
         moveSpeed: MoveSpeed,
         targetPriority: 1,
+        threatCost: 4,
         isElite: false,
         contactDamage: ContactDamage,
         reach: Reach,
         windupTime: WindupTime,
         recoverTime: RecoverTime,
+        aggroRange: aggroRange,
         behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>The Oathbound of CC §7 — what the strikes land on.</summary>
@@ -616,27 +813,4 @@ public sealed class ChaserBehaviourTests
         new ShieldSpec(ShieldMax, 4f, 15f),
         HitIFrames);
 
-    /// <summary>
-    /// An <see cref="IDomainEvents"/> that throws every payload away without touching it.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Exists for <see cref="Tick_AllocatesNothing"/> alone. <c>RecordingEvents</c> stores each
-    /// payload in a <c>List&lt;object&gt;</c>, which boxes the struct — so measuring core's tick
-    /// through it would report the fake's allocation as core's, and the row would fail for a reason
-    /// that has nothing to do with the code under test. The real <c>DomainEventHub</c> does not box:
-    /// it fans out through a typed channel per event type, precisely so a publish on a hot path is
-    /// free (ADR-0004).
-    /// </para>
-    /// <para>
-    /// Nested and private rather than in <c>Fakes/</c>, on the same terms as <c>EnemySystemTests</c>'
-    /// <c>CallbackEvents</c>: one fixture needs it. If a second one does, it moves.
-    /// </para>
-    /// </remarks>
-    private sealed class SilentEvents : IDomainEvents
-    {
-        public void Publish<T>(in T evt) where T : struct
-        {
-        }
-    }
 }

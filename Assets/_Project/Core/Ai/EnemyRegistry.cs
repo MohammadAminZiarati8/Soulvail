@@ -127,10 +127,11 @@ public sealed class EnemyRegistry
     /// </summary>
     /// <remarks>
     /// Recycles a despawned agent when one is available, so only the first <see cref="Capacity"/>
-    /// spawns of a run construct anything. A recycled agent is re-initialised completely — it may
-    /// come back as an entirely different archetype — with the one exception the class remarks
-    /// name: modifiers a previous life left on its <c>Health.MaxHp</c> stay, and nothing applies any
-    /// yet.
+    /// spawns of a run construct anything. <b>A recycled agent is re-initialised completely</b> —
+    /// it may come back as an entirely different archetype, and as of M2-03 that includes its
+    /// three stats: <c>EnemyAgent.Initialise</c> wipes every modifier, whoever added it, before
+    /// re-basing them, so a Husk that died at stage 40 does not come back wearing that depth's
+    /// scaling (ledger row 2). There is no exception left to name.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="spec"/> is null.</exception>
     /// <exception cref="InvalidOperationException">

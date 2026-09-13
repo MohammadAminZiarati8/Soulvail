@@ -40,6 +40,22 @@ namespace Soulvail.Game.Views
     /// <c>Update</c> would trail its target by a frame — visible as the ring lagging behind a
     /// walking enemy, which is exactly the "the aim is broken" impression it exists to prevent.
     /// </para>
+    /// <para>
+    /// <b>There are two markers from M2-12a, and three levels of the same cyan.</b> The ordering is
+    /// the information: <em>focused-and-firing</em> is bright and pulsing, <em>auto-selected</em> is
+    /// subtle and still, and <em>held-but-inactive</em> — the enemy the player tapped that is too
+    /// far away for the gun to have taken — is fainter still and parked on that enemy rather than on
+    /// the target. A chevron sits over it, because CC §3.5 makes the chevron the "you picked this"
+    /// glyph and the player did pick this one; it is the <em>ring</em> that claims "and the gun is
+    /// on it", which this marker does not. That is ledger row 12: targeting was never wrong, the
+    /// game simply had no way to say what it had already decided.
+    /// </para>
+    /// <para>
+    /// <b>The two markers are independent, and that is why the held one is not a child of
+    /// <c>_visual</c>.</b> They stand on two different enemies, so the root follows the current
+    /// target and the held marker's world position is written straight onto it; the pulse is a scale
+    /// on <c>_visual</c> alone, so nothing the bright ring does reaches the faint one.
+    /// </para>
     /// </remarks>
     public sealed class ReticleView : MonoBehaviour
     {
@@ -66,6 +82,19 @@ namespace Soulvail.Game.Views
         [SerializeField] private LineRenderer _blockedFirstStroke;
 
         [SerializeField] private LineRenderer _blockedSecondStroke;
+
+        [Tooltip("The second marker: everything drawn on a focus the player is holding on " +
+                 "something the gun has not taken. Toggled like the Visual above, and a sibling " +
+                 "of it rather than a child, because the two stand on two different enemies.")]
+        [SerializeField] private GameObject _heldVisual;
+
+        [Tooltip("The held marker's ring. Fainter and smaller than the main one — see the type's " +
+                 "remarks for why the ordering is the information.")]
+        [SerializeField] private LineRenderer _heldRing;
+
+        [Tooltip("The held marker's chevron. CC §3.5's 'you picked this' glyph, on the enemy the " +
+                 "player actually picked.")]
+        [SerializeField] private LineRenderer _heldChevron;
 
         [Tooltip("Ring radius in metres. A little wider than an enemy capsule, so the body reads " +
                  "as standing inside the ring rather than wearing it.")]
@@ -98,6 +127,17 @@ namespace Soulvail.Game.Views
                  "a glance without a second colour.")]
         [SerializeField] private float _blockedWidth = 0.03f;
 
+        [Tooltip("The held marker's radius as a fraction of the ring's. Below 1 so the two never " +
+                 "read as one object when the player walks the focus into range and the bright " +
+                 "ring takes it over.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _heldScale = 0.8f;
+
+        [Tooltip("Alpha of the held marker. Below the auto ring's, which is below the focused " +
+                 "ring's 1.0 — three levels of one colour, brightest for what the gun is on.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _heldAlpha = 0.35f;
+
         /// <summary>
         /// Reused for every colour write. A property block rather than the material, because
         /// assigning to <c>Renderer.material</c> instantiates a copy per renderer — four leaked
@@ -117,6 +157,13 @@ namespace Soulvail.Game.Views
         private int _targetId = NoTarget;
         private bool _isFocused;
         private bool _isBlocked;
+
+        /// <summary>
+        /// The enemy the player tapped that the gun has not taken, or −1. Never equal to
+        /// <see cref="_targetId"/> when it is set — core guarantees the two are never both live
+        /// (<c>TargetChanged.HeldFocusId</c>).
+        /// </summary>
+        private int _heldFocusId = NoTarget;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <param name="views">The arena's bodies, for resolving the target id to a position.</param>
@@ -155,6 +202,9 @@ namespace Soulvail.Game.Views
             RequireAssigned(_chevron, nameof(_chevron));
             RequireAssigned(_blockedFirstStroke, nameof(_blockedFirstStroke));
             RequireAssigned(_blockedSecondStroke, nameof(_blockedSecondStroke));
+            RequireAssigned(_heldVisual, nameof(_heldVisual));
+            RequireAssigned(_heldRing, nameof(_heldRing));
+            RequireAssigned(_heldChevron, nameof(_heldChevron));
 
             _block = new MaterialPropertyBlock();
 
@@ -163,6 +213,14 @@ namespace Soulvail.Game.Views
             // Hidden until core says otherwise. A ring sitting at the world origin for the first
             // frame of a run is a bug report waiting to be filed.
             ApplyState();
+
+            // The held marker's look never changes — one colour, one alpha, one width, and no
+            // pulse — so it is written once here rather than from the event handler. That is also
+            // what keeps it out of ApplyState, which returns early when there is no target and
+            // would therefore skip exactly the case a held focus is most likely to be in.
+            ApplyHeldLook();
+
+            _heldVisual.SetActive(false);
         }
 
         /// <exception cref="InvalidOperationException">Nothing injected this reticle.</exception>
@@ -195,6 +253,12 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void LateUpdate()
         {
+            // The two markers are followed independently, and the held one first: a focus held on
+            // something out of range is exactly the case where the gun may have no target at all,
+            // so a held marker that returned early with the main one would be invisible in the one
+            // situation it exists for.
+            FollowHeldFocus();
+
             if (_targetId == NoTarget || _views is null || !_views.TryGet(_targetId, out EnemyView view) || view == null)
             {
                 Hide();
@@ -220,11 +284,53 @@ namespace Soulvail.Game.Views
             _visual.transform.localScale = new Vector3(scale, scale, scale);
         }
 
+        /// <summary>
+        /// Parks the faint marker on the enemy the player tapped, or takes it away.
+        /// </summary>
+        /// <remarks>
+        /// Its world position is written rather than inherited, because the root this component
+        /// sits on is following the <em>current</em> target and the held focus is by definition a
+        /// different enemy. A lookup that misses hides it, on the same "a miss is not an error"
+        /// terms as the ring above: the body may be destroyed in the frame between core publishing
+        /// and this running.
+        /// </remarks>
+        private void FollowHeldFocus()
+        {
+            if (_heldVisual == null)
+            {
+                return;
+            }
+
+            if (_heldFocusId == NoTarget
+                || _views is null
+                || !_views.TryGet(_heldFocusId, out EnemyView held)
+                || held == null)
+            {
+                if (_heldVisual.activeSelf)
+                {
+                    _heldVisual.SetActive(false);
+                }
+
+                return;
+            }
+
+            if (!_heldVisual.activeSelf)
+            {
+                _heldVisual.SetActive(true);
+            }
+
+            Vector3 position = held.Position;
+            position.y = _groundOffset;
+
+            _heldVisual.transform.position = position;
+        }
+
         private void OnTargetChanged(TargetChanged evt)
         {
             _targetId = evt.Id;
             _isFocused = evt.IsFocused;
             _isBlocked = evt.IsBlocked;
+            _heldFocusId = evt.HeldFocusId;
 
             ApplyState();
         }
@@ -258,6 +364,23 @@ namespace Soulvail.Game.Views
             SetColour(_blockedSecondStroke, colour);
         }
 
+        /// <summary>
+        /// The held marker's constant look: the ring colour at <see cref="_heldAlpha"/>, which sits
+        /// below <see cref="_autoAlpha"/>, which sits below the focused ring's 1.0.
+        /// </summary>
+        private void ApplyHeldLook()
+        {
+            var colour = new Color(_colour.r, _colour.g, _colour.b, _heldAlpha);
+
+            SetColour(_heldRing, colour);
+            SetColour(_heldChevron, colour);
+        }
+
+        /// <remarks>
+        /// Hides the main marker only. The held one is followed on its own terms in
+        /// <see cref="FollowHeldFocus"/>, because "the gun has nothing to shoot" and "the player is
+        /// not holding a focus" are different facts and the first does not imply the second.
+        /// </remarks>
         private void Hide()
         {
             if (_visual.activeSelf)
@@ -288,19 +411,9 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void BuildGeometry()
         {
-            BuildRing();
+            BuildRing(_ring, _radius, _width);
 
-            // A shallow V lying flat, pointing at the target below it. Flat rather than upright
-            // because the camera is fixed at 57° (GD §5.1) — nothing in this game is ever seen from
-            // the side, so a billboard would be solving a problem that cannot occur.
-            _chevron.useWorldSpace = false;
-            _chevron.loop = false;
-            _chevron.positionCount = 3;
-            _chevron.SetPosition(0, new Vector3(-0.28f, _chevronHeight, 0.22f));
-            _chevron.SetPosition(1, new Vector3(0f, _chevronHeight, -0.22f));
-            _chevron.SetPosition(2, new Vector3(0.28f, _chevronHeight, 0.22f));
-            _chevron.startWidth = _width;
-            _chevron.endWidth = _width;
+            BuildChevron(_chevron, scale: 1f, _width);
 
             // Two separate renderers rather than one four-point line, because a single line would
             // draw the connecting stroke between the two arms and the glyph would be a triangle.
@@ -308,27 +421,54 @@ namespace Soulvail.Game.Views
 
             BuildStroke(_blockedFirstStroke, new Vector3(-arm, 0f, -arm), new Vector3(arm, 0f, arm));
             BuildStroke(_blockedSecondStroke, new Vector3(-arm, 0f, arm), new Vector3(arm, 0f, -arm));
+
+            // The held marker is the same two shapes at a fraction of the size, built rather than
+            // scaled by a transform: a transform scale would be the pulse's channel, and the one
+            // thing this marker must never do is pulse.
+            BuildRing(_heldRing, _radius * _heldScale, _width * _heldScale);
+
+            BuildChevron(_heldChevron, _heldScale, _width * _heldScale);
         }
 
-        private void BuildRing()
+        private void BuildRing(LineRenderer line, float radius, float width)
         {
-            _ring.useWorldSpace = false;
+            line.useWorldSpace = false;
 
             // Looped rather than closed by repeating the first point, so the join is mitred like
             // every other segment instead of showing a seam.
-            _ring.loop = true;
-            _ring.positionCount = _segments;
+            line.loop = true;
+            line.positionCount = _segments;
 
             float step = 2f * Mathf.PI / _segments;
 
             for (int i = 0; i < _segments; i++)
             {
                 float angle = i * step;
-                _ring.SetPosition(i, new Vector3(Mathf.Cos(angle) * _radius, 0f, Mathf.Sin(angle) * _radius));
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
             }
 
-            _ring.startWidth = _width;
-            _ring.endWidth = _width;
+            line.startWidth = width;
+            line.endWidth = width;
+        }
+
+        /// <summary>
+        /// A shallow V lying flat, pointing at the enemy below it.
+        /// </summary>
+        /// <remarks>
+        /// Flat rather than upright because the camera is fixed at 57° (GD §5.1) — nothing in this
+        /// game is ever seen from the side, so a billboard would be solving a problem that cannot
+        /// occur.
+        /// </remarks>
+        private void BuildChevron(LineRenderer line, float scale, float width)
+        {
+            line.useWorldSpace = false;
+            line.loop = false;
+            line.positionCount = 3;
+            line.SetPosition(0, new Vector3(-0.28f * scale, _chevronHeight * scale, 0.22f * scale));
+            line.SetPosition(1, new Vector3(0f, _chevronHeight * scale, -0.22f * scale));
+            line.SetPosition(2, new Vector3(0.28f * scale, _chevronHeight * scale, 0.22f * scale));
+            line.startWidth = width;
+            line.endWidth = width;
         }
 
         private void BuildStroke(LineRenderer line, Vector3 from, Vector3 to)
@@ -356,8 +496,9 @@ namespace Soulvail.Game.Views
 
             throw new MissingReferenceException(
                 $"{nameof(ReticleView)} has no {field} assigned. Reticle.prefab is expected to " +
-                "carry all five — without them there is nothing to draw and no way to say which " +
-                "of GD §16.4's three states the target is in.");
+                "carry all eight — without them there is nothing to draw, no way to say which of " +
+                "GD §16.4's three states the target is in, and no way to show a focus the gun has " +
+                "not taken (CC §3.5).");
         }
     }
 }

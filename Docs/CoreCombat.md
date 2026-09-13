@@ -78,9 +78,11 @@ An 8-direction blend tree over `localVelocity` handles the animation. No aim IK,
 
 | Stat | Value |
 |---|---|
-| Move speed | **5.4 m/s** |
+| Move speed | **3 m/s** |
 | Max HP | **140** |
 | Aegis shield | **30**, recharges after 4s without damage, refills in 2s (15/s) |
+
+**Move speed was 5.4 m/s until the owner retuned it to 3 after playtesting**, in the same pass that dropped the Husk from 3.5 to 2 m/s. The whole game got slower; the speed *ratio* barely moved — 5.4 / 3.5 was 1.543×, 3 / 2 is 1.5× — which is what keeps [GD §6.1](GameDesign.md)'s rule that every class must feel faster than almost every enemy true. **[Characters.md](Characters.md) §3's class table and GD §6.1's "5.4–6.2 m/s across classes" row still carry the old band**, because moving it is a statement about the Gravecaller and the Emberwright, neither of which is built — flagged for the owner rather than guessed at.
 
 ---
 
@@ -223,16 +225,18 @@ Every class has exactly one, on a permanent button, and **it never auto-casts.**
 
 | Property | Value |
 |---|---|
-| Distance | **10 m** |
-| Duration | 0.22 s (≈45 m/s) |
-| i-frames | Full duration **+ 0.05 s** |
+| Distance | **8 m** |
+| Duration | 0.5 s (16 m/s) |
+| i-frames | Full duration **+ 0.05 s** → 0.55 s |
 | Cooldown | **2.5 s** |
 | Damage | 20 to everything passed through |
-| Knockback | 5 m |
+| Knockback | 4 m |
 | Direction | Current stick direction; facing direction if the stick is neutral |
 | Input buffer | **0.15 s** — a tap just before cooldown ends still fires |
 
 The trailing 0.05s of invulnerability and the input buffer are both there to absorb touch latency. Without them the dodge feels unreliable, and an unreliable dodge in a game built on dodging is fatal.
+
+**Retuned by the owner after playtesting: 10 m / 0.22 s / 5 m knockback → 8 m / 0.5 s / 4 m.** Two consequences worth knowing, because both are derived numbers rather than authored ones. The dash is **much less explosive** — 45 m/s down to 16 m/s, and against the retuned 3 m/s walk it is 5.3× move speed where it used to be 8.4×. And **the invulnerable window doubled**, 0.27 s → 0.55 s, which is now longer than a Husk's entire 0.4 s windup: a dodge entered at any point during a telegraph covers the strike outright. Neither number is validated outside the Editor, and the dodge is on the [device-only deferred list](plan/PROGRESS.md) — touch latency is exactly what the input buffer and the i-frame trail exist to absorb, and nothing in the Editor can measure it.
 
 ---
 
@@ -315,7 +319,7 @@ Every number in one place. Expose all of these in a ScriptableObject; do not har
 ### Movement
 | | |
 |---|---|
-| Move speed | 5.4 m/s |
+| Move speed | 3 m/s |
 | Accel / decel | 0.06 s / 0.08 s |
 | Turn speed | 720 °/s |
 | Controller radius | 0.45 m |
@@ -342,10 +346,10 @@ Every number in one place. Expose all of these in a ScriptableObject; do not har
 ### Charge
 | | |
 |---|---|
-| Distance / duration | 10 m / 0.22 s |
+| Distance / duration | 8 m / 0.5 s |
 | i-frames | duration + 0.05 s |
 | Cooldown | 2.5 s |
-| Damage / knockback | 20 / 5 m |
+| Damage / knockback | 20 / 4 m |
 | Input buffer | 0.15 s |
 
 ### Targeting

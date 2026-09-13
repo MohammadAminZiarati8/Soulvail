@@ -41,7 +41,7 @@ public enum ModifierKind
 /// <remarks>
 /// <para>
 /// <see cref="Source"/> is the whole reason this is not three floats on the stat. It is what
-/// lets a buff be taken back when it ends (<see cref="Stat.RemoveAll"/>) without knowing what
+/// lets a buff be taken back when it ends (<see cref="Stat.RemoveAll(object)"/>) without knowing what
 /// else has been added since, and what lets a debug panel answer "why is my damage 47?" — see
 /// ADR-0008.
 /// </para>

@@ -5,6 +5,8 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Composition;
+using Soulvail.Game.Views;
 using TMPro;
 using UnityEngine;
 using VContainer;
@@ -44,6 +46,22 @@ namespace Soulvail.Game.Presentation
     /// fault is in the button, because the number they are shown is one number.
     /// </para>
     /// <para>
+    /// The director's three numbers (M2-05) are the newest, and they are two kinds of thing. The
+    /// wave comes from <c>WaveStarted</c>, which is the same bargain the target line makes — an
+    /// outbound event, not core's state. <c>enemies n/cap</c> and <c>stale n</c> are boundary reads:
+    /// the first is the snapshot's own count against a composition constant, and the second is the
+    /// one number in the project that has no other way of being seen at all, since what
+    /// <c>NavPathSense</c> cannot keep up with never reaches core as anything but a slightly wrong
+    /// direction.
+    /// </para>
+    /// <para>
+    /// <c>los n/m</c> (M2-11b) is a boundary read of the same kind and the clearest case for the
+    /// category: a cover raycast throttled to nothing and a cover mask that matches nothing both
+    /// produce exactly the game that shipped before the sense existed, and neither publishes an
+    /// event, reaches core, or fails a test. The first number is the frame's raycasts, the second
+    /// how many of them found a pillar.
+    /// </para>
+    /// <para>
     /// Development only. It removes itself in <see cref="Awake"/> outside the Editor and
     /// development builds, so the release APK never carries it on screen — M0-19's manual step 3 is
     /// the check that this actually holds.
@@ -71,13 +89,77 @@ namespace Soulvail.Game.Presentation
         /// Preallocated and rewritten in place. <c>SetText(StringBuilder)</c> copies straight into
         /// TMP's backing array, so the text never becomes a new string — which is the whole reason
         /// the spec asks for a builder rather than concatenation.
+        /// <para>
+        /// Sized ahead of the line rather than to it: the capacity is 160 in the spec and the line
+        /// has grown four times since, so it is raised with each addition. A builder that has to
+        /// grow allocates once and then never again, which is harmless — and is also precisely the
+        /// kind of "it only leaks on the first frame" that is not worth leaving in a file whose
+        /// whole job is measuring frames.
+        /// </para>
         /// </remarks>
-        private readonly StringBuilder _line = new StringBuilder(96);
+        private readonly StringBuilder _line = new StringBuilder(240);
 
         private WorldSnapshot _snapshot;
         private IntentBuffer _intents;
         private IRunSession _session;
+
+        /// <summary>
+        /// The run's path cache, for <c>StalePathCount</c>. An adapter rather than core state, like
+        /// the snapshot and the intent buffer either side of it — and the number it reports is one
+        /// nothing else in the game can see (M2-05 rule 19).
+        /// </summary>
+        private NavPathSense _paths;
+
+        /// <summary>
+        /// The run's bolt census, for the one number that says whether the pool is working
+        /// (M2-09 rule 2 of the manual steps). Rented plus pooled must stop growing after the first
+        /// few shots; a total that keeps climbing is the pool being bypassed, and nothing else in
+        /// the game can see that.
+        /// </summary>
+        private ProjectileViews _projectileViews;
+
+        /// <summary>
+        /// The run's cover raycasts, for the two numbers M2-11b's manual steps are read off
+        /// (rule 3 and manual step 3).
+        /// </summary>
+        /// <remarks>
+        /// A boundary read on the same terms as the stale count beside it, and for a stronger
+        /// reason: a budget that is not being applied and a mask that matches nothing both produce
+        /// a game that looks exactly like the one before this feature existed. <c>los</c> says the
+        /// throttle is alive; <c>blocked</c> says the geometry is.
+        /// </remarks>
+        private LineOfSightSense _sight;
+
+        /// <summary>
+        /// The run's screen-edge arrows, for the one number that says the census behind them is
+        /// alive (M2-12a).
+        /// </summary>
+        /// <remarks>
+        /// A boundary read on the same terms as the stale count and the raycast count beside it,
+        /// and it earns the category the same way: an arrow set that never draws anything and an
+        /// arena with nothing off screen look identical, and neither publishes an event or reaches
+        /// core. It is also the only way to see the GD §7.3 stall rule fire at all — the moment
+        /// <c>arrows</c> moves off zero with two survivors is the eight seconds elapsing.
+        /// </remarks>
+        private ThreatArrows _arrows;
+
+        /// <summary>
+        /// The run's ground rings, for the pair that says whether their pool is working (M2-12b
+        /// manual step 4).
+        /// </summary>
+        /// <remarks>
+        /// The <c>bolts</c> reading beside it, for its reason: rented plus pooled must stop growing
+        /// once a fight is under way, and a total that keeps climbing is the pool being bypassed —
+        /// which on this census is the one failure that would cost frames on a phone, because rings
+        /// are the additive overdraw GD §11.3 warns about.
+        /// </remarks>
+        private TelegraphRings _rings;
+
         private IDisposable _targetSubscription;
+        private IDisposable _waveSubscription;
+        private IDisposable _arrivedSubscription;
+        private IDisposable _clearedSubscription;
+        private IDisposable _transitionSubscription;
         private float _untilRefresh;
         private float _fps;
 
@@ -87,21 +169,69 @@ namespace Soulvail.Game.Presentation
         private bool _isFocused;
         private bool _isBlocked;
 
+        /// <summary>The wave the director last announced, and how many the stage holds.</summary>
+        private int _wave;
+        private int _waveCount;
+
+        /// <summary>
+        /// Which beat of the stage the last stage event pointed at.
+        /// </summary>
+        /// <remarks>
+        /// Derived from the three events rather than read from <c>StageFlow.Phase</c>, which is the
+        /// same bargain the target line makes: a phase read out of core would agree with core by
+        /// construction and so could never show the boundary disagreeing with itself. The one thing
+        /// the events cannot see is <c>Clear</c> turning into <c>Gate</c> after 1.5 s — nothing is
+        /// published for it, because nothing outside core has to know — so both read <c>clear</c>.
+        /// </remarks>
+        private string _phase = "—";
+
+        /// <summary>
+        /// Which arena the last <c>StageArrived</c> named, or a dash for a run whose mode rosters
+        /// none.
+        /// </summary>
+        /// <remarks>
+        /// From the event rather than from <c>ArenaPool.Active</c>, which is the target line's
+        /// bargain again: core decides which room a stage is fought in, the pool obeys, and the one
+        /// failure worth seeing is the two disagreeing. Held as the string it will be printed as, so
+        /// a refresh ten times a second allocates nothing.
+        /// </remarks>
+        private string _arena = "—";
+
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
         /// <param name="session">The run, for the one number that has no other way out. See the class remarks.</param>
-        /// <param name="hub">The run's event hub, for the target line. Subscribed for this component's life.</param>
+        /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
+        /// <param name="paths">The run's path cache, for the stale count.</param>
+        /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
+        /// <param name="sight">The run's cover raycasts, for the budget and the blocked count.</param>
+        /// <param name="arrows">The run's screen-edge arrows, for how many are drawn right now.</param>
+        /// <param name="rings">The run's ground rings, for rented against pooled.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+        /// <remarks>
+        /// The run's <c>SpawnPlan</c> came in here until M2-11a, for one question — whether this
+        /// arena has anywhere to spawn. The answer moved onto the snapshot with the points
+        /// themselves, so the overlay now reads it from the same place core does.
+        /// </remarks>
         [Inject]
         public void Construct(
             WorldSnapshot snapshot,
             IntentBuffer intents,
             IRunSession session,
-            DomainEventHub hub)
+            DomainEventHub hub,
+            NavPathSense paths,
+            ProjectileViews projectileViews,
+            LineOfSightSense sight,
+            ThreatArrows arrows,
+            TelegraphRings rings)
         {
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _paths = paths ?? throw new ArgumentNullException(nameof(paths));
+            _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
+            _sight = sight ?? throw new ArgumentNullException(nameof(sight));
+            _arrows = arrows ?? throw new ArgumentNullException(nameof(arrows));
+            _rings = rings ?? throw new ArgumentNullException(nameof(rings));
 
             if (hub is null)
             {
@@ -109,6 +239,20 @@ namespace Soulvail.Game.Presentation
             }
 
             _targetSubscription = hub.Subscribe<TargetChanged>(OnTargetChanged);
+
+            // The wave line comes from the event rather than from the director, and that is the
+            // same rule the target line keeps: reaching into core's state would make the overlay
+            // agree with core by construction, so it could never show the boundary disagreeing
+            // with itself — which is the one thing it exists for.
+            _waveSubscription = hub.Subscribe<WaveStarted>(OnWaveStarted);
+
+            // The stage's own three, for the same reason and on the same terms. They are the only
+            // way to see the two seconds of arrival at all: nothing spawns during them, so an
+            // overlay without this line shows a stage that has begun and an arena that is empty,
+            // which is indistinguishable from a director that has quietly stopped.
+            _arrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
+            _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
+            _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
         }
 
         private void Awake()
@@ -165,6 +309,18 @@ namespace Soulvail.Game.Presentation
         {
             _targetSubscription?.Dispose();
             _targetSubscription = null;
+
+            _waveSubscription?.Dispose();
+            _waveSubscription = null;
+
+            _arrivedSubscription?.Dispose();
+            _arrivedSubscription = null;
+
+            _clearedSubscription?.Dispose();
+            _clearedSubscription = null;
+
+            _transitionSubscription?.Dispose();
+            _transitionSubscription = null;
         }
 
         private void OnTargetChanged(TargetChanged evt)
@@ -172,6 +328,41 @@ namespace Soulvail.Game.Presentation
             _targetId = evt.Id;
             _isFocused = evt.IsFocused;
             _isBlocked = evt.IsBlocked;
+        }
+
+        private void OnWaveStarted(WaveStarted evt)
+        {
+            _wave = evt.Wave;
+            _waveCount = evt.WaveCount;
+
+            _phase = "waves";
+        }
+
+        /// <remarks>
+        /// The wave counter is reset with the phase rather than left to the first <c>WaveStarted</c>
+        /// of the new stage, because two seconds pass between them — and "wave 4/4" over an empty
+        /// arena reads as a stage that has stalled rather than one that has just begun.
+        /// </remarks>
+        private void OnStageArrived(StageArrived evt)
+        {
+            _phase = "arrival";
+            _wave = 0;
+            _waveCount = 0;
+
+            // A dash for a mode with no arena roster, which is every fixture and every scene that
+            // dresses its own grey box — and the difference between "the swap did nothing" and
+            // "there was nothing to swap" (M2-11a rule 3).
+            _arena = evt.ArenaId.Value ?? "—";
+        }
+
+        private void OnStageCleared(StageCleared evt)
+        {
+            _phase = "clear";
+        }
+
+        private void OnTransitionStarted(StageTransitionStarted evt)
+        {
+            _phase = "fade";
         }
 
         /// <remarks>
@@ -236,7 +427,37 @@ namespace Soulvail.Game.Presentation
             // get told about this frame", which is the number that matters when the arena looks
             // fuller or emptier than it should. A count read from core would agree with core by
             // construction and so could never show the boundary disagreeing with itself.
+            //
+            // Against the device cap rather than against the stage's composed concurrency (M2-05).
+            // The cap is the number M2-04 measured and priced, it is the one the path budget is
+            // asked about, and it is a composition constant both sides already agree on — where
+            // the stage's own C(n) is core's state and would have to be dragged out through a new
+            // read. An early stage whose cap is lower than 28 therefore looks emptier than it is
+            // allowed to be, which is the whole of what this choice costs.
             _line.Append("  enemies ").Append(_snapshot.EnemyCount.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(BootInstaller.DeviceEnemyCap.ToString(CultureInfo.InvariantCulture));
+
+            AppendStage();
+
+            AppendDirector();
+
+            // Zero while the pathfinder is keeping up with the population, and the number ledger
+            // row 5 was missing: a refresh budget that cannot reach everybody does not fail, it
+            // just lets routes age until enemies walk into pillars. Anything but zero with a full
+            // wave up means the enemy cap and the path budget disagree (M2-05 rule 19).
+            _line.Append("  stale ").Append(_paths.StalePathCount.ToString(CultureInfo.InvariantCulture));
+
+            // Raycasts this frame over how many of them found cover — the `bolts rented/pooled`
+            // shape, because the two are read together or not at all. The first should be about
+            // five with a full arena at 60 fps and ten at 30; 28 means the budget is not being
+            // applied. The second is what says the raycast is measuring the right thing: standing
+            // behind a pillar has to move it off zero, and nothing else in the game can show that
+            // it did (M2-11b manual step 3). Spelled `los` rather than `blocked` because the target
+            // line below already owns that word for a focus outside acquire range.
+            _line.Append("  los ").Append(
+                _sight.RaycastsLastFrame.ToString(CultureInfo.InvariantCulture));
+
+            _line.Append('/').Append(_sight.BlockedCount.ToString(CultureInfo.InvariantCulture));
 
             // The id and how it was chosen — the two questions a tuning session asks of targeting.
             // "target -1" is a real answer and worth showing: it is the difference between "the aim
@@ -260,9 +481,122 @@ namespace Soulvail.Game.Presentation
 
             _line.Append("  charge ").Append(Fixed(state is null ? 0f : state.MovementSkillCooldownFraction));
 
+            // Shots in the air, from core rather than from the snapshot — unlike the enemy count
+            // above, there is no boundary here for the two sides to disagree across: a projectile
+            // has no body and is never reported back in (M2-07a rule 2), so core's number is the
+            // only one there is.
+            //
+            // It reads zero for the whole of M2-07a, and that is what it is for: nothing fires until
+            // M2-07b, so this is the line that makes the first Spitter's first bolt visible as a
+            // number before M2-09 draws one.
+            _line.Append("  shots ").Append(
+                (state is null ? 0 : state.InFlightProjectiles).ToString(CultureInfo.InvariantCulture));
+
+            // Rented against pooled, and the pair is the point rather than either number: the sum
+            // is how many bodies exist, and it must stop growing once a fight is under way. The
+            // rented half should also track `shots` above exactly — the two are counted on opposite
+            // sides of the boundary, so the frame they disagree is the frame a bolt was drawn for a
+            // shot core had already landed, or the other way round (M2-09).
+            _line.Append("  bolts ").Append(_projectileViews.Count.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(_projectileViews.PooledCount.ToString(CultureInfo.InvariantCulture));
+
+            // How many things the player cannot see are being pointed at. Zero is the ordinary
+            // reading and is what makes the number worth having: it moving off zero with nothing
+            // visible on the edge of the screen is an arrow drawn behind the HUD or outside the
+            // safe area, and it staying at zero while a bolt arrives from nowhere is GD §12.4's
+            // on-screen rule failing (M2-12a).
+            _line.Append("  arrows ").Append(_arrows.Count.ToString(CultureInfo.InvariantCulture));
+
+            // Rented against pooled, the `bolts` pair's shape for its reason — the sum is how many
+            // bodies exist and must stop growing once a fight is under way. The rented half is also
+            // the only way to see the two kinds of ring at all as numbers: it should sit at two or
+            // three through a wave's arrival, spike by one per Bloater that goes off, and return to
+            // zero in the gap between waves. Anything standing at a steady non-zero between waves is
+            // a ring that never ran out, which nothing else would report.
+            _line.Append("  rings ").Append(_rings.Count.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(_rings.PooledCount.ToString(CultureInfo.InvariantCulture));
+
             _line.Append("  fps ").Append(Mathf.RoundToInt(_fps).ToString(CultureInfo.InvariantCulture));
 
             _text.SetText(_line);
+        }
+
+        /// <summary>
+        /// Which depth is being played, which beat of it is running, and where the door is.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The depth comes from <c>RunState.StageIndex</c> rather than from an event, which is the
+        /// charge line's bargain rather than the target line's: it is the number a save will record
+        /// (M2-13) and the number every spawn is priced against, so showing anything else here would
+        /// be showing a second opinion about it.
+        /// </para>
+        /// <para>
+        /// <c>gate: —</c> is rule 15 being visible rather than mysterious, exactly as
+        /// <c>director: —</c> is rule 12. An arena dressed without a door is a legal arena and every
+        /// grey box is one; what it costs is a run that reaches <c>clear</c> and then never advances,
+        /// and one dash on screen is the price of never debugging that. When there is a door, the
+        /// number beside it is the XZ metres to it — the same distance core is deciding on, so the
+        /// frame it reads below 1.5 and nothing happens is a frame with a real bug in it.
+        /// </para>
+        /// </remarks>
+        private void AppendStage()
+        {
+            RunState state = _session.State;
+
+            _line.Append("  depth ").Append(
+                (state is null ? 0 : state.StageIndex).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append(' ').Append(_phase);
+
+            // The room, beside the depth it is being played at. It is the only way to see the swap
+            // happen at all when two arenas look alike from a fixed camera, and the only way to see
+            // the no-repeat rule holding across a boundary (M2-11a rule 3).
+            _line.Append(' ').Append(_arena);
+
+            if (!_snapshot.HasGate)
+            {
+                _line.Append("  gate: —");
+
+                return;
+            }
+
+            // XZ, because that is what core measures it on (AR §18.4) — a readout that counted the
+            // height would disagree with the rule it exists to make visible.
+            float dx = _snapshot.PlayerPosition.X - _snapshot.GatePosition.X;
+            float dz = _snapshot.PlayerPosition.Z - _snapshot.GatePosition.Z;
+
+            _line.Append("  gate ").Append(Fixed(Mathf.Sqrt((dx * dx) + (dz * dz))));
+        }
+
+        /// <summary>
+        /// Which wave of the stage is running — or that this arena cannot spawn at all.
+        /// </summary>
+        /// <remarks>
+        /// <c>director: —</c> is rule 12 being visible rather than mysterious. An arena with no
+        /// spawn points is a legal arena, and every core fixture that starts a run without caring
+        /// about spawning is one; the failure mode it buys is a dressed scene that stays silent for
+        /// no stated reason, and one dash on screen is the price of never debugging that.
+        /// <para>
+        /// Read off the snapshot from M2-11a, where the points now arrive, rather than off the run's
+        /// <c>SpawnPlan</c>, which no longer carries any. It therefore also shows the one new way to
+        /// be silent: an arena raised without markers, or no arena raised at all.
+        /// </para>
+        /// </remarks>
+        private void AppendDirector()
+        {
+            if (_snapshot.SpawnPoints.Count == 0)
+            {
+                _line.Append("  director: —");
+
+                return;
+            }
+
+            // Zero until the first WaveStarted arrives, which is a real state and worth showing:
+            // it is the difference between "the director has not begun" and "wave 1 is taking its
+            // time", and those have different causes.
+            _line.Append("  wave ").Append(_wave.ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(_waveCount.ToString(CultureInfo.InvariantCulture));
         }
 
         /// <summary>

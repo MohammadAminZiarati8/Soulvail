@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Pooling;
 using UnityEngine;
 using VContainer;
@@ -41,6 +42,12 @@ public sealed class EnemyViews : IDisposable
 {
     private readonly ViewPool<EnemyView> _pool;
 
+    /// <summary>
+    /// Archetype id → tint and scale, so a rental knows what it is standing in for. Read once per
+    /// spawn and never otherwise.
+    /// </summary>
+    private readonly EnemyLookBook _looks;
+
     /// <summary>Core's id → the body standing in for it. The only index anything outside resolves through.</summary>
     private readonly Dictionary<int, EnemyView> _byId = new Dictionary<int, EnemyView>();
 
@@ -66,20 +73,30 @@ public sealed class EnemyViews : IDisposable
     /// runs an <c>[Inject]</c> on an enemy component — <c>EnemyHitFeedback</c> takes the event hub
     /// that way — and a body created the plain way would silently never be injected.
     /// </param>
-    /// <param name="prefab">The one enemy body prefab. All archetypes share it until M2-06.</param>
+    /// <param name="prefab">
+    /// The one enemy body prefab. Every archetype shares it, tinted and scaled per spawn from
+    /// <paramref name="looks"/> — GD §11.3's own plan, and what M2-06 chose over a prefab and a pool
+    /// per archetype. A body each arrives with the enemy art, not before.
+    /// </param>
     /// <param name="parent">
     /// Where instances are parented, or null for the scene root. The pool's root, and a tidiness
     /// argument — nothing looks anything up through it.
     /// </param>
     /// <param name="hub">The run's event hub, subscribed to for the length of this object's life.</param>
+    /// <param name="looks">
+    /// What each archetype is drawn as (M2-06). Required rather than optional, for the reason
+    /// <c>BootInstaller</c>'s enemy list is: a run composed without one would draw every archetype
+    /// as the same grey capsule, which looks exactly like a look book that is simply wrong.
+    /// </param>
     /// <param name="prewarm">
     /// How many bodies to build before the run starts. The arena's steady-state population, so the
     /// only <c>Instantiate</c> calls of a whole run happen while the scene is still loading rather
     /// than on the frame a wave lands.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="resolver"/>, <paramref name="prefab"/> or <paramref name="hub"/> is null.
-    /// <paramref name="parent"/> may be null; the others are the run being mis-wired.
+    /// <paramref name="resolver"/>, <paramref name="prefab"/>, <paramref name="hub"/> or
+    /// <paramref name="looks"/> is null. <paramref name="parent"/> may be null; the others are the
+    /// run being mis-wired.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="prewarm"/> is negative.</exception>
     public EnemyViews(
@@ -87,12 +104,15 @@ public sealed class EnemyViews : IDisposable
         EnemyView prefab,
         Transform parent,
         DomainEventHub hub,
+        EnemyLookBook looks,
         int prewarm = 0)
     {
         if (hub is null)
         {
             throw new ArgumentNullException(nameof(hub));
         }
+
+        _looks = looks ?? throw new ArgumentNullException(nameof(looks));
 
         // The pool makes the same three checks this constructor used to, and in the same way — a
         // destroyed prefab is a live reference that only compares equal to null through Unity's
@@ -144,14 +164,20 @@ public sealed class EnemyViews : IDisposable
     /// before this ran.
     /// </para>
     /// <para>
-    /// Every field of the slot is assigned, including the two written as zero here. Slots are
-    /// reused and <c>Clear</c> leaves their contents alone (AR §4.2), so a field left unwritten
-    /// carries whatever the enemy that last occupied that slot put there — a stale line of sight
+    /// Every field this census is the authority on is assigned, including the zero written here.
+    /// Slots are reused and <c>Clear</c> leaves their contents alone (AR §4.2), so a field left
+    /// unwritten carries whatever the enemy that last occupied that slot put there — a stale sense
     /// belonging to somebody else. <c>PathDirectionToPlayer</c> is overwritten a moment later by
     /// <see cref="SnapshotBuilder"/>, which is the only place that knows where the player is; the
     /// zero written here is what a run without a baked NavMesh reports, and it has to be written
-    /// rather than inherited for exactly the reason above. <c>HasLineOfSight</c> stays false until
-    /// something answers it — CC §3.1 still skips line of sight deliberately.
+    /// rather than inherited for exactly the reason above.
+    /// </para>
+    /// <para>
+    /// <b><c>HasLineOfSight</c> is not written here any more</b> (M2-11b). It used to be a hard
+    /// <c>false</c>, which was honest while CC §3.1 still skipped the question and is a lie now that
+    /// cover answers it: the census knows where its bodies are and nothing else, so whether a pillar
+    /// stands between one of them and the player is not a fact it is entitled to state. The builder
+    /// writes it for every slot on every path, which is what keeps the rule above true.
     /// </para>
     /// <para>
     /// Order is the dictionary's and that is safe: core's <c>Ingest</c> looks every entry up by
@@ -178,7 +204,6 @@ public sealed class EnemyViews : IDisposable
             sense.Position = view.Position.ToNum();
             sense.Velocity = view.Velocity.ToNum();
             sense.PathDirectionToPlayer = System.Numerics.Vector2.Zero;
-            sense.HasLineOfSight = false;
         }
     }
 
@@ -219,6 +244,19 @@ public sealed class EnemyViews : IDisposable
         // at wherever its previous life ended — the two calls are in the same frame, before
         // anything renders.
         EnemyView view = _pool.Get();
+
+        // Before Bind, so the body is never drawn for a frame in the colour and size of whoever
+        // died in it last. Applied on every rental without exception — an archetype nobody authored
+        // a look for gets EnemyLook.Default rather than being skipped, which is what makes the
+        // previous tenant's rust impossible to inherit (AR §18.4, M2-06 rule 10).
+        EnemyHitFeedback feedback = view.Feedback;
+
+        if (feedback != null)
+        {
+            EnemyLook look = _looks.For(evt.SpecId);
+
+            feedback.SetArchetypeLook(look.Tint, look.BodyScale);
+        }
 
         view.Bind(evt.Id, position);
 

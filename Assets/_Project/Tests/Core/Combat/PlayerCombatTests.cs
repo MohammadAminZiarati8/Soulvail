@@ -6,6 +6,7 @@ using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -35,11 +36,26 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class PlayerCombatTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 99;
 
     /// <summary>Room for every row's enemies, and the buffer <c>PlayerCombat</c> preallocates.</summary>
     private const int EnemyCapacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     // CC §7, Survivability and Targeting.
     private const float MaxHp = 140f;
@@ -173,6 +189,232 @@ public sealed class PlayerCombatTests
         Assert.That(combat.Targeter.IsCurrentBlocked, Is.True);
         Assert.That(combat.Blackboard.IsTargetBlocked, Is.True);
         Assert.That(_events.Single<TargetChanged>().IsBlocked, Is.True);
+    }
+
+    // ---- M2-12a, ledger row 12: the focus the gun has not taken --------------------------------
+
+    [Test]
+    public void Focus_OutOfRange_CarriesHeldId()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        EnemyAgent near = registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+        EnemyAgent far = registry.Spawn(Enemy(), new Vector3(0f, 0f, 14f));
+
+        // A second enemy inside the range is what makes this the state the ledger complained
+        // about. With the far one alone, scoring finds nothing and SelectNearest hands the current
+        // target back to it blocked — so the bright ring is already on it and nothing was ever
+        // invisible. The silent case is precisely this one: the gun has somewhere else to go.
+        combat.Targeter.Focus(far.Id);
+
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
+
+        TargetChanged changed = _events.Of<TargetChanged>()[^1];
+
+        Assert.That(changed.Id, Is.EqualTo(near.Id), "The gun shoots what scoring picked.");
+        Assert.That(changed.IsFocused, Is.False, "The target is not the focused one.");
+        Assert.That(
+            changed.HeldFocusId,
+            Is.EqualTo(far.Id),
+            "The tap at 14 m against a 12 m acquire range registered, and this field is the only "
+                + "thing in the game that says so (CC §3.4, §3.5).");
+    }
+
+    [Test]
+    public void Focus_InRange_HeldIdIsMinusOne()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        EnemyAgent husk = registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+
+        combat.Targeter.Focus(husk.Id);
+
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
+
+        TargetChanged changed = _events.Of<TargetChanged>()[^1];
+
+        Assert.That(changed.Id, Is.EqualTo(husk.Id));
+        Assert.That(changed.IsFocused, Is.True);
+        Assert.That(
+            changed.HeldFocusId,
+            Is.EqualTo(-1),
+            "A focus the gun has taken is IsFocused, and saying it twice would have the reticle "
+                + "draw two markers on one enemy.");
+    }
+
+    [Test]
+    public void Focus_None_HeldIdIsMinusOne()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+
+        combat.Tick(Frame, 0f, Snapshot(), registry.Alive, Facing);
+
+        Assert.That(_events.Single<TargetChanged>().HeldFocusId, Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void Focus_HeldAndFocusedAreNeverBothSet()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        EnemyAgent near = registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+        EnemyAgent far = registry.Spawn(Enemy(), new Vector3(0f, 0f, 14f));
+
+        WorldSnapshot snapshot = Snapshot();
+
+        float now = 0f;
+
+        // Every state the targeter can be walked into from a test: nothing focused, a focus in
+        // range, a focus out of range, and a focus that has expired.
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        combat.Targeter.Focus(near.Id);
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        combat.Targeter.Focus(far.Id);
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        combat.Targeter.ClearFocus();
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        combat.Targeter.Focus(far.Id);
+        Advance(combat, registry, snapshot, now, 3f);
+
+        Assert.That(_events.Count<TargetChanged>(), Is.GreaterThan(1), "The walk has to have moved.");
+
+        foreach (TargetChanged changed in _events.Of<TargetChanged>())
+        {
+            Assert.That(
+                changed.IsFocused && changed.HeldFocusId >= 0,
+                Is.False,
+                "The two fields are two states of one thing, not two things. Both set at once "
+                    + "would have the reticle draw its bright ring and its faint marker on the "
+                    + "same enemy.");
+        }
+    }
+
+    [Test]
+    public void Focus_HeldIdPublishesOnEveryTransition()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        EnemyAgent near = registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+        EnemyAgent far = registry.Spawn(Enemy(), new Vector3(0f, 0f, 14f));
+
+        WorldSnapshot snapshot = Snapshot();
+
+        float now = Advance(combat, registry, snapshot, 0f, 0.2f);
+
+        Assert.That(_events.Of<TargetChanged>()[^1].HeldFocusId, Is.EqualTo(-1), "Nothing focused yet.");
+
+        // 1. The tap lands out of range.
+        combat.Targeter.Focus(far.Id);
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        Assert.That(_events.Of<TargetChanged>()[^1].HeldFocusId, Is.EqualTo(far.Id));
+
+        // 2. Walking towards it brings it inside the acquire range, and the gun takes it. The
+        // player moves rather than the enemy, because EnemyAgent.Position is internal and this
+        // assembly has no InternalsVisibleTo (AR §18.2) — the distance is the difference, so
+        // either end of it is the same experiment.
+        snapshot.PlayerPosition = new Vector3(0f, 0f, 4f);
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        TargetChanged arrived = _events.Of<TargetChanged>()[^1];
+
+        Assert.That(arrived.Id, Is.EqualTo(far.Id));
+        Assert.That(arrived.IsFocused, Is.True);
+        Assert.That(arrived.HeldFocusId, Is.EqualTo(-1), "It stopped being held the moment it was taken.");
+
+        // 3. Walking away puts it back out of range, and the gun falls back to the near one.
+        snapshot.PlayerPosition = Vector3.Zero;
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        TargetChanged left = _events.Of<TargetChanged>()[^1];
+
+        Assert.That(left.Id, Is.EqualTo(near.Id));
+        Assert.That(left.HeldFocusId, Is.EqualTo(far.Id));
+
+        // 4. CC §3.4's two seconds run out and the focus expires on its own.
+        Advance(combat, registry, snapshot, now, 2.5f);
+
+        Assert.That(
+            _events.Of<TargetChanged>()[^1].HeldFocusId,
+            Is.EqualTo(-1),
+            "The expiry moves FocusedTargetId, which is a member of the triple ChangedThisTick "
+                + "watches — so there is no way for this field to go stale without a publish.");
+    }
+
+    [Test]
+    public void Focus_TargeterUnchanged()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        EnemyAgent near = registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+        EnemyAgent far = registry.Spawn(Enemy(), new Vector3(0f, 0f, 14f));
+
+        WorldSnapshot snapshot = Snapshot();
+
+        float now = Advance(combat, registry, snapshot, 0f, 0.2f);
+
+        combat.Targeter.Focus(far.Id);
+        now = Advance(combat, registry, snapshot, now, 0.2f);
+
+        // Row 12 was never a targeting bug. Every field of the event is a function of the two ids
+        // the targeter already published before M2-12a, so core decided nothing new — the game
+        // simply gained a way to say what it had already decided. The other half of this claim is
+        // the whole M1-04 TargeterTests fixture, which is green and unmodified.
+        Assert.That(combat.Targeter.CurrentTargetId, Is.EqualTo(near.Id));
+        Assert.That(combat.Targeter.FocusedTargetId, Is.EqualTo(far.Id));
+
+        TargetChanged last = _events.Of<TargetChanged>()[^1];
+
+        Assert.That(last.Id, Is.EqualTo(combat.Targeter.CurrentTargetId));
+        Assert.That(
+            last.HeldFocusId,
+            Is.EqualTo(
+                combat.Targeter.FocusedTargetId >= 0
+                && combat.Targeter.FocusedTargetId != combat.Targeter.CurrentTargetId
+                    ? combat.Targeter.FocusedTargetId
+                    : -1),
+            "Derived, not decided. The day this stops matching, something started keeping a "
+                + "second opinion about what the player tapped.");
+    }
+
+    /// <summary>
+    /// Ticks <paramref name="seconds"/> of frames and returns the clock it left off at.
+    /// </summary>
+    /// <remarks>
+    /// Several frames rather than one, because <c>Targeter.Tick</c> re-selects on a 10 Hz cadence:
+    /// a distance that changed between two ticks is not acted on until the next scheduled
+    /// selection, so a single frame after moving the player would assert against the decision
+    /// before it.
+    /// </remarks>
+    private static float Advance(
+        PlayerCombat combat,
+        EnemyRegistry registry,
+        WorldSnapshot snapshot,
+        float now,
+        float seconds)
+    {
+        int frames = (int)MathF.Ceiling(seconds / Frame);
+
+        for (int i = 0; i < frames; i++)
+        {
+            combat.Tick(Frame, now, snapshot, registry.Alive, Facing);
+
+            now += Frame;
+        }
+
+        return now;
     }
 
     // ---- Rule 4: damage, and what it is worth saying -------------------------------------------
@@ -333,12 +575,16 @@ public sealed class PlayerCombatTests
     [Test]
     public void RunSession_MotorFacesTarget()
     {
-        var catalog = new ContentCatalog(new[] { Character() }, new[] { Enemy() });
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var catalog = new ContentCatalog(
+            new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(5f, 0f, 0f)) })));
+            Seed,
+            1,
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(5f, 0f, 0f)) }), restore: null));
 
         Assert.That(session.State.PlayerFacing, Is.EqualTo(Vector3.UnitZ), "Sanity: a run starts looking down +Z.");
 
@@ -371,17 +617,21 @@ public sealed class PlayerCombatTests
         // as it does in the game.
         var catalog = new ContentCatalog(
             new[] { Character(maxHp: 5f, withShield: false, hitIFrames: 0f) },
-            new[] { Chaser() });
+            new[] { Chaser() },
+            new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // A metre away: inside the Husk's 1.2 m reach on the tick it starts chasing, so the run is
         // over inside the 0.4 s wind-up plus a handful of frames rather than after a walk across
         // the arena. Nothing moves it — no body reports a position in a headless test — so the
         // distance the behaviour reads stays exactly this.
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) })));
+            Seed,
+            1,
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, 1f)) }), restore: null));
 
         var snapshot = new WorldSnapshot(EnemyCapacity);
         snapshot.Dt = Frame;
@@ -534,6 +784,24 @@ public sealed class PlayerCombatTests
 
     private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
 
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
+
     /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>
     /// <remarks>
     /// <para>
@@ -586,11 +854,13 @@ public sealed class PlayerCombatTests
         36f,
         3.5f,
         priority,
+        threatCost: 4,
         isElite: false,
         8f,
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 
     /// <summary>The same Husk, with M1-18's brain switched on: it walks up, telegraphs, and hits.</summary>
@@ -600,11 +870,13 @@ public sealed class PlayerCombatTests
         36f,
         3.5f,
         1,
+        threatCost: 4,
         isElite: false,
         8f,
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Chaser);
 
     /// <summary>

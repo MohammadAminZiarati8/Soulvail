@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
@@ -79,6 +80,11 @@ namespace Soulvail.Game.Presentation
                  "and its two strings are raw English until M6-10.")]
         [SerializeField] private GameObject _deathOverlay;
 
+        [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
+                 "same terms as the reticle: without it a run still crosses every boundary, the " +
+                 "arena just swaps in plain sight.")]
+        [SerializeField] private CanvasGroup _fade;
+
         [Tooltip("The health bar's size in dp — GD §16.1's large top-left bar. Applied at runtime " +
                  "for the reason SkillButton applies its own: a Scale-With-Screen-Size canvas " +
                  "measures in reference pixels, which are a different physical size on every phone.")]
@@ -109,6 +115,14 @@ namespace Soulvail.Game.Presentation
         private IDisposable _damagedSubscription;
         private IDisposable _shieldSubscription;
         private IDisposable _diedSubscription;
+        private IDisposable _stageArrivedSubscription;
+        private IDisposable _transitionSubscription;
+
+        /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
+        private float _fadeTarget;
+
+        /// <summary>Alpha per second, so a zero or negative duration snaps rather than divides.</summary>
+        private float _fadeSpeed;
 
         /// <summary>The overlay is up and the next tap goes back to the menu.</summary>
         private bool _awaitingTap;
@@ -162,6 +176,13 @@ namespace Soulvail.Game.Presentation
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnPlayerDamaged);
             _shieldSubscription = hub.Subscribe<PlayerShieldChanged>(OnShieldChanged);
             _diedSubscription = hub.Subscribe<PlayerDied>(OnPlayerDied);
+
+            // The two halves of the stage transition, and they are deliberately not symmetrical:
+            // core says how long it is giving the screen to close, and says nothing at all about
+            // opening it again — the next arrival *is* the world having been swapped, so there is
+            // nothing left to wait for (M2-10 rule 9).
+            _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
+            _stageArrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
         }
 
         /// <exception cref="MissingReferenceException">A view, the readout or the overlay is not dressed.</exception>
@@ -196,6 +217,14 @@ namespace Soulvail.Game.Presentation
             // ship covering the arena.
             _deathOverlay.SetActive(false);
 
+            // Down whatever the prefab was left dressed as, for the same reason: a cover someone
+            // was editing must not ship over the arena.
+            if (_fade != null)
+            {
+                _fade.alpha = 0f;
+                _fade.blocksRaycasts = false;
+            }
+
             // Drawn once immediately, because whether RunStarted has already been published depends
             // on the order VContainer's entry points and this component's Start happen to run in.
             // Either path lands here; a HUD in a scene with no run at all simply has nothing to
@@ -214,11 +243,15 @@ namespace Soulvail.Game.Presentation
             _damagedSubscription?.Dispose();
             _shieldSubscription?.Dispose();
             _diedSubscription?.Dispose();
+            _stageArrivedSubscription?.Dispose();
+            _transitionSubscription?.Dispose();
 
             _startedSubscription = null;
             _damagedSubscription = null;
             _shieldSubscription = null;
             _diedSubscription = null;
+            _stageArrivedSubscription = null;
+            _transitionSubscription = null;
         }
 
         /// <remarks>
@@ -227,6 +260,8 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void Update()
         {
+            TickFade();
+
             if (!_awaitingTap || Time.frameCount <= _deathFrame)
             {
                 return;
@@ -248,6 +283,70 @@ namespace Soulvail.Game.Presentation
         private void OnRunStarted(RunStarted evt)
         {
             Redraw();
+        }
+
+        /// <summary>
+        /// The player is in the door: close the screen, in the seconds core is giving us.
+        /// </summary>
+        private void OnTransitionStarted(StageTransitionStarted evt)
+        {
+            _fadeTarget = 1f;
+
+            // A duration that is zero or worse snaps. Dividing by it would hand the cover an
+            // infinite or NaN speed, and a NaN alpha is a canvas group that never renders again.
+            _fadeSpeed = evt.Duration > 0f ? 1f / evt.Duration : float.PositiveInfinity;
+        }
+
+        /// <summary>
+        /// The world underneath has been swapped: open the screen again.
+        /// </summary>
+        /// <remarks>
+        /// <c>StageArrived</c> carries no duration, because opening is not something core is waiting
+        /// on — so the beat is <c>StageFlow.FadeTime</c>, read from the same constant core closed it
+        /// over. It fires for the first stage of a run too (M2-10 rule 4), which is what makes a
+        /// cover someone left dressed opaque in the prefab open itself rather than hide the game.
+        /// </remarks>
+        private void OnStageArrived(StageArrived evt)
+        {
+            _fadeTarget = 0f;
+            _fadeSpeed = 1f / StageFlow.FadeTime;
+        }
+
+        /// <summary>
+        /// Moves the cover towards wherever the last stage event pointed it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// On <c>Time.deltaTime</c> rather than on the clamped <c>dt</c> core counts in, and the
+        /// difference only ever errs safe: core's step is clamped to <c>SnapshotBuilder.MaxDt</c>,
+        /// so on a hitching frame simulated time advances <em>more slowly</em> than the wall clock
+        /// and the cover is already opaque when the swap happens. The other way round would show
+        /// the player the arena being replaced.
+        /// </para>
+        /// <para>
+        /// A HUD with no cover dressed does nothing here, which is a run that crosses every boundary
+        /// in plain sight — playable, and exactly what an undressed test scene wants.
+        /// </para>
+        /// </remarks>
+        private void TickFade()
+        {
+            if (_fade == null)
+            {
+                return;
+            }
+
+            float alpha = Mathf.MoveTowards(_fade.alpha, _fadeTarget, _fadeSpeed * Time.deltaTime);
+
+            if (Mathf.Approximately(alpha, _fade.alpha))
+            {
+                return;
+            }
+
+            _fade.alpha = alpha;
+
+            // Taken out of the raycast path the moment it is not covering anything, so a cleared
+            // cover cannot eat the tap that dismisses the death overlay.
+            _fade.blocksRaycasts = alpha > 0f;
         }
 
         /// <summary>

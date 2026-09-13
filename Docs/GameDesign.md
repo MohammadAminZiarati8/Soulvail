@@ -449,7 +449,7 @@ B(n) = 40 + 12·(n−1) + 0.9·(n−1)²
 | 5 | 102 | Husks + Spitters + Bloaters |
 | 10 | 221 | + Lungers, Weavers, first Elites |
 | 20 | 593 | Full roster, several Elites |
-| 40 | 1,772 | Dense mixed packs, multi-affix Elites |
+| 40 | 1,877 | Dense mixed packs, multi-affix Elites |
 
 Quadratic growth. Early stages ramp gently; deep stages get genuinely oppressive. Bosses are **not** paid from this budget — they're additive.
 
@@ -470,7 +470,7 @@ Damage multiplier:  d(n) = min(1 + 0.035·(n−1), 3.0)    // hard cap
 Speed multiplier:   s(n) = min(1 + 0.02·floor(n/5), 1.3)
 ```
 
-Compare the shapes: at stage 40 the budget is **44×** stage 1, but enemy HP is only **3.3×**. That ratio is the entire design thesis. Difficulty comes from *more things doing more different things at once*, not from enemies absorbing more bullets.
+Compare the shapes: at stage 40 the budget is **47×** stage 1, but enemy HP is only **3.3×**. That ratio is the entire design thesis. Difficulty comes from *more things doing more different things at once*, not from enemies absorbing more bullets.
 
 ### 12.4 Hard guardrails
 

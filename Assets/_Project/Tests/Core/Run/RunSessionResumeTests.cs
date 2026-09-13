@@ -1,0 +1,765 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using NUnit.Framework;
+using Soulvail.Core.Content;
+using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
+using Soulvail.Core.Save;
+using Soulvail.Tests.Core.Fakes;
+
+namespace Soulvail.Tests.Core.Run;
+
+/// <summary>
+/// <c>RunConfig</c>'s sixth field and what <c>RunSession.Start</c> does with it: what a restore
+/// puts back, when it puts it back, what it refuses, and the property the whole feature exists
+/// for — that a resumed run fights the stage the interrupted one was about to fight.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Every row drives a real session rather than building a <c>RunState</c></b>, for
+/// <c>RunRecorderTests</c>' reason: <c>RunState</c>'s constructor is <c>internal</c> and
+/// <c>Soulvail.Tests.Core</c> has no <c>InternalsVisibleTo</c>, deliberately. A fixture that
+/// skipped starting a run would stop testing the thing that applies the restore.
+/// </para>
+/// <para>
+/// <b>The generator is put back by the fixture, standing in for the composition root</b> (rule 3).
+/// That is not a shortcut around the code under test — it <em>is</em> the contract: core is handed
+/// a generator already standing where the save left it and never learns that anything was rewound.
+/// <c>ResumeFlowTests.Installer_RestoresTheGeneratorState</c> is where the real
+/// <c>RunInstaller</c> answers for doing it.
+/// </para>
+/// <para>
+/// A fixture beside <c>RunSessionTests</c> rather than rows inside it. That file is M0's brain and
+/// is already 800 lines; these rows need a real budget curve, a boundary and two runs compared
+/// against each other, which is a different world to build.
+/// </para>
+/// </remarks>
+[TestFixture]
+public sealed class RunSessionResumeTests
+{
+    private const string ModeId = "mode.test";
+    private const string OathboundId = "character.oathbound";
+    private const string HuskId = "enemy.husk";
+
+    /// <summary>An arena roster of two, so <c>ArenaFor</c>'s no-repeat walk has somewhere to go.</summary>
+    private const string FirstArenaId = "arena.pillars";
+    private const string SecondArenaId = "arena.tiered";
+
+    /// <summary>GD §8.1's threat cost for the one archetype these rows compose from.</summary>
+    private const int HuskCost = 4;
+
+    private const int Capacity = 64;
+    private const int DeviceCap = 28;
+    private const int ProjectileCapacity = 8;
+
+    /// <summary>The class's hit points, and never the number any row restores to.</summary>
+    private const float MaxHp = 100f;
+
+    /// <summary>The Aegis this fixture's class carries.</summary>
+    private const float ShieldMax = 12f;
+
+    /// <summary>What every restoring row puts the player back at. Neither is a maximum.</summary>
+    private const float SavedHp = 62f;
+    private const float SavedShield = 9f;
+
+    private const float SavedRunTime = 412.5f;
+
+    private const float Frame = 1f / 60f;
+
+    /// <summary>Comfortably outside <c>SpawnDirector.MinPlayerDistance</c> of the origin.</summary>
+    private const float Ring = 10f;
+
+    private static readonly Vector3 Door = new Vector3(0f, 0f, 18f);
+
+    private static readonly DateTimeOffset Instant =
+        new DateTimeOffset(2026, 9, 13, 10, 0, 0, TimeSpan.Zero);
+
+    private RecordingEvents _events;
+    private FixedRandom _random;
+    private FixedClock _clock;
+    private ContentCatalog _catalog;
+    private ModeSpec _mode;
+    private RunSession _session;
+
+    // ---- The field (rule 1) --------------------------------------------------------------------
+
+    [Test]
+    public void Config_RecordsTheRestore()
+    {
+        RunSnapshot snapshot = Snapshot(stage: 4, seed: 7);
+
+        var resuming = new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: snapshot);
+
+        Assert.That(resuming.Restore.HasValue, Is.True);
+        Assert.That(resuming.Restore.Value.StageIndex, Is.EqualTo(4));
+        Assert.That(resuming.Restore.Value.PlayerHp, Is.EqualTo(SavedHp));
+
+        var fresh = new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: null);
+
+        Assert.That(
+            fresh.Restore,
+            Is.Null,
+            "A fresh run says so with null rather than by omission — which is why the sixth "
+                + "parameter is required and not defaulted.");
+    }
+
+    // ---- What comes back, and when (rules 2, 3) ------------------------------------------------
+
+    [Test]
+    public void Start_RestoresHpAndShield()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+
+        Assert.That(_session.State.PlayerHp, Is.EqualTo(SavedHp));
+        Assert.That(_session.State.PlayerShield, Is.EqualTo(SavedShield));
+
+        // The fixture's own claim, checked out loud: if the class's maximum happened to equal the
+        // saved value, this row would pass with the restore deleted.
+        Assert.That(SavedHp, Is.Not.EqualTo(MaxHp));
+        Assert.That(SavedShield, Is.Not.EqualTo(ShieldMax));
+    }
+
+    [Test]
+    public void Start_RestoresRunTime()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+
+        Assert.That(_session.State.Time, Is.EqualTo(SavedRunTime));
+    }
+
+    [Test]
+    public void Start_RestoredRunTimeKeepsRunning()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+        TickFor(60);
+
+        // Simulated seconds carry on from where the save left them rather than restarting — a run
+        // resumed at seven minutes is seven minutes old, which is what the next snapshot's RunTime
+        // has to say and what M4's run summary will read.
+        Assert.That(_session.State.Time, Is.GreaterThan(SavedRunTime));
+        Assert.That(_session.State.Time, Is.EqualTo(SavedRunTime + (60f * Frame)).Within(0.01f));
+    }
+
+    [Test]
+    public void Start_RestoreIsAppliedBeforeRunStarted()
+    {
+        Build(seed: 7);
+
+        float seenFromTheHandler = float.NaN;
+        float shieldFromTheHandler = float.NaN;
+
+        var watching = new WatchingEvents();
+        RunSession session = SessionOver(watching);
+
+        watching.On<RunStarted>(_ =>
+        {
+            seenFromTheHandler = session.State.PlayerHp;
+            shieldFromTheHandler = session.State.PlayerShield;
+        });
+
+        session.Start(ResumedConfig(stage: 4));
+
+        // M1-17's HUD draws the bar it is told about from inside this handler. A restore applied
+        // after the publish would show a resumed run a full bar that drops to 62 % on the next
+        // frame, which is the one frame a resumed run does not get to be wrong in.
+        Assert.That(
+            seenFromTheHandler,
+            Is.EqualTo(SavedHp),
+            "A subscriber reading PlayerHp from RunStarted must already see the restored value.");
+
+        Assert.That(shieldFromTheHandler, Is.EqualTo(SavedShield));
+    }
+
+    [Test]
+    public void Start_FreshRunStartsAtFullHealth()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        Assert.That(_session.State.PlayerHp, Is.EqualTo(MaxHp));
+        Assert.That(_session.State.PlayerShield, Is.EqualTo(ShieldMax));
+        Assert.That(_session.State.Time, Is.EqualTo(0f), "A fresh run has lasted no time at all.");
+    }
+
+    // ---- The agreement (rule 4) -----------------------------------------------------------------
+
+    [Test]
+    public void Start_RestoreSeedDisagrees_Throws()
+    {
+        Build(seed: 7);
+
+        var config = new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: Snapshot(stage: 4, seed: 8));
+
+        Assert.Throws<ArgumentException>(() => _session.Start(config));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void Start_RestoreStageDisagrees_Throws()
+    {
+        Build(seed: 7);
+
+        var config = new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: Snapshot(stage: 5, seed: 7));
+
+        Assert.Throws<ArgumentException>(() => _session.Start(config));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void Start_RestoreOfAnUnauthoredMode_ThrowsFirst()
+    {
+        Build(seed: 7);
+
+        // Both wrong at once: the mode is not in this build's catalog *and* the restore disagrees
+        // about the stage. Validation runs first (rule 2), so the diagnostic must be the content
+        // one — a player whose save names a mode we stopped shipping deserves to be told that,
+        // not that two numbers do not match.
+        var config = new RunConfig(
+            new ContentId("mode.ghost"),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: Snapshot(stage: 5, seed: 7, modeId: "mode.ghost"));
+
+        Assert.Throws<KeyNotFoundException>(() => _session.Start(config));
+
+        AssertNothingStands();
+    }
+
+    // ---- What is rebuilt rather than read back (rule 5) ----------------------------------------
+
+    [Test]
+    public void Resume_LandsInTheSameArena()
+    {
+        Build(seed: 7);
+
+        RunSnapshot snapshot = Snapshot(stage: 7, seed: 7);
+
+        // Derived from the seed and the depth and never drawn (M2-11a rule 3), which is exactly
+        // what lets a resumed run land in the room it left without a byte of it being saved. A
+        // roster of two, so the answer is a choice rather than the only option.
+        Assert.That(_mode.Arenas, Has.Count.EqualTo(2));
+
+        Assert.That(
+            _mode.ArenaFor(snapshot.StageIndex, snapshot.Seed),
+            Is.EqualTo(_mode.ArenaFor(7, 7)));
+
+        // And the run says the same thing out loud: the arena named on arrival at the resumed
+        // stage is the one the pure function gives.
+        StartResumed(stage: 7, snapshot: snapshot);
+
+        StageArrived arrived = _events.Single<StageArrived>();
+
+        Assert.That(arrived.Stage, Is.EqualTo(7));
+        Assert.That(arrived.ArenaId, Is.EqualTo(_mode.ArenaFor(7, 7)));
+    }
+
+    [Test]
+    public void Resume_ComposesTheSameStage()
+    {
+        // Run A: begun at stage 3, cleared, and walked through the door into stage 4.
+        Build(seed: 4_242);
+        _session.Start(FreshConfig(stage: 3));
+        ClearTheStage();
+
+        RunSnapshot boundary = _events.Of<RunSnapshotTaken>()[1].Snapshot;
+
+        Assert.That(boundary.StageIndex, Is.EqualTo(4), "The boundary snapshot names the stage ahead.");
+
+        CrossTheBoundary();
+        TickFor(600);
+
+        IReadOnlyList<string> continuous = BodiesOfTheLastStage();
+
+        Assert.That(continuous, Is.Not.Empty, "The fixture failed to land stage 4's first wave.");
+
+        // Run B: the same world, a generator put back where the snapshot says the streams stood —
+        // which is what RunInstaller does — and a config carrying the snapshot as its restore.
+        Build(seed: 4_242);
+        _random.Restore(boundary.Random);
+
+        _session.Start(ResumedConfig(stage: 4, snapshot: boundary));
+        TickFor(600);
+
+        Assert.That(
+            BodiesOfTheLastStage(),
+            Is.EqualTo(continuous),
+            "A resumed run must fight the stage the interrupted one was about to fight — same "
+                + "archetypes, same positions, in the same order. This is ledger row 1 through "
+                + "RunConfig.Restore rather than through a hand-driven session.");
+    }
+
+    [Test]
+    public void Resume_SpawnsAtTheSamePositions()
+    {
+        // The row above compares whole bodies, archetype and position together. This one is the
+        // narrower claim on its own — the order and the coordinates — so that a failure says which
+        // half moved.
+        Build(seed: 4_242);
+        _session.Start(FreshConfig(stage: 3));
+        ClearTheStage();
+
+        RunSnapshot boundary = _events.Of<RunSnapshotTaken>()[1].Snapshot;
+
+        CrossTheBoundary();
+        TickFor(600);
+
+        List<Vector3> continuous = PositionsOfTheLastStage();
+
+        Assert.That(continuous, Is.Not.Empty, "The fixture failed to land stage 4's first wave.");
+
+        Build(seed: 4_242);
+        _random.Restore(boundary.Random);
+        _session.Start(ResumedConfig(stage: 4, snapshot: boundary));
+        TickFor(600);
+
+        Assert.That(PositionsOfTheLastStage(), Is.EqualTo(continuous));
+    }
+
+    [Test]
+    public void Resume_StartsWithNoEnemies()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+
+        // A boundary has no bodies by construction — M2-10 clears both systems there — so a
+        // resumed run brings none back. Every enemy it sees arrives from the director's first
+        // wave, which has not run yet on the frame Start returns.
+        Assert.That(
+            _events.Count<EnemySpawned>(),
+            Is.Zero,
+            "Nothing may be standing before the director's first wave: live enemies are the "
+                + "largest thing the save format deliberately does not carry.");
+    }
+
+    [Test]
+    public void Resume_DoesNotRewindTheStreams()
+    {
+        Build(seed: 7);
+
+        RunSnapshot snapshot = Snapshot(stage: 4, seed: 7);
+
+        // Where the fixture's generator stands before the run is built, and where it stands after.
+        // Core is handed a generator already in position and must not touch its position itself —
+        // if Start ever applied `snapshot.Random`, this row would see the opening capture move
+        // back onto the snapshot's five words instead of staying on the fixture's.
+        RandomState before = _random.Capture();
+
+        Assert.That(
+            before.Spawn,
+            Is.Not.EqualTo(snapshot.Random.Spawn),
+            "The fixture's generator and the snapshot must disagree, or this row proves nothing.");
+
+        _session.Start(ResumedConfig(stage: 4, snapshot: snapshot));
+
+        RunSnapshot opening = _events.Of<RunSnapshotTaken>()[0].Snapshot;
+
+        Assert.That(
+            opening.Random.Spawn,
+            Is.EqualTo(before.Spawn),
+            "The opening write records the generator core was handed, never the one the restore "
+                + "describes. Rewinding is the composition root's job and core does not have the "
+                + "door (M2-13a rule 7).");
+    }
+
+    // ---- Guards ---------------------------------------------------------------------------------
+
+    [Test]
+    public void Config_NullSpawnPlan_StillThrows()
+    {
+        // The sixth field did not move the fifth one's guard.
+        Assert.Throws<ArgumentNullException>(() => new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 1,
+            spawnPlan: null,
+            restore: null));
+    }
+
+    [Test]
+    public void Config_DefaultRestore_IsRefusedAtStart()
+    {
+        Build(seed: 7);
+
+        // `default(RunSnapshot)` carries version 0, seed 0 and stage 0 — the form no writer can
+        // produce. It cannot reach `RunConfig`'s constructor as a *validated* snapshot, so the
+        // thing that refuses it is the agreement check, on the stage.
+        var config = new RunConfig(
+            new ContentId(ModeId),
+            new ContentId(OathboundId),
+            seed: 7,
+            stageIndex: 4,
+            SpawnPlan.Empty,
+            restore: default(RunSnapshot));
+
+        Assert.Throws<ArgumentException>(() => _session.Start(config));
+
+        AssertNothingStands();
+    }
+
+    // ---- Fixture --------------------------------------------------------------------------------
+
+    /// <summary>A catalog, a generator, a clock and a session, all over one seed.</summary>
+    private void Build(int seed)
+    {
+        _events = new RecordingEvents();
+
+        // Long enough that no row here can exhaust the script and start reading the fake's default
+        // 0.5f, which would make every position after that point stop moving.
+        _random = new FixedRandom(seed, Alternating(8_192));
+        _clock = new FixedClock(Instant);
+        _mode = Mode();
+
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { _mode });
+
+        _session = SessionOver(_events);
+    }
+
+    private RunSession SessionOver(IDomainEvents events) => new RunSession(
+        _catalog,
+        _random,
+        events,
+        new RecordingIntents(),
+        new RunRecorder(_random, _clock, events),
+        Capacity,
+        DeviceCap,
+        ProjectileCapacity);
+
+    private void StartResumed(int stage, RunSnapshot? snapshot = null)
+    {
+        _session.Start(ResumedConfig(stage, snapshot));
+    }
+
+    private RunConfig ResumedConfig(int stage, RunSnapshot? snapshot = null) => new RunConfig(
+        new ContentId(ModeId),
+        new ContentId(OathboundId),
+        _random.Seed,
+        stage,
+        SpawnPlan.Empty,
+        snapshot ?? Snapshot(stage, _random.Seed));
+
+    private RunConfig FreshConfig(int stage) => new RunConfig(
+        new ContentId(ModeId),
+        new ContentId(OathboundId),
+        _random.Seed,
+        stage,
+        SpawnPlan.Empty,
+        restore: null);
+
+    private static RunSnapshot Snapshot(int stage, int seed, string modeId = ModeId) =>
+        new RunSnapshot(
+            RunSnapshot.CurrentVersion,
+            new ContentId(modeId),
+            new ContentId(OathboundId),
+            seed,
+            stage,
+            new RandomState(101, 102, 103, 104, 105),
+            SavedHp,
+            SavedShield,
+            SavedRunTime,
+            Instant);
+
+    private void TickFor(int ticks)
+    {
+        for (int i = 0; i < ticks; i++)
+        {
+            _session.Tick(Snapshot(Frame, Vector3.Zero));
+        }
+    }
+
+    private static WorldSnapshot Snapshot(float dt, Vector3 playerPosition) =>
+        new WorldSnapshot(Capacity)
+        {
+            Dt = dt,
+            PlayerPosition = playerPosition,
+            HasGate = true,
+            GatePosition = Door,
+            SpawnPoints = Points(8),
+        };
+
+    /// <summary>
+    /// Plays the whole stage out — every body of every wave — and stops on the tick
+    /// <c>StageCleared</c> lands. <c>RunRecorderTests</c>' helper, for its reasons: a session's
+    /// <c>PlayerCombat</c> and <c>EnemySystem</c> are both <c>internal</c>, so the only route to a
+    /// kill is walking the player onto a body and answering its swing the way Unity would.
+    /// </summary>
+    private void ClearTheStage()
+    {
+        int target = _events.Count<StageCleared>() + 1;
+        int killed = _events.Count<EnemyDied>();
+
+        var report = new int[1];
+
+        for (int i = 0; i < 9_000 && _events.Count<StageCleared>() < target; i++)
+        {
+            IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
+
+            bool standing = spawned.Count > killed;
+            Vector3 where = standing ? spawned[killed].Position : Vector3.Zero;
+
+            if (standing)
+            {
+                report[0] = spawned[killed].Id;
+            }
+
+            _session.Tick(Snapshot(Frame, where));
+
+            if (!standing || !_session.IsRunning)
+            {
+                continue;
+            }
+
+            _session.ReportConeHits(report);
+
+            if (_events.Count<EnemyDied>() > killed)
+            {
+                killed++;
+            }
+        }
+
+        Assert.That(
+            _events.Count<StageCleared>(),
+            Is.GreaterThanOrEqualTo(target),
+            "The fixture failed to clear the stage, so whatever this row asserts next is about the "
+                + "fixture rather than about the run.");
+    }
+
+    /// <summary>Waits out the clear beat, walks into the door and lets the fade run out.</summary>
+    private void CrossTheBoundary()
+    {
+        int arrivals = _events.Count<StageArrived>();
+
+        for (int i = 0; i < 900 && _events.Count<StageArrived>() == arrivals; i++)
+        {
+            _session.Tick(Snapshot(Frame, Door));
+        }
+
+        Assert.That(
+            _events.Count<StageArrived>(),
+            Is.GreaterThan(arrivals),
+            "The fixture failed to cross the boundary, so whatever this row asserts next is about "
+                + "the fixture rather than about the run.");
+    }
+
+    /// <summary>
+    /// Every body spawned since the most recent <c>StageArrived</c>, as archetype-and-position
+    /// strings — what a wave plan turns into, which is the only part of it a session lets a test
+    /// see.
+    /// </summary>
+    private IReadOnlyList<string> BodiesOfTheLastStage()
+    {
+        var bodies = new List<string>();
+
+        int arrivals = 0;
+
+        foreach (object published in _events.All)
+        {
+            if (published is StageArrived)
+            {
+                arrivals++;
+                bodies.Clear();
+                continue;
+            }
+
+            if (published is EnemySpawned spawned)
+            {
+                bodies.Add($"{spawned.SpecId} @ {spawned.Position}");
+            }
+        }
+
+        Assert.That(arrivals, Is.GreaterThan(0), "No stage ever arrived.");
+
+        return bodies;
+    }
+
+    /// <summary>The same walk, positions only.</summary>
+    private List<Vector3> PositionsOfTheLastStage()
+    {
+        var positions = new List<Vector3>();
+
+        foreach (object published in _events.All)
+        {
+            if (published is StageArrived)
+            {
+                positions.Clear();
+                continue;
+            }
+
+            if (published is EnemySpawned spawned)
+            {
+                positions.Add(spawned.Position);
+            }
+        }
+
+        return positions;
+    }
+
+    private void AssertNothingStands()
+    {
+        Assert.That(_session.IsRunning, Is.False, "A refused Start leaves the session not running.");
+
+        Assert.That(
+            _events.Count<RunStarted>(),
+            Is.Zero,
+            "Nothing is announced when Start refuses — ledger row 3's rule, which the restore "
+                + "check joins by sitting inside the same validation block.");
+
+        Assert.That(_events.Count<RunSnapshotTaken>(), Is.Zero, "And nothing is written down.");
+    }
+
+    // ---- Content ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// GD §12's curves as the game ships them, so stage 4 is several bodies of a real composition:
+    /// two runs agreeing about one Husk would not be evidence that a stream was restored.
+    /// </summary>
+    private static ModeSpec Mode()
+    {
+        var scaling = new ScalingSpec(
+            new BudgetCurve(20f, 6f, 0.04f),
+            new WaveCurve(2, 1000, 2, 2),
+            new ConcurrencyCurve(DeviceCap, 1000),
+            new StatCurve(0.06f, 4f, 1, 1),
+            new StatCurve(0.035f, 3f, 1, 1),
+            new StatCurve(0.02f, 1.3f, 5, 0));
+
+        return new ModeSpec(
+            new ContentId(ModeId),
+            new LocKey("mode.test.name"),
+            startingStage: 1,
+            isEndless: true,
+            finalStage: 0,
+            scaling,
+            new[] { new RosterEntry(new ContentId(HuskId), 1) },
+            new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) });
+    }
+
+    /// <summary>
+    /// The Husk, authored <c>Static</c> on purpose: these rows are about where a body lands and
+    /// when, and a Chaser would walk away from the position it was composed at.
+    /// </summary>
+    private static EnemySpec Husk() => new EnemySpec(
+        new ContentId(HuskId),
+        new LocKey("enemy.husk.name"),
+        maxHp: 10f,
+        moveSpeed: 2f,
+        targetPriority: 1,
+        threatCost: HuskCost,
+        isElite: false,
+        contactDamage: 8f,
+        reach: 1.2f,
+        windupTime: 0.4f,
+        recoverTime: 0.6f,
+        aggroRange: 30f,
+        behaviour: EnemyBehaviourKind.Static);
+
+    /// <summary>CC §7's class, plus the Aegis these rows restore half of.</summary>
+    private static CharacterSpec Oathbound() => new CharacterSpec(
+        new ContentId(OathboundId),
+        new LocKey("character.oathbound.name"),
+        MaxHp,
+        new MovementSpec(3f, 0.06f, 0.08f, 720f),
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+
+        // The Focus ramp is switched off with a maximum of 1, for RunSessionTests' reason: it
+        // would put a modifier and a stream of events into a fixture measuring neither.
+        new FocusSpec(0.4f, 1f, 1f),
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
+        new ShieldSpec(ShieldMax, 3f, 1f));
+
+    /// <summary><paramref name="count"/> points on a ring, clear of the origin and of each other.</summary>
+    private static IReadOnlyList<Vector3> Points(int count)
+    {
+        var points = new Vector3[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            double angle = 2d * Math.PI * i / count;
+
+            points[i] = new Vector3((float)(Ring * Math.Cos(angle)), 0f, (float)(Ring * Math.Sin(angle)));
+        }
+
+        return points;
+    }
+
+    /// <summary><paramref name="count"/> values alternating between the first and last candidate.</summary>
+    private static float[] Alternating(int count)
+    {
+        var values = new float[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            values[i] = i % 2 == 0 ? 0.1f : 0.9f;
+        }
+
+        return values;
+    }
+
+    /// <summary>
+    /// A <see cref="IDomainEvents"/> that records and also hands each payload to whoever asked for
+    /// that type — a subscriber, without a hub, for the one row that reads state from inside a
+    /// publish. <c>DomainEventHub</c> is the real thing and lives in <c>Soulvail.Game</c>, which
+    /// this assembly does not reference and must not.
+    /// </summary>
+    private sealed class WatchingEvents : IDomainEvents
+    {
+        private readonly RecordingEvents _log = new RecordingEvents();
+        private readonly Dictionary<Type, Action<object>> _handlers = new Dictionary<Type, Action<object>>();
+
+        public void On<T>(Action<T> handler)
+            where T : struct
+        {
+            _handlers[typeof(T)] = payload => handler((T)payload);
+        }
+
+        public void Publish<T>(in T evt)
+            where T : struct
+        {
+            _log.Publish(in evt);
+
+            if (_handlers.TryGetValue(typeof(T), out Action<object> handler))
+            {
+                handler(evt);
+            }
+        }
+    }
+}

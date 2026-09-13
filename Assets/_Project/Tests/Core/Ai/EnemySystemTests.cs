@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -37,11 +38,33 @@ public sealed class EnemySystemTests
     private const string SpitterId = "enemy.spitter";
     private const string BloaterId = "enemy.bloater";
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
+
+    /// <summary>
+    /// What every session in this fixture is seeded with. Named since M2-02, because a
+    /// <c>RunConfig</c> now states the seed and <c>RunSession.Start</c> refuses one that
+    /// disagrees with the generator — so the two literals have to be the same literal.
+    /// </summary>
+    private const int SessionSeed = 7;
 
     /// <summary>An id of the right shape that the catalog does not hold.</summary>
     private const string UnknownId = "enemy.nobody";
 
     private const int Capacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). Equal to the capacity, so nothing
+    /// here is quietly bounded by a device tier — and every mode this fixture builds has an empty
+    /// roster, so nothing is composed and the director is inert either way.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     /// <summary>60 fps doubled, matching <c>RunSessionTests</c>.</summary>
     private const float Frame = 1f / 120f;
@@ -68,27 +91,108 @@ public sealed class EnemySystemTests
 
     private RecordingIntents _intents;
 
+    /// <summary>The sky the context carries. Nothing in this fixture fires into it.</summary>
+    private ProjectileSystem _projectiles;
+
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
         _catalog = Catalog();
         _random = new FixedRandom();
-        _system = new EnemySystem(_catalog, _events, _random, Capacity);
+        _system = new EnemySystem(_catalog, _events, _random, Scaling(), Capacity);
         _intents = new RecordingIntents();
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
+        _projectiles = new ProjectileSystem(_events, ProjectileCapacity);
     }
 
     [Test]
     public void Ctor_NullDependency_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, _random, Capacity));
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, _random, Capacity));
-        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, null, Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(null, _events, _random, Scaling(), Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, null, _random, Scaling(), Capacity));
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, null, Scaling(), Capacity));
+
+        // Required as of M2-03, and a constructor argument rather than something adopted from a
+        // plan on purpose: it means Spawn cannot run without one. An unscaled enemy is not a loud
+        // failure, it is a stage-20 Husk that dies in two hits.
+        Assert.Throws<ArgumentNullException>(() => new EnemySystem(_catalog, _events, _random, null, Capacity));
 
         // The registry's own guard, surfaced through this constructor: a system that can hold no
         // enemies is a configuration mistake rather than a valid state to run with.
-        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, _random, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new EnemySystem(_catalog, _events, _random, Scaling(), 0));
+    }
+
+    [Test]
+    public void Spawn_AppliesDepth()
+    {
+        _system.Depth = 10;
+
+        EnemyAgent agent = _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        // h(10) = 1 + 0.06·9 = 1.54, on GD §8.1's 36. The scaling happens inside Spawn, which is
+        // why there is nowhere to forget it: every enemy in the game — a plan, a respawn, M2-05's
+        // director — comes into being through that one method (M2-03 rule 12).
+        Assert.That(agent.Health.MaxHp.Value, Is.EqualTo(36f * 1.54f).Within(1e-3f));
+
+        // And full at the number it now has, not at the one it was authored with.
+        Assert.That(agent.Health.Current, Is.EqualTo(agent.Health.MaxHp.Value).Within(1e-3f));
+
+        // The other two go with it, so a stage-10 Husk is not merely a bigger health bar.
+        Assert.That(agent.ContactDamage.Value, Is.EqualTo(8f * 1.315f).Within(1e-3f));
+        Assert.That(agent.MoveSpeed.Value, Is.EqualTo(3.5f * 1.04f).Within(1e-3f));
+    }
+
+    [Test]
+    public void Spawn_ScaledBeforeAnnounced()
+    {
+        // The order inside Spawn, and it is observable: a health bar built on EnemySpawned would
+        // otherwise be sized to the unscaled maximum for its first frame.
+        var events = new CallbackEvents();
+        var system = new EnemySystem(_catalog, events, _random, Scaling(), Capacity) { Depth = 10 };
+
+        float? maxDuringEvent = null;
+
+        events.OnPublish = evt =>
+        {
+            if (evt is EnemySpawned spawned && system.Registry.TryGet(spawned.Id, out EnemyAgent agent))
+            {
+                maxDuringEvent = agent.Health.MaxHp.Value;
+            }
+        };
+
+        system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        Assert.That(maxDuringEvent, Is.Not.Null, "Sanity: the spawn event resolved its own id.");
+        Assert.That(maxDuringEvent.Value, Is.EqualTo(36f * 1.54f).Within(1e-3f));
+    }
+
+    [Test]
+    public void Depth_DefaultsToOne_AndRefusesLess()
+    {
+        // Stages are numbered from 1 (GD §8.2), so the default is the shallowest depth there is
+        // rather than zero: a system asked to spawn before anything set a depth scales to the
+        // first stage instead of throwing from inside a curve.
+        Assert.That(_system.Depth, Is.EqualTo(1));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _system.Depth = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => _system.Depth = -4);
+
+        Assert.That(_system.Depth, Is.EqualTo(1), "A refused assignment changes nothing.");
+    }
+
+    [Test]
+    public void Depth_SurvivesClear()
+    {
+        // Deliberate, and the reason is M2-10: a stage boundary clears the arena and the next
+        // stage's depth is the point of the transition, so zeroing it here would put the two in an
+        // order this method could not state.
+        _system.Depth = 7;
+        _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        _system.Clear();
+
+        Assert.That(_system.Depth, Is.EqualTo(7));
     }
 
     [Test]
@@ -180,7 +284,7 @@ public sealed class EnemySystemTests
     public void Despawn_PublishesAfterRemoval()
     {
         var events = new CallbackEvents();
-        var system = new EnemySystem(_catalog, events, _random, Capacity);
+        var system = new EnemySystem(_catalog, events, _random, Scaling(), Capacity);
         system.Spawn(new ContentId(HuskId), Vector3.Zero);
 
         int? countDuringEvent = null;
@@ -430,7 +534,7 @@ public sealed class EnemySystemTests
     {
         EnemyAgent agent = _system.Spawn(new ContentId(HuskId), new Vector3(3f, 0f, 0f));
 
-        _system.Tick(Frame, now: 1f, _player, _intents);
+        _system.Tick(Context(now: 1f));
 
         // The whole of M1-06's behaviour: a dummy that holds still, which is what makes targeting,
         // cone hits and damage judgeable on their own.
@@ -455,11 +559,11 @@ public sealed class EnemySystemTests
             Array.Empty<CharacterSpec>(),
             new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) });
 
-        var system = new EnemySystem(catalog, _events, _random, Capacity);
+        var system = new EnemySystem(catalog, _events, _random, Scaling(), Capacity);
         system.Spawn(new ContentId("enemy.unhandled"), Vector3.Zero);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => system.Tick(Frame, now: 0f, _player, _intents));
+            () => system.Tick(Context(now: 0f)));
 
         Assert.That(ex.Message, Does.Contain("enemy.unhandled"));
     }
@@ -493,19 +597,24 @@ public sealed class EnemySystemTests
             new SpawnPlan.Entry(new ContentId(SpitterId), new Vector3(2f, 0f, 0f)),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
 
         // A run has to be announced before the things inside it are: a view handling EnemySpawned
         // may reasonably assume there is a run to put an enemy in. Subscribers are wired when the
         // scope is built, long before Start, so the ordering is about meaning rather than about
         // who is listening.
-        Assert.That(events.All.Count, Is.EqualTo(3));
+        //
+        // The snapshot sits between them as of M2-14a: a run is written down the moment it is
+        // announced, before anything is standing in it.
+        Assert.That(events.All.Count, Is.EqualTo(4));
         Assert.That(events.All[0], Is.InstanceOf<RunStarted>());
-        Assert.That(events.All[1], Is.InstanceOf<EnemySpawned>());
+        Assert.That(events.All[1], Is.InstanceOf<RunSnapshotTaken>());
         Assert.That(events.All[2], Is.InstanceOf<EnemySpawned>());
+        Assert.That(events.All[3], Is.InstanceOf<EnemySpawned>());
 
-        Assert.That(((EnemySpawned)events.All[1]).SpecId, Is.EqualTo(new ContentId(HuskId)));
-        Assert.That(((EnemySpawned)events.All[2]).SpecId, Is.EqualTo(new ContentId(SpitterId)));
+        Assert.That(((EnemySpawned)events.All[2]).SpecId, Is.EqualTo(new ContentId(HuskId)));
+        Assert.That(((EnemySpawned)events.All[3]).SpecId, Is.EqualTo(new ContentId(SpitterId)));
 
         Assert.That(session.State.EnemyCount, Is.EqualTo(2));
     }
@@ -522,7 +631,8 @@ public sealed class EnemySystemTests
             new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(1f, 0f, 0f)),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
         Assert.That(session.State.EnemyCount, Is.EqualTo(2));
 
         events.Clear();
@@ -549,21 +659,26 @@ public sealed class EnemySystemTests
         // M1-08's targeting reads a position, and until then it is verified by reading.
         var catalog = new ContentCatalog(
             new[] { Oathbound() },
-            new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) });
+            new[] { Enemy("enemy.unhandled", (EnemyBehaviourKind)99) },
+            new[] { Descent() });
 
         var session = new RunSession(
             catalog,
-            new FixedRandom(7),
+            new FixedRandom(SessionSeed),
             new RecordingEvents(),
             new RecordingIntents(),
-            Capacity);
+            new RunRecorder(new FixedRandom(SessionSeed), new FixedClock(default), new RecordingEvents()),
+            Capacity,
+            DeviceCap,
+            ProjectileCapacity);
 
         var plan = new SpawnPlan(new[]
         {
             new SpawnPlan.Entry(new ContentId("enemy.unhandled"), Vector3.Zero),
         });
 
-        session.Start(new RunConfig(new ContentId(OathboundId), plan));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), SessionSeed, 1, plan, restore: null));
 
         var snapshot = new WorldSnapshot(Capacity);
         snapshot.Dt = Frame;
@@ -577,7 +692,7 @@ public sealed class EnemySystemTests
     {
         const int count = 32;
         var catalog = Catalog();
-        var system = new EnemySystem(catalog, new RecordingEvents(), new FixedRandom(), 64);
+        var system = new EnemySystem(catalog, new RecordingEvents(), new FixedRandom(), Scaling(), 64);
         var snapshot = new WorldSnapshot(64);
 
         snapshot.PlayerPosition = new Vector3(3f, 0f, 3f);
@@ -601,7 +716,7 @@ public sealed class EnemySystemTests
         AllocationAssert.None(() =>
         {
             system.Ingest(snapshot);
-            system.Tick(Frame, 1f, _player, _intents);
+            system.Tick(Context(1f));
         });
     }
 
@@ -692,6 +807,12 @@ public sealed class EnemySystemTests
     }
 
     /// <summary>
+    /// What <c>Tick</c> takes as of M2-07b: one struct rather than four arguments (rule 2).
+    /// </summary>
+    private EnemyTickContext Context(float now) =>
+        new EnemyTickContext(Frame, now, _player, _intents, _events, _projectiles, _system);
+
+    /// <summary>
     /// Fills one enemy slot the way M1-07's view sync will fill it.
     /// </summary>
     /// <remarks>
@@ -724,11 +845,13 @@ public sealed class EnemySystemTests
         maxHp: 36f,
         moveSpeed: 3.5f,
         targetPriority: 1,
+        threatCost: 4,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
         windupTime: 0.4f,
         recoverTime: 0.6f,
+        aggroRange: 30f,
         behaviour: behaviour);
 
     private static CharacterSpec Oathbound() => new CharacterSpec(
@@ -753,11 +876,36 @@ public sealed class EnemySystemTests
             Enemy(HuskId, EnemyBehaviourKind.Static),
             Enemy(SpitterId, EnemyBehaviourKind.Static),
             Enemy(BloaterId, EnemyBehaviourKind.Static),
-        });
+        },
+        new[] { Descent() });
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, empty roster. Empty because
+    /// <c>RunSession.Start</c> resolves every roster id against the catalog and no row here is
+    /// about a schedule — the archetypes these rows spawn come from a <c>SpawnPlan</c>.
+    /// </summary>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
+
+    /// <summary>
+    /// The depth scaling every <c>EnemySystem</c> here is built with, required as of M2-03.
+    /// </summary>
+    /// <remarks>
+    /// GD §12's curves, so the rows about depth can state a real multiplier. Every other row is
+    /// unaffected by construction rather than by luck: <c>Depth</c> defaults to 1, where GD §12.3's
+    /// three multipliers are all exactly 1.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 
     /// <summary>A session over this fixture's catalog, publishing into <paramref name="events"/>.</summary>
     private RunSession Session(IDomainEvents events) =>
-        new RunSession(_catalog, new FixedRandom(7), events, new RecordingIntents(), Capacity);
+        new RunSession(_catalog, new FixedRandom(SessionSeed), events, new RecordingIntents(), new RunRecorder(new FixedRandom(SessionSeed), new FixedClock(default), events), Capacity, DeviceCap, ProjectileCapacity);
 
     private EnemyBlackboard Blackboard(int id)
     {

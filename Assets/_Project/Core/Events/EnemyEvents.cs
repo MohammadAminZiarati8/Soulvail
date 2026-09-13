@@ -13,6 +13,10 @@ namespace Soulvail.Core.Events;
 // to one while it exists (M1-11). A death is not a despawn: a Husk dies, its dissolve plays for
 // `EnemySystem.CorpseTime`, and only then is it despawned. `EnemyTelegraph` (M1-18) is the odd one
 // out and the only one an enemy publishes about *itself* rather than about something done to it.
+//
+// `EnemyExploded` (M2-08) joins the second group and is the only one that is *conditional on the
+// archetype*: it follows an `EnemyDied` when — and only when — the spec carries an `ExplosionSpec`.
+// It does not replace the death, it says the extra thing that happened after it.
 
 /// <summary>
 /// An enemy now exists. Published by <c>EnemySystem.Spawn</c> after the agent is registered, so a
@@ -183,5 +187,58 @@ public readonly struct EnemyDied
         Id = id;
         SpecId = specId;
         Position = position;
+    }
+}
+
+/// <summary>
+/// Something went off. Published by <c>EnemySystem.ApplyDamage</c> immediately after the
+/// <see cref="EnemyDied"/> that caused it, exactly once per life, and only for an archetype whose
+/// spec carries an <c>ExplosionSpec</c> (M2-08 rule 1).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It follows a death rather than replacing one.</b> A Bloater that goes off has died first —
+/// the fuse kills it, and so does a Censer — so everything already hanging off
+/// <see cref="EnemyDied"/> fires unchanged and this says the extra thing that happened. That is
+/// also why the trigger is the <em>spec</em> and not the kind: "explodes on death" is then true
+/// however it died, and true for anything that ever gets an explosion block without a second
+/// mechanism to teach about it.
+/// </para>
+/// <para>
+/// <b>Published whether or not it caught anybody</b>, which is what <see cref="HitPlayer"/> is
+/// for: a view has to draw the flash either way, and a blast that is invisible when it misses
+/// teaches the player that near misses did not happen. <see cref="ProjectileImpacted"/>'s
+/// reasoning, and <see cref="EnemyDespawned"/>'s.
+/// </para>
+/// <para>
+/// It carries the centre and the radius because the ring M2-12 draws needs both and has no
+/// catalog to look either up in — the same reason <see cref="EnemyDied"/> carries a position.
+/// Nothing subscribes yet.
+/// </para>
+/// </remarks>
+public readonly struct EnemyExploded
+{
+    /// <summary>Which enemy went off. Still resolvable through the registry until it is despawned.</summary>
+    public readonly int Id;
+
+    /// <summary>Which archetype it was, e.g. <c>enemy.bloater</c>.</summary>
+    public readonly ContentId SpecId;
+
+    /// <summary>Where it died, in world metres — the blast's centre.</summary>
+    public readonly Vector3 Position;
+
+    /// <summary>Metres the blast reached, from the archetype's explosion block.</summary>
+    public readonly float Radius;
+
+    /// <summary>Whether the player was inside it. False is a real answer, not an absence.</summary>
+    public readonly bool HitPlayer;
+
+    public EnemyExploded(int id, ContentId specId, Vector3 position, float radius, bool hitPlayer)
+    {
+        Id = id;
+        SpecId = specId;
+        Position = position;
+        Radius = radius;
+        HitPlayer = hitPlayer;
     }
 }

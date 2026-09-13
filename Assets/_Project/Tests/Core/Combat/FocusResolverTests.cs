@@ -8,7 +8,9 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Combat;
 
@@ -36,9 +38,24 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class FocusResolverTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 4;
     private const int EnemyCapacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     /// <summary>CC §7's acquire range, wide enough that no row loses a focus to distance.</summary>
     private const float AcquireRange = 12f;
@@ -244,7 +261,7 @@ public sealed class FocusResolverTests
     [Test]
     public void Commands_WhenNotRunning_Throw()
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // Before any run: State is null, so a no-op here would be a NullReferenceException one line
         // later anyway. Throwing says which of the two problems it is.
@@ -273,7 +290,7 @@ public sealed class FocusResolverTests
     /// </summary>
     private RunSession StartedRun(params Vector3[] positions)
     {
-        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), EnemyCapacity);
+        var session = new RunSession(Catalog(), new FixedRandom(Seed), _events, new RecordingIntents(), new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(Config(positions));
         Tick(session);
@@ -322,10 +339,34 @@ public sealed class FocusResolverTests
             entries.Add(new SpawnPlan.Entry(new ContentId(HuskId), position));
         }
 
-        return new RunConfig(new ContentId(OathboundId), new SpawnPlan(entries.ToArray()));
+        return new RunConfig(
+            new ContentId(DescentId),
+            new ContentId(OathboundId),
+            Seed,
+            1,
+            new SpawnPlan(entries.ToArray()), restore: null);
     }
 
-    private static ContentCatalog Catalog() => new(new[] { Character() }, new[] { Enemy() });
+    private static ContentCatalog Catalog() =>
+        new(new[] { Character() }, new[] { Enemy() }, new[] { Descent() });
+
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7.</summary>
     private static CharacterSpec Character() => new(
@@ -352,10 +393,12 @@ public sealed class FocusResolverTests
         36f,
         3.5f,
         1,
+        threatCost: 4,
         isElite: false,
         8f,
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 }

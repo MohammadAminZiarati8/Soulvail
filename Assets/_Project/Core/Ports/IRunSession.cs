@@ -22,9 +22,28 @@ namespace Soulvail.Core.Ports;
 /// passed is one way too many. The sketch predates the snapshot carrying it.
 /// </para>
 /// <para>
-/// The facts AR §6 lists arrive with the mechanics that produce them:
-/// <see cref="ReportConeHits"/> in M1-11, <c>ReportContact</c> with the chasers of M1-18,
-/// <c>ReportProjectileHit</c> with the Spitter in M2-07. Player commands have their own port,
+/// <b>Core decides every outcome an enemy causes, and calls <c>PlayerCombat.ApplyDamage</c>
+/// directly. The body owes core a <em>fact</em> only when the answer depends on colliders core does
+/// not hold; when the geometric question is a standing one rather than an instant, it owes a
+/// <em>sense</em> on the snapshot instead.</b> That is the whole rule — ledger row 7, settled at
+/// M2-07a rule 1 — and it is why this port gains no member in M2. A Husk's contact (M1-18) and a
+/// Bloater's blast (M2-08) are core-perceived XZ distances; a Spitter's bolt (M2-07a) lands at an
+/// arrival time core itself computed. The two facts that remain are what facts are <em>for</em>:
+/// <see cref="ReportConeHits"/> (M1-11) is a wedge and <see cref="ReportChargeHits"/> (M1-15) is a
+/// swept line, and both are questions about which colliders a shape touched.
+/// </para>
+/// <para>
+/// This remark used to promise a <c>ReportContact</c> "with the chasers of M1-18" and a
+/// <c>ReportProjectileHit</c> "with the Spitter in M2-07". Both were wrong from the moment M1-18
+/// merged, because that task chose the direct call; they are gone rather than deferred. The route
+/// they described was rejected on three counts, not on taste: it moves the moment of damage into
+/// the frame's physics phase, one step after the tick that decided it; it makes enemy damage
+/// non-reproducible from a seed, which is the one property M2-13 and M2-14 are being built to
+/// preserve; and it means an enemy needs a body with a trigger before it can hurt anybody, which is
+/// core waiting on the senses for something it had already decided (AR §3).
+/// </para>
+/// <para>
+/// Player commands have their own port,
 /// <see cref="IPlayerCommands"/> (M1-09), which <c>RunSession</c> also implements: lifecycle is
 /// what the frame loop holds, commands are what an input adapter holds, and an adapter able to
 /// <see cref="End"/> the run would have a reach it has no business having.

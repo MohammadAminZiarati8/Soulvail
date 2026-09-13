@@ -67,11 +67,38 @@ public readonly struct TargetChanged
     /// </summary>
     public readonly bool IsBlocked;
 
-    public TargetChanged(int id, bool isFocused, bool isBlocked)
+    /// <summary>
+    /// The enemy the player has focused <b>when it is not the one being shot at</b> — a focus held
+    /// on something outside <c>acquireRange</c>, which scoring has stood down from (CC §3.4,
+    /// <c>Targeter.Select</c>). −1 when no focus is held, and −1 when the focus <em>is</em> the
+    /// current target, because that case is already <see cref="IsFocused"/>. The two are never
+    /// both set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The whole of ledger row 12's fix in core, and it is a fourth <em>reading</em> rather than a
+    /// fourth decision: both halves are already public on <c>Targeter</c> and this carries the one
+    /// the event has never said out loud. Until M2-12a a tap on something too far away to shoot
+    /// produced no visible change of any kind, so the game looked like it had not heard the tap —
+    /// which is precisely what CC §3.5 exists to prevent.
+    /// </para>
+    /// <para>
+    /// It cannot go stale. <c>Targeter.ChangedThisTick</c> is the triple (current, blocked,
+    /// focused) and this is a pure function of two members of it, so every transition of this field
+    /// is accompanied by a publish by construction: a focus landing out of range moves
+    /// <c>FocusedTargetId</c>, it coming into range and becoming current moves
+    /// <c>CurrentTargetId</c>, and the 2 s expiry moves <c>FocusedTargetId</c> back. There is no
+    /// fourth way for it to change.
+    /// </para>
+    /// </remarks>
+    public readonly int HeldFocusId;
+
+    public TargetChanged(int id, bool isFocused, bool isBlocked, int heldFocusId)
     {
         Id = id;
         IsFocused = isFocused;
         IsBlocked = isBlocked;
+        HeldFocusId = heldFocusId;
     }
 }
 

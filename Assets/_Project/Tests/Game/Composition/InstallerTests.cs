@@ -38,8 +38,10 @@ public sealed class InstallerTests
 {
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
+    private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
     private static readonly ContentId OathboundId = new ContentId("character.oathbound");
     private static readonly ContentId HuskId = new ContentId("enemy.husk");
+    private static readonly ContentId DescentId = new ContentId("mode.descent");
 
     private readonly List<CharacterDefinition> _created = new List<CharacterDefinition>();
     private readonly List<IDisposable> _containers = new List<IDisposable>();
@@ -107,6 +109,28 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void Boot_ResolvesCatalog_WithDescent()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var catalog = container.Resolve<ContentCatalog>();
+
+        // The third kind, and the one whose absence is loudest rather than quietest: resolving the
+        // mode is the first thing RunSession.Start does, so a catalog installed without its modes
+        // cannot start any run at all.
+        ModeSpec descent = null;
+        Assert.That(() => descent = catalog.Mode(DescentId), Throws.Nothing,
+            "The shipped Descent must resolve through the catalog the installer built.");
+
+        Assert.That(descent.Id, Is.EqualTo(DescentId));
+        Assert.That(catalog.Modes, Has.Count.EqualTo(1));
+
+        // What MenuPresenter and RunTicker both mean by "the first mode the catalog holds" — the
+        // stand-in they use rather than writing mode.descent into the code (GD 4.5).
+        Assert.That(catalog.Modes[0].Id, Is.EqualTo(DescentId));
+    }
+
+    [Test]
     public void Boot_NullEnemyList_Throws()
     {
         var builder = new ContainerBuilder();
@@ -115,7 +139,19 @@ public sealed class InstallerTests
         // empty array. A silently-omitted list would be indistinguishable from an authored one
         // until a spawn plan named an archetype the catalog had never heard of.
         Assert.Throws<ArgumentNullException>(() =>
-            BootInstaller.Install(builder, new[] { LoadOathbound() }, null));
+            BootInstaller.Install(builder, new[] { LoadOathbound() }, null, new[] { LoadDescent() }));
+    }
+
+    [Test]
+    public void Boot_NullModeList_Throws()
+    {
+        var builder = new ContainerBuilder();
+
+        // The same bargain one kind along (M2-02). Omitted, it would build a container that
+        // resolves everything, boots to the menu, and throws on the tap that starts a run.
+        Assert.Throws<ArgumentNullException>(() =>
+            BootInstaller.Install(
+                builder, new[] { LoadOathbound() }, Array.Empty<EnemyDefinition>(), null));
     }
 
     [Test]
@@ -134,7 +170,11 @@ public sealed class InstallerTests
         // below rather than assumed: the catalog is built eagerly, so it is Install.
         var thrown = Assert.Throws<ArgumentException>(() =>
         {
-            BootInstaller.Install(builder, new[] { broken }, Array.Empty<EnemyDefinition>());
+            BootInstaller.Install(
+                builder,
+                new[] { broken },
+                Array.Empty<EnemyDefinition>(),
+                Array.Empty<ModeDefinition>());
             Track(builder.Build());
         });
 
@@ -166,6 +206,13 @@ public sealed class InstallerTests
     /// registration itself is what gets asserted, in the Editor, where the platform must resolve
     /// the no-op.
     /// </summary>
+    /// <remarks>
+    /// As of M2-13b the toggle is built over <see cref="ISaveStore"/> rather than read out of
+    /// <c>PlayerPrefs</c>, which is what makes it safe to resolve here at all: constructing it
+    /// touches no disk and no registry, and it starts at GD §16.3's default until <c>BootFlow</c>
+    /// hands it a loaded profile. Still never written — a flip here would put a file under
+    /// <c>persistentDataPath</c> on the machine running the tests.
+    /// </remarks>
     [Test]
     public void Boot_ResolvesHaptics_NullVibratorOffAndroid()
     {
@@ -178,10 +225,48 @@ public sealed class InstallerTests
             "Anywhere but an Android player build the vibrator must be the no-op — an Editor " +
             "playtest has no device to buzz and must never reach for JNI.");
 
-        // Read, never written: flipping it here would persist to the machine running the tests.
         Assert.That(settings, Is.Not.Null);
+        Assert.That(settings.Enabled, Is.True, "GD §16.3's default, before a profile has been applied.");
         Assert.That(container.Resolve<HapticsSettings>(), Is.SameAs(settings),
             "One toggle, or the listener reads a different answer from the one an options screen set.");
+    }
+
+    /// <summary>
+    /// The M2-13b wire. Like the clock before it, the only way this registration can be wrong is
+    /// by not being there — and the consequence of that would be a save store resolved twice,
+    /// which two adapters pointed at one directory would make a race rather than a bug.
+    /// </summary>
+    [Test]
+    public void Container_ResolvesSaveStore()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var store = container.Resolve<ISaveStore>();
+
+        Assert.That(store, Is.InstanceOf<LocalJsonSaveStore>());
+
+        // Resolving it creates nothing on disk: the directory appears at the first write, which is
+        // the first time a player has actually saved something.
+        Assert.That(container.Resolve<ISaveStore>(), Is.SameAs(store));
+    }
+
+    /// <summary>
+    /// The M2-01 wire, and the one honest check that task has: nothing renders, nothing changes
+    /// behaviour, and the only way the registration can be wrong is by not being there.
+    /// </summary>
+    [Test]
+    public void Container_ResolvesClock()
+    {
+        IObjectResolver container = BuildBoot();
+
+        var clock = container.Resolve<IClock>();
+
+        Assert.That(clock, Is.InstanceOf<UnityClock>());
+
+        // Singleton, like the vibrator above and unlike IRandom: a clock is a device the whole
+        // app shares. Two instances would not be a visible bug today — which is precisely why it
+        // is asserted now rather than discovered when a save's timestamp starts mattering.
+        Assert.That(container.Resolve<IClock>(), Is.SameAs(clock));
     }
 
     [Test]
@@ -239,6 +324,49 @@ public sealed class InstallerTests
         var random = scope.Resolve<IRandom>();
 
         Assert.That(random, Is.Not.Null, "The direct-Play path must produce a run, not an exception.");
+    }
+
+    [Test]
+    public void Run_NullByNameParameter_Resolves()
+    {
+        // `RunScope` hands `ArenaPool` the `Transform` its bodies are parented under — a scene
+        // reference an undressed Run scene does not have — and passes it by name whether or not it
+        // is there. VContainer never falls back to a C# default, so an *omitted* parameter fails to
+        // compose the run. This row is the check that a **null** one is a value rather than an
+        // absence, because the failure otherwise lands on exactly the workflow every optional field
+        // on that scope exists to protect: pressing Play in a Run scene nobody has dressed yet.
+        // M2-10 had the same row for the gate `Transform` that moved onto the arena prefab.
+        var builder = new ContainerBuilder();
+
+        builder.Register<NullParameterProbe>(Lifetime.Scoped)
+            .WithParameter("parent", (Transform)null);
+
+        using (IObjectResolver container = builder.Build())
+        {
+            NullParameterProbe probe = null;
+
+            Assert.DoesNotThrow(() => probe = container.Resolve<NullParameterProbe>());
+
+            Assert.That(probe.ParentIsNull, Is.True, "And it arrives as the null it was given.");
+        }
+    }
+
+    /// <summary>
+    /// A one-argument type for <see cref="Run_NullByNameParameter_Resolves"/>, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Nested and private because it exists for that row alone. <c>ArenaPool</c> itself needs a
+    /// resolver, a prefab list, an event hub and a <c>PlayerView</c> to be constructed, none of
+    /// which this row is about — the question is purely what VContainer does with a null.
+    /// </remarks>
+    private sealed class NullParameterProbe
+    {
+        public NullParameterProbe(Transform parent)
+        {
+            ParentIsNull = parent == null;
+        }
+
+        public bool ParentIsNull { get; }
     }
 
     [Test]
@@ -305,18 +433,21 @@ public sealed class InstallerTests
 
         // Exact type match (M0-08): rule 9 says InvalidOperationException, and a default id
         // returned quietly instead would surface a scene later as missing content.
+        Assert.Throws<InvalidOperationException>(() => _ = pending.ModeId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.CharacterId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.Seed);
 
-        pending.Set(OathboundId, 42);
+        pending.Set(DescentId, OathboundId, 42);
 
         Assert.That(pending.IsSet, Is.True);
+        Assert.That(pending.ModeId, Is.EqualTo(DescentId));
         Assert.That(pending.CharacterId, Is.EqualTo(OathboundId));
         Assert.That(pending.Seed, Is.EqualTo(42));
 
         pending.Clear();
 
         Assert.That(pending.IsSet, Is.False);
+        Assert.Throws<InvalidOperationException>(() => _ = pending.ModeId);
         Assert.Throws<InvalidOperationException>(() => _ = pending.CharacterId);
     }
 
@@ -342,14 +473,22 @@ public sealed class InstallerTests
         return definition;
     }
 
+    private static ModeDefinition LoadDescent()
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+        return definition;
+    }
+
     /// <summary>
-    /// A boot container carrying the project's shipped content — the Oathbound and the Husk —
-    /// which is what <c>BootScope</c> hands the installer.
+    /// A boot container carrying the project's shipped content — the Oathbound, the Husk and
+    /// Descent — which is what <c>BootScope</c> hands the installer.
     /// </summary>
     private IObjectResolver BuildBoot()
     {
         var builder = new ContainerBuilder();
-        BootInstaller.Install(builder, new[] { LoadOathbound() }, new[] { LoadHusk() });
+        BootInstaller.Install(
+            builder, new[] { LoadOathbound() }, new[] { LoadHusk() }, new[] { LoadDescent() });
         return Track(builder.Build());
     }
 
@@ -360,7 +499,7 @@ public sealed class InstallerTests
     private IScopedObjectResolver BuildRunScope(int seed)
     {
         IObjectResolver boot = BuildBoot();
-        boot.Resolve<PendingRun>().Set(OathboundId, seed);
+        boot.Resolve<PendingRun>().Set(DescentId, OathboundId, seed);
         return Track(boot.CreateScope(RunInstaller.Install));
     }
 

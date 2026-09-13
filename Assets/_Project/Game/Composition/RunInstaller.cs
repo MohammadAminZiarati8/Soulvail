@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using UnityEngine;
 using VContainer;
@@ -59,6 +60,22 @@ public static class RunInstaller
 
         builder.Register<IRandom>(CreateRandom, Lifetime.Scoped);
 
+        // What composes a snapshot, and the reason RunSession does not hold a clock (M2-14a rule
+        // 12). Scoped rather than singleton: it captures *this* run's generator, so a recorder that
+        // outlived the run would be holding the streams of a run that is over.
+        builder.Register<RunRecorder>(Lifetime.Scoped);
+
+        // And what puts one somewhere. Scoped so its subscriptions die with the run, and registered
+        // as a plain type rather than an entry point because it has no frame to be part of — it
+        // subscribes in its constructor and is constructed by being on RunTicker's dependency
+        // chain, which is what guarantees it is listening before the opening snapshot is taken
+        // (AR §18.1).
+        //
+        // ISaveStore is resolved from the parent scope: BootInstaller registers the one
+        // LocalJsonSaveStore the app owns, and a run writing through a second one would be two
+        // objects renaming the same file.
+        builder.Register<SaveWriter>(Lifetime.Scoped);
+
         // One brain behind two ports (M1-09). The frame loop holds IRunSession and can start, tick
         // and end a run; an input adapter holds IPlayerCommands and can only ask for a focus. Two
         // registrations of RunSession would be two brains — core would tick one and the player's
@@ -69,10 +86,18 @@ public static class RunInstaller
         // by name rather than by type: core's registry has to be able to hold every enemy the
         // snapshot can carry, or an enemy exists that core cannot see the position of. A second
         // int parameter later would make WithParameter<int> ambiguous, so the name is the wire.
+        // The device cap joins it, by name for the same reason and from the same place: M2-04
+        // priced 28 against a measured path refresh and ally count, and M2-05 is the first task
+        // with something that spends it — the concurrency curve a stage is composed under. The
+        // projectile capacity is the third, from the same place for the same reason (M2-07a rule 7).
+        // Three ints on one registration is exactly the ambiguity WithParameter<int> would
+        // introduce, and is why every one of them is wired by name.
         builder.Register<RunSession>(Lifetime.Scoped)
             .As<IRunSession>()
             .As<IPlayerCommands>()
-            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity);
+            .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity)
+            .WithParameter("deviceEnemyCap", BootInstaller.DeviceEnemyCap)
+            .WithParameter("projectileCapacity", BootInstaller.ProjectileCapacity);
     }
 
     /// <summary>
@@ -94,7 +119,30 @@ public static class RunInstaller
 
         if (pending.IsSet)
         {
-            return new SeededRandom(pending.Seed);
+            var seeded = new SeededRandom(pending.Seed);
+
+            // **The restore happens here and nowhere else** (M2-14b rule 3). The seed selects
+            // which sequence each stream walks and the captured state says how far along it is, so
+            // a generator built from the snapshot's seed and then put back where it stood is a
+            // complete restore — and by the time RunSession.Start runs, the streams are already
+            // there. Core never learns that anything was rewound.
+            //
+            // The alternative was core applying it from RunConfig.Restore, which needs an
+            // IRandom.Reseed or a position setter reachable from every system holding a stream —
+            // precisely the door M2-13a rule 7 declined to open, and for the reason IRandomStream's
+            // own remarks give: a behaviour that could rewind the sequence it draws from produces
+            // a determinism bug that reads as a content bug for a week.
+            //
+            // Nothing is checked against the seed here, because nothing can be: every 64-bit value
+            // is a legal position, so a state captured under a different seed is indistinguishable
+            // from a legitimate one. The agreement is checked where both are visible and named —
+            // RunSession.Start, rule 4.
+            if (pending.Snapshot is RunSnapshot snapshot)
+            {
+                seeded.Restore(snapshot.Random);
+            }
+
+            return seeded;
         }
 
         int fallbackSeed = Environment.TickCount;

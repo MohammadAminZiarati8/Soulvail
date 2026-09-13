@@ -34,27 +34,66 @@ public sealed class SeededRandom : IRandom
     private const int DropsIndex = 3;
     private const int MiscIndex = 4;
 
+    private readonly Pcg32 _spawn;
+    private readonly Pcg32 _offers;
+    private readonly Pcg32 _affixes;
+    private readonly Pcg32 _drops;
+    private readonly Pcg32 _misc;
+
     public SeededRandom(int seed)
     {
         Seed = seed;
-        Spawn = CreateStream(seed, SpawnIndex);
-        Offers = CreateStream(seed, OffersIndex);
-        Affixes = CreateStream(seed, AffixesIndex);
-        Drops = CreateStream(seed, DropsIndex);
-        Misc = CreateStream(seed, MiscIndex);
+        _spawn = CreateStream(seed, SpawnIndex);
+        _offers = CreateStream(seed, OffersIndex);
+        _affixes = CreateStream(seed, AffixesIndex);
+        _drops = CreateStream(seed, DropsIndex);
+        _misc = CreateStream(seed, MiscIndex);
     }
 
     public int Seed { get; }
 
-    public IRandomStream Spawn { get; }
+    public IRandomStream Spawn => _spawn;
 
-    public IRandomStream Offers { get; }
+    public IRandomStream Offers => _offers;
 
-    public IRandomStream Affixes { get; }
+    public IRandomStream Affixes => _affixes;
 
-    public IRandomStream Drops { get; }
+    public IRandomStream Drops => _drops;
 
-    public IRandomStream Misc { get; }
+    public IRandomStream Misc => _misc;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The five LCG state words, nothing else. Each generator's increment — the thing that selects
+    /// which sequence it walks — is derived from the seed and is <c>readonly</c>, so it comes back
+    /// by itself the moment a <see cref="SeededRandom"/> is rebuilt with the same seed. That is
+    /// why position alone is a complete capture and why nothing here mentions the seed.
+    /// </remarks>
+    public RandomState Capture()
+    {
+        return new RandomState(
+            _spawn.State,
+            _offers.State,
+            _affixes.State,
+            _drops.State,
+            _misc.State);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Refuses nothing: every 64-bit word is a legal LCG state, so there is no value here that
+    /// could be recognised as wrong. Restored onto a generator built from a different seed it
+    /// lands at a legal position on the wrong sequence, which is checkable only where both the
+    /// seed and the state are visible — <c>RunSession.Start</c>, not here.
+    /// </remarks>
+    public void Restore(in RandomState state)
+    {
+        _spawn.State = state.Spawn;
+        _offers.State = state.Offers;
+        _affixes.State = state.Affixes;
+        _drops.State = state.Drops;
+        _misc.State = state.Misc;
+    }
 
     /// <summary>
     /// Builds one stream's generator from the run seed and the stream's fixed index.
@@ -121,6 +160,23 @@ public sealed class SeededRandom : IRandom
             }
 
             NextUInt();
+        }
+
+        /// <summary>
+        /// How far along its sequence this generator is. Readable and settable so that
+        /// <see cref="SeededRandom.Capture"/> and <see cref="SeededRandom.Restore"/> can carry a
+        /// run's position across an app kill.
+        /// </summary>
+        /// <remarks>
+        /// On the nested class, never on <see cref="IRandomStream"/>. Only the enclosing
+        /// <see cref="SeededRandom"/> can see this type, so the two members on
+        /// <see cref="IRandom"/> stay the only way a position is read or written, and no core
+        /// system holding a stream can rewind the sequence it draws from.
+        /// </remarks>
+        public ulong State
+        {
+            get => _state;
+            set => _state = value;
         }
 
         public float NextFloat()

@@ -15,7 +15,7 @@ MonoBehaviour:
   _id: character.oathbound
   _nameKey: character.oathbound.name
   _maxHp: 140
-  _speed: 5.4
+  _speed: 3
   _accelTime: 0.06
   _decelTime: 0.08
   _turnSpeedDeg: 720
@@ -39,10 +39,10 @@ MonoBehaviour:
   _focusRampTime: 1
   _focusMaxMultiplier: 1.3
   _movementSkillKind: 0
-  _movementSkillDistance: 10
-  _movementSkillDuration: 0.22
+  _movementSkillDistance: 8
+  _movementSkillDuration: 0.5
   _movementSkillCooldown: 2.5
   _movementSkillInputBuffer: 0.15
   _movementSkillDamage: 20
-  _movementSkillKnockback: 5
+  _movementSkillKnockback: 4
   _movementSkillIFrameTrail: 0.05

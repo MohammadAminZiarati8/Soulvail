@@ -21,8 +21,8 @@ namespace Soulvail.Core.Combat;
 /// </para>
 /// <para>
 /// Nothing here is timed. A source that expires owns its own clock and calls
-/// <see cref="RemoveAll"/>; a stat has no idea what a second is, which is what keeps it out of
-/// every tick.
+/// <see cref="RemoveAll(object)"/>; a stat has no idea what a second is, which is what keeps it
+/// out of every tick.
 /// </para>
 /// <para>
 /// Not thread-safe, and not meant to be: core runs on one thread, driven by <c>Tick</c>.
@@ -151,7 +151,7 @@ public sealed class Stat
     /// </summary>
     /// <remarks>
     /// The same source may add several — a node that grants "+2 damage and +15 %" adds two, and
-    /// one <see cref="RemoveAll"/> takes both off again.
+    /// one <see cref="RemoveAll(object)"/> takes both off again.
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// The modifier has no source. Every constructed <see cref="Modifier"/> has one, so the only
@@ -228,6 +228,52 @@ public sealed class Stat
 
             RaiseIfValueChanged(before);
         }
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Takes off every modifier, whoever added it — what a pooled object gets instead of a fresh
+    /// stat — and reports how many went.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A second overload beside <see cref="RemoveAll(object)"/>, not a replacement.</b> Taking a
+    /// source back when a buff ends is a different question from wiping a rental clean, and one
+    /// call site must never be able to mean the other by omission — which is exactly what a single
+    /// method with a nullable source would allow.
+    /// </para>
+    /// <para>
+    /// It exists for <c>EnemyAgent.Initialise</c> (ledger row 2, M2-03). The alternative considered
+    /// was an agent-owned source token cleared at despawn, and it was rejected because a token
+    /// covers only the source that owns it: the next thing to put a modifier on an enemy — M7-02's
+    /// affixes, M3's player-inflicted debuffs — would each have to be enumerated at the recycle
+    /// point, and that list gets one entry too short. <b>A recycled agent forgets everything</b>,
+    /// which is a rule that cannot be half-applied.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// The number removed. Zero for a stat that had none, which leaves the cache alone and raises
+    /// nothing — so a caller can wipe unconditionally.
+    /// </returns>
+    public int RemoveAll()
+    {
+        int removed = _modifiers.Count;
+
+        if (removed == 0)
+        {
+            return 0;
+        }
+
+        float before = ValueBeforeMutation();
+
+        _modifiers.Clear();
+        _isStale = true;
+
+        // Once for the whole wipe rather than once per modifier, which is what the source overload
+        // does too: a listener asked to "recompute what you derived from me" has one thing to do
+        // however many modifiers went.
+        RaiseIfValueChanged(before);
 
         return removed;
     }

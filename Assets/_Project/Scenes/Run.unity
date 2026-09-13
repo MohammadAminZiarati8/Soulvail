@@ -198,6 +198,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &894525613
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 894525614}
+  m_Layer: 0
+  m_Name: Projectiles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &894525614
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894525613}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &929802503
 GameObject:
   m_ObjectHideFlags: 0
@@ -239,11 +270,17 @@ MonoBehaviour:
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
   _focusGlow: {fileID: 1102459967}
+  _playerAnimator: {fileID: 1102459969}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
+  _projectilePrefab: {fileID: 5055392040755623392, guid: f0748e4cd0d908349af56a4260b5bbb4, type: 3}
+  _projectileParent: {fileID: 894525614}
   _enemyLayer:
     serializedVersion: 2
     m_Bits: 256
+  _coverLayer:
+    serializedVersion: 2
+    m_Bits: 512
   _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   _dummyPositions:
   - {x: 8, y: 0, z: 0}
@@ -254,9 +291,14 @@ MonoBehaviour:
   - {x: -7.78, y: 0, z: -7.78}
   - {x: 0, y: 0, z: -11}
   - {x: 7.78, y: 0, z: -7.78}
-  _keepAlive: 12
-  _respawnDelay: 2
-  _minSpawnDistance: 6
+  _threatArrowPrefab: {fileID: 3318980382163284144, guid: 0981ac6eefc5b634ea7eeda8652c008a, type: 3}
+  _threatArrowRoot: {fileID: 2052539127}
+  _telegraphRingPrefab: {fileID: 6128909648785952691, guid: 31a893a7d849acf4cb6a1b2fabda5955, type: 3}
+  _decalRoot: {fileID: 1484466969}
+  _arenaPrefabs:
+  - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}
+  - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}
+  _arenaRoot: {fileID: 1668478928}
 --- !u!4 &929802505
 Transform:
   m_ObjectHideFlags: 0
@@ -367,6 +409,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d5581812873d4648983e7bc36c4385b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ChargeMotion
+--- !u!114 &1102459969 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5810567329881625941, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5404705d816f6843b85404a700adf75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PlayerAnimatorView
 --- !u!1 &1167978313
 GameObject:
   m_ObjectHideFlags: 0
@@ -649,63 +702,68 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1001 &1921197841
-PrefabInstance:
+--- !u!1 &1484466968
+GameObject:
   m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1484466969}
+  m_Layer: 0
+  m_Name: Decals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1484466969
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1484466968}
   serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7214212582646918833, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7925482581065109783, guid: f268a216b371723429a00b60c43d2bda, type: 3}
-      propertyPath: m_Name
-      value: GreyBox
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: f268a216b371723429a00b60c43d2bda, type: 3}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1668478927
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1668478928}
+  m_Layer: 0
+  m_Name: Arenas
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1668478928
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1668478927}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2001746809
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -893,6 +951,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34fc7d8a959ec2b4a9ea45218112f71c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HudPresenter
+--- !u!224 &2052539127 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 2992991911888828424, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2056789030
 GameObject:
   m_ObjectHideFlags: 0
@@ -1050,7 +1113,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 1167978317}
   - {fileID: 929802505}
-  - {fileID: 1921197841}
   - {fileID: 1102459964}
   - {fileID: 2052539124}
   - {fileID: 324137846}
@@ -1058,3 +1120,6 @@ SceneRoots:
   - {fileID: 5239836669165301808}
   - {fileID: 2056789031}
   - {fileID: 2001746809}
+  - {fileID: 894525614}
+  - {fileID: 1668478928}
+  - {fileID: 1484466969}

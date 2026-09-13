@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Bloater
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.bloater
+  _nameKey: enemy.bloater.name
+  _maxHp: 24
+  _moveSpeed: 2.2
+  _targetPriority: 2
+  _threatCost: 8
+  _isElite: 0
+  _contactDamage: 15
+  _reach: 2
+  _windupTime: 0.8
+  _recoverTime: 0
+  _aggroRange: 30
+  _behaviour: 3
+  _projectileStandoffRange: 0
+  _projectileSpeed: 12
+  _projectileRadius: 1.6
+  _explosionRadius: 3
+  _tint: {r: 0.6392157, g: 0.34117648, b: 0.21960784, a: 1}
+  _bodyScale: 1.35

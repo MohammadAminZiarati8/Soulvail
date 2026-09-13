@@ -24,16 +24,26 @@ namespace Soulvail.Game.Adapters;
 /// the single most expensive thing an arena could do to a phone. So a path is recomputed at most
 /// every <c>1 / refreshHz</c> seconds — a Husk walking at 3 m/s covers 30 cm in that time, far less
 /// than the corner radius the route is made of — and at most
-/// <see cref="MaxRefreshesPerFrame"/> enemies recompute on any one frame. The second limit is what
-/// bounds the <em>worst</em> frame rather than the average one: without it, a wave that all spawned
-/// together would refresh in lockstep for ever, and every tenth frame would cost sixty path
+/// <see cref="PathRefreshBudget.ForFrame"/> enemies recompute on any one frame. The second limit is
+/// what bounds the <em>worst</em> frame rather than the average one: without it, a wave that all
+/// spawned together would refresh in lockstep for ever, and every tenth frame would cost sixty path
 /// searches.
+/// </para>
+/// <para>
+/// <b>That per-frame limit used to be the constant four, and four was not enough</b> (M2-05, ledger
+/// row 5). It sustained 24 enemies at 60 fps and 12 at 30, against M2-04's cap of 28 — so above two
+/// dozen the population silently fell behind its own cadence and walked into pillars. The budget
+/// now scales with how many enemies are asking and how long the frame took, and
+/// <see cref="StalePathCount"/> reports the shortfall when the ceiling binds anyway. Row 5's real
+/// complaint was never the number: it was that nothing said the ceiling had been reached.
 /// </para>
 /// <para>
 /// <b>The round-robin is emergent rather than scheduled.</b> Nothing tracks whose turn it is: the
 /// first few stale enemies each frame get refreshed and stop being stale, so the next frame's budget
-/// falls to the ones behind them, and the whole population rotates through on its own. Forty enemies
-/// at four a frame come round every ten frames, which is the tenth of a second the cadence asked for.
+/// falls to the ones behind them, and the whole population rotates through on its own. Twenty-eight
+/// enemies at five a frame come round in six frames, which is the tenth of a second the cadence
+/// asked for — and it stays that tenth of a second at 30 fps, because the allowance doubles with
+/// the step rather than the wait doubling with it.
 /// </para>
 /// <para>
 /// <b>Nothing allocates.</b> One <see cref="NavMeshPath"/> for the life of the object, corners read
@@ -45,18 +55,6 @@ namespace Soulvail.Game.Adapters;
 /// </remarks>
 public sealed class NavPathSense
 {
-    /// <summary>
-    /// The most enemies whose path may be recomputed on a single frame.
-    /// </summary>
-    /// <remarks>
-    /// Four, against a 10 Hz cadence, covers forty enemies without ever falling behind — GD §11's
-    /// cap is sixty-four, so a completely full arena refreshes every 16 frames instead of every 6,
-    /// and a Husk walks half a metre between routes. That is the trade this number is: a bounded
-    /// worst frame, paid for with a slightly staler path in the one situation where every enemy is
-    /// already converging on the same place anyway.
-    /// </remarks>
-    public const int MaxRefreshesPerFrame = 4;
-
     /// <summary>
     /// How often one enemy's route is recomputed by default, in times per second.
     /// </summary>
@@ -92,10 +90,24 @@ public sealed class NavPathSense
         /// ask this frame is one the arena no longer has.
         /// </summary>
         public float LastSeen;
+
+        /// <summary>
+        /// When this enemy was first seen. What staleness is measured from until the first route
+        /// is computed — without it, an enemy that appeared a millisecond ago would count as
+        /// overdue for ever, and <see cref="StalePathCount"/> would read every spawn as a fault.
+        /// </summary>
+        public float Arrived;
     }
 
     private readonly int _capacity;
     private readonly float _refreshInterval;
+
+    /// <summary>
+    /// How many recomputes this frame may spend. Built from this object's own
+    /// <c>refreshHz</c> rather than injected, so the cadence the cache is kept at and the cadence
+    /// the budget is sized for are one number and cannot disagree.
+    /// </summary>
+    private readonly PathRefreshBudget _budget;
 
     /// <summary>Enemy id to its slot in <see cref="_entries"/>. Pre-sized, so it never resizes.</summary>
     private readonly Dictionary<int, int> _slotById;
@@ -125,6 +137,23 @@ public sealed class NavPathSense
 
     private int _refreshesThisFrame;
 
+    /// <summary>What <see cref="PathRefreshBudget.ForFrame"/> allowed for the current frame.</summary>
+    private int _allowedThisFrame = 1;
+
+    /// <summary>How many enemies have asked during the current frame.</summary>
+    /// <remarks>
+    /// Counted rather than passed in, so the caller keeps the one-call-per-enemy shape it already
+    /// has. The population it yields is the <em>previous</em> frame's, which is what the budget is
+    /// sized from: a frame's allowance has to be decided before that frame's first caller is
+    /// answered, and at 60 fps a wave arriving one body at a time is never more than one body out.
+    /// </remarks>
+    private int _asksThisFrame;
+
+    private int _asksLastFrame;
+
+    /// <summary>Accumulates <see cref="StalePathCount"/> as the current frame is answered.</summary>
+    private int _staleThisFrame;
+
     /// <param name="capacity">
     /// The most enemies that may be cached at once. Matches the run's enemy capacity: a slot table
     /// smaller than the arena would spend every frame evicting enemies that are still standing.
@@ -133,11 +162,20 @@ public sealed class NavPathSense
     /// How often one enemy's route is recomputed, in times per second. Ten is CC's cadence for
     /// things the player cannot see the seams of.
     /// </param>
+    /// <param name="maxRefreshesPerFrame">
+    /// The ceiling on a single frame's recomputes — see <see cref="PathRefreshBudget"/>. Defaulted
+    /// rather than required, because every caller but the composition root wants the number the
+    /// budget itself recommends.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="capacity"/> is not positive, or <paramref name="refreshHz"/> is not positive
-    /// and finite. A zero rate would divide to an infinite interval and quietly never path at all.
+    /// <paramref name="capacity"/> is not positive, <paramref name="refreshHz"/> is not positive
+    /// and finite — a zero rate would divide to an infinite interval and quietly never path at all
+    /// — or <paramref name="maxRefreshesPerFrame"/> is below 1.
     /// </exception>
-    public NavPathSense(int capacity, float refreshHz = DefaultRefreshHz)
+    public NavPathSense(
+        int capacity,
+        float refreshHz = DefaultRefreshHz,
+        int maxRefreshesPerFrame = PathRefreshBudget.DefaultMaxPerFrame)
     {
         if (capacity <= 0)
         {
@@ -161,6 +199,9 @@ public sealed class NavPathSense
         _capacity = capacity;
         _refreshInterval = 1f / refreshHz;
 
+        // After the rate has been guarded, so its own guard can only ever fire on the ceiling.
+        _budget = new PathRefreshBudget(refreshHz, maxRefreshesPerFrame);
+
         _slotById = new Dictionary<int, int>(capacity);
         _entries = new Entry[capacity];
         _free = new int[capacity];
@@ -175,6 +216,27 @@ public sealed class NavPathSense
         _freeCount = capacity;
         _path = new NavMeshPath();
     }
+
+    /// <summary>
+    /// Enemies whose path is overdue by more than one full refresh period. Zero when it is keeping
+    /// up.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The number ledger row 5 was actually missing.</b> A budget that cannot reach the whole
+    /// population does not fail — routes simply age, and enemies walk into pillars while the arena
+    /// looks stupid for no visible reason. This says how many of them are in that state, and
+    /// <c>DebugOverlay</c> puts it on screen; a run that reads anything but zero with a full wave up
+    /// is one where the cap and the pathfinder disagree.
+    /// </para>
+    /// <para>
+    /// It is the count for the last <em>completed</em> frame, published as the next one opens, and
+    /// deliberately not checked by a test: an EditMode scene has no baked NavMesh, so every search
+    /// fails instantly and the number it would assert against is not the one a device produces.
+    /// M2-05's manual step 2 is where it is verified.
+    /// </para>
+    /// </remarks>
+    public int StalePathCount { get; private set; }
 
     /// <summary>
     /// The cached unit XZ direction along the path from <paramref name="from"/> towards
@@ -197,9 +259,10 @@ public sealed class NavPathSense
     {
         if (time != _frameTime)
         {
-            _frameTime = time;
-            _refreshesThisFrame = 0;
+            BeginFrame(time);
         }
+
+        _asksThisFrame++;
 
         if (!TryGetSlot(enemyId, time, out int slot))
         {
@@ -207,7 +270,11 @@ public sealed class NavPathSense
             // live enemies than this cache was built for. Answered without caching rather than
             // refused: a straight line is what core falls back to in any case, and the arena keeps
             // running. Silent because the capacity mismatch is a composition fact that
-            // WorldSnapshot's own capacity warning already reports from the other side.
+            // WorldSnapshot's own capacity warning already reports from the other side — but it is
+            // counted as stale, because an enemy with no slot is an enemy whose route is never
+            // being computed at all.
+            _staleThisFrame++;
+
             return StraightLine(from, to);
         }
 
@@ -215,7 +282,7 @@ public sealed class NavPathSense
 
         entry.LastSeen = time;
 
-        if (_refreshesThisFrame < MaxRefreshesPerFrame
+        if (_refreshesThisFrame < _allowedThisFrame
             && time - entry.LastComputed >= _refreshInterval)
         {
             _refreshesThisFrame++;
@@ -224,10 +291,61 @@ public sealed class NavPathSense
             entry.Direction = Compute(from, to);
         }
 
+        // Measured after the refresh above, so an enemy whose turn came round this frame is never
+        // counted: what this number reports is the ones the budget could not reach. A route that
+        // has never been computed is measured from when its enemy arrived rather than from
+        // negative infinity, or every spawn would arrive already overdue.
+        float due = entry.LastComputed == float.NegativeInfinity ? entry.Arrived : entry.LastComputed;
+
+        if (time - due > 2f * _refreshInterval)
+        {
+            _staleThisFrame++;
+        }
+
         // The straight line until this enemy's first turn comes round. A zero would read to core as
         // "no path", which produces the same walk — but saying it out loud here keeps the sense
         // honest: the value returned is always a direction towards the player, never an absence.
         return entry.LastComputed == float.NegativeInfinity ? StraightLine(from, to) : entry.Direction;
+    }
+
+    /// <summary>
+    /// Closes the frame that has just ended and sizes the new one's allowance from it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The step is derived rather than passed, from the difference between two frames' times — the
+    /// same clamped <c>Dt</c> the snapshot carries, since the caller's clock is the sum of them.
+    /// The first frame of a run has no previous one to subtract, and answers zero, which the budget
+    /// floors at a single recompute.
+    /// </para>
+    /// <para>
+    /// <see cref="StalePathCount"/> is published here rather than as each enemy is answered, so a
+    /// reader between two frames always sees one whole frame's count instead of however much of
+    /// this one has been assembled so far.
+    /// </para>
+    /// </remarks>
+    private void BeginFrame(float time)
+    {
+        float dt = float.IsNegativeInfinity(_frameTime) ? 0f : time - _frameTime;
+
+        // A step that is not positive is a caller whose clock stood still or went backwards — a
+        // paused run, or a second run through the same sense. Neither is an error and neither owes
+        // the population a refresh, so the budget's floor of one is the whole answer.
+        if (!(dt > 0f))
+        {
+            dt = 0f;
+        }
+
+        _frameTime = time;
+        _refreshesThisFrame = 0;
+
+        _asksLastFrame = _asksThisFrame;
+        _asksThisFrame = 0;
+
+        StalePathCount = _staleThisFrame;
+        _staleThisFrame = 0;
+
+        _allowedThisFrame = _budget.ForFrame(_asksLastFrame, dt);
     }
 
     /// <summary>
@@ -265,6 +383,7 @@ public sealed class NavPathSense
             // rather than waiting out an interval measured from a time it never ran at.
             LastComputed = float.NegativeInfinity,
             LastSeen = time,
+            Arrived = time,
         };
 
         _slotById.Add(enemyId, slot);
@@ -327,7 +446,7 @@ public sealed class NavPathSense
         }
 
         // GetCornersNonAlloc, never the corners property: that one allocates a fresh array on every
-        // read, which at four reads a frame for a whole run is precisely the drip AR §14 bans.
+        // read, which at a handful of reads a frame for a whole run is the drip AR §14 bans.
         int corners = _path.GetCornersNonAlloc(_corners);
 
         if (corners < 2)

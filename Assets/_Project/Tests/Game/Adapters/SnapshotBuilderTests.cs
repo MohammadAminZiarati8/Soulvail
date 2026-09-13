@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Support;
 using UnityEngine;
@@ -46,6 +49,14 @@ public sealed class SnapshotBuilderTests : InputTestFixture
     private EnemyViews _enemyViews;
     private NavPathSense _paths;
 
+    /// <summary>The cover raycasts (M2-11b), and the pillar one row puts in the way.</summary>
+    private LineOfSightSense _sight;
+    private GameObject _pillar;
+
+    /// <summary>The arena prefab this scene raises, and the pool that raises it (M2-11a).</summary>
+    private GameObject _arenaTemplateObject;
+    private ArenaPool _arenas;
+
     [SetUp]
     public void CreateBuilder()
     {
@@ -71,7 +82,7 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // EnemyView asks to be injected. A real run's resolver differs only in what it holds.
         _container = new ContainerBuilder().Build();
         _hub = new DomainEventHub();
-        _enemyViews = new EnemyViews(_container, template, null, _hub);
+        _enemyViews = new EnemyViews(_container, template, null, _hub, EmptyLookBook());
 
         _input = new InputAdapter();
 
@@ -81,7 +92,29 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // eighteen tasks before pathing existed, and worth having a row stand on.
         _paths = new NavPathSense(8);
 
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths);
+        // The arena, and the pool that raises it (M2-11a). Where the door is and where a body may
+        // be put are both facts about whichever room is standing, so the builder asks the pool
+        // rather than holding a transform the scene dressed once.
+        _arenaTemplateObject = BuildArena("arena.test", new UnityEngine.Vector3(0f, 0f, 18f));
+        _arenas = new ArenaPool(
+            _container,
+            new[] { _arenaTemplateObject.GetComponent<ArenaView>() },
+            null,
+            _hub,
+            _player);
+
+        // A real cover sense rather than null, for the reason the path cache is real: what these
+        // rows exercise is the wiring a run actually has. Nothing is on the Cover layer unless a row
+        // puts it there, so every enemy can see and the arena behaves as it did before M2-11b.
+        _sight = new LineOfSightSense(
+            8,
+            1 << LayerMask.NameToLayer(ArenaView.CoverLayerName),
+            new PathRefreshBudget(
+                LineOfSightSense.DefaultRefreshHz,
+                PathRefreshBudget.DefaultMaxPerFrame),
+            LineOfSightSense.DefaultRefreshHz);
+
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _arenas, _sight);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -93,6 +126,26 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // order to write down anywhere.
         _enemyViews?.Dispose();
         _enemyViews = null;
+
+        // With the views and for their reason: the pool holds two subscriptions, and disposing the
+        // hub first would leave them pointing at an orphaned channel.
+        _arenas?.Dispose();
+        _arenas = null;
+
+        if (_arenaTemplateObject != null)
+        {
+            Object.DestroyImmediate(_arenaTemplateObject);
+        }
+
+        _arenaTemplateObject = null;
+
+        if (_pillar != null)
+        {
+            Object.DestroyImmediate(_pillar);
+        }
+
+        _pillar = null;
+        _sight = null;
 
         _hub?.Dispose();
         _hub = null;
@@ -118,6 +171,90 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         }
 
         _enemyTemplateObject = null;
+
+    }
+
+    [Test]
+    public void Build_ReportsTheStandingArenasGate()
+    {
+        Raise("arena.test");
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.True);
+        Assert.That(_snapshot.GatePosition.Z, Is.EqualTo(18f));
+
+        // Read every frame rather than cached at composition, so an arena that moves its door — one
+        // that slides open, one raised at a stage boundary — is answered on the frame it moves.
+        _arenas.Active.transform.Find("Gate").position = new UnityEngine.Vector3(4f, 0f, 1f);
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.GatePosition.X, Is.EqualTo(4f));
+        Assert.That(_snapshot.GatePosition.Z, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void Build_ReportsTheStandingArenasSpawnPoints()
+    {
+        Raise("arena.test");
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.SpawnPoints.Count, Is.EqualTo(3),
+            "Where a body may be put is a fact about the room that is standing, and it reaches " +
+            "core the same way the door does (M2-11a rule 6).");
+
+        Assert.That(_snapshot.SpawnPoints[0].X, Is.EqualTo(9f));
+    }
+
+    [Test]
+    public void Build_NoArenaRaised_SaysSo()
+    {
+        // Nothing has arrived, so nothing is standing. An undressed scene is a legal arena: core
+        // reads HasGate false, sees nowhere to spawn, and parks its stage flow rather than
+        // throwing (M2-10 rule 15, M2-05 rule 12).
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.False);
+        Assert.That(_snapshot.GatePosition, Is.EqualTo(System.Numerics.Vector3.Zero),
+            "And the position is cleared with it, so a stale door cannot be walked through.");
+
+        Assert.That(_snapshot.SpawnPoints.Count, Is.Zero);
+    }
+
+    [Test]
+    public void Build_NoPool_SaysSo()
+    {
+        // A builder composed without a pool at all — a fixture rather than a run, and the same
+        // bargain a null NavPathSense makes. The cover sense goes with it, which is the M2-11b half
+        // of the same row: an arena with no geometry to raycast is one where everybody can see.
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null, null);
+
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 4f)));
+
+        Assert.DoesNotThrow(() => builder.Build(_snapshot, 0.02f));
+
+        Assert.That(_snapshot.HasGate, Is.False);
+        Assert.That(_snapshot.SpawnPoints.Count, Is.Zero);
+
+        Assert.That(FindEnemy(1).HasLineOfSight, Is.True,
+            "A null sense answers `can see`, never `cannot` — a mis-wired run degrades to the "
+                + "arena M2-07b shipped rather than to one where no Spitter ever fires (rule 3).");
+    }
+
+    [Test]
+    public void Build_DestroyedArena_SaysSo()
+    {
+        Raise("arena.test");
+
+        // Unity's lifetime check rather than C#'s: a destroyed component is a live C# reference and
+        // a dead object, and a plain null comparison would report a door that is not there.
+        Object.DestroyImmediate(_arenas.Active.gameObject);
+
+        _builder.Build(_snapshot, 0.02f);
+
+        Assert.That(_snapshot.HasGate, Is.False);
     }
 
     [Test]
@@ -224,9 +361,13 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // that reads as an AI bug for a week.
         ref EnemySense stale = ref _snapshot.AddEnemy();
         stale.Id = 99;
-        stale.HasLineOfSight = true;
         stale.PathDirectionToPlayer = new System.Numerics.Vector2(0.6f, 0.8f);
         stale.Velocity = new System.Numerics.Vector3(9f, 9f, 9f);
+
+        // Stale *false* since M2-11b, which is the way round that has teeth: `true` is now the
+        // answer an enemy on open ground gets, so a leftover `true` would be indistinguishable from
+        // a correct one and the row would pass with the assignment deleted.
+        stale.HasLineOfSight = false;
 
         _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(1f, 0f, 2f)));
 
@@ -237,9 +378,10 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         EnemySense written = _snapshot.Enemies[0];
 
         Assert.That(written.Id, Is.EqualTo(1));
-        Assert.That(written.HasLineOfSight, Is.False,
-            "Line of sight is still deliberately skipped (CC §3.1), so it must be written as "
-                + "false rather than left alone.");
+        Assert.That(written.HasLineOfSight, Is.True,
+            "Nothing is on the Cover layer, so this enemy can see — and it has to be *written* "
+                + "that way rather than inherited. EnemyViews stopped writing the field at M2-11b, "
+                + "so this assignment is the only one a reused slot gets (AR §18.2).");
         Assert.That(written.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero),
             "An EnemyView reports zero velocity until M1-18 moves it — zero written, not inherited.");
 
@@ -254,6 +396,37 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         Assert.That(path.Y, Is.EqualTo(-0.8944272f).Within(1e-4f),
             "Y of the XZ direction is world Z. A component swapped here sends every enemy in the "
                 + "game sideways.");
+    }
+
+    [Test]
+    public void Snapshot_CarriesLineOfSight()
+    {
+        // M2-11b, from this side of the boundary: the pillar is real, the raycast is real, and what
+        // reaches core is one bool on the slot beside the path direction. The pair with the row
+        // above is what proves the wiring rather than the sense — that one has open ground and
+        // arrives `true`, this one has cover and arrives `false`, and neither can pass if
+        // EnemyViews is still writing a hard answer of its own.
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 10f)));
+
+        // Halfway between the player at the origin and the body at ten metres, 1.5 m tall so it
+        // stands across the 1.1 m the ray runs at.
+        _pillar = new GameObject("Pillar")
+        {
+            layer = LayerMask.NameToLayer(ArenaView.CoverLayerName),
+        };
+
+        _pillar.transform.position = new UnityEngine.Vector3(0f, 0.75f, 5f);
+        _pillar.AddComponent<BoxCollider>().size = new UnityEngine.Vector3(8f, 1.5f, 0.5f);
+
+        Physics.SyncTransforms();
+
+        _builder.Build(_snapshot, 0.016f);
+
+        Assert.That(
+            FindEnemy(1).HasLineOfSight,
+            Is.False,
+            "A pillar between the body and the player has to reach core as a sense, because core "
+                + "holds no walls and never will (AR §18.2, ledger row 13).");
     }
 
     [Test]
@@ -307,5 +480,89 @@ public sealed class SnapshotBuilderTests : InputTestFixture
 
         Assert.Fail($"No enemy with id {id} in the snapshot.");
         return default;
+    }
+
+    /// <summary>
+    /// A look book with nothing in it, which is all these rows need: every archetype falls back to
+    /// <c>EnemyLook.Default</c> and the bodies here carry no <c>EnemyHitFeedback</c> to apply it to.
+    /// Required rather than optional on <c>EnemyViews</c> (M2-06), so it is passed rather than
+    /// omitted.
+    /// </summary>
+    private static EnemyLookBook EmptyLookBook()
+        => new EnemyLookBook(new Dictionary<ContentId, EnemyLook>());
+
+    /// <summary>Raises an arena the way a run does — by arriving at a stage in it.</summary>
+    private void Raise(string arenaId) =>
+        _hub.Publish(new StageArrived(1, new ContentId(arenaId)));
+
+    /// <summary>
+    /// An arena that passes its own validation: a start, a door, three points well clear of the
+    /// start, three pillars on the <c>Cover</c> layer, and a surface with data on it.
+    /// </summary>
+    /// <remarks>
+    /// Dressed in full rather than to the minimum, because <c>ArenaView.OnValidate</c> warns about
+    /// a half-authored arena and a fixture has no business producing that warning. The NavMesh data
+    /// is an empty instance: what is being asserted is that the surface <em>has</em> some, which is
+    /// the thing a designer forgets — baking one here would be measuring Unity's navigation build.
+    /// </remarks>
+    private static GameObject BuildArena(string id, UnityEngine.Vector3 gate)
+    {
+        var root = new GameObject(id);
+
+        var start = new GameObject("PlayerStart");
+        start.transform.SetParent(root.transform, false);
+
+        var door = new GameObject("Gate");
+        door.transform.SetParent(root.transform, false);
+        door.transform.localPosition = gate;
+
+        var points = new Transform[3];
+
+        var offsets = new[]
+        {
+            new UnityEngine.Vector3(9f, 0f, 0f),
+            new UnityEngine.Vector3(0f, 0f, 9f),
+            new UnityEngine.Vector3(-9f, 0f, 0f),
+        };
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            var marker = new GameObject($"Spawn_{i}");
+            marker.transform.SetParent(root.transform, false);
+            marker.transform.localPosition = offsets[i];
+            points[i] = marker.transform;
+
+            var pillar = new GameObject($"Pillar_{i}")
+            {
+                layer = LayerMask.NameToLayer(ArenaView.CoverLayerName),
+            };
+
+            pillar.transform.SetParent(root.transform, false);
+        }
+
+        var surface = root.AddComponent<Unity.AI.Navigation.NavMeshSurface>();
+        surface.navMeshData = new UnityEngine.AI.NavMeshData();
+
+        ArenaView view = root.AddComponent<ArenaView>();
+
+        var serialized = new UnityEditor.SerializedObject(view);
+
+        serialized.FindProperty("_id").stringValue = id;
+        serialized.FindProperty("_playerStart").objectReferenceValue = start.transform;
+        serialized.FindProperty("_gate").objectReferenceValue = door.transform;
+        serialized.FindProperty("_surface").objectReferenceValue = surface;
+
+        UnityEditor.SerializedProperty array = serialized.FindProperty("_spawnPoints");
+
+        array.arraySize = points.Length;
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            array.GetArrayElementAtIndex(i).objectReferenceValue = points[i];
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return root;
     }
 }

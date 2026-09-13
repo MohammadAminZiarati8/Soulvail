@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -52,11 +53,26 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class ChargeIntegrationTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 99;
 
     /// <summary>Room for every row's enemies, and the buffers the run preallocates.</summary>
     private const int EnemyCapacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     // CC §7, Charge.
     private const float Distance = 10f;
@@ -115,8 +131,8 @@ public sealed class ChargeIntegrationTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // The player stands at the origin and — except in the one row that pushes the stick — never
         // touches it, so a dash goes where the character is looking and every enemy's spawn position
@@ -401,8 +417,8 @@ public sealed class ChargeIntegrationTests
     {
         // 15 HP against the Charge's 20: the one row where a dash finishes something, and the reason
         // CC §5 calls it a damaging dodge rather than an escape.
-        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 15f) }, new[] { Descent() });
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         int husk = StartRun(At(5f))[0];
 
@@ -436,11 +452,13 @@ public sealed class ChargeIntegrationTests
         // The only row with CC §4.3's ramp switched on, because it is the only one about it.
         var catalog = new ContentCatalog(
             new[] { Oathbound(focusMaxMultiplier: FocusMaxMultiplier) },
-            new[] { Husk() });
+            new[] { Husk() },
+            new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
-        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         // One step past the 0.4 s delay plus the 1.0 s climb, taken whole: this row is about what a
         // dash does to a full ramp, and how many frames it took to earn is FocusTrackerTests'.
@@ -505,13 +523,17 @@ public sealed class ChargeIntegrationTests
         // written.
         var catalog = new ContentCatalog(
             new[] { Oathbound(chargeCooldown: 0.1f) },
-            new[] { Husk(maxHp: 1e9f) });
+            new[] { Husk(maxHp: 1e9f) },
+            new[] { Descent() });
 
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity);
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) })));
+            Seed,
+            1,
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) }), restore: null));
 
         Assert.That(events.LastSpawnedId, Is.GreaterThan(0), "Sanity: the dummy is out there.");
 
@@ -563,7 +585,8 @@ public sealed class ChargeIntegrationTests
             entries[i] = new SpawnPlan.Entry(new ContentId(HuskId), positions[i]);
         }
 
-        _session.Start(new RunConfig(new ContentId(OathboundId), new SpawnPlan(entries)));
+        _session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries), restore: null));
 
         IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
         var ids = new int[spawned.Count];
@@ -636,6 +659,24 @@ public sealed class ChargeIntegrationTests
         _snapshot.Dt = Frame;
     }
 
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
+
     /// <summary>The Oathbound of CC §7, with the two numbers a row overrides.</summary>
     private static CharacterSpec Oathbound(
         float chargeCooldown = CooldownSeconds,
@@ -670,11 +711,13 @@ public sealed class ChargeIntegrationTests
         maxHp,
         3.5f,
         1,
+        threatCost: 4,
         isElite: false,
         8f,
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 
     /// <summary>

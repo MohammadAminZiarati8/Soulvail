@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
+using Soulvail.Core.Stage;
 
 namespace Soulvail.Core.Run;
 
@@ -41,7 +45,30 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     private readonly IRandom _random;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
+    private readonly RunRecorder _recorder;
     private readonly int _enemyCapacity;
+    private readonly int _deviceEnemyCap;
+    private readonly int _projectileCapacity;
+
+    /// <summary>
+    /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
+    /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
+    /// downstream has to ask whether this run has a director.
+    /// </summary>
+    private SpawnDirector _director;
+
+    /// <summary>
+    /// The stage the run is in the middle of, and what ends it. Null for a mode whose content comes
+    /// entirely from its spawn plan — there is nothing to compose, so there are no waves to pace.
+    /// </summary>
+    /// <remarks>
+    /// Nullable where <see cref="_director"/> is not, and the asymmetry is deliberate: an inert
+    /// director is still a director, because "no spawn points" is a property of the <em>arena</em>
+    /// and every arena has one. An empty roster is a property of the <em>mode</em>, and a mode with
+    /// no waves has no stage to pace through — <c>StageFlow</c> would be holding a plan nothing ever
+    /// composed into.
+    /// </remarks>
+    private StageFlow _flow;
 
     /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
@@ -54,18 +81,47 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// </remarks>
     private bool _wasCharging;
 
-    /// <param name="catalog">Where <c>config.CharacterId</c> is resolved.</param>
-    /// <param name="random">The run's generator; its <see cref="IRandom.Seed"/> is recorded in the state.</param>
+    /// <param name="catalog">Where the config's mode, class and every archetype it names are resolved.</param>
+    /// <param name="random">
+    /// The run's generator. Its <see cref="IRandom.Seed"/> is no longer what the state records —
+    /// the config states that — but <see cref="Start"/> refuses a config that disagrees with it.
+    /// </param>
     /// <param name="events">Where run lifecycle events go.</param>
     /// <param name="intents">Where each tick's <see cref="PlayerMoveIntent"/> is written.</param>
+    /// <param name="recorder">
+    /// What writes the run down at the two moments a resume can be built from (M2-14a). Injected
+    /// rather than constructed here, and that is rule 12 rather than a preference: a recorder holds
+    /// the wall clock, so a session that built its own would have to take an <see cref="IClock"/> —
+    /// which is the one dependency <c>Soulvail.Core.Run</c> is asserted not to have (AR §18.2).
+    /// </param>
     /// <param name="enemyCapacity">
     /// The most enemies a run may hold at once, for the <see cref="EnemySystem"/> each
     /// <see cref="Start"/> builds. It must be the number the <c>WorldSnapshot</c> was built with,
     /// which is why both come from one constant in <c>BootInstaller</c>: an enemy core knows about
     /// but the snapshot cannot carry is one core is blind to the position of.
     /// </param>
+    /// <param name="deviceEnemyCap">
+    /// The most enemies this device may have standing at once — GD §11.1's tier, not a difficulty
+    /// number. It bounds GD §12.2's concurrency curve, so it decides how many bodies a stage is
+    /// delivered in and therefore how much of its budget is spent on <em>quality</em> instead
+    /// (GD §11.2, <see cref="WaveComposer"/>). A separate argument from
+    /// <paramref name="enemyCapacity"/> and always smaller: that one is how many enemies the
+    /// snapshot can carry, this one is how many the phone can draw.
+    /// </param>
+    /// <param name="projectileCapacity">
+    /// The most shots that may be in the air at once, for the <see cref="ProjectileSystem"/> each
+    /// <see cref="Start"/> builds. From <c>BootInstaller</c> beside the enemy cap, because it is the
+    /// same kind of number — what this device is allowed to have happening at once — and
+    /// deliberately not derived from the enemy cap: a shot outlives its shooter, so the two counts
+    /// are not the same question.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="enemyCapacity"/>, <paramref name="deviceEnemyCap"/> or
+    /// <paramref name="projectileCapacity"/> is not positive, or the cap exceeds the capacity — an
+    /// arena allowed to hold more bodies than the snapshot can carry is an arena core would be blind
+    /// to part of.
+    /// </exception>
     /// <remarks>
     /// Guarded, where <see cref="RunState"/>'s constructor is not, and the difference is the
     /// boundary: this one is public and called from another assembly, so a null arrives from code
@@ -80,12 +136,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         IRandom random,
         IDomainEvents events,
         IIntentSink intents,
-        int enemyCapacity)
+        RunRecorder recorder,
+        int enemyCapacity,
+        int deviceEnemyCap,
+        int projectileCapacity)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
+        _recorder = recorder ?? throw new ArgumentNullException(nameof(recorder));
 
         if (enemyCapacity <= 0)
         {
@@ -95,7 +155,38 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 "enemyCapacity must be greater than zero.");
         }
 
+        if (deviceEnemyCap <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deviceEnemyCap),
+                deviceEnemyCap,
+                "deviceEnemyCap must be greater than zero. A device allowed no enemies is one "
+                    + "every stage composes an empty arena for.");
+        }
+
+        if (deviceEnemyCap > enemyCapacity)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deviceEnemyCap),
+                deviceEnemyCap,
+                $"deviceEnemyCap is {deviceEnemyCap} and enemyCapacity is {enemyCapacity}. A "
+                    + "stage may not be allowed more bodies than the snapshot can carry back — "
+                    + "the surplus would exist in core and be invisible to it.");
+        }
+
+        if (projectileCapacity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(projectileCapacity),
+                projectileCapacity,
+                "projectileCapacity must be greater than zero. A run allowed no shots in the air "
+                    + "is one whose Spitters fire in silence — Fire refuses every one of them and "
+                    + "says nothing, which is exactly the failure a playtest cannot see.");
+        }
+
         _enemyCapacity = enemyCapacity;
+        _deviceEnemyCap = deviceEnemyCap;
+        _projectileCapacity = projectileCapacity;
     }
 
     /// <inheritdoc />
@@ -106,6 +197,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">A run is already running.</exception>
+    /// <exception cref="KeyNotFoundException">
+    /// The catalog holds no mode or class with the config's ids, or the plan or the mode's roster
+    /// names an archetype nobody authored.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// The config's seed disagrees with the generator this session was built with.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The mode has no stage <c>config.StageIndex</c>.
+    /// </exception>
+    /// <remarks>
+    /// The order is the contract, and the first half of it is new in M2-02: resolve the mode,
+    /// resolve the class, check the seed, check the stage, resolve every archetype the run could
+    /// possibly need — and only then build the state, publish <c>RunStarted</c>, flip
+    /// <see cref="IsRunning"/> and spawn. Everything from <c>RunStarted</c> onwards is unchanged
+    /// and is asserted by a test (AR §18.1).
+    /// </remarks>
     public void Start(RunConfig config)
     {
         if (config is null)
@@ -119,14 +228,124 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 "A run is already running. End it before starting another.");
         }
 
-        // Resolved before anything is assigned, so an unknown id leaves the session exactly as it
-        // was: not running, no event published, and whatever State the previous run left still
-        // readable. A half-started run would be worse than no run at all.
+        // Everything below this line and above `new RunState` is validation, and the whole block
+        // runs before a single thing is assigned or announced (ledger row 3). An unauthored mode,
+        // class or archetype therefore leaves the session exactly as it was: not running, no
+        // event published, nothing standing, and whatever State the previous run left still
+        // readable. Until M2-02 the plan was spawned *after* RunStarted and after IsRunning
+        // flipped, so a stranger mid-plan threw with the run announced and half an arena alive —
+        // inert while only RunScope authored a plan, and mode data is the first thing that can.
+        ModeSpec mode = _catalog.Mode(config.ModeId);
+
         CharacterSpec character = _catalog.Character(config.CharacterId);
 
-        // Recorded from the generator rather than chosen here, so the number a bug report quotes
-        // is provably the one the streams are drawing from. See RunConfig's remarks.
-        int seed = _random.Seed;
+        // One truth, checked at the one place both are visible. The config states the seed and the
+        // generator was built from one, so the only way they can differ is a composition mistake —
+        // and the symptom of letting it through would be a run whose recorded seed does not replay
+        // it, which is the one number a bug report is worth having. Core does not reseed the
+        // generator to make them agree: that would be an IRandom.Reseed, widening a port ahead of
+        // its caller (AR §6), and it is half of what restoring stream state rides on — M2-13a
+        // weighs it with ledger row 1.
+        if (config.Seed != _random.Seed)
+        {
+            throw new ArgumentException(
+                $"config.Seed is {config.Seed} but the run's generator was seeded with "
+                    + $"{_random.Seed}. A run has one seed; the composition root builds the "
+                    + "generator and states the same number here.",
+                nameof(config));
+        }
+
+        // Asked of the mode, because whether stage 6 exists is the mode's question — an endless
+        // Descent has every stage from 1, a finite mode does not. RunConfig already refused a
+        // stage below 1 without needing to see a mode.
+        if (!mode.HasStage(config.StageIndex))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(config),
+                config.StageIndex,
+                $"'{mode.Id}' has no stage {config.StageIndex}. It runs from "
+                    + $"{mode.StartingStage} to "
+                    + (mode.IsEndless ? "endless." : $"{mode.FinalStage}."));
+        }
+
+        // The third question of the same shape as the two above, and the last one this method can
+        // ask before it starts building: the config states a seed and a depth, the snapshot states
+        // the ones it was written at, and a resume is only a resume if they are the same run. A
+        // mismatch is a composition mistake — the Menu handing over one run's snapshot with another
+        // run's seed — and letting it through would put the streams on the right sequence at the
+        // wrong position, or replay a stage at a depth it was never composed for. Neither has a
+        // symptom that points here.
+        //
+        // After the content checks and before anything is built, so an unauthored mode named by an
+        // old save still fails with the catalog's diagnostic rather than with this one: the
+        // question "does this build still ship that mode" comes before "do these two agree".
+        if (config.Restore is RunSnapshot restore)
+        {
+            if (restore.Seed != config.Seed)
+            {
+                throw new ArgumentException(
+                    $"config.Restore was written for seed {restore.Seed} but this config states "
+                        + $"{config.Seed}. A resumed run continues one run, and the snapshot's "
+                        + "seed is the one the generator must have been built from.",
+                    nameof(config));
+            }
+
+            if (restore.StageIndex != config.StageIndex)
+            {
+                throw new ArgumentException(
+                    $"config.Restore resumes at stage {restore.StageIndex} but this config starts "
+                        + $"at {config.StageIndex}. The saved depth is the depth a resumed run "
+                        + "begins at; nothing may start it somewhere else.",
+                    nameof(config));
+            }
+        }
+
+        RequireAuthored(config.SpawnPlan, mode);
+
+        // The last of the validation, and it is here for ledger row 3's reason rather than for
+        // tidiness: WaveComposer refuses a mode that introduces nothing at or before this stage,
+        // and composing after RunStarted would strand exactly the announcement that row exists to
+        // stop being stranded. Held in locals until the run is built, so a throw below still
+        // leaves this session's own fields as the previous run left them.
+        //
+        // A composition that succeeds and a Start that then fails would leave the Spawn stream
+        // advanced. That is accepted: the run it was drawn for does not exist, and the alternative
+        // — duplicating the composer's eligibility rule here so the real call can happen later —
+        // is two copies of one rule, which is how they come to disagree.
+        // **Before the composition below, and this line is the whole of M2-14a rule 5.** The
+        // opening snapshot has to describe the streams as they stood *before* anything drew for the
+        // stage it names, because a resume restores this position and composes that same stage from
+        // it — a position read after the composition would deal the resumed run a different opening
+        // stage under the same number, which is ledger row 1's bug with the numbers swapped.
+        //
+        // It is read here and announced much further down rather than both at once, because those
+        // are two different moments and cannot be made one: the composition sits inside this
+        // validation block so that an ineligible mode throws with nothing announced (ledger row 3,
+        // AR §18.1), while a snapshot must not be announced before the run it belongs to is. The
+        // gap between the two is exactly the composition the snapshot must not include.
+        RandomState opening = _random.Capture();
+
+        WavePlan plan = null;
+        WaveComposer composer = null;
+
+        // An empty roster is legal (M2-02): a mode whose content comes entirely from its spawn
+        // plan has nothing to schedule, so it is not composed at all rather than composed into
+        // nothing — which is what WaveComposer refuses, loudly and correctly.
+        if (mode.Roster.Count > 0)
+        {
+            // Sized once for the whole run, at the wave curve's ceiling by the mode's roster
+            // length, because M2-10 recomposes into this same object at every stage boundary and a
+            // transition is the worst moment in a run to allocate (WavePlan's own reasoning).
+            plan = new WavePlan(mode.Scaling.Waves.Max, mode.Roster.Count);
+
+            composer = new WaveComposer(_catalog, new ThreatBudget(mode.Scaling, _deviceEnemyCap));
+
+            // The first thing in a run to consume the Spawn stream, and it draws from that one and
+            // no other (ADR-0011).
+            composer.Compose(config.StageIndex, mode, plan, _random.Spawn);
+        }
+
+        int seed = config.Seed;
 
         // +Z, because a run begins with the camera behind the character and nothing yet to aim
         // at. The first stick input turns them within a frame or two at 720°/s.
@@ -142,13 +361,59 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
         // generator because respawning draws a position (M1-19) — from the Spawn stream and no
         // other, which is the system's own rule to keep rather than this class's to enforce.
-        var enemies = new EnemySystem(_catalog, _events, _random, _enemyCapacity);
+        //
+        // The scaling is built here and handed straight in, and nothing else in the run holds one:
+        // the curves belong to the mode, the mode is resolved above, and the only thing that ever
+        // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
+        // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
+        // it at each boundary.
+        var enemies = new EnemySystem(
+            _catalog,
+            _events,
+            _random,
+            new DepthScaling(mode.Scaling),
+            _enemyCapacity)
+        {
+            Depth = config.StageIndex,
+        };
 
-        State = new RunState(config.CharacterId, seed, character, motor, combat, enemies);
+        // One per run, like the registry above and for the same reason: a second Start must not
+        // inherit the first run's shots or its ids. It takes no generator, because a shot goes
+        // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
+        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
+
+        State = new RunState(
+            config.ModeId,
+            config.CharacterId,
+            seed,
+            config.StageIndex,
+            character,
+            motor,
+            combat,
+            enemies,
+            projectiles);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
         _wasCharging = false;
+
+        // **Before RunStarted, and that is the whole of rule 2.** M1-17's HUD draws the bar it is
+        // told about from inside that handler — it reads State.PlayerHp there — so applying the
+        // restore afterwards would show a resumed run a full bar that drops to 62 % on the next
+        // frame. A resumed run's first impression is the one frame nothing gets to be wrong in.
+        //
+        // Three values and no more (rule 3): hit points, shield and simulated seconds. The
+        // generator is already standing where the save left it — the composition root restored it
+        // when it built the generator, before this session existed — and everything else is
+        // rebuilt rather than read back: the arena from ArenaFor(stage, seed), the wave plan from
+        // the restored stream position a few lines above, and the population from nothing at all,
+        // because a boundary has none.
+        if (config.Restore is RunSnapshot resumed)
+        {
+            combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
+
+            State.Time = resumed.RunTime;
+        }
 
         // Published before IsRunning flips, so a handler that reads the session from inside this
         // event sees a run that is announced and not yet live. The alternative — flip, then
@@ -159,13 +424,69 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         IsRunning = true;
 
+        // The run is on disk from its first frame (rule 1), carrying the position captured at the
+        // top of this method rather than one read here (rule 5).
+        //
+        // **The opening write is what stops a stale run being resumed** (rule 2). Without it, a
+        // player who abandons a stage-12 run, starts a fresh one and loses the phone in stage 1
+        // resumes into stage 12 — the file on disk describes a run nobody is playing until the new
+        // one reaches its own first boundary, forty to seventy-five seconds later. The alternative
+        // was the Menu deleting the file when Descend is tapped, which puts an ISaveStore and a
+        // fire-and-forget delete into a presenter; writing the new run down instead needs no new
+        // dependency anywhere and makes the file describe the run in progress at all times.
+        //
+        // The stage is the config's, never assumed to be 1: a run that begins at 7 resumes at 7.
+        _recorder.Take(State, config.StageIndex, opening);
+
         // After RunStarted, and the order is asserted by a test. Subscribers are wired when the
         // scope is built, well before this — so the reason is not "so that anyone is listening",
         // it is that a run has to be announced before the things inside it are: a view handling
         // EnemySpawned may reasonably assume there is a run to put an enemy in. It is also after
         // IsRunning flips, so a handler that ticks or reads the session from inside a spawn event
         // finds a live run rather than one that has not begun.
+        //
+        // Every id in the plan was resolved above, so this line can no longer fail on content and
+        // the announcement above can no longer be stranded by it (ledger row 3).
         enemies.SpawnAll(config.SpawnPlan);
+
+        // Built after SpawnAll (M2-05 rule 13), so the arena's dressed-in enemies are standing
+        // before wave 1 arrives — the ids follow the order the arena reads in, and the director's
+        // concurrency check counts them, which it could not do if it had begun first.
+        //
+        // Built for every run, including one with nowhere to spawn and one whose mode has nothing
+        // to compose: an inert director is a director, so nothing downstream has to ask which kind
+        // of run it is in (rule 12).
+        // Where a body may be put no longer comes in here: an arena's spawn points are a fact about
+        // whichever room is standing, so they arrive on the snapshot and reach the director at
+        // Begin, one stage at a time (M2-11a rule 6).
+        _director = new SpawnDirector(enemies, _events);
+
+        // A mode with an empty roster composed nothing above, so there is no stage to pace: the
+        // arena is whatever the spawn plan dressed into it and it stays that way. The director is
+        // built anyway, one line up, for rule 12's reason — an inert director is a director.
+        if (plan is null)
+        {
+            _flow = null;
+
+            return;
+        }
+
+        _flow = new StageFlow(
+            mode,
+            composer,
+            _director,
+            enemies,
+            projectiles,
+            combat,
+            _events,
+            plan,
+            seed);
+
+        // Last, and after RunStarted and SpawnAll for the reason SpawnAll itself is after them: this
+        // publishes StageArrived, and a handler dressing an arena from it may reasonably assume
+        // there is a run to dress one for. It does not begin the director — GD §7.1's two seconds
+        // of arrival come first, and it is the end of those that hands the plan over (M2-10 rule 2).
+        _flow.Begin(config.StageIndex, State.Time);
     }
 
     /// <inheritdoc />
@@ -215,15 +536,45 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // has expired by the time the Husk swings, rather than protecting one frame past its own
         // window. The behaviours get the intent sink because a strike is decided here and the walk
         // it interrupts is a question for the body, which has to leave on the tick that produced it.
-        State.Enemies.Tick(snapshot.Dt, State.Time, State.Combat, _intents);
+        //
+        // The context is built here and once (M2-07b rule 2), never per agent: every enemy in the
+        // arena therefore decides against one reading of the clock, and widening what a behaviour
+        // may reach is a change to one struct rather than to every implementer, every dispatch and
+        // every test that calls one. M2-08 is the first time that promise was called in: the census
+        // is the sixth member, added in one line so that a Bloater's fuse can end its own life
+        // through the door damage reaches an enemy through. It is a struct; it allocates nothing.
+        var enemies = new EnemyTickContext(
+            snapshot.Dt,
+            State.Time,
+            State.Combat,
+            _intents,
+            _events,
+            State.Projectiles,
+            State.Enemies);
+
+        State.Enemies.Tick(enemies);
+
+        // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
+        //
+        // After, because a shot fired this tick starts flying now and must not be able to arrive on
+        // the tick it left: the behaviours are where a Spitter releases (M2-07b), and landing in the
+        // same step would erase the flight the whole archetype exists to make the player walk out
+        // of. Before, because a bolt that kills has to end the run on the tick it landed, exactly as
+        // a Husk's strike does — put after the check and the player would keep playing for one
+        // frame with no hit points.
+        //
+        // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
+        // the body (ledger row 7, settled at M2-07a rule 1).
+        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat);
 
         // The first thing that ends a run from inside one (M1-17). Asked here rather than
         // subscribed to, because core has no business listening to its own events: PlayerCombat
         // publishes PlayerDied for everyone with something to say about a death, and this class
         // reads the state it already owns.
         //
-        // After the enemy pass, because that is where a strike lands and where the death was
-        // therefore announced — so RunEnded follows PlayerDied on the same tick, in that order.
+        // After both of the passes that can hurt the player — a Husk's strike and a bolt's arrival —
+        // because that is where the death was announced, so RunEnded follows PlayerDied on the same
+        // tick, in that order, whichever of the two killed them.
         // And before TickBody, because a corpse is not steered: the intent it would write is a
         // velocity for a run that is over, and RunTicker would apply it to a body nobody is
         // driving any more.
@@ -231,6 +582,75 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         {
             End();
             return;
+        }
+
+        // After the death check and before the motor (M2-05 rule 14, AR §18.1). After, because a
+        // run that ended this tick must spawn nothing — a wave arriving on the frame the player
+        // died would be telegraphed into an arena nobody is playing in. Before the motor, because
+        // the director is part of the world the player is moving through rather than part of the
+        // move: it sees the same simulated `now` and the same player position everything else this
+        // tick did.
+        //
+        // The Spawn stream and no other, read here rather than held by the director, so that the
+        // one thing in a run that consumes spawn randomness does so through the run's own
+        // generator (ADR-0011).
+        _director.Tick(State.Time, State.PlayerPosition, _random.Spawn);
+
+        // After the director and before the motor (M2-10 rule 13, AR §18.1). After, because the
+        // flow ends a stage by reading IsStageComplete, which the director has just this instant
+        // finished deciding — asked one step earlier it would be answering about last frame's
+        // arena. Before the motor, for the director's own reason: the stage is part of the world
+        // the player is moving through rather than part of the move.
+        //
+        // Null for a mode with nothing to compose, which is a run with no waves rather than a run
+        // with no stage — the depth is still the config's and everything priced against it still is.
+        if (_flow is not null)
+        {
+            // Read before the flow moves, compared after: the *edge* into Clear is the write point,
+            // and a flow parked in Clear for a second and a half must not write once a frame
+            // (M2-14a rule 1). Rejected: a parameter on StageFlow's constructor, which would widen
+            // a shape M2-10 fixed for a caller that only wants to know when.
+            StagePhase phaseBefore = _flow.Phase;
+
+            _flow.Tick(State.Time, snapshot, _random.Spawn);
+
+            // Copied rather than owned, because the two numbers answer different questions: the
+            // flow's is what the stage machine is running, and this is what the run reports and
+            // saves (M2-13). They agree because this is the one line that moves the second one.
+            State.StageIndex = _flow.Stage;
+
+            // A finite mode that has run out of stages. The flow sets the flag and stays in Clear;
+            // ending the run is this class's word and nobody else's (rule 14). Inert for Descent,
+            // which is endless — and written anyway, because ModeSpec.FinalStage exists and the
+            // alternative is a run walking through a door into a stage its mode does not have.
+            if (_flow.IsModeComplete)
+            {
+                End();
+
+                return;
+            }
+
+            // The stage boundary, and GD §7.3's "run state persists to disk at every stage
+            // boundary" in one line. The moment is the frame the last body of a stage drops —
+            // M2-10 rule 3's — rather than the next stage's arrival, because the beat in between is
+            // the gate wait, and that is the natural "put the phone down" point. A phone put down
+            // at the door must already be saved.
+            //
+            // The snapshot describes the stage the player is about to play, so the next one (rule
+            // 3) — and it is taken here, upstream of the recompose that happens three phases later
+            // at the end of Transition, which is what makes a resumed run compose byte-identical
+            // waves (rule 5). Nothing draws during Clear, Gate or Transition: the director's queue
+            // is spent, so MaybeTelegraph returns before its one draw, and StageFlowTests'
+            // Tick_DrawsNoRandomOutsideComposition is the assertion from the other side.
+            //
+            // After the IsModeComplete check above, deliberately (rule 6): a finite mode that has
+            // just cleared its final stage is a run that is over, and a snapshot of it would be a
+            // resume into a stage the mode does not have. Inert while Descent is endless, and
+            // written anyway for M2-10 rule 14's reason.
+            if (phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear)
+            {
+                _recorder.Take(State, _flow.Stage + 1);
+            }
         }
 
         TickBody(snapshot);
@@ -357,6 +777,15 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // events would be noise — while a listener handling RunEnded can still read the census
         // that was live when the run finished.
         State.Enemies.Clear();
+
+        // The same moment and the same silence, for the same reason. It also drops whatever rings
+        // were in flight: a telegraph is a promise to the player, and there is no longer a player
+        // to keep it to.
+        _director.Clear();
+
+        // And the shots that were still in the air, silently again. A bolt that landed on an ended
+        // run would hurt a corpse and publish an impact into a scope that is being torn down.
+        State.Projectiles.Clear();
     }
 
     /// <summary>
@@ -413,6 +842,53 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         }
 
         _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
+    }
+
+    /// <summary>
+    /// Refuses a run whose plan or roster names an archetype nobody authored, before anything about
+    /// the run has been announced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The roster is walked too, not only the plan</b>, and that is the half worth arguing for.
+    /// The plan fails on the first frame either way, because <c>SpawnAll</c> would hit it
+    /// immediately; the roster is what M2-05's director spawns from, so an unauthored archetype
+    /// there would otherwise surface forty seconds into a run as a wave that threw — at a moment
+    /// that looks like a director bug and points at nothing. A mode's schedule is a statement of
+    /// intent (M2-02 rule 10: Descent ships with Husk alone until M2-06 authors the other two),
+    /// and this is what makes the gap between intent and content loud instead of mysterious.
+    /// </para>
+    /// <para>
+    /// <c>TryGetEnemy</c> rather than <c>Enemy</c>, so the message can say <em>where</em> the
+    /// stranger was named. The catalog's own "no enemy with id 'x'" is true and unhelpful when
+    /// three different lists could have held it.
+    /// </para>
+    /// </remarks>
+    private void RequireAuthored(SpawnPlan plan, ModeSpec mode)
+    {
+        for (int i = 0; i < plan.Initial.Count; i++)
+        {
+            RequireArchetype(plan.Initial[i].SpecId, $"the spawn plan's entry {i}");
+        }
+
+        for (int i = 0; i < mode.Roster.Count; i++)
+        {
+            RequireArchetype(mode.Roster[i].SpecId, $"'{mode.Id}'s roster");
+        }
+    }
+
+    /// <summary>Refuses one archetype id the catalog does not hold, naming who asked for it.</summary>
+    private void RequireArchetype(ContentId specId, string source)
+    {
+        if (_catalog.TryGetEnemy(specId, out _))
+        {
+            return;
+        }
+
+        throw new KeyNotFoundException(
+            $"No enemy with id '{specId}' in the catalog, and {source} names it. Nothing about "
+                + "this run has been announced; add an EnemyDefinition to BootScope's enemy list "
+                + "or correct the id.");
     }
 
     /// <summary>

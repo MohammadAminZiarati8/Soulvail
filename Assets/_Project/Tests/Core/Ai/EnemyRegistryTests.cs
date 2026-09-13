@@ -376,21 +376,32 @@ public sealed class EnemyRegistryTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Spec(contactDamage: -1f));
         Assert.Throws<ArgumentOutOfRangeException>(() => Spec(contactDamage: float.NaN));
 
+        // Aggro range is Positive rather than NonNegative, and the zero case is the one worth
+        // spelling out: an archetype that notices the player at 0 m never leaves Idle, so it is a
+        // Static enemy authored the long way round — which the behaviour field already says
+        // properly (M2-06 rule 4).
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: -1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(aggroRange: float.PositiveInfinity));
+
         // A malformed identity is a different question and gets a different exception, exactly as
         // CharacterSpec does: ArgumentException for the id, ArgumentOutOfRangeException for a number.
         Assert.Throws<ArgumentException>(
             () => new EnemySpec(
                 default,
                 new LocKey("enemy.husk.name"),
-                36f,
-                3.5f,
-                1,
+                maxHp: 36f,
+                moveSpeed: 3.5f,
+                targetPriority: 1,
+                threatCost: 4,
                 isElite: false,
-                8f,
-                1.2f,
-                0.4f,
-                0.6f,
-                EnemyBehaviourKind.Chaser));
+                contactDamage: 8f,
+                reach: 1.2f,
+                windupTime: 0.4f,
+                recoverTime: 0.6f,
+                aggroRange: 30f,
+                behaviour: EnemyBehaviourKind.Chaser));
 
         // The legal edges hold: a stationary, harmless, untelegraphed enemy is a coherent thing to
         // author — GD §8.1's Choir never attacks — and zero recovery is a strike with no punish
@@ -398,6 +409,16 @@ public sealed class EnemyRegistryTests
         Assert.DoesNotThrow(
             () => Spec(moveSpeed: 0f, contactDamage: 0f, windupTime: 0f, recoverTime: 0f));
         Assert.DoesNotThrow(() => Spec(targetPriority: 8));
+
+        // M2-04 rule 12: a threat cost of zero is not a cheap archetype, it is a non-terminating
+        // WaveComposer — the fill loop buys while anything is affordable, and a free body is always
+        // affordable. Guarded here rather than in the composer, because the composer cannot report
+        // it in a way that names the asset. Negative is refused by the same comparison; 1 is the
+        // floor rather than GD §8.1's cheapest 4, so a future archetype cheaper than a Husk is a
+        // tuning decision and not a code change.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(threatCost: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Spec(threatCost: -1));
+        Assert.DoesNotThrow(() => Spec(threatCost: 1));
     }
 
     // ---- The guards on the registry's public surface -------------------------------------------
@@ -446,11 +467,13 @@ public sealed class EnemyRegistryTests
         maxHp: 90f,
         moveSpeed: 2f,
         targetPriority: 3,
+        threatCost: 14,
         isElite: false,
         contactDamage: 14f,
         reach: 1.6f,
         windupTime: 0.6f,
         recoverTime: 0.8f,
+        aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
     /// <summary>A position no row depends on, for the rows that are not about positions.</summary>
@@ -463,22 +486,26 @@ public sealed class EnemyRegistryTests
         float maxHp = 36f,
         float moveSpeed = 3.5f,
         int targetPriority = 1,
+        int threatCost = 4,
         float contactDamage = 8f,
         float reach = 1.2f,
         float windupTime = 0.4f,
-        float recoverTime = 0.6f)
+        float recoverTime = 0.6f,
+        float aggroRange = 30f)
         => new EnemySpec(
             new ContentId("enemy.husk"),
             new LocKey("enemy.husk.name"),
-            maxHp,
-            moveSpeed,
-            targetPriority,
+            maxHp: maxHp,
+            moveSpeed: moveSpeed,
+            targetPriority: targetPriority,
+            threatCost: threatCost,
             isElite: false,
-            contactDamage,
-            reach,
-            windupTime,
-            recoverTime,
-            EnemyBehaviourKind.Chaser);
+            contactDamage: contactDamage,
+            reach: reach,
+            windupTime: windupTime,
+            recoverTime: recoverTime,
+            aggroRange: aggroRange,
+            behaviour: EnemyBehaviourKind.Chaser);
 
     /// <summary>
     /// The ids in <see cref="EnemyRegistry.Alive"/>, in order. Copied out because a

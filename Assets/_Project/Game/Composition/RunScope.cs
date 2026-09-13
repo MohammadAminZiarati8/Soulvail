@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -41,6 +43,34 @@ namespace Soulvail.Game.Composition
     /// </remarks>
     public sealed class RunScope : LifetimeScope
     {
+        /// <summary>
+        /// How many screen-edge arrows exist before the run starts.
+        /// </summary>
+        /// <remarks>
+        /// Eight rather than the device cap: every arrow is an off-screen threat inside 16 m, and a
+        /// wave that puts more than eight of those behind the camera at once is a wave the player
+        /// has already lost. The set grows past this if it ever happens and keeps what it grew, so
+        /// the number is a prediction rather than a limit — it only decides whether the
+        /// <c>Instantiate</c> happens while the scene loads or on a frame a Spitter is winding up
+        /// (AR §14, GD §11.3).
+        /// </remarks>
+        private const int ThreatArrowPrewarm = 8;
+
+        /// <summary>
+        /// How many ground rings exist before the run starts.
+        /// </summary>
+        /// <remarks>
+        /// Eight, and the arithmetic is the director's: a spawn ring is up for
+        /// <c>SpawnDirector.TelegraphTime</c> (0.8 s) and the bodies of a wave are spaced
+        /// <c>SpawnInterval</c> (0.35 s) apart, so a wave has three of them on the floor at once at
+        /// the very most. The rest is headroom for blast rings, which arrive with deaths rather than
+        /// on a clock and so have no ceiling worth computing — several Bloaters can be killed in one
+        /// swing. The set grows past this if it ever happens and keeps what it grew, so the number
+        /// only decides whether the <c>Instantiate</c> happens while the scene loads or on the frame
+        /// a wave is announced (AR §14, GD §11.3).
+        /// </remarks>
+        private const int TelegraphRingPrewarm = 8;
+
         [SerializeField] private PlayerView _playerView;
 
         [Tooltip("The dash, on the Player object. Not optional, unlike the reticle and the glow: " +
@@ -72,6 +102,11 @@ namespace Soulvail.Game.Composition
                  "runs, it is just invisible.")]
         [SerializeField] private FocusGlowView _focusGlow;
 
+        [Tooltip("Drives the character model's Animator from the fight core has already decided. " +
+                 "On the Player object, and optional on the same terms as the glow: without it " +
+                 "the run plays identically, the body just never changes pose.")]
+        [SerializeField] private PlayerAnimatorView _playerAnimator;
+
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
         [SerializeField] private EnemyView _enemyPrefab;
@@ -80,34 +115,59 @@ namespace Soulvail.Game.Composition
                  "without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _enemyParent;
 
+        [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
+                 "enemy prefab makes — a body per kind of shot arrives with the art.")]
+        [SerializeField] private ProjectileView _projectilePrefab;
+
+        [Tooltip("Where bolts in flight are parented. Optional on the same terms as the enemy " +
+                 "parent — they go to the scene root without it.")]
+        [SerializeField] private Transform _projectileParent;
+
         [Tooltip("The layers a swing sweeps: the Enemy layer, and nothing else. Authored rather " +
                  "than looked up by name, so a renamed layer is a visible diff instead of a " +
                  "string that stops resolving.")]
         [SerializeField] private LayerMask _enemyLayer;
 
+        [Tooltip("The layers that block an enemy's shot: the Cover layer M2-11a puts an arena's " +
+                 "pillars on, and nothing else. Never the Enemy layer — a Spitter that could not " +
+                 "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
+        [SerializeField] private LayerMask _coverLayer;
+
         [Tooltip("The archetype the dummies below are spawned as. Leave empty for an arena that " +
                  "starts bare.")]
         [SerializeField] private EnemyDefinition _dummySpec;
 
-        [Tooltip("Where the run's dummies stand, in world metres. M1's whole spawner: there is " +
-                 "no director until M2-05, so this is how a playtest gets something to shoot at. " +
-                 "Respawns reuse the same positions.")]
+        [Tooltip("Where the dummies dressed into this scene stand when the player walks in, in " +
+                 "world metres. Not spawn points: where a wave may arrive is authored on the " +
+                 "arena prefab from M2-11a on, because a run has one room per stage.")]
         [SerializeField] private Vector3[] _dummyPositions;
 
-        [Tooltip("How many enemies the arena keeps breathing. Zero turns respawning off entirely, " +
-                 "which is what every arena did before M1-19. Replaced by M2-03's threat budget.")]
-        [Min(0)]
-        [SerializeField] private int _keepAlive = 12;
+        [Tooltip("One screen-edge arrow (GD §16.1). Optional on the same terms as the reticle — " +
+                 "an arena without one plays identically, it just cannot say where the thing " +
+                 "shooting at you from off screen is standing.")]
+        [SerializeField] private RectTransform _threatArrowPrefab;
 
-        [Tooltip("Seconds of quiet after the last death before the arena refills. The pause the " +
-                 "player reads as 'I cleared that'.")]
-        [Min(0f)]
-        [SerializeField] private float _respawnDelay = 2f;
+        [Tooltip("Where arrows are parented: the Arrows object on the HUD, under SafeArea. Its " +
+                 "rect is the border they are placed on, which is how a notch is avoided without " +
+                 "a second copy of the safe-area arithmetic.")]
+        [SerializeField] private RectTransform _threatArrowRoot;
 
-        [Tooltip("Metres of clearance a respawn needs from the player (GD §12.4). Nothing should " +
-                 "ever appear on top of you.")]
-        [Min(0f)]
-        [SerializeField] private float _minSpawnDistance = 6f;
+        [Tooltip("The one ground ring prefab (GD §7.1). Both kinds of ring — the spawn countdown " +
+                 "and the blast flash — are the same body, told apart by how they are bound.")]
+        [SerializeField] private TelegraphRingView _telegraphRingPrefab;
+
+        [Tooltip("Where ground decals are parented: the Decals object in this scene. Optional — " +
+                 "they go to the scene root without it, which is untidy rather than wrong.")]
+        [SerializeField] private Transform _decalRoot;
+
+        [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
+                 "the run in whatever the scene was dressed with, which is the M0 grey box and " +
+                 "the undressed-scene iteration workflow.")]
+        [SerializeField] private ArenaView[] _arenaPrefabs = Array.Empty<ArenaView>();
+
+        [Tooltip("Where raised and parked arenas are parented. Optional — they go to the scene " +
+                 "root without it, which is untidy rather than wrong.")]
+        [SerializeField] private Transform _arenaRoot;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -135,6 +195,15 @@ namespace Soulvail.Game.Composition
                     $"{nameof(RunScope)} has no {nameof(EnemyView)} prefab assigned. Drag " +
                     "Prefabs/Enemies/Enemy.prefab onto its Enemy Prefab field — without it core " +
                     "spawns enemies that have no body and never report a position.");
+            }
+
+            if (_projectilePrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(ProjectileView)} prefab assigned. Drag " +
+                    "Prefabs/Projectiles/Projectile.prefab onto its Projectile Prefab field — " +
+                    "without it a Spitter's bolt is a swell, a pause, and damage arriving out of " +
+                    "nowhere about a second later.");
             }
 
             // The scene owns this object's lifetime, and VContainer does not dispose what it did
@@ -191,6 +260,14 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_focusGlow);
             }
 
+            // Optional on the same terms again. Animation is a pure consequence here — it reads
+            // combat events and the body's speed, and publishes nothing back — so an arena with a
+            // grey capsule instead of a character plays exactly the same fight.
+            if (_playerAnimator != null)
+            {
+                builder.RegisterComponent(_playerAnimator);
+            }
+
             // Optional, and the odd one out among these: it is not a decoration but an *input*, so
             // a scene without it is one the Charge can only be pressed on with a keyboard. That is
             // exactly the Editor iteration workflow, which is why it is allowed to be missing —
@@ -205,6 +282,22 @@ namespace Soulvail.Game.Composition
             // actions asset that must be destroyed with the run (M0-14), and EnemyViews owns two
             // subscriptions and every body standing in the arena.
             builder.Register<InputAdapter>(Lifetime.Scoped);
+
+            // The arenas, and the one registration on this scope whose absence would be silent: the
+            // builder resolves it by type, so a run composed without it would report no door and no
+            // spawn points and simply never leave stage 1.
+            //
+            // Registered here rather than in RunInstaller, which is where the spec put it. Two of
+            // its five arguments are references to *this scene* — the prefab list and the root the
+            // bodies are parented under — and the static installer is deliberately the half a
+            // headless test can build. EnemyViews and ProjectileViews are here for exactly that
+            // reason, and this is the same shape as both.
+            builder.Register<ArenaPool>(Lifetime.Scoped)
+                .WithParameter("prefabs", (IReadOnlyList<ArenaView>)_arenaPrefabs)
+                .WithParameter("parent", _arenaRoot);
+
+            // The gate parameter is gone: where the door is became a question about whichever arena
+            // is standing, so the builder takes the pool above and asks it every frame (M2-11a).
             builder.Register<SnapshotBuilder>(Lifetime.Scoped);
 
             // By name, like the enemy prefab below: WithParameter<Camera> would be the same kind of
@@ -221,20 +314,79 @@ namespace Soulvail.Game.Composition
             // ever do happens while the scene is still loading. One more than the quota, because a
             // corpse holds its body for the 0.6 s of its dissolve while the replacement is already
             // being rented — without the spare, every single kill would instantiate.
+            //
+            // The look book is the one argument here with no WithParameter and that is deliberate:
+            // it is registered at the root by BootInstaller, built from the same definitions the
+            // catalog is, and resolving it by type from the parent scope is what stops the run
+            // owning a second copy of what an archetype looks like (M2-06). It is also the one
+            // argument whose absence fails loudly — a run scope built against a container with no
+            // EnemyLookBook does not compose at all.
             builder.Register<EnemyViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent)
                 .WithParameter("prewarm", PrewarmCount());
 
+            // The same three-argument shape as the census above, and registered here rather than in
+            // RunInstaller for the reason EnemyViews is: two of its arguments are references to
+            // this scene, and the static installer is deliberately the half a headless test can
+            // build.
+            //
+            // Prewarmed to core's own projectile capacity — the most shots that may be in the air
+            // at once, so the pool cannot be asked for a body it does not already hold and every
+            // Instantiate a run will ever do happens while the scene is loading. Flat rather than
+            // conditional on the arena being dressed, unlike PrewarmCount below: thirty-two small
+            // bodies with no controller and no collider cost a fraction of one enemy, and a run
+            // that starts firing is exactly the moment a hitch cannot be afforded.
+            builder.Register<ProjectileViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _projectilePrefab)
+                .WithParameter("parent", _projectileParent)
+                .WithParameter("prewarm", BootInstaller.ProjectileCapacity);
+
             // Sized to the snapshot's capacity rather than to the quota above: the cache is keyed
             // by enemy id and evicts only what stopped asking, so a table smaller than the arena
             // would thrash on exactly the frames that are already the most expensive.
-            // Both arguments are passed, including the one the constructor has a default for:
+            // All three arguments are passed, including the two the constructor has defaults for:
             // VContainer resolves every parameter from the container or a WithParameter and never
-            // falls back to a C# default, so an omitted refreshHz would fail to compose the run.
+            // falls back to a C# default, so an omitted one fails to compose the run — as an
+            // omitted maxRefreshesPerFrame did the moment M2-05 added it, with the PlayMode smoke
+            // test as the only thing that noticed.
             builder.Register<NavPathSense>(Lifetime.Scoped)
                 .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
-                .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz);
+                .WithParameter("refreshHz", NavPathSense.DefaultRefreshHz)
+                .WithParameter("maxRefreshesPerFrame", PathRefreshBudget.DefaultMaxPerFrame);
+
+            // Guarded here as well as in the sense's own constructor, for the reason the enemy
+            // layer below is guarded twice: the constructor can only say "this mask is empty", and
+            // this can say which field on which object to fix. An empty cover mask is not a
+            // degraded run — it is the game M2-11a shipped, where a pillar is scenery and a Spitter
+            // shoots through it, and the failure is completely silent.
+            if (_coverLayer.value == 0)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no Cover Layer set. Choose the " +
+                    $"'{ArenaView.CoverLayerName}' layer on its Cover Layer field — a Spitter " +
+                    "raycasts that mask before it winds up, so an empty one means cover blocks " +
+                    "nothing (GD §7.2).");
+            }
+
+            // The cover raycasts (M2-11b). Sized to the snapshot's capacity for NavPathSense's
+            // reason — the cache is keyed by enemy id and evicts only what stopped asking — and
+            // given a budget of its own rather than sharing the path cache's: the two spend their
+            // allowances on different frames and a shared counter would let a busy frame of
+            // pathfinding silently switch cover off.
+            //
+            // The cadence is written once and read twice, which is deliberate. The budget is sized
+            // for the rate the cache is kept at, and the two disagreeing is a fault nothing would
+            // report: the sense would simply fall behind its own cadence.
+            builder.Register<LineOfSightSense>(Lifetime.Scoped)
+                .WithParameter("capacity", BootInstaller.SnapshotEnemyCapacity)
+                .WithParameter("cover", _coverLayer)
+                .WithParameter(
+                    "budget",
+                    new PathRefreshBudget(
+                        LineOfSightSense.DefaultRefreshHz,
+                        PathRefreshBudget.DefaultMaxPerFrame))
+                .WithParameter("refreshHz", LineOfSightSense.DefaultRefreshHz);
 
             // Guarded here as well as in the query's own constructor, because the two failures read
             // differently: the constructor can only say "this mask is empty", while this can say
@@ -279,6 +431,88 @@ namespace Soulvail.Game.Composition
             builder.RegisterEntryPoint<HapticsListener>(Lifetime.Scoped)
                 .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup));
 
+            // The screen-edge arrows (M2-12a). Registered here rather than in RunInstaller, which
+            // is where the spec put it, for the reason ArenaPool and the two view censuses are
+            // here: four of its arguments are references to *this scene* — the arrow prefab, the
+            // HUD root they hang under, the camera and the player's body — and the static installer
+            // is deliberately the half a headless test can build. There is no version of this
+            // registration that fits there.
+            //
+            // Required rather than optional like the reticle and the glow, and the reason is that
+            // this one is not a decoration: GD §12.4's on-screen rule is an invariant — "no damage
+            // originates from outside the camera frustum without a visible edge indicator" — and a
+            // Spitter has been able to break it since M2-07b. A run composed without arrows is a
+            // run that is unfair in a way nothing on screen would report, so the scope refuses it
+            // the way it already refuses an empty cover mask.
+            if (_threatArrowPrefab == null || _threatArrowRoot == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no threat arrow prefab or arrow root assigned. Drag " +
+                    "Prefabs/UI/ThreatArrow.prefab onto its Threat Arrow Prefab field and the " +
+                    "HUD's Arrows object onto its Threat Arrow Root field — without them an enemy " +
+                    "can damage the player from outside the camera frustum with nothing on screen " +
+                    "to say where it is (GD §12.4).");
+            }
+
+            // The clock is a wall clock and is passed the same way HapticsListener's is, cast to
+            // Func<float> so the by-name (string, object) overload binds rather than the generic
+            // one, which takes a factory of IObjectResolver. GD §7.3's eight seconds are a cosmetic
+            // view timer — AR §18.2's named exception to snapshot.Dt — so a wall clock is the right
+            // clock here rather than a shortcut.
+            //
+            // AsSelf() alongside the entry point, because DebugOverlay resolves the concrete type
+            // for its arrow count: RegisterEntryPoint alone registers only the ILateTickable it is
+            // driven through, and a Resolve<ThreatArrows> on a container that plainly holds one
+            // would fail.
+            builder.RegisterEntryPoint<ThreatArrows>(Lifetime.Scoped)
+                .AsSelf()
+                .WithParameter("arrowPrefab", _threatArrowPrefab)
+                .WithParameter("parent", _threatArrowRoot)
+                .WithParameter("camera", _camera)
+                .WithParameter("clock", (Func<float>)(() => Time.realtimeSinceStartup))
+                .WithParameter("prewarm", ThreatArrowPrewarm);
+
+            // The ground rings (M2-12b). Registered here rather than in RunInstaller, which is where
+            // the spec put it, for the reason ArenaPool, the two view censuses and the arrows above
+            // are here: two of its arguments are references to *this scene*, and the static installer
+            // is deliberately the half a headless test can build.
+            //
+            // Required rather than optional like the reticle and the glow, on the arrows' argument
+            // rather than on theirs: GD §9.1 rule 1 — everything is telegraphed — is an invariant,
+            // and this is the only thing in the game that draws a spawn telegraph. A run composed
+            // without rings is a run where bodies appear out of nowhere, which is unfair in a way
+            // nothing on screen would report.
+            //
+            // The second half of the guard is the one that would otherwise be silent. A prefab whose
+            // quad was never dragged into its field rents, binds, steps and returns perfectly and
+            // draws nothing at all, so the run looks exactly like the one before this task existed.
+            if (_telegraphRingPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(TelegraphRingView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_TelegraphRing.prefab onto its Telegraph Ring Prefab field — " +
+                    "without it a wave's bodies appear with no ring first and a Bloater's blast has " +
+                    "no circle, so neither is something the player could have read (GD §7.1, §9.1).");
+            }
+
+            if (!_telegraphRingPrefab.IsDrawable)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)}'s telegraph ring prefab has no quad assigned. Drag the " +
+                    $"{nameof(MeshRenderer)} on VFX_TelegraphRing.prefab onto its own Quad field — " +
+                    "without it every ring in the run is timed, sized and returned correctly and " +
+                    "none of them is ever visible.");
+            }
+
+            // Prewarmed for the reason the two censuses above are, and parented under the scene's
+            // decal root rather than the arena's: an arena is torn down and raised again at every
+            // stage boundary (M2-11a), and a ring parented to one would be destroyed mid-life by a
+            // swap it has nothing to do with.
+            builder.Register<TelegraphRings>(Lifetime.Scoped)
+                .WithParameter("prefab", _telegraphRingPrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", TelegraphRingPrewarm);
+
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally
             // — so the only thing the label can do is tell the truth about the lifetime, and this
@@ -304,9 +538,16 @@ namespace Soulvail.Game.Composition
         /// run starts — nothing is standing in it.
         /// </para>
         /// <para>
-        /// The respawn policy reuses the same positions, and a <c>Keep Alive</c> of zero means an
-        /// arena that empties and stays empty — which is what every arena did before M1-19 and what
-        /// an experiment about a single Husk still wants.
+        /// There is no respawn policy any more. M2-05 made the director the only spawner and set
+        /// <c>Keep Alive</c> to zero; M2-10 deleted the type, because a second spawner that keeps
+        /// twelve bodies breathing regardless of the wave plan is a bug waiting for someone to set
+        /// the field back to 12. An arena now empties and stays empty until the next wave is due.
+        /// </para>
+        /// <para>
+        /// <b>These positions are no longer spawn points as well.</b> Until M2-11a the same list was
+        /// handed over twice and meant two things — where the scene's dummies stand, and where the
+        /// director may put a wave — because a run had one room and nothing else knew any geometry.
+        /// An arena prefab authors its own points now, so this is only the first of those.
         /// </para>
         /// </remarks>
         private SpawnPlan BuildSpawnPlan()
@@ -324,31 +565,30 @@ namespace Soulvail.Game.Composition
 
             var entries = new SpawnPlan.Entry[_dummyPositions.Length];
 
-            var positions = new System.Numerics.Vector3[_dummyPositions.Length];
-
             for (int i = 0; i < entries.Length; i++)
             {
-                positions[i] = _dummyPositions[i].ToNum();
-                entries[i] = new SpawnPlan.Entry(specId, positions[i]);
+                entries[i] = new SpawnPlan.Entry(specId, _dummyPositions[i].ToNum());
             }
 
-            RespawnPolicy respawn = _keepAlive > 0
-                ? new RespawnPolicy(specId, positions, _keepAlive, _respawnDelay, _minSpawnDistance)
-                : null;
-
-            return new SpawnPlan(entries, respawn);
+            return new SpawnPlan(entries);
         }
 
         /// <summary>
         /// How many bodies the enemy pool builds before the run starts.
         /// </summary>
         /// <remarks>
-        /// The larger of the opening population and the respawn quota, plus one. The quota is what
-        /// the arena settles at; the opening population can exceed it, because an arena is allowed
-        /// to be dressed with more dummies than it keeps alive; and the spare covers the overlap
-        /// every kill has — a corpse holds its body for the 0.6 s of its dissolve while its
-        /// replacement is already being rented, so without it a steady fight would instantiate once
-        /// per death and the pool would have bought nothing.
+        /// The larger of the opening population and the device cap, plus one. The opening population
+        /// can exceed the cap, because an arena is allowed to be dressed with more dummies than a
+        /// wave may ever hold; and the spare covers the overlap every kill has — a corpse holds its
+        /// body for the 0.6 s of its dissolve while its replacement is already being rented, so
+        /// without it a steady fight would instantiate once per death and the pool would have
+        /// bought nothing.
+        /// <para>
+        /// <b>The device cap is the number that decides.</b> The director is the only spawner, and
+        /// what it may ask for is GD §12.2's concurrency bounded by that cap. Sized to the dressed
+        /// dummies instead, the pool would instantiate through the whole of wave 1 — a handful of
+        /// hitches at exactly the moment the first telegraph rings have to be read.
+        /// </para>
         /// <para>
         /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
         /// <see cref="SpawnPlan.Empty"/>, so core will never ask for a body — and building twelve
@@ -365,7 +605,7 @@ namespace Soulvail.Game.Composition
 
             int dressed = _dummyPositions is null ? 0 : _dummyPositions.Length;
 
-            return Mathf.Max(dressed, _keepAlive) + 1;
+            return Mathf.Max(dressed, BootInstaller.DeviceEnemyCap) + 1;
         }
     }
 }

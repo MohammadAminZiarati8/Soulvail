@@ -156,17 +156,19 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Module | Owns | Key types |
 |---|---|---|
-| `Run` | Run lifecycle, stage flow, mode rules | `RunSession` (the inbound façade), `RunState`, `StageFlow` (FSM), `ModeSpec` |
+| `Run` | Run lifecycle, stage flow, mode rules | `RunSession` (the inbound façade), `RunState`, `RunConfig`, `StageFlow` (FSM) |
 | `Combat` | Health, shields, damage, i-frames, targeting, weapons, skills | `Health`, `Stat`, `Targeter`, `TargetScorer`, `Weapon`, `SkillRunner`, `CombatBlackboard` |
 | `Ai` | Enemy and boss behaviour | `EnemyAgent`, `EnemyBlackboard`, `StateMachine<T>`, per-archetype behaviours, boss phases |
 | `Director` | Spawn budget and composition | `ThreatBudget`, `SpawnDirector`, `WaveComposer` |
 | `Progression` | XP, levels, tree, offers, Veilrot | `XpCurve`, `SkillTree`, `OfferGenerator`, `Veilrot` |
 | `Economy` | Essence, Shards, Sanctum services, unlocks | `Wallet`, `Sanctum`, `Unlocks` |
-| `Content` | Immutable spec records + lookup | `ContentCatalog`, `CharacterSpec`, `EnemySpec`, `SkillSpec`, `ContentId`, `TagSet` |
+| `Content` | Immutable spec records + lookup | `ContentCatalog`, `CharacterSpec`, `EnemySpec`, `ModeSpec`, `SkillSpec`, `ContentId`, `TagSet` |
 | `Effects` | Composable effect primitives | `IEffect`, `EffectRegistry`, primitives |
 | `Persistence` | DTOs, versioning, migrations | `PlayerProfile`, `RunSnapshot`, `IMigration` |
 | `Ports` | Every interface the outside implements or calls | see §6 |
 | `Events` | Domain event records | `readonly struct` per event |
+
+`ModeSpec` moved from `Run` to `Content` at M2-02. `Run` owns the *rules* a mode implies — stage flow, what a run does when a stage is cleared — but the mode itself is an immutable spec resolved from a `ContentId`, and §10.1 has always drawn it in the catalog beside `CharacterSpec` and `EnemySpec`. The two sections disagreed; §10.1 was right, and this row was the sketch.
 
 ---
 
@@ -174,11 +176,11 @@ Modules are folders (and namespaces) inside `Soulvail.Core`. Split into separate
 
 | Direction | Port | Purpose | Implemented by |
 |---|---|---|---|
-| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the facts as they land: `ReportConeHits` (M1-11), `ReportChargeHits` (M1-15), a projectile fact with M2-07. Contact is ledger row 7 — M1-18 chose a core-side call over a fact; M2-08 settles it | Core |
+| Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the two facts: `ReportConeHits` (M1-11) and `ReportChargeHits` (M1-15). **It gains no member in M2** — ledger row 7 was settled at M2-07a: core decides every enemy outcome and calls `ApplyDamage` directly, so contact, blast and projectile impact are all core-side calls, and the `ReportContact` / `ReportProjectileHit` this row used to promise are gone rather than deferred (§18.2) | Core |
 | Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
-| Outbound | `IClock` | `Now` (core time, seconds) | `UnityClock` |
-| Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc` | `SeededRandom` (xorshift/PCG, seedable) |
+| Outbound | `IClock` | `UtcNow` (wall-clock, `DateTimeOffset`) — **and nothing else** (M2-01). Never simulated time: that is the sum of each tick's `Dt` (§18.2) | `UnityClock` |
+| Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc`, plus `Capture()` / `Restore(in RandomState)` — where every stream stands, so a resumed run carries on instead of restarting each stream at draw 0 (M2-13a). On the port, never on `IRandomStream` | `SeededRandom` (xorshift/PCG, seedable) |
 | Outbound | `IDomainEvents` | `Publish<T>(in T evt)` | `DomainEventHub` (scoped, typed fan-out) |
 | Outbound | `ISaveStore` | Async load/save of profile and run snapshot | `LocalJsonSaveStore` now, `SyncingSaveStore` later |
 | Outbound | `ILocalizer` | `string Get(LocKey key, params)` | `TableLocalizer` |
@@ -287,17 +289,20 @@ Core defines the DTOs and the port; the adapter owns the medium. See [ADR-0007](
 ```csharp
 public interface ISaveStore
 {
-    Task<PlayerProfile?> LoadProfile();
+    Task<PlayerProfile?> LoadProfile();   // Nullable<PlayerProfile> — null means "no save"
     Task SaveProfile(PlayerProfile profile);
-    Task<RunSnapshot?>  LoadRun();
+    Task<RunSnapshot?>  LoadRun();        // Nullable<RunSnapshot>
     Task SaveRun(RunSnapshot run);
     Task ClearRun();
 }
 ```
 
 - **Async from day one**, even though the local adapter is a synchronous file write — a server adapter must not change a signature.
-- `PlayerProfile` (Shards, unlocks, settings) and `RunSnapshot` (written at every stage boundary, deleted on death — Android kills backgrounded apps).
-- **Every DTO carries `int Version`.** Migrations are pure core functions with a fixture test per version.
+- **The two `?`s are `Nullable<T>`, not nullable references.** Both DTOs are `readonly struct`s, which is what makes these signatures compile as written: this project enables nullable reference types nowhere, so reading them as nullable references would mean switching the language feature on for one file on the strength of two return types (M2-13a).
+- **No parameter is taken by `in`, deliberately, though both DTOs are structs.** An `async` method cannot have a by-ref parameter, so `SaveRun(in RunSnapshot)` would compile only while the adapter stays synchronous and would refuse the first `async` one — which is the one this ADR says is coming. `IRandom.Restore` *is* `in`: it is a core call with no async implementation imaginable (M2-13a).
+- `PlayerProfile` (settings now; Shards and unlocks when the mechanics that own them land — M4-06, M6-08) and `RunSnapshot` (written at every stage boundary, deleted on death — Android kills backgrounded apps).
+- **A run snapshot carries the seed *and* `RandomState`** — five stream positions, one per stream in index order. The seed selects each stream's sequence and the state says how far along it is; a resume needs both, and restoring position onto a generator built from the same seed is a complete restore. `IRandom.Capture()` / `Restore(in RandomState)` are the only door to it, deliberately not a settable position on `IRandomStream` (M2-13a, §11.4).
+- **Every DTO carries `int Version`.** Migrations are pure core functions with a fixture test per version. `CurrentVersion` starts at 1, so `default(T)`'s version 0 is the value no writer can produce and every reader refuses — which is how §18.3's both-ends problem is closed here without a second concept (M2-13a).
 - Server later: **local-first with sync.** Write locally (instant, offline-safe), push in the background, reconcile on launch. That is `SyncingSaveStore` wrapping `LocalJsonSaveStore`; core never learns it happened.
 
 ---
@@ -318,6 +323,7 @@ public sealed class Stat
     public int ModifierCount { get; }
     public void Add(in Modifier modifier);          // Flat → PercentAdd → PercentMult, in that order
     public int  RemoveAll(object source);           // buff ended, node removed, Rot threshold crossed back
+    public int  RemoveAll();                        // wipe a pooled object clean — never "the buff ended"
     public void CopyModifiersTo(List<Modifier> destination);
     public void Describe(StringBuilder sb);         // the debug panel: "28.80 = (13.00 + 2.00) × 1.60 × 1.20"
     public event Action<Stat> Changed;              // only when Value actually moved
@@ -325,6 +331,8 @@ public sealed class Stat
 ```
 
 As built in M1-01, and two members differ from the sketch this section carried before it: modifiers are handed out by **copying into a caller's list** rather than as an `IReadOnlyList` the caller could reorder or hold past a removal, and `RemoveAll` **returns the count** it removed, which is what makes "a source with nothing on this stat is not an error" observable rather than assumed.
+
+The no-argument `RemoveAll()` arrived in M2-03 as a **second overload, never a replacement**: taking a source back when a buff ends is a different question from wiping a rental clean, and one call site must not be able to mean the other by omission. Its only caller is `EnemyAgent.Initialise` — see §18.1.
 
 Every gameplay number — damage, fire rate, speed, max HP, cooldown, XP gain — is a `Stat` from the first line of combat code.
 
@@ -455,12 +463,25 @@ is about Unity's.
 
 | Invariant | Break it and | Set in |
 |---|---|---|
-| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15 |
-| `RunSession.Tick`: time → ingest → combat → enemy behaviours → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08 |
+| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15. **Asserted since M2-11b** by `Tests/PlayMode/FrameOrderTests.cs`, by observation rather than by reading the method — every step but *commands*, which reaches core only through the Input System |
+| `RunSession.Tick`: time → ingest → combat → enemy behaviours → **projectiles** → (dead? end) → **director** → **stage flow** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05, M2-07a, M2-10 |
+| `StageFlow` ticks **after** the director and **before** the motor, **and the boundary snapshot is taken on entering `Clear`** — `RunSession.Tick` reads the phase before ticking the flow and compares it after | the flow reads `IsStageComplete` one frame stale, so every stage ends a frame late; or a stage ends in an arena whose run ended this tick, because the death check is upstream of both. Take the snapshot on the *phase* rather than on the *edge* and a stage parked at its own door writes a file once a frame; take it at the next stage's `StageArrived` and the beat in between — the gate wait, which is GD §7.3's "put the phone down" point — is unsaved | M2-10, M2-14a |
+| **Every `RunSnapshot` is captured before anything has drawn for the stage it describes.** The opening capture is the first statement in `RunSession.Start`, above the composition; the boundary capture is on entering `Clear`, three phases above the recompose at the end of `Transition` | a resumed run restores a position that has already spent the composition, so it deals itself a *different* stage under the same number — the same seed producing different waves, which reads as a content bug for a week. This is why `Start` takes the position and announces it in two separate places, and why nothing may draw between entering `Clear` and the crossing | M2-14a, ledger row 1 |
+| A stage boundary calls `SpawnDirector.Clear()` **before** recomposing the run's one `WavePlan` | the director keeps ticking against a plan being rewritten underneath it: it sizes its per-wave arrays from the plan's dimensions at `Begin` and trusts them for ever, so a stage that grows a wave — GD §12.2's W(n) does, from two to three at stage 5 — walks `SweepTheDead` off the end of them on the first frame of the new arrival. **Nobody may recompose a plan a director is still holding** | M2-10 |
+| A stage boundary sets `EnemySystem.Depth` **before** `EnemySystem.Clear`, and clears the projectiles and `Targeter` before recomposing the plan | the first body of the new stage is priced at the stage that just ended, with nothing reporting it; a bolt fired at the old arena's floor lands on the player at coordinates that no longer mean anything | M2-10 |
+| The boundary calls `player.Targeter.Reset()` and **never** `PlayerCombat.Reset()` | every stage boundary becomes a free heal, which deletes the attrition GD §12.5's death horizon is made of and pre-empts the Sanctum's heal before the Sanctum exists | M2-10 |
+| Projectiles tick **after** the enemy behaviours and **before** the death check | a shot fired this tick lands on the tick it left, erasing the flight the player is meant to walk out of; or a killing bolt leaves the player at zero hit points for a frame, still playing | M2-07a |
+| The director ticks **after** the death check and **before** the motor | a wave is telegraphed into an arena whose run ended this tick; or the director sees a player position the rest of the tick did not | M2-05 |
+| `RunSession.Start` composes the stage **before** `RunStarted` and begins the director **after** `SpawnAll` | a mode that introduces nothing at its own starting stage throws with the run announced (ledger row 3 again); or wave 1's concurrency check cannot see the arena's dressed-in enemies | M2-05 |
+| `EnemySystem.ApplyDamage` leaves the corpse **registered**, which is what lets a behaviour kill itself from inside `EnemySystem.Tick`'s own pass | nothing today — this is why the forward walk over `Registry.Alive` is safe across a Bloater's detonation. **The next behaviour that calls `Despawn` directly does owe the backwards walk `SweepCorpses` does**, because that compacts the registry in place and shifts every index after it | M2-08 |
+| An explosion is triggered by the spec carrying an `ExplosionSpec`, **never by the behaviour kind**, and is published after the `EnemyDied` that caused it | "explodes on death" stops being true for a Bloater killed by a Charge, a cone or its own fuse — and M7-02's Volatile affix needs a second mechanism instead of a spec block | M2-08 |
 | Ingest runs before anything reads an enemy | every distance is one frame stale, and it reads as an AI bug | M1-06 |
 | `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance computed from the previous frame's position | M1-06 |
 | `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation is discarded every time the player starts moving, and no test written from rest would see it | M0-07 |
 | `EnemyAgent.Initialise` re-bases `Health.MaxHp` **before** `Health.Reset()` | a recycled enemy arrives at the previous archetype's hit points, with nothing reporting it | M1-05 |
+| `EnemyAgent.Initialise` calls `Stat.RemoveAll()` on all three stats **before** re-basing them, with the **no-argument** overload | a recycled Husk wears the last one's depth scaling — and later its affixes and debuffs. A source token would cover only its own source, so every future source would have to be listed at this line, and that list gets one entry short | M2-03 |
+| `EnemySystem.Spawn` applies depth **after** registration and **before** `EnemySpawned` | a health bar built on the spawn event is sized to the unscaled maximum for its first frame | M2-03 |
+| `DepthScaling.Apply` refills health **after** the `MaxHp` modifier goes on | a stage-20 Husk stands at stage-1 hit points behind a part-filled bar, and nothing reports it — `Health.Reset` fills `Current` from `MaxHp.Value` | M2-03 |
 | `EnemyHitFeedback.ResetVisuals` restores the opaque material **before** writing the colour | the dissolve's alpha is honoured for one frame by the transparent material | M1-12 |
 | Both run lifecycle events publish **before** `IsRunning` moves | anything reading the session from inside a lifecycle event is reading the state it is *leaving* — deliberately | M0-10 |
 | `EnemySpawned` is published **after** registration; `EnemyDespawned` **after** removal | a handler resolving the id finds nothing, or finds a ghost | M1-06 |
@@ -473,6 +494,30 @@ is about Unity's.
   much time passed is one too many. There is **no `IClock` in the session** — simulated time is the
   sum of each tick's `Dt`. Wall-clock is a different number and a different port (M0-09, M0-10).
 - **A port grows a member when the mechanic that needs it lands, not before** (M0-09).
+- **Core decides every outcome an enemy causes, and calls `PlayerCombat.ApplyDamage` directly.
+  Unity owes core a *fact* only when the answer depends on colliders core does not hold; when the
+  geometric question is a standing one rather than an instant, it owes a *sense* on the snapshot
+  instead.** Contact (Husk, M1-18; Bloater, M2-08) is a core-perceived XZ distance; a projectile
+  impact (Spitter, M2-07a) lands at an arrival time core itself computed. `ReportConeHits` and
+  `ReportChargeHits` remain what facts are *for* — a wedge and a swept line, both questions about
+  which colliders a shape touched. The fact route was rejected on three counts: it moves the moment
+  of damage into the frame's physics phase, one step after the tick that decided it; it makes enemy
+  damage non-reproducible from a seed, which is what M2-13 and M2-14 are being built to preserve;
+  and it makes an enemy need a body with a trigger before it can hurt anyone, which inverts §3. **The
+  price was that core holds no walls, so a shot passed through a cover pillar** — ledger row 13,
+  **paid at M2-11b with a sense and not a fact**: `LineOfSightSense` fills
+  `EnemySense.HasLineOfSight` and a Spitter simply does not begin a wind-up it cannot see through.
+  Core still holds no walls and never will (ledger row 7, M2-07a; §18.4).
+- **`EnemyTickContext` is built once per tick by `RunSession`, never per agent — and no behaviour
+  may store it.** One reading of the clock decides the whole arena, and a behaviour that kept the
+  struct would be keeping this tick's clock, this tick's player and this tick's ports; both
+  implementers therefore unpack it into fields on the way in and clear them in a `finally` on the way
+  out. It is also the one place the five references and the two floats are guarded, which is what
+  lets `Tick` stay unguarded on a path walked once per enemy per frame (M2-07b). **The census joined
+  it at M2-08** — refused in M2-07b because a handle on it would let a behaviour damage its
+  neighbours, and granted once a Bloater needed to end its *own* life through the one door damage
+  reaches an enemy through. The concession stays bounded because the blast that follows is resolved
+  by `EnemySystem` off the spec, not by the behaviour.
 - **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.**
   The clamp only protects the simulation if brain and body take the same step. Purely cosmetic
   view timers are the deliberate exception (M0-16).
@@ -485,13 +530,38 @@ is about Unity's.
 - **`PlayerView.Velocity` is the velocity core asked for, never `CharacterController.velocity`** —
   the latter collapses to zero against a wall, which core would read back as "the player stopped
   trying to move" (M0-16).
+- **Animation never gates a damage frame, and no clip carries an Animation Event.** Core owns the
+  cadence — CC §4.2 puts the damage 40 % of the way through the swing — so `PlayerAnimatorView`
+  hears about a swing only after the decision is made. An event that dealt damage would move the
+  fight into an FBX's timeline, where anyone re-exporting an art asset could retime it. The
+  consequence runs one way: the clip is scaled to the weapon, which is why the view *derives*
+  `AttackSpeed` from the measured interval between real swings rather than holding a constant that
+  M1-13's Focus ramp would silently drift away from (M2-art).
+- **`applyRootMotion` is off on every rig, and every animation importer's root node is left empty.**
+  Core owns velocity; the only thing that may move a body is the intent `PlayerView` applies. Nine
+  of the 173 KayKit clips do carry root translation, so this is a live guard, not a formality
+  (M2-art).
+- **An arena the player has not reached is instantiated under a *deactivated* root, never
+  instantiated and then deactivated.** A body built under an inactive parent runs no `Awake` and no
+  `OnEnable`, so nothing of it is drawn, lit or navigable; instantiating into the live scene and
+  switching it off a line later runs both, which enables its renderers for a frame and has its
+  `NavMeshSurface` add and then remove a second set of navigation data **on top of the arena the
+  player is still fighting in**. `ArenaPool` keeps two roots for exactly this, and raising is a
+  reparent plus a `SetActive` (M2-11a). **Every future "build it now, show it later" owes the same
+  shape.**
+- **Where a body may spawn is a property of the arena, not of the run.** It arrives on
+  `WorldSnapshot.SpawnPoints` and reaches `SpawnDirector.Begin` when a stage leaves arrival — and
+  the director **copies** it there, because the snapshot is one buffer refilled every frame and a
+  held reference would be M2-10's "nobody may recompose a plan a director is still holding" with a
+  different noun (M2-11a).
 - **`FollowCamera`'s yaw must stay 0.** It is the only reason `SnapshotBuilder`'s straight-through
   stick mapping is camera-relative. The day the camera can turn, the −yaw rotation goes into the
   builder and **never into core** (M0-18).
-- **A live object is never handed out of `RunState`.** `Motor`, `Combat` and `Enemies` are
-  `internal` with public scalar reads, because a public handle on something with a `Tick` lets a
-  view double-integrate a frame with nothing in the compiler to object. **Every future `RunState`
-  field that hands out a mutable object owes the same question** (M0-16, M1-06, M1-08).
+- **A live object is never handed out of `RunState`.** `Motor`, `Combat`, `Enemies` and
+  `Projectiles` are `internal` with public scalar reads, because a public handle on something with a
+  `Tick` lets a view double-integrate a frame with nothing in the compiler to object. **Every future
+  `RunState` field that hands out a mutable object owes the same question** (M0-16, M1-06, M1-08,
+  M2-07a).
 - **`RunState`'s constructor and setters are `internal`, and `Soulvail.Tests.Core` has no
   `InternalsVisibleTo`** — deliberately, so tests reach state through `RunSession`, the intended
   route. It is also why that constructor carries no argument guards: they would be unreachable.
@@ -513,6 +583,33 @@ is about Unity's.
   **tightening it invalidates content references already written to disk** (M0-08).
 - **`SeededRandom`'s stream indices — Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4 — are part of
   what a seed means.** Never reorder or renumber; a new stream takes the next free index (M0-04).
+- **Choosing a position makes exactly one draw, whatever it then finds.** Both spawners — 
+  `EnemySystem.ApplyRespawn` (M1-19) and `SpawnDirector` (M2-05) — draw a starting index once and
+  then *walk* the candidates deterministically, so a refused position costs the same draw as an
+  accepted one. Consumption that depended on where the player was standing, or on how full the
+  arena was, is the one thing a seed cannot survive: the same seed would replay differently the
+  moment the player stood somewhere else. **Anything that later picks a place from a list owes the
+  same shape** (M1-19, M2-05).
+- **GD §12's formulas are authoritative and GD §12.1's own table is not.** `B(40)` is 1,876.9;
+  the table's stage-40 row says 1,772 and the "44×" beneath it follows from the same wrong number.
+  Stages 1, 5, 10 and 20 all agree to a rounding, which is what makes the row the error. The code
+  and its tests assert the formula; **do not "fix" them to match the table.** GameDesign.md wants a
+  one-line correction, flagged for the owner in M2-03 and not made there (M2-03).
+- **`WaveComposer` tracks a stage's spend as `int`, and each wave's allowance as the *cumulative*
+  share minus that spend — never as a running `float` remainder.** Threat costs are whole numbers,
+  so a spend is exactly representable and a remainder carried wave to wave is not. Written as a
+  running float, stage 1 composes **nine** Husks instead of GD §12.1's ten: `B·1/3` is 13.333334,
+  less the 12 it buys, plus `B·2/3` = 26.666667 comes to 27.999999, and the tenth Husk costs 4 of
+  the 4 that are not quite there. The cumulative form also makes the last wave's fraction exactly
+  1, so the stage's final allowance is exactly what it has left and `UnspentThreat` conserves the
+  budget to the point. **Anything that divides a budget across steps and spends it in whole units
+  owes the same shape** (M2-04).
+- **Depth scaling is `PercentMult`, never `PercentAdd`.** Depth must multiply with an Elite's 2.2×
+  rather than pool with it (GD §8.3) — pooling would make a deep Elite markedly weaker than the
+  design says, and every individual number would still look right (M2-03).
+- **`StatCurve`'s `stageOffset` is 0 or 1 and nothing else.** It exists only to spell the
+  difference between GD §12.3's `h`/`d`, which step from `n−1`, and `s`, which steps on `n`. A free
+  shift would silently give the first few stages no scaling at all (M2-03).
 - **Enemy despawn compacts rather than swapping with the last.** Spawn order feeds
   `TargetScorer`'s tie-break, so a swap would let two runs from one seed diverge on the strength of
   who died first (M1-05).
@@ -526,6 +623,23 @@ is about Unity's.
   between a player capsule's centre and an enemy's is a rendering detail, and counting it would
   inflate every distance `Reach` is checked against. **Any new sense that measures a separation
   owes the same treatment** (M1-06).
+- **`LineOfSightSense` is the one named exception, and it measures occlusion rather than
+  separation.** A pillar is a solid with a height, so "is there something in between" is asked in
+  full 3D — both ends of the ray lifted to `EyeHeight` (1.1 m, chest height on a 2 m capsule), which
+  is low enough that GD §7.2's 1.5 m pillar blocks it and high enough that the floor, a kerb or a
+  tier's lip does not. **Every *distance* a Spitter uses stays XZ**; only this question leaves the
+  ground plane, and a ray taken between the raw positions would have the arena's own floor deciding
+  fights (M2-11b).
+- **That sense's mask is `Cover` and nothing else — never the Enemy layer.** GD §7.2 makes cover a
+  property of the arena, not of the crowd, and a Spitter that could not fire because a Husk was
+  standing in front of it would read as broken three systems from its cause. M2-11a putting the
+  pillars on a layer of their own is what makes one mask sufficient (M2-11b).
+- **An unmeasured sight line means "can see", and the failure mode is why.** A sense answering
+  *false* when it has not looked switches the whole ranged archetype off in silence; one answering
+  *true* degrades to the arena M2-07b shipped, which is visible and already playtested. The same
+  choice `NavPathSense` makes — no path yet is the straight line, not paralysis — and it is why
+  `SnapshotBuilder` writes `true` for every slot when no sense is composed, rather than leaving the
+  `false` `EnemyViews` used to put there (M2-11b).
 - **`Health.Tick` credits only the slice of its step past the recharge deadline**, not the whole
   `dt` — so the Aegis is worth the same at 30 fps as at 120. Anything else that resumes on a
   deadline mid-step owes the same arithmetic (M1-02).
@@ -533,6 +647,21 @@ is about Unity's.
   events; its owner turns `DamageResult` into events (M1-02, M1-08, M1-11).
 - **`Health.HasShield` means "has a `ShieldSpec`", not "the shield is up"** — a depleted shield
   must still recharge. Ask `Shield > 0` for the other question (M1-02).
+- **A telegraph is a promise, and nothing may break it.** `SpawnDirector` never cancels a
+  `SpawnTelegraphed`, never moves one, and does not let the concurrency cap eat one — which is why
+  the cap counts the *pending* as well as the living, refusing new rings instead of dropping issued
+  ones. A ring the player dodged that produced nothing, or produced something two metres away,
+  teaches them not to trust the next one, and GD §7.1's whole warning contract goes with it. The
+  single exception is `Clear`, where there is no arena left for the body to appear in (M2-05).
+- **A Spitter's aim never cancels, and that is the deliberate opposite of the Chaser's windup.** The
+  dodge window on a thrown shot is the *flight*, not the telegraph — a Spitter that abandoned its aim
+  whenever the player moved would never fire, because moving is what the player does. Anything ranged
+  after it owes the same shape, and anything melee owes the Chaser's (M2-07b).
+- **A walk *in* follows `PathDirectionToPlayer`; a walk *out* never does.** Negating a path direction
+  points away from the next waypoint rather than away from the player, which walks a retreating enemy
+  into the pillar it was just routed around. A retreat is `−DirectionToPlayer` and nothing else, and
+  it can back into geometry — the `CharacterController` slides it along, and GD §7.2 guarantees no
+  dead ends (M2-07b).
 - **`EnemyRegistry.Alive` means *registered*, not breathing.** A corpse stays until its death has
   been published and the view has had its frame. Every reader that cares checks `IsAlive`. The
   naming is a wart (M1-05).
@@ -549,6 +678,13 @@ is about Unity's.
   collider, knockback — and **a forgotten reset does not fail, it produces a half-transparent
   unhittable Husk.** Anything added to `Enemy.prefab` that remembers something joins that list
   (M1-19).
+- **The archetype's tint and body scale are on that list as of M2-06, and they are the entry
+  `OnDespawn` does not undo by itself.** `EnemyHitFeedback.ResetVisuals` restores the look the body
+  was *rented* with, not the prefab's; what undoes a Bloater is `EnemyViews` telling the next
+  rental it is a Husk, which it does on **every** spawn — an archetype with no authored look gets
+  `EnemyLook.Default` rather than being skipped. Both halves are load-bearing: without the reset a
+  corpse returns to the pool mid-dissolve, without the unconditional re-apply the next Husk spawns
+  Bloater-red, **which reads as a rendering bug three systems from its cause** (M2-06).
 - **`EnemyView` carries two colliders and they are not interchangeable**: the `CharacterController`
   moves the body, the trigger `CapsuleCollider` is what sweeps query and what `EnemyViews` indexes.
   A sweep mask that started matching the controller would double-report every hit (M1-18).

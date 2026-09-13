@@ -1,3 +1,8 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
 using UnityEngine;
 
 namespace Soulvail.Game.Adapters;
@@ -8,12 +13,13 @@ namespace Soulvail.Game.Adapters;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>PlayerPrefs, and only until M2-13.</b> The project's answer to persistence is <c>ISaveStore</c>
-/// with versioned DTOs and migration tests, and that does not exist yet — so this one boolean uses
-/// the platform key-value store rather than inventing a second save system that would have to be
-/// migrated away from. When the save store lands, this class keeps its shape and changes where it
-/// reads from; nothing that holds it has to change. The options screen that would expose it is
-/// M8-02, so for now the only way to flip it is the key below.
+/// <b>The class kept its shape and changed where it reads from, which is what its own comment has
+/// promised since M1-20.</b> The stopgap was <c>PlayerPrefs</c>, chosen because <c>ISaveStore</c>
+/// did not exist; as of M2-13b it does, and this is its first consumer (ledger row 11). The
+/// <c>PlayerPrefs</c> key is deleted rather than migrated — nothing has shipped, so the population
+/// that would be carried over is the owner's own dev machine, and a migration with no users is a
+/// permanent line in <c>SaveMigrations</c> paying for nobody. The options screen that would expose
+/// the toggle is still M8-02.
 /// </para>
 /// <para>
 /// A class rather than a bare <c>bool</c> passed around, because the toggle has to be shared: the
@@ -21,30 +27,24 @@ namespace Soulvail.Game.Adapters;
 /// writes it once, and a copied boolean would leave one of the two looking at a stale answer.
 /// </para>
 /// <para>
-/// Neither constructor is public, and that is the point of the two factories. Reading the platform
-/// store and holding a value in memory are different things with different consequences —
-/// <see cref="FromPlayerPrefs"/> persists what it is told, <see cref="InMemory"/> never touches the
-/// registry at all — and a test or a headless container that wants the second must not be able to
+/// Neither constructor is public, and that is the point of the two factories. Persisting a value
+/// and holding one in memory are different things with different consequences —
+/// <see cref="FromStore"/> writes every change through to disk, <see cref="InMemory"/> touches
+/// nothing at all — and a test or a headless container that wants the second must not be able to
 /// get the first by accident.
 /// </para>
 /// </remarks>
 public sealed class HapticsSettings
 {
-    /// <summary>
-    /// Where the toggle is stored. Namespaced, because <c>PlayerPrefs</c> is one flat table shared
-    /// by everything the app will ever save through it.
-    /// </summary>
-    public const string PrefsKey = "soulvail.haptics.enabled";
-
-    /// <summary>Whether writes go anywhere. False for <see cref="InMemory"/>.</summary>
-    private readonly bool _persist;
+    /// <summary>Where writes go, or null for <see cref="InMemory"/>.</summary>
+    private readonly ISaveStore _store;
 
     private bool _enabled;
 
-    private HapticsSettings(bool enabled, bool persist)
+    private HapticsSettings(bool enabled, ISaveStore store)
     {
         _enabled = enabled;
-        _persist = persist;
+        _store = store;
     }
 
     /// <summary>
@@ -52,9 +52,17 @@ public sealed class HapticsSettings
     /// phone (GD §16.3), so the player who wants silence is the one who has to say so.
     /// </summary>
     /// <remarks>
-    /// The write is skipped when nothing changed, so setting it to what it already is costs no
-    /// registry write — and <c>Save</c> is called immediately rather than left to the next app
-    /// pause, because a preference that a force-quit can lose is one the player has to set twice.
+    /// <para>
+    /// The write is skipped when nothing changed, so setting this to what it already is costs no
+    /// I/O — and it is written immediately rather than left to the next app pause, because a
+    /// preference a force-quit can lose is one the player has to set twice.
+    /// </para>
+    /// <para>
+    /// <b>Fire and forget, with the fault observed.</b> A setting that fails to persist must not
+    /// throw out of a UI callback — the toggle the player flipped has already moved, and the worst
+    /// honest outcome is that it does not survive the app. The continuation runs synchronously, so
+    /// with today's synchronous store the error is logged before this setter returns.
+    /// </para>
     /// </remarks>
     public bool Enabled
     {
@@ -69,20 +77,40 @@ public sealed class HapticsSettings
 
             _enabled = value;
 
-            if (!_persist)
+            if (_store is null)
             {
                 return;
             }
 
-            PlayerPrefs.SetInt(PrefsKey, value ? 1 : 0);
-            PlayerPrefs.Save();
+            _store.SaveProfile(new PlayerProfile(PlayerProfile.CurrentVersion, value)).ContinueWith(
+                static task => Debug.LogError(
+                    "Could not save the haptics preference: " +
+                    task.Exception?.GetBaseException().Message),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 
-    /// <summary>The real one: reads the stored preference now, and writes every later change.</summary>
-    public static HapticsSettings FromPlayerPrefs()
+    /// <summary>
+    /// The real one: starts at GD §16.3's default and writes every later change through
+    /// <paramref name="store"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>It does not read.</b> A factory that loaded here would have to block on I/O, or return
+    /// before the value it promised had arrived. The profile is loaded once, at boot, by
+    /// <c>BootFlow</c> — the one place in the app with a legitimate reason to await the disk — and
+    /// handed over through <see cref="Apply"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="store"/> is null.</exception>
+    public static HapticsSettings FromStore(ISaveStore store)
     {
-        return new HapticsSettings(PlayerPrefs.GetInt(PrefsKey, 1) != 0, persist: true);
+        if (store is null)
+        {
+            throw new ArgumentNullException(nameof(store));
+        }
+
+        return new HapticsSettings(PlayerProfile.Default.HapticsEnabled, store);
     }
 
     /// <summary>
@@ -91,6 +119,21 @@ public sealed class HapticsSettings
     /// </summary>
     public static HapticsSettings InMemory(bool enabled)
     {
-        return new HapticsSettings(enabled, persist: false);
+        return new HapticsSettings(enabled, store: null);
+    }
+
+    /// <summary>
+    /// Adopts a profile that arrived after construction.
+    /// </summary>
+    /// <remarks>
+    /// <b>Without writing it back.</b> The field is assigned directly rather than through
+    /// <see cref="Enabled"/>, because a load that immediately re-saves is a load that can corrupt
+    /// what it just read — and on a fresh install, where the caller substitutes
+    /// <see cref="PlayerProfile.Default"/> for a file that does not exist, it would put a profile
+    /// on disk for a player who has never changed a setting.
+    /// </remarks>
+    public void Apply(in PlayerProfile profile)
+    {
+        _enabled = profile.HapticsEnabled;
     }
 }

@@ -503,7 +503,10 @@ public sealed class PlayerCombat
                 continue;
             }
 
-            DamageResult result = enemies.ApplyDamage(id, damage, now);
+            // `this` is what a blast would be resolved against: killing an enemy can now hurt the
+            // player, because an archetype carrying an ExplosionSpec goes off where it died
+            // (M2-08 rule 3). A cone hit that kills a Bloater in melee therefore costs the swinger.
+            DamageResult result = enemies.ApplyDamage(id, damage, now, this);
 
             // Recorded only when the hit reached something, which is what bounds the buffer: an
             // id that resolved to nothing costs nothing to process again, and one that was
@@ -608,7 +611,10 @@ public sealed class PlayerCombat
             // EnemyDamaged can get the same enemy hit twice by this dash.
             RecordChargeHit(id);
 
-            enemies.ApplyDamage(id, damage, now);
+            // `this` for the reason ResolveConeHits passes it: a Charge that kills a Bloater is a
+            // Charge that set one off, and the dash's own i-frames are what decide whether the
+            // blast reaches the player — PlayerCombat.ApplyDamage owns that question, not the blast.
+            enemies.ApplyDamage(id, damage, now, this);
 
             _intents.EnemyKnockback(new EnemyKnockbackIntent(id, direction, knockback));
         }
@@ -761,7 +767,14 @@ public sealed class PlayerCombat
                 // remarks. Guarded against −1 so that no target and no focus cannot both be −1 and
                 // read as a match.
                 Targeter.CurrentTargetId >= 0 && Targeter.CurrentTargetId == Targeter.FocusedTargetId,
-                Targeter.IsCurrentBlocked));
+                Targeter.IsCurrentBlocked,
+                // The other half of the same question, and the only one the event never carried
+                // (M2-12a): a focus is held, and it is not what the gun is on. Guarded against the
+                // focused-and-current case above rather than duplicating it, so the two fields are
+                // never both set and a view can render them as two states instead of three.
+                Targeter.FocusedTargetId >= 0 && Targeter.FocusedTargetId != Targeter.CurrentTargetId
+                    ? Targeter.FocusedTargetId
+                    : -1));
         }
 
         Health.Tick(dt, now);

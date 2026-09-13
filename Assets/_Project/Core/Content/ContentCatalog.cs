@@ -11,10 +11,11 @@ namespace Soulvail.Core.Content;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Characters and enemies, for now. Skills and modes get their own list and their own pair of
-/// accessors in the milestone that introduces them — one dictionary per kind rather than one
+/// Characters, enemies and modes. Skills get their own list and their own pair of accessors in
+/// the milestone that introduces them (M3-02) — one dictionary per kind rather than one
 /// dictionary of <c>object</c>, so a lookup returns the type it names and a caller cannot ask
-/// for a skill and be handed a mode.
+/// for a skill and be handed a mode. Modes were the third kind, added in M2-02, and they cost
+/// exactly the two lines this shape promised they would.
 /// </para>
 /// <para>
 /// Immutable after construction, which is what makes it safe to share across every scope for
@@ -28,6 +29,8 @@ public sealed class ContentCatalog
     private readonly ReadOnlyCollection<CharacterSpec> _characters;
     private readonly Dictionary<ContentId, EnemySpec> _enemiesById;
     private readonly ReadOnlyCollection<EnemySpec> _enemies;
+    private readonly Dictionary<ContentId, ModeSpec> _modesById;
+    private readonly ReadOnlyCollection<ModeSpec> _modes;
 
     /// <param name="characters">
     /// The character specs to register. Copied; the caller's list is not retained.
@@ -39,6 +42,13 @@ public sealed class ContentCatalog
     /// site restating the ones it does not care about. The omission is not silent for long: the
     /// first <see cref="Enemy"/> lookup fails loudly, naming the id it could not find.
     /// </param>
+    /// <param name="modes">
+    /// The modes to register, or null for none. Optional for the reason
+    /// <paramref name="enemies"/> is, and it earned the argument: a project that ran for two
+    /// milestones with no <c>ModeSpec</c> at all is what "every later kind adds another list"
+    /// was about. A catalog with no modes fails at the first <see cref="Mode"/> lookup, naming
+    /// the id — which is <c>RunSession.Start</c>'s first line and so the loudest possible place.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="characters"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// An entry is null, or two entries of one kind share an id — thrown with the duplicated id
@@ -47,7 +57,8 @@ public sealed class ContentCatalog
     /// </exception>
     public ContentCatalog(
         IReadOnlyList<CharacterSpec> characters,
-        IReadOnlyList<EnemySpec> enemies = null)
+        IReadOnlyList<EnemySpec> enemies = null,
+        IReadOnlyList<ModeSpec> modes = null)
     {
         if (characters is null)
         {
@@ -67,6 +78,13 @@ public sealed class ContentCatalog
             "enemy",
             nameof(enemies),
             out _enemiesById);
+
+        _modes = Index(
+            modes ?? Array.Empty<ModeSpec>(),
+            spec => spec.Id,
+            "mode",
+            nameof(modes),
+            out _modesById);
     }
 
     /// <summary>Every registered character, in the order they were supplied.</summary>
@@ -74,6 +92,15 @@ public sealed class ContentCatalog
 
     /// <summary>Every registered enemy archetype, in the order they were supplied.</summary>
     public IReadOnlyList<EnemySpec> Enemies => _enemies;
+
+    /// <summary>Every registered mode, in the order they were supplied.</summary>
+    /// <remarks>
+    /// One in V1 (GD §4.5). The order is what <c>MenuPresenter</c> means by "the first mode the
+    /// catalog holds" — the same stand-in it makes for the class, and for the same reason: there
+    /// is no screen to choose either with yet, and naming <c>mode.descent</c> in code is exactly
+    /// the assumption GD §4.5 forbids.
+    /// </remarks>
+    public IReadOnlyList<ModeSpec> Modes => _modes;
 
     /// <summary>The character with this id.</summary>
     /// <exception cref="KeyNotFoundException">
@@ -121,6 +148,28 @@ public sealed class ContentCatalog
     /// </summary>
     public bool TryGetEnemy(ContentId id, out EnemySpec spec) =>
         _enemiesById.TryGetValue(id, out spec);
+
+    /// <summary>The mode with this id.</summary>
+    /// <exception cref="KeyNotFoundException">
+    /// No mode has that id — including <c>default(ContentId)</c>, which is unknown like any other
+    /// id the catalog does not hold. This is the first thing <c>RunSession.Start</c> asks, so an
+    /// unauthored mode fails before a run is announced rather than a stage into one.
+    /// </exception>
+    public ModeSpec Mode(ContentId id)
+    {
+        if (!_modesById.TryGetValue(id, out ModeSpec spec))
+        {
+            throw new KeyNotFoundException($"No mode with id '{id}' in the catalog.");
+        }
+
+        return spec;
+    }
+
+    /// <summary>
+    /// Looks up a mode without throwing. <paramref name="spec"/> is null when this returns false.
+    /// </summary>
+    public bool TryGetMode(ContentId id, out ModeSpec spec) =>
+        _modesById.TryGetValue(id, out spec);
 
     /// <summary>
     /// Copies <paramref name="source"/>, indexes it by id, and refuses a null entry or a

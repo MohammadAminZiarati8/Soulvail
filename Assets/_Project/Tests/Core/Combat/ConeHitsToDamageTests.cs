@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -44,11 +46,26 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class ConeHitsToDamageTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string DescentId = "mode.descent";
     private const string HuskId = "enemy.husk";
     private const int Seed = 99;
 
     /// <summary>Room for every row's enemies, and the buffers the run preallocates.</summary>
     private const int EnemyCapacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). This fixture's mode has an empty
+    /// roster, so nothing is composed and the director is inert — it is here because a run needs
+    /// one, not because any row is about it.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     // CC §7's Censer and GD §8.1's Husk. Three swings is 39 against 36: a kill with 3 to spare.
     private const float SwingDamage = 13f;
@@ -80,8 +97,8 @@ public sealed class ConeHitsToDamageTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() });
-        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, EnemyCapacity);
+        _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
+        _session = new RunSession(_catalog, new FixedRandom(Seed), _events, _intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), _events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         // The player stands at the origin all fixture long and never touches the stick, so every
         // enemy's spawn position is also its distance and the cone's origin is the origin.
@@ -296,12 +313,16 @@ public sealed class ConeHitsToDamageTests
 
         // A dummy with a billion hit points, so 10 000 swings never kill it and every iteration
         // measures the same path — the one where damage lands and an event goes out.
-        var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk(maxHp: 1e9f) });
-        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, EnemyCapacity);
+        var catalog = new ContentCatalog(
+            new[] { Oathbound() }, new[] { Husk(maxHp: 1e9f) }, new[] { Descent() });
+        var session = new RunSession(catalog, new FixedRandom(Seed), events, intents, new RunRecorder(new FixedRandom(Seed), new FixedClock(default), events), EnemyCapacity, DeviceCap, ProjectileCapacity);
 
         session.Start(new RunConfig(
+            new ContentId(DescentId),
             new ContentId(OathboundId),
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) })));
+            Seed,
+            1,
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), At(3f)) }), restore: null));
 
         Assert.That(events.LastSpawnedId, Is.GreaterThan(0), "Sanity: the dummy is out there.");
 
@@ -340,13 +361,18 @@ public sealed class ConeHitsToDamageTests
         // Reached through EnemySystem directly because the weapon's Damage stat sits behind
         // RunState.Combat, which is internal — there is no route to a zero-damage swing from
         // outside core.
-        var enemies = new EnemySystem(_catalog, _events, new FixedRandom(), EnemyCapacity);
+        var enemies = new EnemySystem(_catalog, _events, new FixedRandom(), Scaling(), EnemyCapacity);
         EnemyAgent husk = enemies.Spawn(new ContentId(HuskId), At(5f));
 
         _events.Clear();
 
-        Assert.That(enemies.ApplyDamage(husk.Id, 0f, 1f).Applied, Is.EqualTo(0f));
-        Assert.That(enemies.ApplyDamage(husk.Id, float.NaN, 1f).Applied, Is.EqualTo(0f));
+        // The blast target ApplyDamage requires as of M2-08 rule 3. Nothing here can explode — a
+        // Husk carries no explosion block — so this is a bystander the row is not about, and the
+        // assertion below that *nothing* was published covers it.
+        var bystander = new PlayerCombat(Oathbound(), _events, _intents, EnemyCapacity);
+
+        Assert.That(enemies.ApplyDamage(husk.Id, 0f, 1f, bystander).Applied, Is.EqualTo(0f));
+        Assert.That(enemies.ApplyDamage(husk.Id, float.NaN, 1f, bystander).Applied, Is.EqualTo(0f));
 
         Assert.That(_events.All, Is.Empty, "A swing that did nothing has nothing to announce.");
         Assert.That(husk.Health.Current, Is.EqualTo(HuskMaxHp).Within(1e-4f));
@@ -380,7 +406,8 @@ public sealed class ConeHitsToDamageTests
             entries[i] = new SpawnPlan.Entry(new ContentId(HuskId), positions[i]);
         }
 
-        _session.Start(new RunConfig(new ContentId(OathboundId), new SpawnPlan(entries)));
+        _session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, new SpawnPlan(entries), restore: null));
 
         IReadOnlyList<EnemySpawned> spawned = _events.Of<EnemySpawned>();
         var ids = new int[spawned.Count];
@@ -451,6 +478,24 @@ public sealed class ConeHitsToDamageTests
         }
     }
 
+
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog before
+    /// it announces a run, and no row here is about a schedule -- what these rows spawn comes from
+    /// a <c>SpawnPlan</c>. A roster would couple every one of them to content they do not use.
+    /// </remarks>
+    private static ModeSpec Descent() => new ModeSpec(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
+
     /// <summary>The Oathbound of CC §7 — the Censer is the only block any row here reads.</summary>
     private static CharacterSpec Oathbound() => new(
         new ContentId(OathboundId),
@@ -477,11 +522,13 @@ public sealed class ConeHitsToDamageTests
         maxHp,
         3.5f,
         1,
+        threatCost: 4,
         isElite: false,
         8f,
         1.2f,
         0.4f,
         0.6f,
+        aggroRange: 30f,
         EnemyBehaviourKind.Static);
 
     /// <summary>
@@ -538,4 +585,16 @@ public sealed class ConeHitsToDamageTests
             // Deliberately nothing.
         }
     }
+
+    /// <summary>
+    /// The depth scaling every <c>EnemySystem</c> in this fixture is built with, required as of
+    /// M2-03.
+    /// </summary>
+    /// <remarks>
+    /// Inert in every row here, and that is by construction rather than by luck: the system's
+    /// <c>Depth</c> defaults to 1, where GD §12.3's three multipliers are all exactly 1, so an
+    /// enemy spawned by this fixture wears its archetype's authored numbers. The rows that are
+    /// about depth are <c>DepthScalingTests</c>' and <c>EnemySystemTests.Spawn_AppliesDepth</c>.
+    /// </remarks>
+    private static DepthScaling Scaling() => new DepthScaling(Scalings.Design());
 }

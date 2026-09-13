@@ -6,6 +6,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -26,8 +27,15 @@ public sealed class RunSessionTests
 {
     private const string OathboundId = "character.oathbound";
 
+    private const string DescentId = "mode.descent";
+
     /// <summary>An id of the right shape that the catalog does not hold.</summary>
     private const string UnknownId = "character.nobody";
+
+    private const string HuskId = "enemy.husk";
+
+    /// <summary>An archetype id of the right shape that no fixture here authors.</summary>
+    private const string GhostId = "enemy.ghost";
 
     private const int Seed = 99;
 
@@ -36,6 +44,20 @@ public sealed class RunSessionTests
     /// composes needs only to exist — M1-06's own fixture is where its capacity matters.
     /// </summary>
     private const int EnemyCapacity = 8;
+
+    /// <summary>
+    /// The device cap a run composes its stages under (M2-05). Equal to the capacity here, which
+    /// is the largest it is allowed to be: a stage may not be allowed more bodies than the
+    /// snapshot can carry back.
+    /// </summary>
+    private const int DeviceCap = 8;
+
+    /// <summary>
+    /// Room for every shot a row here puts in the air, which is none: nothing fires one until
+    /// M2-07b. Required by <c>RunSession</c> since M2-07a, and guarded positive, so it is a
+    /// number rather than a zero.
+    /// </summary>
+    private const int ProjectileCapacity = 8;
 
     // The Oathbound's numbers (CC §7), so a failure reads as "the class we ship stopped moving".
     private const float Speed = 5.4f;
@@ -52,14 +74,22 @@ public sealed class RunSessionTests
     private ContentCatalog _catalog;
     private RunSession _session;
 
+    /// <summary>
+    /// What the session writes a run down through, over this fixture's own generator. Every row
+    /// here gained one at M2-14a: a session takes a recorder rather than an <c>IClock</c>, which is
+    /// AR §18.2's rule kept while a snapshot still gets a wall-clock stamp.
+    /// </summary>
+    private RunRecorder _recorder;
+
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
         _random = new FixedRandom(Seed);
-        _catalog = new ContentCatalog(new[] { Oathbound() });
-        _session = new RunSession(_catalog, _random, _events, _intents, EnemyCapacity);
+        _recorder = Recorder(_events);
+        _catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { Descent() });
+        _session = new RunSession(_catalog, _random, _events, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity);
     }
 
     [Test]
@@ -68,12 +98,55 @@ public sealed class RunSessionTests
         // Built in M0-09, tested here because that task was contracts with no fixture of its own.
         // `default(ContentId)` means nobody chose a class — a composition mistake — so it is
         // named here rather than left to surface as the catalog's "no character with id ''".
-        Assert.Throws<ArgumentException>(() => new RunConfig(default, SpawnPlan.Empty));
+        Assert.Throws<ArgumentException>(
+            () => new RunConfig(new ContentId(DescentId), default, Seed, 1, SpawnPlan.Empty, restore: null));
+
+        // The same guard on the mode, added with the field in M2-02: nobody chose a mode is the
+        // same kind of mistake as nobody chose a class, and GD §4.5's whole point is that Descent
+        // is not a default anything is entitled to assume.
+        Assert.Throws<ArgumentException>(
+            () => new RunConfig(default, new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         // The other half of the pair, and the reason the guard is narrow: a well-formed id the
         // catalog happens not to hold is missing *content*, which is the catalog's question to
         // answer at Start. See Start_UnknownCharacter_Throws_NotRunning.
-        Assert.DoesNotThrow(() => new RunConfig(new ContentId(UnknownId), SpawnPlan.Empty));
+        Assert.DoesNotThrow(
+            () => new RunConfig(
+                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty, restore: null));
+    }
+
+    [Test]
+    public void Config_RecordsAllFive()
+    {
+        var plan = new SpawnPlan(Array.Empty<SpawnPlan.Entry>());
+
+        var config = new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), -7, 4, plan, restore: null);
+
+        Assert.That(config.ModeId, Is.EqualTo(new ContentId(DescentId)));
+        Assert.That(config.CharacterId, Is.EqualTo(new ContentId(OathboundId)));
+
+        // Negative on purpose. Every int is a legal seed — it is a bit pattern, not a quantity —
+        // so there is nothing here for a guard to reject and a test that only ever passed 99
+        // would not say so.
+        Assert.That(config.Seed, Is.EqualTo(-7));
+        Assert.That(config.StageIndex, Is.EqualTo(4));
+        Assert.That(config.SpawnPlan, Is.SameAs(plan));
+    }
+
+    [Test]
+    public void Config_StageBelowOne_Throws()
+    {
+        // Stages are numbered from 1 (GD §8.2), so a zero is a caller that meant "the first one"
+        // and reached for an array index. Caught where the number was chosen rather than at the
+        // depth scaling that would quietly compute a stage-zero curve from it.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 0, SpawnPlan.Empty, restore: null));
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, -1, SpawnPlan.Empty, restore: null));
     }
 
     [Test]
@@ -82,16 +155,41 @@ public sealed class RunSessionTests
         // Beyond the spec's Tests table. The constructor is public and called from another
         // assembly (M0-12's RunInstaller), so it is a boundary; without these a forgotten
         // registration would surface a frame later, inside Tick, as an NRE that names the tick.
-        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents, EnemyCapacity));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents, EnemyCapacity));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents, EnemyCapacity));
-        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null, EnemyCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(null, _random, _events, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, null, _events, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, null, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity));
+        Assert.Throws<ArgumentNullException>(() => new RunSession(_catalog, _random, _events, null, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity));
+
+        // The recorder joins the family in M2-14a, and it is not optional: a session built without
+        // one would run perfectly and save nothing, which is the failure that looks like a working
+        // game right up until the phone is killed.
+        Assert.Throws<ArgumentNullException>(
+            () => new RunSession(_catalog, _random, _events, _intents, null, EnemyCapacity, DeviceCap, ProjectileCapacity));
 
         // Same family, added with the capacity in M1-06: a registry that can hold no enemies is a
         // configuration mistake, and checking it here rather than at the first Start means a
         // mis-wired scope fails while it is being built instead of one scene later.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new RunSession(_catalog, _random, _events, _intents, 0));
+            () => new RunSession(_catalog, _random, _events, _intents, _recorder, 0, DeviceCap, ProjectileCapacity));
+
+        // The device cap joins the family in M2-05, and it owes two checks rather than one. Zero
+        // is the same mistake as a zero capacity — every stage would compose an empty arena.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunSession(_catalog, _random, _events, _intents, _recorder, EnemyCapacity, 0, ProjectileCapacity));
+
+        // And a cap above the capacity is the mistake that would otherwise be silent: the stage
+        // composes more bodies than the snapshot can carry back, so the surplus exists in core and
+        // core is blind to where any of it is standing.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunSession(
+                _catalog, _random, _events, _intents,
+            _recorder, EnemyCapacity, EnemyCapacity + 1, ProjectileCapacity));
+
+        // The projectile capacity joins the family in M2-07a, and it owes only the zero check: it
+        // is bounded by nothing the snapshot carries, because a shot has no body and is never
+        // reported back in. A run allowed none would refuse every bolt in silence.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RunSession(_catalog, _random, _events, _intents, _recorder, EnemyCapacity, DeviceCap, 0));
     }
 
     [Test]
@@ -100,7 +198,8 @@ public sealed class RunSessionTests
         // Required rather than optional (M1-06): a run that starts empty says so with
         // SpawnPlan.Empty. An omitted plan and a broken spawner look identical in a playtest.
         Assert.Throws<ArgumentNullException>(
-            () => new RunConfig(new ContentId(OathboundId), null));
+            () => new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, null, restore: null));
     }
 
     [Test]
@@ -112,10 +211,152 @@ public sealed class RunSessionTests
 
         Assert.That(started.CharacterId, Is.EqualTo(new ContentId(OathboundId)));
 
-        // The seed comes off IRandom, not out of the config — one source of truth, so the number
-        // a bug report quotes is provably the one the streams draw from.
+        // The seed now comes out of the config rather than off IRandom (M2-02). Still one truth:
+        // Start refuses a config that disagrees with the generator, so the number a bug report
+        // quotes is still provably the one the streams draw from — see Start_SeedMismatch_Throws.
         Assert.That(started.Seed, Is.EqualTo(Seed));
         Assert.That(_session.IsRunning, Is.True);
+    }
+
+    [Test]
+    public void Start_RecordsConfigSeed()
+    {
+        StartRun();
+
+        Assert.That(_session.State.Seed, Is.EqualTo(Seed));
+        Assert.That(_events.Single<RunStarted>().Seed, Is.EqualTo(Seed));
+    }
+
+    [Test]
+    public void Start_SeedMismatch_Throws()
+    {
+        // The generator was built with 99 and the config states 100. The only way that happens is
+        // a composition mistake, and the symptom of letting it through would be a run whose
+        // recorded seed does not replay it — which is the one number worth having in a bug report.
+        Assert.Throws<ArgumentException>(
+            () => _session.Start(new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed + 1, 1, SpawnPlan.Empty, restore: null)));
+
+        Assert.That(_session.IsRunning, Is.False);
+        Assert.That(_session.State, Is.Null);
+        Assert.That(_events.All, Is.Empty);
+    }
+
+    [Test]
+    public void Start_RecordsModeAndStage()
+    {
+        _session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 4, SpawnPlan.Empty, restore: null));
+
+        Assert.That(_session.State.ModeId, Is.EqualTo(new ContentId(DescentId)));
+
+        // 4, not the mode's StartingStage of 1: a run begins where its caller says, which is what
+        // makes M2-14b's resume a different argument rather than a different code path.
+        Assert.That(_session.State.StageIndex, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void Start_UnknownMode_Throws_NotRunning()
+    {
+        Assert.Throws<KeyNotFoundException>(
+            () => _session.Start(new RunConfig(
+                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
+
+        Assert.That(_session.IsRunning, Is.False);
+        Assert.That(_session.State, Is.Null);
+        Assert.That(_events.All, Is.Empty);
+    }
+
+    [Test]
+    public void Start_StageNotInMode_Throws()
+    {
+        // A finite mode, so there is a stage past the end to ask for. Descent is endless and has
+        // every stage from 1, which is exactly why this row cannot use it.
+        var finite = new ModeSpec(
+            new ContentId("mode.trial"),
+            new LocKey("mode.trial.name"),
+            1,
+            false,
+            5,
+            Scalings.Design(),
+            Array.Empty<RosterEntry>());
+
+        var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { finite });
+        var session = new RunSession(catalog, _random, _events, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => session.Start(new RunConfig(
+                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 6, SpawnPlan.Empty, restore: null)));
+
+        Assert.That(session.IsRunning, Is.False);
+        Assert.That(session.State, Is.Null);
+        Assert.That(_events.All, Is.Empty);
+
+        // The last stage it does have starts fine, so the guard is a boundary rather than a ban.
+        Assert.DoesNotThrow(
+            () => session.Start(new RunConfig(
+                new ContentId("mode.trial"), new ContentId(OathboundId), Seed, 5, SpawnPlan.Empty, restore: null)));
+    }
+
+    [Test]
+    public void Start_UnknownPlanArchetype_NothingAnnounced()
+    {
+        // Ledger row 3. Until M2-02 this threw from SpawnAll — after RunStarted and after
+        // IsRunning flipped — so the run was announced and half an arena was standing.
+        var plan = new SpawnPlan(new[]
+        {
+            new SpawnPlan.Entry(new ContentId(GhostId), Vector3.Zero),
+        });
+
+        AssertStartRefusedCleanly(plan);
+    }
+
+    [Test]
+    public void Start_UnknownRosterArchetype_NothingAnnounced()
+    {
+        // The half that has no other line of defence: nothing spawns from a roster until M2-05's
+        // director does, so without this check the failure would arrive forty seconds into a run
+        // looking like a director bug.
+        var mode = new ModeSpec(
+            new ContentId(DescentId),
+            new LocKey("mode.descent.name"),
+            1,
+            true,
+            0,
+            Scalings.Design(),
+            new[] { new RosterEntry(new ContentId(GhostId), 1) });
+
+        var catalog = new ContentCatalog(new[] { Oathbound() }, null, new[] { mode });
+        var session = new RunSession(catalog, _random, _events, _intents, _recorder, EnemyCapacity, DeviceCap, ProjectileCapacity);
+
+        Assert.Throws<KeyNotFoundException>(
+            () => session.Start(new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
+
+        Assert.That(session.IsRunning, Is.False);
+        Assert.That(session.State, Is.Null);
+        Assert.That(_events.All, Is.Empty);
+    }
+
+    [Test]
+    public void Start_ValidationRunsBeforeState()
+    {
+        StartRun();
+        _session.Tick(Snapshot(1f));
+        _session.End();
+
+        RunState finished = _session.State;
+        _events.Clear();
+
+        Assert.Throws<KeyNotFoundException>(
+            () => _session.Start(new RunConfig(
+                new ContentId("mode.nothing"), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null)));
+
+        // The previous run's state is still there and still says what it said. A half-started run
+        // that had overwritten State would take the run-end screen's numbers with it.
+        Assert.That(_session.State, Is.SameAs(finished));
+        Assert.That(_session.State.Time, Is.EqualTo(1f).Within(1e-6f));
+        Assert.That(_events.All, Is.Empty);
     }
 
     [Test]
@@ -151,7 +392,8 @@ public sealed class RunSessionTests
     public void Start_UnknownCharacter_Throws_NotRunning()
     {
         Assert.Throws<KeyNotFoundException>(
-            () => _session.Start(new RunConfig(new ContentId(UnknownId), SpawnPlan.Empty)));
+            () => _session.Start(new RunConfig(
+                new ContentId(DescentId), new ContentId(UnknownId), Seed, 1, SpawnPlan.Empty, restore: null)));
 
         // Nothing half-started: the catalog is read before anything is assigned, so a bad id
         // leaves the session exactly as it was.
@@ -175,17 +417,26 @@ public sealed class RunSessionTests
     public void Start_EventPublishedBeforeIsRunningFlips()
     {
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity);
+        var session = new RunSession(_catalog, _random, events, _intents, Recorder(events), EnemyCapacity, DeviceCap, ProjectileCapacity);
         object payload = null;
         bool? runningDuringEvent = null;
 
+        // The *first* publish only. Start announces a snapshot after RunStarted since M2-14a, and a
+        // callback that overwrote on every event would report the last one and quietly stop being
+        // about the order at all.
         events.OnPublish = evt =>
         {
+            if (payload is not null)
+            {
+                return;
+            }
+
             payload = evt;
             runningDuringEvent = session.IsRunning;
         };
 
-        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         Assert.That(payload, Is.InstanceOf<RunStarted>());
 
@@ -344,8 +595,9 @@ public sealed class RunSessionTests
         // documents: during either lifecycle event the session still reports the state it is
         // leaving, so a handler reading IsRunning gets a consistent answer at both ends.
         var events = new CapturingEvents();
-        var session = new RunSession(_catalog, _random, events, _intents, EnemyCapacity);
-        session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
+        var session = new RunSession(_catalog, _random, events, _intents, Recorder(events), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
 
         object payload = null;
         bool? runningDuringEvent = null;
@@ -361,6 +613,66 @@ public sealed class RunSessionTests
         Assert.That(payload, Is.InstanceOf<RunEnded>());
         Assert.That(runningDuringEvent, Is.True);
         Assert.That(session.IsRunning, Is.False);
+    }
+
+    [Test]
+    public void Start_OrderUnchanged()
+    {
+        // AR §18.1, re-asserted because M2-02 moved everything *before* RunStarted and this is
+        // the half that must not have moved: the run is announced first, IsRunning flips second,
+        // and the opening population is spawned into a run that is already live.
+        var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
+        var events = new RecordingEvents();
+        var session = new RunSession(catalog, _random, events, _intents, Recorder(events), EnemyCapacity, DeviceCap, ProjectileCapacity);
+
+        var plan = new SpawnPlan(new[]
+        {
+            new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(3f, 0f, 0f)),
+        });
+
+        session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan, restore: null));
+
+        Assert.That(events.All[0], Is.InstanceOf<RunStarted>());
+
+        // Second since M2-14a: the run is written down as soon as it is announced and before the
+        // arena is populated, so a phone killed during the opening stage resumes into *this* run
+        // rather than into whatever the last one left on disk (M2-14a rules 1 and 2).
+        Assert.That(events.All[1], Is.InstanceOf<RunSnapshotTaken>());
+
+        Assert.That(events.All[2], Is.InstanceOf<EnemySpawned>());
+        Assert.That(events.All.Count, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Start_IsRunningIsTrueInsideSpawnHandler()
+    {
+        // The other half of the same rule, and the one a recorded list cannot show: a handler that
+        // resolves the session from inside EnemySpawned finds a live run, not one mid-composition.
+        var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Descent() });
+        var events = new CapturingEvents();
+        var session = new RunSession(catalog, _random, events, _intents, Recorder(events), EnemyCapacity, DeviceCap, ProjectileCapacity);
+        bool? runningDuringSpawn = null;
+
+        events.OnPublish = evt =>
+        {
+            if (evt is EnemySpawned)
+            {
+                runningDuringSpawn = session.IsRunning;
+            }
+        };
+
+        session.Start(new RunConfig(
+            new ContentId(DescentId),
+            new ContentId(OathboundId),
+            Seed,
+            1,
+            new SpawnPlan(new[]
+            {
+                new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(3f, 0f, 0f)),
+            }), restore: null));
+
+        Assert.That(runningDuringSpawn, Is.True);
     }
 
     [Test]
@@ -415,10 +727,71 @@ public sealed class RunSessionTests
         return snapshot;
     }
 
+    /// <summary>
+    /// Descent as this fixture needs it: endless, from stage 1, and with an <b>empty roster</b>.
+    /// </summary>
+    /// <remarks>
+    /// Empty because <c>RunSession.Start</c> resolves every roster id against the catalog, and
+    /// this fixture's catalog holds no enemies in most of its rows — a Husk in the roster would
+    /// make every one of them fail on content it is not about. The rows that do care about a
+    /// roster build their own mode.
+    /// </remarks>
+    private static ModeSpec Descent() => new(
+        new ContentId(DescentId),
+        new LocKey("mode.descent.name"),
+        1,
+        true,
+        0,
+        Scalings.Design(),
+        Array.Empty<RosterEntry>());
+
+    /// <summary>The Husk, for the two rows that need something to spawn (GD §8.1).</summary>
+    private static EnemySpec Husk() => new(
+        new ContentId(HuskId),
+        new LocKey("enemy.husk.name"),
+        36f,
+        3.5f,
+        1,
+        4,
+        false,
+        8f,
+        1.2f,
+        0.4f,
+        0.6f,
+        aggroRange: 30f,
+        EnemyBehaviourKind.Static);
+
+    /// <summary>
+    /// Asserts that a plan naming an unauthored archetype is refused with nothing announced,
+    /// nothing standing and no state built.
+    /// </summary>
+    private void AssertStartRefusedCleanly(SpawnPlan plan)
+    {
+        Assert.Throws<KeyNotFoundException>(
+            () => _session.Start(new RunConfig(
+                new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, plan, restore: null)));
+
+        Assert.That(_session.IsRunning, Is.False);
+        Assert.That(_session.State, Is.Null);
+        Assert.That(_events.All, Is.Empty);
+    }
+
     private void StartRun()
     {
-        _session.Start(new RunConfig(new ContentId(OathboundId), SpawnPlan.Empty));
+        _session.Start(new RunConfig(
+            new ContentId(DescentId), new ContentId(OathboundId), Seed, 1, SpawnPlan.Empty, restore: null));
     }
+
+    /// <summary>
+    /// A recorder over this fixture's generator, publishing into <paramref name="events"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>This fixture's own generator, not a second one</b>, so the streams a snapshot reports are
+    /// the streams the session actually drew from. The clock is parked at <c>default</c> because no
+    /// row here reads a timestamp; <c>RunRecorderTests</c> is where a stamp is a claim.
+    /// </remarks>
+    private RunRecorder Recorder(IDomainEvents events) =>
+        new RunRecorder(_random, new FixedClock(default), events);
 
     /// <summary>
     /// Ticks the run <paramref name="ticks"/> times at <see cref="Frame"/>. Named <c>TickFor</c>

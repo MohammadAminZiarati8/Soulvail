@@ -7,6 +7,8 @@
 # 4. Whitespace errors and conflict markers
 # 5. Large files that aren't LFS pointers
 # 6. C# whitespace formatting via `dotnet format` if the .NET SDK is present
+# 7. ProjectSettings/ changes are deliberate: staged ones need ALLOW_PROJECT_SETTINGS=1,
+#    unstaged ones are pointed out (Unity backfills defaults — Docs/Traps.md §5)
 #
 # Bypass in an emergency: git commit --no-verify
 
@@ -148,6 +150,27 @@ if [ -n "$cs_files" ]; then
   else
     note "dotnet format unavailable — skipping C# format check (install the .NET SDK to enable it)"
   fi
+fi
+
+# ---------------------------------------------- 7. ProjectSettings/ is deliberate
+# Unity backfills defaults into ProjectSettings/ behind your back and holds the rewritten
+# copy in memory until restarted (Docs/Traps.md §5). A settings change is therefore never
+# assumed to be yours: staged, it has to be said so; unstaged, it is pointed out, so that a
+# branch with no spec behind it still sees it (M3 ledger row 7 — the one M2 branch without a
+# session protocol committed a backfilled line).
+settings_staged=$(awk -F'\t' '$2 ~ /^ProjectSettings\// {print $2}' "$expanded_file")
+if [ -n "$settings_staged" ] && [ "${ALLOW_PROJECT_SETTINGS:-0}" != "1" ]; then
+  err "ProjectSettings/ changes are staged:"
+  printf '%s\n' "$settings_staged" | while IFS= read -r p; do printf '         %s\n' "$p" >&2; done
+  err "  Review 'git diff --cached -- ProjectSettings/' for Unity-backfilled defaults (Docs/Traps.md §5)."
+  err "  If the change is yours on purpose: ALLOW_PROJECT_SETTINGS=1 git commit ..."
+fi
+
+settings_unstaged=$(git diff --name-only -- ProjectSettings/ 2>/dev/null)
+if [ -n "$settings_unstaged" ]; then
+  warn "ProjectSettings/ has unstaged changes (not in this commit):"
+  printf '%s\n' "$settings_unstaged" | while IFS= read -r p; do printf '         %s\n' "$p" >&2; done
+  warn "  Unity may have backfilled them (Docs/Traps.md §5). Revert them, or stage them on purpose."
 fi
 
 # ------------------------------------------------------------------ result

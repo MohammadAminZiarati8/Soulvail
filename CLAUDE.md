@@ -45,7 +45,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 - `main` — tagged milestones only. `dev` — integration. `m0-09-run-contracts` — lowercase task ID + slug, one task each, branched from `dev`, merged through a PR the owner reviews.
 - Conventional commits: `feat:` `fix:` `chore:` `docs:` `refactor:`. Body says *why*. **No `Co-Authored-By` trailer** — the owner is the sole author.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
-- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, and forward to LFS.
+- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, deliberate `ProjectSettings/` changes (`ALLOW_PROJECT_SETTINGS=1` to stage one on purpose), and forward to LFS.
 - Unity YAML merge driver, once per clone:
   ```
   git config merge.unityyaml.name "Unity SmartMerge"

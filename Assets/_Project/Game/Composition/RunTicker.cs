@@ -245,6 +245,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// method returns.
     /// </para>
     /// <para>
+    /// <b>A single <c>Physics.SyncTransforms()</c> stands between the two halves, and it is what
+    /// makes the paragraph above true</b> (M2-15a). <c>Physics.autoSyncTransforms</c> is 0 for this
+    /// project, so moving a transform does not move the collider the physics scene holds — the
+    /// ordering was therefore honoured by the call order and quietly not by the code, and a swing
+    /// could miss an enemy that had stepped into it this frame. It is one flush at one seam rather
+    /// than a setting, because the setting would pay the same cost on every write in the project
+    /// instead of once at the only point that asks a question.
+    /// </para>
+    /// <para>
     /// <b><see cref="ApplyKnockbacks"/> is last of all, and that is not tidiness.</b> The shoves it
     /// applies are written by core while it answers <c>ReportChargeHits</c> — that is, from inside
     /// <see cref="StepCharge"/>, later in the frame than every other intent in the buffer. A reader
@@ -327,6 +336,25 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // thing a telegraph is not allowed to do. Read by nothing below either: a decal has no
         // collider, so the pair of them are the frame's two purely cosmetic steps.
         _telegraphRings.Step(_snapshot.Dt);
+
+        // The line that makes the ordering above true of the code and not only of the call order
+        // (M2-15a, M3 ledger row 3). `Physics.autoSyncTransforms` is 0 project-wide, so the writes
+        // performed by `_player.Apply` and `ApplyEnemyMoves` sit in the transforms and have *not*
+        // reached the physics scene: without this, both queries below resolve against where the
+        // bodies stood at the end of the previous frame. The symptom is a swing that misses an
+        // enemy which stepped into the cone this frame — rare, silent, and exactly the failure
+        // AR §18.1's ordering exists to prevent.
+        //
+        // Here rather than anywhere else, because this is the seam: everything above moves bodies,
+        // everything below asks physics about them. `StepCharge` sweeps a line against enemy
+        // colliders and `ResolveConeHits` sweeps a wedge against the same ones, and nothing between
+        // the two writes an enemy transform — so one flush serves both. `ApplyKnockbacks` moves
+        // enemies again and is deliberately last, after every question has been asked.
+        //
+        // The cost is a flush of the frame's dirty transforms, paid once. It is not free and has
+        // never been measured on a phone; the alternative was leaving a correctness bug in place to
+        // protect a number nobody has. Re-measure when hardware exists (PROGRESS → Deferred).
+        Physics.SyncTransforms();
 
         StepCharge();
 

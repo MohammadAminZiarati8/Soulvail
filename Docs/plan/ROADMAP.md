@@ -300,6 +300,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | M5-05 | Wight views + concurrency policy (CH §8.1) |
 | M5-06 | Gravecaller tree v1 + Exhume, Tether, Rot Nova |
 | M5-07 | Class select screen |
+| M5-07a | The second class (CH §5.4): the half-tree trigger, the splash screen, one branch into the offer pool, no Keystone |
 | M5-08 | M5 acceptance, tag `m5` |
 
 ## M6 — Systems complete *(titles only)*
@@ -383,6 +384,14 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   it split into a palette and a health-bar task, neither of which can hold an icon.
 - **A counting `IRandom` fake in `Tests/Core/Fakes/`.** `SpawnDirectorTests` has a private one and
   M3-04 will have a second. Promoted by the third.
+- **`TreeRules` and `SkillTree` address a branch by index into one tree, and CH §5.4 needs a second
+  tree's branch beside it.** [M3-03](tasks/M3-03-tree-rules.md)'s constructor takes a single
+  `SkillTreeSpec`, and every branch-shaped member — `TryLocate(… out int branch …)`,
+  `NodeCountOf(int)`, `TakenInBranch(int)` — is an index into that one tree. Correct for a milestone
+  with one class, and it has nowhere to put a branch borrowed from another. **The content side is
+  already fine**: a class still has exactly one tree, so M3-02a rule 11's refusal stands and
+  `TryGetTreeFor` resolves the second one unchanged — what widens is the *run's* view, not the
+  catalog. Promoted by **M5-07a**, whose spec **M5-00a** writes.
 - **`handslot.l` / `handslot.r` are empty**, so the Knight swings a fist. The 31 props in
   `ThirdParty/KayKit/Adventurers/Props` are built to parent there. Promoted when the weapon-ownership
   question (class property vs swappable) is settled, because the answer decides who owns the socket.

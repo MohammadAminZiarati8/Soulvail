@@ -1,7 +1,7 @@
 # Soulvail — Characters and Skills
 
-**Version:** 0.2 — *in-run skill trees*
-**Date:** 2026-09-06
+**Version:** 0.3 — *in-run skill trees, and the second class*
+**Date:** 2026-09-13
 **Companion to:** [GameDesign.md](GameDesign.md) — read §5 (controls), §10 (Veilrot), and §12 (difficulty) first.
 
 ---
@@ -21,6 +21,8 @@ This is strictly better here, and it collapses three problems at once:
 | **Anchors** (§14.3) existed only to paper over that fatigue | **Cut entirely.** A whole system removed from scope. |
 
 Meta-progression shrinks to one job: **unlocking characters**. That's a significant scope reduction, and it makes the game more of a roguelite rather than less.
+
+**v0.3 changed one thing on top of that:** halfway through the tree, a run picks up **one branch of a second unlocked class** (§5.4). It adds no nodes — it multiplies the ones v0.2 already scoped — and it gives the unlocks above something to be worth.
 
 ---
 
@@ -253,6 +255,31 @@ Enemy scaling is quadratic ([GameDesign.md §12.1](GameDesign.md)); tree power m
 
 Tune so that a **well-built level-30 character dies somewhere in stages 35–50**, matching the death horizon in §12.5.
 
+### 5.4 The second class
+
+Halfway through the tree, the run picks up a second discipline.
+
+> **When half your tree is taken, choose one branch of a second unlocked class.** You keep everything you already have; what changes is the pool the level-up draws from.
+
+| Rule | Value |
+|---|---|
+| **When** | The level-up at which **half the tree's nodes** are taken — level 7 against v1's twelve, level ~15 against the full twenty-seven |
+| **What you choose** | A second **unlocked** class, then **one of its three branches** |
+| **What you gain** | That branch's nodes enter your offer pool, gated by the same tier rule (§5) |
+| **What you do not gain** | Its weapon, its movement skill, its signature passive, its Veilrot relationship — **and its Keystone** |
+| **Reversible** | No. Locked for the run. |
+| **If you have unlocked nothing** | The moment does not happen. A player holding only the Oathbound never sees this screen. |
+
+**A fraction, not a fixed level, and the reason is arithmetic.** A twelve-node tree fills at level 13 and a twenty-seven-node one at level 28 (§5.2), so any constant is wrong at one of the two scales — "level 10" would land three picks from the end of the v1 tree and barely a third of the way into the full one. Half the tree is the same beat at every content size, which means **the moment can be playtested at v1 and still be correct at eighty-one nodes.**
+
+**One branch, not the whole tree, because of the pick budget.** A deep run is about 30 levels against 27 nodes, which is what makes §5's *"a great run nearly completes the tree"* true. A second *full* tree would put 54 nodes in front of 30 picks and turn near-completion into a third of two trees. One branch minus its Keystone is 7, so a deep run chooses among **34** — still nearly completable, now with a real question about where the last picks go.
+
+**No Keystone from the second class.** A Keystone is the most build-defining node a class has, and a splashed one would speak louder than the primary it is bolted to. It is also frequently nonsense on its face: **Rot Bloom** (§3.2) rewrites a Veilrot relationship the Oathbound does not have.
+
+**The choice is mandatory.** An offer you may decline is an offer most players decline, and the point of the beat is that the run visibly becomes something. There is no "stay pure" option and no compensating bonus for refusing one.
+
+**It costs no new content, and that is the whole argument for it.** Three classes give **18 pairings** — primary × second class × branch — out of nodes that had to exist anyway. That is the cheapest variety in the game, and it is why this is worth building before a fourth class rather than after one.
+
 ---
 
 ## 6. Meta-progression
@@ -270,6 +297,8 @@ Shards = 10·(deepest stage) + 50·(bosses killed) + 25·(new archetype first en
 ```
 
 Two paths to every class — **pay, or prove.** Grinders and skilled players both get there and neither route is the "wrong" one.
+
+**An unlock is worth more than a class.** §5.4's second-class pick draws only from what you own, so the Gravecaller arrives as three new mid-run branches for the Oathbound *and* three Oathbound branches for itself — **six new pairings for one purchase**, on top of the class. The second unlock is worth more than the first for the same reason, which is the right shape for a store and the right shape for an achievement.
 
 **There is no permanent power progression.** No meta stats, no permanent upgrades, no account level. Every run starts from the same baseline, and the only thing that carries across runs is *which classes you can pick* and what you personally have learned. This is a deliberate stance: it keeps leaderboards meaningful, keeps difficulty tuning tractable against a fixed baseline, and means a returning player is never behind.
 
@@ -289,6 +318,8 @@ Merging cards into the tree and cutting Anchors makes this **smaller** than v0.1
 | Anchors | Yes | **Cut** |
 | Meta systems | XP, levels, skill points, respec, meta tree UI | **Class unlocks only** |
 | Total content units | ~110 | **~81** |
+
+**v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen and a wider draw, both in **M5-07a**.
 
 ### 7.1 Build order — one class, all the way through
 

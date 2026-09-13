@@ -17,7 +17,7 @@ Core can ask what time it is *in the world* — the number a save file is stampe
 | `Tests/Core/Fakes/FixedClockTests.cs` | Tests.Core | The fake's own rules — `FixedRandomTests`' precedent |
 | `Tests/Game/Adapters/UnityClockTests.cs` | Tests.Game | The adapter forwards and does not cache |
 | *small edits* | | `BootInstaller` registers `UnityClock` as `IClock`, singleton; **AR §6's `IClock` row** — `Now` (core time, seconds) is wrong and has been since M0-10 settled it, corrected to `UtcNow` |
-| *ripple* | | none — nothing implements or consumes `IClock` yet, which is the whole reason this is one task and not a paragraph inside M2-13 |
+| *ripple* | | none — nothing implements or consumes `IClock` yet, which is the whole reason this is one task and not a paragraph inside M2-13a |
 
 Only these files change. Anything else is a deviation: say so in *As built*.
 
@@ -61,7 +61,7 @@ public sealed class FixedClock : IClock
 1. **`UtcNow` is UTC**, offset zero, and is the *world's* clock: when a save was written, how long the app was away. It is not seconds, not since anything, and not comparable with `RunState.Time`.
 2. **`UnityClock` reads `DateTimeOffset.UtcNow` on every call and caches nothing.** Two saves in one session must not share a timestamp. It is in `Game` because it is the adapter side of a port (AR §6) and because the day a device clock needs correcting — an NTP offset, a server time — that correction has somewhere to live that core cannot see.
 3. **No member beyond `UtcNow`.** A monotonic elapsed reading is the obvious second one and is deliberately absent: nothing needs it, `Time.realtimeSinceStartup` behaves differently across a suspend on Android and nothing here has ever run outside the Editor to say how. AR §6's rule — *a port grows a member when the mechanic that needs it lands* — is the whole content of this decision.
-4. **`IClock` promises nothing about monotonicity.** A user changing the date, DST, or an NTP correction all move it backwards. Anything subtracting two timestamps owes a negative-difference branch, and that guard belongs to the code that compares them (M2-13, M2-14) rather than to the port.
+4. **`IClock` promises nothing about monotonicity.** A user changing the date, DST, or an NTP correction all move it backwards. Anything subtracting two timestamps owes a negative-difference branch, and that guard belongs to the code that compares them (M2-13a, M2-14a) rather than to the port.
 5. **Nothing in `Soulvail.Core.Run` takes an `IClock`** — AR §18.2. Simulated time is the sum of each tick's `Dt`. This is asserted by reflection over `RunSession`'s constructors rather than left to review, because the invariant's failure mode is a plausible-looking parameter that nobody questions.
 6. `FixedClock` starts where it is told and moves only when told, so a migration fixture can say *"written three days ago"* without sleeping. `Advance` accepts a negative span on purpose — rule 4's case has to be reachable in a test.
 7. `BootInstaller` registers `UnityClock` as `IClock`, singleton, in `BootScope` — beside `IRandom` and for the same reason: it is a device the whole app shares, not something a run owns.
@@ -90,8 +90,8 @@ None. Nothing is visible, nothing renders, and no behaviour changes — the one 
 ## Out of scope
 
 - Any monotonic or elapsed-time member (rule 3).
-- Save timestamps and the DTO that carries them — M2-13.
-- *"How long were you away"* and its backwards-clock guard — M2-14.
+- Save timestamps and the DTO that carries them — M2-13a.
+- *"How long were you away"* and its backwards-clock guard — M2-14a.
 - Pause-aware or background-aware time. Simulated time already stops when the game does, because it is the sum of ticks nobody is taking.
 
 ## As built

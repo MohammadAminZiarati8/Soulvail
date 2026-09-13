@@ -166,11 +166,11 @@ public IReadOnlyList<Vector3> SpawnPoints { get; }
 
 ## Out of scope
 
-- **Drawing the telegraph rings, and the off-screen threat arrows** — M2-12. The events exist here; nothing subscribes yet.
+- **Drawing the telegraph rings, and the off-screen threat arrows** — M2-12b and M2-12a. The events exist here; nothing subscribes yet.
 - **Arrival, seal, clear, gate, and advancing the stage** — M2-10. `IsStageComplete` is the handover.
-- **Arena spawn-point authoring** — M2-11. Until then the points are the ones `RunScope` already dresses.
+- **Arena spawn-point authoring** — M2-11a. Until then the points are the ones `RunScope` already dresses.
 - **Retiring `RespawnPolicy`** — M2-10 (rule 15).
-- **The 8-second stall** GD §7.3 describes, when fewer than three survivors hide — M2-12's arrow is the answer, and no wave timeout is introduced here to paper over it.
+- **The 8-second stall** GD §7.3 describes, when fewer than three survivors hide — M2-12a's arrow is the answer, and no wave timeout is introduced here to paper over it.
 
 ## As built
 
@@ -256,5 +256,5 @@ comment now names the incident. **The spec's instruction to re-run PlayMode is w
 The four Editor/device steps are the owner's. Note for step 1: the Run scene still dresses **eight
 dummies at the eight positions that are now also the spawn points**, so the arena opens with eight
 standing and stage 1's C(1) is 10 — the director tops up by two and then waits for kills. That is
-the spec's own wiring (rule 15 changes `keepAlive`, not the dressing), and M2-11 is what separates
+the spec's own wiring (rule 15 changes `keepAlive`, not the dressing), and M2-11a is what separates
 "where an arena is dressed" from "where a wave may arrive".

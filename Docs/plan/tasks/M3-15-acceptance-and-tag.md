@@ -11,7 +11,7 @@ Answer the M3 question on evidence — *does a run get meaningfully stronger as 
 
 | Path | Purpose |
 |---|---|
-| `Docs/plan/PROGRESS.md` | Checklist results, the feel verdict, tuned numbers, Current State pointing at M4-01 |
+| `Docs/plan/PROGRESS.md` | Checklist results, the feel verdict, tuned numbers, Current State pointing at M4-00 (rule 3) |
 | `Docs/plan/archive/PROGRESS-M3.md` | M3's log entries, moved — **on time, for the second milestone running** (rule 5) |
 | `Docs/plan/ROADMAP.md` | M3 ticked; the M3 ledger closed and **carry-forward into M4** opened; M4's rows promoted from titles where this checklist demands it |
 | `Docs/GameDesign.md` · `Docs/Characters.md` · `Docs/CoreCombat.md` | Only if tuning changed a shipped number, or a flagged contradiction is resolved (rules 1, 9) |
@@ -106,7 +106,7 @@ Ticked at two grains, and the entry says which is which: **[play]** rows are cov
 ## Out of scope
 
 - **The first boss, phases, the Warden of Ash, death → Shard payout** — M4. M3 exists so this milestone stays about *getting stronger*: a tree tested against three archetypes is the honest test of whether the picks matter, and a boss would make an unkillable build look fine.
-- **The boss health bar.** GD §16.2's segmented bar moved to **M4-01** at M3-00d, with the phases that drive it. Its absence is not a miss on this checklist.
+- **The boss health bar.** GD §16.2's segmented bar stays with **M4-04**, the task that has always owned it, behind M4-01's phases — ruled at M3-00d rather than stubbed here. Its absence is not a miss on this checklist.
 - **The remaining fifteen nodes and the three keystones** — M7-04. Row 1's verdict is about twelve, and the checklist says so where it matters (*"Overflow rather than the tree"*).
 - **The second class** — M5. One class with a tree is what M3 promised; `Data/Trees/` holding one asset is correct.
 - **The Sanctum, Veilrot, Pacts, Ordeals, Reroll, Banish** — M6. `IProgressionCommands` has two members and AR §6 lists five; three arrive with their mechanics.

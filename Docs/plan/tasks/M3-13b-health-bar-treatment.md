@@ -136,7 +136,7 @@ public void SetGrantedShield(float fraction);
 
 ## Out of scope
 
-- **The boss bar.** GD §16.2's segmented bar, one segment per phase, is **M4-01's** — ruled by the owner at M3-00d. Phases, and every event that would drive such a bar, arrive with the boss; a stub here would be a prefab nobody can see, tested against events that do not exist, and its one real design claim — a segment per phase — unverifiable without phases. M3-12c rule 6's argument, applied to a view.
+- **The boss bar.** GD §16.2's segmented bar, one segment per phase, **already has a task: M4-04, *Segmented boss HUD bar*, which depends on M4-01's phases** — and the owner ruled at M3-00d that it stays there. Phases, and every event that would drive such a bar, arrive with the boss; a stub here would be a prefab nobody can see, tested against events that do not exist, and its one real design claim — a segment per phase — unverifiable without phases. M3-12c rule 6's argument, applied to a view.
 - **The `"Always show enemy health bars"` toggle** (GD §16.2) — **M8-03**, with HUD opacity, by M3-09c rule 3's rule: a second profile field costs a `PlayerProfile` bump and a migration step, and that is a review of its own.
 - **Damage numbers, the low-HP vignette, hit-stop and screen shake** (GD §16.3) — M8-01's game-feel pass. Two of its items shipped here would set the pattern by accident (M3-11c's Out of scope, for the same reason).
 - **Elite affixes, and anything that makes an Elite exist** — M7-02. Rule 7 ships the treatment; the content that triggers it is three milestones out and `IsElite` has been on the spec since M1-05 waiting for it.

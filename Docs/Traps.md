@@ -123,6 +123,21 @@ newer than the assembly that already compiled it successfully** — pair the DLL
   starts the suite and writes its tally to `Temp/` exactly as before. Delete the helper before
   handover. **Do not conclude from this entry that the list is fixed either way: probe it, because
   it has now moved twice** (M1-17, M1-19, M2-04).
+- **M3-01b: `TestRunnerApi.Execute` ran clean again, directly, and the bullet above cost four dead
+  ends before that was noticed.** The plain shape — `CreateInstance<TestRunnerApi>()`,
+  `RegisterCallbacks(this)`, `Execute(new ExecutionSettings(new Filter { testMode =
+  TestMode.EditMode }))` — started the suite with no reflection and no temporary helper, for both
+  EditMode and PlayMode. **Every refusal in that session was `File.Delete`**, sitting two lines above
+  the test call in a method that tidied up its own results file. Because the check is
+  pre-execution, the *whole* command is refused and the message names neither the line nor the
+  reason, so the innocent-looking call nearest the bottom gets the blame. **The general rule, third
+  time of asking: the refusal message identifies nothing — bisect the script, not the error.** The
+  cheapest bisect is to delete half the body and resubmit; the tell here was that a command with the
+  test call and no file I/O passed, which took one probe and should have been the first one. And
+  when a command needs to start from a clean file, **overwrite it with a sentinel** (`"RUNNING"`)
+  rather than deleting it — the poller then reads state from the file's contents instead of its
+  existence, which is what the first bullet's *"overwrite with `File.WriteAllText`"* means in
+  practice.
 - **The plural `AssetDatabase.DeleteAssets(string[], List<string>)` is *not* refused**, and
   `AssetDatabase.Refresh()` — including the `ImportAssetOptions.ForceUpdate` overload — ran clean
   in M2-art across a dozen commands. The refusal list above is per *method*, not per capability, so

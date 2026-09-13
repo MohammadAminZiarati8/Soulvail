@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -21,11 +22,15 @@ namespace Soulvail.Core.Save;
 /// the row that says this type may have one.
 /// </para>
 /// <para>
-/// <b>It allocates nothing.</b> <see cref="RunSnapshot"/> and <see cref="RandomState"/> are
-/// <c>readonly struct</c>s, <see cref="IRandom.Capture"/> allocates nothing (M2-13a), and
-/// <c>RunSnapshotTaken</c> crosses <c>IDomainEvents</c> by <c>in</c>. It is not on a tick path — it
-/// runs twice a minute at most — but a boundary frame is already swapping an arena, and it is the
-/// last frame in a run that should also be asking for heap (rule 7).
+/// <b>It allocates nothing, and M3-03 is where that stops being true.</b>
+/// <see cref="RunSnapshot"/> and <see cref="RandomState"/> are <c>readonly struct</c>s,
+/// <see cref="IRandom.Capture"/> allocates nothing (M2-13a), and <c>RunSnapshotTaken</c> crosses
+/// <c>IDomainEvents</c> by <c>in</c>. It is not on a tick path — it runs twice a minute at most —
+/// but a boundary frame is already swapping an arena, and it is the last frame in a run that should
+/// also be asking for heap (rule 7). <b>The list of taken nodes is the exception being walked
+/// towards deliberately</b> (M3-01b rule 5): a snapshot copies it, and this build passes an empty
+/// one, so the cost is zero until there is a tree to write down. <c>Take_AllocatesNothing</c> is
+/// therefore M3-03's row to retire, with the trade named rather than discovered.
 /// </para>
 /// </remarks>
 public sealed class RunRecorder
@@ -130,7 +135,21 @@ public sealed class RunRecorder
             // Two clocks, neither derived from the other: simulated seconds the run has lasted, and
             // the wall-clock instant it was written at.
             state.Time,
-            _clock.UtcNow);
+            _clock.UtcNow,
+
+            // **What a levelled run is made of** (M3-01b). Absolute experience rather than the
+            // fraction, for the reason the shield above is absolute. The boundary capture sits
+            // downstream of the tick's XP drain (AR §18.1, M3-01a), so the level a stage's *last*
+            // kill earned is in the file that describes the next stage — not the one the player
+            // had a frame ago.
+            state.Level,
+            state.Xp,
+            state.PendingLevelUps,
+
+            // Empty until M3-03, which swaps in the tree's view of what has been taken. The shared
+            // zero-length array rather than a new one, so this call still allocates nothing for as
+            // long as there is nothing to copy.
+            Array.Empty<ContentId>());
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

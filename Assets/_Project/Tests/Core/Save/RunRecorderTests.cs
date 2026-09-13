@@ -229,6 +229,98 @@ public sealed class RunRecorderTests
         Assert.That(_random.Capture().Misc, Is.EqualTo(11UL));
     }
 
+    // ---- What a levelled run writes down (M3-01b rules 1, 6) -----------------------------------
+
+    [Test]
+    public void Recorder_CapturesLevelXpPending()
+    {
+        Build(OneHuskStage());
+
+        // Three picks owed at level 3, which Grant alone cannot produce — it banks a pick per
+        // threshold, so a played run at level 3 owes exactly two. The combination is legal on disk
+        // and has to survive a round trip, and it is also what a run looks like the moment M3-08
+        // exists and a player closes the app on the level-up screen rather than choosing.
+        StartAt(3, restore: Saved(3, level: 3, xp: 20f, pendingLevelUps: 3));
+
+        RunState state = _session.State;
+
+        Assert.That(state.Level, Is.EqualTo(3), "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(state, 4);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        Assert.That(snapshot.Level, Is.EqualTo(3));
+        Assert.That(snapshot.PendingLevelUps, Is.EqualTo(3));
+
+        // **Absolute, not the fraction** — the rule-8 trap, and the same one PlayerShield sprang at
+        // M2-14a. XpToNext moves with the level *and* with the mode's curve, so a snapshot carrying
+        // 0.19 could not be turned back into 20 points by anything reading it.
+        Assert.That(snapshot.Xp, Is.EqualTo(20f));
+        Assert.That(snapshot.Xp, Is.EqualTo(state.Xp));
+        Assert.That(
+            snapshot.Xp,
+            Is.Not.EqualTo(state.XpFraction),
+            "The snapshot must carry absolute experience, not the fraction the XP strip fills to.");
+    }
+
+    [Test]
+    public void Recorder_NodesAreEmptyUntilM3_03()
+    {
+        Build(OneHuskStage());
+        StartAt(1);
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // v2 carries the field two tasks before its writer (rule 1), which trades against M2-13a
+        // rule 4 knowingly: the alternative was a second step in the chain, for ever, for a format
+        // nobody has shipped. Empty rather than null, so no reader has to ask.
+        Assert.That(snapshot.TakenNodeIds, Is.Not.Null);
+        Assert.That(snapshot.TakenNodeIds, Is.Empty);
+
+        // **M3-03 replaces this row.**
+    }
+
+    [Test]
+    public void Recorder_BoundaryCarriesTheClearingKillsLevel()
+    {
+        // Five Husks at twelve experience each is sixty, against the 20 + 12·2^1.4 ≈ 51.7 that
+        // level 2 costs — so the stage's *last* kill is the one that crosses, which is the whole
+        // arrangement this row needs.
+        Build(LevellingStage());
+        StartAt(1);
+
+        Assert.That(
+            _events.Single<RunSnapshotTaken>().Snapshot.Level,
+            Is.EqualTo(1),
+            "The opening write is level 1, so the boundary's level having moved means something.");
+
+        ClearTheStage();
+
+        Assert.That(_events.Count<LeveledUp>(), Is.GreaterThan(0), "The fixture failed to level the player.");
+
+        RunSnapshot boundary = _events.Of<RunSnapshotTaken>()[1].Snapshot;
+
+        // **This is what AR §18.1's xp-drain row buys.** The drain sits after the death check and
+        // before the director and the stage flow, so a LeveledUp earned by a stage's last kill
+        // lands before that tick's StageCleared and before the snapshot taken with it. Move the
+        // drain below the flow and this file carries the level the player had a frame ago, and the
+        // run resumes one level short — silently, and only for players who level on a last kill.
+        Assert.That(boundary.Level, Is.GreaterThan(1));
+        Assert.That(boundary.Level, Is.EqualTo(_session.State.Level));
+
+        Assert.That(
+            LastIndexOf<LeveledUp>(),
+            Is.LessThan(IndexOfBoundarySnapshot()),
+            "The level the clearing kill earned must be published before the snapshot that records it.");
+    }
+
     [Test]
     public void Take_VersionIsCurrent()
     {
@@ -244,6 +336,14 @@ public sealed class RunRecorderTests
             Is.EqualTo(RunSnapshot.CurrentVersion));
     }
 
+    /// <remarks>
+    /// <b>This row survives M3-01b only because the list of taken nodes is empty, and M3-03 is what
+    /// retires it.</b> A snapshot copies that list (M3-01b rule 5) — it has to, because
+    /// <c>SaveWriter</c> enqueues the write and a borrowed buffer would be rewritten under a save
+    /// that had not happened yet — and a copy of nothing is the shared zero-length array, so there
+    /// is still no heap asked for here. The moment there is a tree to write down there will be, and
+    /// the trade was named in advance rather than discovered by this row going red.
+    /// </remarks>
     [Test]
     public void Take_AllocatesNothing()
     {
@@ -251,6 +351,11 @@ public sealed class RunRecorderTests
         StartAt(1);
 
         RunState state = _session.State;
+
+        Assert.That(
+            state.PendingLevelUps,
+            Is.EqualTo(0),
+            "A fresh run, so what follows measures the capture rather than a level-up.");
 
         // A silent sink, never RecordingEvents: that one stores each payload in a List<object> and
         // would box every snapshot, so the row would measure the fake (Traps §7). The real
@@ -649,12 +754,15 @@ public sealed class RunRecorderTests
             ProjectileCapacity);
     }
 
-    private void StartAt(int stage, Vector3? executionerAt = null)
+    private void StartAt(int stage, Vector3? executionerAt = null, RunSnapshot? restore = null)
     {
-        _session.Start(Config(stage, executionerAt));
+        _session.Start(Config(stage, executionerAt, restore));
     }
 
-    private RunConfig Config(int stage, Vector3? executionerAt = null) => new RunConfig(
+    private RunConfig Config(
+        int stage,
+        Vector3? executionerAt = null,
+        RunSnapshot? restore = null) => new RunConfig(
         new ContentId(ModeId),
         new ContentId(OathboundId),
         _random.Seed,
@@ -662,7 +770,35 @@ public sealed class RunRecorderTests
         new SpawnPlan(
             executionerAt is null
                 ? Array.Empty<SpawnPlan.Entry>()
-                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore: null);
+                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore);
+
+    /// <summary>
+    /// A save that puts a run at <paramref name="level"/>, <paramref name="xp"/> and
+    /// <paramref name="pendingLevelUps"/> when it is started.
+    /// </summary>
+    /// <remarks>
+    /// <b>Resuming is how a row gets an arbitrary progression state, and it is the only way.</b>
+    /// <c>RunState.Progression</c> is <c>internal</c> and this assembly has no
+    /// <c>InternalsVisibleTo</c> — the fixture's own standing rule — so the alternative is playing
+    /// until the numbers happen to land, which cannot produce a level and a pick count that
+    /// disagree at all. Not circular: <c>RunSessionResumeTests.Start_RestoresLevelXpPending</c> is
+    /// what says the restore works, and it fails there rather than here if it does not.
+    /// </remarks>
+    private RunSnapshot Saved(int stage, int level, float xp, int pendingLevelUps) => new RunSnapshot(
+        RunSnapshot.CurrentVersion,
+        new ContentId(ModeId),
+        new ContentId(OathboundId),
+        _random.Seed,
+        stage,
+        _random.Capture(),
+        playerHp: 100f,
+        playerShield: ShieldMax,
+        runTime: 90f,
+        Instant,
+        level,
+        xp,
+        pendingLevelUps,
+        Array.Empty<ContentId>());
 
     private void TickFor(int ticks)
     {
@@ -857,6 +993,42 @@ public sealed class RunRecorderTests
         return -1;
     }
 
+    /// <summary>Where <typeparamref name="T"/> was published last, as an index into the whole log.</summary>
+    private int LastIndexOf<T>()
+        where T : struct
+    {
+        for (int i = _events.All.Count - 1; i >= 0; i--)
+        {
+            if (_events.All[i] is T)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Where the boundary write sits in the whole log — the second <c>RunSnapshotTaken</c>, the
+    /// first being the opening one.
+    /// </summary>
+    private int IndexOfBoundarySnapshot()
+    {
+        int seen = 0;
+
+        for (int i = 0; i < _events.All.Count; i++)
+        {
+            if (_events.All[i] is RunSnapshotTaken && ++seen == 2)
+            {
+                return i;
+            }
+        }
+
+        Assert.Fail("No boundary snapshot was ever taken.");
+
+        return -1;
+    }
+
     private static void Draw(IRandomStream stream, int times)
     {
         for (int i = 0; i < times; i++)
@@ -869,6 +1041,18 @@ public sealed class RunRecorderTests
 
     /// <summary>A stage of exactly one Husk: one wave, one body, and a budget that buys it.</summary>
     private static ModeSpec OneHuskStage() => Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap);
+
+    /// <summary>
+    /// A stage of five Husks in one wave — sixty experience against level 2's ≈ 51.7, so the last
+    /// kill of the stage is the one that crosses the threshold.
+    /// </summary>
+    /// <remarks>
+    /// Four would not do it (48) and six would cross on the fifth, which would make the row pass
+    /// for the wrong reason: what it is about is a level earned on the tick the stage ends, not a
+    /// level earned at some point during it.
+    /// </remarks>
+    private static ModeSpec LevellingStage() =>
+        Mode(budget: HuskCost * 5, waves: 1, concurrency: DeviceCap);
 
     /// <summary>The same, but finite and out of stages after <paramref name="finalStage"/>.</summary>
     private static ModeSpec FinalStage(int finalStage) =>

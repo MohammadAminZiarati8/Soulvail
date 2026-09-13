@@ -167,6 +167,53 @@ public sealed class LevelTracker
     }
 
     /// <summary>
+    /// Puts a resumed run back where its save left it, without announcing anything.
+    /// </summary>
+    /// <param name="level">The saved level, from 1.</param>
+    /// <param name="xp">Saved experience into that level.</param>
+    /// <param name="pendingLevelUps">Picks the save says the player is still owed.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>Silent, and that is the rule rather than an optimisation.</b> It is called from
+    /// <c>RunSession.Start</c> before <c>RunStarted</c> — where <c>Health.Restore</c> is, and for
+    /// M2-14b rule 2's reason: a presenter reading <c>State.Level</c> from inside that handler must
+    /// already see the restored number. Nothing may publish before the run it belongs to has been
+    /// announced, so a restore that raised <see cref="LeveledUp"/> would put a level-up screen in
+    /// front of a player who earned it in a previous session.
+    /// </para>
+    /// <para>
+    /// <b>And it settles.</b> If the saved experience is at or past what this build's curve charges
+    /// for the next level, the thresholds are crossed here — silently, banking the picks. The case
+    /// is not hypothetical: CH §5.2's exponent is flagged for a retune at M3-15, and a curve that
+    /// got *cheaper* between builds would otherwise leave a legal save sitting above its own bar
+    /// for ever, levelling only when the next kill happened to push it over. The loop terminates
+    /// for the reason <see cref="Grant"/>'s does — <see cref="XpCurve.IsAuthored"/> guarantees a
+    /// positive cost per level, and <c>RunSnapshot</c> has already refused a non-finite
+    /// <paramref name="xp"/> at the boundary it arrived through.
+    /// </para>
+    /// <para>
+    /// <b>Unguarded, deliberately</b>, like <c>RunState</c>'s constructor and for the same reason
+    /// (AR §18.2): it is <c>internal</c>, the one caller is three lines of core, and every value it
+    /// passes has already been guarded by <c>RunSnapshot</c>'s constructor — which is the real
+    /// boundary, because those numbers came out of a file. A second copy of those guards here is
+    /// the first place the two could disagree.
+    /// </para>
+    /// </remarks>
+    internal void Restore(int level, float xp, int pendingLevelUps)
+    {
+        Level = level;
+        Xp = xp;
+        PendingLevelUps = pendingLevelUps;
+
+        while (Xp >= XpToNext)
+        {
+            Xp -= XpToNext;
+            Level++;
+            PendingLevelUps++;
+        }
+    }
+
+    /// <summary>
     /// Consumes one of the picks the player is owed.
     /// </summary>
     /// <remarks>

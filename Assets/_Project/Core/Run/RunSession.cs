@@ -386,8 +386,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // One per run, like the two above: a second Start must not inherit the first run's level.
         // The curve comes off the mode rather than off the character or a constant here, because
         // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
-        // put the difficulty curves there in M2-03. A resumed run rebuilds at level 1 and is put
-        // back where it was by M3-01b; nothing in this task writes the level down.
+        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
+        // back where it was in the restore block below, before RunStarted.
         var progression = new LevelTracker(mode.Xp, _events);
 
         State = new RunState(
@@ -411,15 +411,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // restore afterwards would show a resumed run a full bar that drops to 62 % on the next
         // frame. A resumed run's first impression is the one frame nothing gets to be wrong in.
         //
-        // Three values and no more (rule 3): hit points, shield and simulated seconds. The
-        // generator is already standing where the save left it — the composition root restored it
-        // when it built the generator, before this session existed — and everything else is
-        // rebuilt rather than read back: the arena from ArenaFor(stage, seed), the wave plan from
-        // the restored stream position a few lines above, and the population from nothing at all,
-        // because a boundary has none.
+        // Six values now (rule 3, extended by M3-01b): hit points, shield, simulated seconds, and
+        // the level, experience and banked picks the save carried. The generator is already
+        // standing where the save left it — the composition root restored it when it built the
+        // generator, before this session existed — and everything else is rebuilt rather than read
+        // back: the arena from ArenaFor(stage, seed), the wave plan from the restored stream
+        // position a few lines above, and the population from nothing at all, because a boundary
+        // has none.
+        //
+        // **`resumed.TakenNodeIds` is read and ignored, on purpose.** There is no tree to apply it
+        // to until M3-03, which also decides its order against Health.Restore — a node that raises
+        // max HP has to land before the hit points that were saved under it.
+        // `Start_IgnoresTakenNodesUntilM3_03` is the row that says so, so M3-03 flips a row rather
+        // than introducing a behaviour nothing was watching.
         if (config.Restore is RunSnapshot resumed)
         {
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
+
+            // Silent and settling, for the reason the whole block is here: a presenter reading
+            // State.Level from inside RunStarted must already see it, and nothing may publish
+            // before the run it belongs to has been announced (M3-01b rule 7).
+            progression.Restore(resumed.Level, resumed.Xp, resumed.PendingLevelUps);
 
             State.Time = resumed.RunTime;
         }

@@ -67,6 +67,20 @@ public sealed class RunSessionResumeTests
 
     private const float SavedRunTime = 412.5f;
 
+    /// <summary>
+    /// What a levelled save carries, and none of it is the value a fresh run has. Level 4 rather
+    /// than 2 and one pick owed rather than none, so a restore that was quietly deleted would show
+    /// up as a wrong number rather than as a plausible one.
+    /// </summary>
+    /// <remarks>
+    /// 30 experience is comfortably inside level 4's bar — <c>Scalings.Xp()</c> charges
+    /// 20 + 12·5^1.4 ≈ 134 to reach level 5 — so these rows test the restore rather than the settle.
+    /// <c>Start_RestoreSettlesAnOverfullBar</c> is the row that goes the other way on purpose.
+    /// </remarks>
+    private const int SavedLevel = 4;
+    private const float SavedXp = 30f;
+    private const int SavedPending = 1;
+
     private const float Frame = 1f / 60f;
 
     /// <summary>Comfortably outside <c>SpawnDirector.MinPlayerDistance</c> of the origin.</summary>
@@ -137,6 +151,80 @@ public sealed class RunSessionResumeTests
     }
 
     [Test]
+    public void Start_RestoresLevelXpPending()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+
+        // The three reads a HUD and a level-up flow start from. Absolute experience, not the
+        // fraction: XpToNext moves with the level and with the mode's curve, so a fraction cannot
+        // be restored without the maximum that produced it (rule 8).
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel));
+        Assert.That(_session.State.Xp, Is.EqualTo(SavedXp));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(SavedPending));
+
+        // The fixture's own claim, checked out loud: a fresh run is level 1 with nothing owed, so
+        // if the saved values were those this row would pass with the restore deleted.
+        Assert.That(SavedLevel, Is.Not.EqualTo(1));
+        Assert.That(SavedPending, Is.Not.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_RestoreSettlesAnOverfullBar()
+    {
+        Build(seed: 7);
+
+        _events.Clear();
+
+        // Far past the bar. The case is not hypothetical: CH §5.2's exponent is flagged for a
+        // retune at M3-15, and a curve that got cheaper between builds would leave a legal save
+        // sitting above its own threshold — levelling only when the next kill happened to push it
+        // over, which is a run that is silently one or more picks poorer than it earned.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 2, xp: 10_000f, pendingLevelUps: 0));
+
+        Assert.That(_session.State.Level, Is.GreaterThan(2), "The thresholds the saved XP pays for are crossed.");
+        Assert.That(_session.State.PendingLevelUps, Is.GreaterThan(0), "And each one banks a pick.");
+
+        // Settled, not merely climbed: what is left is inside the new level's bar.
+        Assert.That(_session.State.XpFraction, Is.LessThan(1f));
+
+        // **Silently.** Nothing may publish before RunStarted — a LeveledUp raised here would put a
+        // level-up screen in front of a player for a level they earned in a previous session, and
+        // an XpChanged would reach a bar that RunStarted has not drawn yet (rule 7).
+        Assert.That(_events.Count<LeveledUp>(), Is.EqualTo(0));
+        Assert.That(_events.Count<XpChanged>(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_IgnoresTakenNodesUntilM3_03()
+    {
+        Build(seed: 7);
+
+        RunSnapshot naming = Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[]
+            {
+                new ContentId("skill.oathbound.bulwark"),
+                new ContentId("skill.oathbound.consecrate"),
+            });
+
+        // Two nodes named, neither of them content this build ships. Nothing throws and nothing is
+        // applied, because there is no tree to apply them to — v2 carries the field two tasks
+        // before its reader (rule 1), and Start reads it and does nothing with it (rule 7).
+        Assert.DoesNotThrow(() => StartResumed(stage: 4, naming));
+
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
+
+        // **M3-03 flips this row to Start_RestoresTakenNodes**, which is the point of writing it:
+        // that task changes a row rather than introducing a behaviour nothing was watching. It also
+        // decides the order against Health.Restore — a node that raises max HP has to land before
+        // the hit points saved under it.
+        Assert.That(naming.TakenNodeIds, Has.Count.EqualTo(2), "The fixture named two, so the row is not vacuous.");
+    }
+
+    [Test]
     public void Start_RestoresRunTime()
     {
         Build(seed: 7);
@@ -168,6 +256,8 @@ public sealed class RunSessionResumeTests
 
         float seenFromTheHandler = float.NaN;
         float shieldFromTheHandler = float.NaN;
+        int levelFromTheHandler = 0;
+        int pendingFromTheHandler = -1;
 
         var watching = new WatchingEvents();
         RunSession session = SessionOver(watching);
@@ -176,6 +266,8 @@ public sealed class RunSessionResumeTests
         {
             seenFromTheHandler = session.State.PlayerHp;
             shieldFromTheHandler = session.State.PlayerShield;
+            levelFromTheHandler = session.State.Level;
+            pendingFromTheHandler = session.State.PendingLevelUps;
         });
 
         session.Start(ResumedConfig(stage: 4));
@@ -189,6 +281,17 @@ public sealed class RunSessionResumeTests
             "A subscriber reading PlayerHp from RunStarted must already see the restored value.");
 
         Assert.That(shieldFromTheHandler, Is.EqualTo(SavedShield));
+
+        // The same rule, for the same reason, for the three M3-01b added. M3-10b's XP strip and
+        // level readout are drawn from inside this handler, so a progression restore applied after
+        // the publish would show a resumed run level 1 with an empty bar for one frame — and M3-08's
+        // flow, which acts on a pending pick, would read zero and show no screen at all.
+        Assert.That(
+            levelFromTheHandler,
+            Is.EqualTo(SavedLevel),
+            "A subscriber reading State.Level from RunStarted must already see the restored value.");
+
+        Assert.That(pendingFromTheHandler, Is.EqualTo(SavedPending));
     }
 
     [Test]
@@ -201,6 +304,21 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.PlayerHp, Is.EqualTo(MaxHp));
         Assert.That(_session.State.PlayerShield, Is.EqualTo(ShieldMax));
         Assert.That(_session.State.Time, Is.EqualTo(0f), "A fresh run has lasted no time at all.");
+    }
+
+    [Test]
+    public void Start_FreshRunIsLevelOne()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        // The other half of the restore rows: a config with no snapshot must not inherit anything,
+        // and a run that begins deep is still a run that begins at level 1 — depth and level are
+        // different numbers, and GD §4.5 lets a mode start at stage 7.
+        Assert.That(_session.State.Level, Is.EqualTo(1));
+        Assert.That(_session.State.Xp, Is.EqualTo(0f));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(0));
     }
 
     // ---- The agreement (rule 4) -----------------------------------------------------------------
@@ -485,7 +603,14 @@ public sealed class RunSessionResumeTests
         SpawnPlan.Empty,
         restore: null);
 
-    private static RunSnapshot Snapshot(int stage, int seed, string modeId = ModeId) =>
+    private static RunSnapshot Snapshot(
+        int stage,
+        int seed,
+        string modeId = ModeId,
+        int level = SavedLevel,
+        float xp = SavedXp,
+        int pendingLevelUps = SavedPending,
+        IReadOnlyList<ContentId> takenNodeIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -496,7 +621,11 @@ public sealed class RunSessionResumeTests
             SavedHp,
             SavedShield,
             SavedRunTime,
-            Instant);
+            Instant,
+            level,
+            xp,
+            pendingLevelUps,
+            takenNodeIds ?? Array.Empty<ContentId>());
 
     private void TickFor(int ticks)
     {

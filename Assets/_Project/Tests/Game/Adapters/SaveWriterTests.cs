@@ -305,7 +305,11 @@ public sealed class SaveWriterTests
         playerHp: hp,
         playerShield: 12f,
         runTime: 190.5f,
-        writtenAt: Instant);
+        writtenAt: Instant,
+        level: 1,
+        xp: 0f,
+        pendingLevelUps: 0,
+        takenNodeIds: Array.Empty<ContentId>());
 
     /// <summary>A store that remembers what it was asked to do, and can be told to fail once.</summary>
     private sealed class RecordingStore : ISaveStore

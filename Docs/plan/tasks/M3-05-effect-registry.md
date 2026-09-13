@@ -147,4 +147,56 @@ None. Nothing is visible and nothing calls it in a run; the honest check is six 
 
 ## As built
 
-_Filled at merge._
+**Built exactly the Files table:** three new Core files under `Core/Effects/` (a new folder inside an
+existing assembly — no asmdef, no `csc.rsp`, all five new files pure C# with file-scoped
+namespaces), two new test files under `Tests/Core/Effects/`, and the two small edits. Seven files
+touched, nothing else in `git status`.
+
+**Two deviations, both additive, both named here.**
+
+1. **`RunState.Effects` is a constructor parameter, not a field assigned after construction.** The
+   Files table says "`RunState` + `internal EffectRegistry Effects`" without saying how it gets
+   there. It goes in through the `internal` constructor beside `progression`, because every other
+   live object on that type does and because the alternative — an `internal set` — would be the
+   first settable handle on a class whose entire remark is that its setters are the two scalars
+   `StageIndex` and `Time`. The ripple is one call site, `RunSession.Start`.
+2. **Five test rows beyond the Tests table's twenty-two**, of which four are the guard rows the
+   spec says are implied rather than listed: `Apply_NullArguments_Throw` (the registry's five
+   doors), `Stats_NullArguments_Throw`, `Handler_NullArguments_Throw`, and
+   `Remove_Unregistered_ThrowsNamingTheType` — the `Remove` half of rule 2's loud absence, which
+   the table spells only for `Apply`. The fifth is not a guard row and is called out on purpose:
+   **`Registries_DoNotShareHandlers`** puts a handler in one registry and asks a second one, which
+   is the half of `Registry_HoldsNoStatics` reflection cannot see. Reflection proves there is no
+   static *field*; it cannot prove two instances do not share a table, and "the registry that
+   applied the last run's nodes to this run's player" is the failure AR §1 is actually about.
+
+**Three decisions the spec left open, and how they went.**
+
+- **`Register` refuses a second handler with `InvalidOperationException`**, not
+  `ArgumentException`: the argument is fine, the registry's state is what makes the call wrong.
+- **`Apply`, `Remove` and `CanApply` guard `effect` and `source` for null.** The spec guards
+  constructors; these are the doors M3-03 will call from a loop over authored content, and a null
+  in an effect list is a content bug that should name its parameter rather than arrive as a
+  `NullReferenceException` from inside a dictionary probe. Costs nothing on the happy path.
+- **`ModifyStat`'s constructor does not validate `PlayerStat`**, matching the Public API's comment
+  (*"value finite; kind one of the three"*). The loud place is `PlayerStats.Resolve`, which is the
+  one site that knows the full set — `MovementSkillKind`'s argument, quoted in the file. Worth
+  knowing for M3-02b: `CanApply` answers "is there a handler for this type", not "is this effect's
+  address resolvable", so an authored `(PlayerStat)99` would survive M3-03's validation sweep and
+  throw at the pick. Closing that would mean a second validation door on the effect itself, which
+  is M3-02b's or M3-14b's call to make with the authoring in front of it.
+
+**One thing the table asks for that no test can see.** `RunSession.Start` builds the `PlayerStats`,
+the registry and the `ModifyStatHandler`, and registers it — but `RunState.Effects` is `internal`
+(rule 9) and `Soulvail.Tests.Core` has no `InternalsVisibleTo` (AR §18.2, deliberate), so there is
+no route for a test to observe that the registration happened. The Tests table has no row for it
+and correctly so; rule 10 means nothing in a live run would notice either. **M3-03 is the first
+task that can prove the line is there**, and the first that would fail if it were not.
+
+**Verification.** 1148 EditMode / 0 / 0, twice consecutively, against M3-01b's 1121 — **27 new
+rows**, which is the twenty-two above plus the five. PlayMode 11/11. Six assemblies, zero compile
+errors, zero analyzer warnings. Every one of the seven files confirmed in its intended assembly
+through `GetAssemblyNameFromScriptPath`, and all eight new types confirmed present in
+`Soulvail.Core` / `Soulvail.Tests.Core` by name rather than assumed (Traps §5).
+
+**Manual verification:** none, as specced. Nothing is visible and nothing in a run calls `Apply`.

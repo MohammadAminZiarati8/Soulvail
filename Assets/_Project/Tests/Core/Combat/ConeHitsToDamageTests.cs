@@ -494,6 +494,7 @@ public sealed class ConeHitsToDamageTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7 — the Censer is the only block any row here reads.</summary>
@@ -523,6 +524,7 @@ public sealed class ConeHitsToDamageTests
         3.5f,
         1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,

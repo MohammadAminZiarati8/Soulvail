@@ -428,6 +428,7 @@ public sealed class ContentTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     private static ContentId OathboundId() => new ContentId("character.oathbound");

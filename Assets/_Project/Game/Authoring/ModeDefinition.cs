@@ -57,6 +57,11 @@ namespace Soulvail.Game.Authoring
                  "paced, and how much depth adds to each enemy.")]
         [SerializeField] private ScalingBlock _scaling = new ScalingBlock();
 
+        [Tooltip("CH §5.2's levelling curve for this mode: what each level costs. How fast a " +
+                 "mode levels you is the mode's own statement (GD §4.5) — a Boss Rush would " +
+                 "level differently, or not at all.")]
+        [SerializeField] private XpBlock _xp = new XpBlock();
+
         [Tooltip("Every archetype this mode may spawn, and the stage each is introduced at " +
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
@@ -95,6 +100,7 @@ namespace Soulvail.Game.Authoring
                     _isEndless,
                     _finalStage,
                     BuildScaling(),
+                    BuildXp(),
                     BuildRoster(),
                     BuildArenas());
             }
@@ -131,6 +137,27 @@ namespace Soulvail.Game.Authoring
             }
 
             return _scaling.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored levelling block into the <see cref="XpCurve"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// A missing block is refused rather than defaulted, for <see cref="BuildScaling"/>'s
+        /// reason and with a sharper consequence: a <c>default(XpCurve)</c> costs nothing per
+        /// level, and a run on one would level without end on its first kill.
+        /// </remarks>
+        private XpCurve BuildXp()
+        {
+            if (_xp is null)
+            {
+                throw new ArgumentException(
+                    "its xp block is missing. CH §5.2's curve is not optional — a mode without "
+                        + "one charges nothing per level.",
+                    nameof(_xp));
+            }
+
+            return _xp.ToCurve();
         }
 
         /// <summary>
@@ -281,6 +308,47 @@ namespace Soulvail.Game.Authoring
                 _hp.ToCurve(),
                 _damage.ToCurve(),
                 _speed.ToCurve());
+        }
+
+        /// <summary>
+        /// CH §5.2's levelling curve as a designer tunes it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="ScalingBlock"/>'s reason — it renders as
+        /// one foldout, so three more numbers do not push the roster further down a mode's
+        /// inspector — and the initialisers are CH §5.2's own, so a mode created from the Create
+        /// menu levels rather than being invalid content.
+        /// </para>
+        /// <para>
+        /// <b>20 / 12 / 1.4 disagrees with CH §5.2's own table past stage 10 and ships anyway.</b>
+        /// The tree fills around stage 20 where the table says 30; the owner ruled at M3-00a that
+        /// the exponent stays until M3-15 has measured a real run, and
+        /// <c>XpCurveTests.Pacing_TreeFullByStageTwenty</c> pins the divergence so a retune shows
+        /// up as a diff. Changing the number here is therefore a deliberate act with a test to
+        /// update, not a tuning pass.
+        /// </para>
+        /// <para>
+        /// It validates nothing <see cref="XpCurve"/> already validates; <c>[Min]</c> clamps the
+        /// Inspector GUI and nothing else (Traps §5).
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class XpBlock
+        {
+            [Header("Levelling — CH §5.2: ToReach(N) = base + perLevel · N^exponent")]
+            [Tooltip("Added to every level's cost. 20 in CH §5.2.")]
+            [SerializeField, Min(0f)] private float _base = 20f;
+
+            [Tooltip("Multiplies the exponentiated level. 12 in CH §5.2.")]
+            [SerializeField, Min(0.01f)] private float _perLevel = 12f;
+
+            [Tooltip("How sharply the cost climbs. 1.4 in CH §5.2 — above 1, so each level " +
+                     "costs more than the last by more than a constant.")]
+            [SerializeField, Min(0.01f)] private float _exponent = 1.4f;
+
+            /// <summary>Builds the immutable curve, letting it refuse a bad number.</summary>
+            public XpCurve ToCurve() => new XpCurve(_base, _perLevel, _exponent);
         }
 
         /// <summary>

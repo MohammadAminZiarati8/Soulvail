@@ -134,6 +134,12 @@ public sealed class EnemySpec
     /// What one of these costs a stage's threat budget, GD §8.1's Threat Cost column: Husk 4,
     /// Spitter 7, Bloater 8, Revenant 18. At least 1.
     /// </param>
+    /// <param name="xpValue">
+    /// What killing one is worth (GD §15). Shipped as three times
+    /// <paramref name="threatCost"/> — Husk 12, Spitter 21, Bloater 24 — see
+    /// <see cref="XpValue"/> for why that ratio is worth keeping. Must be a finite number greater
+    /// than zero.
+    /// </param>
     /// <param name="isElite">Whether this archetype is an Elite (M7-02), worth the scorer's elite bonus.</param>
     /// <param name="contactDamage">
     /// Damage one strike deals. Zero is legal and means an enemy that never hurts the player
@@ -175,6 +181,7 @@ public sealed class EnemySpec
     /// finite number greater than zero; <paramref name="moveSpeed"/>,
     /// <paramref name="contactDamage"/>, <paramref name="windupTime"/> or
     /// <paramref name="recoverTime"/> is negative, NaN or infinite;
+    /// <paramref name="xpValue"/> is not a finite number greater than zero;
     /// <paramref name="targetPriority"/> is outside 1–8; or <paramref name="threatCost"/> is
     /// below 1.
     /// </exception>
@@ -185,6 +192,7 @@ public sealed class EnemySpec
         float moveSpeed,
         int targetPriority,
         int threatCost,
+        float xpValue,
         bool isElite,
         float contactDamage,
         float reach,
@@ -245,6 +253,7 @@ public sealed class EnemySpec
         MoveSpeed = NonNegative(moveSpeed, nameof(moveSpeed));
         TargetPriority = targetPriority;
         ThreatCost = threatCost;
+        XpValue = Positive(xpValue, nameof(xpValue));
         IsElite = isElite;
         ContactDamage = NonNegative(contactDamage, nameof(contactDamage));
         Reach = Positive(reach, nameof(reach));
@@ -281,6 +290,36 @@ public sealed class EnemySpec
     /// four times as dangerous alone.
     /// </remarks>
     public int ThreatCost { get; }
+
+    /// <summary>
+    /// What killing one of these is worth in experience (GD §15). Husk 12, Spitter 21, Bloater 24.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A fact about the creature, which is why it sits here beside <see cref="ThreatCost"/></b>
+    /// rather than on the mode — the question <see cref="ThreatCost"/> settled in M2-04 and
+    /// <see cref="AggroRange"/> settled again in M2-06, answered the same way a third time. What
+    /// the <em>curve</em> is stays on the mode, because levelling pace distinguishes one mode from
+    /// another and a kill's worth does not (see <see cref="XpCurve"/>).
+    /// </para>
+    /// <para>
+    /// <b>Required rather than defaulted, for M2-04 rule 12's reason:</b> a kill worth nothing is
+    /// silent in exactly the way a free archetype is. Authoring it at zero would leave a whole
+    /// archetype paying no experience, with nothing on screen to say so and a run that simply
+    /// levelled more slowly than the design says.
+    /// </para>
+    /// <para>
+    /// <b>Shipped as three times <see cref="ThreatCost"/>, and the ratio buys a property the whole
+    /// milestone leans on.</b> A stage's experience is then a function of its threat
+    /// <em>budget</em> alone — <c>3 · B(n)</c>, less whatever the composer could not spend —
+    /// whatever mix of archetypes the seed happened to draw. Levelling pace therefore cannot be
+    /// rerolled by killing the app and resuming into a different wave, and the arithmetic behind
+    /// M3-12's node budget can be checked without a composer in the room. It is a convention rather
+    /// than a rule the code enforces: nothing here reads <see cref="ThreatCost"/>, and an archetype
+    /// that ought to be worth more or less than its price is free to say so.
+    /// </para>
+    /// </remarks>
+    public float XpValue { get; }
 
     /// <summary>Whether this archetype is an Elite (M7-02).</summary>
     public bool IsElite { get; }

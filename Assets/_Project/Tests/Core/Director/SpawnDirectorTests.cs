@@ -1195,6 +1195,7 @@ public sealed class SpawnDirectorTests
             isEndless: true,
             finalStage: 0,
             scaling,
+            Scalings.Xp(),
             entries);
     }
 
@@ -1226,6 +1227,7 @@ public sealed class SpawnDirectorTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: threatCost,
+        xpValue: threatCost * 3f,
         isElite: false,
         contactDamage: contactDamage,
         reach: 1.2f,

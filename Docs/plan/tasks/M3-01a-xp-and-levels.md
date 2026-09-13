@@ -157,4 +157,49 @@ public int PendingLevelUps => Progression.PendingLevelUps;
 
 ## As built
 
-_Filled at merge._
+**Built as specced.** Three new Core files, two new test fixtures, every small edit in the table, and
+the ripple. `XpCurve` sits in `Core/Content/` as the rule above it says; the drain sits between the
+death check and the director and is now an [AR §18.1](../../Architecture.md#181-ordering) row; every
+`LeveledUp` precedes the single `XpChanged`. **1104 EditMode / 0 / 0** (twice, consecutively) against
+a 1077 baseline — 27 new rows, 25 of them the two new fixtures and 2 the asset rows.
+
+**Four deviations, all declared.**
+
+1. **`Scalings.Xp()` was added to `Tests/Core/Support/Scalings.cs`**, which is an eighteenth file the
+   ripple row did not name. The alternative was thirty-four inline copies of CH §5.2's three numbers
+   in test code — the exact drift `Scalings` was created for at M2-03, and worse here, because rule 9
+   flags the exponent for a retune at M3-15: one copy is one edit when that happens, thirty-four is a
+   search. `XpCurveTests` deliberately does **not** use it and writes the numbers out in full, for
+   the reason `ThreatBudgetTests` and `DepthScalingTests` do.
+2. **The ripple is larger than the spec counted: 27 `EnemySpec` sites, not 21, and 34 `ModeSpec`,
+   not 33.** The spec grepped `new EnemySpec(` / `new ModeSpec(`, which misses target-typed
+   `new(` — six of the enemy sites and two of the mode ones are written that way. Mechanical either
+   way; the compiler found all of them.
+3. **`Grant` refuses a non-finite amount as well as a non-positive one.** Rule 4 spells the guard
+   `!(amount > 0f)`, which admits **infinity** — and an infinite grant makes `while (Xp >= XpToNext)`
+   run for ever, which is a hung frame rather than a wrong number. The spec's own "every `float` door
+   a non-finite row" covers it, so this is the implied row being taken rather than a new rule;
+   `Grant_NonPositiveIsSilent` carries it.
+4. **Two test rows moved fixture rather than changing.** `Kill_*`, `Clear_*`, `Tick_*`, `State_*` and
+   `Session_*` all live in `LevelTrackerTests` — the Files table names only two new test fixtures and
+   assigns "the tick's drain" to this one, so putting them in `EnemySystemTests` or `RunSessionTests`
+   would have been a third and fourth file. `Tick_FactKillIsPaidNextTick` asserts the observable half
+   of its Given/Then (`State.Level`, no event, then `XpChanged`) rather than `PendingXp`:
+   `RunState.Enemies` is `internal` and `Soulvail.Tests.Core` has no `InternalsVisibleTo`, so
+   `PendingXp` is asserted directly in `Kill_AccruesPendingXp`, where the system is built by hand.
+
+**Two things the spec predicted and the code confirmed.** `CurveGuard` really is `internal` in
+`ScalingSpec.cs` and reachable from a sixth curve — `Positive` is reused for `perLevel` and
+`exponent`, and only `base` needed its own message, because `CurveGuard.NonNegative`'s message is
+about *rates making deep stages easier* and would have been a guard describing a different type.
+And `EnemyDefinitionTests.Husk_EveryYamlKeyBindsToAField` / `ModeDefinitionTests.Descent_EveryYaml
+KeyBindsToAField` really do catch a mis-ordered field: the new keys were hand-written into four
+assets and both rows pass, which is what proves `_xpValue` and the `_xp` block bind rather than
+sitting in the file being ignored (Traps §7).
+
+**One thing found that is not this task's and is not fixed here.** The PlayMode frame-order
+intermittency M2-15a closed is **not dead**: `FrameOrderTests.Ticker_RunsTheStepsInOrder` failed on
+two of four full-suite runs (10 / 11 / 11 / 10) with M2-15a's exact message, and passes when run
+alone. **It cannot be this change** — that fixture drives a `RecordingCore` fake rather than
+`RunSession`, so the one line M3-01a added to `RunSession.Tick` never executes in it, and nothing in
+`RunTicker` was touched. Reported to the owner and filed in PROGRESS → Known issues.

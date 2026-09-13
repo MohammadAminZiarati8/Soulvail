@@ -572,6 +572,7 @@ public sealed class WeaponTests
         3.5f,
         1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,

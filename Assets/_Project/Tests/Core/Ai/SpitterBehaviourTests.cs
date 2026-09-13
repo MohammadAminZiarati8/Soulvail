@@ -1211,6 +1211,7 @@ public sealed class SpitterBehaviourTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         contactDamage: 8f,
         reach: Reach,
@@ -1230,6 +1231,7 @@ public sealed class SpitterBehaviourTests
         moveSpeed: MoveSpeed,
         targetPriority: 3,
         threatCost: 7,
+        xpValue: 21f,
         isElite: false,
         contactDamage: ContactDamage,
         reach: Reach,
@@ -1247,6 +1249,7 @@ public sealed class SpitterBehaviourTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>

@@ -2,6 +2,7 @@ using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Progression;
 
 namespace Soulvail.Core.Run;
 
@@ -52,7 +53,8 @@ public sealed class RunState
         PlayerMotor motor,
         PlayerCombat combat,
         EnemySystem enemies,
-        ProjectileSystem projectiles)
+        ProjectileSystem projectiles,
+        LevelTracker progression)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -63,6 +65,7 @@ public sealed class RunState
         Combat = combat;
         Enemies = enemies;
         Projectiles = projectiles;
+        Progression = progression;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -171,6 +174,32 @@ public sealed class RunState
     /// to <em>read</em> the census reads <see cref="InFlightProjectiles"/>.
     /// </remarks>
     internal ProjectileSystem Projectiles { get; }
+
+    /// <summary>The run's experience, level and the picks it is owed. The run owns it; nothing else may.</summary>
+    /// <remarks>
+    /// <c>internal</c> for the fifth time in this class, and the question AR §18.2 says every field
+    /// handing out a mutable object owes: <c>Grant</c> and <c>SpendLevelUp</c> are both public on
+    /// it, so a public handle would let a view level the player at will or quietly consume a pick
+    /// they were never shown. A HUD learns that experience moved from <c>XpChanged</c> and that a
+    /// level was crossed from <c>LeveledUp</c>; the three reads below are the opening state those
+    /// events cannot report, for the reason <see cref="PlayerHp"/> gives.
+    /// </remarks>
+    internal LevelTracker Progression { get; }
+
+    /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
+    public int Level => Progression.Level;
+
+    /// <summary>
+    /// How far into the current level the player is, in <c>[0, 1)</c> — what the XP strip fills to.
+    /// The same number <c>XpChanged.Fraction</c> carries.
+    /// </summary>
+    public float XpFraction => Progression.XpFraction;
+
+    /// <summary>
+    /// How many picks the player has earned and not yet been given. Read by M3-08's level-up flow
+    /// and, until it exists, by the debug overlay alone.
+    /// </summary>
+    public int PendingLevelUps => Progression.PendingLevelUps;
 
     /// <summary>
     /// How many shots are in the air right now — a scalar read, never the handle (AR §18.2).

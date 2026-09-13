@@ -777,6 +777,7 @@ public sealed class ProjectileSystemTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     private static int[] Ids(IReadOnlyList<ProjectileImpacted> impacts)

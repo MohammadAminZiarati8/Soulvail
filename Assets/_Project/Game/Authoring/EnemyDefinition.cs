@@ -59,6 +59,13 @@ namespace Soulvail.Game.Authoring
                  "against the others rather than saying how dangerous one is on its own.")]
         [SerializeField, Min(1)] private int _threatCost = 4;
 
+        [Tooltip("What killing one is worth in experience (GD §15). Authored as three times " +
+                 "the threat cost — Husk 12, Spitter 21, Bloater 24 — which makes a stage's " +
+                 "experience a function of its budget alone, whatever mix the seed drew. A " +
+                 "convention rather than a rule: an archetype worth more or less than its price " +
+                 "is free to say so.")]
+        [SerializeField, Min(0.01f)] private float _xpValue = 12f;
+
         [SerializeField] private bool _isElite;
 
         [Tooltip("Damage one strike deals. 0 is legal and means an enemy that never hurts the " +
@@ -154,6 +161,7 @@ namespace Soulvail.Game.Authoring
                     _moveSpeed,
                     _targetPriority,
                     _threatCost,
+                    _xpValue,
                     _isElite,
                     _contactDamage,
                     _reach,

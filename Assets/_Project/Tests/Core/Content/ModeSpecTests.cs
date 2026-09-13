@@ -222,6 +222,7 @@ public sealed class ModeSpecTests
             false,
             10,
             Scalings.Design(),
+            Scalings.Xp(),
             DesignRoster);
 
         Assert.That(mode.IsEndless, Is.False);
@@ -240,6 +241,7 @@ public sealed class ModeSpecTests
             true,
             0,
             Scalings.Design(),
+            Scalings.Xp(),
             DesignRoster);
 
         Assert.That(mode.StartingStage, Is.EqualTo(3));
@@ -251,29 +253,29 @@ public sealed class ModeSpecTests
     public void Ctor_Guards()
     {
         Assert.Throws<ArgumentException>(
-            () => new ModeSpec(default, Name(), 1, true, 0, Scalings.Design(), DesignRoster));
+            () => new ModeSpec(default, Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster));
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new ModeSpec(Id(), Name(), 0, true, 0, Scalings.Design(), DesignRoster));
+            () => new ModeSpec(Id(), Name(), 0, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster));
 
         // A finite mode whose last stage is before its first has no stages at all — which would
         // otherwise be a run that starts and immediately has nowhere to be.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new ModeSpec(Id(), Name(), 5, false, 4, Scalings.Design(), DesignRoster));
+            () => new ModeSpec(Id(), Name(), 5, false, 4, Scalings.Design(), Scalings.Xp(), DesignRoster));
 
         Assert.Throws<ArgumentNullException>(
-            () => new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), null));
+            () => new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), null));
 
         // The scaling is required as of M2-03, and null rather than a default is the one shape
         // that could arrive: a mode with no difficulty model affords nothing at every depth and
         // its enemies never get harder, which reads as a director bug rather than as content.
         Assert.Throws<ArgumentNullException>(
-            () => new ModeSpec(Id(), Name(), 1, true, 0, null, DesignRoster));
+            () => new ModeSpec(Id(), Name(), 1, true, 0, null, Scalings.Xp(), DesignRoster));
 
         // The endless flag wins over the number beside it: an endless mode ignores finalStage
         // rather than being refused for it, because "endless" is what the designer said.
         Assert.DoesNotThrow(
-            () => new ModeSpec(Id(), Name(), 5, true, 0, Scalings.Design(), DesignRoster));
+            () => new ModeSpec(Id(), Name(), 5, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster));
     }
 
     [Test]
@@ -283,7 +285,7 @@ public sealed class ModeSpecTests
         // than in the director: a Boss Rush would have a flat budget and no concurrency ramp.
         ScalingSpec scaling = Scalings.Design();
 
-        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, scaling, DesignRoster);
+        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, scaling, Scalings.Xp(), DesignRoster);
 
         Assert.That(mode.Scaling, Is.SameAs(scaling),
             "Held, not copied: a ScalingSpec is immutable, so sharing one is what a spec does.");
@@ -406,7 +408,7 @@ public sealed class ModeSpecTests
     {
         var list = new List<ContentId> { new ContentId("arena.a"), new ContentId("arena.b") };
 
-        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, list);
+        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, list);
 
         list.Clear();
 
@@ -420,7 +422,7 @@ public sealed class ModeSpecTests
     {
         Assert.Throws<ArgumentException>(
             () => new ModeSpec(
-                Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, new ContentId[1]),
+                Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, new ContentId[1]),
             "An entry that names no arena is a row somebody left blank.");
 
         Assert.Throws<ArgumentException>(
@@ -431,6 +433,7 @@ public sealed class ModeSpecTests
                 true,
                 0,
                 Scalings.Design(),
+                Scalings.Xp(),
                 DesignRoster,
                 new[] { new ContentId("arena.a"), new ContentId("arena.a") }),
             "ArenaFor steps by index to avoid repeating a room, so a duplicate would let it step " +
@@ -442,7 +445,7 @@ public sealed class ModeSpecTests
     private static LocKey Name() => new LocKey("mode.descent.name");
 
     private static ModeSpec Mode(IReadOnlyList<RosterEntry> roster) =>
-        new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), roster);
+        new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), roster);
 
     /// <summary>A mode with <paramref name="count"/> arenas named <c>arena.a0</c> onwards.</summary>
     private static ModeSpec WithArenas(int count)
@@ -454,6 +457,6 @@ public sealed class ModeSpecTests
             arenas[i] = new ContentId($"arena.a{i}");
         }
 
-        return new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), DesignRoster, arenas);
+        return new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, arenas);
     }
 }

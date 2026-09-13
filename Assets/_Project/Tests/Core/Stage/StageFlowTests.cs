@@ -1269,6 +1269,7 @@ public sealed class StageFlowTests
         isEndless: true,
         finalStage: 0,
         Scalings.Design(),
+        Scalings.Xp(),
         new[] { new RosterEntry(new ContentId(HuskId), 1) });
 
     /// <summary>
@@ -1298,6 +1299,7 @@ public sealed class StageFlowTests
             isEndless: endless,
             finalStage: finalStage,
             scaling,
+            Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) });
     }
 
@@ -1319,6 +1321,7 @@ public sealed class StageFlowTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: HuskCost,
+        xpValue: HuskCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -1344,6 +1347,7 @@ public sealed class StageFlowTests
         moveSpeed: 0.01f,
         targetPriority: 1,
         threatCost: 40,
+        xpValue: 120f,
         isElite: false,
         contactDamage: 10_000f,
         reach: 4f,

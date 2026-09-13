@@ -8,6 +8,7 @@ using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Run;
 
@@ -668,6 +669,7 @@ public sealed class RunSessionResumeTests
             isEndless: true,
             finalStage: 0,
             scaling,
+            Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) });
     }
@@ -683,6 +685,7 @@ public sealed class RunSessionResumeTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: HuskCost,
+        xpValue: HuskCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,

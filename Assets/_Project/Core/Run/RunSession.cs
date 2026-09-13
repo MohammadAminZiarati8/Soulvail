@@ -7,6 +7,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 
@@ -382,6 +383,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
         var projectiles = new ProjectileSystem(_events, _projectileCapacity);
 
+        // One per run, like the two above: a second Start must not inherit the first run's level.
+        // The curve comes off the mode rather than off the character or a constant here, because
+        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
+        // put the difficulty curves there in M2-03. A resumed run rebuilds at level 1 and is put
+        // back where it was by M3-01b; nothing in this task writes the level down.
+        var progression = new LevelTracker(mode.Xp, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -391,7 +399,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             motor,
             combat,
             enemies,
-            projectiles);
+            projectiles,
+            progression);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -583,6 +592,25 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             End();
             return;
         }
+
+        // After the death check and before the director (M3-01a rule 6, AR §18.1). Experience is
+        // granted on the tick and never on the fact: a kill reported between ticks by
+        // ReportConeHits accrues on EnemySystem and is paid here, at most a frame late, which is
+        // the lag every fact already has (ADR-0003).
+        //
+        // After the death check, so a run that ended this tick levels nobody — a LeveledUp
+        // published one line below End() would land in a scope that is being torn down, and no
+        // screen could ever show it.
+        //
+        // Before the director and the stage flow, so a LeveledUp earned by a stage's last kill
+        // precedes that tick's StageCleared and the boundary snapshot taken with it. That ordering
+        // is what lets M3-01b's write carry the level the player just earned rather than the one
+        // they had a frame ago.
+        //
+        // Called unconditionally: a tick with no kills drains zero, and Grant is silent for
+        // anything that is not greater than zero, so there is no branch here for a caller to get
+        // wrong.
+        State.Progression.Grant(State.Enemies.DrainXp());
 
         // After the death check and before the motor (M2-05 rule 14, AR §18.1). After, because a
         // run that ended this tick must spawn nothing — a wave arriving on the frame the player

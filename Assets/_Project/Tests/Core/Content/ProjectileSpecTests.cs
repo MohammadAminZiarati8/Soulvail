@@ -185,6 +185,7 @@ public sealed class ProjectileSpecTests
             moveSpeed: 2f,
             targetPriority: 1,
             threatCost: 4,
+            xpValue: 12f,
             isElite: false,
             contactDamage: 8f,
             reach: 1.2f,

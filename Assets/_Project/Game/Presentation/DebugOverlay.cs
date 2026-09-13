@@ -481,6 +481,23 @@ namespace Soulvail.Game.Presentation
 
             _line.Append("  charge ").Append(Fixed(state is null ? 0f : state.MovementSkillCooldownFraction));
 
+            // The level, how far into it, and how many picks are owed — read from core rather than
+            // from XpChanged, for the charge line's reason: the fraction slides on every kill and a
+            // run that has just started has a strip to draw with no event to draw it from.
+            //
+            // The third number is the one worth having before M3-08 exists. Nothing spends a pick
+            // in this milestone until the offer screen lands, so `owed` climbing and never falling
+            // is the correct reading today and becomes the loudest possible symptom the day it is
+            // wrong: a level-up that hands out nothing leaves it stuck, and a screen that hands out
+            // two for one leaves it going backwards twice.
+            _line.Append("  lvl ").Append(
+                (state is null ? 1 : state.Level).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append(' ').Append(Fixed(state is null ? 0f : state.XpFraction));
+
+            _line.Append(" owed ").Append(
+                (state is null ? 0 : state.PendingLevelUps).ToString(CultureInfo.InvariantCulture));
+
             // Shots in the air, from core rather than from the snapshot — unlike the enemy count
             // above, there is no boundary here for the two sides to disagree across: a projectile
             // has no body and is never reported back in (M2-07a rule 2), so core's number is the

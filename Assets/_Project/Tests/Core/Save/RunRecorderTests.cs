@@ -911,6 +911,7 @@ public sealed class RunRecorderTests
             isEndless: endless,
             finalStage: finalStage,
             scaling,
+            Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) });
     }
 
@@ -925,6 +926,7 @@ public sealed class RunRecorderTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: HuskCost,
+        xpValue: HuskCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -944,6 +946,7 @@ public sealed class RunRecorderTests
         moveSpeed: 0.01f,
         targetPriority: 1,
         threatCost: 40,
+        xpValue: 120f,
         isElite: false,
         contactDamage: 16f,
         reach: 4f,

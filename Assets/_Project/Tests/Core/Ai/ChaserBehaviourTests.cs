@@ -787,6 +787,7 @@ public sealed class ChaserBehaviourTests
         moveSpeed: MoveSpeed,
         targetPriority: 1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         contactDamage: ContactDamage,
         reach: Reach,

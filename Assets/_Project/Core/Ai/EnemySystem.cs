@@ -152,6 +152,26 @@ public sealed class EnemySystem
     public EnemyRegistry Registry { get; }
 
     /// <summary>
+    /// What the deaths since the last <see cref="DrainXp"/> are worth, in experience.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Banked here rather than granted where it is earned</b>, because a death can be reported
+    /// between ticks — <c>ReportConeHits</c> is a fact arriving mid-frame (ADR-0003) — and
+    /// experience is decided on the tick, in the one place that knows whether the run is still
+    /// running. <c>RunSession.Tick</c> drains this after the death check and before the director
+    /// (AR §18.1); a kill reported between ticks is paid on the next one, at most a frame late,
+    /// which is the lag every fact already has.
+    /// </para>
+    /// <para>
+    /// A single <see langword="float"/> and not a queue: nothing downstream needs to know
+    /// <em>which</em> enemy paid, only how much arrived, and a per-kill list would be an
+    /// allocation on the one path that must not have one.
+    /// </para>
+    /// </remarks>
+    public float PendingXp { get; private set; }
+
+    /// <summary>
     /// The depth everything spawned from now on is scaled to (GD §12.3).
     /// </summary>
     /// <remarks>
@@ -363,6 +383,13 @@ public sealed class EnemySystem
             // Stamped before the announcement, so the corpse is already on the clock by the time
             // anything handles the death — the same order as Spawn's register-then-announce.
             agent.DiedAt = now;
+
+            // Every death pays, whoever caused it (M3-01a rule 3). This is the one door a death
+            // comes through (AR §18.2), so a Bloater that lit its own fuse, a Charge, a cone and
+            // M5-04's Wights all bank the same way without anybody having to ask who swung. A rule
+            // about *who* killed it would need a second mechanism the day minions exist, and GD §15
+            // says only that experience is granted on kill.
+            PendingXp += agent.Spec.XpValue;
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
@@ -591,6 +618,13 @@ public sealed class EnemySystem
     {
         Registry.Clear();
 
+        // Banked experience goes with the bodies that earned it, and nothing is actually lost
+        // either way (M3-01a rule 7): at a stage boundary the drain has already run this tick,
+        // upstream of the flow, and at the end of a run there is nobody left to pay. The line is
+        // here so that the day something clears the arena mid-tick, the loss is a documented one
+        // rather than a stage's last kill silently paying twice or not at all.
+        PendingXp = 0f;
+
         // The census's own reading of the world goes with it. A player position left behind would
         // make the next arena's first frame of perception measure against where the last run stood
         // — inert until Ingest runs, and exactly the kind of thing a stage boundary makes reachable.
@@ -600,6 +634,32 @@ public sealed class EnemySystem
         // census: M2-10 clears an arena at a stage boundary and the next stage's depth is the
         // point of the transition, so zeroing it here would mean the two had to happen in an order
         // this method could not state.
+    }
+
+    /// <summary>
+    /// Hands over everything <see cref="PendingXp"/> has collected and zeroes it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called once a tick by <c>RunSession</c> and by nothing else. Take-and-clear in one call
+    /// rather than a read and a separate reset, because two calls is a pair a future caller can get
+    /// half of — and the half that is forgotten pays a stage's kills over and over, every tick, for
+    /// the rest of the run.
+    /// </para>
+    /// <para>
+    /// Returns zero on the overwhelming majority of ticks, which is the ordinary case and not one
+    /// worth branching on here: <see cref="Soulvail.Core.Progression.LevelTracker.Grant"/> is
+    /// silent for anything that is not greater than zero.
+    /// </para>
+    /// </remarks>
+    /// <returns>The experience banked since the last drain.</returns>
+    public float DrainXp()
+    {
+        float earned = PendingXp;
+
+        PendingXp = 0f;
+
+        return earned;
     }
 
     /// <summary>How many registered agents are breathing.</summary>

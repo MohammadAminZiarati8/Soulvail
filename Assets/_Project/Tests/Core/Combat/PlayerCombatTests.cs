@@ -800,6 +800,7 @@ public sealed class PlayerCombatTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>
@@ -855,6 +856,7 @@ public sealed class PlayerCombatTests
         3.5f,
         priority,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,
@@ -871,6 +873,7 @@ public sealed class PlayerCombatTests
         3.5f,
         1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,

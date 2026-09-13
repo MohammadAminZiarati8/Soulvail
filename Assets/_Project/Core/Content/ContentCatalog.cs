@@ -11,11 +11,16 @@ namespace Soulvail.Core.Content;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Characters, enemies and modes. Skills get their own list and their own pair of accessors in
-/// the milestone that introduces them (M3-02) — one dictionary per kind rather than one
-/// dictionary of <c>object</c>, so a lookup returns the type it names and a caller cannot ask
-/// for a skill and be handed a mode. Modes were the third kind, added in M2-02, and they cost
-/// exactly the two lines this shape promised they would.
+/// Characters, enemies, modes, skills and trees. <b>Skills arrived in M3-02a, and cost exactly the
+/// two lines this shape promised they would</b> — one dictionary per kind rather than one
+/// dictionary of <c>object</c>, so a lookup returns the type it names and a caller cannot ask for a
+/// skill and be handed a mode. Modes were the third kind, added in M2-02, and made the same point
+/// a milestone earlier.
+/// </para>
+/// <para>
+/// <b>Trees are the one kind with a second index</b>, by <see cref="SkillTreeSpec.CharacterId"/>
+/// rather than by id, because a run resolves its tree from the class it is playing and never from a
+/// tree id anyone typed. See <see cref="TryGetTreeFor"/>.
 /// </para>
 /// <para>
 /// Immutable after construction, which is what makes it safe to share across every scope for
@@ -31,6 +36,15 @@ public sealed class ContentCatalog
     private readonly ReadOnlyCollection<EnemySpec> _enemies;
     private readonly Dictionary<ContentId, ModeSpec> _modesById;
     private readonly ReadOnlyCollection<ModeSpec> _modes;
+    private readonly Dictionary<ContentId, SkillSpec> _skillsById;
+    private readonly ReadOnlyCollection<SkillSpec> _skills;
+    private readonly Dictionary<ContentId, SkillTreeSpec> _treesById;
+    private readonly ReadOnlyCollection<SkillTreeSpec> _trees;
+
+    /// <summary>
+    /// The trees again, keyed by the class they belong to — see <see cref="TryGetTreeFor"/>.
+    /// </summary>
+    private readonly Dictionary<ContentId, SkillTreeSpec> _treesByCharacter;
 
     /// <param name="characters">
     /// The character specs to register. Copied; the caller's list is not retained.
@@ -49,16 +63,29 @@ public sealed class ContentCatalog
     /// was about. A catalog with no modes fails at the first <see cref="Mode"/> lookup, naming
     /// the id — which is <c>RunSession.Start</c>'s first line and so the loudest possible place.
     /// </param>
+    /// <param name="skills">
+    /// The tree nodes to register, or null for none. Optional for the reason
+    /// <paramref name="enemies"/> is, and it is null in every catalog between M3-02a and M3-02b —
+    /// the specs land a task before anything authors one.
+    /// </param>
+    /// <param name="trees">
+    /// The skill trees to register, or null for none. Optional for the same reason, and indexed
+    /// twice: by id like every other kind, and by the class each belongs to.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="characters"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// An entry is null, or two entries of one kind share an id — thrown with the duplicated id
     /// in the message, because "one of your assets collides" is not something a person can act
-    /// on.
+    /// on. Also when two trees name the same character, which is the one collision that is not a
+    /// duplicate id: a class has exactly one tree (CH §5), so the second is either a copy nobody
+    /// meant to ship or a disagreement about what the class levels into.
     /// </exception>
     public ContentCatalog(
         IReadOnlyList<CharacterSpec> characters,
         IReadOnlyList<EnemySpec> enemies = null,
-        IReadOnlyList<ModeSpec> modes = null)
+        IReadOnlyList<ModeSpec> modes = null,
+        IReadOnlyList<SkillSpec> skills = null,
+        IReadOnlyList<SkillTreeSpec> trees = null)
     {
         if (characters is null)
         {
@@ -85,6 +112,22 @@ public sealed class ContentCatalog
             "mode",
             nameof(modes),
             out _modesById);
+
+        _skills = Index(
+            skills ?? Array.Empty<SkillSpec>(),
+            spec => spec.Id,
+            "skill",
+            nameof(skills),
+            out _skillsById);
+
+        _trees = Index(
+            trees ?? Array.Empty<SkillTreeSpec>(),
+            spec => spec.Id,
+            "tree",
+            nameof(trees),
+            out _treesById);
+
+        _treesByCharacter = IndexTreesByCharacter(_trees, nameof(trees));
     }
 
     /// <summary>Every registered character, in the order they were supplied.</summary>
@@ -101,6 +144,22 @@ public sealed class ContentCatalog
     /// the assumption GD §4.5 forbids.
     /// </remarks>
     public IReadOnlyList<ModeSpec> Modes => _modes;
+
+    /// <summary>Every registered tree node, in the order they were supplied.</summary>
+    /// <remarks>
+    /// Order is meaningful to nothing: where a node sits is its <see cref="SkillTreeSpec"/>'s, and
+    /// M3-04 draws its offer from what the tree makes available rather than from this list.
+    /// </remarks>
+    public IReadOnlyList<SkillSpec> Skills => _skills;
+
+    /// <summary>Every registered skill tree, in the order they were supplied.</summary>
+    /// <remarks>
+    /// One per class (CH §5), so this is as long as <see cref="Characters"/> once M3-12 has
+    /// authored the Oathbound's and M5/M7 the rest. <b>A class with no tree is a legal catalog</b> —
+    /// it is every catalog between this task and M3-12 — and M3-03 rule 10 says what a run does
+    /// with one. M3-14b pins that every <em>shipped</em> character has one.
+    /// </remarks>
+    public IReadOnlyList<SkillTreeSpec> Trees => _trees;
 
     /// <summary>The character with this id.</summary>
     /// <exception cref="KeyNotFoundException">
@@ -170,6 +229,105 @@ public sealed class ContentCatalog
     /// </summary>
     public bool TryGetMode(ContentId id, out ModeSpec spec) =>
         _modesById.TryGetValue(id, out spec);
+
+    /// <summary>The tree node with this id.</summary>
+    /// <exception cref="KeyNotFoundException">
+    /// No skill has that id — including <c>default(ContentId)</c>, which is unknown like any other
+    /// id the catalog does not hold. This is what a <see cref="SkillTreeSpec"/>'s node ids resolve
+    /// through, so a tree naming a node nobody authored fails at M3-03's <c>Start</c> sweep rather
+    /// than at the moment a player is offered it.
+    /// </exception>
+    public SkillSpec Skill(ContentId id)
+    {
+        if (!_skillsById.TryGetValue(id, out SkillSpec spec))
+        {
+            throw new KeyNotFoundException($"No skill with id '{id}' in the catalog.");
+        }
+
+        return spec;
+    }
+
+    /// <summary>
+    /// Looks up a tree node without throwing. <paramref name="spec"/> is null when this returns
+    /// false.
+    /// </summary>
+    public bool TryGetSkill(ContentId id, out SkillSpec spec) =>
+        _skillsById.TryGetValue(id, out spec);
+
+    /// <summary>The skill tree with this id.</summary>
+    /// <exception cref="KeyNotFoundException">
+    /// No tree has that id — including <c>default(ContentId)</c>, which is unknown like any other
+    /// id the catalog does not hold.
+    /// </exception>
+    public SkillTreeSpec Tree(ContentId id)
+    {
+        if (!_treesById.TryGetValue(id, out SkillTreeSpec spec))
+        {
+            throw new KeyNotFoundException($"No tree with id '{id}' in the catalog.");
+        }
+
+        return spec;
+    }
+
+    /// <summary>
+    /// Looks up a skill tree without throwing. <paramref name="spec"/> is null when this returns
+    /// false.
+    /// </summary>
+    public bool TryGetTree(ContentId id, out SkillTreeSpec spec) =>
+        _treesById.TryGetValue(id, out spec);
+
+    /// <summary>
+    /// The tree belonging to <paramref name="characterId"/>, or false if that class has none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The door a run actually uses.</b> A run knows the class it is playing and has no reason
+    /// to know a tree id, so this is the lookup and <see cref="Tree"/> is the one for tooling and
+    /// tests. A class has exactly one tree (CH §5), which is what makes a single answer honest —
+    /// two trees naming one character are refused at construction.
+    /// </para>
+    /// <para>
+    /// <b>False is a legal answer, not an error</b>, which is why this is the <c>Try</c> shape with
+    /// no throwing twin. Every catalog between M3-02a and M3-12 answers false for the Oathbound,
+    /// and M3-03 rule 10 says what a run does with that.
+    /// </para>
+    /// </remarks>
+    public bool TryGetTreeFor(ContentId characterId, out SkillTreeSpec spec) =>
+        _treesByCharacter.TryGetValue(characterId, out spec);
+
+    /// <summary>
+    /// Indexes the already-copied trees by the class each belongs to, refusing a second tree for
+    /// one class.
+    /// </summary>
+    /// <remarks>
+    /// Its own method rather than a second call to <see cref="Index{T}"/>, because the key is not
+    /// the entry's id: the message has to name the <em>character</em>, which is the thing a person
+    /// can act on, and "duplicate tree id" would point at two assets that are correctly named.
+    /// </remarks>
+    private static Dictionary<ContentId, SkillTreeSpec> IndexTreesByCharacter(
+        IReadOnlyList<SkillTreeSpec> trees,
+        string paramName)
+    {
+        var byCharacter = new Dictionary<ContentId, SkillTreeSpec>(trees.Count);
+
+        for (int i = 0; i < trees.Count; i++)
+        {
+            SkillTreeSpec tree = trees[i];
+
+            if (byCharacter.ContainsKey(tree.CharacterId))
+            {
+                throw new ArgumentException(
+                    $"Two trees name character '{tree.CharacterId}'; '{tree.Id}' is the second. A "
+                        + "class has exactly one tree (CH §5), so the second is either a copy "
+                        + "nobody meant to ship or a disagreement about what the class levels into.",
+                    paramName);
+            }
+
+            byCharacter.Add(tree.CharacterId, tree);
+        }
+
+        return byCharacter;
+    }
 
     /// <summary>
     /// Copies <paramref name="source"/>, indexes it by id, and refuses a null entry or a

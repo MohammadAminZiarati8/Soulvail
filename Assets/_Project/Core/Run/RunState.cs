@@ -2,6 +2,7 @@ using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Progression;
 
 namespace Soulvail.Core.Run;
@@ -54,7 +55,8 @@ public sealed class RunState
         PlayerCombat combat,
         EnemySystem enemies,
         ProjectileSystem projectiles,
-        LevelTracker progression)
+        LevelTracker progression,
+        EffectRegistry effects)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -66,6 +68,7 @@ public sealed class RunState
         Enemies = enemies;
         Projectiles = projectiles;
         Progression = progression;
+        Effects = effects;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -185,6 +188,31 @@ public sealed class RunState
     /// events cannot report, for the reason <see cref="PlayerHp"/> gives.
     /// </remarks>
     internal LevelTracker Progression { get; }
+
+    /// <summary>
+    /// Which handler answers for which effect, this run. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the sixth time in this class, and the first time the answer is not about
+    /// a <c>Tick</c>: <c>Apply</c> is public on the registry, so a public handle would let a view
+    /// put a permanent modifier on the player's damage with nothing in the compiler to object — and
+    /// unlike every other seal here, the caller would not even need a handle on the thing it was
+    /// changing, because the whole point of the registry is that an address stands in for one.
+    /// </para>
+    /// <para>
+    /// There is no narrow read standing in for it, deliberately. The other five fields each gave up
+    /// scalars a HUD needs; nothing outside core has a question about effects yet. What a modifier
+    /// <em>did</em> is already visible in the numbers it moved — <see cref="PlayerMaxHp"/> and the
+    /// rest are the live <c>Stat</c> values — and M3-09d's tree view reads the tree, which is
+    /// M3-03's object rather than this one.
+    /// </para>
+    /// <para>
+    /// M3-03's tree is the only production caller: nothing in a live run calls <c>Apply</c> until
+    /// it exists (M3-05 rule 10), so for this task the registry is built, filled and never used.
+    /// </para>
+    /// </remarks>
+    internal EffectRegistry Effects { get; }
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

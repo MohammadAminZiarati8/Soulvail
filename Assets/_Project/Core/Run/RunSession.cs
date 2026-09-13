@@ -5,6 +5,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Progression;
@@ -390,6 +391,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // back where it was in the restore block below, before RunStarted.
         var progression = new LevelTracker(mode.Xp, _events);
 
+        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
+        // rule: the address table holds this run's live stats, so it cannot be built before them,
+        // and the tree that will read the registry (M3-03) validates every effect it holds at
+        // Start — so an unregistered primitive has to be reportable before the run is announced.
+        //
+        // One Register line per primitive, and that is the entire cost of adding the eleventh
+        // (ADR-0009). Nothing calls Apply in a live run until M3-03, so for now this is a table
+        // that is built, filled and never read — M2-01's and M2-13a's shape, and for their reason:
+        // the registry and the first primitive are one review, the tree that applies them another.
+        var playerStats = new PlayerStats(combat, motor, progression);
+        var effects = new EffectRegistry();
+
+        effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -400,7 +415,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             combat,
             enemies,
             projectiles,
-            progression);
+            progression,
+            effects);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.

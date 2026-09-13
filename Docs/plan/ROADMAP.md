@@ -207,7 +207,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-01a](tasks/M3-01a-xp-and-levels.md) | `XpCurve`, `LevelTracker`, and the kill that pays for a level | M | — | ☑ |
 | [M3-01b](tasks/M3-01b-save-format-v2.md) | Save format v2: what a levelled run writes down, and the first real migration | S | 01a | ☑ |
 | [M3-05](tasks/M3-05-effect-registry.md) | Effect primitives: the registry, and `ModifyStat` as the first of them | M | 01a | ☑ |
-| [M3-02a](tasks/M3-02a-skill-specs.md) | `SkillSpec`, `TriggerSpec`, `SkillTreeSpec`: the tree as data | M | 05 | ☐ |
+| [M3-02a](tasks/M3-02a-skill-specs.md) | `SkillSpec`, `TriggerSpec`, `SkillTreeSpec`: the tree as data | M | 05 | ☑ |
 | [M3-02b](tasks/M3-02b-skill-authoring.md) | Skill authoring: the four definitions and the boot lists | M | 02a | ☐ |
 | [M3-03](tasks/M3-03-tree-rules.md) | `TreeRules` and `SkillTree`: gating, availability, keystones, and the nodes a save carries | M | 02a 05 01b | ☐ |
 | [M3-04](tasks/M3-04-offer-generator.md) | `OfferGenerator`: three from the available, weighted for variety, from the `Offers` stream | S | 03 | ☐ |
@@ -358,6 +358,14 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   fixed there: a cap means ruling what a save above it *becomes*, which is a decision rather than an
   implementation detail. Promoted by the first ruling on it, or by **M3-14b**, which is already the
   task that refuses content the game cannot survive.
+- **`Core/Content` stopped being a leaf at M3-02a, and `Content ↔ Combat` is now a namespace cycle.**
+  Before this task `Core/Content/` held zero `using Soulvail.*`; `TriggerSpec` now names
+  `Core.Combat` (`CombatBlackboard`) and `SkillSpec` names `Core.Effects` (`IEffect`), while
+  `Core/Combat` has depended on `Core/Content` since M0-07. It compiles and nothing is wrong —
+  AR §5's table has no dependency column and §12 promises no acyclicity, and both types are content
+  by AR §10.1 — but it would block AR §5's own escape hatch, *"split into separate assemblies only
+  if compile times demand it."* Nothing owns it; promoted by the first task that wants that split,
+  which would have to move `CombatBlackboard` or invert the `IsMet` call.
 - **CH §5's tree table says 8 nodes a branch and 27 a class, and 3 × 8 is 24.** The layered shape
   ruled at M3-00a — two a tier × four tiers + a keystone = 9 a branch — is what makes 27 true, so the
   row wants a one-line correction to *9 (8 + 1 Keystone)* and *all 8 preceding*. Flagged, not made,

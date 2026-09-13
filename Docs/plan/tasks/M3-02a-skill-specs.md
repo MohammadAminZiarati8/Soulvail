@@ -200,4 +200,97 @@ None. Pure C#, nothing registered, nothing authored; six assemblies compiling is
 
 ## As built
 
-_Filled at merge._
+**Built exactly the Files table** — three Core files, two test files, the `ContentCatalog` edits and
+the four `ContentTests` mirror rows. Both folders already existed, so no asmdef, no `csc.rsp`, no
+folder `.meta`. All five new files are pure C# with file-scoped namespaces, and all seven touched
+files were confirmed in their intended assembly through `GetAssemblyNameFromScriptPath` rather than
+assumed (Traps §5).
+
+**Verified:** **1191 EditMode / 0 / 0, twice consecutively**, against M3-05's 1148 — **43 new rows**,
+which is 26 + 13 + 4 and matches this Tests table plus the implied guard rows below, exactly.
+PlayMode 11/11; the M2-15a `FrameOrderTests` intermittency did not fire on this run, which one run
+is not evidence about either way. Six assemblies, zero compile errors, zero analyzer warnings,
+Console clean of everything. `git status` clean of anything unasked: two modified `.cs`, five new
+ones and their `.meta`s, no `ProjectSettings/` diff, no scene or asset churn.
+
+### Deviations — three, one of which corrects this spec
+
+1. **Rule 6's parenthetical spelling is wrong, and rule 6's own test row is what proves it.** The
+   rule says *"a NaN field fails every clause (`!(value < threshold)` spelling, AR §18.3)"* — but
+   `!(value < threshold)` is precisely the spelling of `AtLeast` as the negation of `Below`, and
+   `!(NaN < 0.6)` is `!false` = **true**. Written literally, a broken blackboard would *satisfy*
+   every `AtLeast` clause the player owns and fire every active at once, which is the exact failure
+   the rule's own sentence forbids — and `Trigger_NaNFieldFails` demands `AtLeast 0` on a NaN return
+   **false**. Shipped as the two natural comparisons written out rather than derived from each
+   other: `value < threshold` and `value >= threshold`, both of which fail NaN because every
+   comparison against NaN is false. **AR §18.3 is not contradicted, it is applied**: its rule is
+   *put NaN on the safe side of the predicate*, and the `!` in `!(value > 0f)` is there because a
+   **guard** wants NaN on the *throw* side. A predicate that wants NaN on the *false* side needs no
+   `!` at all. The prose of rule 6, its reason, and its test row all agree; only the parenthetical
+   is a slip. `TriggerClause.IsMet`'s remarks carry the argument, and the test row names the trap it
+   avoids.
+2. **`SkillBranchSpec` guards its `NameKey`, which no rule asked for.** Additive. Rule 3's argument
+   one type over: M3-09d draws the branch name above its column, `default(LocKey)` carries a null
+   past the struct's own constructor (AR §18.3), and a nameless branch is silent rather than loud
+   (M2-06 rule 11). `Branch_Guards` is the row. Worth knowing it is *stricter* than the three
+   shipped specs beside it — `CharacterSpec`, `EnemySpec` and `ModeSpec` all take a `nameKey` and
+   guard none of them, which is a gap M3-14b already owns.
+3. **One parking-lot line added to the ROADMAP** (see the AR §5 finding below). No `Architecture.md`
+   edit: nothing in it is wrong.
+
+### AR §5's module table — checked, and it needs no line
+
+`Core/Content/` held **zero** `using Soulvail.*` before this task: it was the leaf every other module
+depended on. It now names `Core.Combat` (`CombatBlackboard`, on `IsMet`) and `Core.Effects`
+(`IEffect`), and since `Core/Combat` has depended on `Core/Content` since M0-07 — `Health`, `Weapon`
+and `Targeter` all take specs — **`Content ↔ Combat` is now a namespace cycle** inside the one
+assembly.
+
+**No row is wrong, so no row is edited.** §5's `Content` row already lists `SkillSpec` in its *Key
+types*, and the table says what a module *owns*, not what it depends on — it has no dependency
+column for this to be missing from. AR §12 makes no acyclicity promise either. This is not the
+`XpCurve` case: there, a type was in the wrong module and §5 said so; here both types are content
+(authored data resolved from a `ContentId`, AR §10.1) and the Files table placed them correctly.
+
+What is new is that the cycle would block AR §5's own escape hatch — *"split into separate
+assemblies only if compile times demand it"* — so it is recorded as a **parking-lot line**, one
+sentence, rather than a ledger row: nothing owns it, and it bites only if that split is ever wanted.
+
+### Implementation choices the spec left open
+
+- **Node-id uniqueness is the tree's, not the branch's.** A branch cannot see its siblings, so
+  checking it there would catch half the cases and give the other half a different message.
+  `SkillTreeSpec` builds the `TryLocate` index and detects duplicates in the same pass, so rule 10's
+  dictionary costs nothing extra.
+- **`TryLocate` misses with `branch = -1, tier = 0`.** −1 is how "nobody" is spelled everywhere in
+  this project (`CombatBlackboard.CurrentTargetId`, `EnemyRegistry`'s ids from 1), and a caller that
+  ignored the `bool` would index out of range rather than silently read branch 0.
+- **Both enum dispatches in `TriggerClause.IsMet` are switches with loud `default`s, and neither
+  enum is validated at construction** — `EnemyBehaviourKind`'s documented argument (AR §18.4): the
+  loud place for an unrecognised member is the dispatch that knows the full set, and a guard at the
+  door would only repeat that list somewhere it could drift.
+- **`IndexTreesByCharacter` is its own method rather than a fourth `Index` call**, because the key
+  is not the entry's id: the message has to name the *character*, and "duplicate tree id" would
+  point at two assets that are correctly named.
+- **`CopyEffects` is one `internal static` on `SkillSpec`, shared with `ActiveSpec`** — the two
+  lists are the same kind of thing, and a second copy of the loop would be a second place for the
+  null rule to drift. The empty case returns a wrapper over `Array.Empty<IEffect>()` (M3-01b's
+  lesson) and **is not a cached static** — AR §7, and `Palette` (M3-13a) stays the only sanctioned
+  one.
+- **`default(TriggerClause)` is left legal** and is *HpFraction Below 0* — a clause that can never
+  hold rather than an invalid one. AR §18.3's "check at both ends" does not bite: the invariant is
+  only that the threshold is finite, and zero is.
+
+### Flagged for the owner, not edited
+
+**CH §5's *"8 (7 + 1 Keystone)"* is a slip for 9 (8 + 1)** — 3 × 8 is 24 and the same table says 27.
+Rule 7 says flag it; it has been a [ROADMAP parking-lot](../ROADMAP.md#parking-lot) line since
+M3-00a and `Tree_RecordsShape` now asserts the shipped shape (2/2/2/2/1 = nine a branch,
+twenty-seven a class) against it. Promoted by **M7-04**, which authors all eighty-one.
+
+### One seam left open on purpose
+
+M3-05 flagged that `EffectRegistry.CanApply` answers *"is there a handler for this type"* and not
+*"does this effect's address resolve"*. Nothing here closes it — a `SkillSpec` never looks inside an
+`IEffect`, which is the whole of ADR-0009 — and `SkillSpec.Effects`' remarks now say so at the place
+a reader would ask. Still M3-02b's or M3-14b's call.

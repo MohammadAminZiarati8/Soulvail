@@ -654,8 +654,15 @@ public sealed class ResumeFlowTests
     {
         var builder = new ContainerBuilder();
 
+        // The two M3-02b lists are empty because nothing ships in Data/ until M3-12 (rule 7), which
+        // is also what BootScope.prefab carries — so this container is the shipped one.
         BootInstaller.Install(
-            builder, new[] { LoadOathbound() }, new[] { LoadHusk() }, new[] { LoadDescent() });
+            builder,
+            new[] { LoadOathbound() },
+            new[] { LoadHusk() },
+            new[] { LoadDescent() },
+            Array.Empty<SkillDefinition>(),
+            Array.Empty<SkillTreeDefinition>());
 
         return Track(builder.Build());
     }

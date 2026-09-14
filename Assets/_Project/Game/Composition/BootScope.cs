@@ -45,9 +45,24 @@ namespace Soulvail.Game.Composition
 
         [SerializeField] private ModeDefinition[] _modes;
 
+        /// <remarks>
+        /// Empty until M3-12 authors the Oathbound's nodes, and empty is a legal boot rather than a
+        /// broken one: the catalog builds, the run plays, and nothing offers a node because there
+        /// is no node to offer. A placeholder here would be content offered to a player two tasks
+        /// before anything can offer it — or deleted two tasks later (M3-02b rule 7).
+        /// </remarks>
+        [SerializeField] private SkillDefinition[] _skills;
+
+        /// <remarks>
+        /// Empty until M3-12 for <see cref="_skills"/>' reason. A class with no tree is a legal
+        /// catalog — <c>TryGetTreeFor</c> simply answers false — which is every catalog between
+        /// here and that task.
+        /// </remarks>
+        [SerializeField] private SkillTreeDefinition[] _trees;
+
         protected override void Configure(IContainerBuilder builder)
         {
-            BootInstaller.Install(builder, _characters, _enemies, _modes);
+            BootInstaller.Install(builder, _characters, _enemies, _modes, _skills, _trees);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

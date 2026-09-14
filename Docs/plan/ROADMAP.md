@@ -208,7 +208,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-01b](tasks/M3-01b-save-format-v2.md) | Save format v2: what a levelled run writes down, and the first real migration | S | 01a | ☑ |
 | [M3-05](tasks/M3-05-effect-registry.md) | Effect primitives: the registry, and `ModifyStat` as the first of them | M | 01a | ☑ |
 | [M3-02a](tasks/M3-02a-skill-specs.md) | `SkillSpec`, `TriggerSpec`, `SkillTreeSpec`: the tree as data | M | 05 | ☑ |
-| [M3-02b](tasks/M3-02b-skill-authoring.md) | Skill authoring: the four definitions and the boot lists | M | 02a | ☐ |
+| [M3-02b](tasks/M3-02b-skill-authoring.md) | Skill authoring: the four definitions and the boot lists | M | 02a | ☑ |
 | [M3-03](tasks/M3-03-tree-rules.md) | `TreeRules` and `SkillTree`: gating, availability, keystones, and the nodes a save carries | M | 02a 05 01b | ☐ |
 | [M3-04](tasks/M3-04-offer-generator.md) | `OfferGenerator`: three from the available, weighted for variety, from the `Offers` stream | S | 03 | ☐ |
 

@@ -110,6 +110,19 @@ public static class BootInstaller
     /// catalog with no modes cannot start any run at all, because resolving the mode is the
     /// first thing <c>RunSession.Start</c> does.
     /// </param>
+    /// <param name="skills">
+    /// Every authored tree node — the assets in <c>Data/Skills/</c>, which is none of them until
+    /// M3-12. Required for the reason <paramref name="enemies"/> is: a call site that could omit
+    /// its skills would produce a catalog whose only symptom is a level-up screen with nothing on
+    /// it, which reads as a broken offer rather than as missing content. An empty list is how a
+    /// boot list with no skills says so out loud, and it is a legal boot until M3-12.
+    /// </param>
+    /// <param name="trees">
+    /// Every authored skill tree, converted the same way and required for the same reason.
+    /// <b>Neither list resolves the other here:</b> a tree carries node ids and the catalog is
+    /// built from both at once, so a tier naming a node this list does not hold is
+    /// <c>TreeRules</c>' check at <c>Start</c> (M3-03) and M3-14b's over every shipped asset.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
     /// A definition is an empty slot, or is not valid content. Thrown from here rather than
@@ -120,7 +133,9 @@ public static class BootInstaller
         IContainerBuilder builder,
         IReadOnlyList<CharacterDefinition> characters,
         IReadOnlyList<EnemyDefinition> enemies,
-        IReadOnlyList<ModeDefinition> modes)
+        IReadOnlyList<ModeDefinition> modes,
+        IReadOnlyList<SkillDefinition> skills,
+        IReadOnlyList<SkillTreeDefinition> trees)
     {
         if (builder is null)
         {
@@ -142,13 +157,25 @@ public static class BootInstaller
             throw new ArgumentNullException(nameof(modes));
         }
 
+        if (skills is null)
+        {
+            throw new ArgumentNullException(nameof(skills));
+        }
+
+        if (trees is null)
+        {
+            throw new ArgumentNullException(nameof(trees));
+        }
+
         EnemySpec[] enemySpecs = Convert(
             enemies, definition => definition.ToSpec(), "enemy", nameof(enemies));
 
         builder.RegisterInstance(new ContentCatalog(
             Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
             enemySpecs,
-            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes))));
+            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
+            Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills)),
+            Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees))));
 
         // After the catalog and not before, so a pair of definitions sharing an id is reported by
         // ContentCatalog — which is the message that names the failure people already know how to

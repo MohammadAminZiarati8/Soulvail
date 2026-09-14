@@ -1,5 +1,4 @@
 using System;
-using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -22,15 +21,18 @@ namespace Soulvail.Core.Save;
 /// the row that says this type may have one.
 /// </para>
 /// <para>
-/// <b>It allocates nothing, and M3-03 is where that stops being true.</b>
+/// <b>It allocates nothing, except for the nodes a levelled run has taken.</b>
 /// <see cref="RunSnapshot"/> and <see cref="RandomState"/> are <c>readonly struct</c>s,
 /// <see cref="IRandom.Capture"/> allocates nothing (M2-13a), and <c>RunSnapshotTaken</c> crosses
 /// <c>IDomainEvents</c> by <c>in</c>. It is not on a tick path — it runs twice a minute at most —
 /// but a boundary frame is already swapping an arena, and it is the last frame in a run that should
-/// also be asking for heap (rule 7). <b>The list of taken nodes is the exception being walked
-/// towards deliberately</b> (M3-01b rule 5): a snapshot copies it, and this build passes an empty
-/// one, so the cost is zero until there is a tree to write down. <c>Take_AllocatesNothing</c> is
-/// therefore M3-03's row to retire, with the trade named rather than discovered.
+/// also be asking for heap (rule 7). <b>The list of taken nodes is the named exception</b> (M3-01b
+/// rule 5): a snapshot has to copy it, because <c>SaveWriter</c> enqueues the write and a borrowed
+/// buffer would be rewritten under a save that had not happened yet. <c>Take_AllocatesNothing</c>
+/// still holds and is not vacuous — a copy of an <em>empty</em> list is the shared zero-length
+/// array, so a run that has taken nothing costs nothing, which is every run until M3-12 authors a
+/// tree. The first node taken is the first boundary write to ask for heap, and that trade was named
+/// in advance rather than discovered by the row going red.
 /// </para>
 /// </remarks>
 public sealed class RunRecorder
@@ -146,10 +148,15 @@ public sealed class RunRecorder
             state.Xp,
             state.PendingLevelUps,
 
-            // Empty until M3-03, which swaps in the tree's view of what has been taken. The shared
-            // zero-length array rather than a new one, so this call still allocates nothing for as
-            // long as there is nothing to copy.
-            Array.Empty<ContentId>());
+            // **The tree's own view, in take order** (M3-03 rule 9). A read off `RunState` rather
+            // than the tree itself, because the handle is internal and a recorder has no business
+            // holding one (AR §18.2) — and empty rather than null for a class with no tree, which
+            // is every class this build ships until M3-12.
+            //
+            // `RunSnapshot`'s constructor copies it, which is what the allocation note above is
+            // about: the copy of an empty list is the shared zero-length array and costs nothing,
+            // and the first run to take a node is the first boundary write to ask for heap.
+            state.TakenNodeIds);
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

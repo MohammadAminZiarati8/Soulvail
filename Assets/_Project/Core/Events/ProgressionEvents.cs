@@ -1,3 +1,5 @@
+using Soulvail.Core.Content;
+
 namespace Soulvail.Core.Events;
 
 // The progression module's domain events. Event structs are grouped per module — the one accepted
@@ -70,5 +72,54 @@ public readonly struct XpChanged
         Gained = gained;
         Level = level;
         Fraction = fraction;
+    }
+}
+
+/// <summary>
+/// A tree node was taken. Published after it is recorded and its effects are on, so a handler
+/// reads the state it is being told about.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It carries kind, branch, tier and count so that nothing reacting to it needs a catalog
+/// lookup</b> — <c>EnemyDied</c>'s reasoning. A HUD flashing the branch's colour, M3-08's level-up
+/// screen closing itself, and M3-09d's tree view filling a cell all know everything they need from
+/// the five fields.
+/// </para>
+/// <para>
+/// <b>Core does not listen to it.</b> M3-08's <c>ChooseOffer</c> tells M3-06's runner about a new
+/// Active directly, because core has no business subscribing to its own events — <c>RunSession</c>'s
+/// own remark on <c>PlayerDied</c>. <c>SkillTree.OwnedActives</c> is maintained by the take rather
+/// than by a handler for the same reason.
+/// </para>
+/// <para>
+/// <b>Nothing publishes this during a restore</b>, which is <c>SkillTree.Restore</c>'s rule: a
+/// resumed run's nodes were picked in a previous session and are not news.
+/// </para>
+/// </remarks>
+public readonly struct NodeTaken
+{
+    /// <summary>The node that was taken.</summary>
+    public readonly ContentId SkillId;
+
+    /// <summary>Which of CH §4's four kinds it is.</summary>
+    public readonly SkillKind Kind;
+
+    /// <summary>The branch it sits in, 0-based — an index into the tree's branches.</summary>
+    public readonly int Branch;
+
+    /// <summary>The tier it sits at, 1-based — CH §5's own numbering.</summary>
+    public readonly int Tier;
+
+    /// <summary>How many nodes are owned once this one is counted.</summary>
+    public readonly int TakenCount;
+
+    public NodeTaken(ContentId skillId, SkillKind kind, int branch, int tier, int takenCount)
+    {
+        SkillId = skillId;
+        Kind = kind;
+        Branch = branch;
+        Tier = tier;
+        TakenCount = takenCount;
     }
 }

@@ -392,6 +392,13 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   gets a copy — and a test that forgets it passes while proving nothing (M0-05).
 - **`FixedRandom` has two constructors**: `new FixedRandom(99)` is a seed, not a scripted value,
   because `int`→`int` wins overload resolution. A scripted 99 is `99f` (M0-10).
+- **A `TestRunnerApi.RegisterCallbacks` registration outlives the run it was made for, so every
+  collector registered earlier in an Editor session fires again on every later run.** Run EditMode,
+  then PlayMode, and the EditMode collector's `RunFinished` fires a second time with the *PlayMode*
+  result and overwrites its own output file — so a results file read after a subsequent run reports
+  the wrong suite, with nothing to say it has been clobbered. It looks like a suite that suddenly
+  dropped from 1266 tests to 11. **Read each run's file before starting the next run, or write to a
+  path unique per run and have the callback ignore results that are not its own** (M3-03).
 
 ---
 

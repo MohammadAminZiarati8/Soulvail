@@ -4,7 +4,9 @@ using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -41,6 +43,14 @@ public sealed class RunRecorderTests
     private const string ExecutionerId = "enemy.executioner";
     private const string OathboundId = "character.oathbound";
     private const string ModeId = "mode.test";
+
+    /// <summary>The tree the two node rows turn on, and the five positions in it.</summary>
+    private const string TreeIdValue = "tree.oathbound";
+    private const string NodeOne = "skill.test.one";
+    private const string NodeTwo = "skill.test.two";
+    private const string NodeThree = "skill.test.three";
+    private const string NodeB = "skill.test.b";
+    private const string NodeC = "skill.test.c";
 
     /// <summary>GD §8.1's threat cost for the one archetype these rows compose from.</summary>
     private const int HuskCost = 4;
@@ -267,7 +277,51 @@ public sealed class RunRecorderTests
     }
 
     [Test]
-    public void Recorder_NodesAreEmptyUntilM3_03()
+    public void Recorder_CapturesTakenNodesInOrder()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // **Restored rather than taken, and that is the only route available.** `RunState.Tree` is
+        // `internal` and this assembly has no `InternalsVisibleTo` (the fixture's standing rule),
+        // and nothing public takes a node until M3-08's ChooseOffer — so a row that wants three
+        // nodes owned starts a run that already owned them. Not circular:
+        // `SkillTreeTests.Restore_ReplaysInOrder` is what says the replay works, and
+        // `RunSessionResumeTests.Start_RestoresTakenNodes` that Start applies it.
+        //
+        // The order is deliberately not the tree's own: three, one, two. A recorder that read the
+        // tree's *shape* instead of its take list would come back sorted and this row would fail.
+        var taken = new[]
+        {
+            new ContentId(NodeThree),
+            new ContentId(NodeOne),
+            new ContentId(NodeTwo),
+        };
+
+        StartAt(1, restore: Saved(1, level: 4, xp: 0f, pendingLevelUps: 0, takenNodeIds: taken));
+
+        Assert.That(
+            _session.State.TakenNodeCount,
+            Is.EqualTo(3),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // v2 has carried this field since M3-01b and M3-03 is what fills it — no version bump and
+        // no migration step, which is the whole reason the field shipped two tasks before its
+        // writer (M3-01b rule 1).
+        Assert.That(snapshot.TakenNodeIds, Is.EqualTo(taken), "In take order, which is what the list means.");
+
+        // A copy, not the run's own list: `SaveWriter` enqueues the write, so a borrowed buffer
+        // would be rewritten under a save that had not happened yet (M3-01b rule 5).
+        Assert.That(snapshot.TakenNodeIds, Is.Not.SameAs(_session.State.TakenNodeIds));
+    }
+
+    [Test]
+    public void Recorder_NoTreeWritesAnEmptyList()
     {
         Build(OneHuskStage());
         StartAt(1);
@@ -278,13 +332,11 @@ public sealed class RunRecorderTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        // v2 carries the field two tasks before its writer (rule 1), which trades against M2-13a
-        // rule 4 knowingly: the alternative was a second step in the chain, for ever, for a format
-        // nobody has shipped. Empty rather than null, so no reader has to ask.
+        // The other half of the row above, and the half every catalog this build ships takes: a
+        // class with no tree writes an empty list rather than null, so no reader has to ask
+        // (M3-03 rule 10).
         Assert.That(snapshot.TakenNodeIds, Is.Not.Null);
         Assert.That(snapshot.TakenNodeIds, Is.Empty);
-
-        // **M3-03 replaces this row.**
     }
 
     [Test]
@@ -337,12 +389,15 @@ public sealed class RunRecorderTests
     }
 
     /// <remarks>
-    /// <b>This row survives M3-01b only because the list of taken nodes is empty, and M3-03 is what
-    /// retires it.</b> A snapshot copies that list (M3-01b rule 5) — it has to, because
-    /// <c>SaveWriter</c> enqueues the write and a borrowed buffer would be rewritten under a save
-    /// that had not happened yet — and a copy of nothing is the shared zero-length array, so there
-    /// is still no heap asked for here. The moment there is a tree to write down there will be, and
-    /// the trade was named in advance rather than discovered by this row going red.
+    /// <b>This row survives M3-03, and it survives it for the reason it was written down at
+    /// M3-01b rather than by luck.</b> A snapshot copies the list of taken nodes (M3-01b rule 5) —
+    /// it has to, because <c>SaveWriter</c> enqueues the write and a borrowed buffer would be
+    /// rewritten under a save that had not happened yet — and a copy of an <em>empty</em> list is
+    /// the shared zero-length array, so no heap is asked for here. This row's run has no tree and
+    /// has taken nothing, which is every run until M3-12 authors one; <b>the first node taken is the
+    /// first boundary write to allocate</b>, and the trade was named in advance rather than
+    /// discovered by this row going red. If a future row measures a run that owns nodes, it is
+    /// measuring the copy and should say so.
     /// </remarks>
     [Test]
     public void Take_AllocatesNothing()
@@ -710,7 +765,11 @@ public sealed class RunRecorderTests
     // ---- Fixture -------------------------------------------------------------------------------
 
     /// <summary>Builds a whole run-sized world: a catalog, a generator, a clock and a session.</summary>
-    private void Build(ModeSpec mode, CharacterSpec character = null, int seed = 0)
+    private void Build(
+        ModeSpec mode,
+        CharacterSpec character = null,
+        int seed = 0,
+        bool withTree = false)
     {
         _events = new RecordingEvents();
 
@@ -720,10 +779,15 @@ public sealed class RunRecorderTests
         _clock = new FixedClock(Instant);
         _mode = mode;
 
+        // **Off by default**, which is the state of every catalog this build ships until M3-12: the
+        // class has no tree, `RunState.Tree` is null, and the three reads answer 0, false and empty
+        // (M3-03 rule 10). Only the rows about what a tree writes down turn it on.
         _catalog = new ContentCatalog(
             new[] { character ?? Oathbound(shield: true) },
             new[] { Husk(), TheExecutioner() },
-            new[] { mode });
+            new[] { mode },
+            withTree ? TreeSkills() : null,
+            withTree ? new[] { Tree() } : null);
 
         _recorder = new RunRecorder(_random, _clock, _events);
 
@@ -784,7 +848,12 @@ public sealed class RunRecorderTests
     /// disagree at all. Not circular: <c>RunSessionResumeTests.Start_RestoresLevelXpPending</c> is
     /// what says the restore works, and it fails there rather than here if it does not.
     /// </remarks>
-    private RunSnapshot Saved(int stage, int level, float xp, int pendingLevelUps) => new RunSnapshot(
+    private RunSnapshot Saved(
+        int stage,
+        int level,
+        float xp,
+        int pendingLevelUps,
+        IReadOnlyList<ContentId> takenNodeIds = null) => new RunSnapshot(
         RunSnapshot.CurrentVersion,
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -798,7 +867,59 @@ public sealed class RunRecorderTests
         level,
         xp,
         pendingLevelUps,
-        Array.Empty<ContentId>());
+        takenNodeIds ?? Array.Empty<ContentId>());
+
+    /// <summary>
+    /// A tree of three branches, with three nodes sharing branch 0's only tier so that any order of
+    /// them is a legal take order.
+    /// </summary>
+    /// <remarks>
+    /// Three at one tier rather than a chain, because the row this exists for is about the
+    /// <em>order the list is written in</em>, and a chain would make that order the only one the
+    /// gating allowed — so a recorder that sorted the ids would still pass.
+    /// </remarks>
+    private static SkillTreeSpec Tree() => new SkillTreeSpec(
+        new ContentId(TreeIdValue),
+        new ContentId(OathboundId),
+        new[]
+        {
+            Branch('a', new[] { NodeOne, NodeTwo, NodeThree }),
+            Branch('b', new[] { NodeB }),
+            Branch('c', new[] { NodeC }),
+        });
+
+    private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
+    {
+        Passive(NodeOne),
+        Passive(NodeTwo),
+        Passive(NodeThree),
+        Passive(NodeB),
+        Passive(NodeC),
+    };
+
+    private static SkillBranchSpec Branch(char letter, string[] tier)
+    {
+        var ids = new ContentId[tier.Length];
+
+        for (int i = 0; i < tier.Length; i++)
+        {
+            ids[i] = new ContentId(tier[i]);
+        }
+
+        return new SkillBranchSpec(
+            new LocKey($"branch.{letter}"),
+            new IReadOnlyList<ContentId>[] { ids });
+    }
+
+    private static SkillSpec Passive(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new IEffect[]
+        {
+            new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
+        });
 
     private void TickFor(int ticks)
     {

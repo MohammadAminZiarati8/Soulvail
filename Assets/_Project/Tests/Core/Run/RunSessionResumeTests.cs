@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -80,6 +82,33 @@ public sealed class RunSessionResumeTests
     private const int SavedLevel = 4;
     private const float SavedXp = 30f;
     private const int SavedPending = 1;
+
+    /// <summary>
+    /// The tree the node rows turn on: five positions, three of them sharing branch 0's only tier
+    /// so that any order of those three is one the gating allows.
+    /// </summary>
+    private const string TreeIdValue = "tree.oathbound";
+    private const string NodeMaxHp = "skill.test.bulwark";
+    private const string NodeDamage = "skill.test.vow";
+    private const string NodeSpare = "skill.test.spare";
+    private const string NodeB = "skill.test.b";
+    private const string NodeC = "skill.test.c";
+
+    /// <summary>
+    /// The class the tree rows play, at 140 rather than <see cref="MaxHp"/>: the ordering row needs
+    /// a saved hit-point value that is above the class's own maximum and below the modified one, and
+    /// 150 of 160 against 140 is the clearest arithmetic for that.
+    /// </summary>
+    private const float TreeMaxHp = 140f;
+
+    /// <summary>What the one max-HP node adds. Twenty, so 140 becomes 160.</summary>
+    private const float MaxHpNodeBonus = 20f;
+
+    /// <summary>
+    /// Hit points a run was saved with that only a modified maximum can hold. Above
+    /// <see cref="TreeMaxHp"/> on purpose — that is the whole of the ordering row.
+    /// </summary>
+    private const float SavedHpAboveBaseMax = 150f;
 
     private const float Frame = 1f / 60f;
 
@@ -197,7 +226,83 @@ public sealed class RunSessionResumeTests
     }
 
     [Test]
-    public void Start_IgnoresTakenNodesUntilM3_03()
+    public void Start_RestoresTakenNodes()
+    {
+        BuildWithTree(seed: 7);
+
+        // Both at branch 0's only tier, so either order is one the gating allows and this row is
+        // about the restore rather than about the order.
+        var taken = new[] { new ContentId(NodeMaxHp), new ContentId(NodeDamage) };
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, takenNodeIds: taken));
+
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(2));
+        Assert.That(_session.State.TakenNodeIds, Is.EqualTo(taken), "In take order, which is what the list means.");
+        Assert.That(_session.State.IsTreeFull, Is.False, "Two of five.");
+
+        // **And their effects are on**, which is the half that matters: without it every passive in
+        // a save would be silently forgotten, and the run would come back weaker than the one that
+        // was interrupted with no symptom anywhere.
+        //
+        // Max HP rather than weapon damage, because `RunState` has a read for one and not the other
+        // — see this task's *As built*. The arithmetic is the class's 140 plus the node's 20.
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerMaxHp,
+            Is.Not.EqualTo(TreeMaxHp),
+            "The fixture's own claim: if the node moved nothing, this row would pass with the "
+                + "restore deleted.");
+    }
+
+    [Test]
+    public void Start_RestoresNodesBeforeHealth()
+    {
+        BuildWithTree(seed: 7);
+
+        // **The ordering row (rule 5, AR §18.1).** A +20 max HP node on a 140 class is a live
+        // maximum of 160, and the save was written at 150 of 160. Restore the nodes first and the
+        // hit points come back at 150; restore health first and 150 is clamped against the class's
+        // unmodified 140, so the player silently loses ten points once per resume — and the only
+        // visible symptom is a bar slightly shorter than the one they put the phone down in front
+        // of.
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                playerHp: SavedHpAboveBaseMax,
+                takenNodeIds: new[] { new ContentId(NodeMaxHp) }));
+
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerHp,
+            Is.EqualTo(SavedHpAboveBaseMax).Within(0.01f),
+            "Swap the two lines in RunSession.Start and this is 140 rather than 150.");
+
+        // The fixture's own claims, checked out loud: the saved hit points have to be above the
+        // class's own maximum and at or below the modified one, or the row proves nothing either
+        // way.
+        Assert.That(SavedHpAboveBaseMax, Is.GreaterThan(TreeMaxHp));
+        Assert.That(SavedHpAboveBaseMax, Is.LessThanOrEqualTo(TreeMaxHp + MaxHpNodeBonus));
+    }
+
+    [Test]
+    public void Start_BadTreeFailsBeforeRunStarted()
+    {
+        // A tree naming a node nobody authored. The class's tree is resolved and cross-checked in
+        // Start's validation block (rule 1), so an authoring mistake refuses the run rather than
+        // the pick — with nothing announced and nothing written (ledger row 3).
+        BuildWithTree(seed: 7, treeNamesAStranger: true);
+
+        Assert.Throws<KeyNotFoundException>(() => _session.Start(FreshConfig(stage: 4)));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void NoTree_ReadsAnswerEmpty()
     {
         Build(seed: 7);
 
@@ -210,17 +315,18 @@ public sealed class RunSessionResumeTests
                 new ContentId("skill.oathbound.consecrate"),
             });
 
-        // Two nodes named, neither of them content this build ships. Nothing throws and nothing is
-        // applied, because there is no tree to apply them to — v2 carries the field two tasks
-        // before its reader (rule 1), and Start reads it and does nothing with it (rule 7).
+        // **A class with no tree is legal until M3-12** (rule 10) — `TryGetTreeFor` is false for
+        // every class this build ships. Two nodes named, neither of them content this build holds,
+        // and nothing throws: there is no tree to apply them to, which is the state `RunSession`
+        // was already in between M3-01b and here.
         Assert.DoesNotThrow(() => StartResumed(stage: 4, naming));
 
-        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
+        Assert.That(_session.State.TakenNodeCount, Is.Zero);
+        Assert.That(_session.State.IsTreeFull, Is.False);
+        Assert.That(_session.State.TakenNodeIds, Is.Empty);
+        Assert.That(_session.State.TakenNodeIds, Is.Not.Null, "Empty, never null — no reader has to ask.");
 
-        // **M3-03 flips this row to Start_RestoresTakenNodes**, which is the point of writing it:
-        // that task changes a row rather than introducing a behaviour nothing was watching. It also
-        // decides the order against Health.Restore — a node that raises max HP has to land before
-        // the hit points saved under it.
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
         Assert.That(naming.TakenNodeIds, Has.Count.EqualTo(2), "The fixture named two, so the row is not vacuous.");
     }
 
@@ -572,6 +678,35 @@ public sealed class RunSessionResumeTests
         _session = SessionOver(_events);
     }
 
+    /// <summary>
+    /// The same world with a tree for the class, and a 140 HP Oathbound to hang the ordering row's
+    /// arithmetic on.
+    /// </summary>
+    /// <param name="treeNamesAStranger">
+    /// Leaves one of the tree's node ids unauthored, for the row about an authoring mistake being
+    /// caught at <c>Start</c>.
+    /// </param>
+    private void BuildWithTree(int seed, bool treeNamesAStranger = false)
+    {
+        _events = new RecordingEvents();
+        _random = new FixedRandom(seed, Alternating(8_192));
+        _clock = new FixedClock(Instant);
+        _mode = Mode();
+
+        IReadOnlyList<SkillSpec> skills = treeNamesAStranger
+            ? new[] { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f), Passive(NodeC, 0.05f) }
+            : TreeSkills();
+
+        _catalog = new ContentCatalog(
+            new[] { Oathbound(TreeMaxHp) },
+            new[] { Husk() },
+            new[] { _mode },
+            skills,
+            new[] { Tree() });
+
+        _session = SessionOver(_events);
+    }
+
     private RunSession SessionOver(IDomainEvents events) => new RunSession(
         _catalog,
         _random,
@@ -610,7 +745,8 @@ public sealed class RunSessionResumeTests
         int level = SavedLevel,
         float xp = SavedXp,
         int pendingLevelUps = SavedPending,
-        IReadOnlyList<ContentId> takenNodeIds = null) =>
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        float playerHp = SavedHp) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -618,7 +754,7 @@ public sealed class RunSessionResumeTests
             seed,
             stage,
             new RandomState(101, 102, 103, 104, 105),
-            SavedHp,
+            playerHp,
             SavedShield,
             SavedRunTime,
             Instant,
@@ -824,10 +960,15 @@ public sealed class RunSessionResumeTests
         behaviour: EnemyBehaviourKind.Static);
 
     /// <summary>CC §7's class, plus the Aegis these rows restore half of.</summary>
-    private static CharacterSpec Oathbound() => new CharacterSpec(
+    /// <param name="maxHp">
+    /// The class's hit points. Parameterised only so the tree rows can play a 140 HP Oathbound —
+    /// every other row wants <see cref="MaxHp"/>, which is deliberately not a value any row
+    /// restores to.
+    /// </param>
+    private static CharacterSpec Oathbound(float maxHp = MaxHp) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
-        MaxHp,
+        maxHp,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
@@ -837,6 +978,63 @@ public sealed class RunSessionResumeTests
         new FocusSpec(0.4f, 1f, 1f),
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
         new ShieldSpec(ShieldMax, 3f, 1f));
+
+    /// <summary>
+    /// A tree of three branches, with three nodes sharing branch 0's only tier so that every one of
+    /// them is available on the first pick and any order of them is a legal take order.
+    /// </summary>
+    private static SkillTreeSpec Tree() => new SkillTreeSpec(
+        new ContentId(TreeIdValue),
+        new ContentId(OathboundId),
+        new[]
+        {
+            Branch('a', new[] { NodeMaxHp, NodeDamage, NodeSpare }),
+            Branch('b', new[] { NodeB }),
+            Branch('c', new[] { NodeC }),
+        });
+
+    private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
+    {
+        MaxHpNode(NodeMaxHp),
+        Passive(NodeDamage, 0.15f),
+        Passive(NodeSpare, 0.05f),
+        Passive(NodeB, 0.05f),
+        Passive(NodeC, 0.05f),
+    };
+
+    private static SkillBranchSpec Branch(char letter, string[] tier)
+    {
+        var ids = new ContentId[tier.Length];
+
+        for (int i = 0; i < tier.Length; i++)
+        {
+            ids[i] = new ContentId(tier[i]);
+        }
+
+        return new SkillBranchSpec(
+            new LocKey($"branch.{letter}"),
+            new IReadOnlyList<ContentId>[] { ids });
+    }
+
+    /// <summary>A flat <c>+20 max HP</c> node — the one the ordering row is about.</summary>
+    /// <remarks>
+    /// <c>Flat</c> rather than a percentage, so the expected maximum is 160 exactly and the row
+    /// reads as arithmetic rather than as a tolerance.
+    /// </remarks>
+    private static SkillSpec MaxHpNode(string id) => Node(
+        id,
+        new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus));
+
+    private static SkillSpec Passive(string id, float damagePercent) => Node(
+        id,
+        new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, damagePercent));
+
+    private static SkillSpec Node(string id, IEffect effect) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new[] { effect });
 
     /// <summary><paramref name="count"/> points on a ring, clear of the origin and of each other.</summary>
     private static IReadOnlyList<Vector3> Points(int count)

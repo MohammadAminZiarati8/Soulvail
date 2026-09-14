@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
@@ -56,7 +58,8 @@ public sealed class RunState
         EnemySystem enemies,
         ProjectileSystem projectiles,
         LevelTracker progression,
-        EffectRegistry effects)
+        EffectRegistry effects,
+        SkillTree tree)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -69,6 +72,7 @@ public sealed class RunState
         Projectiles = projectiles;
         Progression = progression;
         Effects = effects;
+        Tree = tree;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -213,6 +217,64 @@ public sealed class RunState
     /// </para>
     /// </remarks>
     internal EffectRegistry Effects { get; }
+
+    /// <summary>
+    /// The run's live skill tree — what is taken, what may be. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the seventh time in this class, and the plainest case yet:
+    /// <c>SkillTree.Take</c> is public, so a public handle here would let a view grant the player a
+    /// node — the whole of CH §5's gating bypassed by anything that could reach the object, with
+    /// nothing in the compiler to object. <c>Restore</c> is public on it as well and for the same
+    /// reason it does not matter: the seal is this line (AR §18.2, M3-03 rule 8).
+    /// </para>
+    /// <para>
+    /// <b>Null for a class with no tree, which is legal until M3-12</b> —
+    /// <c>ContentCatalog.TryGetTreeFor</c> answers false for every class this build ships, and
+    /// <c>RunSession._flow</c> is the precedent for a run holding null where there is nothing to
+    /// compose. The three reads below answer 0, false and empty in that case, so nothing downstream
+    /// has to ask which kind of run it is in. M3-14b pins that every <em>shipped</em> character has
+    /// one, which is when this null stops being reachable in a build.
+    /// </para>
+    /// </remarks>
+    internal SkillTree Tree { get; }
+
+    /// <summary>
+    /// How many tree nodes the player has taken this run — what a save writes down alongside the
+    /// ids, and what the debug overlay shows until M3-09d draws the tree.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Tree"/> gives. Zero for a
+    /// class with no tree, which is the same answer a run that has taken nothing gives — there is
+    /// nothing else it could usefully say, and <see cref="TakenNodeIds"/> is empty in both cases.
+    /// </remarks>
+    public int TakenNodeCount => Tree is null ? 0 : Tree.TakenCount;
+
+    /// <summary>
+    /// Whether every node of the class's tree is taken — what M3-08 reads to know a pick has
+    /// nothing left to buy and becomes Overflow instead (CH §5.2).
+    /// </summary>
+    /// <remarks>
+    /// False for a class with no tree, and that is the right answer rather than a convenient one: a
+    /// run with no tree has nodes it has not taken in exactly the sense a run at the start does, so
+    /// M3-08 banks the level either way and needs no second question.
+    /// </remarks>
+    public bool IsTreeFull => Tree is not null && Tree.IsFull;
+
+    /// <summary>
+    /// The nodes taken this run, in take order — the list <c>RunRecorder</c> writes into a
+    /// snapshot and <c>SkillTree.Restore</c> replays.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty, never null</b>, including for a class with no tree, so no reader has to ask —
+    /// <c>RunSnapshot.TakenNodeIds</c>' own rule, one layer up. A read-only view of the tree's own
+    /// list rather than a copy: the copy that matters is the one <c>RunSnapshot</c>'s constructor
+    /// makes, because a save is enqueued and a borrowed buffer would be rewritten under a write
+    /// that had not happened yet (M3-01b rule 5).
+    /// </remarks>
+    public IReadOnlyList<ContentId> TakenNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.TakenIds;
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

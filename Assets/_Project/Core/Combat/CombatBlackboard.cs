@@ -30,13 +30,15 @@ namespace Soulvail.Core.Combat;
 /// stop Unity components leaking their innards — there is no component within reach of this type.
 /// </para>
 /// <para>
-/// <b>Two fields are placeholders, on purpose.</b> <see cref="Veilrot"/> and
-/// <see cref="IncomingProjectiles"/> are zero until M6-04 and M2-07 respectively, and
-/// <see cref="PlayerCombat"/> deliberately does not touch them — a field written to zero every
-/// tick by something that does not know the answer is worse than one that is honestly untouched,
-/// because the first cannot be filled in by the system that eventually learns it. They are here
-/// now because AR §9 names them and because a skill authored against a blackboard that lacks them
-/// would have to be re-authored.
+/// <b>One field is a placeholder, on purpose.</b> <see cref="Veilrot"/> is zero until M6-04, and
+/// <see cref="PlayerCombat"/> deliberately does not touch it — a field written to zero every tick
+/// by something that does not know the answer is worse than one that is honestly untouched,
+/// because the first cannot be filled in by the system that eventually learns it. It is here now
+/// because AR §9 names it and because a skill authored against a blackboard that lacks it would
+/// have to be re-authored. <b><see cref="IncomingProjectiles"/> was the second until M2-07
+/// shipped</b>: <c>ProjectileSystem.Tick</c> has written it since, at the end of its own step, so
+/// a trigger reading it sees the sky as it was *before* this tick's arrivals were resolved — which
+/// is deliberately one step old, and is the mechanic rather than a lag to fix (M3-06 rule 7).
 /// </para>
 /// </remarks>
 public sealed class CombatBlackboard
@@ -122,9 +124,16 @@ public sealed class CombatBlackboard
     public float Veilrot;
 
     /// <summary>
-    /// Enemy projectiles currently inbound — CC §6.4's Bulwark trigger. Zero until M2-07 gives
-    /// something the means to fire one.
+    /// Enemy projectiles currently inbound — CC §6.4's Bulwark trigger.
     /// </summary>
+    /// <remarks>
+    /// Written by <c>ProjectileSystem.Tick</c> and nowhere else, after that step's landings, so it
+    /// is the count of bolts still in the air rather than the count that just hit. M3-06's runner
+    /// ticks <em>above</em> the projectile step and therefore reads it one step old on purpose: a
+    /// shield raised before the bolt lands is exactly what CC §6.4's Bulwark means by <em>"an enemy
+    /// projectile is inbound"</em>, and reading it below that step would describe the sky after the
+    /// wound.
+    /// </remarks>
     public int IncomingProjectiles;
 
     /// <summary>

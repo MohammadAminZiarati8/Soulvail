@@ -397,6 +397,35 @@ public sealed class TreeRulesTests
         Assert.Throws<ArgumentOutOfRangeException>(() => rules.NodeCountOf(3));
     }
 
+    [Test]
+    public void Rules_CountsTheActives()
+    {
+        // **A fact about the tree, deliberately not a rule** (M3-06). `RunSession.Start` compares
+        // it against `SkillRunner.MaxActives` and refuses a tree that would not fit, which is what
+        // makes the runner's own capacity throw unreachable in a live run. The comparison lives
+        // there rather than here because a Combat array size is not one of the tree's properties.
+        Assert.That(
+            FullRules().ActiveCount,
+            Is.EqualTo(0),
+            "The 27-node fixture is all Passives and Keystones, so the count is a real zero rather "
+                + "than an uninitialised one — which is why the row below plants some.");
+
+        SkillTreeSpec tree = FullTree();
+
+        var skills = new List<SkillSpec>(FullSkills());
+
+        // Three of branch 'a' swapped for Actives, in place, so the tree's shape is untouched and
+        // only the kinds move.
+        for (int tier = 1; tier <= 3; tier++)
+        {
+            string id = Node('a', tier, 'a');
+
+            skills[skills.FindIndex(s => s.Id.Equals(new ContentId(id)))] = Active(id);
+        }
+
+        Assert.That(new TreeRules(tree, Catalog(tree, skills)).ActiveCount, Is.EqualTo(3));
+    }
+
     // ---- Content --------------------------------------------------------------------------------
 
     /// <summary>The 27-node tree CH §5 ships: three branches of 2/2/2/2 plus a keystone.</summary>
@@ -461,6 +490,21 @@ public sealed class TreeRulesTests
         new LocKey($"{id}.desc"),
         SkillKind.Keystone,
         new IEffect[] { Damage(0.2f) });
+
+    /// <summary>An Active in the same position a <see cref="Passive"/> would have held.</summary>
+    internal static SkillSpec Active(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Active,
+        Array.Empty<IEffect>(),
+        new ActiveSpec(
+            8f,
+            new TriggerSpec(new[]
+            {
+                new TriggerClause(TriggerField.HpFraction, TriggerComparison.Below, 0.6f),
+            }),
+            new IEffect[] { Damage(0.5f) }));
 
     internal static SkillSpec Upgrade(string id, string parentId) => new SkillSpec(
         new ContentId(id),

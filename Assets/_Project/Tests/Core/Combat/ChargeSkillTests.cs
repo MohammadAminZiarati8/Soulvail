@@ -341,6 +341,66 @@ public sealed class ChargeSkillTests
         Assert.That(skill.IsReady, Is.True);
     }
 
+    // ---- M3-06 rule 3: the same floor the runner obeys -------------------------------------------
+
+    [Test]
+    public void Charge_ObeysTheFloor()
+    {
+        // **CH §4.1's 40 % floor, reaching the dash.** `Stat` clamps nothing (ADR-0008), so a deep
+        // enough stack drives the cooldown to a fifth of a second — and `CooldownRules` is the layer
+        // that knows what "too short" means. 2.5 s floors at 1.0 s, and that is what the button
+        // waits out rather than the 0.2 s the stat reads.
+        var skill = new ChargeSkill(Spec());
+
+        skill.Cooldown.Add(new Modifier(ModifierKind.PercentMult, -0.92f, new object()));
+
+        Assert.That(skill.Cooldown.Value, Is.EqualTo(0.2f).Within(1e-4f), "2.5 × 0.08 — the raw stat.");
+
+        StartAt(skill, 0f);
+
+        TickAt(skill, 0.25f);
+        Assert.That(
+            skill.IsReady,
+            Is.False,
+            "Unfloored this would have been ready at 0.2 s, so this is the row that fails if "
+                + "_readyAt goes back to `now + Cooldown.Value`.");
+
+        TickAt(skill, 0.99f);
+        Assert.That(skill.IsReady, Is.False);
+
+        TickAt(skill, 1.01f);
+        Assert.That(skill.IsReady, Is.True, "At 40 % of the authored 2.5 s, and not before.");
+
+        // The floor is taken from the authored base rather than from Stat.Base, and the two are the
+        // same number today — which is why this asserts against the spec's 2.5 out loud.
+        Assert.That(
+            CooldownRules.Effective(CooldownSeconds, skill.Cooldown.Value),
+            Is.EqualTo(CooldownSeconds * CooldownRules.FloorFraction).Within(1e-4f));
+    }
+
+    [Test]
+    public void Charge_UnmodifiedIsUnchanged()
+    {
+        // **The row that says this task changed nothing anyone can feel.** Nothing modifies the dash
+        // cooldown until M3-12, so the shipped Charge floors at 1.0 s and never reaches it: the
+        // 2.5 s wait and the fill are exactly what M1-14 pinned.
+        var skill = new ChargeSkill(Spec());
+
+        StartAt(skill, 0f);
+
+        Assert.That(skill.CooldownFraction, Is.EqualTo(1f).Within(1e-4f));
+
+        TickAt(skill, 1.25f);
+        Assert.That(skill.CooldownFraction, Is.EqualTo(0.5f).Within(1e-4f));
+
+        TickAt(skill, 2.49f);
+        Assert.That(skill.IsReady, Is.False);
+
+        TickAt(skill, 2.51f);
+        Assert.That(skill.IsReady, Is.True, "At the authored 2.5 s, not at the 1.0 s floor.");
+        Assert.That(skill.CooldownFraction, Is.Zero);
+    }
+
     // ---- Rule 6: reset -------------------------------------------------------------------------
 
     [Test]

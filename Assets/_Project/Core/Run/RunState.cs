@@ -59,7 +59,8 @@ public sealed class RunState
         ProjectileSystem projectiles,
         LevelTracker progression,
         EffectRegistry effects,
-        SkillTree tree)
+        SkillTree tree,
+        SkillRunner skills)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -73,6 +74,7 @@ public sealed class RunState
         Progression = progression;
         Effects = effects;
         Tree = tree;
+        Skills = skills;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -275,6 +277,69 @@ public sealed class RunState
     /// </remarks>
     public IReadOnlyList<ContentId> TakenNodeIds =>
         Tree is null ? Array.Empty<ContentId>() : Tree.TakenIds;
+
+    /// <summary>
+    /// The actives the player owns and their live cooldowns. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the eighth time in this class, and the reason is <see cref="Tree"/>'s
+    /// with two doors instead of one: <c>SkillRunner.Add</c> and <c>SkillRunner.Cast</c> are both
+    /// public, so a public handle here would let a view grant the player a skill or fire one — the
+    /// whole of CH §4.2's authored trigger bypassed by anything that could reach the object, with
+    /// nothing in the compiler to object (AR §18.2, M3-06 rule 13).
+    /// </para>
+    /// <para>
+    /// <b>Never null</b>, unlike <see cref="Tree"/>: a run with no tree still has a runner, and it
+    /// owns nothing. That is what lets the four reads below answer without asking which kind of run
+    /// they are in, and what lets <c>RunSession.Tick</c> call <c>Tick</c> unconditionally.
+    /// </para>
+    /// <para>
+    /// The four reads are what M3-10's buttons and the debug overlay need. M3-07a adds the three
+    /// the slots need, and M3-09b the one that wants seconds rather than a fraction.
+    /// </para>
+    /// </remarks>
+    internal SkillRunner Skills { get; }
+
+    /// <summary>How many actives the player owns — zero until a run takes an Active node.</summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Skills"/> gives. It is the
+    /// count of what can <em>fire</em>, where <see cref="TakenNodeCount"/> is the count of what was
+    /// picked: a tree of passives moves the second and never the first.
+    /// </remarks>
+    public int OwnedActiveCount => Skills.Count;
+
+    /// <summary>The id of the owned active at <paramref name="index"/>, in take order.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public ContentId SkillIdAt(int index) => Skills.IdAt(index);
+
+    /// <summary>
+    /// How much of that active's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the instant a
+    /// cast starts, 0 once it is live. What M3-10's radial fill draws.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than on an event for <see cref="MovementSkillCooldownFraction"/>'s reason: a
+    /// fill slides continuously, so publishing it would mean an event per frame for a number the
+    /// reader is already sampling per frame. The two answer the same way on purpose — M3-10 draws
+    /// both side by side.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public float SkillCooldownFraction(int index) => Skills.CooldownFraction(index);
+
+    /// <summary>Whether that active may fire right now.</summary>
+    /// <remarks>
+    /// Not the negation of <see cref="SkillCooldownFraction"/> being zero, and the pair is worth
+    /// having separately for <c>ChargeSkill</c>'s reason: CC §6.2 gives a button that cannot fire
+    /// 40 % opacity, which is a different question from how far round the fill has gone.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public bool IsSkillReady(int index) => Skills.IsReady(index);
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

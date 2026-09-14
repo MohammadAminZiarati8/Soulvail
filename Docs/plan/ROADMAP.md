@@ -210,7 +210,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-02a](tasks/M3-02a-skill-specs.md) | `SkillSpec`, `TriggerSpec`, `SkillTreeSpec`: the tree as data | M | 05 | ☑ |
 | [M3-02b](tasks/M3-02b-skill-authoring.md) | Skill authoring: the four definitions and the boot lists | M | 02a | ☑ |
 | [M3-03](tasks/M3-03-tree-rules.md) | `TreeRules` and `SkillTree`: gating, availability, keystones, and the nodes a save carries | M | 02a 05 01b | ☑ |
-| [M3-04](tasks/M3-04-offer-generator.md) | `OfferGenerator`: three from the available, weighted for variety, from the `Offers` stream | S | 03 | ☐ |
+| [M3-04](tasks/M3-04-offer-generator.md) | `OfferGenerator`: three from the available, weighted for variety, from the `Offers` stream | S | 03 | ☑ |
 
 **Specced by M3-00b:** casting and choosing, M3-06…M3-08. **Two splits, both before starting, and both at a seam a previous task already argued.** M3-07 splits at the **format seam** — the toggle is one review and the save bump is another, which is ledger row 2's rule and M3-01a/M3-01b's shape — because the owner ruled at M3-00b that **Auto/Manual and slot order survive a kill from recents**, and M3-01b reserved nothing for them on purpose. M3-08 splits at the **core/screen seam**: the port, the lazy draw, Overflow and the pause gate are one argument, and three cards are another. Three owner rulings the group hangs on, all at M3-00b: **the toggles are saved (v3)**; **pause means the tick is gated, not clocked at zero** — GD §11.4's *"idle the simulation"*, read literally; and **two pending picks are one screen that re-draws**, not two screens. A fourth question answered itself: AR §6 has listed `CastSkill(slot)` and `SetAutoCast` on `IPlayerCommands` since M0-09, so a manual cast is a player command and never a progression one.
 
@@ -398,7 +398,13 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   they are the one reader localisation cannot reach. **M3-13 is no longer named here**: it was, before
   it split into a palette and a health-bar task, neither of which can hold an icon.
 - **A counting `IRandom` fake in `Tests/Core/Fakes/`.** `SpawnDirectorTests` has a private one and
-  M3-04 will have a second. Promoted by the third.
+  **`OfferGeneratorTests` is now the second, written at M3-04** — same shape, renamed reads
+  (`OffersDraws` / `OtherDraws` rather than `SpawnDraws` / `OtherDraws`), which is the only thing
+  the two copies differ in and the thing a shared fake would have to generalise. **Promoted by the
+  third.** `OfferGeneratorTests` also holds a private **LCG** `IRandomStream`, for the two rows that
+  need ten thousand different answers rather than a script: `SeededRandom` lives in
+  `Soulvail.Game` and `Soulvail.Tests.Core` does not reference it. That is a **first** copy, not a
+  second — it is promoted on its own count.
 - **`EffectRegistry.CanApply` answers only *"is there a handler for this type"*, and the general
   version — `IEffectHandler<T>` gaining a `CanApply(TEffect)` member — was weighed at **M3-03** and
   deliberately not built.** The owner's ruling, with the trace behind it: for `ModifyStat`, the one

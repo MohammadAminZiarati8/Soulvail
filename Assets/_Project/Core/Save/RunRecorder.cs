@@ -34,6 +34,18 @@ namespace Soulvail.Core.Save;
 /// tree. The first node taken is the first boundary write to ask for heap, and that trade was named
 /// in advance rather than discovered by the row going red.
 /// </para>
+/// <para>
+/// <b>The four manual slots are the second such exception and they behave the same way</b>
+/// (M3-07b). The list is always four long, so there is no empty case to shortcut on length — but
+/// four <em>empty</em> slots are indistinguishable from any other four, so <c>RunSnapshot</c> keeps
+/// one shared instance for them and a run with nothing on Manual copies nothing. Every run is that
+/// run until a player opens CC §6.3's screen, so <c>Take_AllocatesNothing</c> is still measuring a
+/// real zero rather than passing on a technicality. <b>The copy is not optional once a slot is
+/// filled</b>, and for a sharper reason than the node list's: what is passed is
+/// <c>SkillRunner.Slots</c>, a live view over the runner's table that <c>SetAutoCast</c> writes
+/// through, so a borrowed one would be rewritten by the player's next toggle under a save that had
+/// not happened yet.
+/// </para>
 /// </remarks>
 public sealed class RunRecorder
 {
@@ -156,7 +168,17 @@ public sealed class RunRecorder
             // `RunSnapshot`'s constructor copies it, which is what the allocation note above is
             // about: the copy of an empty list is the shared zero-length array and costs nothing,
             // and the first run to take a node is the first boundary write to ask for heap.
-            state.TakenNodeIds);
+            state.TakenNodeIds,
+
+            // **CC §6.2's four thumb positions, taken at the boundary like every other field**
+            // (M3-07b rule 8). A read off `RunState` rather than the runner, for the reason the
+            // node list above is: the handle is internal and a recorder has no business holding
+            // one (AR §18.2). What arrives is `SkillRunner.Slots`, a *live* view over the runner's
+            // own table — so the constructor's copy is correctness here rather than convention,
+            // and a run with no Manual skills still costs nothing because four empties are shared.
+            // A run with no tree has no actives and therefore four empty slots, which is what a
+            // snapshot of an M3-era run without content correctly says.
+            state.ManualSkillIds);
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

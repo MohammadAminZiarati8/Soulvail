@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 
@@ -47,14 +48,54 @@ namespace Soulvail.Core.Save;
 /// until M3-03 and is written empty until then, which is the one place the rule above is knowingly
 /// traded against: the reader is two tasks away in the same milestone, and the alternative is a
 /// second step in the chain, for ever, for a format nobody has shipped. <b>M3-03 fills the field
-/// and does not bump the version</b>; <c>Fixture_V2Run_IsWhatThisBuildWrites</c> is the row that
+/// and does not bump the version</b>; <c>Fixture_V3Run_IsWhatThisBuildWrites</c> is the row that
 /// objects if it does.
+/// </para>
+/// <para>
+/// <b>v3 is the loadout, and it is one field</b> (M3-07b): <see cref="ManualSkillIds"/>, CC §6.2's
+/// four thumb positions exactly as the runner holds them. It carries slot <em>positions</em> rather
+/// than a set of Manual ids, because which skills are Manual is recoverable from the list and
+/// <em>where each one sits under the thumb</em> is recoverable from nothing else — a set would come
+/// back compacted into S1…Sn, which is the silent re-bind M3-07a rule 3 refuses to do during a run
+/// and has no business doing across a restart either.
+/// </para>
+/// <para>
+/// <b>What v3 still does not carry is cooldowns</b>, and the reason is not the one M3-00b wrote
+/// down. That spec said saving them would need <c>RunState.Time</c> to mean something across a
+/// process death <em>"which it deliberately does not"</em> — but it does, and always has:
+/// <see cref="RunTime"/> is a v1 field and <c>RunSession.Start</c> restores <c>State.Time</c> from
+/// it exactly. The true reason is cost and review size. <c>SkillRunner._readyAt</c> is keyed by the
+/// runner's registration order, which is <em>derived</em> from <see cref="TakenNodeIds"/>, so the
+/// only safe spelling on disk is a keyed pair of lists with its own length, duplicate and
+/// non-finite guards — not one field — and it does not belong in the PR that ships this format's
+/// first two-step chain. <b>The later bump is cheap and that is a fact about the code rather than a
+/// hope</b>: <c>_readyAt</c> is absolute against a clock that is itself restored exactly, so a v4
+/// step is add-only, which is the case <c>MigrateRun</c>'s signature already handles. <b>The known
+/// gap meanwhile</b>: quitting at a boundary and resuming returns every skill ready, so a
+/// <c>Continue</c> is a free cooldown reset — bounded by the longest cooldown and by a stage's
+/// opening seconds, recorded here rather than left to be discovered.
 /// </para>
 /// </remarks>
 public readonly struct RunSnapshot
 {
     /// <summary>The format this build writes. Bumped by the migration that changes the shape.</summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
+
+    /// <summary>
+    /// The four empty slots, shared: what <see cref="ManualSkillIds"/> answers for
+    /// <c>default(RunSnapshot)</c>, and what <see cref="CopySlots"/> returns for a run with nothing
+    /// on Manual.
+    /// </summary>
+    /// <remarks>
+    /// <b>Static readonly and immutable, which is not what AR §13 bans</b> — that is static
+    /// <em>mutable</em> state. This is <see cref="Array.Empty{T}"/>'s trick with a length: four
+    /// <c>default(ContentId)</c>s are indistinguishable from any other four, and a read-only
+    /// wrapper over them cannot be written through, so one instance answers every caller that has
+    /// no loadout. That is what keeps <c>RunRecorder.Take</c>
+    /// allocation-free for a run with no Manual skills — see <see cref="ManualSkillIds"/>.
+    /// </remarks>
+    private static readonly IReadOnlyList<ContentId> EmptySlots =
+        Array.AsReadOnly(new ContentId[SkillRunner.MaxManualSlots]);
 
     /// <summary>
     /// The nodes, copied and wrapped. Null only for <c>default(RunSnapshot)</c>, which
@@ -62,6 +103,12 @@ public readonly struct RunSnapshot
     /// this is the field that would otherwise hand a reader a null (AR §18.3).
     /// </summary>
     private readonly IReadOnlyList<ContentId> _takenNodeIds;
+
+    /// <summary>
+    /// The four slots, copied and wrapped. Null only for <c>default(RunSnapshot)</c>, which
+    /// <see cref="ManualSkillIds"/> answers as <see cref="EmptySlots"/>.
+    /// </summary>
+    private readonly IReadOnlyList<ContentId> _manualSkillIds;
 
     /// <param name="version">
     /// The format the snapshot is written in. <see cref="CurrentVersion"/> for anything this build
@@ -94,18 +141,31 @@ public readonly struct RunSnapshot
     /// The tree nodes taken, in the order they were taken. Copied; the caller's list is not
     /// retained. Empty until M3-03 has a tree to write down.
     /// </param>
+    /// <param name="manualSkillIds">
+    /// CC §6.2's four thumb positions, in order, with <c>default(ContentId)</c> for an empty one.
+    /// Exactly <see cref="SkillRunner.MaxManualSlots"/> long, always. Copied; the caller's list is
+    /// not retained — and here that is a correctness requirement rather than a convention, because
+    /// the list this is handed is <c>SkillRunner.Slots</c>, a <em>live</em> view over the runner's
+    /// own table that <c>SetAutoCast</c> writes through.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="version"/> is below 1, <paramref name="stageIndex"/> is below 1,
     /// <paramref name="level"/> is below 1, <paramref name="pendingLevelUps"/> is negative, or any
     /// of <paramref name="playerHp"/>, <paramref name="playerShield"/>, <paramref name="runTime"/>
     /// and <paramref name="xp"/> is negative or non-finite.
     /// </exception>
-    /// <exception cref="ArgumentNullException"><paramref name="takenNodeIds"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="takenNodeIds"/> or <paramref name="manualSkillIds"/> is null.
+    /// </exception>
     /// <exception cref="ArgumentException">
     /// An entry of <paramref name="takenNodeIds"/> is <c>default(ContentId)</c> and so names no
     /// node. Entries are <em>not</em> resolved against the catalog here: a node id this build no
     /// longer ships is content validation's answer at <c>RunSession.Start</c> (M3-03), with the
-    /// diagnostic that names it, exactly as <paramref name="modeId"/> is treated below.
+    /// diagnostic that names it, exactly as <paramref name="modeId"/> is treated below. Or
+    /// <paramref name="manualSkillIds"/> is not exactly <see cref="SkillRunner.MaxManualSlots"/>
+    /// long, or names one skill twice — <b>but an entry of <c>default(ContentId)</c> there is
+    /// legal, and that is the exact opposite of the rule above.</b> See
+    /// <see cref="ManualSkillIds"/>.
     /// </exception>
     /// <remarks>
     /// <para>
@@ -138,7 +198,8 @@ public readonly struct RunSnapshot
         int level,
         float xp,
         int pendingLevelUps,
-        IReadOnlyList<ContentId> takenNodeIds)
+        IReadOnlyList<ContentId> takenNodeIds,
+        IReadOnlyList<ContentId> manualSkillIds)
     {
         if (version < 1)
         {
@@ -224,6 +285,15 @@ public readonly struct RunSnapshot
                 "to ask.");
         }
 
+        if (manualSkillIds is null)
+        {
+            throw new ArgumentNullException(
+                nameof(manualSkillIds),
+                $"manualSkillIds must be a list of exactly {SkillRunner.MaxManualSlots}, all " +
+                "default(ContentId) for a run with nothing on Manual. Null and four empties are " +
+                "not two ways of saying the same thing here — a reader must never have to ask.");
+        }
+
         Version = version;
         ModeId = modeId;
         CharacterId = characterId;
@@ -238,6 +308,7 @@ public readonly struct RunSnapshot
         Xp = xp;
         PendingLevelUps = pendingLevelUps;
         _takenNodeIds = CopyNodes(takenNodeIds);
+        _manualSkillIds = CopySlots(manualSkillIds);
     }
 
     /// <summary>
@@ -335,8 +406,52 @@ public readonly struct RunSnapshot
     /// array has nothing to write through. M3-03 is where the paragraph above starts costing
     /// something.
     /// </para>
+    /// <para>
+    /// <b><c>default(ContentId)</c> is refused here and is legal in <see cref="ManualSkillIds"/>,
+    /// and the contrast is deliberate</b> (M3-07b rule 3). In this list an entry that names nothing
+    /// can only be a forgotten field, because a node the player took has an id; in that one it is
+    /// the only way to spell <em>"this slot is empty"</em>, and refusing it would make an empty S2
+    /// unsaveable. Two lists of <c>ContentId</c> on one struct with opposite rules is exactly what a
+    /// later reader gets wrong, so it is written at both ends rather than only at the surprising one.
+    /// </para>
     /// </remarks>
     public IReadOnlyList<ContentId> TakenNodeIds => _takenNodeIds ?? Array.Empty<ContentId>();
+
+    /// <summary>
+    /// CC §6.2's four thumb positions in order, <c>default(ContentId)</c> for an empty one — always
+    /// exactly <see cref="SkillRunner.MaxManualSlots"/> long, and never null.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Fixed length rather than compacted, because that is what makes a <em>hole</em>
+    /// expressible</b> (M3-07a rule 3). A player with skills in S1 and S3 has two buttons, not two
+    /// adjacent ones, and a list that dropped the gap would restore them under the wrong thumbs.
+    /// Four empties for <c>default(RunSnapshot)</c>, and four empties for every run until a player
+    /// switches something to Manual — which is also CC §6.1's default, so a migrated v2 run is
+    /// indistinguishable from a fresh one on this axis.
+    /// </para>
+    /// <para>
+    /// <b><c>default(ContentId)</c> means an empty slot here, and the opposite in
+    /// <see cref="TakenNodeIds"/>.</b> See that property; the rule is written at both ends on purpose.
+    /// <b>What is refused instead is a wrong length and a repeated id</b> — the first because the
+    /// positions <em>are</em> the state, the second because one skill cannot sit under two thumbs, so
+    /// a list naming it twice is a corrupt file rather than a stale one. A slot naming a skill this
+    /// run does not own is neither: that is ordinary staleness and <c>SkillRunner.Restore</c> drops
+    /// it silently (M3-07b rule 6).
+    /// </para>
+    /// <para>
+    /// <b>Copied and wrapped, and unlike <see cref="TakenNodeIds"/> that is required for
+    /// correctness rather than convention</b>: what a recorder passes is <c>SkillRunner.Slots</c>, a
+    /// live view over the runner's own table, and <c>SaveWriter</c> enqueues the write — so a
+    /// borrowed one would be rewritten by the next <c>SetAutoCast</c>, under a save that had not
+    /// happened yet. <b>A run with nothing on Manual still costs nothing</b>, by
+    /// <see cref="EmptySlots"/>: four empties are indistinguishable, so there is one shared
+    /// instance and no copy to make. The first skill set to Manual is the first boundary write to
+    /// ask for heap on this field, which is the same trade <see cref="TakenNodeIds"/> names for the
+    /// first node taken.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<ContentId> ManualSkillIds => _manualSkillIds ?? EmptySlots;
 
     /// <summary>
     /// <paramref name="nodes"/> as a list of this snapshot's own, refusing an entry that names
@@ -370,6 +485,80 @@ public readonly struct RunSnapshot
             }
 
             copy[i] = node;
+        }
+
+        return Array.AsReadOnly(copy);
+    }
+
+    /// <summary>
+    /// <paramref name="manualSkillIds"/> as a list of this snapshot's own, refusing a wrong length
+    /// and a repeated id — and accepting <c>default(ContentId)</c>, which is an empty slot.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A run with nothing on Manual returns the shared <see cref="EmptySlots"/> and allocates
+    /// nothing</b>, which is <see cref="CopyNodes"/>' zero-length shortcut with a length: there is
+    /// nothing in four empties for a later write to change, so one instance is safe to hand to
+    /// everybody. <b>That is why the occupancy scan comes first and the array is allocated after
+    /// it</b> — allocating the copy up front and returning the shared one at the end would leave a
+    /// dead four-element array behind on the very path <c>Take_AllocatesNothing</c> measures, and
+    /// the row would go red for a reason that looked like the guards.
+    /// </para>
+    /// <para>
+    /// The duplicate check is the inner loop over what has already been read, which is at most six
+    /// comparisons — a nested walk rather than a set, because allocating a <c>HashSet</c> to
+    /// deduplicate four entries would cost more than the walk it replaced.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<ContentId> CopySlots(IReadOnlyList<ContentId> manualSkillIds)
+    {
+        if (manualSkillIds.Count != SkillRunner.MaxManualSlots)
+        {
+            throw new ArgumentException(
+                $"manualSkillIds must name exactly {SkillRunner.MaxManualSlots} slots and names " +
+                $"{manualSkillIds.Count}. CC §6.2 draws four fixed thumb positions, so the length " +
+                "is the format: an empty slot is default(ContentId) in place, never an entry left " +
+                "out. A shorter list cannot say which of the four are empty.",
+                nameof(manualSkillIds));
+        }
+
+        bool anyOccupied = false;
+
+        for (int i = 0; i < SkillRunner.MaxManualSlots; i++)
+        {
+            // `default(ContentId)` is legal, and this is the one list in this struct where it is —
+            // see ManualSkillIds. A hole is an ordinary state and is never compacted away.
+            if (manualSkillIds[i].Value is null)
+            {
+                continue;
+            }
+
+            anyOccupied = true;
+
+            for (int earlier = 0; earlier < i; earlier++)
+            {
+                if (manualSkillIds[earlier] == manualSkillIds[i])
+                {
+                    throw new ArgumentException(
+                        $"manualSkillIds names '{manualSkillIds[i]}' in both slot {earlier} and " +
+                        $"slot {i}. One skill sits under one thumb, so a list naming it twice is a " +
+                        "corrupt file rather than a stale one — unlike a slot naming a skill this " +
+                        "build no longer ships, which SkillRunner.Restore drops in silence.",
+                        nameof(manualSkillIds));
+                }
+            }
+        }
+
+        if (!anyOccupied)
+        {
+            return EmptySlots;
+        }
+
+        var copy = new ContentId[SkillRunner.MaxManualSlots];
+
+        for (int i = 0; i < SkillRunner.MaxManualSlots; i++)
+        {
+            copy[i] = manualSkillIds[i];
         }
 
         return Array.AsReadOnly(copy);

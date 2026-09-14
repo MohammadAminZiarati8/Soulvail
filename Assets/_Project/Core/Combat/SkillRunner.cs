@@ -204,7 +204,10 @@ public sealed class SkillRunner
     /// Always full length rather than compacted, because a slot is a position: CC §6.2 draws S1–S4
     /// at fixed places and does not draw the empty ones, so the reader needs to know <em>which</em>
     /// are empty and a shortened list cannot say. The same instance on every call — see
-    /// <see cref="_slotsView"/>. <b>M3-07b is what writes this to disk</b>; nothing here persists.
+    /// <see cref="_slotsView"/>. <b>This is what <c>RunSnapshot.ManualSkillIds</c> is written from</b>
+    /// (M3-07b), through <c>RunState.ManualSkillIds</c> — and because it is a live view rather than
+    /// a copy, the snapshot's constructor copies it rather than holding it. <see cref="Restore"/> is
+    /// the way back.
     /// </remarks>
     public IReadOnlyList<ContentId> Slots => _slotsView;
 
@@ -626,6 +629,78 @@ public sealed class SkillRunner
         // Published after the change, carrying the slot, so a listener redrawing from it needs no
         // second read (rule 9).
         _events.Publish(new SkillAutoCastChanged(skillId, auto, slot));
+    }
+
+    /// <summary>
+    /// Puts a saved loadout back: the four slots as they were written down, dropping any that name
+    /// a skill this run does not own. Silent — nothing is published (M3-07b rule 6).
+    /// </summary>
+    /// <param name="slots">
+    /// Exactly <see cref="MaxManualSlots"/> entries in thumb order, <c>default(ContentId)</c> for an
+    /// empty one — <c>RunSnapshot.ManualSkillIds</c>, which guarantees both.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="slots"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="slots"/> is not exactly <see cref="MaxManualSlots"/> long.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// <b><c>internal</c>, because the only caller is <c>RunSession.Start</c> and a restore is not
+    /// something a view may do</b> (AR §18.2). <see cref="SetAutoCast"/> is the public door and it
+    /// publishes; this one deliberately does not, because nothing may publish before
+    /// <c>RunStarted</c> — the rule <c>SkillTree.Restore</c> and <c>LevelTracker.Restore</c> are
+    /// both written to. It stays reachable from every test that has business with it, because those
+    /// go through <c>StartResumed</c>, which is the route a resumed run actually takes.
+    /// </para>
+    /// <para>
+    /// <b>An unowned id leaves its slot empty and the rest restore</b>, which is deliberately unlike
+    /// <c>SkillTree.Restore</c> throwing for an unknown node (M3-03 rule 5). A taken node <em>is</em>
+    /// the run's power, so dropping one silently hands the player a weaker character than they
+    /// saved; a slot is only where a button sits, and a missing button costs one visit to CC §6.3's
+    /// screen. A node this build no longer ships, a hand-edited file and a tree that changed between
+    /// builds all arrive here looking the same, and none of them is worth refusing a save for.
+    /// </para>
+    /// <para>
+    /// <b>The ceiling is honoured by construction</b> — four slots cannot hold five skills — so
+    /// there is no <see cref="MaxManualSlots"/> check to make, and no repeated id to refuse either:
+    /// <c>RunSnapshot</c> already throws for one at the door, where a corrupt file is a decode
+    /// failure rather than a resume that half-worked. <b>The flag and the table are written
+    /// together</b> here as they are in <see cref="SetAutoCast"/>, which is the invariant
+    /// <see cref="SlotOf"/>'s unreachable throw rests on.
+    /// </para>
+    /// </remarks>
+    internal void Restore(IReadOnlyList<ContentId> slots)
+    {
+        if (slots is null)
+        {
+            throw new ArgumentNullException(nameof(slots));
+        }
+
+        if (slots.Count != MaxManualSlots)
+        {
+            throw new ArgumentException(
+                $"slots must name exactly {MaxManualSlots} thumb positions and names {slots.Count}. "
+                    + "An empty slot is default(ContentId) in place, never an entry left out.",
+                nameof(slots));
+        }
+
+        for (int slot = 0; slot < MaxManualSlots; slot++)
+        {
+            ContentId skillId = slots[slot];
+
+            // Empty stays empty, and an id the runner was never told about becomes empty — the two
+            // are the same write and that is the whole of rule 6. Assigned rather than skipped, so
+            // a restore is a complete statement of the table rather than a set of edits to whatever
+            // happened to be there.
+            if (skillId == default || !TryIndexOf(skillId, out int index))
+            {
+                _slots[slot] = default;
+                continue;
+            }
+
+            _slots[slot] = skillId;
+            _isAuto[index] = false;
+        }
     }
 
     /// <summary>

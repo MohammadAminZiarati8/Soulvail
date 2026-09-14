@@ -49,6 +49,11 @@ public sealed class RunRecorderTests
     private const string NodeOne = "skill.test.one";
     private const string NodeTwo = "skill.test.two";
     private const string NodeThree = "skill.test.three";
+
+    /// <summary>The three Actives the v3 slot rows put under a thumb (M3-07b).</summary>
+    private const string ActiveA = "skill.test.activea";
+    private const string ActiveB = "skill.test.activeb";
+    private const string ActiveC = "skill.test.activec";
     private const string NodeB = "skill.test.b";
     private const string NodeC = "skill.test.c";
 
@@ -337,6 +342,84 @@ public sealed class RunRecorderTests
         // (M3-03 rule 10).
         Assert.That(snapshot.TakenNodeIds, Is.Not.Null);
         Assert.That(snapshot.TakenNodeIds, Is.Empty);
+    }
+
+    // ---- v3: the loadout (M3-07b rule 8) --------------------------------------------------------
+
+    [Test]
+    public void Recorder_CapturesTheSlots()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // Three Actives owned, then two of them put under a thumb with a hole between — which takes
+        // three toggles and an untoggle, because SetAutoCast always fills the *lowest* free slot and
+        // there is deliberately no way to ask for S3 directly (M3-07a rule 3).
+        StartAt(1, restore: Saved(
+            1,
+            level: 4,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: new[]
+            {
+                new ContentId(ActiveA),
+                new ContentId(ActiveB),
+                new ContentId(ActiveC),
+            }));
+
+        var commands = (IPlayerCommands)_session;
+
+        commands.SetAutoCast(new ContentId(ActiveA), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveB), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveC), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveB), auto: true);
+
+        Assert.That(
+            _session.State.ManualSlotCount,
+            Is.EqualTo(2),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // **The hole in place, which is the whole reason the field is four slots and not a set.**
+        // A compacted list would say [A, C] here and hand the player back two adjacent buttons.
+        Assert.That(
+            snapshot.ManualSkillIds,
+            Is.EqualTo(new[]
+            {
+                new ContentId(ActiveA),
+                default(ContentId),
+                new ContentId(ActiveC),
+                default(ContentId),
+            }));
+
+        // A copy, not the run's own view: what RunState hands out is SkillRunner.Slots, which is
+        // live, and SaveWriter enqueues the write — so a borrowed one would be rewritten by the
+        // player's next toggle under a save that had not happened yet.
+        Assert.That(snapshot.ManualSkillIds, Is.Not.SameAs(_session.State.ManualSkillIds));
+    }
+
+    [Test]
+    public void Recorder_NoTreeCapturesFourEmpties()
+    {
+        Build(OneHuskStage());
+        StartAt(1);
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // A run with no tree has no actives and therefore four empty slots — never a shorter list
+        // and never null, so no reader has to ask. That is every run this build ships until M3-12
+        // authors a tree, which is why Take_AllocatesNothing is still measuring a real zero.
+        Assert.That(snapshot.ManualSkillIds, Is.Not.Null);
+        Assert.That(snapshot.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
     }
 
     [Test]
@@ -853,7 +936,8 @@ public sealed class RunRecorderTests
         int level,
         float xp,
         int pendingLevelUps,
-        IReadOnlyList<ContentId> takenNodeIds = null) => new RunSnapshot(
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        IReadOnlyList<ContentId> manualSkillIds = null) => new RunSnapshot(
         RunSnapshot.CurrentVersion,
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -867,7 +951,8 @@ public sealed class RunRecorderTests
         level,
         xp,
         pendingLevelUps,
-        takenNodeIds ?? Array.Empty<ContentId>());
+        takenNodeIds ?? Array.Empty<ContentId>(),
+        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
 
     /// <summary>
     /// A tree of three branches, with three nodes sharing branch 0's only tier so that any order of
@@ -885,7 +970,13 @@ public sealed class RunRecorderTests
         {
             Branch('a', new[] { NodeOne, NodeTwo, NodeThree }),
             Branch('b', new[] { NodeB }),
-            Branch('c', new[] { NodeC }),
+
+            // **The three Actives share branch c's only tier rather than forming a fourth
+            // branch**: `SkillTreeSpec` refuses a class with anything but three, because CH §5 wants
+            // an identical skeleton for every class so the UI is built once. At one tier they are
+            // takeable in any order, which is what the slot rows need — they restore all three and
+            // then choose which sit under a thumb.
+            Branch('c', new[] { NodeC, ActiveA, ActiveB, ActiveC }),
         });
 
     private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
@@ -895,6 +986,9 @@ public sealed class RunRecorderTests
         Passive(NodeThree),
         Passive(NodeB),
         Passive(NodeC),
+        Active(ActiveA),
+        Active(ActiveB),
+        Active(ActiveC),
     };
 
     private static SkillBranchSpec Branch(char letter, string[] tier)
@@ -910,6 +1004,34 @@ public sealed class RunRecorderTests
             new LocKey($"branch.{letter}"),
             new IReadOnlyList<ContentId>[] { ids });
     }
+
+    /// <summary>
+    /// An Active, which is what the slot rows need: only an Active reaches <c>SkillRunner</c>, and
+    /// only something the runner owns can be put under a thumb.
+    /// </summary>
+    /// <remarks>
+    /// <b>Added to branch c's tier rather than as a fourth branch</b>, because a class has exactly
+    /// three (CH §5) and <c>SkillTreeSpec</c> refuses a fourth — so the node-order rows above keep
+    /// branch a exactly as they were written against it. The trigger is never met in
+    /// these rows because nothing ticks between the restore and the <c>Take</c> — a recorder reads
+    /// state and does not run a frame — so its shape is immaterial and is the fixture's ordinary one.
+    /// </remarks>
+    private static SkillSpec Active(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Active,
+        Array.Empty<IEffect>(),
+        new ActiveSpec(
+            2.5f,
+            new TriggerSpec(new[]
+            {
+                new TriggerClause(TriggerField.HpFraction, TriggerComparison.Below, 0.6f),
+            }),
+            new IEffect[]
+            {
+                new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
+            }));
 
     private static SkillSpec Passive(string id) => new SkillSpec(
         new ContentId(id),

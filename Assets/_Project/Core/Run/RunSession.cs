@@ -543,6 +543,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands
                 }
             }
 
+            // **Below the loop above and above Health.Restore, and the first half of that is an
+            // AR §18.1 row rather than a preference** (M3-07b rule 7). Below the actives, because a
+            // slot naming a skill the runner has not been told about yet is indistinguishable from
+            // rule 6's stale id: the restore would drop every slot in silence and the run would come
+            // back with empty buttons and no error. Above Health.Restore for no reason of its own —
+            // it moves no stat — and written there anyway, because this block is read as an order
+            // and a line placed outside it invites the next one to be placed anywhere.
+            //
+            // Silent, for the reason the whole block is: nothing may publish before RunStarted.
+            // Unlike the tree's restore it refuses nothing — a slot naming a skill this run does not
+            // own leaves that slot empty and the rest come back, because a slot is where a button
+            // sits rather than the run's power (SkillRunner.Restore).
+            skills.Restore(resumed.ManualSkillIds);
+
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
             // Silent and settling, for the reason the whole block is here: a presenter reading

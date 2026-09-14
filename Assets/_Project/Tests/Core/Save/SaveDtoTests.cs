@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
@@ -53,7 +54,8 @@ public sealed class SaveDtoTests
             level: 7,
             xp: 33.5f,
             pendingLevelUps: 1,
-            takenNodeIds: Array.Empty<ContentId>());
+            takenNodeIds: Array.Empty<ContentId>(),
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
 
         Assert.That(snapshot.Version, Is.EqualTo(RunSnapshot.CurrentVersion));
         Assert.That(snapshot.ModeId, Is.EqualTo(Mode));
@@ -141,7 +143,8 @@ public sealed class SaveDtoTests
             level: 1,
             xp: 0f,
             pendingLevelUps: 0,
-            takenNodeIds: null));
+            takenNodeIds: null,
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]));
     }
 
     [Test]
@@ -165,6 +168,121 @@ public sealed class SaveDtoTests
         // save that had not happened yet (rule 5).
         Assert.That(snapshot.TakenNodeIds.Count, Is.EqualTo(1));
         Assert.That(snapshot.TakenNodeIds[0], Is.EqualTo(Bulwark));
+    }
+
+    // ---- v3: the loadout (M3-07b rules 1, 2, 3) -------------------------------------------------
+
+    [Test]
+    public void Snapshot_RecordsTheSlots()
+    {
+        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) };
+
+        RunSnapshot snapshot = Snapshot(manualSkillIds: slots);
+
+        Assert.That(snapshot.ManualSkillIds, Is.EqualTo(slots));
+
+        // Equal, and *not* the same instance. What a recorder passes is SkillRunner.Slots, a live
+        // view over the runner's own table that SetAutoCast writes through — so holding it rather
+        // than copying it would let the player's next toggle rewrite a snapshot already enqueued.
+        Assert.That(
+            snapshot.ManualSkillIds,
+            Is.Not.SameAs(slots),
+            "A borrowed slot list would be rewritten under a save that had not happened yet.");
+    }
+
+    [Test]
+    public void Snapshot_WrongSlotCount_Throws()
+    {
+        // Both directions, and each message names the four: the length *is* the format, because it
+        // is what makes a hole expressible, and a list of three cannot say which of the four it
+        // left out.
+        Assert.That(
+            Assert.Catch<ArgumentException>(
+                () => Snapshot(manualSkillIds: new[] { Bulwark, default, default })).Message,
+            Does.Contain("4"));
+
+        Assert.That(
+            Assert.Catch<ArgumentException>(
+                () => Snapshot(manualSkillIds: new[]
+                {
+                    Bulwark, default, default, default, default,
+                })).Message,
+            Does.Contain("4"));
+    }
+
+    [Test]
+    public void Snapshot_NullSlots_Throws()
+    {
+        // Constructed inline rather than through Snapshot(), which coalesces a null away — the same
+        // reason Snapshot_NullNodes_Throws does. Null and four empties are not two ways of saying
+        // the same thing, which is also why default(RunSnapshot) answers four empties.
+        Assert.Catch<ArgumentNullException>(() => new RunSnapshot(
+            RunSnapshot.CurrentVersion,
+            Mode,
+            Character,
+            seed: 7,
+            stageIndex: 1,
+            default,
+            playerHp: 100f,
+            playerShield: 0f,
+            runTime: 0f,
+            Written,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: Array.Empty<ContentId>(),
+            manualSkillIds: null));
+    }
+
+    [Test]
+    public void Snapshot_DefaultEntryIsLegal()
+    {
+        // **The contrast with Snapshot_DefaultNodeId_Throws, and the reason rule 3 is written at
+        // both ends.** In TakenNodeIds an entry naming nothing can only be a forgotten field; here
+        // it is the only way to spell "this slot is empty", and refusing it would make an empty S2
+        // unsaveable — which is to say it would make a hole unsaveable, and the hole is the point.
+        Assert.DoesNotThrow(() => Snapshot(manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]));
+    }
+
+    [Test]
+    public void Snapshot_DuplicateSlotEntry_Throws()
+    {
+        // Rule 6's other half, refused at the door. One skill sits under one thumb, so a list
+        // naming it twice is a corrupt file rather than a stale one — and unlike a slot naming a
+        // skill this build no longer ships, which SkillRunner.Restore drops in silence, there is no
+        // reading of this that leaves the run recoverable.
+        Assert.Catch<ArgumentException>(() => Snapshot(manualSkillIds: new[]
+        {
+            Bulwark, default, Bulwark, default,
+        }));
+    }
+
+    [Test]
+    public void Snapshot_SlotsAreCopied()
+    {
+        var slots = new List<ContentId> { Bulwark, default, default, default };
+
+        RunSnapshot snapshot = Snapshot(manualSkillIds: slots);
+
+        slots[1] = Consecrate;
+
+        // Snapshot_NodesAreCopied's reason, one step sharper: that list is the caller's, this one
+        // is the runner's own and changes whenever the player opens CC §6.3's screen.
+        Assert.That(snapshot.ManualSkillIds[1], Is.EqualTo(default(ContentId)));
+        Assert.That(snapshot.ManualSkillIds[0], Is.EqualTo(Bulwark));
+    }
+
+    [Test]
+    public void Snapshot_DefaultHasFourEmptySlots()
+    {
+        RunSnapshot snapshot = default;
+
+        // A struct always has a zeroed form, and this is a field that would otherwise hand a reader
+        // a null — or, worse here, a list of the wrong length, which every reader would then have
+        // to guard against (AR §18.3).
+        Assert.That(snapshot.ManualSkillIds, Is.Not.Null);
+        Assert.That(snapshot.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
     }
 
     [Test]
@@ -246,7 +364,8 @@ public sealed class SaveDtoTests
             level: 1,
             xp: 0f,
             pendingLevelUps: 0,
-            takenNodeIds: Array.Empty<ContentId>()));
+            takenNodeIds: Array.Empty<ContentId>(),
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]));
     }
 
     [Test]
@@ -399,7 +518,8 @@ public sealed class SaveDtoTests
         int level = 1,
         float xp = 0f,
         int pendingLevelUps = 0,
-        IReadOnlyList<ContentId> takenNodeIds = null)
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        IReadOnlyList<ContentId> manualSkillIds = null)
     {
         return new RunSnapshot(
             version,
@@ -415,6 +535,7 @@ public sealed class SaveDtoTests
             level,
             xp,
             pendingLevelUps,
-            takenNodeIds ?? Array.Empty<ContentId>());
+            takenNodeIds ?? Array.Empty<ContentId>(),
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
     }
 }

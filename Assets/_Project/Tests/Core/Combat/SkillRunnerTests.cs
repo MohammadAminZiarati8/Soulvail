@@ -1315,23 +1315,21 @@ public sealed class SkillRunnerTests
     }
 
     [Test]
-    public void Snapshot_CarriesNoLoadout()
+    public void Snapshot_CarriesTheLoadout()
     {
-        // **Rule 11's pin: M3-07b is a separate review rather than a forgotten line.** The four
-        // slots and the flags live for the run and die with it, so a build stopped between the two
-        // tasks loses a loadout on a kill-from-recents — a known, named gap.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(2), "M3-07b is the bump, not this task.");
+        // **M3-07a rule 11's pin, inverted by the task it was pinning.** It read
+        // `Snapshot_CarriesNoLoadout` and asserted `CurrentVersion` was still 2 with no member of
+        // `RunSnapshot` looking like a slot — a red row M3-07b had to *change* rather than
+        // remember. Kept and turned over rather than deleted, because the thing worth asserting for
+        // ever is the same thing from the other side: the runner's table is what reaches the file.
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "M3-07b is the bump.");
 
-        foreach (PropertyInfo member in typeof(RunSnapshot).GetProperties())
-        {
-            Assert.That(
-                member.Name.ToLowerInvariant(),
-                Does.Not.Contain("slot").And.Not.Contain("manual").And.Not.Contain("auto")
-                    .And.Not.Contain("loadout"),
-                $"RunSnapshot.{member.Name} looks like a loadout field, which is M3-07b's.");
-        }
+        Assert.That(
+            typeof(RunSnapshot).GetProperty(nameof(RunSnapshot.ManualSkillIds)),
+            Is.Not.Null,
+            "The field the pin was holding a place for.");
 
-        // And the run that actually has one writes the same file as the run that does not.
+        // And a run that has a loadout writes a different file from one that does not.
         StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown, actives: 2);
 
         var commands = (IPlayerCommands)_session;
@@ -1348,11 +1346,17 @@ public sealed class SkillRunnerTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        Assert.That(snapshot.Version, Is.EqualTo(2));
+        Assert.That(snapshot.Version, Is.EqualTo(3));
         Assert.That(
             snapshot.TakenNodeIds.Count,
             Is.EqualTo(2),
-            "The nodes are in the file — it is where they *sit* that is not.");
+            "The nodes are in the file.");
+
+        // And so is where they sit, which is the sentence this row used to say the opposite of.
+        Assert.That(snapshot.ManualSkillIds[0], Is.EqualTo(_session.State.SkillIdAt(0)));
+        Assert.That(snapshot.ManualSkillIds[1], Is.EqualTo(_session.State.SkillIdAt(1)));
+        Assert.That(snapshot.ManualSkillIds[2], Is.EqualTo(default(ContentId)));
+        Assert.That(snapshot.ManualSkillIds[3], Is.EqualTo(default(ContentId)));
     }
 
     // ---- Where it runs in a tick (rule 7) --------------------------------------------------------
@@ -1709,7 +1713,8 @@ public sealed class SkillRunnerTests
                 1,
                 0f,
                 0,
-                tier.ToArray())));
+                tier.ToArray(),
+                new ContentId[SkillRunner.MaxManualSlots])));
 
         Assert.That(
             _session.State.OwnedActiveCount,

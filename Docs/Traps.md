@@ -399,6 +399,16 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   the wrong suite, with nothing to say it has been clobbered. It looks like a suite that suddenly
   dropped from 1266 tests to 11. **Read each run's file before starting the next run, or write to a
   path unique per run and have the callback ignore results that are not its own** (M3-03).
+- **A `TestRunnerApi` created with `ScriptableObject.CreateInstance` and left in a local is collected
+  mid-run, and the callbacks registered on it go silently with it.** The run itself finishes
+  normally — every test executes, the Test Runner window updates — but `RunFinished` never fires,
+  so a results file written from the callback stays at whatever the command wrote before starting
+  and there is no error anywhere to say why. It reads exactly like a suite that hung, and probing
+  `EditorApplication.isPlaying`/`isCompiling` afterwards says the Editor is idle, which makes it read
+  like a *finished* run whose results vanished. It is length-dependent, so short filtered runs
+  succeed and the full suite is where it bites: at M3-08b three runs were lost to it after five
+  identical ones had worked. **Set `api.hideFlags = HideFlags.HideAndDontSave` and root both the api
+  and the callback object in a `static` field**, clearing them in `RunFinished` (M3-08b).
 - **To prove a sealed, non-virtual collaborator was never *asked*, hand it an input that throws the
   moment it is used.** There is often no fake to write: `TriggerSpec` is `public sealed` with a
   non-virtual `IsMet` and no interface, `TriggerClause` is a `readonly struct`, and

@@ -243,6 +243,20 @@ rows. `RunSnapshot.CurrentVersion` is **still 3**.
     `Logs/`.
 11. **`Commands_ThrowWhenNoRunIsRunning` was extended in place** rather than duplicated, and now also
     asserts that the two *reads* answer `false` outside a run instead of throwing.
+12. **`RunTicker` raises and lowers the pause itself, and this collides with M3-08b rule 3 head-on.**
+    Rule 4 says only *"if the pause is held, return"* and never says who holds it — but **manual
+    step 2 requires the game to stop dead with no screen in existence**, and the frame loop is the
+    only object in the build that can do that. So `LevelUpPhase` takes `PauseReason.LevelUp` when
+    `HasOffer` goes true and gives it back when it goes false, guarded on nothing else holding it.
+    **M3-08b rule 3 says the opposite in as many words** — *"this file, both times, because a pause
+    raised in one class and lowered in another is how a screen ends up closed over a frozen game"* —
+    and if its presenter calls `Pause(PauseReason.LevelUp)` on `OfferPresented` while the ticker
+    already holds it, `RunPause` **throws** (`Pause_SameReasonTwice_Throws`). **This is the first
+    thing M3-08b has to settle**, and it is a real design question rather than a merge conflict: the
+    ticker's version makes the gate work with no screen and keeps ownership in the file that writes
+    the frame down; the presenter's version keeps raise and release in one place and survives a
+    screen that fails to open. Whichever wins, the loser's code is deleted rather than guarded —
+    two owners with an `if` between them is the state rule 12 exists to refuse.
 
 ### Two things the tests corrected
 

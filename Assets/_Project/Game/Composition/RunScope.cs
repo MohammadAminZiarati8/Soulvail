@@ -87,6 +87,11 @@ namespace Soulvail.Game.Composition
                  "leaving the scene.")]
         [SerializeField] private HudPresenter _hudPresenter;
 
+        [Tooltip("The level-up screen: three cards and a header, on its own canvas above the HUD. " +
+                 "Optional on the HUD's terms — but read its registration below before leaving it " +
+                 "empty, because what its absence costs is not what the HUD's costs.")]
+        [SerializeField] private LevelUpPresenter _levelUpPresenter;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -242,6 +247,27 @@ namespace Soulvail.Game.Composition
             if (_hudPresenter != null)
             {
                 builder.RegisterComponent(_hudPresenter);
+            }
+
+            // Optional on the HUD's terms — the undressed Run scene is the fastest iteration loop
+            // in the project and every optional field on this scope exists to protect it — but the
+            // cost of its absence is deliberately written down here, because it is not the HUD's
+            // cost and a later reader would assume it was.
+            //
+            // The gate is RunTicker's, not this screen's (M3-08a rule 12, and the owner's ruling at
+            // M3-08b): the run stops whenever core has an offer on the table, whether or not
+            // anything is drawing it. So a scene dressed without this presenter does not play "the
+            // same without a level-up screen" — on the first pick it stops dead, shows nothing, and
+            // the only way out is to leave the scene.
+            //
+            // It is still optional rather than guarded, and that is a statement about *when* rather
+            // than about the risk: `IsLevelUpPending` requires a tree, nothing in Data/Trees ships
+            // until M3-12, so no run in the current build can reach that state at all. M3-12 is the
+            // task that should turn this into a MissingReferenceException beside the threat arrows',
+            // because that is the task that makes the failure reachable.
+            if (_levelUpPresenter != null)
+            {
+                builder.RegisterComponent(_levelUpPresenter);
             }
 
             // Optional for the same reason and on the same terms: a scene dressed without a

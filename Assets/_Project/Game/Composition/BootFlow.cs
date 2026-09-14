@@ -69,6 +69,14 @@ public sealed class BootFlow : IStartable, IDisposable
     {
         Application.targetFrameRate = TargetFrameRate;
 
+        // Stated rather than assumed, beside the line above and for the same reason a baseline is
+        // written down once (M3-08a rule 13). RunPause takes the clock to 0 and restores what it
+        // found — but **domain reload is disabled on Play**, so a Play session ended mid-pause
+        // leaves the static at 0 and the next one would start frozen with nothing to say why. The
+        // cost is one assignment per boot; the alternative is an Editor that occasionally will not
+        // move and a morning spent on it.
+        Time.timeScale = 1f;
+
         SceneManager.sceneLoaded += OnSceneLoaded;
 
         LoadProfile();

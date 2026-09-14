@@ -84,6 +84,31 @@ public sealed class ResumeFlowTests
         _created.Clear();
     }
 
+    // ---- Boot states the baseline (M3-08a rule 13) ----------------------------------------------
+
+    [Test]
+    public void Boot_StatesTheTimeScaleBaseline()
+    {
+        // **Domain reload is disabled on Play**, so a Play session ended mid-pause leaves
+        // Time.timeScale at 0 and the next one would start frozen with nothing to say why. RunPause
+        // restores what it found, and this is the belt to that braces: the baseline is *stated* once
+        // at boot, beside the frame-rate line, for the same reason a baseline is written down at all.
+        float restore = Time.timeScale;
+
+        try
+        {
+            Time.timeScale = 0f;
+
+            RunBootFlow(new StubStore(), new SavedRun());
+
+            Assert.That(Time.timeScale, Is.EqualTo(1f), "boot must not inherit a frozen clock.");
+        }
+        finally
+        {
+            Time.timeScale = restore;
+        }
+    }
+
     // ---- Boot reads the disk (rule 6) -----------------------------------------------------------
 
     [Test]
@@ -603,9 +628,13 @@ public sealed class ResumeFlowTests
 
         charge.Construct(enemyViews, 1 << enemyLayer);
 
+        var pause = new RunPause();
+
         var ticker = new RunTicker(
             session,
             session,
+            session,
+            pause,
             pending,
             Catalog(),
             random,
@@ -632,6 +661,11 @@ public sealed class ResumeFlowTests
             // Restores Screen.sleepTimeout and disables the input adapter. Left undone, every later
             // row in the suite would run with the Editor's sleep timeout changed.
             ticker.Dispose();
+
+            // The same argument for the two globals RunPause writes. Nothing here pauses, so this is
+            // belt and braces — and it is the cheap half of a failure that would show up as an
+            // unrelated fixture timing out.
+            pause.Dispose();
         }
 
         return session;
@@ -767,7 +801,7 @@ public sealed class ResumeFlowTests
     /// A run, as far as the ticker is concerned: it remembers the config it was handed and, if it
     /// was given one to watch, whether the pending run was still set at that moment.
     /// </summary>
-    private sealed class RecordingSession : IRunSession, IPlayerCommands
+    private sealed class RecordingSession : IRunSession, IPlayerCommands, IProgressionCommands
     {
         private readonly PendingRun _spy;
 
@@ -833,6 +867,22 @@ public sealed class ResumeFlowTests
         }
 
         public void SetAutoCast(ContentId skillId, bool auto)
+        {
+        }
+
+        // M3-08a made this fake an IProgressionCommands too, because RunTicker now takes that port
+        // and this file builds one. Inert like the commands above: the rows here are about the
+        // RunConfig a resume hands over, and a level-up has no part in that — IsLevelUpPending
+        // answering false is what keeps the phase a no-op for every row in this file.
+        public bool IsLevelUpPending => false;
+
+        public bool HasOffer => false;
+
+        public void OpenLevelUp()
+        {
+        }
+
+        public void ChooseOffer(int index)
         {
         }
     }

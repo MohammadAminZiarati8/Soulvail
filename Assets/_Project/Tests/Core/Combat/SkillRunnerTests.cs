@@ -1710,7 +1710,13 @@ public sealed class SkillRunnerTests
                 0f,
                 0f,
                 Instant,
-                1,
+
+                // **The level has to account for the nodes** (M3-08a rule 9). Every pick a run has
+                // earned is spent on a node, spent on Overflow, or unspent — so a level-1 save
+                // holding taken nodes is arithmetic that cannot happen, and `RunSession.Start`
+                // refuses it. One level per node and nothing owed is the shape that says "these
+                // nodes were paid for", which is what this fixture always meant.
+                1 + tier.Count,
                 0f,
                 0,
                 tier.ToArray(),

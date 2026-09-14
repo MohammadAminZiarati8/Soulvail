@@ -308,6 +308,11 @@ public sealed class RunSessionResumeTests
         StartResumed(stage: 4, Snapshot(
             4,
             _random.Seed,
+
+            // Three nodes taken and one pick still owed needs level 5 to add up (M3-08a rule 9):
+            // 5 − 1 − 3 − 1 = 0 Overflow. The fixture's default level 4 describes a run that spent
+            // four picks having earned three, which RunSession.Start now refuses outright.
+            level: 5,
             takenNodeIds: ThreeActives(),
             manualSkillIds: new[]
             {
@@ -543,9 +548,16 @@ public sealed class RunSessionResumeTests
             Snapshot(
                 4,
                 _random.Seed,
+
+                // Level 3 with one node taken and one owed is 3 − 1 − 1 − 1 = 0 Overflow, which is
+                // what keeps this row's maximum exactly 160 (M3-08a rule 9). At the fixture's
+                // default level 4 the run would also carry one Overflow level, and the +2 % would
+                // turn a row that reads as arithmetic into one that reads as a tolerance.
+                level: 3,
                 playerHp: SavedHpAboveBaseMax,
                 takenNodeIds: new[] { new ContentId(NodeMaxHp) }));
 
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0), "the row's arithmetic assumes none.");
         Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
 
         Assert.That(
@@ -558,6 +570,197 @@ public sealed class RunSessionResumeTests
         // way.
         Assert.That(SavedHpAboveBaseMax, Is.GreaterThan(TreeMaxHp));
         Assert.That(SavedHpAboveBaseMax, Is.LessThanOrEqualTo(TreeMaxHp + MaxHpNodeBonus));
+    }
+
+    // ---- Overflow on resume (M3-08a rule 9) ------------------------------------------------------
+
+    [Test]
+    public void Resume_DerivesOverflow()
+    {
+        BuildWithTree(seed: 7);
+
+        // **Nothing is stored and nothing needs to be.** Level 15 with no node taken and no pick
+        // owed says that all fourteen picks this run earned went somewhere that is not a node — and
+        // Overflow is the only other place a pick can go: Level − 1 − TakenNodeCount −
+        // PendingLevelUps. The spec's fourteen, arrived at with this fixture's five-node tree rather
+        // than a 27-node one.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 100f));
+
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(14));
+
+        // ×1.28 on a clean stack: fourteen 2 % PercentAdd modifiers pool to +28 %.
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
+
+        Assert.That(
+            _events.Count<OverflowGranted>(),
+            Is.EqualTo(0),
+            "a resumed run's Overflow was earned in a previous session and is not news.");
+
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "deriving it is what keeps the format at 3.");
+    }
+
+    [Test]
+    public void Resume_DerivesZeroForAFreshShape()
+    {
+        BuildWithTree(seed: 7);
+
+        // Every run in this build: levels earned, nothing spent, because no class ships a tree.
+        // 3 − 1 − 0 − 2 = 0, so the identity holds for the shape that is actually on disk today.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp).Within(0.01f));
+    }
+
+    [Test]
+    public void Resume_OverflowRunsBeforeHealthRestore()
+    {
+        BuildWithTree(seed: 7);
+
+        // **The second ordering row on this block, and it fails on a swap rather than reporting a
+        // different number** (AR §18.1, M3-03's shape from a second writer). Fourteen Overflow levels
+        // take a 140 class to 179.2, and the run was saved at 170 — above the unmodified maximum on
+        // purpose. Grant the Overflow *after* Health.Restore and 170 is clamped against 140.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 170f));
+
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerHp,
+            Is.EqualTo(170f).Within(0.01f),
+            "Move GrantOverflow below Health.Restore and this is 140 rather than 170.");
+
+        // The fixture's own claims, checked out loud, or the row proves nothing either way.
+        Assert.That(170f, Is.GreaterThan(TreeMaxHp));
+        Assert.That(170f, Is.LessThanOrEqualTo(TreeMaxHp * 1.28f));
+    }
+
+    [Test]
+    public void Resume_ArithmeticThatDoesNotAddUp_Throws()
+    {
+        BuildWithTree(seed: 7);
+
+        // Level 2 earns one pick; three nodes are taken. That is a save whose picks do not add up,
+        // and it is arithmetic rather than content — so it cannot be rescued by clamping, and a
+        // clamp would silently hand the player a run whose power does not match its history.
+        ArgumentException thrown = Assert.Throws<ArgumentException>(() => StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                level: 2,
+                pendingLevelUps: 0,
+                takenNodeIds: new[]
+                {
+                    new ContentId(NodeMaxHp),
+                    new ContentId(NodeDamage),
+                    new ContentId(NodeSpare),
+                })));
+
+        // It names all four numbers, because a message saying only "does not add up" leaves the
+        // reader to go and find which of them is wrong.
+        Assert.That(thrown.Message, Does.Contain("level 2"));
+        Assert.That(thrown.Message, Does.Contain("3"));
+        Assert.That(thrown.Message, Does.Contain("-2"));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void NoTree_BanksTheLevel()
+    {
+        // **The shipped shape, and the one this whole milestone runs on until M3-12** (M3-08a
+        // rule 5). No tree, two picks owed: the levels are banked, and asking to open one draws
+        // nothing, grants nothing, announces nothing and throws nothing.
+        Build(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
+
+        // False on the third term rather than the first: picks *are* owed, and there is still
+        // nothing to spend them on. A caller that asked only "are picks owed?" would pause an empty
+        // screen for the whole of this milestone.
+        Assert.That(_session.State.IsLevelUpPending, Is.False);
+
+        _events.Clear();
+
+        Assert.DoesNotThrow(() => ((IProgressionCommands)_session).OpenLevelUp());
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2), "still banked, still unspent.");
+        Assert.That(_session.State.HasOffer, Is.False);
+        Assert.That(_session.State.Offer, Is.Empty);
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
+        Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
+        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
+
+        // And the identity is not asserted over a save whose ids were discarded: with no tree the
+        // taken list is ignored, so refusing this arithmetic would refuse a legal save.
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(0));
+    }
+
+    // ---- The lazy draw (M3-08a rule 1) -----------------------------------------------------------
+
+    [Test]
+    public void Offer_IsNotDrawnUntilItIsOpened()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
+        Assert.That(_session.State.IsLevelUpPending, Is.True);
+
+        // **Neither Start nor any tick draws**, which is the whole of the inherited rule: the
+        // boundary snapshot is taken inside a tick, so a draw that happened in one would be captured
+        // at a position it had already advanced, and killing the app would be a free reroll.
+        Assert.That(_session.State.HasOffer, Is.False, "Start must not draw.");
+
+        TickFor(10);
+
+        Assert.That(_session.State.HasOffer, Is.False, "a tick must not draw either.");
+
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        Assert.That(_session.State.HasOffer, Is.True, "opening it is the only thing that draws.");
+    }
+
+    [Test]
+    public void Offer_ResumesToTheSameThree()
+    {
+        // **The guarantee the ordering buys, stated as the player would feel it**: a run killed with
+        // a pick owed comes back to the same three cards. It is why the offer is not on the snapshot
+        // (M3-08a's Out of scope) — the stream position already carries it, and that survives a
+        // content change in a way three stored ids would not.
+        RunSnapshot saved = Snapshot(4, 7, level: 3, pendingLevelUps: 1);
+
+        BuildWithTree(seed: 7);
+        StartResumed(stage: 4, saved);
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        ContentId[] first = Copy(_session.State.Offer);
+
+        // A whole second composition from the same file, generator included.
+        BuildWithTree(seed: 7);
+        StartResumed(stage: 4, saved);
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        ContentId[] second = Copy(_session.State.Offer);
+
+        Assert.That(first, Is.Not.Empty, "the fixture drew nothing, so the row proves nothing.");
+        Assert.That(second, Is.EqualTo(first));
+    }
+
+    private static ContentId[] Copy(IReadOnlyList<ContentId> offer)
+    {
+        var copy = new ContentId[offer.Count];
+
+        for (int i = 0; i < offer.Count; i++)
+        {
+            copy[i] = offer[i];
+        }
+
+        return copy;
     }
 
     [Test]

@@ -60,7 +60,8 @@ public sealed class RunState
         LevelTracker progression,
         EffectRegistry effects,
         SkillTree tree,
-        SkillRunner skills)
+        SkillRunner skills,
+        LevelUpFlow levelUp)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -75,6 +76,7 @@ public sealed class RunState
         Effects = effects;
         Tree = tree;
         Skills = skills;
+        LevelUp = levelUp;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -394,6 +396,63 @@ public sealed class RunState
     /// Four empties for a run with no tree, which is every run until M3-12 authors one.
     /// </remarks>
     public IReadOnlyList<ContentId> ManualSkillIds => Skills.Slots;
+
+    /// <summary>
+    /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, and this is the seventh time</b> (AR §18.2). <c>Choose</c> takes a node
+    /// and <c>Open</c> consumes the run's <c>Offers</c> stream, so a public handle would let a view
+    /// grant the player a skill and spend draws the simulation is counting on — the same argument
+    /// that keeps <see cref="Motor"/>, <see cref="Combat"/>, <see cref="Enemies"/>,
+    /// <see cref="Projectiles"/>, <see cref="Progression"/>, <see cref="Tree"/> and
+    /// <see cref="Skills"/> behind scalar reads. The four reads below are what a screen gets.
+    /// </remarks>
+    internal LevelUpFlow LevelUp { get; }
+
+    /// <summary>
+    /// Whether an offer is on the table — what M3-08b's screen draws and what the pause is held
+    /// against.
+    /// </summary>
+    public bool HasOffer => LevelUp is not null && LevelUp.HasOffer;
+
+    /// <summary>
+    /// The ids currently offered, in draw order. Empty when there is none, and for every run whose
+    /// class has no tree.
+    /// </summary>
+    /// <remarks>
+    /// <b>A live view over one buffer the next draw rewrites</b>, named here for the reason
+    /// <c>WorldSnapshot</c>'s reuse is named everywhere else. It is safe because it is read on a
+    /// frame that is not being ticked — the gate is up whenever this is non-empty (M3-08a rule 15).
+    /// Nothing may hold it across a <c>ChooseOffer</c>.
+    /// </remarks>
+    public IReadOnlyList<ContentId> Offer =>
+        LevelUp is null ? Array.Empty<ContentId>() : LevelUp.Offer;
+
+    /// <summary>
+    /// Whether this frame should open a level-up: a pick is owed, no offer is open, and the class
+    /// has a tree to spend it on.
+    /// </summary>
+    /// <remarks>
+    /// <b>One question rather than three, and the third term is why.</b> A run whose class has no
+    /// tree <em>banks</em> its levels — <see cref="PendingLevelUps"/> climbs, nothing draws, nothing
+    /// pauses, nothing throws (M3-08a rule 5) — and that is every run in the build until M3-12
+    /// authors one. A caller that asked only whether picks were owed would pause an empty screen for
+    /// the whole of this milestone.
+    /// </remarks>
+    public bool IsLevelUpPending =>
+        LevelUp is not null && !LevelUp.HasOffer && Progression.PendingLevelUps > 0;
+
+    /// <summary>
+    /// How many levels this run has spent on CH §5.2's Overflow rather than on a node — 0 for a run
+    /// with no tree.
+    /// </summary>
+    /// <remarks>
+    /// Derived rather than stored: nothing on <c>RunSnapshot</c> carries it, and a resumed run
+    /// recomputes it as <c>Level − 1 − TakenNodeCount − PendingLevelUps</c> (M3-08a rule 9). The
+    /// read exists because the number is otherwise only observable through the stats it moved.
+    /// </remarks>
+    public int OverflowLevels => LevelUp is null ? 0 : LevelUp.OverflowLevels;
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

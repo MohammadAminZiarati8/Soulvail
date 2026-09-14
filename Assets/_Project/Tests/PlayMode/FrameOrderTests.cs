@@ -110,6 +110,13 @@ public sealed class FrameOrderTests
     private RunTicker _ticker;
     private EnemyView _body;
 
+    /// <summary>
+    /// The gate the level-up phase raises. Real rather than a fake: it is the object under test in
+    /// the four <c>Frame_*</c> rows, and it writes two engine globals that <c>TearDown</c> has to
+    /// put back.
+    /// </summary>
+    private RunPause _pause;
+
     [SetUp]
     public void BuildTheFrame()
     {
@@ -162,9 +169,13 @@ public sealed class FrameOrderTests
 
         _core = new RecordingCore(_intents);
 
+        _pause = new RunPause();
+
         _ticker = new RunTicker(
             _core,
             _core,
+            _core,
+            _pause,
             new PendingRun(),
             new ContentCatalog(Array.Empty<CharacterSpec>(), Array.Empty<EnemySpec>()),
             new SeededRandom(7),
@@ -201,6 +212,12 @@ public sealed class FrameOrderTests
     [TearDown]
     public void DropTheFrame()
     {
+        // First, and unconditionally: it writes Time.timeScale and Application.targetFrameRate, so a
+        // row that ended paused would otherwise leave the Editor — and every later fixture in the
+        // run — on a frozen clock.
+        _pause?.Dispose();
+        _pause = null;
+
         _enemyViews?.Dispose();
         _enemyViews = null;
 
@@ -407,11 +424,208 @@ public sealed class FrameOrderTests
     /// The wait comes first so that the <c>Time.deltaTime</c> the ticker reads belongs to a frame
     /// this coroutine did not spend setting itself up.
     /// </remarks>
+    // ---- The level-up phase and the gate (M3-08a rules 4, 10, 11, 14) ----------------------------
+
+    /// <summary>
+    /// The phase runs above the commands, and a held pause returns before either the commands or
+    /// the tick.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Frame_LevelUpPhaseRunsAboveCommands()
+    {
+        // Core says a pick is owed, and opening it puts an offer on the table — which is what the
+        // real flow does, and what the gate reads.
+        _core.IsLevelUpPending = true;
+        _core.OnOpenLevelUp = () =>
+        {
+            _core.IsLevelUpPending = false;
+            _core.HasOffer = true;
+        };
+
+        yield return Frame();
+
+        // The phase ran, and it is the *only* thing that reached core this frame: no tick, and no
+        // command. A return placed below CommandPhase would have let a tap focus an enemy or spend
+        // the Charge on the frame the screen opened (rule 14).
+        Assert.That(_core.Touched, Is.EqualTo(new[] { "level-up:open" }));
+
+        Assert.That(_pause.IsPaused, Is.True);
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp));
+
+        // And the gate really is gating: the engine clock is stopped too, so a Husk cannot finish a
+        // wind-up animation the frozen simulation will never honour (rule 13).
+        Assert.That(Time.timeScale, Is.EqualTo(0f));
+
+        // Handed back inside the row rather than left to TearDown: this fixture shares a PlayMode
+        // run with rows that take real physics sweeps, and every frame spent at timeScale 0 is a
+        // frame of that run behaving unlike the others.
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+        Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// The tick that earns the level finishes: its facts are still reported, and the pause takes
+    /// effect on the frame after.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Frame_TheLevellingTickCompletes()
+    {
+        _core.Walk = new Vector3(WalkSpeed, 0f, 0f);
+        _core.EmitCone = true;
+
+        // Nothing is owed at the top of this frame, so it is an ordinary one — and core earns the
+        // level part way through it, from inside its own Tick, exactly as a stage's last kill does.
+        yield return Frame();
+
+        _core.OnOpenLevelUp = () => { _core.IsLevelUpPending = false; _core.HasOffer = true; };
+        _core.LevelUpDuringTick = true;
+
+        yield return Frame();
+
+        // **The levelling frame was not cut short**: it ticked, and it went on to *report its
+        // facts*, which is the last thing in the frame and sits below `session.Tick` — so everything
+        // between the two happened as well.
+        //
+        // It asserts that the fact phase was **reached**, not what the sweep found. The two are
+        // different claims and only one of them is this row's: `Ticker_RunsTheStepsInOrder` owns
+        // "the cone found the body", and that assertion is the project's one known intermittent
+        // failure (PROGRESS → Known issues). Hanging a second row on it measured at 14 % flaky over
+        // 50 isolated runs and took the fixture from 10 % to 30 % — a row that would have failed
+        // one morning in seven for a reason that has nothing to do with level-ups.
+        Assert.That(_core.Touched, Does.Contain("tick"));
+        Assert.That(_core.Touched, Does.Contain("facts"), "the levelling frame stopped before its fact phase.");
+
+        Assert.That(
+            IndexIn(_core.Touched, "facts"),
+            Is.GreaterThan(IndexIn(_core.Touched, "tick")),
+            "the facts have to follow the tick that earned the level, not precede it.");
+
+        Assert.That(_pause.IsPaused, Is.False, "the pause must not take effect inside the tick that earned it.");
+
+        int touchedBefore = _core.Touched.Count;
+
+        // The frame *after* is where the flag is read and the gate goes up.
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.True);
+        Assert.That(
+            _core.Touched.Count - touchedBefore,
+            Is.EqualTo(1),
+            "the gated frame reached core once, to open the level-up, and not to tick it.");
+
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>A paused run is <em>idled</em>, not clocked at zero.</summary>
+    [UnityTest]
+    public IEnumerator Frame_PausedFrameDoesNotTickCore()
+    {
+        _core.HasOffer = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.True, "the fixture's premise.");
+
+        int touchedBefore = _core.Touched.Count;
+
+        for (int i = 0; i < 60; i++)
+        {
+            yield return Frame();
+        }
+
+        // Zero ticks and zero facts across a whole second. A Dt = 0 tick would have walked the
+        // entire pipeline sixty times — targeting re-resolving, the director asked, and a Weapon
+        // whose next swing was already due firing once — and would have spent sixty snapshot builds
+        // on the one screen GD §11.4 wants cheap.
+        Assert.That(_core.Touched.Count, Is.EqualTo(touchedBefore), "core was reached on a gated frame.");
+
+        // Handed back inside the row rather than left to TearDown: this fixture shares a PlayMode
+        // run with rows that take real physics sweeps, and every frame spent at timeScale 0 is a
+        // frame of that run behaving unlike the others. TearDown still restores unconditionally.
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>A gated frame costs no simulated seconds, which is ledger row 8's whole point.</summary>
+    [UnityTest]
+    public IEnumerator Frame_PausedTicksCostNoSimulatedTime()
+    {
+        // One ordinary frame first, so the row is measuring a clock that was demonstrably moving.
+        yield return Frame();
+
+        float before = _core.SimulatedTime;
+
+        Assert.That(before, Is.GreaterThan(0f), "the fixture never ticked, so it proves nothing.");
+
+        _core.HasOffer = true;
+
+        for (int i = 0; i < 60; i++)
+        {
+            yield return Frame();
+        }
+
+        // **RunState.Time sums each tick's Dt, and a gated frame contributes none.** So the level-up
+        // screen costs zero *simulated* seconds while a stopwatch keeps running — GD §7.3's 40–75 s
+        // band measured from RunState.Time is play time, and from this task on the two numbers are
+        // no longer the same. M3-15 has to say which it is quoting (ledger row 8).
+        Assert.That(_core.SimulatedTime, Is.EqualTo(before), "a paused frame advanced the simulated clock.");
+
+        // Handed back inside the row, for the reason above.
+        _core.HasOffer = false;
+
+        // **Two frames, and the first of them is a finding rather than padding.** `Resume` restores
+        // `Time.timeScale` at the top of `RunTicker.Tick`, but `Time.deltaTime` for *that* frame was
+        // already scaled to zero before the frame began — so the frame that lifts the gate ticks core
+        // with `Dt` 0 and the simulated clock does not move until the one after. Harmless at one
+        // frame, and worth knowing before anything is built on "the clock restarts the instant the
+        // screen closes"; the alternative is unscaled time, which is a decision about the whole
+        // game's timing model rather than this gate's.
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+        Assert.That(_core.SimulatedTime, Is.EqualTo(before), "the resuming frame itself still carries Dt 0.");
+
+        yield return Frame();
+
+        Assert.That(_core.SimulatedTime, Is.GreaterThan(before), "and the clock moves again on the next one.");
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
     private IEnumerator Frame()
     {
         yield return null;
 
         _ticker.Tick();
+    }
+
+    /// <summary>Where <paramref name="step"/> first appears in what the frame reached, or −1.</summary>
+    private static int IndexIn(IReadOnlyList<string> touched, string step)
+    {
+        for (int i = 0; i < touched.Count; i++)
+        {
+            if (touched[i] == step)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -528,7 +742,7 @@ public sealed class FrameOrderTests
         public Task ClearRun() => Task.CompletedTask;
     }
 
-    private sealed class RecordingCore : IRunSession, IPlayerCommands
+    private sealed class RecordingCore : IRunSession, IPlayerCommands, IProgressionCommands
     {
         private readonly IntentBuffer _intents;
 
@@ -563,6 +777,18 @@ public sealed class FrameOrderTests
         /// </summary>
         public RunState State => null;
 
+        /// <summary>
+        /// Simulated seconds, summed from the ticks this fake was actually given — the stand-in for
+        /// <c>RunState.Time</c>, which this assembly cannot build one of.
+        /// </summary>
+        public float SimulatedTime { get; private set; }
+
+        /// <summary>
+        /// When set, this tick earns the level: the flag goes up from <em>inside</em> <c>Tick</c>,
+        /// which is where a stage's last kill raises it. Set from the row, cleared as it fires.
+        /// </summary>
+        public bool LevelUpDuringTick { get; set; }
+
         /// <summary>The velocity core decides for the body. Set by the row.</summary>
         public Vector3 Walk { get; set; }
 
@@ -591,11 +817,27 @@ public sealed class FrameOrderTests
         {
             _touched.Add("tick");
 
+            // The level is earned here, mid-tick, exactly where core publishes LeveledUp — and
+            // nothing may cut this tick short for it. The frame goes on to apply its intents, move
+            // its bodies and answer its cone; the flag is not read until the top of the next one.
+            if (LevelUpDuringTick)
+            {
+                LevelUpDuringTick = false;
+                IsLevelUpPending = true;
+            }
+
             // Read before anything is written, which is the only place it can be read: the flag is
             // about the frame's *previous* occupant of this buffer.
             IntentFlagAtTick = _intents.HasPlayerMove;
 
             Dt = snapshot.Dt;
+
+            // What RunState.Time is: the sum of each tick's Dt, and nothing else (AR §18.2). This
+            // fixture cannot build a RunState — the constructor is internal with no
+            // InternalsVisibleTo — so the sum is kept here instead, which is the same number arrived
+            // at the same way.
+            SimulatedTime += snapshot.Dt;
+
             SnapshotEnemyPosition = Find(snapshot, EnemyId);
 
             _sink.PlayerMove(new PlayerMoveIntent(CoreVector3.Zero, new CoreVector3(0f, 0f, 1f)));
@@ -670,6 +912,30 @@ public sealed class FrameOrderTests
         public void CastSkill(int slot) => _touched.Add("command:cast-slot");
 
         public void SetAutoCast(ContentId skillId, bool auto) => _touched.Add("command:auto-cast");
+
+        // M3-08a made this fake an IProgressionCommands too, which is what lets the four Frame_*
+        // rows drive the level-up phase at all: RunState's constructor is internal with no
+        // InternalsVisibleTo (AR §18.2), so this fixture cannot build one and cannot answer
+        // State.IsLevelUpPending. The port is the route, and the two reads are settable so a row can
+        // say "a pick is owed" without a tree, a catalog or a run.
+        public bool IsLevelUpPending { get; set; }
+
+        public bool HasOffer { get; set; }
+
+        /// <summary>
+        /// What <see cref="OpenLevelUp"/> does when the frame calls it. A row that wants the offer
+        /// to appear sets <see cref="HasOffer"/> from here, the way core would.
+        /// </summary>
+        public Action OnOpenLevelUp { get; set; }
+
+        public void OpenLevelUp()
+        {
+            _touched.Add("level-up:open");
+
+            OnOpenLevelUp?.Invoke();
+        }
+
+        public void ChooseOffer(int index) => _touched.Add("level-up:choose");
 
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {

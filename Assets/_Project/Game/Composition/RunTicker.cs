@@ -39,6 +39,20 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly IPlayerCommands _commands;
 
+    /// <summary>
+    /// The same run seen through the third command port (AR §6). A third handle for
+    /// <see cref="_commands"/>' reason, one privilege further out: this one may grant the player a
+    /// skill, which is not something an input adapter or the frame's body steps have any business
+    /// being able to do.
+    /// </summary>
+    private readonly IProgressionCommands _progression;
+
+    /// <summary>
+    /// Who is holding the pause, if anyone. Read at the top of every frame and written only when the
+    /// level-up flow's answer changes — see <see cref="LevelUpPhase"/>.
+    /// </summary>
+    private readonly RunPause _pause;
+
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
 
@@ -98,6 +112,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     public RunTicker(
         IRunSession session,
         IPlayerCommands commands,
+        IProgressionCommands progression,
+        RunPause pause,
         PendingRun pending,
         ContentCatalog catalog,
         IRandom random,
@@ -117,6 +133,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        _progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        _pause = pause ?? throw new ArgumentNullException(nameof(pause));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -283,6 +301,17 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // Every frame after the run ended. The scope is still alive — the death overlay is on
         // screen waiting for a tap — so this object is still an ITickable with nothing to do.
         if (!_session.IsRunning)
+        {
+            return;
+        }
+
+        LevelUpPhase();
+
+        // **Above CommandPhase, so a tap that lands on the level-up screen cannot also focus an
+        // enemy or spend the Charge** (M3-08a rule 14). The Input System stays enabled and the stick
+        // keeps reading; with the tick gated it moves nobody, and M3-08b's full-screen canvas takes
+        // the touches anyway.
+        if (_pause.IsPaused)
         {
             return;
         }
@@ -486,6 +515,54 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             }
 
             view.Knockback(shove.DirectionXZ.ToUnity(), shove.Distance);
+        }
+    }
+
+    /// <summary>
+    /// Opens the level-up for a pick that is owed, and holds or releases the pause to match.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The <em>when</em> belongs here, in the file that already writes the frame down</b>, and
+    /// that is <see cref="CommandPhase"/>'s own argument (M3-08a rule 4): an ordering decision made
+    /// in a presenter would be decided by whatever order VContainer happened to register it in, and
+    /// AR §18.1's last row already says a view that answers core cannot own its own <c>Update</c>.
+    /// It is also what makes the draw lazy in the sense M3-04 needs — the call happens <em>between</em>
+    /// ticks, with nothing half-decided, so the boundary snapshot taken on the levelling tick
+    /// captures the <c>Offers</c> stream before any draw has advanced it.
+    /// </para>
+    /// <para>
+    /// <b>The tick that earned the level finishes first.</b> The level is published mid-tick and
+    /// nothing may cut that tick short: its intents are applied, its cone is answered and its
+    /// boundary snapshot is taken, all below <c>session.Tick</c>. The flag is read at the top of the
+    /// <em>next</em> frame, which is this one.
+    /// </para>
+    /// <para>
+    /// <b>This object raises the pause, and it is the only thing in the build that can.</b> M3-08b's
+    /// screen is what will hold it once it exists; until then the gate would never go up and manual
+    /// verification could not see a paused run at all. Raising is guarded on nothing else holding
+    /// it, and releasing on this reason holding it, so a <see cref="PauseReason.Menu"/> that arrives
+    /// with M3-09 is neither stamped on nor stolen — <c>RunPause.Pause</c> throws for a second
+    /// reason, and a gate that threw from inside the frame loop would turn a screen collision into a
+    /// dead run.
+    /// </para>
+    /// </remarks>
+    private void LevelUpPhase()
+    {
+        if (_progression.IsLevelUpPending)
+        {
+            _progression.OpenLevelUp();
+        }
+
+        bool wantsPause = _progression.HasOffer;
+
+        if (wantsPause && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.LevelUp);
+        }
+        else if (!wantsPause && _pause.Holder == PauseReason.LevelUp)
+        {
+            _pause.Resume(PauseReason.LevelUp);
         }
     }
 

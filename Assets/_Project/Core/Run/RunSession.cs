@@ -304,8 +304,29 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         RequireAuthored(config.SpawnPlan, mode);
 
-        // The last of the validation, and it is here for ledger row 3's reason rather than for
-        // tidiness: WaveComposer refuses a mode that introduces nothing at or before this stage,
+        // The class's tree, resolved and cross-checked here rather than at the moment a player is
+        // offered a node (M3-03 rule 1). TreeRules asks everything a spec constructor could not:
+        // that every id in the tree is a skill somebody authored, that a keystone ends its branch
+        // alone, and that an upgrade's parent sits below it in the same branch. All three are
+        // author-time mistakes, so all three belong in this block — reported with nothing announced
+        // and nothing standing, rather than as a crash in a run (ledger row 3, AR §18.1).
+        //
+        // **Null is the ordinary answer until M3-12** (rule 10): TryGetTreeFor is false for every
+        // class this build ships, and `_flow` below is the precedent for a run holding null where
+        // there is nothing to compose. What is deliberately *not* here is the effect sweep — that
+        // needs the registry, which cannot exist before the live objects it addresses, so it runs
+        // further down where the SkillTree itself is built. Still before RunStarted, which is what
+        // the rule actually asks for.
+        TreeRules treeRules = null;
+
+        if (_catalog.TryGetTreeFor(config.CharacterId, out SkillTreeSpec treeSpec))
+        {
+            treeRules = new TreeRules(treeSpec, _catalog);
+        }
+
+        // The last of the validation that can be asked before the run's objects exist, and it is
+        // here for ledger row 3's reason rather than for tidiness: WaveComposer refuses a mode that
+        // introduces nothing at or before this stage,
         // and composing after RunStarted would strand exactly the announcement that row exists to
         // stop being stranded. Held in locals until the run is built, so a throw below still
         // leaves this session's own fields as the previous run left them.
@@ -397,13 +418,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // Start — so an unregistered primitive has to be reportable before the run is announced.
         //
         // One Register line per primitive, and that is the entire cost of adding the eleventh
-        // (ADR-0009). Nothing calls Apply in a live run until M3-03, so for now this is a table
-        // that is built, filled and never read — M2-01's and M2-13a's shape, and for their reason:
-        // the registry and the first primitive are one review, the tree that applies them another.
+        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
+        // existed this was a table that was built, filled and never read.
         var playerStats = new PlayerStats(combat, motor, progression);
         var effects = new EffectRegistry();
 
         effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
+
+        // The other half of the tree's validation, and the reason it is down here rather than up in
+        // the block with TreeRules: the constructor asks CanApply of every take and cast effect in
+        // the tree, and the registry it asks cannot exist before the live objects its handlers
+        // address. Still before RunStarted and before anything is assigned to State, which is what
+        // rule 4 asks for — a node whose primitive nobody registered refuses the run rather than
+        // throwing part way through a Take.
+        //
+        // The one cost of the split is that a bad effect is reported after the opening composition
+        // has drawn, so the Spawn stream is left advanced — which is the trade the composition
+        // comment above already accepts, and for its reason: the run it was drawn for does not
+        // exist.
+        SkillTree tree = treeRules is null
+            ? null
+            : new SkillTree(treeRules, effects, _events);
 
         State = new RunState(
             config.ModeId,
@@ -416,7 +451,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             enemies,
             projectiles,
             progression,
-            effects);
+            effects,
+            tree);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -427,21 +463,32 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // restore afterwards would show a resumed run a full bar that drops to 62 % on the next
         // frame. A resumed run's first impression is the one frame nothing gets to be wrong in.
         //
-        // Six values now (rule 3, extended by M3-01b): hit points, shield, simulated seconds, and
-        // the level, experience and banked picks the save carried. The generator is already
-        // standing where the save left it — the composition root restored it when it built the
-        // generator, before this session existed — and everything else is rebuilt rather than read
-        // back: the arena from ArenaFor(stage, seed), the wave plan from the restored stream
-        // position a few lines above, and the population from nothing at all, because a boundary
-        // has none.
+        // Seven values now (rule 3, extended by M3-01b and again here): hit points, shield,
+        // simulated seconds, the level, experience and banked picks the save carried, and the tree
+        // nodes it was taken with. The generator is already standing where the save left it — the
+        // composition root restored it when it built the generator, before this session existed —
+        // and everything else is rebuilt rather than read back: the arena from ArenaFor(stage,
+        // seed), the wave plan from the restored stream position a few lines above, and the
+        // population from nothing at all, because a boundary has none.
         //
-        // **`resumed.TakenNodeIds` is read and ignored, on purpose.** There is no tree to apply it
-        // to until M3-03, which also decides its order against Health.Restore — a node that raises
-        // max HP has to land before the hit points that were saved under it.
-        // `Start_IgnoresTakenNodesUntilM3_03` is the row that says so, so M3-03 flips a row rather
-        // than introducing a behaviour nothing was watching.
+        // **The order of the first two is the one thing in this block that is not
+        // interchangeable** (M3-03 rule 5, AR §18.1). The rest are independent of each other.
         if (config.Restore is RunSnapshot resumed)
         {
+            // **Before Health.Restore, and that is an AR §18.1 row rather than a preference.** The
+            // saved hit points are absolute and are clamped against the live maximum, and the tree
+            // is what moves that maximum: a `+20 max HP` node replayed *after* the clamp means a run
+            // saved at 150 of 160 comes back at 140 of 160. The player loses the difference once per
+            // resume, silently, and the only symptom is a bar slightly shorter than the one they put
+            // the phone down in front of. It is also the reason this task depends on M3-01b rather
+            // than the other way round.
+            //
+            // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
+            // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
+            // for a class with no tree, which ignores the ids the same way this method did between
+            // M3-01b and here (rule 10).
+            tree?.Restore(resumed.TakenNodeIds);
+
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
             // Silent and settling, for the reason the whole block is here: a presenter reading

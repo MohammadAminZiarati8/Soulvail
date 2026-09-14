@@ -556,6 +556,30 @@ public sealed class RunSessionTests
     }
 
     [Test]
+    public void Commands_ThrowWhenNoRunIsRunning()
+    {
+        // **`IPlayerCommands`' standing rule, for M3-07a's two new members.** A command arriving in
+        // a menu is a wiring mistake — the input map is disabled outside a run — and a silent no-op
+        // would hide it until someone wondered why tapping did nothing. Both states are asked,
+        // because "not running" is not running however it was arrived at (rule 4's other half).
+        var commands = (IPlayerCommands)_session;
+        ContentId anySkill = new ContentId("skill.test.none");
+
+        Assert.Throws<InvalidOperationException>(() => commands.CastSkill(0));
+        Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
+
+        StartRun();
+        _session.End();
+
+        Assert.Throws<InvalidOperationException>(() => commands.CastSkill(0));
+        Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
+
+        // The guard is reached *before* either argument is looked at, which is what makes the row
+        // honest here: this fixture's catalog carries no skills and no tree, so slot 0 is empty and
+        // the id is owned by nobody — and neither of those is what throws.
+    }
+
+    [Test]
     public void End_WhenNotRunning_IsNoOp()
     {
         Assert.DoesNotThrow(() => _session.End());

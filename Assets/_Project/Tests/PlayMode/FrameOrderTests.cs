@@ -664,6 +664,13 @@ public sealed class FrameOrderTests
 
         public void MovementSkill() => _touched.Add("command:skill");
 
+        // M3-07a grew IPlayerCommands. Recorded like the three above rather than left empty, so
+        // this fake keeps saying what it was asked for — but nothing in this fixture sends either:
+        // the suite is about RunTicker's frame order, and neither command is on that path.
+        public void CastSkill(int slot) => _touched.Add("command:cast-slot");
+
+        public void SetAutoCast(ContentId skillId, bool auto) => _touched.Add("command:auto-cast");
+
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {
             for (int i = 0; i < snapshot.EnemyCount; i++)

@@ -119,4 +119,50 @@ None visible. Nothing owns an active until M3-11 and M3-12, and no screen sends 
 
 ## As built
 
-_Filled at merge._
+**Built as specced, with four deviations and one ruling the spec asked for.**
+
+### The four deviations
+
+1. **Two files outside the Files table had to gain the two members: `Tests/PlayMode/FrameOrderTests.cs` (`RecordingCore`) and `Tests/Game/Composition/ResumeFlowTests.cs` (`RecordingSession`).** Both are test doubles implementing `IPlayerCommands`, and growing a port breaks every implementer — the compiler found exactly these two and nothing else. `RecordingCore` records both like its other three commands; `RecordingSession`'s are empty like its other three. **Neither fixture sends either command**, so no row changed behaviour. This is the unavoidable cost of AR §6's *"a port grows a member when the mechanic lands"* and is named here rather than absorbed.
+2. **`Docs/Architecture.md` §6, one row, one word.** The `IPlayerCommands` row has said `CastSkill(slot)` and `SetAutoCast(skillId, bool)` *"with M3-06/07"* since M0-09; it now says `(M3-07a)` beside the other three. M3-06's precedent — it edited AR §5's `Combat` row to add `SkillRunner` and `CooldownRules` in the same shape. A promise that has come true and still reads as a promise is the one kind of doc rot nobody re-reads.
+3. **`Docs/Traps.md` §7 gained the throwing-clause technique**, on the owner's ruling, generalised past triggers: *to prove a sealed, non-virtual collaborator was never asked, hand it an input that throws the moment it is used* — with the warning that it needs its control or it proves nothing. See rule 5's row below.
+4. **`SkillRunnerTests.StartSession` gained an `int actives = 1` parameter.** `RunSessionResumeTests.BuildWithActiveTree`'s shape and its reason. Inside a file the table names, so a change rather than a deviation in the strict sense — recorded because it altered a helper three M3-06 rows depend on, and all three stayed green.
+
+**`RunSnapshot.CurrentVersion` is still 2**, and `Snapshot_CarriesNoLoadout` is the row that pins it.
+
+### Where the rows live, which the spec got wrong in one place
+
+**`RunSessionTests` cannot host `Commands_ForwardToTheRunner`.** Its catalog is the three-argument `ContentCatalog` overload (`RunSessionTests.cs:91`) — no skills, no trees — so `RunState.Tree` is null in every row and `OwnedActiveCount` is 0. Only the running-guard row went there, where it belongs: the guard is reached *before* either argument is looked at, which that fixture proves by having neither a slot nor an owned id.
+
+**Everything else went to `SkillRunnerTests`, and no third file was touched.** That fixture already starts a whole `RunSession` holding an Active — `StartSession`, built by M3-06 for the two ordering rows — so `Commands_ForwardToTheRunner`, `MovementSkill_DoesNotCountAgainstTheSlots` and `Snapshot_CarriesNoLoadout` all had a live run to hand. `RunSessionResumeTests` was **not** touched; `BuildWithActiveTree` was the model for `StartSession`'s new parameter rather than a second home.
+
+### The rule 2 question the owner asked: does M3-06's ruling carry? **No, and the distinction is the reachability of the state.**
+
+At M3-06 the owner ruled *against* a throw at the thirteenth `Add`, and moved the refusal to `RunSession.Start`. It looks identical to this one from a distance and it is not, on three counts:
+
+- **M3-06's was an authoring mistake; this is a player action.** A tree holding more Actives than the runner can own is a fact about a `SkillTreeSpec` a designer typed. Nobody can reach it by playing, and no screen can explain it, so the only honest place to refuse it is before the run is announced. A fifth manual skill is a state the player walks into by owning five Actives and liking four of them.
+- **This refusal has a designed prompt and M3-06's had none.** CC §6.2 writes the words — *"Manual slots full — which skill goes back to auto?"* — and M3-09 owns the screen that shows them. The throw is what makes that prompt mandatory: a screen that skips it gets an exception rather than a silent swap, which is exactly *"never silently refuse, and never silently swap"* met with no mechanism of its own.
+- **The timing argument that settled M3-06 does not apply.** There, the throw landed *mid-`ChooseOffer`* — after `Take`, after the effects, after `NodeTaken`, after the pick was spent — so it left the run dirty. `SetAutoCast` has nothing upstream of it: it throws before it writes, `SetManual_FifthThrowsNamingTheCeiling` asserts that nothing moved and nothing was published, and the caller can simply not send it.
+
+`LevelTracker.SpendLevelUp`'s precedent is the right one, not `Add`'s: *spending a pick nobody earned is a bug in the caller and not a state.*
+
+### The shapes the three inherited constraints forced
+
+- **The skip is the first statement in `Tick`'s loop**, above both existing `continue`s. Rule 5's ordering is the whole of CC §6.5, and it is invisible to a behavioural row — `Manual_NeverAutoCasts` stays green with the skip placed *below* the trigger test, because the skill still never fires. That is why `Manual_TriggerIsNotEvaluated` is a separate row.
+- **`IsAuto` is `bool[MaxActives]` beside the three; `_slots` is `ContentId[MaxManualSlots]`.** Not a fifth array of twelve: a slot is a position on a screen, so *"what is in S3?"* is one read rather than a scan for the entry claiming 3.
+- **`_slotsView` is wrapped once in the constructor.** `TriggerSpec._clausesView`'s idiom. `Slots_IsTheSameInstanceEveryCall` is the identity pin and `SetAutoCast_AllocatesNothing` was **widened** to read `Slots`, `ManualSlotCount`, `SlotAt` and `IsAuto` inside the measured body — the spec's version wrote only, so a per-call `Array.AsReadOnly` would have sailed through it. Both, rather than one: the probe catches the allocation, the `ReferenceEquals` says out loud that it is the same object.
+
+### The rows worth naming as evidence rather than as counts
+
+- **`Manual_TriggerIsNotEvaluated` has a control, and without it the row is worthless.** A `DoesNotThrow` over 100 ticks is green against a runner that never reached the trigger *for any reason* — a cooldown, a bad index, an empty walk. So the same unreadable spec is first left **Auto** and asserted to throw on the first tick. The pair is airtight because a Manual skill never casts, so `_readyAt` stays `0f` and the cooldown `continue` never fires: across all 100 ticks the `IsAuto` skip is the only thing that can explain the silence.
+- **`SetManual_Idempotent_TakesNoSecondSlot` is an implied guard row and it is the dangerous half of rule 9.** The rule names only the idempotent `true` case. `SetAutoCast(id, false)` on an already-Manual skill must not take a second slot, or one skill occupies two, `ManualSlotCount` reaches 4 with two skills owned, and the ceiling throws for a reason no screen can explain.
+- **`Auto_StillCastsWhileAnotherIsManual` fails on `return` where it should `continue`.** A is first in the walk order and Manual; a skip that ended the walk would leave B silent for ever.
+- **`SetAuto_EmptiesTheSlotAndMovesNothing` and `SetManual_RefillsTheHole` are one rule from both ends.** The first fails on a runner that compacts, the second on one that appends at `ManualSlotCount` — and only the pair pins *"the lowest free slot, and nothing else moves"*.
+
+### The non-finite row: trusted, not guarded
+
+`CastSlot(int slot, float now)` is a new `float` door, so the row is owed and `CastSlot_NonFiniteNow_IsFalse` pays it. **M3-06's answer followed exactly**: no guard, with the safety in the spelling — `Cast`'s `!(now >= _readyAt[index])` makes an unreadable clock take the refusing branch. The snapshot is the door (AR §18.2) and every other `Tick` in core trusts the clock it is handed.
+
+### Ledger
+
+**M3-07a names no rows, and all nine were checked row by row rather than trusted to the header.** **Row 2 was honoured by writing nothing for the fourth time** — `RunSnapshot.CurrentVersion` stays 2, no field, no step, no fixture, and `Snapshot_CarriesNoLoadout` is the row that makes that a decision rather than an omission; **M3-07b is the bump.** The open question M3-06 handed forward — a resumed run's cooldowns come back at zero — is **M3-07b's and was deliberately not answered here.** Rows 3 and 7 are closed. **Row 1** unmoved (no content, no damage). **Row 4** gains nothing measurable: the `Tick` skip makes a Manual skill *cheaper* per frame, not dearer, and the Profiler line stays unmet on a phone like the rest — but **M3-10a's multi-touch row now has its core half built**, so the one device row that risks a feature rather than a verdict is that much closer to being answerable. **Row 5** unmoved (no Animator). **Row 6** unmoved (nothing drawn, no `Color` added — the overlay line is text). **Row 8** unmoved (nothing paused). **Row 9** unmoved: what this hands out is `ContentId`s, never a `LocKey`.

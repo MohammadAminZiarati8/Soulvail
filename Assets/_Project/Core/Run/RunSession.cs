@@ -935,6 +935,49 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// <b>Acted on where it arrives, unlike <see cref="MovementSkill"/> above</b>, and the asymmetry
+    /// is CC §6.2 against CC §5 rather than an inconsistency. The dash is <em>recorded</em> because
+    /// it needs a direction core has not sampled yet and a buffer that survives a cooldown ending
+    /// mid-frame; a skill cast needs neither — its effects land on the player's own stats, there is
+    /// no aim, and an early tap is refused rather than kept. So there is nothing for a deferral to
+    /// wait for, and deferring anyway would put the cast a frame after the tap for no gain.
+    /// </para>
+    /// <para>
+    /// Stamped with <see cref="RunState.Time"/>, which is the clock the cooldown was scheduled
+    /// against — so a tap arriving between ticks is measured against the same simulated seconds the
+    /// runner's own <c>Tick</c> uses, rather than against a wall clock that keeps running while the
+    /// game is paused.
+    /// </para>
+    /// </remarks>
+    public void CastSkill(int slot)
+    {
+        RequireRunning(nameof(CastSkill));
+
+        // The return is deliberately dropped. A cooling slot answers false and that is an ordinary
+        // early tap (CC §6.2 draws it at 40 % opacity), not something an input adapter can act on —
+        // and a command that returned a bool would be a command asking for an answer, which is the
+        // one thing ADR-0003 says this direction does not do. A view that wants to know draws
+        // `RunState.IsSkillReady`.
+        State.Skills.CastSlot(slot, State.Time);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Straight through, with no tick in between: this changes no clock and starts nothing, so there
+    /// is no moment in the frame it needs to be at. The one thing it does that the player can see is
+    /// publish <c>SkillAutoCastChanged</c>, and a screen redrawing from that wants it on the tap
+    /// rather than on the next frame.
+    /// </remarks>
+    public void SetAutoCast(ContentId skillId, bool auto)
+    {
+        RequireRunning(nameof(SetAutoCast));
+
+        State.Skills.SetAutoCast(skillId, auto);
+    }
+
+    /// <inheritdoc />
     public void End()
     {
         // A no-op rather than a throw, so RunScope's disposal can call it without first asking

@@ -399,6 +399,18 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   the wrong suite, with nothing to say it has been clobbered. It looks like a suite that suddenly
   dropped from 1266 tests to 11. **Read each run's file before starting the next run, or write to a
   path unique per run and have the callback ignore results that are not its own** (M3-03).
+- **To prove a sealed, non-virtual collaborator was never *asked*, hand it an input that throws the
+  moment it is used.** There is often no fake to write: `TriggerSpec` is `public sealed` with a
+  non-virtual `IsMet` and no interface, `TriggerClause` is a `readonly struct`, and
+  `CombatBlackboard` is sealed with public fields — so *"count the evaluations"* has nowhere to go,
+  and unsealing the type for a test's convenience puts a vtable dispatch on a 60 Hz path. Instead
+  make the input **unreadable**: `TriggerClause`'s constructor validates only `threshold` and never
+  `field`, so `new TriggerClause((TriggerField)99, …)` constructs, survives `TriggerSpec`'s
+  count-only constructor, and throws out of `IsMet`'s loud `default` on the first read. A hundred
+  silent ticks is then the proof. **It needs its control or it proves nothing** — the same input on
+  the path that *should* read it must throw, or the row is green against code that skipped the
+  collaborator for some entirely different reason. Generalises to any collaborator with a loud
+  failure mode and a constructor that does not pre-validate (M3-07a).
 - **A PlayMode run clears the Console on entering Play, so a Console sweep taken after one says
   nothing about the EditMode suite.** Run EditMode, then PlayMode, then sweep, and the Console holds
   eleven tests' worth of nothing — which reads as *"zero errors, zero warnings"* and is a false

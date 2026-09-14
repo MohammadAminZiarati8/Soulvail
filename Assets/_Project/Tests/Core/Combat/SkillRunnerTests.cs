@@ -53,6 +53,11 @@ public sealed class SkillRunnerTests
     private const string ActiveA = "skill.test.a";
     private const string ActiveB = "skill.test.b";
     private const string ActiveThird = "skill.test.third";
+
+    /// <summary>The fourth and fifth exist only so the slot rows can reach CC §6.2's ceiling.</summary>
+    private const string ActiveFourth = "skill.test.fourth";
+    private const string ActiveFifth = "skill.test.fifth";
+
     private const string PassiveB = "skill.test.passive";
     private const string PassiveC = "skill.test.c";
 
@@ -654,6 +659,438 @@ public sealed class SkillRunnerTests
         Assert.That(_stats.Resolve(PlayerStat.WeaponDamage).ModifierCount, Is.EqualTo(0));
     }
 
+    // ---- Auto/Manual and the four slots (M3-07a rules 1, 2, 3, 7, 9) -----------------------------
+
+    [Test]
+    public void Added_SkillIsAuto()
+    {
+        _runner.Add(Active(ActiveA));
+
+        // CC §6.1: "a player who never opens the menu has a complete, playable game with one
+        // button." Auto is therefore the state a skill arrives in, not one it is put into.
+        Assert.That(_runner.IsAuto(Id(ActiveA)), Is.True);
+        Assert.That(_runner.ManualSlotCount, Is.Zero);
+        Assert.That(_runner.SlotAt(0), Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void SetManual_TakesTheLowestFreeSlot()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.Add(Active(ActiveB));
+        _runner.Add(Active(ActiveThird));
+
+        // A and then C, skipping B — so the row fails on a runner that assigned by runner index
+        // rather than by the lowest free slot, which would put C in slot 2.
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+        _runner.SetAutoCast(Id(ActiveThird), auto: false);
+
+        Assert.That(_runner.SlotAt(0), Is.EqualTo(Id(ActiveA)));
+        Assert.That(_runner.SlotAt(1), Is.EqualTo(Id(ActiveThird)));
+        Assert.That(_runner.SlotAt(2), Is.EqualTo(default(ContentId)));
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(2));
+
+        Assert.That(_runner.IsAuto(Id(ActiveA)), Is.False);
+        Assert.That(_runner.IsAuto(Id(ActiveB)), Is.True, "Never asked for, never moved.");
+    }
+
+    [Test]
+    public void SetAuto_EmptiesTheSlotAndMovesNothing()
+    {
+        ManualThree();
+
+        _runner.SetAutoCast(Id(ActiveB), auto: true);
+
+        // **Rule 3's whole point.** CC §6.2 draws four fixed thumb positions, so compacting would
+        // slide C from slot 2 into slot 1 — a silent re-bind of the muscle memory a player built,
+        // handed to them as the reward for dropping a skill.
+        Assert.That(_runner.SlotAt(0), Is.EqualTo(Id(ActiveA)));
+        Assert.That(_runner.SlotAt(1), Is.EqualTo(default(ContentId)), "The hole stays a hole.");
+        Assert.That(_runner.SlotAt(2), Is.EqualTo(Id(ActiveThird)), "And C did not move.");
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void SetManual_RefillsTheHole()
+    {
+        ManualThree();
+
+        _runner.SetAutoCast(Id(ActiveB), auto: true);
+
+        _runner.Add(Active(ActiveFourth));
+        _runner.SetAutoCast(Id(ActiveFourth), auto: false);
+
+        // The lowest *free* slot, which is the hole rather than the end — so a runner appending at
+        // ManualSlotCount would put D in slot 2 and lose the one CC §6.2 left empty.
+        Assert.That(_runner.SlotAt(1), Is.EqualTo(Id(ActiveFourth)));
+        Assert.That(_runner.SlotAt(2), Is.EqualTo(Id(ActiveThird)));
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void SetManual_FifthThrowsNamingTheCeiling()
+    {
+        ManualFour();
+
+        _runner.Add(Active(ActiveFifth));
+
+        _events.Clear();
+
+        InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(
+            () => _runner.SetAutoCast(Id(ActiveFifth), auto: false));
+
+        // The message has to carry both numbers, because the screen that hit this is the one that
+        // did not ask ManualSlotCount first — and CC §6.2's "Manual slots full — which skill goes
+        // back to auto?" is what it should have shown instead of sending the command.
+        Assert.That(thrown.Message, Does.Contain("4"));
+        Assert.That(thrown.Message, Does.Contain("ManualSlotCount"));
+
+        // **Nothing moved and nothing was published.** A refusal that had already half-applied
+        // itself would leave the loadout describing a state the player never chose.
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(4));
+        Assert.That(_runner.IsAuto(Id(ActiveFifth)), Is.True);
+        Assert.That(_events.Count<SkillAutoCastChanged>(), Is.Zero);
+    }
+
+    [Test]
+    public void SetManual_AfterFreeingASlot_Succeeds()
+    {
+        ManualFour();
+
+        _runner.Add(Active(ActiveFifth));
+
+        // **CC §6.2's answer, and it needs no mechanism of its own** (rule 2): the screen asks which
+        // skill goes back to Auto and then sends two ordinary commands — the victim, then the one
+        // the player actually wanted. Core never swaps anything.
+        _runner.SetAutoCast(Id(ActiveB), auto: true);
+        _runner.SetAutoCast(Id(ActiveFifth), auto: false);
+
+        Assert.That(_runner.SlotAt(1), Is.EqualTo(Id(ActiveFifth)), "It took the freed slot.");
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void SetManual_Idempotent_TakesNoSecondSlot()
+    {
+        // **The dangerous half of rule 9, which names only the `true` case.** Manual twice must not
+        // take a second slot: one skill in two of them puts ManualSlotCount at 4 with two skills
+        // owned, and the ceiling then throws for a reason no screen can explain.
+        _runner.Add(Active(ActiveA));
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        _events.Clear();
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(1));
+        Assert.That(_runner.SlotAt(1), Is.EqualTo(default(ContentId)));
+        Assert.That(_events.Count<SkillAutoCastChanged>(), Is.Zero, "Nothing happened to describe.");
+    }
+
+    [Test]
+    public void SetAutoCast_UnknownSkill_Throws()
+    {
+        _runner.Add(Active(ActiveA));
+
+        // Rule 7. A Passive, an Upgrade and a Keystone never reach this class at all, so
+        // "passive skills have no toggle and no button" needs no check of its own — and an id the
+        // runner does not hold is a screen addressing a skill this run never took.
+        ContentId stranger = Id("skill.test.stranger");
+
+        Assert.That(
+            Assert.Throws<KeyNotFoundException>(() => _runner.SetAutoCast(stranger, auto: false))
+                .Message,
+            Does.Contain("skill.test.stranger"));
+
+        // The read is loud for the same reason: answering `true` would describe a skill that does
+        // not exist as one that auto-casts.
+        Assert.Throws<KeyNotFoundException>(() => _runner.IsAuto(stranger));
+    }
+
+    [Test]
+    public void SetAutoCast_Idempotent_PublishesNothing()
+    {
+        _runner.Add(Active(ActiveA));
+
+        _events.Clear();
+
+        _runner.SetAutoCast(Id(ActiveA), auto: true);
+
+        // AR §8: an event describes what happened, and nothing happened.
+        Assert.That(_events.Count<SkillAutoCastChanged>(), Is.Zero);
+        Assert.That(_runner.IsAuto(Id(ActiveA)), Is.True);
+        Assert.That(_runner.ManualSlotCount, Is.Zero);
+    }
+
+    [Test]
+    public void SetAutoCast_PublishesTheSlot()
+    {
+        _runner.Add(Active(ActiveA));
+
+        _events.Clear();
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+        _runner.SetAutoCast(Id(ActiveA), auto: true);
+
+        IReadOnlyList<SkillAutoCastChanged> moved = _events.Of<SkillAutoCastChanged>();
+
+        Assert.That(moved.Count, Is.EqualTo(2));
+
+        Assert.That(moved[0].SkillId, Is.EqualTo(Id(ActiveA)));
+        Assert.That(moved[0].IsAuto, Is.False);
+        Assert.That(moved[0].Slot, Is.Zero);
+
+        // −1 rather than the slot it just left: the event says where the skill *is*, and an Auto
+        // skill is in no slot. M3-09's list and M3-10's buttons both redraw from this and need no
+        // second read.
+        Assert.That(moved[1].IsAuto, Is.True);
+        Assert.That(moved[1].Slot, Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void Slots_AreAlwaysFourLong()
+    {
+        _runner.Add(Active(ActiveA));
+
+        Assert.That(_runner.Slots.Count, Is.EqualTo(SkillRunner.MaxManualSlots));
+
+        for (int slot = 0; slot < _runner.Slots.Count; slot++)
+        {
+            Assert.That(_runner.Slots[slot], Is.EqualTo(default(ContentId)));
+        }
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // Still four, with the empties still in it: a compacted list could not say *which* three
+        // are empty, and CC §6.2 draws S1–S4 at fixed positions. This is the shape M3-07b writes.
+        Assert.That(_runner.Slots.Count, Is.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(_runner.Slots[0], Is.EqualTo(Id(ActiveA)));
+        Assert.That(_runner.Slots[3], Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Slots_IsTheSameInstanceEveryCall()
+    {
+        // **The identity pin the allocation row cannot make on its own.** A per-call
+        // `Array.AsReadOnly` would allocate on the path M3-10's HUD polls every frame, and
+        // ReferenceEquals fails on it loudly where an allocation probe would have to be widened to
+        // notice. TriggerSpec._clausesView and SkillTree._takenIdsView are the idiom.
+        _runner.Add(Active(ActiveA));
+
+        Assert.That(ReferenceEquals(_runner.Slots, _runner.Slots), Is.True);
+
+        IReadOnlyList<ContentId> before = _runner.Slots;
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        Assert.That(ReferenceEquals(before, _runner.Slots), Is.True, "And a write does not re-wrap.");
+
+        // And it is a view rather than a copy: the write above is visible through the reference
+        // taken before it.
+        Assert.That(before[0], Is.EqualTo(Id(ActiveA)));
+    }
+
+    [Test]
+    public void SlotAt_OutOfRange_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => _runner.SlotAt(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _runner.SlotAt(SkillRunner.MaxManualSlots));
+    }
+
+    // ---- What Manual costs the tick (M3-07a rules 4, 5, 8) ---------------------------------------
+
+    [Test]
+    public void Manual_NeverAutoCasts()
+    {
+        // A trigger that is met on every tick of a healthy run, so the only thing that can explain
+        // silence is the skip.
+        _runner.Add(Active(ActiveA, trigger: AtLeast(TriggerField.HpFraction, 0f)));
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        _events.Clear();
+
+        for (int i = 0; i < 100; i++)
+        {
+            _runner.Tick(Frame, i * Frame);
+        }
+
+        Assert.That(_events.Count<SkillCast>(), Is.Zero);
+    }
+
+    [Test]
+    public void Manual_TriggerIsNotEvaluated()
+    {
+        // **Rule 5's *ordering*, which `Manual_NeverAutoCasts` above cannot see.** That row stays
+        // green with the skip placed *below* the trigger test — the skill still never fires, and the
+        // condition is still paid for on every tick, which is exactly what CC §6.5 says switching to
+        // Manual buys you out of.
+        //
+        // There is no counting fake to write: TriggerSpec is sealed with a non-virtual IsMet and no
+        // interface, TriggerClause is a readonly struct, and CombatBlackboard is sealed. So the
+        // clause is made *unreadable* instead — TriggerClause's constructor validates only the
+        // threshold, never the field, so an out-of-range field constructs fine and IsMet's loud
+        // `default` throws the instant anything reads it (Traps §7).
+        _runner.Add(Active(ActiveA, trigger: Unreadable()));
+
+        // **The control, and without it this row proves nothing**: left Auto, the walk reaches the
+        // clause on the first tick and says so. A row that only asserted the silence below would be
+        // green against a runner that never reached the trigger for any reason at all.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _runner.Tick(Frame, 0f),
+            "Auto: the trigger is read, so the unreadable clause is reached.");
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // A Manual skill never casts, so _readyAt stays 0 and the cooldown `continue` never fires —
+        // which leaves the IsAuto skip as the only thing that can explain a hundred silent ticks.
+        Assert.DoesNotThrow(
+            () =>
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    _runner.Tick(Frame, i * Frame);
+                }
+            },
+            "Manual: the trigger is never asked, so the unreadable clause is never reached.");
+    }
+
+    [Test]
+    public void Auto_StillCastsWhileAnotherIsManual()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.Add(Active(ActiveB));
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // Both triggered. A is first in the walk order and is Manual, so a runner that `return`ed on
+        // the skip instead of `continue`ing would leave B silent for ever.
+        _combat.Blackboard.HpFraction = 0.5f;
+
+        _events.Clear();
+
+        _runner.Tick(Frame, 1f);
+
+        Assert.That(_events.Single<SkillCast>().SkillId, Is.EqualTo(Id(ActiveB)));
+    }
+
+    [Test]
+    public void Switch_KeepsTheRunningCooldown()
+    {
+        // **Rule 8: a switch costs nothing.** CC §6.3 wants the management screen usable during
+        // play, and a switch that reset — or even nudged — a cooldown would make opening it a
+        // tactical decision instead.
+        _runner.Add(Active(ActiveA));
+
+        _combat.Blackboard.HpFraction = 0.5f;
+
+        _runner.Tick(Frame, 0f);
+
+        Assert.That(_events.Single<SkillCast>().Cooldown, Is.EqualTo(ActiveCooldown).Within(0.0001f));
+
+        _runner.Tick(Frame, 2f);
+
+        Assert.That(_runner.CooldownFraction(0), Is.EqualTo(0.75f).Within(0.0001f), "6 s of 8.");
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // Continuous across the switch, not restarted and not zeroed.
+        Assert.That(_runner.CooldownFraction(0), Is.EqualTo(0.75f).Within(0.0001f));
+
+        _runner.SetAutoCast(Id(ActiveA), auto: true);
+
+        Assert.That(_runner.CooldownFraction(0), Is.EqualTo(0.75f).Within(0.0001f));
+
+        // Probed through Cast rather than by ticking to the moment, because a Tick that found the
+        // skill ready would cast and move _readyAt out from under the next assertion
+        // (Cast_UsesTheEffectiveCooldown's lesson, twice over in M3-06).
+        Assert.That(_runner.Cast(0, 7.9f, auto: false), Is.False, "Still the original eight.");
+        Assert.That(_runner.Cast(0, 8f, auto: false), Is.True);
+    }
+
+    // ---- Casting from a slot (M3-07a rule 4) -----------------------------------------------------
+
+    [Test]
+    public void CastSlot_FiresRegardlessOfTheTrigger()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // Deliberately not met: a Manual skill fires because the player asked, and its authored
+        // condition is what Auto reads.
+        _combat.Blackboard.HpFraction = 0.9f;
+
+        _events.Clear();
+
+        Assert.That(_runner.CastSlot(0, 1f), Is.True);
+
+        SkillCast cast = _events.Single<SkillCast>();
+
+        Assert.That(cast.SkillId, Is.EqualTo(Id(ActiveA)));
+        Assert.That(cast.WasAuto, Is.False, "Which is what lets CC §6.2 give this one a haptic.");
+    }
+
+    [Test]
+    public void CastSlot_WhileCooling_IsFalse()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        Assert.That(_runner.CastSlot(0, 0f), Is.True);
+
+        _events.Clear();
+
+        // An ordinary early tap rather than an error: CC §6.2 answers it with 40 % opacity and no
+        // tap response rather than with a buffer (M3-06's Out of scope argues why the dash's does
+        // not generalise).
+        Assert.That(_runner.CastSlot(0, 1f), Is.False);
+
+        Assert.That(_events.Count<SkillCast>(), Is.Zero);
+        Assert.That(
+            _stats.Resolve(PlayerStat.WeaponDamage).ModifierCount,
+            Is.EqualTo(1),
+            "And nothing applied: the refused cast must not stack a second buff.");
+    }
+
+    [Test]
+    public void CastSlot_Empty_Throws()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        // CC §6.2 draws no button for an empty slot, so a command from one is a view sending for a
+        // control it is not drawing — IPlayerCommands' standing rule, "a silent no-op would hide
+        // it". Distinct from cooling, which is the legitimate `false` above.
+        Assert.Throws<InvalidOperationException>(() => _runner.CastSlot(2, 1f));
+    }
+
+    [Test]
+    public void CastSlot_OutOfRange_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => _runner.CastSlot(-1, 1f));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _runner.CastSlot(SkillRunner.MaxManualSlots, 1f));
+    }
+
+    [Test]
+    public void CastSlot_NonFiniteNow_IsFalse()
+    {
+        // **The non-finite row the new float door owes, and it is trusted rather than guarded** —
+        // M3-06's answer, with the safety in the spelling. `Cast`'s `!(now >= _readyAt)` is what
+        // makes an unreadable clock take the refusing branch, so this door needs no check of its
+        // own: the snapshot is the door (AR §18.2) and every other Tick in core trusts its clock.
+        _runner.Add(Active(ActiveA));
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+
+        _events.Clear();
+
+        Assert.That(_runner.CastSlot(0, float.NaN), Is.False);
+
+        Assert.That(_events.Count<SkillCast>(), Is.Zero);
+        Assert.That(_stats.Resolve(PlayerStat.WeaponDamage).ModifierCount, Is.Zero);
+    }
+
     // ---- The address, the reset and the seal (rules 11, 12, 13) ----------------------------------
 
     [Test]
@@ -780,6 +1217,144 @@ public sealed class SkillRunnerTests
         Assert.That(now, Is.GreaterThan(10_000f));
     }
 
+    [Test]
+    public void SetAutoCast_AllocatesNothing()
+    {
+        // A silent IDomainEvents rather than RecordingEvents, which stores each payload in a
+        // List<object> and would box every struct — the row would be measuring the fake (Traps §7).
+        var runner = new SkillRunner(_registry, _combat.Blackboard, new SilentEvents());
+
+        runner.Add(Active(ActiveA));
+
+        ContentId id = Id(ActiveA);
+
+        // **Widened past the spec's body to read Slots and ManualSlotCount inside the measured
+        // window**, because toggling allocating nothing says nothing about the view: a
+        // `Array.AsReadOnly(_slots)` per call would sail through a body that only wrote. This plus
+        // Slots_IsTheSameInstanceEveryCall is the pair — one catches the allocation, the other says
+        // out loud that it is the same object.
+        AllocationAssert.None(() =>
+        {
+            runner.SetAutoCast(id, auto: false);
+
+            IReadOnlyList<ContentId> slots = runner.Slots;
+
+            _ = slots[0];
+            _ = runner.ManualSlotCount;
+            _ = runner.SlotAt(0);
+            _ = runner.IsAuto(id);
+
+            runner.SetAutoCast(id, auto: true);
+        });
+
+        // The probe is live rather than measuring a no-op: the toggle really did move both ways.
+        Assert.That(runner.IsAuto(id), Is.True);
+        Assert.That(runner.ManualSlotCount, Is.Zero);
+    }
+
+    // ---- Through the port, and what it does not touch (M3-07a rules 4, 6, 11) --------------------
+
+    [Test]
+    public void Commands_ForwardToTheRunner()
+    {
+        // Here rather than in RunSessionTests, whose catalog is the three-argument overload — no
+        // skills and no trees, so RunState.Tree is null in every row and the runner owns nothing.
+        // This fixture already starts a real run holding an Active, for the two ordering rows.
+        StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown);
+
+        var commands = (IPlayerCommands)_session;
+
+        commands.SetAutoCast(Id(ActiveA), auto: false);
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(1));
+        Assert.That(_session.State.ManualSlotAt(0), Is.EqualTo(Id(ActiveA)));
+        Assert.That(_session.State.IsAutoCast(Id(ActiveA)), Is.False);
+
+        _events.Clear();
+
+        commands.CastSkill(0);
+
+        // The port and IRunSession are registered to the same instance in RunInstaller, so this is
+        // the one brain being commanded rather than a second copy of the state.
+        SkillCast cast = _events.Single<SkillCast>();
+
+        Assert.That(cast.SkillId, Is.EqualTo(Id(ActiveA)));
+        Assert.That(cast.WasAuto, Is.False);
+    }
+
+    [Test]
+    public void MovementSkill_DoesNotCountAgainstTheSlots()
+    {
+        // **Rule 6, and it is true by construction rather than by an exemption.** The dash is
+        // ChargeSkill — no SkillSpec, no trigger, no entry in the runner — so CC §6.2's "4 manual
+        // slots, plus the always-present movement button" needs nothing to enforce it.
+        StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown, actives: 4);
+
+        var commands = (IPlayerCommands)_session;
+
+        for (int i = 0; i < SkillRunner.MaxManualSlots; i++)
+        {
+            commands.SetAutoCast(_session.State.SkillIdAt(i), auto: false);
+        }
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(SkillRunner.MaxManualSlots));
+
+        _events.Clear();
+
+        commands.MovementSkill();
+
+        Assert.That(
+            TickUntil(() => _events.Count<ChargeStarted>() > 0),
+            Is.GreaterThan(0),
+            "The dash still fires with all four slots taken.");
+
+        Assert.That(
+            _session.State.ManualSlotCount,
+            Is.EqualTo(SkillRunner.MaxManualSlots),
+            "And it took none of them.");
+    }
+
+    [Test]
+    public void Snapshot_CarriesNoLoadout()
+    {
+        // **Rule 11's pin: M3-07b is a separate review rather than a forgotten line.** The four
+        // slots and the flags live for the run and die with it, so a build stopped between the two
+        // tasks loses a loadout on a kill-from-recents — a known, named gap.
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(2), "M3-07b is the bump, not this task.");
+
+        foreach (PropertyInfo member in typeof(RunSnapshot).GetProperties())
+        {
+            Assert.That(
+                member.Name.ToLowerInvariant(),
+                Does.Not.Contain("slot").And.Not.Contain("manual").And.Not.Contain("auto")
+                    .And.Not.Contain("loadout"),
+                $"RunSnapshot.{member.Name} looks like a loadout field, which is M3-07b's.");
+        }
+
+        // And the run that actually has one writes the same file as the run that does not.
+        StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown, actives: 2);
+
+        var commands = (IPlayerCommands)_session;
+
+        commands.SetAutoCast(_session.State.SkillIdAt(0), auto: false);
+        commands.SetAutoCast(_session.State.SkillIdAt(1), auto: false);
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(2));
+
+        _events.Clear();
+
+        new RunRecorder(_random, new FixedClock(Instant), _events)
+            .Take(_session.State, resumeStage: 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        Assert.That(snapshot.Version, Is.EqualTo(2));
+        Assert.That(
+            snapshot.TakenNodeIds.Count,
+            Is.EqualTo(2),
+            "The nodes are in the file — it is where they *sit* that is not.");
+    }
+
     // ---- Where it runs in a tick (rule 7) --------------------------------------------------------
 
     [Test]
@@ -875,6 +1450,45 @@ public sealed class SkillRunnerTests
 
     private static TriggerSpec AtLeast(TriggerField field, float threshold) =>
         new TriggerSpec(new[] { new TriggerClause(field, TriggerComparison.AtLeast, threshold) });
+
+    /// <summary>
+    /// A trigger that cannot be read without saying so — the proof that a Manual skill's condition
+    /// is never evaluated (rule 5), given that no counting fake can exist.
+    /// </summary>
+    /// <remarks>
+    /// <b>The technique, and it generalises past triggers (Traps §7):</b> to prove a sealed,
+    /// non-virtual collaborator was never *asked*, hand it an input that throws the moment it is
+    /// used, and let a hundred silent ticks be the proof. Here <see cref="TriggerClause"/>'s
+    /// constructor validates only the threshold and never the field, so an out-of-range field
+    /// constructs and survives <see cref="TriggerSpec"/>'s count-only constructor, and
+    /// <c>TriggerClause.IsMet</c>'s loud `default` throws on the first read.
+    /// </remarks>
+    private static TriggerSpec Unreadable() =>
+        new TriggerSpec(new[]
+        {
+            new TriggerClause((TriggerField)99, TriggerComparison.AtLeast, 0f),
+        });
+
+    /// <summary>A, B and C owned and all three Manual, filling slots 0, 1 and 2 in that order.</summary>
+    private void ManualThree()
+    {
+        _runner.Add(Active(ActiveA));
+        _runner.Add(Active(ActiveB));
+        _runner.Add(Active(ActiveThird));
+
+        _runner.SetAutoCast(Id(ActiveA), auto: false);
+        _runner.SetAutoCast(Id(ActiveB), auto: false);
+        _runner.SetAutoCast(Id(ActiveThird), auto: false);
+    }
+
+    /// <summary>The state above plus D, which is CC §6.2's ceiling exactly reached.</summary>
+    private void ManualFour()
+    {
+        ManualThree();
+
+        _runner.Add(Active(ActiveFourth));
+        _runner.SetAutoCast(Id(ActiveFourth), auto: false);
+    }
 
     /// <summary>An Active whose cast buffs weapon damage, and which takes with nothing.</summary>
     private static SkillSpec Active(string id, float cooldown = ActiveCooldown, TriggerSpec trigger = null) =>
@@ -999,28 +1613,50 @@ public sealed class SkillRunnerTests
         new ProjectileSpec(StandoffRange, speed: 12f, radius: 0.4f));
 
     /// <summary>
-    /// A live run with one Spitter in the arena and one owned Active, whose trigger and cooldown
-    /// are the row's.
+    /// A live run with one Spitter in the arena and <paramref name="actives"/> owned Actives, whose
+    /// trigger and cooldown are the row's.
     /// </summary>
-    private void StartSession(TriggerSpec trigger, float cooldown)
+    /// <param name="actives">
+    /// How many to own. The first keeps <see cref="ActiveA"/>'s name, which is the one every M3-06
+    /// row quotes; the rest exist only so the slot rows have four skills to fill four slots with.
+    /// <c>BuildWithActiveTree</c>'s shape, in <c>RunSessionResumeTests</c>, and its reason.
+    /// </param>
+    private void StartSession(TriggerSpec trigger, float cooldown, int actives = 1)
     {
-        SkillSpec node = Active(ActiveA, cooldown, trigger);
+        var nodes = new List<SkillSpec>();
+        var tier = new List<ContentId>();
+
+        for (int i = 0; i < actives; i++)
+        {
+            SkillSpec node = Active(i == 0 ? ActiveA : $"{ActiveA}.{i}", cooldown, trigger);
+
+            nodes.Add(node);
+            tier.Add(node.Id);
+        }
 
         var tree = new SkillTreeSpec(
             Id(TreeId),
             Id(OathboundId),
             new[]
             {
-                Branch('a', node.Id),
+                new SkillBranchSpec(
+                    new LocKey("branch.a"),
+                    new IReadOnlyList<ContentId>[] { tier }),
                 Branch('b', Id(PassiveB)),
                 Branch('c', Id(PassiveC)),
             });
+
+        var skills = new List<SkillSpec>(nodes)
+        {
+            Passive(PassiveB, 0.05f),
+            Passive(PassiveC, 0.05f),
+        };
 
         var catalog = new ContentCatalog(
             new[] { Character() },
             new[] { Spitter() },
             new[] { Mode(new[] { new RosterEntry(Id(SpitterId), 1) }) },
-            new[] { node, Passive(PassiveB, 0.05f), Passive(PassiveC, 0.05f) },
+            skills,
             new[] { tree });
 
         _random = new FixedRandom(7, Alternating(8_192));
@@ -1073,9 +1709,12 @@ public sealed class SkillRunnerTests
                 1,
                 0f,
                 0,
-                new[] { node.Id })));
+                tier.ToArray())));
 
-        Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "The fixture owns its Active.");
+        Assert.That(
+            _session.State.OwnedActiveCount,
+            Is.EqualTo(actives),
+            "The fixture owns its Actives.");
 
         _events.Clear();
     }

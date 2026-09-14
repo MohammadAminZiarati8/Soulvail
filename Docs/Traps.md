@@ -411,6 +411,15 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   the path that *should* read it must throw, or the row is green against code that skipped the
   collaborator for some entirely different reason. Generalises to any collaborator with a loud
   failure mode and a constructor that does not pre-validate (M3-07a).
+- **Unity wipes `Temp/` out from under you mid-session, so it is not a place to keep evidence.** A
+  completed 50-run measurement written to `Temp/m3-08a-baseline/` — every file read and verified —
+  was gone an hour later, along with two suites' results files, with nothing logged and no prompt.
+  `Temp/` is Unity's own scratch directory and the Editor is free to clear it; a results file there
+  has the lifetime of the Editor's convenience, not of the session. **Write anything you will still
+  want in ten minutes to `Logs/`**, which is equally gitignored and is not Unity's to clear. The
+  reason this cost nothing when it happened is the row above: each run's file had already been read
+  before the next run started, so the numbers survived in the transcript even though the files did
+  not (M3-08a).
 - **A PlayMode run clears the Console on entering Play, so a Console sweep taken after one says
   nothing about the EditMode suite.** Run EditMode, then PlayMode, then sweep, and the Console holds
   eleven tests' worth of nothing — which reads as *"zero errors, zero warnings"* and is a false

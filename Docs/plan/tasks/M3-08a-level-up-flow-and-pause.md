@@ -184,4 +184,92 @@ public sealed class RunPause : IDisposable
 
 ## As built
 
-_Filled at merge._
+**Three new production files as specced** — `Core/Ports/IProgressionCommands.cs`,
+`Core/Progression/LevelUpFlow.cs`, `Game/Composition/RunPause.cs` — plus the small edits.
+**1 423 EditMode / 0 / 0** against M3-07b's 1 373, which is **50 new rows and it lands to the row**:
+29 in `LevelUpFlowTests`, 12 in `RunPauseTests`, 7 in `RunSessionResumeTests`, 1 in
+`RunSessionTests` and 1 in `ResumeFlowTests`. **PlayMode 15/15**, up from 11 — the four `Frame_*`
+rows. `RunSnapshot.CurrentVersion` is **still 3**.
+
+### The eleven deviations
+
+1. **`IProgressionCommands` ships with FOUR members, not the spec's two.** `IsLevelUpPending` and
+   `HasOffer` are on the port as reads. Rule 4 says the phase tests `State.IsLevelUpPending`, and
+   that is not implementable: `RunTicker` reads `_session.State` **nowhere** today (zero hits), and
+   `FrameOrderTests.RecordingCore.State` returns `null` *by design* — `RunState`'s constructor is
+   `internal` with no `InternalsVisibleTo` (AR §18.2), so no test assembly can build one. Written as
+   specced, all four `Frame_*` rows the Tests table asks for would be unwritable. `RunState` carries
+   the same reads for the screens; the port carries them for the object that writes the frame down.
+2. **`Tests/Game/Composition/ResumeFlowTests.cs` is in the change and the Files table does not imply
+   it.** The *ripple* row says `FrameOrderTests` "is the one fixture that builds one". It is **two**:
+   `ResumeFlowTests.cs:606` builds a `RunTicker` as well. Eighteen arguments became twenty across two
+   fixtures in **two assemblies** — `Soulvail.Tests.PlayMode` and `Soulvail.Tests.Game`. Both fakes
+   (`RecordingCore`, `RecordingSession`) had to implement the new port; the compiler found both, which
+   is M3-07a's lesson arriving on schedule.
+3. **`RunState.OverflowLevels` is a fourth read**, beyond the spec's three. `Resume_DerivesOverflow`
+   asserts the count and `Soulvail.Tests.Core` cannot reach the `internal` flow to ask it.
+4. **`Boot_StatesTheTimeScaleBaseline` is in `ResumeFlowTests`, not `InstallerTests`** — that is where
+   `RunBootFlow` lives, and `InstallerTests` has no way to run a `BootFlow`.
+5. **`Open_BlockedButNotFull_GrantsOverflow` could not be built, and the reason is a finding rather
+   than a shortcut.** Over a tree `TreeRules` accepts, "nodes left and none available" is
+   **unreachable**: an ordinary node needs `tier − 1` taken *in its branch*, so every branch always
+   offers its whole first tier; a Keystone needs `NodeCount − 1`, satisfied exactly when the rest of
+   its branch is taken; and an Upgrade needs a parent in the same branch at a **lower** tier, which is
+   therefore always reachable first. Replaced by `Open_DrawsWhateverIsAvailableRatherThanThree`.
+   **Rule 2's code is still written on `Draw`'s count rather than `IsFull`** and should stay that way —
+   M6-02's Banish removes nodes *from the pool*, which is the first thing that can create the state.
+   **M3-14b's "all three blocked" check has nothing to catch yet**, and that is worth it knowing.
+6. **`Open_AllocatesNothing` could not be written as specced either.** 10 000 open-and-choose cycles
+   at zero bytes needs a 10 000-node tree, and every choose puts a modifier on a `Stat` whose backing
+   `List<Modifier>` grows monotonically — so the row would have been measuring M3-03's list doubling.
+   Replaced by two honest rows: `Reads_AllocateNothing` (the per-frame surface — `HasOffer`, `Offer`
+   and indexing it, which is what `RunTicker` and M3-08b poll) and `Draw_AllocatesNothingBeyondTheTake`
+   (the draw on its own, M3-04's shape).
+7. **`NoTree_BanksTheLevel` is in `RunSessionResumeTests`**, where a snapshot can put picks on the
+   clock without reaching for an internal, with a sibling `NoTree_OpensNothingAndThrowsNothing` in
+   `RunSessionTests`.
+8. **`Offer_IsDrawnAfterTheBoundarySnapshot` ships as two rows** — `Offer_IsNotDrawnUntilItIsOpened`
+   (neither `Start` nor any `Tick` draws; only `OpenLevelUp` does) and `Offer_ResumesToTheSameThree`
+   (two whole compositions from one saved file draw the identical cards), which is the guarantee the
+   ordering exists to buy, stated as the player would feel it.
+9. **Seven pre-existing rows went red and were fixtures, not regressions** — and the guard finding
+   them is the point. `SkillRunnerTests`' resume helper and two `RunSessionResumeTests` rows built
+   snapshots at **level 1 with nodes already taken**, which rule 9's identity says cannot happen. Each
+   now states a level that accounts for its nodes. `Start_RestoresNodesBeforeHealth` also gained
+   `level: 3` so its maximum stays exactly 160 rather than picking up an Overflow level's +2 %.
+10. **`Traps.md` §7 gained a bullet** the Files table does not list: **Unity wiped `Temp/` mid-session**
+    and took a finished 50-run measurement with it. Nothing was lost only because each run's file had
+    already been read before the next started — the Traps row directly above it. Evidence now goes to
+    `Logs/`.
+11. **`Commands_ThrowWhenNoRunIsRunning` was extended in place** rather than duplicated, and now also
+    asserts that the two *reads* answer `false` outside a run instead of throwing.
+
+### Two things the tests corrected
+
+**"Damage ×1.02" means ×1.02 of the *base*, not of the current value**, and the first draft of three
+rows asserted the latter. `PercentAdd` pools: over the 27-node tree the stat already sits at +180 %,
+so one Overflow level takes it from ×2.80 to ×2.82 — a ×1.007 change. The rows now assert the
+**delta against the base**, and `Overflow_PoolsAdditively` runs on a clean stack so its ×1.20 reads as
+arithmetic rather than as a tolerance. **And `Overflow_MaxHpIsNotAHeal` was asserting its way past
+CC §7's 30-point Aegis** — a flat 40 damage on a 140 class leaves 130, not 100. The shield is read
+rather than assumed.
+
+### Non-finite rows: none owed, and that is said out loud
+
+Neither new class has a `float` door. `Open`, `Choose` and `GrantOverflow` take a stream, an `int`
+and an `int`; `Pause`/`Resume` take a `PauseReason`. `OverflowDamage` and `OverflowMaxHp` are
+**compile-time constants**, not doors — no caller can pass a value through them. The one float that
+moves is `Time.timeScale`, which `RunPause` *round-trips*, and that is covered by
+`Resume_RestoresWhatItFound` at a deliberately odd 0.5 / 45 — a row written from the defaults would
+pass identically against a class that hard-coded them.
+
+### The pin rows, and what each holds a place against
+
+- **`Choose_PublishesNoOfferChosen`** sweeps `Soulvail.Core.Events` and fails if an `OfferChosen`
+  type ever appears. It holds a place against the obvious-looking addition: `NodeTaken` already
+  carries the id, kind, branch, tier and count, so an `OfferChosen` would be a second event with a
+  subset of the first's fields (AR §8). The task that adds one must **delete a red row** and argue it.
+- **`State_HandsOutNoFlow`** fails if `RunState.LevelUp` is ever made public, and also asserts the
+  four reads beside it exist — so "make it public" cannot be justified by the reads being missing.
+  Same family as M3-07a's `Snapshot_CarriesNoLoadout`, which M3-07b inverted in place when the format
+  genuinely did gain the field.

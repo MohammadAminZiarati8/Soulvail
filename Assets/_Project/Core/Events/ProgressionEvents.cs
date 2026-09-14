@@ -123,3 +123,84 @@ public readonly struct NodeTaken
         TakenCount = takenCount;
     }
 }
+
+/// <summary>
+/// An offer is on the table: the player is being asked to choose, and the run stops being ticked
+/// until they have (GD §11.4).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It does not carry the ids.</b> They are <c>RunState.Offer</c>, a live view over the one buffer
+/// the flow draws into — so a handler that kept this event would be keeping a count and a reason
+/// rather than a stale list. This says <em>how many</em> and <em>what it is for</em>; the screen
+/// reads what they are.
+/// </para>
+/// <para>
+/// <see cref="Count"/> is not always three: a tree with fewer nodes available than that offers what
+/// it has, and CH §5.1's screen draws the cards it is given (M3-04 rule 1).
+/// </para>
+/// </remarks>
+public readonly struct OfferPresented
+{
+    /// <summary>How many cards are on the table, from 1 to <c>OfferGenerator.DefaultOfferCount</c>.</summary>
+    public readonly int Count;
+
+    /// <summary>
+    /// How many picks the player is owed <em>including</em> this one — CH §5.1's <em>"pick 1 of
+    /// n"</em>, so the screen does not have to go and ask.
+    /// </summary>
+    public readonly int PicksOwed;
+
+    public OfferPresented(int count, int picksOwed)
+    {
+        Count = count;
+        PicksOwed = picksOwed;
+    }
+}
+
+/// <summary>
+/// Nothing more is owed. The screen closes and the run is ticked again.
+/// </summary>
+/// <remarks>
+/// Published after the last pick is spent, whether it went on a node or on Overflow — so a screen
+/// that opened on <see cref="OfferPresented"/> has exactly one event that closes it, rather than
+/// having to work out from a count whether another card is coming.
+/// </remarks>
+public readonly struct LevelUpClosed
+{
+    /// <summary>The level the run is at once every pick has been spent.</summary>
+    public readonly int Level;
+
+    public LevelUpClosed(int level)
+    {
+        Level = level;
+    }
+}
+
+/// <summary>
+/// A pick was spent with nothing left to offer, and paid out as CH §5.2's Overflow instead.
+/// </summary>
+/// <remarks>
+/// <b>Announced rather than shown.</b> Overflow is silent and instant — no pause, no screen — because
+/// GD §13.1's pause exists to let someone <em>choose</em>, and a card with one button would tax the
+/// player for the game having run out of nodes. This event is what keeps CH §5.2's <em>"levelling
+/// never stops meaning something"</em> visible without stopping the game: M3-10's HUD or M3-13 can
+/// toast it. Nothing publishes it during a restore, for <c>NodeTaken</c>'s reason.
+/// </remarks>
+public readonly struct OverflowGranted
+{
+    /// <summary>The level whose pick was spent on it.</summary>
+    public readonly int Level;
+
+    /// <summary>
+    /// How many Overflow levels the run has now, this one counted — the running total, so a toast
+    /// can say <em>"+2 % damage (×7)"</em> without keeping a tally of its own.
+    /// </summary>
+    public readonly int Total;
+
+    public OverflowGranted(int level, int total)
+    {
+        Level = level;
+        Total = total;
+    }
+}

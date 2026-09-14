@@ -558,25 +558,63 @@ public sealed class RunSessionTests
     [Test]
     public void Commands_ThrowWhenNoRunIsRunning()
     {
-        // **`IPlayerCommands`' standing rule, for M3-07a's two new members.** A command arriving in
-        // a menu is a wiring mistake — the input map is disabled outside a run — and a silent no-op
-        // would hide it until someone wondered why tapping did nothing. Both states are asked,
-        // because "not running" is not running however it was arrived at (rule 4's other half).
+        // **`IPlayerCommands`' standing rule, for M3-07a's two new members — and `IProgressionCommands`'
+        // two at M3-08a.** A command arriving in a menu is a wiring mistake — the input map is
+        // disabled outside a run — and a silent no-op would hide it until someone wondered why
+        // tapping did nothing. Both states are asked, because "not running" is not running however
+        // it was arrived at (rule 4's other half).
         var commands = (IPlayerCommands)_session;
+        var progression = (IProgressionCommands)_session;
         ContentId anySkill = new ContentId("skill.test.none");
 
         Assert.Throws<InvalidOperationException>(() => commands.CastSkill(0));
         Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
+        Assert.Throws<InvalidOperationException>(() => progression.OpenLevelUp());
+        Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
 
         StartRun();
         _session.End();
 
         Assert.Throws<InvalidOperationException>(() => commands.CastSkill(0));
         Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
+        Assert.Throws<InvalidOperationException>(() => progression.OpenLevelUp());
+        Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
 
         // The guard is reached *before* either argument is looked at, which is what makes the row
         // honest here: this fixture's catalog carries no skills and no tree, so slot 0 is empty and
         // the id is owned by nobody — and neither of those is what throws.
+
+        // **The two reads answer rather than throw**, and that asymmetry is deliberate: RunTicker
+        // polls them every frame and is still an ITickable after a run has ended (M3-08a's port).
+        Assert.That(progression.IsLevelUpPending, Is.False);
+        Assert.That(progression.HasOffer, Is.False);
+    }
+
+    [Test]
+    public void NoTree_OpensNothingAndThrowsNothing()
+    {
+        // **Every run in this build** (M3-08a rule 5). This fixture's catalog carries no skills and
+        // no tree, which is exactly the shipped state until M3-12 — so nothing draws, nothing pauses
+        // and nothing throws. The *banking* half, where picks pile up unspent, is
+        // `NoTree_BanksTheLevel` in RunSessionResumeTests, which can put picks on the clock through
+        // a snapshot rather than reaching for an internal.
+        StartRun();
+
+        var progression = (IProgressionCommands)_session;
+
+        Assert.That(_session.State.IsLevelUpPending, Is.False, "no tree, so nothing is pending.");
+        Assert.That(progression.IsLevelUpPending, Is.False);
+
+        Assert.DoesNotThrow(() => progression.OpenLevelUp(), "a run with no tree must not throw.");
+
+        Assert.That(_session.State.HasOffer, Is.False);
+        Assert.That(_session.State.Offer, Is.Empty);
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0), "no tree means no Overflow either.");
+        Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
+        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
+
+        // Choosing, on the other hand, is a view reporting a tap on a card that cannot exist.
+        Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
     }
 
     [Test]

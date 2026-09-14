@@ -41,7 +41,7 @@ namespace Soulvail.Core.Run;
 /// this and <c>RunScope</c> owns its lifetime.
 /// </para>
 /// </remarks>
-public sealed class RunSession : IRunSession, IPlayerCommands
+public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionCommands
 {
     private readonly ContentCatalog _catalog;
     private readonly IRandom _random;
@@ -469,6 +469,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // readers (ADR-0005), and this is the first reader that decides something with it.
         var skills = new SkillRunner(effects, combat.Blackboard, _events);
 
+        // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
+        // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
+        // authors one. Below the runner because it pushes a chosen Active into it, and below the
+        // registry because Overflow's two modifiers go on through it.
+        LevelUpFlow levelUp = tree is null
+            ? null
+            : new LevelUpFlow(tree, progression, skills, effects, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -482,7 +490,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             progression,
             effects,
             tree,
-            skills);
+            skills,
+            levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -556,6 +565,45 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             // own leaves that slot empty and the rest come back, because a slot is where a button
             // sits rather than the run's power (SkillRunner.Restore).
             skills.Restore(resumed.ManualSkillIds);
+
+            // **After the tree restore and above Health.Restore, and the second half of that is an
+            // AR §18.1 row rather than a preference** (M3-08a rule 9). Overflow puts a `+2 % MaxHp`
+            // modifier on per level, so fourteen of them move the maximum by 28 % — and the saved
+            // hit points are absolute and are clamped against the live maximum. Replayed *after* the
+            // clamp, a run saved at 170 of 179 comes back at 140: the same loss SkillTree.Restore is
+            // ordered against, from a second writer.
+            //
+            // **Derived, because no field carries it and RunSnapshot.CurrentVersion stays 3.** Every
+            // pick a run has earned is spent on a node, spent on Overflow, or unspent — the exact
+            // mirror of M3-03 rule 6, which says the *pending* count is the one that cannot be
+            // derived. Anything that later spends a pick without taking a node owes this identity or
+            // owes a field; M6-02's Banish does not, since it removes a node from the pool rather
+            // than a pick from the player.
+            //
+            // Guarded on the flow rather than computed unconditionally, for the reason the tree's
+            // own restore is `tree?.Restore`: a class with no tree ignores the saved ids entirely,
+            // and asserting an identity over numbers half of which were discarded would refuse a
+            // legal save. It costs nothing to skip — with no tree nothing can spend a pick, so every
+            // level is banked and the identity is 0 either way (rule 5).
+            if (levelUp is not null)
+            {
+                int overflow = resumed.Level - 1 - resumed.TakenNodeIds.Count - resumed.PendingLevelUps;
+
+                if (overflow < 0)
+                {
+                    throw new ArgumentException(
+                        $"The saved picks do not add up: level {resumed.Level} earns "
+                            + $"{resumed.Level - 1} pick(s), of which {resumed.TakenNodeIds.Count} "
+                            + $"went on nodes and {resumed.PendingLevelUps} are unspent, leaving "
+                            + $"{overflow} for Overflow. It is arithmetic rather than content, so it "
+                            + "cannot be rescued by clamping.",
+                        nameof(config));
+                }
+
+                // Silent, for the reason the whole block is: nothing may publish before RunStarted,
+                // and a resumed run's Overflow was earned in a previous session and is not news.
+                levelUp.GrantOverflow(overflow);
+            }
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
@@ -989,6 +1037,55 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         RequireRunning(nameof(SetAutoCast));
 
         State.Skills.SetAutoCast(skillId, auto);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A read rather than a command, so it answers <see langword="false"/> outside a run instead of
+    /// throwing: <c>RunTicker</c> polls it every frame and is still an <c>ITickable</c> after a run
+    /// has ended.
+    /// </remarks>
+    public bool IsLevelUpPending => IsRunning && State.IsLevelUpPending;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <see cref="IsLevelUpPending"/>'s reasoning — a read, false outside a run.
+    /// </remarks>
+    public bool HasOffer => IsRunning && State.HasOffer;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>The stream is this session's <c>Offers</c> and no other</b> (ADR-0011), handed in here
+    /// rather than held by the flow so that the one object which owns the run's randomness stays the
+    /// one that hands it out — <c>SpawnDirector.Tick</c>'s shape, one module over.
+    /// </remarks>
+    public void OpenLevelUp()
+    {
+        RequireRunning(nameof(OpenLevelUp));
+
+        // Null for a class with no tree, which is every run in this build: the level stays banked
+        // and nothing draws, pauses or throws (rule 5).
+        State.LevelUp?.Open(_random.Offers);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Throws rather than no-ops when the class has no tree, unlike <see cref="OpenLevelUp"/>: an
+    /// open call is the frame loop asking a standing question, where this one is a view reporting a
+    /// tap on a card that cannot exist.
+    /// </remarks>
+    public void ChooseOffer(int index)
+    {
+        RequireRunning(nameof(ChooseOffer));
+
+        if (State.LevelUp is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so no offer can ever be open and there is nothing to "
+                    + "choose. A view sent ChooseOffer without a card to send it for.");
+        }
+
+        State.LevelUp.Choose(index, _random.Offers);
     }
 
     /// <inheritdoc />

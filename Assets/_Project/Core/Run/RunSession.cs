@@ -440,6 +440,35 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             ? null
             : new SkillTree(treeRules, effects, _events);
 
+        // **A tree that would not fit the runner refuses the run** (M3-06 rule 5, and the owner's
+        // ruling at M3-06). The alternative was letting SkillRunner.Add throw on the thirteenth,
+        // which lands inside M3-08a's ChooseOffer — *after* SkillTree.Take has recorded the node,
+        // applied its effects and published NodeTaken — so a mistake a designer made weeks earlier
+        // would kill a run at the moment a card is tapped and kill it dirty, with the node owned
+        // and unfireable. Asked here it is TreeRules' own argument one class over: an authoring
+        // mistake refuses the run, with nothing announced and nothing standing.
+        //
+        // It is the same shape SkillTree's constructor gives EffectRegistry.Apply — sweep the
+        // authored content at Start, keep the throw as the backstop — and it is what makes Add's
+        // capacity throw unreachable in a live run rather than merely unlikely.
+        if (tree is not null && tree.Rules.ActiveCount > SkillRunner.MaxActives)
+        {
+            throw new ArgumentException(
+                $"'{tree.Rules.Tree.Id}' holds {tree.Rules.ActiveCount} Active nodes and the "
+                    + $"runner holds {SkillRunner.MaxActives}. CH §4's ~25 % Active over CH §5's "
+                    + "27 nodes is about seven, so a tree this far past it is an authoring mistake "
+                    + "rather than a capacity to raise.",
+                nameof(config));
+        }
+
+        // After the registry and the blackboard it reads, and before State, which is what holds it.
+        // One per run like everything above: a second Start must not inherit the first run's
+        // cooldowns, and a runner that outlived a run would be casting a dead player's skills.
+        //
+        // The blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many
+        // readers (ADR-0005), and this is the first reader that decides something with it.
+        var skills = new SkillRunner(effects, combat.Blackboard, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -452,7 +481,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             projectiles,
             progression,
             effects,
-            tree);
+            tree,
+            skills);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -488,6 +518,30 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             // for a class with no tree, which ignores the ids the same way this method did between
             // M3-01b and here (rule 10).
             tree?.Restore(resumed.TakenNodeIds);
+
+            // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
+            // pushes a skill into the runner; the runner subscribes to nothing, so a resumed run's
+            // actives arrive here exactly as a fresh run's arrive from M3-08a's ChooseOffer. Take
+            // order is therefore the runner's order on a resumed run as well as a fresh one, which
+            // is what makes the walk in Tick reproducible from a seed.
+            //
+            // Order-independent with the three restores below it, unlike the pair above: nothing
+            // here applies an effect or reads a maximum. It is beside Restore because the list it
+            // walks is the one Restore just filled.
+            if (tree is not null)
+            {
+                IReadOnlyList<ContentId> taken = tree.TakenIds;
+
+                for (int i = 0; i < taken.Count; i++)
+                {
+                    SkillSpec node = tree.Rules.Skill(taken[i]);
+
+                    if (node.Kind == SkillKind.Active)
+                    {
+                        skills.Add(node);
+                    }
+                }
+            }
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
@@ -613,6 +667,25 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             snapshot,
             State.Enemies.Registry.Alive,
             State.Motor.Facing);
+
+        // **After combat and before the enemy behaviours — which puts it above the projectile step
+        // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).
+        //
+        // *After combat*, because UpdateBlackboard has just filled seven of the nine fields a
+        // trigger can read, and a predicate over last tick's HP is a Consecrate that fires a frame
+        // after the hit that should have caused it.
+        //
+        // *Above ProjectileSystem.Tick*, because IncomingProjectiles is written by that step and
+        // nowhere else (ProjectileSystem.cs, at the end of its own pass): read here it is the count
+        // of bolts still in the air **before this tick's arrivals are resolved**, which is exactly
+        // what CC §6.4's Bulwark means by "an enemy projectile is inbound" — a shield raised
+        // *before* the bolt lands. Ticked after that step instead, the same field would describe
+        // the sky *after* the hit, and the archetype's whole answer would be a shield put up over a
+        // wound. The field is therefore deliberately one step old, and that staleness is the
+        // mechanic rather than a lag to fix.
+        //
+        // At most one cast per tick, and the walk stops on it (rule 6).
+        State.Skills.Tick(snapshot.Dt, State.Time);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player

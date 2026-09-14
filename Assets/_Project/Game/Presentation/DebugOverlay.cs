@@ -498,6 +498,22 @@ namespace Soulvail.Game.Presentation
             _line.Append(" owed ").Append(
                 (state is null ? 0 : state.PendingLevelUps).ToString(CultureInfo.InvariantCulture));
 
+            // How many actives the player owns, and how far round the first one's cooldown is.
+            //
+            // It reads `actives 0` for the whole of this milestone until M3-12 authors a tree with
+            // an Active in it, and that is what the line is for: the runner being correctly empty
+            // and *saying so* is the difference between a system that is not wired up yet and one
+            // that is invisible. The fraction is omitted rather than printed as 0 when nothing is
+            // owned, because a 0 there would be indistinguishable from a skill that is off
+            // cooldown — which is the one reading that matters the day the number is not zero.
+            _line.Append("  actives ").Append(
+                (state is null ? 0 : state.OwnedActiveCount).ToString(CultureInfo.InvariantCulture));
+
+            if (state is not null && state.OwnedActiveCount > 0)
+            {
+                _line.Append(' ').Append(Fixed(state.SkillCooldownFraction(0)));
+            }
+
             // Shots in the air, from core rather than from the snapshot — unlike the enemy count
             // above, there is no boundary here for the two sides to disagree across: a projectile
             // has no body and is never reported back in (M2-07a rule 2), so core's number is the

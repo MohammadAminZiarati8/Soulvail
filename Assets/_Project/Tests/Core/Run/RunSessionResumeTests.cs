@@ -92,6 +92,22 @@ public sealed class RunSessionResumeTests
     private const string NodeDamage = "skill.test.vow";
     private const string NodeSpare = "skill.test.spare";
     private const string NodeB = "skill.test.b";
+
+    /// <summary>The one Active, for M3-06's rows. Not in <see cref="Tree"/> — see BuildWithActiveTree.</summary>
+    private const string NodeActive = "skill.test.active";
+
+    /// <summary>
+    /// Its cooldown, ten minutes rather than a plausible eight seconds.
+    /// </summary>
+    /// <remarks>
+    /// <c>ClearTheStage</c> plays a whole stage out and may tick for two and a half simulated
+    /// minutes, so an eight-second skill whose trigger always holds would fire twenty times on the
+    /// way and <c>Session_BoundaryLeavesCooldownsRunning</c> would be counting them instead of
+    /// asking whether the boundary reset the clock. The long wait is what makes "still cooling on
+    /// the other side of the door" a claim about the boundary.
+    /// </remarks>
+    private const float ActiveCooldown = 600f;
+
     private const string NodeC = "skill.test.c";
 
     /// <summary>
@@ -253,6 +269,96 @@ public sealed class RunSessionResumeTests
             Is.Not.EqualTo(TreeMaxHp),
             "The fixture's own claim: if the node moved nothing, this row would pass with the "
                 + "restore deleted.");
+    }
+
+    // ---- M3-06: the runner a resumed run comes back with -----------------------------------------
+
+    [Test]
+    public void Session_RestoreAddsTheTakenActives()
+    {
+        // **M3-06 rule 5.** Core pushes a skill into the runner and the runner subscribes to
+        // nothing, so a resumed run's actives arrive here — `Start` walking `TakenIds` in take order
+        // after `SkillTree.Restore` has replayed it. One of the two nodes is an Active and the other
+        // is not, so a loop that added everything would answer 2.
+        BuildWithActiveTree(seed: 7);
+
+        var taken = new[] { new ContentId(NodeActive), new ContentId(NodeDamage) };
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, takenNodeIds: taken));
+
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(2), "Both nodes came back.");
+        Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "And exactly one of them fires.");
+
+        Assert.That(_session.State.SkillIdAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.IsSkillReady(0), Is.True, "A resumed skill is off cooldown.");
+        Assert.That(_session.State.SkillCooldownFraction(0), Is.EqualTo(0f));
+
+        // **Silently**, like every other restore: nothing may publish before `RunStarted`, and a
+        // `SkillCast` raised here would announce as news a skill nobody fired.
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Session_BoundaryLeavesCooldownsRunning()
+    {
+        // **M3-06 rule 11.** M2-10's standing rule is that a boundary resets the `Targeter` and
+        // never `PlayerCombat` — a door is not a free heal, and it is not a free set of cooldowns
+        // either. `SkillRunner.Reset` exists and nothing in M3 calls it; this is the row that says
+        // a stage boundary is not one of its callers.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, takenNodeIds: new[] { new ContentId(NodeActive) }));
+
+        // The trigger is `HpFraction Below 1.5`, which always holds, so the first tick of the run
+        // casts it and puts an eight-second wait on the clock.
+        TickFor(1);
+
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(1), "Arranged: it cast.");
+        Assert.That(_session.State.IsSkillReady(0), Is.False);
+
+        float fractionBefore = _session.State.SkillCooldownFraction(0);
+
+        _events.Clear();
+
+        ClearTheStage();
+        CrossTheBoundary();
+
+        // Still cooling on the other side of the door, and no second cast — a boundary that had
+        // reset the runner would have handed the player a free skill on arrival.
+        Assert.That(_session.State.IsSkillReady(0), Is.False);
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(0));
+
+        Assert.That(
+            _session.State.SkillCooldownFraction(0),
+            Is.LessThan(fractionBefore),
+            "And the wait ran down across the boundary rather than standing still — it is an "
+                + "absolute time against the simulated clock, which the boundary does not rewind.");
+
+        Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "The skill itself is still owned.");
+    }
+
+    [Test]
+    public void Start_OverCapacityTreeRefusesTheRun()
+    {
+        // **The owner's ruling at M3-06.** A tree holding more actives than the runner can own is an
+        // authoring mistake, and it refuses the *run* rather than the pick — `TreeRules`' own
+        // argument one class over. Left to `SkillRunner.Add`, the thirteenth would throw inside
+        // M3-08a's `ChooseOffer`, *after* `SkillTree.Take` had recorded the node, applied its
+        // effects and published `NodeTaken`: a run that dies at the moment a card is tapped, and
+        // dies dirty.
+        BuildWithActiveTree(seed: 7, actives: SkillRunner.MaxActives + 1);
+
+        Assert.Throws<ArgumentException>(() => _session.Start(FreshConfig(stage: 4)));
+
+        AssertNothingStands();
+
+        // And one fewer is a legal tree, so the row is about the boundary rather than about any
+        // tree with actives in it.
+        BuildWithActiveTree(seed: 7, actives: SkillRunner.MaxActives);
+
+        Assert.DoesNotThrow(() => _session.Start(FreshConfig(stage: 4)));
     }
 
     [Test]
@@ -706,6 +812,83 @@ public sealed class RunSessionResumeTests
 
         _session = SessionOver(_events);
     }
+
+    /// <summary>
+    /// The same world with a tree whose branch 0 holds <paramref name="actives"/> Actives beside the
+    /// two passives the node rows use — M3-06's runner needs a tree that can hand it something.
+    /// </summary>
+    /// <remarks>
+    /// A tree of its own rather than an Active added to <see cref="Tree"/>, so that every row above
+    /// keeps the shape it was written against: a fourth node in branch 0 would move
+    /// <c>Available</c>'s count under rows that are not about it.
+    /// </remarks>
+    private void BuildWithActiveTree(int seed, int actives = 1)
+    {
+        _events = new RecordingEvents();
+        _random = new FixedRandom(seed, Alternating(8_192));
+        _clock = new FixedClock(Instant);
+        _mode = Mode();
+
+        var skills = new List<SkillSpec> { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f) };
+        var tier = new List<ContentId>();
+
+        for (int i = 0; i < actives; i++)
+        {
+            // The first keeps the name the rows quote; the rest only exist to fill the tree.
+            string id = i == 0 ? NodeActive : $"{NodeActive}.{i}";
+
+            skills.Add(ActiveNode(id));
+            tier.Add(new ContentId(id));
+        }
+
+        tier.Add(new ContentId(NodeDamage));
+
+        var tree = new SkillTreeSpec(
+            new ContentId(TreeIdValue),
+            new ContentId(OathboundId),
+            new[]
+            {
+                new SkillBranchSpec(
+                    new LocKey("branch.a"),
+                    new IReadOnlyList<ContentId>[] { tier }),
+                Branch('b', new[] { NodeB }),
+                Branch('c', new[] { NodeC }),
+            });
+
+        skills.Add(Passive(NodeC, 0.05f));
+
+        _catalog = new ContentCatalog(
+            new[] { Oathbound(TreeMaxHp) },
+            new[] { Husk() },
+            new[] { _mode },
+            skills,
+            new[] { tree });
+
+        _session = SessionOver(_events);
+    }
+
+    /// <summary>
+    /// An Active whose trigger always holds, so the boundary row can put it on cooldown with one
+    /// tick rather than by arranging a fight.
+    /// </summary>
+    private static SkillSpec ActiveNode(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Active,
+        Array.Empty<IEffect>(),
+        new ActiveSpec(
+            ActiveCooldown,
+            new TriggerSpec(new[]
+            {
+                // Below 1.5 rather than a clause that reads as "always": HpFraction is at most 1,
+                // so this holds on every tick of a healthy run and on every tick of a hurt one.
+                new TriggerClause(TriggerField.HpFraction, TriggerComparison.Below, 1.5f),
+            }),
+            new IEffect[]
+            {
+                new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.5f),
+            }));
 
     private RunSession SessionOver(IDomainEvents events) => new RunSession(
         _catalog,

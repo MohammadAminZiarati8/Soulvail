@@ -218,7 +218,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| [M3-06](tasks/M3-06-skill-runner.md) | `SkillRunner`: cooldowns with the 40 % floor, auto-cast over the blackboard | M | 02a 03 05 | ☐ |
+| [M3-06](tasks/M3-06-skill-runner.md) | `SkillRunner`: cooldowns with the 40 % floor, auto-cast over the blackboard | M | 02a 03 05 | ☑ |
 | [M3-07a](tasks/M3-07a-auto-manual-and-slots.md) | Auto/Manual, the four manual slots, and the two commands | S | 06 | ☐ |
 | [M3-07b](tasks/M3-07b-save-format-v3.md) | Save format v3: the loadout on disk, and the first chain with two steps | S | 07a 01b | ☐ |
 | [M3-08a](tasks/M3-08a-level-up-flow-and-pause.md) | `IProgressionCommands`, the lazy offer, Overflow, and the gate that idles the simulation | M | 04 03 06 | ☐ |

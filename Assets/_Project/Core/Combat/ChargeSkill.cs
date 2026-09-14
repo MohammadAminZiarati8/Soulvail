@@ -236,10 +236,13 @@ public sealed class ChargeSkill
         _activeUntil = now + _spec.Duration;
         _invulnUntil = _activeUntil + _spec.IFrameTrail;
 
-        // Sampled here and held — see the class remarks. A non-positive value is left to mean what
-        // it says (ready as soon as the dash ends); M3-06's floor is where a cooldown stops being
-        // allowed to reach zero, because that is the layer that knows what "too short" means.
-        _readyAt = now + Cooldown.Value;
+        // Sampled here and held — see the class remarks. **Floored since M3-06**, which is what
+        // the line this replaced promised: a stack can drive Cooldown.Value to zero or below
+        // (Stat clamps nothing, ADR-0008), and CooldownRules is the layer that knows what "too
+        // short" means. The floor is taken from `_spec.Cooldown`, the number a designer typed,
+        // rather than from `Cooldown.Base` — the two are the same today, and the day a node
+        // re-bases a cooldown a floor computed from the raised base would rise with it.
+        _readyAt = now + CooldownRules.Effective(_spec.Cooldown, Cooldown.Value);
 
         _hasPress = false;
 

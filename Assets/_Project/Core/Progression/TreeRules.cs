@@ -101,6 +101,26 @@ public sealed class TreeRules
     /// </remarks>
     public int Count => Tree.NodeCount;
 
+    /// <summary>
+    /// How many of this tree's nodes are <see cref="SkillKind.Active"/>. About seven for a full
+    /// class — CH §5's 27 nodes at CH §4's ~25 % Active.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A fact about the tree, deliberately not a rule.</b> <c>RunSession.Start</c> compares it
+    /// against <c>SkillRunner.MaxActives</c> and refuses a tree that would not fit, before
+    /// <c>RunStarted</c> — so an authoring mistake refuses the <em>run</em> rather than the pick,
+    /// which is this class's whole argument. The comparison lives there rather than here because
+    /// the capacity is the runner's number: this type answers what the tree <em>is</em>, and a
+    /// <c>Combat</c> array size is not one of the tree's own properties.
+    /// </para>
+    /// <para>
+    /// Counted in <see cref="Resolve"/>'s existing walk, so it costs nothing beyond a comparison
+    /// per node on a path that already had each spec in hand.
+    /// </para>
+    /// </remarks>
+    public int ActiveCount { get; private set; }
+
     /// <summary>The node <paramref name="id"/> names.</summary>
     /// <remarks>
     /// A dictionary probe against the sweep the constructor already did, so this cannot fail for a
@@ -247,6 +267,15 @@ public sealed class TreeRules
 
                     // The tree already refused one id in two places, so this cannot collide.
                     _specs.Add(id, spec);
+
+                    // Counted in the pass that is already resolving every node, rather than by a
+                    // second walk at the one call site that asks (M3-06). This is a *fact* about
+                    // the tree and not a rule — whether that many actives fit is the runner's
+                    // question, asked where the runner is built.
+                    if (spec.Kind == SkillKind.Active)
+                    {
+                        ActiveCount++;
+                    }
                 }
             }
         }

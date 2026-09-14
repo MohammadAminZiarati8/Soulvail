@@ -56,3 +56,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 61842ec20ecb9b449bb8eec767fb4de7, type: 2}
   _modes:
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}
+  _skills: []
+  _trees: []

@@ -298,6 +298,172 @@ public sealed class RunSessionResumeTests
         Assert.That(_events.Count<SkillCast>(), Is.EqualTo(0));
     }
 
+    // ---- v3: the loadout comes back (M3-07b rules 6, 7) -----------------------------------------
+
+    [Test]
+    public void Start_RestoresTheSlots()
+    {
+        BuildWithActiveTree(seed: 7, actives: 3);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: ThreeActives(),
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                new ContentId(NodeActive + ".2"),
+                default(ContentId),
+            }));
+
+        // **The hole in place.** A restore that compacted would put the third skill under the thumb
+        // that had learned the second — the silent re-bind M3-07a rule 3 refuses during a run and
+        // this rule refuses across a restart.
+        Assert.That(_session.State.ManualSlotAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(default(ContentId)));
+        Assert.That(_session.State.ManualSlotAt(2), Is.EqualTo(new ContentId(NodeActive + ".2")));
+        Assert.That(_session.State.ManualSlotAt(3), Is.EqualTo(default(ContentId)));
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(2));
+
+        // The flags moved with the table — the two restored skills are Manual, the third is still
+        // Auto. Written out because `_isAuto` and `_slots` are separate arrays and a restore that
+        // wrote one without the other would pass every assertion above and then let a Manual skill
+        // fire itself on the first tick.
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive)), Is.False);
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive + ".2")), Is.False);
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive + ".1")), Is.True);
+
+        // **Silently**, like every other restore in this block: nothing may publish before
+        // `RunStarted`, and a `SkillAutoCastChanged` raised here would announce as news a toggle
+        // the player did not touch — CC §6.3's screen would flash on a resume.
+        Assert.That(_events.Count<SkillAutoCastChanged>(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_RestoreDropsAnUnownedSlot()
+    {
+        BuildWithActiveTree(seed: 7, actives: 3);
+
+        // Only two of the three nodes come back, and the slot list names the third — a node this
+        // build no longer ships, a hand-edited file, or a tree that changed between builds. All
+        // three arrive here looking identical and none is worth refusing a save for.
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[]
+            {
+                new ContentId(NodeActive),
+                new ContentId(NodeActive + ".1"),
+            },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                new ContentId(NodeActive + ".2"),
+                new ContentId(NodeActive + ".1"),
+                default(ContentId),
+            }));
+
+        // **Deliberately unlike `SkillTree.Restore`, which throws for an unknown node** (M3-03 rule
+        // 5). A taken node *is* the run's power, so dropping one silently hands the player a weaker
+        // character than they saved; a slot is only where a button sits, and a missing button costs
+        // one visit to CC §6.3's screen.
+        Assert.That(_session.State.ManualSlotAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(default(ContentId)), "Dropped.");
+        Assert.That(_session.State.ManualSlotAt(2), Is.EqualTo(new ContentId(NodeActive + ".1")));
+
+        // The rest restored, and the run is running — the drop is not a failure.
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(2));
+        Assert.That(_session.IsRunning, Is.True);
+        Assert.That(_events.Count<RunStarted>(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Start_RestoredManualSkillDoesNotAutoCast()
+    {
+        // **The point of the field.** `ActiveNode`'s trigger is `HpFraction Below 1.5`, which holds
+        // on every tick of a healthy run — so this skill fires on the first tick unless something
+        // stops it, and the only thing that can is the Manual flag the restore put back.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[] { new ContentId(NodeActive) },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                default(ContentId),
+                default(ContentId),
+            }));
+
+        _events.Clear();
+
+        TickFor(1);
+
+        Assert.That(
+            _events.Count<SkillCast>(),
+            Is.EqualTo(0),
+            "A resumed Manual skill fired itself, which is the loadout not surviving the restart.");
+
+        // And it is ready rather than suppressed — the difference between "Manual" and "cooling".
+        Assert.That(_session.State.IsSkillReady(0), Is.True);
+    }
+
+    [Test]
+    public void Start_RestoresSlotsAfterTheRunnerKnowsTheActives()
+    {
+        // **The ordering row (rule 7, AR §18.1).** The slot restore sits *below* the loop that
+        // tells the runner about the restored Actives. Swap the two lines and this slot is empty:
+        // `SkillRunner.Restore` would be asked about a skill the runner had not been told about
+        // yet, which is indistinguishable from rule 6's stale id — so every slot would be dropped
+        // in silence and a resumed run would come back with no buttons and no error.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[] { new ContentId(NodeActive) },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                default(ContentId),
+                default(ContentId),
+            }));
+
+        Assert.That(
+            _session.State.ManualSlotAt(0),
+            Is.EqualTo(new ContentId(NodeActive)),
+            "The slot is empty if the restore runs above the loop that adds the actives.");
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Start_FreshRunHasFourEmptySlots()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        // The other half of the restore rows: a config with no snapshot inherits nothing, and CC
+        // §6.1's default is Auto — so a fresh run and a migrated v2 run are indistinguishable on
+        // this axis, which is what lets the v2 → v3 step need no special case above the DTO.
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(0));
+
+        for (int slot = 0; slot < SkillRunner.MaxManualSlots; slot++)
+        {
+            Assert.That(_session.State.ManualSlotAt(slot), Is.EqualTo(default(ContentId)));
+        }
+
+        Assert.That(
+            _session.State.ManualSkillIds,
+            Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+    }
+
     [Test]
     public void Session_BoundaryLeavesCooldownsRunning()
     {
@@ -905,6 +1071,17 @@ public sealed class RunSessionResumeTests
         _session.Start(ResumedConfig(stage, snapshot));
     }
 
+    /// <summary>
+    /// The three ids <c>BuildWithActiveTree(seed, actives: 3)</c> authors, in the order it authors
+    /// them — what the slot rows hand to <c>takenNodeIds</c>.
+    /// </summary>
+    private static ContentId[] ThreeActives() => new[]
+    {
+        new ContentId(NodeActive),
+        new ContentId(NodeActive + ".1"),
+        new ContentId(NodeActive + ".2"),
+    };
+
     private RunConfig ResumedConfig(int stage, RunSnapshot? snapshot = null) => new RunConfig(
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -929,7 +1106,8 @@ public sealed class RunSessionResumeTests
         float xp = SavedXp,
         int pendingLevelUps = SavedPending,
         IReadOnlyList<ContentId> takenNodeIds = null,
-        float playerHp = SavedHp) =>
+        float playerHp = SavedHp,
+        IReadOnlyList<ContentId> manualSkillIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -944,7 +1122,8 @@ public sealed class RunSessionResumeTests
             level,
             xp,
             pendingLevelUps,
-            takenNodeIds ?? Array.Empty<ContentId>());
+            takenNodeIds ?? Array.Empty<ContentId>(),
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
 
     private void TickFor(int ticks)
     {

@@ -381,6 +381,20 @@ public sealed class RunState
     /// </exception>
     public bool IsAutoCast(ContentId skillId) => Skills.IsAuto(skillId);
 
+    /// <summary>
+    /// CC §6.2's four thumb positions in order, <c>default(ContentId)</c> for an empty one — what
+    /// <c>RunRecorder.Take</c> writes to disk (M3-07b rule 8).
+    /// </summary>
+    /// <remarks>
+    /// <b>A read rather than the handle, and it allocates nothing</b>: the runner wraps its slot
+    /// table once at construction, so this hands back an object that already exists rather than
+    /// building one per boundary. <b>It is a live view, not a snapshot</b> — the next
+    /// <c>SetAutoCast</c> is visible through it — which is why <c>RunSnapshot</c> copies what it is
+    /// given instead of holding it, and why this is the one read here whose caller has an obligation.
+    /// Four empties for a run with no tree, which is every run until M3-12 authors one.
+    /// </remarks>
+    public IReadOnlyList<ContentId> ManualSkillIds => Skills.Slots;
+
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;
 

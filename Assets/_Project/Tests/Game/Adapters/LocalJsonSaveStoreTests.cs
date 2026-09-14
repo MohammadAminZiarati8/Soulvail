@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
@@ -24,14 +25,18 @@ namespace Soulvail.Tests.Game.Adapters;
 /// <para>
 /// <b>The fixture strings are typed by hand and are not a re-serialisation.</b> A fixture produced
 /// by the code under test asserts only that the code agrees with itself; these are the literal
-/// bytes a save is, and <c>Fixture_V2Run_IsWhatThisBuildWrites</c> is the row that fails the day
+/// bytes a save is, and <c>Fixture_V3Run_IsWhatThisBuildWrites</c> is the row that fails the day
 /// the format drifts without the fixture moving with it (AR §11.6).
 /// </para>
 /// <para>
-/// <b>Two run literals as of M3-01b, and they play different parts.</b> <c>V2Run</c> is what this
-/// build writes and reads. <c>V1Run</c> is untouched and is now the <em>migration's</em> input: the
-/// document a player already has on their device, decoded through the real adapter, which is the
-/// only place the v1 → v2 step and the code that calls it are tested together.
+/// <b>Three run literals as of M3-07b, and they play three different parts.</b> <c>V3Run</c> is
+/// what this build writes and reads. <c>V2Run</c> and <c>V1Run</c> are both <em>migration
+/// inputs</em> — documents a player already has on their device — decoded through the real adapter,
+/// which is the only place a step and the code that calls it are tested together. <b>Neither older
+/// literal changed by one character at this bump</b>, and that is what earns them the right to
+/// prove anything: a fixture regenerated alongside the format it is meant to pin stops being
+/// evidence. <c>V1Run</c> now walks through <em>both</em> steps in one decode, which is the row
+/// this task exists to earn.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -42,10 +47,12 @@ public sealed class LocalJsonSaveStoreTests
     /// anything this build writes.
     /// </summary>
     /// <remarks>
-    /// <b>Not one character of it changed at the bump, deliberately.</b> It is a real v1 document
-    /// with no <c>level</c>, <c>xp</c>, <c>pendingLevelUps</c> or <c>takenNodeIds</c> key, which is
-    /// what makes <c>Fixture_V1Run_DecodesToTheExpectedSnapshot</c> a test of the v1 → v2 step
-    /// through the real adapter instead of a test of the step in isolation.
+    /// <b>Not one character of it changed at either bump, deliberately.</b> It is a real v1
+    /// document with no <c>level</c>, <c>xp</c>, <c>pendingLevelUps</c>, <c>takenNodeIds</c> or
+    /// <c>manualSkillIds</c> key, which is what makes
+    /// <c>Fixture_V1Run_DecodesToTheExpectedSnapshot</c> a test of the steps through the real
+    /// adapter instead of a test of a step in isolation. <b>As of M3-07b it walks two of them</b>,
+    /// v1 → v2 → v3, which is the first time this fixture has proved a chain rather than a step.
     /// </remarks>
     private const string V1Run =
         "{\"version\":1,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
@@ -54,11 +61,18 @@ public sealed class LocalJsonSaveStoreTests
         "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
         "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"}";
 
-    /// <summary>A v2 run, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v2 run, as it is spelled on disk — and as of M3-07b, the v2 → v3 step's input rather than
+    /// anything this build writes.
+    /// </summary>
     /// <remarks>
-    /// The four new keys follow <c>writtenAt</c>, because field order in <c>RunMirror</c> is key
+    /// The four v2 keys follow <c>writtenAt</c>, because field order in <c>RunMirror</c> is key
     /// order on disk and v2 only appends (rule 9). Typed by hand like its predecessor: a fixture
     /// produced by the code under test asserts only that the code agrees with itself.
+    /// <b>Unchanged at the v3 bump and that is what makes it evidence</b> — it has no
+    /// <c>manualSkillIds</c> key, which is precisely the document a player who stopped playing
+    /// after M3-01b has, and the only thing that proves the new step runs against the real mirror's
+    /// field initialiser rather than against a list the test handed it.
     /// </remarks>
     private const string V2Run =
         "{\"version\":2,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
@@ -68,6 +82,25 @@ public sealed class LocalJsonSaveStoreTests
         "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
         "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
         "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]}";
+
+    /// <summary>A v3 run, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b>One new key, <c>manualSkillIds</c>, following <c>takenNodeIds</c></b>, because field order
+    /// in <c>RunMirror</c> is key order on disk and v3 only appends (rule 9). Typed by hand like
+    /// both of its predecessors. <b>It has S1 and S3 filled and S2 and S4 empty</b>, which is the
+    /// whole reason the field is four slots rather than a set of ids: an empty slot is <c>""</c> in
+    /// place, the hole survives the round trip, and a format that compacted it would write two
+    /// entries here and hand the player back two adjacent buttons.
+    /// </remarks>
+    private const string V3Run =
+        "{\"version\":3,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
+        "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
+        "\"randomAffixes\":3,\"randomDrops\":4,\"randomMisc\":18446744073709551615," +
+        "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
+        "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
+        "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
+        "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
+        "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]}";
 
     /// <summary>A v1 profile, as it is spelled on disk.</summary>
     private const string V1Profile = "{\"version\":1,\"hapticsEnabled\":false}";
@@ -147,9 +180,33 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.Xp, Is.EqualTo(original.Xp));
         Assert.That(run.PendingLevelUps, Is.EqualTo(original.PendingLevelUps));
 
-        // The one v2 field that is not a scalar, so the one that a mirror could plausibly lose:
+        // The two fields that are not scalars, so the two a mirror could plausibly lose:
         // JsonUtility sees fields, and ContentId's Value is a property.
         Assert.That(run.TakenNodeIds, Is.EqualTo(original.TakenNodeIds));
+        Assert.That(run.ManualSkillIds, Is.EqualTo(original.ManualSkillIds));
+    }
+
+    [Test]
+    public void Roundtrip_PreservesTheHole()
+    {
+        // **The whole reason the field is four slots and not a set of ids** (rule 1). A run with
+        // skills in S1 and S3 must come back with skills in S1 and S3 — not S1 and S2. This is the
+        // one row that walks the entire path a player's loadout takes: the runner's table, the
+        // recorder's read, the DTO's copy, the mirror's array, the file's bytes, and back through
+        // all five into a live run's slots.
+        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) };
+
+        Await(_store.SaveRun(Snapshot()));
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.ManualSkillIds, Is.EqualTo(slots));
+
+        // Said the other way round too, because `Is.EqualTo` on the whole list is the assertion a
+        // reader skims: the second slot is *empty*, and the skill that a compacting format would
+        // have moved into it is still in the third.
+        Assert.That(run.ManualSkillIds[1], Is.EqualTo(default(ContentId)), "S2 is a hole.");
+        Assert.That(run.ManualSkillIds[2], Is.EqualTo(Consecrate), "and S3 did not slide into it.");
     }
 
     /// <summary>
@@ -384,12 +441,13 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        // **v2, not v1 — this row is the migration step running through the real adapter.** A v1
-        // document on a device goes through LoadRun, and what comes back is what the rest of the
-        // game gets handed. Asserting it here rather than only on SaveMigrations is the difference
-        // between "the step is correct" and "the step is wired up", and ledger row 2's trap is
-        // precisely that the second can be false while the first is true.
-        Assert.That(run.Version, Is.EqualTo(2));
+        // **v3, not v1 — and this row is now the whole chain running through the real adapter.** A
+        // v1 document on a device goes through LoadRun and comes back having walked *two* steps in
+        // order, which is the first time that shape has been exercised rather than asserted.
+        // Asserting it here rather than only on SaveMigrations is the difference between "the steps
+        // are correct" and "the steps are wired up", and ledger row 2's trap is precisely that the
+        // second can be false while the first is true.
+        Assert.That(run.Version, Is.EqualTo(3));
 
         // A v1 run was unlevelled by construction (rule 3). The mirror's `level = 1` initialiser is
         // what lets the document reach the constructor at all — a v1 file has no `level` key, and
@@ -398,6 +456,13 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.Xp, Is.EqualTo(0f));
         Assert.That(run.PendingLevelUps, Is.EqualTo(0));
         Assert.That(run.TakenNodeIds, Is.Empty);
+
+        // And it had no loadout either (rule 5). The mirror's four-entry `manualSkillIds`
+        // initialiser is what lets a document with no such key reach the constructor at all — it
+        // refuses a list that is not exactly four — and the v2 → v3 step is what gives it v2's
+        // meaning: every skill on Auto, which is also CC §6.1's default.
+        Assert.That(run.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(run.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
 
         Assert.That(run.ModeId, Is.EqualTo(Mode));
         Assert.That(run.CharacterId, Is.EqualTo(Character));
@@ -432,13 +497,22 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        Assert.That(run.Version, Is.EqualTo(2));
+        // **v3, because this literal is now the v2 → v3 step's input.** The document is unchanged
+        // from M3-01b; what changed is that loading it is a migration rather than a read.
+        Assert.That(run.Version, Is.EqualTo(3));
         Assert.That(run.Level, Is.EqualTo(7));
         Assert.That(run.Xp, Is.EqualTo(33.5f));
         Assert.That(run.PendingLevelUps, Is.EqualTo(1));
 
         // In take order, which is what the list means — not a set.
         Assert.That(run.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+
+        // **Four empty slots, and every v2 field above survived the step that added them** (rule
+        // 5). A v2 run had no loadout by construction, so its v3 form is every skill on Auto — the
+        // same state a fresh run is in, which is what lets the step need no special case anywhere
+        // above the DTO. This is the new step through the real adapter rather than in isolation.
+        Assert.That(run.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(run.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
 
         // And the v1 half of the document is still read the same way, which is the half a bump is
         // most likely to break by shifting a field.
@@ -451,10 +525,37 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Fixture_V2Run_IsWhatThisBuildWrites()
+    public void Fixture_V3Run_DecodesToTheExpectedSnapshot()
+    {
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V3Run);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        // No migration ran: this is what the build writes, read back.
+        Assert.That(run.Version, Is.EqualTo(3));
+
+        // **The hole survives, in place.** S1 and S3 are filled and S2 and S4 are empty, which is
+        // the state a set of ids could not express — it would come back as S1 and S2 and silently
+        // move a button out from under the thumb that had learned it (rule 1).
+        Assert.That(
+            run.ManualSkillIds,
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
+
+        // And the v1 and v2 halves of the document are still read the same way, which is the part a
+        // bump is most likely to break by shifting a field.
+        Assert.That(run.Level, Is.EqualTo(7));
+        Assert.That(run.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+        Assert.That(run.Seed, Is.EqualTo(-20260912));
+        Assert.That(run.Random.Misc, Is.EqualTo(ulong.MaxValue));
+        Assert.That(run.PlayerHp, Is.EqualTo(72.5f));
+        Assert.That(run.WrittenAt, Is.EqualTo(FixtureWritten));
+    }
+
+    [Test]
+    public void Fixture_V3Run_IsWhatThisBuildWrites()
     {
         Await(_store.SaveRun(new RunSnapshot(
-            version: 2,
+            version: 3,
             Mode,
             Character,
             seed: -20260912,
@@ -467,25 +568,30 @@ public sealed class LocalJsonSaveStoreTests
             level: 7,
             xp: 33.5f,
             pendingLevelUps: 1,
-            takenNodeIds: new[] { Bulwark, Consecrate })));
+            takenNodeIds: new[] { Bulwark, Consecrate },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) })));
 
         string written = File.ReadAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName));
 
         // Byte for byte. A field renamed, reordered or added changes this text, and a save format
         // that drifts without its fixture moving with it is one that stops loading after a release.
         //
-        // **Renamed from the v1 row, which is now the migration's input.** This is also the row
-        // that objects if M3-03 bumps the version to write the field v2 already reserved for it
-        // (rule 1): filling takenNodeIds does not change the shape of the document, so the text
-        // here stays true and only its contents move.
-        Assert.That(written, Is.EqualTo(V2Run));
+        // **Renamed from the v2 row, whose literal is now the v2 → v3 step's input.** That
+        // literal was not regenerated, which is what earns it the right to prove anything: a
+        // fixture rewritten alongside the format it pins stops being evidence. This is also the row
+        // that objects if a later task bumps the version to write a field the format already
+        // reserves — filling a list does not change the shape of the document, so the text here
+        // stays true and only its contents move.
+        Assert.That(written, Is.EqualTo(V3Run));
     }
 
     /// <summary>A snapshot with every field distinct, overridable where a row cares.</summary>
     /// <remarks>
     /// The v2 fields carry non-default values here — a levelled run with two nodes — because the
     /// round-trip rows are the ones that would otherwise pass against a mirror that dropped them:
-    /// zero, one and an empty array all survive being lost.
+    /// zero, one and an empty array all survive being lost. <b>v3's field carries a hole for the
+    /// same reason and one more</b>: four empties would round-trip through a mirror that dropped
+    /// the key entirely, because the step would put four empties back.
     /// </remarks>
     private static RunSnapshot Snapshot(
         int stageIndex = 4,
@@ -506,7 +612,8 @@ public sealed class LocalJsonSaveStoreTests
             level: 7,
             xp: 33.5f,
             pendingLevelUps: 1,
-            takenNodeIds: new[] { Bulwark, Consecrate });
+            takenNodeIds: new[] { Bulwark, Consecrate },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) });
     }
 
     /// <summary>

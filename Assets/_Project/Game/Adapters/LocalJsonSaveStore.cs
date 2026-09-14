@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
@@ -126,6 +127,7 @@ public sealed class LocalJsonSaveStore : ISaveStore
             xp = run.Xp,
             pendingLevelUps = run.PendingLevelUps,
             takenNodeIds = ToStrings(run.TakenNodeIds),
+            manualSkillIds = ToStrings(run.ManualSkillIds),
         };
 
         return Write(_runPath, JsonUtility.ToJson(mirror));
@@ -323,7 +325,8 @@ public sealed class LocalJsonSaveStore : ISaveStore
             mirror.level,
             mirror.xp,
             mirror.pendingLevelUps,
-            ToContentIds(mirror.takenNodeIds));
+            ToContentIds(mirror.takenNodeIds),
+            ToSlots(mirror.manualSkillIds));
 
         return SaveMigrations.MigrateRun(mirror.version, decoded);
     }
@@ -388,6 +391,42 @@ public sealed class LocalJsonSaveStore : ISaveStore
         if (values is null || values.Length == 0)
         {
             return Array.Empty<ContentId>();
+        }
+
+        var ids = new ContentId[values.Length];
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            ids[i] = ToContentId(values[i]);
+        }
+
+        return ids;
+    }
+
+    /// <summary>The four thumb positions a file names, as core spells them.</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Its own converter rather than <see cref="ToContentIds"/>, because the two lists disagree
+    /// about <c>default(ContentId)</c></b> (M3-07b rule 3). There an unparseable entry becomes a
+    /// default and the constructor refuses it, which discards the save; here a default <em>is</em>
+    /// the format's way of writing an empty slot, so <c>""</c> round-trips to a hole and an entry
+    /// that is not an id at all becomes one too. That is the same answer <c>SkillRunner.Restore</c>
+    /// gives a slot naming content this build no longer ships, and for the same reason: a lost
+    /// button costs one visit to CC §6.3's screen, where a lost node would cost the player power.
+    /// </para>
+    /// <para>
+    /// <b>The length is passed through rather than corrected</b>, so a hand-edited document naming
+    /// three slots reaches <c>RunSnapshot</c>'s guard and is discarded as the unreadable save it is.
+    /// Null becomes four empties — the belt to <see cref="RunMirror.manualSkillIds"/>'s brace, for
+    /// <see cref="ToContentIds"/>' reason: a hand-written <c>"manualSkillIds":null</c> is a file to
+    /// read, not a <see cref="NullReferenceException"/> out of a load.
+    /// </para>
+    /// </remarks>
+    private static ContentId[] ToSlots(string[] values)
+    {
+        if (values is null)
+        {
+            return new ContentId[SkillRunner.MaxManualSlots];
         }
 
         var ids = new ContentId[values.Length];
@@ -531,6 +570,21 @@ public sealed class LocalJsonSaveStore : ISaveStore
         public float xp;
         public int pendingLevelUps;
         public string[] takenNodeIds = Array.Empty<string>();
+
+        /// <summary>
+        /// v3's one, appended after <see cref="takenNodeIds"/>: field order is key order on disk,
+        /// and the fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <b>Initialised to four entries and that is load-bearing</b>, harder than
+        /// <see cref="level"/>'s. A v1 or v2 document has no <c>manualSkillIds</c> key, so the field
+        /// keeps what the default constructor left — and <c>RunSnapshot</c> refuses a list that is
+        /// not exactly four, so a zero-length default would turn every pre-v3 save on every player's
+        /// device into "Discarding the save" <em>before</em> the step that fills it ever ran. The
+        /// step is still the authority and overwrites it regardless: a v2 document that somehow
+        /// carried slots is still a v2 document (M3-01b rule 3's reason).
+        /// </remarks>
+        public string[] manualSkillIds = new string[SkillRunner.MaxManualSlots];
     }
 
     /// <summary><see cref="PlayerProfile"/> as it is spelled on disk. See <see cref="RunMirror"/>.</summary>

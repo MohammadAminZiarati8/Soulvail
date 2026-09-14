@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
@@ -61,18 +62,19 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Gate_AcceptsOneAndTwoRefusesThree()
+    public void Gate_AcceptsOneToThreeRefusesFour()
     {
         // The numbers written out, which the four rows around this one deliberately cannot say:
         // they are all phrased against CurrentVersion, so they would keep passing unchanged if the
         // floor were raised to 2 and every v1 save on every device stopped loading. This row is
-        // what notices — OldestSupportedRunVersion stays 1 (rule 2).
+        // what notices — OldestSupportedRunVersion stays 1 (rule 4).
         Assert.That(SaveMigrations.CanReadRun(1), Is.True, "v1 saves are still on devices.");
-        Assert.That(SaveMigrations.CanReadRun(2), Is.True);
-        Assert.That(SaveMigrations.CanReadRun(3), Is.False);
+        Assert.That(SaveMigrations.CanReadRun(2), Is.True, "and so are v2 ones.");
+        Assert.That(SaveMigrations.CanReadRun(3), Is.True);
+        Assert.That(SaveMigrations.CanReadRun(4), Is.False);
 
         Assert.That(SaveMigrations.OldestSupportedRunVersion, Is.EqualTo(1));
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(2));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3));
     }
 
     [Test]
@@ -123,29 +125,38 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Migrate_V1_GetsUnlevelledDefaults()
+    public void Migrate_V1_RunsBothStepsInOrder()
     {
-        // A v1 DTO that *does* carry levelling, which no real v1 document can — the adapter's
-        // mirror would have nowhere to read it from. Written this way on purpose: rule 3 says the
-        // step is the authority and writes all four regardless of what the mirror held, and a
-        // fixture whose input was already unlevelled could not tell that apart from a step that
-        // simply passed the fields through.
+        // A v1 DTO that *does* carry levelling and a loadout, which no real v1 document can — the
+        // adapter's mirror would have nowhere to read either from. Written this way on purpose:
+        // rule 3 says each step is the authority and writes its own fields regardless of what the
+        // mirror held, and a fixture whose input was already empty could not tell that apart from a
+        // step that simply passed the fields through.
         RunSnapshot decoded = SnapshotAt(
             1,
             level: 5,
             xp: 99f,
             pendingLevelUps: 2,
-            takenNodeIds: new[] { Bulwark });
+            takenNodeIds: new[] { Bulwark },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) });
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(1, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(2));
+        // **v3 from a v1 input: the first two-step migration this project has ever run** (rule 4).
+        // Landing at 2 is what a chain whose second step reads `decoded` instead of `current` would
+        // produce, and landing at 3 with v2's fields unwritten is what one whose steps ran out of
+        // order would — so this single number is load-bearing twice over.
+        Assert.That(migrated.Version, Is.EqualTo(3));
 
         // A v1 run was unlevelled by construction, so its v2 form is the opening state of a run.
         Assert.That(migrated.Level, Is.EqualTo(1));
         Assert.That(migrated.Xp, Is.EqualTo(0f));
         Assert.That(migrated.PendingLevelUps, Is.EqualTo(0));
         Assert.That(migrated.TakenNodeIds, Is.Empty);
+
+        // And it had no loadout either, so the second step empties what the first left alone.
+        Assert.That(migrated.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(migrated.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
 
         // And every v1 field survives exactly as it was decoded. A migration that added fields and
         // quietly moved an existing one is the failure this half exists to catch.
@@ -165,14 +176,19 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Migrate_V2_IsIdentity()
+    public void Migrate_V3_IsIdentity()
     {
+        // **Renamed from Migrate_V2_IsIdentity rather than joined by a second row**: identity is a
+        // property of the *current* version, so it moves up with every bump and there is only ever
+        // one such row. What used to be this row's subject is now Migrate_V2_GetsEmptySlots, which
+        // is a step rather than an identity — and that is exactly the transition a bump makes.
         RunSnapshot original = SnapshotAt(
             RunSnapshot.CurrentVersion,
             level: 7,
             xp: 33.5f,
             pendingLevelUps: 1,
-            takenNodeIds: new[] { Bulwark, Consecrate });
+            takenNodeIds: new[] { Bulwark, Consecrate },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) });
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(RunSnapshot.CurrentVersion, original);
 
@@ -180,6 +196,12 @@ public sealed class SaveMigrationTests
         Assert.That(migrated.Xp, Is.EqualTo(33.5f));
         Assert.That(migrated.PendingLevelUps, Is.EqualTo(1));
         Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+
+        // The hole included: an identity that compacted the slots would be the silent re-bind rule
+        // 1 exists to refuse, and it would be invisible in a fixture whose slots were contiguous.
+        Assert.That(
+            migrated.ManualSkillIds,
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
 
         Assert.That(migrated.Version, Is.EqualTo(original.Version));
         Assert.That(migrated.ModeId, Is.EqualTo(original.ModeId));
@@ -195,6 +217,48 @@ public sealed class SaveMigrationTests
         Assert.That(migrated.PlayerShield, Is.EqualTo(original.PlayerShield));
         Assert.That(migrated.RunTime, Is.EqualTo(original.RunTime));
         Assert.That(migrated.WrittenAt, Is.EqualTo(original.WrittenAt));
+    }
+
+    [Test]
+    public void Migrate_V2_GetsEmptySlots()
+    {
+        // A v2 DTO that *does* carry a loadout, which no real v2 document can — the adapter's
+        // mirror had no such key. Migrate_V1_RunsBothStepsInOrder's reasoning: the step is the
+        // authority and writes its field regardless of what the mirror held, and an input that was
+        // already empty could not tell that apart from a step that passed the field through.
+        RunSnapshot decoded = SnapshotAt(
+            2,
+            level: 7,
+            xp: 33.5f,
+            pendingLevelUps: 1,
+            takenNodeIds: new[] { Bulwark, Consecrate },
+            manualSkillIds: new[] { Bulwark, Consecrate, default(ContentId), default(ContentId) });
+
+        RunSnapshot migrated = SaveMigrations.MigrateRun(2, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(3));
+
+        // A v2 run had no loadout by construction, so its v3 form is four empty slots — every skill
+        // on Auto, which is also CC §6.1's default (rule 5).
+        Assert.That(migrated.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(migrated.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
+
+        // And every v2 field survives exactly as it was decoded. A step that added a field and
+        // quietly reset an existing one is the failure this half exists to catch — and here the
+        // node list is the one at risk, because it is the same type as the field being added.
+        Assert.That(migrated.Level, Is.EqualTo(7));
+        Assert.That(migrated.Xp, Is.EqualTo(33.5f));
+        Assert.That(migrated.PendingLevelUps, Is.EqualTo(1));
+        Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+        Assert.That(migrated.ModeId, Is.EqualTo(decoded.ModeId));
+        Assert.That(migrated.CharacterId, Is.EqualTo(decoded.CharacterId));
+        Assert.That(migrated.Seed, Is.EqualTo(decoded.Seed));
+        Assert.That(migrated.StageIndex, Is.EqualTo(decoded.StageIndex));
+        Assert.That(migrated.Random.Misc, Is.EqualTo(decoded.Random.Misc));
+        Assert.That(migrated.PlayerHp, Is.EqualTo(decoded.PlayerHp));
+        Assert.That(migrated.PlayerShield, Is.EqualTo(decoded.PlayerShield));
+        Assert.That(migrated.RunTime, Is.EqualTo(decoded.RunTime));
+        Assert.That(migrated.WrittenAt, Is.EqualTo(decoded.WrittenAt));
     }
 
     [Test]
@@ -258,7 +322,8 @@ public sealed class SaveMigrationTests
         int level = 1,
         float xp = 0f,
         int pendingLevelUps = 0,
-        IReadOnlyList<ContentId> takenNodeIds = null)
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        IReadOnlyList<ContentId> manualSkillIds = null)
     {
         return new RunSnapshot(
             version,
@@ -274,6 +339,7 @@ public sealed class SaveMigrationTests
             level,
             xp,
             pendingLevelUps,
-            takenNodeIds ?? Array.Empty<ContentId>());
+            takenNodeIds ?? Array.Empty<ContentId>(),
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
     }
 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -309,7 +310,8 @@ public sealed class SaveWriterTests
         level: 1,
         xp: 0f,
         pendingLevelUps: 0,
-        takenNodeIds: Array.Empty<ContentId>());
+        takenNodeIds: Array.Empty<ContentId>(),
+        manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
 
     /// <summary>A store that remembers what it was asked to do, and can be told to fail once.</summary>
     private sealed class RecordingStore : ISaveStore

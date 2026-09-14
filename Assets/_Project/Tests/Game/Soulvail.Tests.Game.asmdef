@@ -9,6 +9,7 @@
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.AI.Navigation",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

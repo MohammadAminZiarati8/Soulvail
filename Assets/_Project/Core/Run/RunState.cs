@@ -295,8 +295,10 @@ public sealed class RunState
     /// they are in, and what lets <c>RunSession.Tick</c> call <c>Tick</c> unconditionally.
     /// </para>
     /// <para>
-    /// The four reads are what M3-10's buttons and the debug overlay need. M3-07a adds the three
-    /// the slots need, and M3-09b the one that wants seconds rather than a fraction.
+    /// The seven reads are what M3-10's buttons and the debug overlay need; M3-09b adds the one
+    /// that wants seconds rather than a fraction. <b>M3-07a sharpened the seal rather than
+    /// loosening it</b>: <c>SetAutoCast</c> and <c>CastSlot</c> are public on the runner, so a
+    /// handle here would let a view fire the player's skills <em>and</em> rearrange their thumb.
     /// </para>
     /// </remarks>
     internal SkillRunner Skills { get; }
@@ -340,6 +342,44 @@ public sealed class RunState
     /// <paramref name="index"/> is not an owned active.
     /// </exception>
     public bool IsSkillReady(int index) => Skills.IsReady(index);
+
+    /// <summary>
+    /// How many of CC §6.2's four manual slots are occupied — <b>what a screen must ask before
+    /// sending <c>SetAutoCast(id, false)</c></b>, because the fifth is refused (M3-07a rule 2).
+    /// </summary>
+    /// <remarks>
+    /// This read is the whole of how <em>"never silently refuse, and never silently swap"</em> is
+    /// met without a mechanism: core refuses a state it cannot reach, and the screen asks this first
+    /// so it can show CC §6.2's question instead of sending a command it knows will throw.
+    /// </remarks>
+    public int ManualSlotCount => Skills.ManualSlotCount;
+
+    /// <summary>
+    /// What is in manual slot <paramref name="slot"/>, or <c>default(ContentId)</c> when it is
+    /// empty. S1 is slot 0.
+    /// </summary>
+    /// <remarks>
+    /// Addressed by slot rather than by runner index, which is the read M3-10's four buttons want:
+    /// a button is a fixed position and the skill under it changes, where <see cref="SkillIdAt"/>
+    /// walks take order and knows nothing about thumbs.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four.
+    /// </exception>
+    public ContentId ManualSlotAt(int slot) => Skills.SlotAt(slot);
+
+    /// <summary>
+    /// Whether that skill fires itself — true for every owned active until the player switches it
+    /// (M3-07a rule 1).
+    /// </summary>
+    /// <remarks>
+    /// What M3-09's list draws its per-row toggle from. By id rather than by index because the
+    /// Skills screen lists skills and the runner's order is an implementation detail of the walk.
+    /// </remarks>
+    /// <exception cref="System.Collections.Generic.KeyNotFoundException">
+    /// This run does not own <paramref name="skillId"/> as an active.
+    /// </exception>
+    public bool IsAutoCast(ContentId skillId) => Skills.IsAuto(skillId);
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

@@ -7,10 +7,9 @@ namespace Soulvail.Core.Events;
 // vocabulary in one place is worth more than the rule. `RunEvents.cs`' precedent. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// One member today, and the file exists rather than the struct joining `ProgressionEvents.cs`
-// because a cast is a *combat* fact and a level is a progression one: M3-07a's Auto/Manual toggle
-// and M3-10's four buttons both publish from here, and neither has anything to say about
-// experience.
+// Two members, which is the file's own prediction met: a cast is a *combat* fact and a level is a
+// progression one, so M3-07a's Auto/Manual toggle landed here beside `SkillCast` rather than in
+// `ProgressionEvents.cs`, and neither has anything to say about experience.
 
 /// <summary>
 /// An owned active fired.
@@ -60,5 +59,47 @@ public readonly struct SkillCast
         SkillId = skillId;
         Cooldown = cooldown;
         WasAuto = wasAuto;
+    }
+}
+
+/// <summary>
+/// A skill's CC §6.1 switch moved: it now fires itself, or it now waits for a thumb.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Published after the change and only when something moved</b> (M3-07a rule 9).
+/// <c>SetAutoCast(id, true)</c> on a skill already Auto publishes nothing, because AR §8 says an
+/// event describes what happened and nothing did. M3-09's list and M3-10's four buttons both redraw
+/// from this, which is why it carries the slot rather than making each of them read it back.
+/// </para>
+/// <para>
+/// It says nothing about <em>why</em> the switch moved — a player tapping the toggle and a screen
+/// taking CC §6.2's "which skill goes back to auto?" answer produce the same event, because from
+/// here they are the same thing: two ordinary commands.
+/// </para>
+/// </remarks>
+public readonly struct SkillAutoCastChanged
+{
+    /// <summary>Which owned active moved.</summary>
+    public readonly ContentId SkillId;
+
+    /// <summary>Whether it now fires itself.</summary>
+    public readonly bool IsAuto;
+
+    /// <summary>
+    /// Which of CC §6.2's four slots it now holds, from 0 — and <c>−1</c> when it is Auto.
+    /// </summary>
+    /// <remarks>
+    /// −1 rather than the slot it just vacated: this says where the skill <em>is</em>, and an Auto
+    /// skill is in no slot. A listener redrawing S1–S4 clears whichever button it had been in, which
+    /// it knows without being told.
+    /// </remarks>
+    public readonly int Slot;
+
+    public SkillAutoCastChanged(ContentId skillId, bool isAuto, int slot)
+    {
+        SkillId = skillId;
+        IsAuto = isAuto;
+        Slot = slot;
     }
 }

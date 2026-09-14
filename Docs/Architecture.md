@@ -184,7 +184,7 @@ depend on `Progression` while `Progression` already depends on `Content` for M3-
 | Direction | Port | Purpose | Implemented by |
 |---|---|---|---|
 | Inbound | `IRunSession` | `Start(RunConfig)`, `Tick(WorldSnapshot)`, `End()`, plus `IsRunning` / `State`, and the two facts: `ReportConeHits` (M1-11) and `ReportChargeHits` (M1-15). **It gains no member in M2** — ledger row 7 was settled at M2-07a: core decides every enemy outcome and calls `ApplyDamage` directly, so contact, blast and projectile impact are all core-side calls, and the `ReportContact` / `ReportProjectileHit` this row used to promise are gone rather than deferred (§18.2) | Core |
-| Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15); `CastSkill(slot)` and `SetAutoCast(skillId, bool)` with M3-06/07 | Core |
+| Inbound | `IPlayerCommands` | `FocusTarget(worldPoint)`, `ClearFocus()` (M1-09), `MovementSkill()` (M1-15), `CastSkill(slot)` and `SetAutoCast(skillId, bool)` (M3-07a) | Core |
 | Inbound | `IProgressionCommands` | `ChooseOffer(index)`, `Reroll()`, `Banish(skillId)`, `BuyHeal()`, `BuyCleanse()` | Core |
 | Outbound | `IClock` | `UtcNow` (wall-clock, `DateTimeOffset`) — **and nothing else** (M2-01). Never simulated time: that is the sum of each tick's `Dt` (§18.2) | `UnityClock` |
 | Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc`, plus `Capture()` / `Restore(in RandomState)` — where every stream stands, so a resumed run carries on instead of restarting each stream at draw 0 (M2-13a). On the port, never on `IRandomStream` | `SeededRandom` (xorshift/PCG, seedable) |

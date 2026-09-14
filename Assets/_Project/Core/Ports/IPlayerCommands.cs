@@ -1,4 +1,5 @@
 using System.Numerics;
+using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Ports;
 
@@ -87,4 +88,63 @@ public interface IPlayerCommands
     /// </remarks>
     /// <exception cref="System.InvalidOperationException">No run is running.</exception>
     void MovementSkill();
+
+    /// <summary>
+    /// The player pressed one of CC §6.2's four skill buttons: cast whatever is in that slot, now,
+    /// whatever its trigger says.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A slot and not a skill id</b>, because a button is a position on a screen and the screen
+    /// knows which one was pressed rather than what is currently under it. An id supplied here would
+    /// be the view resolving the loadout a frame before core does, which is the same boundary
+    /// mistake <see cref="FocusTarget"/> refuses by taking a point rather than an enemy.
+    /// </para>
+    /// <para>
+    /// <b>An early tap is refused rather than buffered</b>, unlike <see cref="MovementSkill"/>, and
+    /// the two differ on purpose: CC §5 buffers the dash because an unreliable dodge is what that
+    /// section is about, and CC §6.2 answers a cooling skill with 40 % opacity and no tap response.
+    /// Nothing is thrown for it and nothing happens — M3-06's <em>Out of scope</em> argues why the
+    /// dash's buffer does not generalise.
+    /// </para>
+    /// </remarks>
+    /// <param name="slot">Which thumb position, from 0. S1 is slot 0.</param>
+    /// <exception cref="System.InvalidOperationException">
+    /// No run is running, or the slot is empty — CC §6.2 draws no button for an empty slot, so a
+    /// command from one is a view sending for a control it is not drawing.
+    /// </exception>
+    /// <exception cref="System.ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four.
+    /// </exception>
+    void CastSkill(int slot);
+
+    /// <summary>
+    /// The player moved a skill between CC §6.1's two states on the Skills screen: Auto fires
+    /// itself, Manual waits for a thumb and takes one of four slots.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The screen must ask <c>RunState.ManualSlotCount</c> before sending this with
+    /// <paramref name="auto"/> false.</b> A fifth manual skill is refused loudly rather than
+    /// silently swapped, and CC §6.2's <em>"Manual slots full — which skill goes back to auto?"</em>
+    /// is a prompt shown <em>instead of</em> this command. Taking the player's answer is two calls
+    /// of this same member: the victim to Auto, then the one they asked for to Manual.
+    /// </para>
+    /// <para>
+    /// Changeable at any time, mid-run and mid-cooldown, and it costs nothing — a skill switched
+    /// two seconds into a wait is ready at the instant it always was (CH §4.3, CC §6.3).
+    /// </para>
+    /// </remarks>
+    /// <param name="skillId">An owned active. A Passive has no toggle and is never here.</param>
+    /// <param name="auto">
+    /// <see langword="true"/> to hand it back to its authored trigger, <see langword="false"/> to
+    /// put it in the lowest free slot.
+    /// </param>
+    /// <exception cref="System.InvalidOperationException">
+    /// No run is running, or all four slots are occupied.
+    /// </exception>
+    /// <exception cref="System.Collections.Generic.KeyNotFoundException">
+    /// The run does not own <paramref name="skillId"/> as an active.
+    /// </exception>
+    void SetAutoCast(ContentId skillId, bool auto);
 }

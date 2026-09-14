@@ -823,5 +823,15 @@ public sealed class ResumeFlowTests
         public void MovementSkill()
         {
         }
+
+        // M3-07a grew IPlayerCommands. Empty like the three above: this fake exists to be resolved
+        // from the container, not to be commanded.
+        public void CastSkill(int slot)
+        {
+        }
+
+        public void SetAutoCast(ContentId skillId, bool auto)
+        {
+        }
     }
 }

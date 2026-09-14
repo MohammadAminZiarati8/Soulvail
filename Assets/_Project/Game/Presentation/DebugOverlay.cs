@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -513,6 +514,19 @@ namespace Soulvail.Game.Presentation
             {
                 _line.Append(' ').Append(Fixed(state.SkillCooldownFraction(0)));
             }
+
+            // How many of CC §6.2's four thumb positions are taken, over the ceiling.
+            //
+            // Printed as a pair rather than as a bare count, because the number that matters is the
+            // distance to the refusal: `slots 4/4` is the state in which the next SetAutoCast throws,
+            // and a screen that had not asked ManualSlotCount first is exactly what this line is for
+            // (rule 2). It reads `slots 0/4` for the whole of this milestone — nothing owns an
+            // Active until M3-12 and no screen sends the command until M3-09 — and that is what
+            // makes the first manual switch visible as a number before a button exists to make it.
+            _line.Append("  slots ").Append(
+                (state is null ? 0 : state.ManualSlotCount).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append('/').Append(SkillRunner.MaxManualSlots.ToString(CultureInfo.InvariantCulture));
 
             // Shots in the air, from core rather than from the snapshot — unlike the enemy count
             // above, there is no boundary here for the two sides to disagree across: a projectile

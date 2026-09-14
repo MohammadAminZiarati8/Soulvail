@@ -92,4 +92,103 @@ None. Nothing draws until M3-08 opens a screen.
 
 ## As built
 
-_Filled at merge._
+**Built exactly the Files table: two new files, nothing else in `Assets/`.**
+`Core/Progression/OfferGenerator.cs` and `Tests/Core/Progression/OfferGeneratorTests.cs`, plus their
+two `.meta`s. No folder `.meta` — both folders already existed and now hold four files each. Nothing
+in production references the class: M3-08 builds one in `Start` beside the tree, so the table's
+*"small edits: none in production"* was literal and stayed that way.
+
+**Four deviations, all named here, two of them corrections to this spec.**
+
+1. **`Draw` refuses a tree built over different `TreeRules` — the owner's ruling, asked before a
+   line was written.** The constructor takes `TreeRules` and `Draw` takes a `SkillTree`, so the two
+   can disagree, and `SkillTree.Rules` is public so one `ReferenceEquals` closes it. Against it was
+   M0-10's argument that `RunState`'s constructor carries no guards because it is reachable only
+   from core with arguments core just built. **What decided it is that the failure is asymmetric and
+   silent:** only a *larger* wrong tree trips `SkillTree.Available`'s short-buffer refusal, so a
+   same-sized or smaller one fills a correctly sized buffer with another class's ids and returns a
+   plausible count — and the first symptom is M3-08's `ChooseOffer` handing `Take` a node that tree
+   has never heard of, in a run, at the moment the player taps it. The M0-10 analogy also does not
+   carry: `RunState`'s arguments are its own parts, established once; `Draw` re-asserts the pairing
+   on **every call**, which is `SkillTree.Restore`'s shape rather than a composition root's. The
+   refusal distinguishes the two cases — another class's tree, and a second `TreeRules` over the
+   same spec — because they are different mistakes. One row, `Draw_RefusesAnotherTreesRules`.
+
+2. **`Draw_UsesTheWeights` used a float that did not discriminate, and the row's own contrast
+   sentence was false.** As written — a scripted **0.99** with A, A, B, C remaining and one already
+   drawn from A — it lands in **C under both** tables: weighted, total 3.0 and 0.99 × 3 = 2.97
+   against cumulative 0.5 / 1.0 / 2.0 / 3.0; uniform, total 4.0 and 0.99 × 4 = 3.96 against
+   1 / 2 / 3 / 4. So the row would have gone green against a generator that ignored the weight table
+   completely, and its *"under uniform weights the same float lands in A's second"* was wrong twice
+   over. **Shipped with 0.7**, which separates them: 0.7 × 3 = 2.1 → **C** weighted, 0.7 × 4 = 2.8 →
+   **B** uniform. Intent unchanged; the arithmetic is written out in the row. This is M3-02a's NaN
+   spelling again — a spec row that tested that something *happened* rather than that the rule holds.
+
+3. **One behaviour row added: `Draw_BoostsAnActiveThroughTheTable`.** Row 2 above pins that `Draw`
+   applies the **same-branch penalty**; nothing pinned that it applies the **Active boost**, so a
+   `Draw` that inlined half the table and dropped the other half would have passed. Two available
+   nodes, the Active first in tree order, the player owning none: weighted 2 + 1 = 3.0 and
+   0.6 × 3 = 1.8 → the **Active**; uniform 1 + 1 = 2.0 and 0.6 × 2 = 1.2 → the **Passive**. This is
+   the row that makes *"`Draw` calls the public static `Weight`"* a fact rather than an intention —
+   M3-03's precedent, where `SkillTree.Check` pays two dictionary probes per candidate to ask
+   `TreeRules.RequiredTakenInBranch` rather than keep a second copy of the keystone exception.
+
+4. **`Draw_SpreadsBranches` asserts the weighted figure, not the spec's ceiling.** The spec's
+   numbers are right and needed no correction — uniform-from-8 is C(4,3)/C(8,3) = **7.14 %** and the
+   weights give 0.5 × (1.5/5.5) × (0.5/4.5) = **1.52 %** — but *"under 3 %"* alone is also met by a
+   generator that never offers three from one branch at all, which is the hard rule GD §13.1
+   explicitly does not want. The row asserts **1.52 % ± 0.5 pp** and keeps the 3 % ceiling as a
+   second assertion.
+
+**No non-finite row, and that is not an omission.** The implied guards are a validation row per new
+type, a null row per public constructor and a non-finite row per `float` door — and this class has
+**no `float` door**: `Weight` takes a kind, an int, a span of ints and an int, and `Draw` takes no
+`float` at all. The only float in the class is the one it reads back out of the stream. M3-03 said
+the same for the same reason. The other two implied rows are present: `Generator_NullRules_Throws`
+and `Weight_Guards` (branch out of range either way, a negative drawn count, a negative
+`ownedActives`, and an undefined `SkillKind` — the last against the table's loud `default`, which
+exists for `PlayerStats.Resolve`'s reason).
+
+**Implementation notes worth keeping.** Removal is a **compaction**, never a swap with the last:
+`Available`'s order is what a seed means (AR §18.3), and a swap would reorder the survivors and
+change every seed's meaning — enemy despawn's rule, for its reason. The three per-branch counters
+are a `stackalloc int[SkillTreeSpec.BranchCount]` inside `Draw` rather than a field, because they
+mean nothing between calls; the two heap buffers are sized by `TreeRules.Count` because `Available`
+refuses a short destination rather than truncating it. `ownedActives` is read **once** at the top of
+`Draw`: a node drawn into an offer is not owned, so the boost answers the same for all three picks,
+and the drawn term is the only thing a call accumulates. The cumulative walk stops one short and
+falls through to the last candidate, which is the right answer rather than an unwritten index — the
+total is a sum of floats re-added in the same order, so the last comparison can miss by an ulp.
+
+**Verified: 1 286 EditMode / 0 / 0, three times** (two consecutively, then a third after PlayMode),
+against M3-03's 1 266 — **20 new rows**, which reconciles to the row: the spec's Tests table has 17
+lines of which `Draw_NoTreeIsTheCallersProblem` is explicitly *no row*, so **16 named** + the 2 added
+above + the 2 implied guard rows = 20. **PlayMode 11/11 twice**, the Known-issues row not firing;
+this task touches no `Tick`, no view, no scene and nothing in production, so it could not have moved
+it either way, and the tally is recorded because a gap is worse than a green run. Six assemblies,
+**zero compile errors, zero analyzer warnings** — a sweep for `CS`, `UNT` and `IDE` diagnostics
+across the whole Console returns nothing, against 10 `LogAssert`-expected fixture errors and 23
+runtime `Debug.LogWarning`s from M3-02b's `OnValidate` rows and M0-13's fallback-seed row. **Both new
+files confirmed in their intended assembly through `GetAssemblyNameFromScriptPath` and both new
+types by direct `typeof`** rather than assumed. `git status` clean of anything unasked: two new
+`.cs`, two `.meta`, and three docs — no `ProjectSettings/` diff, no folder `.meta`, no prefab, no
+scene re-serialisation, no asset churn.
+
+**Two traps confirmed and one new one.** Traps §7's `TestRunnerApi.RegisterCallbacks` row
+reproduced exactly as written — the EditMode collector fired again on the PlayMode run and
+overwrote its own results file with `passed=11`; each run's file was read before the next started.
+Traps §4's `File.Delete` refusal cost one dead end, which is the third time that bullet has been
+paid for. **New, and filed in [Traps §7](../../Traps.md) — one file outside the Files table, named here as a
+deviation:** a PlayMode run **clears the Console on entering Play**, so a Console sweep taken after
+one describes eleven tests and reads as a clean suite. Sweep after the run you mean to describe, or
+run EditMode last. It is also why the Console was empty at the start of this session.
+
+**Ledger: opens none, closes none, moves none — and that is the right answer rather than an
+omission**, checked row by row rather than taken from the spec's *"Ledger rows: none"*. It ships no
+content and raises no damage (row 1), writes nothing to disk and needs no version — the `Offers`
+position has been in `RandomState` since M0-04 (row 2), draws nothing (rows 5 and 6), adds no
+`LocKey` reader, because what it hands out is `ContentId`s (row 9), and rows 4 and 8 are device and
+stopwatch questions it cannot touch. **It moved one parking-lot line**, which is the correct home
+for an obligation with no owning task: the counting `IRandom` fake is now on its **second** private
+copy, so the promotion rule has a fact behind it rather than a prediction — and the line records
+that the private **LCG** beside it is a *first* copy, promoted on its own count.

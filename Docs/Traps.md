@@ -399,6 +399,12 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   the wrong suite, with nothing to say it has been clobbered. It looks like a suite that suddenly
   dropped from 1266 tests to 11. **Read each run's file before starting the next run, or write to a
   path unique per run and have the callback ignore results that are not its own** (M3-03).
+- **A PlayMode run clears the Console on entering Play, so a Console sweep taken after one says
+  nothing about the EditMode suite.** Run EditMode, then PlayMode, then sweep, and the Console holds
+  eleven tests' worth of nothing — which reads as *"zero errors, zero warnings"* and is a false
+  all-clear for the suite that has 1 286. **Sweep the Console immediately after the run whose output
+  you mean to describe**, or run EditMode last. The same clear is why the Console can be empty at
+  the start of a session that ended with a PlayMode run (M3-04).
 
 ---
 

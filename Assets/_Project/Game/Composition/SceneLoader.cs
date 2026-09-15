@@ -30,8 +30,20 @@ namespace Soulvail.Game.Composition;
 /// awaitable that reports some of its failures synchronously and some through the task is an
 /// awaitable with two error paths to remember.
 /// </para>
+/// <para>
+/// <b>Not <c>sealed</c>, and <see cref="LoadAsync"/> is <c>virtual</c>, for exactly one reason:
+/// so that a test can be handed a loader that records rather than loads.</b>
+/// <c>SceneManager.LoadSceneAsync</c> cannot be driven from an EditMode test without taking the
+/// Editor's open scene with it, which is why <c>ResumeFlowTests</c> leaves both of its taps to the
+/// owner as a manual step. M3-09a's Quit is a third such tap and a worse one to leave untested —
+/// what it has to promise is that the pause is <em>down</em> and <c>timeScale</c> is back at 1
+/// before the load is asked for, and that ordering is not observable from outside the call. There
+/// is no second implementation of this class and none is wanted: the alternative was an
+/// <c>ISceneLoader</c> port for one method with one adapter, which is a port that exists to be
+/// mocked.
+/// </para>
 /// </remarks>
-public sealed class SceneLoader
+public class SceneLoader
 {
     /// <summary>The first scene in the build. Shows a splash, then hands off to <see cref="Menu"/>.</summary>
     public const string Boot = "Boot";
@@ -57,7 +69,7 @@ public sealed class SceneLoader
     /// <see cref="ArgumentException"/> if <paramref name="sceneName"/> is empty or is not a
     /// scene in Build Settings.
     /// </returns>
-    public Task LoadAsync(string sceneName)
+    public virtual Task LoadAsync(string sceneName)
     {
         if (string.IsNullOrEmpty(sceneName))
         {

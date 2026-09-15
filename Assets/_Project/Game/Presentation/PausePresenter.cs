@@ -85,6 +85,16 @@ namespace Soulvail.Game.Presentation
         [Tooltip("Out to the Menu. It does not delete the run — see the class remarks.")]
         [SerializeField] private Button _quit;
 
+        [Tooltip("Up to CC §6.3's Skills screen (M3-09b). The panel stays where it is underneath " +
+                 "and goes inert — the pause is held once, by this file, and the screen above " +
+                 "takes none of its own.")]
+        [SerializeField] private Button _skills;
+
+        [Tooltip("The Skills screen itself. Dressed in Run.unity rather than on this prefab, " +
+                 "because the two screens are separate root prefabs — see OpenSkills. Optional: " +
+                 "without it the Skills button is taken off the panel rather than left dead.")]
+        [SerializeField] private SkillsPresenter _skillsScreen;
+
         [Tooltip("The icon's side in dp — GD §5.2's small top-right target. Applied at runtime for " +
                  "the reason SkillButton applies its own: a Scale-With-Screen-Size canvas measures " +
                  "in reference pixels, which are a different physical size on every phone. A guess " +
@@ -170,6 +180,7 @@ namespace Soulvail.Game.Presentation
             Wire(_icon, Open);
             Wire(_resume, Close);
             Wire(_quit, Quit);
+            Wire(_skills, OpenSkills);
         }
 
         /// <exception cref="MissingReferenceException">The icon, the panel or a button is not dressed.</exception>
@@ -181,10 +192,10 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void Start()
         {
-            if (_icon == null || _panel == null || _resume == null || _quit == null)
+            if (_icon == null || _panel == null || _resume == null || _quit == null || _skills == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(PausePresenter)} is missing its icon, its panel or one of its two " +
+                    $"{nameof(PausePresenter)} is missing its icon, its panel or one of its three " +
                     "buttons. A pause screen that is only partly dressed stops the run and then " +
                     "offers no way back, which is indistinguishable from a crash.");
             }
@@ -198,6 +209,15 @@ namespace Soulvail.Game.Presentation
             }
 
             Place();
+
+            // **Taken off the panel rather than left dead** when no Skills screen was dressed into
+            // the scene — M3-09a's own rule 6, from the other side: a button that does nothing is
+            // worse than a button that is not there yet. That state is the undressed Run scene
+            // every optional field on RunScope protects, not a shipped one.
+            if (_skillsScreen == null)
+            {
+                _skills.gameObject.SetActive(false);
+            }
 
             // Down whatever the prefab was left dressed as, so a panel someone was editing cannot
             // ship covering the arena — HudPresenter's argument for its death panel.
@@ -226,16 +246,27 @@ namespace Soulvail.Game.Presentation
             Unwire(_icon, Open);
             Unwire(_resume, Close);
             Unwire(_quit, Quit);
+            Unwire(_skills, OpenSkills);
         }
 
         /// <remarks>
+        /// <para>
         /// One bool read per frame, and it is the whole of rule 4: the icon follows
         /// <c>!RunPause.IsPaused</c>, so <em>any</em> future holder retires it without this file
         /// learning that holder's events. Runs at <c>timeScale</c> 0 because <c>Update</c> does.
+        /// </para>
+        /// <para>
+        /// <b>The panel follows the Skills screen the same way, and for the same reason</b>
+        /// (M3-09b). A poll rather than a callback handed over at <see cref="OpenSkills"/>: a
+        /// screen that is destroyed, never dressed, or closed by something this file did not ask
+        /// gives the panel back anyway, where a callback would leave three dead buttons over a
+        /// paused run with no way out of it.
+        /// </para>
         /// </remarks>
         private void Update()
         {
             RefreshIcon();
+            RefreshPanel();
         }
 
         /// <summary>Raises the Menu pause and shows the panel. The icon's own handler.</summary>
@@ -294,6 +325,13 @@ namespace Soulvail.Game.Presentation
 
             IsOpen = false;
 
+            // **Above the pause, and it is the only ordering this line has.** The screen above this
+            // one holds no pause of its own (M3-09b rule 10), so closing it is a canvas going down
+            // rather than a gate being released — but it is a canvas over a run that is about to be
+            // running again, and a Skills list left up over a live fight is the one way this
+            // sequence could strand the player.
+            CloseSkills();
+
             // Checked rather than assumed: RunPause.Dispose releases unconditionally on the way out
             // of a run, so a scope torn down under this panel leaves nothing here to give back —
             // and Resume throws when it is handed a reason that is not the holder.
@@ -304,6 +342,53 @@ namespace Soulvail.Game.Presentation
 
             HidePanel();
             RefreshIcon();
+        }
+
+        /// <summary>
+        /// Raises CC §6.3's Skills screen over this panel. The Skills button's handler (M3-09b).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>It takes no pause and must not</b> (M3-09b rule 10). <c>RunPause</c> is already held
+        /// by this file and throws on a second reason (M3-08a rule 12), so a screen raised over a
+        /// screen raised over a paused game is one gate rather than three. That is why
+        /// <see cref="Close"/> and <see cref="IsOpen"/> were made public a task early.
+        /// </para>
+        /// <para>
+        /// <b>How this file reaches that screen: a serialized field dressed in <c>Run.unity</c>.</b>
+        /// The two are separate root prefabs, so a cross-prefab reference has to be dressed in the
+        /// scene either way; what it buys over the alternatives is that the handler and the thing it
+        /// opens stay in one file. An optional <c>[Inject]</c> was rejected because VContainer
+        /// resolves every parameter or fails — a scene dressed without a Skills screen would stop
+        /// composing at all, which is the undressed-Run-scene workflow every optional field on
+        /// <c>RunScope</c> exists to protect. <c>SkillsPresenter</c> reaching in to wire itself to
+        /// this button was rejected for the opposite reason: the button is on this panel and the
+        /// panel's interactability is this file's, so the dependency would have pointed back the
+        /// way it came and both files would know about each other.
+        /// </para>
+        /// </remarks>
+        public void OpenSkills()
+        {
+            if (!IsOpen || _quitting || _skillsScreen == null || _skillsScreen.IsOpen)
+            {
+                return;
+            }
+
+            _skillsScreen.Open();
+
+            // Now rather than on the next Update, so the panel underneath cannot take a second tap
+            // in the same EventSystem pass that opened the screen — the double-tap Quit already
+            // guards against, one button along.
+            RefreshPanel();
+        }
+
+        /// <summary>Puts the Skills screen away, if there is one and it is up.</summary>
+        private void CloseSkills()
+        {
+            if (_skillsScreen != null && _skillsScreen.IsOpen)
+            {
+                _skillsScreen.Close();
+            }
         }
 
         /// <summary>
@@ -404,7 +489,9 @@ namespace Soulvail.Game.Presentation
             _panel.blocksRaycasts = true;
             _panel.interactable = true;
 
-            SetPanelInteractable(true);
+            // Through the refresh rather than straight to true, so a panel reopened underneath a
+            // Skills screen that is somehow still up comes back inert rather than live.
+            RefreshPanel();
         }
 
         private void HidePanel()
@@ -430,6 +517,23 @@ namespace Soulvail.Game.Presentation
             _icon.interactable = !_pause.IsPaused;
         }
 
+        /// <summary>
+        /// Rule 4's sibling for the panel: its buttons are live exactly while this screen is the
+        /// top one (M3-09b).
+        /// </summary>
+        /// <remarks>
+        /// The three conditions are three different failures. <c>IsOpen</c> false is a panel nobody
+        /// can see; <c>_quitting</c> is the latch <see cref="Quit"/> sets, which a frame of this
+        /// must not undo; and a Skills screen up is M3-09b's <c>Open_FromThePausePanel</c>, where
+        /// the panel underneath has to stop taking taps without a scrim of its own.
+        /// </remarks>
+        private void RefreshPanel()
+        {
+            bool skillsUp = _skillsScreen != null && _skillsScreen.IsOpen;
+
+            SetPanelInteractable(IsOpen && !_quitting && !skillsUp);
+        }
+
         private void SetPanelInteractable(bool value)
         {
             if (_resume != null)
@@ -440,6 +544,11 @@ namespace Soulvail.Game.Presentation
             if (_quit != null)
             {
                 _quit.interactable = value;
+            }
+
+            if (_skills != null)
+            {
+                _skills.interactable = value;
             }
         }
 

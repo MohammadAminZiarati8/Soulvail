@@ -97,6 +97,11 @@ namespace Soulvail.Game.Composition
                  "without one plays exactly the same fight, it just cannot be stopped from inside.")]
         [SerializeField] private PausePresenter _pausePresenter;
 
+        [Tooltip("The Skills screen: CC §6.3's list, on its own canvas between the pause panel's " +
+                 "and the level-up's. Optional on the pause screen's terms — a scene without one " +
+                 "plays the same fight and its pause panel simply does not offer the button.")]
+        [SerializeField] private SkillsPresenter _skillsPresenter;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -285,6 +290,22 @@ namespace Soulvail.Game.Composition
             if (_pausePresenter != null)
             {
                 builder.RegisterComponent(_pausePresenter);
+            }
+
+            // Optional, and its absence costs exactly what it looks like: this screen holds no
+            // pause at all (M3-09b rule 10), lists what the player owns and sends two commands the
+            // run is perfectly playable without. A scene dressed without it has a pause panel that
+            // takes its own Skills button off rather than offering a dead one — PausePresenter.Start
+            // does that, which is why the link between the two lives in Run.unity rather than here:
+            // they are separate root prefabs, so a serialized cross-prefab reference has to be
+            // dressed in the scene either way.
+            //
+            // It stays optional rather than guarded for the same reason the level-up screen did
+            // until M3-12: nothing in Data/Trees ships an Active yet, so there is no run in the
+            // current build whose Skills list would have a single row in it.
+            if (_skillsPresenter != null)
+            {
+                builder.RegisterComponent(_skillsPresenter);
             }
 
             // Optional for the same reason and on the same terms: a scene dressed without a

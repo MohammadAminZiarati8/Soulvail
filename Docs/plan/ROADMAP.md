@@ -231,7 +231,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M3-09a](tasks/M3-09a-pause-screen.md) | The pause screen: the gate's second holder, and "pause anywhere, instantly" | S | 08a | ☑ |
-| [M3-09b](tasks/M3-09b-skills-screen.md) | The Skills screen: every active you own, its trigger in words, and the switch | M | 09a 07a 06 | ☐ |
+| [M3-09b](tasks/M3-09b-skills-screen.md) | The Skills screen: every active you own, its trigger in words, and the switch | M | 09a 07a 06 | ☑ |
 | [M3-09c](tasks/M3-09c-profile-v2-and-first-active-hint.md) | Profile v2: the first thing the player keeps, and the hint that needs it | M | 09a 09b 08a 03 | ☐ |
 | [M3-09d](tasks/M3-09d-tree-view.md) | The tree view: three branches, your path, and the two doors into it | M | 09a 08b 03 02a | ☐ |
 | [M3-10a](tasks/M3-10a-skill-slot-buttons.md) | S1–S4: four buttons that are not the Charge button | M | 07a 06 | ☐ |

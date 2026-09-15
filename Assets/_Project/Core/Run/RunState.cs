@@ -297,8 +297,9 @@ public sealed class RunState
     /// they are in, and what lets <c>RunSession.Tick</c> call <c>Tick</c> unconditionally.
     /// </para>
     /// <para>
-    /// The seven reads are what M3-10's buttons and the debug overlay need; M3-09b adds the one
-    /// that wants seconds rather than a fraction. <b>M3-07a sharpened the seal rather than
+    /// The eight reads are what M3-10's buttons and the debug overlay need, plus the one the Skills
+    /// screen wanted in seconds rather than as a fraction — <see cref="SkillCooldownSeconds"/>,
+    /// added by M3-09b, which is the eighth. <b>M3-07a sharpened the seal rather than
     /// loosening it</b>: <c>SetAutoCast</c> and <c>CastSlot</c> are public on the runner, so a
     /// handle here would let a view fire the player's skills <em>and</em> rearrange their thumb.
     /// </para>
@@ -333,6 +334,24 @@ public sealed class RunState
     /// <paramref name="index"/> is not an owned active.
     /// </exception>
     public float SkillCooldownFraction(int index) => Skills.CooldownFraction(index);
+
+    /// <summary>
+    /// How long that active's wait actually is, in seconds, after CH §4.1's 40 % floor — what
+    /// M3-09b's Skills screen prints.
+    /// </summary>
+    /// <remarks>
+    /// <b>A read, never the handle</b> (AR §18.2), forwarding to
+    /// <c>SkillRunner.EffectiveCooldownOf</c> rather than letting the screen multiply
+    /// <see cref="SkillCooldownFraction"/> back up or apply the floor itself — which would be the
+    /// second copy of <c>CooldownRules</c> that M3-06 rule 1 exists to prevent. <b>It is the whole
+    /// wait rather than what is left of it</b>, and the pair is worth having separately for the
+    /// reason <see cref="IsSkillReady"/> is: CC §6.3 asks what the cooldown <em>is</em> on a screen
+    /// where the tick is gated, and a countdown behind a stopped simulation would never move.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public float SkillCooldownSeconds(int index) => Skills.EffectiveCooldownOf(index);
 
     /// <summary>Whether that active may fire right now.</summary>
     /// <remarks>

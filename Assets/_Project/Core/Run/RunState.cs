@@ -237,9 +237,9 @@ public sealed class RunState
     /// <b>Null for a class with no tree, which is legal until M3-12</b> —
     /// <c>ContentCatalog.TryGetTreeFor</c> answers false for every class this build ships, and
     /// <c>RunSession._flow</c> is the precedent for a run holding null where there is nothing to
-    /// compose. The three reads below answer 0, false and empty in that case, so nothing downstream
-    /// has to ask which kind of run it is in. M3-14b pins that every <em>shipped</em> character has
-    /// one, which is when this null stops being reachable in a build.
+    /// compose. The four reads below answer 0, false, empty and false in that case, so nothing
+    /// downstream has to ask which kind of run it is in. M3-14b pins that every <em>shipped</em>
+    /// character has one, which is when this null stops being reachable in a build.
     /// </para>
     /// </remarks>
     internal SkillTree Tree { get; }
@@ -279,6 +279,33 @@ public sealed class RunState
     /// </remarks>
     public IReadOnlyList<ContentId> TakenNodeIds =>
         Tree is null ? Array.Empty<ContentId>() : Tree.TakenIds;
+
+    /// <summary>
+    /// Whether <paramref name="skillId"/> may be taken right now — CH §5's gating in one question,
+    /// and what M3-09d's tree view frames a node <em>Available</em> on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A narrow read rather than the handle, for the reason <see cref="Tree"/> gives, and the
+    /// <b>ninth</b> scalar read on this class — <see cref="SkillCooldownSeconds"/> was the eighth.
+    /// <b>The seal does not move to let it out</b> (AR §18.2): <c>SkillTree.Take</c> is public, so a
+    /// public <see cref="Tree"/> would let a view <em>grant</em> the node this read only asks about.
+    /// </para>
+    /// <para>
+    /// <b>It exists so a screen does not re-derive the gating.</b> The alternative was the tree view
+    /// computing CH §5's rules from <see cref="TakenNodeIds"/> and the tree's shape, which is a
+    /// second copy of <c>TreeRules</c> in the presentation layer and would drift the first time a
+    /// keystone rule changed (M3-09d rule 3). The same bargain M3-09b made for a cooldown in
+    /// seconds, and M3-06 rule 1's argument for the floor living in one expression.
+    /// </para>
+    /// <para>
+    /// <b>False for a class with no tree, and false for a stranger</b>, neither of them a throw.
+    /// The first is every run in the build until M3-12 authors one, and the second is
+    /// <c>SkillTree.IsAvailable</c>'s own rule: a caller asking whether it may draw a node as
+    /// available wants an answer, and an id this tree does not hold is not available.
+    /// </para>
+    /// </remarks>
+    public bool IsNodeAvailable(ContentId skillId) => Tree is not null && Tree.IsAvailable(skillId);
 
     /// <summary>
     /// The actives the player owns and their live cooldowns. The run owns it; nothing else may.

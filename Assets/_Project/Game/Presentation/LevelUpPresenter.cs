@@ -8,6 +8,7 @@ using Soulvail.Game.Adapters;
 using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using VContainer;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer cannot
@@ -101,6 +102,16 @@ namespace Soulvail.Game.Presentation
         [Min(0f)]
         [SerializeField] private float _cardGapDp = 20f;
 
+        [Tooltip("Up to CH §5.1's tree view (M3-09d) — the line M3-08b's Out of scope reserved. " +
+                 "The cards are hidden, not destroyed, and looking spends no pick: see OpenTree.")]
+        [SerializeField] private Button _viewTree;
+
+        [Tooltip("The tree view itself. Dressed in Run.unity rather than on this prefab, because " +
+                 "the two are separate root prefabs — PausePresenter's wiring decision, for its " +
+                 "reason. Optional twice over: without it, and for a class with no tree, the " +
+                 "toggle is taken off this screen rather than left dead (M3-09d rule 2).")]
+        [SerializeField] private TreeViewPresenter _treeScreen;
+
         private IRunSession _session;
         private IProgressionCommands _progression;
         private ContentCatalog _catalog;
@@ -136,6 +147,17 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private bool _choosing;
 
+        /// <summary>
+        /// The tree view is up over this screen and the cards are waiting behind it (M3-09d rule 6).
+        /// </summary>
+        /// <remarks>
+        /// <b>A field rather than a read of the root's alpha, because the two mean different
+        /// things.</b> <see cref="IsShown"/> is <em>"is the player looking at cards"</em> and goes
+        /// false the moment the veil drops; this is <em>"there is an episode behind the veil"</em>,
+        /// and it is what stops <see cref="Update"/>'s net putting a closed screen back up.
+        /// </remarks>
+        private bool _veiled;
+
         /// <param name="session">
         /// The run, for the two reads a card needs — the offer's ids and the level. Not
         /// <c>IPlayerCommands</c>: a screen asks the game for nothing about the player's body.
@@ -166,6 +188,8 @@ namespace Soulvail.Game.Presentation
 
             _offerSubscription = hub.Subscribe<OfferPresented>(OnOfferPresented);
             _closedSubscription = hub.Subscribe<LevelUpClosed>(OnLevelUpClosed);
+
+            Wire(_viewTree, OpenTree);
         }
 
         /// <exception cref="MissingReferenceException">The root, a card or a label is not dressed.</exception>
@@ -214,11 +238,11 @@ namespace Soulvail.Game.Presentation
         /// scene reload, an arena opened without a run — would otherwise stay in two subscriber
         /// lists and be handed events for a component Unity has killed.
         /// <para>
-        /// <b>It drops the subscriptions and nothing else.</b> A scope torn down with the screen up
-        /// leaves the pause held, and <c>RunPause.Dispose</c> restores both globals unconditionally
-        /// (M3-08a rule 13) — VContainer orders no two disposals, so this file must not depend on
-        /// being the one that resumes. Under the owner's ruling it could not be, which is what makes
-        /// this rule true rather than a caveat.
+        /// <b>It drops the subscriptions and the one button handler, and nothing else.</b> A scope
+        /// torn down with the screen up leaves the pause held, and <c>RunPause.Dispose</c> restores
+        /// both globals unconditionally (M3-08a rule 13) — VContainer orders no two disposals, so
+        /// this file must not depend on being the one that resumes. Under the owner's ruling it
+        /// could not be, which is what makes this rule true rather than a caveat.
         /// </para>
         /// </remarks>
         private void OnDestroy()
@@ -228,15 +252,34 @@ namespace Soulvail.Game.Presentation
 
             _offerSubscription = null;
             _closedSubscription = null;
+
+            Unwire(_viewTree, OpenTree);
         }
 
         /// <remarks>
+        /// <para>
         /// One bool per frame while the screen is up, and it is the half of rule 5 a handler cannot
         /// do — see <see cref="_choosing"/>. Runs at <c>timeScale</c> 0 because <c>Update</c> does.
+        /// </para>
+        /// <para>
+        /// <b>And two reads of the tree view, which are M3-09b's poll arriving on this screen.</b>
+        /// The first is the net under <see cref="OpenTree"/>'s callback: a tree that is destroyed or
+        /// closed by something this file did not ask gives the cards back anyway, where a callback
+        /// alone would leave a stopped game showing nothing at all. The second is rule 2 — a class
+        /// with no tree is not offered the button — asked here rather than at <c>Start</c> because
+        /// the run has not necessarily begun by then, <c>PausePresenter.RefreshPanel</c>'s reason.
+        /// </para>
         /// </remarks>
         private void Update()
         {
             _choosing = false;
+
+            if (_veiled && (_treeScreen == null || !_treeScreen.IsOpen))
+            {
+                OnTreeClosed();
+            }
+
+            RefreshTreeButton();
         }
 
         /// <summary>
@@ -372,6 +415,80 @@ namespace Soulvail.Game.Presentation
         /// <summary>Whether the screen is currently up. The one read a test needs and rule 1 allows.</summary>
         public bool IsShown => _root != null && _root.alpha > 0f;
 
+        /// <summary>
+        /// Raises CH §5.1's tree view over this screen. The View Tree toggle's handler — the line
+        /// M3-08b's <em>Out of scope</em> reserved for M3-09d.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The cards are hidden, not destroyed, and no pick is spent by looking</b> (M3-09d
+        /// rule 6). The offer is state on <c>LevelUpFlow</c> (M3-08a) and nothing here touches it:
+        /// the veil is the root's alpha and its raycasts, so every card keeps its index, its id, its
+        /// listener and its <c>interactable</c>, and coming back is <see cref="ShowScreen"/> rather
+        /// than a redraw. <b>Nothing may call <see cref="Draw"/> on the way back</b> — repainting
+        /// would re-arm cards that a tap in the same frame had deliberately killed, and re-latching
+        /// <see cref="_choosing"/> is exactly the failure rule 5 exists to refuse. A player who
+        /// plans and then picks has lost nothing, which is the whole promise of <em>"opt-in, so it
+        /// never slows down anyone who doesn't care"</em>.
+        /// </para>
+        /// <para>
+        /// <b>It does not lower the pause and must not</b> (M3-09d rule 5). The gate is
+        /// <c>RunTicker.LevelUpPhase</c>'s and is a once-a-frame function of <c>HasOffer</c>, which
+        /// is still true behind the veil — so the game stays stopped, the holder stays
+        /// <c>PauseReason.LevelUp</c>, and a tree view that resumed the fight underneath itself
+        /// would be the opposite of what a planning screen is for. This class still cannot reach a
+        /// <c>RunPause</c> at all, which is what makes that true rather than a promise.
+        /// </para>
+        /// </remarks>
+        public void OpenTree()
+        {
+            if (_treeScreen == null || _veiled || !IsShown || _treeScreen.IsOpen)
+            {
+                return;
+            }
+
+            _veiled = true;
+
+            Veil();
+
+            _treeScreen.Open(OnTreeClosed);
+        }
+
+        /// <summary>
+        /// The tree gave the cards back: the same three, still interactable, still the same ids.
+        /// </summary>
+        /// <remarks>
+        /// Rule 5's callback and <see cref="Update"/>'s net both land here, which is why it is
+        /// idempotent: whichever arrives first does the work and the other returns.
+        /// </remarks>
+        private void OnTreeClosed()
+        {
+            if (!_veiled)
+            {
+                return;
+            }
+
+            _veiled = false;
+
+            ShowScreen();
+        }
+
+        /// <summary>Rule 2 from this side: a class with no tree is offered no toggle.</summary>
+        private void RefreshTreeButton()
+        {
+            if (_viewTree == null)
+            {
+                return;
+            }
+
+            bool offered = _treeScreen != null && _treeScreen.HasTree;
+
+            if (_viewTree.gameObject.activeSelf != offered)
+            {
+                _viewTree.gameObject.SetActive(offered);
+            }
+        }
+
         /// <remarks>
         /// Alpha 1 on the same call, with no tween and no coroutine — rule 4. The raycast block goes
         /// on with it, which is rule 11: the canvas is full-screen, so the stick and the Charge
@@ -389,7 +506,42 @@ namespace Soulvail.Game.Presentation
             _root.interactable = true;
         }
 
+        /// <remarks>
+        /// <b>The veil plus the cards, and the split is M3-09d rule 6's</b>: closing an episode
+        /// takes the cards off the screen, where opening the tree over it deliberately does not.
+        /// The two were one method until the tree view needed the half that comes back.
+        /// </remarks>
         private void HideScreen()
+        {
+            _veiled = false;
+
+            Veil();
+
+            if (_root == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _cards.Length; i++)
+            {
+                if (_cards[i] != null)
+                {
+                    _cards[i].Hide();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes the screen out of sight and out of the raycaster, leaving what is on it alone.
+        /// </summary>
+        /// <remarks>
+        /// <b>Alpha <em>and</em> <c>blocksRaycasts</c>, and that pair is what a sorting order would
+        /// otherwise have to buy.</b> A canvas left at alpha 0 with its raycasts off draws nothing
+        /// and takes no touches, so the tree view is fully visible and fully tappable over it —
+        /// <c>TreeViewPresenter</c> still sorts above this one anyway, for the reason its own
+        /// remarks give.
+        /// </remarks>
+        private void Veil()
         {
             if (_root == null)
             {
@@ -399,14 +551,6 @@ namespace Soulvail.Game.Presentation
             _root.alpha = 0f;
             _root.blocksRaycasts = false;
             _root.interactable = false;
-
-            for (int i = 0; i < _cards.Length; i++)
-            {
-                if (_cards[i] != null)
-                {
-                    _cards[i].Hide();
-                }
-            }
         }
 
         /// <summary>
@@ -475,6 +619,30 @@ namespace Soulvail.Game.Presentation
             float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
 
             return StickShaper.PixelsPerDp(Screen.dpi) / scale;
+        }
+
+        /// <remarks>
+        /// Removed before it is added, and with a named method rather than a lambda, so that a
+        /// component injected twice — which VContainer does not do and a test does — reports one tap
+        /// once rather than once per injection. <c>PausePresenter.Wire</c>'s trick, for its reason.
+        /// </remarks>
+        private static void Wire(Button button, UnityEngine.Events.UnityAction handler)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.RemoveListener(handler);
+            button.onClick.AddListener(handler);
+        }
+
+        private static void Unwire(Button button, UnityEngine.Events.UnityAction handler)
+        {
+            if (button != null)
+            {
+                button.onClick.RemoveListener(handler);
+            }
         }
     }
 }

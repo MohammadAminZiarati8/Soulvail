@@ -410,7 +410,7 @@ public sealed class PausePresenterTests
     // ---- The asset (Traps §5, rules 6, 11) ------------------------------------------------------
 
     [Test]
-    public void Panel_HasResumeSkillsAndQuit()
+    public void Panel_HasResumeSkillsTreeAndQuit()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -437,31 +437,35 @@ public sealed class PausePresenterTests
         Assert.That(so.FindProperty("_resume").objectReferenceValue, Is.Not.Null, "no Resume button.");
         Assert.That(so.FindProperty("_quit").objectReferenceValue, Is.Not.Null, "no Quit button.");
         Assert.That(so.FindProperty("_skills").objectReferenceValue, Is.Not.Null, "no Skills button.");
+        Assert.That(so.FindProperty("_viewTree").objectReferenceValue, Is.Not.Null, "no View Tree button.");
 
-        // **`_skillsScreen` is deliberately not asserted here.** The Skills screen is a separate
-        // root prefab, so the reference between the two is dressed in Run.unity rather than on
-        // either asset — M3-09b's wiring decision, and `SkillsPresenterTests.Open_FromThePausePanel`
-        // is where it is checked. A null here is the undressed-Run-scene workflow, and
-        // `PausePresenter.Start` takes the button off the panel rather than leaving it dead.
+        // **Neither `_skillsScreen` nor `_treeScreen` is asserted here.** Both screens are separate
+        // root prefabs, so the references between them are dressed in Run.unity rather than on any
+        // asset — M3-09b's wiring decision, followed by M3-09d, and
+        // `SkillsPresenterTests.Open_FromThePausePanel` and
+        // `TreeViewPresenterTests.Pause_OpensAndReturns` are where they are checked. A null here is
+        // the undressed-Run-scene workflow, and `PausePresenter` takes the button off the panel
+        // rather than leaving it dead.
         var panel = (CanvasGroup)so.FindProperty("_panel").objectReferenceValue;
 
-        // **Rule 6, and the row two later tasks each extend by one.** M3-09b added Skills and
-        // **M3-09d** adds View Tree, as a small edit to this prefab and this file each — M3-09c
-        // is profile v2 and touches neither, whatever M3-09a's original comment said. A button
-        // that does nothing is worse than a button that is not there yet, and shipping the later
-        // one dead now would make that task look like it did nothing.
+        // **Rule 6, and the row two later tasks each extended by one.** M3-09b added Skills and
+        // **M3-09d** added View Tree, as a small edit to this prefab and this file each — M3-09c
+        // was profile v2 and touched neither, whatever M3-09a's original comment said. A button
+        // that does nothing is worse than a button that is not there yet, which is why each
+        // arrived with the screen behind it rather than before it. **Nothing left owes this row a
+        // move**: the panel is Resume, Skills, View Tree and Quit, and M8-03's Settings is the next
+        // task that would change it.
         Button[] panelButtons = panel.GetComponentsInChildren<Button>(true);
 
         Assert.That(
             panelButtons.Length,
-            Is.EqualTo(3),
-            "the pause panel does not hold exactly Resume, Skills and Quit. M3-09d makes this four "
-                + "— if that is what happened, move this number with it.");
+            Is.EqualTo(4),
+            "the pause panel does not hold exactly Resume, Skills, View Tree and Quit.");
 
         Assert.That(
             prefab.GetComponentsInChildren<Button>(true).Length,
-            Is.EqualTo(4),
-            "the prefab holds a button that is neither the icon nor one of the panel's three.");
+            Is.EqualTo(5),
+            "the prefab holds a button that is neither the icon nor one of the panel's four.");
 
         // Keys, not English. ILocalizer has no implementation until M3-14a, and OfferCard set the
         // precedent one task ago — ADR-0012, ledger row 9. HudPresenter's remarks call the raw

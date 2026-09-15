@@ -286,9 +286,29 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4784932696172389972, guid: fff57055126285842b314d95318c58ec, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4294110182
+      objectReference: {fileID: 0}
+    - target: {fileID: 4784932696172389972, guid: fff57055126285842b314d95318c58ec, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 6128608283944913236, guid: fff57055126285842b314d95318c58ec, type: 3}
       propertyPath: m_Name
       value: Skills
+      objectReference: {fileID: 0}
+    - target: {fileID: 6236963889592208405, guid: fff57055126285842b314d95318c58ec, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4294110182
+      objectReference: {fileID: 0}
+    - target: {fileID: 6236963889592208405, guid: fff57055126285842b314d95318c58ec, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 8252538361204017095, guid: fff57055126285842b314d95318c58ec, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -398,6 +418,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: LevelUp
       objectReference: {fileID: 0}
+    - target: {fileID: 4820921438838419863, guid: 9b82a495ee5863040abf024467a701c6, type: 3}
+      propertyPath: _treeScreen
+      value: 
+      objectReference: {fileID: 840378153}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -422,6 +446,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1833343096560910098, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -502,6 +530,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8784949020997761634, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4294110187
+      objectReference: {fileID: 0}
+    - target: {fileID: 8784949020997761634, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 8881531732162976738, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
       propertyPath: m_Name
       value: FirstActiveHint
@@ -522,6 +558,114 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1208058f1043445468e0e6db916479bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.FirstActiveHint
+--- !u!1001 &840378152
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2640486011037732070, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_Name
+      value: TreeView
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2940466725302481465, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+--- !u!114 &840378153 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 573971082980489267, guid: 1707e358bbb79d14cab2ff8795103e02, type: 3}
+  m_PrefabInstance: {fileID: 840378152}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bcd1fdc1b6bfc54dac13ace11239ef1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.TreeViewPresenter
 --- !u!1 &894525613
 GameObject:
   m_ObjectHideFlags: 0
@@ -593,6 +737,7 @@ MonoBehaviour:
   _levelUpPresenter: {fileID: 529708800}
   _pausePresenter: {fileID: 1924286364}
   _skillsPresenter: {fileID: 385136883}
+  _treeViewPresenter: {fileID: 840378153}
   _firstActiveHint: {fileID: 742289268}
   _debugOverlay: {fileID: 5239836669165301809}
   _camera: {fileID: 1167978316}
@@ -1180,10 +1325,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6763923666769774125, guid: 6c7b0fa560093c64cb17bd6bbfb8b547, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 6857123913090762802, guid: 6c7b0fa560093c64cb17bd6bbfb8b547, type: 3}
       propertyPath: m_Name
       value: Pause
       objectReference: {fileID: 0}
+    - target: {fileID: 7269708795078924635, guid: 6c7b0fa560093c64cb17bd6bbfb8b547, type: 3}
+      propertyPath: _treeScreen
+      value: 
+      objectReference: {fileID: 840378153}
     - target: {fileID: 7269708795078924635, guid: 6c7b0fa560093c64cb17bd6bbfb8b547, type: 3}
       propertyPath: _skillsScreen
       value: 
@@ -1280,6 +1433,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1536827485211293717, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+      propertyPath: m_fontSize
+      value: 53.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1536827485211293717, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 3959422975
+      objectReference: {fileID: 0}
+    - target: {fileID: 1536827485211293717, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 3176677017197098832, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 3655002106885429079, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
       propertyPath: m_Name
       value: Hud
@@ -1567,3 +1736,4 @@ SceneRoots:
   - {fileID: 1924286363}
   - {fileID: 385136882}
   - {fileID: 742289267}
+  - {fileID: 840378152}

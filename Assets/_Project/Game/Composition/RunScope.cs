@@ -93,6 +93,22 @@ namespace Soulvail.Game.Composition
                  "leaving the scene.")]
         [SerializeField] private HudPresenter _hudPresenter;
 
+        [Tooltip("GD §16.1's XP strip, along the HUD's top edge. Optional on the HUD's terms — a " +
+                 "scene without one plays the same fight and simply never says how close the next " +
+                 "level is.")]
+        [SerializeField] private XpBarView _xpBar;
+
+        [Tooltip("GD §16.1's auto-cast cooldowns, under the health bar. Optional on the HUD's " +
+                 "terms, and the one here whose absence costs the *default* build the most: every " +
+                 "skill starts on Auto (CC §6.1), so a scene without this row is one where a " +
+                 "player who never opens a menu has no readout of their build at all.")]
+        [SerializeField] private AutoCastRow _autoCastRow;
+
+        [Tooltip("The Overflow announcement, on the HUD. Optional on the HUD's terms — a scene " +
+                 "without one grants CH §5.2's Overflow silently, which by stage 30 is more than " +
+                 "half the power the player has gained (ledger row 1).")]
+        [SerializeField] private OverflowToast _overflowToast;
+
         [Tooltip("The level-up screen: three cards and a header, on its own canvas above the HUD. " +
                  "Optional on the HUD's terms — but read its registration below before leaving it " +
                  "empty, because what its absence costs is not what the HUD's costs.")]
@@ -275,6 +291,31 @@ namespace Soulvail.Game.Composition
             if (_hudPresenter != null)
             {
                 builder.RegisterComponent(_hudPresenter);
+            }
+
+            // The other three readouts on Hud.prefab (M3-10b), all optional on the HUD's terms and
+            // all with the same shape: live components in this scene, so the container injects them
+            // and destroys nothing. Their *absence* differs though, and the difference is worth the
+            // three lines — the strip costs a progress bar, the toast costs an announcement, and the
+            // row costs the legibility of the whole default build, because every skill starts on
+            // Auto (CC §6.1) and nothing else in the game draws an auto-cast cooldown.
+            //
+            // Each one throws from its own Start if it is on the prefab and not dressed here, which
+            // is SkillBarPresenter's bargain: an undressed field is a silent readout rather than a
+            // loud one, so the component says so itself and names the field to drag.
+            if (_xpBar != null)
+            {
+                builder.RegisterComponent(_xpBar);
+            }
+
+            if (_autoCastRow != null)
+            {
+                builder.RegisterComponent(_autoCastRow);
+            }
+
+            if (_overflowToast != null)
+            {
+                builder.RegisterComponent(_overflowToast);
             }
 
             // Optional on the HUD's terms — the undressed Run scene is the fastest iteration loop

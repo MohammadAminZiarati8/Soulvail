@@ -735,6 +735,9 @@ MonoBehaviour:
   _skillButton: {fileID: 2052539125}
   _skillBar: {fileID: 2052539128}
   _hudPresenter: {fileID: 2052539126}
+  _xpBar: {fileID: 2052539131}
+  _autoCastRow: {fileID: 2052539130}
+  _overflowToast: {fileID: 2052539129}
   _levelUpPresenter: {fileID: 529708800}
   _pausePresenter: {fileID: 1924286364}
   _skillsPresenter: {fileID: 385136883}
@@ -1577,6 +1580,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a34d58a9f9da7cd4d96f92e576a4f445, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.SkillBarPresenter
+--- !u!114 &2052539129 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1181075243384630277, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ebaed774a6250c4f929a729efed760d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.OverflowToast
+--- !u!114 &2052539130 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6973746835791723848, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08573f908c22a6f408d336c9e516b18a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.AutoCastRow
+--- !u!114 &2052539131 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8302277930422076769, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+  m_PrefabInstance: {fileID: 2052539124}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1326f03bd0dc4b4a9d11ebb06c5195a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.XpBarView
 --- !u!1 &2056789030
 GameObject:
   m_ObjectHideFlags: 0

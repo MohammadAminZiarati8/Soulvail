@@ -659,6 +659,11 @@ public sealed class ResumeFlowTests
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, session, cameraObject.AddComponent<Camera>()),
+
+            // M3-10a's second poller in CommandPhase. Nothing here presses a slot — these rows are
+            // about what Start hands over — but the constructor guards every argument, which is what
+            // makes this a compile-forced line rather than a choice.
+            new SkillSlotInput(session),
             cone);
 
         try

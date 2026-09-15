@@ -81,6 +81,12 @@ namespace Soulvail.Game.Composition
                  "from a keyboard, it just cannot be dashed with a thumb.")]
         [SerializeField] private SkillButton _skillButton;
 
+        [Tooltip("CC §6.2's four slot buttons, clustered beside the Charge on the HUD. Optional on " +
+                 "the Charge button's terms — an arena without one plays the same fight and every " +
+                 "skill the player set to Manual is uncastable, which is the whole of what this " +
+                 "object is for.")]
+        [SerializeField] private SkillBarPresenter _skillBar;
+
         [Tooltip("The player's row on the HUD: health, the Aegis, and the death overlay. Optional " +
                  "on the same terms as the reticle — an arena without one plays exactly the same, " +
                  "it just cannot say how the player is doing and has no way out of a death except " +
@@ -385,6 +391,20 @@ namespace Soulvail.Game.Composition
             if (_skillButton != null)
             {
                 builder.RegisterComponent(_skillButton);
+            }
+
+            // Optional on the Charge button's terms and for the same reason — it is an *input*
+            // rather than a decoration, so a scene without it is one where a Manual skill has no way
+            // to be cast at all. It stays optional rather than guarded because the undressed Run
+            // scene is the fastest iteration loop in the project, and because nothing in
+            // Data/Trees ships an Active until M3-12: every run in the current build has four empty
+            // slots, so this object's absence and its presence look identical on screen.
+            //
+            // Registered here rather than in RunInstaller for every other component's reason: it is
+            // a live object in this scene, and the container injects it and destroys nothing.
+            if (_skillBar != null)
+            {
+                builder.RegisterComponent(_skillBar);
             }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated

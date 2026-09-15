@@ -51,11 +51,13 @@ namespace Soulvail.Tests.PlayMode;
 /// by accident.
 /// </para>
 /// <para>
-/// <b>The commands phase is the one step not observed here, and it is named rather than skipped
-/// quietly.</b> <c>CommandPhase</c> reaches core only when the Input System reports a press, and
-/// this assembly does not reference the Input System — adding it would put un-isolated device state
-/// into the assembly that also holds the boot smoke tests. Nothing in AR §18.1's row for that step
-/// is a correctness failure: the consequence of moving it is a tap acted on one frame late.
+/// <b>The commands phase was the one step not observed here, and since M3-10a it is observed.</b>
+/// Its two original members reach core only when the Input System reports a press, and this assembly
+/// does not reference the Input System — adding it would put un-isolated device state into the
+/// assembly that also holds the boot smoke tests. <c>SkillSlotInput</c> needs none: a slot button
+/// writes an <c>int</c> into it and <c>CommandPhase</c> polls that, so
+/// <see cref="Frame_SlotPollSitsBesideTapToFocus"/> pins the adjacency the other two still inherit
+/// by sitting in the same three lines.
 /// </para>
 /// </remarks>
 public sealed class FrameOrderTests
@@ -109,6 +111,13 @@ public sealed class FrameOrderTests
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
+
+    /// <summary>
+    /// The frame's one-press buffer for CC §6.2's slot buttons. Real rather than a fake: it is half
+    /// of what <see cref="Frame_SlotPollSitsBesideTapToFocus"/> is about, and the other half is where
+    /// the ticker polls it (M3-10a rule 3).
+    /// </summary>
+    private SkillSlotInput _skillSlots;
 
     /// <summary>
     /// The gate the level-up phase raises. Real rather than a fake: it is the object under test in
@@ -171,6 +180,8 @@ public sealed class FrameOrderTests
 
         _pause = new RunPause();
 
+        _skillSlots = new SkillSlotInput(_core);
+
         _ticker = new RunTicker(
             _core,
             _core,
@@ -195,6 +206,7 @@ public sealed class FrameOrderTests
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
+            _skillSlots,
             cone);
 
         // Announced the way core announces it, so the body arrives through the subscription M1-07
@@ -239,6 +251,7 @@ public sealed class FrameOrderTests
         _ticker = null;
         _core = null;
         _body = null;
+        _skillSlots = null;
 
         for (int i = 0; i < _created.Count; i++)
         {
@@ -607,11 +620,111 @@ public sealed class FrameOrderTests
         LogAssert.NoUnexpectedReceived();
     }
 
+    // ---- The command phase's second poller (M3-10a rule 3) ---------------------------------------
+
+    /// <summary>
+    /// A slot press becomes a command inside <c>CommandPhase</c>, above the snapshot build — the
+    /// same place <c>TapToFocusAdapter</c>'s tap becomes one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the row that retires the fixture's standing exemption.</b> The class remarks above
+    /// say the commands phase is "the one step not observed here", because it reached core only when
+    /// the Input System reported a press and this assembly does not reference the Input System.
+    /// <see cref="SkillSlotInput"/> needs no Input System at all — a button writes an
+    /// <see cref="int"/> into it — so the phase is finally observable, and AR §18.1's first row is
+    /// asserted end to end.
+    /// </para>
+    /// <para>
+    /// <b>It asserts that the snapshot had not been built when the command landed, and nothing
+    /// about physics.</b> M3-08a's lesson: the row that took this fixture's flake rate from 10 % to
+    /// 30 % did it by hanging a second assertion on the intermittent cone sweep. The player's
+    /// position is written into the snapshot by <c>SnapshotBuilder.Build</c> and by nothing else,
+    /// and this fixture's body never moves — core decides a zero velocity — so it is a deterministic
+    /// read rather than a question for the physics scene.
+    /// </para>
+    /// </remarks>
+    [UnityTest]
+    public IEnumerator Frame_SlotPollSitsBesideTapToFocus()
+    {
+        CoreVector3 snapshotAtCommandTime = default;
+        bool sawCommand = false;
+
+        _core.OnCastSkill = () =>
+        {
+            sawCommand = true;
+            snapshotAtCommandTime = _snapshot.PlayerPosition;
+        };
+
+        // A thumb, whenever in the frame uGUI happened to report it. Nothing has polled it yet.
+        _skillSlots.Press(0);
+
+        Assert.That(_core.Touched, Is.Empty, "The press reached core without a frame asking for it.");
+
+        yield return Frame();
+
+        Assert.That(sawCommand, Is.True, "The slot poll never ran, so a tap on S1 casts nothing.");
+
+        // 1. It ran *above the snapshot build*, which is the claim: the player stands a kilometre
+        //    from the origin and the snapshot still said zero when the command arrived, so nothing
+        //    had written this frame's senses into it yet.
+        Assert.That(
+            snapshotAtCommandTime.X,
+            Is.EqualTo(0f).Within(1e-3f),
+            "The command landed after the snapshot was built, so a cast would be acted on against "
+                + "senses taken before it — which is the adjacency CommandPhase exists to fix.");
+
+        // 2. And the build really did happen on this frame, so the assertion above is about
+        //    ordering rather than about a frame in which nothing was sensed at all.
+        Assert.That(
+            _snapshot.PlayerPosition.X,
+            Is.EqualTo(Origin.x).Within(1e-2f),
+            "Sanity: the frame built its snapshot.");
+
+        // 3. Beside the focus tap and above the tick, in the phase AR §18.1 names.
+        Assert.That(
+            IndexIn(_core.Touched, "command:cast-slot"),
+            Is.EqualTo(0),
+            "Something reached core before the command phase did.");
+
+        Assert.That(
+            IndexIn(_core.Touched, "command:cast-slot"),
+            Is.LessThan(IndexIn(_core.Touched, "tick")),
+            "The command phase ran below the tick it is meant to precede.");
+
+        // 4. One press, one command — the buffer holds an int and clears on Poll (rule 4). A second
+        //    frame with nothing pressed sends nothing.
+        yield return Frame();
+
+        Assert.That(
+            CountIn(_core.Touched, "command:cast-slot"),
+            Is.EqualTo(1),
+            "The press outlived the frame it was made in.");
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
     private IEnumerator Frame()
     {
         yield return null;
 
         _ticker.Tick();
+    }
+
+    /// <summary>How many times <paramref name="step"/> appears in what the frames reached.</summary>
+    private static int CountIn(IReadOnlyList<string> touched, string step)
+    {
+        int count = 0;
+
+        for (int i = 0; i < touched.Count; i++)
+        {
+            if (touched[i] == step)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>Where <paramref name="step"/> first appears in what the frame reached, or −1.</summary>
@@ -906,10 +1019,22 @@ public sealed class FrameOrderTests
 
         public void MovementSkill() => _touched.Add("command:skill");
 
+        /// <summary>
+        /// What <see cref="CastSkill"/> does when the frame calls it — how
+        /// <see cref="Frame_SlotPollSitsBesideTapToFocus"/> looks at the snapshot from inside the
+        /// command phase. <see cref="OnOpenLevelUp"/>'s shape.
+        /// </summary>
+        public Action OnCastSkill { get; set; }
+
         // M3-07a grew IPlayerCommands. Recorded like the three above rather than left empty, so
-        // this fake keeps saying what it was asked for — but nothing in this fixture sends either:
-        // the suite is about RunTicker's frame order, and neither command is on that path.
-        public void CastSkill(int slot) => _touched.Add("command:cast-slot");
+        // this fake keeps saying what it was asked for — and since M3-10a one row does send it,
+        // through SkillSlotInput and RunTicker's command phase.
+        public void CastSkill(int slot)
+        {
+            _touched.Add("command:cast-slot");
+
+            OnCastSkill?.Invoke();
+        }
 
         public void SetAutoCast(ContentId skillId, bool auto) => _touched.Add("command:auto-cast");
 

@@ -92,6 +92,11 @@ namespace Soulvail.Game.Composition
                  "empty, because what its absence costs is not what the HUD's costs.")]
         [SerializeField] private LevelUpPresenter _levelUpPresenter;
 
+        [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
+                 "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
+                 "without one plays exactly the same fight, it just cannot be stopped from inside.")]
+        [SerializeField] private PausePresenter _pausePresenter;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -268,6 +273,18 @@ namespace Soulvail.Game.Composition
             if (_levelUpPresenter != null)
             {
                 builder.RegisterComponent(_levelUpPresenter);
+            }
+
+            // Optional, and — unlike the level-up screen directly above — its absence really does
+            // cost only what it looks like it costs. This screen holds both halves of its own pause
+            // (M3-09a rule 2), so nothing raises a Menu pause that this object is not there to
+            // lower: a scene dressed without it plays the same fight and simply cannot be stopped
+            // from inside. That is the undressed-Run-scene workflow every optional field here
+            // protects, and it is also the M0-19 release build, which has no pause icon either way
+            // until M8-03 gives the panel something else to hold.
+            if (_pausePresenter != null)
+            {
+                builder.RegisterComponent(_pausePresenter);
             }
 
             // Optional for the same reason and on the same terms: a scene dressed without a

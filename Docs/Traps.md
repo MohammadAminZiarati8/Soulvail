@@ -349,6 +349,16 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   distance to the origin while each row believed it had moved the player. Nothing fails; the rows go
   green. **When two copies of a fact exist, the test has to write the one the code reads** — here, by
   sensing the whole arena through `Ingest` (M2-08).
+- **A row that subscribes to `TaskScheduler.UnobservedTaskException` is watching the whole process,
+  not the class under test — including the Unity MCP's own websocket.**
+  `SaveWriterTests.Writer_ObservesEveryFault` arms that event and forces two `GC.Collect` /
+  `WaitForPendingFinalizers` passes, so *any* unobserved faulted task in the Editor that is finalised
+  inside that window fails it. At M3-09a one EditMode run in three came back **1 464 / 1** carrying a
+  `ClientWebSocket.ConnectAsyncCore` fault from the MCP bridge; the runs either side were green on
+  unchanged code. **The failure message names `SaveWriter` and the exception is nothing to do with
+  it — read the exception before believing the row.** If it recurs, the narrow fix is to filter the
+  captured exceptions down to the one the fixture armed rather than asserting the list is empty
+  (M3-09a).
 - **`RecordingEvents` may never appear inside an `AllocationAssert` body.** It stores each payload
   in a `List<object>`, so it boxes every struct and the row measures the fake instead of core. Use
   a silent `IDomainEvents`; the real `DomainEventHub` does not box (M1-18).

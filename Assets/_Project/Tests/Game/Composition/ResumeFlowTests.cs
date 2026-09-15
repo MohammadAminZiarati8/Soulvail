@@ -35,11 +35,17 @@ namespace Soulvail.Tests.Game.Composition;
 /// </para>
 /// <para>
 /// <b>The one thing this file does not do is tap the buttons.</b> Both handlers load a scene
-/// through <c>SceneLoader</c>, which is <c>sealed</c> with no port behind it, and
-/// <c>SceneManager.LoadSceneAsync</c> cannot be driven from an EditMode test without taking the
-/// Editor's open scene with it. So the rows here assert the two halves the tap is made of — the
-/// button's visibility, and what <c>PendingRun</c> ends up holding — and the tap itself is the
-/// owner's manual step 2. See the task's <i>As built</i>.
+/// through <c>SceneLoader</c>, and <c>SceneManager.LoadSceneAsync</c> cannot be driven from an
+/// EditMode test without taking the Editor's open scene with it. So the rows here assert the two
+/// halves the tap is made of — the button's visibility, and what <c>PendingRun</c> ends up
+/// holding — and the tap itself is the owner's manual step 2. See the task's <i>As built</i>.
+/// <para>
+/// <b>What has changed since is that the loader is no longer <c>sealed</c></b> (M3-09a):
+/// <c>LoadAsync</c> is <c>virtual</c>, so <c>PausePresenterTests</c> hands its presenter a loader
+/// that records instead of loading. These rows were deliberately left as they are — they are about
+/// what the Menu decides, not about the load — but a task that wants to tap these two buttons now
+/// can.
+/// </para>
 /// </para>
 /// </remarks>
 [TestFixture]

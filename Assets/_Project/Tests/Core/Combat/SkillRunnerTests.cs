@@ -557,6 +557,75 @@ public sealed class SkillRunnerTests
     }
 
     [Test]
+    public void Runner_EffectiveCooldownIsFloored()
+    {
+        _runner.Add(Active(ActiveA));
+
+        Assert.That(
+            _runner.EffectiveCooldownOf(0),
+            Is.EqualTo(ActiveCooldown).Within(0.0001f),
+            "The fixture's premise: an untouched cooldown comes back as itself.");
+
+        // −93.75 % on an 8 s skill is 0.5 s raw. **What the Skills screen prints is 3.2** — what
+        // the wait actually is after CH §4.1's floor, not what the stack asked for (M3-09b rule 3).
+        // The alternative was the screen applying the floor itself, which is the second copy of
+        // CooldownRules that M3-06 rule 1 exists to prevent.
+        _runner.CooldownOf(0).Add(new Modifier(ModifierKind.PercentMult, -0.9375f, "stack"));
+
+        Assert.That(
+            _runner.CooldownOf(0).Value,
+            Is.EqualTo(0.5f).Within(0.0001f),
+            "The fixture's premise: the stack really did drive the live value to half a second.");
+
+        Assert.That(
+            _runner.EffectiveCooldownOf(0),
+            Is.EqualTo(3.2f).Within(0.0001f),
+            "EffectiveCooldownOf handed back the raw stack value rather than the floored one.");
+
+        // **And it is the same number the cast schedules against**, which is the whole reason this
+        // is one member rather than an expression the screen keeps its own copy of.
+        _combat.Blackboard.HpFraction = 0.5f;
+
+        _runner.Tick(Frame, 0f);
+
+        Assert.That(_events.Single<SkillCast>().Cooldown, Is.EqualTo(_runner.EffectiveCooldownOf(0)));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _runner.EffectiveCooldownOf(1));
+    }
+
+    [Test]
+    public void State_ExposesCooldownSeconds()
+    {
+        StartSession(Below(TriggerField.HpFraction, 0f), cooldown: 2.5f);
+
+        // CC §6.3 asks for "its cooldown" on a screen where the tick is gated, so a radial fill
+        // would be a frozen ring saying nothing (M3-09b rule 3). The number is the readable form,
+        // and it is the whole wait rather than what is left of it — SkillCooldownFraction is the
+        // other question and answers zero here.
+        Assert.That(_session.State.SkillCooldownSeconds(0), Is.EqualTo(2.5f).Within(0.0001f));
+        Assert.That(_session.State.SkillCooldownFraction(0), Is.Zero);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _session.State.SkillCooldownSeconds(1));
+
+        // **And the seal did not move to let it out** (AR §18.2, M3-06 rule 13). A new read on
+        // RunState is one more scalar, not a handle: SkillRunner.SetAutoCast and CastSkill are both
+        // public on the runner, so a public property here would let a view fire the player's skills
+        // and rearrange their thumb. Asked by reflection because the compiler cannot be asked — a
+        // test in Soulvail.Tests.Core sees `internal` through the assembly's InternalsVisibleTo.
+        PropertyInfo handle = typeof(RunState).GetProperty(
+            "Skills",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        Assert.That(handle, Is.Not.Null, "RunState.Skills is gone — this row is out of date.");
+
+        Assert.That(
+            handle.GetMethod.IsPublic,
+            Is.False,
+            "RunState.Skills became public. M3-09b added a read beside it and must not have "
+                + "loosened the seal to do it.");
+    }
+
+    [Test]
     public void Cast_FractionIsOneOnTheCastTick()
     {
         // **Rule 9's ordering, observed from inside the publish.** The event is last — after the

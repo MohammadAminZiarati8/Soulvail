@@ -410,7 +410,7 @@ public sealed class PausePresenterTests
     // ---- The asset (Traps §5, rules 6, 11) ------------------------------------------------------
 
     [Test]
-    public void Panel_HasResumeAndQuitOnly()
+    public void Panel_HasResumeSkillsAndQuit()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -436,25 +436,31 @@ public sealed class PausePresenterTests
         Assert.That(so.FindProperty("_panel").objectReferenceValue, Is.Not.Null, "no panel CanvasGroup.");
         Assert.That(so.FindProperty("_resume").objectReferenceValue, Is.Not.Null, "no Resume button.");
         Assert.That(so.FindProperty("_quit").objectReferenceValue, Is.Not.Null, "no Quit button.");
+        Assert.That(so.FindProperty("_skills").objectReferenceValue, Is.Not.Null, "no Skills button.");
 
+        // **`_skillsScreen` is deliberately not asserted here.** The Skills screen is a separate
+        // root prefab, so the reference between the two is dressed in Run.unity rather than on
+        // either asset — M3-09b's wiring decision, and `SkillsPresenterTests.Open_FromThePausePanel`
+        // is where it is checked. A null here is the undressed-Run-scene workflow, and
+        // `PausePresenter.Start` takes the button off the panel rather than leaving it dead.
         var panel = (CanvasGroup)so.FindProperty("_panel").objectReferenceValue;
 
-        // **Rule 6, and the row two later tasks each extend by one.** M3-09b adds Skills and M3-09c
-        // adds View Tree, as a small edit to this prefab and this file each. A button that does
-        // nothing is worse than a button that is not there yet, and shipping three dead buttons now
-        // would make two later tasks look like they did nothing.
+        // **Rule 6, and the row two later tasks each extend by one.** M3-09b added Skills and
+        // M3-09c adds View Tree, as a small edit to this prefab and this file each. A button that
+        // does nothing is worse than a button that is not there yet, and shipping the later ones
+        // dead now would make those tasks look like they did nothing.
         Button[] panelButtons = panel.GetComponentsInChildren<Button>(true);
 
         Assert.That(
             panelButtons.Length,
-            Is.EqualTo(2),
-            "the pause panel does not hold exactly Resume and Quit. M3-09b and M3-09c each make "
-                + "this three and then four — if that is what happened, move this number with them.");
+            Is.EqualTo(3),
+            "the pause panel does not hold exactly Resume, Skills and Quit. M3-09c makes this four "
+                + "— if that is what happened, move this number with it.");
 
         Assert.That(
             prefab.GetComponentsInChildren<Button>(true).Length,
-            Is.EqualTo(3),
-            "the prefab holds a button that is neither the icon nor one of the panel's two.");
+            Is.EqualTo(4),
+            "the prefab holds a button that is neither the icon nor one of the panel's three.");
 
         // Keys, not English. ILocalizer has no implementation until M3-14a, and OfferCard set the
         // precedent one task ago — ADR-0012, ledger row 9. HudPresenter's remarks call the raw

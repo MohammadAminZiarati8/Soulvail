@@ -384,6 +384,36 @@ public sealed class SkillRunner
         return _cooldowns[index];
     }
 
+    /// <summary>
+    /// What the wait at <paramref name="index"/> actually is, in seconds, after CH §4.1's 40 %
+    /// floor — <c>CooldownRules.Effective(authored, live)</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The one expression, and the three readers that used to spell it out.</b>
+    /// <see cref="Fire"/> schedules <c>_readyAt</c> from it, <see cref="CooldownFraction"/> divides
+    /// by it, and M3-09b's Skills screen prints it. Two copies of a floor is how one of them stops
+    /// being the floor — this class's own argument for <c>CooldownRules</c> existing at all, one
+    /// level in.
+    /// </para>
+    /// <para>
+    /// <b>Seconds rather than <see cref="CooldownFraction"/>'s ratio, because CC §6.3 asks for
+    /// <em>"its cooldown"</em> on a screen where the tick is gated.</b> A radial fill under a
+    /// stopped simulation is a frozen ring saying nothing; the number is the readable form. The
+    /// alternative was the screen applying the floor itself, which is the second copy this member
+    /// exists to prevent.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public float EffectiveCooldownOf(int index)
+    {
+        Require(index);
+
+        return CooldownRules.Effective(_specs[index].Active.Cooldown, _cooldowns[index].Value);
+    }
+
     /// <summary>Whether the active at <paramref name="index"/> may fire right now.</summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="index"/> is not an owned active.
@@ -421,7 +451,7 @@ public sealed class SkillRunner
             return 0f;
         }
 
-        float cooldown = CooldownRules.Effective(_specs[index].Active.Cooldown, _cooldowns[index].Value);
+        float cooldown = EffectiveCooldownOf(index);
 
         // The floor has already answered zero, negative and NaN, so the only value left that cannot
         // be divided by is an infinite one — a stack that made the wait unmeasurable. There is still
@@ -805,8 +835,10 @@ public sealed class SkillRunner
         // Sampled here and held — see the class remarks. The floor is what stops a stack driving
         // this to zero or below (ADR-0008 clamps nothing), and it is taken from the *authored*
         // base rather than from Stat.Base so a node that re-based the cooldown could not raise its
-        // own floor with it.
-        float cooldown = CooldownRules.Effective(active.Cooldown, _cooldowns[index].Value);
+        // own floor with it. Through EffectiveCooldownOf rather than spelled out again, so the
+        // number this schedules, the number CooldownFraction divides by and the number the Skills
+        // screen prints cannot come apart.
+        float cooldown = EffectiveCooldownOf(index);
 
         _readyAt[index] = now + cooldown;
 

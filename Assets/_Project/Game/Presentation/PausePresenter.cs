@@ -99,6 +99,17 @@ namespace Soulvail.Game.Presentation
                  "without it the Skills button is taken off the panel rather than left dead.")]
         [SerializeField] private SkillsPresenter _skillsScreen;
 
+        [Tooltip("Up to CH §5.1's tree view (M3-09d). The panel behaves exactly as it does under " +
+                 "the Skills screen — it stays where it is and goes inert, because the pause is " +
+                 "held once, by this file.")]
+        [SerializeField] private Button _viewTree;
+
+        [Tooltip("The tree view itself. Dressed in Run.unity rather than on this prefab, for the " +
+                 "reason the Skills screen is — see OpenTree. Optional twice over: without it, and " +
+                 "for a class with no tree at all, the View Tree button is taken off the panel " +
+                 "rather than left dead (M3-09d rule 2).")]
+        [SerializeField] private TreeViewPresenter _treeScreen;
+
         [Tooltip("The icon's side in dp — GD §5.2's small top-right target. Applied at runtime for " +
                  "the reason SkillButton applies its own: a Scale-With-Screen-Size canvas measures " +
                  "in reference pixels, which are a different physical size on every phone. A guess " +
@@ -185,6 +196,7 @@ namespace Soulvail.Game.Presentation
             Wire(_resume, Close);
             Wire(_quit, Quit);
             Wire(_skills, OpenSkills);
+            Wire(_viewTree, OpenTree);
         }
 
         /// <exception cref="MissingReferenceException">The icon, the panel or a button is not dressed.</exception>
@@ -196,10 +208,15 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void Start()
         {
-            if (_icon == null || _panel == null || _resume == null || _quit == null || _skills == null)
+            if (_icon == null ||
+                _panel == null ||
+                _resume == null ||
+                _quit == null ||
+                _skills == null ||
+                _viewTree == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(PausePresenter)} is missing its icon, its panel or one of its three " +
+                    $"{nameof(PausePresenter)} is missing its icon, its panel or one of its four " +
                     "buttons. A pause screen that is only partly dressed stops the run and then " +
                     "offers no way back, which is indistinguishable from a crash.");
             }
@@ -228,6 +245,10 @@ namespace Soulvail.Game.Presentation
             HidePanel();
 
             RefreshIcon();
+
+            // And the View Tree button decided once before the first frame, so a panel opened on
+            // frame one is already right — RefreshPanel is what keeps it right after that.
+            RefreshPanel();
         }
 
         /// <remarks>
@@ -251,6 +272,7 @@ namespace Soulvail.Game.Presentation
             Unwire(_resume, Close);
             Unwire(_quit, Quit);
             Unwire(_skills, OpenSkills);
+            Unwire(_viewTree, OpenTree);
         }
 
         /// <remarks>
@@ -260,11 +282,19 @@ namespace Soulvail.Game.Presentation
         /// learning that holder's events. Runs at <c>timeScale</c> 0 because <c>Update</c> does.
         /// </para>
         /// <para>
-        /// <b>The panel follows the Skills screen the same way, and for the same reason</b>
-        /// (M3-09b). A poll rather than a callback handed over at <see cref="OpenSkills"/>: a
-        /// screen that is destroyed, never dressed, or closed by something this file did not ask
-        /// gives the panel back anyway, where a callback would leave three dead buttons over a
-        /// paused run with no way out of it.
+        /// <b>The panel follows both screens above it the same way, and for the same reason</b>
+        /// (M3-09b, M3-09d). A poll of <c>IsOpen</c> rather than a callback alone: a screen that is
+        /// destroyed, never dressed, or closed by something this file did not ask gives the panel
+        /// back anyway, where a callback on its own would leave four dead buttons over a paused run
+        /// with no way out of it.
+        /// </para>
+        /// <para>
+        /// <b>The tree view hands a callback in as well, and that is an addition rather than a
+        /// reversal</b> (M3-09d rule 5). It has two doors, and a poll cannot tell which one a screen
+        /// was opened by — so the callback says <em>which</em> door and this poll guarantees
+        /// <em>a</em> door. For this file the two converge on <see cref="RefreshPanel"/>, so what the
+        /// callback buys here is only that the panel comes back on the frame Close was tapped
+        /// rather than on the next one; from the level-up screen it is the whole mechanism.
         /// </para>
         /// </remarks>
         private void Update()
@@ -329,12 +359,13 @@ namespace Soulvail.Game.Presentation
 
             IsOpen = false;
 
-            // **Above the pause, and it is the only ordering this line has.** The screen above this
-            // one holds no pause of its own (M3-09b rule 10), so closing it is a canvas going down
-            // rather than a gate being released — but it is a canvas over a run that is about to be
-            // running again, and a Skills list left up over a live fight is the one way this
-            // sequence could strand the player.
+            // **Above the pause, and it is the only ordering these lines have.** Neither screen
+            // above this one holds a pause of its own (M3-09b rule 10, M3-09d rule 5), so closing
+            // one is a canvas going down rather than a gate being released — but it is a canvas over
+            // a run that is about to be running again, and a Skills list or a tree left up over a
+            // live fight is the one way this sequence could strand the player.
             CloseSkills();
+            CloseTree();
 
             // Checked rather than assumed: RunPause.Dispose releases unconditionally on the way out
             // of a run, so a scope torn down under this panel leaves nothing here to give back —
@@ -396,13 +427,61 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
+        /// Raises CH §5.1's tree view over this panel. The View Tree button's handler (M3-09d).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>It takes no pause and must not</b>, for <see cref="OpenSkills"/>'s reason: the pause is
+        /// already held by this file and <c>RunPause</c> throws on a second reason (M3-08a rule 12).
+        /// <b>The screen is reached the same way the Skills screen is</b> — a serialized field
+        /// dressed in <c>Run.unity</c>, because the two are separate root prefabs — and every
+        /// alternative was rejected there for reasons that have not changed.
+        /// </para>
+        /// <para>
+        /// <b>What is new is the callback</b> (M3-09d rule 5). This screen has a second door on the
+        /// level-up screen, and a poll cannot tell the two apart, so the tree takes each door's own
+        /// return and runs it from <c>Close</c>. Here that return is <see cref="RefreshPanel"/>,
+        /// which is the same method <see cref="Update"/> already calls once a frame — so the poll
+        /// stays the net M3-09b wrote it as, and the callback only moves the restore a frame earlier.
+        /// </para>
+        /// </remarks>
+        public void OpenTree()
+        {
+            if (!IsOpen || _quitting || _treeScreen == null || _treeScreen.IsOpen)
+            {
+                return;
+            }
+
+            _treeScreen.Open(OnTreeClosed);
+
+            // Now rather than on the next Update, so the panel underneath cannot take a second tap
+            // in the same EventSystem pass that opened the screen — OpenSkills' reason.
+            RefreshPanel();
+        }
+
+        /// <summary>The tree gave the panel back. Rule 5's callback, and this door's whole half of it.</summary>
+        private void OnTreeClosed()
+        {
+            RefreshPanel();
+        }
+
+        /// <summary>Puts the tree view away, if there is one and it is up.</summary>
+        private void CloseTree()
+        {
+            if (_treeScreen != null && _treeScreen.IsOpen)
+            {
+                _treeScreen.Close();
+            }
+        }
+
+        /// <summary>
         /// Ends the session and goes back to the Menu, leaving the run on disk.
         /// </summary>
         /// <remarks>
         /// <b>It closes before it loads, and <c>RunPause.Dispose</c> is the backstop rather than the
         /// mechanism</b> (M3-08b rule 12's reasoning): VContainer orders no two disposals, so this
         /// file must not be the only thing that restores a zeroed <c>timeScale</c>, and it must not
-        /// skip doing so either. The latch and both buttons go dead first, so a second tap arriving
+        /// skip doing so either. The latch and every button go dead first, so a second tap arriving
         /// while the scene is still coming in cannot start a second load — <c>MenuPresenter</c>'s
         /// guard, with its sibling taken away for the same reason.
         /// </remarks>
@@ -526,16 +605,39 @@ namespace Soulvail.Game.Presentation
         /// top one (M3-09b).
         /// </summary>
         /// <remarks>
-        /// The three conditions are three different failures. <c>IsOpen</c> false is a panel nobody
+        /// <para>
+        /// The four conditions are four different failures. <c>IsOpen</c> false is a panel nobody
         /// can see; <c>_quitting</c> is the latch <see cref="Quit"/> sets, which a frame of this
-        /// must not undo; and a Skills screen up is M3-09b's <c>Open_FromThePausePanel</c>, where
-        /// the panel underneath has to stop taking taps without a scrim of its own.
+        /// must not undo; and either screen above being up is M3-09b's
+        /// <c>Open_FromThePausePanel</c>, where the panel underneath has to stop taking taps
+        /// without a scrim of its own.
+        /// </para>
+        /// <para>
+        /// <b>It also decides whether View Tree is offered at all</b> (M3-09d rule 2), which is a
+        /// different question from whether it is live: a class with no tree gets no button, because
+        /// a button onto a blank screen is worse than no button — and that is every run in the build
+        /// until M3-12 authors one. Asked once a frame rather than at <c>Start</c>, because the run
+        /// has not necessarily begun by then: <c>RunTicker</c> is an <c>IStartable</c> and Unity
+        /// orders no two <c>Start</c>s either. <c>TreeViewPresenter.HasTree</c> is a field read after
+        /// its first successful resolve, so the cost of asking is a Unity null check.
+        /// </para>
         /// </remarks>
         private void RefreshPanel()
         {
             bool skillsUp = _skillsScreen != null && _skillsScreen.IsOpen;
+            bool treeUp = _treeScreen != null && _treeScreen.IsOpen;
 
-            SetPanelInteractable(IsOpen && !_quitting && !skillsUp);
+            if (_viewTree != null)
+            {
+                bool offered = _treeScreen != null && _treeScreen.HasTree;
+
+                if (_viewTree.gameObject.activeSelf != offered)
+                {
+                    _viewTree.gameObject.SetActive(offered);
+                }
+            }
+
+            SetPanelInteractable(IsOpen && !_quitting && !skillsUp && !treeUp);
         }
 
         private void SetPanelInteractable(bool value)
@@ -553,6 +655,11 @@ namespace Soulvail.Game.Presentation
             if (_skills != null)
             {
                 _skills.interactable = value;
+            }
+
+            if (_viewTree != null)
+            {
+                _viewTree.interactable = value;
             }
         }
 

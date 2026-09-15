@@ -102,6 +102,12 @@ namespace Soulvail.Game.Composition
                  "plays the same fight and its pause panel simply does not offer the button.")]
         [SerializeField] private SkillsPresenter _skillsPresenter;
 
+        [Tooltip("The tree view: CH §5.1's three branches on their own canvas above every other " +
+                 "screen, because it is the only one with two doors into it. Optional on the pause " +
+                 "screen's terms — a scene without one plays the same fight and neither door " +
+                 "offers its button.")]
+        [SerializeField] private TreeViewPresenter _treeViewPresenter;
+
         [Tooltip("CC §6.3's one-time callout, on its own canvas under the pause icon. Optional on " +
                  "the same terms as everything below it — a scene without one plays the same fight " +
                  "and never tells the player about Manual. Its flag lives on the profile, so a run " +
@@ -312,6 +318,26 @@ namespace Soulvail.Game.Composition
             if (_skillsPresenter != null)
             {
                 builder.RegisterComponent(_skillsPresenter);
+            }
+
+            // Optional, and its absence costs exactly what it looks like: this screen sends nothing
+            // at all (M3-09d rule 1), holds no pause (rule 5) and renders no events (rule 10), so a
+            // scene dressed without it plays the same fight and neither door offers its button —
+            // both take it off rather than leaving a dead one, which is PausePresenter.Start's rule
+            // for the Skills button applied twice.
+            //
+            // **It is the first screen with two doors, and both links live in Run.unity** for the
+            // reason the Skills screen's does: the pause panel, the level-up screen and this are
+            // three separate root prefabs, so a cross-prefab reference has to be dressed in the
+            // scene either way and an optional [Inject] would stop the whole scope composing.
+            //
+            // It stays optional rather than guarded on the Skills screen's terms, and with a
+            // sharper version of the same argument: nothing in Data/Trees ships until M3-12, so
+            // `TryGetTreeFor` answers false for every run in the current build and there is no tree
+            // for this screen to draw even when it is dressed.
+            if (_treeViewPresenter != null)
+            {
+                builder.RegisterComponent(_treeViewPresenter);
             }
 
             // Optional on the same terms, and the one here whose absence costs the *player* the

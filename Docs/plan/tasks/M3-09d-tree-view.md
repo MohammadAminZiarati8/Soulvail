@@ -119,4 +119,98 @@ namespace Soulvail.Game.Controls
 
 ## As built
 
-_Filled at merge._
+**Built as specced**, with four deviations, one of which is a ruling on a contradiction between this
+spec and a shipped decision.
+
+**1 — `Open(Action onClosed)` ships, and M3-09b's poll stays underneath it as the net.** The spec's
+rule 5 and M3-09b's *As built* disagreed on the record: M3-09b rejected a callback for the Skills
+screen because a screen that is destroyed, never dressed, or closed by something the caller did not
+ask gives the panel back anyway, where a callback leaves dead buttons over a paused run with no way
+out. **Both are right about different halves, because two doors is a different problem from one.** A
+poll knows the screen went down and *not which way it came in*; a callback knows which door and
+nothing about a door that is never told. So the callback answers *which*, the poll guarantees *a*,
+and neither is load-bearing alone:
+
+- `TreeViewPresenter.Open` stores the callback, `Close` hides first and then invokes it, clearing it
+  before the call. A second `Open` is **refused** rather than re-pointed — replacing a live callback
+  would strand whichever door is currently waiting.
+- `PausePresenter` hands in `OnTreeClosed`, which is `RefreshPanel` — the same method `Update`
+  already calls once a frame with `treeUp` beside `skillsUp`. So here the callback buys only that
+  the panel comes back on the frame Close was tapped rather than the next one, which is the argument
+  `OpenSkills` already makes about a second tap in one `EventSystem` pass.
+- `LevelUpPresenter` hands in `OnTreeClosed`, which unveils, and `Update` carries the net:
+  `if (_veiled && (_treeScreen == null || !_treeScreen.IsOpen)) OnTreeClosed();`. There the poll is
+  not a nicety — a level-up screen left veiled is a stopped game showing nothing at all.
+- `Close_GivesTheDoorBackEvenWithNoCallback` is the row that reddens if either half is dropped: it
+  nulls `_onClosed` by reflection and closes the screen anyway, from both doors.
+- **Every shipped comment that claimed the other was rewritten.** `PausePresenter.Update`'s remark
+  now says the poll is the net under a callback rather than the mechanism instead of it, which is
+  the M3-09a Deviation 2 mistake M3-09c had to go and fix, not repeated.
+
+**2 — the canvas sorts at 110, and it did not have to.** `LevelUpPresenter` drops its root's alpha
+**and** its `blocksRaycasts` before opening this, so an alpha-0 canvas at 100 draws nothing and takes
+no touches: 70 would have worked today. It sorts at 110 anyway, because that would have been a
+promise made in another file about its *runtime state* where a sorting order is a fact about *this
+asset*, and the failure it would produce — a tree drawn under the cards on a stopped game — is the
+family this project keeps refusing. The rule it keeps is one sentence rather than six numbers: **a
+screen sits above every screen it can be opened from.** HUD 0 · hint 40 · pause 50 · Skills 60 ·
+level-up 100 · tree 110.
+
+**3 — `HideScreen` split, and nothing redraws on the way back.** Rule 6's *hidden, not destroyed*
+needed the half of `LevelUpPresenter.HideScreen` that drops alpha and raycasts without the half that
+hides every card, so it is now `Veil()` plus a card loop. Coming back is `ShowScreen()` and
+**explicitly not `Draw`** — repainting would re-arm cards that a tap in the same frame had
+deliberately killed and would relatch `_choosing`, which is M3-08b rule 5's failure arriving through
+a new door. `LevelUp_OpensAndReturns` asserts the same ids and the same `interactable` flags across
+the round trip, and that `OfferPresented` was published exactly once.
+
+**4 — three files outside the Files table, each named rather than absorbed.**
+
+- **`Tests/Core/Progression/SkillTreeTests.cs`** took the three `State_*` rows. There is no
+  `RunStateTests`, and M3-09b put its `RunState` row in `SkillRunnerTests` beside the thing it
+  delegates to; availability delegates to `SkillTree`, so this is the same rule applied again. A test
+  cannot build a `RunState` — the constructor is `internal` with no `InternalsVisibleTo` (AR §18.2) —
+  so the rows go through a real `RunSession` over a restored `RunSnapshot`, which meant the fixture
+  grew a `StartRun`, a `Husk()` and a `Mode()` it had never needed.
+- **`Tests/Game/Presentation/PausePresenterTests.cs`**: `Panel_HasResumeSkillsAndQuit` was **renamed
+  in place** to `Panel_HasResumeSkillsTreeAndQuit`, its two counts moved to **4 and 5**, and the
+  comment M3-09a wrote pointing at the wrong task (and M3-09b corrected) now reads as history rather
+  than as an obligation. It neither adds nor removes a row — M3-09b's own precedent.
+- **`Scenes/Run.unity`** was dressed: the prefab instance, the `SceneRoots` entry, and **three**
+  serialized references rather than one — `RunScope._treeViewPresenter`, `PausePresenter._treeScreen`
+  and `LevelUpPresenter._treeScreen`. 170 insertions, zero deletions, where the last three tasks were
+  110 for the same reason at one reference.
+
+**Two things ruled inside the Files table that are worth reading before the next screen.**
+
+**The float doors fall back rather than leaving the authored layout alone, and they fall back
+differently from each other.** `PausePresenter.Place` and `LevelUpPresenter.Place` both leave the
+prefab's layout alone on a non-finite dp field; that answer is unavailable here, because every cell
+is a clone made on first open and *leave it alone* is twenty-seven cells stacked on the template's
+rect. So `_cellHeightDp` takes `DefaultCellHeightDp` (`FirstActiveHint.Dwell`'s answer) because a
+cell height has no honest zero, and `_cellGapDp` takes 0 because cells touching is a layout rather
+than a fault. `Layout_IgnoresANonFiniteDpField` asserts the fallback produces the *identical* rects,
+not merely finite ones. **The third door the spec's parenthetical mentioned — column width — does not
+exist**: the three columns are authored `RectTransform`s on the prefab, which is what
+`_branchColumns` being a serialized array means, so nothing here does horizontal arithmetic.
+
+**`TreeNodeView.Frame` throws on an unknown `NodeState` and `TreeNodeView.Tint` does not.** The two
+enums differ: `SkillKind` is CH §4's closed four, validated at authoring time and shared with
+`OfferCard`, so a fallback there is one answer to a question settled elsewhere. `NodeState` is this
+file's own and **M6-02's Banish is already named as the task that adds a member** — a new state with
+no colour would draw as *locked*, which is a node the player owns reading as one they cannot reach,
+silently. `PlayerStats.Resolve`'s rule, and `Show_RefusesNothingToDrawAndNoStateToDrawItIn` is the row.
+
+**Rule 8's seven colours.** `TreeNodeView` carries three state colours of its own plus CH §4's four
+kind tints **copied value for value from `OfferCard`**, and `Tree_TintsByKind` asserts the two files
+agree field for field — so ledger row 6's owner inherits one answer per kind rather than two that
+have quietly drifted. Nine predicted readers is now seven predicted and two real.
+
+**Tests: 19 named rows + 3 implied guards + 1 the ruling owes = 23, and the suite moved 1 528 → 1 551
+exactly.** 16 rows in `TreeViewPresenterTests`, 3 in `SkillTreeTests`; the guards are a null row on
+the one public constructor, `TreeNodeView.Show`'s two refusals, and one non-finite row covering both
+`float` doors; the twenty-third is `Close_GivesTheDoorBackEvenWithNoCallback`, which exists because
+deviation 1 is a ruling and a ruling with no red row is a paragraph.
+
+**Ledger rows 9, 6 and 4 all move and none closes** — recorded in the ROADMAP's table and in
+PROGRESS → *Where the rules live*, rather than left for M3-15 to recount.

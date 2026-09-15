@@ -9,6 +9,7 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -37,6 +38,13 @@ public sealed class SkillTreeTests
 {
     private const string OathboundId = "character.oathbound";
 
+    /// <summary>What <see cref="StartRun"/> needs beyond a tree: a mode, a roster and an arena.</summary>
+    private const string ModeId = "mode.test";
+
+    private const string HuskId = "enemy.husk";
+
+    private const string ArenaId = "arena.pillars";
+
     /// <summary>The Oathbound's authored damage. Every effect row's arithmetic starts here.</summary>
     private const float WeaponDamage = 13f;
 
@@ -44,7 +52,16 @@ public sealed class SkillTreeTests
     private const float MoveSpeed = 3f;
     private const int EnemyCapacity = 8;
 
+    /// <summary>The two capacities <c>RunSession</c>'s constructor wants beyond the enemy one.</summary>
+    private const int DeviceCap = 8;
+
+    private const int ProjectileCapacity = 8;
+
     private const float Tolerance = 1e-3f;
+
+    /// <summary>A fixed instant, so a resumed run's clock is not the machine's.</summary>
+    private static readonly DateTimeOffset Instant =
+        DateTimeOffset.FromUnixTimeSeconds(1_700_000_000L);
 
     /// <summary>Every position of the 27-node tree, so a row can size a buffer by it.</summary>
     private const int FullTreeNodes = 27;
@@ -683,15 +700,189 @@ public sealed class SkillTreeTests
             "Tree must not be public — like Combat, Motor, Enemies, Projectiles, Progression and "
                 + "Effects.");
 
-        // And the three reads that stand in for it are.
+        // And the four reads that stand in for it are — the fourth added by M3-09d, whose tree view
+        // needed availability and got a read rather than the handle.
         Assert.That(typeof(RunState).GetProperty("TakenNodeCount"), Is.Not.Null);
         Assert.That(typeof(RunState).GetProperty("IsTreeFull"), Is.Not.Null);
         Assert.That(typeof(RunState).GetProperty("TakenNodeIds"), Is.Not.Null);
+        Assert.That(typeof(RunState).GetMethod("IsNodeAvailable"), Is.Not.Null);
+    }
+
+    // ---- RunState.IsNodeAvailable (M3-09d rule 3) -----------------------------------------------
+    //
+    // Here rather than in a RunStateTests that does not exist, and beside the object it delegates
+    // to — M3-09b's precedent, which put `State_ExposesCooldownSeconds` in `SkillRunnerTests` for
+    // the same reason. A test cannot build a `RunState` (the constructor is `internal` and
+    // `Soulvail.Tests.Core` has no `InternalsVisibleTo`, AR §18.2), so these three go through a real
+    // `RunSession` over a restored `RunSnapshot`, which is the only door there is.
+
+    [Test]
+    public void State_AnswersAvailability()
+    {
+        ContentId tierOne = Id(TreeRulesTests.Node('a', 1, 'a'));
+        ContentId tierTwo = Id(TreeRulesTests.Node('a', 2, 'a'));
+        ContentId tierThree = Id(TreeRulesTests.Node('a', 3, 'a'));
+
+        RunSession fresh = StartRun();
+
+        // A fresh tree offers its first tiers and nothing else: tier 2 wants one node of its branch
+        // taken and tier 3 wants two (CH §5, tier N requires N − 1).
+        Assert.That(fresh.State.IsNodeAvailable(tierOne), Is.True);
+        Assert.That(fresh.State.IsNodeAvailable(tierTwo), Is.False);
+        Assert.That(fresh.State.IsNodeAvailable(tierThree), Is.False);
+
+        // The same tree with branch a's first tier already owned, through the door a resumed run
+        // uses — `SkillTree.Restore` replays the takes against the same gating, so this is the run
+        // the player would have after two picks rather than a state a test assembled.
+        RunSession taken = StartRun(
+            level: 3,
+            taken: new[] { TreeRulesTests.Node('a', 1, 'a'), TreeRulesTests.Node('a', 1, 'b') });
+
+        Assert.That(
+            taken.State.IsNodeAvailable(tierTwo),
+            Is.True,
+            "Two nodes of branch a are taken and tier 2 asks for one, so the read is a live "
+                + "question about the run rather than a fact about the tree (M3-09d rule 3).");
+
+        // And a node already owned is not *available*, which is what lets the tree view ask its two
+        // questions in either order and get one answer.
+        Assert.That(taken.State.IsNodeAvailable(tierOne), Is.False, "A taken node reads available.");
+
+        // Nothing about the other branches moved, which is what "in that branch" means.
+        Assert.That(taken.State.IsNodeAvailable(Id(TreeRulesTests.Node('b', 2, 'a'))), Is.False);
+    }
+
+    [Test]
+    public void State_AvailabilityWithNoTree()
+    {
+        // Every run in the build until M3-12: TryGetTreeFor answers false, RunState.Tree is null,
+        // and the read has to answer rather than throw — nothing downstream should have to ask
+        // which kind of run it is in (M3-09d rules 2, 3).
+        RunSession session = StartRun(withTree: false);
+
+        Assert.That(session.State.TakenNodeIds, Is.Empty, "The fixture's premise: no tree.");
+
+        Assert.That(
+            () => session.State.IsNodeAvailable(Id(TreeRulesTests.Node('a', 1, 'a'))),
+            Throws.Nothing);
+
+        Assert.That(session.State.IsNodeAvailable(Id(TreeRulesTests.Node('a', 1, 'a'))), Is.False);
+        Assert.That(session.State.IsNodeAvailable(default), Is.False);
+    }
+
+    [Test]
+    public void State_AvailabilityForAStranger()
+    {
+        RunSession session = StartRun();
+
+        // SkillTree.IsAvailable's own rule, carried through the read: a caller deciding how to draw
+        // a candidate wants an answer, and an id this tree does not hold is not available. A throw
+        // here would make an authoring mistake in one node a crash on a screen showing twenty-seven.
+        Assert.That(() => session.State.IsNodeAvailable(Id("skill.ghost")), Throws.Nothing);
+
+        Assert.That(session.State.IsNodeAvailable(Id("skill.ghost")), Is.False);
+        Assert.That(session.State.IsNodeAvailable(default), Is.False);
     }
 
     // ---- Fixture --------------------------------------------------------------------------------
 
     private static ContentId Id(string value) => new ContentId(value);
+
+    /// <summary>
+    /// A real run over the 27-node tree, because a test cannot build a <c>RunState</c> — the
+    /// constructor is <c>internal</c> and this assembly has no <c>InternalsVisibleTo</c> (AR §18.2).
+    /// </summary>
+    /// <remarks>
+    /// Resumed rather than fresh, for <c>SkillRunnerTests.StartSession</c>'s reason: a saved
+    /// <c>TakenNodeIds</c> is the only door a test has for putting nodes into a run without playing
+    /// one. <paramref name="level"/> has to account for what is taken, or M3-08a rule 9's identity
+    /// refuses the snapshot.
+    /// </remarks>
+    private RunSession StartRun(int level = 1, string[] taken = null, bool withTree = true)
+    {
+        SkillTreeSpec tree = TreeRulesTests.FullTree();
+
+        var catalog = new ContentCatalog(
+            new[] { Character() },
+            new[] { Husk() },
+            new[] { Mode() },
+            withTree ? TreeRulesTests.FullSkills() : Array.Empty<SkillSpec>(),
+            withTree ? new[] { tree } : Array.Empty<SkillTreeSpec>());
+
+        var random = new FixedRandom(7, new[] { 0.1f, 0.9f, 0.3f, 0.7f, 0.5f });
+        var clock = new FixedClock(Instant);
+
+        var session = new RunSession(
+            catalog,
+            random,
+            _events,
+            _intents,
+            new RunRecorder(random, clock, _events),
+            EnemyCapacity,
+            DeviceCap,
+            ProjectileCapacity);
+
+        var takenIds = new ContentId[taken?.Length ?? 0];
+
+        for (int i = 0; i < takenIds.Length; i++)
+        {
+            takenIds[i] = Id(taken[i]);
+        }
+
+        var snapshot = new RunSnapshot(
+            RunSnapshot.CurrentVersion,
+            Id(ModeId),
+            Id(OathboundId),
+            random.Seed,
+            1,
+            new RandomState(101, 102, 103, 104, 105),
+            90f,
+            0f,
+            120f,
+            Instant,
+            level,
+            0f,
+            0,
+            takenIds,
+            new ContentId[SkillRunner.MaxManualSlots]);
+
+        session.Start(new RunConfig(
+            Id(ModeId),
+            Id(OathboundId),
+            random.Seed,
+            1,
+            SpawnPlan.Empty,
+            snapshot));
+
+        return session;
+    }
+
+    private static EnemySpec Husk() => new EnemySpec(
+        Id(HuskId),
+        new LocKey("enemy.husk.name"),
+        maxHp: 10f,
+        moveSpeed: 2f,
+        targetPriority: 1,
+        threatCost: 4,
+        xpValue: 12f,
+        isElite: false,
+        contactDamage: 8f,
+        reach: 1.2f,
+        windupTime: 0.4f,
+        recoverTime: 0.6f,
+        aggroRange: 30f,
+        behaviour: EnemyBehaviourKind.Static);
+
+    private static ModeSpec Mode() => new ModeSpec(
+        Id(ModeId),
+        new LocKey("mode.test.name"),
+        startingStage: 1,
+        isEndless: true,
+        finalStage: 0,
+        Scalings.Design(),
+        Scalings.Xp(),
+        new[] { new RosterEntry(Id(HuskId), 1) },
+        new[] { Id(ArenaId) });
 
     /// <summary>The 27-node tree over a registry that can answer for <c>ModifyStat</c>.</summary>
     private SkillTree FullTree() => TreeOver(TreeRulesTests.FullTree(), TreeRulesTests.FullSkills());

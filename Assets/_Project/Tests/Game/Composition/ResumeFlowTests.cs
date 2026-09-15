@@ -485,13 +485,16 @@ public sealed class ResumeFlowTests
     {
         var loader = new SceneLoader();
         var store = new StubStore();
-        HapticsSettings haptics = HapticsSettings.FromStore(store);
+
+        // ProfileStore rather than HapticsSettings as of M3-09c: boot hands the loaded profile to
+        // the one object that holds a whole one, not to one field's holder.
+        var profiles = new ProfileStore(store);
         var saved = new SavedRun();
 
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, haptics, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, haptics, saved));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved));
         Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, haptics, null));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null));
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------
@@ -516,7 +519,7 @@ public sealed class ResumeFlowTests
                     + "Menu over it. Open any other scene and re-run.");
         }
 
-        var flow = new BootFlow(new SceneLoader(), store, HapticsSettings.FromStore(store), saved);
+        var flow = new BootFlow(new SceneLoader(), store, new ProfileStore(store), saved);
 
         try
         {

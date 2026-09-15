@@ -446,15 +446,16 @@ public sealed class PausePresenterTests
         var panel = (CanvasGroup)so.FindProperty("_panel").objectReferenceValue;
 
         // **Rule 6, and the row two later tasks each extend by one.** M3-09b added Skills and
-        // M3-09c adds View Tree, as a small edit to this prefab and this file each. A button that
-        // does nothing is worse than a button that is not there yet, and shipping the later ones
-        // dead now would make those tasks look like they did nothing.
+        // **M3-09d** adds View Tree, as a small edit to this prefab and this file each — M3-09c
+        // is profile v2 and touches neither, whatever M3-09a's original comment said. A button
+        // that does nothing is worse than a button that is not there yet, and shipping the later
+        // one dead now would make that task look like it did nothing.
         Button[] panelButtons = panel.GetComponentsInChildren<Button>(true);
 
         Assert.That(
             panelButtons.Length,
             Is.EqualTo(3),
-            "the pause panel does not hold exactly Resume, Skills and Quit. M3-09c makes this four "
+            "the pause panel does not hold exactly Resume, Skills and Quit. M3-09d makes this four "
                 + "— if that is what happened, move this number with it.");
 
         Assert.That(

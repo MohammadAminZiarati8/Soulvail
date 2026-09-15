@@ -414,6 +414,114 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b817cf5d63066e94da3d92350318b5ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.LevelUpPresenter
+--- !u!1001 &742289267
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384218423533218280, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8881531732162976738, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+      propertyPath: m_Name
+      value: FirstActiveHint
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+--- !u!114 &742289268 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8364895359245986287, guid: c4bfaadc41865044ab3abd01da0c564e, type: 3}
+  m_PrefabInstance: {fileID: 742289267}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1208058f1043445468e0e6db916479bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.FirstActiveHint
 --- !u!1 &894525613
 GameObject:
   m_ObjectHideFlags: 0
@@ -485,6 +593,7 @@ MonoBehaviour:
   _levelUpPresenter: {fileID: 529708800}
   _pausePresenter: {fileID: 1924286364}
   _skillsPresenter: {fileID: 385136883}
+  _firstActiveHint: {fileID: 742289268}
   _debugOverlay: {fileID: 5239836669165301809}
   _camera: {fileID: 1167978316}
   _reticle: {fileID: 2001746810}
@@ -1457,3 +1566,4 @@ SceneRoots:
   - {fileID: 529708799}
   - {fileID: 1924286363}
   - {fileID: 385136882}
+  - {fileID: 742289267}

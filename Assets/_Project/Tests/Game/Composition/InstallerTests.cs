@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
@@ -275,9 +276,10 @@ public sealed class InstallerTests
     /// </summary>
     /// <remarks>
     /// As of M2-13b the toggle is built over <see cref="ISaveStore"/> rather than read out of
-    /// <c>PlayerPrefs</c>, which is what makes it safe to resolve here at all: constructing it
-    /// touches no disk and no registry, and it starts at GD §16.3's default until <c>BootFlow</c>
-    /// hands it a loaded profile. Still never written — a flip here would put a file under
+    /// <c>PlayerPrefs</c>, and as of M3-09c over <c>ProfileStore</c> rather than the port directly —
+    /// which is what makes it safe to resolve here at all: constructing either touches no disk and
+    /// no registry, and it starts at GD §16.3's default until <c>BootFlow</c> hands the store a
+    /// loaded profile. Still never written — a flip here would put a file under
     /// <c>persistentDataPath</c> on the machine running the tests.
     /// </remarks>
     [Test]
@@ -296,6 +298,16 @@ public sealed class InstallerTests
         Assert.That(settings.Enabled, Is.True, "GD §16.3's default, before a profile has been applied.");
         Assert.That(container.Resolve<HapticsSettings>(), Is.SameAs(settings),
             "One toggle, or the listener reads a different answer from the one an options screen set.");
+
+        // **And the profile behind it is one object for the app's life** (M3-09c rule 4). A store
+        // resolved fresh per request would lose the hint's flag between the level-up that spent it
+        // and the boundary that saved it, and would do so silently — the run would simply show the
+        // callout again next time.
+        var profiles = container.Resolve<ProfileStore>();
+
+        Assert.That(profiles, Is.Not.Null);
+        Assert.That(container.Resolve<ProfileStore>(), Is.SameAs(profiles));
+        Assert.That(profiles.Current.Version, Is.EqualTo(PlayerProfile.CurrentVersion));
     }
 
     /// <summary>

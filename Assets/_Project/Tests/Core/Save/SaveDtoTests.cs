@@ -393,9 +393,70 @@ public sealed class SaveDtoTests
     }
 
     [Test]
+    public void Profile_RecordsTheNewField()
+    {
+        var profile = new PlayerProfile(2, hapticsEnabled: false, seenFirstActiveHint: true);
+
+        // All three read back, and the two bools are set the opposite way round from each other —
+        // a constructor that assigned one field to both would pass a row where they agree.
+        Assert.That(profile.Version, Is.EqualTo(2));
+        Assert.That(profile.HapticsEnabled, Is.False);
+        Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Profile_DefaultHasNotSeenIt()
+    {
+        PlayerProfile profile = PlayerProfile.Default;
+
+        // A player who has never had a profile has never been shown the hint, which is true rather
+        // than convenient — and it is the answer a fresh install gets, because a missing file is
+        // substituted with this and never written back.
+        Assert.That(profile.SeenFirstActiveHint, Is.False);
+        Assert.That(profile.Version, Is.EqualTo(2), "v2 is what this build writes (M3-09c rule 2).");
+    }
+
+    [Test]
+    public void Profile_WithHelpersMoveOneFieldEach()
+    {
+        var profile = new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true);
+
+        PlayerProfile haptics = profile.WithHaptics(false);
+
+        // **The row that would have caught M3-09c rule 3's bug at the DTO.** A helper that rebuilt
+        // the struct from its one argument would leave the flag at the constructor's default, and
+        // the hint would come back for a player who had already dismissed it.
+        Assert.That(haptics.HapticsEnabled, Is.False);
+        Assert.That(haptics.SeenFirstActiveHint, Is.True, "the other field moved with it.");
+
+        // And the mirror, because a pair where only one is right is the same bug from the other end.
+        var seen = new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false);
+
+        PlayerProfile hint = seen.WithSeenFirstActiveHint(true);
+
+        Assert.That(hint.SeenFirstActiveHint, Is.True);
+        Assert.That(hint.HapticsEnabled, Is.False, "the other field moved with it.");
+    }
+
+    [Test]
+    public void Profile_WithHelpersKeepTheVersion()
+    {
+        var profile = new PlayerProfile(2, hapticsEnabled: true, seenFirstActiveHint: false);
+
+        // Not CurrentVersion — the version a profile carries is the format it was *read* in, and a
+        // helper that quietly stamped the current one would turn a decoded v1 into a v2 document
+        // without the step that makes it one.
+        Assert.That(profile.WithHaptics(false).Version, Is.EqualTo(2));
+        Assert.That(profile.WithSeenFirstActiveHint(true).Version, Is.EqualTo(2));
+    }
+
+    [Test]
     public void Profile_VersionBelowOne_Throws()
     {
-        Assert.Catch<ArgumentOutOfRangeException>(() => new PlayerProfile(0, hapticsEnabled: true));
+        Assert.Catch<ArgumentOutOfRangeException>(
+            () => new PlayerProfile(0, hapticsEnabled: true, seenFirstActiveHint: false));
     }
 
     [Test]
@@ -409,8 +470,25 @@ public sealed class SaveDtoTests
 
         // Pinned rather than remembered. ADR-0007 names Shards and unlocks, and they arrive with
         // the mechanics that own them — a field written at v1 that nothing reads is a field every
-        // later migration carries for ever.
-        Assert.That(properties, Is.EqualTo(new[] { "HapticsEnabled", "Version" }));
+        // later migration carries for ever. **SeenFirstActiveHint joined at v2 with its reader and
+        // its migration step in the same PR**, which is the bar this row exists to hold every
+        // future field to.
+        Assert.That(
+            properties,
+            Is.EqualTo(new[] { "HapticsEnabled", "SeenFirstActiveHint", "Version" }));
+    }
+
+    [Test]
+    public void Profile_HasNoConstructorThatOmitsAField()
+    {
+        ConstructorInfo[] constructors = typeof(PlayerProfile).GetConstructors(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // Rule 3, pinned at the only door that can reopen it. A two-argument overload kept "for
+        // convenience" would compile at every existing call site on the day a third field lands and
+        // silently reset it — which is the exact bug v2 exists to have fixed rather than repeated.
+        Assert.That(constructors, Has.Length.EqualTo(1));
+        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(3));
     }
 
     [Test]

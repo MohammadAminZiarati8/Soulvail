@@ -566,27 +566,53 @@ public readonly struct RunSnapshot
 }
 
 /// <summary>
-/// What survives every run: the player's own settings, and — when the mechanics that own them
-/// exist — their Shards and unlocks.
+/// What survives every run: the player's own settings, what the game has already shown them, and —
+/// when the mechanics that own them exist — their Shards and unlocks.
 /// </summary>
 /// <remarks>
-/// <b>One setting at v1, and Shards are not in it.</b> ADR-0007 names Shards and unlocks, and they
-/// arrive with M4-06 and M6-08; reserving fields for them now would put two numbers nothing reads
-/// into the first format every later migration has to carry. <see cref="HapticsEnabled"/> is here
-/// because it has a consumer today: <c>HapticsSettings</c> currently persists through
-/// <c>PlayerPrefs</c> as an explicit stopgap, and M2-13b is what moves it onto <c>ISaveStore</c>.
+/// <para>
+/// <b>Two fields at v2, and Shards are still not among them.</b> ADR-0007 names Shards and unlocks,
+/// and they arrive with M4-07 and M6-09; reserving fields for them now would put two numbers nothing
+/// reads into a format every later migration has to carry. <see cref="HapticsEnabled"/> shipped at
+/// v1 because it had a consumer that day; <see cref="SeenFirstActiveHint"/> ships at v2 for the same
+/// reason, and no field ships before one.
+/// </para>
+/// <para>
+/// <b>The two fields are different kinds of fact and belong in the same file anyway.</b>
+/// <see cref="HapticsEnabled"/> is something the player <em>chose</em>;
+/// <see cref="SeenFirstActiveHint"/> is something the game <em>noticed</em>. What they have in
+/// common is the only thing this format is about: they outlive a run. CC §6.3's <em>"Once. Never
+/// again."</em> is a claim about an install rather than about a run, and that is the whole reason
+/// the hint's flag is here rather than on a presenter (M3-09c rule 11).
+/// </para>
+/// <para>
+/// <b>A writer that knows one field must never author the whole struct.</b> That is what the two
+/// <c>With</c> helpers are for, and it is the rule this format grew teeth for at v2: until then
+/// <c>HapticsSettings</c> persisted with <c>new PlayerProfile(CurrentVersion, value)</c>, which is
+/// correct for a record with one field in it and silently destructive the moment there are two. The
+/// live profile now has exactly one holder and one writer — <c>ProfileStore</c> — and these helpers
+/// are what make the right thing the easy thing (M3-09c rule 3).
+/// </para>
 /// </remarks>
 public readonly struct PlayerProfile
 {
     /// <summary>The format this build writes.</summary>
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     /// <param name="version">The format the profile is written in.</param>
     /// <param name="hapticsEnabled">Whether the device is allowed to buzz (GD §16.3).</param>
+    /// <param name="seenFirstActiveHint">
+    /// Whether CC §6.3's one-time callout has already been shown. v2.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="version"/> is below 1 — the value <c>default(PlayerProfile)</c> carries.
     /// </exception>
-    public PlayerProfile(int version, bool hapticsEnabled)
+    /// <remarks>
+    /// <b>There is deliberately no overload that omits a field.</b> One would compile at every
+    /// existing call site on the day a third field lands and quietly reset it, which is exactly the
+    /// bug v2 exists to have fixed rather than repeated.
+    /// </remarks>
+    public PlayerProfile(int version, bool hapticsEnabled, bool seenFirstActiveHint)
     {
         if (version < 1)
         {
@@ -599,6 +625,7 @@ public readonly struct PlayerProfile
 
         Version = version;
         HapticsEnabled = hapticsEnabled;
+        SeenFirstActiveHint = seenFirstActiveHint;
     }
 
     /// <summary>The format this profile was written in. 0 for <c>default(PlayerProfile)</c>.</summary>
@@ -608,7 +635,35 @@ public readonly struct PlayerProfile
     public bool HapticsEnabled { get; }
 
     /// <summary>
-    /// A profile for a player who has never had one: the current format, GD §16.3's defaults.
+    /// Whether the player has already been told that skills can be set to Manual — CC §6.3's
+    /// <em>"Once. Never again."</em> v2.
+    /// </summary>
+    /// <remarks>
+    /// Spent when the callout is <em>shown</em> rather than when it is dismissed (M3-09c rule 10):
+    /// a player who saw it and died two seconds later has seen it, and an app killed mid-callout
+    /// must not show it again.
+    /// </remarks>
+    public bool SeenFirstActiveHint { get; }
+
+    /// <summary>This profile with <see cref="HapticsEnabled"/> moved and nothing else touched.</summary>
+    /// <remarks>The shape a multi-field record needs — see the type's remarks.</remarks>
+    public PlayerProfile WithHaptics(bool value)
+    {
+        return new PlayerProfile(Version, value, SeenFirstActiveHint);
+    }
+
+    /// <summary>
+    /// This profile with <see cref="SeenFirstActiveHint"/> moved and nothing else touched.
+    /// </summary>
+    /// <remarks><see cref="WithHaptics"/>'s mirror, and the reason it is a pair rather than one.</remarks>
+    public PlayerProfile WithSeenFirstActiveHint(bool value)
+    {
+        return new PlayerProfile(Version, HapticsEnabled, value);
+    }
+
+    /// <summary>
+    /// A profile for a player who has never had one: the current format, GD §16.3's defaults, and
+    /// nothing seen yet.
     /// </summary>
     /// <remarks>
     /// A property rather than <c>default</c>, because <c>default</c> is deliberately the
@@ -616,5 +671,6 @@ public readonly struct PlayerProfile
     /// on" have to be different answers. This is what a loader substitutes for the first;
     /// <see cref="ISaveStore.LoadProfile"/> returning null is how it learns which it has.
     /// </remarks>
-    public static PlayerProfile Default => new PlayerProfile(CurrentVersion, hapticsEnabled: true);
+    public static PlayerProfile Default =>
+        new PlayerProfile(CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false);
 }

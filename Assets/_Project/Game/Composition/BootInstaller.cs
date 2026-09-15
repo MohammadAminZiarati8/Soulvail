@@ -220,12 +220,22 @@ public static class BootInstaller
         builder.Register<ISaveStore>(
             _ => new LocalJsonSaveStore(Application.persistentDataPath), Lifetime.Singleton);
 
+        // The live profile, at the root and singleton, and the only writer of one (M3-09c rules 3
+        // and 4). Here rather than in RunScope because a profile outlives a run by definition and
+        // the one-time hint is spent *during* one — a store rebuilt per run would forget the write
+        // between the level-up that spent it and the boundary that saved it. It reads nothing at
+        // construction: BootFlow loads the profile once and hands it over through Adopt.
+        builder.Register<ProfileStore>(Lifetime.Singleton);
+
         // A factory rather than a plain type registration, so the choice between "persisted" and
         // "in memory" is made out loud — the class has no public constructor, exactly so that it
-        // has to be (M1-20). The value it starts at is GD §16.3's default; BootFlow loads the
-        // profile and hands the stored one over before the Menu appears (M2-13b rule 9).
+        // has to be (M1-20). **Over ProfileStore rather than ISaveStore as of M3-09c**: the profile
+        // has two fields now, and a feature that writes the store directly authors the whole struct
+        // from the one field it knows (rule 3). The value it starts at is GD §16.3's default;
+        // BootFlow hands the stored profile to the store above before the Menu appears.
         builder.Register<HapticsSettings>(
-            resolver => HapticsSettings.FromStore(resolver.Resolve<ISaveStore>()), Lifetime.Singleton);
+            resolver => HapticsSettings.FromStore(resolver.Resolve<ProfileStore>()),
+            Lifetime.Singleton);
     }
 
     /// <summary>

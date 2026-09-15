@@ -76,7 +76,8 @@ public sealed class InMemorySaveStoreTests
     public async Task Fake_ClearRemovesTheRunNotTheProfile()
     {
         await _store.SaveRun(Snapshot());
-        await _store.SaveProfile(new PlayerProfile(PlayerProfile.CurrentVersion, hapticsEnabled: false));
+        await _store.SaveProfile(new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
 
         await _store.ClearRun();
 

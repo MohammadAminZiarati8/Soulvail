@@ -24,7 +24,13 @@ namespace Soulvail.Core.Save;
 /// project that makes AR §11.6's promise self-enforcing rather than remembered. It is also the trap
 /// ledger row 2 exists for: <b>a field and its step must ship in one PR</b>, because a PR with only
 /// the field merges green — a v1 file still decodes.
-/// <see cref="MigrateProfile"/> is still the identity, and the two formats version independently.
+/// </para>
+/// <para>
+/// <b>The profile chain has one step, and M3-09c is the first time it ran at all.</b>
+/// <see cref="MigrateProfile"/> was the identity from M2-13b until v2, on the strength of the same
+/// self-enforcing row — and <b>the two formats version independently</b>, so a profile that gains a
+/// field leaves <see cref="RunSnapshot.CurrentVersion"/> at 3 and touches no run on any device
+/// (M2-13b, M3-09c rule 2).
 /// </para>
 /// <para>
 /// <b>The steps run in order and each rebuilds at its own version</b>, which is what lets a v1
@@ -180,6 +186,23 @@ public static class SaveMigrations
                 "CanReadProfile before migrating.");
         }
 
-        return decoded;
+        PlayerProfile current = decoded;
+
+        // **v1 → v2: a player who has not seen the hint.** A v1 profile was written by a build with
+        // no skills in it at all, so there was no first Active to be told about and the callout
+        // cannot have been shown — `seenFirstActiveHint: false` is not a default standing in for an
+        // unknown, it is the truth about that player. Written unconditionally rather than from what
+        // the adapter decoded, for the run chain's reason (M3-01b rule 3): a v1 document that
+        // somehow carried the flag is still a v1 document. `hapticsEnabled` is kept exactly as it
+        // was read, because that one *is* something the player chose.
+        //
+        // Each later version adds one `if (version < n) { ... }` below this, in order, rebuilding at
+        // n so the next step is handed the shape it expects — and a fixture test beside it.
+        if (version < 2)
+        {
+            current = new PlayerProfile(2, current.HapticsEnabled, seenFirstActiveHint: false);
+        }
+
+        return current;
     }
 }

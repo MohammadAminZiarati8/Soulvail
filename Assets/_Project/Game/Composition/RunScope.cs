@@ -102,6 +102,12 @@ namespace Soulvail.Game.Composition
                  "plays the same fight and its pause panel simply does not offer the button.")]
         [SerializeField] private SkillsPresenter _skillsPresenter;
 
+        [Tooltip("CC §6.3's one-time callout, on its own canvas under the pause icon. Optional on " +
+                 "the same terms as everything below it — a scene without one plays the same fight " +
+                 "and never tells the player about Manual. Its flag lives on the profile, so a run " +
+                 "played without this object still has the hint unspent.")]
+        [SerializeField] private FirstActiveHint _firstActiveHint;
+
         [SerializeField] private DebugOverlay _debugOverlay;
 
         [Tooltip("The camera the arena is seen through. Assigned rather than found: Camera.main " +
@@ -306,6 +312,19 @@ namespace Soulvail.Game.Composition
             if (_skillsPresenter != null)
             {
                 builder.RegisterComponent(_skillsPresenter);
+            }
+
+            // Optional on the same terms, and the one here whose absence costs the *player* the
+            // least and the design the most: a run without it plays identically and never tells the
+            // player that CC §6.1's switch exists. **It resolves ProfileStore by type from
+            // BootScope**, the way EnemyViews resolves EnemyLookBook a few lines below — a profile
+            // outlives a run, and a store registered here would forget the flag between the
+            // level-up that spent it and the boundary that saved it (M3-09c rule 4). That is also
+            // the one dependency of this component whose absence fails loudly rather than silently:
+            // a run scope built against a container with no ProfileStore does not compose at all.
+            if (_firstActiveHint != null)
+            {
+                builder.RegisterComponent(_firstActiveHint);
             }
 
             // Optional for the same reason and on the same terms: a scene dressed without a

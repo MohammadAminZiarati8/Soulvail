@@ -20,14 +20,18 @@ namespace Soulvail.Game.Presentation
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>A uGUI <see cref="Button"/>, not the Input System — the opposite of the death overlay's
-    /// choice, for the same reason.</b> <c>HudPresenter</c> reads the tap that dismisses death
-    /// through <c>InputAdapter</c> because <em>"tap anywhere"</em> has to include the stick and the
-    /// Charge button, which a uGUI raycast would have to be layered above. A pause icon is the exact
-    /// inverse: GD §5.2 puts it top-right and calls it <em>"a small target, but non-critical and out
-    /// of the way"</em>, and the one thing it must never be is tappable anywhere. A
-    /// <see cref="Button"/> gives that for free, and it leaves <c>HudPresenter</c>'s standing claim —
-    /// the only class in <c>Soulvail.Game</c> that reads the Input System — intact.
+    /// <b>A uGUI <see cref="Button"/>, not a tap read off the adapter — the opposite of the death
+    /// overlay's choice, for the same reason.</b> <c>HudPresenter</c> reads the tap that dismisses
+    /// death through <c>InputAdapter</c> because <em>"tap anywhere"</em> has to include the stick and
+    /// the Charge button, which a uGUI raycast would have to be layered above. A pause icon is the
+    /// exact inverse: GD §5.2 puts it top-right and calls it <em>"a small target, but non-critical
+    /// and out of the way"</em>, and the one thing it must never be is tappable anywhere. A
+    /// <see cref="Button"/> gives that for free.
+    /// <b>The standing claim this leaves intact is <c>InputAdapter</c>'s own</b> — that it is the one
+    /// class in <c>Soulvail.Game</c> that reads the Input System. It is <em>not</em> a claim that
+    /// <c>HudPresenter</c> is the only class reading the adapter, and M3-09c's
+    /// <c>FirstActiveHint</c> is the second screen to do so. Both are screens that must be
+    /// dismissible from anywhere; this one must not be.
     /// </para>
     /// <para>
     /// <b>It holds both halves of the pause, in this file.</b> <c>RunPause.Pause(PauseReason.Menu)</c>

@@ -68,7 +68,7 @@ one-shot `RunCommand` calls keep working the whole time, which makes the Editor 
 
 | Operation | Unfocused behaviour |
 |---|---|
-| `TestRunnerApi.Execute` | queued run **completes** — this one is safe (M1-02, M1-05) |
+| `TestRunnerApi.Execute` | queued run **completes** — this one is safe (M1-02, M1-05, M3-09c) |
 | `RequestScriptCompilation`, incl. `CleanBuildCache` | **never drains.** Three attempts left all six DLLs untouched with `isCompiling` reading `True` (M1-05) |
 | asmdef reimport | never drains (M1-05) |
 | `AssetDatabase.ImportAsset(path, ForceUpdate)` on changed **source files** | **works unfocused** (M1-05) |
@@ -96,6 +96,17 @@ the owner to focus the window — a queued run completes in seconds once it has 
 `Library/ScriptAssemblies/*.dll` timestamps instead (M1-02). **A source file's mtime can read
 newer than the assembly that already compiled it successfully** — pair the DLL timestamp with
 `find -newer` over the sources *and* a console read (M1-05).
+
+**And the timestamp probe itself gives false negatives, so do not stop at it.** At M3-09c an
+unfocused Editor drained a full six-assembly compile of eighteen changed files — the domain reloaded,
+the Console cleared, and every new type was live — while `Library/ScriptAssemblies/*.dll` still
+carried timestamps *older than every source in the change*, and `find -newer` therefore listed all
+eighteen as uncompiled. Two `sleep`-and-recheck cycles were spent on a compile that had already
+finished. **The probe that actually answers is to use the new API from a `RunCommand`**: call the new
+constructor, read the new constant, `typeof()` the new class. If the snippet compiles and runs, the
+Editor has the code — which is a stronger statement than any timestamp, and it is the same
+`typeof`-not-reflection trick the MCP forces on you anyway (§4). Keep the timestamps as a hint about
+*when*, never as the answer to *whether* (M3-09c).
 
 ---
 
@@ -151,20 +162,45 @@ newer than the assembly that already compiled it successfully** — pair the DLL
   scope by walking the scene's `MonoBehaviour`s and matching `GetType().FullName`; nothing in a
   scope's container is reachable from a command at all, so watch the scene instead
   (`FindObjectsByType<EnemyView>()`) (M0-13, M1-09, M1-18).
+  **You can still *dress* a scope's serialized fields, and that is how a scene gets wired from a
+  command:** reach the type with
+  `Type.GetType("Soulvail.Game.Composition.RunScope, Soulvail.Game")`, find it with the
+  non-generic `root.GetComponentInChildren(type, true)` — which returns a `Component`, a type the
+  command *is* allowed to name — and write the field through
+  `new SerializedObject(component).FindProperty("_myField")`. The assembly-qualified name is
+  mandatory: a bare `Type.GetType("Soulvail.Game.Composition.RunScope")` looks only in the calling
+  assembly and returns null. This is what dressed `Run.unity` at M3-09c, and it is the general
+  answer to *"the command cannot name the type it has to edit"* (M3-09c).
 - **No `System.Numerics` reference**, so no command can call a core method taking a `Vector2` (M1-15).
 - **The rewriter hoists nested classes out of `CommandScript`** *and leaves them in place*, so a
-  nested `ICallbacks` fails with `CS1527`. The working shape is one class implementing both:
-  `internal class CommandScript : IRunCommand, ICallbacks`, registering `this` (M1-07, M1-14/15).
+  nested `ICallbacks` fails with `CS1527`. Two working shapes: one class implementing both —
+  `internal class CommandScript : IRunCommand, ICallbacks`, registering `this` — or **a separate
+  helper class declared at top level beside `CommandScript`, and `internal`, never nested**. The
+  second is what a `TestRunnerApi` runner wants, because the callbacks object has to be rooted in a
+  `static` field that survives the call (§7); `public` on it fails the same inconsistent-accessibility
+  check `public class CommandScript` does (M1-07, M1-14/15, M3-09b, M3-09c).
 - **Fully qualify any type whose short name is also a namespace segment.** The injected
   `Unity.AI.Assistant.…` wrapper namespace shadows them: `UnityEngine.UI.Image` alone is
-  `CS0118: 'Image' is a namespace but is used like a type`. Same for `CompilationPipeline` and the
-  test-runner namespace (M0-14).
+  `CS0118: 'Image' is a namespace but is used like a type`. Same for `CompilationPipeline`, `Canvas`,
+  `RenderMode` and the test-runner namespace. **The tell is that the error names a type you did not
+  think was ambiguous**, so reach for the fully-qualified spelling before reading the message twice
+  (M0-14, M3-09b, M3-09c).
 - **The test-runner namespace is `UnityEditor.TestTools.TestRunner.Api`**, and
   `NUnit.Framework.Interfaces` is not referenced from that assembly — compare
   `TestStatus.ToString()` (M0-14).
 - **Two `TestRunnerApi` runs queued in one command both receive the first run's callbacks.** An
   EditMode filter and a PlayMode filter produced two identical EditMode result files and the
   PlayMode filter never ran. One run per command, poll for its file, then queue the next (M1-06).
+- **Never reimport and `Execute` in the same command.** `AssetDatabase.ImportAsset` on a changed
+  script queues a compile, the compile reloads the domain, and the reload takes the `static` field
+  rooting your `ICallbacks` object with it — so the run is started, the callbacks are dropped, and
+  the results file sits at its `"RUNNING"` sentinel for ever with nothing logged. It looks exactly
+  like a queued run stalling on an unfocused Editor (§3), which is the wrong thing to go and
+  investigate. **Import in one command, wait, then `Execute` in the next** (M3-09c).
+- **A filter by `testNames` silently matches nothing when given a fixture's name.** `testNames`
+  wants whole test names; a class is `groupNames`, which matches the fixture and every row in it.
+  A mismatched filter does not error — it runs zero tests and reports `passed=0 failed=0`, which
+  reads as "the suite is empty" rather than as "the filter is wrong" (M3-09c).
 - **A probe cannot survive `AssetDatabase.SaveAssets()`** — the reimport reloads the domain and
   takes the dynamic assembly's statics and its `EditorApplication.update` subscription with it. A
   probe that changes project data must restore it in the same synchronous command (M1-17).

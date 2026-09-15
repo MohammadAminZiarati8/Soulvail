@@ -88,6 +88,7 @@ public sealed class LocalJsonSaveStore : ISaveStore
         {
             version = profile.Version,
             hapticsEnabled = profile.HapticsEnabled,
+            seenFirstActiveHint = profile.SeenFirstActiveHint,
         };
 
         return Write(_profilePath, JsonUtility.ToJson(mirror));
@@ -351,7 +352,8 @@ public sealed class LocalJsonSaveStore : ISaveStore
                 $"({SaveMigrations.OldestSupportedProfileVersion}–{PlayerProfile.CurrentVersion}).");
         }
 
-        var decoded = new PlayerProfile(mirror.version, mirror.hapticsEnabled);
+        var decoded = new PlayerProfile(
+            mirror.version, mirror.hapticsEnabled, mirror.seenFirstActiveHint);
 
         return SaveMigrations.MigrateProfile(mirror.version, decoded);
     }
@@ -593,5 +595,18 @@ public sealed class LocalJsonSaveStore : ISaveStore
     {
         public int version;
         public bool hapticsEnabled;
+
+        /// <summary>
+        /// v2's one, appended after <see cref="hapticsEnabled"/>: field order is key order on disk,
+        /// and the two profile fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <b>Left at <c>false</c> rather than initialised</b>, unlike <c>RunMirror.level</c> and
+        /// <c>RunMirror.manualSkillIds</c>. A v1 document has no <c>seenFirstActiveHint</c> key, so
+        /// the field keeps the default constructor's <c>false</c> — which is also what the v1 → v2
+        /// step writes, so there is no value here a wrong initialiser could hide. The step is still
+        /// the authority and overwrites it regardless.
+        /// </remarks>
+        public bool seenFirstActiveHint;
     }
 }

@@ -10,7 +10,8 @@ using Soulvail.Core.Save;
 namespace Soulvail.Tests.Core.Save;
 
 /// <summary>
-/// The version gate, and the run chain — one step long as of M3-01b.
+/// The version gate, the run chain — two steps as of M3-07b — and, as of M3-09c, a profile chain
+/// with a step in it for the first time.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -281,6 +282,12 @@ public sealed class SaveMigrationTests
     /// One row rather than six copies: the profile's gate is the run's gate with two constants
     /// swapped, and what is worth asserting is that it stayed that way — the day the two formats
     /// version independently, this is what notices if only one of them grew a step.
+    /// <para>
+    /// <b>M3-09c is the first time this loop ran more than once</b>, and its assertions did not have
+    /// to change to do it — which is the whole point of having written it at v1. The two things a
+    /// loop cannot say are said beside it, by <see cref="MigrateProfile_V1_HasNotSeenTheHint"/> and
+    /// <see cref="MigrateProfile_V2_IsIdentity"/>.
+    /// </para>
     /// </remarks>
     [Test]
     public void Profile_ChainAndGateMirrorTheRun()
@@ -296,11 +303,18 @@ public sealed class SaveMigrationTests
             version <= PlayerProfile.CurrentVersion;
             version++)
         {
-            var profile = new PlayerProfile(version, hapticsEnabled: false);
+            var profile = new PlayerProfile(
+                version, hapticsEnabled: false, seenFirstActiveHint: false);
 
             PlayerProfile migrated = SaveMigrations.MigrateProfile(version, profile);
 
-            Assert.That(migrated.Version, Is.EqualTo(PlayerProfile.CurrentVersion));
+            Assert.That(
+                migrated.Version,
+                Is.EqualTo(PlayerProfile.CurrentVersion),
+                $"Migrating a v{version} profile left it at v{migrated.Version}. Bumping " +
+                "PlayerProfile.CurrentVersion needs a step in SaveMigrations, and a fixture " +
+                "beside it.");
+
             Assert.That(migrated.HapticsEnabled, Is.False);
         }
 
@@ -308,6 +322,64 @@ public sealed class SaveMigrationTests
             () => SaveMigrations.MigrateProfile(0, PlayerProfile.Default));
 
         Assert.That(thrown.Message, Does.Contain("0"));
+    }
+
+    [Test]
+    public void ProfileGate_AcceptsOneAndTwoRefusesThree()
+    {
+        // The numbers written out, which the row above deliberately cannot say: it is phrased
+        // against CurrentVersion throughout, so it would keep passing unchanged if the floor were
+        // raised to 2 and every v1 profile on every device stopped loading. This row is what
+        // notices — OldestSupportedProfileVersion stays 1 (rule 2). `Gate_AcceptsOneToThreeRefusesFour`'s
+        // job, for the other format.
+        Assert.That(SaveMigrations.CanReadProfile(1), Is.True, "v1 profiles are still on devices.");
+        Assert.That(SaveMigrations.CanReadProfile(2), Is.True);
+        Assert.That(SaveMigrations.CanReadProfile(3), Is.False);
+
+        Assert.That(SaveMigrations.OldestSupportedProfileVersion, Is.EqualTo(1));
+        Assert.That(PlayerProfile.CurrentVersion, Is.EqualTo(2));
+
+        // And the run format did not move with it, which is the independence M2-13b built two
+        // methods for and this task is the first to exercise.
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void MigrateProfile_V1_HasNotSeenTheHint()
+    {
+        // A v1 DTO that *does* carry the flag, which no real v1 document can — v1 had no such key
+        // and no build that wrote one had a skill in it. It is set here precisely so the row can
+        // tell "the step wrote false" from "the input happened to be false" (M3-01b rule 3's shape,
+        // on the other format).
+        var decoded = new PlayerProfile(1, hapticsEnabled: false, seenFirstActiveHint: true);
+
+        PlayerProfile migrated = SaveMigrations.MigrateProfile(1, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(2));
+        Assert.That(
+            migrated.SeenFirstActiveHint,
+            Is.False,
+            "the step is the authority: a v1 document is a v1 document whatever it carries.");
+
+        // And the one v1 field is kept exactly as it was read, because it *is* something the player
+        // chose — which is the difference between the two fields in this format.
+        Assert.That(migrated.HapticsEnabled, Is.False);
+    }
+
+    [Test]
+    public void MigrateProfile_V2_IsIdentity()
+    {
+        var decoded = new PlayerProfile(2, hapticsEnabled: false, seenFirstActiveHint: true);
+
+        PlayerProfile migrated = SaveMigrations.MigrateProfile(2, decoded);
+
+        // Identity is a property of the *current* version, so this row moves up with every bump and
+        // there is only ever one of it — `Migrate_V3_IsIdentity`'s rule, for the other format. Both
+        // fields are set away from their defaults, so a step that ran when it should not have moves
+        // one of them and this goes red.
+        Assert.That(migrated.Version, Is.EqualTo(2));
+        Assert.That(migrated.HapticsEnabled, Is.False);
+        Assert.That(migrated.SeenFirstActiveHint, Is.True);
     }
 
     /// <summary>A snapshot in <paramref name="version"/>'s format, with every field distinct.</summary>

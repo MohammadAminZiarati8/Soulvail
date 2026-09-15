@@ -324,9 +324,11 @@ public sealed class RunState
     /// they are in, and what lets <c>RunSession.Tick</c> call <c>Tick</c> unconditionally.
     /// </para>
     /// <para>
-    /// The eight reads are what M3-10's buttons and the debug overlay need, plus the one the Skills
+    /// The reads are what M3-10's buttons and the debug overlay need, plus the one the Skills
     /// screen wanted in seconds rather than as a fraction — <see cref="SkillCooldownSeconds"/>,
-    /// added by M3-09b, which is the eighth. <b>M3-07a sharpened the seal rather than
+    /// added by M3-09b — plus M3-10a's <see cref="SlotCooldownFraction"/> and
+    /// <see cref="IsSlotReady"/>, which are the same two questions asked by <em>slot</em> because
+    /// that is what a button is. <b>M3-07a sharpened the seal rather than
     /// loosening it</b>: <c>SetAutoCast</c> and <c>CastSlot</c> are public on the runner, so a
     /// handle here would let a view fire the player's skills <em>and</em> rearrange their thumb.
     /// </para>
@@ -415,6 +417,85 @@ public sealed class RunState
     /// <paramref name="slot"/> is not one of the four.
     /// </exception>
     public ContentId ManualSlotAt(int slot) => Skills.SlotAt(slot);
+
+    /// <summary>
+    /// How much of the cooldown under manual slot <paramref name="slot"/> is left, as a fraction in
+    /// <c>[0, 1]</c>: 1 the instant a cast starts, 0 once it is live. What M3-10a's radial fill
+    /// draws. <b>0 for an empty slot.</b>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The <em>tenth</em> scalar read, and it is addressed by slot because that is what a button
+    /// is</b> (M3-10a rule 2). <see cref="SkillCooldownFraction"/> is addressed by runner
+    /// <em>index</em> — take order, which knows nothing about thumbs — so a button drawing S3 would
+    /// have to read <see cref="ManualSlotAt"/> and then search the take order for that id, which is
+    /// a presentation layer re-deriving what <c>SkillRunner.TryIndexOf</c> already answers. The
+    /// mapping therefore lives here. <b>The seal does not move to let it out</b> (AR §18.2):
+    /// <see cref="Skills"/> stays <c>internal</c>, because <c>SetAutoCast</c> and <c>CastSlot</c> are
+    /// public on the runner and a handle would let a view fire the player's skills and rearrange
+    /// their thumb.
+    /// </para>
+    /// <para>
+    /// <b>An empty slot answers 0 and never throws, unlike <c>CastSlot</c>, which throws for one</b>
+    /// (M3-07a rule 4). The two are different questions: asking an empty slot to <em>fire</em> is a
+    /// view sending a command for a control it is not drawing, while <em>reading</em> one is what a
+    /// button does on every frame it is not drawn — which, until M3-11 and M3-12 author an Active,
+    /// is every frame of every run there has ever been.
+    /// </para>
+    /// </remarks>
+    /// <param name="slot">Which thumb position, from 0. S1 is slot 0.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four. A bad <em>slot</em> is still loud, because
+    /// that is a screen addressing a button CC §6.2 does not draw — only an <em>empty</em> one is
+    /// answered quietly.
+    /// </exception>
+    public float SlotCooldownFraction(int slot) =>
+        TryIndexOfSlot(slot, out int index) ? Skills.CooldownFraction(index) : 0f;
+
+    /// <summary>
+    /// Whether the skill under manual slot <paramref name="slot"/> may fire right now.
+    /// <b>False for an empty slot.</b>
+    /// </summary>
+    /// <remarks>
+    /// The eleventh scalar read, and <see cref="SlotCooldownFraction"/>'s pair for the reason
+    /// <see cref="IsSkillReady"/> is <see cref="SkillCooldownFraction"/>'s: CC §6.2 gives a button
+    /// that cannot fire 40 % opacity and no tap response, which is a different question from how far
+    /// round the fill has gone. False for an empty slot is the same answer as false for a cooling
+    /// one <em>to this read</em>, and the two are told apart by <see cref="ManualSlotAt"/> — which is
+    /// what decides whether the button is drawn at all (M3-10a rule 5).
+    /// </remarks>
+    /// <param name="slot">Which thumb position, from 0. S1 is slot 0.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four.
+    /// </exception>
+    public bool IsSlotReady(int slot) =>
+        TryIndexOfSlot(slot, out int index) && Skills.IsReady(index);
+
+    /// <summary>
+    /// Which entry in the runner's walk order sits under <paramref name="slot"/>, if anybody does.
+    /// </summary>
+    /// <remarks>
+    /// The one place the slot → index mapping is written down, so the two reads above cannot come
+    /// apart. <c>SlotAt</c> is what refuses a slot outside the four, and it refuses it before this
+    /// method can answer anything — so a bad slot is loud and an empty one is not.
+    /// </remarks>
+    private bool TryIndexOfSlot(int slot, out int index)
+    {
+        ContentId skillId = Skills.SlotAt(slot);
+
+        if (skillId == default)
+        {
+            index = -1;
+
+            return false;
+        }
+
+        // Cannot miss: SetAutoCast and Restore are the only writers of the slot table and neither
+        // puts an id in it that the runner does not hold. Asked rather than assumed for the reason
+        // CastSlot asks — one place owns the mapping, and a second copy is the first thing that
+        // could disagree with it.
+        return Skills.TryIndexOf(skillId, out index);
+    }
 
     /// <summary>
     /// Whether that skill fires itself — true for every owned active until the player switches it

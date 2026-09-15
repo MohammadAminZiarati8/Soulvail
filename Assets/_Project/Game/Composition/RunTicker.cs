@@ -93,6 +93,17 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
+
+    /// <summary>
+    /// What a thumb asked of CC §6.2's four slot buttons this frame, polled in
+    /// <see cref="CommandPhase"/> beside <see cref="_tapToFocus"/> (M3-10a rule 3).
+    /// </summary>
+    /// <remarks>
+    /// The second poller that phase has ever had, and the first since M1-09's. It is here for
+    /// exactly the reason the first one is — see <see cref="CommandPhase"/>.
+    /// </remarks>
+    private readonly SkillSlotInput _skillSlots;
+
     private readonly ConeOverlapQuery _cone;
 
     /// <summary>
@@ -129,6 +140,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
+        SkillSlotInput skillSlots,
         ConeOverlapQuery cone)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -154,6 +166,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
+        _skillSlots = skillSlots ?? throw new ArgumentNullException(nameof(skillSlots));
         _cone = cone ?? throw new ArgumentNullException(nameof(cone));
 
         _coneHitIds = new int[cone.Capacity];
@@ -578,15 +591,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// file that already owns the frame.
     /// </para>
     /// <para>
-    /// Two members now, and the second is exactly the line the shape was built for. The dash press
-    /// is read here rather than acted on by the button that made it, so that "a tap became a
+    /// Three members now, and the middle one is exactly the line the shape was built for. The dash
+    /// press is read here rather than acted on by the button that made it, so that "a tap became a
     /// command" happens at a known point in the frame — which is what makes CC §5's 0.15 s input
     /// buffer measure the age of the press against the same clock core ends the cooldown on.
+    /// </para>
+    /// <para>
+    /// <b>The slot poll is the phase's second poller, and the first since M1-09's</b> (M3-10a rule
+    /// 3). It sits beside <c>_tapToFocus.Poll</c> rather than on the uGUI button that made the press,
+    /// because Unity gives no order between the <c>EventSystem</c>'s <c>Update</c> and this object's
+    /// — so a <c>Button</c> calling <c>CastSkill</c> from its own handler would land the command
+    /// before or after the snapshot depending on nothing anybody wrote down. <b>Above the dash
+    /// press and below the focus tap is not load-bearing</b> and is named so a later reader does
+    /// not go looking for a reason: the three reach different members of core, nothing in the frame
+    /// reads one's effect before another's, and all three are in the same phase, which is the part
+    /// that is.
     /// </para>
     /// </remarks>
     private void CommandPhase()
     {
         _tapToFocus.Poll();
+
+        _skillSlots.Poll();
 
         if (_input.MovementSkillPressedThisFrame)
         {

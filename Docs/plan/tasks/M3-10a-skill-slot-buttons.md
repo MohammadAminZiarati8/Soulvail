@@ -137,4 +137,81 @@ namespace Soulvail.Game.Presentation
 
 ## As built
 
-_Filled at merge._
+**Built as specced, with one named deviation and five files the table does not list.**
+
+**The deviation is rule 4's `Reset`.** The rule's prose says the buffer is *"cleared on `Poll` whether
+or not it sent anything, and cleared on `Reset` when the run ends"*, and the **Public API** block
+directly above it lists two members. The API block shipped: there is no `Reset`. Nothing in the Files
+table could call one — `RunTicker.Dispose` is not among the named edits — so it would be public API
+with no reader, and both halves of what it was for are already true: `Poll` clears unconditionally,
+and a press made after the run ended is never polled at all, because `CommandPhase` sits below
+`RunTicker`'s `IsRunning` guard (rule 10, and `Input_NoCommandAfterTheRunEnds` is the row). The class
+remarks say this out loud rather than leaving the absence to be noticed.
+
+**Five files outside the table, and three of them were forced by the compiler.** `RunTicker`'s
+constructor grew a twenty-first argument, and every fixture that builds one had to grow with it:
+`Tests/PlayMode/FrameOrderTests.cs` (named in the Tests table but not the Files table) and
+`Tests/Game/Composition/ResumeFlowTests.cs` (named nowhere — one line, and no row in it presses a
+slot). The three `State_*` rows went into `Tests/Core/Combat/SkillRunnerTests.cs`, **beside the object
+the read delegates to**, which is M3-09b's precedent for `State_ExposesCooldownSeconds` and M3-09d's
+for its three. `Scenes/Run.unity` was dressed with `RunScope._skillBar` — **12 insertions and zero
+deletions**, one reference rather than a prefab instance, against M3-09d's 170. And `Docs/plan/`
+carries a **doc fix that rode in from `dev`**: one uncommitted line in PROGRESS → Next task correcting
+*"first task since M3-08b to change `Hud.prefab`"* to M2-12a. It is the owner's, not this task's.
+
+**The layout answer, picked per field and the same for all three.** `_sizeDp`, the four `_offsetsDp`
+and `_anchorMarginDp` all take `PausePresenter.Place`'s answer — **a nonsense value leaves the authored
+layout alone** — where `TreeViewPresenter.Layout` falls back per field to a constant. The difference is
+that these four buttons *are* authored on `Hud.prefab` at a real size in a real corner, so there is
+something honest to fall back to; a tree cell is a runtime clone that starts life on its template's
+rect, so leaving twenty-seven of those alone is twenty-seven cells stacked on each other. An unusable
+anchor skips the whole cluster, an unusable offset or size skips its own button, because three buttons
+where the owner put them and one where the prefab put it is strictly more legible than four in a heap.
+A margin of **0 is legal** and is honoured: a button flush against the safe area's corner is a layout.
+
+**The shipped arc is forced rather than chosen, and that is the device question.** 140 dp of radius,
+S1 level with the Charge and to its left, S4 straight above it. CC §6.2's 60 dp buttons with 12 dp of
+clearance put a hard floor of 72 dp between centres, and four of those over a quarter turn need
+`72 / (2 · sin 15°) ≈ 139` — so this is the **tightest** cluster CC §6.2 permits, not a comfortable
+one, and its top button sits ~236 dp above the safe area's bottom edge.
+`Button_SpacingMeetsTheMinimum` checks all six pairs *and* each button against the Charge's own
+72 dp — which is the row that reddens if the arc is tuned too tight on a phone.
+
+**`Frame_SlotPollSitsBesideTapToFocus` retired this fixture's standing exemption.** `FrameOrderTests`'
+class remarks had said since M2-11b that the commands phase is *"the one step not observed here"*,
+because its two members reach core only through the Input System and that assembly does not reference
+it. `SkillSlotInput` needs none — a button writes an `int` — so AR §18.1's first row is now asserted
+end to end. **The row asserts ordering and nothing about physics** (M3-08a's lesson, quoted in the
+spec): it reads the snapshot's `PlayerPosition` from inside `CastSkill` and requires it to still be
+zero while the player stands a kilometre out. `FrameOrderTests` went from 8 rows to 9 and PlayMode
+from 15 to **16**.
+
+**Ledger rows.** Row **4** moves and gains the milestone's sharpest device question — a thumb on the
+stick and a thumb on S3 at once, deferred since M1, now the one row that risks a *feature* rather than
+a verdict — plus the reach of a forced 140 dp arc. Row **9** moves and gains its fifth real reader,
+**and corrects how this row described that reader's closure**: the ledger says M3-14a closes the slot
+buttons because *"the key never fitted and a word does"*, and the button now exists — a 60 dp circle
+with an auto-sizing 8–18 pt label — so *"a word does"* is a **device** claim rather than a table one.
+Row **8** is untouched: nothing here changes a clock or what a stage is measured with. **None of the
+three closes.**
+
+**Verified.** Six assemblies, zero compile errors, zero new analyzer warnings, the compile confirmed by
+**calling the new API from a `RunCommand`** rather than by reading a DLL timestamp (Traps §3). EditMode
+**1 577 / 0 / 0, three times**, two of them consecutively on the final code, against M3-09d's 1 551 —
+**26 new rows, and the arithmetic lands to the row for the twelfth time this milestone.** The spec's
+Tests table is **24 lines and 24 names**, all written; one of them,
+`Frame_SlotPollSitsBesideTapToFocus`, is **PlayMode**, so 23 of the 24 are EditMode. Plus **3** more:
+the two implied guards this task owes — one null row covering `SkillSlotInput`'s single public
+constructor *and* `Construct`'s four arguments, and **one** non-finite row covering all three `float`
+doors, because they take the same answer — and one the rule-1 ruling owes by name,
+`Button_SharesNoBaseClassWithTheCharge`, which is what would redden if somebody ever extracted the
+base class rule 1 refuses. 23 + 3 = **26**, and 1 551 + 26 = 1 577. No new spec type, so no validation
+row. The rows sit in three files: **23** in `SkillBarPresenterTests`, **3** in `SkillRunnerTests`,
+**1** in `FrameOrderTests`. PlayMode **16 / 16**, actually run
+— the first task since M3-09a to run it — and `Ticker_RunsTheStepsInOrder` was green, against a
+pre-edit baseline of **8 / 8** taken before a line was written. All eleven touched `.cs` files confirmed
+in their intended assembly through `GetAssemblyNameFromScriptPath`: `Soulvail.Core` ×1,
+`Soulvail.Game` ×6, `Soulvail.Tests.Core` ×1, `Soulvail.Tests.Game` ×2, `Soulvail.Tests.PlayMode` ×1
+— **five** assemblies and no strays. `Hud.prefab` and `Run.unity` were both **read back off disk after
+saving** (Traps §5). `ProjectSettings/TimeManager.asset` turned up dirty again and was reverted —
+**six of the last seven tasks**.

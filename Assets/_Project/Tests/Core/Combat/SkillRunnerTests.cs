@@ -626,6 +626,94 @@ public sealed class SkillRunnerTests
     }
 
     [Test]
+    public void State_SlotReadsAnswerByPosition()
+    {
+        // A trigger that can never be met, so the only thing that casts here is the player.
+        StartSession(Below(TriggerField.HpFraction, 0f), cooldown: 4f);
+
+        var commands = (IPlayerCommands)_session;
+
+        commands.SetAutoCast(Id(ActiveA), auto: false);
+
+        Assert.That(
+            _session.State.ManualSlotAt(0),
+            Is.EqualTo(Id(ActiveA)),
+            "The fixture's premise: the skill is in S1.");
+
+        commands.CastSkill(0);
+
+        // **Addressed by *slot*, which is what a button is** (M3-10a rule 2). SkillCooldownFraction
+        // is addressed by the runner's walk order, and a button knows only which thumb position it
+        // is — so a screen mapping one to the other would be re-deriving what TryIndexOf already
+        // answers, in the presentation layer.
+        Assert.That(_session.State.SlotCooldownFraction(0), Is.GreaterThan(0f));
+        Assert.That(_session.State.IsSlotReady(0), Is.False);
+
+        // And S2 is empty, which answers 0 and false rather than throwing — unlike CastSlot, which
+        // throws for an empty slot (M3-07a rule 4). A *read* of an empty slot is what a button does
+        // on every frame it is not drawn.
+        Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(default(ContentId)));
+        Assert.That(_session.State.SlotCooldownFraction(1), Is.Zero);
+        Assert.That(_session.State.IsSlotReady(1), Is.False);
+
+        // **And the seal did not move to let them out** (AR §18.2, M3-09b's row one screen back).
+        // Two more scalars, not a handle: SetAutoCast and CastSlot are both public on the runner.
+        PropertyInfo handle = typeof(RunState).GetProperty(
+            "Skills",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        Assert.That(handle, Is.Not.Null, "RunState.Skills is gone — this row is out of date.");
+
+        Assert.That(
+            handle.GetMethod.IsPublic,
+            Is.False,
+            "RunState.Skills became public. M3-10a added two reads beside it and must not have "
+                + "loosened the seal to do it.");
+    }
+
+    [Test]
+    public void State_SlotReadsWithNoTree()
+    {
+        // Every run in the build until M3-12 authors one: TryGetTreeFor answers false, RunState.Tree
+        // is null, and the runner owns nothing — so all four slots are empty and stay empty.
+        StartTreelessSession();
+
+        Assert.That(_session.State.OwnedActiveCount, Is.Zero, "The fixture's premise.");
+
+        for (int slot = 0; slot < SkillRunner.MaxManualSlots; slot++)
+        {
+            Assert.That(
+                _session.State.SlotCooldownFraction(slot),
+                Is.Zero,
+                $"S{slot + 1} answered a cooldown for a run with no skills in it.");
+
+            Assert.That(
+                _session.State.IsSlotReady(slot),
+                Is.False,
+                $"S{slot + 1} reported itself live with nothing in it, so its button would be "
+                    + "drawn bright and send a command core refuses.");
+        }
+    }
+
+    [Test]
+    public void State_SlotReadsOutOfRange_Throw()
+    {
+        StartTreelessSession();
+
+        // **A bad *slot* is loud where an empty one is quiet**, and the two are different mistakes:
+        // an empty slot is a legal state the button reads every frame, while slot 4 is a screen
+        // addressing a button CC §6.2 does not draw. SlotAt is the one place that refuses it, which
+        // is why both reads refuse it identically.
+        Assert.Throws<ArgumentOutOfRangeException>(() => _session.State.SlotCooldownFraction(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _session.State.SlotCooldownFraction(SkillRunner.MaxManualSlots));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _session.State.IsSlotReady(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _session.State.IsSlotReady(SkillRunner.MaxManualSlots));
+    }
+
+    [Test]
     public void Cast_FractionIsOneOnTheCastTick()
     {
         // **Rule 9's ordering, observed from inside the publish.** The event is last — after the
@@ -1795,6 +1883,46 @@ public sealed class SkillRunnerTests
             _session.State.OwnedActiveCount,
             Is.EqualTo(actives),
             "The fixture owns its Actives.");
+
+        _events.Clear();
+    }
+
+    /// <summary>
+    /// A live run whose class has no tree at all — the shipped build, and the one every slot read
+    /// has to tolerate (M3-10a rule 2).
+    /// </summary>
+    /// <remarks>
+    /// The three-argument catalog, so <c>TryGetTreeFor</c> answers false, <c>RunState.Tree</c> is
+    /// null and the runner owns nothing. Fresh rather than resumed, unlike
+    /// <see cref="StartSession"/>: there are no nodes to restore, and a fresh run is the shorter
+    /// statement of the same state.
+    /// </remarks>
+    private void StartTreelessSession()
+    {
+        var catalog = new ContentCatalog(
+            new[] { Character() },
+            Array.Empty<EnemySpec>(),
+            new[] { Mode(Array.Empty<RosterEntry>()) });
+
+        _random = new FixedRandom(7, Alternating(8_192));
+
+        _session = new RunSession(
+            catalog,
+            _random,
+            _events,
+            new RecordingIntents(),
+            new RunRecorder(_random, new FixedClock(Instant), _events),
+            EnemyCapacity,
+            DeviceCap,
+            ProjectileCapacity);
+
+        _session.Start(new RunConfig(
+            Id(ModeId),
+            Id(OathboundId),
+            _random.Seed,
+            stageIndex: 1,
+            SpawnPlan.Empty,
+            null));
 
         _events.Clear();
     }

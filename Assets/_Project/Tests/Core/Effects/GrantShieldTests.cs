@@ -35,7 +35,7 @@ namespace Soulvail.Tests.Core.Effects;
 /// </para>
 /// <para>
 /// <b>Every <c>Bulwark_*</c> row builds its own <c>SkillSpec</c>, and that is not a shortcut.</b>
-/// <c>Bulwark.asset</c> is M3-12b's and nothing ships here, so there is no authored node in this
+/// <c>Bulwark.asset</c> is M3-12c's and nothing ships here, so there is no authored node in this
 /// build to cast — the sixth consecutive task whose feature waits on M3-12.
 /// </para>
 /// <para>

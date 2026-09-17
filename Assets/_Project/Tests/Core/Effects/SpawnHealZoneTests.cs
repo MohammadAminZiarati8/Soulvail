@@ -45,7 +45,7 @@ namespace Soulvail.Tests.Core.Effects;
 /// </para>
 /// <para>
 /// <b>Every row builds its own <c>SkillSpec</c>, and that is not a shortcut.</b>
-/// <c>Consecrate.asset</c> is M3-12b's and nothing ships here, so there is no authored node in this
+/// <c>Consecrate.asset</c> is M3-12c's and nothing ships here, so there is no authored node in this
 /// build to cast — the seventh consecutive task whose feature waits on M3-12.
 /// </para>
 /// </remarks>

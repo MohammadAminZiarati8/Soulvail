@@ -108,6 +108,7 @@ public sealed class FrameOrderTests
     private EnemyViews _enemyViews;
     private ProjectileViews _projectileViews;
     private TelegraphRings _telegraphRings;
+    private ZoneViews _zoneViews;
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
@@ -161,6 +162,11 @@ public sealed class FrameOrderTests
         // can announce a wave.
         _telegraphRings = new TelegraphRings(_container, RingTemplate(), null, _hub, prewarm: 0);
 
+        // Empty for the rings' reason and on the rings' terms: nothing here casts a skill, so no
+        // zone is ever spawned and the census steps nothing. It is here because the ticker takes
+        // one (M3-11c rule 3).
+        _zoneViews = new ZoneViews(_container, ZoneTemplate(), null, _hub, prewarm: 0);
+
         _input = new InputAdapter();
 
         // Never enabled, which is what makes the command phase a no-op: both properties the ticker
@@ -198,6 +204,7 @@ public sealed class FrameOrderTests
             _enemyViews,
             _projectileViews,
             _telegraphRings,
+            _zoneViews,
 
             // Nothing here takes a snapshot, so this writes nothing — it is on the constructor for
             // the reason the rings above are (M2-14a rule 8): being on that constructor is what
@@ -238,6 +245,9 @@ public sealed class FrameOrderTests
 
         _telegraphRings?.Dispose();
         _telegraphRings = null;
+
+        _zoneViews?.Dispose();
+        _zoneViews = null;
 
         _input?.Dispose();
         _input = null;
@@ -813,6 +823,17 @@ public sealed class FrameOrderTests
         Track(root);
 
         return root.AddComponent<TelegraphRingView>();
+    }
+
+    private ZoneView ZoneTemplate()
+    {
+        var root = new GameObject("ZoneTemplate");
+
+        root.SetActive(false);
+
+        Track(root);
+
+        return root.AddComponent<ZoneView>();
     }
 
     private T Track<T>(T o)

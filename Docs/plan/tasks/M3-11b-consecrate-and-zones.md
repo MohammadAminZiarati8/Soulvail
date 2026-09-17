@@ -244,6 +244,12 @@ PlayMode stays at 16. It is proved M3-11a-ii's way — a first pass measures its
 arranges the coincidence with half a frame of margin — and the swap run reddens it **alone** (10 passed,
 1 failed).
 
+**Two deviations outside the Files table, both one word.** `GrantShieldDefinition.cs` and
+`GrantShieldTests.cs` said `Bulwark.asset` is **M3-12b's**; it is **M3-12c's**, whose own Tests table
+carries `Bulwark_CarriesItsAuthoredNumbers` and `Consecrate_CarriesItsAuthoredNumbers` where M3-12b is
+the two primitives. The same claim was corrected in M3-11a-ii's PROGRESS entry and its Current State
+row. Fixed rather than left as a false pointer beside this task's true one.
+
 **One Traps row written as part of this task**: §4 now documents the `RunCommand` wrapper shape —
 `internal class CommandScript : IRunCommand`, `public void Execute(ExecutionResult result)`, output
 through `result.Log`, helpers beside it and never nested — which cost four probes at M3-11a-ii.

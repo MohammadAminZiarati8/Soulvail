@@ -90,6 +90,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly TelegraphRings _telegraphRings;
 
+    /// <summary>
+    /// The ground a Consecrate laid. Held for the two reasons the rings above are, and they are the
+    /// same one: it has to be stepped with the snapshot's <c>Dt</c> (M3-11c rule 3), and being on
+    /// this object's dependency chain is what guarantees it is listening before <see cref="Start"/>
+    /// can let a skill fire anything.
+    /// </summary>
+    private readonly ZoneViews _zoneViews;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -136,6 +144,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         EnemyViews enemyViews,
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
+        ZoneViews zoneViews,
         SaveWriter saveWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
@@ -156,6 +165,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
+        _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
         // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
         // announced as an event — so the parameter exists for one reason: being on this object's
         // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
@@ -378,6 +388,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // thing a telegraph is not allowed to do. Read by nothing below either: a decal has no
         // collider, so the pair of them are the frame's two purely cosmetic steps.
         _telegraphRings.Step(_snapshot.Dt);
+
+        // The zones, for the same reason again and on the same clock (M3-11c rule 3). Core ran every
+        // zone's own six seconds — and every one of its half-second pulses — on the clamped step, so
+        // a decal faded on the wall clock would stand a little longer or a little less long than the
+        // ground it stands for, on exactly the hitching frames the clamp exists for. Read by nothing
+        // below either: a decal has no collider, so this is the third and last of the frame's purely
+        // cosmetic steps.
+        _zoneViews.Step(_snapshot.Dt);
 
         // The line that makes the ordering above true of the code and not only of the call order
         // (M2-15a, M3 ledger row 3). `Physics.autoSyncTransforms` is 0 project-wide, so the writes

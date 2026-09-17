@@ -175,4 +175,75 @@ public readonly struct ZoneHealed { public readonly int Index; public readonly f
 
 ## As built
 
-_Filled at merge._
+**Built as specced, five counted files, no split.** `ZoneSystem` (Core/Combat), `SpawnHealZone` and its
+handler (Core/Effects), `SpawnHealZoneDefinition` (Game/Authoring, block namespace), and the two test
+fixtures — plus the five small edits the table names. Eleven `.cs` files across **four** assemblies,
+confirmed through `GetAssemblyNameFromScriptPath`: `Soulvail.Core` ×7, `Soulvail.Game` ×1,
+`Soulvail.Tests.Core` ×2, `Soulvail.Tests.Game` ×1. No prefab, no scene.
+
+**Four corrections to this spec, all ruled before a line was written.**
+
+1. **`SpawnHealZoneHandler(ZoneSystem, IClock)` is wrong for the second time in two tasks.** `IClock`
+   is one member, `DateTimeOffset UtcNow`, and AR §18.2 says there is no `IClock` in the session. The
+   shipped signature is `(ZoneSystem zones, SimulatedClock clock)` — M3-11a-ii's class, one task old,
+   already written beside `State.Time += Dt`. `ZoneSystem` remembering `_now` from its own `Tick` was
+   considered and refused for the same reason it was there: this class ticks **after** the runner, so
+   a zone cast this frame would be scheduled off last frame's clock. Pinned by
+   `Handler_TakesNoWallClock`, which is a *test* rather than a probe because a `RunCommand` refuses
+   the whole `System.Reflection` namespace before it executes.
+
+2. **Rule 2's stated reason is false and is not in any doc comment.** The player's position is *not*
+   "read, used and forgotten": `RunState.PlayerPosition` is public and `RunSession.Tick` assigns it
+   before the skills step. Route (a) — `CombatBlackboard.PlayerPosition` plus one line in
+   `UpdateBlackboard` — ships anyway, and the real argument is the one the class carries:
+   **`Spawn` happens inside `Apply`, which is not inside any `Tick` of `ZoneSystem`'s**, so
+   `ProjectileSystem`'s precedent of taking the position as a `Tick` parameter cannot serve the moment
+   that actually needs one, and a field cached from this class's own tick is stale for the clock's
+   reason. Route (b) therefore drops **no** small-edit file: something has to hold the position at cast
+   time either way. Given that, both moments read the same table rather than a class answering "where
+   is the player" two ways. `UpdateBlackboard` takes the position as a parameter rather than reaching
+   for the snapshot, which keeps it a method that copies and decides nothing.
+
+3. **`Consecrate_HealsAQuarterBarIfYouStand` is 106, and the order inside `Tick` is now a rule**:
+   pulses first, then the retirement, so a zone is alive up to and including its last instant. Twelve
+   pulses, not eleven. It has its own row, `Zone_PulsesOnTheTickItExpires`, because
+   `Zone_ExpiresAfterItsDuration` ticks at 6.01 and steps straight over the coincidence — and the swap
+   run proves it: retire-first reddens **four** rows (that one, `Zone_ExpiresAfterItsDuration`,
+   `Zone_PulsesAreAbsolute`, `Consecrate_HealsAQuarterBarIfYouStand`) and nothing else.
+
+4. **The three events carry an `Id`, not the spec's `Index`.** A zone retiring shifts the ones placed
+   after it down, so an index is a position in a list at one instant rather than a handle: a view keyed
+   by it would retire the wrong decal the first time two zones overlapped and the older one ended.
+   `Spawn` returns that id. `PositionAt`/`RadiusAt`/`RunState.ZoneAt` keep the dense index, which is
+   what an overlay walks.
+
+**Two things the spec did not ask for.** `ZoneSystem.MaxPulses` (10 000) bounds the catch-up loop at
+the door: `Tick` lands every pulse a zone was alive for, so a six-second zone with a one-microsecond
+interval is a hang rather than a fast zone (AR §18.3). It is guarded at both doors, like `GrantShield`.
+And `ZoneSystem.Tick` **refuses** a non-finite `now` — `ProjectileSystem`'s answer rather than
+`SkillRunner`'s, because an unreadable clock here is either a loop with no exit or a zone that never
+pulses.
+
+**One row ships as its reachable half and it is named rather than implied.**
+`Zone_BoundaryLeavesItRunning` drives every call `StageFlow.Advance` makes to the player —
+`Targeter.Reset`, `ProjectileSystem.Clear`, and the wider `PlayerCombat.Reset` that method
+deliberately refuses — and asserts the zone stands and pulses through all of them. It does not drive a
+real boundary: clearing a stage needs an enemy killed, a kill needs a cone report from a Unity adapter
+`Soulvail.Tests.Core` has no player for, and that fixture would be larger than the system under it.
+
+**The rows land in three fixtures and none of the zone rows needs a session.** 22 in `ZoneSystemTests`
+(bare `ZoneSystem`, real `Health`, real `CombatBlackboard`), 11 in `SpawnHealZoneTests` (5 handler rows
+and **6 over a live `RunSession`**), 3 `Definition_*` in the **existing** `SkillAuthoringTests` beside
+`GrantShield_*` — a new file there would have been a sixth counted file. **The live fixture carries
+CC §7's 140 hit points, which is the deliberate opposite of M3-11a-ii's hundred-thousand sandbag**:
+every row here reads HP as a fraction of 140, and the only door to a hurt player is the resumed
+snapshot, because `RunState.Combat` is `internal` and the mode's roster is empty.
+
+**`Zone_TicksAfterTheTimedEffects` is an EditMode row in `Tests.Core`, not a `FrameOrderTests` row.**
+PlayMode stays at 16. It is proved M3-11a-ii's way — a first pass measures its own timings, the second
+arranges the coincidence with half a frame of margin — and the swap run reddens it **alone** (10 passed,
+1 failed).
+
+**One Traps row written as part of this task**: §4 now documents the `RunCommand` wrapper shape —
+`internal class CommandScript : IRunCommand`, `public void Execute(ExecutionResult result)`, output
+through `result.Log`, helpers beside it and never nested — which cost four probes at M3-11a-ii.

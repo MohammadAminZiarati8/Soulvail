@@ -890,6 +890,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // wrong.
         State.Progression.Grant(State.Enemies.DrainXp());
 
+        // The same drain in the other currency (M3-12a rule 5), immediately beside it because the
+        // two are banked on the same line of EnemySystem and must be spent on the same tick — a
+        // kill that paid experience and not its heal, or the reverse, would be a death worth
+        // different things depending on when it was reported.
+        //
+        // The order within the pair does not matter and is not an invariant: experience cannot
+        // change hit points and a heal cannot change experience. What matters is that both are
+        // after the death check above, which is what makes a kill landing on the tick the player
+        // dies pay nothing — M3-01a rule 6's ordering, inherited rather than restated.
+        //
+        // Unconditional, for the reason the line above is: HealPerKill is zero in every run this
+        // build ships, so this is one multiply and a Heal that returns immediately.
+        State.Combat.HealForKills(State.Enemies.DrainKills());
+
         // After the death check and before the motor (M2-05 rule 14, AR §18.1). After, because a
         // run that ended this tick must spawn nothing — a wave arriving on the frame the player
         // died would be telegraphed into an arena nobody is playing in. Before the motor, because

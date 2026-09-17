@@ -84,6 +84,15 @@ public sealed class ModifyStatTests
                 PlayerStat.MoveSpeed => motor.Speed,
                 PlayerStat.MovementSkillCooldown => combat.Charge.Cooldown,
                 PlayerStat.XpGain => progression.XpGain,
+
+                // M3-12a's five. Each names the very instance its owner holds, which is what the
+                // ReferenceEquals below is for: a copy holding the same number would pass an
+                // equality check and fail the game.
+                PlayerStat.WeaponRange => combat.Weapon.Range,
+                PlayerStat.WeaponConeAngle => combat.Weapon.ConeAngleDeg,
+                PlayerStat.ChargeDamage => combat.Charge.Damage,
+                PlayerStat.ShieldRechargeDelay => combat.Health.ShieldRechargeDelay,
+                PlayerStat.HealPerKill => combat.HealPerKill,
                 _ => null,
             };
 

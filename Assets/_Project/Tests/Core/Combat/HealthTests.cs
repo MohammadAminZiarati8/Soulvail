@@ -833,6 +833,108 @@ public sealed class HealthTests
         Assert.That(health.Current, Is.EqualTo(OathboundMaxHp).Within(Tolerance));
     }
 
+    // ---- M3-12a rules 4 and 7: the Aegis's delay became a stat -----------------------------------
+
+    [Test]
+    public void Health_RechargeDelayIsAStat()
+    {
+        Health health = Oathbound();
+
+        Assert.That(health.ShieldRechargeDelay.Base, Is.EqualTo(AegisRechargeDelay).Within(Tolerance));
+        Assert.That(health.ShieldRechargeDelay.ModifierCount, Is.Zero);
+
+        health.ApplyDamage(10f, 0f);
+
+        Assert.That(health.Shield, Is.EqualTo(AegisMax - 10f).Within(Tolerance), "Sanity.");
+
+        // Halved: the Aegis is allowed to refill from 2 s rather than 4.
+        health.ShieldRechargeDelay.Add(new Modifier(ModifierKind.PercentAdd, -0.5f, new object()));
+
+        // One tick spanning [2, 2.5]: the whole of it is past the shortened delay, so half a
+        // second of refill is credited and none of it would be at the authored 4 s.
+        health.Tick(0.5f, 2.5f);
+
+        Assert.That(
+            health.Shield,
+            Is.GreaterThan(AegisMax - 10f),
+            "Refilling at 2.5 s, which a 4 s delay would not allow — the node changed the number "
+                + "the player actually feels (CH §3.1).");
+    }
+
+    [Test]
+    public void Health_UnmodifiedDelayIsUnchanged()
+    {
+        Health health = Oathbound();
+
+        health.ApplyDamage(10f, 0f);
+
+        // The mirror of the row above at the authored delay, which is what makes that one mean
+        // something: at 2.5 s an unmodified Aegis has not started.
+        health.Tick(0.5f, 2.5f);
+
+        Assert.That(
+            health.Shield,
+            Is.EqualTo(AegisMax - 10f).Within(Tolerance),
+            "Four seconds, unchanged. This task promoted the number and retuned nothing.");
+    }
+
+    [Test]
+    public void Health_NonPositiveDelayRefillsImmediately()
+    {
+        Health health = Oathbound();
+
+        health.ApplyDamage(10f, 0f);
+
+        // Driven below zero by a stack nothing in M3 authors. "Wait no time at all" is the honest
+        // reading, and adding a negative delay to the clock raw would credit the step *before* the
+        // hit landed.
+        health.ShieldRechargeDelay.Add(new Modifier(ModifierKind.Flat, -5f, new object()));
+
+        health.Tick(0.1f, 0.1f);
+
+        Assert.That(
+            health.Shield,
+            Is.GreaterThan(AegisMax - 10f),
+            "A tenth of a second after the hit, and already refilling.");
+    }
+
+    [Test]
+    public void Health_UnreadableDelayRefillsImmediately()
+    {
+        Health health = Oathbound();
+
+        health.ApplyDamage(10f, 0f);
+
+        // Reachable only by arithmetic overflow inside the stack — Stat.Base and Modifier both
+        // refuse a non-finite input at the door — and answered the same way for the reason NaN is
+        // answered everywhere in this class: `_lastDamageAt + NaN` is NaN, every comparison
+        // against it is false, and the Aegis would silently never refill again.
+        health.ShieldRechargeDelay.Add(new Modifier(ModifierKind.PercentMult, -2f, new object()));
+
+        health.Tick(0.1f, 0.1f);
+
+        Assert.That(
+            health.Shield,
+            Is.GreaterThan(AegisMax - 10f),
+            "4 × (1 − 2) = −4, which refills immediately rather than never.");
+    }
+
+    [Test]
+    public void Health_UnshieldedIgnoresTheDelayEntirely()
+    {
+        // Every enemy in the game takes this path. The stat exists on them — Health builds one
+        // unconditionally — and Tick leaves before anything could read it, so a modifier on an
+        // enemy's delay is inert rather than a null dereference.
+        Health health = Unshielded();
+
+        Assert.That(health.ShieldRechargeDelay.Base, Is.Zero, "No shield, no delay.");
+
+        health.ShieldRechargeDelay.Add(new Modifier(ModifierKind.Flat, 9f, new object()));
+
+        Assert.That(() => health.Tick(0.1f, 0.1f), Throws.Nothing);
+        Assert.That(health.Shield, Is.Zero);
+    }
+
     private static Health Oathbound() =>
         new Health(
             new Stat(OathboundMaxHp),

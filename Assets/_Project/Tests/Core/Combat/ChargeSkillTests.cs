@@ -479,6 +479,53 @@ public sealed class ChargeSkillTests
         Assert.That(actual.Y, Is.EqualTo(expected.Y).Within(1e-4f), because);
     }
 
+    // ---- M3-12a rule 3: the damage became a stat, the knockback did not --------------------------
+
+    [Test]
+    public void Charge_DamageIsAStat()
+    {
+        var charge = new ChargeSkill(Spec());
+
+        Assert.That(charge.Damage.Base, Is.EqualTo(Damage).Within(1e-4f), "CC §7's 20.");
+        Assert.That(charge.Damage.ModifierCount, Is.Zero);
+
+        charge.Damage.Add(new Modifier(ModifierKind.PercentAdd, 0.5f, new object()));
+
+        Assert.That(charge.Damage.Value, Is.EqualTo(30f).Within(1e-4f));
+    }
+
+    [Test]
+    public void Charge_UnmodifiedDamageIsUnchanged()
+    {
+        // M3-06's Charge_UnmodifiedIsUnchanged says the same thing about the cooldown, one row per
+        // stat rather than one row widened: the two are pinned by different arithmetic and a
+        // failure should name which number moved.
+        var charge = new ChargeSkill(Spec());
+
+        Assert.That(charge.Cooldown.Value, Is.EqualTo(CooldownSeconds).Within(1e-4f));
+        Assert.That(
+            charge.Damage.Value,
+            Is.EqualTo(Damage).Within(1e-4f),
+            "Promoted, not retuned: the number is reachable and has not moved.");
+    }
+
+    [Test]
+    public void Charge_ResetLeavesTheDamageStackAlone()
+    {
+        var charge = new ChargeSkill(Spec());
+
+        charge.Damage.Add(new Modifier(ModifierKind.Flat, 5f, new object()));
+
+        charge.Reset();
+
+        Assert.That(
+            charge.Damage.Value,
+            Is.EqualTo(Damage + 5f).Within(1e-4f),
+            "The rule Cooldown already follows: this class puts nothing on its own stats, so "
+                + "everything on there belongs to some other source and only that source may "
+                + "decide it should go.");
+    }
+
     /// <summary>CC §7's Charge row, with whichever number a row overrides.</summary>
     private static MovementSkillSpec Spec(
         MovementSkillKind kind = MovementSkillKind.Charge,

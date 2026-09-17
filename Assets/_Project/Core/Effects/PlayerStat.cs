@@ -28,13 +28,21 @@ namespace Soulvail.Core.Effects;
 /// moment a player picks the node.
 /// </para>
 /// <para>
-/// <b>What is deliberately not here yet</b>, each waiting for the task whose node wants it (M3-05
-/// rule 5): <c>Weapon.Range</c> and <c>Weapon.ConeAngleDeg</c>, which are forwarded floats by
-/// <c>Weapon</c>'s own remark; <c>MovementSkillSpec.Damage</c> and <c>Knockback</c>, read off the
-/// spec at the line <c>PlayerCombat.ResolveChargeHits</c> already flags; and the Aegis's three
-/// numbers, authored on <c>ShieldSpec</c>. Each becomes a <see cref="Stat"/> on its owner the day
-/// M3-12 authors the node that moves it — Wide Censure, Charge damage and Unbroken are the likely
-/// three.
+/// <b>Five of those arrived at M3-12a</b>, which is M3-05 rule 5's promise kept: the numbers it
+/// deferred became addressable in the task whose nodes wanted them. <c>Weapon.Range</c> and
+/// <c>Weapon.ConeAngleDeg</c> stopped being forwarded floats, <c>ChargeSkill.Damage</c> was
+/// promoted off the spec at the line <c>PlayerCombat.ResolveChargeHits</c> had been flagging since
+/// M1-15, <c>Health.ShieldRechargeDelay</c> became the one reachable Aegis number, and
+/// <see cref="HealPerKill"/> was added outright.
+/// </para>
+/// <para>
+/// <b>What is still deliberately not here</b>, each with the task that would claim it and the
+/// reason it waits: <c>MovementSkillSpec.Knockback</c>, a positioning number that would need its
+/// own playtest; <c>ShieldSpec.Max</c>, because raising a maximum without filling it is the trap
+/// <c>Handler_MaxHpMovesHealthLive</c> pins; and <c>ShieldSpec.RefillPerSecond</c>, which is
+/// Unbroken's keystone and should arrive whole rather than half-reachable. Enemy numbers are not a
+/// sixth entry but a different table altogether — M7-02's affixes want an <c>EnemyStat</c> mirror
+/// on <c>EnemyAgent</c>, which is a second handler and not a second registry.
 /// </para>
 /// </remarks>
 public enum PlayerStat
@@ -58,6 +66,37 @@ public enum PlayerStat
 
     /// <summary>The multiplier on every experience grant — <c>LevelTracker.XpGain</c>.</summary>
     XpGain,
+
+    /// <summary>
+    /// How far the basic attack's arc reaches, in metres — <c>Weapon.Range</c>. Feeds the swing's
+    /// wedge and the targeter's in-range test both, so a longer weapon also acquires sooner.
+    /// </summary>
+    WeaponRange,
+
+    /// <summary>
+    /// The full opening angle of the basic attack's arc, in degrees — <c>Weapon.ConeAngleDeg</c>,
+    /// clamped into <c>[0, 360]</c> where the intent is built.
+    /// </summary>
+    WeaponConeAngle,
+
+    /// <summary>What one pass-through of the dash deals — <c>ChargeSkill.Damage</c>.</summary>
+    ChargeDamage,
+
+    /// <summary>
+    /// Seconds without being hit before the Aegis refills — <c>Health.ShieldRechargeDelay</c>, and
+    /// the only one of its three numbers a node may name.
+    /// </summary>
+    ShieldRechargeDelay,
+
+    /// <summary>
+    /// Hit points restored per enemy killed — <c>PlayerCombat.HealPerKill</c>, base <b>zero</b>.
+    /// </summary>
+    /// <remarks>
+    /// <b>A percentage modifier on this one does nothing</b>: a base of zero times any percentage
+    /// is zero, so only <c>ModifierKind.Flat</c> can move it. See <c>PlayerCombat.HealPerKill</c>,
+    /// which carries the full warning and names the node that has to obey it.
+    /// </remarks>
+    HealPerKill,
 }
 
 /// <summary>
@@ -90,8 +129,9 @@ public sealed class PlayerStats
     private readonly LevelTracker _progression;
 
     /// <param name="combat">
-    /// The player's health, weapon and dash — four of the six addresses, because
-    /// <c>PlayerCombat</c> is what owns the objects that own them.
+    /// The player's health, weapon and dash — nine of the eleven addresses, because
+    /// <c>PlayerCombat</c> is what owns the objects that own them, and as of M3-12a it owns one of
+    /// the numbers itself.
     /// </param>
     /// <param name="motor">The player's movement, which owns its own top speed.</param>
     /// <param name="progression">The run's level tracker, which owns the experience multiplier.</param>
@@ -125,6 +165,11 @@ public sealed class PlayerStats
             PlayerStat.MoveSpeed => _motor.Speed,
             PlayerStat.MovementSkillCooldown => _combat.Charge.Cooldown,
             PlayerStat.XpGain => _progression.XpGain,
+            PlayerStat.WeaponRange => _combat.Weapon.Range,
+            PlayerStat.WeaponConeAngle => _combat.Weapon.ConeAngleDeg,
+            PlayerStat.ChargeDamage => _combat.Charge.Damage,
+            PlayerStat.ShieldRechargeDelay => _combat.Health.ShieldRechargeDelay,
+            PlayerStat.HealPerKill => _combat.HealPerKill,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(stat),
                 stat,

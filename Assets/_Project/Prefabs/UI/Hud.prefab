@@ -466,10 +466,6 @@ MonoBehaviour:
   _cellSizeDp: 24
   _gapDp: 4
   _marginDp: {x: 16, y: 48}
-  _passive: {r: 0.62, g: 0.66, b: 0.72, a: 1}
-  _active: {r: 0.36, g: 0.72, b: 0.85, a: 1}
-  _upgrade: {r: 0.45, g: 0.78, b: 0.55, a: 1}
-  _keystone: {r: 0.85, g: 0.72, b: 0.32, a: 1}
 --- !u!1 &667606901238232796
 GameObject:
   m_ObjectHideFlags: 0
@@ -4622,6 +4618,7 @@ RectTransform:
   - {fileID: 4666785116136749207}
   - {fileID: 7730794478683329372}
   - {fileID: 1575345435616927369}
+  - {fileID: 2054891292413999705}
   m_Father: {fileID: 1742106839593171784}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
@@ -4643,9 +4640,83 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HpBarView
   _fill: {fileID: 6224953614389704839}
   _ghost: {fileID: 343555779096154014}
-  _fillColour: {r: 0.133, g: 0.827, b: 0.933, a: 1}
-  _blockedColour: {r: 0.78, g: 0.98, b: 1, a: 1}
+  _shieldSegment: {fileID: 3220162806448522559}
   _blockedSeconds: 0.06
+--- !u!1 &7446354346727294250
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2054891292413999705}
+  - component: {fileID: 1258793331397149261}
+  - component: {fileID: 3220162806448522559}
+  m_Layer: 0
+  m_Name: ShieldSegment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2054891292413999705
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7446354346727294250}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2178875229664934245}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &1258793331397149261
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7446354346727294250}
+  m_CullTransparentMesh: 1
+--- !u!114 &3220162806448522559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7446354346727294250}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &7717408671754247978
 GameObject:
   m_ObjectHideFlags: 0

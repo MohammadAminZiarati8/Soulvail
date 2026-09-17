@@ -38,11 +38,37 @@ public readonly struct EnemySpawned
     /// <summary>Where it was spawned, in world metres.</summary>
     public readonly Vector3 Position;
 
-    public EnemySpawned(int id, ContentId specId, Vector3 position)
+    /// <summary>
+    /// Whether this body is an Elite — GD §16.2's priority target, whose health bar never leaves
+    /// (M3-13b rule 6).
+    /// </summary>
+    /// <remarks>
+    /// <b>A per-spawn fact rather than a catalog lookup, and that is what makes it belong here.</b>
+    /// <c>EnemyViews</c> holds an <c>EnemyLookBook</c> and no <c>ContentCatalog</c>, so it cannot
+    /// answer the question — and handing it the catalog would answer it <em>wrongly</em> for M7-02,
+    /// whose Elites are a body upgraded at spawn by spending <c>WavePlan.UnspentThreat</c> (GD §8.3)
+    /// rather than an archetype. Today it comes off <c>EnemySpec.IsElite</c>, which has existed since
+    /// M1-05 and which <c>TargetScorer</c> already scores on; the day an affix makes one, it comes off
+    /// the affix and nothing downstream changes. The pattern is the project's own — <c>ShieldGranted.Total</c>,
+    /// <c>EnemyDamaged.HpFraction</c>, <c>EnemyTelegraph.Duration</c> all ride the event for the same
+    /// reason: a view needs the fact and must not hold a handle to the thing that knows it.
+    /// </remarks>
+    public readonly bool IsElite;
+
+    /// <param name="isElite">
+    /// Defaulted, which is a ruling rather than a convenience. It makes "nobody set it" and "not an
+    /// Elite" indistinguishable, and that is harmless <em>here and only here</em>, because
+    /// <c>false</c> <b>is</b> not-an-Elite — the same value a fully-specified call would pass, not a
+    /// sentinel standing in for one. The alternative was eleven call sites across four assemblies
+    /// restating a fact the default already states. A future field whose unset value is not also its
+    /// correct default does not inherit this.
+    /// </param>
+    public EnemySpawned(int id, ContentId specId, Vector3 position, bool isElite = false)
     {
         Id = id;
         SpecId = specId;
         Position = position;
+        IsElite = isElite;
     }
 }
 

@@ -40,7 +40,10 @@ namespace Soulvail.Core.Combat;
 /// <c>ChooseOffer</c> calls <see cref="Add"/> when the node taken is an Active, and
 /// <c>RunSession.Start</c> calls it for each Active in a resumed run's take order — core has no
 /// business listening to its own events, which is <c>RunSession</c>'s own remark on
-/// <c>PlayerDied</c> and <c>SkillTree.OwnedActives</c>' one object over.
+/// <c>PlayerDied</c> and <c>SkillTree.OwnedActives</c>' one object over. <b>That is still true with
+/// <see cref="WatchArrivals"/> in the file</b>: the hook is this class <em>telling</em> one listener
+/// about an arrival, not this class subscribing to anything, and it exists because the moment a
+/// cooldown <see cref="Stat"/> is created is visible nowhere else (M3-12b rule 3).
 /// </para>
 /// </remarks>
 public sealed class SkillRunner
@@ -134,6 +137,29 @@ public sealed class SkillRunner
     private int _count;
 
     /// <summary>
+    /// Told about each Active as it arrives — the id, and the very <see cref="Stat"/>
+    /// <see cref="CooldownOf"/> will hand out for it. Null until something asks.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A callback, and deliberately not a subscription to <c>NodeTaken</c></b> (M3-12b rule 3).
+    /// Core does not listen to its own domain events — this class's own remarks say so one screen
+    /// up — and the listener needs something no event carries: the cooldown <see cref="Stat"/>
+    /// instance <see cref="Add"/> has just created. An event would hand over an id and leave the
+    /// listener to resolve it through <see cref="TryIndexOf"/>, which is the same address by a
+    /// longer road and one that a later publish-order change could quietly move.
+    /// </para>
+    /// <para>
+    /// <b>It exists because <see cref="Add"/> re-seeds the stat.</b> <c>ModifySkillCooldown</c>
+    /// holds a modifier for a skill the player does not own yet and spends it the moment they do;
+    /// applied any earlier, it would land on a <see cref="Stat"/> the line
+    /// <c>_cooldowns[_count] = new Stat(...)</c> is about to replace. There is nowhere else in this
+    /// class's life that moment is visible.
+    /// </para>
+    /// </remarks>
+    private Action<ContentId, Stat> _onAdded;
+
+    /// <summary>
     /// The last time this object was given the clock, by either <see cref="Tick"/> or
     /// <see cref="Cast"/>.
     /// </summary>
@@ -167,6 +193,45 @@ public sealed class SkillRunner
 
     /// <summary>How many actives the player owns.</summary>
     public int Count => _count;
+
+    /// <summary>
+    /// Names the one thing that wants to be told when an Active arrives, for the life of this run.
+    /// </summary>
+    /// <param name="listener">
+    /// Called as the last thing <see cref="Add"/> does, with the new skill's id and the live
+    /// cooldown <see cref="Stat"/> that entry now holds.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="listener"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Something is already watching. <b>One watcher, and a second is refused loudly</b> —
+    /// <c>EffectRegistry.Register</c>'s rule and its reason: a multicast delegate would make "who
+    /// gets told, and in what order" depend on composition order somewhere else, and a run-scoped
+    /// object that quietly accumulated listeners across two <c>Start</c>s would be applying the
+    /// previous run's nodes to this one's cooldowns.
+    /// </exception>
+    /// <remarks>
+    /// <c>internal</c>, because the only caller is <c>ModifySkillCooldownHandler</c>'s constructor
+    /// and a view has no business being told about a pick this way — <c>NodeTaken</c> is the door
+    /// for that (AR §18.2). It is not a general extension point and is not an event: see
+    /// <see cref="_onAdded"/>.
+    /// </remarks>
+    internal void WatchArrivals(Action<ContentId, Stat> listener)
+    {
+        if (listener is null)
+        {
+            throw new ArgumentNullException(nameof(listener));
+        }
+
+        if (_onAdded is not null)
+        {
+            throw new InvalidOperationException(
+                "Something is already watching this runner's arrivals. One watcher per run: a "
+                    + "second would make the order two listeners are told in depend on the "
+                    + "composition root rather than on anything a reader can see here.");
+        }
+
+        _onAdded = listener;
+    }
 
     /// <summary>
     /// How many of CC §6.2's four slots are occupied, from 0 to <see cref="MaxManualSlots"/>.
@@ -276,6 +341,19 @@ public sealed class SkillRunner
         _isAuto[_count] = true;
 
         _count++;
+
+        // **Last, and every word of that is load-bearing** (M3-12b rule 3). After the fresh Stat
+        // above, or a pending modifier lands on a number this method is about to throw away; after
+        // `_count++`, so a listener resolving the skill through TryIndexOf and CooldownOf finds the
+        // entry rather than an index that does not exist yet. Null for every run in this build:
+        // nothing watches until a tree carries a cooldown node.
+        //
+        // **Measured, not argued:** moved above the `new Stat` line, exactly four rows go red —
+        // `Cooldown_LandsWhenTheSkillArrives`, `Cooldown_PendingIsSpentOnce`,
+        // `Cooldown_RemoveLeavesAnotherSourceAlone` and `Session_RegistersBothHandlers` — and the
+        // other sixteen in that fixture stay green, which is what makes them the rows this line
+        // belongs to.
+        _onAdded?.Invoke(skill.Id, _cooldowns[_count - 1]);
     }
 
     /// <summary>The id of the active at <paramref name="index"/>.</summary>

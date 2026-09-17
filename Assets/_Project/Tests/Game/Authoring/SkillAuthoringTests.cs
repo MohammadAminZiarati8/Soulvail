@@ -324,6 +324,152 @@ public sealed class SkillAuthoringTests
                 + "file-scoped namespace on a UnityEngine.Object type (Traps §5).");
     }
 
+    // -------------------------------------------------- ModifySkillCooldownDefinition
+
+    [Test]
+    public void SkillCooldown_ToEffect_RoundTrip()
+    {
+        // 'skill.test.bulwark', Flat and -1.5, none of which is this type's C# initialiser
+        // ('skill.new', PercentMult, -0.25): all three fields carry defaults, so asserting the
+        // defaults would pass identically whether the YAML key binds or the field is holding its
+        // initialiser (Traps §7). Flat in particular, because PercentMult is the authored default
+        // and CH §4.1's kind — a round trip that asserted it would prove nothing about the field.
+        ModifySkillCooldownDefinition definition = NewSkillCooldown(
+            "ShorterBulwark", "skill.test.bulwark", ModifierKind.Flat, -1.5f);
+
+        IEffect effect = definition.ToEffect();
+
+        Assert.That(effect, Is.InstanceOf<ModifySkillCooldown>());
+
+        var cooldown = (ModifySkillCooldown)effect;
+
+        Assert.That(cooldown.SkillId, Is.EqualTo(new ContentId("skill.test.bulwark")));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-1.5f).Within(Tolerance));
+
+        // ADR-0006: the SO holds no runtime state. A cached effect handed out twice would be one
+        // object shared by every run that takes the node.
+        Assert.That(definition.ToEffect(), Is.Not.SameAs(cooldown));
+    }
+
+    [Test]
+    public void SkillCooldown_Invalid_NamesTheAsset()
+    {
+        // A malformed id: legal as a string, refused as content. ContentId's grammar is the one
+        // account of a legal id and this type copies none of it — what it owes is the asset's name
+        // at the front of the message (M0-11).
+        ModifySkillCooldownDefinition bad = NewSkillCooldown(
+            "BrokenCooldown", "Skill Cooldown", ModifierKind.PercentMult, -0.25f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => bad.ToEffect());
+
+        Assert.That(
+            thrown.Message,
+            Does.StartWith("ModifySkillCooldownDefinition 'BrokenCooldown'"),
+            "The message must lead with the asset, or the Console points at no file to open.");
+
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentException>());
+
+        // And another door, so the row is not one field's story told twice — this one out of
+        // ModifySkillCooldown's own constructor rather than out of the id check above.
+        ModifySkillCooldownDefinition infinite = NewSkillCooldown(
+            "InfiniteCooldown",
+            "skill.test.bulwark",
+            ModifierKind.PercentMult,
+            float.PositiveInfinity);
+
+        Assert.That(
+            Assert.Throws<ArgumentException>(() => infinite.ToEffect()).Message,
+            Does.StartWith("ModifySkillCooldownDefinition 'InfiniteCooldown'"));
+    }
+
+    [Test]
+    public void SkillCooldown_OnValidate_MalformedId_Warns()
+    {
+        ModifySkillCooldownDefinition definition = NewSkillCooldown(
+            "WarnsOnBadSkillId", "skill.test.bulwark", ModifierKind.PercentMult, -0.25f);
+
+        // LogAssert fails at teardown if this warning never arrives, which is what makes the row
+        // load-bearing: a silent OnValidate would go unnoticed otherwise, since a stray warning
+        // does not fail a test on its own (M0-11). A malformed id is exactly the field that needs
+        // warning about — it fails at boot and looks like nothing in the Inspector.
+        LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("WarnsOnBadSkillId")));
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_skillId").stringValue = "Skill Cooldown";
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    [Test]
+    public void SkillCooldown_IsLinkedToAMonoScript()
+    {
+        // **The failure mode this catches reports nothing anywhere** (Traps §5). Unity 6.3's script
+        // importer does not understand `namespace X;`, so a ScriptableObject declared file-scoped
+        // compiles, passes every row above — they build the instance in code — and then loads as
+        // null off any asset that references it, with `m_Script: {fileID: 0}` and no error.
+        ModifySkillCooldownDefinition definition = NewSkillCooldown(
+            "LinkedCooldown", "skill.test.bulwark", ModifierKind.PercentMult, -0.25f);
+
+        Assert.That(
+            MonoScript.FromScriptableObject(definition),
+            Is.Not.Null,
+            "ModifySkillCooldownDefinition is not linked to a MonoScript — the usual cause is a "
+                + "file-scoped namespace on a UnityEngine.Object type (Traps §5).");
+    }
+
+    // ------------------------------------------------------ KnockbackOnSwingDefinition
+
+    [Test]
+    public void Knockback_ToEffect_RoundTrip()
+    {
+        // 2.25, not the 1.5 the field carries as its C# initialiser (Traps §7).
+        KnockbackOnSwingDefinition definition = NewKnockback("Shove", distance: 2.25f);
+
+        IEffect effect = definition.ToEffect();
+
+        Assert.That(effect, Is.InstanceOf<KnockbackOnSwing>());
+
+        Assert.That(((KnockbackOnSwing)effect).Distance, Is.EqualTo(2.25f).Within(Tolerance));
+
+        Assert.That(definition.ToEffect(), Is.Not.SameAs(effect));
+    }
+
+    [Test]
+    public void Knockback_Invalid_NamesTheAsset()
+    {
+        // Zero metres: legal as a float, refused as content, and the mistake worth catching — a
+        // node the player spends a pick on and gets nothing for.
+        KnockbackOnSwingDefinition none = NewKnockback("BrokenShove", distance: 0f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => none.ToEffect());
+
+        Assert.That(
+            thrown.Message,
+            Does.StartWith("KnockbackOnSwingDefinition 'BrokenShove'"),
+            "The message must lead with the asset, or the Console points at no file to open.");
+
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+
+        // And the other door: a pull, which nothing in the design has ever asked for.
+        KnockbackOnSwingDefinition pull = NewKnockback("PullingShove", distance: -1f);
+
+        Assert.That(
+            Assert.Throws<ArgumentException>(() => pull.ToEffect()).Message,
+            Does.StartWith("KnockbackOnSwingDefinition 'PullingShove'"));
+    }
+
+    [Test]
+    public void Knockback_IsLinkedToAMonoScript()
+    {
+        KnockbackOnSwingDefinition definition = NewKnockback("LinkedShove", distance: 1.5f);
+
+        Assert.That(
+            MonoScript.FromScriptableObject(definition),
+            Is.Not.Null,
+            "KnockbackOnSwingDefinition is not linked to a MonoScript — the usual cause is a "
+                + "file-scoped namespace on a UnityEngine.Object type (Traps §5).");
+    }
+
     // ---------------------------------------------------------------------- SkillDefinition
 
     [Test]
@@ -991,6 +1137,34 @@ public sealed class SkillAuthoringTests
         var serialized = new SerializedObject(definition);
         serialized.FindProperty("_amount").floatValue = amount;
         serialized.FindProperty("_duration").floatValue = duration;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return definition;
+    }
+
+    private ModifySkillCooldownDefinition NewSkillCooldown(
+        string assetName,
+        string skillId,
+        ModifierKind kind,
+        float value)
+    {
+        var definition = New<ModifySkillCooldownDefinition>(assetName);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_skillId").stringValue = skillId;
+        serialized.FindProperty("_kind").intValue = (int)kind;
+        serialized.FindProperty("_value").floatValue = value;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return definition;
+    }
+
+    private KnockbackOnSwingDefinition NewKnockback(string assetName, float distance)
+    {
+        var definition = New<KnockbackOnSwingDefinition>(assetName);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_distance").floatValue = distance;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         return definition;

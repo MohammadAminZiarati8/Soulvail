@@ -213,6 +213,30 @@ public sealed class PlayerCombat
     /// </summary>
     private int _lastConeRequestId;
 
+    /// <summary>
+    /// Which way the swing that is owed an answer was facing, on the ground plane. Written on the
+    /// damage frame beside <see cref="PendingConeRequestId"/>, read once by
+    /// <see cref="ResolveConeHits"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A field rather than a parameter on <see cref="ResolveConeHits"/>, and the report is why</b>
+    /// (M3-12b rule 7). The answer arrives at least a frame later, from a body that was handed the
+    /// facing on the <c>ConeHitIntent</c> and has no reason to hand it back — so a parameter would
+    /// mean the body remembering core's geometry across a round trip and every caller of
+    /// <c>ReportConeHits</c> carrying it, to say something core already knew when it asked the
+    /// question. The facing belongs to the pending cone exactly as its request id does, and lives
+    /// beside it.
+    /// </para>
+    /// <para>
+    /// It is the swing's facing and not the direction to each enemy, which is
+    /// <c>ResolveChargeHits</c>' answer one method down and <c>EnemyKnockbackIntent.DirectionXZ</c>'s
+    /// own rule: everything one sweep catches is swept the same way, which reads as a shove rather
+    /// than as an explosion.
+    /// </para>
+    /// </remarks>
+    private Vector2 _pendingConeFacingXZ;
+
     /// <param name="spec">
     /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
     /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
@@ -284,6 +308,10 @@ public sealed class PlayerCombat
         // Zero, and the only one of M3-12a's five that is new rather than promoted — see the
         // property's own remarks for what a node has to do to move it.
         HealPerKill = new Stat(0f);
+
+        // Zero too, and for the same reason and with the same trap in it: a swing shoves nobody
+        // until a node says so. See the property's own remarks.
+        SwingKnockback = new Stat(0f);
 
         Blackboard = new CombatBlackboard();
 
@@ -374,6 +402,37 @@ public sealed class PlayerCombat
     /// </para>
     /// </remarks>
     public Stat HealPerKill { get; }
+
+    /// <summary>
+    /// How far each enemy a swing hits is shoved, in metres, live. Zero until a node says otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>⚠ Base 0 means a percentage modifier on this stat does nothing at all.</b>
+    /// <see cref="Stat"/> computes <c>(Base + ΣFlat) × (1 + ΣPercentAdd) × Π(1 + PercentMult)</c>,
+    /// so with a base of zero and no <see cref="ModifierKind.Flat"/> on the stack every percentage
+    /// multiplies into zero. <b><see cref="ModifierKind.Flat"/> is the only kind that can ever move
+    /// this number</b> — <see cref="HealPerKill"/>'s trap exactly, measured there in M3-12a and
+    /// written down here before it could be found twice.
+    /// </para>
+    /// <para>
+    /// <b>The difference is that here the trap is unreachable, and that is what
+    /// <c>KnockbackOnSwing</c> buys.</b> That primitive carries one distance and no kind, and its
+    /// handler chooses <see cref="ModifierKind.Flat"/> itself, so there is no Inspector field a
+    /// designer can get wrong — which is M3-12b rule 6's whole argument for a named primitive over
+    /// a <see cref="PlayerStat"/> member. The warning stands anyway because this property is
+    /// <see langword="public"/> and the day a second door reaches it, the arithmetic will not have
+    /// changed. Nothing in <see cref="PlayerStat"/> names it, and
+    /// <c>Charge_KnockbackIsNotAddressable</c> is the row that keeps it that way.
+    /// </para>
+    /// <para>
+    /// Read once per swing by <see cref="ResolveConeHits"/>, which emits an
+    /// <c>EnemyKnockbackIntent</c> per enemy hit only while the value is finite and above zero
+    /// (rule 8): a stack driven negative is a pull and one driven non-finite is a teleport, and
+    /// nothing in the design has asked for either.
+    /// </para>
+    /// </remarks>
+    public Stat SwingKnockback { get; }
 
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
@@ -548,7 +607,16 @@ public sealed class PlayerCombat
     /// something publishes into a stat from an <c>EnemyDamaged</c> handler.
     /// </para>
     /// <para>
-    /// Nothing here allocates: a span in, a preallocated dedupe buffer, and a struct result per id.
+    /// <b>And the swing shoves, once a node says so</b> (M3-12b rule 5). <see cref="SwingKnockback"/>
+    /// has a base of zero, so every run this build plays takes one comparison and emits nothing;
+    /// with a <c>KnockbackOnSwing</c> node taken, each enemy the swing reached gets an
+    /// <c>EnemyKnockbackIntent</c> in the direction the swing was thrown. The machinery is the
+    /// Charge's, unchanged since M1-15 — which is what that struct's own remarks predicted would
+    /// happen the day something else pushed an enemy.
+    /// </para>
+    /// <para>
+    /// Nothing here allocates: a span in, a preallocated dedupe buffer, a struct result per id, and
+    /// a struct intent per shove.
     /// </para>
     /// </remarks>
     /// <param name="enemyIds">
@@ -578,6 +646,22 @@ public sealed class PlayerCombat
 
         float damage = Weapon.Damage.Value;
 
+        // Read once for the whole report, like the damage above and for its reason: one swing is
+        // one shove, whatever a handler does between two enemies.
+        //
+        // **Asked here rather than per enemy, and the spelling is the guard** (rule 8, AR §18.3).
+        // `> 0f` is false for NaN as well as for everything at or below zero, so a stack nobody can
+        // read shoves nobody; infinity is asked about separately because it passes a `> 0` test,
+        // and an infinite shove is a teleport rather than a knockback. A base of zero means the
+        // common path — every run this build plays — takes one comparison and emits nothing.
+        float knockback = SwingKnockback.Value;
+        bool shoves = knockback > 0f && !float.IsInfinity(knockback);
+
+        // The swing's facing, sampled when the question was asked. Read before the loop so that
+        // every enemy one report names is swept the same way, which is EnemyKnockbackIntent's own
+        // rule and what tells a cone shove apart from a blast.
+        Vector2 shove = _pendingConeFacingXZ;
+
         _hitCount = 0;
 
         for (int i = 0; i < enemyIds.Length; i++)
@@ -603,6 +687,16 @@ public sealed class PlayerCombat
             }
 
             RecordHit(id);
+
+            // **Below RecordHit, so the shove is per enemy the swing actually reached** (rule 5).
+            // An id that resolved to nothing or was already a corpse has been skipped above and is
+            // not shoved; one the swing killed *is*, for the reason ResolveChargeHits gives — it
+            // was hit, the shove is what that looks like, and a corpse sliding a metre while it
+            // dissolves is better than one that plants itself the instant it dies.
+            if (shoves)
+            {
+                _intents.EnemyKnockback(new EnemyKnockbackIntent(id, shove, knockback));
+            }
         }
     }
 
@@ -1023,6 +1117,11 @@ public sealed class PlayerCombat
 
         _lastConeRequestId++;
         PendingConeRequestId = _lastConeRequestId;
+
+        // The swing's geometry is remembered with its request id, because the shove
+        // ResolveConeHits owes is measured in the direction the swing was thrown rather than in
+        // whatever direction the player has turned by the time the body answers (rule 7).
+        _pendingConeFacingXZ = facingXZ;
 
         // Sampled here, at the moment the swing is thrown, and never cached (M3-12a rules 2 and 6):
         // a node taken mid-stage widens the very next swing rather than the one after it, which is

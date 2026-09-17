@@ -192,6 +192,14 @@ Editor has the code — which is a stronger statement than any timestamp, and it
   assembly and returns null. This is what dressed `Run.unity` at M3-09c, and it is the general
   answer to *"the command cannot name the type it has to edit"* (M3-09c).
 - **No `System.Numerics` reference**, so no command can call a core method taking a `Vector2` (M1-15).
+  **Narrower than it reads, measured at M3-12b: the ban is on naming `Vector2`/`Vector3` in a
+  signature, not on touching a type that holds one.** A command implemented the whole of
+  `IIntentSink` — whose five members take `ConeHitIntent`, `ChargeIntent`, `EnemyMoveIntent`,
+  `PlayerMoveIntent` and `EnemyKnockbackIntent`, every one of which carries `Vector2` or `Vector3`
+  fields — and it compiled clean, because the *signatures* name only Soulvail types. So a probe can
+  construct a `PlayerCombat`, stand in for its ports and read anything off it; what it still cannot
+  do is pass a vector in or read one out. **The practical rule: check what the signature says, not
+  what the struct contains** — the wider reading costs a probe that would have worked.
 - **The rewriter hoists nested classes out of `CommandScript`** *and leaves them in place*, so a
   nested `ICallbacks` fails with `CS1527`. Two working shapes: one class implementing both —
   `internal class CommandScript : IRunCommand, ICallbacks`, registering `this` — or **a separate

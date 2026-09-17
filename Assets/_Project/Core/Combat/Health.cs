@@ -25,11 +25,12 @@ namespace Soulvail.Core.Combat;
 /// every frame, which is the contract, gets a live one.
 /// </para>
 /// <para>
-/// <b>Nothing here is a <see cref="Stat"/> except the maximum.</b> Current HP is not a
-/// gameplay number a modifier can apply to — it is state — and the shield's three numbers are
+/// <b>Two numbers here are <see cref="Stat"/>s and the rest are not.</b> Current HP is not a
+/// gameplay number a modifier can apply to — it is state — and two of the shield's three are
 /// still authored data (see <see cref="ShieldSpec"/>). <see cref="MaxHp"/> is a stat because
 /// tree nodes, Pacts and depth scaling all move it, and this component follows it live: see
-/// rule 6 on <see cref="OnMaxHpChanged"/>.
+/// rule 6 on <see cref="OnMaxHpChanged"/>. <see cref="ShieldRechargeDelay"/> joined it at
+/// M3-12a, and says on itself why the Aegis's other two did not.
 /// </para>
 /// <para>
 /// <b>Reusable rather than disposable.</b> Subscribing to <see cref="Stat.Changed"/> means the
@@ -108,6 +109,10 @@ public sealed class Health
         _shield = shield;
         _hitIFrames = hitIFrames;
 
+        // Seeded from the spec and live from here on (M3-12a rule 4), zero for anything without a
+        // shield at all — which never reads it, because Tick leaves before it would.
+        ShieldRechargeDelay = new Stat(shield?.RechargeDelay ?? 0f);
+
         _current = ClampedMax;
         _shieldCurrent = ShieldMax;
 
@@ -116,6 +121,28 @@ public sealed class Health
 
     /// <summary>The live maximum. Its modifier stack is where "+20 max HP" goes.</summary>
     public Stat MaxHp { get; }
+
+    /// <summary>
+    /// Seconds without being hit before the Aegis starts refilling, live. Where "−25 % Aegis
+    /// delay" goes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The one Aegis number a node can reach, and the other two stay authored on purpose</b>
+    /// (M3-12a rule 4). CH §3.1 calls the Aegis the only regeneration in the game, and its delay
+    /// is the number the player actually feels — four seconds of not being hit, in a game about
+    /// not being hit. <see cref="ShieldMax"/> is refused because raising a maximum without filling
+    /// it is the trap <c>Handler_MaxHpMovesHealthLive</c> already documents, and
+    /// <see cref="ShieldSpec.RefillPerSecond"/> is refused because it is Unbroken's keystone
+    /// (*"Aegis recharges 2× faster"*), which is not among v1's twelve nodes and should arrive
+    /// whole rather than half-reachable.
+    /// </para>
+    /// <para>
+    /// A stack can drive it non-positive or non-finite, which <see cref="Stat"/> permits and
+    /// <see cref="Tick"/> answers with zero — see there.
+    /// </para>
+    /// </remarks>
+    public Stat ShieldRechargeDelay { get; }
 
     /// <summary>Current HP, in <c>[0, MaxHp.Value]</c>.</summary>
     public float Current => _current;
@@ -456,7 +483,7 @@ public sealed class Health
             return;
         }
 
-        float rechargeFrom = _lastDamageAt + _shield.RechargeDelay;
+        float rechargeFrom = _lastDamageAt + EffectiveRechargeDelay();
         float creditedFrom = MathF.Max(now - dt, rechargeFrom);
         float credited = now - creditedFrom;
 
@@ -466,6 +493,35 @@ public sealed class Health
         }
 
         _shieldCurrent = MathF.Min(_shield.Max, _shieldCurrent + (_shield.RefillPerSecond * credited));
+    }
+
+    /// <summary>
+    /// <see cref="ShieldRechargeDelay"/> as a number this class can add to a clock: the live value,
+    /// or zero for anything a modifier stack drove below zero or made unreadable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// M3-12a rule 7. <see cref="Stat"/> clamps nothing (ADR-0008), so the guard belongs here,
+    /// where the number finally means something — the same division of labour <c>CooldownRules</c>
+    /// has with <see cref="ChargeSkill.Cooldown"/>.
+    /// </para>
+    /// <para>
+    /// <b>Zero is the honest reading rather than a refusal.</b> A delay driven below zero says
+    /// "wait no time at all", so the Aegis refills from the instant of the hit; a negative one
+    /// added to the clock raw would say the same thing but would also credit the step *before* the
+    /// hit landed. A non-finite one is answered the same way for the reason NaN is answered
+    /// everywhere in this class: <c>_lastDamageAt + NaN</c> is NaN, every comparison against it is
+    /// false, and the Aegis would simply never refill again for the rest of the run with nothing
+    /// logged. Reachable by no stack anything in M3 authors, and cheap to be right about.
+    /// </para>
+    /// </remarks>
+    private float EffectiveRechargeDelay()
+    {
+        float delay = ShieldRechargeDelay.Value;
+
+        // The negated positive, so NaN falls to zero rather than through: every comparison against
+        // it is false, and the natural spelling would let it past.
+        return delay > 0f && !float.IsInfinity(delay) ? delay : 0f;
     }
 
     /// <summary>

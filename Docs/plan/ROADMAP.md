@@ -240,7 +240,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-11a-ii](tasks/M3-11a-ii-bulwark-and-timed-effects.md) | Bulwark, and the clock that takes a cast effect back | M | 11a-i 06 05 02a | ☑ |
 | [M3-11b](tasks/M3-11b-consecrate-and-zones.md) | Consecrate: ground you have to stand on | M | 11a-ii 06 05 | ☑ |
 | [M3-11c](tasks/M3-11c-skill-views.md) | What a cast looks like, and the untested view that has been waiting for it | M | 11a 11b | ☑ |
-| [M3-12a](tasks/M3-12a-addressable-stats.md) | Five numbers a node can reach: the stats M3-05 deferred | M | 05 | ☐ |
+| [M3-12a](tasks/M3-12a-addressable-stats.md) | Five numbers a node can reach: the stats M3-05 deferred | M | 05 | ☑ |
 | [M3-12b](tasks/M3-12b-cooldown-and-knockback-primitives.md) | Two primitives that are not a stat: a skill's own cooldown, and a swing that shoves | M | 12a 06 05 | ☐ |
 | [M3-12c](tasks/M3-12c-oathbound-tree-v1.md) | The Oathbound tree v1: twelve nodes, and the number ledger row 1 has been waiting for | M | 12a 12b 11a 11b 02b 04 | ☐ |
 

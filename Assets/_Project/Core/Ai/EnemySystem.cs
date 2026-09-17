@@ -172,6 +172,25 @@ public sealed class EnemySystem
     public float PendingXp { get; private set; }
 
     /// <summary>
+    /// How many deaths there have been since the last <see cref="DrainKills"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><see cref="PendingXp"/>'s shape, banked at the same line and for the same reason</b>
+    /// (M3-12a rule 5): a death can be reported between ticks, and what it is worth is decided on
+    /// the tick by the one thing that knows whether the run is still running.
+    /// <c>RunSession.Tick</c> drains this beside the experience, after the death check, so a kill
+    /// landing on the tick the player dies pays nothing.
+    /// </para>
+    /// <para>
+    /// A count and not a list, for the reason the experience is a single float: what reads it —
+    /// <c>PlayerCombat.HealForKills</c> — needs to know how many, never which, and a per-kill list
+    /// would be an allocation on the one path that must not have one.
+    /// </para>
+    /// </remarks>
+    public int PendingKills { get; private set; }
+
+    /// <summary>
     /// The depth everything spawned from now on is scaled to (GD §12.3).
     /// </summary>
     /// <remarks>
@@ -390,6 +409,11 @@ public sealed class EnemySystem
             // about *who* killed it would need a second mechanism the day minions exist, and GD §15
             // says only that experience is granted on kill.
             PendingXp += agent.Spec.XpValue;
+
+            // On the same line and through the same door, so that "every death pays" is one rule
+            // with two currencies rather than two rules that can drift apart. Anything that ever
+            // becomes true of a kill is banked here.
+            PendingKills++;
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
@@ -625,6 +649,10 @@ public sealed class EnemySystem
         // rather than a stage's last kill silently paying twice or not at all.
         PendingXp = 0f;
 
+        // And the kills that earned it, for exactly the same reason and with exactly the same
+        // caveat — banked on the same line, so they are dropped on the same one.
+        PendingKills = 0;
+
         // The census's own reading of the world goes with it. A player position left behind would
         // make the next arena's first frame of perception measure against where the last run stood
         // — inert until Ingest runs, and exactly the kind of thing a stage boundary makes reachable.
@@ -660,6 +688,30 @@ public sealed class EnemySystem
         PendingXp = 0f;
 
         return earned;
+    }
+
+    /// <summary>
+    /// Hands over everything <see cref="PendingKills"/> has counted and zeroes it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="DrainXp"/>'s shape exactly, and take-and-clear in one call for its reason: two
+    /// calls is a pair a future caller can get half of, and the half that is forgotten heals for a
+    /// stage's kills over and over, every tick, for the rest of the run.
+    /// </para>
+    /// <para>
+    /// Returns zero on the overwhelming majority of ticks, which is not worth branching on here:
+    /// <c>PlayerCombat.HealForKills</c> is silent for zero.
+    /// </para>
+    /// </remarks>
+    /// <returns>The deaths counted since the last drain.</returns>
+    public int DrainKills()
+    {
+        int killed = PendingKills;
+
+        PendingKills = 0;
+
+        return killed;
     }
 
     /// <summary>How many registered agents are breathing.</summary>

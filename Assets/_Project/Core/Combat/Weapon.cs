@@ -79,7 +79,10 @@ public sealed class Weapon
     /// </summary>
     private bool _damageFrameFired;
 
-    /// <param name="spec">The weapon's authored numbers. Seeds both stats and is read for the arc.</param>
+    /// <param name="spec">
+    /// The weapon's authored numbers. Seeds all four stats and is read for the damage frame, which
+    /// is a fraction of a swing rather than a number a node moves.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="spec"/> is null.</exception>
     public Weapon(WeaponSpec spec)
     {
@@ -90,6 +93,12 @@ public sealed class Weapon
         // a designer typed.
         Damage = new Stat(spec.Damage);
         FireRate = new Stat(spec.SwingsPerSecond);
+
+        // The day <see cref="Range"/>'s own remark was waiting for (M3-12a rule 2). Both were
+        // forwarded floats on the argument that "nothing in V1 modifies a weapon's reach", and
+        // M3-12c's Wide Censure is what retires that argument.
+        Range = new Stat(spec.Range);
+        ConeAngleDeg = new Stat(spec.ConeAngleDeg);
     }
 
     /// <summary>Damage per swing, live. Where "+2 damage" and "+15 % damage" go.</summary>
@@ -99,14 +108,28 @@ public sealed class Weapon
     public Stat FireRate { get; }
 
     /// <summary>
-    /// How far the arc reaches, in metres. Forwarded from the spec rather than held as a
-    /// <see cref="Stat"/>: nothing in V1 modifies a weapon's reach, and a stat with no modifier is
-    /// a cache with a subscription. It becomes one the day a node wants "+2 m".
+    /// How far the arc reaches, in metres, live. Where "+2 m" goes.
     /// </summary>
-    public float Range => _spec.Range;
+    /// <remarks>
+    /// <b>Read twice per swing by two different questions</b>, and that is what makes it worth
+    /// more than a damage number: <c>PlayerCombat</c> puts it on the <c>ConeHitIntent</c> as the
+    /// wedge's reach, and its targeter compares a candidate's distance against it to decide
+    /// whether there is anything worth swinging at at all. A longer weapon therefore acquires
+    /// sooner as well as reaching further — the node changes how the fight is spaced, not only
+    /// how hard it lands.
+    /// </remarks>
+    public Stat Range { get; }
 
-    /// <summary>The full opening angle of the arc, in degrees. Forwarded, like <see cref="Range"/>.</summary>
-    public float ConeAngleDeg => _spec.ConeAngleDeg;
+    /// <summary>
+    /// The full opening angle of the arc, in degrees, live — the whole arc, not the half-angle.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Stat"/> clamps nothing (ADR-0008), and this is a number where that matters more
+    /// than most: <c>WeaponSpec</c> refuses an authored angle outside <c>(0, 360]</c>, but a
+    /// modifier stack can drive the live value anywhere. The clamp is <c>PlayerCombat</c>'s, at
+    /// the point the intent is built — see its <c>ConeAngle</c>.
+    /// </remarks>
+    public Stat ConeAngleDeg { get; }
 
     /// <summary>A swing is in progress: started, and not yet finished.</summary>
     public bool IsSwinging { get; private set; }

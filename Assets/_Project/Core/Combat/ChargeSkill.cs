@@ -75,12 +75,29 @@ public sealed class ChargeSkill
         // tree nodes and a future Pact apply a modifier to (ADR-0008). The spec stays what a
         // designer typed.
         Cooldown = new Stat(spec.Cooldown);
+
+        // The second of them, as of M3-12a rule 3. Damage is here rather than on the spec because
+        // a node moves it; Knockback deliberately stays authored — 4 m is a positioning number,
+        // and a node that moved it would need a playtest of its own.
+        Damage = new Stat(spec.Damage);
     }
 
     /// <summary>
     /// Seconds between dashes, live. Where "−15 % dash cooldown" goes, under M3-06's 40 % floor.
     /// </summary>
     public Stat Cooldown { get; }
+
+    /// <summary>
+    /// What one pass-through of the dash is worth, live. Where "+50 % Charge damage" goes.
+    /// </summary>
+    /// <remarks>
+    /// <b>This class never reads it.</b> It is held here because this is the object a modifier has
+    /// to be able to reach — the dash is what a node names — while the damage itself is dealt a
+    /// layer out, by <c>PlayerCombat.ResolveChargeHits</c>, which is the only thing that knows who
+    /// was passed through. The same split <see cref="Cooldown"/> has with <c>CooldownRules</c>:
+    /// the number lives with the skill, the arithmetic lives with the caller.
+    /// </remarks>
+    public Stat Damage { get; }
 
     /// <summary>
     /// The direction of the current dash, or of the last one — a unit vector on the ground plane,

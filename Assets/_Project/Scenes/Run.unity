@@ -748,6 +748,7 @@ MonoBehaviour:
   _reticle: {fileID: 2001746810}
   _focusGlow: {fileID: 1102459967}
   _playerAnimator: {fileID: 1102459969}
+  _bulwark: {fileID: 1333328736}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
   _projectilePrefab: {fileID: 5055392040755623392, guid: f0748e4cd0d908349af56a4260b5bbb4, type: 3}
@@ -772,6 +773,7 @@ MonoBehaviour:
   _threatArrowRoot: {fileID: 2052539127}
   _telegraphRingPrefab: {fileID: 6128909648785952691, guid: 31a893a7d849acf4cb6a1b2fabda5955, type: 3}
   _decalRoot: {fileID: 1484466969}
+  _zonePrefab: {fileID: 916273664687194735, guid: c3e4a7f3aefc7a542973ca51aec5e80d, type: 3}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}
   - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}
@@ -1052,6 +1054,17 @@ MonoBehaviour:
   _yawDeg: 0
   _distance: 16
   _smoothTime: 0.12
+--- !u!114 &1333328736 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8351018017451638207, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
+  m_PrefabInstance: {fileID: 1102459964}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bb82452e3e9afb43a11603f85e1b4d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.BulwarkView
 --- !u!1 &1406229279
 GameObject:
   m_ObjectHideFlags: 0

@@ -130,4 +130,119 @@ namespace Soulvail.Game.Views
 
 ## As built
 
-_Filled at merge._
+**Five counted files, exactly the table**, plus the two VFX prefabs, the named small edits, and three
+deviations set out below. EditMode **1 723 / 0 / 0** twice consecutively on the final code against
+M3-11b's 1 689 — **34 new rows** — and PlayMode **16 / 16**, unchanged, with
+`Ticker_RunsTheStepsInOrder` green.
+
+### The four corrections ruled before a line was written
+
+1. **`Animator_AttackSpeedIsDerivedFromTheInterval` cannot go green, and the reason is worse than the
+   one in the spec.** It is not only that two synchronous publishes share an instant: **`Time.time`
+   is 0 inside an EditMode run.** `OnAttacked` writes the multiplier only when `_lastAttackTime > 0`
+   *and* `Time.time − _lastAttackTime > 0`, so with the clock at zero **no assignment of
+   `_lastAttackTime` satisfies both** — the division, the ceiling of `MaxAttackSpeed`, and every
+   value the parameter can take are all unreachable from EditMode. **Ruled: a narrowed EditMode claim,
+   not a PlayMode row**, because a PlayMode file is a sixth counted file and a split, bought for one
+   `Mathf.Min`. Two rows replace the spec's two: `Animator_AttackSpeedIsNotWrittenOnTheFirstSwing`
+   pins the `_lastAttackTime > 0` guard and that the swing trigger fires regardless, and
+   **`Animator_AttackSpeedIsUnreachableFromAnEditorClock` asserts the clock itself**, so the day a
+   Unity release advances it the row goes red and names what has become testable. **No seam was added
+   to the class** — the fixture writes the private field, which is `TelegraphRingsTests`' idiom and
+   not a behaviour change. **What is now untested and is written down rather than left to be found:
+   that the value below the ceiling is `AuthoredSwingSeconds / interval`.** One division, one line,
+   read in review.
+2. **`Animator_DoesNotFlinchOnAKillingHit` tested the wrong thing, and is re-aimed and renamed.**
+   `PlayerDamaged.ToHp` is damage *dealt to* HP, not HP remaining (`HpFraction` is the remainder), so
+   the shipped `evt.ToHp <= 0f` branch means **nothing reached HP** — the Aegis or a Bulwark ate the
+   hit whole, which is the same family as `Blocked` and is exactly what M3-11a-i's fully absorbed
+   grant publishes: `PlayerDamaged(0, 0, unchanged, unchanged, blocked: false)`. The row is
+   `Animator_DoesNotFlinchWhenNothingReachedHp` and builds that event. **Whether a killing hit
+   flinches was decided from the publish order rather than assumed, and the answer is that it does.**
+   `PlayerCombat.ApplyDamage` (`PlayerCombat.cs:418–430`) publishes `PlayerDamaged` and *then*
+   `PlayerDied`, and `_dead` is set by nothing but the second — so on the killing tick the damage
+   reaches a component that does not yet know it is over, with a positive `ToHp` and `Blocked` false.
+   `Animator_FlinchesOnTheKillingHitAndThenGoesDead` records it. **Not corrected** (rule 8): one
+   frame of flinch before the death clip takes the body is a defensible read of GD §16.3 and not
+   obviously a bug. It is a playtest question, now with a test naming it.
+3. **An EditMode fixture *can* see a trigger fire — probed, not assumed.** A `RunCommand` built a
+   `UnityEditor.Animations.AnimatorController` with `new`, added a layer and seven parameters,
+   assigned it to an `Animator` on a bare `GameObject`, and read every kind of write back **in edit
+   mode**: `isInitialized` true, `parameterCount` 7, `SetTrigger` → `GetBool` true by name and by
+   hash, `SetFloat` → `GetFloat` exact, `SetBool` → `GetBool`, `ResetTrigger` → false. **So the
+   controller is built in the fixture and all thirteen remaining `Animator_*` rows are EditMode.
+   PlayMode's count does not move: it stays at 16.** The same probe found the other half: an
+   `Animator` with **no** controller does not throw but logs *"Animator is not playing an
+   AnimatorController"* as a **warning** — which is why `Animator_UndressedIsSilent` leaves
+   `_animator` **null** rather than dressing a controller-less one. Null is the honest shape of
+   "undressed" anyway: the component returns before touching an animator at all.
+4. **The zone events carry an id from 1, not an index**, so the census is a
+   `Dictionary<int, ZoneView>` — `ProjectileViews`' index on `TelegraphRings`' body. The spec's
+   `ZoneHealed(0, 3)` addresses no zone; the shapes are `ZoneSpawned(int id, Vector3, float, float)`,
+   `ZoneHealed(int id, float)` and `ZoneExpired(int id)`. `Zone_TwoZonesAreIndependent` is the row
+   that pays for it: it retires the **older** of two overlapping zones and asserts the survivor is
+   still standing where it was put, still answering its own pulses. Keyed by index, that row draws
+   the survivor back into the pool and leaves the dead one on the floor — silently, because both
+   decals are drawn.
+
+### Deviations from the Files table and the API block
+
+- **`RunTicker`'s constructor rippled into three fixtures, not one.** `FrameOrderTests.cs:185` was
+  predicted (`Soulvail.Tests.PlayMode`); **`ResumeFlowTests.cs` and `SkillBarPresenterTests.cs` were
+  not** (both `Soulvail.Tests.Game`). All three take an empty `ZoneViews` at `prewarm: 0`, for the
+  reason they take an empty `TelegraphRings`: nothing in any of them casts a skill. **No row is
+  added by any of the three.** Three assemblies touched, eleven `.cs` files, all confirmed through
+  `GetAssemblyNameFromScriptPath`.
+- **`ZoneViews`' constructor is `TelegraphRings`', not the spec's.** The API block declares
+  `ZoneViews(DomainEventHub, ViewPool<ZoneView>)`; nothing in the project registers a
+  `ViewPool<ZoneView>`, and the house shape is
+  `(IObjectResolver, prefab, Transform, DomainEventHub, prewarm)` with the census building its own
+  pool. Shipped as the house shape. Likewise **`IPoolable` is `OnSpawn`/`OnDespawn`**, not the spec's
+  `OnReturnedToPool`.
+- **`BulwarkView` owns an `Update`, and `ZoneView` does not.** The fade is 0.15 s of cosmetics core
+  never timed, so the wall clock is the honest clock for it and it freezes with the world at a
+  `timeScale` of 0; `Update` calls a **public `Step(float dt)`** so the fixture drives it at a step
+  of its choosing, which is `TelegraphRingView.Step`'s shape. `ZoneView` keeps the no-`Update` rule
+  the ticker's step depends on, and `Zone_StepsOnTheSnapshotDt` asserts the absence of all three
+  Unity messages on it — `ProjectileViewsTests.Ticker_StepsWithSnapshotDt`'s row, copied with its
+  remarks intact, including the part that says `RunTicker` has no fixture here and gains none.
+- **`BulwarkView._shell` is a `Renderer`, not the spec's `GameObject`** — it is both the thing to
+  show and the thing to paint, and `RunScope` can check it.
+- **`VFX_Bulwark.prefab` carries `BulwarkView` itself** rather than being a bare shell mesh, so the
+  whole driver is one asset that `Player.prefab` holds an instance of and `Run.unity` points
+  `_bulwark` at. Both prefabs reuse `M_TelegraphRing.mat` — the colour rides on a property block, so
+  neither needed a material asset the table does not list.
+
+### Rule 10, and the thing worth copying at M3-13a
+
+Both classes initialise `_colour` to **`Color.white`** and both prefabs author **`#22D3EE`**. That is
+Traps §7 obeyed on purpose: `Views_UseNoDangerColour` asserts the **authored** value as well as the
+absence of `#FF4A1F`, so it fails if the serialized field never binds — where a row that only ruled
+out the danger colour would pass either way, and a plausible cyan default would hide the break. A
+white disc on the floor is a visible failure. Ledger row 6 is unchanged in size at eight readers
+across five files; two of them are now real code.
+
+### Verification
+
+Three compiles, four EditMode runs, one PlayMode run and four reimports, **all through an unfocused
+Editor** (`isApplicationActive` `False` on every probe). The compile was confirmed **by calling the
+new API from a `RunCommand`**: a decal placed at (3, 0.01, −2) at local scale **7** for a 3.5 m
+radius, alpha **0.18** at rest → **0.55** on a pulse → 0.18 after 0.25 s, `Step(5.74)` true and the
+next `Step(0.02)` false, a NaN radius refused by name. **One red run and it earned its place**: run 1
+came back 1 723 / 0 / **1 inconclusive** — the `Assume` in a cap row built on a `RunCommand` probe
+that read `Time.time` as 0.02, which is what the Editor reports outside a test run and **not** what a
+test run sees. **The pre-edit PlayMode baseline was attempted twice and never ran** (26 and 6 minutes
+at the sentinel, `isPlaying` false, a loop nudge changing nothing); the post-edit run then finished
+in about seventeen seconds on an equally unfocused Editor, so focus is not the cause — Traps §4's
+two-queued-runs rule is the fit. Recorded as a gap. `Player.prefab` **+63 / −0** and `Run.unity`
+**+13 / −0**, both read back off disk, both pure addition; `Hud.prefab` untouched. Console sweep
+**37 / 11 / 23 / 3**, every one a known family, zero `CS`/`UNT`/`IDE`, zero mentions of anything this
+task added. `ProjectSettings/TimeManager.asset` turned up dirty and was reverted — eleven of the last
+twelve tasks.
+
+### What the owner still has to do
+
+**Manual steps 1–4 all need a hand-authored tree that does not ship until M3-12c**, which makes this
+the **eighth consecutive task** whose feature is unreachable in the build that exists. Step 5 (the
+Console and the pool's `PooledCount`) is runnable today only if a zone can be spawned, which it
+cannot. Steps 6 and 7 are device rows and are [ledger row 4](../ROADMAP.md#carry-forward-into-m3)'s.

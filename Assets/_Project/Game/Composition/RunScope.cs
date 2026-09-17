@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
@@ -156,6 +157,11 @@ namespace Soulvail.Game.Composition
                  "the run plays identically, the body just never changes pose.")]
         [SerializeField] private PlayerAnimatorView _playerAnimator;
 
+        [Tooltip("The shell drawn while a granted shield is up (CC §6.4). On the Player object, " +
+                 "and optional on the same terms as the glow: without it Bulwark still absorbs " +
+                 "exactly as much, the player just cannot see that it is there.")]
+        [SerializeField] private BulwarkView _bulwark;
+
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
         [SerializeField] private EnemyView _enemyPrefab;
@@ -208,6 +214,10 @@ namespace Soulvail.Game.Composition
         [Tooltip("Where ground decals are parented: the Decals object in this scene. Optional — " +
                  "they go to the scene root without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _decalRoot;
+
+        [Tooltip("The one zone prefab (CC §6.4). Every zone is this body at the radius its own " +
+                 "event carries, so a 3.5 m Consecrate and a 6 m anything share it.")]
+        [SerializeField] private ZoneView _zonePrefab;
 
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
@@ -422,6 +432,15 @@ namespace Soulvail.Game.Composition
             if (_playerAnimator != null)
             {
                 builder.RegisterComponent(_playerAnimator);
+            }
+
+            // Optional on the same terms as the two above, and for the animator's exact reason: the
+            // grant is core's and absorbs the same damage whether or not anything draws it, so a
+            // scene without a shell plays the identical fight — the player just cannot see why they
+            // survived the bolt.
+            if (_bulwark != null)
+            {
+                builder.RegisterComponent(_bulwark);
             }
 
             // Optional, and the odd one out among these: it is not a decoration but an *input*, so
@@ -682,6 +701,45 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _telegraphRingPrefab)
                 .WithParameter("parent", _decalRoot)
                 .WithParameter("prewarm", TelegraphRingPrewarm);
+
+            // The zones (M3-11c). The rings' registration exactly, for the rings' reasons — two of
+            // its arguments are references to *this scene*, and a decal parented to the arena would
+            // be destroyed mid-life by a stage swap it has nothing to do with (M2-11a).
+            //
+            // Required rather than optional, and on a weaker argument than the rings': a spawn
+            // telegraph is GD §9.1's invariant, while a zone the player cannot see is *only* a skill
+            // that appears to do nothing. That is still the whole of what M3-11b shipped — CC §6.4's
+            // Consecrate asks the player to stop moving, and ground they cannot see is ground they
+            // have no reason to stand on.
+            if (_zonePrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(ZoneView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_ConsecrateZone.prefab onto its Zone Prefab field — without " +
+                    "it a Consecrate heals exactly as much and there is nothing on the floor to " +
+                    "tell the player where to stand (CC §6.4).");
+            }
+
+            // The second half of the guard is the one that would otherwise be silent: a prefab whose
+            // quad was never dragged into its field places, sizes, pulses and retires perfectly and
+            // draws nothing at all.
+            if (!_zonePrefab.IsDrawable)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)}'s zone prefab has no quad assigned. Drag the " +
+                    $"{nameof(MeshRenderer)} on VFX_ConsecrateZone.prefab onto its own Quad " +
+                    "field — without it every zone in the run is placed, sized and returned " +
+                    "correctly and none of them is ever visible.");
+            }
+
+            // Prewarmed to core's own zone capacity, which is ProjectileViews' argument rather than
+            // the rings': eight is the most zones that can exist at once, so the pool cannot be asked
+            // for a body it does not already hold and every Instantiate a run will ever do happens
+            // while the scene is loading.
+            builder.Register<ZoneViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _zonePrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", ZoneSystem.Capacity);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

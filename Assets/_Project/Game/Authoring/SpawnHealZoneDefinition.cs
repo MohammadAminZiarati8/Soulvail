@@ -19,7 +19,7 @@ namespace Soulvail.Game.Authoring
     /// quarter of a bar for holding ground through half a wave — on a 12-second cooldown that belongs
     /// to the <c>SkillDefinition</c> rather than here. Every one of them is a first pass in M2-03's
     /// sense: the owner retunes them in <c>Consecrate.asset</c> after a playtest. <b>No asset ships
-    /// here</b>: <c>Consecrate.asset</c> is M3-12b's.
+    /// here</b>: <c>Consecrate.asset</c> is M3-12c's.
     /// </para>
     /// <para>
     /// The same shape as every other definition in this folder: <c>[SerializeField] private</c>

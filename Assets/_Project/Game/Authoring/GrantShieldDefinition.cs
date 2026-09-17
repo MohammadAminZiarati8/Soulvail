@@ -18,7 +18,7 @@ namespace Soulvail.Game.Authoring
     /// 35 points for 5 seconds on an 8-second cooldown — one Aegis and a bit, held about as long as a
     /// Spitter volley — and every one of those three numbers lives in an asset the owner retunes
     /// after a playtest, exactly as M2-03's five did. The cooldown is the <c>SkillDefinition</c>'s;
-    /// these two are this one's. <b>No asset ships here</b>: <c>Bulwark.asset</c> is M3-12b's.
+    /// these two are this one's. <b>No asset ships here</b>: <c>Bulwark.asset</c> is M3-12c's.
     /// </para>
     /// <para>
     /// The same shape as every other definition in this folder: <c>[SerializeField] private</c>

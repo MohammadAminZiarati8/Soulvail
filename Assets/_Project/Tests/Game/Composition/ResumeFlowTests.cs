@@ -627,6 +627,11 @@ public sealed class ResumeFlowTests
         var rings = Track(new TelegraphRings(
             container, Template<TelegraphRingView>("RingTemplate"), null, hub, prewarm: 0));
 
+        // Empty, on the rings' terms: nothing in this fixture casts a skill, so no zone is ever
+        // spawned. It is here because the ticker takes one (M3-11c).
+        var zones = Track(new ZoneViews(
+            container, Template<ZoneView>("ZoneTemplate"), null, hub, prewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -655,6 +660,7 @@ public sealed class ResumeFlowTests
             enemyViews,
             projectileViews,
             rings,
+            zones,
             Track(new SaveWriter(new StubStore(), hub)),
             input,
             SpawnPlan.Empty,

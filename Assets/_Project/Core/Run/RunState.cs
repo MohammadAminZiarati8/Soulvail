@@ -699,6 +699,30 @@ public sealed class RunState
     public float PlayerShield => Combat.Health.Shield;
 
     /// <summary>
+    /// Points of shield a <em>cast</em> has put on the player, across every source — CC §6.4's
+    /// Bulwark. Zero for a player with nothing granted, which is every run in this build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Not the Aegis, and the pair above is the one to read it against.</b>
+    /// <see cref="PlayerShield"/> and <see cref="PlayerShieldFraction"/> are CH §3.1's signature
+    /// pool with its own maximum and its own refill; this is a separate one that is spent first and
+    /// expires on the clock of whatever granted it. There is deliberately no fraction beside it:
+    /// granted shield has no maximum to be a fraction of — 35 points from one source and 55 from two
+    /// are both simply what is there — so M3-13's treatment of GD §16.2 draws it as an overlay on
+    /// the health bar rather than as a second ring.
+    /// </para>
+    /// <para>
+    /// The twelfth scalar read, and the seal did not move to let it out (AR §18.2).
+    /// <see cref="Combat"/> stays <c>internal</c> for the reason every entry in this block gives:
+    /// <c>Health</c> has a public <c>ApplyDamage</c>, <c>Heal</c>, <c>Reset</c> and — as of M3-11a-i
+    /// — a public <c>GrantShield</c>, so a view holding the handle could grant itself a shield as
+    /// easily as it could heal to full.
+    /// </para>
+    /// </remarks>
+    public float PlayerGrantedShield => Combat.Health.GrantedShield;
+
+    /// <summary>
     /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the
     /// instant a dash starts, 0 while the button is live. What M1-16's radial fill draws.
     /// </summary>

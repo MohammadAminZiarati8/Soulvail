@@ -384,6 +384,365 @@ public sealed class HealthTests
         Assert.That(health.ApplyDamage(5f, 1f).Applied, Is.EqualTo(5f).Within(Tolerance));
     }
 
+    // ---- M3-11a-i rules 4 to 8: the granted shield pool ------------------------------------
+    //
+    // The third pool, spent before the Aegis, put on by a cast and taken back by whatever granted
+    // it. Every row here goes through Health's own surface: GrantedShieldPool is internal and
+    // Soulvail.Tests.Core has no InternalsVisibleTo (M0-10), so what is asserted is the contract
+    // that has to be true rather than the table that implements it.
+
+    [Test]
+    public void Health_GrantedShieldAbsorbsFirst()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        DamageResult result = health.ApplyDamage(20f, 0f);
+
+        Assert.That(health.GrantedShield, Is.EqualTo(15f).Within(Tolerance));
+        Assert.That(health.Shield, Is.EqualTo(AegisMax).Within(Tolerance), "The Aegis was not touched.");
+        Assert.That(health.Current, Is.EqualTo(OathboundMaxHp).Within(Tolerance));
+
+        // **The finding this row exists to pin.** DamageResult.ToShield means *the Aegis* — CH
+        // §3.1's Martyr keystone sums it — so a hit swallowed whole by a granted shield reports
+        // zero on both amounts and is not Blocked. It reads like a hit that did nothing, and
+        // M3-13b is the task that has to tell those apart when it draws the pool.
+        Assert.That(result.Blocked, Is.False);
+        Assert.That(result.ToShield, Is.Zero, "Granted points are deliberately not reported as Aegis.");
+        Assert.That(result.ToHp, Is.Zero);
+
+        // …but the hit still happened, so it still opened i-frames. Read as `toShield + toHp` the
+        // branch that does this would not have run at all.
+        Assert.That(health.IsInvulnerable, Is.True, "A fully absorbed hit still starts i-frames.");
+    }
+
+    [Test]
+    public void Health_SpillsIntoTheAegisThenHp()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        health.ApplyDamage(80f, 0f);
+
+        // 35 out of the grant, 30 out of the Aegis, the last 15 into HP.
+        Assert.That(health.GrantedShield, Is.Zero);
+        Assert.That(health.Shield, Is.Zero);
+        Assert.That(health.Current, Is.EqualTo(125f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_AegisNumbersAreUnchanged()
+    {
+        Health health = Oathbound();
+
+        health.GrantShield(35f, new object());
+
+        // The ring still means the Aegis. Raising ShieldMax to express a temporary shield would
+        // have made all three of these lie for as long as the grant ran.
+        Assert.That(health.ShieldMax, Is.EqualTo(AegisMax).Within(Tolerance));
+        Assert.That(health.ShieldFraction, Is.EqualTo(1f).Within(Tolerance));
+        Assert.That(health.Shield, Is.EqualTo(AegisMax).Within(Tolerance));
+        Assert.That(health.HasShield, Is.True);
+    }
+
+    [Test]
+    public void Health_GrantStacksPerSource()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        health.GrantShield(35f, bulwark);
+
+        // One source, so the second cast refreshes. Per-call stacking would make CH §4.1's floored
+        // cooldown into permanent immunity, which is what the floor exists to prevent.
+        Assert.That(health.GrantedShield, Is.EqualTo(35f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_TwoSourcesStack()
+    {
+        Health health = Oathbound();
+
+        health.GrantShield(35f, new object());
+        health.GrantShield(20f, new object());
+
+        // Two different things, so they add. This is also the row that makes a single float
+        // impossible: see Health_SpendsTheOldestGrantFirst for why.
+        Assert.That(health.GrantedShield, Is.EqualTo(55f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_RefreshSetsTheSourceRatherThanStacking()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        health.ApplyDamage(20f, 0f);
+        Assert.That(health.GrantedShield, Is.EqualTo(15f).Within(Tolerance));
+
+        health.GrantShield(35f, bulwark);
+
+        // **Renamed from the spec's `Health_RefreshDoesNotRestoreSpentPoints`, because 35 *is* the
+        // 20 spent points handed back and the old name claimed the opposite of its own number.**
+        // The rule is that a refresh *sets* the source's contribution: it does not stack to 50, and
+        // it does not leave the source at what it had left. Both wrong answers are named below so
+        // this row cannot pass by accident.
+        Assert.That(health.GrantedShield, Is.EqualTo(35f).Within(Tolerance));
+        Assert.That(health.GrantedShield, Is.Not.EqualTo(50f).Within(Tolerance), "A refresh is not a stack.");
+        Assert.That(health.GrantedShield, Is.Not.EqualTo(15f).Within(Tolerance), "…nor a no-op.");
+    }
+
+    [Test]
+    public void Health_SpendsTheOldestGrantFirst()
+    {
+        Health health = Oathbound();
+        var first = new object();
+        var second = new object();
+
+        health.GrantShield(35f, first);
+        health.GrantShield(20f, second);
+
+        health.ApplyDamage(20f, 0f);
+
+        // The total is 35 whichever source paid, so the total cannot say. Removing the older one is
+        // what asks the question: it took the whole 20, so it has 15 left and what remains after it
+        // goes is the younger grant's untouched 20. Spent the other way round this would read 0.
+        Assert.That(health.GrantedShield, Is.EqualTo(35f).Within(Tolerance));
+        Assert.That(health.RemoveGrantedShield(first), Is.True);
+        Assert.That(health.GrantedShield, Is.EqualTo(20f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_RefreshKeepsItsPlaceInTheSpendOrder()
+    {
+        Health health = Oathbound();
+        var first = new object();
+        var second = new object();
+
+        health.GrantShield(35f, first);
+        health.GrantShield(20f, second);
+        health.GrantShield(35f, first);
+
+        health.ApplyDamage(10f, 0f);
+        health.RemoveGrantedShield(first);
+
+        // Rule 6's "resets nothing else" reaches the slot as well as the neighbours: a refreshed
+        // source does not go to the back of the queue. Had it moved, the 10 would have come out of
+        // the younger grant and this would read 10.
+        Assert.That(health.GrantedShield, Is.EqualTo(20f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_GrantIsNotRecharged()
+    {
+        Health health = Oathbound();
+
+        health.GrantShield(35f, new object());
+        health.ApplyDamage(20f, 0f);
+
+        for (int i = 0; i < 100; i++)
+        {
+            health.Tick(0.1f, 0.1f * (i + 1));
+        }
+
+        // Ten seconds, well past the Aegis's 4 s delay. The Aegis is what refills; a cast's points
+        // are gone when the timer says and never before.
+        Assert.That(health.GrantedShield, Is.EqualTo(15f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_HealDoesNotTouchIt()
+    {
+        Health health = Oathbound();
+
+        // 30 into the Aegis and 40 into HP, leaving 100 of 140.
+        health.ApplyDamage(70f, 0f);
+        health.GrantShield(15f, new object());
+
+        Assert.That(health.Heal(30f), Is.EqualTo(30f).Within(Tolerance));
+
+        Assert.That(health.Current, Is.EqualTo(130f).Within(Tolerance));
+        Assert.That(health.GrantedShield, Is.EqualTo(15f).Within(Tolerance), "Heal restores HP and nothing else.");
+        Assert.That(health.Shield, Is.Zero, "…and it never refilled the Aegis either.");
+    }
+
+    [Test]
+    public void Health_RemoveTakesWhatIsLeft()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        health.ApplyDamage(20f, 0f);
+
+        Assert.That(health.RemoveGrantedShield(bulwark), Is.True);
+
+        // 15 came off, not 35. Removing what was *granted* would have driven the pool five points
+        // below zero and cost a player who had already spent it.
+        Assert.That(health.GrantedShield, Is.Zero);
+        Assert.That(health.GrantedShield, Is.Not.Negative);
+        Assert.That(health.Current, Is.EqualTo(OathboundMaxHp).Within(Tolerance), "HP was never involved.");
+
+        // And the pool really is out of the way: the next hit goes straight to the Aegis. The hit
+        // above opened i-frames to 0.5, so this one is taken after them.
+        health.ApplyDamage(10f, 1f);
+        Assert.That(health.Shield, Is.EqualTo(20f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_RemoveUnknownSource_IsFalse()
+    {
+        Health health = Oathbound();
+        var granted = new object();
+        var never = new object();
+
+        Assert.That(health.RemoveGrantedShield(never), Is.False, "Nothing was ever granted.");
+
+        health.GrantShield(35f, granted);
+
+        Assert.That(health.RemoveGrantedShield(never), Is.False, "…and a stranger takes nothing off.");
+        Assert.That(health.GrantedShield, Is.EqualTo(35f).Within(Tolerance));
+
+        // A source holding nothing is still a source that is *held*, so it removes and answers
+        // true — which is what lets an expiry clean up unconditionally.
+        health.ApplyDamage(35f, 0f);
+        Assert.That(health.GrantedShield, Is.Zero);
+        Assert.That(health.RemoveGrantedShield(granted), Is.True);
+        Assert.That(health.RemoveGrantedShield(granted), Is.False, "…and only once.");
+    }
+
+    [Test]
+    public void Health_ResetClearsThePool()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        health.GrantShield(35f, bulwark);
+        health.Reset();
+
+        Assert.That(health.GrantedShield, Is.Zero);
+
+        // Forgotten, not merely emptied: the source is gone, so removing it now finds nothing.
+        Assert.That(health.RemoveGrantedShield(bulwark), Is.False);
+    }
+
+    [Test]
+    public void Health_GrantedShieldIsInvulnerableSafe()
+    {
+        // The external flag — a Charge dash, CC §5.
+        Health charging = Oathbound();
+        charging.GrantShield(35f, new object());
+        charging.SetExternalInvulnerable(true);
+
+        Assert.That(charging.ApplyDamage(20f, 0f).Blocked, Is.True);
+        Assert.That(charging.GrantedShield, Is.EqualTo(35f).Within(Tolerance), "Nothing was spent.");
+
+        // And hit i-frames, the other path. Both are answered before anything is spent because the
+        // pool is spent *after* the IsInvulnerable guard, exactly as the Aegis always has been.
+        Health hit = Oathbound();
+        hit.ApplyDamage(5f, 1f);
+        hit.GrantShield(35f, new object());
+
+        Assert.That(hit.ApplyDamage(20f, 1.2f).Blocked, Is.True, "The i-frames from 1.0 run to 1.5.");
+        Assert.That(hit.GrantedShield, Is.EqualTo(35f).Within(Tolerance));
+    }
+
+    [Test]
+    public void Health_GrantRefusesNullSourceAndNonFiniteAmount()
+    {
+        Health health = Oathbound();
+        var bulwark = new object();
+
+        // A sourceless grant could never be taken back — Modifier's rule one layer down — so it
+        // would be a shield that lasted the run.
+        Assert.Throws<ArgumentNullException>(() => health.GrantShield(35f, null));
+        Assert.Throws<ArgumentNullException>(() => health.RemoveGrantedShield(null));
+
+        // A NaN in the pool would make GrantedShield NaN for the rest of the run: every comparison
+        // against it is false, so it would absorb every hit forever with nothing logged.
+        Assert.Throws<ArgumentOutOfRangeException>(() => health.GrantShield(float.NaN, bulwark));
+        Assert.Throws<ArgumentOutOfRangeException>(() => health.GrantShield(float.PositiveInfinity, bulwark));
+        Assert.Throws<ArgumentOutOfRangeException>(() => health.GrantShield(float.NegativeInfinity, bulwark));
+        Assert.Throws<ArgumentOutOfRangeException>(() => health.GrantShield(-1f, bulwark));
+
+        Assert.That(health.GrantedShield, Is.Zero, "Not one of them got in.");
+
+        // Zero is legal, and it holds the source: it is the state the pool reaches by being spent,
+        // so refusing it here would refuse a value the class already produces.
+        Assert.DoesNotThrow(() => health.GrantShield(0f, bulwark));
+        Assert.That(health.GrantedShield, Is.Zero);
+        Assert.That(health.RemoveGrantedShield(bulwark), Is.True, "A source at zero is still held.");
+    }
+
+    [Test]
+    public void Health_GrantCapacityThrows()
+    {
+        Health health = Oathbound();
+        var sources = new object[9];
+
+        for (int i = 0; i < sources.Length; i++)
+        {
+            sources[i] = new object();
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            health.GrantShield(1f, sources[i]);
+        }
+
+        Assert.That(health.GrantedShield, Is.EqualTo(8f).Within(Tolerance));
+
+        // A ninth *source* is refused rather than grown into: this is walked from the damage path,
+        // and a silently growing array there is the kind of thing only a phone ever finds.
+        InvalidOperationException full = Assert.Throws<InvalidOperationException>(
+            () => health.GrantShield(1f, sources[8]));
+
+        Assert.That(full.Message, Does.Contain("8"), "The refusal names the capacity.");
+
+        // Refreshing one of the eight is not a ninth source and is still allowed at capacity.
+        Assert.DoesNotThrow(() => health.GrantShield(5f, sources[0]));
+        Assert.That(health.GrantedShield, Is.EqualTo(12f).Within(Tolerance));
+
+        // And a slot freed by a removal takes the ninth.
+        Assert.That(health.RemoveGrantedShield(sources[3]), Is.True);
+        Assert.DoesNotThrow(() => health.GrantShield(1f, sources[8]));
+    }
+
+    [Test]
+    public void Health_GrantedShieldAllocatesNothing()
+    {
+        Health health = Oathbound();
+        var first = new object();
+        var second = new object();
+        float clock = 0f;
+
+        AllocationAssert.None(() =>
+        {
+            clock += 1f;
+            health.Reset();
+
+            health.GrantShield(35f, first);
+            health.GrantShield(20f, second);
+
+            // The Total walk, on the path RunState and the debug overlay read every frame.
+            _sink += health.GrantedShield;
+
+            // 80 spends the whole 55-point pool, then 25 of the Aegis — so the spend loop, the
+            // Aegis branch and the i-frame branch all run rather than returning early.
+            _sink += health.ApplyDamage(80f, clock).Applied;
+
+            // Removal walks and shifts, which is the one path with a nested loop in it.
+            health.RemoveGrantedShield(first);
+            health.RemoveGrantedShield(second);
+        });
+
+        Assert.That(_sink, Is.GreaterThan(0f), "The probe measured calls that actually did something.");
+    }
+
     // ---- Rule 9: allocation ----------------------------------------------------------------
 
     [Test]

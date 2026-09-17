@@ -173,4 +173,27 @@ public readonly struct ShieldGrantExpired { public readonly float Removed; publi
 
 ## As built
 
-_Filled at merge._
+**Split before continuing, under this spec's own pre-declared tripwire. Not built as one task.**
+
+> *"If `Health`'s pool grows past one field and one branch, the split is the pool (`M3-11a-i`) and the primitive (`M3-11a-ii`) — decided before continuing, never after."*
+
+It grew past it, and **the proof is in this spec's own Tests table rather than in any implementation.** `Health_TwoSourcesStack` puts two sources in the pool at once, and rule 8 says an expiry removes *what remains of that source*. Take A granting 35 and B granting 20, then 20 points of damage: the total is 35 either way, but A's expiry removes **15** if the damage came out of A and **35** if it came out of B. One float cannot tell those apart, so the attribution has to be kept and the spend needs a stated order — a table.
+
+**Every shape of the whole task breaches a stated limit, so the split is forced rather than chosen:**
+
+| Shape | `Health` | Files | Breach |
+|---|---|---|---|
+| Table inside `Health` | ~3 fields, a distributing walk, two methods, ~479 → ~640 lines | 5 | **the tripwire above** |
+| Table in its own file | one field, **zero** new branches | 6 | **the five-file ceiling** (protocol rule 6) |
+
+**The two halves, and the dependency runs one way:**
+
+- **[M3-11a-i](M3-11a-i-granted-shield-pool.md)** — the granted shield pool. Size **S**, one code file. Rules 4–8, the `Health_*` rows and `State_ExposesTheGrantedShield`. **Built and merged first**, wired to nothing — which is M3-04's and M3-05's bargain exactly.
+- **[M3-11a-ii](M3-11a-ii-bulwark-and-timed-effects.md)** — `TimedEffects`, `GrantShield`, its handler, its Inspector half and the two events. Size **M** at five files. Rules 1–3 and 9–12.
+
+**Four things in this spec are wrong and are corrected in the children rather than here**, so that the corrections travel with the tasks that act on them:
+
+1. **`ShieldGranted` does not exist in code.** M3-00d's *Verified* row says it does; `grep` over `Assets/_Project` returns zero hits for `ShieldGranted`, `ShieldGrantExpired`, `GrantedShield` and `GrantShield`. `CombatEvents.cs` holds eight events and the only shield-shaped one is `PlayerShieldChanged`, the Aegis's refill. M3-00d read the **spec set** — this file's own *Public API* block — and recorded *"a spec declares it"* as *"code holds it"*. `EnemyDamaged.HpFraction`, the other half of that row, **is** real. M3-11a-ii creates both events; M3-11c and M3-13b inherit them.
+2. **`GrantShieldHandler` cannot take an `IClock`.** That port is one member, `DateTimeOffset UtcNow`, and cannot produce `now + Duration`. Rule 2's *"simulated clock"* is `RunState.Time`, the same `now` `SkillRunner.Tick(dt, now)` already carries, and the handler takes it as an argument instead. A wall clock would drain a shield through a level-up screen at `timeScale` 0 and through a pause — the opposite of `OverflowToast`'s unscaled dwell, because a shield is simulation and a toast is presentation.
+3. **`Health_RefreshDoesNotRestoreSpentPoints` contradicted its own expectation and is renamed.** "35 from A, spend 20, grant 35 from A → 35" **is** the spent 20 restored, which is exactly what rule 6's *"sets that source's contribution to `amount`"* produces. The number was the ruling and the name was wrong; it ships as **`Health_RefreshSetsTheSourceRatherThanStacking`**, whose claim is that a refresh does not stack to 50.
+4. **Manual step 1 was not runnable as written.** `DebugOverlay.cs` lives in `Game/Presentation/`, shows `lvl`, `actives` and `slots`, has no shield readout, and is in no Files table. Under the owner's ruling it gains **one `Append`** in M3-11a-i — a small additive edit by the [ROADMAP's counting rule](../ROADMAP.md#how-to-read-this) — so the step becomes runnable the moment M3-12 authors a tree. **Steps 1–4 all need that tree either way**, and M3-11a-ii's copy says so where the steps are listed.

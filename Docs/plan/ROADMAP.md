@@ -20,7 +20,7 @@
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
 | **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 27 |
-| **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 33 |
+| **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 34 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
 | **M6** | **Systems complete** | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables | 11 |
@@ -236,8 +236,9 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-09d](tasks/M3-09d-tree-view.md) | The tree view: three branches, your path, and the two doors into it | M | 09a 08b 03 02a | ☑ |
 | [M3-10a](tasks/M3-10a-skill-slot-buttons.md) | S1–S4: four buttons that are not the Charge button | M | 07a 06 | ☑ |
 | [M3-10b](tasks/M3-10b-progression-hud.md) | The progression HUD: the XP strip, the level, the auto-cast row, and Overflow | M | 01a 06 07a 08a | ☑ |
-| [M3-11a](tasks/M3-11a-bulwark-and-timed-effects.md) | Bulwark, and the clock that takes a cast effect back | M | 06 05 02a | ☐ |
-| [M3-11b](tasks/M3-11b-consecrate-and-zones.md) | Consecrate: ground you have to stand on | M | 11a 06 05 | ☐ |
+| [M3-11a-i](tasks/M3-11a-i-granted-shield-pool.md) | The granted shield pool: a third pool, spent first, taken back per source | S | 1-02 | ☑ |
+| [M3-11a-ii](tasks/M3-11a-ii-bulwark-and-timed-effects.md) | Bulwark, and the clock that takes a cast effect back | M | 11a-i 06 05 02a | ☐ |
+| [M3-11b](tasks/M3-11b-consecrate-and-zones.md) | Consecrate: ground you have to stand on | M | 11a-ii 06 05 | ☐ |
 | [M3-11c](tasks/M3-11c-skill-views.md) | What a cast looks like, and the untested view that has been waiting for it | M | 11a 11b | ☐ |
 | [M3-12a](tasks/M3-12a-addressable-stats.md) | Five numbers a node can reach: the stats M3-05 deferred | M | 05 | ☐ |
 | [M3-12b](tasks/M3-12b-cooldown-and-knockback-primitives.md) | Two primitives that are not a stat: a skill's own cooldown, and a swing that shoves | M | 12a 06 05 | ☐ |
@@ -254,7 +255,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | [M3-13a](tasks/M3-13a-palette.md) | `Palette`: GD §16.4 in one file, and the nine readers that have been waiting for it | S | 08b 09d 10b 11c | ☐ |
-| [M3-13b](tasks/M3-13b-health-bar-treatment.md) | Health that reads at a glance: the damage tint, the Elite's bar, and the shield you were granted | M | 13a 11a | ☐ |
+| [M3-13b](tasks/M3-13b-health-bar-treatment.md) | Health that reads at a glance: the damage tint, the Elite's bar, and the shield you were granted | M | 13a 11a-i 11a-ii | ☐ |
 | [M3-14a](tasks/M3-14a-localizer-and-english-table.md) | `ILocalizer`, `TableLocalizer`, and one English table | M | 12c 08b 09b 09c 09d 10b | ☐ |
 | [M3-14b](tasks/M3-14b-content-validation.md) | Content validation: every id disciplined, every key resolvable, every tree unstarvable | S | 14a 12c 02b | ☐ |
 | [M3-15](tasks/M3-15-acceptance-and-tag.md) | M3 acceptance: does a run get better as it goes? The ledger closed, and tag `m3` | S | everything | ☐ |

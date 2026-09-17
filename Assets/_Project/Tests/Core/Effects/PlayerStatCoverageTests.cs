@@ -226,6 +226,46 @@ public sealed class PlayerStatCoverageTests
     }
 
     [Test]
+    public void Swing_IsNotAPlayerStatMember()
+    {
+        // **Beside Charge_KnockbackIsNotAddressable rather than in a file of its own, and it is the
+        // same scan on purpose** (M3-12b rule 6). The one fragment protects two claims now: the
+        // dash's 4 m is left authored, and the swing's shove is reachable only through
+        // KnockbackOnSwing — which is what makes that primitive's choice of ModifierKind.Flat the
+        // *only* way the number can ever be moved.
+        Assert.That(
+            NamesAnythingLike("knockback"),
+            Is.False,
+            "Rule 6: PlayerCombat.SwingKnockback has a base of zero, so a node authored as "
+                + "\"+50 % swing knockback\" through ModifyStat would shove nobody, silently and "
+                + "for ever — HealPerKill's trap, which M3-12a measured. A named primitive with "
+                + "one number and no kind makes the wrong authoring impossible; a PlayerStat "
+                + "member would put the dropdown back.");
+
+        Assert.That(
+            NamesAnythingLike("swing"),
+            Is.False,
+            "…and it is not reachable under another name either. Nothing in the enum says swing.");
+    }
+
+    [Test]
+    public void Swing_TheStatItselfStartsAtZeroWithNoModifiers()
+    {
+        PlayerCombat combat = Combat();
+
+        Assert.That(
+            combat.SwingKnockback.Base,
+            Is.Zero,
+            "A swing shoves nobody until a node says so (rule 5).");
+
+        Assert.That(
+            combat.SwingKnockback.ModifierCount,
+            Is.Zero,
+            "And it ships clean, which is what makes \"this task retunes nothing\" checkable "
+                + "rather than asserted.");
+    }
+
+    [Test]
     public void Health_ShieldMaxAndRateAreNotAddressable()
     {
         Assert.That(

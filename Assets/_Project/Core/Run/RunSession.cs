@@ -469,6 +469,36 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
         effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
 
+        // **Above the tree rather than below it, which is the one thing this block's order now
+        // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
+        // needed it sooner; ModifySkillCooldownHandler holds it, and SkillTree's constructor asks
+        // CanApply of every effect the tree carries — so a tree holding a cooldown node would refuse
+        // the run for an unregistered primitive if this stayed where it was. Nothing here depends on
+        // the tree: the runner takes the registry, the blackboard and the events, and the capacity
+        // check below reads a const.
+        //
+        // One per run like everything above: a second Start must not inherit the first run's
+        // cooldowns, and a runner that outlived a run would be casting a dead player's skills. The
+        // blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many readers
+        // (ADR-0005), and this is the first reader that decides something with it.
+        var skills = new SkillRunner(effects, combat.Blackboard, _events);
+
+        // The two primitives a PlayerStat cannot express, registered beside ModifyStatHandler and
+        // before RunStarted like every one before them (M3-12b rule 10) — so SkillTree's CanApply
+        // sweep finds them and a tree authored against either is accepted at the run's opening
+        // rather than refused at a pick.
+        //
+        // The cooldown handler subscribes to the runner's arrivals in its own constructor, which is
+        // the whole of its coupling and the reason it is built on this line rather than three above:
+        // a modifier for a skill the player has not taken yet is held until SkillRunner.Add makes
+        // the Stat it belongs on.
+        effects.Register<ModifySkillCooldown>(new ModifySkillCooldownHandler(skills));
+
+        // And the swing that shoves, which needs only the player it changes. It lifts
+        // PlayerCombat.SwingKnockback off a base of zero — nothing shoves until a node is taken, and
+        // no tree in this build carries one until M3-12c.
+        effects.Register<KnockbackOnSwing>(new KnockbackOnSwingHandler(combat));
+
         // The other half of the tree's validation, and the reason it is down here rather than up in
         // the block with TreeRules: the constructor asks CanApply of every take and cast effect in
         // the tree, and the registry it asks cannot exist before the live objects its handlers
@@ -504,14 +534,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                     + "rather than a capacity to raise.",
                 nameof(config));
         }
-
-        // After the registry and the blackboard it reads, and before State, which is what holds it.
-        // One per run like everything above: a second Start must not inherit the first run's
-        // cooldowns, and a runner that outlived a run would be casting a dead player's skills.
-        //
-        // The blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many
-        // readers (ADR-0005), and this is the first reader that decides something with it.
-        var skills = new SkillRunner(effects, combat.Blackboard, _events);
 
         // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
         // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12

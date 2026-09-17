@@ -19,6 +19,14 @@ namespace Soulvail.Tests.Core.Combat;
 /// </summary>
 /// <remarks>
 /// <para>
+/// <b>M3-12b's <c>SwingKnockback</c> joined the five here rather than in <c>PlayerCombatTests</c>,
+/// which is where its spec listed it.</b> This is the fixture that already drives a Censer to its
+/// damage frame and reports a wedge back; that one has no <c>EnemySystem</c> and no swing helper, so
+/// the spec's placement would have meant duplicating forty lines of fixture to watch one intent. The
+/// primitive and its handler are <c>SkillTargetedEffectTests</c>'; what the swing does with the
+/// number is here, with the rest of the reach.
+/// </para>
+/// <para>
 /// <c>PlayerStatCoverageTests</c> is the other half and asks a different question: it is about the
 /// address <em>table</em> — that a member resolves to the instance its owner holds. This file never
 /// mentions <c>PlayerStats</c>. It puts a modifier straight onto the owner's stat and then watches
@@ -74,6 +82,12 @@ public sealed class StatReachTests
     private const int MaxFramesPerSwing = 40;
 
     private const float Tolerance = 1e-3f;
+
+    /// <summary>
+    /// How far ahead the shove rows stand their Husks. Three metres is well inside the Censer's
+    /// 8 m and leaves room to put one to each side without leaving the 60° wedge.
+    /// </summary>
+    private const float ConeDepth = 3f;
 
     /// <summary>Straight ahead on +Z, which is where a fresh <c>PlayerMotor</c> faces.</summary>
     private static readonly Vector3 Facing = Vector3.UnitZ;
@@ -550,6 +564,225 @@ public sealed class StatReachTests
         Assert.That(combat.Health.Current, Is.EqualTo(MaxHp).Within(Tolerance));
     }
 
+    // ---- M3-12b rules 5, 7 and 8: the swing that shoves -------------------------------------------
+
+    [Test]
+    public void Swing_ShovesNobodyByDefault()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        int left = enemies.Spawn(new ContentId(HuskId), Beside(-1.5f)).Id;
+        int right = enemies.Spawn(new ContentId(HuskId), Beside(1.5f)).Id;
+
+        SwingInto(combat, enemies, 0f, left, right);
+
+        Assert.That(
+            combat.SwingKnockback.Base,
+            Is.Zero,
+            "Base 0: a swing shoves nobody until a node says so (rule 5).");
+
+        Assert.That(
+            _intents.Knockbacks,
+            Is.Empty,
+            "Two Husks hit and not an intent between them — which is every run this build plays, "
+                + "because no tree carries a KnockbackOnSwing until M3-12c.");
+    }
+
+    [Test]
+    public void Swing_ShovesWhenANodeSaysSo()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        int left = enemies.Spawn(new ContentId(HuskId), Beside(-1.5f)).Id;
+        int right = enemies.Spawn(new ContentId(HuskId), Beside(1.5f)).Id;
+
+        combat.SwingKnockback.Add(Flat(1.5f));
+
+        SwingInto(combat, enemies, 0f, left, right);
+
+        Assert.That(
+            _intents.Knockbacks.Count,
+            Is.EqualTo(2),
+            "One per enemy the swing reached, not one per swing (rule 5).");
+
+        Assert.That(_intents.Knockbacks[0].Id, Is.EqualTo(left));
+        Assert.That(_intents.Knockbacks[1].Id, Is.EqualTo(right));
+
+        foreach (EnemyKnockbackIntent shove in _intents.Knockbacks)
+        {
+            Assert.That(shove.Distance, Is.EqualTo(1.5f).Within(Tolerance));
+        }
+    }
+
+    [Test]
+    public void Swing_ShovesTheWayTheSwingFaced()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        // One Husk to each side of the facing axis and both inside the 60° wedge, which is the
+        // arrangement that tells the two candidate answers apart: swept the way the swing faced,
+        // both go the same way; shoved radially away from the player, they fan apart.
+        int left = enemies.Spawn(new ContentId(HuskId), Beside(-1.5f)).Id;
+        int right = enemies.Spawn(new ContentId(HuskId), Beside(1.5f)).Id;
+
+        combat.SwingKnockback.Add(Flat(1.5f));
+
+        SwingInto(combat, enemies, 0f, left, right);
+
+        Vector2 facing = _intents.LastConeHit.FacingXZ;
+
+        // **The same direction for both, which is ResolveChargeHits' answer one method up and
+        // EnemyKnockbackIntent.DirectionXZ's own rule** (rule 7): everything one sweep catches is
+        // swept the same way, which reads as a shove rather than as an explosion. A cone has no
+        // single point of impact to be radial about, and the two answers differ most exactly where
+        // the cone is widest.
+        Assert.That(_intents.Knockbacks[0].DirectionXZ, Is.EqualTo(facing));
+        Assert.That(_intents.Knockbacks[1].DirectionXZ, Is.EqualTo(facing));
+
+        // And the row would be vacuous without this: the radial answer for the left Husk is a
+        // different vector, so asserting only "they are equal to each other" would also pass
+        // against a shove that pointed at nothing in particular.
+        var radial = Vector2.Normalize(new Vector2(-1.5f, ConeDepth));
+
+        Assert.That(
+            _intents.Knockbacks[0].DirectionXZ.X,
+            Is.Not.EqualTo(radial.X).Within(Tolerance),
+            "Not away from the point of impact — rule 7 rejects that by name.");
+    }
+
+    [Test]
+    public void Swing_StacksAdditively()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        int husk = enemies.Spawn(new ContentId(HuskId), At(3f)).Id;
+
+        combat.SwingKnockback.Add(Flat(1.5f));
+        combat.SwingKnockback.Add(Flat(1.5f));
+
+        SwingInto(combat, enemies, 0f, husk);
+
+        Assert.That(
+            _intents.Knockbacks[0].Distance,
+            Is.EqualTo(3f).Within(Tolerance),
+            "Two nodes of 1.5 give 3 (rule 8). Nothing counts nodes: it is two Flat modifiers on "
+                + "one stat and Stat's own arithmetic.");
+    }
+
+    [Test]
+    public void Swing_NegativeOrNonFiniteShovesNobody()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        float now = 0f;
+
+        // **A negative stack is a pull, and nothing in the design has ever asked for one** (rule 8).
+        combat.SwingKnockback.Add(Flat(-2f));
+
+        now = SwingInto(combat, enemies, now, Fresh(enemies));
+
+        Assert.That(_intents.Knockbacks, Is.Empty, "−2 shoves nobody rather than pulling anybody.");
+
+        combat.SwingKnockback.RemoveAll();
+
+        // **Infinity, reached the only way it can be.** Modifier and Stat.Base both refuse a
+        // non-finite input at the door (M3-12a's own correction), so the only route is arithmetic
+        // overflow inside the stack: two Flat modifiers of float.MaxValue sum to +∞.
+        combat.SwingKnockback.Add(Flat(float.MaxValue));
+        combat.SwingKnockback.Add(Flat(float.MaxValue));
+
+        Assert.That(
+            float.IsPositiveInfinity(combat.SwingKnockback.Value),
+            Is.True,
+            "Sanity: the stack really is infinite, so this phase is about the guard rather than "
+                + "about a modifier that never landed.");
+
+        now = SwingInto(combat, enemies, now, Fresh(enemies));
+
+        Assert.That(
+            _intents.Knockbacks,
+            Is.Empty,
+            "An infinite shove is a teleport, and it passes a `> 0` test — which is why the guard "
+                + "asks about it separately.");
+
+        // **And NaN, which needs the infinity above and one more factor.** (0 + ∞) × (1 + (−1)) is
+        // ∞ × 0. It is the branch a naive `knockback > 0f` would take safely by accident and a
+        // `!(knockback <= 0f)` would wave straight through (AR §18.3).
+        combat.SwingKnockback.Add(new Modifier(ModifierKind.PercentMult, -1f, new object()));
+
+        Assert.That(float.IsNaN(combat.SwingKnockback.Value), Is.True, "Sanity: unreadable.");
+
+        SwingInto(combat, enemies, now, Fresh(enemies));
+
+        Assert.That(_intents.Knockbacks, Is.Empty, "A number nobody can read shoves nobody.");
+    }
+
+    [Test]
+    public void Swing_RemoveStopsTheShove()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        var node = new object();
+
+        combat.SwingKnockback.Add(new Modifier(ModifierKind.Flat, 1.5f, node));
+
+        float now = SwingInto(combat, enemies, 0f, Fresh(enemies));
+
+        Assert.That(_intents.Knockbacks.Count, Is.EqualTo(1), "Sanity: it was shoving.");
+
+        combat.SwingKnockback.RemoveAll(node);
+        _intents.Clear();
+
+        SwingInto(combat, enemies, now, Fresh(enemies));
+
+        Assert.That(
+            _intents.Knockbacks,
+            Is.Empty,
+            "Back to zero and back to a swing that shoves nobody — which is the door the first "
+                + "timed knockback buff will use (rule 8).");
+    }
+
+    [Test]
+    public void Swing_ReadsTheFacingTheSwingWasThrownWith()
+    {
+        PlayerCombat combat = Combat();
+        EnemySystem enemies = Enemies();
+
+        int husk = enemies.Spawn(new ContentId(HuskId), At(3f)).Id;
+
+        combat.SwingKnockback.Add(Flat(1.5f));
+
+        // The damage frame is reached with the player facing +Z, and the report arrives at least a
+        // frame later — which is the whole reason the facing is remembered with the pending request
+        // rather than read when the answer comes back (rule 7).
+        float now = ToDamageFrame(combat, enemies.Registry, 0f);
+
+        Vector2 thrown = _intents.LastConeHit.FacingXZ;
+
+        // Several frames of the player facing somewhere else entirely, before the body answers.
+        WorldSnapshot snapshot = Snapshot();
+
+        for (int i = 0; i < 5; i++)
+        {
+            combat.Tick(Frame, now, snapshot, enemies.Registry.Alive, -Vector3.UnitZ);
+            now += Frame;
+        }
+
+        combat.ResolveConeHits(new[] { husk }, now, enemies);
+
+        Assert.That(
+            _intents.Knockbacks[0].DirectionXZ,
+            Is.EqualTo(thrown),
+            "The swing's facing, not the player's five frames later. A swing thrown north shoves "
+                + "north however far the stick has swung since.");
+    }
+
     // ---- Fixtures --------------------------------------------------------------------------------
 
     private static Modifier Flat(float value) => new Modifier(ModifierKind.Flat, value, new object());
@@ -559,6 +792,37 @@ public sealed class StatReachTests
 
     /// <summary>A point <paramref name="metres"/> straight ahead of the player, on +Z.</summary>
     private static Vector3 At(float metres) => new Vector3(0f, 0f, metres);
+
+    /// <summary>
+    /// A point <see cref="ConeDepth"/> ahead and <paramref name="offset"/> to one side — inside the
+    /// Censer's 60° wedge at about 27° off the axis, which is what the shove rows need: two enemies
+    /// the swing genuinely catches, on opposite sides of the facing.
+    /// </summary>
+    private static Vector3 Beside(float offset) => new Vector3(offset, 0f, ConeDepth);
+
+    /// <summary>A Husk at full health, three metres ahead. One per swing, so nothing ever dies.</summary>
+    /// <remarks>
+    /// A fresh one per phase rather than one Husk swung at repeatedly, because 13 damage a swing
+    /// into 36 hit points is a kill on the third — and <c>ResolveConeHits</c> skips an id that
+    /// resolved to nothing, so a corpse would report zero shoves for the same reason a guard would.
+    /// The row would pass while proving nothing (Traps §7).
+    /// </remarks>
+    private static int Fresh(EnemySystem enemies) =>
+        enemies.Spawn(new ContentId(HuskId), At(3f)).Id;
+
+    /// <summary>
+    /// One whole swing from <paramref name="now"/>, with <paramref name="ids"/> reported back as
+    /// having stood in the wedge — the round trip <c>RunSession.ReportConeHits</c> makes.
+    /// </summary>
+    /// <returns>The clock the swing's damage frame landed on.</returns>
+    private float SwingInto(PlayerCombat combat, EnemySystem enemies, float now, params int[] ids)
+    {
+        now = ToDamageFrame(combat, enemies.Registry, now);
+
+        combat.ResolveConeHits(ids, now, enemies);
+
+        return now;
+    }
 
     private PlayerCombat Combat() => new PlayerCombat(Oathbound(), _events, _intents, EnemyCapacity);
 

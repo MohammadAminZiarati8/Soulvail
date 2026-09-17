@@ -528,6 +528,17 @@ namespace Soulvail.Game.Presentation
 
             _line.Append('/').Append(SkillRunner.MaxManualSlots.ToString(CultureInfo.InvariantCulture));
 
+            // Granted shield, in points rather than as a fraction — it has no maximum to be a
+            // fraction of, and the whole question on a phone is whether it is there *before* the
+            // bolt lands (CC §6.4). Printed unconditionally, unlike the actives fraction above,
+            // because zero is the reading that matters here: it is what says the grant expired on
+            // time rather than quietly lasting the stage.
+            //
+            // It reads `shield 0.00` in every run until M3-12 authors a tree with Bulwark in it, and
+            // M3-11a-ii is what can put a number in it at all. This line is the whole of manual
+            // step 1's readout — there is no view for a granted shield until M3-11c.
+            _line.Append("  shield ").Append(Fixed(state is null ? 0f : state.PlayerGrantedShield));
+
             // Shots in the air, from core rather than from the snapshot — unlike the enemy count
             // above, there is no boundary here for the two sides to disagree across: a projectile
             // has no body and is never reported back in (M2-07a rule 2), so core's number is the

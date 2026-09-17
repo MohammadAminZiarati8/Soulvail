@@ -1782,6 +1782,41 @@ public sealed class SkillRunnerTests
     /// row quotes; the rest exist only so the slot rows have four skills to fill four slots with.
     /// <c>BuildWithActiveTree</c>'s shape, in <c>RunSessionResumeTests</c>, and its reason.
     /// </param>
+    [Test]
+    public void State_ExposesTheGrantedShield()
+    {
+        StartSession(Below(TriggerField.HpFraction, 0f), cooldown: 2.5f);
+
+        // **The reachable half, and it is the one that matters today.** A live run reads zero
+        // because nothing in this build can put a grant on the player: Health.GrantShield is public
+        // but RunState.Combat is not, and the only thing that will ever call it is M3-11a-ii's
+        // GrantShieldHandler. So this is the read being correctly empty and *saying so* — the same
+        // reading `actives 0` has on the overlay — and the spec's "granted 35" half lands with the
+        // handler, over a real cast, in that task's Handler_ApplyGrantsAndHolds.
+        //
+        // It sits here rather than in HealthTests because it needs a RunSession and that fixture
+        // has none; the three State_* rows M3-09b and M3-10a added are already in this file for the
+        // same practical reason.
+        Assert.That(_session.State.PlayerGrantedShield, Is.Zero);
+
+        // **And the seal did not move to let it out** (AR §18.2). A twelfth scalar read is one more
+        // number, not a handle: Health now has a public GrantShield beside its public ApplyDamage
+        // and Heal, so a view holding Combat could hand itself a shield as easily as heal to full.
+        // Asked by reflection because the compiler cannot be — a test in Soulvail.Tests.Core would
+        // see `internal` if the assembly had InternalsVisibleTo, and it deliberately does not.
+        PropertyInfo handle = typeof(RunState).GetProperty(
+            "Combat",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        Assert.That(handle, Is.Not.Null, "RunState.Combat is gone — this row is out of date.");
+
+        Assert.That(
+            handle.GetMethod.IsPublic,
+            Is.False,
+            "RunState.Combat became public. M3-11a-i added a read beside it and must not have "
+                + "loosened the seal to do it.");
+    }
+
     private void StartSession(TriggerSpec trigger, float cooldown, int actives = 1)
     {
         var nodes = new List<SkillSpec>();

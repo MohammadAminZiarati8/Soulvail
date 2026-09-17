@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Soulvail.Core.Combat;
 
 /// <summary>
@@ -137,6 +139,30 @@ public sealed class CombatBlackboard
     public int IncomingProjectiles;
 
     /// <summary>
+    /// Where the body last reported the player to be, in world metres — the same value
+    /// <c>RunState.PlayerPosition</c> holds and <c>WorldSnapshot.PlayerPosition</c> brought in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Not a question a trigger asks, and it is here anyway</b> (M3-11b rule 2). Every other field
+    /// is something CC §6.4 lets a designer compare against a threshold, and <c>TriggerField</c>
+    /// deliberately gains no member for this one: a position is not a number anything is above or
+    /// below. What it is here for is <c>ZoneSystem</c>, which has to place a zone <em>at the moment of
+    /// the cast</em> — inside <c>IEffectHandler&lt;T&gt;.Apply</c>, which is called from the skills
+    /// step rather than from any <c>Tick</c> of its own, so no tick parameter reaches it and a cached
+    /// copy would be a frame stale.
+    /// </para>
+    /// <para>
+    /// The blackboard is the right holder for the reason it holds the rest: one writer, many readers
+    /// (ADR-0005), filled once a tick before the runner is asked anything, so what a cast reads is
+    /// this frame's position. It is a second surface of a fact <c>RunState</c> also exposes rather
+    /// than a second source of it — both are copied from the same snapshot field, in the same tick,
+    /// and neither decides anything.
+    /// </para>
+    /// </remarks>
+    public Vector3 PlayerPosition;
+
+    /// <summary>
     /// Back to a blank blackboard: every field to its default, and no target rather than enemy
     /// zero.
     /// </summary>
@@ -161,5 +187,6 @@ public sealed class CombatBlackboard
         StationaryTime = 0f;
         Veilrot = 0f;
         IncomingProjectiles = 0;
+        PlayerPosition = Vector3.Zero;
     }
 }

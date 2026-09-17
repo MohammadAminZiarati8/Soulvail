@@ -114,6 +114,26 @@ Editor has the code — which is a stronger statement than any timestamp, and it
 
 ### `Unity_RunCommand`
 
+- **The shape of a command is not documented anywhere and cost four probes to rediscover** (M3-11a-ii,
+  filed at M3-11b). It is **not** top-level statements and **not** a static class:
+
+  ```csharp
+  internal class CommandScript : IRunCommand
+  {
+      public void Execute(ExecutionResult result)
+      {
+          result.Log("this is how output leaves");
+      }
+  }
+  ```
+
+  Everything you submit is wrapped in `namespace Unity.AI.Assistant.Agent.Dynamic.Extension.Editor`,
+  so `public` on the class fails an inconsistent-accessibility check and `using` directives are best
+  avoided — **fully qualify instead**. **Output goes through `result.Log(...)` and nowhere else**: a
+  value returned from `Execute` comes back as *"No logs available"*, which reads as a command that
+  did not run. Helper classes go **beside** `CommandScript` at top level and `internal`, never nested
+  (see the rewriter bullet below).
+
 - **Refused as `k_UnsafeMethods`** (they demand a confirmation the MCP cannot give):
   `File.Delete`, `File.Move`, `AssetDatabase.DeleteAsset`, `AssetDatabase.Refresh()`. Overwrite
   with `File.WriteAllText` instead (M0-03). Bisect against this list rather than trusting it whole —

@@ -1,3 +1,4 @@
+using System.Numerics;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Events;
@@ -101,5 +102,90 @@ public readonly struct SkillAutoCastChanged
         SkillId = skillId;
         IsAuto = isAuto;
         Slot = slot;
+    }
+}
+
+/// <summary>
+/// A zone was placed — CC §6.4's Consecrate, and every zone after it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It carries everything a decal needs and nothing that can be looked up</b> — position, radius
+/// and duration, so a view can place it, size it and run its own countdown without a read
+/// (<c>SpawnTelegraphed</c>'s shape, M2-12b). Published after the zone exists, so a listener reading
+/// <c>RunState.ActiveZoneCount</c> from inside it counts this one.
+/// </para>
+/// <para>
+/// <b>An id, and deliberately not an index</b> (M3-11b, the spec's <c>Index</c> corrected). A zone
+/// retiring shifts the ones placed after it down, exactly as <c>TimedEffects</c> does, so an index is
+/// a position in a list at one instant rather than a handle: a view keyed by it would retire the
+/// wrong decal the first time two zones overlapped and the older one ended. The id is issued from 1
+/// and never reused within a run, which is <c>ProjectileFired.Id</c>'s rule and
+/// <c>EnemyRegistry</c>'s.
+/// </para>
+/// </remarks>
+public readonly struct ZoneSpawned
+{
+    /// <summary>Which zone — run-stable, issued from 1.</summary>
+    public readonly int Id;
+
+    /// <summary>Where it was placed, in world metres. Where the player stood at the cast.</summary>
+    public readonly Vector3 Position;
+
+    /// <summary>How far it reaches, in metres.</summary>
+    public readonly float Radius;
+
+    /// <summary>How long it stands, in simulated seconds.</summary>
+    public readonly float Duration;
+
+    public ZoneSpawned(int id, Vector3 position, float radius, float duration)
+    {
+        Id = id;
+        Position = position;
+        Radius = radius;
+        Duration = duration;
+    }
+}
+
+/// <summary>
+/// A zone's time is up. What retires the view.
+/// </summary>
+/// <remarks>
+/// Published after the zone is gone, and after the last pulse it was alive for — the two clocks meet
+/// exactly on an authored zone's final second, and <c>ZoneSystem</c> rules that the pulse lands first.
+/// </remarks>
+public readonly struct ZoneExpired
+{
+    /// <summary>Which zone — the id <c>ZoneSpawned</c> carried.</summary>
+    public readonly int Id;
+
+    public ZoneExpired(int id)
+    {
+        Id = id;
+    }
+}
+
+/// <summary>
+/// A pulse landed on somebody standing in a zone.
+/// </summary>
+/// <remarks>
+/// <b>It carries what was <em>actually</em> restored, which is zero at full health and zero for the
+/// dead</b> — <c>Health.Heal</c>'s own return value, not what the zone was authored to pay. A view
+/// that flashed on a wasted pulse would be lying about what the skill did; one that was never told
+/// about it could not tell a player standing in a zone at full health from a player standing outside
+/// one.
+/// </remarks>
+public readonly struct ZoneHealed
+{
+    /// <summary>Which zone — the id <c>ZoneSpawned</c> carried.</summary>
+    public readonly int Id;
+
+    /// <summary>Hit points actually restored. Zero is legal and is the honest answer.</summary>
+    public readonly float Amount;
+
+    public ZoneHealed(int id, float amount)
+    {
+        Id = id;
+        Amount = amount;
     }
 }

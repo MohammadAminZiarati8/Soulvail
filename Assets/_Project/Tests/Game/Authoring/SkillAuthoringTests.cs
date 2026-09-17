@@ -251,6 +251,79 @@ public sealed class SkillAuthoringTests
                 + "namespace on a UnityEngine.Object type (Traps §5).");
     }
 
+    // ---------------------------------------------------------- SpawnHealZoneDefinition
+
+    [Test]
+    public void Definition_ToEffect_RoundTrip()
+    {
+        // 2.5, 4, 7 and 0.25, not Consecrate's 3.5 / 6 / 3 / 0.5: all four fields carry those as C#
+        // initialisers, so asserting them would pass identically whether the YAML key binds or the
+        // field is holding its initialiser (Traps §7). The numbers are arbitrary; being different
+        // from the defaults is not.
+        SpawnHealZoneDefinition definition = NewHealZone(
+            "Consecrate", radius: 2.5f, duration: 4f, healPerPulse: 7f, pulseInterval: 0.25f);
+
+        IEffect effect = definition.ToEffect();
+
+        Assert.That(effect, Is.InstanceOf<SpawnHealZone>());
+
+        var zone = (SpawnHealZone)effect;
+
+        Assert.That(zone.Radius, Is.EqualTo(2.5f).Within(Tolerance));
+        Assert.That(zone.Duration, Is.EqualTo(4f).Within(Tolerance));
+        Assert.That(zone.HealPerPulse, Is.EqualTo(7f).Within(Tolerance));
+        Assert.That(zone.PulseInterval, Is.EqualTo(0.25f).Within(Tolerance));
+
+        // ADR-0006: the SO holds no runtime state. A cached effect handed out twice would be one
+        // object shared by every run that takes the node.
+        Assert.That(definition.ToEffect(), Is.Not.SameAs(zone));
+    }
+
+    [Test]
+    public void Definition_Invalid_NamesTheAsset()
+    {
+        // A radius of zero: legal as a float, refused as content. SpawnHealZone's constructor is the
+        // one account of what a legal zone is and this type copies none of it — what it owes is the
+        // asset's name at the front of the message (M0-11).
+        SpawnHealZoneDefinition definition = NewHealZone(
+            "BrokenConsecrate", radius: 0f, duration: 6f, healPerPulse: 3f, pulseInterval: 0.5f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToEffect());
+
+        Assert.That(
+            thrown.Message,
+            Does.StartWith("SpawnHealZoneDefinition 'BrokenConsecrate'"),
+            "The message must lead with the asset, or the Console points at no file to open.");
+
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+
+        // And another door, so the row is not one field's story told twice.
+        SpawnHealZoneDefinition still = NewHealZone(
+            "StillConsecrate", radius: 3.5f, duration: 6f, healPerPulse: 3f, pulseInterval: 0f);
+
+        Assert.That(
+            Assert.Throws<ArgumentException>(() => still.ToEffect()).Message,
+            Does.StartWith("SpawnHealZoneDefinition 'StillConsecrate'"));
+    }
+
+    [Test]
+    public void Definition_IsLinkedToAMonoScript()
+    {
+        // **M3-02b's actual check, and the failure mode it catches reports nothing anywhere**
+        // (Traps §5). Unity 6.3's script importer does not understand `namespace X;`, so a
+        // ScriptableObject declared file-scoped compiles, passes every row above — they build the
+        // instance in code — and then loads as null off any asset that references it, with
+        // `m_Script: {fileID: 0}` and no error. This is the only row that would go red for it.
+        SpawnHealZoneDefinition definition = NewHealZone(
+            "LinkedConsecrate", radius: 3.5f, duration: 6f, healPerPulse: 3f, pulseInterval: 0.5f);
+
+        Assert.That(
+            MonoScript.FromScriptableObject(definition),
+            Is.Not.Null,
+            "SpawnHealZoneDefinition is not linked to a MonoScript — the usual cause is a "
+                + "file-scoped namespace on a UnityEngine.Object type (Traps §5).");
+    }
+
     // ---------------------------------------------------------------------- SkillDefinition
 
     [Test]
@@ -918,6 +991,25 @@ public sealed class SkillAuthoringTests
         var serialized = new SerializedObject(definition);
         serialized.FindProperty("_amount").floatValue = amount;
         serialized.FindProperty("_duration").floatValue = duration;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return definition;
+    }
+
+    private SpawnHealZoneDefinition NewHealZone(
+        string assetName,
+        float radius,
+        float duration,
+        float healPerPulse,
+        float pulseInterval)
+    {
+        var definition = New<SpawnHealZoneDefinition>(assetName);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_radius").floatValue = radius;
+        serialized.FindProperty("_duration").floatValue = duration;
+        serialized.FindProperty("_healPerPulse").floatValue = healPerPulse;
+        serialized.FindProperty("_pulseInterval").floatValue = pulseInterval;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         return definition;

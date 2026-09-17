@@ -238,7 +238,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-10b](tasks/M3-10b-progression-hud.md) | The progression HUD: the XP strip, the level, the auto-cast row, and Overflow | M | 01a 06 07a 08a | ☑ |
 | [M3-11a-i](tasks/M3-11a-i-granted-shield-pool.md) | The granted shield pool: a third pool, spent first, taken back per source | S | 1-02 | ☑ |
 | [M3-11a-ii](tasks/M3-11a-ii-bulwark-and-timed-effects.md) | Bulwark, and the clock that takes a cast effect back | M | 11a-i 06 05 02a | ☑ |
-| [M3-11b](tasks/M3-11b-consecrate-and-zones.md) | Consecrate: ground you have to stand on | M | 11a-ii 06 05 | ☐ |
+| [M3-11b](tasks/M3-11b-consecrate-and-zones.md) | Consecrate: ground you have to stand on | M | 11a-ii 06 05 | ☑ |
 | [M3-11c](tasks/M3-11c-skill-views.md) | What a cast looks like, and the untested view that has been waiting for it | M | 11a 11b | ☐ |
 | [M3-12a](tasks/M3-12a-addressable-stats.md) | Five numbers a node can reach: the stats M3-05 deferred | M | 05 | ☐ |
 | [M3-12b](tasks/M3-12b-cooldown-and-knockback-primitives.md) | Two primitives that are not a stat: a skill's own cooldown, and a swing that shoves | M | 12a 06 05 | ☐ |

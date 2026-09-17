@@ -455,6 +455,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<GrantShield>(
             new GrantShieldHandler(combat.Health, _timed, _clock, _events));
 
+        // And one per run again, with the same clock. It heals the player's Health and reads the
+        // player's position off the blackboard PlayerCombat fills — borrowed, not owned, one writer
+        // and many readers (ADR-0005), and this is its second reader after the runner.
+        //
+        // Here rather than on this class like _timed because something *does* read it: an overlay and
+        // M3-11c's decal ask how many zones are standing and where, so it hangs off RunState behind
+        // two narrow reads (AR §18.2).
+        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events);
+
+        // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
+        // file and one Register line, with nothing in the clock, the registry or Tick changing to
+        // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
+        effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
+
         // The other half of the tree's validation, and the reason it is down here rather than up in
         // the block with TreeRules: the constructor asks CanApply of every take and cast effect in
         // the tree, and the registry it asks cannot exist before the live objects its handlers
@@ -521,6 +535,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             effects,
             tree,
             skills,
+            zones,
             levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
@@ -791,6 +806,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // step*, for the reason the line above sits there — a shield that expired after this tick's
         // bolts were resolved would have absorbed a hit it was no longer entitled to.
         _timed.Tick(State.Time);
+
+        // **Immediately after the timed effects, which keeps the whole skills block above the
+        // projectile step** (M3-11b rule 3, AR §18.1). *After the runner*, because a zone cast this
+        // tick has to exist this tick — a player who drops below 60 % is standing on healing ground
+        // in the same frame. *After the timed effects*, because these are the game's two expiry
+        // mechanisms and interleaving them would make the order a shield comes off in depend on
+        // whether a zone happened to end on the same tick; they are separated rather than merged
+        // because a zone is a place with its own life and a grant is state on the player that
+        // something has to take back (rule 9).
+        State.Zones.Tick(State.Time);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
@@ -1164,6 +1189,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a
         // view that is being destroyed (M3-11a-ii rule 8).
         _timed.Clear();
+
+        // And the ground a cast put down, forgotten in the same silence and for the same sentence.
+        // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
+        // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
+        State.Zones.Clear();
     }
 
     /// <summary>

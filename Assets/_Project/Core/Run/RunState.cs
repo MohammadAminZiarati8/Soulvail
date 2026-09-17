@@ -61,6 +61,7 @@ public sealed class RunState
         EffectRegistry effects,
         SkillTree tree,
         SkillRunner skills,
+        ZoneSystem zones,
         LevelUpFlow levelUp)
     {
         ModeId = modeId;
@@ -76,6 +77,7 @@ public sealed class RunState
         Effects = effects;
         Tree = tree;
         Skills = skills;
+        Zones = zones;
         LevelUp = levelUp;
     }
 
@@ -523,6 +525,34 @@ public sealed class RunState
     /// Four empties for a run with no tree, which is every run until M3-12 authors one.
     /// </remarks>
     public IReadOnlyList<ContentId> ManualSkillIds => Skills.Slots;
+
+    /// <summary>
+    /// The ground a cast has put down this run — CC §6.4's Consecrate, and every zone after it.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2). <c>Spawn</c>,
+    /// <c>Tick</c> and <c>Clear</c> are all public on it, so a handle would let a view place a
+    /// healing zone under the player, advance its clock, or delete one mid-fight. The two reads below
+    /// are what an overlay or a view gets. <b>Never null</b>, like <see cref="Skills"/>: a run with no
+    /// tree still has a ZoneSystem and it stands empty.
+    /// </remarks>
+    internal ZoneSystem Zones { get; }
+
+    /// <summary>How many zones are standing right now — zero in every run that casts nothing.</summary>
+    public int ActiveZoneCount => Zones.Count;
+
+    /// <summary>
+    /// Where the zone at <paramref name="index"/> was placed, in world metres.
+    /// </summary>
+    /// <remarks>
+    /// <b>An index into the live zones, in the order they were placed, and not a handle</b>
+    /// (<see cref="SkillIdAt"/>'s shape, with one difference worth knowing): a zone retiring shifts
+    /// the ones placed after it down, where the runner's entries never leave. Anything following one
+    /// zone across ticks follows the id on <c>ZoneSpawned</c>; this is the read something walks from 0
+    /// to <see cref="ActiveZoneCount"/> to draw what is on the floor right now.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">There is no zone at that index.</exception>
+    public Vector3 ZoneAt(int index) => Zones.PositionAt(index);
 
     /// <summary>
     /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).

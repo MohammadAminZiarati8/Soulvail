@@ -780,7 +780,7 @@ public sealed class PlayerCombat
         Health.Tick(dt, now);
         PublishShieldIfDrifted();
 
-        UpdateBlackboard(count);
+        UpdateBlackboard(count, snapshot.PlayerPosition);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
         TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count);
@@ -1036,7 +1036,14 @@ public sealed class PlayerCombat
     /// counts as movement — leaving this method to copy the answer rather than compute a second
     /// one. See <see cref="CombatBlackboard.StationaryTime"/>.
     /// </remarks>
-    private void UpdateBlackboard(int count)
+    /// <param name="count">How many candidates the gathering pass filled.</param>
+    /// <param name="playerPosition">
+    /// Where the body reported the player this tick. Handed in rather than recovered, for the
+    /// reason the stationary clock is copied rather than recomputed: this method writes the
+    /// blackboard and does not decide anything on it. See
+    /// <see cref="CombatBlackboard.PlayerPosition"/> for who reads it.
+    /// </param>
+    private void UpdateBlackboard(int count, Vector3 playerPosition)
     {
         int within6 = 0;
         int within8 = 0;
@@ -1088,6 +1095,11 @@ public sealed class PlayerCombat
         // top of this tick, so both are this frame's.
         Blackboard.FocusRampLevel = Focus.Level;
         Blackboard.StationaryTime = Focus.StationaryTime;
+
+        // Written down, not decided (M3-11b rule 2): the same position the snapshot brought in and
+        // RunState holds, copied here so that a cast reads this frame's feet rather than last
+        // frame's. Nothing in TriggerField compares against it.
+        Blackboard.PlayerPosition = playerPosition;
 
         // Veilrot and IncomingProjectiles are deliberately untouched — see CombatBlackboard.
     }

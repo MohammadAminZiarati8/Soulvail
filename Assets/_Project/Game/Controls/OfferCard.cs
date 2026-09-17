@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Game.Presentation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,12 +31,13 @@ namespace Soulvail.Game.Controls
     /// cannot be judged until M6-10.
     /// </para>
     /// <para>
-    /// <b>The four tints are serialized here and are deliberately not a palette.</b> GD §16.4's
-    /// palette still has no file (ledger row 6, owner M3-13a), and inventing one here would be that
-    /// task arriving early and unspecified. Four <see cref="Color"/> fields are honest about being
-    /// placeholders and are one more caller for the row to absorb. CH §4's four kinds are what a
-    /// player is distinguishing at a glance: a Keystone is not a Passive, and the card has two
-    /// seconds to say so.
+    /// <b>The four tints were serialized here and are <see cref="Palette"/>'s as of M3-13a.</b> They
+    /// were four <see cref="Color"/> fields honest about being placeholders (M3-08b rule 8), and the
+    /// same four values were then copied onto <c>TreeNodeView</c> and <c>AutoCastRow</c> — the third
+    /// copy, which is exactly where ledger row 6 said a palette stops being one. CH §4's four kinds
+    /// are what a player is distinguishing at a glance: a Keystone is not a Passive, and the card has
+    /// two seconds to say so — on this screen, on the tree and in the auto-cast row, in one colour
+    /// each rather than three that agree by inspection.
     /// </para>
     /// <para>
     /// Every piece is written through a Unity-null check rather than assumed. A card is dressed on
@@ -60,20 +62,6 @@ namespace Soulvail.Game.Controls
                  "stick a moment ago (ledger row 4), so the hit area is the card rather than a " +
                  "word on it.")]
         [SerializeField] private Button _button;
-
-        [Tooltip("Always on: a stat or a rule change, and about 45 % of a tree (CH §4). " +
-                 "Placeholder until M3-13a's Palette — ledger row 6.")]
-        [SerializeField] private Color _passive = new Color(0.62f, 0.66f, 0.72f);
-
-        [Tooltip("Grants a skill with a cooldown (CH §4.2). Placeholder until M3-13a.")]
-        [SerializeField] private Color _active = new Color(0.36f, 0.72f, 0.85f);
-
-        [Tooltip("Improves a skill already owned. Placeholder until M3-13a.")]
-        [SerializeField] private Color _upgrade = new Color(0.45f, 0.78f, 0.55f);
-
-        [Tooltip("Build-defining, end of a branch, three per class (CH §4). Placeholder until " +
-                 "M3-13a.")]
-        [SerializeField] private Color _keystone = new Color(0.85f, 0.72f, 0.32f);
 
         /// <summary>Which of the three this is. Reported on a tap, and nothing else reads it.</summary>
         private int _index;
@@ -193,19 +181,21 @@ namespace Soulvail.Game.Controls
             }
         }
 
-        /// <summary>CH §4's four kinds, in four placeholder colours (rule 8, ledger row 6).</summary>
+        /// <summary>CH §4's four kinds, in <see cref="Palette"/>'s four tints.</summary>
         /// <remarks>
         /// A <c>switch</c> on a <see cref="SkillKind"/> and not on an effect type — the banned shape
         /// is <c>switch (effect.Type)</c>, which is a dispatch that should have been polymorphism.
         /// This is a presentation lookup over a closed enum of four, which is what an enum is for.
+        /// The four were serialized fields from M3-08b and the same four values were copied into
+        /// <c>TreeNodeView</c> and <c>AutoCastRow</c>; as of M3-13a there is one of them.
         /// </remarks>
-        private Color Tint(SkillKind kind) => kind switch
+        private static Color Tint(SkillKind kind) => kind switch
         {
-            SkillKind.Passive => _passive,
-            SkillKind.Active => _active,
-            SkillKind.Upgrade => _upgrade,
-            SkillKind.Keystone => _keystone,
-            _ => _passive,
+            SkillKind.Passive => Palette.KindPassive,
+            SkillKind.Active => Palette.KindActive,
+            SkillKind.Upgrade => Palette.KindUpgrade,
+            SkillKind.Keystone => Palette.KindKeystone,
+            _ => Palette.KindPassive,
         };
 
         /// <remarks>

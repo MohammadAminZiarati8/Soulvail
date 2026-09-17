@@ -361,9 +361,9 @@ public sealed class ThreatArrowsTests
 
         // GD §16.4 reserves saturated red-orange for danger "and nothing else, ever". The alpha is
         // proximity's channel and is asserted by the row above, so only the hue is checked here.
-        Assert.That(tint.r, Is.EqualTo(ThreatArrows.Danger.r).Within(1e-3f));
-        Assert.That(tint.g, Is.EqualTo(ThreatArrows.Danger.g).Within(1e-3f));
-        Assert.That(tint.b, Is.EqualTo(ThreatArrows.Danger.b).Within(1e-3f));
+        Assert.That(tint.r, Is.EqualTo(Palette.Danger.r).Within(1e-3f));
+        Assert.That(tint.g, Is.EqualTo(Palette.Danger.g).Within(1e-3f));
+        Assert.That(tint.b, Is.EqualTo(Palette.Danger.b).Within(1e-3f));
     }
 
     [Test]
@@ -384,9 +384,9 @@ public sealed class ThreatArrowsTests
 
         Color tint = Tint(Drawn(0));
 
-        Assert.That(tint.r, Is.EqualTo(ThreatArrows.HeldFocus.r).Within(1e-3f));
-        Assert.That(tint.g, Is.EqualTo(ThreatArrows.HeldFocus.g).Within(1e-3f));
-        Assert.That(tint.b, Is.EqualTo(ThreatArrows.HeldFocus.b).Within(1e-3f));
+        Assert.That(tint.r, Is.EqualTo(Palette.HeldFocus.r).Within(1e-3f));
+        Assert.That(tint.g, Is.EqualTo(Palette.HeldFocus.g).Within(1e-3f));
+        Assert.That(tint.b, Is.EqualTo(Palette.HeldFocus.b).Within(1e-3f));
     }
 
     [Test]
@@ -409,8 +409,8 @@ public sealed class ThreatArrowsTests
         Color first = Tint(Drawn(0));
         Color second = Tint(Drawn(1));
 
-        Assert.That(first.r, Is.EqualTo(ThreatArrows.HeldFocus.r).Within(1e-3f), "The held focus is cyan.");
-        Assert.That(second.r, Is.EqualTo(ThreatArrows.Danger.r).Within(1e-3f), "The other one is danger.");
+        Assert.That(first.r, Is.EqualTo(Palette.HeldFocus.r).Within(1e-3f), "The held focus is cyan.");
+        Assert.That(second.r, Is.EqualTo(Palette.Danger.r).Within(1e-3f), "The other one is danger.");
     }
 
     [Test]

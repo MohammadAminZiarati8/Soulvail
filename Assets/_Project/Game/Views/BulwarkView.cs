@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
@@ -50,12 +51,6 @@ namespace Soulvail.Game.Views
                  "when the last one ends — the component is harmless without one, it just has " +
                  "nothing to draw.")]
         [SerializeField] private Renderer _shell;
-
-        [Tooltip("What the shell is drawn in. GD §16.4 reserves #22D3EE for the player and the " +
-                 "things that keep them safe, which is exactly what a granted shield is. The " +
-                 "initialiser below is deliberately NOT that colour, so a prefab whose field never " +
-                 "bound is visible rather than plausible.")]
-        [SerializeField] private Color _colour = Color.white;
 
         [Tooltip("Alpha at a fully faded-in shell. Low enough to read as a shell around the " +
                  "character rather than as a replacement for them.")]
@@ -276,10 +271,16 @@ namespace Soulvail.Game.Views
             // Filled from the renderer first so that a material with anything else on it keeps it — a
             // block replaces every property it names and leaves the rest alone only if they were read
             // in. FocusGlowView's rule, on the same prefab.
+            // GD §16.4's cyan: a granted shield is exactly one of the things that keeps the player
+            // safe. Palette.Player as of M3-13a, where this was a serialized field dressed #22D3EE
+            // over a deliberately-white initialiser — the alpha below is still this class's own,
+            // which is rule 8's bargain (Palette is opaque, a view multiplies its own).
+            Color colour = Palette.Player;
+
             _shell.GetPropertyBlock(_properties);
             _properties.SetColor(
                 _baseColorId,
-                new Color(_colour.r, _colour.g, _colour.b, _maxAlpha * _alpha));
+                new Color(colour.r, colour.g, colour.b, _maxAlpha * _alpha));
             _shell.SetPropertyBlock(_properties);
         }
     }

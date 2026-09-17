@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
@@ -73,9 +74,6 @@ namespace Soulvail.Game.Views
         [Tooltip("How far the corpse stretches upward over the dissolve: 1.4 is 40 % taller.")]
         [Min(1f)]
         [SerializeField] private float _dissolveStretch = 1.4f;
-
-        [Tooltip("The flash colour. White reads as 'hit' on every body colour the game will have.")]
-        [SerializeField] private Color _flashColour = Color.white;
 
         [Tooltip("How far the body swells over a wind-up: 1.15 is 15 % bigger by the damage frame. " +
                  "PLACEHOLDER for GD §9.1's real telegraph — deliberately a shape change and not a " +
@@ -371,7 +369,10 @@ namespace Soulvail.Game.Views
 
             _flashRemaining = _flashSeconds;
 
-            SetColour(_flashColour);
+            // GD §16.3's white, and Palette's as of M3-13a — the ninth reader, and the one no
+            // ledger row had ever counted. The archetype tint it returns to is content and stays
+            // authored; this is the one colour here that is the same for every body in the game.
+            SetColour(Palette.HitFlash);
         }
 
         private void OnDied(EnemyDied evt)

@@ -422,21 +422,15 @@ public sealed class AutoCastRowTests
             Is.EqualTo(4),
             "two of CH §4's four kinds share a tint, so a player could not tell them apart.");
 
-        // And the four agree with OfferCard's value for value, which is what M3-09d did for
-        // TreeNodeView — so M3-13a inherits **one** answer to CH §4's four kinds rather than three
-        // that have quietly drifted (rule 9, ledger row 6).
-        OfferCard card = LooseCard();
-
-        foreach (SkillKind kind in new[]
-                 {
-                     SkillKind.Passive, SkillKind.Active, SkillKind.Upgrade, SkillKind.Keystone,
-                 })
-        {
-            Assert.That(
-                Tint(kind),
-                Is.EqualTo(Field<Color>(card, FieldFor(kind))),
-                $"the row's {kind} tint disagrees with OfferCard's.");
-        }
+        // **And they are Palette's four, which is what M3-13a changed here.** This used to compare
+        // the row's four serialized fields against OfferCard's, field name by field name, because
+        // this was the *third* copy of the same four values — M3-10b rule 9's whole complaint, and
+        // the state ledger row 6 predicted. There is one answer now, so the row asserts the answer
+        // rather than the agreement, and there is nothing left for a fourth screen to copy.
+        Assert.That(Tint(SkillKind.Passive), Is.EqualTo(Palette.KindPassive));
+        Assert.That(Tint(SkillKind.Active), Is.EqualTo(Palette.KindActive));
+        Assert.That(Tint(SkillKind.Upgrade), Is.EqualTo(Palette.KindUpgrade));
+        Assert.That(Tint(SkillKind.Keystone), Is.EqualTo(Palette.KindKeystone));
     }
 
     // ---- Where the cells sit (rule 7) ------------------------------------------------------------
@@ -738,24 +732,6 @@ public sealed class AutoCastRowTests
         return bar;
     }
 
-    /// <summary>An offer card off the shipped level-up screen, for the tint agreement.</summary>
-    private OfferCard LooseCard()
-    {
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/UI/LevelUp.prefab");
-
-        Assert.That(prefab, Is.Not.Null, "No prefab at Assets/_Project/Prefabs/UI/LevelUp.prefab.");
-
-        GameObject screen = Object.Instantiate(prefab);
-
-        _spawned.Add(screen);
-
-        OfferCard card = screen.GetComponentInChildren<OfferCard>(true);
-
-        Assert.That(card, Is.Not.Null, "OfferCard did not load off LevelUp.prefab (Traps §5).");
-
-        return card;
-    }
-
     /// <summary>One frame of the row's own <c>Update</c> — the rebuild, then the fills.</summary>
     /// <remarks>
     /// Invoked rather than waited for, because EditMode has no player loop. This is also the frame
@@ -789,10 +765,15 @@ public sealed class AutoCastRowTests
     /// <summary>Which owned active cell <paramref name="cell"/> is drawing, by runner index.</summary>
     private int CellSkill(int cell) => Field<int[]>(_row, "_cellSkill")[cell];
 
-    private Color Tint(SkillKind kind) =>
+    /// <summary>
+    /// The row's own kind lookup, invoked directly. <c>BindingFlags.Static</c> as of M3-13a: the
+    /// method read four serialized fields until this task and reads <c>Palette</c> now, so it holds
+    /// no instance state left to be an instance method for.
+    /// </summary>
+    private static Color Tint(SkillKind kind) =>
         (Color)typeof(AutoCastRow)
-            .GetMethod("Tint", BindingFlags.Instance | BindingFlags.NonPublic)
-            .Invoke(_row, new object[] { kind });
+            .GetMethod("Tint", BindingFlags.Static | BindingFlags.NonPublic)
+            .Invoke(null, new object[] { kind });
 
     private IPlayerCommands Commands() => _session;
 
@@ -806,15 +787,6 @@ public sealed class AutoCastRowTests
     private static float PixelsPerDp() => StickShaper.PixelsPerDp(Screen.dpi);
 
     private static bool[] Off(int count) => Enumerable.Repeat(false, count).ToArray();
-
-    /// <summary>Which serialized field on <see cref="OfferCard"/> holds <paramref name="kind"/>'s tint.</summary>
-    private static string FieldFor(SkillKind kind) => kind switch
-    {
-        SkillKind.Passive => "_passive",
-        SkillKind.Active => "_active",
-        SkillKind.Upgrade => "_upgrade",
-        _ => "_keystone",
-    };
 
     private static void Invoke(object target, string method) =>
         target.GetType()

@@ -405,9 +405,9 @@ public sealed class TelegraphRingsTests
         // rather than copied, which is also what keeps cyan meaning the player (M2-12a).
         foreach (TelegraphRingView ring in Live())
         {
-            Assert.That(ring.Colour.r, Is.EqualTo(ThreatArrows.Danger.r).Within(1e-3f));
-            Assert.That(ring.Colour.g, Is.EqualTo(ThreatArrows.Danger.g).Within(1e-3f));
-            Assert.That(ring.Colour.b, Is.EqualTo(ThreatArrows.Danger.b).Within(1e-3f));
+            Assert.That(ring.Colour.r, Is.EqualTo(Palette.Danger.r).Within(1e-3f));
+            Assert.That(ring.Colour.g, Is.EqualTo(Palette.Danger.g).Within(1e-3f));
+            Assert.That(ring.Colour.b, Is.EqualTo(Palette.Danger.b).Within(1e-3f));
         }
     }
 
@@ -531,11 +531,11 @@ public sealed class TelegraphRingsTests
         foreach (float bad in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
         {
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => _prefab.Bind(UnityEngine.Vector3.zero, bad, 0.8f, true, ThreatArrows.Danger),
+                () => _prefab.Bind(UnityEngine.Vector3.zero, bad, 0.8f, true, Palette.Danger),
                 $"A radius of {bad} must be refused at the door.");
 
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => _prefab.Bind(UnityEngine.Vector3.zero, 1f, bad, true, ThreatArrows.Danger),
+                () => _prefab.Bind(UnityEngine.Vector3.zero, 1f, bad, true, Palette.Danger),
                 $"A duration of {bad} must be refused at the door.");
         }
     }

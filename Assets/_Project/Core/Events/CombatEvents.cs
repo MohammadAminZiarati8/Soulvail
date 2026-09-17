@@ -7,7 +7,7 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These eight are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
+// These ten are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
 // (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
 // one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
 // so the owner decides which vocabulary a result is spoken in.
@@ -318,4 +318,78 @@ public readonly struct ChargeStarted
 /// </remarks>
 public readonly struct ChargeEnded
 {
+}
+
+/// <summary>
+/// A cast put shield points on the player. Published by <c>GrantShieldHandler.Apply</c> after the
+/// points are on, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Not a relative of <see cref="PlayerShieldChanged"/>, and the two must never be conflated.</b>
+/// That one is the Aegis — CC §7's quiet refill, a fraction of a maximum the class was built with.
+/// This is CC §6.4's Bulwark: points a <em>cast</em> put on top of the Aegis, spent first, and gone
+/// on their own clock. A view that drew this into the shield bar would show the class's signature
+/// mechanic refilling every time a skill fired.
+/// </para>
+/// <para>
+/// It carries the amount, the new total <em>and</em> the duration, which looks redundant and is not.
+/// The amount is what a floating number would say, the total is what sizes a ring when a second
+/// source is already standing, and the duration is what starts a countdown — a listener with only
+/// the first two would have to read the effect that caused it, and a listener with only the total
+/// could not tell a fresh 35 from a refresh.
+/// </para>
+/// <para>
+/// Nothing in core listens. M3-11c draws it; M3-13b is what puts a granted shield on the health bar
+/// (GD §16.2).
+/// </para>
+/// </remarks>
+public readonly struct ShieldGranted
+{
+    /// <summary>Points this grant is worth.</summary>
+    public readonly float Amount;
+
+    /// <summary>Granted shield across every source, after this grant went on.</summary>
+    public readonly float Total;
+
+    /// <summary>How long these points stand, in simulated seconds.</summary>
+    public readonly float Duration;
+
+    public ShieldGranted(float amount, float total, float duration)
+    {
+        Amount = amount;
+        Total = total;
+        Duration = duration;
+    }
+}
+
+/// <summary>
+/// A grant came off — expired on its own clock, or released early. Published by
+/// <c>GrantShieldHandler.Remove</c>, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="Total"/> is what is <em>left</em>, not zero: another source may still be holding shield,
+/// and a view that assumed an expiry emptied the pool would erase points the player still has.
+/// </para>
+/// <para>
+/// <see cref="Removed"/> is what remained of this grant rather than what it was granted for — a
+/// 35-point shield that already absorbed 20 takes 15 away with it — so it is the number a view
+/// showing what was lost should draw, and it is legitimately zero for a grant that was spent to
+/// nothing before its time was up.
+/// </para>
+/// </remarks>
+public readonly struct ShieldGrantExpired
+{
+    /// <summary>Points that came off: what remained of this source's grant.</summary>
+    public readonly float Removed;
+
+    /// <summary>Granted shield across every remaining source. Zero when this was the last.</summary>
+    public readonly float Total;
+
+    public ShieldGrantExpired(float removed, float total)
+    {
+        Removed = removed;
+        Total = total;
+    }
 }

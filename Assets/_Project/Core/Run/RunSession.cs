@@ -73,6 +73,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private StageFlow _flow;
 
     /// <summary>
+    /// What a cast put on the player that has to come off again, and the clock it comes off on.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than on <c>RunState</c> because nothing reads it: it is ticked by this class and
+    /// called back through <c>EffectRegistry.Remove</c>, and what a view wants to know about a timed
+    /// grant arrives as <c>ShieldGranted</c> and <c>ShieldGrantExpired</c> rather than as a read
+    /// (AR §18.2 — a twelfth scalar was the last thing that block gained, and this is not a
+    /// thirteenth).
+    /// </remarks>
+    private TimedEffects _timed;
+
+    /// <summary>
+    /// This run's simulated seconds, for the one handler that needs them. See
+    /// <see cref="SimulatedClock"/> for why it exists at all rather than being a parameter.
+    /// </summary>
+    private SimulatedClock _clock;
+
+    /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
     /// to hand movement back to the stick — see the remarks there.
     /// </summary>
@@ -425,6 +443,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
 
+        // One per run like everything above, and the clock with them: a second Start must not
+        // inherit the first run's held effects, and a clock that carried the last run's seconds
+        // would expire the first grant of this one on the tick it was cast. The clock is written
+        // once a tick beside State.Time and read by the handler, because IEffectHandler<T>.Apply is
+        // handed no clock and widening that signature would change every handler in the game
+        // (M3-11a-ii, correction 2).
+        _clock = new SimulatedClock();
+        _timed = new TimedEffects(effects);
+
+        effects.Register<GrantShield>(
+            new GrantShieldHandler(combat.Health, _timed, _clock, _events));
+
         // The other half of the tree's validation, and the reason it is down here rather than up in
         // the block with TreeRules: the constructor asks CanApply of every take and cast effect in
         // the tree, and the registry it asks cannot exist before the live objects its handlers
@@ -704,6 +734,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // arrives immediately and unmissably either way.
         State.Time += snapshot.Dt;
 
+        // The same second, in the object the effect handlers hold. Here rather than anywhere lower
+        // so that it is already this tick's before combat, the skills step or a behaviour can read
+        // it — and here rather than nowhere because Apply takes no clock (see SimulatedClock).
+        _clock.Now = State.Time;
+
         // Written down, not decided: Unity resolves collision and reports where the player ended
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
@@ -748,6 +783,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Skills.Tick(snapshot.Dt, State.Time);
+
+        // **Immediately after the runner and above the projectile step, and both halves are the
+        // mechanic's** (M3-11a-ii rule 3, AR §18.1). *After the runner*, because it may cast this
+        // frame: expiring first would take a grant back and hand the same one straight over again on
+        // the tick a skill recasts, announcing an expiry that never happened. *Above the projectile
+        // step*, for the reason the line above sits there — a shield that expired after this tick's
+        // bolts were resolved would have absorbed a hit it was no longer entitled to.
+        _timed.Tick(State.Time);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
@@ -1116,6 +1159,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // And the shots that were still in the air, silently again. A bolt that landed on an ended
         // run would hurt a corpse and publish an impact into a scope that is being torn down.
         State.Projectiles.Clear();
+
+        // And whatever a cast was still holding — forgotten rather than taken back, for the same
+        // sentence: there is nothing left to take it off, and an expiry announced here would reach a
+        // view that is being destroyed (M3-11a-ii rule 8).
+        _timed.Clear();
     }
 
     /// <summary>

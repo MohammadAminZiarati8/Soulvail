@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af5b70d26e54754493bd72f817c8629, type: 3}
+  m_Name: OathboundTree
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillTreeDefinition
+  _id: tree.oathbound
+  _character: {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}
+  _branches:
+  - _nameKey: tree.oathbound.oath
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 5def8132428443d4db119e04abe745ee, type: 2}
+      - {fileID: 11400000, guid: a3e82daa34d034c4db4bcdee5eb7456b, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 0b1b0d96526e7f745a82c7bc25aa07d1, type: 2}
+      - {fileID: 11400000, guid: 9bfc92fe8ee633e4b98c27903091e860, type: 2}
+  - _nameKey: tree.oathbound.censure
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: a4f55a8c04c47204ba0eac4bf429a306, type: 2}
+      - {fileID: 11400000, guid: 00f15a8e37878ca42a03226f5ce0d0e1, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: ead0a0844510ce541b75718b52f71052, type: 2}
+      - {fileID: 11400000, guid: 05f9c3cc3a82b84458ab263ac0c7b239, type: 2}
+  - _nameKey: tree.oathbound.judgment
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: f4a13012453e4fe48a140aaa28aa53bd, type: 2}
+      - {fileID: 11400000, guid: fce9f8aa368ac084e9ec4abc1597c9af, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 59bf6f6e497d9f7468e3c552e23a4fb2, type: 2}
+      - {fileID: 11400000, guid: f6f47a3cd58c2ec4ab858311f540ea2b, type: 2}

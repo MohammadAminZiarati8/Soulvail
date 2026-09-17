@@ -182,6 +182,75 @@ public sealed class SkillAuthoringTests
         Assert.That(built[1], Is.Not.SameAs(built[0]));
     }
 
+    // -------------------------------------------------------------- GrantShieldDefinition
+
+    [Test]
+    public void GrantShield_ToEffect_RoundTrip()
+    {
+        // 22 and 3, not the 35 and 5 the spec names: both fields carry those as C# initialisers, so
+        // asserting them would pass identically whether the YAML key binds or the field is holding
+        // its initialiser (Traps §7). The numbers are arbitrary; being different from the defaults
+        // is not.
+        GrantShieldDefinition definition = NewGrantShield("Bulwark", amount: 22f, duration: 3f);
+
+        IEffect effect = definition.ToEffect();
+
+        Assert.That(effect, Is.InstanceOf<GrantShield>());
+
+        var grant = (GrantShield)effect;
+
+        Assert.That(grant.Amount, Is.EqualTo(22f).Within(Tolerance));
+        Assert.That(grant.Duration, Is.EqualTo(3f).Within(Tolerance));
+
+        // ADR-0006: the SO holds no runtime state. A cached effect handed out twice would be one
+        // object shared by every run that takes the node — and for a *timed* effect that is sharper
+        // than for a passive, because the pair (effect, source) is what TimedEffects books a
+        // deadline against.
+        Assert.That(definition.ToEffect(), Is.Not.SameAs(grant));
+    }
+
+    [Test]
+    public void GrantShield_Invalid_NamesTheAsset()
+    {
+        // Zero seconds: legal as a float, refused as content. GrantShield's constructor is the one
+        // account of what a legal grant is and this type copies none of it — what it owes is the
+        // asset's name at the front of the message (M0-11).
+        GrantShieldDefinition definition = NewGrantShield("BrokenBulwark", amount: 35f, duration: 0f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToEffect());
+
+        Assert.That(
+            thrown.Message,
+            Does.StartWith("GrantShieldDefinition 'BrokenBulwark'"),
+            "The message must lead with the asset, or the Console points at no file to open.");
+
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+
+        // And the other door, so the row is not one field's story told twice.
+        GrantShieldDefinition none = NewGrantShield("EmptyBulwark", amount: 0f, duration: 5f);
+
+        Assert.That(
+            Assert.Throws<ArgumentException>(() => none.ToEffect()).Message,
+            Does.StartWith("GrantShieldDefinition 'EmptyBulwark'"));
+    }
+
+    [Test]
+    public void GrantShield_IsLinkedToAMonoScript()
+    {
+        // **M3-02b's actual check, and the failure mode it catches reports nothing anywhere**
+        // (Traps §5). Unity 6.3's script importer does not understand `namespace X;`, so a
+        // ScriptableObject declared file-scoped compiles, passes every row above — they build the
+        // instance in code — and then loads as null off any asset that references it, with
+        // `m_Script: {fileID: 0}` and no error. This is the only row that would go red for it.
+        GrantShieldDefinition definition = NewGrantShield("LinkedBulwark", amount: 35f, duration: 5f);
+
+        Assert.That(
+            MonoScript.FromScriptableObject(definition),
+            Is.Not.Null,
+            "GrantShieldDefinition is not linked to a MonoScript — the usual cause is a file-scoped "
+                + "namespace on a UnityEngine.Object type (Traps §5).");
+    }
+
     // ---------------------------------------------------------------------- SkillDefinition
 
     [Test]
@@ -840,6 +909,18 @@ public sealed class SkillAuthoringTests
         var serialized = new SerializedObject(definition);
         serialized.FindProperty(field).stringValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private GrantShieldDefinition NewGrantShield(string assetName, float amount, float duration)
+    {
+        var definition = New<GrantShieldDefinition>(assetName);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_amount").floatValue = amount;
+        serialized.FindProperty("_duration").floatValue = duration;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return definition;
     }
 
     private static void SetFloat(ScriptableObject definition, string field, float value)

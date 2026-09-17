@@ -268,7 +268,10 @@ public sealed class EnemySystem
         // authored numbers and never on top of a previous life's.
         _scaling.Apply(agent, _depth);
 
-        _events.Publish(new EnemySpawned(agent.Id, spec.Id, position));
+        // IsElite rides the event rather than being looked up, for the reason the field's own remarks
+        // give: the one view that needs it holds a look book and not the catalog, and M7-02's Elites
+        // are made at spawn rather than authored as an archetype.
+        _events.Publish(new EnemySpawned(agent.Id, spec.Id, position, spec.IsElite));
 
         return agent;
     }

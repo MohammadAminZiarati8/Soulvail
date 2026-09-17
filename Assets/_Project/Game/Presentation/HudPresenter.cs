@@ -153,6 +153,8 @@ namespace Soulvail.Game.Presentation
         private IDisposable _stageArrivedSubscription;
         private IDisposable _transitionSubscription;
         private IDisposable _leveledSubscription;
+        private IDisposable _grantedSubscription;
+        private IDisposable _grantExpiredSubscription;
 
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
@@ -225,6 +227,15 @@ namespace Soulvail.Game.Presentation
             // nothing left to wait for (M2-10 rule 9).
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
             _stageArrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
+
+            // The granted shield, which is M3-13b's two (rule 11). Both carry `Total` rather than
+            // their own delta — what went on, and what is *left* after one came off — so the bar is
+            // told the whole pool every time and never has to add up two sources itself. That is why
+            // there is no polling here and no third event: a grant lapsing while another still runs
+            // is a ShieldGrantExpired carrying a non-zero Total, which is the only way that case can
+            // be got right.
+            _grantedSubscription = hub.Subscribe<ShieldGranted>(OnShieldGranted);
+            _grantExpiredSubscription = hub.Subscribe<ShieldGrantExpired>(OnShieldGrantExpired);
         }
 
         /// <exception cref="MissingReferenceException">A view, the readout or the overlay is not dressed.</exception>
@@ -288,7 +299,11 @@ namespace Soulvail.Game.Presentation
             _stageArrivedSubscription?.Dispose();
             _transitionSubscription?.Dispose();
             _leveledSubscription?.Dispose();
+            _grantedSubscription?.Dispose();
+            _grantExpiredSubscription?.Dispose();
 
+            _grantedSubscription = null;
+            _grantExpiredSubscription = null;
             _startedSubscription = null;
             _damagedSubscription = null;
             _shieldSubscription = null;
@@ -444,6 +459,54 @@ namespace Soulvail.Game.Presentation
             _shield.Set(evt.Fraction);
         }
 
+        /// <summary>
+        /// Rule 11: Bulwark put points on the player, and the bar says so.
+        /// </summary>
+        /// <remarks>
+        /// <c>Total</c> rather than <c>Amount</c>, because two grants can be standing at once and the
+        /// bar draws the pool. The Aegis ring is deliberately not touched — M3-11a rule 5 from this
+        /// side.
+        /// </remarks>
+        private void OnShieldGranted(ShieldGranted evt)
+        {
+            WriteGrantedShield(evt.Total);
+        }
+
+        /// <summary>
+        /// Rule 11: a grant came off. <c>Total</c> is what is <em>left</em>, not zero.
+        /// </summary>
+        /// <remarks>
+        /// The event's own remarks say why: another source may still be holding shield, and a view
+        /// that assumed an expiry emptied the pool would erase points the player still has.
+        /// </remarks>
+        private void OnShieldGrantExpired(ShieldGrantExpired evt)
+        {
+            WriteGrantedShield(evt.Total);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="points"/> of granted shield over the player's live maximum.
+        /// </summary>
+        /// <remarks>
+        /// The maximum comes from the run rather than from the event, for <see cref="WriteHp"/>'s
+        /// reason: no event carries it, and a bar sized against a stale one would be wrong for the
+        /// whole of a Vitality node's life. A zero or non-finite maximum draws nothing rather than
+        /// dividing — a run with no player has nothing to say about their shield.
+        /// </remarks>
+        private void WriteGrantedShield(float points)
+        {
+            RunState state = _session?.State;
+
+            if (state is null)
+            {
+                return;
+            }
+
+            float max = state.PlayerMaxHp;
+
+            _hp.SetGrantedShield(max > 0f ? points / max : 0f);
+        }
+
         /// <remarks>
         /// Core has already ended the run by the time this arrives — <c>RunSession.Tick</c> calls
         /// <c>End</c> on the same tick, and <c>RunTicker</c> stops ticking — so there is nothing to
@@ -477,6 +540,13 @@ namespace Soulvail.Game.Presentation
             _shield.Set(state.PlayerShieldFraction);
             WriteHp();
             WriteLevel(state.Level);
+
+            // The opening state of the granted shield, and it is zero on every resume there will ever
+            // be: TimedEffects.Clear forgets every grant at the run's end (M3-11a rule 8) and nothing
+            // restores one. Read anyway, on this class's standing reason — whether RunStarted has
+            // already been published depends on an order Unity does not give — so that the HUD never
+            // has to know which of those two facts is keeping it correct.
+            WriteGrantedShield(state.PlayerGrantedShield);
         }
 
         /// <remarks>

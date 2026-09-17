@@ -36,6 +36,13 @@ namespace Soulvail.Game.Presentation
     /// Removing the fields makes the prefab's stored values unreachable rather than contradictory.
     /// The timing field beside them stays, because this task takes colours and nothing else.
     /// </para>
+    /// <para>
+    /// <b>As of M3-13b it also draws what Bulwark put on the player</b> — a segment ahead of the
+    /// fill, in absorption order, driven by <c>ShieldGranted</c> and <c>ShieldGrantExpired</c>. It is
+    /// still a bar that holds no health: the segment is a third width, and
+    /// <see cref="SetGrantedShield"/>'s remarks are where the case for it being here rather than on
+    /// the Aegis ring lives.
+    /// </para>
     /// </remarks>
     public sealed class HpBarView : MonoBehaviour
     {
@@ -57,6 +64,12 @@ namespace Soulvail.Game.Presentation
                  "much of the drop was a moment ago.")]
         [SerializeField] private Image _ghost;
 
+        [Tooltip("The granted-shield segment, drawn ahead of the fill: same rect, same fill method, " +
+                 "a later sibling so it sits over the bar's right-hand end. Optional — a HUD " +
+                 "dressed without one draws a correct health bar that simply cannot say the player " +
+                 "was granted anything.")]
+        [SerializeField] private Image _shieldSegment;
+
         [Tooltip("How long the blocked flash lasts, in seconds. CC §7's i-frames are half a " +
                  "second; this is the tap that says they were spent, not a bar of them.")]
         [Min(0f)]
@@ -73,6 +86,15 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>Seconds left of the blocked flash. Zero means the fill is its normal colour.</summary>
         private float _blockedRemaining;
+
+        /// <summary>
+        /// Granted shield points over the live maximum, in <c>[0, 1]</c>. Zero hides the segment.
+        /// </summary>
+        /// <remarks>
+        /// A width on a bar, not a pool of points — the same thing <see cref="_shown"/> is, and for
+        /// the same reason: nothing in core can be derived from it.
+        /// </remarks>
+        private float _granted;
 
         /// <summary>
         /// Whether <see cref="Set"/> has ever been called. The first value snaps both bars rather
@@ -133,6 +155,56 @@ namespace Soulvail.Game.Presentation
         public void FlashBlocked()
         {
             _blockedRemaining = _blockedSeconds;
+
+            Draw();
+        }
+
+        /// <summary>
+        /// Granted shield points over the live maximum, drawn ahead of the fill. 0 hides it.
+        /// </summary>
+        /// <param name="fraction">
+        /// Granted points over <c>MaxHp</c>, in <c>[0, 1]</c>. Clamped rather than trusted, for the
+        /// reason <see cref="Set"/> clamps — and a non-finite value is read as <em>none</em>, because
+        /// <c>Mathf.Clamp01</c> is two comparisons and every comparison against NaN is false (AR
+        /// §18.3), so a NaN would pass through both bounds and into an anchor.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// <b>A segment on the HP bar, and deliberately not a second arc on the Aegis ring.</b>
+        /// M3-11a rule 5 is explicit that granted points are <em>"deliberately not the Aegis"</em>:
+        /// the ring draws <c>ShieldSpec</c>'s 30 points, its 4 s delay and its 15/s refill, and CH
+        /// §3.1 makes that the Oathbound's signature. A second arc would make one readout mean two
+        /// pools with different rules.
+        /// </para>
+        /// <para>
+        /// <b>Ahead of the fill, which is also where the points actually are.</b>
+        /// <c>ApplyDamage</c> spends granted shield first, then the Aegis, then hit points — so the
+        /// bar reads in absorption order rather than in an order chosen for looks.
+        /// </para>
+        /// <para>
+        /// <b>Its colour is <see cref="Palette.PlayerBlocked"/> rather than a member of its own.</b>
+        /// That is already this bar's <em>"that one did not land"</em> cyan, which is exactly what a
+        /// granted shield is about to make true; it stays inside GD §16.4's player family, and being
+        /// a brightened <see cref="Palette.Player"/> it is separable from the fill at the seam the two
+        /// share — which a second colour of the same value would not be. M3-13a rule 7 prices a new
+        /// palette member, and M3-13b spends that once, on <c>EnemyDying</c>.
+        /// </para>
+        /// <para>
+        /// <b>The readout is not told.</b> GD §16.2's player row is <em>"never ambiguous"</em>, and
+        /// <c>140/140 (+35)</c> is a third number in a 320 dp row that M3-10b has just added a level
+        /// label to. The segment says it; the text does not say it again.
+        /// </para>
+        /// </remarks>
+        public void SetGrantedShield(float fraction)
+        {
+            float clamped = float.IsFinite(fraction) ? Mathf.Clamp01(fraction) : 0f;
+
+            if (Mathf.Approximately(clamped, _granted))
+            {
+                return;
+            }
+
+            _granted = clamped;
 
             Draw();
         }
@@ -227,6 +299,69 @@ namespace Soulvail.Game.Presentation
             if (!Mathf.Approximately(_ghost.fillAmount, _ghostShown))
             {
                 _ghost.fillAmount = _ghostShown;
+            }
+
+            DrawGrantedShield();
+        }
+
+        /// <summary>
+        /// Puts the granted-shield segment where the fill ends, as wide as the points are worth.
+        /// </summary>
+        /// <remarks>
+        /// Driven through the rect's anchors rather than through a <c>fillAmount</c>, because what
+        /// has to be true is <em>where the segment begins</em> and a filled image can only say how
+        /// far it reaches. The segment is switched off rather than drawn at zero width: a rect whose
+        /// two anchors are equal is a graphic uGUI still rebuilds and still batches.
+        /// </remarks>
+        private void DrawGrantedShield()
+        {
+            if (_shieldSegment == null)
+            {
+                return;
+            }
+
+            bool any = _granted > 0f;
+
+            if (_shieldSegment.enabled != any)
+            {
+                _shieldSegment.enabled = any;
+            }
+
+            if (!any)
+            {
+                return;
+            }
+
+            if (_shieldSegment.color != Palette.PlayerBlocked)
+            {
+                _shieldSegment.color = Palette.PlayerBlocked;
+            }
+
+            if (_shieldSegment.transform is not RectTransform rect)
+            {
+                return;
+            }
+
+            // Ahead of the fill while there is room, and pressed back against the bar's right-hand
+            // end when there is not — which is the case that matters, because Bulwark grants a shield
+            // at the moment the player is about to be hit and that is usually at full health. Letting
+            // it overhang instead would put an 80 dp band of cyan across the current/max readout that
+            // HudPresenter.Place puts 8 dp to the bar's right; collapsing it to nothing, which is what
+            // a plain clamp does, would draw no shield at all in exactly the situation the node
+            // exists for. So the width is preserved and the *start* gives way: the bar keeps meaning
+            // "how much more can I take", and the bright band on its end says "and this part is
+            // temporary" — GD §16.2's "never ambiguous", and still in absorption order.
+            float end = Mathf.Min(1f, _shown + _granted);
+
+            var min = new Vector2(Mathf.Max(0f, end - _granted), 0f);
+            var max = new Vector2(end, 1f);
+
+            if (rect.anchorMin != min || rect.anchorMax != max)
+            {
+                rect.anchorMin = min;
+                rect.anchorMax = max;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
             }
         }
     }

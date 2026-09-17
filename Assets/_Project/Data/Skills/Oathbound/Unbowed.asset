@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: Unbowed
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.oathbound.unbowed
+  _nameKey: skill.oathbound.unbowed.name
+  _descriptionKey: skill.oathbound.unbowed.description
+  _kind: 0
+  _effects:
+  - {fileID: 11400000, guid: 161cb138feb525948b6270061eabe7c1, type: 2}
+  - {fileID: 11400000, guid: 926fb02b33bfd0d468a09bb797c645a2, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 0}

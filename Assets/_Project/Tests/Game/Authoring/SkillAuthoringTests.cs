@@ -919,10 +919,13 @@ public sealed class SkillAuthoringTests
             "field was added, or the boot list is one the Inspector cannot fill.");
         Assert.That(trees, Is.Not.Null, "BootScope.prefab carries no _trees field.");
 
-        // And empty, which is rule 7 again: the shipped prefab offers nothing because there is
-        // nothing to offer until M3-12.
-        Assert.That(skills.arraySize, Is.Zero, "Nothing ships in Data/Skills until M3-12.");
-        Assert.That(trees.arraySize, Is.Zero, "Nothing ships in Data/Trees until M3-12.");
+        // **And filled, as of M3-12c.** This row asserted `Is.Zero` for six tasks — rule 7's "a boot
+        // before M3-12 rather than a broken one" — and M3-12c is the task that authored the content,
+        // so the assertion inverts rather than being deleted. *How many* and *which* is
+        // `OathboundTreeTests.Boot_RegistersTheTreeAndTwelveSkills`; what is owed here is only that
+        // the two fields are still present and still reachable from this fixture's own prefab load.
+        Assert.That(skills.arraySize, Is.EqualTo(12), "M3-12c's twelve Oathbound nodes.");
+        Assert.That(trees.arraySize, Is.EqualTo(1), "M3-12c's OathboundTree.");
     }
 
     // ------------------------------------------------------------------------------- helpers

@@ -77,13 +77,15 @@ namespace Soulvail.Game.Presentation
     /// M3-14a's table does not fix it and only icons will.
     /// </para>
     /// <para>
-    /// <b>Four kind tints, serialized, still not a palette</b> (rule 9). M3-08b rule 8's argument for
-    /// the third time: <c>OfferCard</c> has four, <c>TreeNodeView</c> has four plus three states, and
-    /// this row has four — the same values, so M3-13a inherits one answer to CH §4's four kinds
-    /// rather than three that have quietly drifted. <b>Only <see cref="_active"/> is reachable in a
-    /// live run</b>, because rule 5's membership admits Actives and nothing else; the lookup is total
-    /// anyway, for <c>TreeNodeView.Frame</c>'s reason — a closed enum answered in one place beats a
-    /// silent wrong colour if this row ever draws something else.
+    /// <b>Four kind tints, and as of M3-13a they are <see cref="Palette"/>'s</b> (M3-10b rule 9).
+    /// They were serialized here, and the same four values were serialized on <c>OfferCard</c> and
+    /// again on <c>TreeNodeView</c> — the third copy, which is where ledger row 6 said a palette
+    /// stops being one. They never drifted, so M3-13a inherited one answer rather than three; what
+    /// changes here is that there is now nothing left to drift. <b>Only
+    /// <see cref="SkillKind.Active"/> is reachable in a live run</b>, because rule 5's membership
+    /// admits Actives and nothing else; the lookup is total anyway, for <c>TreeNodeView.Frame</c>'s
+    /// reason — a closed enum answered in one place beats a silent wrong colour if this row ever
+    /// draws something else.
     /// </para>
     /// <para>
     /// <b>A nonsense dp field leaves the authored layout alone</b>, which is
@@ -126,22 +128,6 @@ namespace Soulvail.Game.Presentation
                  "from its top. Under the health bar (16 + 24 + 8), and left-aligned with it so the " +
                  "two read as one block.")]
         [SerializeField] private Vector2 _marginDp = new Vector2(16f, 48f);
-
-        [Tooltip("Always on: a stat or a rule change, and about 45 % of a tree (CH §4). " +
-                 "Placeholder until M3-13a's Palette — ledger row 6. Unreachable in this row, " +
-                 "because rule 5 admits only Actives.")]
-        [SerializeField] private Color _passive = new Color(0.62f, 0.66f, 0.72f);
-
-        [Tooltip("Grants a skill with a cooldown (CH §4.2) — the only kind this row ever draws. " +
-                 "Placeholder until M3-13a.")]
-        [SerializeField] private Color _active = new Color(0.36f, 0.72f, 0.85f);
-
-        [Tooltip("Improves a skill already owned. Placeholder until M3-13a. Unreachable here.")]
-        [SerializeField] private Color _upgrade = new Color(0.45f, 0.78f, 0.55f);
-
-        [Tooltip("Build-defining, end of a branch, three per class (CH §4). Placeholder until " +
-                 "M3-13a. Unreachable here.")]
-        [SerializeField] private Color _keystone = new Color(0.85f, 0.72f, 0.32f);
 
         private IRunSession _session;
         private ContentCatalog _catalog;
@@ -520,20 +506,23 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        /// <summary>CH §4's four kinds, in the four colours ledger row 6 is counting.</summary>
+        /// <summary>CH §4's four kinds, in <see cref="Palette"/>'s four tints.</summary>
         /// <remarks>
         /// A <c>switch</c> on a <see cref="SkillKind"/> and not on an effect type — the banned shape
         /// is <c>switch (effect.Type)</c>, which is a dispatch that should have been polymorphism.
         /// This is a presentation lookup over a closed enum of four, which is what an enum is for.
-        /// <c>OfferCard.Tint</c>'s words, and the same four values.
+        /// <c>OfferCard.Tint</c>'s words, and as of M3-13a its values rather than a third copy of
+        /// them. <b>Only <see cref="SkillKind.Active"/> is reachable in a live run</b>, because rule
+        /// 5's membership admits Actives and nothing else; the lookup is total anyway, for
+        /// <c>TreeNodeView.Frame</c>'s reason.
         /// </remarks>
-        private Color Tint(SkillKind kind) => kind switch
+        private static Color Tint(SkillKind kind) => kind switch
         {
-            SkillKind.Passive => _passive,
-            SkillKind.Active => _active,
-            SkillKind.Upgrade => _upgrade,
-            SkillKind.Keystone => _keystone,
-            _ => _active,
+            SkillKind.Passive => Palette.KindPassive,
+            SkillKind.Active => Palette.KindActive,
+            SkillKind.Upgrade => Palette.KindUpgrade,
+            SkillKind.Keystone => Palette.KindKeystone,
+            _ => Palette.KindActive,
         };
 
         /// <summary>Whether all twelve cells and all twelve fills are dressed.</summary>

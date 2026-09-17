@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Game.Pooling;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer cannot
@@ -71,12 +72,6 @@ namespace Soulvail.Game.Views
         [Tooltip("The one quad this decal is drawn with, on this object. Everything visible about a " +
                  "zone is its scale and its colour, both written here every frame it is live.")]
         [SerializeField] private MeshRenderer _quad;
-
-        [Tooltip("What the ground is drawn in. Authored on the prefab rather than written here: " +
-                 "GD §16.4 reserves #22D3EE for the player and the things that are safe, which is " +
-                 "what a patch of healing ground is. The initialiser below is deliberately NOT that " +
-                 "colour, so a prefab whose field never bound is visible rather than plausible.")]
-        [SerializeField] private Color _colour = Color.white;
 
         [Tooltip("How bright the disc sits at while nothing is happening. Low: it is on screen for " +
                  "six seconds under the player's feet, and GD §11.3's fill-rate note is about " +
@@ -160,8 +155,19 @@ namespace Soulvail.Game.Views
         /// </remarks>
         public bool IsFlashing => _live && _flashLeft > 0f;
 
-        /// <summary>The colour this decal was authored with. GD §16.4's vocabulary, and nothing else.</summary>
-        public Color Colour => _colour;
+        /// <summary>
+        /// The colour this decal is drawn in: GD §16.4's cyan, because a patch of healing ground is
+        /// one of the things that keeps the player safe.
+        /// </summary>
+        /// <remarks>
+        /// <b>A serialized field until M3-13a, dressed <c>#22D3EE</c> on the prefab over a white
+        /// initialiser that was white on purpose</b> — so a field that never bound was visible rather
+        /// than plausible. That trick is what a palette makes unnecessary and is also what makes the
+        /// field the worse of the two: a value read back off a dressed prefab agrees with itself
+        /// whatever it is (Traps §7). Removing the field makes the prefab's stored colour unreachable
+        /// rather than contradictory, and <see cref="Palette.Heal"/> is the one place it is written.
+        /// </remarks>
+        public Color Colour => Palette.Heal;
 
         /// <summary>
         /// Whether this body has the quad it draws with.
@@ -398,7 +404,12 @@ namespace Soulvail.Game.Views
             // field's own note for why it cannot be made anywhere earlier.
             _properties ??= new MaterialPropertyBlock();
 
-            _properties.SetColor(_baseColorId, new Color(_colour.r, _colour.g, _colour.b, Alpha));
+            // The palette's colour and this decal's own alpha: every value in Palette is opaque, and
+            // a view that wants transparency multiplies its own (M3-13a rule 8). The two alphas here
+            // are still serialized, because they are feel numbers rather than colour.
+            Color colour = Palette.Heal;
+
+            _properties.SetColor(_baseColorId, new Color(colour.r, colour.g, colour.b, Alpha));
 
             _quad.SetPropertyBlock(_properties);
         }

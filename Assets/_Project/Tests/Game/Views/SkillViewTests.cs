@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
@@ -62,13 +64,17 @@ public sealed class SkillViewTests
     private const float ConsecrateSeconds = 6f;
 
     /// <summary>
-    /// GD §16.4's saturated red-orange, <c>#FF4A1F</c> — danger, and nothing else, ever. Written out
-    /// rather than read from <c>ThreatArrows.Danger</c> for the reason above: the claim is that
-    /// neither of these assets is authored in that colour, which is a claim about a literal.
+    /// GD §16.4's <c>#22D3EE</c> — the player, and the things that keep them safe. Written out
+    /// rather than read from <see cref="Palette.Player"/>: the claim is that these two views draw the
+    /// colour the design document names, and reading it from the file under test would make that
+    /// claim true by construction.
     /// </summary>
-    private static readonly Color Danger = new Color(1f, 0.290f, 0.122f, 1f);
-
-    /// <summary>GD §16.4's <c>#22D3EE</c> — the player, and the things that keep them safe.</summary>
+    /// <remarks>
+    /// The value <c>HpBarView</c> and <c>ThreatArrows</c> both shipped from M1-17, which is
+    /// <c>#22D3EE</c> rounded to three places; <see cref="Near"/>'s 0.01 band is what makes the two
+    /// spellings one colour. The danger literal that used to sit beside this is gone —
+    /// <see cref="Palette.IsDanger"/> is the question now, and it is the whole point of the file.
+    /// </remarks>
     private static readonly Color PlayerCyan = new Color(0.133f, 0.827f, 0.933f, 1f);
 
     private GameObject _zonePrefabObject;
@@ -614,7 +620,8 @@ public sealed class SkillViewTests
     }
 
     /// <summary>
-    /// Rule 10: both assets wear the player's cyan, and neither wears the danger colour.
+    /// M3-11c rule 10, rewritten at M3-13a: both views draw the player's cyan, neither draws the
+    /// danger colour, and neither can any longer be dressed to.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -624,10 +631,19 @@ public sealed class SkillViewTests
     /// other.
     /// </para>
     /// <para>
-    /// It asserts the authored value rather than only the absence of the forbidden one, because the
-    /// class initialisers are deliberately <see cref="Color.white"/>: a row that only ruled out the
-    /// danger colour would pass whether or not the serialized field ever bound (Traps §7), which is
-    /// precisely the failure this row is here to catch.
+    /// <b>What changed, and why the row is stronger rather than merely different.</b> Until M3-13a
+    /// this read the <em>serialized</em> <c>_colour</c> off each prefab, and had to assert the
+    /// authored value as well as the absence of the forbidden one — because both class initialisers
+    /// were <see cref="Color.white"/> on purpose, so a row that only ruled out danger would pass
+    /// whether or not the field ever bound (Traps §7). Both fields are gone. The colour is
+    /// <c>Palette.Heal</c> and <c>Palette.Player</c>, and it is asserted through what each view
+    /// actually paints, so there is no longer a value a prefab could be dressed to that this would
+    /// not see. The trick the white initialiser was is what a palette makes unnecessary.
+    /// </para>
+    /// <para>
+    /// <b>The prefabs are still loaded off disk</b>, because the claim is about the two shipped
+    /// assets and not about a fixture's clone — and because the day either one grows a colour field
+    /// again, <c>Views_CarryNoSerializedColour</c> in <c>PaletteTests</c> is what refuses it.
     /// </para>
     /// </remarks>
     [Test]
@@ -642,13 +658,11 @@ public sealed class SkillViewTests
         Assert.That(zone, Is.Not.Null, "VFX_ConsecrateZone.prefab is missing.");
         Assert.That(shell, Is.Not.Null, "VFX_Bulwark.prefab is missing.");
 
-        Color zoneColour = (Color)typeof(ZoneView)
-            .GetField("_colour", Private)
-            .GetValue(zone.GetComponent<ZoneView>());
-
-        Color shellColour = (Color)typeof(BulwarkView)
-            .GetField("_colour", Private)
-            .GetValue(shell.GetComponent<BulwarkView>());
+        // What the decal draws, off the shipped asset's own component. The shell's colour is not a
+        // read on BulwarkView — it paints straight into a property block — so it is asserted at the
+        // palette member the paint reads, which is the same claim one dereference earlier.
+        Color zoneColour = zone.GetComponent<ZoneView>().Colour;
+        Color shellColour = Palette.Player;
 
         foreach ((string name, Color colour) in new[]
                  {
@@ -657,18 +671,31 @@ public sealed class SkillViewTests
                  })
         {
             Assert.That(
-                Near(colour, Danger),
+                Palette.IsDanger(colour),
                 Is.False,
-                $"{name} is authored in #FF4A1F, which GD §16.4 reserves for danger and nothing "
-                    + "else, ever. A healing effect in the telegraph colour is the worst "
-                    + "readability bug available.");
+                $"{name} draws #FF4A1F, which GD §16.4 reserves for danger and nothing else, ever. "
+                    + "A healing effect in the telegraph colour is the worst readability bug "
+                    + "available.");
 
             Assert.That(
                 Near(colour, PlayerCyan),
                 Is.True,
-                $"{name} is not authored in #22D3EE. The class initialiser is white on purpose, so "
-                    + "this failing means the serialized field never bound (Traps §7) rather than "
-                    + "that somebody chose a different colour.");
+                $"{name} does not draw #22D3EE. Both views read Palette as of M3-13a, so this "
+                    + "failing means the palette moved rather than that a prefab was dressed wrong.");
+        }
+
+        // **The half the field's removal is what makes true.** Neither type has a Color a prefab
+        // could carry any more, so there is no dressed value for the two assertions above to have
+        // been quietly agreeing with (Traps §7).
+        foreach (Type type in new[] { typeof(ZoneView), typeof(BulwarkView) })
+        {
+            Assert.That(
+                type.GetFields(Private).Where(f => f.FieldType == typeof(Color)),
+                Is.Empty,
+                $"{type.Name} grew a Color field back. M3-13a removed it so the prefab's stored "
+                    + "value became unreachable rather than contradictory — a field defaulted from "
+                    + "Palette and then dressed differently is the placeholder problem with an "
+                    + "extra step.");
         }
     }
 

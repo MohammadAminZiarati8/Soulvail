@@ -231,13 +231,23 @@ public sealed class LevelUpPresenterTests
 
         var all = new[] { passive, active, upgrade, keystone };
 
-        // Four different colours, from the four serialized fields — CH §4's four kinds are what a
-        // player distinguishes at a glance, and two kinds sharing a tint is the one failure here
-        // that still looks like a working screen. Placeholders until M3-13a's Palette (ledger row 6).
+        // Four different colours — CH §4's four kinds are what a player distinguishes at a glance,
+        // and two kinds sharing a tint is the one failure here that still looks like a working
+        // screen.
         Assert.That(
             all.Distinct().Count(),
             Is.EqualTo(4),
             "two of CH §4's four kinds are drawn in the same colour, so the strip says nothing.");
+
+        // **And they are Palette's, which is what M3-13a changed here.** Until this task the four
+        // were serialized fields on this component, copied value for value onto TreeNodeView and
+        // AutoCastRow — the third copy, which is where ledger row 6 said a palette stops being one.
+        // The row asserted only that they *differed*; it now also says which four they are, which is
+        // the claim that stops a screen quietly drifting from the other two again.
+        Assert.That(passive, Is.EqualTo(Palette.KindPassive));
+        Assert.That(active, Is.EqualTo(Palette.KindActive));
+        Assert.That(upgrade, Is.EqualTo(Palette.KindUpgrade));
+        Assert.That(keystone, Is.EqualTo(Palette.KindKeystone));
     }
 
     // ---- The pause is not this screen's (the owner's ruling; the spec's rule 3 rewritten) -------

@@ -26,6 +26,16 @@ namespace Soulvail.Game.Presentation;
 /// exactly what the ledger complained would happen if they were built apart.
 /// </para>
 /// <para>
+/// <b>Both colours are <see cref="Palette"/>'s as of M3-13a, and this class keeps no forwarder.</b>
+/// It held <c>Danger</c> and <c>HeldFocus</c> as <c>public static readonly Color</c> from M2-12a, and
+/// <c>TelegraphRings</c> read the first of them across the <c>Views</c>/<c>Presentation</c> seam —
+/// which was the whole of ledger row 6's original complaint. A forwarding property here would be two
+/// names for one colour, which is the state the row describes with an extra hop; the two namespaces
+/// now both read one file that reads nobody. <b>What makes a held focus look dimmer is this class's
+/// own distance ramp</b> in <see cref="Place"/>, not the colour: <c>Palette.HeldFocus</c> is the
+/// player's cyan exactly, and a focus held out of range is far away by definition.
+/// </para>
+/// <para>
 /// <b>It holds its own census rather than asking for one.</b> <see cref="EnemyViews"/> can say where
 /// a body is but not who is alive — it indexes by id and exposes no enumeration — so this subscribes
 /// to the same three events and keeps a list of ids, resolving each one's position through the
@@ -84,12 +94,6 @@ public sealed class ThreatArrows : ILateTickable, IDisposable
     /// slides along the border to the nearest point that does not.
     /// </summary>
     public const float ThumbFraction = 0.15f;
-
-    /// <summary>GD §16.4's saturated red-orange, <c>#FF4A1F</c>. Danger, and nothing else, ever.</summary>
-    public static readonly Color Danger = new Color(1f, 0.290f, 0.122f, 1f);
-
-    /// <summary>GD §16.4's cyan, <c>#22D3EE</c>. The player — and so the enemy the player picked.</summary>
-    public static readonly Color HeldFocus = new Color(0.133f, 0.827f, 0.933f, 1f);
 
     /// <summary>Metres at which an arrow is at its brightest and largest.</summary>
     private const float NearMetres = 4f;
@@ -310,7 +314,7 @@ public sealed class ThreatArrows : ILateTickable, IDisposable
                 continue;
             }
 
-            Place(ArrowAt(used), direction, distance, held ? HeldFocus : Danger);
+            Place(ArrowAt(used), direction, distance, held ? Palette.HeldFocus : Palette.Danger);
 
             used++;
         }

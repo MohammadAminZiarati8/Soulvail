@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Game.Presentation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -56,14 +57,13 @@ namespace Soulvail.Game.Controls
     /// row rather than on the cards alone.
     /// </para>
     /// <para>
-    /// <b>Seven serialized <see cref="Color"/>s, and still deliberately not a palette</b> (rule 8).
-    /// Three of them are this class's own — the frame's locked, available and taken — and four are
-    /// the <em>same placeholder values</em> <c>OfferCard</c> ships for CH §4's four kinds. Copied
-    /// values rather than a shared object on purpose: the shared object is <c>Palette</c>, GD §16.4's
-    /// file, which has an owner (M3-13a) and a spec, and inventing one here would be that task
-    /// arriving early and unspecified — ledger row 6's own argument for why that is the worse of the
-    /// two mistakes. What this adds is one more reader for row 6 to absorb, and the number M3-13a
-    /// should size itself against is now five files rather than four.
+    /// <b>Seven serialized <see cref="Color"/>s until M3-13a, and none now</b> (M3-09d rule 8).
+    /// Three were this class's own — the frame's locked, available and taken — and four were the
+    /// <em>same placeholder values</em> <c>OfferCard</c> shipped for CH §4's four kinds, copied
+    /// value for value. That made this the largest single reader ledger row 6 ever collected, and
+    /// the shared object it was waiting for is <see cref="Palette"/>: all seven are now one name
+    /// each, and a Keystone is the same colour on the card that offered it and the tree that holds
+    /// it because there is only one value left to be the same.
     /// </para>
     /// <para>
     /// Every piece is written through a Unity-null check rather than assumed. A cell is a clone of
@@ -87,31 +87,6 @@ namespace Soulvail.Game.Controls
         [Tooltip("The stripe that says which of CH §4's four kinds this is, tinted from the four " +
                  "fields below — OfferCard's stripe, on the other screen.")]
         [SerializeField] private Image _kindStrip;
-
-        [Tooltip("Neither owned nor takeable: dim, because rule 9's honest failure mode is small " +
-                 "and quiet rather than clipped. Placeholder until M3-13a's Palette — ledger row 6.")]
-        [SerializeField] private Color _locked = new Color(0.28f, 0.30f, 0.34f);
-
-        [Tooltip("Takeable on the next pick — the only thing on this screen the player can act on, " +
-                 "one level-up from now. Placeholder until M3-13a.")]
-        [SerializeField] private Color _available = new Color(0.92f, 0.86f, 0.55f);
-
-        [Tooltip("Already owned. CH §5.1's \"the player's path highlighted\" is this colour and " +
-                 "nothing else. Placeholder until M3-13a.")]
-        [SerializeField] private Color _taken = new Color(0.36f, 0.82f, 0.62f);
-
-        [Tooltip("Always on: a stat or a rule change, and about 45 % of a tree (CH §4). The same " +
-                 "placeholder OfferCard ships — see the class remarks, and ledger row 6.")]
-        [SerializeField] private Color _passive = new Color(0.62f, 0.66f, 0.72f);
-
-        [Tooltip("Grants a skill with a cooldown (CH §4.2). OfferCard's placeholder.")]
-        [SerializeField] private Color _active = new Color(0.36f, 0.72f, 0.85f);
-
-        [Tooltip("Improves a skill already owned. OfferCard's placeholder.")]
-        [SerializeField] private Color _upgrade = new Color(0.45f, 0.78f, 0.55f);
-
-        [Tooltip("Build-defining, end of a branch, three per class (CH §4). OfferCard's placeholder.")]
-        [SerializeField] private Color _keystone = new Color(0.85f, 0.72f, 0.32f);
 
         /// <summary>Which node this cell is currently drawing, or <c>default</c> while hidden.</summary>
         private ContentId _skillId;
@@ -196,7 +171,7 @@ namespace Soulvail.Game.Controls
             gameObject.SetActive(false);
         }
 
-        /// <summary>Rule 3's three states in three placeholder colours (rule 8, ledger row 6).</summary>
+        /// <summary>Rule 3's three states, in <see cref="Palette"/>'s three.</summary>
         /// <remarks>
         /// <b>A member with no colour throws, where <see cref="Tint"/>'s falls back</b>, and the two
         /// answers differ because the enums do. <see cref="SkillKind"/> is CH §4's closed four,
@@ -204,13 +179,16 @@ namespace Soulvail.Game.Controls
         /// answer to a question already settled elsewhere. <see cref="NodeState"/> is this file's
         /// own, and M6-02 is already named as the task that adds a member to it — a new state
         /// without a colour would draw as <em>locked</em>, which is a node the player owns reading
-        /// as one they cannot reach, silently. <c>PlayerStats.Resolve</c>'s rule.
+        /// as one they cannot reach, silently. <c>PlayerStats.Resolve</c>'s rule. <b>Moving the
+        /// three colours into the palette does not move that rule</b>: the throw is about this
+        /// enum's members, not about where their colours are kept, and M6-02's <c>Banished</c> still
+        /// has to add a line here as well as a member there.
         /// </remarks>
-        private Color Frame(NodeState state) => state switch
+        private static Color Frame(NodeState state) => state switch
         {
-            NodeState.Locked => _locked,
-            NodeState.Available => _available,
-            NodeState.Taken => _taken,
+            NodeState.Locked => Palette.NodeLocked,
+            NodeState.Available => Palette.NodeAvailable,
+            NodeState.Taken => Palette.NodeTaken,
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(state),
@@ -219,21 +197,23 @@ namespace Soulvail.Game.Controls
                     + "line would draw as Locked, which reads as a node the player cannot reach."),
         };
 
-        /// <summary>CH §4's four kinds, in four placeholder colours (rule 8, ledger row 6).</summary>
+        /// <summary>CH §4's four kinds, in <see cref="Palette"/>'s four tints.</summary>
         /// <remarks>
-        /// <c>OfferCard.Tint</c>'s body against <c>OfferCard.Tint</c>'s fields' values, deliberately
-        /// character for character: it is the same lookup on the same closed enum, and two answers to
-        /// one question is how a Keystone ends up a different colour on two screens. A
-        /// <c>switch</c> on a <see cref="SkillKind"/> and not on an effect type — the banned shape is
+        /// <c>OfferCard.Tint</c>'s body, and as of M3-13a against <c>OfferCard.Tint</c>'s own
+        /// <em>values</em> rather than against a copy of them: it is the same lookup on the same
+        /// closed enum, and two answers to one question is how a Keystone ends up a different colour
+        /// on two screens. That was seven serialized <see cref="Color"/>s here until this task and is
+        /// the largest single reader ledger row 6 collected. A <c>switch</c> on a
+        /// <see cref="SkillKind"/> and not on an effect type — the banned shape is
         /// <c>switch (effect.Type)</c>, which is a dispatch that should have been polymorphism.
         /// </remarks>
-        private Color Tint(SkillKind kind) => kind switch
+        private static Color Tint(SkillKind kind) => kind switch
         {
-            SkillKind.Passive => _passive,
-            SkillKind.Active => _active,
-            SkillKind.Upgrade => _upgrade,
-            SkillKind.Keystone => _keystone,
-            _ => _passive,
+            SkillKind.Passive => Palette.KindPassive,
+            SkillKind.Active => Palette.KindActive,
+            SkillKind.Upgrade => Palette.KindUpgrade,
+            SkillKind.Keystone => Palette.KindKeystone,
+            _ => Palette.KindPassive,
         };
     }
 }

@@ -365,28 +365,23 @@ public sealed class TreeViewPresenterTests
 
         var all = new[] { passive, active, upgrade, keystone };
 
-        // Four different colours, from the four serialized fields — CH §4's four kinds are what a
-        // player distinguishes at a glance, and two kinds sharing a tint is the one failure here
-        // that still looks like a working screen. Placeholders until M3-13a's Palette (ledger row 6).
+        // Four different colours — CH §4's four kinds are what a player distinguishes at a glance,
+        // and two kinds sharing a tint is the one failure here that still looks like a working
+        // screen.
         Assert.That(
             all.Distinct().Count(),
             Is.EqualTo(4),
             "Two of CH §4's four kinds are drawn in the same colour, so the strip says nothing.");
 
-        // **And they are OfferCard's four, value for value.** Two answers to one question is how a
-        // Keystone ends up a different colour on the card that offered it and the tree that holds
-        // it — which is exactly the divergence M3-13a's Palette exists to close for good.
-        var card = AssetDatabase.LoadAssetAtPath<GameObject>(LevelUpPrefabPath)
-            .GetComponentInChildren<OfferCard>(true);
-
-        foreach (string field in new[] { "_passive", "_active", "_upgrade", "_keystone" })
-        {
-            Assert.That(
-                ColourField(_cellTemplateOf(), field),
-                Is.EqualTo(ColourField(card, field)),
-                $"{field} differs between OfferCard and TreeNodeView. Rule 8 says the tree reuses "
-                    + "M3-08b's four tints; if that changed, M3-13a inherits two answers.");
-        }
+        // **And they are Palette's four, which is what M3-13a changed here.** This used to compare
+        // TreeNodeView's four serialized fields against OfferCard's four, field name by field name,
+        // because the two screens each carried their own copy and two answers to one question is how
+        // a Keystone ends up a different colour on the card that offered it and the tree that holds
+        // it. There is one answer now, so the row asserts the answer rather than the agreement.
+        Assert.That(passive, Is.EqualTo(Palette.KindPassive));
+        Assert.That(active, Is.EqualTo(Palette.KindActive));
+        Assert.That(upgrade, Is.EqualTo(Palette.KindUpgrade));
+        Assert.That(keystone, Is.EqualTo(Palette.KindKeystone));
     }
 
     [Test]
@@ -411,13 +406,12 @@ public sealed class TreeViewPresenterTests
             Is.EqualTo(3),
             "Two of the three node states are drawn in the same frame colour.");
 
-        // From the serialized fields rather than from anything computed, which is what makes them
-        // placeholders M3-13a can collect (rule 8, ledger row 6).
-        TreeNodeView template = _cellTemplateOf();
-
-        Assert.That(locked, Is.EqualTo(ColourField(template, "_locked")));
-        Assert.That(available, Is.EqualTo(ColourField(template, "_available")));
-        Assert.That(taken, Is.EqualTo(ColourField(template, "_taken")));
+        // From Palette rather than from three serialized fields on the cell template, which is what
+        // M3-13a changed here. The claim the row makes is the same one — these three frames are the
+        // three states, named — and it is now made against the one place the values live.
+        Assert.That(locked, Is.EqualTo(Palette.NodeLocked));
+        Assert.That(available, Is.EqualTo(Palette.NodeAvailable));
+        Assert.That(taken, Is.EqualTo(Palette.NodeTaken));
     }
 
     [Test]
@@ -1558,8 +1552,6 @@ public sealed class TreeViewPresenterTests
     private static TMP_Text Label(object target, string field) => Field<TMP_Text>(target, field);
 
     private static string Text(object target, string field) => Label(target, field).text;
-
-    private static Color ColourField(object target, string field) => Field<Color>(target, field);
 
     /// <summary>
     /// Publishes into the run's hub <em>and</em> into a recorder, so a row can both watch the screen

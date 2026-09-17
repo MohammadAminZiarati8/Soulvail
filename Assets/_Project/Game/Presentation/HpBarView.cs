@@ -28,6 +28,14 @@ namespace Soulvail.Game.Presentation
     /// that lagged <em>upward</em> would draw a gold band over health the player already has —
     /// exactly backwards, and it would read as damage taken at the moment of being healed.
     /// </para>
+    /// <para>
+    /// <b>Its two colours are <see cref="Palette"/>'s as of M3-13a, and they are no longer fields.</b>
+    /// They were serialized <see cref="Color"/>s from M1-17, dressed on <c>Hud.prefab</c> at the same
+    /// values — which is the placeholder problem with an extra step: a field initialised from the
+    /// palette and then dressed differently would read back as agreeing with itself (Traps §7).
+    /// Removing the fields makes the prefab's stored values unreachable rather than contradictory.
+    /// The timing field beside them stays, because this task takes colours and nothing else.
+    /// </para>
     /// </remarks>
     public sealed class HpBarView : MonoBehaviour
     {
@@ -48,15 +56,6 @@ namespace Soulvail.Game.Presentation
                  "fill method. Without it the bar still reads correctly, it just stops saying how " +
                  "much of the drop was a moment ago.")]
         [SerializeField] private Image _ghost;
-
-        [Tooltip("The fill's normal colour. Cyan is the player, everywhere in the game (GD §16.4).")]
-        [SerializeField] private Color _fillColour = new Color(0.133f, 0.827f, 0.933f, 1f);
-
-        [Tooltip("What the fill flashes to when a hit is turned away. A brightened cyan rather " +
-                 "than a new hue: the bar is already the player's colour, so the only thing left " +
-                 "to say 'that one did not land' with is brightness. Red-orange is reserved for " +
-                 "danger and may never be used here (GD §16.4).")]
-        [SerializeField] private Color _blockedColour = new Color(0.78f, 0.98f, 1f, 1f);
 
         [Tooltip("How long the blocked flash lasts, in seconds. CC §7's i-frames are half a " +
                  "second; this is the tap that says they were spent, not a bar of them.")]
@@ -218,7 +217,7 @@ namespace Soulvail.Game.Presentation
                 _fill.fillAmount = _shown;
             }
 
-            Color colour = _blockedRemaining > 0f ? _blockedColour : _fillColour;
+            Color colour = _blockedRemaining > 0f ? Palette.PlayerBlocked : Palette.Player;
 
             if (_fill.color != colour)
             {

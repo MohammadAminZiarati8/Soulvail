@@ -68,11 +68,11 @@ one-shot `RunCommand` calls keep working the whole time, which makes the Editor 
 
 | Operation | Unfocused behaviour |
 |---|---|
-| `TestRunnerApi.Execute` | queued run **completes** — this one is safe (M1-02, M1-05, M3-09c) |
+| `TestRunnerApi.Execute` | queued run **completes** — this one is safe (M1-02, M1-05, M3-09c), **and it is submittable straight from a `Unity_RunCommand`** (M3-15, correcting M3-14b) |
 | `RequestScriptCompilation`, incl. `CleanBuildCache` | **never drains.** Three attempts left all six DLLs untouched with `isCompiling` reading `True` (M1-05) |
 | asmdef reimport | never drains (M1-05) |
 | `AssetDatabase.ImportAsset(path, ForceUpdate)` on changed **source files** | **works unfocused** (M1-05) |
-| Play mode | freezes after a burst of ~40 frames — enough to read a census, ids, layers and TMP text, so the first second of a run is genuinely checkable (M1-07) |
+| Play mode | freezes after a burst of ~40 frames when *you* drive it — enough to read a census, ids, layers and TMP text (M1-07). **A PlayMode run started by `TestRunnerApi` is a different case and completes normally**: M3-15 took three full PlayMode runs and five isolated ones, all unfocused, all 8–9 s (see below) |
 | `SceneView.Repaint` | never lands. Two captures a minute apart came back byte-identical (M1-07) |
 | `EditorApplication.delayCall` | never fires (M0-14) |
 
@@ -97,8 +97,19 @@ new file is already listed in it: appending it yourself is `CS2002`. This checks
 analyzers only — **running the suite still needs the Editor's own assemblies rebuilt**, so focus is
 still required for a test tally (M2-14b).
 
-Confirm with `InternalEditorUtility.isApplicationActive` before suspecting your callback, and ask
-the owner to focus the window — a queued run completes in seconds once it has focus (M0-14).
+**The table's scope keeps shrinking, and M3-15 shrank it again — this row is now about *driving* the
+Editor, not about the Editor being asleep.** M3-14c found that an unfocused Editor **does** drain compiles
+and **does** import new files, so the compilation row is about `RequestScriptCompilation` rather than about
+compilation as such. M3-15 found the same of Play mode: **the entire M3 acceptance — three full PlayMode
+runs, five isolated `FrameOrderTests` runs and three EditMode runs, eleven in all — was taken on an Editor
+that reported `isApplicationActive == False` the whole time**, each PlayMode run finishing in 8–9 s. The
+~40-frame freeze is real when *you* enter Play mode and drive frames yourself; a run the test framework owns
+pumps its own loop. **What is still true is the rest of the table**, and the practical rule is unchanged:
+confirm `isApplicationActive` before suspecting your callback, and do not assume focus is the problem until
+you have checked what kind of operation you are doing.
+
+Ask the owner to focus the window when one of the genuinely-blocked rows bites — a queued run completes in
+seconds once it has focus (M0-14).
 `isCompiling` reads `False` both while a compile is pending *and* after it is done, so check
 `Library/ScriptAssemblies/*.dll` timestamps instead (M1-02). **A source file's mtime can read
 newer than the assembly that already compiled it successfully** — pair the DLL timestamp with
@@ -176,6 +187,32 @@ Editor has the code — which is a stronger statement than any timestamp, and it
   rather than deleting it — the poller then reads state from the file's contents instead of its
   existence, which is what the first bullet's *"overwrite with `File.WriteAllText`"* means in
   practice.
+- **M3-15: `TestRunnerApi.Execute` ran clean again, and M3-14b's throwaway `Assets/Editor/` harness
+  was never necessary.** That task recorded the call as refused and built a scratch editor assembly to
+  get around it; M3-15 submitted the plain shape from an ordinary `Unity_RunCommand` and took **eleven
+  runs** through it — three EditMode, three full PlayMode, five isolated — on an unfocused Editor,
+  creating and deleting nothing. **So the list has now moved four times** (M1-17, M1-19, M2-04, M3-01b,
+  M3-15), which retires any reading of this section that treats it as settled: **probe it, every time, and
+  do not build scaffolding until a one-line probe has actually been refused.** The cost of not probing is
+  a scratch assembly in the tree while the suite runs — which M3-14b had to disclose in its own
+  *Verified* row, because both of its tallies were taken with it present.
+- **Four things that bite when you drive the suite from a command, all found at M3-15:**
+  1. **The rewriter lifts a nested type out of `CommandScript` and emits it twice** — once nested,
+     once at namespace scope with its `private` modifier intact, which is `CS1527` on a line number that
+     does not exist in what you submitted. Declare helper types **top-level and `internal`**, beside
+     `CommandScript`.
+  2. **Calling `Execute` again from inside `RunFinished` is silently ignored.** Not an error, not a
+     refusal — the chain simply stops after one run and your tally is short. One `Execute` per
+     submitted command; loop from the outside.
+  3. **Callback sinks from *earlier* commands stay registered and keep firing.** Each submission compiles
+     a fresh dynamic assembly, but the old `ICallbacks` instances are still attached to the runner, so a
+     naive counter double- and triple-counts. Key your results per submission, or read the *number of
+     distinct runs* rather than the number of callback entries.
+  4. **Entering Play mode reloads the domain and wipes non-serialized fields**, including on a
+     `ScriptableObject` with `HideAndDontSave`. A counter in a plain `internal int` comes back as **0**
+     and your loop exits immediately. **`SessionState` survives; a field does not** — which is a
+     sharper version of the `hideFlags` lesson in §7, because there the object survived and here the
+     object survives with its state erased.
 - **The plural `AssetDatabase.DeleteAssets(string[], List<string>)` is *not* refused**, and
   `AssetDatabase.Refresh()` — including the `ImportAssetOptions.ForceUpdate` overload — ran clean
   in M2-art across a dozen commands. The refusal list above is per *method*, not per capability, so

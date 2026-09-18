@@ -710,9 +710,12 @@ is about Unity's.
 
 ### 18.5 Known soft spots
 
-Not bugs today. **Anything a named task must deal with lives in the
-[carry-forward ledger](plan/ROADMAP.md#carry-forward-into-m2), not here** — one list, one owner per
-row, and a row leaves when its owner's *As built* says so. What remains below has no owning task yet:
+Not bugs today. **Anything a named task must deal with lives in the **current** milestone's
+[carry-forward ledger](plan/ROADMAP.md#carry-forward-into-m4), not here** — one list, one owner per
+row, and a row leaves when its owner's *As built* says so. (This link pointed at M2's table for two
+milestones after M2 closed; corrected at M3-15. **It is the milestone in progress that is meant, not a
+fixed table** — follow the ROADMAP's newest `Carry-forward into M<n>` heading.) What remains below has
+no owning task yet:
 
 | Soft spot | Bites at |
 |---|---|

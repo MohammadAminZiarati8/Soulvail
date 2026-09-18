@@ -40,6 +40,8 @@ public sealed class ContentCatalog
     private readonly ReadOnlyCollection<SkillSpec> _skills;
     private readonly Dictionary<ContentId, SkillTreeSpec> _treesById;
     private readonly ReadOnlyCollection<SkillTreeSpec> _trees;
+    private readonly Dictionary<ContentId, BossSpec> _bossesById;
+    private readonly ReadOnlyCollection<BossSpec> _bosses;
 
     /// <summary>
     /// The trees again, keyed by the class they belong to — see <see cref="TryGetTreeFor"/>.
@@ -72,6 +74,13 @@ public sealed class ContentCatalog
     /// The skill trees to register, or null for none. Optional for the same reason, and indexed
     /// twice: by id like every other kind, and by the class each belongs to.
     /// </param>
+    /// <param name="bosses">
+    /// The bosses to register, or null for none. Optional for the reason
+    /// <paramref name="enemies"/> is, and it is null in every catalog the game ships until M4-02
+    /// authors <c>WardenBoss.asset</c> — M4-01b builds the mechanism and deliberately authors no
+    /// content, the same gap <c>Spitter.asset</c> sat in between M2-06 and M2-07b. A mode whose
+    /// boss roster names one fails at the first <see cref="Boss"/> lookup, naming the id.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="characters"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// An entry is null, or two entries of one kind share an id — thrown with the duplicated id
@@ -85,7 +94,8 @@ public sealed class ContentCatalog
         IReadOnlyList<EnemySpec> enemies = null,
         IReadOnlyList<ModeSpec> modes = null,
         IReadOnlyList<SkillSpec> skills = null,
-        IReadOnlyList<SkillTreeSpec> trees = null)
+        IReadOnlyList<SkillTreeSpec> trees = null,
+        IReadOnlyList<BossSpec> bosses = null)
     {
         if (characters is null)
         {
@@ -128,6 +138,13 @@ public sealed class ContentCatalog
             out _treesById);
 
         _treesByCharacter = IndexTreesByCharacter(_trees, nameof(trees));
+
+        _bosses = Index(
+            bosses ?? Array.Empty<BossSpec>(),
+            spec => spec.Id,
+            "boss",
+            nameof(bosses),
+            out _bossesById);
     }
 
     /// <summary>Every registered character, in the order they were supplied.</summary>
@@ -160,6 +177,15 @@ public sealed class ContentCatalog
     /// with one. M3-14b pins that every <em>shipped</em> character has one.
     /// </remarks>
     public IReadOnlyList<SkillTreeSpec> Trees => _trees;
+
+    /// <summary>Every registered boss, in the order they were supplied.</summary>
+    /// <remarks>
+    /// <b>Empty in every build until M4-02</b>, which authors the Warden. That is the same gap
+    /// every other kind has sat in — no enemies until M1-07, no modes until M2-02, no skills until
+    /// M3-02b — and it is why a mode's boss roster is read through <see cref="Boss"/> rather than
+    /// assumed to resolve.
+    /// </remarks>
+    public IReadOnlyList<BossSpec> Bosses => _bosses;
 
     /// <summary>The character with this id.</summary>
     /// <exception cref="KeyNotFoundException">
@@ -253,6 +279,29 @@ public sealed class ContentCatalog
     /// </summary>
     public bool TryGetSkill(ContentId id, out SkillSpec spec) =>
         _skillsById.TryGetValue(id, out spec);
+
+    /// <summary>The boss with this id.</summary>
+    /// <exception cref="KeyNotFoundException">
+    /// No boss has that id — including <c>default(ContentId)</c>, which is unknown like any other
+    /// id the catalog does not hold. This is what a mode's boss roster resolves through, so a mode
+    /// naming a boss nobody authored fails on the first boss stage it reaches, with the id in the
+    /// message.
+    /// </exception>
+    public BossSpec Boss(ContentId id)
+    {
+        if (!_bossesById.TryGetValue(id, out BossSpec spec))
+        {
+            throw new KeyNotFoundException($"No boss with id '{id}' in the catalog.");
+        }
+
+        return spec;
+    }
+
+    /// <summary>
+    /// Looks up a boss without throwing. <paramref name="spec"/> is null when this returns false.
+    /// </summary>
+    public bool TryGetBoss(ContentId id, out BossSpec spec) =>
+        _bossesById.TryGetValue(id, out spec);
 
     /// <summary>The skill tree with this id.</summary>
     /// <exception cref="KeyNotFoundException">

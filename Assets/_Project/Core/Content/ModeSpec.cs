@@ -67,6 +67,69 @@ public readonly struct RosterEntry
 }
 
 /// <summary>
+/// One boss a mode holds, and how often it comes round — GD §9's <em>"every 5th stage"</em>, as a
+/// field rather than as arithmetic in code.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Which stages hold a boss is the mode's statement and is authored</b> (M4-01b rule 1, ruled by
+/// the owner at M4-00a: <em>"we should be able to select which stages what enemies should have"</em>).
+/// <c>Descent.asset</c> says <em>every 5th</em> in a field, and no <c>stage % 5</c> exists anywhere
+/// in the game — the modulo below is against a number a designer typed. That is what makes M7's
+/// second boss an asset edit rather than a code change, and what makes a stage editor (a
+/// <see href="../../../../Docs/plan/ROADMAP.md">parking-lot</see> line) cheap when it comes.
+/// </para>
+/// <para>
+/// A <see langword="readonly"/> struct for <see cref="RosterEntry"/>'s reason, and deliberately not
+/// a list of stage numbers: <em>"every 5th"</em> is finite in an endless mode and a list is not
+/// (GD §4.5 makes Descent endless).
+/// </para>
+/// </remarks>
+public readonly struct BossRosterEntry
+{
+    /// <param name="bossId">The boss's id, e.g. <c>boss.warden</c>.</param>
+    /// <param name="everyNStages">
+    /// How often it comes round. 5 means stages 5, 10, 15 and so on; 1 would mean every stage.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="bossId"/> is <c>default(ContentId)</c> — an entry that names no boss.
+    /// Refused where the roster is built rather than where it is spawned, for the reason
+    /// <see cref="RosterEntry"/> gives.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="everyNStages"/> is not positive. Zero would be a modulo by zero on the first
+    /// stage the mode is asked about, and a negative one is a schedule nothing could read.
+    /// </exception>
+    public BossRosterEntry(ContentId bossId, int everyNStages)
+    {
+        if (bossId.Value is null)
+        {
+            throw new ArgumentException(
+                "bossId must be a valid ContentId; default(ContentId) names no boss.",
+                nameof(bossId));
+        }
+
+        if (everyNStages < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(everyNStages),
+                everyNStages,
+                $"everyNStages for '{bossId}' must be at least 1. A zero would divide by zero on "
+                    + "the first stage this mode is asked about.");
+        }
+
+        BossId = bossId;
+        EveryNStages = everyNStages;
+    }
+
+    /// <summary>The boss, resolved against the <see cref="ContentCatalog"/>.</summary>
+    public ContentId BossId { get; }
+
+    /// <summary>How often it comes round. 5 = stages 5, 10, 15, …</summary>
+    public int EveryNStages { get; }
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -123,6 +186,14 @@ public sealed class ModeSpec
 
     private readonly ReadOnlyCollection<ContentId> _arenasView;
 
+    /// <summary>
+    /// The boss schedule, as an array for <see cref="TryGetBossFor"/>'s walk.
+    /// <see cref="BossRoster"/> hands out the wrapper, for <see cref="_roster"/>'s reason.
+    /// </summary>
+    private readonly BossRosterEntry[] _bossRoster;
+
+    private readonly ReadOnlyCollection<BossRosterEntry> _bossRosterView;
+
     /// <param name="id">The mode's stable content id, e.g. <c>mode.descent</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="startingStage">The depth a fresh run of this mode begins at. Usually 1.</param>
@@ -158,13 +229,22 @@ public sealed class ModeSpec
     /// no arena roster leaves every stage in whatever the scene was dressed with, which is what
     /// every M0 and M1 grey box was.
     /// </param>
+    /// <param name="bossRoster">
+    /// Which stages hold a boss, and which boss (GD §9, M4-01b rule 1). Copied, like the roster.
+    /// Null and empty mean the same thing and are both legal: a mode with no boss roster never
+    /// reaches a boss stage, which is every mode in every build until M4-02 authors one.
+    /// <b>Order is meaningful and the first match wins</b> — see <see cref="TryGetBossFor"/>.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
     /// same stage. The last is GD §8.2's rule — <em>"new enemies arrive one at a time, in a wave
     /// where they're the only new thing"</em> — and it is what lets
     /// <see cref="TryGetIntroduction"/> answer with a single id rather than a list. Also when an
-    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena, and when
+    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena; when a boss
+    /// roster entry is <c>default(BossRosterEntry)</c>, two of them name the same boss, or two of
+    /// them come round on the same interval — the last because the first matching row wins, so the
+    /// second could never be reached; and when
     /// <paramref name="xp"/> is <c>default(XpCurve)</c> — refused exactly as a defaulted
     /// <see cref="ScalingSpec"/> curve is, and for a sharper version of the same reason: a zeroed
     /// curve costs nothing per level, so a tracker fed one levels on every grant without end.
@@ -185,7 +265,8 @@ public sealed class ModeSpec
         ScalingSpec scaling,
         XpCurve xp,
         IReadOnlyList<RosterEntry> roster,
-        IReadOnlyList<ContentId> arenas = null)
+        IReadOnlyList<ContentId> arenas = null,
+        IReadOnlyList<BossRosterEntry> bossRoster = null)
     {
         if (id.Value is null)
         {
@@ -256,6 +337,10 @@ public sealed class ModeSpec
         _arenas = CopyArenas(arenas, id);
 
         _arenasView = Array.AsReadOnly(_arenas);
+
+        _bossRoster = CopyBossRoster(bossRoster, id);
+
+        _bossRosterView = Array.AsReadOnly(_bossRoster);
     }
 
     /// <summary>The mode's stable content id, e.g. <c>mode.descent</c>.</summary>
@@ -315,6 +400,11 @@ public sealed class ModeSpec
     /// door (M2-11a rule 4).
     /// </remarks>
     public IReadOnlyList<ContentId> Arenas => _arenasView;
+
+    /// <summary>
+    /// Which stages hold a boss, in the order they were authored (GD §9). May be empty.
+    /// </summary>
+    public IReadOnlyList<BossRosterEntry> BossRoster => _bossRosterView;
 
     /// <summary>
     /// Whether <paramref name="stage"/> is a stage this mode has.
@@ -411,6 +501,45 @@ public sealed class ModeSpec
         }
 
         specId = default;
+        return false;
+    }
+
+    /// <summary>
+    /// The boss <paramref name="stage"/> holds (GD §9), or false for an ordinary stage.
+    /// </summary>
+    /// <param name="stage">The depth being composed. Numbered from 1 (GD §8.2).</param>
+    /// <param name="bossId">The boss, or <c>default</c> when this returns false.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>The modulo is here and the 5 is authored, which is the whole of rule 1.</b> Nothing in
+    /// the director, the flow or the composer knows how often a boss comes round; they ask this,
+    /// and this asks the asset. M7's Archon is a second row rather than a second branch.
+    /// </para>
+    /// <para>
+    /// <b>The first matching row wins, and that is the ordering a designer has to know about.</b>
+    /// GD §9 puts an Archon on every 20th stage <em>and</em> a boss on every 5th, and stage 20 is
+    /// both — so the Archon's row is authored first and stage 20 is an Archon. Stated rather than
+    /// resolved by picking the larger interval, because <em>"the rarer one wins"</em> is a rule
+    /// nobody wrote down and the order of rows in an Inspector list is something a designer can
+    /// see.
+    /// </para>
+    /// <para>
+    /// Allocates nothing and is asked once per stage, at the moment the waves would otherwise
+    /// begin.
+    /// </para>
+    /// </remarks>
+    public bool TryGetBossFor(int stage, out ContentId bossId)
+    {
+        for (int i = 0; i < _bossRoster.Length; i++)
+        {
+            if (stage % _bossRoster[i].EveryNStages == 0)
+            {
+                bossId = _bossRoster[i].BossId;
+                return true;
+            }
+        }
+
+        bossId = default;
         return false;
     }
 
@@ -533,6 +662,67 @@ public sealed class ModeSpec
             }
 
             copy[i] = arena;
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Copies the boss schedule, refusing a row that names nothing, a boss listed twice, and two
+    /// rows on the same interval.
+    /// </summary>
+    /// <remarks>
+    /// Both duplicates are refused for the same reason <see cref="CopyRoster"/> refuses its two:
+    /// a second row for one boss could only disagree with the first about how often it comes, and
+    /// two bosses on one interval means the second is unreachable for the life of the mode — with
+    /// nothing on screen to say so, which is the silence M2-06 rule 11 refuses.
+    /// </remarks>
+    private static BossRosterEntry[] CopyBossRoster(
+        IReadOnlyList<BossRosterEntry> bossRoster,
+        ContentId id)
+    {
+        if (bossRoster is null || bossRoster.Count == 0)
+        {
+            return Array.Empty<BossRosterEntry>();
+        }
+
+        var copy = new BossRosterEntry[bossRoster.Count];
+        var ids = new HashSet<ContentId>();
+        var intervals = new HashSet<int>();
+
+        for (int i = 0; i < bossRoster.Count; i++)
+        {
+            BossRosterEntry entry = bossRoster[i];
+
+            // default(BossRosterEntry) carries a zeroed id straight past the struct's own
+            // constructor — a struct always has a zeroed form — so the check is repeated here
+            // (AR §18.3), exactly as the enemy roster repeats its own.
+            if (entry.BossId.Value is null)
+            {
+                throw new ArgumentException(
+                    $"bossRoster[{i}] of '{id}' names no boss. A default(BossRosterEntry) has no "
+                        + "boss id.",
+                    nameof(bossRoster));
+            }
+
+            if (!ids.Add(entry.BossId))
+            {
+                throw new ArgumentException(
+                    $"'{id}' lists boss '{entry.BossId}' twice. A boss comes round on one "
+                        + "schedule, so a second row could only disagree with the first.",
+                    nameof(bossRoster));
+            }
+
+            if (!intervals.Add(entry.EveryNStages))
+            {
+                throw new ArgumentException(
+                    $"'{id}' lists two bosses every {entry.EveryNStages} stages, and "
+                        + $"'{entry.BossId}' is the second. The first matching row wins, so the "
+                        + "second would never be reached at any depth.",
+                    nameof(bossRoster));
+            }
+
+            copy[i] = entry;
         }
 
         return copy;

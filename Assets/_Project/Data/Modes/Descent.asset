@@ -56,3 +56,4 @@ MonoBehaviour:
   _arenas:
   - arena.pillars
   - arena.tiered
+  _bossRoster: []

@@ -88,6 +88,21 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private static readonly LocKey EmptyKey = new LocKey("ui.skills.empty");
 
+        /// <summary>Back to the pause panel (M3-14c).</summary>
+        /// <remarks>
+        /// <see cref="EmptyKey"/>'s reason, three tasks later: these three were authored as literal
+        /// text on the prefab from M3-09b, had rows in <c>English.asset</c> from M3-14a, and nothing
+        /// read one until M3-14b found them. The prefab keeps the key as its authored value, which
+        /// is <see cref="EmptyKey"/>'s own pattern rather than an oversight.
+        /// </remarks>
+        private static readonly LocKey CloseKey = new LocKey("ui.skills.close");
+
+        /// <summary>Dismisses CC §6.2's question without sending anything (rule 9).</summary>
+        private static readonly LocKey CancelKey = new LocKey("ui.skills.cancel");
+
+        /// <summary>CC §6.2's question itself, over the four current occupants.</summary>
+        private static readonly LocKey SlotsFullKey = new LocKey("ui.skills.slotsFull");
+
         [Tooltip("The row every list entry is cloned from, and never shown itself. Twelve clones " +
                  "are built under the scroll's content on first open and reused after that.")]
         [SerializeField] private SkillRow _rowTemplate;
@@ -100,6 +115,10 @@ namespace Soulvail.Game.Presentation
         [Tooltip("Back to the pause panel. It lowers no pause — this screen never held one.")]
         [SerializeField] private Button _close;
 
+        [Tooltip("\"Close\". Written from ui.skills.close in Start, so the prefab's own value is a " +
+                 "placeholder — the empty label's pattern (M3-14c).")]
+        [SerializeField] private TMP_Text _closeLabel;
+
         [Tooltip("CC §6.2's \"Manual slots full — which skill goes back to auto?\". Modal within " +
                  "this screen and holding no pause of its own (rule 10).")]
         [SerializeField] private GameObject _prompt;
@@ -111,6 +130,14 @@ namespace Soulvail.Game.Presentation
         [Tooltip("Dismisses the prompt without sending anything and puts the switch back where it " +
                  "was (rule 9).")]
         [SerializeField] private Button _promptCancel;
+
+        [Tooltip("\"Cancel\". Written from ui.skills.cancel in Start — while the prompt is still " +
+                 "inactive, which is deliberate: see the note in Start (M3-14c).")]
+        [SerializeField] private TMP_Text _promptCancelLabel;
+
+        [Tooltip("CC §6.2's question itself: \"All four slots are full. Which goes back to Auto?\" " +
+                 "Written from ui.skills.slotsFull in Start, under the inactive prompt.")]
+        [SerializeField] private TMP_Text _slotsFullLabel;
 
         [Tooltip("One row's height in dp. Applied at runtime for the reason HudPresenter applies " +
                  "its own: a Scale-With-Screen-Size canvas measures in reference pixels, which " +
@@ -230,6 +257,17 @@ namespace Soulvail.Game.Presentation
                     "send nothing. The component is registered by RunScope — drag this object onto " +
                     "its Skills Presenter field.");
             }
+
+            // The three static labels, once, here (M3-14c rule 3) — unlike the empty line, which
+            // Draw writes because *whether it is shown* is a function of run state. **Two of the
+            // three sit under _prompt, which is inactive until CC §6.2's question is asked**, and
+            // writing TMP_Text.text on a component whose GameObject is inactive is honoured on
+            // activation. That is Traps §1's family — an API that takes a value has not agreed to
+            // honour it — so SkillsPresenterTests asserts it in the only state the player sees:
+            // after the prompt is up.
+            Write(_closeLabel, CloseKey);
+            Write(_promptCancelLabel, CancelKey);
+            Write(_slotsFullLabel, SlotsFullKey);
 
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot
             // ship covering the arena — HudPresenter's argument, for the fourth screen.
@@ -463,9 +501,7 @@ namespace Soulvail.Game.Presentation
                 // other three static labels on Skills.prefab still draw their keys — see the
                 // finding in M3-14a's As built, which is about a serialized field this class does
                 // not have rather than about a missing row.
-                _emptyLabel.text = _localizer is null
-                    ? EmptyKey.ToString()
-                    : _localizer.Get(EmptyKey);
+                Write(_emptyLabel, EmptyKey);
 
                 _emptyLabel.gameObject.SetActive(owned == 0);
             }
@@ -552,6 +588,31 @@ namespace Soulvail.Game.Presentation
         /// <summary>
         /// Builds the pool on first open — <c>MaxActives</c> rows under the scroll's content.
         /// </summary>
+        /// <summary>
+        /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there (M3-14c).
+        /// </summary>
+        /// <remarks>
+        /// <b>A missing label is silent and a missing localizer falls back to the key</b> —
+        /// <c>MenuPresenter.Write</c>'s semantics, and <c>ToString()</c> rather than <c>Key</c>
+        /// because a <c>default(LocKey)</c>'s <c>Key</c> is null. Softer than <see cref="Start"/>'s
+        /// three throws on purpose: this screen refuses to open without its list, and shrugs at a
+        /// missing word.
+        /// <para>
+        /// <b>The empty line goes through here too</b>, which is the one thing this method changed
+        /// rather than added: <see cref="Draw"/> had the same two branches inline since M3-14a, and
+        /// two resolve paths in one file is the drift the helper exists to prevent.
+        /// </para>
+        /// </remarks>
+        private void Write(TMP_Text label, LocKey key)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
+        }
+
         private void EnsureRows()
         {
             if (_rows is not null)

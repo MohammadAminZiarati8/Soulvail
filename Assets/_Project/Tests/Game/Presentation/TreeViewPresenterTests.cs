@@ -63,6 +63,7 @@ namespace Soulvail.Tests.Game.Presentation;
 public sealed class TreeViewPresenterTests
 {
     private const string PrefabPath = "Assets/_Project/Prefabs/UI/TreeView.prefab";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
     private const string PausePrefabPath = "Assets/_Project/Prefabs/UI/Pause.prefab";
     private const string LevelUpPrefabPath = "Assets/_Project/Prefabs/UI/LevelUp.prefab";
     private const string SkillsPrefabPath = "Assets/_Project/Prefabs/UI/Skills.prefab";
@@ -1005,6 +1006,37 @@ public sealed class TreeViewPresenterTests
                 + "prefab (ledger row 9).");
     }
 
+    // ---- The Close label is a key, and the table answers it (M3-14c, rules 1, 3, 8) --------------
+
+    [Test]
+    public void Start_WritesTheCloseLabel()
+    {
+        StartRun();
+        BuildScreen(Shipped());
+
+        RunStart();
+
+        // **The most visible of M3-14b's nine.** This button sits directly under twelve nodes that
+        // have read English since M3-14a, so until now the screen shipped a paragraph of words above
+        // a raw key — which is the one PROGRESS names as the thing a playtest should not have to
+        // find. Pinned against the shipped English.asset so inverting the word is a red row.
+        Assert.That(Field<TMP_Text>(_presenter, "_closeLabel").text, Is.EqualTo("Close"));
+    }
+
+    [Test]
+    public void Start_NoCloseLabelDressed_IsSilent()
+    {
+        StartRun();
+        BuildScreen(Shipped());
+
+        SetPrivate(_presenter, "_closeLabel", null);
+
+        // Softer than the MissingReferenceException Start throws when the Close *button* is absent,
+        // and the split is the point: a screen with no way out is indistinguishable from a crash,
+        // where a way out with no word on it is still a way out (M3-14c rule 5).
+        Assert.That(() => RunStart(), Throws.Nothing);
+    }
+
     // ---- Guard rows ------------------------------------------------------------------------------
 
     [Test]
@@ -1205,6 +1237,26 @@ public sealed class TreeViewPresenterTests
     private static ILocalizer Passthrough() =>
         new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
+    /// <summary>
+    /// The real adapter over the <em>shipped</em> <c>English.asset</c> (M3-14c rule 8).
+    /// </summary>
+    /// <remarks>
+    /// The shipped table rather than a fixture one, on the owner's standard for this task: a row
+    /// that pins <em>"Close"</em> against a table this file wrote would go green over an
+    /// <c>English.asset</c> that said anything at all.
+    /// </remarks>
+    private static ILocalizer Shipped()
+    {
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(EnglishPath);
+
+        Assert.That(table, Is.Not.Null, $"No localization table at {EnglishPath}.");
+
+        return new TableLocalizer(table);
+    }
+
+    /// <summary>The presenter's own <c>Start</c>, which Unity never runs in EditMode.</summary>
+    private void RunStart() => Invoke(_presenter, "Start");
+
     /// <summary>The pause panel, with the cross-prefab reference Run.unity dresses.</summary>
     private void BuildPauseScreen()
     {
@@ -1215,7 +1267,7 @@ public sealed class TreeViewPresenterTests
 
         _pausePresenter = _pauseScreen.GetComponent<PausePresenter>();
 
-        _pausePresenter.Construct(_session, NewPause(), _hub, new SceneLoader());
+        _pausePresenter.Construct(_session, NewPause(), _hub, new SceneLoader(), Passthrough());
 
         // Scene dressing rather than prefab dressing: the two screens are separate root prefabs, so
         // nothing on either asset can carry it (M3-09b's decision, for its reason).

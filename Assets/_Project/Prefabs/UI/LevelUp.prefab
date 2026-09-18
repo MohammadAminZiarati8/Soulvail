@@ -215,10 +215,6 @@ MonoBehaviour:
   _description: {fileID: 7479049699598452988}
   _kindStrip: {fileID: 3069640145592461206}
   _button: {fileID: 2608065783698396035}
-  _passive: {r: 0.62, g: 0.66, b: 0.72, a: 1}
-  _active: {r: 0.36, g: 0.72, b: 0.85, a: 1}
-  _upgrade: {r: 0.45, g: 0.78, b: 0.55, a: 1}
-  _keystone: {r: 0.85, g: 0.72, b: 0.32, a: 1}
 --- !u!1 &967619393546876455
 GameObject:
   m_ObjectHideFlags: 0
@@ -496,10 +492,6 @@ MonoBehaviour:
   _description: {fileID: 4537125008971286809}
   _kindStrip: {fileID: 1997642060686290906}
   _button: {fileID: 7561235308978364972}
-  _passive: {r: 0.62, g: 0.66, b: 0.72, a: 1}
-  _active: {r: 0.36, g: 0.72, b: 0.85, a: 1}
-  _upgrade: {r: 0.45, g: 0.78, b: 0.55, a: 1}
-  _keystone: {r: 0.85, g: 0.72, b: 0.32, a: 1}
 --- !u!1 &1553362237227500157
 GameObject:
   m_ObjectHideFlags: 0
@@ -1135,6 +1127,7 @@ MonoBehaviour:
   _cardSizeDp: {x: 200, y: 260}
   _cardGapDp: 20
   _viewTree: {fileID: 7948657284675171922}
+  _viewTreeLabel: {fileID: 7205656611315125374}
   _treeScreen: {fileID: 0}
 --- !u!1 &4668311458470407265
 GameObject:
@@ -1687,10 +1680,6 @@ MonoBehaviour:
   _description: {fileID: 3763297285971291145}
   _kindStrip: {fileID: 655308546549127201}
   _button: {fileID: 2841738240823316350}
-  _passive: {r: 0.62, g: 0.66, b: 0.72, a: 1}
-  _active: {r: 0.36, g: 0.72, b: 0.85, a: 1}
-  _upgrade: {r: 0.45, g: 0.78, b: 0.55, a: 1}
-  _keystone: {r: 0.85, g: 0.72, b: 0.32, a: 1}
 --- !u!1 &6226160980544557784
 GameObject:
   m_ObjectHideFlags: 0

@@ -110,6 +110,17 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private static readonly LocKey NoTreeKey = new LocKey("ui.tree.none");
 
+        /// <summary>
+        /// Back to whichever door this screen was opened by (M3-14c).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="NoTreeKey"/>'s reason, and the most visible of M3-14b's nine: this button sits
+        /// directly under twelve nodes that have read English since M3-14a, so the screen has been
+        /// shipping a paragraph of words above a key. The prefab keeps the key as its authored text,
+        /// which is <see cref="NoTreeKey"/>'s own pattern.
+        /// </remarks>
+        private static readonly LocKey CloseKey = new LocKey("ui.tree.close");
+
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — see the class " +
                  "remarks: timeScale is 0 while this is up, so a scaled tween would freeze.")]
         [SerializeField] private CanvasGroup _root;
@@ -134,6 +145,10 @@ namespace Soulvail.Game.Presentation
         [Tooltip("Back to whichever door this was opened by. It lowers no pause — this screen " +
                  "never held one.")]
         [SerializeField] private Button _close;
+
+        [Tooltip("\"Close\". Written from ui.tree.close in Start, so the prefab's own value is a " +
+                 "placeholder — the empty label's pattern (M3-14c).")]
+        [SerializeField] private TMP_Text _closeLabel;
 
         [Tooltip("How tall one tier's row wants to be, in dp. A ceiling rather than a size: a " +
                  "branch taller than its column shrinks to fit (rule 9). Applied at runtime for " +
@@ -263,6 +278,16 @@ namespace Soulvail.Game.Presentation
                     $"{nameof(TreeViewPresenter)} was never injected, so it would draw nothing and " +
                     "neither door would offer its button. The component is registered by RunScope " +
                     "— drag this object onto its Tree View Presenter field.");
+            }
+
+            // The Close label, once, here (M3-14c rule 3) — through Resolve rather than through a
+            // Write of its own, because this file already has that method and two would be the
+            // drift the helper exists to prevent. The empty label is not written here for the
+            // reason it never was: Draw owns it, because *whether it is shown* is a function of
+            // whether this class has a tree at all.
+            if (_closeLabel != null)
+            {
+                _closeLabel.text = Resolve(CloseKey);
             }
 
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot

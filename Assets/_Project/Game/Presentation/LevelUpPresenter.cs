@@ -72,6 +72,19 @@ namespace Soulvail.Game.Presentation
         private const string LevelFormat = "Level {0:0}";
 
         /// <summary>
+        /// The toggle up to CH §5.1's tree view (M3-14c).
+        /// </summary>
+        /// <remarks>
+        /// <b>A different key from <c>PausePresenter.TreeKey</c> carrying the same word today</b>,
+        /// and deliberately so: this button sits over three offer cards and the pause panel's sits
+        /// over a stopped fight, so one may grow a count or a hint the other does not — and a merge
+        /// M6-10 would have to undo costs more than a second row in the table. Authored here rather
+        /// than on the prefab, <c>OverflowToast.ToastKey</c>'s reason; the prefab keeps the key as
+        /// its placeholder text, which is <c>SkillsPresenter.EmptyKey</c>'s pattern.
+        /// </remarks>
+        private static readonly LocKey ViewTreeKey = new LocKey("ui.levelup.tree");
+
+        /// <summary>
         /// <em>"Pick i of n"</em> — what makes a double level-up legible (M3-08a rule 3) rather than
         /// a card that surprises the player by reappearing.
         /// </summary>
@@ -105,6 +118,11 @@ namespace Soulvail.Game.Presentation
         [Tooltip("Up to CH §5.1's tree view (M3-09d) — the line M3-08b's Out of scope reserved. " +
                  "The cards are hidden, not destroyed, and looking spends no pick: see OpenTree.")]
         [SerializeField] private Button _viewTree;
+
+        [Tooltip("\"View Tree\". Written from ui.levelup.tree in Start — while the button may " +
+                 "still be switched off for a class with no tree, which is deliberate: see the " +
+                 "note in Start (M3-14c).")]
+        [SerializeField] private TMP_Text _viewTreeLabel;
 
         [Tooltip("The tree view itself. Dressed in Run.unity rather than on this prefab, because " +
                  "the two are separate root prefabs — PausePresenter's wiring decision, for its " +
@@ -237,6 +255,14 @@ namespace Soulvail.Game.Presentation
             }
 
             Place();
+
+            // The one static label, here (M3-14c rule 3). **Written while the button is very
+            // likely inactive** — RefreshTreeButton switches it off for a class with no tree and
+            // has not run yet — and TMP honours a write to an inactive component on activation.
+            // That is Traps §1's family, so LevelUpPresenterTests asserts it after the button is
+            // offered rather than here. The two labels above it are numbers rather than words and
+            // stay Draw's (LevelFormat).
+            Write(_viewTreeLabel, ViewTreeKey);
 
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot
             // ship covering the arena — HudPresenter's argument for its death panel and its fade.
@@ -481,6 +507,26 @@ namespace Soulvail.Game.Presentation
             _veiled = false;
 
             ShowScreen();
+        }
+
+        /// <summary>
+        /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there (M3-14c).
+        /// </summary>
+        /// <remarks>
+        /// <b>A missing label is silent and a missing localizer falls back to the key</b> —
+        /// <c>MenuPresenter.Write</c>'s semantics, and <c>ToString()</c> rather than <c>Key</c>
+        /// because a <c>default(LocKey)</c>'s <c>Key</c> is null. Softer than <see cref="Start"/>'s
+        /// three throws deliberately: this screen refuses to open without its cards, because a
+        /// level-up nobody can choose stops the run for good, and shrugs at a missing word.
+        /// </remarks>
+        private void Write(TMP_Text label, LocKey key)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
         }
 
         /// <summary>Rule 2 from this side: a class with no tree is offered no toggle.</summary>

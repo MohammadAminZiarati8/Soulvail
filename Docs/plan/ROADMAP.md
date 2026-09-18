@@ -20,7 +20,7 @@
 | **M0** | **Walking skeleton** | Floating stick → core motor → intent → capsule moves in a grey box **on the phone**, through VContainer scopes, with events/snapshot/intent plumbing real and tested | 21 |
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
 | **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 27 |
-| **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 34 |
+| **M3** | **Levelling and the tree** | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment | 35 |
 | **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted | 7 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
 | **M6** | **Systems complete** | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables | 11 |
@@ -258,7 +258,10 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 | [M3-13b](tasks/M3-13b-health-bar-treatment.md) | Health that reads at a glance: the damage tint, the Elite's bar, and the shield you were granted | M | 13a 11a-i 11a-ii | ☑ |
 | [M3-14a](tasks/M3-14a-localizer-and-english-table.md) | `ILocalizer`, `TableLocalizer`, and one English table | M | 12c 08b 09b 09c 09d 10b | ☑ |
 | [M3-14b](tasks/M3-14b-content-validation.md) | Content validation: every id disciplined, every key resolvable, every tree unstarvable | S | 14a 12c 02b | ☑ |
+| [M3-14c](tasks/M3-14c-wire-the-nine-labels.md) | Wire the nine labels: the keys M3-14a authored, M3-14b found, and nothing resolves | S | 14b 14a 09a 09b 09d 08b | ☑ |
 | [M3-15](tasks/M3-15-acceptance-and-tag.md) | M3 acceptance: does a run get better as it goes? The ledger closed, and tag `m3` | S | everything | ☐ |
+
+**M3-14c was added after the group closed, which is the second time this milestone has done that and the second time it was right.** M3-00d's group specced M3-13…M3-15 and could not have known: **M3-14a itself was an addition** — written because ledger row 9's ruling found that `ILocalizer` had never existed as a file — and M3-14c exists because M3-14b *found* something its own sweeps are correctly green on. Nine `ui.*` keys are authored as literal TMP label text on four prefabs and no presenter resolves them; rule 4 asks whether a key an asset carries has a row in `English.asset`, and all nine do. **The gap is wiring, not words**, so no table changes and no key is authored. It is specced here rather than absorbed into M3-15 because acceptance is a playtest and *"the tree view draws twelve English nodes under a Close button reading `ui.tree.close`"* is not a thing to discover during one.
 
 ### Carry-forward into M3
 

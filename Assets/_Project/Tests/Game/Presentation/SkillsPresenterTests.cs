@@ -70,6 +70,7 @@ namespace Soulvail.Tests.Game.Presentation;
 public sealed class SkillsPresenterTests
 {
     private const string PrefabPath = "Assets/_Project/Prefabs/UI/Skills.prefab";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
     private const string PausePrefabPath = "Assets/_Project/Prefabs/UI/Pause.prefab";
     private const string LevelUpPrefabPath = "Assets/_Project/Prefabs/UI/LevelUp.prefab";
 
@@ -823,6 +824,69 @@ public sealed class SkillsPresenterTests
         Assert.That(_hub.SubscriberCount<SkillAutoCastChanged>(), Is.Zero);
     }
 
+    // ---- The three static labels are keys, and the table answers them (M3-14c, rules 1, 3, 4, 8) ----
+
+    [Test]
+    public void Start_WritesTheCloseLabel()
+    {
+        StartRun(actives: 2);
+        BuildScreen(Shipped());
+
+        RunStart();
+
+        Assert.That(Field<TMP_Text>(_presenter, "_closeLabel").text, Is.EqualTo("Close"));
+    }
+
+    [Test]
+    public void Prompt_ReadsEnglishWhenItIsAsked()
+    {
+        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        BuildScreen(Shipped());
+
+        RunStart();
+
+        Assert.That(
+            Field<GameObject>(_presenter, "_prompt").activeSelf,
+            Is.False,
+            "the fixture's premise: the prompt is down when Start writes into it.");
+
+        // **Both labels were written while _prompt was inactive**, which is the claim this row is
+        // here to make rather than assume: writing TMP_Text.text on a component whose GameObject is
+        // switched off is supposed to be honoured on activation, and Traps §1 is the standing
+        // warning that an API taking a value has not agreed to honour it. Asserted in the only
+        // state a player can see — after CC §6.2's question is up.
+        _presenter.Open();
+
+        Flip(Shown()[4], auto: false);
+
+        Assert.That(
+            _presenter.IsPromptUp,
+            Is.True,
+            "the fixture's premise: the fifth manual switch raises the prompt.");
+
+        Assert.That(
+            Field<TMP_Text>(_presenter, "_slotsFullLabel").text,
+            Is.EqualTo("All four slots are full. Which goes back to Auto?"));
+
+        Assert.That(Field<TMP_Text>(_presenter, "_promptCancelLabel").text, Is.EqualTo("Cancel"));
+    }
+
+    [Test]
+    public void Start_NoLabelDressed_IsSilent()
+    {
+        StartRun(actives: 2);
+        BuildScreen(Shipped());
+
+        SetPrivate(_presenter, "_closeLabel", null);
+        SetPrivate(_presenter, "_promptCancelLabel", null);
+        SetPrivate(_presenter, "_slotsFullLabel", null);
+
+        // Softer than the two MissingReferenceExceptions Start throws above it, deliberately: this
+        // screen refuses to open without its list or its prompt, because core throws on the fifth
+        // manual skill, and shrugs at a missing word (M3-14c rule 5).
+        Assert.That(() => RunStart(), Throws.Nothing);
+    }
+
     // ---- Guard rows ----------------------------------------------------------------------------------
 
     [Test]
@@ -1168,6 +1232,26 @@ public sealed class SkillsPresenterTests
         new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     /// <summary>
+    /// The real adapter over the <em>shipped</em> <c>English.asset</c> (M3-14c rule 8).
+    /// </summary>
+    /// <remarks>
+    /// The shipped table rather than a fixture one, on the owner's standard for this task: a row
+    /// that pins CC §6.2's question against a table this file wrote would go green over an
+    /// <c>English.asset</c> that said anything at all.
+    /// </remarks>
+    private static ILocalizer Shipped()
+    {
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(EnglishPath);
+
+        Assert.That(table, Is.Not.Null, $"No localization table at {EnglishPath}.");
+
+        return new TableLocalizer(table);
+    }
+
+    /// <summary>The presenter's own <c>Start</c>, which Unity never runs in EditMode.</summary>
+    private void RunStart() => Invoke(_presenter, "Start");
+
+    /// <summary>
     /// The pause screen underneath, linked the way <c>Run.unity</c> links the two.
     /// </summary>
     private void BuildPauseScreen()
@@ -1184,7 +1268,7 @@ public sealed class SkillsPresenterTests
         _pause = new RunPause();
         _pauses.Add(_pause);
 
-        _pausePresenter.Construct(_session, _pause, _hub, new SceneLoader());
+        _pausePresenter.Construct(_session, _pause, _hub, new SceneLoader(), Passthrough());
 
         // The cross-prefab reference, which is scene dressing rather than prefab dressing: the two
         // screens are separate root prefabs, so nothing on either asset can carry it.

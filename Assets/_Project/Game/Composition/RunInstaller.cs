@@ -76,8 +76,20 @@ public static class RunInstaller
         // objects renaming the same file.
         builder.Register<SaveWriter>(Lifetime.Scoped);
 
-        // One brain behind two ports (M1-09). The frame loop holds IRunSession and can start, tick
-        // and end a run; an input adapter holds IPlayerCommands and can only ask for a focus. Two
+        // The one-frame buffer between a slot button and CommandPhase (M3-10a rule 3). Here rather
+        // than on RunScope, unlike TapToFocusAdapter: that one needs this scene's camera and this
+        // one needs nothing but the command port, which is exactly the line the split is drawn on.
+        // A type rather than an instance, so the scope owns it and it dies with the run.
+        builder.Register<SkillSlotInput>(Lifetime.Scoped);
+
+        // Who is holding the pause. Scoped to the run, so leaving the Run scene disposes it and its
+        // Dispose puts both engine globals back unconditionally — a run left while paused must not
+        // hand the Menu a frozen clock (M3-08a rule 13).
+        builder.Register<RunPause>(Lifetime.Scoped);
+
+        // One brain behind three ports (M1-09, M3-08a). The frame loop holds IRunSession and can
+        // start, tick and end a run; an input adapter holds IPlayerCommands and can only ask for a
+        // focus; a level-up screen holds IProgressionCommands and can spend a pick. Two
         // registrations of RunSession would be two brains — core would tick one and the player's
         // taps would land on the other, with no error anywhere and a focus that simply never
         // arrived — so it is registered once and named twice.
@@ -95,6 +107,7 @@ public static class RunInstaller
         builder.Register<RunSession>(Lifetime.Scoped)
             .As<IRunSession>()
             .As<IPlayerCommands>()
+            .As<IProgressionCommands>()
             .WithParameter("enemyCapacity", BootInstaller.SnapshotEnemyCapacity)
             .WithParameter("deviceEnemyCap", BootInstaller.DeviceEnemyCap)
             .WithParameter("projectileCapacity", BootInstaller.ProjectileCapacity);

@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aba53057ee7f828418c0472ade3e38ae, type: 3}
+  m_Name: English
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.LocalizationTable
+  _rows:
+  - _key: skill.oathbound.long-reach.name
+    _text: Long Reach
+  - _key: skill.oathbound.long-reach.description
+    _text: Your swing reaches 1.5 m further.
+  - _key: skill.oathbound.crashing-censure.name
+    _text: Crashing Censure
+  - _key: skill.oathbound.crashing-censure.description
+    _text: Your swing shoves what it hits.
+  - _key: skill.oathbound.bulwark.name
+    _text: Bulwark
+  - _key: skill.oathbound.bulwark.description
+    _text: Shields you when a bolt is in the air.
+  - _key: skill.oathbound.retribution.name
+    _text: Retribution
+  - _key: skill.oathbound.retribution.description
+    _text: +2 health for every kill.
+  - _key: skill.oathbound.tempered-vow.name
+    _text: Tempered Vow
+  - _key: skill.oathbound.tempered-vow.description
+    _text: +15 maximum health.
+  - _key: skill.oathbound.unbowed.name
+    _text: Unbowed
+  - _key: skill.oathbound.unbowed.description
+    _text: +10% maximum health and more speed.
+  - _key: skill.oathbound.steady-breath.name
+    _text: Steady Breath
+  - _key: skill.oathbound.steady-breath.description
+    _text: Your Aegis recharges a quarter sooner.
+  - _key: skill.oathbound.keen-censer.name
+    _text: Keen Censer
+  - _key: skill.oathbound.keen-censer.description
+    _text: +15% censer damage.
+  - _key: skill.oathbound.broad-censure.name
+    _text: Broad Censure
+  - _key: skill.oathbound.broad-censure.description
+    _text: Your swing sweeps half again as wide.
+  - _key: skill.oathbound.consecrate.name
+    _text: Consecrate
+  - _key: skill.oathbound.consecrate.description
+    _text: Healing ground when your health drops.
+  - _key: skill.oathbound.lasting-ground.name
+    _text: Lasting Ground
+  - _key: skill.oathbound.lasting-ground.description
+    _text: Consecrate returns a quarter sooner.
+  - _key: skill.oathbound.zealotry.name
+    _text: Zealotry
+  - _key: skill.oathbound.zealotry.description
+    _text: +12% attack speed.
+  - _key: tree.oathbound.oath
+    _text: Oath
+  - _key: tree.oathbound.censure
+    _text: Censure
+  - _key: tree.oathbound.judgment
+    _text: Judgment
+  - _key: trigger.hpFraction.below
+    _text: Player HP below
+  - _key: trigger.hpFraction.atLeast
+    _text: Player HP at least
+  - _key: trigger.shieldFraction.below
+    _text: Shield below
+  - _key: trigger.shieldFraction.atLeast
+    _text: Shield at least
+  - _key: trigger.enemiesWithin6m.below
+    _text: Enemies within 6 m below
+  - _key: trigger.enemiesWithin6m.atLeast
+    _text: Enemies within 6 m at least
+  - _key: trigger.enemiesWithin8m.below
+    _text: Enemies within 8 m below
+  - _key: trigger.enemiesWithin8m.atLeast
+    _text: Enemies within 8 m at least
+  - _key: trigger.enemiesInAcquireRange.below
+    _text: Enemies in range below
+  - _key: trigger.enemiesInAcquireRange.atLeast
+    _text: Enemies in range at least
+  - _key: trigger.incomingProjectiles.below
+    _text: Incoming projectiles below
+  - _key: trigger.incomingProjectiles.atLeast
+    _text: Incoming projectiles at least
+  - _key: trigger.veilrot.below
+    _text: Veilrot below
+  - _key: trigger.veilrot.atLeast
+    _text: Veilrot at least
+  - _key: trigger.stationaryTime.below
+    _text: Standing still under
+  - _key: trigger.stationaryTime.atLeast
+    _text: Standing still for
+  - _key: trigger.focusRampLevel.below
+    _text: Focus ramp below
+  - _key: trigger.focusRampLevel.atLeast
+    _text: Focus ramp at least
+  - _key: ui.hint.firstActive
+    _text: "Skills can be set to Manual: Pause \u2192 Skills"
+  - _key: ui.overflow.granted
+    _text: Overflow
+  - _key: ui.skills.empty
+    _text: You own no active skills yet.
+  - _key: ui.tree.none
+    _text: This class has no skill tree yet.
+  - _key: ui.app.title
+    _text: Soulvail
+  - _key: ui.menu.descend
+    _text: Descend
+  - _key: ui.menu.continue
+    _text: Continue
+  - _key: ui.death.title
+    _text: You died
+  - _key: ui.death.hint
+    _text: Tap to return
+  - _key: ui.pause.resume
+    _text: Resume
+  - _key: ui.pause.skills
+    _text: Skills
+  - _key: ui.pause.tree
+    _text: View Tree
+  - _key: ui.pause.quit
+    _text: Quit
+  - _key: ui.skills.close
+    _text: Close
+  - _key: ui.skills.cancel
+    _text: Cancel
+  - _key: ui.skills.slotsFull
+    _text: All four slots are full. Which goes back to Auto?
+  - _key: ui.levelup.tree
+    _text: View Tree
+  - _key: ui.tree.close
+    _text: Close
+  - _key: character.oathbound.name
+    _text: Oathbound
+  - _key: enemy.husk.name
+    _text: Husk
+  - _key: enemy.spitter.name
+    _text: Spitter
+  - _key: enemy.bloater.name
+    _text: Bloater
+  - _key: mode.descent.name
+    _text: Descent

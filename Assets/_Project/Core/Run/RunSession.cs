@@ -5,8 +5,10 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 
@@ -39,7 +41,7 @@ namespace Soulvail.Core.Run;
 /// this and <c>RunScope</c> owns its lifetime.
 /// </para>
 /// </remarks>
-public sealed class RunSession : IRunSession, IPlayerCommands
+public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionCommands
 {
     private readonly ContentCatalog _catalog;
     private readonly IRandom _random;
@@ -69,6 +71,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     /// composed into.
     /// </remarks>
     private StageFlow _flow;
+
+    /// <summary>
+    /// What a cast put on the player that has to come off again, and the clock it comes off on.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than on <c>RunState</c> because nothing reads it: it is ticked by this class and
+    /// called back through <c>EffectRegistry.Remove</c>, and what a view wants to know about a timed
+    /// grant arrives as <c>ShieldGranted</c> and <c>ShieldGrantExpired</c> rather than as a read
+    /// (AR §18.2 — a twelfth scalar was the last thing that block gained, and this is not a
+    /// thirteenth).
+    /// </remarks>
+    private TimedEffects _timed;
+
+    /// <summary>
+    /// This run's simulated seconds, for the one handler that needs them. See
+    /// <see cref="SimulatedClock"/> for why it exists at all rather than being a parameter.
+    /// </summary>
+    private SimulatedClock _clock;
 
     /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
@@ -302,8 +322,29 @@ public sealed class RunSession : IRunSession, IPlayerCommands
 
         RequireAuthored(config.SpawnPlan, mode);
 
-        // The last of the validation, and it is here for ledger row 3's reason rather than for
-        // tidiness: WaveComposer refuses a mode that introduces nothing at or before this stage,
+        // The class's tree, resolved and cross-checked here rather than at the moment a player is
+        // offered a node (M3-03 rule 1). TreeRules asks everything a spec constructor could not:
+        // that every id in the tree is a skill somebody authored, that a keystone ends its branch
+        // alone, and that an upgrade's parent sits below it in the same branch. All three are
+        // author-time mistakes, so all three belong in this block — reported with nothing announced
+        // and nothing standing, rather than as a crash in a run (ledger row 3, AR §18.1).
+        //
+        // **Null is the ordinary answer until M3-12** (rule 10): TryGetTreeFor is false for every
+        // class this build ships, and `_flow` below is the precedent for a run holding null where
+        // there is nothing to compose. What is deliberately *not* here is the effect sweep — that
+        // needs the registry, which cannot exist before the live objects it addresses, so it runs
+        // further down where the SkillTree itself is built. Still before RunStarted, which is what
+        // the rule actually asks for.
+        TreeRules treeRules = null;
+
+        if (_catalog.TryGetTreeFor(config.CharacterId, out SkillTreeSpec treeSpec))
+        {
+            treeRules = new TreeRules(treeSpec, _catalog);
+        }
+
+        // The last of the validation that can be asked before the run's objects exist, and it is
+        // here for ledger row 3's reason rather than for tidiness: WaveComposer refuses a mode that
+        // introduces nothing at or before this stage,
         // and composing after RunStarted would strand exactly the announcement that row exists to
         // stop being stranded. Held in locals until the run is built, so a throw below still
         // leaves this session's own fields as the previous run left them.
@@ -382,6 +423,126 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
         var projectiles = new ProjectileSystem(_events, _projectileCapacity);
 
+        // One per run, like the two above: a second Start must not inherit the first run's level.
+        // The curve comes off the mode rather than off the character or a constant here, because
+        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
+        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
+        // back where it was in the restore block below, before RunStarted.
+        var progression = new LevelTracker(mode.Xp, _events);
+
+        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
+        // rule: the address table holds this run's live stats, so it cannot be built before them,
+        // and the tree that will read the registry (M3-03) validates every effect it holds at
+        // Start — so an unregistered primitive has to be reportable before the run is announced.
+        //
+        // One Register line per primitive, and that is the entire cost of adding the eleventh
+        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
+        // existed this was a table that was built, filled and never read.
+        var playerStats = new PlayerStats(combat, motor, progression);
+        var effects = new EffectRegistry();
+
+        effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
+
+        // One per run like everything above, and the clock with them: a second Start must not
+        // inherit the first run's held effects, and a clock that carried the last run's seconds
+        // would expire the first grant of this one on the tick it was cast. The clock is written
+        // once a tick beside State.Time and read by the handler, because IEffectHandler<T>.Apply is
+        // handed no clock and widening that signature would change every handler in the game
+        // (M3-11a-ii, correction 2).
+        _clock = new SimulatedClock();
+        _timed = new TimedEffects(effects);
+
+        effects.Register<GrantShield>(
+            new GrantShieldHandler(combat.Health, _timed, _clock, _events));
+
+        // And one per run again, with the same clock. It heals the player's Health and reads the
+        // player's position off the blackboard PlayerCombat fills — borrowed, not owned, one writer
+        // and many readers (ADR-0005), and this is its second reader after the runner.
+        //
+        // Here rather than on this class like _timed because something *does* read it: an overlay and
+        // M3-11c's decal ask how many zones are standing and where, so it hangs off RunState behind
+        // two narrow reads (AR §18.2).
+        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events);
+
+        // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
+        // file and one Register line, with nothing in the clock, the registry or Tick changing to
+        // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
+        effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
+
+        // **Above the tree rather than below it, which is the one thing this block's order now
+        // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
+        // needed it sooner; ModifySkillCooldownHandler holds it, and SkillTree's constructor asks
+        // CanApply of every effect the tree carries — so a tree holding a cooldown node would refuse
+        // the run for an unregistered primitive if this stayed where it was. Nothing here depends on
+        // the tree: the runner takes the registry, the blackboard and the events, and the capacity
+        // check below reads a const.
+        //
+        // One per run like everything above: a second Start must not inherit the first run's
+        // cooldowns, and a runner that outlived a run would be casting a dead player's skills. The
+        // blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many readers
+        // (ADR-0005), and this is the first reader that decides something with it.
+        var skills = new SkillRunner(effects, combat.Blackboard, _events);
+
+        // The two primitives a PlayerStat cannot express, registered beside ModifyStatHandler and
+        // before RunStarted like every one before them (M3-12b rule 10) — so SkillTree's CanApply
+        // sweep finds them and a tree authored against either is accepted at the run's opening
+        // rather than refused at a pick.
+        //
+        // The cooldown handler subscribes to the runner's arrivals in its own constructor, which is
+        // the whole of its coupling and the reason it is built on this line rather than three above:
+        // a modifier for a skill the player has not taken yet is held until SkillRunner.Add makes
+        // the Stat it belongs on.
+        effects.Register<ModifySkillCooldown>(new ModifySkillCooldownHandler(skills));
+
+        // And the swing that shoves, which needs only the player it changes. It lifts
+        // PlayerCombat.SwingKnockback off a base of zero — nothing shoves until a node is taken, and
+        // no tree in this build carries one until M3-12c.
+        effects.Register<KnockbackOnSwing>(new KnockbackOnSwingHandler(combat));
+
+        // The other half of the tree's validation, and the reason it is down here rather than up in
+        // the block with TreeRules: the constructor asks CanApply of every take and cast effect in
+        // the tree, and the registry it asks cannot exist before the live objects its handlers
+        // address. Still before RunStarted and before anything is assigned to State, which is what
+        // rule 4 asks for — a node whose primitive nobody registered refuses the run rather than
+        // throwing part way through a Take.
+        //
+        // The one cost of the split is that a bad effect is reported after the opening composition
+        // has drawn, so the Spawn stream is left advanced — which is the trade the composition
+        // comment above already accepts, and for its reason: the run it was drawn for does not
+        // exist.
+        SkillTree tree = treeRules is null
+            ? null
+            : new SkillTree(treeRules, effects, _events);
+
+        // **A tree that would not fit the runner refuses the run** (M3-06 rule 5, and the owner's
+        // ruling at M3-06). The alternative was letting SkillRunner.Add throw on the thirteenth,
+        // which lands inside M3-08a's ChooseOffer — *after* SkillTree.Take has recorded the node,
+        // applied its effects and published NodeTaken — so a mistake a designer made weeks earlier
+        // would kill a run at the moment a card is tapped and kill it dirty, with the node owned
+        // and unfireable. Asked here it is TreeRules' own argument one class over: an authoring
+        // mistake refuses the run, with nothing announced and nothing standing.
+        //
+        // It is the same shape SkillTree's constructor gives EffectRegistry.Apply — sweep the
+        // authored content at Start, keep the throw as the backstop — and it is what makes Add's
+        // capacity throw unreachable in a live run rather than merely unlikely.
+        if (tree is not null && tree.Rules.ActiveCount > SkillRunner.MaxActives)
+        {
+            throw new ArgumentException(
+                $"'{tree.Rules.Tree.Id}' holds {tree.Rules.ActiveCount} Active nodes and the "
+                    + $"runner holds {SkillRunner.MaxActives}. CH §4's ~25 % Active over CH §5's "
+                    + "27 nodes is about seven, so a tree this far past it is an authoring mistake "
+                    + "rather than a capacity to raise.",
+                nameof(config));
+        }
+
+        // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
+        // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
+        // authors one. Below the runner because it pushes a chosen Active into it, and below the
+        // registry because Overflow's two modifiers go on through it.
+        LevelUpFlow levelUp = tree is null
+            ? null
+            : new LevelUpFlow(tree, progression, skills, effects, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -391,7 +552,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             motor,
             combat,
             enemies,
-            projectiles);
+            projectiles,
+            progression,
+            effects,
+            tree,
+            skills,
+            zones,
+            levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -402,15 +569,115 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // restore afterwards would show a resumed run a full bar that drops to 62 % on the next
         // frame. A resumed run's first impression is the one frame nothing gets to be wrong in.
         //
-        // Three values and no more (rule 3): hit points, shield and simulated seconds. The
-        // generator is already standing where the save left it — the composition root restored it
-        // when it built the generator, before this session existed — and everything else is
-        // rebuilt rather than read back: the arena from ArenaFor(stage, seed), the wave plan from
-        // the restored stream position a few lines above, and the population from nothing at all,
-        // because a boundary has none.
+        // Seven values now (rule 3, extended by M3-01b and again here): hit points, shield,
+        // simulated seconds, the level, experience and banked picks the save carried, and the tree
+        // nodes it was taken with. The generator is already standing where the save left it — the
+        // composition root restored it when it built the generator, before this session existed —
+        // and everything else is rebuilt rather than read back: the arena from ArenaFor(stage,
+        // seed), the wave plan from the restored stream position a few lines above, and the
+        // population from nothing at all, because a boundary has none.
+        //
+        // **The order of the first two is the one thing in this block that is not
+        // interchangeable** (M3-03 rule 5, AR §18.1). The rest are independent of each other.
         if (config.Restore is RunSnapshot resumed)
         {
+            // **Before Health.Restore, and that is an AR §18.1 row rather than a preference.** The
+            // saved hit points are absolute and are clamped against the live maximum, and the tree
+            // is what moves that maximum: a `+20 max HP` node replayed *after* the clamp means a run
+            // saved at 150 of 160 comes back at 140 of 160. The player loses the difference once per
+            // resume, silently, and the only symptom is a bar slightly shorter than the one they put
+            // the phone down in front of. It is also the reason this task depends on M3-01b rather
+            // than the other way round.
+            //
+            // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
+            // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
+            // for a class with no tree, which ignores the ids the same way this method did between
+            // M3-01b and here (rule 10).
+            tree?.Restore(resumed.TakenNodeIds);
+
+            // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
+            // pushes a skill into the runner; the runner subscribes to nothing, so a resumed run's
+            // actives arrive here exactly as a fresh run's arrive from M3-08a's ChooseOffer. Take
+            // order is therefore the runner's order on a resumed run as well as a fresh one, which
+            // is what makes the walk in Tick reproducible from a seed.
+            //
+            // Order-independent with the three restores below it, unlike the pair above: nothing
+            // here applies an effect or reads a maximum. It is beside Restore because the list it
+            // walks is the one Restore just filled.
+            if (tree is not null)
+            {
+                IReadOnlyList<ContentId> taken = tree.TakenIds;
+
+                for (int i = 0; i < taken.Count; i++)
+                {
+                    SkillSpec node = tree.Rules.Skill(taken[i]);
+
+                    if (node.Kind == SkillKind.Active)
+                    {
+                        skills.Add(node);
+                    }
+                }
+            }
+
+            // **Below the loop above and above Health.Restore, and the first half of that is an
+            // AR §18.1 row rather than a preference** (M3-07b rule 7). Below the actives, because a
+            // slot naming a skill the runner has not been told about yet is indistinguishable from
+            // rule 6's stale id: the restore would drop every slot in silence and the run would come
+            // back with empty buttons and no error. Above Health.Restore for no reason of its own —
+            // it moves no stat — and written there anyway, because this block is read as an order
+            // and a line placed outside it invites the next one to be placed anywhere.
+            //
+            // Silent, for the reason the whole block is: nothing may publish before RunStarted.
+            // Unlike the tree's restore it refuses nothing — a slot naming a skill this run does not
+            // own leaves that slot empty and the rest come back, because a slot is where a button
+            // sits rather than the run's power (SkillRunner.Restore).
+            skills.Restore(resumed.ManualSkillIds);
+
+            // **After the tree restore and above Health.Restore, and the second half of that is an
+            // AR §18.1 row rather than a preference** (M3-08a rule 9). Overflow puts a `+2 % MaxHp`
+            // modifier on per level, so fourteen of them move the maximum by 28 % — and the saved
+            // hit points are absolute and are clamped against the live maximum. Replayed *after* the
+            // clamp, a run saved at 170 of 179 comes back at 140: the same loss SkillTree.Restore is
+            // ordered against, from a second writer.
+            //
+            // **Derived, because no field carries it and RunSnapshot.CurrentVersion stays 3.** Every
+            // pick a run has earned is spent on a node, spent on Overflow, or unspent — the exact
+            // mirror of M3-03 rule 6, which says the *pending* count is the one that cannot be
+            // derived. Anything that later spends a pick without taking a node owes this identity or
+            // owes a field; M6-02's Banish does not, since it removes a node from the pool rather
+            // than a pick from the player.
+            //
+            // Guarded on the flow rather than computed unconditionally, for the reason the tree's
+            // own restore is `tree?.Restore`: a class with no tree ignores the saved ids entirely,
+            // and asserting an identity over numbers half of which were discarded would refuse a
+            // legal save. It costs nothing to skip — with no tree nothing can spend a pick, so every
+            // level is banked and the identity is 0 either way (rule 5).
+            if (levelUp is not null)
+            {
+                int overflow = resumed.Level - 1 - resumed.TakenNodeIds.Count - resumed.PendingLevelUps;
+
+                if (overflow < 0)
+                {
+                    throw new ArgumentException(
+                        $"The saved picks do not add up: level {resumed.Level} earns "
+                            + $"{resumed.Level - 1} pick(s), of which {resumed.TakenNodeIds.Count} "
+                            + $"went on nodes and {resumed.PendingLevelUps} are unspent, leaving "
+                            + $"{overflow} for Overflow. It is arithmetic rather than content, so it "
+                            + "cannot be rescued by clamping.",
+                        nameof(config));
+                }
+
+                // Silent, for the reason the whole block is: nothing may publish before RunStarted,
+                // and a resumed run's Overflow was earned in a previous session and is not news.
+                levelUp.GrantOverflow(overflow);
+            }
+
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
+
+            // Silent and settling, for the reason the whole block is here: a presenter reading
+            // State.Level from inside RunStarted must already see it, and nothing may publish
+            // before the run it belongs to has been announced (M3-01b rule 7).
+            progression.Restore(resumed.Level, resumed.Xp, resumed.PendingLevelUps);
 
             State.Time = resumed.RunTime;
         }
@@ -504,6 +771,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // arrives immediately and unmissably either way.
         State.Time += snapshot.Dt;
 
+        // The same second, in the object the effect handlers hold. Here rather than anywhere lower
+        // so that it is already this tick's before combat, the skills step or a behaviour can read
+        // it — and here rather than nowhere because Apply takes no clock (see SimulatedClock).
+        _clock.Now = State.Time;
+
         // Written down, not decided: Unity resolves collision and reports where the player ended
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
@@ -529,6 +801,43 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             snapshot,
             State.Enemies.Registry.Alive,
             State.Motor.Facing);
+
+        // **After combat and before the enemy behaviours — which puts it above the projectile step
+        // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).
+        //
+        // *After combat*, because UpdateBlackboard has just filled seven of the nine fields a
+        // trigger can read, and a predicate over last tick's HP is a Consecrate that fires a frame
+        // after the hit that should have caused it.
+        //
+        // *Above ProjectileSystem.Tick*, because IncomingProjectiles is written by that step and
+        // nowhere else (ProjectileSystem.cs, at the end of its own pass): read here it is the count
+        // of bolts still in the air **before this tick's arrivals are resolved**, which is exactly
+        // what CC §6.4's Bulwark means by "an enemy projectile is inbound" — a shield raised
+        // *before* the bolt lands. Ticked after that step instead, the same field would describe
+        // the sky *after* the hit, and the archetype's whole answer would be a shield put up over a
+        // wound. The field is therefore deliberately one step old, and that staleness is the
+        // mechanic rather than a lag to fix.
+        //
+        // At most one cast per tick, and the walk stops on it (rule 6).
+        State.Skills.Tick(snapshot.Dt, State.Time);
+
+        // **Immediately after the runner and above the projectile step, and both halves are the
+        // mechanic's** (M3-11a-ii rule 3, AR §18.1). *After the runner*, because it may cast this
+        // frame: expiring first would take a grant back and hand the same one straight over again on
+        // the tick a skill recasts, announcing an expiry that never happened. *Above the projectile
+        // step*, for the reason the line above sits there — a shield that expired after this tick's
+        // bolts were resolved would have absorbed a hit it was no longer entitled to.
+        _timed.Tick(State.Time);
+
+        // **Immediately after the timed effects, which keeps the whole skills block above the
+        // projectile step** (M3-11b rule 3, AR §18.1). *After the runner*, because a zone cast this
+        // tick has to exist this tick — a player who drops below 60 % is standing on healing ground
+        // in the same frame. *After the timed effects*, because these are the game's two expiry
+        // mechanisms and interleaving them would make the order a shield comes off in depend on
+        // whether a zone happened to end on the same tick; they are separated rather than merged
+        // because a zone is a place with its own life and a grant is state on the player that
+        // something has to take back (rule 9).
+        State.Zones.Tick(State.Time);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
@@ -583,6 +892,39 @@ public sealed class RunSession : IRunSession, IPlayerCommands
             End();
             return;
         }
+
+        // After the death check and before the director (M3-01a rule 6, AR §18.1). Experience is
+        // granted on the tick and never on the fact: a kill reported between ticks by
+        // ReportConeHits accrues on EnemySystem and is paid here, at most a frame late, which is
+        // the lag every fact already has (ADR-0003).
+        //
+        // After the death check, so a run that ended this tick levels nobody — a LeveledUp
+        // published one line below End() would land in a scope that is being torn down, and no
+        // screen could ever show it.
+        //
+        // Before the director and the stage flow, so a LeveledUp earned by a stage's last kill
+        // precedes that tick's StageCleared and the boundary snapshot taken with it. That ordering
+        // is what lets M3-01b's write carry the level the player just earned rather than the one
+        // they had a frame ago.
+        //
+        // Called unconditionally: a tick with no kills drains zero, and Grant is silent for
+        // anything that is not greater than zero, so there is no branch here for a caller to get
+        // wrong.
+        State.Progression.Grant(State.Enemies.DrainXp());
+
+        // The same drain in the other currency (M3-12a rule 5), immediately beside it because the
+        // two are banked on the same line of EnemySystem and must be spent on the same tick — a
+        // kill that paid experience and not its heal, or the reverse, would be a death worth
+        // different things depending on when it was reported.
+        //
+        // The order within the pair does not matter and is not an invariant: experience cannot
+        // change hit points and a heal cannot change experience. What matters is that both are
+        // after the death check above, which is what makes a kill landing on the tick the player
+        // dies pay nothing — M3-01a rule 6's ordering, inherited rather than restated.
+        //
+        // Unconditional, for the reason the line above is: HealPerKill is zero in every run this
+        // build ships, so this is one multiply and a Heal that returns immediately.
+        State.Combat.HealForKills(State.Enemies.DrainKills());
 
         // After the death check and before the motor (M2-05 rule 14, AR §18.1). After, because a
         // run that ended this tick must spawn nothing — a wave arriving on the frame the player
@@ -759,6 +1101,98 @@ public sealed class RunSession : IRunSession, IPlayerCommands
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// <b>Acted on where it arrives, unlike <see cref="MovementSkill"/> above</b>, and the asymmetry
+    /// is CC §6.2 against CC §5 rather than an inconsistency. The dash is <em>recorded</em> because
+    /// it needs a direction core has not sampled yet and a buffer that survives a cooldown ending
+    /// mid-frame; a skill cast needs neither — its effects land on the player's own stats, there is
+    /// no aim, and an early tap is refused rather than kept. So there is nothing for a deferral to
+    /// wait for, and deferring anyway would put the cast a frame after the tap for no gain.
+    /// </para>
+    /// <para>
+    /// Stamped with <see cref="RunState.Time"/>, which is the clock the cooldown was scheduled
+    /// against — so a tap arriving between ticks is measured against the same simulated seconds the
+    /// runner's own <c>Tick</c> uses, rather than against a wall clock that keeps running while the
+    /// game is paused.
+    /// </para>
+    /// </remarks>
+    public void CastSkill(int slot)
+    {
+        RequireRunning(nameof(CastSkill));
+
+        // The return is deliberately dropped. A cooling slot answers false and that is an ordinary
+        // early tap (CC §6.2 draws it at 40 % opacity), not something an input adapter can act on —
+        // and a command that returned a bool would be a command asking for an answer, which is the
+        // one thing ADR-0003 says this direction does not do. A view that wants to know draws
+        // `RunState.IsSkillReady`.
+        State.Skills.CastSlot(slot, State.Time);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Straight through, with no tick in between: this changes no clock and starts nothing, so there
+    /// is no moment in the frame it needs to be at. The one thing it does that the player can see is
+    /// publish <c>SkillAutoCastChanged</c>, and a screen redrawing from that wants it on the tap
+    /// rather than on the next frame.
+    /// </remarks>
+    public void SetAutoCast(ContentId skillId, bool auto)
+    {
+        RequireRunning(nameof(SetAutoCast));
+
+        State.Skills.SetAutoCast(skillId, auto);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A read rather than a command, so it answers <see langword="false"/> outside a run instead of
+    /// throwing: <c>RunTicker</c> polls it every frame and is still an <c>ITickable</c> after a run
+    /// has ended.
+    /// </remarks>
+    public bool IsLevelUpPending => IsRunning && State.IsLevelUpPending;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <see cref="IsLevelUpPending"/>'s reasoning — a read, false outside a run.
+    /// </remarks>
+    public bool HasOffer => IsRunning && State.HasOffer;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>The stream is this session's <c>Offers</c> and no other</b> (ADR-0011), handed in here
+    /// rather than held by the flow so that the one object which owns the run's randomness stays the
+    /// one that hands it out — <c>SpawnDirector.Tick</c>'s shape, one module over.
+    /// </remarks>
+    public void OpenLevelUp()
+    {
+        RequireRunning(nameof(OpenLevelUp));
+
+        // Null for a class with no tree, which is every run in this build: the level stays banked
+        // and nothing draws, pauses or throws (rule 5).
+        State.LevelUp?.Open(_random.Offers);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Throws rather than no-ops when the class has no tree, unlike <see cref="OpenLevelUp"/>: an
+    /// open call is the frame loop asking a standing question, where this one is a view reporting a
+    /// tap on a card that cannot exist.
+    /// </remarks>
+    public void ChooseOffer(int index)
+    {
+        RequireRunning(nameof(ChooseOffer));
+
+        if (State.LevelUp is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so no offer can ever be open and there is nothing to "
+                    + "choose. A view sent ChooseOffer without a card to send it for.");
+        }
+
+        State.LevelUp.Choose(index, _random.Offers);
+    }
+
+    /// <inheritdoc />
     public void End()
     {
         // A no-op rather than a throw, so RunScope's disposal can call it without first asking
@@ -786,6 +1220,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands
         // And the shots that were still in the air, silently again. A bolt that landed on an ended
         // run would hurt a corpse and publish an impact into a scope that is being torn down.
         State.Projectiles.Clear();
+
+        // And whatever a cast was still holding — forgotten rather than taken back, for the same
+        // sentence: there is nothing left to take it off, and an expiry announced here would reach a
+        // view that is being destroyed (M3-11a-ii rule 8).
+        _timed.Clear();
+
+        // And the ground a cast put down, forgotten in the same silence and for the same sentence.
+        // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
+        // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
+        State.Zones.Clear();
     }
 
     /// <summary>

@@ -846,6 +846,7 @@ public sealed class EnemySystemTests
         moveSpeed: 3.5f,
         targetPriority: 1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -891,6 +892,7 @@ public sealed class EnemySystemTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>

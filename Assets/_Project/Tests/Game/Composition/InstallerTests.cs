@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
@@ -43,7 +44,13 @@ public sealed class InstallerTests
     private static readonly ContentId HuskId = new ContentId("enemy.husk");
     private static readonly ContentId DescentId = new ContentId("mode.descent");
 
-    private readonly List<CharacterDefinition> _created = new List<CharacterDefinition>();
+    /// <remarks>
+    /// Typed as <see cref="ScriptableObject"/> rather than <c>CharacterDefinition</c> as of
+    /// M3-02b: the skills-and-trees row builds five throwaway assets of three kinds, and they are
+    /// destroyed together or they leak into every later fixture in the run.
+    /// </remarks>
+    private readonly List<ScriptableObject> _created = new List<ScriptableObject>();
+
     private readonly List<IDisposable> _containers = new List<IDisposable>();
 
     [TearDown]
@@ -60,7 +67,7 @@ public sealed class InstallerTests
 
         _containers.Clear();
 
-        foreach (CharacterDefinition definition in _created)
+        foreach (ScriptableObject definition in _created)
         {
             if (definition != null)
             {
@@ -139,7 +146,14 @@ public sealed class InstallerTests
         // empty array. A silently-omitted list would be indistinguishable from an authored one
         // until a spawn plan named an archetype the catalog had never heard of.
         Assert.Throws<ArgumentNullException>(() =>
-            BootInstaller.Install(builder, new[] { LoadOathbound() }, null, new[] { LoadDescent() }));
+            BootInstaller.Install(
+                builder,
+                new[] { LoadOathbound() },
+                null,
+                new[] { LoadDescent() },
+                Array.Empty<SkillDefinition>(),
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
     }
 
     [Test]
@@ -151,7 +165,13 @@ public sealed class InstallerTests
         // resolves everything, boots to the menu, and throws on the tap that starts a run.
         Assert.Throws<ArgumentNullException>(() =>
             BootInstaller.Install(
-                builder, new[] { LoadOathbound() }, Array.Empty<EnemyDefinition>(), null));
+                builder,
+                new[] { LoadOathbound() },
+                Array.Empty<EnemyDefinition>(),
+                null,
+                Array.Empty<SkillDefinition>(),
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
     }
 
     [Test]
@@ -174,7 +194,10 @@ public sealed class InstallerTests
                 builder,
                 new[] { broken },
                 Array.Empty<EnemyDefinition>(),
-                Array.Empty<ModeDefinition>());
+                Array.Empty<ModeDefinition>(),
+                Array.Empty<SkillDefinition>(),
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable());
             Track(builder.Build());
         });
 
@@ -185,6 +208,55 @@ public sealed class InstallerTests
         // half-built container to resolve from afterwards.
         Assert.That(builder.Count, Is.Zero,
             "A definition that cannot convert must not leave a partly-installed builder behind.");
+    }
+
+    /// <summary>
+    /// The M3-02b wire, and the fourth and fifth kinds to go through it. A catalog installed
+    /// without its skills resolves, boots to the menu, plays a run and offers the player nothing
+    /// when they level — which reads as a broken offer rather than as missing content, the same
+    /// failure the enemy list has and one screen further from its cause.
+    /// </summary>
+    [Test]
+    public void Install_RegistersSkillsAndTrees()
+    {
+        // Three nodes, not one, because a legal tree has three branches and no id may appear in
+        // two of them (SkillTreeSpec): one node cannot fill three branches. The row still asserts
+        // on one of them, which is what "Skill(id) answers" means.
+        ModifyStatDefinition effect = NewEffect("BootEffect");
+        SkillDefinition first = NewSkill("BootNodeA", "skill.test.a", effect);
+        SkillDefinition second = NewSkill("BootNodeB", "skill.test.b", effect);
+        SkillDefinition third = NewSkill("BootNodeC", "skill.test.c", effect);
+        SkillTreeDefinition tree = NewTree("BootTree", "tree.test", first, second, third);
+
+        var builder = new ContainerBuilder();
+
+        BootInstaller.Install(
+            builder,
+            new[] { LoadOathbound() },
+            Array.Empty<EnemyDefinition>(),
+            Array.Empty<ModeDefinition>(),
+            new[] { first, second, third },
+            new[] { tree },
+            EmptyTable());
+
+        var catalog = Track(builder.Build()).Resolve<ContentCatalog>();
+
+        Assert.That(catalog.Skills, Has.Count.EqualTo(3));
+
+        SkillSpec node = null;
+        Assert.That(() => node = catalog.Skill(new ContentId("skill.test.a")), Throws.Nothing,
+            "A skill in the boot list must resolve through the catalog the installer built.");
+
+        Assert.That(node.Kind, Is.EqualTo(SkillKind.Passive));
+        Assert.That(node.Effects, Has.Count.EqualTo(1));
+
+        // The second index, and the one a run actually uses: a run resolves its tree from the
+        // class it is playing, never from a tree id anyone typed.
+        Assert.That(catalog.TryGetTreeFor(OathboundId, out SkillTreeSpec spec), Is.True,
+            "The tree names the Oathbound, so TryGetTreeFor must answer for that class.");
+
+        Assert.That(spec.Id, Is.EqualTo(new ContentId("tree.test")));
+        Assert.That(spec.NodeCount, Is.EqualTo(3));
     }
 
     [Test]
@@ -208,9 +280,10 @@ public sealed class InstallerTests
     /// </summary>
     /// <remarks>
     /// As of M2-13b the toggle is built over <see cref="ISaveStore"/> rather than read out of
-    /// <c>PlayerPrefs</c>, which is what makes it safe to resolve here at all: constructing it
-    /// touches no disk and no registry, and it starts at GD §16.3's default until <c>BootFlow</c>
-    /// hands it a loaded profile. Still never written — a flip here would put a file under
+    /// <c>PlayerPrefs</c>, and as of M3-09c over <c>ProfileStore</c> rather than the port directly —
+    /// which is what makes it safe to resolve here at all: constructing either touches no disk and
+    /// no registry, and it starts at GD §16.3's default until <c>BootFlow</c> hands the store a
+    /// loaded profile. Still never written — a flip here would put a file under
     /// <c>persistentDataPath</c> on the machine running the tests.
     /// </remarks>
     [Test]
@@ -229,6 +302,16 @@ public sealed class InstallerTests
         Assert.That(settings.Enabled, Is.True, "GD §16.3's default, before a profile has been applied.");
         Assert.That(container.Resolve<HapticsSettings>(), Is.SameAs(settings),
             "One toggle, or the listener reads a different answer from the one an options screen set.");
+
+        // **And the profile behind it is one object for the app's life** (M3-09c rule 4). A store
+        // resolved fresh per request would lose the hint's flag between the level-up that spent it
+        // and the boundary that saved it, and would do so silently — the run would simply show the
+        // callout again next time.
+        var profiles = container.Resolve<ProfileStore>();
+
+        Assert.That(profiles, Is.Not.Null);
+        Assert.That(container.Resolve<ProfileStore>(), Is.SameAs(profiles));
+        Assert.That(profiles.Current.Version, Is.EqualTo(PlayerProfile.CurrentVersion));
     }
 
     /// <summary>
@@ -487,8 +570,18 @@ public sealed class InstallerTests
     private IObjectResolver BuildBoot()
     {
         var builder = new ContainerBuilder();
+
+        // The two M3-02b lists are empty because nothing ships in Data/ until M3-12 (rule 7), and
+        // empty is what BootScope.prefab carries too — so this container is exactly the shipped one.
         BootInstaller.Install(
-            builder, new[] { LoadOathbound() }, new[] { LoadHusk() }, new[] { LoadDescent() });
+            builder,
+            new[] { LoadOathbound() },
+            new[] { LoadHusk() },
+            new[] { LoadDescent() },
+            Array.Empty<SkillDefinition>(),
+            Array.Empty<SkillTreeDefinition>(),
+            EmptyTable());
+
         return Track(builder.Build());
     }
 
@@ -526,4 +619,92 @@ public sealed class InstallerTests
         serialized.FindProperty(field).floatValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
+
+    /// <summary>
+    /// A throwaway effect asset, so the nodes below carry something rather than being refused as
+    /// nodes that change nothing.
+    /// </summary>
+    /// <remarks>
+    /// The conversion rules for all four M3-02b types are <c>SkillAuthoringTests</c>'. These three
+    /// helpers build only what this fixture's one row needs — a boot list with something in it.
+    /// </remarks>
+    private ModifyStatDefinition NewEffect(string assetName)
+    {
+        var effect = ScriptableObject.CreateInstance<ModifyStatDefinition>();
+        effect.name = assetName;
+        _created.Add(effect);
+
+        var serialized = new SerializedObject(effect);
+        serialized.FindProperty("_value").floatValue = 0.1f;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return effect;
+    }
+
+    private SkillDefinition NewSkill(string assetName, string id, ModifyStatDefinition effect)
+    {
+        var skill = ScriptableObject.CreateInstance<SkillDefinition>();
+        skill.name = assetName;
+        _created.Add(skill);
+
+        var serialized = new SerializedObject(skill);
+        serialized.FindProperty("_id").stringValue = id;
+        serialized.FindProperty("_nameKey").stringValue = $"{id}.name";
+        serialized.FindProperty("_descriptionKey").stringValue = $"{id}.description";
+
+        SerializedProperty effects = serialized.FindProperty("_effects");
+        effects.arraySize = 1;
+        effects.GetArrayElementAtIndex(0).objectReferenceValue = effect;
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return skill;
+    }
+
+    /// <summary>
+    /// A tree of three one-node branches pointed at the shipped Oathbound — the smallest shape
+    /// <c>SkillTreeSpec</c> accepts.
+    /// </summary>
+    private SkillTreeDefinition NewTree(
+        string assetName,
+        string id,
+        params SkillDefinition[] nodes)
+    {
+        var tree = ScriptableObject.CreateInstance<SkillTreeDefinition>();
+        tree.name = assetName;
+        _created.Add(tree);
+
+        var serialized = new SerializedObject(tree);
+        serialized.FindProperty("_id").stringValue = id;
+        serialized.FindProperty("_character").objectReferenceValue = LoadOathbound();
+
+        SerializedProperty branches = serialized.FindProperty("_branches");
+        branches.arraySize = nodes.Length;
+
+        for (int b = 0; b < nodes.Length; b++)
+        {
+            SerializedProperty branch = branches.GetArrayElementAtIndex(b);
+            branch.FindPropertyRelative("_nameKey").stringValue = $"{id}.branch{b}";
+
+            SerializedProperty tiers = branch.FindPropertyRelative("_tiers");
+            tiers.arraySize = 1;
+
+            SerializedProperty tierNodes = tiers.GetArrayElementAtIndex(0)
+                .FindPropertyRelative("_nodes");
+            tierNodes.arraySize = 1;
+            tierNodes.GetArrayElementAtIndex(0).objectReferenceValue = nodes[b];
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return tree;
+    }
+
+    /// <summary>
+    /// A localisation table for a container build. Empty, because nothing in these rows reads a
+    /// word — what they assert is that <c>BootInstaller</c> takes one and registers the port.
+    /// </summary>
+    private static LocalizationTable EmptyTable() =>
+        ScriptableObject.CreateInstance<LocalizationTable>();
+
 }

@@ -28,6 +28,10 @@ public sealed class EnemyDefinitionTests
 {
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
 
+    /// <summary>The other two shipped archetypes, for the one row that checks all three.</summary>
+    private const string SpitterPath = "Assets/_Project/Data/Enemies/Spitter.asset";
+    private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
+
     /// <summary>
     /// Tight enough that no two of the Husk's numbers could satisfy each other's assertion,
     /// loose enough to survive Unity writing a float back as decimal text.
@@ -141,6 +145,35 @@ public sealed class EnemyDefinitionTests
             "Reserialising Husk.asset changed it, which means at least one of its YAML keys " +
             "matches no field on EnemyDefinition and was dropped. Compare the two and fix the " +
             "name — a dropped key reads as a field quietly holding its C# initialiser.");
+    }
+
+    [Test]
+    public void Enemy_ShippedXpIsThreeTimesCost()
+    {
+        // **The convention, pinned where it is authored rather than where it is spent.** Nothing in
+        // the code enforces XP = 3 × threat cost — EnemySpec does not read one from the other, and
+        // an archetype worth more or less than its price is deliberately free to say so. What the
+        // ratio buys is the property M3-01a's arithmetic rests on: a stage's experience is a
+        // function of its *budget* alone, 3 · B(n) less whatever the composer could not spend,
+        // whatever mix of archetypes the seed drew. Pacing therefore cannot be rerolled by killing
+        // the app, and XpCurveTests' two pacing rows need no composer to be true.
+        //
+        // So this row is the guard on all three shipped assets at once: the day somebody authors
+        // the fourth archetype off the convention, this is what says so — and the answer may
+        // legitimately be to change this row, with the pacing arithmetic re-checked beside it.
+        foreach (string path in new[] { HuskPath, SpitterPath, BloaterPath })
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path);
+
+            Assert.That(definition, Is.Not.Null, $"No EnemyDefinition at {path}.");
+
+            EnemySpec spec = definition.ToSpec();
+
+            Assert.That(
+                spec.XpValue,
+                Is.EqualTo(3f * spec.ThreatCost),
+                $"{path} is off the 3× convention: {spec.ThreatCost} threat, {spec.XpValue} XP.");
+        }
     }
 
     [Test]

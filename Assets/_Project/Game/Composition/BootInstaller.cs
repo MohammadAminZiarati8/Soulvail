@@ -110,6 +110,27 @@ public static class BootInstaller
     /// catalog with no modes cannot start any run at all, because resolving the mode is the
     /// first thing <c>RunSession.Start</c> does.
     /// </param>
+    /// <param name="skills">
+    /// Every authored tree node — the assets in <c>Data/Skills/</c>, which is none of them until
+    /// M3-12. Required for the reason <paramref name="enemies"/> is: a call site that could omit
+    /// its skills would produce a catalog whose only symptom is a level-up screen with nothing on
+    /// it, which reads as a broken offer rather than as missing content. An empty list is how a
+    /// boot list with no skills says so out loud, and it is a legal boot until M3-12.
+    /// </param>
+    /// <param name="trees">
+    /// Every authored skill tree, converted the same way and required for the same reason.
+    /// <b>Neither list resolves the other here:</b> a tree carries node ids and the catalog is
+    /// built from both at once, so a tier naming a node this list does not hold is
+    /// <c>TreeRules</c>' check at <c>Start</c> (M3-03) and M3-14b's over every shipped asset.
+    /// </param>
+    /// <param name="localization">
+    /// The one language — <c>Data/Localisation/English.asset</c> (M3-14a rule 4). Converted
+    /// immediately by <see cref="TableLocalizer"/>, so a duplicate or an unusable key is a loud
+    /// failure at boot naming the asset rather than a missing word on a screen three scenes later.
+    /// <b>Required rather than optional, and registered at the root rather than per run:</b> the
+    /// Menu needs it as much as a run does (rule 8), and a localizer that existed only during a run
+    /// is exactly how <em>"Descend"</em> would have stayed English for another three milestones.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
     /// A definition is an empty slot, or is not valid content. Thrown from here rather than
@@ -120,7 +141,10 @@ public static class BootInstaller
         IContainerBuilder builder,
         IReadOnlyList<CharacterDefinition> characters,
         IReadOnlyList<EnemyDefinition> enemies,
-        IReadOnlyList<ModeDefinition> modes)
+        IReadOnlyList<ModeDefinition> modes,
+        IReadOnlyList<SkillDefinition> skills,
+        IReadOnlyList<SkillTreeDefinition> trees,
+        LocalizationTable localization)
     {
         if (builder is null)
         {
@@ -142,13 +166,38 @@ public static class BootInstaller
             throw new ArgumentNullException(nameof(modes));
         }
 
+        if (skills is null)
+        {
+            throw new ArgumentNullException(nameof(skills));
+        }
+
+        if (trees is null)
+        {
+            throw new ArgumentNullException(nameof(trees));
+        }
+
+        // Unity's operator rather than `is null`, because a ScriptableObject field left empty in the
+        // Inspector is a live reference only Unity calls null — Convert's cast, for its reason. The
+        // message names the *field* rather than the parameter: what the reader has to go and drag
+        // something onto is a slot on a prefab, and "localization is null" points at the wrong file.
+        if (localization == null)
+        {
+            throw new ArgumentNullException(
+                nameof(localization),
+                "BootScope's Localization field is empty, so every screen in the game would draw "
+                    + "its own LocKey — a card reading 'skill.oathbound.consecrate.name'. Drop "
+                    + "Data/Localisation/English.asset onto it.");
+        }
+
         EnemySpec[] enemySpecs = Convert(
             enemies, definition => definition.ToSpec(), "enemy", nameof(enemies));
 
         builder.RegisterInstance(new ContentCatalog(
             Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
             enemySpecs,
-            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes))));
+            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
+            Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills)),
+            Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees))));
 
         // After the catalog and not before, so a pair of definitions sharing an id is reported by
         // ContentCatalog — which is the message that names the failure people already know how to
@@ -193,12 +242,31 @@ public static class BootInstaller
         builder.Register<ISaveStore>(
             _ => new LocalJsonSaveStore(Application.persistentDataPath), Lifetime.Singleton);
 
+        // The live profile, at the root and singleton, and the only writer of one (M3-09c rules 3
+        // and 4). Here rather than in RunScope because a profile outlives a run by definition and
+        // the one-time hint is spent *during* one — a store rebuilt per run would forget the write
+        // between the level-up that spent it and the boundary that saved it. It reads nothing at
+        // construction: BootFlow loads the profile once and hands it over through Adopt.
+        builder.Register<ProfileStore>(Lifetime.Singleton);
+
         // A factory rather than a plain type registration, so the choice between "persisted" and
         // "in memory" is made out loud — the class has no public constructor, exactly so that it
-        // has to be (M1-20). The value it starts at is GD §16.3's default; BootFlow loads the
-        // profile and hands the stored one over before the Menu appears (M2-13b rule 9).
+        // has to be (M1-20). **Over ProfileStore rather than ISaveStore as of M3-09c**: the profile
+        // has two fields now, and a feature that writes the store directly authors the whole struct
+        // from the one field it knows (rule 3). The value it starts at is GD §16.3's default;
+        // BootFlow hands the stored profile to the store above before the Menu appears.
         builder.Register<HapticsSettings>(
-            resolver => HapticsSettings.FromStore(resolver.Resolve<ISaveStore>()), Lifetime.Singleton);
+            resolver => HapticsSettings.FromStore(resolver.Resolve<ProfileStore>()),
+            Lifetime.Singleton);
+
+        // The language, at the root and registered only as the port, so nothing can depend on the
+        // concrete adapter — the ISaveStore precedent above. **Built here and not deferred to the
+        // first resolve**, which is the catalog's bargain rather than the save store's: a duplicate
+        // key is then a loud failure at boot naming the asset, where a factory would surface it on
+        // whichever screen happened to ask for a word first. An instance registration is a singleton
+        // by construction. It is content read at boot like every other Data/ asset, so it bumps no
+        // save format and PlayerProfile stays at M3-09c's v2 (rule 4).
+        builder.RegisterInstance<ILocalizer>(new TableLocalizer(localization));
     }
 
     /// <summary>

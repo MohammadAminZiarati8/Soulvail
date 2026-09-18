@@ -1147,6 +1147,7 @@ public sealed class BloaterBehaviourTests
         moveSpeed: MoveSpeed,
         targetPriority: 2,
         threatCost: 8,
+        xpValue: 24f,
         isElite: false,
         contactDamage: ContactDamage,
         reach: Reach,
@@ -1174,6 +1175,7 @@ public sealed class BloaterBehaviourTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -1190,6 +1192,7 @@ public sealed class BloaterBehaviourTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>

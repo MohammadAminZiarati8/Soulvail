@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Soulvail.Core.Combat;
 
 /// <summary>
@@ -30,13 +32,15 @@ namespace Soulvail.Core.Combat;
 /// stop Unity components leaking their innards — there is no component within reach of this type.
 /// </para>
 /// <para>
-/// <b>Two fields are placeholders, on purpose.</b> <see cref="Veilrot"/> and
-/// <see cref="IncomingProjectiles"/> are zero until M6-04 and M2-07 respectively, and
-/// <see cref="PlayerCombat"/> deliberately does not touch them — a field written to zero every
-/// tick by something that does not know the answer is worse than one that is honestly untouched,
-/// because the first cannot be filled in by the system that eventually learns it. They are here
-/// now because AR §9 names them and because a skill authored against a blackboard that lacks them
-/// would have to be re-authored.
+/// <b>One field is a placeholder, on purpose.</b> <see cref="Veilrot"/> is zero until M6-04, and
+/// <see cref="PlayerCombat"/> deliberately does not touch it — a field written to zero every tick
+/// by something that does not know the answer is worse than one that is honestly untouched,
+/// because the first cannot be filled in by the system that eventually learns it. It is here now
+/// because AR §9 names it and because a skill authored against a blackboard that lacks it would
+/// have to be re-authored. <b><see cref="IncomingProjectiles"/> was the second until M2-07
+/// shipped</b>: <c>ProjectileSystem.Tick</c> has written it since, at the end of its own step, so
+/// a trigger reading it sees the sky as it was *before* this tick's arrivals were resolved — which
+/// is deliberately one step old, and is the mechanic rather than a lag to fix (M3-06 rule 7).
 /// </para>
 /// </remarks>
 public sealed class CombatBlackboard
@@ -122,10 +126,41 @@ public sealed class CombatBlackboard
     public float Veilrot;
 
     /// <summary>
-    /// Enemy projectiles currently inbound — CC §6.4's Bulwark trigger. Zero until M2-07 gives
-    /// something the means to fire one.
+    /// Enemy projectiles currently inbound — CC §6.4's Bulwark trigger.
     /// </summary>
+    /// <remarks>
+    /// Written by <c>ProjectileSystem.Tick</c> and nowhere else, after that step's landings, so it
+    /// is the count of bolts still in the air rather than the count that just hit. M3-06's runner
+    /// ticks <em>above</em> the projectile step and therefore reads it one step old on purpose: a
+    /// shield raised before the bolt lands is exactly what CC §6.4's Bulwark means by <em>"an enemy
+    /// projectile is inbound"</em>, and reading it below that step would describe the sky after the
+    /// wound.
+    /// </remarks>
     public int IncomingProjectiles;
+
+    /// <summary>
+    /// Where the body last reported the player to be, in world metres — the same value
+    /// <c>RunState.PlayerPosition</c> holds and <c>WorldSnapshot.PlayerPosition</c> brought in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Not a question a trigger asks, and it is here anyway</b> (M3-11b rule 2). Every other field
+    /// is something CC §6.4 lets a designer compare against a threshold, and <c>TriggerField</c>
+    /// deliberately gains no member for this one: a position is not a number anything is above or
+    /// below. What it is here for is <c>ZoneSystem</c>, which has to place a zone <em>at the moment of
+    /// the cast</em> — inside <c>IEffectHandler&lt;T&gt;.Apply</c>, which is called from the skills
+    /// step rather than from any <c>Tick</c> of its own, so no tick parameter reaches it and a cached
+    /// copy would be a frame stale.
+    /// </para>
+    /// <para>
+    /// The blackboard is the right holder for the reason it holds the rest: one writer, many readers
+    /// (ADR-0005), filled once a tick before the runner is asked anything, so what a cast reads is
+    /// this frame's position. It is a second surface of a fact <c>RunState</c> also exposes rather
+    /// than a second source of it — both are copied from the same snapshot field, in the same tick,
+    /// and neither decides anything.
+    /// </para>
+    /// </remarks>
+    public Vector3 PlayerPosition;
 
     /// <summary>
     /// Back to a blank blackboard: every field to its default, and no target rather than enemy
@@ -152,5 +187,6 @@ public sealed class CombatBlackboard
         StationaryTime = 0f;
         Veilrot = 0f;
         IncomingProjectiles = 0;
+        PlayerPosition = Vector3.Zero;
     }
 }

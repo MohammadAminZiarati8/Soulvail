@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: Retribution
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.oathbound.retribution
+  _nameKey: skill.oathbound.retribution.name
+  _descriptionKey: skill.oathbound.retribution.description
+  _kind: 0
+  _effects:
+  - {fileID: 11400000, guid: e4fdb62b8d8a4b646ab8343402f2c67e, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 0}

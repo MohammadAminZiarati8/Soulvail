@@ -1,7 +1,7 @@
 # Soulvail — Characters and Skills
 
-**Version:** 0.2 — *in-run skill trees*
-**Date:** 2026-09-06
+**Version:** 0.3 — *in-run skill trees, and the second class*
+**Date:** 2026-09-13
 **Companion to:** [GameDesign.md](GameDesign.md) — read §5 (controls), §10 (Veilrot), and §12 (difficulty) first.
 
 ---
@@ -21,6 +21,8 @@ This is strictly better here, and it collapses three problems at once:
 | **Anchors** (§14.3) existed only to paper over that fatigue | **Cut entirely.** A whole system removed from scope. |
 
 Meta-progression shrinks to one job: **unlocking characters**. That's a significant scope reduction, and it makes the game more of a roguelite rather than less.
+
+**v0.3 changed one thing on top of that:** halfway through the tree, a run picks up **one branch of a second unlocked class** (§5.4). It adds no nodes — it multiplies the ones v0.2 already scoped — and it gives the unlocks above something to be worth.
 
 ---
 
@@ -186,26 +188,42 @@ Identical skeleton for every class, so the UI is built once and content varies.
 
 ```
         BRANCH A            BRANCH B            BRANCH C
-  T1  ┌─◇─┐               ┌─◇─┐               ┌─◇─┐
-  T2  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T3  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T4  ├─◇─┤               ├─◇─┤               ├─◇─┤       ◇ = node
-  T5  ├─◇─┤               ├─◇─┤               ├─◇─┤       ★ = keystone
-  T6  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T7  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T8  └─★─┘               └─★─┘               └─★─┘
+  T1  ┌─◇ ◇─┐             ┌─◇ ◇─┐             ┌─◇ ◇─┐
+  T2  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤      ◇ = node
+  T3  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤      ★ = keystone
+  T4  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤
+  T5  └──★──┘             └──★──┘             └──★──┘
 ```
+
+**Two nodes a tier, four tiers, then the Keystone alone: 9 a branch, 27 a class.** The earlier drawing here
+showed eight tiers of one node, which is 24 — it disagreed with the *Total nodes* row directly beneath it
+for two milestones. Corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) against the shape ruled at
+M3-00a and shipped by [M3-02a](plan/tasks/M3-02a-skill-specs.md) rule 7, which is what `SkillTreeSpec` has
+enforced since it was written. **M3's v1 tree is a subset of this, not a different shape**: three branches ×
+two tiers × two nodes = twelve, no Keystones ([M3-12c](plan/tasks/M3-12c-oathbound-tree-v1.md)).
 
 | Rule | Value |
 |---|---|
 | Branches | 3 per class |
-| Nodes per branch | 8 (7 + 1 Keystone) |
+| Nodes per branch | **9 (8 + 1 Keystone)** — four tiers of two, then the Keystone alone |
 | **Total nodes** | **27** |
 | Cost | 1 level = 1 node. No point economy, no partial saving. |
 | Branch gating | Tier *N* requires *N−1* nodes already taken in that branch |
-| Keystone | Requires all 7 preceding nodes in its branch |
+| Keystone | Requires all **8** preceding nodes in its branch |
 
-**A deep run reaches roughly level 30**, so a great run *nearly* completes the tree and a typical run gets maybe half. Reaching a Keystone requires committing 8 of your ~30 picks to one branch — expensive enough to be a real decision, reachable enough that it happens most runs.
+**A deep run reaches roughly level 42 by stage 30 and level 50 by stage 35** — measured at
+[M3-15](plan/tasks/M3-15-acceptance-and-tag.md), not estimated. So a deep run **completes** the tree
+(27 picks, filled around stage 21) and spends everything after that on Overflow; a stage-15 run gets
+twenty picks, which is about three-quarters of it. Reaching a Keystone requires committing **9** of your
+picks to one branch — expensive enough to be a real decision, and reachable in any run that gets past
+stage 8.
+
+**This paragraph used to say "roughly level 30" and "8 of your ~30 picks", and both were wrong** — the
+first by twelve levels, the second by the same off-by-one as the table above. The design consequence is
+worth stating rather than quietly fixing: **the tree is not the scarce thing a deep run is choosing
+between.** Overflow is where more than half a stage-30 run's power comes from, so *"a great run nearly
+completes the tree"* stopped being true some time before anyone noticed. Whether that is the right shape is
+[§8](#8-open-questions)'s fourth open question, and M7-04 is the task that can move it.
 
 ### 5.1 The level-up screen
 
@@ -239,9 +257,23 @@ XP to reach level N  ≈  20 + 12·N^1.4
 | Around stage | Expected level | Level roughly every |
 |---|---|---|
 | 1–5 | 1–8 | 25–35 s |
-| 10 | ~13 | 45 s |
-| 20 | ~22 | 65 s |
-| 35 | ~30 | 90 s |
+| 10 | ~14 | 45 s |
+| 20 | **~27** | 65 s |
+| 35 | **~50** | 90 s |
+
+**These are measured, not intended** — corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) by
+running the shipped `XpCurve` against `Descent.asset`'s threat budget at the real `ToReach(Level + 1)`
+threshold. The exponent **stays at 1.4** and the table moved to meet it, which is the reverse of what the
+ROADMAP's parking lot expected: at stages 5 and 10 — the two depths M3-00d's checklist actually tests —
+1.4 was already right (**L8** and **L14** against *1–8* and *~13*). It is stages 20 and 35 where the
+original table was wishful. **Retuning to ≈1.6 was examined and rejected**, because it pushes a stage-15
+Husk from **4 hits to 5** — still inside [GD §12.4](GameDesign.md)'s band, but sitting on its ceiling
+with no headroom until M7-04 authors all twenty-seven nodes.
+
+**The tree fills at stage 9** on a twelve-node v1 tree (level 13), and at **stage 21** on a full 27-node one.
+Everything past that is Overflow, which by stage 30 is **29 levels** and more than half the damage a run has
+gained — the reason [M3's ledger row 1](plan/ROADMAP.md#carry-forward-into-m3) closes at 5 hits, and the
+thing M7-04 shifts back.
 
 Past the point where the tree is full, further levels grant **Overflow**: +2% damage and +2% max HP each, forever. Small, uncapped, and just enough that levelling never stops meaning something in an endless mode.
 
@@ -252,6 +284,31 @@ Past the point where the tree is full, further levels grant **Overflow**: +2% da
 Enemy scaling is quadratic ([GameDesign.md §12.1](GameDesign.md)); tree power must stay roughly linear so the curves cross and the run ends. If a full tree makes a player unkillable, the mode has no failure state and the entire difficulty design is decorative.
 
 Tune so that a **well-built level-30 character dies somewhere in stages 35–50**, matching the death horizon in §12.5.
+
+### 5.4 The second class
+
+Halfway through the tree, the run picks up a second discipline.
+
+> **When half your tree is taken, choose one branch of a second unlocked class.** You keep everything you already have; what changes is the pool the level-up draws from.
+
+| Rule | Value |
+|---|---|
+| **When** | The level-up at which **half the tree's nodes** are taken — level 7 against v1's twelve, level ~15 against the full twenty-seven |
+| **What you choose** | A second **unlocked** class, then **one of its three branches** |
+| **What you gain** | That branch's nodes enter your offer pool, gated by the same tier rule (§5) |
+| **What you do not gain** | Its weapon, its movement skill, its signature passive, its Veilrot relationship — **and its Keystone** |
+| **Reversible** | No. Locked for the run. |
+| **If you have unlocked nothing** | The moment does not happen. A player holding only the Oathbound never sees this screen. |
+
+**A fraction, not a fixed level, and the reason is arithmetic.** A twelve-node tree fills at level 13 and a twenty-seven-node one at level 28 (§5.2), so any constant is wrong at one of the two scales — "level 10" would land three picks from the end of the v1 tree and barely a third of the way into the full one. Half the tree is the same beat at every content size, which means **the moment can be playtested at v1 and still be correct at eighty-one nodes.**
+
+**One branch, not the whole tree, because of the pick budget.** A deep run is about 30 levels against 27 nodes, which is what makes §5's *"a great run nearly completes the tree"* true. A second *full* tree would put 54 nodes in front of 30 picks and turn near-completion into a third of two trees. One branch minus its Keystone is 7, so a deep run chooses among **34** — still nearly completable, now with a real question about where the last picks go.
+
+**No Keystone from the second class.** A Keystone is the most build-defining node a class has, and a splashed one would speak louder than the primary it is bolted to. It is also frequently nonsense on its face: **Rot Bloom** (§3.2) rewrites a Veilrot relationship the Oathbound does not have.
+
+**The choice is mandatory.** An offer you may decline is an offer most players decline, and the point of the beat is that the run visibly becomes something. There is no "stay pure" option and no compensating bonus for refusing one.
+
+**It costs no new content, and that is the whole argument for it.** Three classes give **18 pairings** — primary × second class × branch — out of nodes that had to exist anyway. That is the cheapest variety in the game, and it is why this is worth building before a fourth class rather than after one.
 
 ---
 
@@ -271,6 +328,8 @@ Shards = 10·(deepest stage) + 50·(bosses killed) + 25·(new archetype first en
 
 Two paths to every class — **pay, or prove.** Grinders and skilled players both get there and neither route is the "wrong" one.
 
+**An unlock is worth more than a class.** §5.4's second-class pick draws only from what you own, so the Gravecaller arrives as three new mid-run branches for the Oathbound *and* three Oathbound branches for itself — **six new pairings for one purchase**, on top of the class. The second unlock is worth more than the first for the same reason, which is the right shape for a store and the right shape for an achievement.
+
 **There is no permanent power progression.** No meta stats, no permanent upgrades, no account level. Every run starts from the same baseline, and the only thing that carries across runs is *which classes you can pick* and what you personally have learned. This is a deliberate stance: it keeps leaderboards meaningful, keeps difficulty tuning tractable against a fixed baseline, and means a returning player is never behind.
 
 If retention data later demands a permanent layer, add it as **cosmetics and classes**, not power.
@@ -289,6 +348,8 @@ Merging cards into the tree and cutting Anchors makes this **smaller** than v0.1
 | Anchors | Yes | **Cut** |
 | Meta systems | XP, levels, skill points, respec, meta tree UI | **Class unlocks only** |
 | Total content units | ~110 | **~81** |
+
+**v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen and a wider draw, both in **M5-07a**.
 
 ### 7.1 Build order — one class, all the way through
 

@@ -1,4 +1,6 @@
 using System;
+using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Save;
 
@@ -15,12 +17,28 @@ namespace Soulvail.Core.Save;
 /// <c>Migrations_HoldsNoState</c> is what keeps that true rather than remembered.
 /// </para>
 /// <para>
-/// <b>At v1 the chain is empty and the chain test is why this file ships now.</b> There is nothing
-/// to migrate — the gate admits exactly one version and both <c>Migrate</c> methods are the
-/// identity — so what exists here is the shape and the assertion around it. The day someone bumps
-/// a <c>CurrentVersion</c> to 2 without writing a step,
-/// <c>Chain_IsUnbrokenFromOldestToCurrent</c> fails, which is the only mechanism in the project
-/// that makes AR §11.6's promise self-enforcing.
+/// <b>The run chain has two steps, and M3-07b is the first time more than one of them ran on one
+/// document.</b> It shipped at v1 with nothing to migrate, on the strength of
+/// <c>Chain_IsUnbrokenFromOldestToCurrent</c> — the row that fails the day a
+/// <c>CurrentVersion</c> is bumped without a step being written, and the only mechanism in the
+/// project that makes AR §11.6's promise self-enforcing rather than remembered. It is also the trap
+/// ledger row 2 exists for: <b>a field and its step must ship in one PR</b>, because a PR with only
+/// the field merges green — a v1 file still decodes.
+/// </para>
+/// <para>
+/// <b>The profile chain has one step, and M3-09c is the first time it ran at all.</b>
+/// <see cref="MigrateProfile"/> was the identity from M2-13b until v2, on the strength of the same
+/// self-enforcing row — and <b>the two formats version independently</b>, so a profile that gains a
+/// field leaves <see cref="RunSnapshot.CurrentVersion"/> at 3 and touches no run on any device
+/// (M2-13b, M3-09c rule 2).
+/// </para>
+/// <para>
+/// <b>The steps run in order and each rebuilds at its own version</b>, which is what lets a v1
+/// document walk through both and arrive at v3 rather than at v2 with a v3 number on it. Each step
+/// reads <c>current</c> — never <c>decoded</c> — so the second is handed what the first produced;
+/// that is the single line of discipline the whole chain rests on, and
+/// <c>Migrate_V1_RunsBothStepsInOrder</c> is the row that notices if a later step is ever written
+/// against the original instead.
 /// </para>
 /// <para>
 /// <b>The signature takes and returns the current DTO</b>, so a future version that only
@@ -88,9 +106,65 @@ public static class SaveMigrations
                 "before migrating.");
         }
 
-        // v1 is the current version, so there is no step to run. Each later version adds one
-        // `if (version < n) { ... }` here, in order, and a fixture test beside it.
-        return decoded;
+        RunSnapshot current = decoded;
+
+        // **v1 → v2: a run that was unlevelled by construction.** v1 had no level, no experience,
+        // no picks owed and no tree, so its v2 form is the opening state of a run: level 1 and
+        // nothing earned. Written unconditionally rather than from what the adapter decoded — a v1
+        // document that somehow carried a level is still a v1 document, and gets v1's meaning
+        // (M3-01b rule 3). Every v1 field is kept exactly as it was read.
+        //
+        // Each later version adds one `if (version < n) { ... }` below this, in order, rebuilding
+        // at n so the next step is handed the shape it expects — and a fixture test beside it.
+        if (version < 2)
+        {
+            current = new RunSnapshot(
+                2,
+                current.ModeId,
+                current.CharacterId,
+                current.Seed,
+                current.StageIndex,
+                current.Random,
+                current.PlayerHp,
+                current.PlayerShield,
+                current.RunTime,
+                current.WrittenAt,
+                level: 1,
+                xp: 0f,
+                pendingLevelUps: 0,
+                Array.Empty<ContentId>(),
+                new ContentId[SkillRunner.MaxManualSlots]);
+        }
+
+        // **v2 → v3: a run that had no loadout by construction.** v2 had no Auto/Manual state at
+        // all, so its v3 form is four empty slots — every skill on Auto, which is also CC §6.1's
+        // default. That is what makes a migrated run indistinguishable from a fresh one on this
+        // axis and needs no special case anywhere above the DTO. Written unconditionally rather
+        // than from what the adapter decoded, for the step above's reason (M3-01b rule 3): a v2
+        // document that somehow carried slots is still a v2 document. Every v2 field is kept as it
+        // was read — including the four v1 → v2 wrote a moment ago, which is what makes this the
+        // first chain in the project that actually runs two steps in sequence.
+        if (version < 3)
+        {
+            current = new RunSnapshot(
+                3,
+                current.ModeId,
+                current.CharacterId,
+                current.Seed,
+                current.StageIndex,
+                current.Random,
+                current.PlayerHp,
+                current.PlayerShield,
+                current.RunTime,
+                current.WrittenAt,
+                current.Level,
+                current.Xp,
+                current.PendingLevelUps,
+                current.TakenNodeIds,
+                new ContentId[SkillRunner.MaxManualSlots]);
+        }
+
+        return current;
     }
 
     /// <summary>
@@ -112,6 +186,23 @@ public static class SaveMigrations
                 "CanReadProfile before migrating.");
         }
 
-        return decoded;
+        PlayerProfile current = decoded;
+
+        // **v1 → v2: a player who has not seen the hint.** A v1 profile was written by a build with
+        // no skills in it at all, so there was no first Active to be told about and the callout
+        // cannot have been shown — `seenFirstActiveHint: false` is not a default standing in for an
+        // unknown, it is the truth about that player. Written unconditionally rather than from what
+        // the adapter decoded, for the run chain's reason (M3-01b rule 3): a v1 document that
+        // somehow carried the flag is still a v1 document. `hapticsEnabled` is kept exactly as it
+        // was read, because that one *is* something the player chose.
+        //
+        // Each later version adds one `if (version < n) { ... }` below this, in order, rebuilding at
+        // n so the next step is handed the shape it expects — and a fixture test beside it.
+        if (version < 2)
+        {
+            current = new PlayerProfile(2, current.HapticsEnabled, seenFirstActiveHint: false);
+        }
+
+        return current;
     }
 }

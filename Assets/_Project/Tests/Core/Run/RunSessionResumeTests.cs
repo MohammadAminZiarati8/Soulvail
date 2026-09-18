@@ -2,12 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Run;
 
@@ -65,6 +68,63 @@ public sealed class RunSessionResumeTests
     private const float SavedShield = 9f;
 
     private const float SavedRunTime = 412.5f;
+
+    /// <summary>
+    /// What a levelled save carries, and none of it is the value a fresh run has. Level 4 rather
+    /// than 2 and one pick owed rather than none, so a restore that was quietly deleted would show
+    /// up as a wrong number rather than as a plausible one.
+    /// </summary>
+    /// <remarks>
+    /// 30 experience is comfortably inside level 4's bar — <c>Scalings.Xp()</c> charges
+    /// 20 + 12·5^1.4 ≈ 134 to reach level 5 — so these rows test the restore rather than the settle.
+    /// <c>Start_RestoreSettlesAnOverfullBar</c> is the row that goes the other way on purpose.
+    /// </remarks>
+    private const int SavedLevel = 4;
+    private const float SavedXp = 30f;
+    private const int SavedPending = 1;
+
+    /// <summary>
+    /// The tree the node rows turn on: five positions, three of them sharing branch 0's only tier
+    /// so that any order of those three is one the gating allows.
+    /// </summary>
+    private const string TreeIdValue = "tree.oathbound";
+    private const string NodeMaxHp = "skill.test.bulwark";
+    private const string NodeDamage = "skill.test.vow";
+    private const string NodeSpare = "skill.test.spare";
+    private const string NodeB = "skill.test.b";
+
+    /// <summary>The one Active, for M3-06's rows. Not in <see cref="Tree"/> — see BuildWithActiveTree.</summary>
+    private const string NodeActive = "skill.test.active";
+
+    /// <summary>
+    /// Its cooldown, ten minutes rather than a plausible eight seconds.
+    /// </summary>
+    /// <remarks>
+    /// <c>ClearTheStage</c> plays a whole stage out and may tick for two and a half simulated
+    /// minutes, so an eight-second skill whose trigger always holds would fire twenty times on the
+    /// way and <c>Session_BoundaryLeavesCooldownsRunning</c> would be counting them instead of
+    /// asking whether the boundary reset the clock. The long wait is what makes "still cooling on
+    /// the other side of the door" a claim about the boundary.
+    /// </remarks>
+    private const float ActiveCooldown = 600f;
+
+    private const string NodeC = "skill.test.c";
+
+    /// <summary>
+    /// The class the tree rows play, at 140 rather than <see cref="MaxHp"/>: the ordering row needs
+    /// a saved hit-point value that is above the class's own maximum and below the modified one, and
+    /// 150 of 160 against 140 is the clearest arithmetic for that.
+    /// </summary>
+    private const float TreeMaxHp = 140f;
+
+    /// <summary>What the one max-HP node adds. Twenty, so 140 becomes 160.</summary>
+    private const float MaxHpNodeBonus = 20f;
+
+    /// <summary>
+    /// Hit points a run was saved with that only a modified maximum can hold. Above
+    /// <see cref="TreeMaxHp"/> on purpose — that is the whole of the ordering row.
+    /// </summary>
+    private const float SavedHpAboveBaseMax = 150f;
 
     private const float Frame = 1f / 60f;
 
@@ -136,6 +196,616 @@ public sealed class RunSessionResumeTests
     }
 
     [Test]
+    public void Start_RestoresLevelXpPending()
+    {
+        Build(seed: 7);
+
+        StartResumed(stage: 4);
+
+        // The three reads a HUD and a level-up flow start from. Absolute experience, not the
+        // fraction: XpToNext moves with the level and with the mode's curve, so a fraction cannot
+        // be restored without the maximum that produced it (rule 8).
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel));
+        Assert.That(_session.State.Xp, Is.EqualTo(SavedXp));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(SavedPending));
+
+        // The fixture's own claim, checked out loud: a fresh run is level 1 with nothing owed, so
+        // if the saved values were those this row would pass with the restore deleted.
+        Assert.That(SavedLevel, Is.Not.EqualTo(1));
+        Assert.That(SavedPending, Is.Not.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_RestoreSettlesAnOverfullBar()
+    {
+        Build(seed: 7);
+
+        _events.Clear();
+
+        // Far past the bar. The case is not hypothetical: CH §5.2's exponent is flagged for a
+        // retune at M3-15, and a curve that got cheaper between builds would leave a legal save
+        // sitting above its own threshold — levelling only when the next kill happened to push it
+        // over, which is a run that is silently one or more picks poorer than it earned.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 2, xp: 10_000f, pendingLevelUps: 0));
+
+        Assert.That(_session.State.Level, Is.GreaterThan(2), "The thresholds the saved XP pays for are crossed.");
+        Assert.That(_session.State.PendingLevelUps, Is.GreaterThan(0), "And each one banks a pick.");
+
+        // Settled, not merely climbed: what is left is inside the new level's bar.
+        Assert.That(_session.State.XpFraction, Is.LessThan(1f));
+
+        // **Silently.** Nothing may publish before RunStarted — a LeveledUp raised here would put a
+        // level-up screen in front of a player for a level they earned in a previous session, and
+        // an XpChanged would reach a bar that RunStarted has not drawn yet (rule 7).
+        Assert.That(_events.Count<LeveledUp>(), Is.EqualTo(0));
+        Assert.That(_events.Count<XpChanged>(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_RestoresTakenNodes()
+    {
+        BuildWithTree(seed: 7);
+
+        // Both at branch 0's only tier, so either order is one the gating allows and this row is
+        // about the restore rather than about the order.
+        var taken = new[] { new ContentId(NodeMaxHp), new ContentId(NodeDamage) };
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, takenNodeIds: taken));
+
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(2));
+        Assert.That(_session.State.TakenNodeIds, Is.EqualTo(taken), "In take order, which is what the list means.");
+        Assert.That(_session.State.IsTreeFull, Is.False, "Two of five.");
+
+        // **And their effects are on**, which is the half that matters: without it every passive in
+        // a save would be silently forgotten, and the run would come back weaker than the one that
+        // was interrupted with no symptom anywhere.
+        //
+        // Max HP rather than weapon damage, because `RunState` has a read for one and not the other
+        // — see this task's *As built*. The arithmetic is the class's 140 plus the node's 20.
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerMaxHp,
+            Is.Not.EqualTo(TreeMaxHp),
+            "The fixture's own claim: if the node moved nothing, this row would pass with the "
+                + "restore deleted.");
+    }
+
+    // ---- M3-06: the runner a resumed run comes back with -----------------------------------------
+
+    [Test]
+    public void Session_RestoreAddsTheTakenActives()
+    {
+        // **M3-06 rule 5.** Core pushes a skill into the runner and the runner subscribes to
+        // nothing, so a resumed run's actives arrive here — `Start` walking `TakenIds` in take order
+        // after `SkillTree.Restore` has replayed it. One of the two nodes is an Active and the other
+        // is not, so a loop that added everything would answer 2.
+        BuildWithActiveTree(seed: 7);
+
+        var taken = new[] { new ContentId(NodeActive), new ContentId(NodeDamage) };
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, takenNodeIds: taken));
+
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(2), "Both nodes came back.");
+        Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "And exactly one of them fires.");
+
+        Assert.That(_session.State.SkillIdAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.IsSkillReady(0), Is.True, "A resumed skill is off cooldown.");
+        Assert.That(_session.State.SkillCooldownFraction(0), Is.EqualTo(0f));
+
+        // **Silently**, like every other restore: nothing may publish before `RunStarted`, and a
+        // `SkillCast` raised here would announce as news a skill nobody fired.
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(0));
+    }
+
+    // ---- v3: the loadout comes back (M3-07b rules 6, 7) -----------------------------------------
+
+    [Test]
+    public void Start_RestoresTheSlots()
+    {
+        BuildWithActiveTree(seed: 7, actives: 3);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+
+            // Three nodes taken and one pick still owed needs level 5 to add up (M3-08a rule 9):
+            // 5 − 1 − 3 − 1 = 0 Overflow. The fixture's default level 4 describes a run that spent
+            // four picks having earned three, which RunSession.Start now refuses outright.
+            level: 5,
+            takenNodeIds: ThreeActives(),
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                new ContentId(NodeActive + ".2"),
+                default(ContentId),
+            }));
+
+        // **The hole in place.** A restore that compacted would put the third skill under the thumb
+        // that had learned the second — the silent re-bind M3-07a rule 3 refuses during a run and
+        // this rule refuses across a restart.
+        Assert.That(_session.State.ManualSlotAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(default(ContentId)));
+        Assert.That(_session.State.ManualSlotAt(2), Is.EqualTo(new ContentId(NodeActive + ".2")));
+        Assert.That(_session.State.ManualSlotAt(3), Is.EqualTo(default(ContentId)));
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(2));
+
+        // The flags moved with the table — the two restored skills are Manual, the third is still
+        // Auto. Written out because `_isAuto` and `_slots` are separate arrays and a restore that
+        // wrote one without the other would pass every assertion above and then let a Manual skill
+        // fire itself on the first tick.
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive)), Is.False);
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive + ".2")), Is.False);
+        Assert.That(_session.State.IsAutoCast(new ContentId(NodeActive + ".1")), Is.True);
+
+        // **Silently**, like every other restore in this block: nothing may publish before
+        // `RunStarted`, and a `SkillAutoCastChanged` raised here would announce as news a toggle
+        // the player did not touch — CC §6.3's screen would flash on a resume.
+        Assert.That(_events.Count<SkillAutoCastChanged>(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Start_RestoreDropsAnUnownedSlot()
+    {
+        BuildWithActiveTree(seed: 7, actives: 3);
+
+        // Only two of the three nodes come back, and the slot list names the third — a node this
+        // build no longer ships, a hand-edited file, or a tree that changed between builds. All
+        // three arrive here looking identical and none is worth refusing a save for.
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[]
+            {
+                new ContentId(NodeActive),
+                new ContentId(NodeActive + ".1"),
+            },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                new ContentId(NodeActive + ".2"),
+                new ContentId(NodeActive + ".1"),
+                default(ContentId),
+            }));
+
+        // **Deliberately unlike `SkillTree.Restore`, which throws for an unknown node** (M3-03 rule
+        // 5). A taken node *is* the run's power, so dropping one silently hands the player a weaker
+        // character than they saved; a slot is only where a button sits, and a missing button costs
+        // one visit to CC §6.3's screen.
+        Assert.That(_session.State.ManualSlotAt(0), Is.EqualTo(new ContentId(NodeActive)));
+        Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(default(ContentId)), "Dropped.");
+        Assert.That(_session.State.ManualSlotAt(2), Is.EqualTo(new ContentId(NodeActive + ".1")));
+
+        // The rest restored, and the run is running — the drop is not a failure.
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(2));
+        Assert.That(_session.IsRunning, Is.True);
+        Assert.That(_events.Count<RunStarted>(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Start_RestoredManualSkillDoesNotAutoCast()
+    {
+        // **The point of the field.** `ActiveNode`'s trigger is `HpFraction Below 1.5`, which holds
+        // on every tick of a healthy run — so this skill fires on the first tick unless something
+        // stops it, and the only thing that can is the Manual flag the restore put back.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[] { new ContentId(NodeActive) },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                default(ContentId),
+                default(ContentId),
+            }));
+
+        _events.Clear();
+
+        TickFor(1);
+
+        Assert.That(
+            _events.Count<SkillCast>(),
+            Is.EqualTo(0),
+            "A resumed Manual skill fired itself, which is the loadout not surviving the restart.");
+
+        // And it is ready rather than suppressed — the difference between "Manual" and "cooling".
+        Assert.That(_session.State.IsSkillReady(0), Is.True);
+    }
+
+    [Test]
+    public void Start_RestoresSlotsAfterTheRunnerKnowsTheActives()
+    {
+        // **The ordering row (rule 7, AR §18.1).** The slot restore sits *below* the loop that
+        // tells the runner about the restored Actives. Swap the two lines and this slot is empty:
+        // `SkillRunner.Restore` would be asked about a skill the runner had not been told about
+        // yet, which is indistinguishable from rule 6's stale id — so every slot would be dropped
+        // in silence and a resumed run would come back with no buttons and no error.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[] { new ContentId(NodeActive) },
+            manualSkillIds: new[]
+            {
+                new ContentId(NodeActive),
+                default(ContentId),
+                default(ContentId),
+                default(ContentId),
+            }));
+
+        Assert.That(
+            _session.State.ManualSlotAt(0),
+            Is.EqualTo(new ContentId(NodeActive)),
+            "The slot is empty if the restore runs above the loop that adds the actives.");
+
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Start_FreshRunHasFourEmptySlots()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        // The other half of the restore rows: a config with no snapshot inherits nothing, and CC
+        // §6.1's default is Auto — so a fresh run and a migrated v2 run are indistinguishable on
+        // this axis, which is what lets the v2 → v3 step need no special case above the DTO.
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(0));
+
+        for (int slot = 0; slot < SkillRunner.MaxManualSlots; slot++)
+        {
+            Assert.That(_session.State.ManualSlotAt(slot), Is.EqualTo(default(ContentId)));
+        }
+
+        Assert.That(
+            _session.State.ManualSkillIds,
+            Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+    }
+
+    [Test]
+    public void Session_BoundaryLeavesCooldownsRunning()
+    {
+        // **M3-06 rule 11.** M2-10's standing rule is that a boundary resets the `Targeter` and
+        // never `PlayerCombat` — a door is not a free heal, and it is not a free set of cooldowns
+        // either. `SkillRunner.Reset` exists and nothing in M3 calls it; this is the row that says
+        // a stage boundary is not one of its callers.
+        BuildWithActiveTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, takenNodeIds: new[] { new ContentId(NodeActive) }));
+
+        // The trigger is `HpFraction Below 1.5`, which always holds, so the first tick of the run
+        // casts it and puts an eight-second wait on the clock.
+        TickFor(1);
+
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(1), "Arranged: it cast.");
+        Assert.That(_session.State.IsSkillReady(0), Is.False);
+
+        float fractionBefore = _session.State.SkillCooldownFraction(0);
+
+        _events.Clear();
+
+        ClearTheStage();
+        CrossTheBoundary();
+
+        // Still cooling on the other side of the door, and no second cast — a boundary that had
+        // reset the runner would have handed the player a free skill on arrival.
+        Assert.That(_session.State.IsSkillReady(0), Is.False);
+        Assert.That(_events.Count<SkillCast>(), Is.EqualTo(0));
+
+        Assert.That(
+            _session.State.SkillCooldownFraction(0),
+            Is.LessThan(fractionBefore),
+            "And the wait ran down across the boundary rather than standing still — it is an "
+                + "absolute time against the simulated clock, which the boundary does not rewind.");
+
+        Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "The skill itself is still owned.");
+    }
+
+    [Test]
+    public void Start_OverCapacityTreeRefusesTheRun()
+    {
+        // **The owner's ruling at M3-06.** A tree holding more actives than the runner can own is an
+        // authoring mistake, and it refuses the *run* rather than the pick — `TreeRules`' own
+        // argument one class over. Left to `SkillRunner.Add`, the thirteenth would throw inside
+        // M3-08a's `ChooseOffer`, *after* `SkillTree.Take` had recorded the node, applied its
+        // effects and published `NodeTaken`: a run that dies at the moment a card is tapped, and
+        // dies dirty.
+        BuildWithActiveTree(seed: 7, actives: SkillRunner.MaxActives + 1);
+
+        Assert.Throws<ArgumentException>(() => _session.Start(FreshConfig(stage: 4)));
+
+        AssertNothingStands();
+
+        // And one fewer is a legal tree, so the row is about the boundary rather than about any
+        // tree with actives in it.
+        BuildWithActiveTree(seed: 7, actives: SkillRunner.MaxActives);
+
+        Assert.DoesNotThrow(() => _session.Start(FreshConfig(stage: 4)));
+    }
+
+    [Test]
+    public void Start_RestoresNodesBeforeHealth()
+    {
+        BuildWithTree(seed: 7);
+
+        // **The ordering row (rule 5, AR §18.1).** A +20 max HP node on a 140 class is a live
+        // maximum of 160, and the save was written at 150 of 160. Restore the nodes first and the
+        // hit points come back at 150; restore health first and 150 is clamped against the class's
+        // unmodified 140, so the player silently loses ten points once per resume — and the only
+        // visible symptom is a bar slightly shorter than the one they put the phone down in front
+        // of.
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+
+                // Level 3 with one node taken and one owed is 3 − 1 − 1 − 1 = 0 Overflow, which is
+                // what keeps this row's maximum exactly 160 (M3-08a rule 9). At the fixture's
+                // default level 4 the run would also carry one Overflow level, and the +2 % would
+                // turn a row that reads as arithmetic into one that reads as a tolerance.
+                level: 3,
+                playerHp: SavedHpAboveBaseMax,
+                takenNodeIds: new[] { new ContentId(NodeMaxHp) }));
+
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0), "the row's arithmetic assumes none.");
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerHp,
+            Is.EqualTo(SavedHpAboveBaseMax).Within(0.01f),
+            "Swap the two lines in RunSession.Start and this is 140 rather than 150.");
+
+        // The fixture's own claims, checked out loud: the saved hit points have to be above the
+        // class's own maximum and at or below the modified one, or the row proves nothing either
+        // way.
+        Assert.That(SavedHpAboveBaseMax, Is.GreaterThan(TreeMaxHp));
+        Assert.That(SavedHpAboveBaseMax, Is.LessThanOrEqualTo(TreeMaxHp + MaxHpNodeBonus));
+    }
+
+    // ---- Overflow on resume (M3-08a rule 9) ------------------------------------------------------
+
+    [Test]
+    public void Resume_DerivesOverflow()
+    {
+        BuildWithTree(seed: 7);
+
+        // **Nothing is stored and nothing needs to be.** Level 15 with no node taken and no pick
+        // owed says that all fourteen picks this run earned went somewhere that is not a node — and
+        // Overflow is the only other place a pick can go: Level − 1 − TakenNodeCount −
+        // PendingLevelUps. The spec's fourteen, arrived at with this fixture's five-node tree rather
+        // than a 27-node one.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 100f));
+
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(14));
+
+        // ×1.28 on a clean stack: fourteen 2 % PercentAdd modifiers pool to +28 %.
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
+
+        Assert.That(
+            _events.Count<OverflowGranted>(),
+            Is.EqualTo(0),
+            "a resumed run's Overflow was earned in a previous session and is not news.");
+
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "deriving it is what keeps the format at 3.");
+    }
+
+    [Test]
+    public void Resume_DerivesZeroForAFreshShape()
+    {
+        BuildWithTree(seed: 7);
+
+        // Every run in this build: levels earned, nothing spent, because no class ships a tree.
+        // 3 − 1 − 0 − 2 = 0, so the identity holds for the shape that is actually on disk today.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp).Within(0.01f));
+    }
+
+    [Test]
+    public void Resume_OverflowRunsBeforeHealthRestore()
+    {
+        BuildWithTree(seed: 7);
+
+        // **The second ordering row on this block, and it fails on a swap rather than reporting a
+        // different number** (AR §18.1, M3-03's shape from a second writer). Fourteen Overflow levels
+        // take a 140 class to 179.2, and the run was saved at 170 — above the unmodified maximum on
+        // purpose. Grant the Overflow *after* Health.Restore and 170 is clamped against 140.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 170f));
+
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
+
+        Assert.That(
+            _session.State.PlayerHp,
+            Is.EqualTo(170f).Within(0.01f),
+            "Move GrantOverflow below Health.Restore and this is 140 rather than 170.");
+
+        // The fixture's own claims, checked out loud, or the row proves nothing either way.
+        Assert.That(170f, Is.GreaterThan(TreeMaxHp));
+        Assert.That(170f, Is.LessThanOrEqualTo(TreeMaxHp * 1.28f));
+    }
+
+    [Test]
+    public void Resume_ArithmeticThatDoesNotAddUp_Throws()
+    {
+        BuildWithTree(seed: 7);
+
+        // Level 2 earns one pick; three nodes are taken. That is a save whose picks do not add up,
+        // and it is arithmetic rather than content — so it cannot be rescued by clamping, and a
+        // clamp would silently hand the player a run whose power does not match its history.
+        ArgumentException thrown = Assert.Throws<ArgumentException>(() => StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                level: 2,
+                pendingLevelUps: 0,
+                takenNodeIds: new[]
+                {
+                    new ContentId(NodeMaxHp),
+                    new ContentId(NodeDamage),
+                    new ContentId(NodeSpare),
+                })));
+
+        // It names all four numbers, because a message saying only "does not add up" leaves the
+        // reader to go and find which of them is wrong.
+        Assert.That(thrown.Message, Does.Contain("level 2"));
+        Assert.That(thrown.Message, Does.Contain("3"));
+        Assert.That(thrown.Message, Does.Contain("-2"));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void NoTree_BanksTheLevel()
+    {
+        // **The shipped shape, and the one this whole milestone runs on until M3-12** (M3-08a
+        // rule 5). No tree, two picks owed: the levels are banked, and asking to open one draws
+        // nothing, grants nothing, announces nothing and throws nothing.
+        Build(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
+
+        // False on the third term rather than the first: picks *are* owed, and there is still
+        // nothing to spend them on. A caller that asked only "are picks owed?" would pause an empty
+        // screen for the whole of this milestone.
+        Assert.That(_session.State.IsLevelUpPending, Is.False);
+
+        _events.Clear();
+
+        Assert.DoesNotThrow(() => ((IProgressionCommands)_session).OpenLevelUp());
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2), "still banked, still unspent.");
+        Assert.That(_session.State.HasOffer, Is.False);
+        Assert.That(_session.State.Offer, Is.Empty);
+        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
+        Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
+        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
+
+        // And the identity is not asserted over a save whose ids were discarded: with no tree the
+        // taken list is ignored, so refusing this arithmetic would refuse a legal save.
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(0));
+    }
+
+    // ---- The lazy draw (M3-08a rule 1) -----------------------------------------------------------
+
+    [Test]
+    public void Offer_IsNotDrawnUntilItIsOpened()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
+
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
+        Assert.That(_session.State.IsLevelUpPending, Is.True);
+
+        // **Neither Start nor any tick draws**, which is the whole of the inherited rule: the
+        // boundary snapshot is taken inside a tick, so a draw that happened in one would be captured
+        // at a position it had already advanced, and killing the app would be a free reroll.
+        Assert.That(_session.State.HasOffer, Is.False, "Start must not draw.");
+
+        TickFor(10);
+
+        Assert.That(_session.State.HasOffer, Is.False, "a tick must not draw either.");
+
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        Assert.That(_session.State.HasOffer, Is.True, "opening it is the only thing that draws.");
+    }
+
+    [Test]
+    public void Offer_ResumesToTheSameThree()
+    {
+        // **The guarantee the ordering buys, stated as the player would feel it**: a run killed with
+        // a pick owed comes back to the same three cards. It is why the offer is not on the snapshot
+        // (M3-08a's Out of scope) — the stream position already carries it, and that survives a
+        // content change in a way three stored ids would not.
+        RunSnapshot saved = Snapshot(4, 7, level: 3, pendingLevelUps: 1);
+
+        BuildWithTree(seed: 7);
+        StartResumed(stage: 4, saved);
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        ContentId[] first = Copy(_session.State.Offer);
+
+        // A whole second composition from the same file, generator included.
+        BuildWithTree(seed: 7);
+        StartResumed(stage: 4, saved);
+        ((IProgressionCommands)_session).OpenLevelUp();
+
+        ContentId[] second = Copy(_session.State.Offer);
+
+        Assert.That(first, Is.Not.Empty, "the fixture drew nothing, so the row proves nothing.");
+        Assert.That(second, Is.EqualTo(first));
+    }
+
+    private static ContentId[] Copy(IReadOnlyList<ContentId> offer)
+    {
+        var copy = new ContentId[offer.Count];
+
+        for (int i = 0; i < offer.Count; i++)
+        {
+            copy[i] = offer[i];
+        }
+
+        return copy;
+    }
+
+    [Test]
+    public void Start_BadTreeFailsBeforeRunStarted()
+    {
+        // A tree naming a node nobody authored. The class's tree is resolved and cross-checked in
+        // Start's validation block (rule 1), so an authoring mistake refuses the run rather than
+        // the pick — with nothing announced and nothing written (ledger row 3).
+        BuildWithTree(seed: 7, treeNamesAStranger: true);
+
+        Assert.Throws<KeyNotFoundException>(() => _session.Start(FreshConfig(stage: 4)));
+
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void NoTree_ReadsAnswerEmpty()
+    {
+        Build(seed: 7);
+
+        RunSnapshot naming = Snapshot(
+            4,
+            _random.Seed,
+            takenNodeIds: new[]
+            {
+                new ContentId("skill.oathbound.bulwark"),
+                new ContentId("skill.oathbound.consecrate"),
+            });
+
+        // **A class with no tree is legal until M3-12** (rule 10) — `TryGetTreeFor` is false for
+        // every class this build ships. Two nodes named, neither of them content this build holds,
+        // and nothing throws: there is no tree to apply them to, which is the state `RunSession`
+        // was already in between M3-01b and here.
+        Assert.DoesNotThrow(() => StartResumed(stage: 4, naming));
+
+        Assert.That(_session.State.TakenNodeCount, Is.Zero);
+        Assert.That(_session.State.IsTreeFull, Is.False);
+        Assert.That(_session.State.TakenNodeIds, Is.Empty);
+        Assert.That(_session.State.TakenNodeIds, Is.Not.Null, "Empty, never null — no reader has to ask.");
+
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
+        Assert.That(naming.TakenNodeIds, Has.Count.EqualTo(2), "The fixture named two, so the row is not vacuous.");
+    }
+
+    [Test]
     public void Start_RestoresRunTime()
     {
         Build(seed: 7);
@@ -167,6 +837,8 @@ public sealed class RunSessionResumeTests
 
         float seenFromTheHandler = float.NaN;
         float shieldFromTheHandler = float.NaN;
+        int levelFromTheHandler = 0;
+        int pendingFromTheHandler = -1;
 
         var watching = new WatchingEvents();
         RunSession session = SessionOver(watching);
@@ -175,6 +847,8 @@ public sealed class RunSessionResumeTests
         {
             seenFromTheHandler = session.State.PlayerHp;
             shieldFromTheHandler = session.State.PlayerShield;
+            levelFromTheHandler = session.State.Level;
+            pendingFromTheHandler = session.State.PendingLevelUps;
         });
 
         session.Start(ResumedConfig(stage: 4));
@@ -188,6 +862,17 @@ public sealed class RunSessionResumeTests
             "A subscriber reading PlayerHp from RunStarted must already see the restored value.");
 
         Assert.That(shieldFromTheHandler, Is.EqualTo(SavedShield));
+
+        // The same rule, for the same reason, for the three M3-01b added. M3-10b's XP strip and
+        // level readout are drawn from inside this handler, so a progression restore applied after
+        // the publish would show a resumed run level 1 with an empty bar for one frame — and M3-08's
+        // flow, which acts on a pending pick, would read zero and show no screen at all.
+        Assert.That(
+            levelFromTheHandler,
+            Is.EqualTo(SavedLevel),
+            "A subscriber reading State.Level from RunStarted must already see the restored value.");
+
+        Assert.That(pendingFromTheHandler, Is.EqualTo(SavedPending));
     }
 
     [Test]
@@ -200,6 +885,21 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.PlayerHp, Is.EqualTo(MaxHp));
         Assert.That(_session.State.PlayerShield, Is.EqualTo(ShieldMax));
         Assert.That(_session.State.Time, Is.EqualTo(0f), "A fresh run has lasted no time at all.");
+    }
+
+    [Test]
+    public void Start_FreshRunIsLevelOne()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        // The other half of the restore rows: a config with no snapshot must not inherit anything,
+        // and a run that begins deep is still a run that begins at level 1 — depth and level are
+        // different numbers, and GD §4.5 lets a mode start at stage 7.
+        Assert.That(_session.State.Level, Is.EqualTo(1));
+        Assert.That(_session.State.Xp, Is.EqualTo(0f));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(0));
     }
 
     // ---- The agreement (rule 4) -----------------------------------------------------------------
@@ -453,6 +1153,112 @@ public sealed class RunSessionResumeTests
         _session = SessionOver(_events);
     }
 
+    /// <summary>
+    /// The same world with a tree for the class, and a 140 HP Oathbound to hang the ordering row's
+    /// arithmetic on.
+    /// </summary>
+    /// <param name="treeNamesAStranger">
+    /// Leaves one of the tree's node ids unauthored, for the row about an authoring mistake being
+    /// caught at <c>Start</c>.
+    /// </param>
+    private void BuildWithTree(int seed, bool treeNamesAStranger = false)
+    {
+        _events = new RecordingEvents();
+        _random = new FixedRandom(seed, Alternating(8_192));
+        _clock = new FixedClock(Instant);
+        _mode = Mode();
+
+        IReadOnlyList<SkillSpec> skills = treeNamesAStranger
+            ? new[] { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f), Passive(NodeC, 0.05f) }
+            : TreeSkills();
+
+        _catalog = new ContentCatalog(
+            new[] { Oathbound(TreeMaxHp) },
+            new[] { Husk() },
+            new[] { _mode },
+            skills,
+            new[] { Tree() });
+
+        _session = SessionOver(_events);
+    }
+
+    /// <summary>
+    /// The same world with a tree whose branch 0 holds <paramref name="actives"/> Actives beside the
+    /// two passives the node rows use — M3-06's runner needs a tree that can hand it something.
+    /// </summary>
+    /// <remarks>
+    /// A tree of its own rather than an Active added to <see cref="Tree"/>, so that every row above
+    /// keeps the shape it was written against: a fourth node in branch 0 would move
+    /// <c>Available</c>'s count under rows that are not about it.
+    /// </remarks>
+    private void BuildWithActiveTree(int seed, int actives = 1)
+    {
+        _events = new RecordingEvents();
+        _random = new FixedRandom(seed, Alternating(8_192));
+        _clock = new FixedClock(Instant);
+        _mode = Mode();
+
+        var skills = new List<SkillSpec> { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f) };
+        var tier = new List<ContentId>();
+
+        for (int i = 0; i < actives; i++)
+        {
+            // The first keeps the name the rows quote; the rest only exist to fill the tree.
+            string id = i == 0 ? NodeActive : $"{NodeActive}.{i}";
+
+            skills.Add(ActiveNode(id));
+            tier.Add(new ContentId(id));
+        }
+
+        tier.Add(new ContentId(NodeDamage));
+
+        var tree = new SkillTreeSpec(
+            new ContentId(TreeIdValue),
+            new ContentId(OathboundId),
+            new[]
+            {
+                new SkillBranchSpec(
+                    new LocKey("branch.a"),
+                    new IReadOnlyList<ContentId>[] { tier }),
+                Branch('b', new[] { NodeB }),
+                Branch('c', new[] { NodeC }),
+            });
+
+        skills.Add(Passive(NodeC, 0.05f));
+
+        _catalog = new ContentCatalog(
+            new[] { Oathbound(TreeMaxHp) },
+            new[] { Husk() },
+            new[] { _mode },
+            skills,
+            new[] { tree });
+
+        _session = SessionOver(_events);
+    }
+
+    /// <summary>
+    /// An Active whose trigger always holds, so the boundary row can put it on cooldown with one
+    /// tick rather than by arranging a fight.
+    /// </summary>
+    private static SkillSpec ActiveNode(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Active,
+        Array.Empty<IEffect>(),
+        new ActiveSpec(
+            ActiveCooldown,
+            new TriggerSpec(new[]
+            {
+                // Below 1.5 rather than a clause that reads as "always": HpFraction is at most 1,
+                // so this holds on every tick of a healthy run and on every tick of a hurt one.
+                new TriggerClause(TriggerField.HpFraction, TriggerComparison.Below, 1.5f),
+            }),
+            new IEffect[]
+            {
+                new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.5f),
+            }));
+
     private RunSession SessionOver(IDomainEvents events) => new RunSession(
         _catalog,
         _random,
@@ -467,6 +1273,17 @@ public sealed class RunSessionResumeTests
     {
         _session.Start(ResumedConfig(stage, snapshot));
     }
+
+    /// <summary>
+    /// The three ids <c>BuildWithActiveTree(seed, actives: 3)</c> authors, in the order it authors
+    /// them — what the slot rows hand to <c>takenNodeIds</c>.
+    /// </summary>
+    private static ContentId[] ThreeActives() => new[]
+    {
+        new ContentId(NodeActive),
+        new ContentId(NodeActive + ".1"),
+        new ContentId(NodeActive + ".2"),
+    };
 
     private RunConfig ResumedConfig(int stage, RunSnapshot? snapshot = null) => new RunConfig(
         new ContentId(ModeId),
@@ -484,7 +1301,16 @@ public sealed class RunSessionResumeTests
         SpawnPlan.Empty,
         restore: null);
 
-    private static RunSnapshot Snapshot(int stage, int seed, string modeId = ModeId) =>
+    private static RunSnapshot Snapshot(
+        int stage,
+        int seed,
+        string modeId = ModeId,
+        int level = SavedLevel,
+        float xp = SavedXp,
+        int pendingLevelUps = SavedPending,
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        float playerHp = SavedHp,
+        IReadOnlyList<ContentId> manualSkillIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -492,10 +1318,15 @@ public sealed class RunSessionResumeTests
             seed,
             stage,
             new RandomState(101, 102, 103, 104, 105),
-            SavedHp,
+            playerHp,
             SavedShield,
             SavedRunTime,
-            Instant);
+            Instant,
+            level,
+            xp,
+            pendingLevelUps,
+            takenNodeIds ?? Array.Empty<ContentId>(),
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
 
     private void TickFor(int ticks)
     {
@@ -668,6 +1499,7 @@ public sealed class RunSessionResumeTests
             isEndless: true,
             finalStage: 0,
             scaling,
+            Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) });
     }
@@ -683,6 +1515,7 @@ public sealed class RunSessionResumeTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: HuskCost,
+        xpValue: HuskCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -692,10 +1525,15 @@ public sealed class RunSessionResumeTests
         behaviour: EnemyBehaviourKind.Static);
 
     /// <summary>CC §7's class, plus the Aegis these rows restore half of.</summary>
-    private static CharacterSpec Oathbound() => new CharacterSpec(
+    /// <param name="maxHp">
+    /// The class's hit points. Parameterised only so the tree rows can play a 140 HP Oathbound —
+    /// every other row wants <see cref="MaxHp"/>, which is deliberately not a value any row
+    /// restores to.
+    /// </param>
+    private static CharacterSpec Oathbound(float maxHp = MaxHp) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
-        MaxHp,
+        maxHp,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
@@ -705,6 +1543,63 @@ public sealed class RunSessionResumeTests
         new FocusSpec(0.4f, 1f, 1f),
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
         new ShieldSpec(ShieldMax, 3f, 1f));
+
+    /// <summary>
+    /// A tree of three branches, with three nodes sharing branch 0's only tier so that every one of
+    /// them is available on the first pick and any order of them is a legal take order.
+    /// </summary>
+    private static SkillTreeSpec Tree() => new SkillTreeSpec(
+        new ContentId(TreeIdValue),
+        new ContentId(OathboundId),
+        new[]
+        {
+            Branch('a', new[] { NodeMaxHp, NodeDamage, NodeSpare }),
+            Branch('b', new[] { NodeB }),
+            Branch('c', new[] { NodeC }),
+        });
+
+    private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
+    {
+        MaxHpNode(NodeMaxHp),
+        Passive(NodeDamage, 0.15f),
+        Passive(NodeSpare, 0.05f),
+        Passive(NodeB, 0.05f),
+        Passive(NodeC, 0.05f),
+    };
+
+    private static SkillBranchSpec Branch(char letter, string[] tier)
+    {
+        var ids = new ContentId[tier.Length];
+
+        for (int i = 0; i < tier.Length; i++)
+        {
+            ids[i] = new ContentId(tier[i]);
+        }
+
+        return new SkillBranchSpec(
+            new LocKey($"branch.{letter}"),
+            new IReadOnlyList<ContentId>[] { ids });
+    }
+
+    /// <summary>A flat <c>+20 max HP</c> node — the one the ordering row is about.</summary>
+    /// <remarks>
+    /// <c>Flat</c> rather than a percentage, so the expected maximum is 160 exactly and the row
+    /// reads as arithmetic rather than as a tolerance.
+    /// </remarks>
+    private static SkillSpec MaxHpNode(string id) => Node(
+        id,
+        new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus));
+
+    private static SkillSpec Passive(string id, float damagePercent) => Node(
+        id,
+        new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, damagePercent));
+
+    private static SkillSpec Node(string id, IEffect effect) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new[] { effect });
 
     /// <summary><paramref name="count"/> points on a ring, clear of the origin and of each other.</summary>
     private static IReadOnlyList<Vector3> Points(int count)

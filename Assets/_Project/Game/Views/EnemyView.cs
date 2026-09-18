@@ -90,6 +90,8 @@ namespace Soulvail.Game.Views
         private CharacterController _controller;
         private EnemyHitFeedback _feedback;
         private bool _searchedForFeedback;
+        private EnemyHealthBar _healthBar;
+        private bool _searchedForHealthBar;
         private int _id = Unbound;
         private Vector3 _velocity;
         private float _fallSpeed;
@@ -218,6 +220,30 @@ namespace Soulvail.Game.Views
                 }
 
                 return _feedback;
+            }
+        }
+
+        /// <summary>
+        /// The health bar over this body, or null on a body that has none.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Feedback"/>'s shape exactly, and for its reasons: <c>EnemyViews</c> has to tell
+        /// a rented body whether it is standing in for an Elite, and a flag-guarded lookup here is the
+        /// only way to do that without a <c>GetComponent</c> per spawn. Null is a legitimate answer —
+        /// the component is not <c>[RequireComponent]</c>ed and an EditMode fixture builds bodies
+        /// without one — which is what the flag is for rather than a null check.
+        /// </remarks>
+        public EnemyHealthBar HealthBar
+        {
+            get
+            {
+                if (!_searchedForHealthBar)
+                {
+                    _searchedForHealthBar = true;
+                    _healthBar = GetComponent<EnemyHealthBar>();
+                }
+
+                return _healthBar;
             }
         }
 
@@ -351,6 +377,17 @@ namespace Soulvail.Game.Views
             if (feedback != null)
             {
                 feedback.ResetVisuals();
+            }
+
+            // The list this method's remarks invite anything that remembers something to join, and
+            // M3-13b is the first thing to take them up on it. What must not survive is the Elite
+            // flag: a body rented once as a priority target and again as a Husk would otherwise carry
+            // a standing bar into a basic enemy, which reads as the wrong enemy being important.
+            EnemyHealthBar healthBar = HealthBar;
+
+            if (healthBar != null)
+            {
+                healthBar.Unbind();
             }
 
             // Back into the physics query. A death took it out (EnemyHitFeedback.OnDied) so that a

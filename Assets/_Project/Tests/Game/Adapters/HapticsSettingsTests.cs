@@ -11,7 +11,8 @@ using UnityEngine.TestTools;
 namespace Soulvail.Tests.Game.Adapters;
 
 /// <summary>
-/// Ledger row 11: the toggle over an <c>ISaveStore</c> rather than over the platform registry.
+/// Ledger row 11: the toggle over an <c>ISaveStore</c> rather than over the platform registry — and,
+/// as of M3-09c, over <c>ProfileStore</c> rather than over the port directly.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,9 +22,15 @@ namespace Soulvail.Tests.Game.Adapters;
 /// claimed.
 /// </para>
 /// <para>
-/// <c>InMemorySaveStore</c> rather than the real adapter: what is being asserted is the number of
-/// writes and what happens when one fails, and a fake that counts its calls answers both without
-/// a directory to clean up.
+/// <c>InMemorySaveStore</c> under a real <c>ProfileStore</c> rather than the real adapter: what is
+/// being asserted is the number of writes, what is in them, and what happens when one fails — and a
+/// fake that counts its calls answers all three without a directory to clean up.
+/// </para>
+/// <para>
+/// <b><see cref="Haptics_ToggleKeepsTheHintFlag"/> is the row this fixture gained at M3-09c and the
+/// reason <c>ProfileStore</c> exists.</b> Until then this class persisted with
+/// <c>new PlayerProfile(CurrentVersion, value)</c> — the whole struct, authored from the one field
+/// it knew — which is correct for a record with one field in it and silently destructive at v2.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -39,9 +46,11 @@ public sealed class HapticsSettingsTests
     public void Haptics_StartsFromTheLoadedProfile()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
-        settings.Apply(new PlayerProfile(PlayerProfile.CurrentVersion, hapticsEnabled: false));
+        profiles.Adopt(new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
 
         Assert.That(settings.Enabled, Is.False);
     }
@@ -50,35 +59,43 @@ public sealed class HapticsSettingsTests
     public void Haptics_DefaultsOn()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
-        // What BootFlow substitutes when there is no file. GD §16.3 puts the burden on the player
-        // who wants silence, so a fresh install buzzes.
+        // What the store holds before BootFlow's load lands, and what BootFlow substitutes when
+        // there is no file. GD §16.3 puts the burden on the player who wants silence, so a fresh
+        // install buzzes.
         Assert.That(settings.Enabled, Is.True, "Before a profile arrives at all.");
 
-        settings.Apply(PlayerProfile.Default);
+        profiles.Adopt(PlayerProfile.Default);
 
         Assert.That(settings.Enabled, Is.True);
     }
 
     [Test]
-    public void Haptics_ApplyDoesNotWrite()
+    public void Haptics_AdoptingAProfileDoesNotWrite()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
-        settings.Apply(new PlayerProfile(PlayerProfile.CurrentVersion, hapticsEnabled: false));
+        profiles.Adopt(new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
 
         // A load that immediately re-saves is a load that can corrupt what it just read — and on a
-        // fresh install it would put a profile on disk for a player who has changed nothing.
+        // fresh install it would put a profile on disk for a player who has changed nothing. The
+        // claim M1-20 made about `Apply` now belongs to `ProfileStore.Adopt`; this row is what says
+        // routing the setting through the store did not quietly lose it.
         Assert.That(store.ProfileWriteCount, Is.EqualTo(0));
+        Assert.That(settings.Enabled, Is.False, "and the value still arrived.");
     }
 
     [Test]
     public void Haptics_SettingWrites()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         settings.Enabled = false;
 
@@ -95,7 +112,8 @@ public sealed class HapticsSettingsTests
     public void Haptics_SettingToTheSameValueDoesNotWrite()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         settings.Enabled = true;
 
@@ -104,15 +122,57 @@ public sealed class HapticsSettingsTests
         Assert.That(store.ProfileWriteCount, Is.EqualTo(0));
     }
 
+    /// <summary>
+    /// The row that would have caught M3-09c rule 3, and the reason <c>ProfileStore</c> is the
+    /// task's real subject rather than the hint is.
+    /// </summary>
+    /// <remarks>
+    /// Against the code that shipped at M1-20 this goes red on its last assertion: the setter wrote
+    /// <c>new PlayerProfile(CurrentVersion, value)</c>, so the persisted flag came back at the
+    /// constructor's default and a player who had already dismissed CC §6.3's one-time callout would
+    /// be shown it again the next time they turned haptics off.
+    /// </remarks>
+    [Test]
+    public void Haptics_ToggleKeepsTheHintFlag()
+    {
+        var store = new InMemorySaveStore();
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
+
+        profiles.Adopt(new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true));
+
+        settings.Enabled = false;
+
+        PlayerProfile stored = store.LoadProfile().GetAwaiter().GetResult().Value;
+
+        Assert.That(store.ProfileWriteCount, Is.EqualTo(1), "one write, from one writer.");
+        Assert.That(stored.HapticsEnabled, Is.False, "the field this class knows about moved.");
+
+        // And the one it does not know about did not. A writer that knows one field must never
+        // author the whole DTO.
+        Assert.That(
+            stored.SeenFirstActiveHint,
+            Is.True,
+            "toggling haptics erased the hint flag — the exact bug rule 3 is about.");
+
+        // The live profile agrees with the disk, so the next feature to write reads the truth.
+        Assert.That(profiles.Current.SeenFirstActiveHint, Is.True);
+        Assert.That(profiles.Current.HapticsEnabled, Is.False);
+    }
+
     [Test]
     public void Haptics_FailedWriteDoesNotThrow()
     {
         var store = new InMemorySaveStore();
-        HapticsSettings settings = HapticsSettings.FromStore(store);
+        var profiles = new ProfileStore(store);
+        HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         store.FailNextWrite();
 
-        LogAssert.Expect(LogType.Error, new Regex("Could not save the haptics preference"));
+        // The message moved with the write: `ProfileStore.Save` owns the fire-and-forget and the
+        // logged fault now, because it is the one writer of a profile (rule 5).
+        LogAssert.Expect(LogType.Error, new Regex("Could not save the player profile"));
 
         // The toggle the player flipped has already moved. The worst honest outcome is that it
         // does not survive the app — never an exception out of a UI callback.
@@ -150,5 +210,27 @@ public sealed class HapticsSettingsTests
         // the way it stays abandoned is that nothing can reach for it.
         Assert.That(type.GetField("PrefsKey", Everything), Is.Null);
         Assert.That(type.GetMethod("FromPlayerPrefs", Everything), Is.Null);
+    }
+
+    [Test]
+    public void Haptics_AuthorsNoProfile()
+    {
+        Type type = typeof(HapticsSettings);
+        const BindingFlags Everything =
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+
+        // Rule 3 pinned at this class's own doors. `Apply` is gone — the profile arrives at
+        // `ProfileStore.Adopt` now — and nothing here holds an `ISaveStore`, so the only way this
+        // class can persist anything is the one call that copies a field onto the live profile.
+        Assert.That(type.GetMethod("Apply", Everything), Is.Null);
+
+        foreach (FieldInfo field in type.GetFields(Everything))
+        {
+            Assert.That(
+                typeof(Soulvail.Core.Ports.ISaveStore).IsAssignableFrom(field.FieldType),
+                Is.False,
+                $"HapticsSettings.{field.Name} reaches the save store directly, which is how a " +
+                "writer that knows one field ends up authoring the whole profile again.");
+        }
     }
 }

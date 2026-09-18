@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
@@ -81,11 +82,60 @@ namespace Soulvail.Game.Composition
                  "from a keyboard, it just cannot be dashed with a thumb.")]
         [SerializeField] private SkillButton _skillButton;
 
+        [Tooltip("CC §6.2's four slot buttons, clustered beside the Charge on the HUD. Optional on " +
+                 "the Charge button's terms — an arena without one plays the same fight and every " +
+                 "skill the player set to Manual is uncastable, which is the whole of what this " +
+                 "object is for.")]
+        [SerializeField] private SkillBarPresenter _skillBar;
+
         [Tooltip("The player's row on the HUD: health, the Aegis, and the death overlay. Optional " +
                  "on the same terms as the reticle — an arena without one plays exactly the same, " +
                  "it just cannot say how the player is doing and has no way out of a death except " +
                  "leaving the scene.")]
         [SerializeField] private HudPresenter _hudPresenter;
+
+        [Tooltip("GD §16.1's XP strip, along the HUD's top edge. Optional on the HUD's terms — a " +
+                 "scene without one plays the same fight and simply never says how close the next " +
+                 "level is.")]
+        [SerializeField] private XpBarView _xpBar;
+
+        [Tooltip("GD §16.1's auto-cast cooldowns, under the health bar. Optional on the HUD's " +
+                 "terms, and the one here whose absence costs the *default* build the most: every " +
+                 "skill starts on Auto (CC §6.1), so a scene without this row is one where a " +
+                 "player who never opens a menu has no readout of their build at all.")]
+        [SerializeField] private AutoCastRow _autoCastRow;
+
+        [Tooltip("The Overflow announcement, on the HUD. Optional on the HUD's terms — a scene " +
+                 "without one grants CH §5.2's Overflow silently, which by stage 30 is more than " +
+                 "half the power the player has gained (ledger row 1).")]
+        [SerializeField] private OverflowToast _overflowToast;
+
+        [Tooltip("The level-up screen: three cards and a header, on its own canvas above the HUD. " +
+                 "Optional on the HUD's terms — but read its registration below before leaving it " +
+                 "empty, because what its absence costs is not what the HUD's costs.")]
+        [SerializeField] private LevelUpPresenter _levelUpPresenter;
+
+        [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
+                 "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
+                 "without one plays exactly the same fight, it just cannot be stopped from inside.")]
+        [SerializeField] private PausePresenter _pausePresenter;
+
+        [Tooltip("The Skills screen: CC §6.3's list, on its own canvas between the pause panel's " +
+                 "and the level-up's. Optional on the pause screen's terms — a scene without one " +
+                 "plays the same fight and its pause panel simply does not offer the button.")]
+        [SerializeField] private SkillsPresenter _skillsPresenter;
+
+        [Tooltip("The tree view: CH §5.1's three branches on their own canvas above every other " +
+                 "screen, because it is the only one with two doors into it. Optional on the pause " +
+                 "screen's terms — a scene without one plays the same fight and neither door " +
+                 "offers its button.")]
+        [SerializeField] private TreeViewPresenter _treeViewPresenter;
+
+        [Tooltip("CC §6.3's one-time callout, on its own canvas under the pause icon. Optional on " +
+                 "the same terms as everything below it — a scene without one plays the same fight " +
+                 "and never tells the player about Manual. Its flag lives on the profile, so a run " +
+                 "played without this object still has the hint unspent.")]
+        [SerializeField] private FirstActiveHint _firstActiveHint;
 
         [SerializeField] private DebugOverlay _debugOverlay;
 
@@ -106,6 +156,11 @@ namespace Soulvail.Game.Composition
                  "On the Player object, and optional on the same terms as the glow: without it " +
                  "the run plays identically, the body just never changes pose.")]
         [SerializeField] private PlayerAnimatorView _playerAnimator;
+
+        [Tooltip("The shell drawn while a granted shield is up (CC §6.4). On the Player object, " +
+                 "and optional on the same terms as the glow: without it Bulwark still absorbs " +
+                 "exactly as much, the player just cannot see that it is there.")]
+        [SerializeField] private BulwarkView _bulwark;
 
         [Tooltip("The one enemy body prefab. Every archetype shares it until M2-06 gives them " +
                  "silhouettes of their own.")]
@@ -159,6 +214,10 @@ namespace Soulvail.Game.Composition
         [Tooltip("Where ground decals are parented: the Decals object in this scene. Optional — " +
                  "they go to the scene root without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _decalRoot;
+
+        [Tooltip("The one zone prefab (CC §6.4). Every zone is this body at the radius its own " +
+                 "event carries, so a 3.5 m Consecrate and a 6 m anything share it.")]
+        [SerializeField] private ZoneView _zonePrefab;
 
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
@@ -244,6 +303,113 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_hudPresenter);
             }
 
+            // The other three readouts on Hud.prefab (M3-10b), all optional on the HUD's terms and
+            // all with the same shape: live components in this scene, so the container injects them
+            // and destroys nothing. Their *absence* differs though, and the difference is worth the
+            // three lines — the strip costs a progress bar, the toast costs an announcement, and the
+            // row costs the legibility of the whole default build, because every skill starts on
+            // Auto (CC §6.1) and nothing else in the game draws an auto-cast cooldown.
+            //
+            // Each one throws from its own Start if it is on the prefab and not dressed here, which
+            // is SkillBarPresenter's bargain: an undressed field is a silent readout rather than a
+            // loud one, so the component says so itself and names the field to drag.
+            if (_xpBar != null)
+            {
+                builder.RegisterComponent(_xpBar);
+            }
+
+            if (_autoCastRow != null)
+            {
+                builder.RegisterComponent(_autoCastRow);
+            }
+
+            if (_overflowToast != null)
+            {
+                builder.RegisterComponent(_overflowToast);
+            }
+
+            // Optional on the HUD's terms — the undressed Run scene is the fastest iteration loop
+            // in the project and every optional field on this scope exists to protect it — but the
+            // cost of its absence is deliberately written down here, because it is not the HUD's
+            // cost and a later reader would assume it was.
+            //
+            // The gate is RunTicker's, not this screen's (M3-08a rule 12, and the owner's ruling at
+            // M3-08b): the run stops whenever core has an offer on the table, whether or not
+            // anything is drawing it. So a scene dressed without this presenter does not play "the
+            // same without a level-up screen" — on the first pick it stops dead, shows nothing, and
+            // the only way out is to leave the scene.
+            //
+            // It is still optional rather than guarded, and that is a statement about *when* rather
+            // than about the risk: `IsLevelUpPending` requires a tree, nothing in Data/Trees ships
+            // until M3-12, so no run in the current build can reach that state at all. M3-12 is the
+            // task that should turn this into a MissingReferenceException beside the threat arrows',
+            // because that is the task that makes the failure reachable.
+            if (_levelUpPresenter != null)
+            {
+                builder.RegisterComponent(_levelUpPresenter);
+            }
+
+            // Optional, and — unlike the level-up screen directly above — its absence really does
+            // cost only what it looks like it costs. This screen holds both halves of its own pause
+            // (M3-09a rule 2), so nothing raises a Menu pause that this object is not there to
+            // lower: a scene dressed without it plays the same fight and simply cannot be stopped
+            // from inside. That is the undressed-Run-scene workflow every optional field here
+            // protects, and it is also the M0-19 release build, which has no pause icon either way
+            // until M8-03 gives the panel something else to hold.
+            if (_pausePresenter != null)
+            {
+                builder.RegisterComponent(_pausePresenter);
+            }
+
+            // Optional, and its absence costs exactly what it looks like: this screen holds no
+            // pause at all (M3-09b rule 10), lists what the player owns and sends two commands the
+            // run is perfectly playable without. A scene dressed without it has a pause panel that
+            // takes its own Skills button off rather than offering a dead one — PausePresenter.Start
+            // does that, which is why the link between the two lives in Run.unity rather than here:
+            // they are separate root prefabs, so a serialized cross-prefab reference has to be
+            // dressed in the scene either way.
+            //
+            // It stays optional rather than guarded for the same reason the level-up screen did
+            // until M3-12: nothing in Data/Trees ships an Active yet, so there is no run in the
+            // current build whose Skills list would have a single row in it.
+            if (_skillsPresenter != null)
+            {
+                builder.RegisterComponent(_skillsPresenter);
+            }
+
+            // Optional, and its absence costs exactly what it looks like: this screen sends nothing
+            // at all (M3-09d rule 1), holds no pause (rule 5) and renders no events (rule 10), so a
+            // scene dressed without it plays the same fight and neither door offers its button —
+            // both take it off rather than leaving a dead one, which is PausePresenter.Start's rule
+            // for the Skills button applied twice.
+            //
+            // **It is the first screen with two doors, and both links live in Run.unity** for the
+            // reason the Skills screen's does: the pause panel, the level-up screen and this are
+            // three separate root prefabs, so a cross-prefab reference has to be dressed in the
+            // scene either way and an optional [Inject] would stop the whole scope composing.
+            //
+            // It stays optional rather than guarded on the Skills screen's terms, and with a
+            // sharper version of the same argument: nothing in Data/Trees ships until M3-12, so
+            // `TryGetTreeFor` answers false for every run in the current build and there is no tree
+            // for this screen to draw even when it is dressed.
+            if (_treeViewPresenter != null)
+            {
+                builder.RegisterComponent(_treeViewPresenter);
+            }
+
+            // Optional on the same terms, and the one here whose absence costs the *player* the
+            // least and the design the most: a run without it plays identically and never tells the
+            // player that CC §6.1's switch exists. **It resolves ProfileStore by type from
+            // BootScope**, the way EnemyViews resolves EnemyLookBook a few lines below — a profile
+            // outlives a run, and a store registered here would forget the flag between the
+            // level-up that spent it and the boundary that saved it (M3-09c rule 4). That is also
+            // the one dependency of this component whose absence fails loudly rather than silently:
+            // a run scope built against a container with no ProfileStore does not compose at all.
+            if (_firstActiveHint != null)
+            {
+                builder.RegisterComponent(_firstActiveHint);
+            }
+
             // Optional for the same reason and on the same terms: a scene dressed without a
             // reticle plays, it just cannot show what the gun is aimed at, and a test scene is
             // entitled to be that.
@@ -268,6 +434,15 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_playerAnimator);
             }
 
+            // Optional on the same terms as the two above, and for the animator's exact reason: the
+            // grant is core's and absorbs the same damage whether or not anything draws it, so a
+            // scene without a shell plays the identical fight — the player just cannot see why they
+            // survived the bolt.
+            if (_bulwark != null)
+            {
+                builder.RegisterComponent(_bulwark);
+            }
+
             // Optional, and the odd one out among these: it is not a decoration but an *input*, so
             // a scene without it is one the Charge can only be pressed on with a keyboard. That is
             // exactly the Editor iteration workflow, which is why it is allowed to be missing —
@@ -276,6 +451,20 @@ namespace Soulvail.Game.Composition
             if (_skillButton != null)
             {
                 builder.RegisterComponent(_skillButton);
+            }
+
+            // Optional on the Charge button's terms and for the same reason — it is an *input*
+            // rather than a decoration, so a scene without it is one where a Manual skill has no way
+            // to be cast at all. It stays optional rather than guarded because the undressed Run
+            // scene is the fastest iteration loop in the project, and because nothing in
+            // Data/Trees ships an Active until M3-12: every run in the current build has four empty
+            // slots, so this object's absence and its presence look identical on screen.
+            //
+            // Registered here rather than in RunInstaller for every other component's reason: it is
+            // a live object in this scene, and the container injects it and destroys nothing.
+            if (_skillBar != null)
+            {
+                builder.RegisterComponent(_skillBar);
             }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated
@@ -512,6 +701,45 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _telegraphRingPrefab)
                 .WithParameter("parent", _decalRoot)
                 .WithParameter("prewarm", TelegraphRingPrewarm);
+
+            // The zones (M3-11c). The rings' registration exactly, for the rings' reasons — two of
+            // its arguments are references to *this scene*, and a decal parented to the arena would
+            // be destroyed mid-life by a stage swap it has nothing to do with (M2-11a).
+            //
+            // Required rather than optional, and on a weaker argument than the rings': a spawn
+            // telegraph is GD §9.1's invariant, while a zone the player cannot see is *only* a skill
+            // that appears to do nothing. That is still the whole of what M3-11b shipped — CC §6.4's
+            // Consecrate asks the player to stop moving, and ground they cannot see is ground they
+            // have no reason to stand on.
+            if (_zonePrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(ZoneView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_ConsecrateZone.prefab onto its Zone Prefab field — without " +
+                    "it a Consecrate heals exactly as much and there is nothing on the floor to " +
+                    "tell the player where to stand (CC §6.4).");
+            }
+
+            // The second half of the guard is the one that would otherwise be silent: a prefab whose
+            // quad was never dragged into its field places, sizes, pulses and retires perfectly and
+            // draws nothing at all.
+            if (!_zonePrefab.IsDrawable)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)}'s zone prefab has no quad assigned. Drag the " +
+                    $"{nameof(MeshRenderer)} on VFX_ConsecrateZone.prefab onto its own Quad " +
+                    "field — without it every zone in the run is placed, sized and returned " +
+                    "correctly and none of them is ever visible.");
+            }
+
+            // Prewarmed to core's own zone capacity, which is ProjectileViews' argument rather than
+            // the rings': eight is the most zones that can exist at once, so the pool cannot be asked
+            // for a body it does not already hold and every Instantiate a run will ever do happens
+            // while the scene is loading.
+            builder.Register<ZoneViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _zonePrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", ZoneSystem.Capacity);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

@@ -18,6 +18,7 @@ MonoBehaviour:
   _moveSpeed: 2.2
   _targetPriority: 2
   _threatCost: 8
+  _xpValue: 24
   _isElite: 0
   _contactDamage: 15
   _reach: 2

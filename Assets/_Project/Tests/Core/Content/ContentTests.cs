@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Content;
@@ -9,9 +10,16 @@ namespace Soulvail.Tests.Core.Content;
 /// <summary>
 /// The Content module's fixture: one module, one test file. <see cref="MovementSpec"/> arrived
 /// with M0-07; <see cref="ContentId"/>, <see cref="LocKey"/>, <see cref="CharacterSpec"/> and
-/// <see cref="ContentCatalog"/> with M0-08. Later content types (enemy, skill, mode specs) join
-/// them here.
+/// <see cref="ContentCatalog"/> with M0-08. Later content types join them here.
 /// </summary>
+/// <remarks>
+/// It stopped being every content type some time ago: <c>ModeSpecTests</c>,
+/// <c>ProjectileSpecTests</c>, <c>XpCurveTests</c>, <c>SkillSpecTests</c> and
+/// <c>SkillTreeSpecTests</c> each own a type big enough to need its own file. What stays here is
+/// the vocabulary — ids and keys — and the <see cref="ContentCatalog"/>, so that every kind's
+/// lookup rows sit beside each other and a new kind is visibly the same five assertions as the
+/// last (M3-02a added the fourth and fifth).
+/// </remarks>
 [TestFixture]
 public sealed class ContentTests
 {
@@ -421,6 +429,158 @@ public sealed class ContentTests
         Assert.That(new ContentCatalog(Array.Empty<CharacterSpec>()).Modes, Is.Empty);
     }
 
+    [Test]
+    public void Catalog_SkillLookupAndDuplicates()
+    {
+        // The fourth kind (M3-02a), asserted against the same four properties the character and
+        // mode rows claim: found by value, missed by an unknown id, missed by default, and refused
+        // as a duplicate with the id in the message. One row rather than five, for the reason the
+        // mode row gives — what is being checked is that skills went through the same indexer.
+        SkillSpec consecrate = Skill("skill.oathbound.consecrate");
+        var catalog = new ContentCatalog(
+            Array.Empty<CharacterSpec>(), null, null, new[] { consecrate });
+
+        Assert.That(catalog.Skill(new ContentId("skill.oathbound.consecrate")), Is.SameAs(consecrate));
+        Assert.That(catalog.TryGetSkill(consecrate.Id, out SkillSpec found), Is.True);
+        Assert.That(found, Is.SameAs(consecrate));
+        Assert.That(catalog.Skills.Count, Is.EqualTo(1));
+        Assert.That(catalog.Skills[0], Is.SameAs(consecrate));
+
+        Assert.That(catalog.TryGetSkill(new ContentId("skill.nothing.here"), out SkillSpec missing), Is.False);
+        Assert.That(missing, Is.Null);
+        Assert.That(catalog.TryGetSkill(default, out _), Is.False);
+
+        KeyNotFoundException unknown = Assert.Throws<KeyNotFoundException>(
+            () => catalog.Skill(new ContentId("skill.nothing.here")));
+        Assert.That(unknown.Message, Does.Contain("skill.nothing.here"));
+
+        ArgumentException duplicate = Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(
+                Array.Empty<CharacterSpec>(),
+                null,
+                null,
+                new[] { Skill("skill.oathbound.consecrate"), Skill("skill.oathbound.consecrate") }));
+        Assert.That(duplicate.Message, Does.Contain("skill.oathbound.consecrate"));
+
+        Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(Array.Empty<CharacterSpec>(), null, null, new SkillSpec[] { null }));
+
+        // Omitted entirely is a catalog with no skills, not a null one — the bargain the enemy list
+        // has made since M1-07, and the state of every catalog until M3-02b authors one.
+        Assert.That(new ContentCatalog(Array.Empty<CharacterSpec>()).Skills, Is.Empty);
+    }
+
+    [Test]
+    public void Catalog_TreeLookupAndDuplicates()
+    {
+        SkillTreeSpec tree = Tree("tree.oathbound", "character.oathbound");
+        var catalog = new ContentCatalog(
+            Array.Empty<CharacterSpec>(), null, null, null, new[] { tree });
+
+        Assert.That(catalog.Tree(new ContentId("tree.oathbound")), Is.SameAs(tree));
+        Assert.That(catalog.TryGetTree(tree.Id, out SkillTreeSpec found), Is.True);
+        Assert.That(found, Is.SameAs(tree));
+        Assert.That(catalog.Trees.Count, Is.EqualTo(1));
+        Assert.That(catalog.Trees[0], Is.SameAs(tree));
+
+        Assert.That(catalog.TryGetTree(new ContentId("tree.nothing"), out SkillTreeSpec missing), Is.False);
+        Assert.That(missing, Is.Null);
+        Assert.That(catalog.TryGetTree(default, out _), Is.False);
+
+        KeyNotFoundException unknown = Assert.Throws<KeyNotFoundException>(
+            () => catalog.Tree(new ContentId("tree.nothing")));
+        Assert.That(unknown.Message, Does.Contain("tree.nothing"));
+
+        ArgumentException duplicate = Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(
+                Array.Empty<CharacterSpec>(),
+                null,
+                null,
+                null,
+                new[]
+                {
+                    Tree("tree.oathbound", "character.oathbound"),
+                    Tree("tree.oathbound", "character.gravecaller"),
+                }));
+        Assert.That(duplicate.Message, Does.Contain("tree.oathbound"));
+
+        Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(
+                Array.Empty<CharacterSpec>(), null, null, null, new SkillTreeSpec[] { null }));
+
+        Assert.That(new ContentCatalog(Array.Empty<CharacterSpec>()).Trees, Is.Empty);
+    }
+
+    [Test]
+    public void Catalog_TreeForCharacter()
+    {
+        // The door a run actually uses: it knows the class it is playing and no tree id at all.
+        SkillTreeSpec tree = Tree("tree.oathbound", "character.oathbound");
+        var catalog = new ContentCatalog(
+            Array.Empty<CharacterSpec>(), null, null, null, new[] { tree });
+
+        Assert.That(catalog.TryGetTreeFor(new ContentId("character.oathbound"), out SkillTreeSpec found), Is.True);
+        Assert.That(found, Is.SameAs(tree));
+
+        // A class with no tree is a legal catalog — it is every catalog between M3-02a and M3-12 —
+        // and M3-03 rule 10 says what a run does with that. False, not a throw.
+        Assert.That(catalog.TryGetTreeFor(new ContentId("character.gravecaller"), out SkillTreeSpec none), Is.False);
+        Assert.That(none, Is.Null);
+        Assert.That(catalog.TryGetTreeFor(default, out _), Is.False);
+
+        // And a tree's *id* is not a character id, so asking with the wrong one misses rather than
+        // quietly working — the reason LocKey and ContentId are separate types, one layer up.
+        Assert.That(catalog.TryGetTreeFor(new ContentId("tree.oathbound"), out _), Is.False);
+    }
+
+    [Test]
+    public void Catalog_TwoTreesForOneCharacter_Throws()
+    {
+        // Not a duplicate id — both trees are correctly named — so the message has to name the
+        // *character*, which is the thing a person can act on. A class has exactly one tree (CH §5).
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => new ContentCatalog(
+                Array.Empty<CharacterSpec>(),
+                null,
+                null,
+                null,
+                new[]
+                {
+                    Tree("tree.oathbound", "character.oathbound"),
+                    Tree("tree.oathbound_alt", "character.oathbound"),
+                }));
+
+        Assert.That(ex.Message, Does.Contain("character.oathbound"));
+    }
+
+    private static SkillSpec Skill(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey(id + ".name"),
+        new LocKey(id + ".desc"),
+        SkillKind.Passive,
+        new IEffect[] { new NoEffect() });
+
+    /// <summary>The smallest legal tree: three branches of one tier of one node.</summary>
+    private static SkillTreeSpec Tree(string id, string characterId) => new SkillTreeSpec(
+        new ContentId(id),
+        new ContentId(characterId),
+        new[] { Branch(id, "a"), Branch(id, "b"), Branch(id, "c") });
+
+    private static SkillBranchSpec Branch(string treeId, string branch) => new SkillBranchSpec(
+        new LocKey(treeId + "." + branch),
+        new IReadOnlyList<ContentId>[]
+        {
+            new[] { new ContentId($"{treeId}.{branch}.n0") },
+        });
+
+    /// <summary>
+    /// An effect that is nothing but an effect — a <c>SkillSpec</c> never looks inside one, and
+    /// these rows are about the catalog rather than about any primitive.
+    /// </summary>
+    private sealed class NoEffect : IEffect
+    {
+    }
+
     private static ModeSpec Mode(string id) => new ModeSpec(
         new ContentId(id),
         new LocKey(id + ".name"),
@@ -428,6 +588,7 @@ public sealed class ContentTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     private static ContentId OathboundId() => new ContentId("character.oathbound");

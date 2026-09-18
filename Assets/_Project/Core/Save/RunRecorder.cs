@@ -21,11 +21,30 @@ namespace Soulvail.Core.Save;
 /// the row that says this type may have one.
 /// </para>
 /// <para>
-/// <b>It allocates nothing.</b> <see cref="RunSnapshot"/> and <see cref="RandomState"/> are
-/// <c>readonly struct</c>s, <see cref="IRandom.Capture"/> allocates nothing (M2-13a), and
-/// <c>RunSnapshotTaken</c> crosses <c>IDomainEvents</c> by <c>in</c>. It is not on a tick path — it
-/// runs twice a minute at most — but a boundary frame is already swapping an arena, and it is the
-/// last frame in a run that should also be asking for heap (rule 7).
+/// <b>It allocates nothing, except for the nodes a levelled run has taken.</b>
+/// <see cref="RunSnapshot"/> and <see cref="RandomState"/> are <c>readonly struct</c>s,
+/// <see cref="IRandom.Capture"/> allocates nothing (M2-13a), and <c>RunSnapshotTaken</c> crosses
+/// <c>IDomainEvents</c> by <c>in</c>. It is not on a tick path — it runs twice a minute at most —
+/// but a boundary frame is already swapping an arena, and it is the last frame in a run that should
+/// also be asking for heap (rule 7). <b>The list of taken nodes is the named exception</b> (M3-01b
+/// rule 5): a snapshot has to copy it, because <c>SaveWriter</c> enqueues the write and a borrowed
+/// buffer would be rewritten under a save that had not happened yet. <c>Take_AllocatesNothing</c>
+/// still holds and is not vacuous — a copy of an <em>empty</em> list is the shared zero-length
+/// array, so a run that has taken nothing costs nothing, which is every run until M3-12 authors a
+/// tree. The first node taken is the first boundary write to ask for heap, and that trade was named
+/// in advance rather than discovered by the row going red.
+/// </para>
+/// <para>
+/// <b>The four manual slots are the second such exception and they behave the same way</b>
+/// (M3-07b). The list is always four long, so there is no empty case to shortcut on length — but
+/// four <em>empty</em> slots are indistinguishable from any other four, so <c>RunSnapshot</c> keeps
+/// one shared instance for them and a run with nothing on Manual copies nothing. Every run is that
+/// run until a player opens CC §6.3's screen, so <c>Take_AllocatesNothing</c> is still measuring a
+/// real zero rather than passing on a technicality. <b>The copy is not optional once a slot is
+/// filled</b>, and for a sharper reason than the node list's: what is passed is
+/// <c>SkillRunner.Slots</c>, a live view over the runner's table that <c>SetAutoCast</c> writes
+/// through, so a borrowed one would be rewritten by the player's next toggle under a save that had
+/// not happened yet.
 /// </para>
 /// </remarks>
 public sealed class RunRecorder
@@ -130,7 +149,36 @@ public sealed class RunRecorder
             // Two clocks, neither derived from the other: simulated seconds the run has lasted, and
             // the wall-clock instant it was written at.
             state.Time,
-            _clock.UtcNow);
+            _clock.UtcNow,
+
+            // **What a levelled run is made of** (M3-01b). Absolute experience rather than the
+            // fraction, for the reason the shield above is absolute. The boundary capture sits
+            // downstream of the tick's XP drain (AR §18.1, M3-01a), so the level a stage's *last*
+            // kill earned is in the file that describes the next stage — not the one the player
+            // had a frame ago.
+            state.Level,
+            state.Xp,
+            state.PendingLevelUps,
+
+            // **The tree's own view, in take order** (M3-03 rule 9). A read off `RunState` rather
+            // than the tree itself, because the handle is internal and a recorder has no business
+            // holding one (AR §18.2) — and empty rather than null for a class with no tree, which
+            // is every class this build ships until M3-12.
+            //
+            // `RunSnapshot`'s constructor copies it, which is what the allocation note above is
+            // about: the copy of an empty list is the shared zero-length array and costs nothing,
+            // and the first run to take a node is the first boundary write to ask for heap.
+            state.TakenNodeIds,
+
+            // **CC §6.2's four thumb positions, taken at the boundary like every other field**
+            // (M3-07b rule 8). A read off `RunState` rather than the runner, for the reason the
+            // node list above is: the handle is internal and a recorder has no business holding
+            // one (AR §18.2). What arrives is `SkillRunner.Slots`, a *live* view over the runner's
+            // own table — so the constructor's copy is correctness here rather than convention,
+            // and a run with no Manual skills still costs nothing because four empties are shared.
+            // A run with no tree has no actives and therefore four empty slots, which is what a
+            // snapshot of an M3-era run without content correctly says.
+            state.ManualSkillIds);
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

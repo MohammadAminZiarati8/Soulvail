@@ -93,7 +93,8 @@ public readonly struct RosterEntry
 /// <para>
 /// <b>The difficulty curve arrived in M2-03</b>, as <see cref="Scaling"/> — deliberately left out
 /// of M2-02 because the curve types did not exist yet and inventing their shape ahead of a caller
-/// would have fixed it by guess. Two of the things GD §4.5 lists as the mode's are still absent:
+/// would have fixed it by guess. <b><see cref="Xp"/> arrived in M3-01a the same way</b>, with the
+/// tracker that reads it. Two of the things GD §4.5 lists as the mode's are still absent:
 /// which classes are legal, and what starting modifiers a mode carries, both waiting for M5-08 and
 /// M6 because one class exists and no effect system does. AR §6's rule for ports is the rule here
 /// too — a field with no reader is a guess about what its reader will want.
@@ -141,6 +142,12 @@ public sealed class ModeSpec
     /// of them is for being deep. The mode's, not the game's: a Boss Rush would have a flat budget
     /// and no concurrency ramp at all (GD §4.5).
     /// </param>
+    /// <param name="xp">
+    /// CH §5.2's levelling curve for this mode — what each level costs. The mode's, not the
+    /// character's and not the game's: GD §4.5 makes a mode a data object, and how fast it levels
+    /// you is the second-largest thing after difficulty that tells one from another. A Boss Rush
+    /// levels differently, or not at all.
+    /// </param>
     /// <param name="roster">
     /// Every archetype the mode may spawn, with the depth each is introduced at. Copied; the
     /// caller's list is not retained. Order is meaningful: <see cref="RosterFor"/> answers in it.
@@ -157,7 +164,10 @@ public sealed class ModeSpec
     /// same stage. The last is GD §8.2's rule — <em>"new enemies arrive one at a time, in a wave
     /// where they're the only new thing"</em> — and it is what lets
     /// <see cref="TryGetIntroduction"/> answer with a single id rather than a list. Also when an
-    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena.
+    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena, and when
+    /// <paramref name="xp"/> is <c>default(XpCurve)</c> — refused exactly as a defaulted
+    /// <see cref="ScalingSpec"/> curve is, and for a sharper version of the same reason: a zeroed
+    /// curve costs nothing per level, so a tracker fed one levels on every grant without end.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="startingStage"/> is not positive, or a finite mode's
@@ -173,6 +183,7 @@ public sealed class ModeSpec
         bool isEndless,
         int finalStage,
         ScalingSpec scaling,
+        XpCurve xp,
         IReadOnlyList<RosterEntry> roster,
         IReadOnlyList<ContentId> arenas = null)
     {
@@ -214,12 +225,26 @@ public sealed class ModeSpec
             throw new ArgumentNullException(nameof(roster));
         }
 
+        // The same refusal ScalingSpec.Require makes of its own five, spelled here because the
+        // curve is a struct handed straight in rather than wrapped in a class that could check it
+        // (AR §18.3: a struct with an invariant needs the check at both ends). LevelTracker asks
+        // again at the other end, which is the end that would hang.
+        if (!xp.IsAuthored)
+        {
+            throw new ArgumentException(
+                $"'{id}'s xp curve is a default value and never passed a constructor, so every "
+                    + "level costs nothing. A run on it would level without end on the first "
+                    + "kill.",
+                nameof(xp));
+        }
+
         Id = id;
         NameKey = nameKey;
         StartingStage = startingStage;
         IsEndless = isEndless;
         FinalStage = effectiveFinal;
         Scaling = scaling;
+        Xp = xp;
 
         _roster = CopyRoster(roster, id);
 
@@ -264,6 +289,18 @@ public sealed class ModeSpec
     /// its own.
     /// </remarks>
     public ScalingSpec Scaling { get; }
+
+    /// <summary>
+    /// CH §5.2's levelling curve for this mode — 20 / 12 / 1.4 for Descent. Shared and immutable;
+    /// a level number is always an argument to it, never a field on it.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>RunSession.Start</c>, which builds the run's one <c>LevelTracker</c> from it, and
+    /// by nothing else. It sits beside <see cref="Scaling"/> rather than inside it because the two
+    /// answer opposite questions — <see cref="Scaling"/> is how hard the game pushes, this is how
+    /// fast the player pushes back — and a mode is free to change one without the other.
+    /// </remarks>
+    public XpCurve Xp { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

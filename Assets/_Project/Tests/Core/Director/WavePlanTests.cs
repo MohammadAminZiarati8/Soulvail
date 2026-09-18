@@ -305,6 +305,7 @@ public sealed class WavePlanTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: threatCost,
+        xpValue: threatCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -335,6 +336,7 @@ public sealed class WavePlanTests
             isEndless: true,
             finalStage: 0,
             scaling,
+            Scalings.Xp(),
             entries);
     }
 

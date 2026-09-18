@@ -4,7 +4,9 @@ using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -41,6 +43,19 @@ public sealed class RunRecorderTests
     private const string ExecutionerId = "enemy.executioner";
     private const string OathboundId = "character.oathbound";
     private const string ModeId = "mode.test";
+
+    /// <summary>The tree the two node rows turn on, and the five positions in it.</summary>
+    private const string TreeIdValue = "tree.oathbound";
+    private const string NodeOne = "skill.test.one";
+    private const string NodeTwo = "skill.test.two";
+    private const string NodeThree = "skill.test.three";
+
+    /// <summary>The three Actives the v3 slot rows put under a thumb (M3-07b).</summary>
+    private const string ActiveA = "skill.test.activea";
+    private const string ActiveB = "skill.test.activeb";
+    private const string ActiveC = "skill.test.activec";
+    private const string NodeB = "skill.test.b";
+    private const string NodeC = "skill.test.c";
 
     /// <summary>GD §8.1's threat cost for the one archetype these rows compose from.</summary>
     private const int HuskCost = 4;
@@ -229,6 +244,218 @@ public sealed class RunRecorderTests
         Assert.That(_random.Capture().Misc, Is.EqualTo(11UL));
     }
 
+    // ---- What a levelled run writes down (M3-01b rules 1, 6) -----------------------------------
+
+    [Test]
+    public void Recorder_CapturesLevelXpPending()
+    {
+        Build(OneHuskStage());
+
+        // Three picks owed at level 3, which Grant alone cannot produce — it banks a pick per
+        // threshold, so a played run at level 3 owes exactly two. The combination is legal on disk
+        // and has to survive a round trip, and it is also what a run looks like the moment M3-08
+        // exists and a player closes the app on the level-up screen rather than choosing.
+        StartAt(3, restore: Saved(3, level: 3, xp: 20f, pendingLevelUps: 3));
+
+        RunState state = _session.State;
+
+        Assert.That(state.Level, Is.EqualTo(3), "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(state, 4);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        Assert.That(snapshot.Level, Is.EqualTo(3));
+        Assert.That(snapshot.PendingLevelUps, Is.EqualTo(3));
+
+        // **Absolute, not the fraction** — the rule-8 trap, and the same one PlayerShield sprang at
+        // M2-14a. XpToNext moves with the level *and* with the mode's curve, so a snapshot carrying
+        // 0.19 could not be turned back into 20 points by anything reading it.
+        Assert.That(snapshot.Xp, Is.EqualTo(20f));
+        Assert.That(snapshot.Xp, Is.EqualTo(state.Xp));
+        Assert.That(
+            snapshot.Xp,
+            Is.Not.EqualTo(state.XpFraction),
+            "The snapshot must carry absolute experience, not the fraction the XP strip fills to.");
+    }
+
+    [Test]
+    public void Recorder_CapturesTakenNodesInOrder()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // **Restored rather than taken, and that is the only route available.** `RunState.Tree` is
+        // `internal` and this assembly has no `InternalsVisibleTo` (the fixture's standing rule),
+        // and nothing public takes a node until M3-08's ChooseOffer — so a row that wants three
+        // nodes owned starts a run that already owned them. Not circular:
+        // `SkillTreeTests.Restore_ReplaysInOrder` is what says the replay works, and
+        // `RunSessionResumeTests.Start_RestoresTakenNodes` that Start applies it.
+        //
+        // The order is deliberately not the tree's own: three, one, two. A recorder that read the
+        // tree's *shape* instead of its take list would come back sorted and this row would fail.
+        var taken = new[]
+        {
+            new ContentId(NodeThree),
+            new ContentId(NodeOne),
+            new ContentId(NodeTwo),
+        };
+
+        StartAt(1, restore: Saved(1, level: 4, xp: 0f, pendingLevelUps: 0, takenNodeIds: taken));
+
+        Assert.That(
+            _session.State.TakenNodeCount,
+            Is.EqualTo(3),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // v2 has carried this field since M3-01b and M3-03 is what fills it — no version bump and
+        // no migration step, which is the whole reason the field shipped two tasks before its
+        // writer (M3-01b rule 1).
+        Assert.That(snapshot.TakenNodeIds, Is.EqualTo(taken), "In take order, which is what the list means.");
+
+        // A copy, not the run's own list: `SaveWriter` enqueues the write, so a borrowed buffer
+        // would be rewritten under a save that had not happened yet (M3-01b rule 5).
+        Assert.That(snapshot.TakenNodeIds, Is.Not.SameAs(_session.State.TakenNodeIds));
+    }
+
+    [Test]
+    public void Recorder_NoTreeWritesAnEmptyList()
+    {
+        Build(OneHuskStage());
+        StartAt(1);
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // The other half of the row above, and the half every catalog this build ships takes: a
+        // class with no tree writes an empty list rather than null, so no reader has to ask
+        // (M3-03 rule 10).
+        Assert.That(snapshot.TakenNodeIds, Is.Not.Null);
+        Assert.That(snapshot.TakenNodeIds, Is.Empty);
+    }
+
+    // ---- v3: the loadout (M3-07b rule 8) --------------------------------------------------------
+
+    [Test]
+    public void Recorder_CapturesTheSlots()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // Three Actives owned, then two of them put under a thumb with a hole between — which takes
+        // three toggles and an untoggle, because SetAutoCast always fills the *lowest* free slot and
+        // there is deliberately no way to ask for S3 directly (M3-07a rule 3).
+        StartAt(1, restore: Saved(
+            1,
+            level: 4,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: new[]
+            {
+                new ContentId(ActiveA),
+                new ContentId(ActiveB),
+                new ContentId(ActiveC),
+            }));
+
+        var commands = (IPlayerCommands)_session;
+
+        commands.SetAutoCast(new ContentId(ActiveA), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveB), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveC), auto: false);
+        commands.SetAutoCast(new ContentId(ActiveB), auto: true);
+
+        Assert.That(
+            _session.State.ManualSlotCount,
+            Is.EqualTo(2),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // **The hole in place, which is the whole reason the field is four slots and not a set.**
+        // A compacted list would say [A, C] here and hand the player back two adjacent buttons.
+        Assert.That(
+            snapshot.ManualSkillIds,
+            Is.EqualTo(new[]
+            {
+                new ContentId(ActiveA),
+                default(ContentId),
+                new ContentId(ActiveC),
+                default(ContentId),
+            }));
+
+        // A copy, not the run's own view: what RunState hands out is SkillRunner.Slots, which is
+        // live, and SaveWriter enqueues the write — so a borrowed one would be rewritten by the
+        // player's next toggle under a save that had not happened yet.
+        Assert.That(snapshot.ManualSkillIds, Is.Not.SameAs(_session.State.ManualSkillIds));
+    }
+
+    [Test]
+    public void Recorder_NoTreeCapturesFourEmpties()
+    {
+        Build(OneHuskStage());
+        StartAt(1);
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // A run with no tree has no actives and therefore four empty slots — never a shorter list
+        // and never null, so no reader has to ask. That is every run this build ships until M3-12
+        // authors a tree, which is why Take_AllocatesNothing is still measuring a real zero.
+        Assert.That(snapshot.ManualSkillIds, Is.Not.Null);
+        Assert.That(snapshot.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
+        Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Recorder_BoundaryCarriesTheClearingKillsLevel()
+    {
+        // Five Husks at twelve experience each is sixty, against the 20 + 12·2^1.4 ≈ 51.7 that
+        // level 2 costs — so the stage's *last* kill is the one that crosses, which is the whole
+        // arrangement this row needs.
+        Build(LevellingStage());
+        StartAt(1);
+
+        Assert.That(
+            _events.Single<RunSnapshotTaken>().Snapshot.Level,
+            Is.EqualTo(1),
+            "The opening write is level 1, so the boundary's level having moved means something.");
+
+        ClearTheStage();
+
+        Assert.That(_events.Count<LeveledUp>(), Is.GreaterThan(0), "The fixture failed to level the player.");
+
+        RunSnapshot boundary = _events.Of<RunSnapshotTaken>()[1].Snapshot;
+
+        // **This is what AR §18.1's xp-drain row buys.** The drain sits after the death check and
+        // before the director and the stage flow, so a LeveledUp earned by a stage's last kill
+        // lands before that tick's StageCleared and before the snapshot taken with it. Move the
+        // drain below the flow and this file carries the level the player had a frame ago, and the
+        // run resumes one level short — silently, and only for players who level on a last kill.
+        Assert.That(boundary.Level, Is.GreaterThan(1));
+        Assert.That(boundary.Level, Is.EqualTo(_session.State.Level));
+
+        Assert.That(
+            LastIndexOf<LeveledUp>(),
+            Is.LessThan(IndexOfBoundarySnapshot()),
+            "The level the clearing kill earned must be published before the snapshot that records it.");
+    }
+
     [Test]
     public void Take_VersionIsCurrent()
     {
@@ -244,6 +471,17 @@ public sealed class RunRecorderTests
             Is.EqualTo(RunSnapshot.CurrentVersion));
     }
 
+    /// <remarks>
+    /// <b>This row survives M3-03, and it survives it for the reason it was written down at
+    /// M3-01b rather than by luck.</b> A snapshot copies the list of taken nodes (M3-01b rule 5) —
+    /// it has to, because <c>SaveWriter</c> enqueues the write and a borrowed buffer would be
+    /// rewritten under a save that had not happened yet — and a copy of an <em>empty</em> list is
+    /// the shared zero-length array, so no heap is asked for here. This row's run has no tree and
+    /// has taken nothing, which is every run until M3-12 authors one; <b>the first node taken is the
+    /// first boundary write to allocate</b>, and the trade was named in advance rather than
+    /// discovered by this row going red. If a future row measures a run that owns nodes, it is
+    /// measuring the copy and should say so.
+    /// </remarks>
     [Test]
     public void Take_AllocatesNothing()
     {
@@ -251,6 +489,11 @@ public sealed class RunRecorderTests
         StartAt(1);
 
         RunState state = _session.State;
+
+        Assert.That(
+            state.PendingLevelUps,
+            Is.EqualTo(0),
+            "A fresh run, so what follows measures the capture rather than a level-up.");
 
         // A silent sink, never RecordingEvents: that one stores each payload in a List<object> and
         // would box every snapshot, so the row would measure the fake (Traps §7). The real
@@ -605,7 +848,11 @@ public sealed class RunRecorderTests
     // ---- Fixture -------------------------------------------------------------------------------
 
     /// <summary>Builds a whole run-sized world: a catalog, a generator, a clock and a session.</summary>
-    private void Build(ModeSpec mode, CharacterSpec character = null, int seed = 0)
+    private void Build(
+        ModeSpec mode,
+        CharacterSpec character = null,
+        int seed = 0,
+        bool withTree = false)
     {
         _events = new RecordingEvents();
 
@@ -615,10 +862,15 @@ public sealed class RunRecorderTests
         _clock = new FixedClock(Instant);
         _mode = mode;
 
+        // **Off by default**, which is the state of every catalog this build ships until M3-12: the
+        // class has no tree, `RunState.Tree` is null, and the three reads answer 0, false and empty
+        // (M3-03 rule 10). Only the rows about what a tree writes down turn it on.
         _catalog = new ContentCatalog(
             new[] { character ?? Oathbound(shield: true) },
             new[] { Husk(), TheExecutioner() },
-            new[] { mode });
+            new[] { mode },
+            withTree ? TreeSkills() : null,
+            withTree ? new[] { Tree() } : null);
 
         _recorder = new RunRecorder(_random, _clock, _events);
 
@@ -649,12 +901,15 @@ public sealed class RunRecorderTests
             ProjectileCapacity);
     }
 
-    private void StartAt(int stage, Vector3? executionerAt = null)
+    private void StartAt(int stage, Vector3? executionerAt = null, RunSnapshot? restore = null)
     {
-        _session.Start(Config(stage, executionerAt));
+        _session.Start(Config(stage, executionerAt, restore));
     }
 
-    private RunConfig Config(int stage, Vector3? executionerAt = null) => new RunConfig(
+    private RunConfig Config(
+        int stage,
+        Vector3? executionerAt = null,
+        RunSnapshot? restore = null) => new RunConfig(
         new ContentId(ModeId),
         new ContentId(OathboundId),
         _random.Seed,
@@ -662,7 +917,131 @@ public sealed class RunRecorderTests
         new SpawnPlan(
             executionerAt is null
                 ? Array.Empty<SpawnPlan.Entry>()
-                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore: null);
+                : new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), executionerAt.Value) }), restore);
+
+    /// <summary>
+    /// A save that puts a run at <paramref name="level"/>, <paramref name="xp"/> and
+    /// <paramref name="pendingLevelUps"/> when it is started.
+    /// </summary>
+    /// <remarks>
+    /// <b>Resuming is how a row gets an arbitrary progression state, and it is the only way.</b>
+    /// <c>RunState.Progression</c> is <c>internal</c> and this assembly has no
+    /// <c>InternalsVisibleTo</c> — the fixture's own standing rule — so the alternative is playing
+    /// until the numbers happen to land, which cannot produce a level and a pick count that
+    /// disagree at all. Not circular: <c>RunSessionResumeTests.Start_RestoresLevelXpPending</c> is
+    /// what says the restore works, and it fails there rather than here if it does not.
+    /// </remarks>
+    private RunSnapshot Saved(
+        int stage,
+        int level,
+        float xp,
+        int pendingLevelUps,
+        IReadOnlyList<ContentId> takenNodeIds = null,
+        IReadOnlyList<ContentId> manualSkillIds = null) => new RunSnapshot(
+        RunSnapshot.CurrentVersion,
+        new ContentId(ModeId),
+        new ContentId(OathboundId),
+        _random.Seed,
+        stage,
+        _random.Capture(),
+        playerHp: 100f,
+        playerShield: ShieldMax,
+        runTime: 90f,
+        Instant,
+        level,
+        xp,
+        pendingLevelUps,
+        takenNodeIds ?? Array.Empty<ContentId>(),
+        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+
+    /// <summary>
+    /// A tree of three branches, with three nodes sharing branch 0's only tier so that any order of
+    /// them is a legal take order.
+    /// </summary>
+    /// <remarks>
+    /// Three at one tier rather than a chain, because the row this exists for is about the
+    /// <em>order the list is written in</em>, and a chain would make that order the only one the
+    /// gating allowed — so a recorder that sorted the ids would still pass.
+    /// </remarks>
+    private static SkillTreeSpec Tree() => new SkillTreeSpec(
+        new ContentId(TreeIdValue),
+        new ContentId(OathboundId),
+        new[]
+        {
+            Branch('a', new[] { NodeOne, NodeTwo, NodeThree }),
+            Branch('b', new[] { NodeB }),
+
+            // **The three Actives share branch c's only tier rather than forming a fourth
+            // branch**: `SkillTreeSpec` refuses a class with anything but three, because CH §5 wants
+            // an identical skeleton for every class so the UI is built once. At one tier they are
+            // takeable in any order, which is what the slot rows need — they restore all three and
+            // then choose which sit under a thumb.
+            Branch('c', new[] { NodeC, ActiveA, ActiveB, ActiveC }),
+        });
+
+    private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
+    {
+        Passive(NodeOne),
+        Passive(NodeTwo),
+        Passive(NodeThree),
+        Passive(NodeB),
+        Passive(NodeC),
+        Active(ActiveA),
+        Active(ActiveB),
+        Active(ActiveC),
+    };
+
+    private static SkillBranchSpec Branch(char letter, string[] tier)
+    {
+        var ids = new ContentId[tier.Length];
+
+        for (int i = 0; i < tier.Length; i++)
+        {
+            ids[i] = new ContentId(tier[i]);
+        }
+
+        return new SkillBranchSpec(
+            new LocKey($"branch.{letter}"),
+            new IReadOnlyList<ContentId>[] { ids });
+    }
+
+    /// <summary>
+    /// An Active, which is what the slot rows need: only an Active reaches <c>SkillRunner</c>, and
+    /// only something the runner owns can be put under a thumb.
+    /// </summary>
+    /// <remarks>
+    /// <b>Added to branch c's tier rather than as a fourth branch</b>, because a class has exactly
+    /// three (CH §5) and <c>SkillTreeSpec</c> refuses a fourth — so the node-order rows above keep
+    /// branch a exactly as they were written against it. The trigger is never met in
+    /// these rows because nothing ticks between the restore and the <c>Take</c> — a recorder reads
+    /// state and does not run a frame — so its shape is immaterial and is the fixture's ordinary one.
+    /// </remarks>
+    private static SkillSpec Active(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Active,
+        Array.Empty<IEffect>(),
+        new ActiveSpec(
+            2.5f,
+            new TriggerSpec(new[]
+            {
+                new TriggerClause(TriggerField.HpFraction, TriggerComparison.Below, 0.6f),
+            }),
+            new IEffect[]
+            {
+                new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
+            }));
+
+    private static SkillSpec Passive(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new IEffect[]
+        {
+            new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
+        });
 
     private void TickFor(int ticks)
     {
@@ -857,6 +1236,42 @@ public sealed class RunRecorderTests
         return -1;
     }
 
+    /// <summary>Where <typeparamref name="T"/> was published last, as an index into the whole log.</summary>
+    private int LastIndexOf<T>()
+        where T : struct
+    {
+        for (int i = _events.All.Count - 1; i >= 0; i--)
+        {
+            if (_events.All[i] is T)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Where the boundary write sits in the whole log — the second <c>RunSnapshotTaken</c>, the
+    /// first being the opening one.
+    /// </summary>
+    private int IndexOfBoundarySnapshot()
+    {
+        int seen = 0;
+
+        for (int i = 0; i < _events.All.Count; i++)
+        {
+            if (_events.All[i] is RunSnapshotTaken && ++seen == 2)
+            {
+                return i;
+            }
+        }
+
+        Assert.Fail("No boundary snapshot was ever taken.");
+
+        return -1;
+    }
+
     private static void Draw(IRandomStream stream, int times)
     {
         for (int i = 0; i < times; i++)
@@ -869,6 +1284,18 @@ public sealed class RunRecorderTests
 
     /// <summary>A stage of exactly one Husk: one wave, one body, and a budget that buys it.</summary>
     private static ModeSpec OneHuskStage() => Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap);
+
+    /// <summary>
+    /// A stage of five Husks in one wave — sixty experience against level 2's ≈ 51.7, so the last
+    /// kill of the stage is the one that crosses the threshold.
+    /// </summary>
+    /// <remarks>
+    /// Four would not do it (48) and six would cross on the fifth, which would make the row pass
+    /// for the wrong reason: what it is about is a level earned on the tick the stage ends, not a
+    /// level earned at some point during it.
+    /// </remarks>
+    private static ModeSpec LevellingStage() =>
+        Mode(budget: HuskCost * 5, waves: 1, concurrency: DeviceCap);
 
     /// <summary>The same, but finite and out of stages after <paramref name="finalStage"/>.</summary>
     private static ModeSpec FinalStage(int finalStage) =>
@@ -911,6 +1338,7 @@ public sealed class RunRecorderTests
             isEndless: endless,
             finalStage: finalStage,
             scaling,
+            Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) });
     }
 
@@ -925,6 +1353,7 @@ public sealed class RunRecorderTests
         moveSpeed: 2f,
         targetPriority: 1,
         threatCost: HuskCost,
+        xpValue: HuskCost * 3f,
         isElite: false,
         contactDamage: 8f,
         reach: 1.2f,
@@ -944,6 +1373,7 @@ public sealed class RunRecorderTests
         moveSpeed: 0.01f,
         targetPriority: 1,
         threatCost: 40,
+        xpValue: 120f,
         isElite: false,
         contactDamage: 16f,
         reach: 4f,

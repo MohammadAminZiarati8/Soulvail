@@ -39,6 +39,20 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly IPlayerCommands _commands;
 
+    /// <summary>
+    /// The same run seen through the third command port (AR §6). A third handle for
+    /// <see cref="_commands"/>' reason, one privilege further out: this one may grant the player a
+    /// skill, which is not something an input adapter or the frame's body steps have any business
+    /// being able to do.
+    /// </summary>
+    private readonly IProgressionCommands _progression;
+
+    /// <summary>
+    /// Who is holding the pause, if anyone. Read at the top of every frame and written only when the
+    /// level-up flow's answer changes — see <see cref="LevelUpPhase"/>.
+    /// </summary>
+    private readonly RunPause _pause;
+
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
 
@@ -76,9 +90,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly TelegraphRings _telegraphRings;
 
+    /// <summary>
+    /// The ground a Consecrate laid. Held for the two reasons the rings above are, and they are the
+    /// same one: it has to be stepped with the snapshot's <c>Dt</c> (M3-11c rule 3), and being on
+    /// this object's dependency chain is what guarantees it is listening before <see cref="Start"/>
+    /// can let a skill fire anything.
+    /// </summary>
+    private readonly ZoneViews _zoneViews;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
+
+    /// <summary>
+    /// What a thumb asked of CC §6.2's four slot buttons this frame, polled in
+    /// <see cref="CommandPhase"/> beside <see cref="_tapToFocus"/> (M3-10a rule 3).
+    /// </summary>
+    /// <remarks>
+    /// The second poller that phase has ever had, and the first since M1-09's. It is here for
+    /// exactly the reason the first one is — see <see cref="CommandPhase"/>.
+    /// </remarks>
+    private readonly SkillSlotInput _skillSlots;
+
     private readonly ConeOverlapQuery _cone;
 
     /// <summary>
@@ -98,6 +131,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     public RunTicker(
         IRunSession session,
         IPlayerCommands commands,
+        IProgressionCommands progression,
+        RunPause pause,
         PendingRun pending,
         ContentCatalog catalog,
         IRandom random,
@@ -109,14 +144,18 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         EnemyViews enemyViews,
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
+        ZoneViews zoneViews,
         SaveWriter saveWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
+        SkillSlotInput skillSlots,
         ConeOverlapQuery cone)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        _progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        _pause = pause ?? throw new ArgumentNullException(nameof(pause));
         _pending = pending ?? throw new ArgumentNullException(nameof(pending));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -126,6 +165,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
+        _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
         // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
         // announced as an event — so the parameter exists for one reason: being on this object's
         // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
@@ -136,6 +176,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
+        _skillSlots = skillSlots ?? throw new ArgumentNullException(nameof(skillSlots));
         _cone = cone ?? throw new ArgumentNullException(nameof(cone));
 
         _coneHitIds = new int[cone.Capacity];
@@ -245,6 +286,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// method returns.
     /// </para>
     /// <para>
+    /// <b>A single <c>Physics.SyncTransforms()</c> stands between the two halves, and it is what
+    /// makes the paragraph above true</b> (M2-15a). <c>Physics.autoSyncTransforms</c> is 0 for this
+    /// project, so moving a transform does not move the collider the physics scene holds — the
+    /// ordering was therefore honoured by the call order and quietly not by the code, and a swing
+    /// could miss an enemy that had stepped into it this frame. It is one flush at one seam rather
+    /// than a setting, because the setting would pay the same cost on every write in the project
+    /// instead of once at the only point that asks a question.
+    /// </para>
+    /// <para>
     /// <b><see cref="ApplyKnockbacks"/> is last of all, and that is not tidiness.</b> The shoves it
     /// applies are written by core while it answers <c>ReportChargeHits</c> — that is, from inside
     /// <see cref="StepCharge"/>, later in the frame than every other intent in the buffer. A reader
@@ -274,6 +324,17 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // Every frame after the run ended. The scope is still alive — the death overlay is on
         // screen waiting for a tap — so this object is still an ITickable with nothing to do.
         if (!_session.IsRunning)
+        {
+            return;
+        }
+
+        LevelUpPhase();
+
+        // **Above CommandPhase, so a tap that lands on the level-up screen cannot also focus an
+        // enemy or spend the Charge** (M3-08a rule 14). The Input System stays enabled and the stick
+        // keeps reading; with the tick gated it moves nobody, and M3-08b's full-screen canvas takes
+        // the touches anyway.
+        if (_pause.IsPaused)
         {
             return;
         }
@@ -327,6 +388,33 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // thing a telegraph is not allowed to do. Read by nothing below either: a decal has no
         // collider, so the pair of them are the frame's two purely cosmetic steps.
         _telegraphRings.Step(_snapshot.Dt);
+
+        // The zones, for the same reason again and on the same clock (M3-11c rule 3). Core ran every
+        // zone's own six seconds — and every one of its half-second pulses — on the clamped step, so
+        // a decal faded on the wall clock would stand a little longer or a little less long than the
+        // ground it stands for, on exactly the hitching frames the clamp exists for. Read by nothing
+        // below either: a decal has no collider, so this is the third and last of the frame's purely
+        // cosmetic steps.
+        _zoneViews.Step(_snapshot.Dt);
+
+        // The line that makes the ordering above true of the code and not only of the call order
+        // (M2-15a, M3 ledger row 3). `Physics.autoSyncTransforms` is 0 project-wide, so the writes
+        // performed by `_player.Apply` and `ApplyEnemyMoves` sit in the transforms and have *not*
+        // reached the physics scene: without this, both queries below resolve against where the
+        // bodies stood at the end of the previous frame. The symptom is a swing that misses an
+        // enemy which stepped into the cone this frame — rare, silent, and exactly the failure
+        // AR §18.1's ordering exists to prevent.
+        //
+        // Here rather than anywhere else, because this is the seam: everything above moves bodies,
+        // everything below asks physics about them. `StepCharge` sweeps a line against enemy
+        // colliders and `ResolveConeHits` sweeps a wedge against the same ones, and nothing between
+        // the two writes an enemy transform — so one flush serves both. `ApplyKnockbacks` moves
+        // enemies again and is deliberately last, after every question has been asked.
+        //
+        // The cost is a flush of the frame's dirty transforms, paid once. It is not free and has
+        // never been measured on a phone; the alternative was leaving a correctness bug in place to
+        // protect a number nobody has. Re-measure when hardware exists (PROGRESS → Deferred).
+        Physics.SyncTransforms();
 
         StepCharge();
 
@@ -462,6 +550,54 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
+    /// Opens the level-up for a pick that is owed, and holds or releases the pause to match.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The <em>when</em> belongs here, in the file that already writes the frame down</b>, and
+    /// that is <see cref="CommandPhase"/>'s own argument (M3-08a rule 4): an ordering decision made
+    /// in a presenter would be decided by whatever order VContainer happened to register it in, and
+    /// AR §18.1's last row already says a view that answers core cannot own its own <c>Update</c>.
+    /// It is also what makes the draw lazy in the sense M3-04 needs — the call happens <em>between</em>
+    /// ticks, with nothing half-decided, so the boundary snapshot taken on the levelling tick
+    /// captures the <c>Offers</c> stream before any draw has advanced it.
+    /// </para>
+    /// <para>
+    /// <b>The tick that earned the level finishes first.</b> The level is published mid-tick and
+    /// nothing may cut that tick short: its intents are applied, its cone is answered and its
+    /// boundary snapshot is taken, all below <c>session.Tick</c>. The flag is read at the top of the
+    /// <em>next</em> frame, which is this one.
+    /// </para>
+    /// <para>
+    /// <b>This object raises the pause, and it is the only thing in the build that can.</b> M3-08b's
+    /// screen is what will hold it once it exists; until then the gate would never go up and manual
+    /// verification could not see a paused run at all. Raising is guarded on nothing else holding
+    /// it, and releasing on this reason holding it, so a <see cref="PauseReason.Menu"/> that arrives
+    /// with M3-09 is neither stamped on nor stolen — <c>RunPause.Pause</c> throws for a second
+    /// reason, and a gate that threw from inside the frame loop would turn a screen collision into a
+    /// dead run.
+    /// </para>
+    /// </remarks>
+    private void LevelUpPhase()
+    {
+        if (_progression.IsLevelUpPending)
+        {
+            _progression.OpenLevelUp();
+        }
+
+        bool wantsPause = _progression.HasOffer;
+
+        if (wantsPause && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.LevelUp);
+        }
+        else if (!wantsPause && _pause.Holder == PauseReason.LevelUp)
+        {
+            _pause.Resume(PauseReason.LevelUp);
+        }
+    }
+
+    /// <summary>
     /// Everything the player asked for this frame, in one list.
     /// </summary>
     /// <remarks>
@@ -473,15 +609,28 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// file that already owns the frame.
     /// </para>
     /// <para>
-    /// Two members now, and the second is exactly the line the shape was built for. The dash press
-    /// is read here rather than acted on by the button that made it, so that "a tap became a
+    /// Three members now, and the middle one is exactly the line the shape was built for. The dash
+    /// press is read here rather than acted on by the button that made it, so that "a tap became a
     /// command" happens at a known point in the frame — which is what makes CC §5's 0.15 s input
     /// buffer measure the age of the press against the same clock core ends the cooldown on.
+    /// </para>
+    /// <para>
+    /// <b>The slot poll is the phase's second poller, and the first since M1-09's</b> (M3-10a rule
+    /// 3). It sits beside <c>_tapToFocus.Poll</c> rather than on the uGUI button that made the press,
+    /// because Unity gives no order between the <c>EventSystem</c>'s <c>Update</c> and this object's
+    /// — so a <c>Button</c> calling <c>CastSkill</c> from its own handler would land the command
+    /// before or after the snapshot depending on nothing anybody wrote down. <b>Above the dash
+    /// press and below the focus tap is not load-bearing</b> and is named so a later reader does
+    /// not go looking for a reason: the three reach different members of core, nothing in the frame
+    /// reads one's effect before another's, and all three are in the same phase, which is the part
+    /// that is.
     /// </para>
     /// </remarks>
     private void CommandPhase()
     {
         _tapToFocus.Poll();
+
+        _skillSlots.Poll();
 
         if (_input.MovementSkillPressedThisFrame)
         {

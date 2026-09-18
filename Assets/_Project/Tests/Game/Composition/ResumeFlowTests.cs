@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -34,11 +35,17 @@ namespace Soulvail.Tests.Game.Composition;
 /// </para>
 /// <para>
 /// <b>The one thing this file does not do is tap the buttons.</b> Both handlers load a scene
-/// through <c>SceneLoader</c>, which is <c>sealed</c> with no port behind it, and
-/// <c>SceneManager.LoadSceneAsync</c> cannot be driven from an EditMode test without taking the
-/// Editor's open scene with it. So the rows here assert the two halves the tap is made of — the
-/// button's visibility, and what <c>PendingRun</c> ends up holding — and the tap itself is the
-/// owner's manual step 2. See the task's <i>As built</i>.
+/// through <c>SceneLoader</c>, and <c>SceneManager.LoadSceneAsync</c> cannot be driven from an
+/// EditMode test without taking the Editor's open scene with it. So the rows here assert the two
+/// halves the tap is made of — the button's visibility, and what <c>PendingRun</c> ends up
+/// holding — and the tap itself is the owner's manual step 2. See the task's <i>As built</i>.
+/// <para>
+/// <b>What has changed since is that the loader is no longer <c>sealed</c></b> (M3-09a):
+/// <c>LoadAsync</c> is <c>virtual</c>, so <c>PausePresenterTests</c> hands its presenter a loader
+/// that records instead of loading. These rows were deliberately left as they are — they are about
+/// what the Menu decides, not about the load — but a task that wants to tap these two buttons now
+/// can.
+/// </para>
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -81,6 +88,31 @@ public sealed class ResumeFlowTests
         }
 
         _created.Clear();
+    }
+
+    // ---- Boot states the baseline (M3-08a rule 13) ----------------------------------------------
+
+    [Test]
+    public void Boot_StatesTheTimeScaleBaseline()
+    {
+        // **Domain reload is disabled on Play**, so a Play session ended mid-pause leaves
+        // Time.timeScale at 0 and the next one would start frozen with nothing to say why. RunPause
+        // restores what it found, and this is the belt to that braces: the baseline is *stated* once
+        // at boot, beside the frame-rate line, for the same reason a baseline is written down at all.
+        float restore = Time.timeScale;
+
+        try
+        {
+            Time.timeScale = 0f;
+
+            RunBootFlow(new StubStore(), new SavedRun());
+
+            Assert.That(Time.timeScale, Is.EqualTo(1f), "boot must not inherit a frozen clock.");
+        }
+        finally
+        {
+            Time.timeScale = restore;
+        }
     }
 
     // ---- Boot reads the disk (rule 6) -----------------------------------------------------------
@@ -453,13 +485,16 @@ public sealed class ResumeFlowTests
     {
         var loader = new SceneLoader();
         var store = new StubStore();
-        HapticsSettings haptics = HapticsSettings.FromStore(store);
+
+        // ProfileStore rather than HapticsSettings as of M3-09c: boot hands the loaded profile to
+        // the one object that holds a whole one, not to one field's holder.
+        var profiles = new ProfileStore(store);
         var saved = new SavedRun();
 
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, haptics, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, haptics, saved));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved));
         Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, haptics, null));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null));
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------
@@ -484,7 +519,7 @@ public sealed class ResumeFlowTests
                     + "Menu over it. Open any other scene and re-run.");
         }
 
-        var flow = new BootFlow(new SceneLoader(), store, HapticsSettings.FromStore(store), saved);
+        var flow = new BootFlow(new SceneLoader(), store, new ProfileStore(store), saved);
 
         try
         {
@@ -524,7 +559,7 @@ public sealed class ResumeFlowTests
         Set(presenter, "_descend", descend);
         Set(presenter, "_continue", @continue);
 
-        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader());
+        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader(), Passthrough());
 
         return presenter;
     }
@@ -592,6 +627,11 @@ public sealed class ResumeFlowTests
         var rings = Track(new TelegraphRings(
             container, Template<TelegraphRingView>("RingTemplate"), null, hub, prewarm: 0));
 
+        // Empty, on the rings' terms: nothing in this fixture casts a skill, so no zone is ever
+        // spawned. It is here because the ticker takes one (M3-11c).
+        var zones = Track(new ZoneViews(
+            container, Template<ZoneView>("ZoneTemplate"), null, hub, prewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -602,9 +642,13 @@ public sealed class ResumeFlowTests
 
         charge.Construct(enemyViews, 1 << enemyLayer);
 
+        var pause = new RunPause();
+
         var ticker = new RunTicker(
             session,
             session,
+            session,
+            pause,
             pending,
             Catalog(),
             random,
@@ -616,10 +660,16 @@ public sealed class ResumeFlowTests
             enemyViews,
             projectileViews,
             rings,
+            zones,
             Track(new SaveWriter(new StubStore(), hub)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, session, cameraObject.AddComponent<Camera>()),
+
+            // M3-10a's second poller in CommandPhase. Nothing here presses a slot — these rows are
+            // about what Start hands over — but the constructor guards every argument, which is what
+            // makes this a compile-forced line rather than a choice.
+            new SkillSlotInput(session),
             cone);
 
         try
@@ -631,6 +681,11 @@ public sealed class ResumeFlowTests
             // Restores Screen.sleepTimeout and disables the input adapter. Left undone, every later
             // row in the suite would run with the Editor's sleep timeout changed.
             ticker.Dispose();
+
+            // The same argument for the two globals RunPause writes. Nothing here pauses, so this is
+            // belt and braces — and it is the cheap half of a failure that would show up as an
+            // unrelated fixture timing out.
+            pause.Dispose();
         }
 
         return session;
@@ -654,8 +709,16 @@ public sealed class ResumeFlowTests
     {
         var builder = new ContainerBuilder();
 
+        // The two M3-02b lists are empty because nothing ships in Data/ until M3-12 (rule 7), which
+        // is also what BootScope.prefab carries — so this container is the shipped one.
         BootInstaller.Install(
-            builder, new[] { LoadOathbound() }, new[] { LoadHusk() }, new[] { LoadDescent() });
+            builder,
+            new[] { LoadOathbound() },
+            new[] { LoadHusk() },
+            new[] { LoadDescent() },
+            Array.Empty<SkillDefinition>(),
+            Array.Empty<SkillTreeDefinition>(),
+            EmptyTable());
 
         return Track(builder.Build());
     }
@@ -685,7 +748,12 @@ public sealed class ResumeFlowTests
             playerHp: 62f,
             playerShield: 9f,
             runTime: 412.5f,
-            writtenAt: Instant);
+            writtenAt: Instant,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: Array.Empty<ContentId>(),
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
 
     private static void Set(MenuPresenter presenter, string field, Object value) =>
         typeof(MenuPresenter).GetField(field, Private).SetValue(presenter, value);
@@ -754,7 +822,7 @@ public sealed class ResumeFlowTests
     /// A run, as far as the ticker is concerned: it remembers the config it was handed and, if it
     /// was given one to watch, whether the pending run was still set at that moment.
     /// </summary>
-    private sealed class RecordingSession : IRunSession, IPlayerCommands
+    private sealed class RecordingSession : IRunSession, IPlayerCommands, IProgressionCommands
     {
         private readonly PendingRun _spy;
 
@@ -812,5 +880,42 @@ public sealed class ResumeFlowTests
         public void MovementSkill()
         {
         }
+
+        // M3-07a grew IPlayerCommands. Empty like the three above: this fake exists to be resolved
+        // from the container, not to be commanded.
+        public void CastSkill(int slot)
+        {
+        }
+
+        public void SetAutoCast(ContentId skillId, bool auto)
+        {
+        }
+
+        // M3-08a made this fake an IProgressionCommands too, because RunTicker now takes that port
+        // and this file builds one. Inert like the commands above: the rows here are about the
+        // RunConfig a resume hands over, and a level-up has no part in that — IsLevelUpPending
+        // answering false is what keeps the phase a no-op for every row in this file.
+        public bool IsLevelUpPending => false;
+
+        public bool HasOffer => false;
+
+        public void OpenLevelUp()
+        {
+        }
+
+        public void ChooseOffer(int index)
+        {
+        }
     }
+
+    /// <summary>
+    /// A localisation table for a container build. Empty, because nothing in these rows reads a
+    /// word — what they assert is that <c>BootInstaller</c> takes one and registers the port.
+    /// </summary>
+    private static LocalizationTable EmptyTable() =>
+        ScriptableObject.CreateInstance<LocalizationTable>();
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() => new TableLocalizer(EmptyTable());
+
 }

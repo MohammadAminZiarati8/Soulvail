@@ -258,6 +258,18 @@ public sealed class EnemyViews : IDisposable
             feedback.SetArchetypeLook(look.Tint, look.BodyScale);
         }
 
+        // Before Bind as well, and for the same reason the look is: an Elite's bar is up from the
+        // moment it spawns (GD §16.2), and binding after the body was in service would draw one frame
+        // of the previous tenant's treatment over it. The flag rides the event rather than being
+        // looked up — this class holds a look book and no catalog, which is what keeps
+        // Spawn_NoCatalogIsConsulted true (M3-13b rule 6).
+        EnemyHealthBar healthBar = view.HealthBar;
+
+        if (healthBar != null)
+        {
+            healthBar.Bind(evt.Id, evt.IsElite);
+        }
+
         view.Bind(evt.Id, position);
 
         _byId[evt.Id] = view;

@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
@@ -109,5 +110,10 @@ public sealed class SavedRunTests
         playerHp: 62f,
         playerShield: 9f,
         runTime: 412.5f,
-        writtenAt: Instant);
+        writtenAt: Instant,
+        level: 1,
+        xp: 0f,
+        pendingLevelUps: 0,
+        takenNodeIds: Array.Empty<ContentId>(),
+        manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
 }

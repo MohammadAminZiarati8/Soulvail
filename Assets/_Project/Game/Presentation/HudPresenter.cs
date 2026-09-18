@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -16,8 +17,9 @@ using VContainer;
 namespace Soulvail.Game.Presentation
 {
     /// <summary>
-    /// The player's own row: health, the Aegis, and what happens when the health runs out. GD §16.1
-    /// and §16.2 — the first thing in the game that tells the player how they are doing.
+    /// The player's own row: health, the Aegis, the level, and what happens when the health runs
+    /// out. GD §16.1 and §16.2 — the first thing in the game that tells the player how they are
+    /// doing.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -50,9 +52,20 @@ namespace Soulvail.Game.Presentation
     /// has no business appearing over a scene that is already unloading.
     /// </para>
     /// <para>
-    /// The two strings on the overlay are raw English, in the prefab. That is the second and last
-    /// place in the project where it is allowed (<c>MenuPresenter</c> is the first); M6-10 replaces
-    /// them with <c>LocKey</c>s and the parking lot in ROADMAP.md carries the reminder.
+    /// <b>The two strings on the overlay stopped being raw English at M3-14a</b> (rule 8). They were
+    /// typed into <c>Hud.prefab</c> from M1-17 and were the second and last place in the project
+    /// where that was allowed; they are now <c>ui.death.title</c> and <c>ui.death.hint</c>, written
+    /// from the table when the overlay goes up. <b>The HP readout is deliberately not among them</b>:
+    /// <see cref="HpFormat"/> is a number format rather than a sentence, and it survives localisation
+    /// unchanged — which is the distinction the parking-lot line drew and this task keeps.
+    /// </para>
+    /// <para>
+    /// <b>The level is a fourth rect in this row rather than a fourth component</b> (M3-10b rule 3).
+    /// GD §16.1 puts it <em>"top-left, beside HP"</em>, and <see cref="Place"/> is deliberately one
+    /// method for the whole row — see its own remarks. A second class laying out the same row would
+    /// be a fourth chance for two rects to overlap, so the label lives here with the bar, the
+    /// readout and the ring; the XP <em>strip</em> is <c>XpBarView</c>, because it is a full-width
+    /// element on the opposite edge and shares no arithmetic with any of them.
     /// </para>
     /// </remarks>
     public sealed class HudPresenter : MonoBehaviour
@@ -66,6 +79,37 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private const string HpFormat = "{0:0}/{1:0}";
 
+        /// <summary><em>"You died"</em> — the death overlay's headline (rule 8).</summary>
+        /// <remarks>
+        /// Authored here rather than on the prefab, <c>FirstActiveHint.HintKey</c>'s reason: the
+        /// string this screen owns cannot drift out of the code that owns it, and the row that
+        /// checks it is then asserting against something other than the asset it reads.
+        /// </remarks>
+        private static readonly LocKey DeathTitleKey = new LocKey("ui.death.title");
+
+        /// <summary><em>"Tap to return"</em> — the instruction beneath it (rule 8).</summary>
+        private static readonly LocKey DeathHintKey = new LocKey("ui.death.hint");
+
+        /// <summary>
+        /// The level, on its own. <c>{0:0}</c> for <see cref="HpFormat"/>'s reason, and passed to
+        /// TMP's float overload so it allocates nothing.
+        /// </summary>
+        private const string LevelFormat = "{0:0}";
+
+        /// <summary>
+        /// How wide the level label is, in dp.
+        /// </summary>
+        /// <remarks>
+        /// <b>A constant rather than a serialized field, and that is deliberate.</b> Every other
+        /// number in this row is an Inspector door the owner can tune on a device (ledger row 4) —
+        /// and each of those doors owes a non-finite row that <see cref="Place"/> has never had, this
+        /// method having laid the row out untested since M1-17. A width that no caller can pass a
+        /// value through owes none: it is <c>LevelUpFlow.OverflowDamage</c>'s argument, applied to a
+        /// layout. Two digits at the readout's own point size fit inside 48 with room to spare, and
+        /// a level past 99 is stage 60-odd.
+        /// </remarks>
+        private const float LevelWidthDp = 48f;
+
         [Tooltip("The health bar, with its fill and ghost. The one thing on screen the player is " +
                  "never allowed to be unsure about.")]
         [SerializeField] private HpBarView _hp;
@@ -76,9 +120,23 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The current/max readout beside the bar.")]
         [SerializeField] private TMP_Text _hpText;
 
-        [Tooltip("The death panel: \"You died\" and \"Tap to return\". Hidden until it is needed, " +
-                 "and its two strings are raw English until M6-10.")]
+        [Tooltip("The player's level, beside the Aegis ring — GD §16.1's \"top-left, beside HP\". " +
+                 "Optional on the same terms as the fade: a HUD without one plays exactly the same " +
+                 "fight, it just cannot say which level the player is on. The strip that fills " +
+                 "toward the next one is XpBarView, on the top edge.")]
+        [SerializeField] private TMP_Text _levelText;
+
+        [Tooltip("The death panel: \"You died\" and \"Tap to return\". Hidden until it is needed. " +
+                 "Its two strings come from the table as of M3-14a — see the two labels below.")]
         [SerializeField] private GameObject _deathOverlay;
+
+        [Tooltip("\"You died\", written from ui.death.title when the overlay goes up. Optional: a " +
+                 "death overlay with no headline still takes the tap that returns to the Menu.")]
+        [SerializeField] private TMP_Text _deathTitle;
+
+        [Tooltip("\"Tap to return\", written from ui.death.hint. Optional on the same terms — and " +
+                 "it is the more costly of the two to lose, because it is the instruction.")]
+        [SerializeField] private TMP_Text _deathHint;
 
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
@@ -110,6 +168,7 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
         private SceneLoader _loader;
         private InputAdapter _input;
+        private ILocalizer _localizer;
 
         private IDisposable _startedSubscription;
         private IDisposable _damagedSubscription;
@@ -117,6 +176,9 @@ namespace Soulvail.Game.Presentation
         private IDisposable _diedSubscription;
         private IDisposable _stageArrivedSubscription;
         private IDisposable _transitionSubscription;
+        private IDisposable _leveledSubscription;
+        private IDisposable _grantedSubscription;
+        private IDisposable _grantExpiredSubscription;
 
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
@@ -156,16 +218,22 @@ namespace Soulvail.Game.Presentation
         /// gives no order between two <c>Awake</c> calls — so an <c>OnEnable</c> subscription would
         /// be reaching for a hub that may not have arrived yet. Dropped in <c>OnDestroy</c>.
         /// </remarks>
+        /// <param name="localizer">
+        /// What turns the death overlay's two keys into words (M3-14a rule 8). Resolved from
+        /// <c>BootScope</c>, one scope up.
+        /// </param>
         [Inject]
         public void Construct(
             DomainEventHub hub,
             IRunSession session,
             SceneLoader loader,
-            InputAdapter input)
+            InputAdapter input,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _input = input ?? throw new ArgumentNullException(nameof(input));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -177,12 +245,27 @@ namespace Soulvail.Game.Presentation
             _shieldSubscription = hub.Subscribe<PlayerShieldChanged>(OnShieldChanged);
             _diedSubscription = hub.Subscribe<PlayerDied>(OnPlayerDied);
 
+            // The level, which is the one event this class gained at M3-10b (rule 3). Not
+            // `XpChanged`: that carries a fraction, it arrives on every kill rather than on every
+            // level, and the strip it belongs to is XpBarView's — so subscribing to it here would be
+            // a second reader of one number in two files.
+            _leveledSubscription = hub.Subscribe<LeveledUp>(OnLeveledUp);
+
             // The two halves of the stage transition, and they are deliberately not symmetrical:
             // core says how long it is giving the screen to close, and says nothing at all about
             // opening it again — the next arrival *is* the world having been swapped, so there is
             // nothing left to wait for (M2-10 rule 9).
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
             _stageArrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
+
+            // The granted shield, which is M3-13b's two (rule 11). Both carry `Total` rather than
+            // their own delta — what went on, and what is *left* after one came off — so the bar is
+            // told the whole pool every time and never has to add up two sources itself. That is why
+            // there is no polling here and no third event: a grant lapsing while another still runs
+            // is a ShieldGrantExpired carrying a non-zero Total, which is the only way that case can
+            // be got right.
+            _grantedSubscription = hub.Subscribe<ShieldGranted>(OnShieldGranted);
+            _grantExpiredSubscription = hub.Subscribe<ShieldGrantExpired>(OnShieldGrantExpired);
         }
 
         /// <exception cref="MissingReferenceException">A view, the readout or the overlay is not dressed.</exception>
@@ -234,8 +317,8 @@ namespace Soulvail.Game.Presentation
 
         /// <remarks>
         /// Explicit, rather than left to the hub's disposal: a HUD destroyed before its scope — a
-        /// scene reload, an arena opened without a run — would otherwise stay in four subscriber
-        /// lists and be handed events for a component Unity has killed.
+        /// scene reload, an arena opened without a run — would otherwise stay in every one of its
+        /// subscriber lists and be handed events for a component Unity has killed.
         /// </remarks>
         private void OnDestroy()
         {
@@ -245,13 +328,19 @@ namespace Soulvail.Game.Presentation
             _diedSubscription?.Dispose();
             _stageArrivedSubscription?.Dispose();
             _transitionSubscription?.Dispose();
+            _leveledSubscription?.Dispose();
+            _grantedSubscription?.Dispose();
+            _grantExpiredSubscription?.Dispose();
 
+            _grantedSubscription = null;
+            _grantExpiredSubscription = null;
             _startedSubscription = null;
             _damagedSubscription = null;
             _shieldSubscription = null;
             _diedSubscription = null;
             _stageArrivedSubscription = null;
             _transitionSubscription = null;
+            _leveledSubscription = null;
         }
 
         /// <remarks>
@@ -374,6 +463,21 @@ namespace Soulvail.Game.Presentation
             WriteHp();
         }
 
+        /// <summary>
+        /// Rule 3: a level was crossed, and the event already carries which one.
+        /// </summary>
+        /// <remarks>
+        /// <c>LeveledUp</c> rather than a read of <see cref="RunState.Level"/>, and the event is
+        /// published once per level in the order the thresholds were crossed (M3-01a rule 5) — so a
+        /// grant worth two levels writes <em>"2"</em> and then <em>"3"</em> in one frame, of which
+        /// the player sees the second. The alternative is a handler that reads the run and is
+        /// therefore right by coincidence.
+        /// </remarks>
+        private void OnLeveledUp(LeveledUp evt)
+        {
+            WriteLevel(evt.Level);
+        }
+
         /// <remarks>
         /// The quiet half of the Aegis: damage that hits the shield arrives as a
         /// <c>PlayerDamaged</c> carrying the same fraction, so this one is the refill coming back on
@@ -385,6 +489,54 @@ namespace Soulvail.Game.Presentation
             _shield.Set(evt.Fraction);
         }
 
+        /// <summary>
+        /// Rule 11: Bulwark put points on the player, and the bar says so.
+        /// </summary>
+        /// <remarks>
+        /// <c>Total</c> rather than <c>Amount</c>, because two grants can be standing at once and the
+        /// bar draws the pool. The Aegis ring is deliberately not touched — M3-11a rule 5 from this
+        /// side.
+        /// </remarks>
+        private void OnShieldGranted(ShieldGranted evt)
+        {
+            WriteGrantedShield(evt.Total);
+        }
+
+        /// <summary>
+        /// Rule 11: a grant came off. <c>Total</c> is what is <em>left</em>, not zero.
+        /// </summary>
+        /// <remarks>
+        /// The event's own remarks say why: another source may still be holding shield, and a view
+        /// that assumed an expiry emptied the pool would erase points the player still has.
+        /// </remarks>
+        private void OnShieldGrantExpired(ShieldGrantExpired evt)
+        {
+            WriteGrantedShield(evt.Total);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="points"/> of granted shield over the player's live maximum.
+        /// </summary>
+        /// <remarks>
+        /// The maximum comes from the run rather than from the event, for <see cref="WriteHp"/>'s
+        /// reason: no event carries it, and a bar sized against a stale one would be wrong for the
+        /// whole of a Vitality node's life. A zero or non-finite maximum draws nothing rather than
+        /// dividing — a run with no player has nothing to say about their shield.
+        /// </remarks>
+        private void WriteGrantedShield(float points)
+        {
+            RunState state = _session?.State;
+
+            if (state is null)
+            {
+                return;
+            }
+
+            float max = state.PlayerMaxHp;
+
+            _hp.SetGrantedShield(max > 0f ? points / max : 0f);
+        }
+
         /// <remarks>
         /// Core has already ended the run by the time this arrives — <c>RunSession.Tick</c> calls
         /// <c>End</c> on the same tick, and <c>RunTicker</c> stops ticking — so there is nothing to
@@ -392,10 +544,39 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void OnPlayerDied(PlayerDied evt)
         {
+            // Written here rather than at Start, so the two labels cannot be left carrying whatever
+            // the prefab was dressed with by someone editing it — and written before the overlay
+            // goes up rather than after, so no frame can show the placeholder.
+            WriteDeathStrings();
+
             _deathOverlay.SetActive(true);
 
             _awaitingTap = true;
             _deathFrame = Time.frameCount;
+        }
+
+        /// <summary>The death overlay's two strings, from the table (rule 8).</summary>
+        /// <remarks>
+        /// Both labels are optional and a null localizer falls back to the key —
+        /// <c>MenuPresenter.Write</c>'s answer, for its reason: a death overlay missing a word is a
+        /// player who can still tap out of it, and throwing here would strand them on a run that has
+        /// already ended. <c>ToString()</c> rather than <c>Key</c>, for <c>TableLocalizer.Get</c>'s.
+        /// </remarks>
+        private void WriteDeathStrings()
+        {
+            if (_deathTitle != null)
+            {
+                _deathTitle.text = _localizer is null
+                    ? DeathTitleKey.ToString()
+                    : _localizer.Get(DeathTitleKey);
+            }
+
+            if (_deathHint != null)
+            {
+                _deathHint.text = _localizer is null
+                    ? DeathHintKey.ToString()
+                    : _localizer.Get(DeathHintKey);
+            }
         }
 
         /// <summary>Everything the run can currently say about the player, drawn at once.</summary>
@@ -417,6 +598,14 @@ namespace Soulvail.Game.Presentation
             _hp.Set(state.PlayerHpFraction);
             _shield.Set(state.PlayerShieldFraction);
             WriteHp();
+            WriteLevel(state.Level);
+
+            // The opening state of the granted shield, and it is zero on every resume there will ever
+            // be: TimedEffects.Clear forgets every grant at the run's end (M3-11a rule 8) and nothing
+            // restores one. Read anyway, on this class's standing reason — whether RunStarted has
+            // already been published depends on an order Unity does not give — so that the HUD never
+            // has to know which of those two facts is keeping it correct.
+            WriteGrantedShield(state.PlayerGrantedShield);
         }
 
         /// <remarks>
@@ -436,23 +625,44 @@ namespace Soulvail.Game.Presentation
             _hpText.SetText(HpFormat, state.PlayerHp, state.PlayerMaxHp);
         }
 
+        /// <remarks>
+        /// TMP's float overload for <see cref="WriteHp"/>'s reason, and a null label is a HUD dressed
+        /// without one — which is optional on the fade's terms (rule 3, and the field's tooltip).
+        /// </remarks>
+        private void WriteLevel(int level)
+        {
+            if (_levelText == null)
+            {
+                return;
+            }
+
+            _levelText.SetText(LevelFormat, level);
+        }
+
         /// <summary>
-        /// Lays the row out left to right in dp: bar, readout, ring.
+        /// Lays the row out left to right in dp: bar, readout, ring, level.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Here rather than in the prefab, and in one method rather than three, for two reasons. The
+        /// Here rather than in the prefab, and in one method rather than four, for two reasons. The
         /// first is <c>SkillButton</c>'s: a Scale-With-Screen-Size canvas measures in reference
         /// pixels, so a bar authored at 320 of those is a different physical width on every phone —
         /// and a HUD whose two halves scaled by different rules would be visibly wrong on a tablet,
-        /// where the Charge button is sized in real dp. The second is that the three rects have to
-        /// agree about where each other are, and three components each doing their own arithmetic
-        /// is three chances for them to overlap.
+        /// where the Charge button is sized in real dp. The second is that the rects have to
+        /// agree about where each other are, and four components each doing their own arithmetic
+        /// is four chances for them to overlap.
         /// </para>
         /// <para>
         /// Anchored to the parent's top-left so the row follows the safe area rather than the
         /// screen: <c>SafeAreaFitter</c> insets that rect on a notched device, and in landscape the
         /// cutout eats into exactly this corner on one of the two rotations.
+        /// </para>
+        /// <para>
+        /// <b>The level went on the end rather than into the middle</b> (M3-10b rule 3), so that
+        /// adding it moved nothing that was already here: every existing rect lands where it landed
+        /// before, which matters on a method that has laid this row out untested since M1-17. It is
+        /// still <em>"beside HP"</em> in GD §16.1's sense — the whole row is the HP readout — and
+        /// <c>Level_IsPlacedInTheHudRow</c> is the first assertion ever made about any of it.
         /// </para>
         /// </remarks>
         private void Place()
@@ -476,11 +686,23 @@ namespace Soulvail.Game.Presentation
             // the bar sits beside it instead of hanging off it.
             float ringTop = _marginDp.y + ((_barSizeDp.y - _ringSizeDp) * 0.5f);
 
-            PlaceRect(
+            left = PlaceRect(
                 _shield.transform as RectTransform,
                 left,
                 ringTop,
                 new Vector2(_ringSizeDp, _ringSizeDp),
+                pxPerDp);
+            left += _gapDp;
+
+            // Tall as the bar and back on the bar's own top edge rather than the ring's centre
+            // line, so the number reads as part of the row rather than as a caption under the ring.
+            // A HUD dressed without a label places nothing and the row is unchanged — PlaceRect's
+            // own null answer, reached through a field that is allowed to be empty.
+            PlaceRect(
+                _levelText == null ? null : _levelText.transform as RectTransform,
+                left,
+                _marginDp.y,
+                new Vector2(LevelWidthDp, _barSizeDp.y),
                 pxPerDp);
         }
 

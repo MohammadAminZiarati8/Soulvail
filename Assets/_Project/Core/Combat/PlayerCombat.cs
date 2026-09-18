@@ -79,6 +79,18 @@ public sealed class PlayerCombat
     private const float ShieldFractionEpsilon = 0.005f;
 
     /// <summary>
+    /// A full circle — the widest wedge there is, and what <see cref="ConeAngle"/> clamps a live
+    /// <see cref="Weapon.ConeAngleDeg"/> down to.
+    /// </summary>
+    /// <remarks>
+    /// The same number <c>WeaponSpec</c> refuses an authored angle above, held separately rather
+    /// than shared because the two say different things: there it is a validation of what a
+    /// designer may type, here it is a ceiling on what a modifier stack may produce. A cone angle
+    /// is the whole arc, not the half-angle.
+    /// </remarks>
+    private const float MaxConeAngleDeg = 360f;
+
+    /// <summary>
     /// Below this distance the player and the target are the same point and there is no direction
     /// to give. The same floor <c>EnemySystem</c> uses, for the same reason: normalising a
     /// separation of 1e-9 yields a unit vector made of noise, and normalising zero yields a NaN
@@ -107,10 +119,15 @@ public sealed class PlayerCombat
     private readonly TargetingSpec _targeting;
 
     /// <summary>
-    /// The class's authored movement skill: the four numbers <see cref="Charge"/> deliberately does
-    /// not read — <see cref="MovementSkillSpec.Distance"/>, <see cref="MovementSkillSpec.Duration"/>,
-    /// <see cref="MovementSkillSpec.Damage"/> and <see cref="MovementSkillSpec.Knockback"/> — which
-    /// are exactly the ones that describe what happens in the world rather than when.
+    /// The class's authored movement skill: the numbers <see cref="Charge"/> deliberately does not
+    /// read — <see cref="MovementSkillSpec.Distance"/>, <see cref="MovementSkillSpec.Duration"/>
+    /// and <see cref="MovementSkillSpec.Knockback"/> — which are exactly the ones that describe
+    /// what happens in the world rather than when.
+    /// <para>
+    /// <see cref="MovementSkillSpec.Damage"/> was a fourth until M3-12a, and is now read off
+    /// <see cref="ChargeSkill.Damage"/> so that a node can move it. The spec still seeds that stat;
+    /// what changed is which of the two this class asks.
+    /// </para>
     /// </summary>
     private readonly MovementSkillSpec _movementSkill;
 
@@ -196,6 +213,30 @@ public sealed class PlayerCombat
     /// </summary>
     private int _lastConeRequestId;
 
+    /// <summary>
+    /// Which way the swing that is owed an answer was facing, on the ground plane. Written on the
+    /// damage frame beside <see cref="PendingConeRequestId"/>, read once by
+    /// <see cref="ResolveConeHits"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A field rather than a parameter on <see cref="ResolveConeHits"/>, and the report is why</b>
+    /// (M3-12b rule 7). The answer arrives at least a frame later, from a body that was handed the
+    /// facing on the <c>ConeHitIntent</c> and has no reason to hand it back — so a parameter would
+    /// mean the body remembering core's geometry across a round trip and every caller of
+    /// <c>ReportConeHits</c> carrying it, to say something core already knew when it asked the
+    /// question. The facing belongs to the pending cone exactly as its request id does, and lives
+    /// beside it.
+    /// </para>
+    /// <para>
+    /// It is the swing's facing and not the direction to each enemy, which is
+    /// <c>ResolveChargeHits</c>' answer one method down and <c>EnemyKnockbackIntent.DirectionXZ</c>'s
+    /// own rule: everything one sweep catches is swept the same way, which reads as a shove rather
+    /// than as an explosion.
+    /// </para>
+    /// </remarks>
+    private Vector2 _pendingConeFacingXZ;
+
     /// <param name="spec">
     /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
     /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
@@ -264,6 +305,14 @@ public sealed class PlayerCombat
         // M6-07's Blink are the same clock with a different payload — see MovementSkillKind.
         Charge = new ChargeSkill(spec.MovementSkill);
 
+        // Zero, and the only one of M3-12a's five that is new rather than promoted — see the
+        // property's own remarks for what a node has to do to move it.
+        HealPerKill = new Stat(0f);
+
+        // Zero too, and for the same reason and with the same trap in it: a swing shoves nobody
+        // until a node says so. See the property's own remarks.
+        SwingKnockback = new Stat(0f);
+
         Blackboard = new CombatBlackboard();
 
         // A full Aegis is fraction 1, and a class without one is 0. Either way the baseline starts
@@ -327,6 +376,63 @@ public sealed class PlayerCombat
     /// </para>
     /// </remarks>
     public ChargeSkill Charge { get; }
+
+    /// <summary>
+    /// Hit points restored for each enemy that dies, live. Zero until a node says otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>⚠ Base 0 means a percentage modifier on this stat does nothing at all.</b>
+    /// <see cref="Stat"/> computes <c>(Base + ΣFlat) × (1 + ΣPercentAdd) × Π(1 + PercentMult)</c>,
+    /// so with a base of zero and no <see cref="ModifierKind.Flat"/> on the stack every percentage
+    /// multiplies into zero. <b><see cref="ModifierKind.Flat"/> is the only kind that can ever move
+    /// this number</b>, and a node authored as "+50 % heal per kill" heals nothing, silently and
+    /// with no error anywhere. M3-12c's Retribution must be authored Flat — and a Flat node is
+    /// what any *later* percentage node would then scale, which is the order to grant them in.
+    /// </para>
+    /// <para>
+    /// <b>A stat rather than an on-kill trigger, deliberately</b> (M3-12a rule 5). One number on a
+    /// kill is a number; the day a node wants "kills grant shield" or "kills leave a zone" is the
+    /// day that earns the trigger primitive M3-05's Out of scope names.
+    /// </para>
+    /// <para>
+    /// The base is zero rather than something small on purpose: a non-zero base would make every
+    /// class in the game heal on kill, which is a balance change no design document asks for. The
+    /// cost of zero is the paragraph above, and it is paid in writing rather than in arithmetic.
+    /// </para>
+    /// </remarks>
+    public Stat HealPerKill { get; }
+
+    /// <summary>
+    /// How far each enemy a swing hits is shoved, in metres, live. Zero until a node says otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>⚠ Base 0 means a percentage modifier on this stat does nothing at all.</b>
+    /// <see cref="Stat"/> computes <c>(Base + ΣFlat) × (1 + ΣPercentAdd) × Π(1 + PercentMult)</c>,
+    /// so with a base of zero and no <see cref="ModifierKind.Flat"/> on the stack every percentage
+    /// multiplies into zero. <b><see cref="ModifierKind.Flat"/> is the only kind that can ever move
+    /// this number</b> — <see cref="HealPerKill"/>'s trap exactly, measured there in M3-12a and
+    /// written down here before it could be found twice.
+    /// </para>
+    /// <para>
+    /// <b>The difference is that here the trap is unreachable, and that is what
+    /// <c>KnockbackOnSwing</c> buys.</b> That primitive carries one distance and no kind, and its
+    /// handler chooses <see cref="ModifierKind.Flat"/> itself, so there is no Inspector field a
+    /// designer can get wrong — which is M3-12b rule 6's whole argument for a named primitive over
+    /// a <see cref="PlayerStat"/> member. The warning stands anyway because this property is
+    /// <see langword="public"/> and the day a second door reaches it, the arithmetic will not have
+    /// changed. Nothing in <see cref="PlayerStat"/> names it, and
+    /// <c>Charge_KnockbackIsNotAddressable</c> is the row that keeps it that way.
+    /// </para>
+    /// <para>
+    /// Read once per swing by <see cref="ResolveConeHits"/>, which emits an
+    /// <c>EnemyKnockbackIntent</c> per enemy hit only while the value is finite and above zero
+    /// (rule 8): a stack driven negative is a pull and one driven non-finite is a teleport, and
+    /// nothing in the design has asked for either.
+    /// </para>
+    /// </remarks>
+    public Stat SwingKnockback { get; }
 
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
@@ -433,6 +539,45 @@ public sealed class PlayerCombat
     }
 
     /// <summary>
+    /// Pays out <see cref="HealPerKill"/> for <paramref name="kills"/> deaths, and reports how much
+    /// hit point actually went in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other end of <c>EnemySystem.DrainKills</c>, called once a tick by <c>RunSession</c> and
+    /// by nothing else — beside the experience drain and, like it, after the death check, so a kill
+    /// that lands on the tick the player dies heals a corpse nothing (M3-01a rule 6's ordering).
+    /// </para>
+    /// <para>
+    /// <b>Unconditional and cheap.</b> The overwhelming majority of ticks pass zero, and every run
+    /// this build ships has <see cref="HealPerKill"/> at zero for all of them, so the common path is
+    /// one multiply and a <c>Heal</c> that returns immediately — <c>Health.Heal</c> is already
+    /// silent for a non-positive amount, for a full bar and for a corpse. There is no branch here
+    /// for a caller to get wrong.
+    /// </para>
+    /// <para>
+    /// Nothing is published. A heal is not news the way damage is, and the HUD reads
+    /// <c>Health.Fraction</c> — M3-13b is the task that decides whether a heal should flash.
+    /// </para>
+    /// </remarks>
+    /// <param name="kills">
+    /// Deaths since the last drain. Zero and negative both heal nothing, the second because a
+    /// negative count is a caller bug that must not become a heal of negative size.
+    /// </param>
+    /// <returns>The hit points actually restored; zero on almost every tick of almost every run.</returns>
+    public float HealForKills(int kills)
+    {
+        if (kills <= 0)
+        {
+            return 0f;
+        }
+
+        // Read once for the whole payout, like the cone's damage and for the same reason: three
+        // kills drained together are worth three times one number, not the sum of three readings.
+        return Health.Heal(kills * HealPerKill.Value);
+    }
+
+    /// <summary>
     /// The body has answered the outstanding <see cref="ConeHitIntent"/>: everyone in
     /// <paramref name="enemyIds"/> takes one swing's damage.
     /// </summary>
@@ -462,7 +607,16 @@ public sealed class PlayerCombat
     /// something publishes into a stat from an <c>EnemyDamaged</c> handler.
     /// </para>
     /// <para>
-    /// Nothing here allocates: a span in, a preallocated dedupe buffer, and a struct result per id.
+    /// <b>And the swing shoves, once a node says so</b> (M3-12b rule 5). <see cref="SwingKnockback"/>
+    /// has a base of zero, so every run this build plays takes one comparison and emits nothing;
+    /// with a <c>KnockbackOnSwing</c> node taken, each enemy the swing reached gets an
+    /// <c>EnemyKnockbackIntent</c> in the direction the swing was thrown. The machinery is the
+    /// Charge's, unchanged since M1-15 — which is what that struct's own remarks predicted would
+    /// happen the day something else pushed an enemy.
+    /// </para>
+    /// <para>
+    /// Nothing here allocates: a span in, a preallocated dedupe buffer, a struct result per id, and
+    /// a struct intent per shove.
     /// </para>
     /// </remarks>
     /// <param name="enemyIds">
@@ -492,6 +646,22 @@ public sealed class PlayerCombat
 
         float damage = Weapon.Damage.Value;
 
+        // Read once for the whole report, like the damage above and for its reason: one swing is
+        // one shove, whatever a handler does between two enemies.
+        //
+        // **Asked here rather than per enemy, and the spelling is the guard** (rule 8, AR §18.3).
+        // `> 0f` is false for NaN as well as for everything at or below zero, so a stack nobody can
+        // read shoves nobody; infinity is asked about separately because it passes a `> 0` test,
+        // and an infinite shove is a teleport rather than a knockback. A base of zero means the
+        // common path — every run this build plays — takes one comparison and emits nothing.
+        float knockback = SwingKnockback.Value;
+        bool shoves = knockback > 0f && !float.IsInfinity(knockback);
+
+        // The swing's facing, sampled when the question was asked. Read before the loop so that
+        // every enemy one report names is swept the same way, which is EnemyKnockbackIntent's own
+        // rule and what tells a cone shove apart from a blast.
+        Vector2 shove = _pendingConeFacingXZ;
+
         _hitCount = 0;
 
         for (int i = 0; i < enemyIds.Length; i++)
@@ -517,6 +687,16 @@ public sealed class PlayerCombat
             }
 
             RecordHit(id);
+
+            // **Below RecordHit, so the shove is per enemy the swing actually reached** (rule 5).
+            // An id that resolved to nothing or was already a corpse has been skipped above and is
+            // not shoved; one the swing killed *is*, for the reason ResolveChargeHits gives — it
+            // was hit, the shove is what that looks like, and a corpse sliding a metre while it
+            // dissolves is better than one that plants itself the instant it dies.
+            if (shoves)
+            {
+                _intents.EnemyKnockback(new EnemyKnockbackIntent(id, shove, knockback));
+            }
         }
     }
 
@@ -583,10 +763,13 @@ public sealed class PlayerCombat
         }
 
         // Read once for the whole report, like the cone's damage and for the same reason: one dash
-        // is one number, whatever a handler does to the spec in between. These come off the spec
-        // rather than off a Stat because CC §5's damage and knockback have no modifier stack yet —
-        // when M3-12 gives them one, this is the line that changes and nothing else.
-        float damage = _movementSkill.Damage;
+        // is one number, whatever a handler does in between.
+        //
+        // **This is the line the old comment said would change, and M3-12a is where it did.** The
+        // damage now comes off ChargeSkill's Stat, so a node can reach it; the knockback still
+        // comes off the spec, deliberately — 4 m is a positioning number rather than a power one,
+        // and none of v1's twelve nodes wants it (M3-12a rule 3).
+        float damage = Charge.Damage.Value;
         float knockback = _movementSkill.Knockback;
 
         // The dash's direction, not the direction to each enemy: everything a Charge passes through
@@ -780,7 +963,7 @@ public sealed class PlayerCombat
         Health.Tick(dt, now);
         PublishShieldIfDrifted();
 
-        UpdateBlackboard(count);
+        UpdateBlackboard(count, snapshot.PlayerPosition);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
         TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count);
@@ -935,12 +1118,82 @@ public sealed class PlayerCombat
         _lastConeRequestId++;
         PendingConeRequestId = _lastConeRequestId;
 
+        // The swing's geometry is remembered with its request id, because the shove
+        // ResolveConeHits owes is measured in the direction the swing was thrown rather than in
+        // whatever direction the player has turned by the time the body answers (rule 7).
+        _pendingConeFacingXZ = facingXZ;
+
+        // Sampled here, at the moment the swing is thrown, and never cached (M3-12a rules 2 and 6):
+        // a node taken mid-stage widens the very next swing rather than the one after it, which is
+        // the whole of what makes a pick feel like it did something.
         _intents.ConeHit(new ConeHitIntent(
             _lastConeRequestId,
             playerPosition,
             facingXZ,
-            Weapon.Range,
-            Weapon.ConeAngleDeg));
+            ConeRange(Weapon.Range.Value),
+            ConeAngle(Weapon.ConeAngleDeg.Value)));
+    }
+
+    /// <summary>
+    /// A live <see cref="Weapon.ConeAngleDeg"/> as an angle a wedge can actually be built from:
+    /// clamped into <c>[0, 360]</c>, with a negative or unreadable value answered by zero.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// M3-12a rule 7, and the layer <see cref="Stat"/> leaves this to (ADR-0008): <c>WeaponSpec</c>
+    /// refuses an *authored* angle outside <c>(0, 360]</c>, but a modifier stack can put the live
+    /// value anywhere, and the swing is where that finally has to mean something.
+    /// </para>
+    /// <para>
+    /// <b>NaN is refused rather than widened, which is the opposite of what it may look like.</b>
+    /// It is *less* meaningful than a negative number, not more — answering it with 360 would draw
+    /// the widest wedge in the game for a value nobody can read, quietly turning the Censer
+    /// omnidirectional. Zero says "this swing connects with nothing" and says it reversibly: take
+    /// the modifier off and the next swing is ordinary, which is exactly the bargain
+    /// <c>Weapon.TryGetInterval</c> strikes with a silenced fire rate. It falls out of the negated
+    /// positive below rather than needing a test of its own.
+    /// </para>
+    /// <para>
+    /// <b>Positive infinity is the one non-finite value that is not refused</b>, and the asymmetry
+    /// with <see cref="ConeRange"/> is deliberate: an infinite angle has a meaning — "as wide as
+    /// there is" — and there is a widest wedge to clamp it to, where an infinite *reach* has no
+    /// maximum to land on and is refused instead. Both are reachable only by arithmetic overflow
+    /// inside the stack, since <c>Modifier</c> and <c>Stat.Base</c> both refuse a non-finite input
+    /// at the door.
+    /// </para>
+    /// <para>
+    /// The refusal is a zero-angle intent rather than no intent at all, matching
+    /// <see cref="ConeRange"/>. The swing has already started and been announced by the time this
+    /// runs; suppressing the intent would leave <see cref="PendingConeRequestId"/> waiting on a
+    /// report that can never arrive, where a wedge that hits nothing comes back empty and clears
+    /// it on the ordinary path.
+    /// </para>
+    /// </remarks>
+    private static float ConeAngle(float degrees)
+    {
+        // The negated positive, so NaN lands on zero rather than falling through to the clamp.
+        if (!(degrees > 0f))
+        {
+            return 0f;
+        }
+
+        return degrees < MaxConeAngleDeg ? degrees : MaxConeAngleDeg;
+    }
+
+    /// <summary>
+    /// A live <see cref="Weapon.Range"/> as a reach a wedge can be built from: non-negative, with
+    /// an unreadable value answered by zero.
+    /// </summary>
+    /// <remarks>
+    /// M3-12a rule 7, and <see cref="ConeAngle"/>'s reasoning for its spelling and its answer. A
+    /// negative reach is a wedge with no depth, which hits nothing — the honest reading of a stack
+    /// that drove a weapon's reach below zero, and reversible in one frame. Unlike an angle there
+    /// is no maximum reach to clamp an infinite one to, so it is refused with the rest; see
+    /// <see cref="ConeAngle"/> on why the two differ.
+    /// </remarks>
+    private static float ConeRange(float metres)
+    {
+        return metres > 0f && !float.IsInfinity(metres) ? metres : 0f;
     }
 
     /// <summary>
@@ -977,7 +1230,12 @@ public sealed class PlayerCombat
 
             if (candidate.Id == id)
             {
-                return candidate.Distance <= Weapon.Range;
+                // The same clamped reach the intent is built from, so "worth swinging at" and
+                // "inside the wedge" can never disagree — a range driven negative stops the swing
+                // rather than throwing one that reaches nothing. Sampled here rather than cached,
+                // which is what makes a longer weapon acquire sooner on the very next tick
+                // (M3-12a rules 2 and 6).
+                return candidate.Distance <= ConeRange(Weapon.Range.Value);
             }
         }
 
@@ -1036,7 +1294,14 @@ public sealed class PlayerCombat
     /// counts as movement — leaving this method to copy the answer rather than compute a second
     /// one. See <see cref="CombatBlackboard.StationaryTime"/>.
     /// </remarks>
-    private void UpdateBlackboard(int count)
+    /// <param name="count">How many candidates the gathering pass filled.</param>
+    /// <param name="playerPosition">
+    /// Where the body reported the player this tick. Handed in rather than recovered, for the
+    /// reason the stationary clock is copied rather than recomputed: this method writes the
+    /// blackboard and does not decide anything on it. See
+    /// <see cref="CombatBlackboard.PlayerPosition"/> for who reads it.
+    /// </param>
+    private void UpdateBlackboard(int count, Vector3 playerPosition)
     {
         int within6 = 0;
         int within8 = 0;
@@ -1088,6 +1353,11 @@ public sealed class PlayerCombat
         // top of this tick, so both are this frame's.
         Blackboard.FocusRampLevel = Focus.Level;
         Blackboard.StationaryTime = Focus.StationaryTime;
+
+        // Written down, not decided (M3-11b rule 2): the same position the snapshot brought in and
+        // RunState holds, copied here so that a cast reads this frame's feet rather than last
+        // frame's. Nothing in TriggerField compares against it.
+        Blackboard.PlayerPosition = playerPosition;
 
         // Veilrot and IncomingProjectiles are deliberately untouched — see CombatBlackboard.
     }

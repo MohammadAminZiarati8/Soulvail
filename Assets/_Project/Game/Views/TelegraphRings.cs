@@ -275,7 +275,10 @@ public sealed class TelegraphRings : IDisposable
     {
         TelegraphRingView ring = _pool.Get();
 
-        ring.Bind(centre, radius, duration, fills, ThreatArrows.Danger);
+        // Palette.Danger as of M3-13a, where it was ThreatArrows.Danger from M2-12b. Ledger row 6's
+        // original complaint was this exact line: a view reading a colour off a presenter across the
+        // Views/Presentation seam. Both now read one file that reads nobody.
+        ring.Bind(centre, radius, duration, fills, Palette.Danger);
 
         _live.Add(ring);
     }

@@ -125,6 +125,30 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Descent_CarriesCharacters52()
+    {
+        // CH §5.2's three numbers as the shipped mode holds them. Traps §7 applies here exactly as
+        // it does to the scaling row above — XpBlock's C# initialisers *are* 20 / 12 / 1.4, so a
+        // YAML key binding to nothing would leave this passing on the initialiser alone, and
+        // Descent_EveryYamlKeyBindsToAField is what closes that hole for these three along with
+        // every other field.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        XpCurve xp = definition.ToSpec().Xp;
+
+        Assert.That(xp.IsAuthored, Is.True);
+
+        // Asserted through ToReach rather than against three fields, because the fields are private
+        // and the formula is what the game reads. XpCurveTests owns the arithmetic; this row owns
+        // "the asset really carries CH §5.2's numbers and not some others".
+        Assert.That(xp.ToReach(1), Is.EqualTo(0f), "Level 1 is free.");
+        Assert.That(xp.ToReach(2), Is.EqualTo(51.7f).Within(0.5f));
+        Assert.That(xp.ToReach(8), Is.EqualTo(240.5f).Within(0.5f));
+        Assert.That(xp.ToReach(30), Is.EqualTo(1423f).Within(0.5f));
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

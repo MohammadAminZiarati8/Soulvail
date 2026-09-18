@@ -79,12 +79,24 @@ namespace Soulvail.Game.Views
         private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _deadId = Animator.StringToHash("Dead");
 
+        /// <summary>
+        /// One cast pose for every skill there will ever be.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately not a trigger per skill. There is one cast clip and CH §4's tree has twelve
+        /// Actives in it, so a parameter per skill would be a content id leaking into an animator
+        /// controller — a designer adding a node would be adding an animator parameter, and a node
+        /// whose parameter nobody added would silently play nothing.
+        /// </remarks>
+        private readonly int _castId = Animator.StringToHash("Cast");
+
         private PlayerView _body;
 
         private IDisposable _attackSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _chargeSubscription;
+        private IDisposable _castSubscription;
 
         private float _shownSpeed;
         private float _lastAttackTime;
@@ -107,6 +119,7 @@ namespace Soulvail.Game.Views
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnDamaged);
             _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
             _chargeSubscription = hub.Subscribe<ChargeStarted>(OnChargeStarted);
+            _castSubscription = hub.Subscribe<SkillCast>(OnCast);
         }
 
         private void Awake()
@@ -149,11 +162,13 @@ namespace Soulvail.Game.Views
             _damagedSubscription?.Dispose();
             _diedSubscription?.Dispose();
             _chargeSubscription?.Dispose();
+            _castSubscription?.Dispose();
 
             _attackSubscription = null;
             _damagedSubscription = null;
             _diedSubscription = null;
             _chargeSubscription = null;
+            _castSubscription = null;
         }
 
         private void Update()
@@ -228,6 +243,20 @@ namespace Soulvail.Game.Views
             }
 
             _animator.SetTrigger(_chargeId);
+        }
+
+        /// <remarks>
+        /// The id is deliberately unread — see <see cref="_castId"/>. The guard is the Charge's, for
+        /// its reason: a corpse does not cast, and an undressed component has nothing to tell.
+        /// </remarks>
+        private void OnCast(SkillCast evt)
+        {
+            if (_animator == null || _dead)
+            {
+                return;
+            }
+
+            _animator.SetTrigger(_castId);
         }
 
         /// <remarks>

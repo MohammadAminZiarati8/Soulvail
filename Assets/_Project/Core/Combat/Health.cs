@@ -5,8 +5,8 @@ namespace Soulvail.Core.Combat;
 
 /// <summary>
 /// One health component for everything that can be hurt — the player, every enemy, every boss.
-/// Shield before HP, a refill after quiet time, hit i-frames, death. See CC §2.5 and §6.1,
-/// CH §3.1, and AR §3, which puts all of it in core.
+/// Granted shield, then the Aegis, then HP; a refill after quiet time, hit i-frames, death. See
+/// CC §2.5, §6.1 and §6.4, CH §3.1, and AR §3, which puts all of it in core.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,11 +25,12 @@ namespace Soulvail.Core.Combat;
 /// every frame, which is the contract, gets a live one.
 /// </para>
 /// <para>
-/// <b>Nothing here is a <see cref="Stat"/> except the maximum.</b> Current HP is not a
-/// gameplay number a modifier can apply to — it is state — and the shield's three numbers are
+/// <b>Two numbers here are <see cref="Stat"/>s and the rest are not.</b> Current HP is not a
+/// gameplay number a modifier can apply to — it is state — and two of the shield's three are
 /// still authored data (see <see cref="ShieldSpec"/>). <see cref="MaxHp"/> is a stat because
 /// tree nodes, Pacts and depth scaling all move it, and this component follows it live: see
-/// rule 6 on <see cref="OnMaxHpChanged"/>.
+/// rule 6 on <see cref="OnMaxHpChanged"/>. <see cref="ShieldRechargeDelay"/> joined it at
+/// M3-12a, and says on itself why the Aegis's other two did not.
 /// </para>
 /// <para>
 /// <b>Reusable rather than disposable.</b> Subscribing to <see cref="Stat.Changed"/> means the
@@ -43,6 +44,13 @@ public sealed class Health
 {
     private readonly ShieldSpec _shield;
     private readonly float _hitIFrames;
+
+    /// <summary>
+    /// The points a cast put on this thing, per source — rule 5's third pool, spent before the
+    /// Aegis. Its own type because one float cannot say what a source has left; see
+    /// <see cref="GrantedShieldPool"/>, which is where every rule about it lives.
+    /// </summary>
+    private readonly GrantedShieldPool _granted = new();
 
     private float _current;
     private float _shieldCurrent;
@@ -101,6 +109,10 @@ public sealed class Health
         _shield = shield;
         _hitIFrames = hitIFrames;
 
+        // Seeded from the spec and live from here on (M3-12a rule 4), zero for anything without a
+        // shield at all — which never reads it, because Tick leaves before it would.
+        ShieldRechargeDelay = new Stat(shield?.RechargeDelay ?? 0f);
+
         _current = ClampedMax;
         _shieldCurrent = ShieldMax;
 
@@ -109,6 +121,28 @@ public sealed class Health
 
     /// <summary>The live maximum. Its modifier stack is where "+20 max HP" goes.</summary>
     public Stat MaxHp { get; }
+
+    /// <summary>
+    /// Seconds without being hit before the Aegis starts refilling, live. Where "−25 % Aegis
+    /// delay" goes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The one Aegis number a node can reach, and the other two stay authored on purpose</b>
+    /// (M3-12a rule 4). CH §3.1 calls the Aegis the only regeneration in the game, and its delay
+    /// is the number the player actually feels — four seconds of not being hit, in a game about
+    /// not being hit. <see cref="ShieldMax"/> is refused because raising a maximum without filling
+    /// it is the trap <c>Handler_MaxHpMovesHealthLive</c> already documents, and
+    /// <see cref="ShieldSpec.RefillPerSecond"/> is refused because it is Unbroken's keystone
+    /// (*"Aegis recharges 2× faster"*), which is not among v1's twelve nodes and should arrive
+    /// whole rather than half-reachable.
+    /// </para>
+    /// <para>
+    /// A stack can drive it non-positive or non-finite, which <see cref="Stat"/> permits and
+    /// <see cref="Tick"/> answers with zero — see there.
+    /// </para>
+    /// </remarks>
+    public Stat ShieldRechargeDelay { get; }
 
     /// <summary>Current HP, in <c>[0, MaxHp.Value]</c>.</summary>
     public float Current => _current;
@@ -142,6 +176,28 @@ public sealed class Health
 
     /// <summary><see cref="Shield"/> over <see cref="ShieldMax"/>; zero when there is no shield.</summary>
     public float ShieldFraction => _shield is null ? 0f : _shieldCurrent / _shield.Max;
+
+    /// <summary>
+    /// Points of <em>granted</em> shield — what a cast put on, across every source. Spent before the
+    /// Aegis and before HP (rule 5), and nothing to do with <see cref="Shield"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A third pool, and deliberately not the Aegis.</b> The Aegis is the Oathbound's signature —
+    /// 30 points, a 4 s delay, 15/s refill, <em>"the only regeneration in the game"</em> (CH §3.1) —
+    /// and <see cref="ShieldMax"/>, <see cref="ShieldFraction"/> and the ring that draws them all
+    /// mean exactly what they meant before this existed. Expressing a temporary shield by raising
+    /// the Aegis's maximum would have taken two changes to the class's signature mechanic — a
+    /// <see cref="Stat"/> on the maximum <em>and</em> a separate fill, because raising a maximum is
+    /// not filling it — to say something that is not about the Aegis at all.
+    /// </para>
+    /// <para>
+    /// It does not recharge and it is not healed: it is a cast, and it is gone when whatever granted
+    /// it says so. <see cref="Tick"/> and <see cref="Heal"/> both leave it alone, which needed
+    /// nothing doing to either of them.
+    /// </para>
+    /// </remarks>
+    public float GrantedShield => _granted.Total;
 
     /// <summary>
     /// HP has reached zero. Spelled as the negation of "alive" so that a maximum which somehow
@@ -199,11 +255,17 @@ public sealed class Health
             return new DamageResult(0f, 0f, blocked: true, killed: false);
         }
 
+        // **Granted shield first, then the Aegis, then hit points** (rule 5). A cast's points are
+        // temporary and the Aegis is the class's signature with its own refill, so spending the pool
+        // that is about to lapse before the one that comes back on its own is the only order that
+        // wastes neither. No branch guards this call: an empty pool is a loop that does not run.
+        float toGranted = _granted.Spend(amount);
+
         float toShield = 0f;
 
         if (_shieldCurrent > 0f)
         {
-            toShield = MathF.Min(_shieldCurrent, amount);
+            toShield = MathF.Min(_shieldCurrent, amount - toGranted);
             _shieldCurrent -= toShield;
         }
 
@@ -211,7 +273,7 @@ public sealed class Health
         // that landed rather than the damage that was swung. A hit for 10 000 on a 12 HP Husk
         // reports ToHp 12, which is what a damage-numbers view should float and what an
         // absorb-tracking node should count.
-        float toHp = MathF.Min(_current, amount - toShield);
+        float toHp = MathF.Min(_current, amount - toGranted - toShield);
         _current -= toHp;
 
         // Both subtractions are exact by construction — each amount came from a Min against the
@@ -227,7 +289,13 @@ public sealed class Health
             _shieldCurrent = 0f;
         }
 
-        if (toShield + toHp > 0f)
+        // **The granted pool counts here, and leaving it out would have been a silent buff to the
+        // Aegis** (rule 5). A hit swallowed whole by a Bulwark is still a hit that got past the
+        // i-frames, so it starts new ones exactly as a hit swallowed whole by the Aegis always has —
+        // and it moves `_lastDamageAt`, so the Aegis's 4 s delay still restarts on every blow. Read
+        // as `toShield + toHp` this branch would not run at all for a fully absorbed hit: the player
+        // would take no i-frames from it, and the Aegis would refill straight through a fight.
+        if (toGranted + toShield + toHp > 0f)
         {
             // hitIFrames of 0 lands this exactly on `now`, and the comparison in
             // IsInvulnerable is strict, so zero really is no i-frames rather than one frame of
@@ -236,6 +304,16 @@ public sealed class Health
             _lastDamageAt = now;
         }
 
+        // **`toGranted` is deliberately not reported, and folding it into ToShield would be a
+        // content bug rather than a tidy-up.** DamageResult.ToShield means *the Aegis* — CH §3.1's
+        // Martyr keystone deals damage equal to everything the Aegis absorbed, and a listener
+        // summing this field is the whole implementation of it, so a Bulwark's points landing in
+        // there would quietly make Martyr scale with a skill it has nothing to do with. What that
+        // costs is real and named: a hit absorbed entirely by granted shield leaves through
+        // `PlayerDamaged(0, 0, unchanged, unchanged, blocked: false)`, which reads as a hit that did
+        // nothing. M3-13b draws the granted pool on the player's bar and is the task that needs to
+        // tell those apart; widening DamageResult is its call to make, not this one's.
+        //
         // Unreachable while alive on entry, which is guaranteed above — so this reads "did that
         // finish it" rather than "was it already over".
         return new DamageResult(toShield, toHp, blocked: false, killed: IsDead);
@@ -293,6 +371,76 @@ public sealed class Health
     public void SetExternalInvulnerable(bool on) => _externalInvulnerable = on;
 
     /// <summary>
+    /// Sets <paramref name="source"/>'s granted shield to <paramref name="amount"/> points.
+    /// </summary>
+    /// <remarks>
+    /// <b>Per source, not per call.</b> Granting again from the same source refreshes that source's
+    /// contribution rather than doubling it; two <em>different</em> sources stack, because they are
+    /// two different things. <see cref="GrantedShieldPool"/> holds the rules and the reasons.
+    /// </remarks>
+    /// <param name="amount">
+    /// The source's new contribution, zero or more. Zero is legal and means the source now holds
+    /// nothing — which is a state the pool reaches on its own by being spent.
+    /// </param>
+    /// <param name="source">
+    /// Who is granting — the <c>ActiveSpec</c> a cast came from. Identity only: it is what
+    /// <see cref="RemoveGrantedShield"/> takes back by, so the same instance has to still be in hand
+    /// then.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/> is null. A sourceless grant could never be taken back, which is
+    /// <c>Modifier</c>'s rule one layer down and would be a shield that lasted the run.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="amount"/> is negative, NaN or infinite. Spelled as the negation for the
+    /// reason the constructor's guard is: every comparison against NaN is false, so the natural
+    /// spelling admits one — and a NaN in the pool would make <see cref="GrantedShield"/> NaN for
+    /// the rest of the run, absorbing every hit forever with nothing logged.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// <see cref="GrantedShieldPool.Capacity"/> other sources already hold shield.
+    /// </exception>
+    public void GrantShield(float amount, object source)
+    {
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (!(amount >= 0f) || float.IsInfinity(amount))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                amount,
+                "Granted shield must be a finite number of points, zero or more.");
+        }
+
+        _granted.Grant(amount, source);
+    }
+
+    /// <summary>
+    /// Takes <paramref name="source"/>'s granted shield back — whatever is left of it.
+    /// </summary>
+    /// <remarks>
+    /// What an expiry calls, through the handler that granted it (ADR-0009). It removes what
+    /// <em>remains</em> rather than what was granted, so a player who already spent the shield loses
+    /// nothing extra when it lapses and the pool cannot go below zero. A source that never granted
+    /// anything is not an error — see <c>Stat.RemoveAll</c>'s contract, which is where that rule
+    /// comes from.
+    /// </remarks>
+    /// <returns>Whether <paramref name="source"/> was holding anything to take back.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    public bool RemoveGrantedShield(object source)
+    {
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        return _granted.Remove(source);
+    }
+
+    /// <summary>
     /// Advances the shield's refill. The only thing in this class that a frame drives.
     /// </summary>
     /// <remarks>
@@ -335,7 +483,7 @@ public sealed class Health
             return;
         }
 
-        float rechargeFrom = _lastDamageAt + _shield.RechargeDelay;
+        float rechargeFrom = _lastDamageAt + EffectiveRechargeDelay();
         float creditedFrom = MathF.Max(now - dt, rechargeFrom);
         float credited = now - creditedFrom;
 
@@ -345,6 +493,35 @@ public sealed class Health
         }
 
         _shieldCurrent = MathF.Min(_shield.Max, _shieldCurrent + (_shield.RefillPerSecond * credited));
+    }
+
+    /// <summary>
+    /// <see cref="ShieldRechargeDelay"/> as a number this class can add to a clock: the live value,
+    /// or zero for anything a modifier stack drove below zero or made unreadable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// M3-12a rule 7. <see cref="Stat"/> clamps nothing (ADR-0008), so the guard belongs here,
+    /// where the number finally means something — the same division of labour <c>CooldownRules</c>
+    /// has with <see cref="ChargeSkill.Cooldown"/>.
+    /// </para>
+    /// <para>
+    /// <b>Zero is the honest reading rather than a refusal.</b> A delay driven below zero says
+    /// "wait no time at all", so the Aegis refills from the instant of the hit; a negative one
+    /// added to the clock raw would say the same thing but would also credit the step *before* the
+    /// hit landed. A non-finite one is answered the same way for the reason NaN is answered
+    /// everywhere in this class: <c>_lastDamageAt + NaN</c> is NaN, every comparison against it is
+    /// false, and the Aegis would simply never refill again for the rest of the run with nothing
+    /// logged. Reachable by no stack anything in M3 authors, and cheap to be right about.
+    /// </para>
+    /// </remarks>
+    private float EffectiveRechargeDelay()
+    {
+        float delay = ShieldRechargeDelay.Value;
+
+        // The negated positive, so NaN falls to zero rather than through: every comparison against
+        // it is false, and the natural spelling would let it past.
+        return delay > 0f && !float.IsInfinity(delay) ? delay : 0f;
     }
 
     /// <summary>
@@ -363,6 +540,7 @@ public sealed class Health
         _externalInvulnerable = false;
         _iFramesUntil = float.NegativeInfinity;
         _lastDamageAt = float.NegativeInfinity;
+        _granted.Clear();
     }
 
     /// <summary>
@@ -402,6 +580,15 @@ public sealed class Health
         _externalInvulnerable = false;
         _iFramesUntil = float.NegativeInfinity;
         _lastDamageAt = float.NegativeInfinity;
+
+        // **A resumed run comes back with no granted shield, and that is a decision rather than an
+        // omission** (M3 ledger row 2). Nothing about a grant is on disk: it is derived from a cast
+        // that happened, and the cast is gone — unlike a cooldown, which M3-07b could rebuild from
+        // TakenNodeIds because the *node* survives. Saving one would mean writing down a source
+        // identity that no longer exists to hand back to. Cleared here as well as in Reset, because
+        // a snapshot is restored onto a live component and a grant left standing would outlive the
+        // run that made it.
+        _granted.Clear();
     }
 
     /// <summary>

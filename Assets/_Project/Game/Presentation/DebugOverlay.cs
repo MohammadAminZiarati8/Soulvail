@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -480,6 +481,63 @@ namespace Soulvail.Game.Presentation
             RunState state = _session.State;
 
             _line.Append("  charge ").Append(Fixed(state is null ? 0f : state.MovementSkillCooldownFraction));
+
+            // The level, how far into it, and how many picks are owed — read from core rather than
+            // from XpChanged, for the charge line's reason: the fraction slides on every kill and a
+            // run that has just started has a strip to draw with no event to draw it from.
+            //
+            // The third number is the one worth having before M3-08 exists. Nothing spends a pick
+            // in this milestone until the offer screen lands, so `owed` climbing and never falling
+            // is the correct reading today and becomes the loudest possible symptom the day it is
+            // wrong: a level-up that hands out nothing leaves it stuck, and a screen that hands out
+            // two for one leaves it going backwards twice.
+            _line.Append("  lvl ").Append(
+                (state is null ? 1 : state.Level).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append(' ').Append(Fixed(state is null ? 0f : state.XpFraction));
+
+            _line.Append(" owed ").Append(
+                (state is null ? 0 : state.PendingLevelUps).ToString(CultureInfo.InvariantCulture));
+
+            // How many actives the player owns, and how far round the first one's cooldown is.
+            //
+            // It reads `actives 0` for the whole of this milestone until M3-12 authors a tree with
+            // an Active in it, and that is what the line is for: the runner being correctly empty
+            // and *saying so* is the difference between a system that is not wired up yet and one
+            // that is invisible. The fraction is omitted rather than printed as 0 when nothing is
+            // owned, because a 0 there would be indistinguishable from a skill that is off
+            // cooldown — which is the one reading that matters the day the number is not zero.
+            _line.Append("  actives ").Append(
+                (state is null ? 0 : state.OwnedActiveCount).ToString(CultureInfo.InvariantCulture));
+
+            if (state is not null && state.OwnedActiveCount > 0)
+            {
+                _line.Append(' ').Append(Fixed(state.SkillCooldownFraction(0)));
+            }
+
+            // How many of CC §6.2's four thumb positions are taken, over the ceiling.
+            //
+            // Printed as a pair rather than as a bare count, because the number that matters is the
+            // distance to the refusal: `slots 4/4` is the state in which the next SetAutoCast throws,
+            // and a screen that had not asked ManualSlotCount first is exactly what this line is for
+            // (rule 2). It reads `slots 0/4` for the whole of this milestone — nothing owns an
+            // Active until M3-12 and no screen sends the command until M3-09 — and that is what
+            // makes the first manual switch visible as a number before a button exists to make it.
+            _line.Append("  slots ").Append(
+                (state is null ? 0 : state.ManualSlotCount).ToString(CultureInfo.InvariantCulture));
+
+            _line.Append('/').Append(SkillRunner.MaxManualSlots.ToString(CultureInfo.InvariantCulture));
+
+            // Granted shield, in points rather than as a fraction — it has no maximum to be a
+            // fraction of, and the whole question on a phone is whether it is there *before* the
+            // bolt lands (CC §6.4). Printed unconditionally, unlike the actives fraction above,
+            // because zero is the reading that matters here: it is what says the grant expired on
+            // time rather than quietly lasting the stage.
+            //
+            // It reads `shield 0.00` in every run until M3-12 authors a tree with Bulwark in it, and
+            // M3-11a-ii is what can put a number in it at all. This line is the whole of manual
+            // step 1's readout — there is no view for a granted shield until M3-11c.
+            _line.Append("  shield ").Append(Fixed(state is null ? 0f : state.PlayerGrantedShield));
 
             // Shots in the air, from core rather than from the snapshot — unlike the enemy count
             // above, there is no boundary here for the two sides to disagree across: a projectile

@@ -780,6 +780,70 @@ public sealed class PlayerCombatTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new PlayerCombat(Character(), _events, _intents, 0));
     }
 
+    // ---- M3-12a rule 5: the one number that is new rather than promoted --------------------------
+
+    [Test]
+    public void HealPerKill_StartsAtZeroAndHealsNothing()
+    {
+        var combat = new PlayerCombat(Character(withShield: false), _events, _intents, EnemyCapacity);
+
+        combat.ApplyDamage(40f, 0f);
+
+        Assert.That(combat.Health.Current, Is.EqualTo(100f).Within(1e-4f), "Sanity: 140 − 40.");
+        Assert.That(combat.HealPerKill.Base, Is.Zero);
+
+        Assert.That(
+            combat.HealForKills(5),
+            Is.Zero,
+            "Five kills at zero apiece. The line is dead code until M3-12c's Retribution, which is "
+                + "the bargain of adding the number a task before the node that moves it.");
+
+        Assert.That(combat.Health.Current, Is.EqualTo(100f).Within(1e-4f));
+    }
+
+    [Test]
+    public void HealPerKill_MovesOnlyWithAFlatModifier()
+    {
+        var combat = new PlayerCombat(Character(withShield: false), _events, _intents, EnemyCapacity);
+
+        combat.ApplyDamage(40f, 0f);
+
+        // The finding this task raised and the spec did not have. Stat computes
+        // (Base + SumFlat) * (1 + SumPercentAdd) * Prod(1 + PercentMult), so a base of zero makes
+        // every percentage kind multiply into nothing.
+        combat.HealPerKill.Add(new Modifier(ModifierKind.PercentAdd, 2f, new object()));
+
+        Assert.That(
+            combat.HealForKills(3),
+            Is.Zero,
+            "+200 % of zero is zero. ModifierKind.Flat is the only kind that can ever move this "
+                + "number, and a node authored as a percentage heals nothing, silently.");
+
+        combat.HealPerKill.Add(new Modifier(ModifierKind.Flat, 2f, new object()));
+
+        Assert.That(
+            combat.HealForKills(3),
+            Is.EqualTo(18f).Within(1e-4f),
+            "(0 + 2) × 3 = 6 per kill, three kills. The percentage works once a Flat has given it "
+                + "something to scale.");
+    }
+
+    [Test]
+    public void HealPerKill_ResetLeavesTheStackAlone()
+    {
+        var combat = new PlayerCombat(Character(withShield: false), _events, _intents, EnemyCapacity);
+
+        combat.HealPerKill.Add(new Modifier(ModifierKind.Flat, 2f, new object()));
+
+        combat.Reset();
+
+        Assert.That(
+            combat.HealPerKill.Value,
+            Is.EqualTo(2f).Within(1e-4f),
+            "A stage boundary resets clocks, not the tree. The rule Weapon.Reset and "
+                + "ChargeSkill.Reset already follow.");
+    }
+
     // ---- Fixture helpers -----------------------------------------------------------------------
 
     private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
@@ -800,6 +864,7 @@ public sealed class PlayerCombatTests
         true,
         0,
         Scalings.Design(),
+        Scalings.Xp(),
         Array.Empty<RosterEntry>());
 
     /// <summary>The Oathbound of CC §7, with the four numbers a row may need to override.</summary>
@@ -855,6 +920,7 @@ public sealed class PlayerCombatTests
         3.5f,
         priority,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,
@@ -871,6 +937,7 @@ public sealed class PlayerCombatTests
         3.5f,
         1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,

@@ -533,6 +533,56 @@ public sealed class WeaponTests
         }
     }
 
+    // ---- M3-12a rule 2: the two forwarded floats became stats ------------------------------------
+
+    [Test]
+    public void Weapon_RangeAndAngleAreStats()
+    {
+        var weapon = new Weapon(Spec());
+
+        Assert.That(weapon.Range.Base, Is.EqualTo(WeaponRange).Within(1e-4f));
+        Assert.That(weapon.ConeAngleDeg.Base, Is.EqualTo(ConeAngleDeg).Within(1e-4f));
+
+        Assert.That(
+            weapon.Range.ModifierCount,
+            Is.Zero,
+            "Seeded from the spec and otherwise untouched — a promoted number carrying a modifier "
+                + "from birth would be a buff nobody authored.");
+
+        Assert.That(weapon.ConeAngleDeg.ModifierCount, Is.Zero);
+    }
+
+    [Test]
+    public void Weapon_UnmodifiedIsUnchanged()
+    {
+        // The row that says this task changed nothing anyone can feel: the four stats a shipped
+        // Censer carries all read back exactly what a designer typed.
+        var weapon = new Weapon(Spec());
+
+        Assert.That(weapon.Damage.Value, Is.EqualTo(Damage).Within(1e-4f));
+        Assert.That(weapon.FireRate.Value, Is.EqualTo(SwingsPerSecond).Within(1e-4f));
+        Assert.That(weapon.Range.Value, Is.EqualTo(WeaponRange).Within(1e-4f));
+        Assert.That(weapon.ConeAngleDeg.Value, Is.EqualTo(ConeAngleDeg).Within(1e-4f));
+    }
+
+    [Test]
+    public void Weapon_ResetLeavesTheNewStacksAlone()
+    {
+        var weapon = new Weapon(Spec());
+        var node = new object();
+
+        weapon.Range.Add(new Modifier(ModifierKind.Flat, 2f, node));
+        weapon.ConeAngleDeg.Add(new Modifier(ModifierKind.PercentAdd, 0.5f, node));
+
+        weapon.Reset();
+
+        // The rule Damage and FireRate already follow, extended to the two that arrived at M3-12a:
+        // a reset is a fresh swing clock, not a stripped character. A stage boundary that quietly
+        // took a player's tree node off their weapon would be the worst kind of silent bug.
+        Assert.That(weapon.Range.Value, Is.EqualTo(10f).Within(1e-4f));
+        Assert.That(weapon.ConeAngleDeg.Value, Is.EqualTo(90f).Within(1e-4f));
+    }
+
     private PlayerCombat Combat() => new(Character(), _events, _intents, EnemyCapacity);
 
     /// <summary>The Censer of CC §7, with the numbers a row may need to override.</summary>
@@ -572,6 +622,7 @@ public sealed class WeaponTests
         3.5f,
         1,
         threatCost: 4,
+        xpValue: 12f,
         isElite: false,
         8f,
         1.2f,

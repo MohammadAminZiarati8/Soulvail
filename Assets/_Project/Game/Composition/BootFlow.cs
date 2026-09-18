@@ -49,15 +49,23 @@ public sealed class BootFlow : IStartable, IDisposable
 
     private readonly SceneLoader _loader;
     private readonly ISaveStore _store;
-    private readonly HapticsSettings _haptics;
+    private readonly ProfileStore _profiles;
     private readonly SavedRun _savedRun;
 
+    /// <param name="loader">Which scene the app is in, and how it leaves Boot.</param>
+    /// <param name="store">The disk. Read twice here, and written nowhere.</param>
+    /// <param name="profiles">
+    /// Where the loaded profile goes. <c>ProfileStore</c> rather than <c>HapticsSettings</c> as of
+    /// M3-09c — the profile has more than one field in it now, and handing it to one field's holder
+    /// is how the others get lost (rule 3).
+    /// </param>
+    /// <param name="savedRun">What the disk said about a run in progress, at launch.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-    public BootFlow(SceneLoader loader, ISaveStore store, HapticsSettings haptics, SavedRun savedRun)
+    public BootFlow(SceneLoader loader, ISaveStore store, ProfileStore profiles, SavedRun savedRun)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _haptics = haptics ?? throw new ArgumentNullException(nameof(haptics));
+        _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         _savedRun = savedRun ?? throw new ArgumentNullException(nameof(savedRun));
     }
 
@@ -68,6 +76,14 @@ public sealed class BootFlow : IStartable, IDisposable
     public void Start()
     {
         Application.targetFrameRate = TargetFrameRate;
+
+        // Stated rather than assumed, beside the line above and for the same reason a baseline is
+        // written down once (M3-08a rule 13). RunPause takes the clock to 0 and restores what it
+        // found — but **domain reload is disabled on Play**, so a Play session ended mid-pause
+        // leaves the static at 0 and the next one would start frozen with nothing to say why. The
+        // cost is one assignment per boot; the alternative is an Editor that occasionally will not
+        // move and a morning spent on it.
+        Time.timeScale = 1f;
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
@@ -103,13 +119,19 @@ public sealed class BootFlow : IStartable, IDisposable
     }
 
     /// <summary>
-    /// Reads the stored profile once and hands it to whatever holds a setting from it.
+    /// Reads the stored profile once and hands it to the one object that holds a live one.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>Here, because this is the one place in the app with a legitimate reason to wait on the
     /// disk.</b> Every later reader of a setting gets a value that is already correct, and no
     /// screen has to cope with one arriving late.
+    /// </para>
+    /// <para>
+    /// <b>To <c>ProfileStore</c>, not to a feature.</b> The profile has two fields as of M3-09c and
+    /// will have more; a boot that handed each field to its own holder would need a line here per
+    /// field, and every one of those holders would have to author a whole profile to write its own
+    /// back (M3-09c rule 3).
     /// </para>
     /// <para>
     /// <b>The continuation is synchronous, so with today's local store the profile is applied
@@ -139,7 +161,7 @@ public sealed class BootFlow : IStartable, IDisposable
                     return;
                 }
 
-                _haptics.Apply(task.Result ?? PlayerProfile.Default);
+                _profiles.Adopt(task.Result ?? PlayerProfile.Default);
             },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,

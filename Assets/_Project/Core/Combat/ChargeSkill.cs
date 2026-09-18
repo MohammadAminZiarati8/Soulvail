@@ -75,12 +75,29 @@ public sealed class ChargeSkill
         // tree nodes and a future Pact apply a modifier to (ADR-0008). The spec stays what a
         // designer typed.
         Cooldown = new Stat(spec.Cooldown);
+
+        // The second of them, as of M3-12a rule 3. Damage is here rather than on the spec because
+        // a node moves it; Knockback deliberately stays authored — 4 m is a positioning number,
+        // and a node that moved it would need a playtest of its own.
+        Damage = new Stat(spec.Damage);
     }
 
     /// <summary>
     /// Seconds between dashes, live. Where "−15 % dash cooldown" goes, under M3-06's 40 % floor.
     /// </summary>
     public Stat Cooldown { get; }
+
+    /// <summary>
+    /// What one pass-through of the dash is worth, live. Where "+50 % Charge damage" goes.
+    /// </summary>
+    /// <remarks>
+    /// <b>This class never reads it.</b> It is held here because this is the object a modifier has
+    /// to be able to reach — the dash is what a node names — while the damage itself is dealt a
+    /// layer out, by <c>PlayerCombat.ResolveChargeHits</c>, which is the only thing that knows who
+    /// was passed through. The same split <see cref="Cooldown"/> has with <c>CooldownRules</c>:
+    /// the number lives with the skill, the arithmetic lives with the caller.
+    /// </remarks>
+    public Stat Damage { get; }
 
     /// <summary>
     /// The direction of the current dash, or of the last one — a unit vector on the ground plane,
@@ -236,10 +253,13 @@ public sealed class ChargeSkill
         _activeUntil = now + _spec.Duration;
         _invulnUntil = _activeUntil + _spec.IFrameTrail;
 
-        // Sampled here and held — see the class remarks. A non-positive value is left to mean what
-        // it says (ready as soon as the dash ends); M3-06's floor is where a cooldown stops being
-        // allowed to reach zero, because that is the layer that knows what "too short" means.
-        _readyAt = now + Cooldown.Value;
+        // Sampled here and held — see the class remarks. **Floored since M3-06**, which is what
+        // the line this replaced promised: a stack can drive Cooldown.Value to zero or below
+        // (Stat clamps nothing, ADR-0008), and CooldownRules is the layer that knows what "too
+        // short" means. The floor is taken from `_spec.Cooldown`, the number a designer typed,
+        // rather than from `Cooldown.Base` — the two are the same today, and the day a node
+        // re-bases a cooldown a floor computed from the raised base would rise with it.
+        _readyAt = now + CooldownRules.Effective(_spec.Cooldown, Cooldown.Value);
 
         _hasPress = false;
 

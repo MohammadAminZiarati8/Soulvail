@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
+using Soulvail.Core.Progression;
 
 namespace Soulvail.Core.Run;
 
@@ -52,7 +56,13 @@ public sealed class RunState
         PlayerMotor motor,
         PlayerCombat combat,
         EnemySystem enemies,
-        ProjectileSystem projectiles)
+        ProjectileSystem projectiles,
+        LevelTracker progression,
+        EffectRegistry effects,
+        SkillTree tree,
+        SkillRunner skills,
+        ZoneSystem zones,
+        LevelUpFlow levelUp)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -63,6 +73,12 @@ public sealed class RunState
         Combat = combat;
         Enemies = enemies;
         Projectiles = projectiles;
+        Progression = progression;
+        Effects = effects;
+        Tree = tree;
+        Skills = skills;
+        Zones = zones;
+        LevelUp = levelUp;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -172,6 +188,458 @@ public sealed class RunState
     /// </remarks>
     internal ProjectileSystem Projectiles { get; }
 
+    /// <summary>The run's experience, level and the picks it is owed. The run owns it; nothing else may.</summary>
+    /// <remarks>
+    /// <c>internal</c> for the fifth time in this class, and the question AR §18.2 says every field
+    /// handing out a mutable object owes: <c>Grant</c> and <c>SpendLevelUp</c> are both public on
+    /// it, so a public handle would let a view level the player at will or quietly consume a pick
+    /// they were never shown. A HUD learns that experience moved from <c>XpChanged</c> and that a
+    /// level was crossed from <c>LeveledUp</c>; the three reads below are the opening state those
+    /// events cannot report, for the reason <see cref="PlayerHp"/> gives.
+    /// </remarks>
+    internal LevelTracker Progression { get; }
+
+    /// <summary>
+    /// Which handler answers for which effect, this run. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the sixth time in this class, and the first time the answer is not about
+    /// a <c>Tick</c>: <c>Apply</c> is public on the registry, so a public handle would let a view
+    /// put a permanent modifier on the player's damage with nothing in the compiler to object — and
+    /// unlike every other seal here, the caller would not even need a handle on the thing it was
+    /// changing, because the whole point of the registry is that an address stands in for one.
+    /// </para>
+    /// <para>
+    /// There is no narrow read standing in for it, deliberately. The other five fields each gave up
+    /// scalars a HUD needs; nothing outside core has a question about effects yet. What a modifier
+    /// <em>did</em> is already visible in the numbers it moved — <see cref="PlayerMaxHp"/> and the
+    /// rest are the live <c>Stat</c> values — and M3-09d's tree view reads the tree, which is
+    /// M3-03's object rather than this one.
+    /// </para>
+    /// <para>
+    /// M3-03's tree is the only production caller: nothing in a live run calls <c>Apply</c> until
+    /// it exists (M3-05 rule 10), so for this task the registry is built, filled and never used.
+    /// </para>
+    /// </remarks>
+    internal EffectRegistry Effects { get; }
+
+    /// <summary>
+    /// The run's live skill tree — what is taken, what may be. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the seventh time in this class, and the plainest case yet:
+    /// <c>SkillTree.Take</c> is public, so a public handle here would let a view grant the player a
+    /// node — the whole of CH §5's gating bypassed by anything that could reach the object, with
+    /// nothing in the compiler to object. <c>Restore</c> is public on it as well and for the same
+    /// reason it does not matter: the seal is this line (AR §18.2, M3-03 rule 8).
+    /// </para>
+    /// <para>
+    /// <b>Null for a class with no tree, which is legal until M3-12</b> —
+    /// <c>ContentCatalog.TryGetTreeFor</c> answers false for every class this build ships, and
+    /// <c>RunSession._flow</c> is the precedent for a run holding null where there is nothing to
+    /// compose. The four reads below answer 0, false, empty and false in that case, so nothing
+    /// downstream has to ask which kind of run it is in. M3-14b pins that every <em>shipped</em>
+    /// character has one, which is when this null stops being reachable in a build.
+    /// </para>
+    /// </remarks>
+    internal SkillTree Tree { get; }
+
+    /// <summary>
+    /// How many tree nodes the player has taken this run — what a save writes down alongside the
+    /// ids, and what the debug overlay shows until M3-09d draws the tree.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Tree"/> gives. Zero for a
+    /// class with no tree, which is the same answer a run that has taken nothing gives — there is
+    /// nothing else it could usefully say, and <see cref="TakenNodeIds"/> is empty in both cases.
+    /// </remarks>
+    public int TakenNodeCount => Tree is null ? 0 : Tree.TakenCount;
+
+    /// <summary>
+    /// Whether every node of the class's tree is taken — what M3-08 reads to know a pick has
+    /// nothing left to buy and becomes Overflow instead (CH §5.2).
+    /// </summary>
+    /// <remarks>
+    /// False for a class with no tree, and that is the right answer rather than a convenient one: a
+    /// run with no tree has nodes it has not taken in exactly the sense a run at the start does, so
+    /// M3-08 banks the level either way and needs no second question.
+    /// </remarks>
+    public bool IsTreeFull => Tree is not null && Tree.IsFull;
+
+    /// <summary>
+    /// The nodes taken this run, in take order — the list <c>RunRecorder</c> writes into a
+    /// snapshot and <c>SkillTree.Restore</c> replays.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty, never null</b>, including for a class with no tree, so no reader has to ask —
+    /// <c>RunSnapshot.TakenNodeIds</c>' own rule, one layer up. A read-only view of the tree's own
+    /// list rather than a copy: the copy that matters is the one <c>RunSnapshot</c>'s constructor
+    /// makes, because a save is enqueued and a borrowed buffer would be rewritten under a write
+    /// that had not happened yet (M3-01b rule 5).
+    /// </remarks>
+    public IReadOnlyList<ContentId> TakenNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.TakenIds;
+
+    /// <summary>
+    /// Whether <paramref name="skillId"/> may be taken right now — CH §5's gating in one question,
+    /// and what M3-09d's tree view frames a node <em>Available</em> on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A narrow read rather than the handle, for the reason <see cref="Tree"/> gives, and the
+    /// <b>ninth</b> scalar read on this class — <see cref="SkillCooldownSeconds"/> was the eighth.
+    /// <b>The seal does not move to let it out</b> (AR §18.2): <c>SkillTree.Take</c> is public, so a
+    /// public <see cref="Tree"/> would let a view <em>grant</em> the node this read only asks about.
+    /// </para>
+    /// <para>
+    /// <b>It exists so a screen does not re-derive the gating.</b> The alternative was the tree view
+    /// computing CH §5's rules from <see cref="TakenNodeIds"/> and the tree's shape, which is a
+    /// second copy of <c>TreeRules</c> in the presentation layer and would drift the first time a
+    /// keystone rule changed (M3-09d rule 3). The same bargain M3-09b made for a cooldown in
+    /// seconds, and M3-06 rule 1's argument for the floor living in one expression.
+    /// </para>
+    /// <para>
+    /// <b>False for a class with no tree, and false for a stranger</b>, neither of them a throw.
+    /// The first is every run in the build until M3-12 authors one, and the second is
+    /// <c>SkillTree.IsAvailable</c>'s own rule: a caller asking whether it may draw a node as
+    /// available wants an answer, and an id this tree does not hold is not available.
+    /// </para>
+    /// </remarks>
+    public bool IsNodeAvailable(ContentId skillId) => Tree is not null && Tree.IsAvailable(skillId);
+
+    /// <summary>
+    /// The actives the player owns and their live cooldowns. The run owns it; nothing else may.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>internal</c> for the eighth time in this class, and the reason is <see cref="Tree"/>'s
+    /// with two doors instead of one: <c>SkillRunner.Add</c> and <c>SkillRunner.Cast</c> are both
+    /// public, so a public handle here would let a view grant the player a skill or fire one — the
+    /// whole of CH §4.2's authored trigger bypassed by anything that could reach the object, with
+    /// nothing in the compiler to object (AR §18.2, M3-06 rule 13).
+    /// </para>
+    /// <para>
+    /// <b>Never null</b>, unlike <see cref="Tree"/>: a run with no tree still has a runner, and it
+    /// owns nothing. That is what lets the four reads below answer without asking which kind of run
+    /// they are in, and what lets <c>RunSession.Tick</c> call <c>Tick</c> unconditionally.
+    /// </para>
+    /// <para>
+    /// The reads are what M3-10's buttons and the debug overlay need, plus the one the Skills
+    /// screen wanted in seconds rather than as a fraction — <see cref="SkillCooldownSeconds"/>,
+    /// added by M3-09b — plus M3-10a's <see cref="SlotCooldownFraction"/> and
+    /// <see cref="IsSlotReady"/>, which are the same two questions asked by <em>slot</em> because
+    /// that is what a button is. <b>M3-07a sharpened the seal rather than
+    /// loosening it</b>: <c>SetAutoCast</c> and <c>CastSlot</c> are public on the runner, so a
+    /// handle here would let a view fire the player's skills <em>and</em> rearrange their thumb.
+    /// </para>
+    /// </remarks>
+    internal SkillRunner Skills { get; }
+
+    /// <summary>How many actives the player owns — zero until a run takes an Active node.</summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Skills"/> gives. It is the
+    /// count of what can <em>fire</em>, where <see cref="TakenNodeCount"/> is the count of what was
+    /// picked: a tree of passives moves the second and never the first.
+    /// </remarks>
+    public int OwnedActiveCount => Skills.Count;
+
+    /// <summary>The id of the owned active at <paramref name="index"/>, in take order.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public ContentId SkillIdAt(int index) => Skills.IdAt(index);
+
+    /// <summary>
+    /// How much of that active's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the instant a
+    /// cast starts, 0 once it is live. What M3-10's radial fill draws.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than on an event for <see cref="MovementSkillCooldownFraction"/>'s reason: a
+    /// fill slides continuously, so publishing it would mean an event per frame for a number the
+    /// reader is already sampling per frame. The two answer the same way on purpose — M3-10 draws
+    /// both side by side.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public float SkillCooldownFraction(int index) => Skills.CooldownFraction(index);
+
+    /// <summary>
+    /// How long that active's wait actually is, in seconds, after CH §4.1's 40 % floor — what
+    /// M3-09b's Skills screen prints.
+    /// </summary>
+    /// <remarks>
+    /// <b>A read, never the handle</b> (AR §18.2), forwarding to
+    /// <c>SkillRunner.EffectiveCooldownOf</c> rather than letting the screen multiply
+    /// <see cref="SkillCooldownFraction"/> back up or apply the floor itself — which would be the
+    /// second copy of <c>CooldownRules</c> that M3-06 rule 1 exists to prevent. <b>It is the whole
+    /// wait rather than what is left of it</b>, and the pair is worth having separately for the
+    /// reason <see cref="IsSkillReady"/> is: CC §6.3 asks what the cooldown <em>is</em> on a screen
+    /// where the tick is gated, and a countdown behind a stopped simulation would never move.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public float SkillCooldownSeconds(int index) => Skills.EffectiveCooldownOf(index);
+
+    /// <summary>Whether that active may fire right now.</summary>
+    /// <remarks>
+    /// Not the negation of <see cref="SkillCooldownFraction"/> being zero, and the pair is worth
+    /// having separately for <c>ChargeSkill</c>'s reason: CC §6.2 gives a button that cannot fire
+    /// 40 % opacity, which is a different question from how far round the fill has gone.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public bool IsSkillReady(int index) => Skills.IsReady(index);
+
+    /// <summary>
+    /// How many of CC §6.2's four manual slots are occupied — <b>what a screen must ask before
+    /// sending <c>SetAutoCast(id, false)</c></b>, because the fifth is refused (M3-07a rule 2).
+    /// </summary>
+    /// <remarks>
+    /// This read is the whole of how <em>"never silently refuse, and never silently swap"</em> is
+    /// met without a mechanism: core refuses a state it cannot reach, and the screen asks this first
+    /// so it can show CC §6.2's question instead of sending a command it knows will throw.
+    /// </remarks>
+    public int ManualSlotCount => Skills.ManualSlotCount;
+
+    /// <summary>
+    /// What is in manual slot <paramref name="slot"/>, or <c>default(ContentId)</c> when it is
+    /// empty. S1 is slot 0.
+    /// </summary>
+    /// <remarks>
+    /// Addressed by slot rather than by runner index, which is the read M3-10's four buttons want:
+    /// a button is a fixed position and the skill under it changes, where <see cref="SkillIdAt"/>
+    /// walks take order and knows nothing about thumbs.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four.
+    /// </exception>
+    public ContentId ManualSlotAt(int slot) => Skills.SlotAt(slot);
+
+    /// <summary>
+    /// How much of the cooldown under manual slot <paramref name="slot"/> is left, as a fraction in
+    /// <c>[0, 1]</c>: 1 the instant a cast starts, 0 once it is live. What M3-10a's radial fill
+    /// draws. <b>0 for an empty slot.</b>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The <em>tenth</em> scalar read, and it is addressed by slot because that is what a button
+    /// is</b> (M3-10a rule 2). <see cref="SkillCooldownFraction"/> is addressed by runner
+    /// <em>index</em> — take order, which knows nothing about thumbs — so a button drawing S3 would
+    /// have to read <see cref="ManualSlotAt"/> and then search the take order for that id, which is
+    /// a presentation layer re-deriving what <c>SkillRunner.TryIndexOf</c> already answers. The
+    /// mapping therefore lives here. <b>The seal does not move to let it out</b> (AR §18.2):
+    /// <see cref="Skills"/> stays <c>internal</c>, because <c>SetAutoCast</c> and <c>CastSlot</c> are
+    /// public on the runner and a handle would let a view fire the player's skills and rearrange
+    /// their thumb.
+    /// </para>
+    /// <para>
+    /// <b>An empty slot answers 0 and never throws, unlike <c>CastSlot</c>, which throws for one</b>
+    /// (M3-07a rule 4). The two are different questions: asking an empty slot to <em>fire</em> is a
+    /// view sending a command for a control it is not drawing, while <em>reading</em> one is what a
+    /// button does on every frame it is not drawn — which, until M3-11 and M3-12 author an Active,
+    /// is every frame of every run there has ever been.
+    /// </para>
+    /// </remarks>
+    /// <param name="slot">Which thumb position, from 0. S1 is slot 0.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four. A bad <em>slot</em> is still loud, because
+    /// that is a screen addressing a button CC §6.2 does not draw — only an <em>empty</em> one is
+    /// answered quietly.
+    /// </exception>
+    public float SlotCooldownFraction(int slot) =>
+        TryIndexOfSlot(slot, out int index) ? Skills.CooldownFraction(index) : 0f;
+
+    /// <summary>
+    /// Whether the skill under manual slot <paramref name="slot"/> may fire right now.
+    /// <b>False for an empty slot.</b>
+    /// </summary>
+    /// <remarks>
+    /// The eleventh scalar read, and <see cref="SlotCooldownFraction"/>'s pair for the reason
+    /// <see cref="IsSkillReady"/> is <see cref="SkillCooldownFraction"/>'s: CC §6.2 gives a button
+    /// that cannot fire 40 % opacity and no tap response, which is a different question from how far
+    /// round the fill has gone. False for an empty slot is the same answer as false for a cooling
+    /// one <em>to this read</em>, and the two are told apart by <see cref="ManualSlotAt"/> — which is
+    /// what decides whether the button is drawn at all (M3-10a rule 5).
+    /// </remarks>
+    /// <param name="slot">Which thumb position, from 0. S1 is slot 0.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="slot"/> is not one of the four.
+    /// </exception>
+    public bool IsSlotReady(int slot) =>
+        TryIndexOfSlot(slot, out int index) && Skills.IsReady(index);
+
+    /// <summary>
+    /// Which entry in the runner's walk order sits under <paramref name="slot"/>, if anybody does.
+    /// </summary>
+    /// <remarks>
+    /// The one place the slot → index mapping is written down, so the two reads above cannot come
+    /// apart. <c>SlotAt</c> is what refuses a slot outside the four, and it refuses it before this
+    /// method can answer anything — so a bad slot is loud and an empty one is not.
+    /// </remarks>
+    private bool TryIndexOfSlot(int slot, out int index)
+    {
+        ContentId skillId = Skills.SlotAt(slot);
+
+        if (skillId == default)
+        {
+            index = -1;
+
+            return false;
+        }
+
+        // Cannot miss: SetAutoCast and Restore are the only writers of the slot table and neither
+        // puts an id in it that the runner does not hold. Asked rather than assumed for the reason
+        // CastSlot asks — one place owns the mapping, and a second copy is the first thing that
+        // could disagree with it.
+        return Skills.TryIndexOf(skillId, out index);
+    }
+
+    /// <summary>
+    /// Whether that skill fires itself — true for every owned active until the player switches it
+    /// (M3-07a rule 1).
+    /// </summary>
+    /// <remarks>
+    /// What M3-09's list draws its per-row toggle from. By id rather than by index because the
+    /// Skills screen lists skills and the runner's order is an implementation detail of the walk.
+    /// </remarks>
+    /// <exception cref="System.Collections.Generic.KeyNotFoundException">
+    /// This run does not own <paramref name="skillId"/> as an active.
+    /// </exception>
+    public bool IsAutoCast(ContentId skillId) => Skills.IsAuto(skillId);
+
+    /// <summary>
+    /// CC §6.2's four thumb positions in order, <c>default(ContentId)</c> for an empty one — what
+    /// <c>RunRecorder.Take</c> writes to disk (M3-07b rule 8).
+    /// </summary>
+    /// <remarks>
+    /// <b>A read rather than the handle, and it allocates nothing</b>: the runner wraps its slot
+    /// table once at construction, so this hands back an object that already exists rather than
+    /// building one per boundary. <b>It is a live view, not a snapshot</b> — the next
+    /// <c>SetAutoCast</c> is visible through it — which is why <c>RunSnapshot</c> copies what it is
+    /// given instead of holding it, and why this is the one read here whose caller has an obligation.
+    /// Four empties for a run with no tree, which is every run until M3-12 authors one.
+    /// </remarks>
+    public IReadOnlyList<ContentId> ManualSkillIds => Skills.Slots;
+
+    /// <summary>
+    /// The ground a cast has put down this run — CC §6.4's Consecrate, and every zone after it.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2). <c>Spawn</c>,
+    /// <c>Tick</c> and <c>Clear</c> are all public on it, so a handle would let a view place a
+    /// healing zone under the player, advance its clock, or delete one mid-fight. The two reads below
+    /// are what an overlay or a view gets. <b>Never null</b>, like <see cref="Skills"/>: a run with no
+    /// tree still has a ZoneSystem and it stands empty.
+    /// </remarks>
+    internal ZoneSystem Zones { get; }
+
+    /// <summary>How many zones are standing right now — zero in every run that casts nothing.</summary>
+    public int ActiveZoneCount => Zones.Count;
+
+    /// <summary>
+    /// Where the zone at <paramref name="index"/> was placed, in world metres.
+    /// </summary>
+    /// <remarks>
+    /// <b>An index into the live zones, in the order they were placed, and not a handle</b>
+    /// (<see cref="SkillIdAt"/>'s shape, with one difference worth knowing): a zone retiring shifts
+    /// the ones placed after it down, where the runner's entries never leave. Anything following one
+    /// zone across ticks follows the id on <c>ZoneSpawned</c>; this is the read something walks from 0
+    /// to <see cref="ActiveZoneCount"/> to draw what is on the floor right now.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">There is no zone at that index.</exception>
+    public Vector3 ZoneAt(int index) => Zones.PositionAt(index);
+
+    /// <summary>
+    /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, and this is the seventh time</b> (AR §18.2). <c>Choose</c> takes a node
+    /// and <c>Open</c> consumes the run's <c>Offers</c> stream, so a public handle would let a view
+    /// grant the player a skill and spend draws the simulation is counting on — the same argument
+    /// that keeps <see cref="Motor"/>, <see cref="Combat"/>, <see cref="Enemies"/>,
+    /// <see cref="Projectiles"/>, <see cref="Progression"/>, <see cref="Tree"/> and
+    /// <see cref="Skills"/> behind scalar reads. The four reads below are what a screen gets.
+    /// </remarks>
+    internal LevelUpFlow LevelUp { get; }
+
+    /// <summary>
+    /// Whether an offer is on the table — what M3-08b's screen draws and what the pause is held
+    /// against.
+    /// </summary>
+    public bool HasOffer => LevelUp is not null && LevelUp.HasOffer;
+
+    /// <summary>
+    /// The ids currently offered, in draw order. Empty when there is none, and for every run whose
+    /// class has no tree.
+    /// </summary>
+    /// <remarks>
+    /// <b>A live view over one buffer the next draw rewrites</b>, named here for the reason
+    /// <c>WorldSnapshot</c>'s reuse is named everywhere else. It is safe because it is read on a
+    /// frame that is not being ticked — the gate is up whenever this is non-empty (M3-08a rule 15).
+    /// Nothing may hold it across a <c>ChooseOffer</c>.
+    /// </remarks>
+    public IReadOnlyList<ContentId> Offer =>
+        LevelUp is null ? Array.Empty<ContentId>() : LevelUp.Offer;
+
+    /// <summary>
+    /// Whether this frame should open a level-up: a pick is owed, no offer is open, and the class
+    /// has a tree to spend it on.
+    /// </summary>
+    /// <remarks>
+    /// <b>One question rather than three, and the third term is why.</b> A run whose class has no
+    /// tree <em>banks</em> its levels — <see cref="PendingLevelUps"/> climbs, nothing draws, nothing
+    /// pauses, nothing throws (M3-08a rule 5) — and that is every run in the build until M3-12
+    /// authors one. A caller that asked only whether picks were owed would pause an empty screen for
+    /// the whole of this milestone.
+    /// </remarks>
+    public bool IsLevelUpPending =>
+        LevelUp is not null && !LevelUp.HasOffer && Progression.PendingLevelUps > 0;
+
+    /// <summary>
+    /// How many levels this run has spent on CH §5.2's Overflow rather than on a node — 0 for a run
+    /// with no tree.
+    /// </summary>
+    /// <remarks>
+    /// Derived rather than stored: nothing on <c>RunSnapshot</c> carries it, and a resumed run
+    /// recomputes it as <c>Level − 1 − TakenNodeCount − PendingLevelUps</c> (M3-08a rule 9). The
+    /// read exists because the number is otherwise only observable through the stats it moved.
+    /// </remarks>
+    public int OverflowLevels => LevelUp is null ? 0 : LevelUp.OverflowLevels;
+
+    /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
+    public int Level => Progression.Level;
+
+    /// <summary>
+    /// How far into the current level the player is, in <c>[0, 1)</c> — what the XP strip fills to.
+    /// The same number <c>XpChanged.Fraction</c> carries.
+    /// </summary>
+    public float XpFraction => Progression.XpFraction;
+
+    /// <summary>
+    /// Experience into the current level in absolute points — what a save writes down.
+    /// </summary>
+    /// <remarks>
+    /// A second narrow read of the same quantity as <see cref="XpFraction"/>, added at M3-01b, and
+    /// the duplication is the point rather than an oversight — exactly the pair
+    /// <see cref="PlayerShield"/> and <see cref="PlayerShieldFraction"/> make, for the reason M2-14a
+    /// rule 4 gives: a fraction is what a strip fills to, and it cannot be restored without the
+    /// maximum that produced it. That maximum is <c>XpToNext</c>, which moves with the level by
+    /// construction and with the mode's curve whenever CH §5.2's exponent is retuned — so a run
+    /// saved as a fraction would resume at a different number of points, silently.
+    /// </remarks>
+    public float Xp => Progression.Xp;
+
+    /// <summary>
+    /// How many picks the player has earned and not yet been given. Read by M3-08's level-up flow
+    /// and, until it exists, by the debug overlay alone.
+    /// </summary>
+    public int PendingLevelUps => Progression.PendingLevelUps;
+
     /// <summary>
     /// How many shots are in the air right now — a scalar read, never the handle (AR §18.2).
     /// </summary>
@@ -259,6 +727,30 @@ public sealed class RunState
     /// </para>
     /// </remarks>
     public float PlayerShield => Combat.Health.Shield;
+
+    /// <summary>
+    /// Points of shield a <em>cast</em> has put on the player, across every source — CC §6.4's
+    /// Bulwark. Zero for a player with nothing granted, which is every run in this build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Not the Aegis, and the pair above is the one to read it against.</b>
+    /// <see cref="PlayerShield"/> and <see cref="PlayerShieldFraction"/> are CH §3.1's signature
+    /// pool with its own maximum and its own refill; this is a separate one that is spent first and
+    /// expires on the clock of whatever granted it. There is deliberately no fraction beside it:
+    /// granted shield has no maximum to be a fraction of — 35 points from one source and 55 from two
+    /// are both simply what is there — so M3-13's treatment of GD §16.2 draws it as an overlay on
+    /// the health bar rather than as a second ring.
+    /// </para>
+    /// <para>
+    /// The twelfth scalar read, and the seal did not move to let it out (AR §18.2).
+    /// <see cref="Combat"/> stays <c>internal</c> for the reason every entry in this block gives:
+    /// <c>Health</c> has a public <c>ApplyDamage</c>, <c>Heal</c>, <c>Reset</c> and — as of M3-11a-i
+    /// — a public <c>GrantShield</c>, so a view holding the handle could grant itself a shield as
+    /// easily as it could heal to full.
+    /// </para>
+    /// </remarks>
+    public float PlayerGrantedShield => Combat.Health.GrantedShield;
 
     /// <summary>
     /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the

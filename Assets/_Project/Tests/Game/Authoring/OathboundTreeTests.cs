@@ -51,7 +51,11 @@ public sealed class OathboundTreeTests
 {
     private const string SkillDir = "Assets/_Project/Data/Skills/Oathbound";
     private const string EffectDir = "Assets/_Project/Data/Effects/Oathbound";
-    private const string TreePath = "Assets/_Project/Data/Trees/OathboundTree.asset";
+    // Renamed from OathboundTree.asset by M3-14b: CLAUDE.md's asset-naming rule wants a data
+    // asset's file name to be the last segment of its id, and `tree.oathbound` ends in `oathbound`.
+    // `Data/Trees/` is what says it is a tree. The GUID survived the rename, so BootScope's
+    // reference never moved; only this constant and two others did.
+    private const string TreePath = "Assets/_Project/Data/Trees/Oathbound.asset";
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     /// <summary>
     /// All three, not just the Husk: <c>Descent.asset</c>'s roster names every one of them, and

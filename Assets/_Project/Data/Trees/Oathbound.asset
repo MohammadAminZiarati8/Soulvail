@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0af5b70d26e54754493bd72f817c8629, type: 3}
-  m_Name: OathboundTree
+  m_Name: Oathbound
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillTreeDefinition
   _id: tree.oathbound
   _character: {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}

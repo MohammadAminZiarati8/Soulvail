@@ -13,9 +13,11 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
 using Soulvail.Tests.Core.Fakes;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -124,6 +126,68 @@ public sealed class AutoCastRowTests
     }
 
     // ---- Which cells exist (rules 5, 6, 7) -------------------------------------------------------
+
+    /// <summary>
+    /// Ledger row 9's <em>seventh</em> reader, and the one M3-14a's table deliberately cannot fix.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This row exists to say why it is not closed</b> (M3-14a rule 9). Every other reader row 9
+    /// counts draws a <c>LocKey</c> and now draws a word; a 24 dp cell holds <em>neither</em> — not
+    /// <c>skill.oathbound.consecrate.name</c> and not <em>"Consecrate"</em> — because there is no
+    /// space at all. So which skill a cell is showing is communicated in no form until icons exist,
+    /// and the gap is <b>M7</b>'s art pass rather than a missing table row.
+    /// </para>
+    /// <para>
+    /// <b>It must not be conflated with the 60 dp slot button beside it</b>, and the difference is
+    /// the whole of why one closes and one does not: on the button a word <em>plausibly</em> fits and
+    /// the open question is legibility on a phone ([ledger row 4]); in a cell nothing fits, and no
+    /// table can help.
+    /// </para>
+    /// <para>
+    /// Asserted as the <em>absence of a text component</em> rather than as an empty string, because
+    /// an empty label would be a cell that could quietly gain a word later and close this row without
+    /// anyone ruling on it.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void AutoCastRow_IsStillIconless()
+    {
+        StartRun(actives: 1);
+
+        AutoCastRow row = Row();
+
+        Image[] fills = Field<Image[]>(row, "_fills");
+
+        Assert.That(fills, Is.Not.Empty, "the row has no cells, so this test asserts nothing.");
+
+        foreach (Image fill in fills)
+        {
+            Assert.That(fill, Is.Not.Null);
+
+            // The cell is the fill's own object and its children — a sweep rather than a single
+            // GetComponent, so a label parented one level down would still be caught.
+            Assert.That(
+                fill.GetComponentsInChildren<TMP_Text>(true),
+                Is.Empty,
+                "A 24 dp auto-cast cell gained a text component. If a word really fits, that is "
+                    + "ledger row 9's seventh reader closing and it is a ruling, not a tweak — "
+                    + "say so rather than deleting this row.");
+        }
+
+        // And the class takes no ILocalizer at all, which is the structural half of the same claim.
+        foreach (MethodInfo method in typeof(AutoCastRow).GetMethods(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            foreach (ParameterInfo parameter in method.GetParameters())
+            {
+                Assert.That(
+                    parameter.ParameterType,
+                    Is.Not.EqualTo(typeof(ILocalizer)),
+                    $"AutoCastRow.{method.Name} takes an ILocalizer, so it means to draw a word.");
+            }
+        }
+    }
 
     [Test]
     public void Row_ShowsOneCellPerAutoActive()
@@ -725,7 +789,7 @@ public sealed class AutoCastRowTests
 
         Assert.That(bar, Is.Not.Null, "SkillBarPresenter did not load off Hud.prefab (Traps §5).");
 
-        bar.Construct(_session, new SkillSlotInput(_session), _hub, _catalog);
+        bar.Construct(_session, new SkillSlotInput(_session), _hub, _catalog, Passthrough());
 
         Invoke(bar, "Start");
 
@@ -901,4 +965,8 @@ public sealed class AutoCastRowTests
 
         return values;
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 }

@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using TMPro;
 using UnityEngine;
@@ -51,16 +52,23 @@ namespace Soulvail.Game.Presentation
     /// under this canvas and the fight is running.
     /// </para>
     /// <para>
-    /// <b>The string is a <c>LocKey</c> plus a number and draws unresolved</b> like the rest (rule
-    /// 13, ledger row 9) — which for once is nearly harmless: <em>"Overflow ×14"</em> is mostly the
-    /// number, and the number resolves fine.
+    /// <b>The string is a <c>LocKey</c> plus a number, and as of M3-14a the key resolves</b> (rule
+    /// 13, ledger row 9) — which here was always the nearly-harmless case: <em>"Overflow ×14"</em>
+    /// is mostly the number, and the number resolved fine all along. <b>The format is therefore
+    /// built per <see cref="Construct"/> rather than once statically</b>, because the resolved word
+    /// is not known until a localizer exists; it is still built once per component and never per
+    /// toast, which is what the cached-format bargain below was for.
+    /// </para>
+    /// <para>
+    /// <b>Injected rather than handed the port on a draw call</b>, which is <c>FirstActiveHint</c>'s
+    /// position and the opposite of the four pooled cells' (M3-14a rule 11): this is one component
+    /// on one prefab and <c>RunScope</c> injects it.
     /// </para>
     /// </remarks>
     public sealed class OverflowToast : MonoBehaviour
     {
         /// <summary>
-        /// What the toast says, before M3-14a gives it words: <em>"Overflow"</em>, followed by the
-        /// running total (rule 13).
+        /// What the toast says: <em>"Overflow"</em>, followed by the running total (rule 13).
         /// </summary>
         /// <remarks>
         /// Authored here and written on show rather than left to the prefab, for
@@ -70,17 +78,29 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private static readonly LocKey ToastKey = new LocKey("ui.overflow.granted");
 
+        /// <summary>The format a toast falls back to when nothing injected this component.</summary>
+        private const string UnresolvedSuffix = " ×{0:0}";
+
         /// <summary>
-        /// <see cref="ToastKey"/> with a placeholder for the total, built once.
+        /// <see cref="ToastKey"/> resolved, with a placeholder for the total, built once per
+        /// injection.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Cached so that a toast costs no string per Overflow level: <c>TMP_Text.SetText</c>'s float
         /// overload formats straight into TMP's own backing array, where an interpolated string would
         /// allocate one — <c>HudPresenter.HpFormat</c>'s bargain. <c>{0:0}</c> rather than <c>{0}</c>
         /// for its reason too: TMP reads an unformatted placeholder as "up to nine decimal places",
         /// so the natural spelling would render the fourteenth Overflow as <c>14.0</c>.
+        /// </para>
+        /// <para>
+        /// <b>An instance field as of M3-14a, where it was <c>static readonly</c> before.</b> The
+        /// resolved word is not knowable until a localizer exists, so the concatenation moves into
+        /// <see cref="Construct"/> — still once per component and never per toast, which is the part
+        /// of the bargain that mattered.
+        /// </para>
         /// </remarks>
-        private static readonly string ToastFormat = ToastKey.Key + " ×{0:0}";
+        private string _toastFormat = ToastKey + UnresolvedSuffix;
 
         /// <summary>The dwell a non-finite or non-positive <see cref="_secondsShown"/> falls back to.</summary>
         private const float DefaultSecondsShown = 2f;
@@ -89,8 +109,7 @@ namespace Soulvail.Game.Presentation
                  "time this is up, and a tween here would be a second clock.")]
         [SerializeField] private CanvasGroup _root;
 
-        [Tooltip("The one line: a LocKey and the running total. Unresolved until M3-14a — ledger " +
-                 "row 9, and its most harmless reader.")]
+        [Tooltip("The one line: the resolved ui.overflow.granted and the running total beside it.")]
         [SerializeField] private TMP_Text _text;
 
         [Tooltip("How long the toast stays up, in UNSCALED seconds — see the class remarks for why " +
@@ -106,21 +125,32 @@ namespace Soulvail.Game.Presentation
         public bool IsShown => _root != null && _root.alpha > 0f;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
+        /// <param name="localizer">
+        /// What turns <see cref="ToastKey"/> into a word. Read once, here, into
+        /// <see cref="_toastFormat"/> — see its remarks for why that is not per toast.
+        /// </param>
+        /// <exception cref="ArgumentNullException">Either dependency is null.</exception>
         /// <remarks>
-        /// <b>One dependency, and no <c>IRunSession</c>.</b> Unlike every other readout on this
+        /// <b>Two dependencies, and still no <c>IRunSession</c>.</b> Unlike every other readout on this
         /// prefab there is no opening state to draw: a resumed run's Overflow total is in
         /// <c>RunState.OverflowLevels</c> and showing a toast for it on the first frame would be the
         /// game announcing something that happened in a previous session. So there is no
         /// <c>RunStarted</c> handler here and nothing to read the run for.
         /// </remarks>
         [Inject]
-        public void Construct(DomainEventHub hub)
+        public void Construct(DomainEventHub hub, ILocalizer localizer)
         {
             if (hub is null)
             {
                 throw new ArgumentNullException(nameof(hub));
             }
+
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(nameof(localizer));
+            }
+
+            _toastFormat = localizer.Get(ToastKey) + UnresolvedSuffix;
 
             // Disposed before it is replaced, so a component injected twice — which VContainer does
             // not do and a test does — holds one subscription rather than two.
@@ -237,8 +267,8 @@ namespace Soulvail.Game.Presentation
 
             if (_text != null)
             {
-                // The key, not English. See the class remarks and ledger row 9.
-                _text.SetText(ToastFormat, total);
+                // English and the number, as of M3-14a. See the class remarks and ledger row 9.
+                _text.SetText(_toastFormat, total);
             }
 
             _elapsed = 0f;

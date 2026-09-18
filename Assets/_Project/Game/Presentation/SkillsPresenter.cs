@@ -78,12 +78,23 @@ namespace Soulvail.Game.Presentation
                  "would hide a skill the player owns (rule 7).")]
         [SerializeField] private ScrollRect _scroll;
 
+        /// <summary>
+        /// CC §6.3's <em>"you own no actives yet"</em> line (M3-09b rule 6, M3-14a rule 7).
+        /// </summary>
+        /// <remarks>
+        /// Authored here rather than on the prefab, <c>FirstActiveHint.HintKey</c>'s reason: the one
+        /// string on this screen that belongs to the screen rather than to a skill cannot drift out
+        /// of the code that owns it.
+        /// </remarks>
+        private static readonly LocKey EmptyKey = new LocKey("ui.skills.empty");
+
         [Tooltip("The row every list entry is cloned from, and never shown itself. Twelve clones " +
                  "are built under the scroll's content on first open and reused after that.")]
         [SerializeField] private SkillRow _rowTemplate;
 
-        [Tooltip("\"You own no active skills yet\", as a LocKey. Shown instead of the list for a " +
-                 "run owning none, because an empty panel and a broken panel look identical.")]
+        [Tooltip("\"You own no active skills yet.\" Shown instead of the list for a run owning " +
+                 "none, because an empty panel and a broken panel look identical. Written from " +
+                 "ui.skills.empty on every draw, so the prefab's own value is a placeholder.")]
         [SerializeField] private TMP_Text _emptyLabel;
 
         [Tooltip("Back to the pause panel. It lowers no pause — this screen never held one.")]
@@ -110,6 +121,9 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
         private IPlayerCommands _commands;
         private ContentCatalog _catalog;
+
+        /// <summary>What a node is called. Handed to each pooled cell on its Show (M3-14a rule 11).</summary>
+        private ILocalizer _localizer;
 
         private IDisposable _switchedSubscription;
 
@@ -144,16 +158,23 @@ namespace Soulvail.Game.Presentation
         /// trigger are looked up here — <c>LevelUpPresenter</c>'s bargain, one screen on.
         /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+        /// <param name="localizer">
+        /// What a skill is called and what its trigger clauses say. Held here and handed to each row
+        /// on <c>SkillRow.Show</c>, because a row is a pooled clone nothing injects individually
+        /// (M3-14a rule 11).
+        /// </param>
         [Inject]
         public void Construct(
             IRunSession session,
             IPlayerCommands commands,
             DomainEventHub hub,
-            ContentCatalog catalog)
+            ContentCatalog catalog,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -429,6 +450,7 @@ namespace Soulvail.Game.Presentation
                     state.SkillCooldownSeconds(i),
                     state.IsAutoCast(id),
                     SlotOf(state, id),
+                    _localizer,
                     OnRowSwitched);
             }
 
@@ -436,6 +458,15 @@ namespace Soulvail.Game.Presentation
 
             if (_emptyLabel != null)
             {
+                // Written rather than left to the prefab, FirstActiveHint.HintKey's reason: this is
+                // the only string on the screen that is not a skill's, and rule 7 names it. The
+                // other three static labels on Skills.prefab still draw their keys — see the
+                // finding in M3-14a's As built, which is about a serialized field this class does
+                // not have rather than about a missing row.
+                _emptyLabel.text = _localizer is null
+                    ? EmptyKey.ToString()
+                    : _localizer.Get(EmptyKey);
+
                 _emptyLabel.gameObject.SetActive(owned == 0);
             }
         }
@@ -486,6 +517,7 @@ namespace Soulvail.Game.Presentation
                     state.SkillCooldownSeconds(IndexOf(state, occupant)),
                     isAuto: false,
                     slot,
+                    _localizer,
                     OnPromptRowSwitched);
             }
 

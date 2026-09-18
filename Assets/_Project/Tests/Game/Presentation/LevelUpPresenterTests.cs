@@ -13,6 +13,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -193,30 +194,78 @@ public sealed class LevelUpPresenterTests
     }
 
     [Test]
-    public void Card_DrawsTheKeyNotEnglish()
+    public void Card_DrawsEnglish()
     {
         StartRun(level: 2, pending: 1);
-        BuildScreen();
+
+        // Every node in the fixture's tree gets a word, so the row does not have to know which
+        // three the seeded draw picks — and the word differs per node, which is what makes the
+        // assertion below discriminating rather than merely non-empty.
+        var words = new Dictionary<string, string>
+        {
+            [NodeOne] = "Consecrate",
+            [NodeTwo] = "Bulwark",
+            [NodeThree] = "Zealotry",
+            [NodeFour] = "Long Reach",
+            [NodeFive] = "Unbowed",
+        };
+
+        var pairs = new List<string>();
+
+        foreach (KeyValuePair<string, string> word in words)
+        {
+            pairs.Add($"{word.Key}.name");
+            pairs.Add(word.Value);
+            pairs.Add($"{word.Key}.desc");
+            pairs.Add($"What {word.Value} does.");
+        }
+
+        BuildScreen(new DictionaryLocalizer(pairs.ToArray()));
 
         _session.OpenLevelUp();
 
-        ContentId first = _session.State.Offer[0];
-        SkillSpec spec = _catalog.Skill(first);
+        SkillSpec spec = _catalog.Skill(_session.State.Offer[0]);
+        string expected = words[spec.Id.Value];
 
-        // The key, not a resolved string. ILocalizer has no implementation (TableLocalizer is
-        // M6-10's), so this is what a player sees — ADR-0012 working as designed, and the row that
-        // makes ledger row 9 visible now rather than a surprise at M3-15.
-        Assert.That(NameOn(_cards[0]), Is.EqualTo(spec.NameKey.Key));
-        Assert.That(NameOn(_cards[0]), Does.StartWith("skill."));
-        Assert.That(DescriptionOn(_cards[0]), Is.EqualTo(spec.DescriptionKey.Key));
+        // **M3-08b's `Card_DrawsTheKeyNotEnglish`, inverted** (M3-14a rule 9). That row pinned the
+        // key deliberately so that resolving it would be a red row somebody had to argue with
+        // rather than a silent improvement — this is the argument, and ledger row 9's first reader
+        // closing. `RewrittenRows_StillAssertWhatTheyAsserted` in TableLocalizerTests is what makes
+        // deleting this row fail rather than only renaming it.
+        Assert.That(NameOn(_cards[0]), Is.EqualTo(expected));
+        Assert.That(NameOn(_cards[0]), Does.Not.StartWith("skill."));
+        Assert.That(DescriptionOn(_cards[0]), Is.EqualTo($"What {expected} does."));
 
-        // And the member is `Key`. The spec wrote `spec.NameKey.Value` in four places and LocKey has
-        // no such member — M3-00c recorded it two spec groups ago and M3-08b is where it is fixed.
+        // And the member is still `Key`. The spec wrote `spec.NameKey.Value` in four places and
+        // LocKey has no such member — M3-00c recorded it two spec groups ago, M3-08b fixed it, and
+        // this task reads the same member one layer down, inside TableLocalizer.
         Assert.That(
             typeof(LocKey).GetProperty("Value"),
             Is.Null,
             "LocKey grew a Value member. The spec's four `.Value` sites were corrected to `.Key`; "
                 + "if the struct really has both now, say which one a card draws.");
+    }
+
+    /// <summary>
+    /// The other half of the row above: a key with no row still reaches the card as itself.
+    /// </summary>
+    /// <remarks>
+    /// <b>Rule 1 from the screen's side, and it is why rule 7's correctness is not testable here.</b>
+    /// A missing row is indistinguishable from a wrong key on a card, which is exactly what makes
+    /// "every key has a row" M3-14b's job rather than this task's — see M3-14a's As built.
+    /// </remarks>
+    [Test]
+    public void Card_MissingRowFallsBackToTheKey()
+    {
+        StartRun(level: 2, pending: 1);
+        BuildScreen(new DictionaryLocalizer());
+
+        _session.OpenLevelUp();
+
+        SkillSpec spec = _catalog.Skill(_session.State.Offer[0]);
+
+        Assert.That(NameOn(_cards[0]), Is.EqualTo(spec.NameKey.Key));
+        Assert.That(NameOn(_cards[0]), Does.StartWith("skill."));
     }
 
     [Test]
@@ -780,20 +829,26 @@ public sealed class LevelUpPresenterTests
         BuildScreen();
 
         Assert.That(
-            () => _presenter.Construct(null, _session, _hub, _catalog),
+            () => _presenter.Construct(null, _session, _hub, _catalog, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, null, _hub, _catalog),
+            () => _presenter.Construct(_session, null, _hub, _catalog, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, _session, null, _catalog),
+            () => _presenter.Construct(_session, _session, null, _catalog, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, _session, _hub, null),
+            () => _presenter.Construct(_session, _session, _hub, null, Passthrough()),
             Throws.ArgumentNullException);
+
+        Assert.That(
+            () => _presenter.Construct(_session, _session, _hub, _catalog, null),
+            Throws.ArgumentNullException,
+            "a presenter with no localizer would hand every card a null and NullReference inside "
+                + "an event handler (M3-14a).");
     }
 
     [Test]
@@ -802,18 +857,18 @@ public sealed class LevelUpPresenterTests
         var card = BuildLooseCard();
 
         Assert.That(
-            () => card.Show(0, null, _ => { }),
+            () => card.Show(0, null, Passthrough(), _ => { }),
             Throws.ArgumentNullException,
             "a card with no node to draw is a presenter that read past the end of a short offer.");
 
         Assert.That(
-            () => card.Show(0, Node(NodeOne, SkillKind.Passive), null),
+            () => card.Show(0, Node(NodeOne, SkillKind.Passive), Passthrough(), null),
             Throws.ArgumentNullException,
             "a card with nobody to report to is one the player can tap while nothing happens — the "
                 + "one failure here that is indistinguishable from a frozen game.");
 
         Assert.That(
-            () => card.Show(-1, Node(NodeOne, SkillKind.Passive), _ => { }),
+            () => card.Show(-1, Node(NodeOne, SkillKind.Passive), Passthrough(), _ => { }),
             Throws.InstanceOf<ArgumentOutOfRangeException>(),
             "a card's index is its position in the offer, from 0.");
     }
@@ -958,7 +1013,13 @@ public sealed class LevelUpPresenterTests
     /// <summary>
     /// Instantiates the shipped prefab and injects it — the screen under test is the asset.
     /// </summary>
-    private void BuildScreen()
+    /// <param name="localizer">
+    /// What the cards resolve their keys through. Defaults to an <em>empty</em> real
+    /// <c>TableLocalizer</c>, which answers every key with itself — so every row written before
+    /// M3-14a still asserts exactly what it asserted, and only the rows that pass a table are about
+    /// English.
+    /// </param>
+    private void BuildScreen(ILocalizer localizer = null)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -978,8 +1039,19 @@ public sealed class LevelUpPresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
-        _presenter.Construct(_session, _session, _hub, _catalog);
+        _presenter.Construct(_session, _session, _hub, _catalog, localizer ?? Passthrough());
     }
+
+    /// <summary>
+    /// The real adapter over an empty table: every key resolves to itself.
+    /// </summary>
+    /// <remarks>
+    /// The real <c>TableLocalizer</c> rather than a fake, deliberately — it costs nothing and it
+    /// means the seven fixtures that only need <em>a</em> localizer are exercising the shipped miss
+    /// path rather than a stand-in's imitation of it.
+    /// </remarks>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     /// <summary>A card with no presenter around it, for the rows that are about one card.</summary>
     private OfferCard BuildLooseCard()
@@ -1055,7 +1127,7 @@ public sealed class LevelUpPresenterTests
 
     private static Color TintFor(OfferCard card, SkillKind kind)
     {
-        card.Show(0, Node($"skill.test.{kind}".ToLowerInvariant(), kind), _ => { });
+        card.Show(0, Node($"skill.test.{kind}".ToLowerInvariant(), kind), Passthrough(), _ => { });
 
         return Field<Image>(card, "_kindStrip").color;
     }

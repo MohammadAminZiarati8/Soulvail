@@ -71,3 +71,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f6f47a3cd58c2ec4ab858311f540ea2b, type: 2}
   _trees:
   - {fileID: 11400000, guid: 552e56837856cfa43975643ea6cab493, type: 2}
+  _localization: {fileID: 11400000, guid: e8534041bde963a4185ebefd2397811d, type: 2}

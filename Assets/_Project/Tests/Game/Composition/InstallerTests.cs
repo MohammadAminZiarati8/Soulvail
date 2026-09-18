@@ -152,7 +152,8 @@ public sealed class InstallerTests
                 null,
                 new[] { LoadDescent() },
                 Array.Empty<SkillDefinition>(),
-                Array.Empty<SkillTreeDefinition>()));
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
     }
 
     [Test]
@@ -169,7 +170,8 @@ public sealed class InstallerTests
                 Array.Empty<EnemyDefinition>(),
                 null,
                 Array.Empty<SkillDefinition>(),
-                Array.Empty<SkillTreeDefinition>()));
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
     }
 
     [Test]
@@ -194,7 +196,8 @@ public sealed class InstallerTests
                 Array.Empty<EnemyDefinition>(),
                 Array.Empty<ModeDefinition>(),
                 Array.Empty<SkillDefinition>(),
-                Array.Empty<SkillTreeDefinition>());
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable());
             Track(builder.Build());
         });
 
@@ -233,7 +236,8 @@ public sealed class InstallerTests
             Array.Empty<EnemyDefinition>(),
             Array.Empty<ModeDefinition>(),
             new[] { first, second, third },
-            new[] { tree });
+            new[] { tree },
+            EmptyTable());
 
         var catalog = Track(builder.Build()).Resolve<ContentCatalog>();
 
@@ -575,7 +579,8 @@ public sealed class InstallerTests
             new[] { LoadHusk() },
             new[] { LoadDescent() },
             Array.Empty<SkillDefinition>(),
-            Array.Empty<SkillTreeDefinition>());
+            Array.Empty<SkillTreeDefinition>(),
+            EmptyTable());
 
         return Track(builder.Build());
     }
@@ -694,4 +699,12 @@ public sealed class InstallerTests
 
         return tree;
     }
+
+    /// <summary>
+    /// A localisation table for a container build. Empty, because nothing in these rows reads a
+    /// word — what they assert is that <c>BootInstaller</c> takes one and registers the port.
+    /// </summary>
+    private static LocalizationTable EmptyTable() =>
+        ScriptableObject.CreateInstance<LocalizationTable>();
+
 }

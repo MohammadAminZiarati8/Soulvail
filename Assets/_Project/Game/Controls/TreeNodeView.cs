@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Presentation;
 using TMPro;
 using UnityEngine;
@@ -47,14 +48,15 @@ namespace Soulvail.Game.Controls
     /// for a later task to wire a command to without deleting a field first.
     /// </para>
     /// <para>
-    /// <b>It draws the <c>LocKey</c>, because nothing in the build resolves one</b> —
-    /// <c>OfferCard</c>'s paragraph, and this is ledger row 9's <em>fourth</em> reader and by a long
-    /// way its densest: a card shows three keys for two seconds and a full tree shows twenty-seven at
-    /// once. <c>ILocalizer</c> is an AR §6 port whose table is M3-14a's, so a cell reads
-    /// <c>skill.oathbound.consecrate</c> rather than "Consecrate" (ADR-0012). GD §13.1's
-    /// <em>"readable in under two seconds"</em> is judged on a card; whether a <em>tree</em> of keys
-    /// is navigable at all is a question only M6-10 can answer, and M3-15 rules on the whole of the
-    /// row rather than on the cards alone.
+    /// <b>It draws English as of M3-14a</b> — <c>OfferCard</c>'s paragraph, and this is ledger row
+    /// 9's <em>fourth</em> reader and by a long way its densest: a card shows three strings for two
+    /// seconds and a full tree shows twenty-seven at once. A cell read
+    /// <c>skill.oathbound.consecrate.name</c> until this task (ADR-0012). <b>The question the table
+    /// changes here is not the same one it changes on a card</b>: GD §13.1's <em>"readable in under
+    /// two seconds"</em> is a claim about a card, where the tree's question is whether twelve cells
+    /// holding English still <em>fit</em> a landscape safe area at all — M3-09d rule 9 bet that they
+    /// do, and it bet it while the strings were keys, which are not shorter than the words that
+    /// replaced them. That is [ledger row 4] and a phone answers it.
     /// </para>
     /// <para>
     /// <b>Seven serialized <see cref="Color"/>s until M3-13a, and none now</b> (M3-09d rule 8).
@@ -73,10 +75,11 @@ namespace Soulvail.Game.Controls
     /// </remarks>
     public sealed class TreeNodeView : MonoBehaviour
     {
-        [Tooltip("The node's name. Draws its LocKey until M3-14a — see the class remarks.")]
+        [Tooltip("The node's name, resolved through ILocalizer — see the class remarks.")]
         [SerializeField] private TMP_Text _name;
 
-        [Tooltip("What the node does. Draws its LocKey until M3-14a, for the same reason.")]
+        [Tooltip("What the node does, resolved the same way. Twelve of these are on screen at " +
+                 "once, which is what makes cell width the tree's question rather than dwell.")]
         [SerializeField] private TMP_Text _description;
 
         [Tooltip("The cell's border, tinted by the three state colours below. This is the thing a " +
@@ -108,12 +111,15 @@ namespace Soulvail.Game.Controls
         /// </summary>
         /// <param name="spec">The node to draw. Any of CH §4's four kinds.</param>
         /// <param name="state">What it is to this run — rule 3's three answers.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="spec"/> is null.</exception>
+        /// <param name="localizer">What turns the spec's two <c>LocKey</c>s into words.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="spec"/> or <paramref name="localizer"/> is null.
+        /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="state"/> is not one of the three. Loud rather than silent, for
         /// <c>PlayerStats.Resolve</c>'s reason — see <see cref="Frame"/>.
         /// </exception>
-        public void Show(SkillSpec spec, NodeState state)
+        public void Show(SkillSpec spec, NodeState state, ILocalizer localizer)
         {
             if (spec is null)
             {
@@ -122,6 +128,15 @@ namespace Soulvail.Game.Controls
                     "A cell with no node to draw is a presenter that walked past the end of the "
                         + "tree — SkillTreeSpec.NodeCount is the bound, and it is what the pool was "
                         + "built to.");
+            }
+
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(localizer),
+                    "A cell with no localizer would draw two keys, and this screen draws twelve "
+                        + "cells at once — the densest place in the game for that to happen "
+                        + "silently (M3-14a rule 1).");
             }
 
             // Resolved before anything is written, so the loud default below is reached whether or
@@ -133,13 +148,13 @@ namespace Soulvail.Game.Controls
 
             if (_name != null)
             {
-                // The key, not English. See the class remarks and ledger row 9.
-                _name.text = spec.NameKey.Key;
+                // English, as of M3-14a. See the class remarks and ledger row 9.
+                _name.text = localizer.Get(spec.NameKey);
             }
 
             if (_description != null)
             {
-                _description.text = spec.DescriptionKey.Key;
+                _description.text = localizer.Get(spec.DescriptionKey);
             }
 
             if (_frame != null)

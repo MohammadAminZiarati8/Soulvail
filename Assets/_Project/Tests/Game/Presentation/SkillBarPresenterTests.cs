@@ -94,6 +94,13 @@ public sealed class SkillBarPresenterTests
     private FixedClock _clock;
     private ContentCatalog _catalog;
     private RunSession _session;
+
+    /// <summary>
+    /// What the buttons resolve their labels through, when a row cares. Null means the empty
+    /// passthrough, which answers every key with itself — so every row written before M3-14a still
+    /// asserts exactly what it asserted.
+    /// </summary>
+    private ILocalizer _localizer;
     private RunConfig _config;
     private SkillSlotInput _input;
 
@@ -139,9 +146,14 @@ public sealed class SkillBarPresenterTests
         _clock = new FixedClock(Instant);
 
         _casts.Clear();
+        _localizer = null;
 
         Track(_hub.Subscribe<SkillCast>(evt => _casts.Add(evt)));
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     [TearDown]
     public void DestroyWorld()
@@ -676,15 +688,29 @@ public sealed class SkillBarPresenterTests
     // ---- What it says, and what it refuses to know (rules 1, 9, 11) ------------------------------
 
     [Test]
-    public void Bar_LabelsAreKeys()
+    public void Bar_LabelsAreWords()
+    {
+        StartRun(actives: 1, manual: new[] { 0, -1, -1, -1 }, activeIds: new[] { "skill.oathbound.consecrate" });
+
+        _localizer = new DictionaryLocalizer("skill.oathbound.consecrate.name", "Consecrate");
+
+        Bar();
+
+        // **M3-10a's `Bar_LabelsAreKeys`, inverted** — ledger row 9's fifth reader, and the one
+        // whose closure is a *device* question rather than a table one (rule 9). A 60 dp circle
+        // could never hold `skill.oathbound.consecrate.name`; whether it holds "Consecrate"
+        // legibly at 8 pt under a thumb is [ledger row 4] and nobody has looked at it on a phone.
+        Assert.That(Buttons()[0].Label, Is.EqualTo("Consecrate"));
+        Assert.That(Buttons()[0].Label, Does.Not.StartWith("skill."));
+    }
+
+    /// <summary>A slot whose name has no row still puts the key under the thumb (rule 1).</summary>
+    [Test]
+    public void Bar_MissingRowFallsBackToTheKey()
     {
         StartRun(actives: 1, manual: new[] { 0, -1, -1, -1 }, activeIds: new[] { "skill.oathbound.consecrate" });
         Bar();
 
-        // **Ledger row 9's one reader a word cannot fix** (rule 9). There are no icons and a 60 dp
-        // circle is a thumb wide, so the key goes in whole and says so — ADR-0012 working as
-        // designed, and M3-14a's job. The button is told apart by position until then, which is what
-        // a thumb uses anyway.
         Assert.That(Buttons()[0].Label, Is.EqualTo("skill.oathbound.consecrate.name"));
     }
 
@@ -752,16 +778,19 @@ public sealed class SkillBarPresenterTests
         Assert.Throws<ArgumentNullException>(() => new SkillSlotInput(null));
 
         Assert.Throws<ArgumentNullException>(
-            () => _bar.Construct(null, _input, _hub, _catalog));
+            () => _bar.Construct(null, _input, _hub, _catalog, Passthrough()));
 
         Assert.Throws<ArgumentNullException>(
-            () => _bar.Construct(_session, null, _hub, _catalog));
+            () => _bar.Construct(_session, null, _hub, _catalog, Passthrough()));
 
         Assert.Throws<ArgumentNullException>(
-            () => _bar.Construct(_session, _input, null, _catalog));
+            () => _bar.Construct(_session, _input, null, _catalog, Passthrough()));
 
         Assert.Throws<ArgumentNullException>(
-            () => _bar.Construct(_session, _input, _hub, null));
+            () => _bar.Construct(_session, _input, _hub, null, Passthrough()));
+
+        Assert.Throws<ArgumentNullException>(
+            () => _bar.Construct(_session, _input, _hub, _catalog, null));
     }
 
     // ---- The asset (Traps §5) ---------------------------------------------------------------------
@@ -987,7 +1016,7 @@ public sealed class SkillBarPresenterTests
         // What RunScope's RegisterComponent does, and then the Start that Unity does not run on an
         // instantiated prefab in EditMode: the binding, the placement and the first draw all live
         // there.
-        _bar.Construct(_session, _input, _hub, _catalog);
+        _bar.Construct(_session, _input, _hub, _catalog, _localizer ?? Passthrough());
 
         Invoke(_bar, "Start");
 

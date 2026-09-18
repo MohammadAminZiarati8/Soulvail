@@ -14,6 +14,7 @@ using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Fakes;
@@ -517,7 +518,7 @@ public sealed class GrantedShieldTests
         Assert.That(_bar, Is.Not.Null, "HpBarView did not load off Hud.prefab (Traps §5).");
         Assert.That(_ring, Is.Not.Null, "ShieldRingView did not load off Hud.prefab (Traps §5).");
 
-        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()));
+        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
 
         Invoke(_presenter, "Start");
     }
@@ -686,4 +687,9 @@ public sealed class GrantedShieldTests
 
         return values;
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
+
 }

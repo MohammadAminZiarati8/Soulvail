@@ -1871,7 +1871,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Tap to return
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2441,6 +2441,8 @@ MonoBehaviour:
   _hpText: {fileID: 1536827485211293717}
   _levelText: {fileID: 5887381375888651330}
   _deathOverlay: {fileID: 7412119542868879884}
+  _deathTitle: {fileID: 990371972555193078}
+  _deathHint: {fileID: 2265280334541437046}
   _fade: {fileID: 3900689793579657100}
   _barSizeDp: {x: 320, y: 24}
   _textWidthDp: 96
@@ -5161,7 +5163,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: You died
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

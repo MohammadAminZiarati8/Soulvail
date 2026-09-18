@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -51,9 +52,12 @@ namespace Soulvail.Game.Presentation
     /// has no business appearing over a scene that is already unloading.
     /// </para>
     /// <para>
-    /// The two strings on the overlay are raw English, in the prefab. That is the second and last
-    /// place in the project where it is allowed (<c>MenuPresenter</c> is the first); M6-10 replaces
-    /// them with <c>LocKey</c>s and the parking lot in ROADMAP.md carries the reminder.
+    /// <b>The two strings on the overlay stopped being raw English at M3-14a</b> (rule 8). They were
+    /// typed into <c>Hud.prefab</c> from M1-17 and were the second and last place in the project
+    /// where that was allowed; they are now <c>ui.death.title</c> and <c>ui.death.hint</c>, written
+    /// from the table when the overlay goes up. <b>The HP readout is deliberately not among them</b>:
+    /// <see cref="HpFormat"/> is a number format rather than a sentence, and it survives localisation
+    /// unchanged — which is the distinction the parking-lot line drew and this task keeps.
     /// </para>
     /// <para>
     /// <b>The level is a fourth rect in this row rather than a fourth component</b> (M3-10b rule 3).
@@ -74,6 +78,17 @@ namespace Soulvail.Game.Presentation
         /// array and allocates nothing.
         /// </summary>
         private const string HpFormat = "{0:0}/{1:0}";
+
+        /// <summary><em>"You died"</em> — the death overlay's headline (rule 8).</summary>
+        /// <remarks>
+        /// Authored here rather than on the prefab, <c>FirstActiveHint.HintKey</c>'s reason: the
+        /// string this screen owns cannot drift out of the code that owns it, and the row that
+        /// checks it is then asserting against something other than the asset it reads.
+        /// </remarks>
+        private static readonly LocKey DeathTitleKey = new LocKey("ui.death.title");
+
+        /// <summary><em>"Tap to return"</em> — the instruction beneath it (rule 8).</summary>
+        private static readonly LocKey DeathHintKey = new LocKey("ui.death.hint");
 
         /// <summary>
         /// The level, on its own. <c>{0:0}</c> for <see cref="HpFormat"/>'s reason, and passed to
@@ -111,9 +126,17 @@ namespace Soulvail.Game.Presentation
                  "toward the next one is XpBarView, on the top edge.")]
         [SerializeField] private TMP_Text _levelText;
 
-        [Tooltip("The death panel: \"You died\" and \"Tap to return\". Hidden until it is needed, " +
-                 "and its two strings are raw English until M6-10.")]
+        [Tooltip("The death panel: \"You died\" and \"Tap to return\". Hidden until it is needed. " +
+                 "Its two strings come from the table as of M3-14a — see the two labels below.")]
         [SerializeField] private GameObject _deathOverlay;
+
+        [Tooltip("\"You died\", written from ui.death.title when the overlay goes up. Optional: a " +
+                 "death overlay with no headline still takes the tap that returns to the Menu.")]
+        [SerializeField] private TMP_Text _deathTitle;
+
+        [Tooltip("\"Tap to return\", written from ui.death.hint. Optional on the same terms — and " +
+                 "it is the more costly of the two to lose, because it is the instruction.")]
+        [SerializeField] private TMP_Text _deathHint;
 
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
@@ -145,6 +168,7 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
         private SceneLoader _loader;
         private InputAdapter _input;
+        private ILocalizer _localizer;
 
         private IDisposable _startedSubscription;
         private IDisposable _damagedSubscription;
@@ -194,16 +218,22 @@ namespace Soulvail.Game.Presentation
         /// gives no order between two <c>Awake</c> calls — so an <c>OnEnable</c> subscription would
         /// be reaching for a hub that may not have arrived yet. Dropped in <c>OnDestroy</c>.
         /// </remarks>
+        /// <param name="localizer">
+        /// What turns the death overlay's two keys into words (M3-14a rule 8). Resolved from
+        /// <c>BootScope</c>, one scope up.
+        /// </param>
         [Inject]
         public void Construct(
             DomainEventHub hub,
             IRunSession session,
             SceneLoader loader,
-            InputAdapter input)
+            InputAdapter input,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _input = input ?? throw new ArgumentNullException(nameof(input));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -514,10 +544,39 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void OnPlayerDied(PlayerDied evt)
         {
+            // Written here rather than at Start, so the two labels cannot be left carrying whatever
+            // the prefab was dressed with by someone editing it — and written before the overlay
+            // goes up rather than after, so no frame can show the placeholder.
+            WriteDeathStrings();
+
             _deathOverlay.SetActive(true);
 
             _awaitingTap = true;
             _deathFrame = Time.frameCount;
+        }
+
+        /// <summary>The death overlay's two strings, from the table (rule 8).</summary>
+        /// <remarks>
+        /// Both labels are optional and a null localizer falls back to the key —
+        /// <c>MenuPresenter.Write</c>'s answer, for its reason: a death overlay missing a word is a
+        /// player who can still tap out of it, and throwing here would strand them on a run that has
+        /// already ended. <c>ToString()</c> rather than <c>Key</c>, for <c>TableLocalizer.Get</c>'s.
+        /// </remarks>
+        private void WriteDeathStrings()
+        {
+            if (_deathTitle != null)
+            {
+                _deathTitle.text = _localizer is null
+                    ? DeathTitleKey.ToString()
+                    : _localizer.Get(DeathTitleKey);
+            }
+
+            if (_deathHint != null)
+            {
+                _deathHint.text = _localizer is null
+                    ? DeathHintKey.ToString()
+                    : _localizer.Get(DeathHintKey);
+            }
         }
 
         /// <summary>Everything the run can currently say about the player, drawn at once.</summary>

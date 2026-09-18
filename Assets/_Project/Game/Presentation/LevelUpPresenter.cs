@@ -116,6 +116,9 @@ namespace Soulvail.Game.Presentation
         private IProgressionCommands _progression;
         private ContentCatalog _catalog;
 
+        /// <summary>What a node is called. Handed to each pooled cell on its Show (M3-14a rule 11).</summary>
+        private ILocalizer _localizer;
+
         private IDisposable _offerSubscription;
         private IDisposable _closedSubscription;
 
@@ -169,17 +172,24 @@ namespace Soulvail.Game.Presentation
         /// name, the description and the kind are looked up here — AR §18.2's rule that state hands
         /// out reads rather than handles, for the eighth time.
         /// </param>
+        /// <param name="localizer">
+        /// What a node is <em>called</em>. Held by this class and handed to each card on
+        /// <c>OfferCard.Show</c>, because a card is a pooled template nothing injects individually
+        /// (M3-14a rule 11) — the presenter that owns the pool is the one thing injected.
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
         public void Construct(
             IRunSession session,
             IProgressionCommands progression,
             DomainEventHub hub,
-            ContentCatalog catalog)
+            ContentCatalog catalog,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -361,7 +371,7 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                card.Show(i, _catalog.Skill(offer[i]), OnCardChosen);
+                card.Show(i, _catalog.Skill(offer[i]), _localizer, OnCardChosen);
             }
         }
 

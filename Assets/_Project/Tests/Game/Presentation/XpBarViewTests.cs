@@ -13,6 +13,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Presentation;
 using Soulvail.Tests.Core.Fakes;
@@ -86,6 +87,12 @@ public sealed class XpBarViewTests
 
     /// <summary>The key the toast draws until M3-14a gives it words — ledger row 9.</summary>
     private const string ToastKey = "ui.overflow.granted";
+
+    /// <summary>
+    /// What <see cref="ToastKey"/> resolves to — <c>English.asset</c>'s row, authored here so the
+    /// fixture asserts against a table it built rather than against the shipped one.
+    /// </summary>
+    private const string ToastWord = "Overflow";
 
     /// <summary>Branch a's whole first tier — <c>LevelUpPresenterTests</c>' five-node tree.</summary>
     private const string NodeOne = "skill.test.one";
@@ -420,9 +427,12 @@ public sealed class XpBarViewTests
         Assert.That(ToastText(), Does.Contain("14"));
         Assert.That(ToastText(), Does.Not.Contain("30"), "the toast is showing the level, not the total.");
 
-        // Ledger row 9's most harmless reader: "Overflow ×14" is mostly the number, and the number
-        // resolves fine (rule 13).
-        Assert.That(ToastText(), Does.StartWith(ToastKey));
+        // **`Toast_DrawsEnglish`** — M3-10b's key row inverted, and ledger row 9's most harmless
+        // reader closing (rule 13): "Overflow ×14" was always mostly the number, and the number
+        // resolved fine all along. What a player gains here is the word rather than the meaning.
+        Assert.That(ToastText(), Does.StartWith(ToastWord));
+        Assert.That(ToastText(), Does.Not.StartWith("ui."));
+        Assert.That(ToastText(), Is.EqualTo(ToastWord + " ×14"));
     }
 
     [Test]
@@ -623,7 +633,7 @@ public sealed class XpBarViewTests
 
         strip.Construct(_session, _hub);
         row.Construct(_session, _hub, _catalog);
-        toast.Construct(_hub);
+        toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
 
@@ -653,7 +663,7 @@ public sealed class XpBarViewTests
 
         strip.Construct(_session, _hub);
         row.Construct(_session, _hub, _catalog);
-        toast.Construct(_hub);
+        toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
         Assert.That(_hub.SubscriberCount<OverflowGranted>(), Is.EqualTo(1));
@@ -691,7 +701,8 @@ public sealed class XpBarViewTests
 
         Assert.Throws<ArgumentNullException>(() => _strip.Construct(null, _hub));
         Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, null));
-        Assert.Throws<ArgumentNullException>(() => _toast.Construct(null));
+        Assert.Throws<ArgumentNullException>(() => _toast.Construct(null, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _toast.Construct(_hub, null));
     }
 
     // ---- The asset (Traps §5) --------------------------------------------------------------------
@@ -923,8 +934,8 @@ public sealed class XpBarViewTests
         // What RunScope's RegisterComponent does, and then the Start that Unity does not run on an
         // instantiated prefab in EditMode: the placement and the first draw both live there.
         _strip.Construct(_session, _hub);
-        _toast.Construct(_hub);
-        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()));
+        _toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
+        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
 
         Invoke(_strip, "Start");
         Invoke(_toast, "Start");
@@ -1219,4 +1230,9 @@ public sealed class XpBarViewTests
             _first.Publish(evt);
         }
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
+
 }

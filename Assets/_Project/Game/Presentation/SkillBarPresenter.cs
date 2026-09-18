@@ -109,6 +109,9 @@ namespace Soulvail.Game.Presentation
         private SkillSlotInput _input;
         private ContentCatalog _catalog;
 
+        /// <summary>What a node is called. Handed to each pooled cell on its Show (M3-14a rule 11).</summary>
+        private ILocalizer _localizer;
+
         private IDisposable _startedSubscription;
         private IDisposable _switchedSubscription;
 
@@ -126,17 +129,25 @@ namespace Soulvail.Game.Presentation
         /// What a skill <em>is</em>: <c>RunState</c> hands out ids, so the label's key is looked up
         /// here — <c>SkillsPresenter</c>'s bargain, one screen over.
         /// </param>
+        /// <param name="localizer">
+        /// What a skill is <em>called</em>. Handed to each button on <c>ManualSkillButton.Show</c>,
+        /// because a button is authored on <c>Hud.prefab</c> and nothing injects one individually
+        /// (M3-14a rule 11). <b>This is the reader whose closure is a device question</b> — see
+        /// <c>ManualSkillButton</c>'s remarks.
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
         public void Construct(
             IRunSession session,
             SkillSlotInput input,
             DomainEventHub hub,
-            ContentCatalog catalog)
+            ContentCatalog catalog,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _input = input ?? throw new ArgumentNullException(nameof(input));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -274,9 +285,11 @@ namespace Soulvail.Game.Presentation
                 // at RunSession.Start, before RunStarted, which is what that sweep is for — so the
                 // miss branch is a scene composed against a catalog that does not hold the run's
                 // content, and an undrawn button is better than a throw inside an event handler.
-                button.Show(_catalog is not null && _catalog.TryGetSkill(id, out SkillSpec spec)
-                    ? spec
-                    : null);
+                button.Show(
+                    _catalog is not null && _catalog.TryGetSkill(id, out SkillSpec spec)
+                        ? spec
+                        : null,
+                    _localizer);
             }
         }
 

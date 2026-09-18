@@ -190,7 +190,7 @@ depend on `Progression` while `Progression` already depends on `Content` for M3-
 | Outbound | `IRandom` | Named streams: `Spawn`, `Offers`, `Affixes`, `Drops`, `Misc`, plus `Capture()` / `Restore(in RandomState)` — where every stream stands, so a resumed run carries on instead of restarting each stream at draw 0 (M2-13a). On the port, never on `IRandomStream` | `SeededRandom` (xorshift/PCG, seedable) |
 | Outbound | `IDomainEvents` | `Publish<T>(in T evt)` | `DomainEventHub` (scoped, typed fan-out) |
 | Outbound | `ISaveStore` | Async load/save of profile and run snapshot | `LocalJsonSaveStore` now, `SyncingSaveStore` later |
-| Outbound | `ILocalizer` | `string Get(LocKey key, params)` | `TableLocalizer` |
+| Outbound | `ILocalizer` | `string Get(LocKey key)` — **one member, and the `params` this row carried from M0 is gone rather than deferred** (M3-14a rule 5). Nothing in M3 needs it: both callers with a number in them format it beside the key, which is M3-09b rule 2's ruling (*"core says what kind of number it is; the screen formats it"*), and a `params object[]` allocates an array on every call from `HudPresenter` and `AutoCastRow`. **M6-10 adds the overload** the day a translated sentence needs a substitution *inside* it. A miss returns the key's own text, never empty and never a throw — `Port_HasOneMember` is the row | `TableLocalizer` (over one `LocalizationTable`, built at boot) |
 | Outbound | `IIntentSink` | Where core writes per-tick intents | `IntentBuffer` (preallocated) |
 
 Ports are the *only* things in core that mention the outside world. If a core class needs something not on this list, the answer is a new port or a new snapshot field — never a Unity reference.

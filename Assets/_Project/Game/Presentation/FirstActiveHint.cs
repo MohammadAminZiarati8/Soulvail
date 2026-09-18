@@ -69,20 +69,22 @@ namespace Soulvail.Game.Presentation
     /// unscaled one spends its four seconds whether or not the world is moving.
     /// </para>
     /// <para>
-    /// <b>The string is a <c>LocKey</c> drawn unresolved</b> — ADR-0012, ledger row 9's third reader,
-    /// resolved at M6-10. What a player of this build sees is <c>ui.hint.firstActive</c>, which is
-    /// the format working as designed rather than a bug.
+    /// <b>The string is resolved as of M3-14a, and this was ledger row 9 at its sharpest</b> — a
+    /// callout whose entire job is to tell the player something, telling them
+    /// <c>ui.hint.firstActive</c>. <b>Unlike the four pooled cells, this one is injected</b>
+    /// (M3-14a rule 11): it is a single component <c>RunScope</c> dresses and injects, so the port
+    /// arrives on <see cref="Construct"/> beside the hub rather than as an argument on a draw call.
     /// </para>
     /// </remarks>
     public sealed class FirstActiveHint : MonoBehaviour
     {
         /// <summary>
-        /// What the callout says, before M6-10 gives it words: <em>"Skills can be set to Manual —
-        /// Pause → Skills"</em> (rule 8).
+        /// What the callout says — <em>"Skills can be set to Manual: Pause → Skills"</em>, which is
+        /// <c>English.asset</c>'s row for this key (rule 8).
         /// </summary>
         /// <remarks>
         /// Authored here and written on show rather than left to the prefab, so the one string this
-        /// screen has cannot drift out of the code that owns it — and so <c>Hint_ShowsTheKey</c> is
+        /// screen has cannot drift out of the code that owns it — and so <c>Hint_DrawsEnglish</c> is
         /// asserting against something other than the asset it is reading.
         /// </remarks>
         private static readonly LocKey HintKey = new LocKey("ui.hint.firstActive");
@@ -94,7 +96,7 @@ namespace Soulvail.Game.Presentation
                  "by the time this is up, and a tween here would be a third clock.")]
         [SerializeField] private CanvasGroup _root;
 
-        [Tooltip("The one line. A LocKey until M6-10 — ledger row 9.")]
+        [Tooltip("The one line, resolved through ILocalizer from ui.hint.firstActive.")]
         [SerializeField] private TMP_Text _text;
 
         [Tooltip("How long the callout stays up with no tap, in UNSCALED seconds — see the class " +
@@ -105,6 +107,7 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
         private ProfileStore _profiles;
         private InputAdapter _input;
+        private ILocalizer _localizer;
 
         private IDisposable _takenSubscription;
         private IDisposable _closedSubscription;
@@ -146,6 +149,11 @@ namespace Soulvail.Game.Presentation
         /// adapter rather than a <c>Button</c>, so the callout can be tapped away from anywhere
         /// while taking no touches from the fight.
         /// </param>
+        /// <param name="localizer">
+        /// What turns <see cref="HintKey"/> into a sentence. Resolved from <c>BootScope</c> one
+        /// scope up, like <paramref name="profiles"/> — a table outlives a run for the reason a
+        /// profile does (M3-14a rule 4).
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// Subscribed here rather than in <c>OnEnable</c> — <c>HudPresenter</c>'s reason:
@@ -157,11 +165,13 @@ namespace Soulvail.Game.Presentation
             DomainEventHub hub,
             IRunSession session,
             ProfileStore profiles,
-            InputAdapter input)
+            InputAdapter input,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
             _input = input ?? throw new ArgumentNullException(nameof(input));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -361,7 +371,10 @@ namespace Soulvail.Game.Presentation
 
             if (_text != null)
             {
-                _text.text = HintKey.Key;
+                // English, as of M3-14a. Guarded rather than assumed because Show is reachable from
+                // a fixture that never injected — and a callout that threw here would take the frame
+                // the level-up closed on with it, which is worse than a callout reading its key.
+                _text.text = _localizer is null ? HintKey.ToString() : _localizer.Get(HintKey);
             }
 
             _elapsed = 0f;

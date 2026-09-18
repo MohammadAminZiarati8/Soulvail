@@ -101,6 +101,15 @@ namespace Soulvail.Game.Presentation
         /// <summary>The cell height a non-finite or non-positive <see cref="_cellHeightDp"/> falls back to.</summary>
         private const float DefaultCellHeightDp = 44f;
 
+        /// <summary>
+        /// <em>"This class has no skill tree yet."</em> — shown instead of the columns for a class
+        /// with none (M3-09d rule 2).
+        /// </summary>
+        /// <remarks>
+        /// Authored here rather than on the prefab, <c>SkillsPresenter.EmptyKey</c>'s reason.
+        /// </remarks>
+        private static readonly LocKey NoTreeKey = new LocKey("ui.tree.none");
+
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — see the class " +
                  "remarks: timeScale is 0 while this is up, so a scaled tween would freeze.")]
         [SerializeField] private CanvasGroup _root;
@@ -110,8 +119,8 @@ namespace Soulvail.Game.Presentation
                  "is the asset's business and only what happens *inside* one is this file's.")]
         [SerializeField] private RectTransform[] _branchColumns = new RectTransform[SkillTreeSpec.BranchCount];
 
-        [Tooltip("The heading above each column, in branch order. Draws SkillBranchSpec.NameKey as " +
-                 "a key until M3-14a — ledger row 9.")]
+        [Tooltip("The heading above each column, in branch order. Draws SkillBranchSpec.NameKey " +
+                 "resolved through ILocalizer — \"Oath\", \"Censure\", \"Judgment\".")]
         [SerializeField] private TMP_Text[] _branchLabels = new TMP_Text[SkillTreeSpec.BranchCount];
 
         [Tooltip("The cell every node is cloned from, and never shown itself. One clone per node " +
@@ -139,6 +148,9 @@ namespace Soulvail.Game.Presentation
 
         private IRunSession _session;
         private ContentCatalog _catalog;
+
+        /// <summary>What a node is called. Handed to each pooled cell on its Show (M3-14a rule 11).</summary>
+        private ILocalizer _localizer;
 
         /// <summary>
         /// One cell per node, in tree order, built once on first open.
@@ -202,11 +214,18 @@ namespace Soulvail.Game.Presentation
         /// <c>RunScope</c> builds its container from its own <c>Awake</c> and Unity orders no two of
         /// those.
         /// </remarks>
+        /// <param name="localizer">
+        /// What each node and each branch is called. Held here and handed to every cell on
+        /// <c>TreeNodeView.Show</c>, because a cell is a runtime clone nothing injects individually
+        /// (M3-14a rule 11) — and used directly for the three column headings, which are this
+        /// class's own.
+        /// </param>
         [Inject]
-        public void Construct(IRunSession session, ContentCatalog catalog)
+        public void Construct(IRunSession session, ContentCatalog catalog, ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             Wire(_close, Close);
         }
@@ -347,6 +366,11 @@ namespace Soulvail.Game.Presentation
 
             if (_emptyLabel != null)
             {
+                // Written rather than left to the prefab — SkillsPresenter.EmptyKey's reason, and
+                // the same bargain: this class already holds a field for this label, so resolving it
+                // costs a line. Close still draws ui.tree.close, because that one has no field.
+                _emptyLabel.text = Resolve(NoTreeKey);
+
                 _emptyLabel.gameObject.SetActive(tree is null);
             }
 
@@ -384,7 +408,7 @@ namespace Soulvail.Game.Presentation
 
                         ContentId id = tier[i];
 
-                        _cells[index].Show(_catalog.Skill(id), StateOf(state, id));
+                        _cells[index].Show(_catalog.Skill(id), StateOf(state, id), _localizer);
 
                         index++;
                     }
@@ -584,13 +608,26 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                // The key, not English — ledger row 9, and the reason SkillBranchSpec refuses a
-                // default(LocKey): M3-09d draws this string above the column.
+                // English, as of M3-14a — the three keys rule 7 names beside the twenty-four node
+                // ones. Still the reason SkillBranchSpec refuses a default(LocKey): a branch with no
+                // key would head a column with a blank rather than with a word.
                 _branchLabels[b].text = tree is not null && b < tree.Branches.Count
-                    ? tree.Branches[b].NameKey.Key
+                    ? Resolve(tree.Branches[b].NameKey)
                     : string.Empty;
             }
         }
+
+        /// <summary>
+        /// <paramref name="key"/> in words, or its own text when nothing injected this presenter.
+        /// </summary>
+        /// <remarks>
+        /// Guarded rather than assumed because <see cref="Draw"/> is reachable from a fixture that
+        /// never called <see cref="Construct"/>, and a heading that threw would take the whole screen
+        /// with it. The fallback is <c>ToString()</c> and not <c>Key</c> for
+        /// <c>TableLocalizer.Get</c>'s reason — a <c>default(LocKey)</c>'s <c>Key</c> is null.
+        /// </remarks>
+        private string Resolve(LocKey key) =>
+            _localizer is null ? key.ToString() : _localizer.Get(key);
 
         private void HideCells()
         {

@@ -47,6 +47,21 @@ public enum EnemyBehaviourKind
     /// unauthored until then for the reason <see cref="Spitter"/> is.
     /// </summary>
     Bloater,
+
+    /// <summary>
+    /// Fights in phases — GD §9.1. Driven by <c>BossBehaviour</c>, which is the one kind whose
+    /// behaviour <c>EnemyAgent.Initialise</c> deliberately does <b>not</b> build.
+    /// </summary>
+    /// <remarks>
+    /// <b>A boss's behaviour needs a <see cref="BossSpec"/>, and an archetype does not name one</b>
+    /// (M4-01b rule 2): the naming runs the other way, from the boss to the body it wears. So this
+    /// kind is spawned through <c>EnemySystem.SpawnBoss</c>, which is the one place that holds both
+    /// halves, and <c>EnemySystem.Tick</c> refuses loudly rather than silently if it ever meets a
+    /// Boss-kind agent that came through the ordinary door. <b>Appended, never inserted</b> —
+    /// <c>EnemyDefinition</c> serialises this enum by ordinal, so the position is content identity
+    /// in practice (M4-01a's finding on <c>PlayerStat</c>).
+    /// </remarks>
+    Boss,
 }
 
 /// <summary>

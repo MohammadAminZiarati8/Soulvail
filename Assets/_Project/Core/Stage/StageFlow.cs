@@ -374,8 +374,14 @@ public sealed class StageFlow
     {
         Enter(StagePhase.Waves, now);
 
+        // Asked of the mode, because which stages hold a boss is the mode's authored statement
+        // (GD §9, M4-01b rule 1) — the same place `HasStage` and `ArenaFor` are asked. Nothing here
+        // or in the director knows how often a boss comes round; `Descent.asset` says *every 5th*
+        // in a field, and the answer is `default` for every mode until M4-02 authors one.
+        _mode.TryGetBossFor(Stage, out ContentId bossId);
+
         _director.Clear();
-        _director.Begin(_plan, snapshot.SpawnPoints, now);
+        _director.Begin(_plan, snapshot.SpawnPoints, now, bossId);
     }
 
     /// <summary>

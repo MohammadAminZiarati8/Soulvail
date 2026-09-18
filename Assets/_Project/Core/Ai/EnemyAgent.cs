@@ -135,8 +135,16 @@ public sealed class EnemyAgent
     /// about; it is a cost all the same, which is why a test pins the free case rather than leaving
     /// it to be assumed.
     /// </para>
+    /// <para>
+    /// <b>Settable within core as of M4-01b, and by exactly one caller.</b> A boss's behaviour
+    /// needs its <c>BossSpec</c>, which an <c>EnemySpec</c> does not name — the naming runs the
+    /// other way — so <c>EnemySystem.SpawnBoss</c> attaches it after the spawn, and
+    /// <see cref="Initialise"/> below leaves <c>EnemyBehaviourKind.Boss</c> with none.
+    /// <see langword="internal"/> rather than public for <see cref="Position"/>'s reason: nothing
+    /// outside core may decide what an enemy does.
+    /// </para>
     /// </remarks>
-    public IEnemyBehaviour Behaviour { get; private set; }
+    public IEnemyBehaviour Behaviour { get; internal set; }
 
     /// <summary>Where it is, as last ingested from the snapshot (M1-06).</summary>
     public Vector3 Position { get; internal set; }
@@ -218,6 +226,13 @@ public sealed class EnemyAgent
             EnemyBehaviourKind.Chaser => Behaviour as ChaserBehaviour ?? new ChaserBehaviour(this),
             EnemyBehaviourKind.Spitter => Behaviour as SpitterBehaviour ?? new SpitterBehaviour(this),
             EnemyBehaviourKind.Bloater => Behaviour as BloaterBehaviour ?? new BloaterBehaviour(this),
+
+            // Boss falls through to null on purpose, and it is the one kind that does so while
+            // meaning something. A BossBehaviour cannot be built from an EnemySpec — it needs the
+            // BossSpec that names this body, and only EnemySystem.SpawnBoss holds both — so the
+            // `as` trick every other kind uses would hand a recycled agent the *previous* boss's
+            // phases. Dropping it here means a boss is always given a fresh behaviour by the one
+            // caller that can, and EnemySystem.Tick refuses loudly if it ever meets one without.
             _ => null,
         };
 

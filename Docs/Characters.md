@@ -188,26 +188,42 @@ Identical skeleton for every class, so the UI is built once and content varies.
 
 ```
         BRANCH A            BRANCH B            BRANCH C
-  T1  ┌─◇─┐               ┌─◇─┐               ┌─◇─┐
-  T2  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T3  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T4  ├─◇─┤               ├─◇─┤               ├─◇─┤       ◇ = node
-  T5  ├─◇─┤               ├─◇─┤               ├─◇─┤       ★ = keystone
-  T6  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T7  ├─◇─┤               ├─◇─┤               ├─◇─┤
-  T8  └─★─┘               └─★─┘               └─★─┘
+  T1  ┌─◇ ◇─┐             ┌─◇ ◇─┐             ┌─◇ ◇─┐
+  T2  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤      ◇ = node
+  T3  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤      ★ = keystone
+  T4  ├─◇ ◇─┤             ├─◇ ◇─┤             ├─◇ ◇─┤
+  T5  └──★──┘             └──★──┘             └──★──┘
 ```
+
+**Two nodes a tier, four tiers, then the Keystone alone: 9 a branch, 27 a class.** The earlier drawing here
+showed eight tiers of one node, which is 24 — it disagreed with the *Total nodes* row directly beneath it
+for two milestones. Corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) against the shape ruled at
+M3-00a and shipped by [M3-02a](plan/tasks/M3-02a-skill-specs.md) rule 7, which is what `SkillTreeSpec` has
+enforced since it was written. **M3's v1 tree is a subset of this, not a different shape**: three branches ×
+two tiers × two nodes = twelve, no Keystones ([M3-12c](plan/tasks/M3-12c-oathbound-tree-v1.md)).
 
 | Rule | Value |
 |---|---|
 | Branches | 3 per class |
-| Nodes per branch | 8 (7 + 1 Keystone) |
+| Nodes per branch | **9 (8 + 1 Keystone)** — four tiers of two, then the Keystone alone |
 | **Total nodes** | **27** |
 | Cost | 1 level = 1 node. No point economy, no partial saving. |
 | Branch gating | Tier *N* requires *N−1* nodes already taken in that branch |
-| Keystone | Requires all 7 preceding nodes in its branch |
+| Keystone | Requires all **8** preceding nodes in its branch |
 
-**A deep run reaches roughly level 30**, so a great run *nearly* completes the tree and a typical run gets maybe half. Reaching a Keystone requires committing 8 of your ~30 picks to one branch — expensive enough to be a real decision, reachable enough that it happens most runs.
+**A deep run reaches roughly level 42 by stage 30 and level 50 by stage 35** — measured at
+[M3-15](plan/tasks/M3-15-acceptance-and-tag.md), not estimated. So a deep run **completes** the tree
+(27 picks, filled around stage 21) and spends everything after that on Overflow; a stage-15 run gets
+twenty picks, which is about three-quarters of it. Reaching a Keystone requires committing **9** of your
+picks to one branch — expensive enough to be a real decision, and reachable in any run that gets past
+stage 8.
+
+**This paragraph used to say "roughly level 30" and "8 of your ~30 picks", and both were wrong** — the
+first by twelve levels, the second by the same off-by-one as the table above. The design consequence is
+worth stating rather than quietly fixing: **the tree is not the scarce thing a deep run is choosing
+between.** Overflow is where more than half a stage-30 run's power comes from, so *"a great run nearly
+completes the tree"* stopped being true some time before anyone noticed. Whether that is the right shape is
+[§8](#8-open-questions)'s fourth open question, and M7-04 is the task that can move it.
 
 ### 5.1 The level-up screen
 
@@ -241,9 +257,23 @@ XP to reach level N  ≈  20 + 12·N^1.4
 | Around stage | Expected level | Level roughly every |
 |---|---|---|
 | 1–5 | 1–8 | 25–35 s |
-| 10 | ~13 | 45 s |
-| 20 | ~22 | 65 s |
-| 35 | ~30 | 90 s |
+| 10 | ~14 | 45 s |
+| 20 | **~27** | 65 s |
+| 35 | **~50** | 90 s |
+
+**These are measured, not intended** — corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) by
+running the shipped `XpCurve` against `Descent.asset`'s threat budget at the real `ToReach(Level + 1)`
+threshold. The exponent **stays at 1.4** and the table moved to meet it, which is the reverse of what the
+ROADMAP's parking lot expected: at stages 5 and 10 — the two depths M3-00d's checklist actually tests —
+1.4 was already right (**L8** and **L14** against *1–8* and *~13*). It is stages 20 and 35 where the
+original table was wishful. **Retuning to ≈1.6 was examined and rejected**, because it pushes a stage-15
+Husk from **4 hits to 5** — still inside [GD §12.4](GameDesign.md)'s band, but sitting on its ceiling
+with no headroom until M7-04 authors all twenty-seven nodes.
+
+**The tree fills at stage 9** on a twelve-node v1 tree (level 13), and at **stage 21** on a full 27-node one.
+Everything past that is Overflow, which by stage 30 is **29 levels** and more than half the damage a run has
+gained — the reason [M3's ledger row 1](plan/ROADMAP.md#carry-forward-into-m3) closes at 5 hits, and the
+thing M7-04 shifts back.
 
 Past the point where the tree is full, further levels grant **Overflow**: +2% damage and +2% max HP each, forever. Small, uncapped, and just enough that levelling never stops meaning something in an endless mode.
 

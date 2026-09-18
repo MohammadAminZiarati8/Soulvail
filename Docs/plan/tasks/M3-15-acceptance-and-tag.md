@@ -25,61 +25,61 @@ Ticked at two grains, and the entry says which is which: **[play]** rows are cov
 
 **The loop got a tree** — the ROADMAP's *ends when* for M3, read literally
 
-- [ ] **[play]** Kills pay XP, a strip fills, a level arrives. The first level lands inside the first stage
-- [ ] XP is `3 × threat cost` and nothing else, so a stage's XP is a function of its budget rather than of what the seed drew (M3-01a rule 2)
-- [ ] **[play]** A level-up **stops the world** — enemies frozen mid-step, no telegraph filling, no animation — and resumes exactly where it stood (GD §11.4, M3-08a rule 10)
-- [ ] **[play]** Three cards, drawn from what is *available*, never free-picked from the whole tree (CH §5.1, GD §13.1)
-- [ ] **[play]** A double level-up is **one screen that re-draws**, and the second offer can hold what the first pick unlocked (M3-08a rule 6)
-- [ ] **[play]** View Tree from both doors, read-only, and looking costs no pick (M3-09d rules 1, 6)
-- [ ] **[play]** Both Actives fire on their own triggers with no input, and their cooldowns are visible while they do (GD §16.1, CC §6.1)
-- [ ] **[play]** A skill set to Manual leaves the auto-cast row, gains a button, and fires on a thumb (M3-10a, M3-10b rule 5)
-- [ ] Cooldown reduction floors at 40 % of the authored value, wherever it comes from (CH §4.1, M3-06 rule 1)
-- [ ] **[play]** Past the twelfth node a level is Overflow: no screen, a toast, a running total (CH §5.2, M3-08a rule 7)
-- [ ] Every number is in an asset — the twelve nodes, both Actives' triggers, the curve, Overflow's 2 % (ADR-0006)
-- [ ] `Auto`/`Manual` and slot positions survive a kill from recents; the chain runs v1 → v2 → v3 (M3-07b)
-- [ ] **[play]** The Skills screen says what each Active is waiting for, in words (M3-09b, M3-14a)
+- [ ] **[play]** Kills pay XP, a strip fills, a level arrives. The first level lands inside the first stage  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] XP is `3 × threat cost` and nothing else, so a stage's XP is a function of its budget rather than of what the seed drew (M3-01a rule 2)
+- [ ] **[play]** A level-up **stops the world** — enemies frozen mid-step, no telegraph filling, no animation — and resumes exactly where it stood (GD §11.4, M3-08a rule 10)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** Three cards, drawn from what is *available*, never free-picked from the whole tree (CH §5.1, GD §13.1)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** A double level-up is **one screen that re-draws**, and the second offer can hold what the first pick unlocked (M3-08a rule 6)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** View Tree from both doors, read-only, and looking costs no pick (M3-09d rules 1, 6)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** Both Actives fire on their own triggers with no input, and their cooldowns are visible while they do (GD §16.1, CC §6.1)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** A skill set to Manual leaves the auto-cast row, gains a button, and fires on a thumb (M3-10a, M3-10b rule 5)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] Cooldown reduction floors at 40 % of the authored value, wherever it comes from (CH §4.1, M3-06 rule 1)
+- [ ] **[play]** Past the twelfth node a level is Overflow: no screen, a toast, a running total (CH §5.2, M3-08a rule 7)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] Every number is in an asset — the twelve nodes, both Actives' triggers, the curve, Overflow's 2 % (ADR-0006)  ← **three of four.** Overflow's 2 % is a `public const` in `LevelUpFlow`, not an asset ([M4 row 6](../ROADMAP.md#carry-forward-into-m4)).
+- [x] `Auto`/`Manual` and slot positions survive a kill from recents; the chain runs v1 → v2 → v3 (M3-07b)
+- [ ] **[play]** The Skills screen says what each Active is waiting for, in words (M3-09b, M3-14a)  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
 
 **Ledger row 1 — the TTK band, the row this milestone exists to close**
 
-- [ ] **[play]** **3 / 4 / 5 hits on a basic enemy at stages 1 / 15 / 30.** M3-12c rule 8's table is arithmetic against a stationary Husk; this row is a played run agreeing with it or not. GD §12.4 wants 3–5 at **every** depth
-- [ ] `TimeToKillTests` green, including the `Ttk_UnlevelledStageThirtyStillFails` control — the row that proves the test measures the right thing (M3-12c rule 9)
-- [ ] **Record the warning, whatever the verdict:** the band holds at stage 30 because of **29 Overflow levels against twelve nodes**, not because of the tree. M7-04's full twenty-seven shifts the balance back, and a *"row 1 closed"* that does not say this hands M7 a surprise
-- [ ] One-shot rule still holds at both depths — no non-boss hit above 35 % of max HP, with `MaxHp` now moving under Overflow and two nodes (GD §12.4)
-- [ ] GD §12.5's shape: tree power roughly linear against quadratic scaling. **If a twelve-node build is unkillable at stage 30, the row is not closed** — it is inverted, and that is worse
+- [ ] **[play]** **3 / 4 / 5 hits on a basic enemy at stages 1 / 15 / 30.** M3-12c rule 8's table is arithmetic against a stationary Husk; this row is a played run agreeing with it or not. GD §12.4 wants 3–5 at **every** depth  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] `TimeToKillTests` green, including the `Ttk_UnlevelledStageThirtyStillFails` control — the row that proves the test measures the right thing (M3-12c rule 9)
+- [x] **Record the warning, whatever the verdict:** the band holds at stage 30 because of **29 Overflow levels against twelve nodes**, not because of the tree. M7-04's full twenty-seven shifts the balance back, and a *"row 1 closed"* that does not say this hands M7 a surprise
+- [x] One-shot rule still holds at both depths — no non-boss hit above 35 % of max HP, with `MaxHp` now moving under Overflow and two nodes (GD §12.4)
+- [x] GD §12.5's shape: tree power roughly linear against quadratic scaling. **If a twelve-node build is unkillable at stage 30, the row is not closed** — it is inverted, and that is worse
 
 **Ledger row 8 — the stage band, and which number it is**
 
-- [ ] **[play]** Stages 1, 5 and 10 **timed, not estimated** — the row M2-15 carried rather than invented
-- [ ] **Both numbers quoted, and labelled.** `RunState.Time` counts *play* seconds: a gated frame contributes no `Dt`, so level-ups and pause menus cost it nothing (M3-08a rule 11, M3-09a rule 10). A stopwatch counts play **plus** every screen. **The band is measured against the stopwatch** — GD §7.3's *"a stage is a commute unit… a player can always finish the stage they're in"* is a claim about a person on a bus, and a player reading three cards is still in the stage. Play time is recorded beside it as what the simulation believes, and the gap between them is the interruption budget GD §13.1 spends
-- [ ] **CH §5.2's exponent, promoted here by the [parking lot](../ROADMAP.md#parking-lot).** M3-01a rule 9 shipped 1.4 as authored and said only a stopwatch could settle it: the curve fills a 27-node tree by stage 20 rather than 30, and its own table says 8 / 13 / 22 / 30 at stages 5 / 10 / 20 / 30 against the arithmetic's 8 / 14 / 27 / 42. Check the observed level at stages 5 and 10 against both. **The fix is one number in `Descent.asset` (≈1.6) and one CH §5.2 line** — and it is a *tuning* change, so it lands here rather than becoming a task
+- [ ] **[play]** Stages 1, 5 and 10 **timed, not estimated** — the row M2-15 carried rather than invented  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **Both numbers quoted, and labelled.** `RunState.Time` counts *play* seconds: a gated frame contributes no `Dt`, so level-ups and pause menus cost it nothing (M3-08a rule 11, M3-09a rule 10). A stopwatch counts play **plus** every screen. **The band is measured against the stopwatch** — GD §7.3's *"a stage is a commute unit… a player can always finish the stage they're in"* is a claim about a person on a bus, and a player reading three cards is still in the stage. Play time is recorded beside it as what the simulation believes, and the gap between them is the interruption budget GD §13.1 spends  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] **CH §5.2's exponent, promoted here by the [parking lot](../ROADMAP.md#parking-lot).** M3-01a rule 9 shipped 1.4 as authored and said only a stopwatch could settle it: the curve fills a 27-node tree by stage 20 rather than 30, and its own table says 8 / 13 / 22 / 30 at stages 5 / 10 / 20 / 30 against the arithmetic's 8 / 14 / 27 / 42. Check the observed level at stages 5 and 10 against both. **The fix is one number in `Descent.asset` (≈1.6) and one CH §5.2 line** — and it is a *tuning* change, so it lands here rather than becoming a task
 
 **Ledger row 9 — node text, six readers closed and one not**
 
-- [ ] **[play]** **GD §13.1's two-second rule, judged for the first time in the project's history**, on twelve real English descriptions (M3-14a). A description needing two lines at card width is an effect to redesign, not a font to shrink
-- [ ] **[play]** CH §5.1's whole case — *"random from available"* works because reading three cards is fast — stands or does not
-- [ ] Every key in every asset resolves (`M3-14b`'s `EveryLocKey_ResolvesInEnglish`), and no English is typed into a prefab (AR §11.5 finally true)
-- [ ] **The seventh reader is recorded as open, not closed:** M3-10b rule 8's 24 dp auto-cast cells hold neither a key nor a word, so which skill a cell shows is not communicated at all. **That is art, not localisation**, and M6-10 cannot fix it. Parking lot, promoted by M7's art pass — or by this playtest, if the row is unreadable without icons (M3-10a rule 9 has the same gap on the slot buttons, where position at least distinguishes them)
+- [ ] **[play]** **GD §13.1's two-second rule, judged for the first time in the project's history**, on twelve real English descriptions (M3-14a). A description needing two lines at card width is an effect to redesign, not a font to shrink  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [ ] **[play]** CH §5.1's whole case — *"random from available"* works because reading three cards is fast — stands or does not  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] Every key in every asset resolves (`M3-14b`'s `EveryLocKey_ResolvesInEnglish`), and no English is typed into a prefab (AR §11.5 finally true)
+- [x] **The seventh reader is recorded as open, not closed:** M3-10b rule 8's 24 dp auto-cast cells hold neither a key nor a word, so which skill a cell shows is not communicated at all. **That is art, not localisation**, and M6-10 cannot fix it. Parking lot, promoted by M7's art pass — or by this playtest, if the row is unreadable without icons (M3-10a rule 9 has the same gap on the slot buttons, where position at least distinguishes them)
 
 **Ledger rows closed by their owners — verified, not assumed** (rule 2)
 
-- [ ] **Row 2** — three format bumps shipped with their migrations: `RunSnapshot` v2 (M3-01b), v3 (M3-07b, the first two-step chain), `PlayerProfile` v2 (M3-09c, the first profile step ever to run). `Chain_IsUnbrokenFromOldestToCurrent` loops over three versions rather than one, and both v1 fixtures still decode
-- [ ] **Row 5** — `PlayerAnimatorView` has the suite it shipped without (M3-11c rule 8), written **without changing its behaviour**; anything it found is in that task's *As built*
-- [ ] **Row 6** — one `Palette` file, nine readers, no serialized `Color` left on any of them (M3-13a), and `#FF4A1F` is a rule a test enforces
-- [ ] **Rows 3 and 7** — closed before M3's specs were written (M2-15a, M3-00a). Confirm neither has regressed: `FrameOrderTests` green three runs consecutively, and the `ProjectSettings` hook still refuses a staged change
+- [x] **Row 2** — three format bumps shipped with their migrations: `RunSnapshot` v2 (M3-01b), v3 (M3-07b, the first two-step chain), `PlayerProfile` v2 (M3-09c, the first profile step ever to run). `Chain_IsUnbrokenFromOldestToCurrent` loops over three versions rather than one, and both v1 fixtures still decode
+- [x] **Row 5** — `PlayerAnimatorView` has the suite it shipped without (M3-11c rule 8), written **without changing its behaviour**; anything it found is in that task's *As built*
+- [x] **Row 6** — one `Palette` file, nine readers, no serialized `Color` left on any of them (M3-13a), and `#FF4A1F` is a rule a test enforces
+- [x] **Rows 3 and 7** — closed before M3's specs were written (M2-15a, M3-00a). Confirm neither has regressed: `FrameOrderTests` green three runs consecutively, and the `ProjectSettings` hook still refuses a staged change
 
 **Ledger row 4 — the device debt, re-stated rather than listed** (the owner's ruling at M3-00d)
 
-- [ ] `m3` is accepted on **Editor evidence**, like `m0`, `m1` and `m2`, and the tag message says so (rule 7)
-- [ ] **Name the one row that is not a feel question:** M3-10a's multi-touch — a thumb on the stick **and** a thumb on S3, read at the same time. If Android delivers only one, **manual casting does not work at all**, and that is a shipped feature being wrong rather than a number being off. Every other device row risks a verdict; this one risks a feature
-- [ ] The rest re-stated and carried: haptics and M1-20's 100 ms coalescing window, touch latency, real frame rate, thermal, landscape flip, sustained fps at the concurrency cap, **the Profiler's no-per-frame-`GC.Alloc` check unmet since M1-21**, `Physics.SyncTransforms()`' per-frame cost (M2-15a), kill-from-recents mid-stage, and whether the M0–M2 feel verdicts survive leaving the Editor
-- [ ] M3's own additions: a 4 dp XP strip beside a notch, a 24 dp radial fill, twelve tree cells in a landscape safe area with English in them, a 3 dp enemy bar, whether the damage tint reads in peripheral vision (GD §16.2's entire claim for it), and whether `timeScale` 0 at 30 fps actually recovers thermal headroom
+- [x] `m3` is accepted on **Editor evidence**, like `m0`, `m1` and `m2`, and the tag message says so (rule 7)
+- [x] **Name the one row that is not a feel question:** M3-10a's multi-touch — a thumb on the stick **and** a thumb on S3, read at the same time. If Android delivers only one, **manual casting does not work at all**, and that is a shipped feature being wrong rather than a number being off. Every other device row risks a verdict; this one risks a feature
+- [x] The rest re-stated and carried: haptics and M1-20's 100 ms coalescing window, touch latency, real frame rate, thermal, landscape flip, sustained fps at the concurrency cap, **the Profiler's no-per-frame-`GC.Alloc` check unmet since M1-21**, `Physics.SyncTransforms()`' per-frame cost (M2-15a), kill-from-recents mid-stage, and whether the M0–M2 feel verdicts survive leaving the Editor
+- [x] M3's own additions: a 4 dp XP strip beside a notch, a 24 dp radial fill, twelve tree cells in a landscape safe area with English in them, a 3 dp enemy bar, whether the damage tint reads in peripheral vision (GD §16.2's entire claim for it), and whether `timeScale` 0 at 30 fps actually recovers thermal headroom
 
 **Performance and hygiene** (GD §11.1, AR §14)
 
-- [ ] `AllocationAssert` rows green across every new `Tick` path — `SkillRunner`, `TimedEffects`, `ZoneSystem`, `LevelUpFlow`, `EffectRegistry`, `TableLocalizer.Get`
-- [ ] **[play]** No hitch when a level-up screen opens or closes, and none when a zone or a shell spawns
-- [ ] Six assemblies, zero compile errors, zero analyzer warnings, the full suite green through `TestRunnerApi` — **EditMode and PlayMode both, and PlayMode run more than once** (M2-15's qualified tick, and M2-15a's lesson that proof of an intermittent fix is repetition)
-- [ ] `git diff m2 HEAD -- ProjectSettings/` shows **nothing**, or one line committed on purpose with `ALLOW_PROJECT_SETTINGS=1` and named here (row 7's hook)
+- [x] `AllocationAssert` rows green across every new `Tick` path — `SkillRunner`, `TimedEffects`, `ZoneSystem`, `LevelUpFlow`, `EffectRegistry`, `TableLocalizer.Get`
+- [ ] **[play]** No hitch when a level-up screen opens or closes, and none when a zone or a shell spawns  ← **carried to [M4 row 2](../ROADMAP.md#carry-forward-into-m4)**: the acceptance playtest found the UI unreadable, so this could not be judged on the screens that shipped.
+- [x] Six assemblies, zero compile errors, zero analyzer warnings, the full suite green through `TestRunnerApi` — **EditMode and PlayMode both, and PlayMode run more than once** (M2-15's qualified tick, and M2-15a's lesson that proof of an intermittent fix is repetition)
+- [x] `git diff m2 HEAD -- ProjectSettings/` shows **nothing**, or one line committed on purpose with `ALLOW_PROJECT_SETTINGS=1` and named here (row 7's hook)
 
 **The feel question** (record the answer and *why*): **does a run get better as it goes?** Descending with a twelve-node tree — do the picks change how you play, or do they change a number? If it does not land, which is wrong: the XP curve, the offer weighting, the twelve nodes' values, their **mix** (six stat lines of twelve — M3-12c counts it honestly and GD §13.1 says *"ship 81 nodes where half are stat lines and we've built a spreadsheet with a shooter attached"*), Overflow's 2 %, the 40 % cooldown floor, or the two Actives' triggers.
 
@@ -97,11 +97,11 @@ Ticked at two grains, and the entry says which is which: **[play]** rows are cov
 
 ## Acceptance
 
-- [ ] Checklist ticked; feel verdict recorded, with the Editor-versus-device grain stated as M1-21's and M2-15's were
-- [ ] **Rows 1, 8 and 9 each carry a number or a sentence, not a shrug** — hits at three depths, two labelled timings, and a two-second verdict on twelve real descriptions. These three are the reason this task is not a formality
-- [ ] Every ledger row struck or carried, with the *As built* that closed it named
-- [ ] `PROGRESS.md` updated, M3 entries archived, Current State pointing at **M4-00** (or M4-01, if M4's specs need no group of their own — decided here)
-- [ ] `m3` exists on `main` — **the owner's to make**, with rule 7's message
+- [x] Checklist ticked; feel verdict recorded, with the Editor-versus-device grain stated as M1-21's and M2-15's were
+- [x] **Rows 1, 8 and 9 each carry a number or a sentence, not a shrug** — hits at three depths, two labelled timings, and a two-second verdict on twelve real descriptions. These three are the reason this task is not a formality
+- [x] Every ledger row struck or carried, with the *As built* that closed it named
+- [x] `PROGRESS.md` updated, M3 entries archived, Current State pointing at **M4-00** (or M4-01, if M4's specs need no group of their own — decided here)
+- [ ] `m3` exists on `main` — **the owner's to make**, with rule 7's message  ← **the owner's to make**, with rule 7's message. Everything it waits on is done.
 
 ## Out of scope
 
@@ -116,4 +116,68 @@ Ticked at two grains, and the entry says which is which: **[play]** rows are cov
 
 ## As built
 
-_Filled at merge._
+**No code, no tuning, and no playtest numbers — and the third of those is the finding, not a gap.**
+
+**Deviation 1 — the checklist's `[play]` rows were not answered, and that is the verdict rather than an
+omission.** The script went to the owner covering rows 1, 8 and 9 plus M3-14c's four unwitnessed label
+checks. What came back was that **the UI is too cramped to read and too unfinished to feel**. So the three
+rows this task exists to close on a number were **carried, not ticked** — and the Acceptance section's
+*"rows 1, 8 and 9 each carry a number or a sentence, not a shrug"* is met by a sentence with a measurement
+behind it: a tree-view cell is **44 dp** holding a name *and* a description, four cells to a column, about
+**226 dp of a ~432 dp landscape safe area**, so roughly 200 dp sits unused and
+[M3-09d](M3-09d-tree-view.md) rule 9's no-scroll, no-zoom bet was lost on cell *height* rather than on the
+thing it worried about. Judging twelve descriptions on that cell is judging the cell.
+
+**Deviation 2 — CH §5.2's exponent was examined and deliberately not changed, which is the reverse of what
+[ledger row 8](../ROADMAP.md#carry-forward-into-m3) and the parking lot both predicted.** Both named ≈1.6
+as *the* pre-identified tuning change. Measured through the shipped `XpCurve` at its real
+`ToReach(Level + 1)` threshold — which is itself a correction, since the first probe used `ToReach(Level)`
+and produced a curve one step too shallow — **1.4 gives L8 at stage 5 and L14 at stage 10 against the
+table's *1–8* and *~13***. It already agrees where this checklist looks; the divergence is at **stage 20**
+(L27 against ~22) and **stage 35** (L50 against ~30). **So the doc was corrected and `Descent.asset` was
+left alone**, under rule 1 read in the direction it does not usually run. **The cost nothing had computed:**
+both candidates (1.5 and 1.6) push **stage-15 TTK from 4 hits to 5** — inside GD §12.4's band, but on its
+ceiling with no headroom until M7-04, and `Ttk_StageFifteen_IsWithinTheBand` would have gone red for it.
+
+**Rule 9's two contradictions are resolved rather than carried, and neither was what it looked like.**
+GD §16.2 vs §16.4 was **an ambiguity, not a contradiction** — a desaturated maroon *is* "toward red", and
+M3-13b's `#3B2422` is a measured 0.361 from `#FF4A1F`, 2.4× the band — so §16.2 gained a clarifying
+half-line and no shipped behaviour changed. CH §5's *"8 (7 + 1 Keystone)"* was **two errors, not one**: the
+table row *and* the ASCII diagram both drew a 24-node class against the same table's stated 27, which is why
+being flagged twice never fixed it. Both now carry M3-02a rule 7's shape. **The Oathbound speed band stays
+parked for M5-02**, on the owner's standing ruling.
+
+**Row 1's warning is recorded as the row demanded, and re-measured rather than quoted:** the band holds at
+stage 30 because of **29 Overflow levels against twelve nodes** — `LevelUpFlow.OverflowDamage` ×29 plus
+Keen Censer's 15 % is ×1.73 against the Husk's ×2.74 — **not because of the tree**. It does not invert:
+enemy HP outruns player damage at every depth, so GD §12.5's shape holds. M7-04 shifts it back and owes a
+re-measure.
+
+**Three findings the checklist did not ask for.** `TimeToKillTests` feeds the *spec's* table rather than the
+curve (`overflowLevels: 7` at stage 15 where the curve gives **8**; both yield 4 hits, so no row was red).
+**`Boot.unity` still carries a raw `Soulvail` splash** nothing resolves — documented as out of scope,
+owned by nobody. **Overflow's 2 % is a `const`, not an asset**, so ADR-0006 is true of three of the
+checklist's four. All three are [M4 ledger row 6](../ROADMAP.md#carry-forward-into-m4).
+
+**The `ProjectSettings` hook was probed rather than assumed** (rows 3 and 7): a throwaway staged file was
+refused at exit 1 with the Traps §5 pointer, and accepted under `ALLOW_PROJECT_SETTINGS=1`.
+`git diff m2 HEAD -- ProjectSettings/` returns **zero files**.
+
+**The toolchain lesson is the one worth keeping.** `TestRunnerApi.Execute` is submittable straight from a
+`Unity_RunCommand`, and **PlayMode completes on an unfocused Editor** — all eleven runs here were taken
+that way, and M3-14b's throwaway `Assets/Editor/` harness need never be built again. Four new MCP refusals
+found on the way, all filed → Traps §3, §4.
+
+**What M4 must know** (rule 4): **`SkillRunner`'s twelve-Active cap and `TimedEffects`' sixteen-entry
+capacity both held and were never pressed** — no shipped tree owns more than two Actives, so a boss with
+adds and phases is the first thing that will test either. **`EnemySpawned.IsElite` is `0` on all three
+archetypes**, so the Warden is the first body to arrive as something other than an archetype. And the
+largest thing M4 inherits is on none of M3's nine rows: **the owner wants the whole UI redesigned**, with
+every taken node shown whether Active or Passive and an Auto skill marked by something orbiting it — which
+depends on icons, because M3-10b rule 8's 24 dp cells would render twelve nodes as twelve identical dots.
+Sequencing is **icons → readout → rotation**. [M4 ledger row 1](../ROADMAP.md#carry-forward-into-m4).
+
+**Verified:** 1 981 EditMode / 0 / 0 ×3; PlayMode 16 / 16 ×3 consecutively; `FrameOrderTests` alone 9 / 0
+×5 — **eight consecutive green appearances of the intermittent row, recorded as a tally with its
+arithmetic: at the measured 10 % rate that is a ≈ 0.43 outcome, so it proves nothing.** Console 0 `CS`/
+`UNT`/`IDE` diagnostics; `dotnet format` green; six assemblies. **`m3` is the owner's to tag.**

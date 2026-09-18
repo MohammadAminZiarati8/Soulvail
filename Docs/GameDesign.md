@@ -653,9 +653,24 @@ So: **health is always readable, but expressed three different ways depending on
 | **Player** | Always-on bar, top-left, large, with ghost-damage trail and a numeric readout. Never ambiguous. |
 | **Bosses** | Big segmented bar across the top of the screen, one segment per phase, so the player can see a phase transition coming. |
 | **Elites** | Persistent bar above the unit. They're priority targets — you're making decisions about them, so you need the number. |
-| **Basic enemies** | **Damage tint, not a bar.** The body darkens and shifts toward red as it loses HP. A thin bar appears above the unit only while it's being damaged, then fades after 2s. |
+| **Basic enemies** | **Damage tint, not a bar.** The body darkens and shifts toward red as it loses HP — **toward a desaturated maroon, never toward §16.4's `#FF4A1F`**, which is reserved. A thin bar appears above the unit only while it's being damaged, then fades after 2s. |
 
 The damage-tint approach is the important one: it scales to 28 enemies where 28 bars would not, it costs zero UI pixels, and it reads instantly in peripheral vision — which is where most enemies are while you're watching your own position.
+
+**On *"toward red"*, because it was read as contradicting §16.4 for two milestones and does not.** §16.4
+reserves saturated red-orange `#FF4A1F` for danger *"for nothing else, ever"*, and a dying Husk drawn in the
+telegraph colour would be the worst readability bug this game could ship — a body that looks like an
+incoming attack. **A desaturated maroon is still *toward* red**, so both lines are satisfied at once, and
+that is what ships: `Palette.EnemyDying` `#3B2422`, with `Tint_NeverApproachesDanger` sampling every
+archetype at every step and finding a worst-case distance of **0.361**, 2.4× the 0.15 band. Ruled at
+[M3-13b](plan/tasks/M3-13b-health-bar-treatment.md) rule 3 and confirmed at
+[M3-15](plan/tasks/M3-15-acceptance-and-tag.md) rule 9. **Nothing about the shipped behaviour changed; only
+this line did.**
+
+**One thing a playtest should be pointed at, because the Editor found it and cannot judge it:** a Husk at
+full health is drawn in `Palette.Neutral` `#6E6A63`, and so is the fill of the bar above it — so a Husk's
+health bar is its own body colour floating over its head. That is §16.4's correct answer (*"everything
+else"*) and it may still be the wrong thing to look at.
 
 **Settings toggle: "Always show enemy health bars"** for players who want the full readout. Off by default, and we should watch playtests to see whether the default is right — if most people turn it on immediately, the tint isn't doing its job.
 

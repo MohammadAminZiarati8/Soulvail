@@ -559,7 +559,7 @@ public sealed class ResumeFlowTests
         Set(presenter, "_descend", descend);
         Set(presenter, "_continue", @continue);
 
-        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader());
+        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader(), Passthrough());
 
         return presenter;
     }
@@ -717,7 +717,8 @@ public sealed class ResumeFlowTests
             new[] { LoadHusk() },
             new[] { LoadDescent() },
             Array.Empty<SkillDefinition>(),
-            Array.Empty<SkillTreeDefinition>());
+            Array.Empty<SkillTreeDefinition>(),
+            EmptyTable());
 
         return Track(builder.Build());
     }
@@ -906,4 +907,15 @@ public sealed class ResumeFlowTests
         {
         }
     }
+
+    /// <summary>
+    /// A localisation table for a container build. Empty, because nothing in these rows reads a
+    /// word — what they assert is that <c>BootInstaller</c> takes one and registers the port.
+    /// </summary>
+    private static LocalizationTable EmptyTable() =>
+        ScriptableObject.CreateInstance<LocalizationTable>();
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() => new TableLocalizer(EmptyTable());
+
 }

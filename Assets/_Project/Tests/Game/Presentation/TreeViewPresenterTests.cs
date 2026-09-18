@@ -13,6 +13,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -212,7 +213,9 @@ public sealed class TreeViewPresenterTests
             }
         }
 
-        // And the branch's own name heads its column — the key, not English (ledger row 9).
+        // And the branch's own name heads its column. Resolved through the port as of M3-14a; this
+        // screen was built with the empty passthrough, so each key still answers with itself — the
+        // claim being made here is about *which* branch heads which column, not about English.
         TMP_Text[] labels = Field<TMP_Text[]>(_presenter, "_branchLabels");
 
         for (int b = 0; b < SkillTreeSpec.BranchCount; b++)
@@ -415,33 +418,49 @@ public sealed class TreeViewPresenterTests
     }
 
     [Test]
-    public void Tree_DrawsKeysNotEnglish()
+    public void Tree_DrawsEnglish()
     {
         StartRun();
-        BuildScreen();
-
-        _presenter.Open(null);
 
         SkillSpec spec = _catalog.Skill(new ContentId(ConsecrateKey));
 
-        // **Ledger row 9's fourth reader and by a long way its densest.** ILocalizer has no table
-        // until M3-14a, so this is the exact string a player reads — ADR-0012 working as designed.
-        // A card shows three of these for two seconds; this screen shows twenty-seven at once, and
-        // that is the fact M3-15 rules the whole row on rather than on the cards alone.
-        Assert.That(NameOn(ConsecrateKey), Is.EqualTo(ConsecrateKey));
-        Assert.That(NameOn(ConsecrateKey), Is.EqualTo(spec.NameKey.Key));
-        Assert.That(DescriptionOn(ConsecrateKey), Is.EqualTo(spec.DescriptionKey.Key));
+        BuildScreen(new DictionaryLocalizer(
+            spec.NameKey.Key, "Consecrate",
+            spec.DescriptionKey.Key, "Healing ground underfoot.",
+            _tree.Branches[0].NameKey.Key, "Oath"));
 
+        _presenter.Open(null);
+
+        // **M3-09d's `Tree_DrawsKeysNotEnglish`, inverted** — ledger row 9's fourth reader and by a
+        // long way its densest, closing. That row pinned one cell to the exact string a player
+        // would read so that resolving it would be a red row somebody had to argue with; this is
+        // the argument. Rewritten rather than deleted, which is why the count does not move.
+        Assert.That(NameOn(ConsecrateKey), Is.EqualTo("Consecrate"));
+        Assert.That(NameOn(ConsecrateKey), Is.Not.EqualTo(ConsecrateKey));
+        Assert.That(DescriptionOn(ConsecrateKey), Is.EqualTo("Healing ground underfoot."));
+
+        // And the branch's own heading, which is one of rule 7's three.
+        Assert.That(Field<TMP_Text[]>(_presenter, "_branchLabels")[0].text, Is.EqualTo("Oath"));
+
+        // **Every other cell falls back to its key, and that is rule 1 rather than a gap** — this
+        // fixture's tree is synthetic and the table above holds one node. It is also exactly why
+        // "every key has a row" is M3-14b's: from a cell, a missing row and a wrong key look the
+        // same, so a coverage claim asserted here would be this task grading its own homework.
         foreach (TreeNodeView cell in ShownCells())
         {
+            if (cell.SkillId == new ContentId(ConsecrateKey))
+            {
+                continue;
+            }
+
             Assert.That(
                 Text(cell, "_name"),
                 Does.StartWith("skill."),
-                $"'{cell.SkillId}' drew something that is not a LocKey.");
+                $"'{cell.SkillId}' has no row, so it should have fallen back to its own key.");
         }
 
-        // And the member is `Key`. M3-00c recorded the spec's four `.Value` sites two spec groups
-        // ago and M3-08b fixed them; this is the fourth screen that would have copied the mistake.
+        // And the member is still `Key`. M3-00c recorded the spec's four `.Value` sites two spec
+        // groups ago and M3-08b fixed them; this task reads the same member inside TableLocalizer.
         Assert.That(
             typeof(LocKey).GetProperty("Value"),
             Is.Null,
@@ -994,8 +1013,9 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        Assert.That(() => _presenter.Construct(null, _catalog), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, null), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(null, _catalog, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, null, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _catalog, null), Throws.ArgumentNullException);
     }
 
     [Test]
@@ -1007,15 +1027,21 @@ public sealed class TreeViewPresenterTests
         TreeNodeView cell = _cellTemplateOf();
 
         Assert.That(
-            () => cell.Show(null, NodeState.Locked),
+            () => cell.Show(null, NodeState.Locked, Passthrough()),
             Throws.ArgumentNullException,
             "A cell with no node to draw is a presenter that walked past the end of the tree.");
+
+        // A cell with no localizer would draw two keys, twelve cells at a time — the densest place
+        // in the game for that to happen silently (M3-14a rule 1).
+        Assert.That(
+            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Locked, null),
+            Throws.ArgumentNullException);
 
         // **Loud rather than silent**, and the reason is that M6-02 is already named as the task
         // that adds a fourth member: a new state with no colour would draw as Locked, which is a
         // node the player owns reading as one they cannot reach (PlayerStats.Resolve's rule).
         Assert.That(
-            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), (NodeState)7),
+            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), (NodeState)7, Passthrough()),
             Throws.InstanceOf<ArgumentOutOfRangeException>(),
             "A node state with no frame colour was absorbed rather than reported.");
     }
@@ -1150,7 +1176,11 @@ public sealed class TreeViewPresenterTests
     /// <summary>
     /// Instantiates the shipped prefab and injects it — the screen under test is the asset.
     /// </summary>
-    private void BuildScreen()
+    /// <param name="localizer">
+    /// What the cells and the three headings resolve through. Defaults to an <em>empty</em> real
+    /// <c>TableLocalizer</c>, which answers every key with itself.
+    /// </param>
+    private void BuildScreen(ILocalizer localizer = null)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -1168,8 +1198,12 @@ public sealed class TreeViewPresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
-        _presenter.Construct(_session, _catalog);
+        _presenter.Construct(_session, _catalog, localizer ?? Passthrough());
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     /// <summary>The pause panel, with the cross-prefab reference Run.unity dresses.</summary>
     private void BuildPauseScreen()
@@ -1198,7 +1232,7 @@ public sealed class TreeViewPresenterTests
 
         _levelUpPresenter = _levelUpScreen.GetComponent<LevelUpPresenter>();
 
-        _levelUpPresenter.Construct(_session, _session, _hub, _catalog);
+        _levelUpPresenter.Construct(_session, _session, _hub, _catalog, Passthrough());
 
         SetPrivate(_levelUpPresenter, "_treeScreen", _presenter);
     }

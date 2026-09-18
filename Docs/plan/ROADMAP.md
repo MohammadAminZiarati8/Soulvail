@@ -256,7 +256,7 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 |---|---|---|---|---|
 | [M3-13a](tasks/M3-13a-palette.md) | `Palette`: GD §16.4 in one file, and the nine readers that have been waiting for it | S | 08b 09d 10b 11c | ☑ |
 | [M3-13b](tasks/M3-13b-health-bar-treatment.md) | Health that reads at a glance: the damage tint, the Elite's bar, and the shield you were granted | M | 13a 11a-i 11a-ii | ☑ |
-| [M3-14a](tasks/M3-14a-localizer-and-english-table.md) | `ILocalizer`, `TableLocalizer`, and one English table | M | 12c 08b 09b 09c 09d 10b | ☐ |
+| [M3-14a](tasks/M3-14a-localizer-and-english-table.md) | `ILocalizer`, `TableLocalizer`, and one English table | M | 12c 08b 09b 09c 09d 10b | ☑ |
 | [M3-14b](tasks/M3-14b-content-validation.md) | Content validation: every id disciplined, every key resolvable, every tree unstarvable | S | 14a 12c 02b | ☐ |
 | [M3-15](tasks/M3-15-acceptance-and-tag.md) | M3 acceptance: does a run get better as it goes? The ledger closed, and tag `m3` | S | everything | ☐ |
 

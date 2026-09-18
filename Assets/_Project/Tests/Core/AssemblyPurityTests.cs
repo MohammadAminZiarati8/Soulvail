@@ -161,6 +161,55 @@ public sealed class AssemblyPurityTests
             + "namespace rather than a list with an exception in it.");
     }
 
+    /// <summary>
+    /// ADR-0012's shape, pinned: no class in <c>Soulvail.Core</c> takes an <see cref="ILocalizer"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>M3-14a rule 10.</b> The port is an interface over a <c>LocKey</c>, and nothing in core has
+    /// a reason to know what a key <em>says</em> — core owns the identity of a thing and Game owns
+    /// how it looks. An interface in <c>Core/Ports</c> mentioning <see langword="string"/> is what a
+    /// port <em>is</em>; a core class holding one would be core deciding presentation, which is the
+    /// whole of what ADR-0012 exists to prevent.
+    /// </para>
+    /// <para>
+    /// <b>Here rather than in <c>TableLocalizerTests</c>, deliberately.</b> A claim about core's
+    /// purity belongs beside <see cref="Run_NoTypeTakesAClock"/>, not in a Unity-side fixture about
+    /// an adapter — and the sweep is over the whole assembly rather than a list, so a type added
+    /// tomorrow is covered without anyone remembering to add it here.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Core_TakesNoLocalizer()
+    {
+        Type[] coreTypes = typeof(StateMachine<>).Assembly.GetTypes();
+
+        Assert.That(
+            coreTypes,
+            Is.Not.Empty,
+            "The assembly sweep found nothing, so this row would pass against any code at all.");
+
+        // The port itself is in this assembly and is the one type allowed to mention ILocalizer,
+        // which is stated rather than filtered out silently.
+        Assert.That(coreTypes, Contains.Item(typeof(ILocalizer)));
+
+        foreach (Type type in coreTypes)
+        {
+            foreach (ConstructorInfo constructor in type.GetConstructors())
+            {
+                foreach (ParameterInfo parameter in constructor.GetParameters())
+                {
+                    Assert.That(
+                        parameter.ParameterType,
+                        Is.Not.EqualTo(typeof(ILocalizer)),
+                        $"{type.Name} takes an ILocalizer. Core carries LocKeys and never resolves "
+                        + "one (ADR-0012): every caller belongs in Soulvail.Game, which is where a "
+                        + "user-facing string lives.");
+                }
+            }
+        }
+    }
+
     /// <summary>Every type declared in <c>Soulvail.Core.Run</c>, from the compiled assembly.</summary>
     private static Type[] RunNamespaceTypes()
     {

@@ -1,6 +1,8 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Composition;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -34,14 +36,28 @@ namespace Soulvail.Game.Presentation
     /// string M6-10 owns.
     /// </para>
     /// <para>
-    /// The strings on screen are raw English, and this stub is the only place in the project
-    /// where that is allowed. M6-10 replaces them with <see cref="LocKey"/>s; the parking lot in
-    /// ROADMAP.md carries the reminder. Showing anything <em>about</em> the saved run on the
-    /// button — "Stage 9, 12 minutes ago" — needs those keys and a format, and is M8-02's.
+    /// <b>The three strings on screen stopped being raw English at M3-14a</b> (rule 8). They were
+    /// typed into <c>Menu.unity</c> from M0-17, and the ROADMAP's parking-lot line said they would
+    /// become <see cref="LocKey"/>s <em>"when <c>ILocalizer</c> and the English tables land"</em> —
+    /// which is this task, three milestones early. <b>Three, not the two that line names</b>:
+    /// <c>Continue</c> was added by M3-07b's resume flow and counted by nobody. So M6-10 inherits
+    /// no English typed into this scene, and AR §11.5's <em>"no raw user-facing string anywhere"</em>
+    /// is a thing a test asserts here rather than an aspiration. Showing anything <em>about</em> the
+    /// saved run on the button — "Stage 9, 12 minutes ago" — needs a format as well as a key, and is
+    /// still M8-02's.
     /// </para>
     /// </remarks>
     public sealed class MenuPresenter : MonoBehaviour
     {
+        /// <summary>The game's name. Shared with <c>Boot.unity</c>'s splash, which nothing resolves.</summary>
+        private static readonly LocKey TitleKey = new LocKey("ui.app.title");
+
+        /// <summary>The button that starts a new run.</summary>
+        private static readonly LocKey DescendKey = new LocKey("ui.menu.descend");
+
+        /// <summary>The button that resumes the run on disk (M3-07b).</summary>
+        private static readonly LocKey ContinueKey = new LocKey("ui.menu.continue");
+
         [SerializeField] private Button _descend;
 
         /// <summary>
@@ -51,20 +67,41 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         [SerializeField] private Button _continue;
 
+        [Tooltip("The game's name over the menu. Written from ui.app.title on enable, so the " +
+                 "scene's own value is a placeholder — see the class remarks.")]
+        [SerializeField] private TMP_Text _title;
+
+        [Tooltip("The Descend button's label, written from ui.menu.descend.")]
+        [SerializeField] private TMP_Text _descendLabel;
+
+        [Tooltip("The Continue button's label, written from ui.menu.continue.")]
+        [SerializeField] private TMP_Text _continueLabel;
+
         private PendingRun _pending;
         private SavedRun _saved;
         private ContentCatalog _catalog;
         private SceneLoader _loader;
+        private ILocalizer _localizer;
 
+        /// <param name="localizer">
+        /// What turns this screen's three keys into words (M3-14a rule 8). Resolved from
+        /// <c>BootScope</c>, which is why the localizer is registered there rather than in
+        /// <c>RunScope</c> — <b>the Menu needs it and has no run</b> (rule 4).
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         [Inject]
         public void Construct(
-            PendingRun pending, SavedRun saved, ContentCatalog catalog, SceneLoader loader)
+            PendingRun pending,
+            SavedRun saved,
+            ContentCatalog catalog,
+            SceneLoader loader,
+            ILocalizer localizer)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _saved = saved ?? throw new ArgumentNullException(nameof(saved));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
         }
 
         /// <remarks>
@@ -92,11 +129,39 @@ namespace Soulvail.Game.Presentation
             _descend.onClick.AddListener(Descend);
             _continue.onClick.AddListener(Continue);
 
+            // Written on every enable rather than once at injection, for the reason the Continue
+            // button's visibility is decided here: this is the screen the app comes back to after a
+            // death, and drawing it at the moment it goes on screen is the only reading that is true
+            // when the player sees it. Three labels, and none of them typed into the scene (rule 8).
+            Write(_title, TitleKey);
+            Write(_descendLabel, DescendKey);
+            Write(_continueLabel, ContinueKey);
+
             // Decided here, on every enable, rather than once at injection. The Menu is the screen
             // the app comes back to after a death, so the answer changes while this object is
             // alive — and reading it at the moment the menu goes on screen is the only reading that
             // is true when the player sees it.
             _continue.gameObject.SetActive(_saved.IsPresent);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there.
+        /// </summary>
+        /// <remarks>
+        /// <b>A missing label is silent and a missing localizer falls back to the key</b>, which is
+        /// deliberately softer than the two <c>MissingReferenceException</c>s above it: a button with
+        /// no <c>Button</c> is a menu with no way into a run, where a button with no <em>label</em>
+        /// is a menu the player can still use. <c>TreeViewPresenter.Resolve</c>'s answer, and
+        /// <c>ToString()</c> rather than <c>Key</c> for <c>TableLocalizer.Get</c>'s reason.
+        /// </remarks>
+        private void Write(TMP_Text label, LocKey key)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
         }
 
         private void OnDisable()

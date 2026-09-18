@@ -826,7 +826,8 @@ public sealed class SkillAuthoringTests
                 Array.Empty<EnemyDefinition>(),
                 Array.Empty<ModeDefinition>(),
                 null,
-                Array.Empty<SkillTreeDefinition>()));
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
     }
 
     [Test]
@@ -841,7 +842,8 @@ public sealed class SkillAuthoringTests
                 Array.Empty<EnemyDefinition>(),
                 Array.Empty<ModeDefinition>(),
                 Array.Empty<SkillDefinition>(),
-                null));
+                null,
+                EmptyTable()));
     }
 
     [Test]
@@ -856,7 +858,8 @@ public sealed class SkillAuthoringTests
                 Array.Empty<EnemyDefinition>(),
                 Array.Empty<ModeDefinition>(),
                 new SkillDefinition[] { null },
-                Array.Empty<SkillTreeDefinition>()));
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()));
 
         Assert.That(thrown.Message, Does.Contain("skills[0]"),
             "An empty slot in a boot list is named by its index, or 'one of your skills is " +
@@ -880,7 +883,8 @@ public sealed class SkillAuthoringTests
                 Array.Empty<EnemyDefinition>(),
                 Array.Empty<ModeDefinition>(),
                 Array.Empty<SkillDefinition>(),
-                Array.Empty<SkillTreeDefinition>()),
+                Array.Empty<SkillTreeDefinition>(),
+                EmptyTable()),
             Throws.Nothing);
 
         var catalog = Track(builder.Build()).Resolve<ContentCatalog>();
@@ -1220,4 +1224,12 @@ public sealed class SkillAuthoringTests
         serialized.FindProperty(field).intValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
+
+    /// <summary>
+    /// A localisation table for a container build. Empty, because nothing in these rows reads a
+    /// word — what they assert is that <c>BootInstaller</c> takes one and registers the port.
+    /// </summary>
+    private static LocalizationTable EmptyTable() =>
+        ScriptableObject.CreateInstance<LocalizationTable>();
+
 }

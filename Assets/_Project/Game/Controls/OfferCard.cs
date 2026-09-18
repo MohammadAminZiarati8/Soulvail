@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Presentation;
 using TMPro;
 using UnityEngine;
@@ -23,12 +24,15 @@ namespace Soulvail.Game.Controls
     /// in place for a second pick: the index it reports is still the index of the card that was hit.
     /// </para>
     /// <para>
-    /// <b>It draws the <c>LocKey</c>, because nothing in the build resolves one.</b>
-    /// <c>ILocalizer</c> is an AR §6 port whose adapter is M6-10's, so a card reads
-    /// <c>skill.oathbound.consecrate</c> rather than "Consecrate" (ADR-0012, ledger row 9). That is
-    /// not a third place raw English is typed into a prefab — <em>nothing</em> English is typed at
-    /// all, and the key is data. It does mean GD §13.1's <em>"readable in under two seconds"</em>
-    /// cannot be judged until M6-10.
+    /// <b>It draws English as of M3-14a, and it is handed the port rather than injected</b>
+    /// (M3-14a rule 11). A card is a pooled template instantiated from a prefab field and nothing
+    /// injects one individually — the same fact that decided M3-13a rule 2 against an injected
+    /// palette — so <c>ILocalizer</c> arrives as one more argument on <see cref="Show"/>, which
+    /// already takes a <c>SkillSpec</c>, and <c>LevelUpPresenter</c> is the one thing injected.
+    /// Until this task the card drew <c>spec.NameKey.Key</c> and a player read
+    /// <c>skill.oathbound.consecrate.name</c> (ADR-0012, ledger row 9); <b>this is the screen GD
+    /// §13.1's <em>"readable in under two seconds"</em> was always about</b>, and it is now
+    /// something that can actually be judged.
     /// </para>
     /// <para>
     /// <b>The four tints were serialized here and are <see cref="Palette"/>'s as of M3-13a.</b> They
@@ -48,10 +52,11 @@ namespace Soulvail.Game.Controls
     /// </remarks>
     public sealed class OfferCard : MonoBehaviour
     {
-        [Tooltip("The node's name. Draws its LocKey until M6-10 — see the class remarks.")]
+        [Tooltip("The node's name, resolved through ILocalizer — see the class remarks.")]
         [SerializeField] private TMP_Text _name;
 
-        [Tooltip("What the node does. Draws its LocKey until M6-10, for the same reason.")]
+        [Tooltip("What the node does, resolved the same way. GD §13.1 budgets two seconds for " +
+                 "reading this, which is what the table's row length is written against.")]
         [SerializeField] private TMP_Text _description;
 
         [Tooltip("The stripe that says which of CH §4's four kinds this is, tinted from the four " +
@@ -86,10 +91,14 @@ namespace Soulvail.Game.Controls
         /// </remarks>
         /// <param name="index">Which card this is, from 0 — what a tap reports.</param>
         /// <param name="spec">The node to draw.</param>
+        /// <param name="localizer">What turns the spec's two <c>LocKey</c>s into words.</param>
         /// <param name="onChosen">Called with <paramref name="index"/> when the card is tapped.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="spec"/> or <paramref name="onChosen"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="spec"/>, <paramref name="localizer"/> or <paramref name="onChosen"/> is
+        /// null.
+        /// </exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
-        public void Show(int index, SkillSpec spec, Action<int> onChosen)
+        public void Show(int index, SkillSpec spec, ILocalizer localizer, Action<int> onChosen)
         {
             if (spec is null)
             {
@@ -97,6 +106,15 @@ namespace Soulvail.Game.Controls
                     nameof(spec),
                     "A card with no node to draw is a presenter that read past the end of the "
                         + "offer — the offer may be shorter than three (M3-04 rule 1).");
+            }
+
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(localizer),
+                    "A card with no localizer would silently draw its two keys, which is a screen "
+                        + "that looks like a build with no content rather than one with no wiring "
+                        + "— and it is exactly the state M3-14a exists to end.");
             }
 
             if (onChosen is null)
@@ -118,13 +136,14 @@ namespace Soulvail.Game.Controls
 
             if (_name != null)
             {
-                // The key, not English. See the class remarks and ledger row 9.
-                _name.text = spec.NameKey.Key;
+                // English, as of M3-14a. A key with no row resolves to its own text rather than to
+                // nothing, so a missing row is a card that diagnoses itself (M3-14a rule 1).
+                _name.text = localizer.Get(spec.NameKey);
             }
 
             if (_description != null)
             {
-                _description.text = spec.DescriptionKey.Key;
+                _description.text = localizer.Get(spec.DescriptionKey);
             }
 
             if (_kindStrip != null)

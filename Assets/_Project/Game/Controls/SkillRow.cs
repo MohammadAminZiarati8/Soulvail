@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,13 +24,16 @@ namespace Soulvail.Game.Controls
     /// <em>before</em> the command and a row cannot know what the other rows hold.
     /// </para>
     /// <para>
-    /// <b>It draws the <c>LocKey</c>, because nothing in the build resolves one</b> —
+    /// <b>It draws English as of M3-14a, and the trigger line is where that pays</b> —
     /// <c>OfferCard</c>'s paragraph, and this is ledger row 9's second and sharper reader. A trigger
-    /// line is a key <em>and</em> a number, so the composition survives M6-10 rather than just the
-    /// key: <see cref="TriggerText.KeyFor"/> gives the key, <see cref="TriggerText.UnitOf"/> says
-    /// what kind of number goes beside it, and this file decides only how that number <em>looks</em>
-    /// (ADR-0012). Today the row reads <c>trigger.hpFraction.below 60 %</c>; at M6-10 the key
-    /// resolves to a format string with one placeholder and the number slots into it.
+    /// line is a key <em>and</em> a number, so the <em>composition</em> was the half that had to be
+    /// settled early and the words were the half that could wait: <see cref="TriggerText.KeyFor"/>
+    /// gives the key, <see cref="TriggerText.UnitOf"/> says what kind of number goes beside it, and
+    /// this file decides only how that number <em>looks</em> (ADR-0012). The row read
+    /// <c>trigger.hpFraction.below 60 %</c> until this task and reads <em>"Player HP below 60 %"</em>
+    /// now. <b>M6-10 is still what makes the key a format string with the number <em>inside</em>
+    /// it</b>, which is the word-order problem this shape was chosen to survive; one English table
+    /// does not need it, because English puts the number last here anyway.
     /// </para>
     /// <para>
     /// <b>The switch is a <see cref="Toggle"/> rather than two buttons</b>, because CC §6.1 has
@@ -67,7 +71,7 @@ namespace Soulvail.Game.Controls
         /// </remarks>
         private const string SlotFormat = "S{0:0}";
 
-        [Tooltip("The skill's name. Draws its LocKey until M6-10 — see the class remarks.")]
+        [Tooltip("The skill's name, resolved through ILocalizer — see the class remarks.")]
         [SerializeField] private TMP_Text _name;
 
         [Tooltip("The wait in seconds after CH §4.1's 40 % floor. Seconds rather than a radial " +
@@ -75,8 +79,8 @@ namespace Soulvail.Game.Controls
                  "frozen ring saying nothing.")]
         [SerializeField] private TMP_Text _cooldown;
 
-        [Tooltip("CC §6.4's authored condition, written out: a LocKey per clause with its " +
-                 "threshold beside it. Ledger row 9 — it is words at M6-10 and keys until then.")]
+        [Tooltip("CC §6.4's authored condition, written out: one resolved LocKey per clause with " +
+                 "its threshold beside it.")]
         [SerializeField] private TMP_Text _trigger;
 
         [Tooltip("CC §6.1's two states. On is Auto — the default for every owned active — and off " +
@@ -131,12 +135,16 @@ namespace Soulvail.Game.Controls
         /// Which of the four thumb positions it holds, from 0 — and any negative number for none,
         /// which is what <c>SkillAutoCastChanged.Slot</c> already says with −1.
         /// </param>
+        /// <param name="localizer">
+        /// What turns the name and every trigger clause's key into words.
+        /// </param>
         /// <param name="onSwitched">
         /// Called with the skill's id and the state the player asked for. Never called by this
         /// method itself — see <see cref="_painting"/>.
         /// </param>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="spec"/> or <paramref name="onSwitched"/> is null.
+        /// <paramref name="spec"/>, <paramref name="localizer"/> or <paramref name="onSwitched"/> is
+        /// null.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// <paramref name="spec"/> is not an <see cref="SkillKind.Active"/>. Only an active reaches
@@ -149,6 +157,7 @@ namespace Soulvail.Game.Controls
             float cooldownSeconds,
             bool isAuto,
             int slot,
+            ILocalizer localizer,
             Action<ContentId, bool> onSwitched)
         {
             if (spec is null)
@@ -157,6 +166,15 @@ namespace Soulvail.Game.Controls
                     nameof(spec),
                     "A row with no skill to draw is a presenter that read past the end of the "
                         + "runner — OwnedActiveCount is the bound.");
+            }
+
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(localizer),
+                    "A row with no localizer would draw its name and its whole trigger line as "
+                        + "keys, which is the screen whose entire job is to explain telling the "
+                        + "player nothing (M3-14a rule 1).");
             }
 
             if (onSwitched is null)
@@ -181,12 +199,12 @@ namespace Soulvail.Game.Controls
 
             if (_name != null)
             {
-                // The key, not English. See the class remarks and ledger row 9.
-                _name.text = spec.NameKey.Key;
+                // English, as of M3-14a. See the class remarks.
+                _name.text = localizer.Get(spec.NameKey);
             }
 
             WriteCooldown(cooldownSeconds);
-            WriteTrigger(spec.Active.Trigger);
+            WriteTrigger(spec.Active.Trigger, localizer);
             WriteSlot(isAuto, slot);
 
             // Painted rather than tapped: the assignment below raises onValueChanged, and without
@@ -287,7 +305,7 @@ namespace Soulvail.Game.Controls
         /// at two (M3-02a), so this is the whole grammar there is.
         /// </para>
         /// </remarks>
-        private void WriteTrigger(TriggerSpec trigger)
+        private void WriteTrigger(TriggerSpec trigger, ILocalizer localizer)
         {
             if (_trigger == null)
             {
@@ -306,7 +324,7 @@ namespace Soulvail.Game.Controls
                 }
 
                 line
-                    .Append(TriggerText.KeyFor(clause.Field, clause.Comparison).Key)
+                    .Append(localizer.Get(TriggerText.KeyFor(clause.Field, clause.Comparison)))
                     .Append(' ')
                     .Append(Threshold(clause));
             }

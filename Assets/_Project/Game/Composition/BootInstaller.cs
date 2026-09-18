@@ -123,6 +123,14 @@ public static class BootInstaller
     /// built from both at once, so a tier naming a node this list does not hold is
     /// <c>TreeRules</c>' check at <c>Start</c> (M3-03) and M3-14b's over every shipped asset.
     /// </param>
+    /// <param name="localization">
+    /// The one language — <c>Data/Localisation/English.asset</c> (M3-14a rule 4). Converted
+    /// immediately by <see cref="TableLocalizer"/>, so a duplicate or an unusable key is a loud
+    /// failure at boot naming the asset rather than a missing word on a screen three scenes later.
+    /// <b>Required rather than optional, and registered at the root rather than per run:</b> the
+    /// Menu needs it as much as a run does (rule 8), and a localizer that existed only during a run
+    /// is exactly how <em>"Descend"</em> would have stayed English for another three milestones.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
     /// A definition is an empty slot, or is not valid content. Thrown from here rather than
@@ -135,7 +143,8 @@ public static class BootInstaller
         IReadOnlyList<EnemyDefinition> enemies,
         IReadOnlyList<ModeDefinition> modes,
         IReadOnlyList<SkillDefinition> skills,
-        IReadOnlyList<SkillTreeDefinition> trees)
+        IReadOnlyList<SkillTreeDefinition> trees,
+        LocalizationTable localization)
     {
         if (builder is null)
         {
@@ -165,6 +174,19 @@ public static class BootInstaller
         if (trees is null)
         {
             throw new ArgumentNullException(nameof(trees));
+        }
+
+        // Unity's operator rather than `is null`, because a ScriptableObject field left empty in the
+        // Inspector is a live reference only Unity calls null — Convert's cast, for its reason. The
+        // message names the *field* rather than the parameter: what the reader has to go and drag
+        // something onto is a slot on a prefab, and "localization is null" points at the wrong file.
+        if (localization == null)
+        {
+            throw new ArgumentNullException(
+                nameof(localization),
+                "BootScope's Localization field is empty, so every screen in the game would draw "
+                    + "its own LocKey — a card reading 'skill.oathbound.consecrate.name'. Drop "
+                    + "Data/Localisation/English.asset onto it.");
         }
 
         EnemySpec[] enemySpecs = Convert(
@@ -236,6 +258,15 @@ public static class BootInstaller
         builder.Register<HapticsSettings>(
             resolver => HapticsSettings.FromStore(resolver.Resolve<ProfileStore>()),
             Lifetime.Singleton);
+
+        // The language, at the root and registered only as the port, so nothing can depend on the
+        // concrete adapter — the ISaveStore precedent above. **Built here and not deferred to the
+        // first resolve**, which is the catalog's bargain rather than the save store's: a duplicate
+        // key is then a loud failure at boot naming the asset, where a factory would surface it on
+        // whichever screen happened to ask for a word first. An instance registration is a singleton
+        // by construction. It is content read at boot like every other Data/ asset, so it bumps no
+        // save format and PlayerProfile stays at M3-09c's v2 (rule 4).
+        builder.RegisterInstance<ILocalizer>(new TableLocalizer(localization));
     }
 
     /// <summary>

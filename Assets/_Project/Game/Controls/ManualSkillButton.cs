@@ -1,3 +1,4 @@
+using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -43,12 +44,16 @@ namespace Soulvail.Game.Controls
     /// holds no <see cref="IPlayerCommands"/> at all.
     /// </para>
     /// <para>
-    /// <b>Its label is the skill's <c>LocKey</c>, and it is a placeholder that says so</b> (rule 9).
-    /// There are no skill icons and GD §16.1 wants <em>"small icons"</em>; a 60 dp circle with
-    /// <c>skill.oathbound.consecrate</c> in it is not a design, it is an honest gap — and it is the
-    /// one reader of ledger row 9 where a longer word cannot fix it, because the space is a thumb
-    /// wide. Until M3-13 or M7's art pass the button is told apart by position, which is what a thumb
-    /// uses anyway.
+    /// <b>Its label is a word as of M3-14a, and this is the reader whose closure is a device
+    /// question rather than a table one</b> (M3-10a rule 9, M3-14a rule 9). A 60 dp circle with
+    /// <c>skill.oathbound.consecrate.name</c> in it was never a design; <em>"Bulwark"</em> in an
+    /// auto-sizing 8–18 pt label <em>plausibly</em> is, and <b>plausibly is the whole of the
+    /// change</b> — every other reader ledger row 9 counts closes the moment the table has a row,
+    /// and this one closes only if the word is legible under a thumb on a six-inch screen, which is
+    /// [ledger row 4] and which nobody has looked at. M7's icon is the fallback that rule named in
+    /// advance. <b>Not to be confused with the 24 dp auto-cast cell beside it</b>
+    /// (<c>AutoCastRow</c>), where nothing fits at all and no table can help: that is row 9's
+    /// seventh reader and it stays open.
     /// </para>
     /// <para>
     /// <b>Nothing here knows about Auto</b> (rule 11). An auto-cast skill holds no slot, so it
@@ -75,8 +80,8 @@ namespace Soulvail.Game.Controls
                  "half of CC §6.2's rule the Charge deliberately does not follow.")]
         [SerializeField] private Button _button;
 
-        [Tooltip("What is under the thumb. Draws the skill's LocKey until M3-13 or M7 gives these " +
-                 "buttons icons — ledger row 9, and the reader a word cannot fix.")]
+        [Tooltip("What is under the thumb: the skill's name, resolved through ILocalizer. Whether " +
+                 "it is legible at 8 pt is a device question — see the class remarks.")]
         [SerializeField] private TMP_Text _label;
 
         [Tooltip("The button's diameter in dp. 60 is CC §6.2's slot size; the Charge beside it is " +
@@ -117,7 +122,7 @@ namespace Soulvail.Game.Controls
         /// <summary>Whether the button is on the screen at all (rule 5).</summary>
         public bool IsShown => gameObject.activeSelf;
 
-        /// <summary>What the label currently reads. The one read <c>Bar_LabelsAreKeys</c> needs.</summary>
+        /// <summary>What the label currently reads. The one read <c>Bar_LabelsAreWords</c> needs.</summary>
         public string Label => _label == null ? string.Empty : _label.text;
 
         /// <summary>
@@ -173,8 +178,21 @@ namespace Soulvail.Game.Controls
         /// The skill now in this slot. Null takes the button off instead, which is the same answer an
         /// empty slot gets — a presenter that could not resolve an id has nothing to draw either.
         /// </param>
-        public void Show(SkillSpec spec)
+        /// <param name="localizer">What turns the skill's name key into a word.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localizer"/> is null. <b>Guarded although <see cref="Bind"/> is not</b>,
+        /// and the two are different questions: a button bound with nulls draws nothing and sends
+        /// nothing, which is what an unbound one does anyway, where a button <em>shown</em> without
+        /// a localizer would put a key under a thumb — the exact state M3-14a exists to end, in the
+        /// one place it was never legible to begin with.
+        /// </exception>
+        public void Show(SkillSpec spec, ILocalizer localizer)
         {
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(nameof(localizer));
+            }
+
             if (spec is null)
             {
                 ShowEmpty();
@@ -184,8 +202,8 @@ namespace Soulvail.Game.Controls
 
             if (_label != null)
             {
-                // The key, not English. See the class remarks and ledger row 9.
-                _label.text = spec.NameKey.Key;
+                // A word, as of M3-14a. See the class remarks and ledger row 9.
+                _label.text = localizer.Get(spec.NameKey);
             }
 
             gameObject.SetActive(true);

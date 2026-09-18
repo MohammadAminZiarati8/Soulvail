@@ -14,6 +14,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -717,28 +718,53 @@ public sealed class SkillsPresenterTests
     }
 
     [Test]
-    public void Card_DrawsTheKeyNotEnglish()
+    public void Card_DrawsEnglish()
     {
         StartRun(actives: 1, activeIds: new[] { "skill.oathbound.consecrate" });
-        BuildScreen();
+
+        BuildScreen(new DictionaryLocalizer(
+            "skill.oathbound.consecrate.name", "Consecrate",
+            "trigger.hpFraction.below", "Player HP below"));
 
         _presenter.Open();
 
         SkillRow row = Shown()[0];
 
-        // **Ledger row 9's second and sharper reader**, visible here rather than a surprise at
-        // M3-15: a trigger line is a LocKey *and* a formatted number, so the composition has to
-        // survive M6-10 rather than just the key. Today the row reads the key and the number beside
-        // it; at M6-10 the key resolves to "Player HP below {0}" and the number slots into it.
-        Assert.That(Text(row, "_name"), Does.StartWith("skill.oathbound.consecrate"));
+        // **M3-09b's `Card_DrawsTheKeyNotEnglish`, inverted** — ledger row 9's second and sharper
+        // reader closing. The row is rewritten rather than deleted, which is why the count does not
+        // move; `RewrittenRows_StillAssertWhatTheyAsserted` is what fails if it is gutted.
+        Assert.That(Text(row, "_name"), Is.EqualTo("Consecrate"));
+        Assert.That(Text(row, "_name"), Does.Not.StartWith("skill."));
 
+        // **`Row_DrawsTheTriggerLineInWords`'s claim, and the composition is the part that had to
+        // survive:** the key resolves to a phrase and the screen still formats the number beside it
+        // (M3-09b rule 2). M6-10 is what moves the number *inside* the phrase for languages that
+        // need it — English does not, which is why one table is enough here.
         Assert.That(
             Text(row, "_trigger"),
-            Is.EqualTo("trigger.hpFraction.below 60 %"),
-            "The row is not drawing CC §6.4's condition as a key and a formatted threshold.");
+            Is.EqualTo("Player HP below 60 %"),
+            "The row is not drawing CC §6.4's condition as a resolved key and a formatted threshold.");
 
         // Core said what kind of number it is; the screen decided what it looks like (rule 2).
         Assert.That(TriggerText.UnitOf(TriggerField.HpFraction), Is.EqualTo(TriggerUnit.Fraction));
+    }
+
+    /// <summary>
+    /// The trigger line's key falls back to itself, and the number is still formatted beside it.
+    /// </summary>
+    /// <remarks>
+    /// Rule 1 at the composition's seam: a half-translated table is M6-10's normal state, and what
+    /// it costs there is the phrase rather than the reading — the threshold is still <em>"60 %"</em>.
+    /// </remarks>
+    [Test]
+    public void Row_MissingTriggerRowKeepsTheNumber()
+    {
+        StartRun(actives: 1, activeIds: new[] { "skill.oathbound.consecrate" });
+        BuildScreen(new DictionaryLocalizer());
+
+        _presenter.Open();
+
+        Assert.That(Text(Shown()[0], "_trigger"), Is.EqualTo("trigger.hpFraction.below 60 %"));
     }
 
     // ---- Lifetime -----------------------------------------------------------------------------------
@@ -805,10 +831,11 @@ public sealed class SkillsPresenterTests
         StartRun(actives: 1);
         BuildScreen();
 
-        Assert.That(() => _presenter.Construct(null, _commands, _hub, _catalog), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, null, _hub, _catalog), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, _commands, null, _catalog), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, _commands, _hub, null), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(null, _commands, _hub, _catalog, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, null, _hub, _catalog, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _commands, null, _catalog, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _commands, _hub, null, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _commands, _hub, _catalog, null), Throws.ArgumentNullException);
     }
 
     [Test]
@@ -824,17 +851,23 @@ public sealed class SkillsPresenterTests
         // A row with no skill to draw is a presenter that read past the end of the runner; a row
         // with nobody to report to is a switch the player can flip while nothing happens, which is
         // the failure here that looks like a frozen screen. OfferCard.Show's pair, one screen on.
-        Assert.That(() => row.Show(null, 1f, true, -1, handler), Throws.ArgumentNullException);
+        Assert.That(() => row.Show(null, 1f, true, -1, Passthrough(), handler), Throws.ArgumentNullException);
+
+        // A row with no localizer would draw its name and its whole trigger line as keys — the
+        // screen whose job is to explain, explaining nothing (M3-14a rule 1).
+        Assert.That(
+            () => row.Show(_catalog.Skill(new ContentId(_activeIds[0])), 1f, true, -1, null, handler),
+            Throws.ArgumentNullException);
 
         Assert.That(
-            () => row.Show(_catalog.Skill(new ContentId(_activeIds[0])), 1f, true, -1, null),
+            () => row.Show(_catalog.Skill(new ContentId(_activeIds[0])), 1f, true, -1, Passthrough(), null),
             Throws.ArgumentNullException);
 
         // And a Passive, which CC §6.1 says has no toggle and no button. It cannot arrive from the
         // runner (M3-06 rule 5), so a caller that got here with one has read past the runner rather
         // than out of it — loud rather than a row with a switch that means nothing.
         Assert.That(
-            () => row.Show(_catalog.Skill(new ContentId(PassiveId(0))), 1f, true, -1, handler),
+            () => row.Show(_catalog.Skill(new ContentId(PassiveId(0))), 1f, true, -1, Passthrough(), handler),
             Throws.ArgumentException);
     }
 
@@ -1099,7 +1132,12 @@ public sealed class SkillsPresenterTests
     /// <summary>
     /// Instantiates the shipped prefab and injects it — the screen under test is the asset.
     /// </summary>
-    private void BuildScreen()
+    /// <param name="localizer">
+    /// What the rows resolve their keys through. Defaults to an <em>empty</em> real
+    /// <c>TableLocalizer</c>, which answers every key with itself — so every row written before
+    /// M3-14a still asserts exactly what it asserted.
+    /// </param>
+    private void BuildScreen(ILocalizer localizer = null)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -1122,8 +1160,12 @@ public sealed class SkillsPresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
-        _presenter.Construct(_session, _commands, _hub, _catalog);
+        _presenter.Construct(_session, _commands, _hub, _catalog, localizer ?? Passthrough());
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     /// <summary>
     /// The pause screen underneath, linked the way <c>Run.unity</c> links the two.

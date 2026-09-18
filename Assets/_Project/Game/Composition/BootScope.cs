@@ -60,9 +60,18 @@ namespace Soulvail.Game.Composition
         /// </remarks>
         [SerializeField] private SkillTreeDefinition[] _trees;
 
+        /// <remarks>
+        /// <c>Data/Localisation/English.asset</c> — the one language (M3-14a rule 2). Unlike the
+        /// five arrays above this is a single asset and it is <b>required</b>: an empty slot here is
+        /// a game in which every screen draws its own <c>LocKey</c>, so the installer refuses it by
+        /// name rather than letting it become a null reference on a card.
+        /// </remarks>
+        [SerializeField] private LocalizationTable _localization;
+
         protected override void Configure(IContainerBuilder builder)
         {
-            BootInstaller.Install(builder, _characters, _enemies, _modes, _skills, _trees);
+            BootInstaller.Install(
+                builder, _characters, _enemies, _modes, _skills, _trees, _localization);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

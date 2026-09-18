@@ -11,6 +11,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Presentation;
 using Soulvail.Tests.Core.Fakes;
 using TMPro;
@@ -67,8 +68,17 @@ public sealed class FirstActiveHintTests : InputTestFixture
     private const int DeviceCap = 28;
     private const int ProjectileCapacity = 8;
 
-    /// <summary>The key rule 8 asks for, unresolved until M6-10 — ledger row 9.</summary>
+    /// <summary>
+    /// The key rule 8 asks for. Still what the prefab authors as its placeholder, which
+    /// <c>Prefab_IsDressed</c> pins; what a player reads is <see cref="HintSentence"/>.
+    /// </summary>
     private const string HintKey = "ui.hint.firstActive";
+
+    /// <summary>
+    /// What <see cref="HintKey"/> resolves to — <c>English.asset</c>'s row, authored here so the
+    /// fixture is asserting against a table it built rather than against the shipped one.
+    /// </summary>
+    private const string HintSentence = "Skills can be set to Manual: Pause → Skills";
 
     /// <summary>Branch a's whole first tier: three Actives, so a third is still available.</summary>
     private const string ActiveOne = "skill.test.a1";
@@ -97,6 +107,12 @@ public sealed class FirstActiveHintTests : InputTestFixture
     private GameObject _screen;
     private FirstActiveHint _hint;
 
+    /// <summary>
+    /// What the callout resolves its one key through. The whole fixture uses a table holding that
+    /// row, because every row here is about a callout a player is reading.
+    /// </summary>
+    private ILocalizer _localizer;
+
     private readonly List<GameObject> _spawned = new List<GameObject>();
 
     [SetUp]
@@ -114,7 +130,13 @@ public sealed class FirstActiveHintTests : InputTestFixture
 
         _input = new InputAdapter();
         _input.Enable();
+
+        _localizer = new DictionaryLocalizer(HintKey, HintSentence);
     }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
 
     [TearDown]
     public void DestroyWorld()
@@ -153,7 +175,14 @@ public sealed class FirstActiveHintTests : InputTestFixture
             "the fixture's premise: this is the player's first Active.");
 
         Assert.That(_hint.IsShown, Is.True, "the level-up closed and no callout appeared.");
-        Assert.That(Text(), Is.EqualTo(HintKey));
+
+        // **`Hint_DrawsEnglish`** — ledger row 9's third and sharpest reader closing (rule 9): a
+        // callout whose entire job is to tell the player something was telling them
+        // `ui.hint.firstActive`. The prefab still authors the key as its placeholder, which
+        // `Prefab_IsDressed` still pins; what changed is what is written over it on show.
+        Assert.That(Text(), Is.EqualTo(HintSentence));
+        Assert.That(Text(), Does.Not.StartWith("ui."));
+        Assert.That(Text(), Does.Contain("Manual"), "the callout does not name what it is about.");
     }
 
     [Test]
@@ -424,10 +453,11 @@ public sealed class FirstActiveHintTests : InputTestFixture
         StartRun(pending: 1);
         BuildHint();
 
-        Assert.Throws<ArgumentNullException>(() => _hint.Construct(null, _session, _profiles, _input));
-        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, null, _profiles, _input));
-        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, _session, null, _input));
-        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, _session, _profiles, null));
+        Assert.Throws<ArgumentNullException>(() => _hint.Construct(null, _session, _profiles, _input, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, null, _profiles, _input, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, _session, null, _input, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, _session, _profiles, null, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _hint.Construct(_hub, _session, _profiles, _input, null));
     }
 
     [Test]
@@ -453,7 +483,7 @@ public sealed class FirstActiveHintTests : InputTestFixture
         StartRun(pending: 1);
         BuildHint();
 
-        _hint.Construct(_hub, _session, _profiles, _input);
+        _hint.Construct(_hub, _session, _profiles, _input, _localizer ?? Passthrough());
 
         // VContainer does not inject twice and this fixture does. One subscription each, or the
         // callout would spend its flag once per injection.
@@ -597,7 +627,7 @@ public sealed class FirstActiveHintTests : InputTestFixture
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired and the prefab's authored alpha 0 is what leaves the callout down.
-        _hint.Construct(_hub, _session, _profiles, _input);
+        _hint.Construct(_hub, _session, _profiles, _input, _localizer ?? Passthrough());
     }
 
     /// <summary>

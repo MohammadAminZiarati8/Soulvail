@@ -495,6 +495,41 @@ public sealed class OathboundTreeTests
     }
 
     [Test]
+    public void Modify_ShippedAssetsAllTargetThePlayer()
+    {
+        // M4-01a rule 4's ripple, asserted rather than assumed. StatTarget defaults to Player and
+        // the field is new, so every one of these assets keeps meaning exactly what it meant with
+        // nothing in Data/ touched — but "the default is the old behaviour" is a claim about
+        // deserialisation, and a claim about deserialisation is measured against the files rather
+        // than reasoned about. A Self here would be a node quietly buffing whoever last cast.
+        string[] guids = AssetDatabase.FindAssets(
+            $"t:{nameof(ModifyStatDefinition)}",
+            new[] { EffectDir });
+
+        Assert.That(
+            guids.Length,
+            Is.EqualTo(9),
+            "Nine of the thirteen shipped effect assets are ModifyStats. Update the number and say "
+                + "which task added one.");
+
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var definition = AssetDatabase.LoadAssetAtPath<ModifyStatDefinition>(path);
+
+            Assert.That(definition, Is.Not.Null, $"No ModifyStatDefinition at {path}.");
+
+            var effect = (ModifyStat)definition.ToEffect();
+
+            Assert.That(
+                effect.Target,
+                Is.EqualTo(StatTarget.Player),
+                $"{path} must still aim at the player. Nothing in this milestone authors Self, and "
+                    + "an asset that did would be a node whose number lands on a boss.");
+        }
+    }
+
+    [Test]
     public void Tree_IsSixStatsFourRulesAndTwoActives()
     {
         // The mix M3-00c's ruling asked to be counted honestly, counted off the assets rather than

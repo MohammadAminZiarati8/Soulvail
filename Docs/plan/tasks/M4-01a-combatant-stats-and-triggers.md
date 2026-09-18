@@ -191,4 +191,132 @@ non-finite fraction into the blackboard, and `Enum.IsDefined` on `StatTarget`.
 
 ## As built
 
-_Filled at merge._
+**Five counted files, size M's ceiling, no split.** The two new Core files, the two new test files, and
+**`ModifyStat.cs` counted as substantial**: its handler gained a field, a new public method, a private
+resolver and a nested `IDisposable`, which is past *"a new field, a registration, an event struct"*.
+Everything else was additive and is not counted — `PlayerStat.cs` (one member, one method, one
+declaration), `EnemyBlackboard.cs` (two fields, two `Reset` lines), `EnemySystem.cs` (two lines),
+`EnemyAgent.cs` (two lines), `ModifyStatDefinition.cs` (one field, one argument), and three existing
+test fixtures. **Four assemblies**, each file confirmed through `GetAssemblyNameFromScriptPath`:
+`Soulvail.Core` ×7, `Soulvail.Game` ×1, `Soulvail.Tests.Core` ×5, `Soulvail.Tests.Game` ×1.
+
+**The spec disagreed with itself once, and the precedence rule settled it against the Files table.**
+The Files row says *"`PlayerStat` gains nothing"*; rule 2 and the row
+`Combatant_AnswersItsThreeStats` both say `CombatantStats` answers **`ContactDamage`**, which was not
+a member — rule 1's own sentence puts the overlap at **two** (`MaxHp`, `MoveSpeed`), so the third
+address had to be created or two named rows had to be dropped. *"The Tests table wins, then
+Behaviour, then Public API, then Files"*, so **`PlayerStat.ContactDamage` was appended** and the Files
+row is the part that lost. What it costs, stated rather than buried:
+
+- **`PlayerStats.Resolve` now refuses a legal member.** Its loud default was previously reachable only
+  by a stale ordinal; `ContactDamage` is the first member that is *meant* to land there.
+  `Stats_ResolveEveryMember` carries one named exception asserting the refusal, rather than being
+  loosened — *"not in the switch"* and *"deliberately not the player's"* must not look the same from
+  that row. `PlayerStatCoverageTests` moved 11 → 12 with the reason written in.
+- **A designer can now author `ContactDamage` on a player node**, and it throws when the node is
+  picked. That is the same bargain rule 2 makes in the other direction and it is documented on the
+  member, but it is a new way to author a broken node and the owner should know it exists.
+- **Appended, never inserted.** `ModifyStatDefinition` serialises `_stat` as a raw `int`
+  (`_stat: 0` in every shipped asset), so the ordinal *is* content identity here in practice; the
+  enum's remarks now say so, because `OnValidate` catches an ordinal that is no longer a member and
+  cannot catch one that is now a *different* member.
+
+**Rule 4's ripple is nothing, and it is nothing for a different reason than the spec gives — measured,
+not asserted.** The spec says *"Unity writes no line for a default"*. **That is false**, and the
+shipped assets already showed it: `UnbowedHp.asset` carries `_stat: 0`, and `PlayerStat.MaxHp` **is**
+`0`. Probed properly — an in-memory clone of the shipped asset serialised through
+`InternalEditorUtility.SaveToSerializedFileAndForget` to a path outside `Assets/`, so nothing under
+`Data/` was touched — Unity writes **`_target: 0`** in full. What actually holds is the *claim*, for
+the other reason: **Unity does not rewrite an asset on disk because the script that reads it grew a
+field**, and a line absent from the YAML deserialises to the member's default. Measured after the
+field landed, a full reimport, three EditMode runs and two PlayMode runs: **zero of the nine assets
+carries a `_target` line and `git status` shows nothing under `Data/`.** The line appears the first
+time each asset is saved for some other reason, and when it does it will say `_target: 0`, which is
+what it already meant. **So: no diff, no migration, and the ruling stands — but the sentence
+explaining it does not**, and any later task that reasons *"Unity omits defaults"* will be wrong.
+
+**Rule 5 was proved red before it was proved green.** With `Block`'s `Self` case temporarily written
+as the fallback a default would produce — `_self ?? _player` — the fixture reported **PASS=13 FAIL=3**:
+`Modify_SelfOutsideAScopeThrows`, `Aiming_ClearsOnDispose` and `Modify_SelfIsRemovedFromTheCaster`.
+The refusal was then restored and the same rows went green. **The red run also caught a bad
+assertion of ours**, which is the argument for running it: `Modify_SelfIsRemovedFromTheCaster`
+asserted `ModifierCount` was **zero** after removal, and a spawned agent already wears
+`DepthScaling`'s modifiers — at depth 1 they multiply by exactly 1, so they are invisible in the
+value and would have made that row assert the depth curve was off. It now counts what the agent wore
+at spawn and compares against that.
+
+**`Aiming` shipped `public`, where the Public API says `internal`.** `Soulvail.Tests.Core` has no
+`InternalsVisibleTo` and AR §18.2 says it deliberately never will, so an `internal` spelling would put
+nine of the fifteen rows out of reach of the only assembly that could prove them — the Tests table
+wins over Public API. **The seal is one layer out, which is `PlayerStats`' own argument**:
+`RunState.Effects` is `internal`, so nothing outside core can reach a registry, let alone a handler
+inside one. Written onto the method.
+
+**Three things shipped that the spec does not list, each one line and each with a reason.**
+1. **`Aiming` refuses to nest** (`InvalidOperationException`), rather than shadowing or silently
+   restoring — either would be a buff landing on the wrong body with nothing said. It is also what
+   makes reusing one scope instance safe, which is what holds `Aiming_AllocatesNothing` at zero.
+2. **`EnemyAgent.Initialise` seeds the two new fields after `Health.Reset`.** `Blackboard.Reset`
+   zeroes them, and a zero *health* fraction does not read as "not filled in yet" — it reads as
+   **dead** to every trigger that asks. An agent spawned inside `EnemySystem.Tick` is not perceived
+   until the next frame's `Ingest`, so without this a boss would spend its first tick claiming to be
+   at zero. The perception fields are left zeroed because "distance zero" is merely wrong; this one is
+   wrong in a direction something acts on.
+3. **`ModifyStat`'s constructor validates `StatTarget` with `Enum.IsDefined`.** Unlike the address it
+   has no second door — `ModifyStatDefinition` deliberately does not check it — so a stale ordinal
+   would otherwise fall out of the handler's switch mid-run rather than at the asset.
+
+**A finding the suite produced, now pinned: a corpse's blackboard is frozen, not zeroed.**
+`EnemySystem.Perceive` skips agents that are not alive — which it has done since M1-06 for every field
+it writes — so a dead enemy's `HpFraction` is the last one it was perceived with. A first draft of the
+non-finite guard row assumed zero and cost **one red run** (2 003 / 1). It is now two rows:
+`Blackboard_HealthFractionIsNeverNonFinite` (the guarantee lives in `Health.Fraction`, which answers
+zero rather than dividing) and `Blackboard_ACorpseKeepsItsLastReading`. **M4-01b's phase machine must
+ask `IsAlive` rather than trust the fraction**, and that is now a row rather than a memory.
+
+**`Modify_ShippedAssetsAllTargetThePlayer` landed in `Tests/Game/Authoring/OathboundTreeTests.cs`,**
+not in either new file: it has to open nine real assets, which means `AssetDatabase`, which
+`Soulvail.Tests.Core` cannot reach (M0-10). The spec's *ripple* row anticipates `Tests.Game`; the
+Files table's two test files are both `Tests.Core`, so this is named as the placement it is. It counts
+the nine and asserts each converts to `Target.Player`.
+
+**Out of scope, raised for the owner as instructed: `PlayerStat` now reads as a lie.** It is the
+address space *every* combatant is addressed in and it holds one member no player has. `StatId` is the
+honest name. **It was not renamed and must not be renamed casually**: `ModifyStatDefinition`
+serialises the enum by ordinal into every authored asset, and nine of those exist — a rename is a
+*move* (M3-14b's precedent), and it should be one task with the assets in the same PR. The enum's
+remarks now say this in place of the paragraph that used to promise an `EnemyStat` mirror for M7-02,
+which rule 1 refused.
+
+**Verified:** **2 005 / 0 / 0 EditMode, three runs**, against M3-15's **1 981** — **+24 rows**, the
+arithmetic landing to the row (**16** in `StatBlockTests`, **7** in `EnemyTriggerTests`, **1** in
+`OathboundTreeTests`; the two `Has` assertions added to `Stats_ResolveEveryMember` are arms inside an
+existing row and are correctly not counted, and no existing row was removed).
+**PlayMode 16 / 0 / 0, twice**, `Ticker_RunsTheStepsInOrder` green both times — ledger row 4's
+experiment remains unrun and this task did not run it. **Nothing under `Data/`, no prefab and no scene
+moved.** Console swept after the last run: 11 errors and 25 warnings, **every one a fixture
+deliberately exercising a validation path** (`WarnsOn…`, `Broken…`, `FailNextWrite`, `SilentActive`)
+— **no compiler or analyzer warning at all**. `dotnet format whitespace --folder
+--verify-no-changes` over all thirteen touched files: **exit 0**. `ProjectSettings/TimeManager.asset`
+dirtied and reverted for the **nineteenth** time, same rational form (2 822 399 / 141 120 000 = 0.02,
+`m_TimeScale` 1).
+
+**One pre-existing Console warning found and deliberately not fixed**, because it is nobody's this
+task: on every domain reload `ArenaView.OnValidate` reports *"Arena_Pillars: it authors 0 spawn
+point(s) and needs at least 3"* for both arena prefabs. **The prefabs author 8 and 7** — read off
+`SerializedObject`. `ArenaView.SpawnPoints` filters `_spawnPoints[i] == null`, and during a reload
+those `Transform` references are fake-null, so the getter returns an empty list and `OnValidate`
+reports a fault that does not exist. It is Traps §1's family in `OnValidate` clothing and belongs in
+that document; it is raised here rather than written there because this task touched neither file.
+
+**Manual verification:** step 2 is the owner's. **Step 1 is already answered by measurement** and
+does not need the Inspector: no asset diff, confirmed three ways — `git status`, a byte scan of all
+nine files for a `_target` line, and the serialisation probe above that says what *would* be written.
+The Inspector will show the new **Target** dropdown reading **Player**; selecting an asset does not
+dirty it.
+
+**Ledger:** **no row closes and no row is added.** Row 3 (device debt) is untouched — nothing here is
+reachable in play. Row 4's `FrameOrderTests` experiment is still unrun, and two green PlayMode runs are
+not evidence either way at a 10 % rate. Row 6(i)'s content-discipline concern gains a neighbour worth
+noting when someone next looks at it: **`StatTarget` is a code enum authored per asset, and the ordinal
+is the identity** — the same shape as the `_stat: 0` finding above.

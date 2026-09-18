@@ -73,6 +73,23 @@ public sealed class ModifyStatTests
 
         foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
         {
+            // The one member the player does not have, and the only named exception this row
+            // carries (M4-01a rule 1). PlayerStat became the address space *every* combatant is
+            // addressed in, so it holds one number no PlayerStats can answer — and the refusal is
+            // asserted here rather than waved past, because "not in the switch" and "deliberately
+            // not the player's" must not look the same from this row.
+            if (member == PlayerStat.ContactDamage)
+            {
+                Assert.That(
+                    () => stats.Resolve(member),
+                    Throws.TypeOf<ArgumentOutOfRangeException>(),
+                    "A player has no contact damage. Only CombatantStats answers this address.");
+
+                Assert.That(stats.Has(member), Is.False, "Has must agree with the refusal.");
+
+                continue;
+            }
+
             // Written out rather than derived, so that a member added to the enum without a
             // resolver line fails here — and a member added with one but no expectation fails on
             // the row below, which is the half a Resolve-shaped test would miss.
@@ -110,6 +127,12 @@ public sealed class ModifyStatTests
                 stats.Resolve(member),
                 Is.SameAs(expected),
                 $"PlayerStat.{member} must resolve to the very stat it names.");
+
+            Assert.That(
+                stats.Has(member),
+                Is.True,
+                $"PlayerStat.{member} resolves, so Has must say so — no address may answer one way "
+                    + "here and the other way there.");
         }
     }
 

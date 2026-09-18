@@ -825,6 +825,15 @@ public sealed class EnemySystem
                 : toPlayer / distance;
 
             blackboard.AlliesNearby = CountAlliesNearby(agents, i, position);
+
+            // The trigger half (M4-01a rule 6), written here rather than anywhere else for the
+            // reason the perception half is written here: one writer, once a tick, above the
+            // behaviour step — so a condition asked about this enemy's own health this tick reads
+            // this tick's health. Copied from Health rather than derived, so the shield fraction
+            // is honestly zero today instead of a literal that would be wrong the day something
+            // grants an enemy one.
+            blackboard.HpFraction = agent.Health.Fraction;
+            blackboard.ShieldFraction = agent.Health.ShieldFraction;
         }
     }
 

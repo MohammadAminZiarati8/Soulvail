@@ -242,5 +242,15 @@ public sealed class EnemyAgent
         // archetype's hit points — a Husk arriving with a Warden's 90.
         Health.MaxHp.Base = spec.MaxHp;
         Health.Reset();
+
+        // Seeded after Health.Reset, and the order is load-bearing again: Blackboard.Reset zeroed
+        // these two, and a zero HP fraction does not read as "not filled in yet" — it reads as
+        // *dead* to every trigger that asks. An agent spawned inside EnemySystem.Tick is not
+        // perceived until the next frame's Ingest, so without this line a boss would spend its
+        // first tick claiming to be at zero health. The perception fields above can be left zeroed
+        // because "distance zero" is merely wrong; this one is wrong in a direction something acts
+        // on (M4-01a rule 6).
+        Blackboard.HpFraction = Health.Fraction;
+        Blackboard.ShieldFraction = Health.ShieldFraction;
     }
 }

@@ -75,6 +75,46 @@ public sealed class EnemyBlackboard
     /// <summary>How many other enemies are within 6 m. GD §8.1's clustering pressure reads this.</summary>
     public int AlliesNearby;
 
+    /// <summary>
+    /// This enemy's current HP over its live maximum, in <c>[0, 1]</c> — <c>Health.Fraction</c>,
+    /// copied on the same tick as <see cref="DistanceToPlayer"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The field that makes this a trigger blackboard as well as a perception one</b> (M4-01a
+    /// rule 6). Everything above is what the enemy perceives about the <em>world</em>; this is what
+    /// it can be asked about <em>itself</em>, and a boss skill firing <em>"when my own health drops
+    /// below 66 %"</em> had nowhere to read from before it.
+    /// </para>
+    /// <para>
+    /// Written in <c>EnemySystem.Perceive</c>, which runs inside <c>Ingest</c> and therefore
+    /// <em>above</em> the behaviour step — so a trigger evaluated this tick reads this tick's
+    /// health rather than last tick's. Never NaN: <c>Health.Fraction</c> answers zero rather than
+    /// dividing by a maximum that is not positive.
+    /// </para>
+    /// </remarks>
+    public float HpFraction;
+
+    /// <summary>
+    /// This enemy's shield points over its shield maximum, in <c>[0, 1]</c> —
+    /// <c>Health.ShieldFraction</c>, and <b>always exactly zero</b> today.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Zero, and shipped anyway on purpose.</b> No enemy is built with a <c>ShieldSpec</c>
+    /// (<c>EnemyAgent</c> passes <c>shield: null</c>) and nothing grants one, so this reads zero for
+    /// every agent in the game. It exists so that the shield clause is a clause that is *false*
+    /// rather than a clause that is *missing* — which is exactly the <c>TriggerField.Veilrot</c>
+    /// trap M3-07a raised and nothing has fixed: a field nothing writes makes a skill that silently
+    /// never fires, and the one that is honestly zero makes a skill that never fires *yet*.
+    /// </para>
+    /// <para>
+    /// Copied from <c>Health</c> rather than assigned a literal, so the day something does grant an
+    /// enemy shield this is already right instead of already wrong.
+    /// </para>
+    /// </remarks>
+    public float ShieldFraction;
+
     // ---- Working memory: written by the agent's own behaviour ---------------------------------
 
     /// <summary>
@@ -118,6 +158,8 @@ public sealed class EnemyBlackboard
         PathDirectionToPlayer = Vector2.Zero;
         HasLineOfSight = false;
         AlliesNearby = 0;
+        HpFraction = 0f;
+        ShieldFraction = 0f;
 
         StateTimer = 0f;
         LungeDirection = Vector2.Zero;

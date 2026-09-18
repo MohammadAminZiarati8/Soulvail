@@ -29,6 +29,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 3. Before handing over: tests green, zero errors, zero new analyzer warnings, manual steps listed for the owner.
 4. Append the PROGRESS entry and update Current State **in the same change**; tick the ROADMAP box; fill the spec's *As built* footer.
 5. Report what changed and give the owner a commit message. **The owner commits and opens the PR.**
+   - **Anything the owner is meant to copy goes in a fenced code block, always** — commit messages, tag messages, shell commands, and **the prompt for the next task**. Prose the owner has to re-type or hand-select is a defect in the handover. Prose *about* the thing stays outside the block; the block holds only what gets pasted.
 6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after. What counts as a file: [ROADMAP › How to read this](Docs/plan/ROADMAP.md#how-to-read-this).
 
 ## Architecture in five lines (details in Architecture.md)

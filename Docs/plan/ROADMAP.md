@@ -344,7 +344,7 @@ ticking a readability row.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| [M4-01a](tasks/M4-01a-combatant-stats-and-triggers.md) | A stat an effect can aim at, and a trigger a boss can read about itself | M | 3-05 3-06 3-12a | ☐ |
+| [M4-01a](tasks/M4-01a-combatant-stats-and-triggers.md) | A stat an effect can aim at, and a trigger a boss can read about itself | M | 3-05 3-06 3-12a | ☑ |
 | [M4-01b](tasks/M4-01b-boss-agent-framework.md) | A boss is a combatant with phases: 66/33, an invulnerable beat, and adds | M | 01a 2-05 2-06 | ☐ |
 | [M4-02](tasks/M4-02-warden-behaviours.md) | The Warden of Ash: a shockwave, a fissure, and Husks | M | 01b 2-06 2-12b | ☐ |
 | [M4-03](tasks/M4-03-boss-arena-and-views.md) | What the Warden looks like, and the arena that helps it | M | 02 2-11a 3-11c 3-13a | ☐ |

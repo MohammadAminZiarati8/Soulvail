@@ -24,7 +24,7 @@ MonoBehaviour:
   - _key: skill.oathbound.bulwark.name
     _text: Bulwark
   - _key: skill.oathbound.bulwark.description
-    _text: Raises a 35-point shield when a bolt is in the air.
+    _text: Shields you when a bolt is in the air.
   - _key: skill.oathbound.retribution.name
     _text: Retribution
   - _key: skill.oathbound.retribution.description
@@ -36,7 +36,7 @@ MonoBehaviour:
   - _key: skill.oathbound.unbowed.name
     _text: Unbowed
   - _key: skill.oathbound.unbowed.description
-    _text: +10% maximum health, and a little more speed.
+    _text: +10% maximum health and more speed.
   - _key: skill.oathbound.steady-breath.name
     _text: Steady Breath
   - _key: skill.oathbound.steady-breath.description
@@ -52,7 +52,7 @@ MonoBehaviour:
   - _key: skill.oathbound.consecrate.name
     _text: Consecrate
   - _key: skill.oathbound.consecrate.description
-    _text: Heals you on holy ground when your health falls low.
+    _text: Healing ground when your health drops.
   - _key: skill.oathbound.lasting-ground.name
     _text: Lasting Ground
   - _key: skill.oathbound.lasting-ground.description
@@ -139,3 +139,13 @@ MonoBehaviour:
     _text: View Tree
   - _key: ui.tree.close
     _text: Close
+  - _key: character.oathbound.name
+    _text: Oathbound
+  - _key: enemy.husk.name
+    _text: Husk
+  - _key: enemy.spitter.name
+    _text: Spitter
+  - _key: enemy.bloater.name
+    _text: Bloater
+  - _key: mode.descent.name
+    _text: Descent

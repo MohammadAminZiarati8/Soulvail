@@ -21,7 +21,7 @@
 | **M1** | **Combat feel** | Stat, Health/Aegis, targeting + reticle, tap-to-focus, Censer, Charge, Focus, chaser dummies. [CC §8](../CoreCombat.md) checklist passes on device | 21 |
 | **M2** | **Stage loop** | Mode as data, threat budget, director, Husk/Spitter/Bloater, arenas, seal/gate, run persistence across app kill | 27 |
 | **M3** | **Levelling and the tree** ✅ | XP, tree rules, offers, level-up screen, SkillRunner + auto-cast, effect primitives, first Oathbound nodes, health-bar treatment — **complete, accepted on Editor evidence, `m3` the owner's to tag** | 35 |
-| **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted — **and the UI work M3-15's acceptance forced onto the table** | 8+ |
+| **M4** | **First boss and run end** | Boss phases, Warden of Ash, death → Shard payout, profile persisted. **The UI work M3-15's acceptance surfaced is *not* here — the owner ruled it out after the tag, and it stays [ledger row 1](#carry-forward-into-m4)** | 10 |
 | **M5** | **Second class** | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select | 8 |
 | **M6** | **Systems complete** | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables | 11 |
 | **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio | 8 |
@@ -289,19 +289,72 @@ Everything those specs must absorb is in the [carry-forward ledger](#carry-forwa
 
 ## M4 — First boss and run end
 
-**Goal:** a run *ends* — it has a wall to hit and something to keep afterwards — and, on M3-15's verdict, a HUD the player can actually read while it happens.
+**Goal:** a run *ends* — it has a wall to hit, and something the player keeps afterwards.
 **Done when:** M4-07's checklist passes and `m4` is tagged.
+
+**The UI redesign M3-15's acceptance asked for is *not* in M4 — the owner ruled it out immediately after the
+tag**, and it stays [ledger row 1](#carry-forward-into-m4) rather than becoming tasks. That is a decision about
+*when*, not about whether: the row keeps its full account of what was found and what it depends on, so the
+milestone that eventually takes it does not have to rediscover that a 44 dp cell is the problem and that icons
+are the blocker. **What it costs M4 is stated here rather than left to be found:** M4-04's segmented boss bar
+and M4-06's run-end screen are both *new readouts landing on a HUD already known to be unreadable*, so they
+inherit the row rather than escaping it, and M4-07's acceptance will be asked the same readability questions
+M3-15 could not answer.
 
 **M4 opens with a spec group, and the ruling was made at M3-15 with its reasons.** M4-01's title names *three* subsystems and every comparable framework task in this project has split; M4-05 is a **`PlayerProfile` format bump**, which [ledger row 5](#carry-forward-into-m4) says gets its own review; and **the UI redesign the owner asked for at M3-15 has to be scoped before anything is built**, because the readout it wants depends on icons that currently live in M7. Titles below stay titles until M4-00a replaces them.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| M4-00a | Specs for M4 — and the three rulings M4 cannot start without: is the UI work a group inside M4 or a milestone of its own; are M7's icons pulled forward; does the boss or the readout go first | S | — | ☐ |
-| M4-01 | Boss agent framework: phases at 66/33 %, telegraph system, add-spawn hook | | | ☐ |
-| M4-02 | Warden of Ash behaviours (GD §9.2) | | | ☐ |
-| M4-03 | Boss arena hazard + boss view | | | ☐ |
-| M4-04 | Segmented boss HUD bar | | | ☐ |
-| M4-05 | Death → `RunEnded` → Shard payout; `PlayerProfile` persisted | | | ☐ |
+| M4-00a | Specs for M4-01…M4-04 — the boss | S | — | ☑ |
+| M4-00b | Specs for M4-05…M4-07 — run end, the payout, and acceptance | S | 00a | ☐ |
+
+**Specced by M4-00a:** the boss, M4-01…M4-04. **One split, before starting.** **M4-01 splits at the
+effects/AI seam**, because the owner's requirement — *"the boss can get buff and debuff, skills, and everything
+that player can get"* — turned out to be a question about `Core/Effects` rather than about bosses, and it is a
+different review from a phase machine.
+
+**The finding that produced the split, measured against the shipped code rather than assumed: the combat
+machinery is already almost entirely target-agnostic.** `Health` is the same class for both
+(`EnemyAgent.cs:55`, `PlayerCombat.cs:287`); `EnemyAgent` **already carries two `Stat`s**; `GrantedShieldPool`
+is keyed by `object`; `EffectRegistry.Apply` takes an `object source`; **`SkillRunner`'s constructor names no
+player at all**; and `EnemyAgent.IsVulnerable` — the invulnerable beat GD §9.1 rule 3 needs — **already
+exists**. **Exactly two things are player-bound**, and breaking them is [M4-01a](tasks/M4-01a-combatant-stats-and-triggers.md):
+`ModifyStat` names a `PlayerStat` and its handler holds *the* `PlayerStats`, so an effect can address the player
+and nothing else; and `EnemyBlackboard` is a *perception* blackboard with no health fraction, while
+`TriggerSpec` reads the player's `CombatBlackboard`.
+
+**Three owner rulings the group hangs on.** **A boss is an `EnemyAgent` with a `BossBehaviour`, not a parallel
+system** — one spawn path, one damage path, one pool, and the alternative would make every later system
+(Elites, Ordeals, affixes) know about both. **Which stages hold a boss is authored on the mode**, the owner's
+words being *"we should be able to select which stages what enemies should have"* — so `Descent.asset` says
+*every 5th* in a field and no `stage % 5` exists in code; a stage editor is the eventual shape and is a
+[parking-lot](#parking-lot) line. And **boss health is authored on the `EnemySpec` like every other body**
+(ADR-0006), with a test asserting GD §9.1 rule 5's 75–120 s against expected player DPS computed from the
+shipped assets — M3-12c's TTK shape, and the owner delegated the call.
+
+**One ruling M4-00a made itself rather than asking**, because the code answered it: **`EnemySpawned` gains no
+`IsBoss` flag.** M3-13b's defaulted `IsElite` is the nearby precedent and it does not apply — that was a
+*look*, and a boss is not. What a view needs is the phase count, which rides on `BossPhaseChanged`, so M4-04's
+bar learns its segments from an event and no existing signature moves.
+
+**And one thing the group is required to keep saying out loud:** the owner ruled the UI redesign out of M4
+immediately after `m3` was tagged, so [ledger row 1](#carry-forward-into-m4) is **inherited, not escaped**.
+M4-04 is the first task since M3-15's verdict to put a new readout on the HUD, and its rule 8 forbids it from
+ticking a readability row.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| [M4-01a](tasks/M4-01a-combatant-stats-and-triggers.md) | A stat an effect can aim at, and a trigger a boss can read about itself | M | 3-05 3-06 3-12a | ☐ |
+| [M4-01b](tasks/M4-01b-boss-agent-framework.md) | A boss is a combatant with phases: 66/33, an invulnerable beat, and adds | M | 01a 2-05 2-06 | ☐ |
+| [M4-02](tasks/M4-02-warden-behaviours.md) | The Warden of Ash: a shockwave, a fissure, and Husks | M | 01b 2-06 2-12b | ☐ |
+| [M4-03](tasks/M4-03-boss-arena-and-views.md) | What the Warden looks like, and the arena that helps it | M | 02 2-11a 3-11c 3-13a | ☐ |
+| [M4-04](tasks/M4-04-segmented-boss-bar.md) | The segmented boss bar: a phase you can see coming | S | 01b 3-13a 3-13b | ☐ |
+
+**Specced by M4-00b:** run end and acceptance, M4-05…M4-07. Titles until that task runs.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| M4-05 | Death → `RunEnded` → Shard payout; `PlayerProfile` v3 | | | ☐ |
 | M4-06 | Run-end screen | | | ☐ |
 | M4-07 | M4 acceptance, tag `m4` | | | ☐ |
 
@@ -421,6 +474,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   stopwatch or **M8-05**. **M3-00d put it on M3-15's checklist as a row rather than a hope**, beside
   ledger row 8's two timings — the same stopwatch reads both, the observed level at stages 5 and 10 is
   what decides it, and because the fix is *tuning* it lands in that branch instead of becoming a task.
+- **A stage editor — *“maybe later we should have a stage creator”*.** The owner's words at M4-00a, alongside the ruling that **which stages hold which enemies is authored on the mode**. `ModeSpec` already carries an enemy roster with `_introducedAtStage`, and M4-01b adds a boss roster beside it, so the *data* is already per-stage-ish; what does not exist is a way to author a **specific** stage rather than a rule that generates them. Promoted when a designer wants stage 7 to be different from stage 6 for a reason no curve expresses — most likely **M7**, when the roster is full and the biomes differ, or M6-04 if Ordeals need per-stage authoring. **Not M4's**: one boss on a rule is what M4 needs, and building an editor for one entry is the kind of tooling that outlives its content.
 - **A tree editor for `SkillTreeDefinition`.** Three nested arrays in the default Inspector is enough
   for twelve nodes. Promoted when **M7-04** authors eighty-one by hand and it hurts.
 - **CC §6.2's drag-to-reorder for the four manual slots.** Ruled out of V1 at M3-00c, on M3-07a's own

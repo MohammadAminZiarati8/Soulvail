@@ -40,9 +40,26 @@ namespace Soulvail.Core.Effects;
 /// reason it waits: <c>MovementSkillSpec.Knockback</c>, a positioning number that would need its
 /// own playtest; <c>ShieldSpec.Max</c>, because raising a maximum without filling it is the trap
 /// <c>Handler_MaxHpMovesHealthLive</c> pins; and <c>ShieldSpec.RefillPerSecond</c>, which is
-/// Unbroken's keystone and should arrive whole rather than half-reachable. Enemy numbers are not a
-/// sixth entry but a different table altogether — M7-02's affixes want an <c>EnemyStat</c> mirror
-/// on <c>EnemyAgent</c>, which is a second handler and not a second registry.
+/// Unbroken's keystone and should arrive whole rather than half-reachable.
+/// </para>
+/// <para>
+/// <b>It stopped being only the player's at M4-01a, and the name is now the one thing about it
+/// that lies.</b> <see cref="IStatBlock"/> made this the address space <em>every</em> combatant is
+/// addressed in — the enemy mirror this paragraph used to promise was weighed and refused (M4-01a
+/// rule 1), because two enums mean two dropdowns on <c>ModifyStatDefinition</c> and a designer who
+/// has to know which. What that costs is <see cref="ContactDamage"/>: <b>the first member no
+/// <see cref="PlayerStats"/> answers</b>, so <see cref="PlayerStats.Resolve"/>'s loud default is
+/// now reachable by a legal member rather than only by a stale ordinal, and
+/// <c>Stats_ResolveEveryMember</c> carries one named exception. Renaming the type to
+/// <c>StatId</c> is the honest fix and is a <em>move</em> — every authored asset serialises this
+/// enum by ordinal — so it is the owner's to rule (M4-01a's <em>Out of scope</em>).
+/// </para>
+/// <para>
+/// <b>Ordinals are appended, never inserted.</b> <c>ModifyStatDefinition</c> serialises
+/// <c>_stat</c> as the raw <see cref="int"/> (<c>_stat: 0</c> in every shipped asset), so
+/// reordering this enum silently re-points every authored effect. <c>OnValidate</c> catches an
+/// ordinal that is no longer a member; it cannot catch one that is now a <em>different</em>
+/// member.
 /// </para>
 /// </remarks>
 public enum PlayerStat
@@ -97,6 +114,27 @@ public enum PlayerStat
     /// which carries the full warning and names the node that has to obey it.
     /// </remarks>
     HealPerKill,
+
+    /// <summary>
+    /// What one strike of an enemy body costs — <c>EnemyAgent.ContactDamage</c>. <b>No player has
+    /// one</b>, so <see cref="PlayerStats.Resolve"/> refuses it and only
+    /// <see cref="CombatantStats"/> answers.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The member that makes this enum's name wrong</b>, and the price of one shared address
+    /// space rather than two — see the remarks on the enum. It is last, and a new member goes after
+    /// it, because the ordinal is what every authored asset stores.
+    /// </para>
+    /// <para>
+    /// <b>A node that authors this does nothing and then throws</b>, at the moment a player picks
+    /// it: it passes <c>Enum.IsDefined</c> at the authoring door and falls out of
+    /// <see cref="PlayerStats.Resolve"/>'s default. That is the loud direction to fail in, and it
+    /// is the same bargain M4-01a rule 2 makes on the other side — a Husk asked for
+    /// <see cref="WeaponRange"/> refuses rather than inventing one.
+    /// </para>
+    /// </remarks>
+    ContactDamage,
 }
 
 /// <summary>
@@ -121,8 +159,15 @@ public enum PlayerStat
 /// Allocates nothing on <see cref="Resolve"/>: a jump table over an enum returning a reference it
 /// already holds.
 /// </para>
+/// <para>
+/// <b><see cref="IStatBlock"/> since M4-01a, and the edit was the declaration and one new method.</b>
+/// <see cref="Resolve"/> is byte-for-byte the method the interface names and no existing address
+/// moved — the widening is that <em>something else</em> can now be aimed at, not that this answers
+/// differently. <see cref="Has"/> is the one addition, and it exists because a handler must be able
+/// to ask before it applies rather than catch after.
+/// </para>
 /// </remarks>
-public sealed class PlayerStats
+public sealed class PlayerStats : IStatBlock
 {
     private readonly PlayerCombat _combat;
     private readonly PlayerMotor _motor;
@@ -174,7 +219,35 @@ public sealed class PlayerStats
                 nameof(stat),
                 stat,
                 "No live stat is registered for this address. A new PlayerStat member needs a "
-                    + "line here as well — see the enum's remarks."),
+                    + "line here as well — see the enum's remarks. PlayerStat.ContactDamage is the "
+                    + "one member that is meant to land here: it is an enemy body's number, and "
+                    + "only CombatantStats answers it."),
+        };
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The eleven the switch above answers, written out rather than derived from
+    /// <c>Enum.IsDefined</c>: the enum holds one member this table deliberately does not have, so
+    /// "is it a member" and "does the player have one" stopped being the same question at M4-01a.
+    /// A row walks every member and asserts this agrees with <see cref="Resolve"/> exactly.
+    /// </remarks>
+    public bool Has(PlayerStat stat)
+    {
+        return stat switch
+        {
+            PlayerStat.MaxHp => true,
+            PlayerStat.WeaponDamage => true,
+            PlayerStat.FireRate => true,
+            PlayerStat.MoveSpeed => true,
+            PlayerStat.MovementSkillCooldown => true,
+            PlayerStat.XpGain => true,
+            PlayerStat.WeaponRange => true,
+            PlayerStat.WeaponConeAngle => true,
+            PlayerStat.ChargeDamage => true,
+            PlayerStat.ShieldRechargeDelay => true,
+            PlayerStat.HealPerKill => true,
+            _ => false,
         };
     }
 }

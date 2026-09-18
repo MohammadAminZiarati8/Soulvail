@@ -3491,6 +3491,7 @@ MonoBehaviour:
   _rowTemplate: {fileID: 4687086063084706153}
   _emptyLabel: {fileID: 6236963889592208405}
   _close: {fileID: 1804776705896845533}
+  _closeLabel: {fileID: 4784932696172389972}
   _prompt: {fileID: 7759582055010880956}
   _promptRows:
   - {fileID: 6338688487955773159}
@@ -3498,6 +3499,8 @@ MonoBehaviour:
   - {fileID: 4044237715331242551}
   - {fileID: 9005359413523193250}
   _promptCancel: {fileID: 4996536367427404692}
+  _promptCancelLabel: {fileID: 9190076431831016428}
+  _slotsFullLabel: {fileID: 1907108525960134444}
   _rowHeightDp: 56
 --- !u!1 &6133379269970110999
 GameObject:

@@ -1,9 +1,11 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -66,6 +68,18 @@ namespace Soulvail.Game.Presentation
     /// menu and finds their run gone would have no way to tell that from a bug.
     /// </para>
     /// <para>
+    /// <b>Its four labels are keys, and the prefab still carries the keys</b> (M3-14c). The panel
+    /// drew <c>ui.pause.resume</c> and its three siblings as literal text from M3-09a until M3-14b
+    /// found them: all four had rows in <c>English.asset</c> from M3-14a and nothing read one. The
+    /// fix is a field, a key and a line each, and <b>the authored text stays as the key on purpose</b>
+    /// — <c>SkillsPresenter.EmptyKey</c> and <c>TreeViewPresenter.NoTreeKey</c> have done exactly
+    /// this since M3-09b, because a placeholder that reads as a key makes an undressed field visible
+    /// in the Editor where a blank one is indistinguishable from a label nobody authored. It is also
+    /// why <em>"no prefab draws a raw key"</em> is not an assertion this project can make, and why
+    /// the one it can make — every authored key is *claimed by a field* — lives in
+    /// <c>StaticLabelWiringTests</c> rather than here.
+    /// </para>
+    /// <para>
     /// <b>What this costs the stopwatch, said once.</b> A Menu pause contributes no <c>Dt</c> for the
     /// same reason a level-up does (M3-08a rule 11), so <c>RunState.Time</c> still counts play
     /// seconds only and a wall clock now diverges from it by <em>two</em> kinds of interruption
@@ -75,6 +89,29 @@ namespace Soulvail.Game.Presentation
     /// </remarks>
     public sealed class PausePresenter : MonoBehaviour
     {
+        /// <summary>Back to the fight (M3-14c).</summary>
+        /// <remarks>
+        /// Authored here rather than on the prefab, <c>MenuPresenter.TitleKey</c>'s and
+        /// <c>SkillsPresenter.EmptyKey</c>'s reason: these four strings belong to the screen rather
+        /// than to any content, and a key in the code cannot drift from the file that draws it. The
+        /// prefab keeps the key as its authored text — that is the placeholder pattern, not a bug,
+        /// and it is what makes an undressed label visible in the Editor rather than blank.
+        /// </remarks>
+        private static readonly LocKey ResumeKey = new LocKey("ui.pause.resume");
+
+        /// <summary>Up to CC §6.3's Skills screen.</summary>
+        private static readonly LocKey SkillsKey = new LocKey("ui.pause.skills");
+
+        /// <summary>
+        /// Up to CH §5.1's tree view. <b>A different key from <c>LevelUpPresenter.ViewTreeKey</c>
+        /// carrying the same word</b>, deliberately: one screen's button may grow a count or a hint
+        /// the other's does not, and a merge M6-10 would have to undo costs more than a second row.
+        /// </summary>
+        private static readonly LocKey TreeKey = new LocKey("ui.pause.tree");
+
+        /// <summary>Out to the Menu. It does not delete the run — see the class remarks.</summary>
+        private static readonly LocKey QuitKey = new LocKey("ui.pause.quit");
+
         [Tooltip("The top-right icon. A Button rather than a read of the Input System — see the " +
                  "class remarks: the one thing this target must never be is tappable anywhere.")]
         [SerializeField] private Button _icon;
@@ -110,6 +147,20 @@ namespace Soulvail.Game.Presentation
                  "rather than left dead (M3-09d rule 2).")]
         [SerializeField] private TreeViewPresenter _treeScreen;
 
+        [Tooltip("\"Resume\". Written from ui.pause.resume in Start, so the prefab's own value is a " +
+                 "placeholder — see the class remarks on the four labels.")]
+        [SerializeField] private TMP_Text _resumeLabel;
+
+        [Tooltip("\"Skills\". Written from ui.pause.skills in Start.")]
+        [SerializeField] private TMP_Text _skillsLabel;
+
+        [Tooltip("\"View Tree\". Written from ui.pause.tree in Start — while the button may still " +
+                 "be switched off for a class with no tree, which is why the write is not on show.")]
+        [SerializeField] private TMP_Text _viewTreeLabel;
+
+        [Tooltip("\"Quit\". Written from ui.pause.quit in Start.")]
+        [SerializeField] private TMP_Text _quitLabel;
+
         [Tooltip("The icon's side in dp — GD §5.2's small top-right target. Applied at runtime for " +
                  "the reason SkillButton applies its own: a Scale-With-Screen-Size canvas measures " +
                  "in reference pixels, which are a different physical size on every phone. A guess " +
@@ -123,6 +174,7 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
         private RunPause _pause;
         private SceneLoader _loader;
+        private ILocalizer _localizer;
 
         private IDisposable _diedSubscription;
 
@@ -165,6 +217,14 @@ namespace Soulvail.Game.Presentation
         /// </param>
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <param name="loader">Where Quit goes.</param>
+        /// <param name="localizer">
+        /// What turns this screen's four keys into words (M3-14c). <b>This is the one screen M3-14a
+        /// left without the port</b> — it drew no content and so needed none — and it is the last
+        /// presenter in the Run scene to take it. Resolved from <c>BootScope</c>, through
+        /// <c>RunScope</c>'s parent container: <c>RunScope</c> registers this component and nothing
+        /// about that registration changes, because three sibling presenters in the same scope
+        /// already resolve <see cref="ILocalizer"/> the same way.
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// Subscribed here rather than in <c>OnEnable</c> — <c>HudPresenter</c>'s reason:
@@ -177,11 +237,13 @@ namespace Soulvail.Game.Presentation
             IRunSession session,
             RunPause pause,
             DomainEventHub hub,
-            SceneLoader loader)
+            SceneLoader loader,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _pause = pause ?? throw new ArgumentNullException(nameof(pause));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -230,6 +292,20 @@ namespace Soulvail.Game.Presentation
             }
 
             Place();
+
+            // The four labels, once, here (M3-14c rule 3). **In Start rather than in Update or in a
+            // draw path**: these four never change while the app is running, unlike the Skills
+            // screen's empty line, whose *visibility* is a function of run state and which
+            // therefore belongs in a draw. In Start rather than Construct because a serialized
+            // field is not guaranteed dressed before every Awake has run — this method's own
+            // reason for being where it is. **Two of the four are written while their object may
+            // be inactive** — the View Tree button is switched off for a class with no tree — and
+            // TMP honours a write to an inactive component on activation, which is a claim
+            // PausePresenterTests makes rather than assumes (Traps §1).
+            Write(_resumeLabel, ResumeKey);
+            Write(_skillsLabel, SkillsKey);
+            Write(_viewTreeLabel, TreeKey);
+            Write(_quitLabel, QuitKey);
 
             // **Taken off the panel rather than left dead** when no Skills screen was dressed into
             // the scene — M3-09a's own rule 6, from the other side: a button that does nothing is
@@ -711,6 +787,32 @@ namespace Soulvail.Game.Presentation
             rect.pivot = new Vector2(1f, 1f);
             rect.sizeDelta = new Vector2(_iconSizeDp, _iconSizeDp) * pxPerDp;
             rect.anchoredPosition = new Vector2(-_iconMarginDp.x * pxPerDp, -_iconMarginDp.y * pxPerDp);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there (M3-14c).
+        /// </summary>
+        /// <remarks>
+        /// <b>A missing label is silent and a missing localizer falls back to the key</b>, which is
+        /// deliberately softer than <see cref="Start"/>'s two throws one screen up:
+        /// <c>MenuPresenter.Write</c>'s exact argument, and a button with no <c>Button</c> is a
+        /// pause the player cannot leave where a button with no <em>label</em> is a pause they can.
+        /// <c>ToString()</c> rather than <c>Key</c> for <c>TableLocalizer.Get</c>'s reason — a
+        /// <c>default(LocKey)</c>'s <c>Key</c> is null.
+        /// <para>
+        /// <b>Copied into this file rather than shared</b>, which is the fourth copy and is still
+        /// the right answer: a static <c>LabelWriter</c> would be the first shared UI surface in the
+        /// project and would have to argue with AR §7's sanctioned-static row, over four lines.
+        /// </para>
+        /// </remarks>
+        private void Write(TMP_Text label, LocKey key)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
         }
 
         private static bool IsUsableSize(float dp) => float.IsFinite(dp) && dp > 0f;

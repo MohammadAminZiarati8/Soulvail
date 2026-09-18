@@ -62,6 +62,7 @@ namespace Soulvail.Tests.Game.Presentation;
 public sealed class LevelUpPresenterTests
 {
     private const string PrefabPath = "Assets/_Project/Prefabs/UI/LevelUp.prefab";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
 
     private const string ModeId = "mode.test";
     private const string OathboundId = "character.oathbound";
@@ -820,6 +821,55 @@ public sealed class LevelUpPresenterTests
             "no SafeAreaFitter on the content root, so a card can land under a notch.");
     }
 
+    // ---- The View Tree label is a key, and the table answers it (M3-14c, rules 1, 3, 4, 8) -------
+
+    [Test]
+    public void Start_WritesTheViewTreeLabel()
+    {
+        StartRun(level: 2, pending: 1);
+        BuildScreen(Shipped());
+
+        TMP_Text label = Field<TMP_Text>(_presenter, "_viewTreeLabel");
+
+        // **The state the button is actually in when Start runs**, and it is why this row exists at
+        // all: RefreshTreeButton switches the toggle off for a class with no tree and has not run
+        // yet, so the write lands on a component whose object may well be inactive. That is Traps
+        // §1's family — an API that takes a value has not agreed to honour it — and if this row is
+        // ever red the write moves to RefreshTreeButton and M3-14c rule 3 gains a stated exception.
+        label.gameObject.SetActive(false);
+
+        RunStart();
+
+        // Pinned against the shipped English.asset rather than a fixture table: inverting the word
+        // has to be a red row somebody argues with. `ui.levelup.tree` and `ui.pause.tree` carry the
+        // same word today and stay two keys — see LevelUpPresenter.ViewTreeKey's remarks.
+        Assert.That(
+            label.text,
+            Is.EqualTo("View Tree"),
+            "the write did not land on an inactive object.");
+
+        label.gameObject.SetActive(true);
+
+        Assert.That(
+            label.text,
+            Is.EqualTo("View Tree"),
+            "the text did not survive the object being switched back on.");
+    }
+
+    [Test]
+    public void Start_NoViewTreeLabelDressed_IsSilent()
+    {
+        StartRun(level: 2, pending: 1);
+        BuildScreen(Shipped());
+
+        SetPrivate(_presenter, "_viewTreeLabel", null);
+
+        // Softer than the three MissingReferenceExceptions Start throws above it, deliberately: a
+        // screen with no cards stops the run for good, where a button with no *label* is a screen
+        // the player can still use. MenuPresenter.Write's argument (M3-14c rule 5).
+        Assert.That(() => RunStart(), Throws.Nothing);
+    }
+
     // ---- Guard rows -----------------------------------------------------------------------------
 
     [Test]
@@ -1110,6 +1160,31 @@ public sealed class LevelUpPresenterTests
         typeof(LevelUpPresenter)
             .GetMethod("Place", BindingFlags.Instance | BindingFlags.NonPublic)
             .Invoke(_presenter, null);
+    }
+
+    /// <summary>The presenter's own <c>Start</c>, which Unity never runs in EditMode.</summary>
+    private void RunStart()
+    {
+        typeof(LevelUpPresenter)
+            .GetMethod("Start", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(_presenter, null);
+    }
+
+    /// <summary>
+    /// The real adapter over the <em>shipped</em> <c>English.asset</c> (M3-14c rule 8).
+    /// </summary>
+    /// <remarks>
+    /// The shipped table rather than a fixture one, on the owner's standard for this task: a row
+    /// that pins <em>"View Tree"</em> against a table this file wrote would go green over an
+    /// <c>English.asset</c> that said anything at all.
+    /// </remarks>
+    private static ILocalizer Shipped()
+    {
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(EnglishPath);
+
+        Assert.That(table, Is.Not.Null, $"No localization table at {EnglishPath}.");
+
+        return new TableLocalizer(table);
     }
 
     private bool[] Interactables() =>

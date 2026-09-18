@@ -15,6 +15,7 @@ using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -74,6 +75,7 @@ public sealed class PausePresenterTests
     private const string PrefabPath = "Assets/_Project/Prefabs/UI/Pause.prefab";
     private const string HudPrefabPath = "Assets/_Project/Prefabs/UI/Hud.prefab";
     private const string LevelUpPrefabPath = "Assets/_Project/Prefabs/UI/LevelUp.prefab";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
 
     private const string ModeId = "mode.test";
     private const string OathboundId = "character.oathbound";
@@ -779,6 +781,118 @@ public sealed class PausePresenterTests
             "the icon's parent is not the safe-area rect, so nothing insets it.");
     }
 
+    // ---- The four labels are keys, and the table answers them (M3-14c, rules 1, 3, 4, 5, 8) ------
+
+    [Test]
+    public void Start_WritesTheFourPanelLabels()
+    {
+        StartRun(level: 2, pending: 0);
+        BuildScreen(Shipped());
+
+        RunStart();
+
+        // **Pinned against the shipped English.asset, not against a table this file wrote.** The
+        // owner's standard for this task: a row that pins the current string so that inverting one
+        // of the four is a red row somebody has to argue with. Before M3-14c all four read their
+        // own keys off the prefab and nothing in the project noticed.
+        Assert.That(Label("_resumeLabel").text, Is.EqualTo("Resume"));
+        Assert.That(Label("_skillsLabel").text, Is.EqualTo("Skills"));
+        Assert.That(Label("_viewTreeLabel").text, Is.EqualTo("View Tree"));
+        Assert.That(Label("_quitLabel").text, Is.EqualTo("Quit"));
+    }
+
+    [Test]
+    public void Start_WritesALabelWhoseObjectIsInactive()
+    {
+        StartRun(level: 2, pending: 0);
+        BuildScreen(Shipped());
+
+        // The state RefreshPanel puts this button in for a class with no tree, and the state it is
+        // in on frame one of every run: Start runs before anything has decided whether the button
+        // is offered.
+        TMP_Text label = Label("_viewTreeLabel");
+        label.gameObject.SetActive(false);
+
+        RunStart();
+
+        // **This is Traps §1's family and is why it is a row rather than a comment.** Writing
+        // TMP_Text.text on a component whose GameObject is inactive is supposed to be honoured on
+        // activation; an API that takes a value has not agreed to honour it. If this row is ever
+        // red, the write moves to RefreshPanel and rule 3 gains a stated exception.
+        Assert.That(
+            label.text,
+            Is.EqualTo("View Tree"),
+            "the write did not land on an inactive object.");
+
+        label.gameObject.SetActive(true);
+
+        Assert.That(
+            label.text,
+            Is.EqualTo("View Tree"),
+            "the text did not survive the object being switched back on.");
+    }
+
+    [Test]
+    public void Update_DoesNotRewriteTheLabels()
+    {
+        StartRun(level: 2, pending: 0);
+        BuildScreen(Shipped());
+
+        RunStart();
+
+        const string Sentinel = "sentinel";
+
+        Label("_resumeLabel").text = Sentinel;
+
+        PassAFrame();
+        PassAFrame();
+
+        // Rule 3, from the only side a test can see it: the write is in Start and in no per-frame
+        // path. Update polls the pause and both screens above this one once a frame, and a label
+        // rewritten in there would be four dictionary lookups a frame for four strings that never
+        // change — and would make a runtime language switch look supported when it is M6-10's.
+        Assert.That(
+            Label("_resumeLabel").text,
+            Is.EqualTo(Sentinel),
+            "Update rewrote a label, so the write is not where rule 3 puts it.");
+    }
+
+    [Test]
+    public void NullLocalizer_LeavesTheKeys()
+    {
+        StartRun(level: 2, pending: 0);
+        BuildScreen(Shipped());
+
+        // **Reached by clearing the field rather than by skipping Construct**, and the difference is
+        // worth naming: Construct null-guards the localizer and Start throws outright when the
+        // pause is missing, so an *uninjected* presenter never reaches a Write at all. The fallback
+        // is still real — it is what a fixture that hand-builds this component gets — and this is
+        // the only route to it.
+        SetPrivate(_presenter, "_localizer", null);
+
+        Assert.That(() => RunStart(), Throws.Nothing);
+
+        Assert.That(Label("_resumeLabel").text, Is.EqualTo("ui.pause.resume"));
+        Assert.That(Label("_quitLabel").text, Is.EqualTo("ui.pause.quit"));
+    }
+
+    [Test]
+    public void NoLabelDressed_IsSilent()
+    {
+        StartRun(level: 2, pending: 0);
+        BuildScreen(Shipped());
+
+        SetPrivate(_presenter, "_resumeLabel", null);
+        SetPrivate(_presenter, "_skillsLabel", null);
+        SetPrivate(_presenter, "_viewTreeLabel", null);
+        SetPrivate(_presenter, "_quitLabel", null);
+
+        // Deliberately softer than the MissingReferenceException Start throws for a missing Button
+        // one line up: a button with no Button is a pause the player cannot leave, where a button
+        // with no *label* is a pause they can. MenuPresenter.Write's argument.
+        Assert.That(() => RunStart(), Throws.Nothing);
+    }
+
     // ---- Guard rows ------------------------------------------------------------------------------
 
     [Test]
@@ -788,19 +902,25 @@ public sealed class PausePresenterTests
         BuildScreen();
 
         Assert.That(
-            () => _presenter.Construct(null, _pause, _hub, _loader),
+            () => _presenter.Construct(null, _pause, _hub, _loader, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, null, _hub, _loader),
+            () => _presenter.Construct(_session, null, _hub, _loader, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, _pause, null, _loader),
+            () => _presenter.Construct(_session, _pause, null, _loader, Passthrough()),
             Throws.ArgumentNullException);
 
         Assert.That(
-            () => _presenter.Construct(_session, _pause, _hub, null),
+            () => _presenter.Construct(_session, _pause, _hub, null, Passthrough()),
+            Throws.ArgumentNullException);
+
+        // The fifth, and the one signature change M3-14c makes. Listed rather than left to the
+        // implied-guard rule because a reviewer should see the new parameter named.
+        Assert.That(
+            () => _presenter.Construct(_session, _pause, _hub, _loader, null),
             Throws.ArgumentNullException);
     }
 
@@ -936,7 +1056,7 @@ public sealed class PausePresenterTests
     /// <summary>
     /// Instantiates the shipped prefab and injects it — the screen under test is the asset.
     /// </summary>
-    private void BuildScreen()
+    private void BuildScreen(ILocalizer localizer = null)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
 
@@ -954,7 +1074,35 @@ public sealed class PausePresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired — including Place and the panel's opening Hide.
-        _presenter.Construct(_session, _pause, _hub, _loader);
+        _presenter.Construct(_session, _pause, _hub, _loader, localizer ?? Passthrough());
+    }
+
+    /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
+    /// <remarks>
+    /// <c>TreeViewPresenterTests.Passthrough</c>, copied for its reason — the real adapter rather
+    /// than a fake, because it costs nothing and the rows that do not care about words then care
+    /// about nothing that could drift.
+    /// </remarks>
+    private static ILocalizer Passthrough() =>
+        new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
+
+    /// <summary>
+    /// The real adapter over the <em>shipped</em> <c>English.asset</c> — what rule 8's rows pin
+    /// against.
+    /// </summary>
+    /// <remarks>
+    /// The shipped table rather than a fixture one, deliberately and on the owner's standard: a row
+    /// that pins <em>"Resume"</em> against a table this file wrote would go green over an
+    /// <c>English.asset</c> that said anything at all. Pinned here, inverting one of the four words
+    /// is a red row somebody has to argue with.
+    /// </remarks>
+    private static ILocalizer Shipped()
+    {
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(EnglishPath);
+
+        Assert.That(table, Is.Not.Null, $"No localization table at {EnglishPath}.");
+
+        return new TableLocalizer(table);
     }
 
     /// <summary>
@@ -1007,6 +1155,11 @@ public sealed class PausePresenterTests
     private void Destroy() => Invoke("OnDestroy");
 
     private void Place() => Invoke("Place");
+
+    /// <summary>The presenter's own <c>Start</c>, which Unity never runs in EditMode.</summary>
+    private void RunStart() => Invoke("Start");
+
+    private TMP_Text Label(string field) => Field<TMP_Text>(_presenter, field);
 
     private void Invoke(string method) =>
         typeof(PausePresenter)

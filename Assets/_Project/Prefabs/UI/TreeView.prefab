@@ -326,6 +326,7 @@ MonoBehaviour:
   _cellTemplate: {fileID: 7383040514034832149}
   _emptyLabel: {fileID: 9053348179360304734}
   _close: {fileID: 6725453109945890685}
+  _closeLabel: {fileID: 1511921161978073913}
   _cellHeightDp: 44
   _cellGapDp: 6
 --- !u!1 &2684730463122226932
@@ -961,13 +962,6 @@ MonoBehaviour:
   _description: {fileID: 5492970526544168294}
   _frame: {fileID: 2184884052459115195}
   _kindStrip: {fileID: 6366582678411216482}
-  _locked: {r: 0.28, g: 0.3, b: 0.34, a: 1}
-  _available: {r: 0.92, g: 0.86, b: 0.55, a: 1}
-  _taken: {r: 0.36, g: 0.82, b: 0.62, a: 1}
-  _passive: {r: 0.62, g: 0.66, b: 0.72, a: 1}
-  _active: {r: 0.36, g: 0.72, b: 0.85, a: 1}
-  _upgrade: {r: 0.45, g: 0.78, b: 0.55, a: 1}
-  _keystone: {r: 0.85, g: 0.72, b: 0.32, a: 1}
 --- !u!1 &6188669326865527332
 GameObject:
   m_ObjectHideFlags: 0

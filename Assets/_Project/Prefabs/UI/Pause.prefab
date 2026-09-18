@@ -1231,6 +1231,10 @@ MonoBehaviour:
   _skillsScreen: {fileID: 0}
   _viewTree: {fileID: 5089152048516650793}
   _treeScreen: {fileID: 0}
+  _resumeLabel: {fileID: 8044909938102197399}
+  _skillsLabel: {fileID: 7543509294091208208}
+  _viewTreeLabel: {fileID: 1690938423413189474}
+  _quitLabel: {fileID: 3443346002256029282}
   _iconSizeDp: 44
   _iconMarginDp: {x: 16, y: 16}
 --- !u!1 &7090162794872030234

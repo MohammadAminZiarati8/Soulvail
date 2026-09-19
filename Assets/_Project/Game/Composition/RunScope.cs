@@ -219,6 +219,18 @@ namespace Soulvail.Game.Composition
                  "event carries, so a 3.5 m Consecrate and a 6 m anything share it.")]
         [SerializeField] private ZoneView _zonePrefab;
 
+        [Tooltip("The one shield-slam ring prefab (GD §9.2). Every ring is this body expanding at " +
+                 "the speed its own event carries, so a retuned Warden needs no second prefab.")]
+        [SerializeField] private ShockwaveView _shockwavePrefab;
+
+        [Tooltip("The one fissure prefab (GD §9.2). Both of a crack's states — the arm and the " +
+                 "bite — are this body, told apart by shape rather than by brightness.")]
+        [SerializeField] private FissureView _fissurePrefab;
+
+        [Tooltip("The shell a boss wears while it cannot be hurt (GD §9.1 rule 3). It hangs on the " +
+                 "boss's own body rather than on a canvas, so its size follows the archetype's.")]
+        [SerializeField] private BossBeatView _bossBeatPrefab;
+
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
                  "the undressed-scene iteration workflow.")]
@@ -741,11 +753,112 @@ namespace Soulvail.Game.Composition
                 .WithParameter("parent", _decalRoot)
                 .WithParameter("prewarm", ZoneSystem.Capacity);
 
+            // The boss fight's three views (M4-03). The zones' registration three times over, for
+            // the zones' reasons — the arguments are references to *this scene*, and a body parented
+            // to the arena would be destroyed mid-life by a stage swap it has nothing to do with
+            // (M2-11a).
+            //
+            // Required rather than optional, and on the telegraph rings' argument rather than the
+            // zones': GD §9.1 rule 1 — everything is telegraphed — is an invariant, and until this
+            // task nothing in Soulvail.Game subscribed to any of M4-02's five hazard events at all.
+            // A run composed without these is the build the owner playtested, where a ring takes 22
+            // hit points off the player with nothing on the floor to say it was coming.
+            //
+            // The second half of each guard is the one that would otherwise be silent: a prefab
+            // whose renderer was never dragged into its field binds, steps and returns perfectly and
+            // draws nothing, so the fight looks exactly like the one before this task existed.
+            RequireHazardPrefab(
+                _shockwavePrefab,
+                _shockwavePrefab != null && _shockwavePrefab.IsDrawable,
+                nameof(ShockwaveView),
+                "Prefabs/Vfx/VFX_Shockwave.prefab",
+                "Shockwave Prefab",
+                "a shield-slam's ring is invisible and the player is hit by ground they were never "
+                    + "shown (GD §9.1 rule 2)");
+
+            RequireHazardPrefab(
+                _fissurePrefab,
+                _fissurePrefab != null && _fissurePrefab.IsDrawable,
+                nameof(FissureView),
+                "Prefabs/Vfx/VFX_Fissure.prefab",
+                "Fissure Prefab",
+                "a crack arms and bites under the player's feet with no telegraph at all "
+                    + "(GD §9.1 rule 1)");
+
+            RequireHazardPrefab(
+                _bossBeatPrefab,
+                _bossBeatPrefab != null && _bossBeatPrefab.IsDrawable,
+                nameof(BossBeatView),
+                "Prefabs/Vfx/VFX_BossBeat.prefab",
+                "Boss Beat Prefab",
+                "a boss spends 1.5 s taking no damage with nothing on screen to say why "
+                    + "(GD §9.1 rule 3)");
+
+            // Prewarmed to core's own capacities, which is ZoneViews' argument: four rings and eight
+            // cracks are the most that can exist at once, so a pool cannot be asked for a body it
+            // does not already hold. One shell, because one boss is what a stage holds — the pool
+            // grows past it if M7's Choirmother ever needs two, and the cost of being wrong is one
+            // Instantiate rather than a refusal.
+            builder.Register<BossViews>(Lifetime.Scoped)
+                .WithParameter("shockwavePrefab", _shockwavePrefab)
+                .WithParameter("fissurePrefab", _fissurePrefab)
+                .WithParameter("beatPrefab", _bossBeatPrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("shockwavePrewarm", ShockwaveSystem.Capacity)
+                .WithParameter("fissurePrewarm", FissureSystem.Capacity)
+                .WithParameter("beatPrewarm", 1);
+
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally
             // — so the only thing the label can do is tell the truth about the lifetime, and this
             // object's lifetime is one run.
             builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped);
+        }
+
+        /// <summary>
+        /// Refuses a boss-hazard prefab that is missing or undressed, naming the field to drag and
+        /// what the run costs without it.
+        /// </summary>
+        /// <param name="prefab">The serialized reference, which may be null or destroyed.</param>
+        /// <param name="isDrawable">
+        /// Whether the prefab's own renderer field is filled. Read at the call site rather than here,
+        /// because the three views share no base type and a common interface for one bool would be a
+        /// seam invented for a guard.
+        /// </param>
+        /// <param name="typeName">The component the field holds, for the message.</param>
+        /// <param name="assetPath">Where the prefab lives, so the fix is a drag rather than a hunt.</param>
+        /// <param name="fieldName">The field's inspector label.</param>
+        /// <param name="cost">What a run without it is, in one clause. The half that is not obvious.</param>
+        /// <remarks>
+        /// One method for three prefabs rather than six blocks: the guards differ only in their
+        /// nouns, and three copies of this shape is how the second one drifts from the first.
+        /// </remarks>
+        /// <exception cref="MissingReferenceException">Either half of the guard fails.</exception>
+        private static void RequireHazardPrefab(
+            Component prefab,
+            bool isDrawable,
+            string typeName,
+            string assetPath,
+            string fieldName,
+            string cost)
+        {
+            // Unity's ==: an unassigned or destroyed prefab is a live reference that only compares
+            // equal to null through the engine's operator.
+            if (prefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {typeName} prefab assigned. Drag {assetPath} onto "
+                        + $"its {fieldName} field — without it {cost}.");
+            }
+
+            if (!isDrawable)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)}'s {typeName} prefab has no renderer assigned. Drag the "
+                        + $"renderer on {assetPath} onto its own field — without it every one of "
+                        + "them in the run is timed, sized and returned correctly and none of them "
+                        + "is ever visible.");
+            }
         }
 
         /// <summary>

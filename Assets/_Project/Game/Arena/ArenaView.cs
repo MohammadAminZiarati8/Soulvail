@@ -87,6 +87,11 @@ namespace Soulvail.Game.Arena
                  "stage boundary is a multi-frame hitch behind a 0.3 s fade.")]
         [SerializeField] private NavMeshSurface _surface;
 
+        [Tooltip("GD §9.1 rule 6's things in the room a boss can set off: a shockwave that reaches " +
+                 "one topples it. Optional, and deliberately authored on one arena rather than on " +
+                 "all of them — an arena without any is the ordinary room.")]
+        [SerializeField] private Transform[] _hazards = Array.Empty<Transform>();
+
         /// <summary>
         /// The world positions of <see cref="_spawnPoints"/>, refilled on read. Sized once.
         /// </summary>
@@ -213,7 +218,81 @@ namespace Soulvail.Game.Arena
         /// <summary>This arena's baked NavMesh, or null for one that was never baked.</summary>
         public NavMeshSurface Surface => _surface;
 
-        /// <summary>Barrier up, door shut. Called when a stage arrives (M2-11a rule 5).</summary>
+        /// <summary>
+        /// How many things in this room a boss can set off (GD §9.1 rule 6). Zero for an arena that
+        /// authors none, which is every arena but one.
+        /// </summary>
+        /// <remarks>
+        /// <b>The count is the authored list's, not the standing ones'.</b> A toppled hazard is still
+        /// a hazard this arena has — it is simply on its side until the arena is sealed again — so a
+        /// count that shrank would make <c>Arena_HazardIsOnOneArenaOnly</c> depend on when it was
+        /// asked.
+        /// </remarks>
+        public int HazardCount => _hazards is null ? 0 : _hazards.Length;
+
+        /// <summary>
+        /// Where hazard <paramref name="index"/> stands, in world metres.
+        /// </summary>
+        /// <remarks>
+        /// This arena's own position for an index that is empty or out of range, which is
+        /// <see cref="PlayerStart"/>'s bargain: a missing marker is a dressing mistake and not a
+        /// reason for a boss fight to throw.
+        /// </remarks>
+        public Vector3 HazardPosition(int index)
+        {
+            Transform hazard = Hazard(index);
+
+            return hazard == null ? transform.position : hazard.position;
+        }
+
+        /// <summary>Whether hazard <paramref name="index"/> has already been knocked over.</summary>
+        public bool IsToppled(int index)
+        {
+            Transform hazard = Hazard(index);
+
+            return hazard != null && hazard.localRotation != Quaternion.identity;
+        }
+
+        /// <summary>
+        /// Knocks hazard <paramref name="index"/> over — what a shockwave reaching it does.
+        /// </summary>
+        /// <returns>
+        /// True when this call is what put it on its side. False for an index that names nothing and
+        /// for one that is already down, so a census can tell a topple from a second ring passing
+        /// over the same wreckage.
+        /// </returns>
+        /// <remarks>
+        /// <b>It costs the player nothing, and that is stated rather than implied.</b> Rule 6's
+        /// hazard is authored on the arena and knocked over by the boss; <em>hurting</em> somebody
+        /// would need a place in core to live — an id, a circle and a damage number — and there is
+        /// no such system, so this task draws the arena participating and claims no damage it does
+        /// not do. See the task's <em>As built</em>.
+        /// </remarks>
+        public bool Topple(int index)
+        {
+            Transform hazard = Hazard(index);
+
+            if (hazard == null || hazard.localRotation != Quaternion.identity)
+            {
+                return false;
+            }
+
+            // A quarter turn about X, so whatever the object is it ends up lying on the floor it was
+            // standing on. Written on the transform rather than swapped for a broken mesh, because
+            // the wreckage a hazard leaves is M7's art pass and a pose is the honest placeholder.
+            hazard.localRotation = Quaternion.Euler(80f, 0f, 0f);
+
+            return true;
+        }
+
+        /// <summary>Barrier up, door shut, and every hazard back on its feet (M2-11a rule 5).</summary>
+        /// <remarks>
+        /// <b>The hazards are restored here and nowhere else.</b> An arena is parked and raised again
+        /// at every stage boundary and the same instance is reused (<see cref="ArenaPool"/>), so a
+        /// brazier knocked over in a boss fight would still be lying down five stages later — the
+        /// pooling rule <c>IPoolable.OnDespawn</c> keeps, reached by the one method every arrival
+        /// already calls.
+        /// </remarks>
         public void Seal()
         {
             if (_barrier != null)
@@ -224,6 +303,16 @@ namespace Soulvail.Game.Arena
             if (_door != null)
             {
                 _door.SetActive(false);
+            }
+
+            for (int i = 0; i < HazardCount; i++)
+            {
+                Transform hazard = _hazards[i];
+
+                if (hazard != null)
+                {
+                    hazard.localRotation = Quaternion.identity;
+                }
             }
         }
 
@@ -339,6 +428,17 @@ namespace Soulvail.Game.Arena
             && _barrier == null
             && _door == null
             && (_spawnPoints is null || _spawnPoints.Length == 0);
+
+        /// <summary>
+        /// The hazard at <paramref name="index"/>, or null for an index that names nothing.
+        /// </summary>
+        /// <remarks>
+        /// One lookup for all four readers above, so an out-of-range index and an empty slot are the
+        /// same answer everywhere rather than three separate guards that could disagree. Unity's
+        /// <c>==</c> is left to the callers: this returns the reference and they decide.
+        /// </remarks>
+        private Transform Hazard(int index) =>
+            _hazards is null || index < 0 || index >= _hazards.Length ? null : _hazards[index];
 
         private static void CountCover(Transform root, int layer, ref int count)
         {

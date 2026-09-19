@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Ai;
@@ -52,6 +54,12 @@ public sealed class BossPhases
     /// </remarks>
     private readonly float[] _entersBelow;
 
+    /// <summary>
+    /// <see cref="_entersBelow"/> as something a listener can read and nobody can write. Wrapped
+    /// once here rather than per publish, which is what keeps <c>BossPhaseChanged</c> free.
+    /// </summary>
+    private readonly ReadOnlyCollection<float> _entersBelowView;
+
     private float _beatRemaining;
 
     /// <param name="spec">The boss whose phases these are.</param>
@@ -66,6 +74,8 @@ public sealed class BossPhases
         {
             _entersBelow[i] = spec.Phases[i].EntersBelow;
         }
+
+        _entersBelowView = Array.AsReadOnly(_entersBelow);
     }
 
     /// <summary>The boss these phases belong to.</summary>
@@ -82,6 +92,18 @@ public sealed class BossPhases
     /// than from a flag on a spawn (rule 7).
     /// </summary>
     public int PhaseCount => _entersBelow.Length;
+
+    /// <summary>
+    /// Every phase's threshold, outermost first — the first is 1 and each one after it is strictly
+    /// lower. What <c>BossPhaseChanged</c> carries as its <c>entersBelow</c>, so M4-04's bar puts its
+    /// marks where the asset put its phases rather than at even spacing (rule 4).
+    /// </summary>
+    /// <remarks>
+    /// The same view every time, so publishing it allocates nothing and a fight that crosses two
+    /// thresholds hands out one object rather than two. Read-only rather than the array: these are
+    /// the asset's numbers and a listener that could write them would be editing the fight.
+    /// </remarks>
+    public IReadOnlyList<float> EntersBelow => _entersBelowView;
 
     /// <summary>The phase the boss is currently in.</summary>
     public BossPhaseSpec CurrentPhase => Spec.Phases[Current];

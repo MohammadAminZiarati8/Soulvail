@@ -867,7 +867,7 @@ public sealed class BossBarViewTests
 
         var presenter = hud.GetComponent<HudPresenter>();
 
-        presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
+        presenter.Construct(_hub, _session);
 
         Assert.That(_hub.SubscriberCount<BossPhaseChanged>(), Is.EqualTo(1), "the fixture's premise.");
         Assert.That(_hub.SubscriberCount<BossBeatStarted>(), Is.EqualTo(1));
@@ -905,21 +905,14 @@ public sealed class BossBarViewTests
     {
         BuildHud();
 
-        var loader = new SceneLoader();
-        InputAdapter input = Track(new InputAdapter());
-        ILocalizer localizer = Passthrough();
-
-        // The implied guard row, and the signature is unchanged: the band draws no words, so
-        // HudPresenter.Construct took no sixth argument for it (rule 7).
-        Assert.Throws<ArgumentNullException>(
-            () => _presenter.Construct(null, _session, loader, input, localizer));
-
-        Assert.That(
-            typeof(HudPresenter).GetMethod(nameof(HudPresenter.Construct)).GetParameters().Length,
-            Is.EqualTo(5),
-            "HudPresenter.Construct grew an argument. The band needs no dependency of its own — it is "
-                + "a dumb view this presenter hands fractions to, which is why RunScope registers "
-                + "nothing new.");
+        // The implied guard row. The band still needs no dependency of its own — it is a dumb view
+        // this presenter hands fractions to, which is why RunScope registers nothing new for it
+        // (M4-04 rule 7) — and the signature has **shrunk** rather than grown since: M4-06 rule 2
+        // took the death overlay out of this class and SceneLoader, InputAdapter and ILocalizer left
+        // with it. The arity is asserted by `Hud_NoLongerOwnsTheDeathOverlay` in
+        // `RunEndPresenterTests`, which is the fixture that owns the reason it is two.
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(null, _session));
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, null));
     }
 
     [Test]
@@ -1089,7 +1082,7 @@ public sealed class BossBarViewTests
         // instantiated prefab in EditMode: the placement and the first draw both live there. The band
         // is deliberately *not* constructed — nothing injects it, which is the whole of why RunScope
         // registers nothing new.
-        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
+        _presenter.Construct(_hub, _session);
         _strip.Construct(_session, _hub);
 
         Invoke(_presenter, "Start");

@@ -88,11 +88,17 @@ namespace Soulvail.Game.Composition
                  "object is for.")]
         [SerializeField] private SkillBarPresenter _skillBar;
 
-        [Tooltip("The player's row on the HUD: health, the Aegis, and the death overlay. Optional " +
-                 "on the same terms as the reticle — an arena without one plays exactly the same, " +
-                 "it just cannot say how the player is doing and has no way out of a death except " +
-                 "leaving the scene.")]
+        [Tooltip("The player's row on the HUD: health, the Aegis, the level and the boss band. " +
+                 "Optional on the same terms as the reticle — an arena without one plays exactly " +
+                 "the same, it just cannot say how the player is doing. The way out of a death is " +
+                 "the run-end screen's as of M4-06, and that one is required.")]
         [SerializeField] private HudPresenter _hudPresenter;
+
+        [Tooltip("The run-end screen: the payout and one button back to the Menu, on its own canvas " +
+                 "above every other. Required, unlike every optional screen below it — a scene " +
+                 "dressed without it strands the player on a dead run with no way out, because the " +
+                 "death overlay's tap left HudPresenter at M4-06.")]
+        [SerializeField] private RunEndPresenter _runEndPresenter;
 
         [Tooltip("GD §16.1's XP strip, along the HUD's top edge. Optional on the HUD's terms — a " +
                  "scene without one plays the same fight and simply never says how close the next " +
@@ -294,6 +300,31 @@ namespace Soulvail.Game.Composition
                     "turned into a place on the ground, so tap-to-focus has nothing to resolve.");
             }
 
+            // **Required, and it is the first screen on this scope that is** (M4-06 rule 7).
+            // FirstActiveHint, TreeViewPresenter and the reticle are optional because a scene dressed
+            // without them still plays; a scene dressed without this one strands the player on a dead
+            // run with no way out of it, because M4-06 rule 2 took the tap away from HudPresenter and
+            // nothing else in the Run scene loads the Menu. So the scope refuses to compose, the way
+            // it already refuses an empty cover mask and a missing threat arrow — the "fails loudly
+            // rather than silently" bargain, applied where the cost is the app rather than a hint.
+            //
+            // Guarded here rather than left to the component's own Start, which is the other half of
+            // why: a screen that is on the prefab but not dressed onto this field is never injected,
+            // so its Start would throw one frame into a run the player has already started, and the
+            // run they lose is the one that would have paid.
+            if (_runEndPresenter == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(RunEndPresenter)} assigned. Drag the RunEnd "
+                        + "object in this scene onto its Run End Presenter field — without it a dead "
+                        + "run shows the player nothing and offers no way back to the Menu, which is "
+                        + "indistinguishable from the app having hung.");
+            }
+
+            // The scene owns its lifetime, so the container injects it and destroys nothing — every
+            // other RegisterComponent on this scope's bargain.
+            builder.RegisterComponent(_runEndPresenter);
+
             // Registered only when it is there, and deliberately not guarded like the view above.
             // The body is load-bearing — without it the run has nothing to move — while the overlay
             // is a development aid that a scene is entitled not to have, and M0-19's release build
@@ -306,9 +337,10 @@ namespace Soulvail.Game.Composition
             }
 
             // Optional on the same terms, and the one here with the most to lose by being absent:
-            // without it nothing says how much health is left, and a death leaves an arena that has
-            // stopped ticking with no tap back to the menu. It stays optional anyway, because
-            // pressing Play in an undressed Run scene is the iteration workflow every other
+            // without it nothing says how much health is left. **What its absence no longer costs is
+            // the way out of a death** — that moved to the required screen above at M4-06, which is
+            // what makes this field's optionality honest rather than a hole. It stays optional
+            // because pressing Play in an undressed Run scene is the iteration workflow every other
             // optional field on this scope exists to protect.
             if (_hudPresenter != null)
             {

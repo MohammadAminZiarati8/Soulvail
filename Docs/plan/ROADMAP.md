@@ -161,7 +161,7 @@ parameters to two and the HUD stops being a localisation reader at all. The two 
 |---|---|---|---|---|
 | [M4-05a](tasks/M4-05a-shard-payout.md) | Death pays: the Shard payout, computed where the run ends | S | 01b 2-10 | ☑ |
 | [M4-05b](tasks/M4-05b-profile-v3-and-shard-writer.md) | `PlayerProfile` v3: the first thing a dead run leaves behind | S | 05a 3-09c 2-13b | ☑ |
-| [M4-06](tasks/M4-06-run-end-screen.md) | The run-end screen: what the descent was worth, and the overlay it replaces | S | 05a 05b 3-13a 3-14a | ☐ |
+| [M4-06](tasks/M4-06-run-end-screen.md) | The run-end screen: what the descent was worth, and the overlay it replaces | S | 05a 05b 3-13a 3-14a | ☑ |
 | [M4-07](tasks/M4-07-acceptance-and-tag.md) | M4 acceptance, tag `m4` | S | everything in M4 | ☐ |
 
 ### Carry-forward into M4

@@ -278,6 +278,20 @@ Editor has the code — which is a stronger statement than any timestamp, and it
   probe that changes project data must restore it in the same synchronous command (M1-17).
 - **`result.Log` ignores format specifiers.** `{0:F2}` is emitted literally while a bare `{0}`
   substitutes — pre-format with `ToString("F2")` (M0-20).
+- **`RegisterCallbacks` + `Execute` + `System.IO` in one command is refused before it runs**, with
+  `UNEXPECTED_ERROR: User interactions are not supported for MCP tool calls`. The refusal is not
+  about the API: `RegisterCallbacks` alone passes, `Execute` alone passes, and the two together pass
+  when the callbacks only `Debug.Log`. It is the *file write* alongside them that trips the guard,
+  and the error names none of that — it reads as though the Editor put a dialog up. **The
+  `Temp/`-file recipe below therefore cannot be written from inside the command that starts the
+  run**; use the results file Unity writes anyway (M4-06).
+- **Unity writes `TestResults.xml` to the persistent data path on every `TestRunnerApi` run**, at
+  `%USERPROFILE%/AppData/LocalLow/<Company>/<Product>/TestResults.xml`, and logs the path as it
+  does. It carries `passed=`, `failed=` and every row's `result=` with its failure message, it is
+  readable from the shell with `grep`, and it needs no harness and no `static` field to survive a
+  domain reload — which makes it the cheaper source for a suite count than anything a command can
+  write for itself. **The only care it needs is the timestamp**: a stale file from the previous run
+  looks exactly like a finished one, so check `start-time` before believing a count (M4-06).
 
 ### `Unity_GetConsoleLogs`
 
@@ -286,6 +300,12 @@ empty even while the Console is visibly showing them. A `TestRunnerApi` run ther
 through the Console — **write results to a file under `Temp/` from `RunFinished` and read them
 from the shell**, which also keeps the Editor focused, since every extra MCP round-trip risks
 stealing focus back and stalling a queued run (M1-09, M0-20).
+
+**Refined at M4-06, and the refinement is the difference between "empty" and "filtered out":** a
+call passing `logTypes: "Log"` returns nothing, while the *same* entries come back on an unfiltered
+call typed **`Info`**. So `Debug.Log` is reachable after all — by not asking for it by name. That
+matters because the recommended `Temp/`-file route is refused when it shares a command with
+`RegisterCallbacks` (§4 above), which leaves logging as the only in-command channel a runner has.
 
 ### Captures
 

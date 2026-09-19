@@ -60,6 +60,22 @@ namespace Soulvail.Game.Presentation
     /// unchanged — which is the distinction the parking-lot line drew and this task keeps.
     /// </para>
     /// <para>
+    /// <b>The boss's bar is driven from here, and it is not the player's own row</b> (M4-04). GD
+    /// §16.2's segmented band is a <see cref="BossBarView"/>, a dumb view handed fractions and flags
+    /// exactly as <see cref="_hp"/> and <see cref="_shield"/> are — which is why <c>RunScope</c>
+    /// registers nothing new for it and why the five boss subscriptions land in this class. Two
+    /// reasons, and the second is the load-bearing one. The first is that this presenter already owns
+    /// every rect on this prefab that has to agree with another about where it is, and rule 8's
+    /// question is exactly that: the band, the 4 dp XP strip above it and the HP row below it are one
+    /// stack. The second is that <b>there is no boss-spawn signal to subscribe to</b> — M4-00a ruled
+    /// that <c>EnemySpawned</c> gains no <c>IsBoss</c> flag, deliberately, so what announces a boss is
+    /// <c>BossPhaseChanged</c>, published once for phase 0 the moment the body stands up. The
+    /// departure <em>is</em> <c>EnemyDied</c>; there is no <c>BossDied</c>. The fill comes off
+    /// <c>EnemyDamaged.HpFraction</c>, the same event <c>EnemyHealthBar</c> has read since M3-13b, and
+    /// nothing here reads <c>RunState</c> for it: a corpse's blackboard fraction is frozen rather than
+    /// zeroed (M4-01a), so the event is the only honest source.
+    /// </para>
+    /// <para>
     /// <b>The level is a fourth rect in this row rather than a fourth component</b> (M3-10b rule 3).
     /// GD §16.1 puts it <em>"top-left, beside HP"</em>, and <see cref="Place"/> is deliberately one
     /// method for the whole row — see its own remarks. A second class laying out the same row would
@@ -110,6 +126,17 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private const float LevelWidthDp = 48f;
 
+        /// <summary>
+        /// No boss is being followed. <c>EnemyRegistry</c> issues ids from 1, so 0 is an id nothing can
+        /// ever have.
+        /// </summary>
+        /// <remarks>
+        /// A constant of this class rather than <c>EnemyView.Unbound</c>, which holds the same number
+        /// for the same reason: that field is <c>Soulvail.Game.Views</c>' and reaching across for it
+        /// would put a namespace edge into a HUD to save declaring a zero.
+        /// </remarks>
+        private const int NoBoss = 0;
+
         [Tooltip("The health bar, with its fill and ghost. The one thing on screen the player is " +
                  "never allowed to be unsure about.")]
         [SerializeField] private HpBarView _hp;
@@ -119,6 +146,11 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("The current/max readout beside the bar.")]
         [SerializeField] private TMP_Text _hpText;
+
+        [Tooltip("GD §16.2's segmented boss band, across the top of the screen under the XP strip. " +
+                 "Optional on the same terms as the fade: a HUD without one plays exactly the same " +
+                 "boss fight, the player just cannot see a phase transition coming.")]
+        [SerializeField] private BossBarView _bossBar;
 
         [Tooltip("The player's level, beside the Aegis ring — GD §16.1's \"top-left, beside HP\". " +
                  "Optional on the same terms as the fade: a HUD without one plays exactly the same " +
@@ -179,6 +211,11 @@ namespace Soulvail.Game.Presentation
         private IDisposable _leveledSubscription;
         private IDisposable _grantedSubscription;
         private IDisposable _grantExpiredSubscription;
+        private IDisposable _bossPhaseSubscription;
+        private IDisposable _bossBeatStartedSubscription;
+        private IDisposable _bossBeatEndedSubscription;
+        private IDisposable _enemyDamagedSubscription;
+        private IDisposable _enemyDiedSubscription;
 
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
@@ -188,6 +225,16 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The overlay is up and the next tap goes back to the menu.</summary>
         private bool _awaitingTap;
+
+        /// <summary>
+        /// The boss the band is following, or <see cref="NoBoss"/>. What every boss handler filters on.
+        /// </summary>
+        /// <remarks>
+        /// <c>EnemyDamaged</c> and <c>EnemyDied</c> are published for every body in the arena, so the
+        /// filter is what stops a Husk dying at 66 % health from taking the Warden's bar down —
+        /// <c>EnemyHealthBar</c>'s bound id, one screen up.
+        /// </remarks>
+        private int _bossId = NoBoss;
 
         /// <summary>
         /// The frame the overlay went up on. A tap made on that same frame is not an answer to a
@@ -266,6 +313,18 @@ namespace Soulvail.Game.Presentation
             // be got right.
             _grantedSubscription = hub.Subscribe<ShieldGranted>(OnShieldGranted);
             _grantExpiredSubscription = hub.Subscribe<ShieldGrantExpired>(OnShieldGrantExpired);
+
+            // GD §16.2's boss band, which is five events and no sixth (M4-04 rules 1, 2, 3 and 5).
+            // BossPhaseChanged is the *arrival*: it is published for phase 0 the moment the body
+            // stands up as well as at each threshold, which is what makes M4-00a's refusal to put an
+            // IsBoss flag on EnemySpawned pay for itself. The two beat events are rule 5. EnemyDamaged
+            // is the fill and EnemyDied is the departure — the boss is an ordinary agent (M4-01b rule
+            // 2), so there is no BossSpawned and no BossDied to subscribe to instead.
+            _bossPhaseSubscription = hub.Subscribe<BossPhaseChanged>(OnBossPhaseChanged);
+            _bossBeatStartedSubscription = hub.Subscribe<BossBeatStarted>(OnBossBeatStarted);
+            _bossBeatEndedSubscription = hub.Subscribe<BossBeatEnded>(OnBossBeatEnded);
+            _enemyDamagedSubscription = hub.Subscribe<EnemyDamaged>(OnEnemyDamaged);
+            _enemyDiedSubscription = hub.Subscribe<EnemyDied>(OnEnemyDied);
         }
 
         /// <exception cref="MissingReferenceException">A view, the readout or the overlay is not dressed.</exception>
@@ -331,9 +390,19 @@ namespace Soulvail.Game.Presentation
             _leveledSubscription?.Dispose();
             _grantedSubscription?.Dispose();
             _grantExpiredSubscription?.Dispose();
+            _bossPhaseSubscription?.Dispose();
+            _bossBeatStartedSubscription?.Dispose();
+            _bossBeatEndedSubscription?.Dispose();
+            _enemyDamagedSubscription?.Dispose();
+            _enemyDiedSubscription?.Dispose();
 
             _grantedSubscription = null;
             _grantExpiredSubscription = null;
+            _bossPhaseSubscription = null;
+            _bossBeatStartedSubscription = null;
+            _bossBeatEndedSubscription = null;
+            _enemyDamagedSubscription = null;
+            _enemyDiedSubscription = null;
             _startedSubscription = null;
             _damagedSubscription = null;
             _shieldSubscription = null;
@@ -512,6 +581,107 @@ namespace Soulvail.Game.Presentation
         private void OnShieldGrantExpired(ShieldGrantExpired evt)
         {
             WriteGrantedShield(evt.Total);
+        }
+
+        /// <summary>
+        /// Rules 1, 2 and 4: a boss is in a phase, and the first one it is ever in is how we learn
+        /// there is a boss at all.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>Only a fight this class was not already following resizes the band.</b> The event is
+        /// published at phase 0 <em>and</em> at each crossing, and the count and the thresholds are the
+        /// same fight's every time — so a crossing is handled by doing nothing here and letting the
+        /// <c>BossBeatStarted</c> that follows it one line later be what the player sees. Binding again
+        /// would be harmless (<see cref="BossBarView.Bind"/> leaves the fill alone) and saying so is
+        /// cheaper than relying on it.
+        /// </para>
+        /// <para>
+        /// <b>A second boss replaces the first rather than queueing behind it.</b> No mode authors two
+        /// at once and GD §9.1 has one boss a stage, so this is a statement about what the band does if
+        /// that ever changes: it follows the newest, because a bar showing a boss the player is no
+        /// longer fighting is worse than one that switched.
+        /// </para>
+        /// </remarks>
+        private void OnBossPhaseChanged(BossPhaseChanged evt)
+        {
+            if (_bossBar == null || evt.EnemyId == _bossId)
+            {
+                return;
+            }
+
+            _bossBar.Bind(evt.OfPhases, evt.EntersBelow);
+
+            // Adopted only if the band actually went up. A count below 1 is a broken reading the band
+            // refuses to draw (BossSpec makes it unreachable from an asset), and remembering the id
+            // anyway would make this class deaf to the next honest event about the same boss.
+            _bossId = _bossBar.IsShown ? evt.EnemyId : NoBoss;
+        }
+
+        /// <summary>Rule 5: the boss cannot be hurt, and the band says so.</summary>
+        private void OnBossBeatStarted(BossBeatStarted evt)
+        {
+            if (_bossBar == null || evt.EnemyId != _bossId)
+            {
+                return;
+            }
+
+            _bossBar.SetBeat(true);
+        }
+
+        /// <summary>Rule 5's other half: it can be hurt again.</summary>
+        /// <remarks>
+        /// Published whether or not anything was watching, and never when the boss dies during a beat
+        /// (the event's own remarks) — so there is no path where the band is left dimmed over a fight
+        /// that has resumed, and none where it waits for an end that will not come.
+        /// </remarks>
+        private void OnBossBeatEnded(BossBeatEnded evt)
+        {
+            if (_bossBar == null || evt.EnemyId != _bossId)
+            {
+                return;
+            }
+
+            _bossBar.SetBeat(false);
+        }
+
+        /// <summary>
+        /// Rule 3: the boss took a hit, and the fraction on the event is the whole of the band's fill.
+        /// </summary>
+        /// <remarks>
+        /// <c>EnemyDamaged</c> rather than a second source, which is the point of rule 3's <em>"one
+        /// quantity"</em>: this is the same event <c>EnemyHealthBar</c> has drawn since M3-13b, it
+        /// carries the fraction <em>after</em> the hit, and a hit that landed on nobody publishes
+        /// nothing at all. Every other body in the arena is filtered out by the id.
+        /// </remarks>
+        private void OnEnemyDamaged(EnemyDamaged evt)
+        {
+            if (_bossBar == null || _bossId == NoBoss || evt.Id != _bossId)
+            {
+                return;
+            }
+
+            _bossBar.SetFraction(evt.HpFraction);
+        }
+
+        /// <summary>Rule 2: the boss is dead, so the band leaves.</summary>
+        /// <remarks>
+        /// <b><c>EnemyDied</c> rather than <c>EnemyDespawned</c></b>, and the gap between them is
+        /// <c>EnemySystem.CorpseTime</c>: the body dissolves for a beat after the killing blow, and a
+        /// full-width band hanging over a boss the player has already killed would read as a fight that
+        /// had not finished. There is no <c>BossDied</c> — this is it, with the id the phase event has
+        /// been naming all fight.
+        /// </remarks>
+        private void OnEnemyDied(EnemyDied evt)
+        {
+            if (_bossBar == null || _bossId == NoBoss || evt.Id != _bossId)
+            {
+                return;
+            }
+
+            _bossId = NoBoss;
+
+            _bossBar.Hide();
         }
 
         /// <summary>

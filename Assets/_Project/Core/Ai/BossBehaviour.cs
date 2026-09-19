@@ -222,7 +222,12 @@ public sealed class BossBehaviour : IEnemyBehaviour
             throw new ArgumentNullException(nameof(events));
         }
 
-        events.Publish(new BossPhaseChanged(_agent.Id, _phases.Current, _phases.PhaseCount));
+        events.Publish(
+            new BossPhaseChanged(
+                _agent.Id,
+                _phases.Current,
+                _phases.PhaseCount,
+                _phases.EntersBelow));
     }
 
     /// <summary>
@@ -245,7 +250,12 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
         // The phase first and the beat second, so a handler that sizes itself from the phase count
         // has done so before it is told how long it has to animate the change.
-        ctx.Events.Publish(new BossPhaseChanged(_agent.Id, _phases.Current, _phases.PhaseCount));
+        ctx.Events.Publish(
+            new BossPhaseChanged(
+                _agent.Id,
+                _phases.Current,
+                _phases.PhaseCount,
+                _phases.EntersBelow));
         ctx.Events.Publish(new BossBeatStarted(_agent.Id, Spec.BeatSeconds));
     }
 

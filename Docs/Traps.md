@@ -388,6 +388,24 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   of `Idle_A` and the character freezes mid-stride. `loopTime` lives on `ModelImporter`'s
   `clipAnimations`, which must be assigned as a whole array read from `defaultClipAnimations` —
   there is no per-clip setter (M2-art).
+- **Unity 6.3 rewrites `ProjectSettings/TimeManager.asset` the moment the Editor touches the
+  project, and it looks exactly like a change somebody made.** `Fixed Timestep: 0.02` becomes a
+  `serializedVersion: 2` block — `m_Count: 2822399` over `m_Rate: 141120000 / 1` — which *is*
+  0.02 to the bit. **It is a no-op re-serialisation, not a setting.** The pre-commit hook refuses a
+  staged `ProjectSettings/` change without `ALLOW_PROJECT_SETTINGS=1`, so the right move is
+  `git checkout -- ProjectSettings/TimeManager.asset` and not an override; it will come back for
+  whoever opens the Editor next. Do not grant it the flag and do not commit it as *"Unity churn"* —
+  the flag exists for a `ProjectSettings/` change somebody meant, and the whole value of
+  `git diff m3 HEAD -- ProjectSettings/` being empty is that nothing has slipped through it
+  (M4-04).
+- **The MCP's `Unity_RunCommand` wraps your snippet in `namespace Unity.AI.Assistant.Agent.Dynamic.Extension.Editor`,
+  which puts `Unity.AI.Image` in scope and shadows `UnityEngine.UI.Image`.** `Image.Type.Simple`
+  fails with *"'Image' is a namespace but is used like a type"* and `Image.FillMethod` with *"does
+  not exist in the namespace 'Unity.AI.Image'"* — both of which read as a missing assembly
+  reference and are not. Alias it (`using UiImage = UnityEngine.UI.Image;`). **The sandbox also
+  refuses `System.Reflection.BindingFlags` outright** — *"unauthorized namespaces"* — so an MCP
+  probe can only drive a component through its public API, which is a reason to keep a view's
+  readouts public rather than reflected (M4-04).
 
 ---
 

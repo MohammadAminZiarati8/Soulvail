@@ -265,6 +265,18 @@ public sealed class BossPhasesTests
         Assert.That(announced.Phase, Is.EqualTo(0));
         Assert.That(announced.OfPhases, Is.EqualTo(3));
 
+        // **And the thresholds themselves, which is M4-04's addition and the other half of rule 7.**
+        // A count alone tells a segmented bar how many marks to draw and not where any of them goes,
+        // and M4-04 rule 4 puts them at the phases' own values rather than at even spacing — so the
+        // fight has to say which values. This is the only row in the project that asserts the wire
+        // carries the *asset's* numbers rather than a view's idea of them.
+        Assert.That(announced.EntersBelow, Is.Not.Null, "The fight announced a phase count and no thresholds.");
+        Assert.That(
+            announced.EntersBelow,
+            Is.EqualTo(new[] { BossSpec.FirstPhaseEntersBelow, SecondPhase, ThirdPhase }),
+            "The announced thresholds are not the ones the spec authored, so a boss bar would draw "
+                + "its seams somewhere the fight does not change phase.");
+
         Assert.That(_events.Count<BossBeatStarted>(), Is.Zero, "Phase 0 opens no beat.");
     }
 

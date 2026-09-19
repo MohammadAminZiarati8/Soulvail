@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace Soulvail.Core.Events;
@@ -40,6 +41,18 @@ namespace Soulvail.Core.Events;
 /// <em>"2 of 3"</em> adds the one. Kept 0-based on the wire rather than adjusted here, so that the
 /// number a view draws and the number a test asserts cannot be off by one in opposite directions.
 /// </para>
+/// <para>
+/// <b><see cref="EntersBelow"/> is M4-04's, and it is the same sentence as <see cref="OfPhases"/>
+/// one step further.</b> A segmented bar needs the segment <em>count</em> to know how many marks to
+/// draw and the thresholds themselves to know <em>where</em> — M4-04 rule 4 puts the marks at the
+/// phases' own values rather than at even spacing, so that a bar for 1.0 / 0.8 / 0.25 is right
+/// rather than merely plausible. Nothing in <c>Soulvail.Game</c> can reach a <c>BossSpec</c>: the
+/// only handle a view has on a fight is this event's <see cref="EnemyId"/>, and a HUD holding a
+/// <c>ContentCatalog</c> to reverse-look-up the boss whose body an <c>EnemySpawned</c> named would
+/// be the seam <c>EnemySpawned.IsElite</c>'s own remarks refuse. So the fact rides the event, which
+/// is what <c>ShieldGranted.Total</c>, <c>EnemyDamaged.HpFraction</c>, <c>EnemyTelegraph.Duration</c>
+/// and <c>BossBeatStarted.Seconds</c> all do for the same reason.
+/// </para>
 /// </remarks>
 public readonly struct BossPhaseChanged
 {
@@ -52,11 +65,35 @@ public readonly struct BossPhaseChanged
     /// <summary>How many phases the fight has in total.</summary>
     public readonly int OfPhases;
 
-    public BossPhaseChanged(int enemyId, int phase, int ofPhases)
+    /// <summary>
+    /// Every phase's own <c>BossPhaseSpec.EntersBelow</c>, outermost first — so the first entry is
+    /// always 1 and each one after it is strictly lower. <see langword="null"/> when nobody said.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A reference rather than a copy, and it allocates nothing to publish.</b>
+    /// <c>BossPhases</c> wraps its own threshold array once at construction and hands the same
+    /// read-only view out for the whole fight; this event carries that reference. A fight publishes
+    /// this once at phase 0 and once per crossing — never per tick — and even then nothing here is
+    /// built. The collection is read-only because the thresholds are the asset's and a view has no
+    /// business editing them.
+    /// </para>
+    /// <para>
+    /// <b>Defaulted, on <c>EnemySpawned.IsElite</c>'s terms rather than beside them.</b> That field's
+    /// default is legal because <c>false</c> <em>is</em> not-an-Elite; this one's is legal because
+    /// <see langword="null"/> <em>is</em> <em>"no thresholds were supplied"</em>, which is what a
+    /// fixture staging a bare phase change is saying, and a readout handed one draws its segments
+    /// evenly or not at all rather than inventing values. Every publisher in a live run supplies it.
+    /// </para>
+    /// </remarks>
+    public readonly IReadOnlyList<float> EntersBelow;
+
+    public BossPhaseChanged(int enemyId, int phase, int ofPhases, IReadOnlyList<float> entersBelow = null)
     {
         EnemyId = enemyId;
         Phase = phase;
         OfPhases = ofPhases;
+        EntersBelow = entersBelow;
     }
 }
 

@@ -947,6 +947,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // driving any more.
         if (State.Combat.IsDead)
         {
+            // GD §14.1's payout, here and deliberately not inside End() (M4-05a rules 1 and 5).
+            // End() is reachable from RunScope's disposal — it is a no-op-if-not-running so that
+            // disposal can call it blind — and a payout published from there would pay a player for
+            // quitting to the menu, and pay them again on every teardown. This line is only
+            // reachable from a death, which is what makes ShardsAwarded's own refusal of RunEnded
+            // true rather than aspirational. The order on the wire is PlayerDied (published by
+            // PlayerCombat in one of the two passes above) → ShardsAwarded → RunEnded.
+            //
+            // The mode is looked up rather than held, because RunState already carries the id the
+            // catalog answers to and a second field for it could only disagree. BossesKilled is
+            // asked for the event's breakdown and again inside For, which is one redundant walk of
+            // an authored array on the one frame a run ever ends — paid instead of re-declaring
+            // GD §14.1's arithmetic at the call site.
+            ModeSpec mode = _catalog.Mode(State.ModeId);
+
+            _events.Publish(new ShardsAwarded(
+                ShardPayout.For(State.StageIndex, mode),
+                State.StageIndex,
+                ShardPayout.BossesKilled(State.StageIndex, mode)));
+
             End();
             return;
         }

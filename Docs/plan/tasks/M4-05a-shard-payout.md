@@ -158,4 +158,86 @@ _None. Nothing in `Soulvail.Game` changes and nothing is drawn_ — the number e
 
 ## As built
 
-_Filled at merge._
+**The payout ships, every behaviour rule is met as written, and both of M4-00b's load-bearing rulings were
+re-checked against the code before anything was built.** `2 162 / 0 / 0`, twice consecutively on the final
+code (24.7 s), against M4-04's `2 145` — **+17, and the arithmetic lands to the row**: twelve cases in
+`ShardPayoutTests` (eleven methods, one of them two `TestCase`s) and five in `RunSessionTests`. Nothing in
+`Soulvail.Game` changed, nothing new is drawn, and no asset moved.
+
+### The two rulings, confirmed rather than assumed
+
+- **Rule 1 holds.** `RunSession.End` is still a no-op-if-not-running (`RunSession.cs:1254`) and still the
+  only publisher of `RunEnded`. The three refusals still stand and two of them have moved a little, which
+  is stated rather than left to be found: `SaveWriter`'s `Subscribe<PlayerDied>` is at **`SaveWriter.cs:82`**
+  rather than 78, and `PausePresenter`'s remark now cites `SaveWriter.cs:128` rather than its own line 64.
+  `HudPresenter.cs:50` is exact. **`Run_AwardsNothingWhenTheScopeIsTornDown` was written second, before any
+  of the payout arithmetic**, so the refusal was a failing-then-passing row rather than a comment.
+- **Rule 3 holds.** `SpawnDirector.IsStageComplete` still branches on `IsBossStage` and still returns
+  `_bossCleared` — at **`SpawnDirector.cs:243`**, the line the spec named, unmoved. `Descent.asset` still
+  authors one row, `boss.warden` on every 5th, so `Payout_ReadsTheAuthoredIntervalNotAFive` drives **every
+  3rd** and asserts 3 bosses at stage 10, where a `stage % 5` would answer 1.
+
+Every other type the spec named is where it said: `ModeSpec.TryGetBossFor` (`ModeSpec.cs:531`),
+`ModeSpec.TryGetIntroduction` (`ModeSpec.cs:492`, exact), the death branch of `RunSession.Tick`
+(`RunSession.cs:948`, exact). **Nothing had moved that changed a decision.**
+
+### One deviation, and it is an existing test rather than a file
+
+**`Assets/_Project/Tests/Core/Ai/SpitterBehaviourTests.cs` gained one line.**
+`Session_ShotThatKills_EndsTheRunWithNoIntent` asserts the *whole wire* of the death tick as an ordered
+array of types, and it was the only row in the project that did — so the first suite run came back
+`2 161 / 1`, with the failure reading *"Expected `RunEnded`, but was `ShardsAwarded`"* at index 3. That is
+the row doing its job: `typeof(ShardsAwarded)` was inserted between `ProjectileImpacted` and `RunEnded` and
+the comment now says why. **It is a small additive edit to an existing file** — the ROADMAP's sizing rule
+does not count one — so the counted total is still the table's two new files, and size **S** stands. It is
+also, unexpectedly, the strongest evidence in the suite that the payout is on the death path: a bolt killed
+a player in a fixture with no interest in Shards, and the run was paid for it.
+
+**No other deviation.** `RunEvents.cs`' `RunEnded` remark carried the clause *"M4-05's payout reads
+`PlayerDied`"*, which stopped being true the moment this task chose its own event; it now names
+`ShardsAwarded` instead. That is a stale sentence in a file the table already lists, corrected rather than
+left to mislead.
+
+### What the publish site actually does, and the one cost it pays
+
+The mode is **looked up rather than held**: `_catalog.Mode(State.ModeId)`, because `RunState` already
+carries the id and a second field for it could only disagree. `BossesKilled` is then asked twice — once for
+the event's breakdown and once inside `For` — which is **one redundant walk of an authored array on the one
+frame a run ever ends**, paid instead of re-declaring GD §14.1's arithmetic at the call site. Said out loud
+because it is the kind of thing that looks like an oversight.
+
+### Rules 6 and 7, discharged rather than done quietly
+
+- **Rule 6: the third term does not ship**, and `Payout_HasNoArchetypeTerm` asserts **10 and
+  `Is.Not.EqualTo(35)`** at stage 1 of the shipped Descent — 35 being what all three terms would pay a run
+  that met its first Husk there. The reason lives in `ShardPayout`'s own remarks, so the row and the
+  paragraph point at each other.
+- **Rule 7: `PerStage` and `PerBoss` are `const`s**, and [ledger row 6](../ROADMAP.md#carry-forward-into-m4)
+  **already records this class as its knowing fourth reader** — M4-00b wrote that in, so nothing had to be
+  added to the ledger here. No asset was invented.
+
+### Rule 4's under-payment, as promised
+
+A player who kills the boss on stage 5 and dies there before walking through the door is paid **50 rather
+than 100**. `Payout_DoesNotPayForTheStageDiedOn` asserts it in both directions — 0 bosses at stage 5, 1 at
+stage 6 — so the case is pinned rather than described. It is an M4-07 checklist line and the M5 ledger's if
+anybody minds.
+
+### Three things a reader of the tests should know
+
+- **`Payout_HoldsNoState` is `SaveMigrations`' reflection row, copied deliberately.** It is what makes
+  rule 2's *"a `static class` here is not what AR §13 bans"* checkable rather than asserted, and it is the
+  row that fails the day this class grows a field.
+- **`RunSessionTests` gained a fixture device, not an archetype.** Nothing in that fixture could kill a
+  player — its Husk is `Static`, which does nothing by definition — so the four payout rows needed one
+  `Chaser` with 400 contact damage, a 2 m reach and a 0.05 s windup, spawned at the player's feet. The
+  snapshot reports no enemies on purpose: `EnemySystem.Ingest` only overwrites the agents a snapshot names,
+  so a body nobody reports stays exactly where the plan put it and nothing has to simulate a walk.
+- **`Run_AwardsShardsOnceOnly` asserts the ten further ticks *throw*.** The spec's row says *"ticked ten
+  more frames"*; a session that has ended refuses `Tick` with `InvalidOperationException`, so the
+  once-only property is **guaranteed by the run stopping** rather than guarded by a flag. Written as the
+  code makes it true, and named here because the row reads differently from the table.
+
+**One finding about a file this task did not write, for the seventh time in eleven tasks:**
+`ProjectSettings/TimeManager.asset` was re-serialised into the `serializedVersion: 2` count/rate pair worth
+exactly 0.02 again. Reverted here, and it will come back for whoever opens the Editor next.

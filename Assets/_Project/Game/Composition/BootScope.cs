@@ -61,8 +61,17 @@ namespace Soulvail.Game.Composition
         [SerializeField] private SkillTreeDefinition[] _trees;
 
         /// <remarks>
+        /// Every authored boss — <c>Data/Enemies/WardenBoss.asset</c>, which is one of them in V1
+        /// (GD §9.2's other three are M7's). Empty is a legal boot in the sense that the catalog
+        /// builds, and <em>not</em> in the sense that a run plays: <c>RunSession.Start</c> refuses
+        /// a run whose mode names a boss this list does not hold, which is what stops the gap
+        /// surfacing a hundred seconds into stage 5 (M4-02).
+        /// </remarks>
+        [SerializeField] private BossDefinition[] _bosses;
+
+        /// <remarks>
         /// <c>Data/Localisation/English.asset</c> — the one language (M3-14a rule 2). Unlike the
-        /// five arrays above this is a single asset and it is <b>required</b>: an empty slot here is
+        /// six arrays above this is a single asset and it is <b>required</b>: an empty slot here is
         /// a game in which every screen draws its own <c>LocKey</c>, so the installer refuses it by
         /// name rather than letting it become a null reference on a card.
         /// </remarks>
@@ -71,7 +80,7 @@ namespace Soulvail.Game.Composition
         protected override void Configure(IContainerBuilder builder)
         {
             BootInstaller.Install(
-                builder, _characters, _enemies, _modes, _skills, _trees, _localization);
+                builder, _characters, _enemies, _modes, _skills, _trees, _localization, _bosses);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

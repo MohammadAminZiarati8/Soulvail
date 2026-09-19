@@ -147,5 +147,7 @@ MonoBehaviour:
     _text: Spitter
   - _key: enemy.bloater.name
     _text: Bloater
+  - _key: enemy.warden.name
+    _text: The Warden of Ash
   - _key: mode.descent.name
     _text: Descent

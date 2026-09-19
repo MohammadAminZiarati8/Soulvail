@@ -1,11 +1,9 @@
 using System;
-using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
-using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
@@ -43,21 +41,22 @@ namespace Soulvail.Game.Presentation
     /// the player may dash.
     /// </para>
     /// <para>
-    /// <b>Death is the first thing that ends a run from inside one.</b> Core does the ending — the
-    /// session stops running and publishes <c>RunEnded</c> on the tick the killing blow lands — and
-    /// this class does the only part that is presentation: it puts the overlay up, waits for a tap,
-    /// and asks for the Menu scene, which disposes <c>RunScope</c> and with it every subscription
-    /// the run made. It listens for <c>PlayerDied</c> rather than <c>RunEnded</c> on purpose, since
-    /// the second of those also fires when a scope is torn down for any other reason and the overlay
-    /// has no business appearing over a scene that is already unloading.
+    /// <b>Death is no longer this class's, and that is M4-06 rule 2.</b> From M1-17 to M4-05b this
+    /// presenter owned the two-word death overlay: it subscribed to <c>PlayerDied</c>, put a panel
+    /// up, read a tap off <c>InputAdapter</c> and asked <c>SceneLoader</c> for the Menu.
+    /// <c>RunEndPresenter</c> owns all of it now, opening on <c>ShardsAwarded</c> instead so that the
+    /// screen cannot be up before its numbers are — and the overlay was <b>replaced rather than
+    /// stacked</b>, because two screens for one death is the worst outcome available. <b>Three
+    /// dependencies left with it</b>: <c>SceneLoader</c>, <c>InputAdapter</c> and <c>ILocalizer</c>,
+    /// each of which the death path was the only reader of, so <see cref="Construct"/> dropped from
+    /// five parameters to two and <see cref="Update"/> now does nothing but <see cref="TickFade"/>.
     /// </para>
     /// <para>
-    /// <b>The two strings on the overlay stopped being raw English at M3-14a</b> (rule 8). They were
-    /// typed into <c>Hud.prefab</c> from M1-17 and were the second and last place in the project
-    /// where that was allowed; they are now <c>ui.death.title</c> and <c>ui.death.hint</c>, written
-    /// from the table when the overlay goes up. <b>The HP readout is deliberately not among them</b>:
-    /// <see cref="HpFormat"/> is a number format rather than a sentence, and it survives localisation
-    /// unchanged — which is the distinction the parking-lot line drew and this task keeps.
+    /// <b>The HUD is therefore not an <c>ILocalizer</c> reader at all, and draws no word</b>:
+    /// <see cref="HpFormat"/> and <see cref="LevelFormat"/> are number formats rather than sentences
+    /// and survive localisation unchanged, which is the distinction M3-14a drew and this class
+    /// inherits. The two keys that were here — <c>ui.death.title</c> and <c>ui.death.hint</c> — kept
+    /// their spellings and moved to the new screen (M4-06 rule 3).
     /// </para>
     /// <para>
     /// <b>The boss's bar is driven from here, and it is not the player's own row</b> (M4-04). GD
@@ -94,17 +93,6 @@ namespace Soulvail.Game.Presentation
         /// array and allocates nothing.
         /// </summary>
         private const string HpFormat = "{0:0}/{1:0}";
-
-        /// <summary><em>"You died"</em> — the death overlay's headline (rule 8).</summary>
-        /// <remarks>
-        /// Authored here rather than on the prefab, <c>FirstActiveHint.HintKey</c>'s reason: the
-        /// string this screen owns cannot drift out of the code that owns it, and the row that
-        /// checks it is then asserting against something other than the asset it reads.
-        /// </remarks>
-        private static readonly LocKey DeathTitleKey = new LocKey("ui.death.title");
-
-        /// <summary><em>"Tap to return"</em> — the instruction beneath it (rule 8).</summary>
-        private static readonly LocKey DeathHintKey = new LocKey("ui.death.hint");
 
         /// <summary>
         /// The level, on its own. <c>{0:0}</c> for <see cref="HpFormat"/>'s reason, and passed to
@@ -158,18 +146,6 @@ namespace Soulvail.Game.Presentation
                  "toward the next one is XpBarView, on the top edge.")]
         [SerializeField] private TMP_Text _levelText;
 
-        [Tooltip("The death panel: \"You died\" and \"Tap to return\". Hidden until it is needed. " +
-                 "Its two strings come from the table as of M3-14a — see the two labels below.")]
-        [SerializeField] private GameObject _deathOverlay;
-
-        [Tooltip("\"You died\", written from ui.death.title when the overlay goes up. Optional: a " +
-                 "death overlay with no headline still takes the tap that returns to the Menu.")]
-        [SerializeField] private TMP_Text _deathTitle;
-
-        [Tooltip("\"Tap to return\", written from ui.death.hint. Optional on the same terms — and " +
-                 "it is the more costly of the two to lose, because it is the instruction.")]
-        [SerializeField] private TMP_Text _deathHint;
-
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
                  "arena just swaps in plain sight.")]
@@ -198,14 +174,10 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private float _gapDp = 8f;
 
         private IRunSession _session;
-        private SceneLoader _loader;
-        private InputAdapter _input;
-        private ILocalizer _localizer;
 
         private IDisposable _startedSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _shieldSubscription;
-        private IDisposable _diedSubscription;
         private IDisposable _stageArrivedSubscription;
         private IDisposable _transitionSubscription;
         private IDisposable _leveledSubscription;
@@ -223,9 +195,6 @@ namespace Soulvail.Game.Presentation
         /// <summary>Alpha per second, so a zero or negative duration snaps rather than divides.</summary>
         private float _fadeSpeed;
 
-        /// <summary>The overlay is up and the next tap goes back to the menu.</summary>
-        private bool _awaitingTap;
-
         /// <summary>
         /// The boss the band is following, or <see cref="NoBoss"/>. What every boss handler filters on.
         /// </summary>
@@ -236,51 +205,31 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private int _bossId = NoBoss;
 
-        /// <summary>
-        /// The frame the overlay went up on. A tap made on that same frame is not an answer to a
-        /// panel the player has not seen yet — core publishes the death from inside the Update
-        /// phase, so a thumb already coming down would otherwise dismiss the overlay in the frame
-        /// it appeared.
-        /// </summary>
-        private int _deathFrame = -1;
-
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <param name="session">
         /// The run, for the four health reads a <c>RunStarted</c> has no payload for. Not
         /// <c>IPlayerCommands</c>: a HUD asks the game for nothing.
         /// </param>
-        /// <param name="loader">Where the death overlay's tap goes.</param>
-        /// <param name="input">
-        /// The run's input adapter, for that one tap. Deliberately not a <c>Button</c> under the
-        /// overlay: this is the only class in <c>Soulvail.Game</c> allowed to read the Input System
-        /// and its own remarks name the HUD as a reader, so going through it keeps that rule intact
-        /// — and it makes "tap anywhere" literally anywhere, including over the stick and the
-        /// Charge button, which a uGUI raycast would have to be layered above.
-        /// </param>
-        /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+        /// <exception cref="ArgumentNullException">Either dependency is null.</exception>
         /// <remarks>
+        /// <para>
         /// Subscribed here rather than in <c>OnEnable</c>, which is what the M1-17 spec sketched and
         /// what <c>ReticleView</c>, <c>FocusGlowView</c> and <c>EnemyHitFeedback</c> all had to move
         /// for the same reason: <c>RunScope</c> injects this from its own <c>Awake</c>, and Unity
         /// gives no order between two <c>Awake</c> calls — so an <c>OnEnable</c> subscription would
         /// be reaching for a hub that may not have arrived yet. Dropped in <c>OnDestroy</c>.
+        /// </para>
+        /// <para>
+        /// <b>Two parameters, down from five</b> (M4-06 rule 2). <c>SceneLoader</c>,
+        /// <c>InputAdapter</c> and <c>ILocalizer</c> left with the death overlay, because the death
+        /// path was the only reader of all three — so a HUD now asks the app for nothing at all and
+        /// reads no words.
+        /// </para>
         /// </remarks>
-        /// <param name="localizer">
-        /// What turns the death overlay's two keys into words (M3-14a rule 8). Resolved from
-        /// <c>BootScope</c>, one scope up.
-        /// </param>
         [Inject]
-        public void Construct(
-            DomainEventHub hub,
-            IRunSession session,
-            SceneLoader loader,
-            InputAdapter input,
-            ILocalizer localizer)
+        public void Construct(DomainEventHub hub, IRunSession session)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            _loader = loader ?? throw new ArgumentNullException(nameof(loader));
-            _input = input ?? throw new ArgumentNullException(nameof(input));
-            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -290,7 +239,6 @@ namespace Soulvail.Game.Presentation
             _startedSubscription = hub.Subscribe<RunStarted>(OnRunStarted);
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnPlayerDamaged);
             _shieldSubscription = hub.Subscribe<PlayerShieldChanged>(OnShieldChanged);
-            _diedSubscription = hub.Subscribe<PlayerDied>(OnPlayerDied);
 
             // The level, which is the one event this class gained at M3-10b (rule 3). Not
             // `XpChanged`: that carries a fraction, it arrives on every kill rather than on every
@@ -327,7 +275,7 @@ namespace Soulvail.Game.Presentation
             _enemyDiedSubscription = hub.Subscribe<EnemyDied>(OnEnemyDied);
         }
 
-        /// <exception cref="MissingReferenceException">A view, the readout or the overlay is not dressed.</exception>
+        /// <exception cref="MissingReferenceException">A view or the readout is not dressed.</exception>
         /// <exception cref="InvalidOperationException">Nothing injected this presenter.</exception>
         /// <remarks>
         /// In <c>Start</c> rather than <c>Awake</c> for the reason <c>SkillButton</c> gives: that is
@@ -336,13 +284,13 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void Start()
         {
-            if (_hp == null || _shield == null || _hpText == null || _deathOverlay == null)
+            if (_hp == null || _shield == null || _hpText == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(HudPresenter)} is missing one of its four pieces. Drag the HP bar, " +
-                    "the Aegis ring, the current/max text and the death panel onto it — a HUD " +
-                    "that is only partly dressed is worse than none, because the part that is " +
-                    "missing looks like a game that has stopped rather than a field that is empty.");
+                    $"{nameof(HudPresenter)} is missing one of its three pieces. Drag the HP bar, " +
+                    "the Aegis ring and the current/max text onto it — a HUD that is only partly " +
+                    "dressed is worse than none, because the part that is missing looks like a " +
+                    "game that has stopped rather than a field that is empty.");
             }
 
             if (_session is null)
@@ -355,12 +303,8 @@ namespace Soulvail.Game.Presentation
 
             Place();
 
-            // Down whatever the prefab was left dressed as, so a panel someone was editing cannot
-            // ship covering the arena.
-            _deathOverlay.SetActive(false);
-
-            // Down whatever the prefab was left dressed as, for the same reason: a cover someone
-            // was editing must not ship over the arena.
+            // Down whatever the prefab was left dressed as, so a cover someone was editing cannot
+            // ship over the arena.
             if (_fade != null)
             {
                 _fade.alpha = 0f;
@@ -384,7 +328,6 @@ namespace Soulvail.Game.Presentation
             _startedSubscription?.Dispose();
             _damagedSubscription?.Dispose();
             _shieldSubscription?.Dispose();
-            _diedSubscription?.Dispose();
             _stageArrivedSubscription?.Dispose();
             _transitionSubscription?.Dispose();
             _leveledSubscription?.Dispose();
@@ -406,36 +349,20 @@ namespace Soulvail.Game.Presentation
             _startedSubscription = null;
             _damagedSubscription = null;
             _shieldSubscription = null;
-            _diedSubscription = null;
             _stageArrivedSubscription = null;
             _transitionSubscription = null;
             _leveledSubscription = null;
         }
 
         /// <remarks>
-        /// Does nothing at all until the player is dead, and then does one thing: reads the tap that
-        /// takes them back. Everything else on this HUD is driven by events.
+        /// <b>One call, and that is M4-06 rule 2 seen from the cheapest angle.</b> This method read
+        /// the Input System every frame of every run so that the death overlay could take a tap; the
+        /// overlay is <c>RunEndPresenter</c>'s now and takes a <c>Button</c>, so all that is left is
+        /// the stage cover. Everything else on this HUD is driven by events.
         /// </remarks>
         private void Update()
         {
             TickFade();
-
-            if (!_awaitingTap || Time.frameCount <= _deathFrame)
-            {
-                return;
-            }
-
-            if (!_input.FocusPressedThisFrame)
-            {
-                return;
-            }
-
-            // Lowered before the load is asked for, so a second tap arriving while the scene is
-            // still coming in cannot start a second load — the same guard MenuPresenter makes by
-            // taking its button's interactability away first.
-            _awaitingTap = false;
-
-            ReturnToMenu();
         }
 
         private void OnRunStarted(RunStarted evt)
@@ -503,7 +430,7 @@ namespace Soulvail.Game.Presentation
             _fade.alpha = alpha;
 
             // Taken out of the raycast path the moment it is not covering anything, so a cleared
-            // cover cannot eat the tap that dismisses the death overlay.
+            // cover cannot eat a touch meant for the stick, the Charge button or the pause icon.
             _fade.blocksRaycasts = alpha > 0f;
         }
 
@@ -707,48 +634,6 @@ namespace Soulvail.Game.Presentation
             _hp.SetGrantedShield(max > 0f ? points / max : 0f);
         }
 
-        /// <remarks>
-        /// Core has already ended the run by the time this arrives — <c>RunSession.Tick</c> calls
-        /// <c>End</c> on the same tick, and <c>RunTicker</c> stops ticking — so there is nothing to
-        /// stop here. The capsule stands where it fell, which is where the run ended.
-        /// </remarks>
-        private void OnPlayerDied(PlayerDied evt)
-        {
-            // Written here rather than at Start, so the two labels cannot be left carrying whatever
-            // the prefab was dressed with by someone editing it — and written before the overlay
-            // goes up rather than after, so no frame can show the placeholder.
-            WriteDeathStrings();
-
-            _deathOverlay.SetActive(true);
-
-            _awaitingTap = true;
-            _deathFrame = Time.frameCount;
-        }
-
-        /// <summary>The death overlay's two strings, from the table (rule 8).</summary>
-        /// <remarks>
-        /// Both labels are optional and a null localizer falls back to the key —
-        /// <c>MenuPresenter.Write</c>'s answer, for its reason: a death overlay missing a word is a
-        /// player who can still tap out of it, and throwing here would strand them on a run that has
-        /// already ended. <c>ToString()</c> rather than <c>Key</c>, for <c>TableLocalizer.Get</c>'s.
-        /// </remarks>
-        private void WriteDeathStrings()
-        {
-            if (_deathTitle != null)
-            {
-                _deathTitle.text = _localizer is null
-                    ? DeathTitleKey.ToString()
-                    : _localizer.Get(DeathTitleKey);
-            }
-
-            if (_deathHint != null)
-            {
-                _deathHint.text = _localizer is null
-                    ? DeathHintKey.ToString()
-                    : _localizer.Get(DeathHintKey);
-            }
-        }
-
         /// <summary>Everything the run can currently say about the player, drawn at once.</summary>
         /// <remarks>
         /// The one place that reads core's state rather than an event, and only for the values a
@@ -913,32 +798,6 @@ namespace Soulvail.Game.Presentation
             float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
 
             return StickShaper.PixelsPerDp(Screen.dpi) / scale;
-        }
-
-        /// <summary>
-        /// Leaves the run for the menu, which disposes <c>RunScope</c> and ends everything with it.
-        /// </summary>
-        /// <remarks>
-        /// <c>async void</c>, which is otherwise a smell and is exactly right for what is
-        /// effectively an event handler — the same call <c>MenuPresenter.Descend</c> makes in the
-        /// other direction, and every path out of the await is handled here.
-        /// </remarks>
-        private async void ReturnToMenu()
-        {
-            try
-            {
-                await _loader.LoadAsync(SceneLoader.Menu);
-            }
-            catch (Exception exception)
-            {
-                // The load failed, so this object is still alive and the overlay is still up. Arm
-                // the tap again rather than stranding the player on a dead screen with a run that
-                // has already ended.
-                _awaitingTap = true;
-                _deathFrame = Time.frameCount;
-
-                Debug.LogException(exception, this);
-            }
         }
     }
 }

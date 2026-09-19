@@ -935,7 +935,7 @@ public sealed class XpBarViewTests
         // instantiated prefab in EditMode: the placement and the first draw both live there.
         _strip.Construct(_session, _hub);
         _toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
-        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
+        _presenter.Construct(_hub, _session);
 
         Invoke(_strip, "Start");
         Invoke(_toast, "Start");

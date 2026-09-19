@@ -177,4 +177,57 @@ namespace Soulvail.Game.Presentation
 
 ## As built
 
-_Filled at merge._
+**Three deviations, all about where a test row lives, and none about behaviour.** Every rule shipped as
+written; the tripwire was not reached — the payout rows are three `Label`/`Figure` pairs authored on the one
+prefab, with no component and no fixture of their own.
+
+**1. `RunScope_RefusesToComposeWithoutTheScreen` is in `RunEndPresenterTests`, not `InstallerTests`.** The
+Files table says *"`InstallerTests` if the field is required"*, and the field is — but that fixture's own
+remarks open with *"No `LifetimeScope` MonoBehaviours anywhere here"*, which is its stated argument for the
+installers being scene-free statics. Rule 7's claim is about the MonoBehaviour rather than about an
+installer, so it went to the fixture that owns the screen. M4-05b's deviation 2, with the nouns swapped.
+
+**2. The Files table names `HudPresenterTests` and no such fixture has ever existed** —
+`TableLocalizerTests`' own remarks say so in as many words, which is why three of its rows are claims about
+presenters rather than about an adapter. So `Hud_NoLongerOwnsTheDeathOverlay` and `Hud_PrefabHasNoOverlay`
+went into `RunEndPresenterTests`: what they assert is that *this* screen took the death path off the HUD,
+which is this task's claim rather than the HUD's. Spec versus code, and the code won — M4-05b's deviation 3.
+
+**3. Three fixtures the tests row does not name took a one-line edit, and the compiler forced it.**
+`GrantedShieldTests`, `XpBarViewTests` and `BossBarViewTests` each called `HudPresenter.Construct` with five
+arguments. Two became `Construct(_hub, _session)`; the third also owned the arity assertion — M4-04's
+`Construct_RefusesANullHub` pinned *five* and said *"Construct grew an argument"* — and that row was
+**rewritten rather than deleted**, now asserting both null guards and pointing at the fixture that owns the
+reason the arity is two. The five-argument claim it made is M4-04's and is not lost: it said the band needs
+no dependency of its own, and that sentence is still in the row.
+
+**Rule 11's numbers, stated rather than judged.** Five words and three figures, on a full-screen canvas at
+`sortingOrder` 200 — above the HUD's 0, the pause icon's 50, the level-up screen's 100 and the tree view's
+110, so nothing can be drawn over a payout. Point sizes: title **96**, the three row labels **48**, the depth
+and boss figures **48**, the Shard figure **64**, the exit button's label **32**. The button is **360 × 88**
+reference px, authored rather than placed in dp — `PausePresenter`'s four panel buttons' precedent, and the
+reason there is no `Place` method on this class: nothing on this screen has to agree with anything else about
+where it is, which is the argument `HudPresenter.Place` and `LevelUpPresenter.Place` both make in the
+opposite direction. Driven through a live canvas on the saved asset at 2 560 × 1 440, **all eight labels sit
+inside the frame** — the title's top edge at 1 213.3 and the button's label bottom at 341.3, so 226.7 px of
+headroom above and 341.3 below. **Safe-area inset is 0 on all four edges in the Editor**, which is the whole
+of what an Editor can say: the labels hang under a `SafeAreaFitter` that is inert without a cutout. Whether
+any of this reads at thumb distance is **M4-07's**, and the two device questions are on
+[row 3](../ROADMAP.md#carry-forward-into-m4).
+
+**One decision inside `RunScope.Configure` worth naming: the guard sits immediately after the camera's**,
+above every optional registration, rather than beside the HUD's. That is where a *required* reference belongs
+on this scope, and it is what makes the refusal reachable in a test with five prerequisites dressed instead
+of fifteen — the row asserts both directions, so a guard that refused everything would fail it.
+
+**And one thing the deletion removed that the spec did not count:** `HudPresenter.Update` no longer reads the
+Input System at all. It polled `InputAdapter.FocusPressedThisFrame` every frame of every run so that the
+death overlay could take a tap; `TickFade` is the whole method now.
+
+**One file outside the table, on the protocol's own instruction:** `Docs/Traps.md` §4 gained two findings
+about the MCP — that `RegisterCallbacks` plus a file write in one command is refused as a *user interaction*,
+and that Unity's own `TestResults.xml` in the persistent data path is a better suite-count source than any
+harness — plus a correction to §4's `Unity_GetConsoleLogs` note, which said `Debug.Log` never comes back and
+is true only of a call that filters for it by name. A toolchain trap belongs there rather than in a Log
+entry, which is what [PROGRESS › How to write an entry](../PROGRESS.md#how-to-write-an-entry) says; every
+milestone's feature tasks have edited that file the same way.

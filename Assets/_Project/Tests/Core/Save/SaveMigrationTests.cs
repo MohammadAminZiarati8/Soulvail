@@ -284,9 +284,12 @@ public sealed class SaveMigrationTests
     /// version independently, this is what notices if only one of them grew a step.
     /// <para>
     /// <b>M3-09c is the first time this loop ran more than once</b>, and its assertions did not have
-    /// to change to do it — which is the whole point of having written it at v1. The two things a
-    /// loop cannot say are said beside it, by <see cref="MigrateProfile_V1_HasNotSeenTheHint"/> and
-    /// <see cref="MigrateProfile_V2_IsIdentity"/>.
+    /// to change to do it — which is the whole point of having written it at v1. <b>M4-05b is the
+    /// first time it ran over three versions, and they still did not have to change</b>: the one
+    /// edit the bump forced on this row is the constructor argument every call site in the project
+    /// gained, which is a compiler ripple rather than a claim. The things a loop cannot say are said
+    /// beside it, by <see cref="MigrateProfile_V1_RunsBothStepsInOrder"/>,
+    /// <see cref="MigrateProfile_V2_GainsNoShards"/> and <see cref="MigrateProfile_V3_IsIdentity"/>.
     /// </para>
     /// </remarks>
     [Test]
@@ -304,7 +307,7 @@ public sealed class SaveMigrationTests
             version++)
         {
             var profile = new PlayerProfile(
-                version, hapticsEnabled: false, seenFirstActiveHint: false);
+                version, hapticsEnabled: false, seenFirstActiveHint: false, shards: 0);
 
             PlayerProfile migrated = SaveMigrations.MigrateProfile(version, profile);
 
@@ -325,61 +328,114 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void ProfileGate_AcceptsOneAndTwoRefusesThree()
+    public void ProfileGate_AcceptsOneToThreeRefusesFour()
     {
         // The numbers written out, which the row above deliberately cannot say: it is phrased
         // against CurrentVersion throughout, so it would keep passing unchanged if the floor were
         // raised to 2 and every v1 profile on every device stopped loading. This row is what
         // notices — OldestSupportedProfileVersion stays 1 (rule 2). `Gate_AcceptsOneToThreeRefusesFour`'s
-        // job, for the other format.
+        // job, for the other format, and **renamed with the v3 bump** for its reason.
         Assert.That(SaveMigrations.CanReadProfile(1), Is.True, "v1 profiles are still on devices.");
-        Assert.That(SaveMigrations.CanReadProfile(2), Is.True);
-        Assert.That(SaveMigrations.CanReadProfile(3), Is.False);
+        Assert.That(SaveMigrations.CanReadProfile(2), Is.True, "and so are v2 ones.");
+        Assert.That(SaveMigrations.CanReadProfile(3), Is.True);
+        Assert.That(SaveMigrations.CanReadProfile(4), Is.False);
 
         Assert.That(SaveMigrations.OldestSupportedProfileVersion, Is.EqualTo(1));
-        Assert.That(PlayerProfile.CurrentVersion, Is.EqualTo(2));
+        Assert.That(PlayerProfile.CurrentVersion, Is.EqualTo(3));
 
-        // And the run format did not move with it, which is the independence M2-13b built two
-        // methods for and this task is the first to exercise.
+        // And a version above the current one is refused at the gate *and* at the migration, which
+        // are two different answers a downgraded build has to get right: reading a v4 document as
+        // though the fields it does not know were absent would silently delete them on the next
+        // write. A throw rather than a null, because by there the caller has already asked the gate.
+        Assert.Throws<NotSupportedException>(
+            () => SaveMigrations.MigrateProfile(4, PlayerProfile.Default));
+
+        // And the run format did not move with the profile, which is the independence M2-13b built
+        // two methods for. **The two numbers now both read 3 and that is a coincidence** — the
+        // profile reached it at M4-05b and the run at M3-07b, by different routes — so this pair of
+        // assertions is the one place in the suite that says so out loud.
         Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3));
     }
 
     [Test]
-    public void MigrateProfile_V1_HasNotSeenTheHint()
+    public void MigrateProfile_V1_RunsBothStepsInOrder()
     {
-        // A v1 DTO that *does* carry the flag, which no real v1 document can — v1 had no such key
-        // and no build that wrote one had a skill in it. It is set here precisely so the row can
-        // tell "the step wrote false" from "the input happened to be false" (M3-01b rule 3's shape,
-        // on the other format).
-        var decoded = new PlayerProfile(1, hapticsEnabled: false, seenFirstActiveHint: true);
+        // A v1 DTO that *does* carry the flag and a Shard total, neither of which any real v1
+        // document can — v1 had no such key and no build that wrote one had a skill or a payout in
+        // it. They are set here precisely so the row can tell "the step wrote it" from "the input
+        // happened to be that" (M3-01b rule 3's shape, on the other format).
+        var decoded = new PlayerProfile(
+            1, hapticsEnabled: false, seenFirstActiveHint: true, shards: 999);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(1, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(2));
+        // **v3 from a v1 input: the first time the profile chain runs two steps on one document**
+        // (M4-05b rule 4), and `Migrate_V1_RunsBothStepsInOrder`'s shape on this format. Landing at
+        // 2 is what a chain whose second step reads `decoded` instead of `current` would produce,
+        // and landing at 3 with v2's field unwritten is what one whose steps ran out of order would
+        // — so this single number is load-bearing twice over.
+        Assert.That(migrated.Version, Is.EqualTo(3));
+
+        // The first step: a v1 profile was written by a build with no skills in it, so there was no
+        // first Active to be told about and the callout cannot have been shown.
         Assert.That(
             migrated.SeenFirstActiveHint,
             Is.False,
             "the step is the authority: a v1 document is a v1 document whatever it carries.");
 
+        // The second: a v2 profile was written by a build with no payout in it, so zero is the truth
+        // about that player rather than a default standing in for an unknown (rule 3).
+        Assert.That(migrated.Shards, Is.Zero);
+
         // And the one v1 field is kept exactly as it was read, because it *is* something the player
-        // chose — which is the difference between the two fields in this format.
+        // chose — which is the difference between it and the two fields written above.
         Assert.That(migrated.HapticsEnabled, Is.False);
     }
 
     [Test]
-    public void MigrateProfile_V2_IsIdentity()
+    public void MigrateProfile_V2_GainsNoShards()
     {
-        var decoded = new PlayerProfile(2, hapticsEnabled: false, seenFirstActiveHint: true);
+        // A v2 DTO that *does* carry a total, which no real v2 document can — the adapter's mirror
+        // had no such key. `Migrate_V2_GetsEmptySlots`' reasoning on this format: the step is the
+        // authority and writes its field regardless of what the mirror held, and an input that was
+        // already zero could not tell that apart from a step that passed the field through.
+        var decoded = new PlayerProfile(
+            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 999);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(2, decoded);
 
-        // Identity is a property of the *current* version, so this row moves up with every bump and
-        // there is only ever one of it — `Migrate_V3_IsIdentity`'s rule, for the other format. Both
-        // fields are set away from their defaults, so a step that ran when it should not have moves
-        // one of them and this goes red.
-        Assert.That(migrated.Version, Is.EqualTo(2));
+        Assert.That(migrated.Version, Is.EqualTo(3));
+        Assert.That(
+            migrated.Shards,
+            Is.Zero,
+            "a v2 document was written by a build with no payout in it, so zero is the truth.");
+
+        // And both v2 fields survive untouched, set the opposite way round from each other so a
+        // step that authored the struct from the one field it knew moves one of them.
         Assert.That(migrated.HapticsEnabled, Is.False);
         Assert.That(migrated.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void MigrateProfile_V3_IsIdentity()
+    {
+        var decoded = new PlayerProfile(
+            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220);
+
+        PlayerProfile migrated = SaveMigrations.MigrateProfile(3, decoded);
+
+        // **Renamed from MigrateProfile_V2_IsIdentity rather than joined by a second row**:
+        // identity is a property of the *current* version, so it moves up with every bump and there
+        // is only ever one of it — `Migrate_V3_IsIdentity`'s rule, for the other format. What used
+        // to be this row's subject is now MigrateProfile_V2_GainsNoShards, which is a step rather
+        // than an identity, and that is exactly the transition a bump makes.
+        //
+        // Every field is set away from its default, so a step that ran when it should not have
+        // moves one of them and this goes red.
+        Assert.That(migrated.Version, Is.EqualTo(3));
+        Assert.That(migrated.HapticsEnabled, Is.False);
+        Assert.That(migrated.SeenFirstActiveHint, Is.True);
+        Assert.That(migrated.Shards, Is.EqualTo(220));
     }
 
     /// <summary>A snapshot in <paramref name="version"/>'s format, with every field distinct.</summary>

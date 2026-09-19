@@ -679,6 +679,11 @@ public sealed class ResumeFlowTests
             zones,
             boss,
             Track(new SaveWriter(new StubStore(), hub)),
+
+            // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
+            // so it banks nothing — but a Scoped registration nobody resolves is never constructed,
+            // which is exactly what this parameter exists to prevent in the real scope.
+            Track(new ShardWriter(new ProfileStore(new StubStore()), hub)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, session, cameraObject.AddComponent<Camera>()),

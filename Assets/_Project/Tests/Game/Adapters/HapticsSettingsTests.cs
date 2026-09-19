@@ -50,7 +50,8 @@ public sealed class HapticsSettingsTests
         HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         profiles.Adopt(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
+            shards: 0));
 
         Assert.That(settings.Enabled, Is.False);
     }
@@ -80,7 +81,8 @@ public sealed class HapticsSettingsTests
         HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         profiles.Adopt(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
+            shards: 0));
 
         // A load that immediately re-saves is a load that can corrupt what it just read — and on a
         // fresh install it would put a profile on disk for a player who has changed nothing. The
@@ -140,7 +142,8 @@ public sealed class HapticsSettingsTests
         HapticsSettings settings = HapticsSettings.FromStore(profiles);
 
         profiles.Adopt(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true));
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true,
+            shards: 0));
 
         settings.Enabled = false;
 

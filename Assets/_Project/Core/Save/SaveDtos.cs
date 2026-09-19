@@ -571,19 +571,30 @@ public readonly struct RunSnapshot
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Two fields at v2, and Shards are still not among them.</b> ADR-0007 names Shards and unlocks,
-/// and they arrive with M4-07 and M6-09; reserving fields for them now would put two numbers nothing
-/// reads into a format every later migration has to carry. <see cref="HapticsEnabled"/> shipped at
-/// v1 because it had a consumer that day; <see cref="SeenFirstActiveHint"/> ships at v2 for the same
-/// reason, and no field ships before one.
+/// <b>Three fields at v3, and Shards are now one of them.</b> ADR-0007 names Shards and unlocks;
+/// <see cref="Shards"/> arrives here, at M4-05b, and unlocks are still M6-09's — reserving a field
+/// for those now would put a number nothing reads into a format every later migration has to carry.
+/// <see cref="HapticsEnabled"/> shipped at v1 because it had a consumer that day;
+/// <see cref="SeenFirstActiveHint"/> shipped at v2 for the same reason; <see cref="Shards"/> ships
+/// at v3 with two — <c>ShardWriter</c>, which banks a dead run's payout, and M4-06's screen, which
+/// draws it. <b>No field ships before a consumer</b>, and the rule is that rather than <em>no field
+/// before a spender</em>: GD §14.2's unlocks are M6-09's and the Sanctum is M6-02's, so this build
+/// banks a number no player can spend. That trade cuts the other way from an unread
+/// <c>Palette</c> colour, and the difference is that this one is on a save format — an unread colour
+/// costs nothing to add later, while <b>a Shard total not written is data destroyed</b>: the runs
+/// that earned it are gone, and a v4 at M6 could not pay anybody back for deaths they already spent
+/// (M4-05b rule 8).
 /// </para>
 /// <para>
-/// <b>The two fields are different kinds of fact and belong in the same file anyway.</b>
+/// <b>The three fields are different kinds of fact and belong in the same file anyway.</b>
 /// <see cref="HapticsEnabled"/> is something the player <em>chose</em>;
-/// <see cref="SeenFirstActiveHint"/> is something the game <em>noticed</em>. What they have in
-/// common is the only thing this format is about: they outlive a run. CC §6.3's <em>"Once. Never
-/// again."</em> is a claim about an install rather than about a run, and that is the whole reason
-/// the hint's flag is here rather than on a presenter (M3-09c rule 11).
+/// <see cref="SeenFirstActiveHint"/> is something the game <em>noticed</em>; <see cref="Shards"/> is
+/// something the player <em>earned</em>. What they have in common is the only thing this format is
+/// about: they outlive a run. CC §6.3's <em>"Once. Never again."</em> is a claim about an install
+/// rather than about a run, and that is the whole reason the hint's flag is here rather than on a
+/// presenter (M3-09c rule 11). GD §14.1's <em>"dying must always pay something"</em> is the same
+/// kind of claim about a number, and is why the payout is banked here rather than shown and
+/// forgotten.
 /// </para>
 /// <para>
 /// <b>A writer that knows one field must never author the whole struct.</b> That is what the two
@@ -591,28 +602,36 @@ public readonly struct RunSnapshot
 /// <c>HapticsSettings</c> persisted with <c>new PlayerProfile(CurrentVersion, value)</c>, which is
 /// correct for a record with one field in it and silently destructive the moment there are two. The
 /// live profile now has exactly one holder and one writer — <c>ProfileStore</c> — and these helpers
-/// are what make the right thing the easy thing (M3-09c rule 3).
+/// are what make the right thing the easy thing (M3-09c rule 3). <b>v3 is the first version to test
+/// that claim from a second feature</b>: <c>ShardWriter</c> knows one field and reaches for
+/// <see cref="WithShards"/>, never the constructor, and
+/// <c>SaveDtoTests.Profile_HasNoConstructorThatOmitsAField</c> is the door that keeps it that way.
 /// </para>
 /// </remarks>
 public readonly struct PlayerProfile
 {
     /// <summary>The format this build writes.</summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     /// <param name="version">The format the profile is written in.</param>
     /// <param name="hapticsEnabled">Whether the device is allowed to buzz (GD §16.3).</param>
     /// <param name="seenFirstActiveHint">
     /// Whether CC §6.3's one-time callout has already been shown. v2.
     /// </param>
+    /// <param name="shards">
+    /// Soul Shards banked across every run this install has ever finished. v3, and never negative.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="version"/> is below 1 — the value <c>default(PlayerProfile)</c> carries.
+    /// <paramref name="version"/> is below 1 — the value <c>default(PlayerProfile)</c> carries — or
+    /// <paramref name="shards"/> is negative.
     /// </exception>
     /// <remarks>
     /// <b>There is deliberately no overload that omits a field.</b> One would compile at every
-    /// existing call site on the day a third field lands and quietly reset it, which is exactly the
-    /// bug v2 exists to have fixed rather than repeated.
+    /// existing call site on the day a fourth field lands and quietly reset it, which is exactly the
+    /// bug v2 exists to have fixed rather than repeated — and v3 is the bump that would have
+    /// repeated it, because the writer that lands with it knows one field out of three.
     /// </remarks>
-    public PlayerProfile(int version, bool hapticsEnabled, bool seenFirstActiveHint)
+    public PlayerProfile(int version, bool hapticsEnabled, bool seenFirstActiveHint, int shards)
     {
         if (version < 1)
         {
@@ -623,9 +642,24 @@ public readonly struct PlayerProfile
                 "no writer can produce, so it means the profile was never written.");
         }
 
+        // Guarded where RunState's deliberately is not (AR §18.2), and for RunSnapshot's reason:
+        // these values arrive from a file written by an older build or edited by hand. A negative
+        // lifetime total is nothing any writer can produce — ShardsAwarded.Total is a sum of
+        // non-negative terms and ShardWriter only ever adds — so it is exactly the hand-edited
+        // input this boundary exists to refuse rather than to carry into a Sanctum at M6-02.
+        if (shards < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(shards),
+                shards,
+                "shards must be 0 or more. It is a lifetime total that only ever grows, so a " +
+                "negative is a hand-edited file rather than anything a writer can produce.");
+        }
+
         Version = version;
         HapticsEnabled = hapticsEnabled;
         SeenFirstActiveHint = seenFirstActiveHint;
+        Shards = shards;
     }
 
     /// <summary>The format this profile was written in. 0 for <c>default(PlayerProfile)</c>.</summary>
@@ -645,11 +679,30 @@ public readonly struct PlayerProfile
     /// </remarks>
     public bool SeenFirstActiveHint { get; }
 
+    /// <summary>
+    /// Soul Shards banked across every run this install has ever finished (GD §14.1). v3.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A lifetime total, never one run's worth.</b> <c>ShardsAwarded</c> carries what a single
+    /// death paid; this is the sum of every one of them, which is why <c>ShardWriter</c> reads this
+    /// field, adds, and hands the profile back rather than assigning (M4-05b rule 5). It is also why
+    /// there may only ever be one thing doing that.
+    /// </para>
+    /// <para>
+    /// <b>One <c>int</c> and deliberately not two fields.</b> GD §14.1's third term — a bonus for
+    /// each archetype the run met — needs a <em>set</em> of <c>ContentId</c>s and was ruled out of
+    /// this milestone at <c>M4-05a</c> rule 6; GD §14.2's unlocks are M6-09's and are a second set.
+    /// The largest cost GD §14.2 names is 3 500, so an <c>int</c> is not close to tight.
+    /// </para>
+    /// </remarks>
+    public int Shards { get; }
+
     /// <summary>This profile with <see cref="HapticsEnabled"/> moved and nothing else touched.</summary>
     /// <remarks>The shape a multi-field record needs — see the type's remarks.</remarks>
     public PlayerProfile WithHaptics(bool value)
     {
-        return new PlayerProfile(Version, value, SeenFirstActiveHint);
+        return new PlayerProfile(Version, value, SeenFirstActiveHint, Shards);
     }
 
     /// <summary>
@@ -658,12 +711,23 @@ public readonly struct PlayerProfile
     /// <remarks><see cref="WithHaptics"/>'s mirror, and the reason it is a pair rather than one.</remarks>
     public PlayerProfile WithSeenFirstActiveHint(bool value)
     {
-        return new PlayerProfile(Version, HapticsEnabled, value);
+        return new PlayerProfile(Version, HapticsEnabled, value, Shards);
+    }
+
+    /// <summary>This profile with <see cref="Shards"/> moved and nothing else touched.</summary>
+    /// <remarks>
+    /// The third of the set, and the one that made the pattern worth having: <c>ShardWriter</c>
+    /// knows nothing about haptics or the hint, and a writer that authored the whole struct from the
+    /// one field it knew would reset both on the frame the player died (M4-05b rule 2).
+    /// </remarks>
+    public PlayerProfile WithShards(int value)
+    {
+        return new PlayerProfile(Version, HapticsEnabled, SeenFirstActiveHint, value);
     }
 
     /// <summary>
-    /// A profile for a player who has never had one: the current format, GD §16.3's defaults, and
-    /// nothing seen yet.
+    /// A profile for a player who has never had one: the current format, GD §16.3's defaults,
+    /// nothing seen yet, and nothing banked.
     /// </summary>
     /// <remarks>
     /// A property rather than <c>default</c>, because <c>default</c> is deliberately the
@@ -672,5 +736,6 @@ public readonly struct PlayerProfile
     /// <see cref="ISaveStore.LoadProfile"/> returning null is how it learns which it has.
     /// </remarks>
     public static PlayerProfile Default =>
-        new PlayerProfile(CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false);
+        new PlayerProfile(
+            CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0);
 }

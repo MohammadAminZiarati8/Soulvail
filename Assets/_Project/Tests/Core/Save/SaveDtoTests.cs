@@ -395,13 +395,44 @@ public sealed class SaveDtoTests
     [Test]
     public void Profile_RecordsTheNewField()
     {
-        var profile = new PlayerProfile(2, hapticsEnabled: false, seenFirstActiveHint: true);
+        var profile = new PlayerProfile(
+            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
 
         // All three read back, and the two bools are set the opposite way round from each other —
         // a constructor that assigned one field to both would pass a row where they agree.
         Assert.That(profile.Version, Is.EqualTo(2));
         Assert.That(profile.HapticsEnabled, Is.False);
         Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Profile_CarriesShards()
+    {
+        var profile = new PlayerProfile(
+            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220);
+
+        // v3's field, and the other three with it. The two bools are set the opposite way round
+        // from each other and neither matches the version's parity, so a constructor that crossed
+        // two assignments has nowhere to hide (M4-05b rule 1).
+        Assert.That(profile.Shards, Is.EqualTo(220));
+        Assert.That(profile.Version, Is.EqualTo(3));
+        Assert.That(profile.HapticsEnabled, Is.False);
+        Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Profile_RefusesNegativeShards()
+    {
+        // Rule 9. A lifetime total only ever grows — ShardsAwarded.Total is a sum of non-negative
+        // terms and the one writer only adds — so a negative is a hand-edited file, which is
+        // exactly the class of input this boundary exists to refuse. `RunState`'s constructor
+        // deliberately does not guard, and the difference is who can reach it (AR §18.2).
+        Assert.Catch<ArgumentOutOfRangeException>(
+            () => new PlayerProfile(
+                PlayerProfile.CurrentVersion,
+                hapticsEnabled: true,
+                seenFirstActiveHint: false,
+                shards: -1));
     }
 
     [Test]
@@ -413,14 +444,30 @@ public sealed class SaveDtoTests
         // than convenient — and it is the answer a fresh install gets, because a missing file is
         // substituted with this and never written back.
         Assert.That(profile.SeenFirstActiveHint, Is.False);
-        Assert.That(profile.Version, Is.EqualTo(2), "v2 is what this build writes (M3-09c rule 2).");
+        Assert.That(profile.Version, Is.EqualTo(3), "v3 is what this build writes (M4-05b rule 1).");
+    }
+
+    [Test]
+    public void Profile_DefaultStartsAtZero()
+    {
+        PlayerProfile profile = PlayerProfile.Default;
+
+        // The row above's argument for the row above's reason: a player who has never had a profile
+        // has never died in this build, so zero is the truth about them rather than a placeholder —
+        // and it is the same number the v2 → v3 step writes, which is what makes a migrated player
+        // and a fresh one indistinguishable on this axis (rules 1, 3).
+        Assert.That(profile.Shards, Is.Zero);
+        Assert.That(profile.Version, Is.EqualTo(PlayerProfile.CurrentVersion));
     }
 
     [Test]
     public void Profile_WithHelpersMoveOneFieldEach()
     {
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true);
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: true,
+            seenFirstActiveHint: true,
+            shards: 0);
 
         PlayerProfile haptics = profile.WithHaptics(false);
 
@@ -432,7 +479,10 @@ public sealed class SaveDtoTests
 
         // And the mirror, because a pair where only one is right is the same bug from the other end.
         var seen = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false);
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: false,
+            seenFirstActiveHint: false,
+            shards: 0);
 
         PlayerProfile hint = seen.WithSeenFirstActiveHint(true);
 
@@ -441,26 +491,56 @@ public sealed class SaveDtoTests
     }
 
     [Test]
+    public void Profile_WithShardsKeepsEverythingElse()
+    {
+        // Haptics off and the hint seen: both away from the constructor's most likely defaults, so
+        // a helper that authored the struct from its one argument moves both and this row names
+        // which (M4-05b rule 2). It is the third of the set and the one that made the pattern worth
+        // having — `ShardWriter` knows nothing about either of the other two fields, and the frame
+        // it writes on is the frame the player died.
+        var profile = new PlayerProfile(
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: false,
+            seenFirstActiveHint: true,
+            shards: 0);
+
+        PlayerProfile banked = profile.WithShards(50);
+
+        Assert.That(banked.Shards, Is.EqualTo(50));
+        Assert.That(banked.HapticsEnabled, Is.False, "the player's choice survived the payout.");
+        Assert.That(banked.SeenFirstActiveHint, Is.True, "and so did what the game had noticed.");
+
+        // And the other two helpers carry the new field, which is the same bug from the other side:
+        // a `WithHaptics` left at three arguments would reset a lifetime total every time the
+        // player touched the settings screen.
+        Assert.That(banked.WithHaptics(true).Shards, Is.EqualTo(50));
+        Assert.That(banked.WithSeenFirstActiveHint(false).Shards, Is.EqualTo(50));
+    }
+
+    [Test]
     public void Profile_WithHelpersKeepTheVersion()
     {
-        var profile = new PlayerProfile(2, hapticsEnabled: true, seenFirstActiveHint: false);
+        var profile = new PlayerProfile(
+            2, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0);
 
         // Not CurrentVersion — the version a profile carries is the format it was *read* in, and a
         // helper that quietly stamped the current one would turn a decoded v1 into a v2 document
         // without the step that makes it one.
         Assert.That(profile.WithHaptics(false).Version, Is.EqualTo(2));
         Assert.That(profile.WithSeenFirstActiveHint(true).Version, Is.EqualTo(2));
+        Assert.That(profile.WithShards(10).Version, Is.EqualTo(2));
     }
 
     [Test]
     public void Profile_VersionBelowOne_Throws()
     {
         Assert.Catch<ArgumentOutOfRangeException>(
-            () => new PlayerProfile(0, hapticsEnabled: true, seenFirstActiveHint: false));
+            () => new PlayerProfile(
+                0, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0));
     }
 
     [Test]
-    public void Profile_HasNoShards()
+    public void Profile_HasNoUnlocks()
     {
         string[] properties = typeof(PlayerProfile)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -468,14 +548,15 @@ public sealed class SaveDtoTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        // Pinned rather than remembered. ADR-0007 names Shards and unlocks, and they arrive with
-        // the mechanics that own them — a field written at v1 that nothing reads is a field every
-        // later migration carries for ever. **SeenFirstActiveHint joined at v2 with its reader and
-        // its migration step in the same PR**, which is the bar this row exists to hold every
-        // future field to.
+        // Pinned rather than remembered, and **renamed from Profile_HasNoShards rather than joined
+        // by a second row**: the list is the subject, and what it refuses moves on as each field
+        // arrives with the mechanic that owns it. ADR-0007 names Shards and unlocks; Shards joined
+        // at v3 with its writer and its migration step in the same PR, and GD §14.2's unlocks are
+        // still M6-09's — a field written now that nothing reads is one every later migration
+        // carries for ever. That is the bar this row holds every future field to.
         Assert.That(
             properties,
-            Is.EqualTo(new[] { "HapticsEnabled", "SeenFirstActiveHint", "Version" }));
+            Is.EqualTo(new[] { "HapticsEnabled", "SeenFirstActiveHint", "Shards", "Version" }));
     }
 
     [Test]
@@ -484,11 +565,13 @@ public sealed class SaveDtoTests
         ConstructorInfo[] constructors = typeof(PlayerProfile).GetConstructors(
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-        // Rule 3, pinned at the only door that can reopen it. A two-argument overload kept "for
-        // convenience" would compile at every existing call site on the day a third field lands and
-        // silently reset it — which is the exact bug v2 exists to have fixed rather than repeated.
+        // Rule 3, pinned at the only door that can reopen it, and **one parameter wider as of
+        // M4-05b**. A three-argument overload kept "for convenience" would compile at every
+        // existing call site and silently reset a player's lifetime Shard total — which is the
+        // exact bug v2 exists to have fixed rather than repeated, with a far worse consequence than
+        // the one it was fixed for.
         Assert.That(constructors, Has.Length.EqualTo(1));
-        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(3));
+        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(4));
     }
 
     [Test]

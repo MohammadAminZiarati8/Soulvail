@@ -98,6 +98,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly ZoneViews _zoneViews;
 
+    /// <summary>
+    /// The boss fight's rings, cracks and shell (M4-03). Held for the reasons the three censuses
+    /// above are, and they are the same one twice over: all of it is stepped with the snapshot's
+    /// <c>Dt</c>, and being on this object's dependency chain is what guarantees it is listening
+    /// before <see cref="Start"/> can let a stage put a boss on the floor.
+    /// </summary>
+    private readonly BossViews _bossViews;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -145,6 +153,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
         ZoneViews zoneViews,
+        BossViews bossViews,
         SaveWriter saveWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
@@ -166,6 +175,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
         _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
+        _bossViews = bossViews ?? throw new ArgumentNullException(nameof(bossViews));
         // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
         // announced as an event — so the parameter exists for one reason: being on this object's
         // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
@@ -396,6 +406,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // below either: a decal has no collider, so this is the third and last of the frame's purely
         // cosmetic steps.
         _zoneViews.Step(_snapshot.Dt);
+
+        // The boss's rings, cracks and shell, for the same reason again and on the same clock
+        // (M4-03 rule 5). Core expanded every ring and counted every arm down on the clamped step,
+        // so a wave advanced on the wall clock would be somewhere other than the edge that bites —
+        // which on a hazard the player is asked to walk out of is the difference between fair and
+        // not. Read by nothing below either: none of the three has a collider, so this is the
+        // fourth and last of the frame's purely cosmetic steps.
+        _bossViews.Step(_snapshot.Dt);
 
         // The line that makes the ordering above true of the code and not only of the call order
         // (M2-15a, M3 ledger row 3). `Physics.autoSyncTransforms` is 0 project-wide, so the writes

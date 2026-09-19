@@ -774,6 +774,9 @@ MonoBehaviour:
   _telegraphRingPrefab: {fileID: 6128909648785952691, guid: 31a893a7d849acf4cb6a1b2fabda5955, type: 3}
   _decalRoot: {fileID: 1484466969}
   _zonePrefab: {fileID: 916273664687194735, guid: c3e4a7f3aefc7a542973ca51aec5e80d, type: 3}
+  _shockwavePrefab: {fileID: 2556838479526233908, guid: 201e8ec8bed77a048b0b381672e29353, type: 3}
+  _fissurePrefab: {fileID: 8720239946433257962, guid: c5c998fcd9162ee42b84526cab6d0c70, type: 3}
+  _bossBeatPrefab: {fileID: 9067622823958853639, guid: 5711fdb9978d8984899daa1a60f97c1a, type: 3}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}
   - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}

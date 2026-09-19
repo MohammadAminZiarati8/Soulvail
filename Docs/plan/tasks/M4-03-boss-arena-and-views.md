@@ -71,6 +71,15 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 ## Manual verification (Editor / device)
 
+**Steps 1a and 1b are [M4-02](M4-02-warden-behaviours.md)'s own steps 1 and 2, struck through there and
+flagged *"→ M4-03"*. They are quoted verbatim, they are this task's acceptance rather than new steps, and
+nothing below them replaces them.** A subscriber for both events now exists (`BossViews`), which is the check
+M4-02's handover skipped.
+
+1a. **[Editor]** Reach stage 5 and let the Warden slam. *Expected: a ring leaves the point it slammed and
+   passes through you if you stand still; walking out of it costs you nothing.*
+1b. **[Editor]** Let a fissure arm under you and step off it. *Expected: it fires where you were and misses.*
+
 1. **[Editor]** Reach stage 5. *Expected: a visibly larger body in its own tint; you can tell at a glance it is
    not a Husk.*
 2. **[Editor]** Watch a slam. *Expected: a ring leaves the slam point and you can see it coming in time to walk.*
@@ -94,4 +103,101 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 ## As built
 
-_Filled at merge._
+**The fight is visible. Until this task not one line in `Soulvail.Game` subscribed to any of M4-02's five
+hazard events or M4-01b's two beat events, and the build the owner playtested took 22 hit points off them with
+nothing on the floor to say it was coming.** Seven subscriptions now exist, all in one place.
+
+**Three deviations from the Files table, and the first is the largest.**
+
+1. **`BossViews.cs` was added — a fourth file, and the census the three views needed.** The table lists three
+   pooled bodies and no listener, and something has to hold the subscriptions, the three pools and the
+   id → body index. Three censuses (this project's shape: `ZoneView` ↔ `ZoneViews`) would have been three more
+   files *and* three more arguments on `RunTicker`; folding the census into each view's file would have put a
+   `ViewPool` and a `DomainEventHub` inside a `MonoBehaviour` that every other view in the project keeps out.
+   So one census owns all three pools, one `RunTicker` argument, one `Step`. **Five new code files, size M
+   unchanged** by [the ROADMAP's own criterion](../ROADMAP.md#how-to-read-this).
+2. **`Warden.prefab`, `M_WardenAsh.mat` and `Warden_PrefabIsDressed` were dropped, because they had no
+   subject.** Checked in the Editor before a line was written: `Warden.asset` already authors `_tint`
+   `(0.247, 0.231, 0.255)` and `_bodyScale` **2.2**, `BootInstaller.BuildLookBook` builds the look book from
+   *every* `EnemyDefinition` in the boot list and `Warden.asset` is in it, and `EnemyViews.OnSpawned` applies
+   `look.Tint` and `look.BodyScale` on every rental without exception. **So rule 1 was already true of the
+   shipped build** — the Warden is the shared enemy body at 2.2× in its own dark tint — and the Files table's
+   *"`EnemyViews` gains the Warden's look entry"* has no edit behind it either. **`EnemyViews.cs` is
+   untouched.** A prefab and a material authored anyway would have been a second body nothing rents.
+3. **`ArenaSpec` does not exist, and the spec's rule 6 assumes it does.** M2-11a shipped `ArenaView` in
+   `Soulvail.Game` and no core arena type at all, so the hazard is authored on the view. **`ArenaView.cs`,
+   `RunTicker.cs` and three unrelated test fixtures took small additive edits** the table does not list:
+   `ArenaView` gains `_hazards` / `HazardCount` / `HazardPosition` / `IsToppled` / `Topple` and restores them
+   in `Seal`; `RunTicker` gains a twenty-third argument and a fourth cosmetic `Step`; and `ResumeFlowTests`,
+   `SkillBarPresenterTests` and `FrameOrderTests` each construct one more census because that argument is
+   positional. None is a new file.
+
+**Rule 6 shipped at the grain the owner ruled, and the part that is *not* built is stated rather than
+implied.** `Arena_Pillars` gains a `Brazier` at (−4, 4) and `Arena_Tiered` gains nothing, which is
+`Arena_HazardIsOnOneArenaOnly`. A shockwave whose **front edge crosses** it this frame knocks it over — a
+crossing rather than a containment, so a second ring over the wreckage changes nothing — and `Seal` stands it
+back up, because an arena is the same instance at every stage boundary. **It costs the player nothing, and
+that is deliberate**: hazard *damage* would need an id, a circle and a number in core, and there is no core
+file in this task. The brazier is on the Default layer rather than Cover so GD §7.2's 3–6 pillar band is
+untouched, and it carries no collider because the NavMesh was baked without it.
+
+**Rule 3's shape change is a direction as well as a size.** The arm is a disc opening from nothing to the
+circle core will test — `TelegraphRingView`'s *"filling means coming"*, the only telegraph vocabulary this game
+has taught — and the bite snaps to **1.35×** the radius and shuts to nothing over 0.35 s.
+`Fissure_ArmAndFireDifferByShape` asserts both halves: 1.25 m against 3.375 m at the same instant, and then
+that one is growing while the other is shrinking. A size test alone would pass for a fired state that merely
+started larger.
+
+**Rule 2 is honoured and `Palette.Danger` is used on purpose, which is the first time since M3-13b.** The arm
+*is* danger. The ring is too. The **beat is not**, and that is the rule read from the other side: a boss being
+safe is not the player being in danger, so the shell is `Palette.Neutral` — GD §16.4's *"everything else"* —
+with `Palette.Player`'s cyan refused for the mirror reason. `Views_CarryNoSerializedColour` reflects over all
+three for a serialized `Color` and finds none.
+
+**Rule 7's net is derived, never authored.** A ring's lifetime is `MaxRadius / Speed` — 0.875 s at the shipped
+7 m and 8 m/s — read off the event, and `Shock_RetiresOnItsOwnCountdown` never publishes `ShockwavePassed` at
+all. A crack whose `FissureFired` never arrives **fires itself** when the arm runs out, which is the one thing
+such a crack can safely be assumed to have done. No constant of `WardenBehaviour`'s is re-declared anywhere in
+`Soulvail.Game`; `Shock_ExpandsAtTheEventsSpeed` and `Fissure_ArmsForTheEventsWindow` are the rows that would
+fail if one ever were.
+
+**One finding the Editor produced that the spec did not ask for, and it is about six files rather than three.**
+`M_TelegraphRing.mat` blends `One / OneMinusSrcAlpha` — premultiplied alpha — and does **not** carry URP's
+`_ALPHAPREMULTIPLY_ON` keyword, so the shader never scales the albedo itself. Every view sharing that material
+writes the palette's colour unscaled, which means **alpha only decides how much floor shows through and never
+dims the decal**: a ring at alpha 0.5 draws at full brightness. A camera capture is what found it — the beat's
+shell was an opaque grey ball over the boss. **M4-03's three views premultiply and `ZoneView`,
+`TelegraphRingView` and `BulwarkView` do not**, which is the inconsistency this task chose over changing three
+shipped looks; one keyword on one material makes all six agree and is the owner's call. Recorded in
+[M4 ledger row 3](../ROADMAP.md#carry-forward-into-m4).
+
+**A second finding of the same kind, and it predates this task by a milestone:** `VFX_TelegraphRing.prefab` is
+an untextured built-in **Quad**, so every *"ring"* in this game — spawn telegraph, blast ring, Consecrate
+ground, and now the slam wave and the crack — is drawn as a **square**. The two new decals inherit it rather
+than departing from it, because one round hazard beside four square ones is worse than five square ones. One
+circle texture on `_BaseMap` turns all five into discs in one asset; it is art, so it is M7's.
+
+**2 124 EditMode / 0 / 0, five green runs** (31.5 s, 23.8 s, 27.0 s, 24.1 s, 24.1 s, and two more after the
+premultiply change at 28.4 s and 24.6 s), against M4-02's **2 093** — **+31, and the arithmetic lands to the
+row**: every one of them is `BossViewTests`, and no existing row was removed or changed. **The first run was
+red at 2 121 / 3** and all three were the fixture's arithmetic rather than the code's — two assertions written
+against a prewarm of one where the census builds two, and a step of 0.125 s asserted as *"a third of the
+0.9 s arm"* when a third is 0.3.
+
+**The spec's Tests table is 11 rows and 31 shipped.** Nine of the eleven are named exactly;
+`Warden_PrefabIsDressed` has no subject (deviation 2) and its job — Traps §5's block-namespace trap, which
+loads a `MonoBehaviour` as null off every asset that references it with nothing reported anywhere — is done by
+`Prefabs_AreDressed` against the three prefabs that *do* exist. The twenty over the table are the doors
+(`Bind_InvalidArgument_Throws`, `Constructor_NullDependency_Throws`, `Step_NonFiniteDt_ChangesNothing`), the
+per-frame cost (`Step_AllocatesNothing`, through `AllocationAssert` and never a hand-rolled probe), the
+pooling rules each body has (`Fissure_ComesBackClean`, `Beat_ComesOffTheBodyWhenItIsReturned` — the shell's
+*parent* is the field a pooled body would otherwise inherit), and the four hazard rows rule 6 needed once it
+had behaviour.
+
+**What was verified, and what was not.** Compile clean through the MCP; the suite green five times; zero new
+analyzer warnings (the four Console errors are `LocalJsonSaveStore` tests feeding deliberately corrupt saves,
+unchanged from M4-02); `dotnet format whitespace --folder --verify-no-changes` clean over all eleven changed
+files. **A camera capture of all four bodies over a floor is the evidence that they draw at all** — it is what
+caught the premultiply bug and what the alphas were retuned against. **Nobody has played to stage 5**: manual
+steps 1–4 are the owner's, and they are M4-02's steps 1 and 2 re-run as originally written plus the two this
+spec adds. The device rows stay unmet and are [M4 ledger row 3](../ROADMAP.md#carry-forward-into-m4)'s.

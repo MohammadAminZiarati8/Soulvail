@@ -18,7 +18,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Plan and progress
 
-- [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the map: milestones → tasks (ID, size, dependencies, status)
+- [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the map: milestones → tasks (ID, size, dependencies, status). Closed milestones' tables and ledgers are in [Docs/plan/archive/](Docs/plan/archive/); the ROADMAP keeps a stub heading for each so links resolve.
 - [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **the log: read the Current State block first, every session.** Closed milestones are in [Docs/plan/archive/](Docs/plan/archive/).
 - [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. A milestone's specs are written by its own first tasks (`M<n>-00a…`); later milestones are titles.
 
@@ -27,7 +27,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 1. Read PROGRESS → Current State. Open the spec for the next task (or the one the owner names).
 2. Build exactly the spec's Files table. Behaviour rules ↔ tests, one to one. Nothing outside the table without saying so.
 3. Before handing over: tests green, zero errors, zero new analyzer warnings, manual steps listed for the owner.
-4. Append the PROGRESS entry and update Current State **in the same change**; tick the ROADMAP box; fill the spec's *As built* footer.
+4. Append the PROGRESS entry and update Current State **in the same change** — overwrite its rows rather than extend them, under the byte caps in [PROGRESS › How to write an entry](Docs/plan/PROGRESS.md#how-to-write-an-entry); tick the ROADMAP box; fill the spec's *As built* footer, under the template's cap.
 5. Report what changed and give the owner a commit message. **The owner commits and opens the PR.**
    - **Anything the owner is meant to copy goes in a fenced code block, always** — commit messages, tag messages, shell commands, and **the prompt for the next task**. Prose the owner has to re-type or hand-select is a defect in the handover. Prose *about* the thing stays outside the block; the block holds only what gets pasted.
 6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after. What counts as a file: [ROADMAP › How to read this](Docs/plan/ROADMAP.md#how-to-read-this).
@@ -49,7 +49,7 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 - **A tag message is not a commit message and must not be handed over as one.** `git tag -a` runs no `commit-msg` hook, so a tag reads `m3 — Levelling and the tree` and a commit reads `docs: …`. When a handover offers both, **label which is which**; pasting the tag message into `git commit` is a rejection that looks like a hook bug and is not one.
 - **Before offering a commit command, check the branch.** The hook refuses a commit on `dev` or `main`; work belongs on `<lowercase task ID>-<slug>` branched from `dev`. If the working tree is on `dev`, say so in the handover and give the `git checkout -b` line with it.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
-- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, deliberate `ProjectSettings/` changes (`ALLOW_PROJECT_SETTINGS=1` to stage one on purpose), and forward to LFS.
+- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, deliberate `ProjectSettings/` changes (`ALLOW_PROJECT_SETTINGS=1` to stage one on purpose), that a staged PROGRESS.md's *Last merged task* row names its newest Log entry (`ALLOW_STALE_STATE=1` to override), and forward to LFS.
 - Unity YAML merge driver, once per clone:
   ```
   git config merge.unityyaml.name "Unity SmartMerge"

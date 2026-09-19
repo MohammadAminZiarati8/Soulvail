@@ -37,6 +37,9 @@ public sealed class RunSessionTests
     /// <summary>An archetype id of the right shape that no fixture here authors.</summary>
     private const string GhostId = "enemy.ghost";
 
+    /// <summary>The one thing in this fixture that can end a run — see <c>Executioner</c>.</summary>
+    private const string ExecutionerId = "enemy.executioner";
+
     private const int Seed = 99;
 
     /// <summary>
@@ -679,6 +682,92 @@ public sealed class RunSessionTests
         Assert.That(session.IsRunning, Is.False);
     }
 
+    // ---- M4-05a: death pays, and only death -------------------------------------------------------
+
+    [Test]
+    public void Run_AwardsShardsOnDeath()
+    {
+        RunSession session = LethalSession();
+
+        KillThePlayer(session, stage: 4);
+
+        ShardsAwarded awarded = _events.Single<ShardsAwarded>();
+
+        Assert.That(awarded.Total, Is.EqualTo(40), "Four stages of depth at GD §14.1's ten apiece.");
+        Assert.That(awarded.DeepestStage, Is.EqualTo(4));
+        Assert.That(awarded.BossesKilled, Is.EqualTo(0), "This fixture's mode has no boss roster.");
+    }
+
+    [Test]
+    public void Run_AwardsShardsOnStageOne()
+    {
+        // The guard row the spec leaves implied: the shallowest run there is still pays. GD §14.1's
+        // whole first sentence is "earned on death regardless of outcome", and a payout that started
+        // at zero would break the loop it exists to keep.
+        RunSession session = LethalSession();
+
+        KillThePlayer(session, stage: 1);
+
+        Assert.That(_events.Single<ShardsAwarded>().Total, Is.EqualTo(10));
+    }
+
+    [Test]
+    public void Run_AwardsShardsBeforeRunEnded()
+    {
+        RunSession session = LethalSession();
+
+        KillThePlayer(session, stage: 4);
+
+        int died = IndexOf<PlayerDied>();
+        int awarded = IndexOf<ShardsAwarded>();
+        int ended = IndexOf<RunEnded>();
+
+        // Asserted in sequence rather than each alone: the payout is published between the death
+        // being announced and the run being closed, so a listener handling RunEnded has already seen
+        // what the run paid, and one handling PlayerDied has not.
+        Assert.That(died, Is.GreaterThanOrEqualTo(0), "Sanity: the fixture's Executioner killed them.");
+        Assert.That(awarded, Is.GreaterThan(died), "PlayerDied, then ShardsAwarded.");
+        Assert.That(ended, Is.GreaterThan(awarded), "ShardsAwarded, then RunEnded.");
+    }
+
+    [Test]
+    public void Run_AwardsNothingWhenTheScopeIsTornDown()
+    {
+        // Rule 1's whole argument, asserted. End() is a no-op-if-not-running so that RunScope's
+        // disposal can call it blind, which is why SaveWriter, HudPresenter and PausePresenter have
+        // each already refused RunEnded — a payout riding that event would pay a player for quitting
+        // to the menu, and pay them again on every teardown.
+        StartRun();
+        _session.Tick(Snapshot(Frame));
+        _events.Clear();
+
+        _session.End();
+
+        Assert.That(_events.Count<RunEnded>(), Is.EqualTo(1), "The run closed.");
+        Assert.That(_events.Count<ShardsAwarded>(), Is.EqualTo(0), "And paid nothing for closing.");
+    }
+
+    [Test]
+    public void Run_AwardsShardsOnceOnly()
+    {
+        RunSession session = LethalSession();
+
+        KillThePlayer(session, stage: 4);
+
+        Assert.That(_events.Count<ShardsAwarded>(), Is.EqualTo(1));
+
+        // Ten more frames, and the once-only property is *guaranteed* rather than guarded: the death
+        // branch called End(), so the session is no longer running and every one of them is refused.
+        // A second publish would need a second death, and a corpse cannot die twice.
+        for (int i = 0; i < 10; i++)
+        {
+            Assert.Throws<InvalidOperationException>(() => session.Tick(Snapshot(Frame)));
+        }
+
+        Assert.That(_events.Count<ShardsAwarded>(), Is.EqualTo(1));
+        Assert.That(session.IsRunning, Is.False);
+    }
+
     [Test]
     public void Start_OrderUnchanged()
     {
@@ -826,6 +915,94 @@ public sealed class RunSessionTests
         0.6f,
         aggroRange: 30f,
         EnemyBehaviourKind.Static);
+
+    /// <summary>
+    /// A Chaser that kills the shipped Oathbound with one strike, for the payout rows — the only
+    /// thing in this fixture that can end a run from inside one.
+    /// </summary>
+    /// <remarks>
+    /// <b>A fixture device rather than an archetype, and it is a Chaser rather than a Static because
+    /// <c>Static</c> does nothing by definition.</b> The numbers are chosen so the run ends in a
+    /// handful of frames and for no other reason: 400 contact damage against 100 hit points, a
+    /// two-metre reach so a body spawned at the player's feet is already inside it, a 0.05 s windup,
+    /// and 500 hit points of its own so the Censer cannot win the trade first. Depth scaling only
+    /// ever raises the damage, so this is lethal at every stage a row here starts at.
+    /// </remarks>
+    private static EnemySpec Executioner() => new(
+        new ContentId(ExecutionerId),
+        new LocKey("enemy.executioner.name"),
+        500f,
+        3.5f,
+        1,
+        4,
+        12f,
+        false,
+        400f,
+        2f,
+        0.05f,
+        0.6f,
+        aggroRange: 30f,
+        EnemyBehaviourKind.Chaser);
+
+    /// <summary>
+    /// A session over a catalog that holds something lethal, publishing into this fixture's recorder.
+    /// </summary>
+    private RunSession LethalSession() => new RunSession(
+        new ContentCatalog(new[] { Oathbound() }, new[] { Executioner() }, new[] { Descent() }),
+        _random,
+        _events,
+        _intents,
+        Recorder(_events),
+        EnemyCapacity,
+        DeviceCap,
+        ProjectileCapacity);
+
+    /// <summary>
+    /// Starts <paramref name="session"/> at <paramref name="stage"/> with an Executioner standing on
+    /// the player, and ticks until the run has ended.
+    /// </summary>
+    /// <remarks>
+    /// The snapshot reports no enemies, which is deliberate rather than lazy: <c>EnemySystem.Ingest</c>
+    /// only overwrites the agents a snapshot names, so a body nobody reports stays exactly where the
+    /// spawn plan put it — at the player's feet, permanently inside its own reach. Nothing here has to
+    /// simulate a walk.
+    /// </remarks>
+    private static void KillThePlayer(RunSession session, int stage)
+    {
+        session.Start(new RunConfig(
+            new ContentId(DescentId),
+            new ContentId(OathboundId),
+            Seed,
+            stage,
+            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), Vector3.Zero) }),
+            restore: null));
+
+        for (int i = 0; i < 240 && session.IsRunning; i++)
+        {
+            session.Tick(Snapshot(Frame));
+        }
+
+        Assert.That(session.IsRunning, Is.False, "Sanity: the fixture's Executioner ended the run.");
+    }
+
+    /// <summary>
+    /// Where the first <typeparamref name="T"/> sits in everything published, or −1 for none. The
+    /// payout rows assert an <em>order</em> rather than a set, and this is what makes that readable
+    /// without listing every event a death happens to produce.
+    /// </summary>
+    private int IndexOf<T>()
+        where T : struct
+    {
+        for (int i = 0; i < _events.All.Count; i++)
+        {
+            if (_events.All[i] is T)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 
     /// <summary>
     /// Asserts that a plan naming an unauthored archetype is refused with nothing announced,

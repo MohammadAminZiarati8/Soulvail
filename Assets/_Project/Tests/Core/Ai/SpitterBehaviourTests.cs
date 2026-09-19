@@ -875,11 +875,16 @@ public sealed class SpitterBehaviourTests
         // resolved before the death check, so the damage, the death and the farewell all land on the
         // tick the shot arrived — and PlayerDied precedes RunEnded, whichever of a Husk's strike or a
         // bolt's arrival was the thing that killed.
+        //
+        // ShardsAwarded joined the list at M4-05a, between the two, and this is the row that proves
+        // the payout is on the *death* path rather than on End(): a bolt killed the player here, and
+        // the run was paid for it without a word of this fixture being about Shards.
         Assert.That(TypesOf(_events.All), Is.EqualTo(new[]
         {
             typeof(PlayerDamaged),
             typeof(PlayerDied),
             typeof(ProjectileImpacted),
+            typeof(ShardsAwarded),
             typeof(RunEnded),
         }));
 

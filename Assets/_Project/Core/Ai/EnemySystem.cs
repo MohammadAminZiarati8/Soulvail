@@ -101,6 +101,21 @@ public sealed class EnemySystem
     /// </summary>
     private readonly int[] _deferredDespawn;
 
+    /// <summary>
+    /// What a boss delegates its fighting to, or null while nothing does.
+    /// </summary>
+    /// <remarks>
+    /// <b>A factory rather than an instance, and it lives here rather than at the call site
+    /// because there is nowhere else it could</b> (M4-02). An <see cref="IEnemyBehaviour"/> holds
+    /// the agent it drives — every implementer does, because <see cref="IEnemyBehaviour.Tick"/> is
+    /// handed a context with no <em>self</em> on it — and the agent does not exist until
+    /// <see cref="SpawnBoss"/> has spawned one. So a caller cannot build the <c>inner</c> it would
+    /// pass, and the one thing it can hand over is the means of building it. The explicit
+    /// <c>inner</c> parameter is untouched and still wins where a caller supplies one, which is
+    /// what a fixture does.
+    /// </remarks>
+    private readonly Func<EnemyAgent, BossSpec, IEnemyBehaviour> _bossInner;
+
     private int _depth = MinDepth;
 
     /// <summary>
@@ -134,6 +149,12 @@ public sealed class EnemySystem
     /// and it must match the snapshot's enemy capacity — an enemy core knows about but the
     /// snapshot cannot carry is one core is blind to the position of.
     /// </param>
+    /// <param name="bossInner">
+    /// What a boss delegates its fighting to, built once per boss from the agent and the spec —
+    /// or null for a boss that only changes phase and summons, which is every boss until M4-02
+    /// authors one. See <see cref="SpawnBoss"/> for why the factory lives here rather than at the
+    /// call site.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     public EnemySystem(
@@ -141,12 +162,14 @@ public sealed class EnemySystem
         IDomainEvents events,
         IRandom random,
         DepthScaling scaling,
-        int capacity)
+        int capacity,
+        Func<EnemyAgent, BossSpec, IEnemyBehaviour> bossInner = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _scaling = scaling ?? throw new ArgumentNullException(nameof(scaling));
+        _bossInner = bossInner;
 
         Registry = new EnemyRegistry(capacity);
 
@@ -295,9 +318,9 @@ public sealed class EnemySystem
     /// <param name="bossId">The boss, e.g. <c>boss.warden</c>. Resolved against the catalog.</param>
     /// <param name="position">Where it stands up.</param>
     /// <param name="inner">
-    /// What actually fights, or null for a boss that only changes phase and summons — M4-02's
-    /// <c>WardenBehaviour</c> is the first thing to pass one, and it does so without changing this
-    /// signature.
+    /// What actually fights, or null to let the run's boss-behaviour factory decide — M4-02's
+    /// <c>WardenBehaviour</c> is the first thing to arrive here, and it does so without changing
+    /// this signature. An explicit one wins over the factory, which is what a fixture supplies.
     /// </param>
     /// <remarks>
     /// <para>
@@ -326,7 +349,10 @@ public sealed class EnemySystem
 
         EnemyAgent agent = Spawn(boss.EnemySpecId, position);
 
-        var behaviour = new BossBehaviour(agent, boss, inner);
+        // After the spawn, because a behaviour holds the agent it drives and there is no agent to
+        // hold until this line has run — see _bossInner. An explicit `inner` wins, so a fixture
+        // that hands one over is never second-guessed.
+        var behaviour = new BossBehaviour(agent, boss, inner ?? _bossInner?.Invoke(agent, boss));
 
         agent.Behaviour = behaviour;
 

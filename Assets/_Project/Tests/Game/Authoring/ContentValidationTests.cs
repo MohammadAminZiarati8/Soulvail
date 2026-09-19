@@ -110,6 +110,19 @@ public sealed class ContentValidationTests
     private const int ShippedEffects = 13;
     private const int ShippedTables = 1;
 
+    /// <summary>
+    /// The bosses the project ships — GD §9.2's Warden, with the other three at M7 (M4-02).
+    /// </summary>
+    private const int ShippedBosses = 1;
+
+    /// <summary>
+    /// The shortest telegraph GD §9.1 rule 1 permits, in seconds. <c>WardenBehaviour</c> floors
+    /// every attack at this whatever an asset says, so what this sweep catches is the
+    /// <em>disagreement</em> — a boss authored faster than the rule allows, being played at the
+    /// rule's speed, with nothing anywhere saying the two had parted company.
+    /// </summary>
+    private const float MinBossTelegraph = 0.6f;
+
     [TearDown]
     public void DeleteTemporaryAssets()
     {
@@ -295,6 +308,50 @@ public sealed class ContentValidationTests
         Assert.That(PathsOf<SkillTreeDefinition>(), Has.Count.AtLeast(ShippedTrees));
         Assert.That(PathsOf<EffectDefinition>(), Has.Count.AtLeast(ShippedEffects));
         Assert.That(PathsOf<LocalizationTable>(), Has.Count.AtLeast(ShippedTables));
+        Assert.That(PathsOf<BossDefinition>(), Has.Count.AtLeast(ShippedBosses));
+    }
+
+    // ---- GD §9.1 rule 1, over the assets that ship (M4-02) ---------------------------------------
+
+    [Test]
+    public void Boss_EveryAttackTelegraphsLongEnough()
+    {
+        // **The half of M4-02's rule 1 that only this assembly can make.** A boss's attacks
+        // telegraph for the body it wears — <c>WardenBehaviour.TelegraphSeconds</c> is
+        // <c>EnemySpec.WindupTime</c>, floored — and `Soulvail.Core` references no Unity assembly,
+        // so `WardenBehaviourTests` can assert the floor and the shipped *numbers* but never the
+        // shipped *asset*. This walks every BossDefinition on disk to the EnemyDefinition it
+        // names, and asks GD §9.1 rule 1's question of it.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<BossDefinition>())
+        {
+            var boss = AssetDatabase.LoadAssetAtPath<BossDefinition>(path);
+
+            if (boss == null)
+            {
+                continue;
+            }
+
+            ContentId bodyId = boss.ToSpec().EnemySpecId;
+
+            if (!TryFindEnemy(bodyId, out EnemySpec body))
+            {
+                problems.Add($"{path}: names the body '{bodyId}', which no EnemyDefinition holds.");
+
+                continue;
+            }
+
+            if (body.WindupTime < MinBossTelegraph)
+            {
+                problems.Add(
+                    $"{path}: its body '{bodyId}' telegraphs for {body.WindupTime} s, under "
+                        + $"GD §9.1 rule 1's {MinBossTelegraph} s. WardenBehaviour floors it at "
+                        + "the rule's number, so the asset and the fight disagree.");
+            }
+        }
+
+        AssertNoProblems(problems, "Boss telegraph lengths (GD §9.1 rule 1)");
     }
 
     // ---- Rule 2: an id's namespace matches its kind ---------------------------------------------
@@ -694,6 +751,35 @@ public sealed class ContentValidationTests
         paths.Sort(StringComparer.Ordinal);
 
         return paths;
+    }
+
+    /// <summary>
+    /// The shipped <see cref="EnemySpec"/> whose id is <paramref name="id"/>, if one exists.
+    /// </summary>
+    /// <remarks>
+    /// A linear walk over every <c>EnemyDefinition</c> on disk rather than a boot list or a
+    /// catalog, which is this fixture's whole discipline (see the class remarks): a sweep that
+    /// asked <c>BootScope</c> would only ever check the assets somebody remembered to drag onto it.
+    /// </remarks>
+    private static bool TryFindEnemy(ContentId id, out EnemySpec spec)
+    {
+        foreach (string path in PathsOf<EnemyDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path);
+
+            if (asset == null || asset.Id != id.Value)
+            {
+                continue;
+            }
+
+            spec = asset.ToSpec();
+
+            return true;
+        }
+
+        spec = null;
+
+        return false;
     }
 
     /// <summary>The one English table, through M3-14a's own door.</summary>

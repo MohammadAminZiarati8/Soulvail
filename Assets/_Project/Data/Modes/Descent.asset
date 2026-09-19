@@ -56,4 +56,6 @@ MonoBehaviour:
   _arenas:
   - arena.pillars
   - arena.tiered
-  _bossRoster: []
+  _bossRoster:
+  - _bossId: boss.warden
+    _everyNStages: 5

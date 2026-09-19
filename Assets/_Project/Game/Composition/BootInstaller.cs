@@ -123,6 +123,21 @@ public static class BootInstaller
     /// built from both at once, so a tier naming a node this list does not hold is
     /// <c>TreeRules</c>' check at <c>Start</c> (M3-03) and M3-14b's over every shipped asset.
     /// </param>
+    /// <param name="bosses">
+    /// Every authored boss — the assets in <c>Data/Enemies/</c> whose type is
+    /// <see cref="BossDefinition"/>, which is one of them in V1 (GD §9.2, M4-02).
+    /// <b>Optional and trailing, which is the one of the six lists that is, and the asymmetry is
+    /// argued rather than convenient:</b> the reason the other five are required is that omitting
+    /// one produces a catalog whose only symptom is a silence a playtest cannot tell from a bug —
+    /// an arena that never fills, a level-up screen with nothing on it. Omitting this one has no
+    /// silent form at all. A mode with no boss roster never asks for a boss, and a mode with one
+    /// is refused by <c>RunSession.Start</c> before the run is announced, naming the mode and the
+    /// id. So the five say <em>"an empty list is how a boot with none says so out loud"</em>, and
+    /// this one does not need to, which spares a dozen fixtures a parameter that could only ever
+    /// be empty.
+    /// <b>It does not resolve the enemy it names:</b> a boss carries an archetype id and the
+    /// catalog is built from both lists at once, so that check is <c>RunSession.Start</c>'s too.
+    /// </param>
     /// <param name="localization">
     /// The one language — <c>Data/Localisation/English.asset</c> (M3-14a rule 4). Converted
     /// immediately by <see cref="TableLocalizer"/>, so a duplicate or an unusable key is a loud
@@ -144,7 +159,8 @@ public static class BootInstaller
         IReadOnlyList<ModeDefinition> modes,
         IReadOnlyList<SkillDefinition> skills,
         IReadOnlyList<SkillTreeDefinition> trees,
-        LocalizationTable localization)
+        LocalizationTable localization,
+        IReadOnlyList<BossDefinition> bosses = null)
     {
         if (builder is null)
         {
@@ -176,6 +192,7 @@ public static class BootInstaller
             throw new ArgumentNullException(nameof(trees));
         }
 
+
         // Unity's operator rather than `is null`, because a ScriptableObject field left empty in the
         // Inspector is a live reference only Unity calls null — Convert's cast, for its reason. The
         // message names the *field* rather than the parameter: what the reader has to go and drag
@@ -197,7 +214,12 @@ public static class BootInstaller
             enemySpecs,
             Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
             Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills)),
-            Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees))));
+            Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees)),
+            Convert(
+                bosses ?? Array.Empty<BossDefinition>(),
+                definition => definition.ToSpec(),
+                "boss",
+                nameof(bosses))));
 
         // After the catalog and not before, so a pair of definitions sharing an id is reported by
         // ContentCatalog — which is the message that names the failure people already know how to

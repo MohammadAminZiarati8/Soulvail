@@ -1123,6 +1123,10 @@ public sealed class SkillBarPresenterTests
             zones,
             boss,
             Track(new SaveWriter(new InertSaveStore(), _hub)),
+
+            // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
+            // so it banks nothing — the parameter is what guarantees it exists at all.
+            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, _session, cameraObject.AddComponent<Camera>()),

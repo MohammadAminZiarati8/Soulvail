@@ -160,4 +160,98 @@ public sealed class ShardWriter : IDisposable
 
 ## As built
 
-_Filled at merge._
+**Built as specified, with three deviations, all additive and all named below.** `PlayerProfile` is
+v3 with `Shards`, `WithShards` and a non-negative guard; `MigrateProfile` has an
+`if (version < 3)` step below the `< 2` one and writes `shards: 0` unconditionally; `ProfileMirror`
+gained a `shards` key; `ShardWriter` hears `ShardsAwarded`, adds, and saves through `ProfileStore`.
+**`RunSnapshot.CurrentVersion` stayed 3** — the two numbers are now equal and mean different things,
+which is said out loud in `SaveMigrations`' remarks and in `ProfileGate_AcceptsOneToThreeRefusesFour`
+rather than left to be discovered.
+
+**Deviation 1 — `Game/Composition/RunTicker.cs` is a sixth file the Files table does not name, and
+rule 6 does.** The table says only that `RunInstaller` registers the writer, but a VContainer
+`Lifetime.Scoped` registration nobody resolves is **never constructed**: the writer would have been
+registered, never built, never subscribed, and every run would have ended paying nothing with no
+error anywhere. Rule 6 already required the fix in as many words — *"a scoped service on
+`RunTicker`'s dependency chain … `SaveWriter`'s shape **and its argument**"* — so the constructor
+gained `ShardWriter shardWriter`, discarded into `_` beside the `saveWriter` line that does the same
+thing for the same reason. **Behaviour beats Files**, and the table is one file short rather than the
+rule being wrong. It rippled to the project's three `new RunTicker(...)` sites
+(`ResumeFlowTests`, `SkillBarPresenterTests`, `FrameOrderTests`), which is additive and changed no
+assertion.
+
+**Deviation 2 — `RunScope_ComposesWithTheWriter` lives in `Tests/Game/Composition/InstallerTests.cs`,
+which the tests row does not name.** The row is a claim about the **two installers together** — the
+writer is registered in the run scope and its store in `BootScope` — and `InstallerTests` is the only
+fixture in the project that builds both. Putting it in `ShardWriterTests` would have meant either
+duplicating `BuildBoot`'s asset loading or asserting against a container the test itself wired, which
+tests the test. The negative half (a container with no `ProfileStore` refuses to compose the writer)
+is built bare rather than through `RunInstaller`, so the throw names the missing dependency instead
+of whichever of the run's other parents is looked up first.
+
+**Deviation 3 — rule 2 names a row that has never existed.** It says *"`ProfileStoreTests`'
+reflection row gains this door"*; there is no reflection row in that fixture. The door is
+`SaveDtoTests.Profile_HasNoConstructorThatOmitsAField`, which is what the **Tests table** names, and
+it went from three parameters to four. **Spec-versus-code, and the code won**, as the resolution rule
+asks. `ProfileStoreTests` still changed, and meaningfully: `Store_CopiesThroughOneFieldAtATime` is
+three writes rather than two and asserts the third field survives the other two, which is rule 2's
+claim checked through the store rather than at the DTO.
+
+**Three existing rows were renamed rather than joined by new ones, each following a precedent the run
+format set at M3-07b.** `MigrateProfile_V2_IsIdentity` → `MigrateProfile_V3_IsIdentity` (identity is a
+property of the current version and moves up with every bump); `MigrateProfile_V1_HasNotSeenTheHint`
+→ `MigrateProfile_V1_RunsBothStepsInOrder` (`Migrate_V1_RunsBothStepsInOrder`'s shape, and the row
+that proves rule 4); `ProfileGate_AcceptsOneAndTwoRefusesThree` →
+`ProfileGate_AcceptsOneToThreeRefusesFour`, which also absorbed the Tests table's
+`Migrate_RefusesAVersionAboveCurrent` — the gate refuses 4 **and** `MigrateProfile(4, …)` throws.
+`Fixture_V2Profile_IsWhatThisBuildWrites` → `Fixture_V2Profile_DecodesToTheExpectedProfile` for the
+same reason on the adapter side, with `Fixture_V3Profile_IsWhatThisBuildWrites` new beside it.
+`SaveDtoTests.Profile_HasNoShards` → `Profile_HasNoUnlocks`: the row's subject is the property list,
+and what it refuses moves on as each field arrives with the mechanic that owns it.
+
+**Naming: the Tests table's row names are honoured where the row is new and the fixture has no
+stronger convention, and the fixture's convention wins where it does.** `Store_DecodesAV2ProfileLiteral`
+and `Store_WritesAV3ProfileLiteral` ship as `Fixture_V2Profile_DecodesToTheExpectedProfile` and
+`Fixture_V3Profile_IsWhatThisBuildWrites`, because `LocalJsonSaveStoreTests`' class docstring
+cross-references the `Fixture_*` family by name. `Migrate_V2ProfileGainsZeroShards` and
+`Migrate_V1ProfileRunsBothStepsInOrder` ship as `MigrateProfile_V2_GainsNoShards` and
+`MigrateProfile_V1_RunsBothStepsInOrder`, matching the `MigrateProfile_Vn_*` family beside them.
+Every other row ships under the table's own name.
+
+**Verified: 2 177 EditMode / 0 / 0, twice consecutively on the final code** (27.0 s, 21.6 s), against
+M4-05a's **2 162** — **+15, and the arithmetic lands to the row**: 4 in `SaveDtoTests`
+(`Profile_CarriesShards`, `Profile_RefusesNegativeShards`, `Profile_DefaultStartsAtZero`,
+`Profile_WithShardsKeepsEverythingElse`), 1 in `SaveMigrationTests` (`MigrateProfile_V2_GainsNoShards`),
+1 in `LocalJsonSaveStoreTests` (`Fixture_V3Profile_IsWhatThisBuildWrites`), 8 in `ShardWriterTests`
+(the table's six plus the two implied guards it names — `Construct_NullProfiles_Throws`,
+`Construct_NullHub_Throws`), and 1 in `InstallerTests` (`RunScope_ComposesWithTheWriter`). The
+**third** implied guard, the `ProfileMirror` round trip, is an assertion added to the existing
+`Store_RoundTripsAProfile` rather than a new row — the round trip already had one, and a second would
+have been the same claim twice. **The first run was green**, which is worth recording because M4-05a's
+was not: nothing in the suite asserts a profile's whole shape the way `SpitterBehaviourTests` asserts
+a death tick's, so the constructor ripple was caught by the compiler rather than by a red row.
+
+Compile clean through the MCP, confirmed the way [Traps §3](../../Traps.md) asks rather than by
+timestamp — `PlayerProfile.CurrentVersion` read back as 3, `RunSnapshot.CurrentVersion` as 3, a
+`WithShards` that kept its haptics, a v1 → v3 migration landing at v3 with `shards: 0` from a decoded
+999, and `typeof(ShardWriter)` resolving — all from a `Unity_RunCommand` on an Editor reporting
+`isApplicationActive == False` throughout. **Zero new analyzer warnings**: the Console's errors and
+warnings are the suite's own deliberate rows — the `WarnsOn*` authoring sweeps, the corrupt-save
+discards, the `FailNextWrite`s — and the one line naming anything this task built is
+*"Could not save the player profile: There is not enough space on the disk"*, which is
+`Writer_SurvivesAFailedWrite`'s own `LogAssert.Expect`. `dotnet format whitespace --folder
+--verify-no-changes` clean over all eighteen changed files. `ProjectSettings/TimeManager.asset`
+re-serialised again — the eighth time in twelve tasks — and was reverted ([Traps §5](../../Traps.md)).
+
+**The ripple was twenty-five call sites, not the fourteen the Files table predicted.** M3-09c's
+figure was carried forward rather than recounted, and the format has gained two writers and three
+fixture rows since. All twenty-five are compiler-guided and none changed an assertion.
+
+**Rule 8 is the ruling this task is most likely to be questioned on later, so it is restated here as
+built rather than as argued:** the build banks a number no player can spend, `Shards` has no reader
+in `Soulvail.Game` until [M4-06](M4-06-run-end-screen.md), and that is deliberate. The test is *"no
+field before a consumer"*, and there are two the day it lands.
+
+**Manual verification was not performed and that is stated rather than implied.** The spec's five
+steps are listed in the handover for the owner; step 5 is **[device]** and is deferred to the first
+hardware session ([row 3](../ROADMAP.md#carry-forward-into-m4)).

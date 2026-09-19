@@ -392,6 +392,50 @@ public sealed class InstallerTests
         Assert.That(random.Seed, Is.EqualTo(123));
     }
 
+    /// <summary>
+    /// The M4-05b wire: the run scope has one thing that banks a payout, and it reaches the profile
+    /// that outlives the run.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than in <c>ShardWriterTests</c> because the claim is about the two installers
+    /// together — the writer is registered in the run scope and its store is registered in
+    /// <c>BootScope</c>, and there is nowhere else in the suite that builds both.
+    /// </remarks>
+    [Test]
+    public void RunScope_ComposesWithTheWriter()
+    {
+        IObjectResolver boot = BuildBoot();
+
+        boot.Resolve<PendingRun>().Set(DescentId, OathboundId, 7);
+
+        IScopedObjectResolver scope = Track(boot.CreateScope(RunInstaller.Install));
+
+        var writer = scope.Resolve<ShardWriter>();
+
+        Assert.That(writer, Is.Not.Null);
+        Assert.That(scope.Resolve<ShardWriter>(), Is.SameAs(writer), "one writer, or a payout is banked twice.");
+
+        // **And its ProfileStore came from BootScope, not from the run** (rule 6). A store
+        // registered per run would forget the payout between the death that earned it and the menu
+        // that will one day spend it, and would do so in silence.
+        Assert.That(scope.Resolve<ProfileStore>(), Is.SameAs(boot.Resolve<ProfileStore>()));
+
+        // And a container with no ProfileStore in reach does not compose the writer at all, loudly
+        // — which is the failure mode rule 6 wants over a run that quietly banks nothing. Built
+        // bare rather than through RunInstaller so the throw names the missing dependency rather
+        // than whichever of the run's other parents happens to be looked up first.
+        var bare = new ContainerBuilder();
+
+        bare.Register<DomainEventHub>(Lifetime.Scoped).As<IDomainEvents>().AsSelf();
+        bare.Register<ShardWriter>(Lifetime.Scoped);
+
+        IObjectResolver without = Track(bare.Build());
+
+        Assert.That(
+            () => without.Resolve<ShardWriter>(),
+            Throws.Exception.With.Message.Contains(nameof(ProfileStore)));
+    }
+
     [Test]
     public void Run_WithoutPendingRun_UsesFallbackSeed()
     {

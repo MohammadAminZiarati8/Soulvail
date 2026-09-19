@@ -26,11 +26,13 @@ namespace Soulvail.Core.Save;
 /// the field merges green — a v1 file still decodes.
 /// </para>
 /// <para>
-/// <b>The profile chain has one step, and M3-09c is the first time it ran at all.</b>
-/// <see cref="MigrateProfile"/> was the identity from M2-13b until v2, on the strength of the same
-/// self-enforcing row — and <b>the two formats version independently</b>, so a profile that gains a
-/// field leaves <see cref="RunSnapshot.CurrentVersion"/> at 3 and touches no run on any device
-/// (M2-13b, M3-09c rule 2).
+/// <b>The profile chain has two steps as of M4-05b, and that is where it first runs more than one
+/// of them on one document.</b> <see cref="MigrateProfile"/> was the identity from M2-13b until v2,
+/// on the strength of the same self-enforcing row — and <b>the two formats version
+/// independently</b>, so the profile gaining Shards at v3 leaves
+/// <see cref="RunSnapshot.CurrentVersion"/> at 3 and touches no run on any device (M2-13b, M3-09c
+/// rule 2, M4-05b rule 4). The two numbers being equal today is a coincidence of arithmetic and
+/// nothing may be built on it.
 /// </para>
 /// <para>
 /// <b>The steps run in order and each rebuilds at its own version</b>, which is what lets a v1
@@ -77,8 +79,10 @@ public static class SaveMigrations
     /// </summary>
     /// <remarks>
     /// A second method rather than one taking a version floor, because the two formats version
-    /// independently: a profile that gains Shards (M4-06) has no reason to bump the run format,
-    /// and a shared gate would make every reader guess which number it was being asked about.
+    /// independently: the profile gaining Shards at v3 (M4-05b) had no reason to bump the run
+    /// format, and a shared gate would make every reader guess which number it was being asked
+    /// about — which is exactly the confusion the two <c>CurrentVersion</c>s now both reading 3
+    /// invites.
     /// </remarks>
     public static bool CanReadProfile(int version)
     {
@@ -200,7 +204,27 @@ public static class SaveMigrations
         // n so the next step is handed the shape it expects — and a fixture test beside it.
         if (version < 2)
         {
-            current = new PlayerProfile(2, current.HapticsEnabled, seenFirstActiveHint: false);
+            current = new PlayerProfile(
+                2, current.HapticsEnabled, seenFirstActiveHint: false, shards: 0);
+        }
+
+        // **v2 → v3: a player who has never been paid for dying.** A v2 profile was written by a
+        // build with no payout in it at all — `ShardPayout` is M4-05a's and `ShardsAwarded` had
+        // nowhere to land until this task — so `shards: 0` is the truth about that player rather
+        // than a default standing in for an unknown. Written unconditionally rather than from what
+        // the adapter decoded, for the step above's reason (M3-01b rule 3): a v2 document that
+        // somehow carried a number is still a v2 document. Both v2 fields are kept exactly as they
+        // were read — including the one v1 → v2 wrote a moment ago, which is what makes this the
+        // first profile chain that actually runs two steps in sequence (M4-05b rule 4).
+        //
+        // The `shards: 0` above is not this step repeated: the v1 → v2 step has to name *every*
+        // field the constructor takes, and naming the one it knows nothing about with the value
+        // this step would write anyway is what keeps the two steps independent of each other's
+        // order. `MigrateProfile_V1_RunsBothStepsInOrder` is the row that would notice either way.
+        if (version < 3)
+        {
+            current = new PlayerProfile(
+                3, current.HapticsEnabled, current.SeenFirstActiveHint, shards: 0);
         }
 
         return current;

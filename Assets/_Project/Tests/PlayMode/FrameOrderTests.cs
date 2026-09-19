@@ -228,6 +228,10 @@ public sealed class FrameOrderTests
             // the reason the rings above are (M2-14a rule 8): being on that constructor is what
             // guarantees the writer is subscribed before a run can announce its opening snapshot.
             new SaveWriter(new InertSaveStore(), _hub),
+
+            // And M4-05b's writer, on the constructor for the same reason: a Scoped registration
+            // nobody resolves is never constructed, so the parameter is what makes the object exist.
+            new ShardWriter(new ProfileStore(new InertSaveStore()), _hub),
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),

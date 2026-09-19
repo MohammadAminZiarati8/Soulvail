@@ -155,6 +155,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ZoneViews zoneViews,
         BossViews bossViews,
         SaveWriter saveWriter,
+        ShardWriter shardWriter,
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
@@ -182,6 +183,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // the opening snapshot, the same guarantee the three views above rely on (AR §18.1). A
         // field would be assigned and never read, which the compiler is right to object to.
         _ = saveWriter ?? throw new ArgumentNullException(nameof(saveWriter));
+
+        // Taken and deliberately not kept, for the line above's reason and with a sharper version
+        // of it: nothing here ever calls ShardWriter, and a Scoped registration VContainer is never
+        // asked to resolve is never constructed at all — so without this parameter the writer would
+        // simply not exist, and a run would end, pay nothing, and report nothing (M4-05b rule 6).
+        _ = shardWriter ?? throw new ArgumentNullException(nameof(shardWriter));
 
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));

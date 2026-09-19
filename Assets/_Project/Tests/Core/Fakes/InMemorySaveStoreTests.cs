@@ -77,7 +77,8 @@ public sealed class InMemorySaveStoreTests
     {
         await _store.SaveRun(Snapshot());
         await _store.SaveProfile(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false));
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
+            shards: 0));
 
         await _store.ClearRun();
 

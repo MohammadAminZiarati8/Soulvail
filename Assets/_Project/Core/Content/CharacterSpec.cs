@@ -72,6 +72,13 @@ public sealed class CharacterSpec
     /// two optional parameters together describe "no shield, no mercy" — which is what an
     /// enemy-shaped character would be, and what a class author has to override on purpose.
     /// </param>
+    /// <param name="minions">
+    /// The class's minions, or <see langword="null"/> for a class with none. Optional for the
+    /// reason <paramref name="shield"/> is, and it is the same argument rather than a second one:
+    /// CH §3.2's Rise is the Gravecaller's signature, so <see langword="null"/> is the honest
+    /// default and a block of zeroes would have to be read against <paramref name="id"/> to be
+    /// understood (M5-02 rule 6).
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -96,7 +103,8 @@ public sealed class CharacterSpec
         FocusSpec focus,
         MovementSkillSpec movementSkill,
         ShieldSpec shield = null,
-        float hitIFrames = 0f)
+        float hitIFrames = 0f,
+        MinionSpec minions = null)
     {
         if (id.Value is null)
         {
@@ -132,6 +140,7 @@ public sealed class CharacterSpec
         MovementSkill = movementSkill ?? throw new ArgumentNullException(nameof(movementSkill));
         Shield = shield;
         HitIFrames = hitIFrames;
+        Minions = minions;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -183,4 +192,16 @@ public sealed class CharacterSpec
 
     /// <summary>Seconds of invulnerability after a hit lands; 0 for none.</summary>
     public float HitIFrames { get; }
+
+    /// <summary>
+    /// The class's minions, or <see langword="null"/> when it has none. Only the Gravecaller has
+    /// any in V1, and CH §3.2's Wights are <em>raised</em> rather than summoned — see
+    /// <see cref="MinionSpec.RiseChance"/>.
+    /// </summary>
+    /// <remarks>
+    /// Read by nothing until M5-04a, which builds the body, and M5-04b, which builds the Rise.
+    /// Authored here with the rest of the class because a class's numbers are authored together or
+    /// they are authored twice (M5-02 rule 5).
+    /// </remarks>
+    public MinionSpec Minions { get; }
 }

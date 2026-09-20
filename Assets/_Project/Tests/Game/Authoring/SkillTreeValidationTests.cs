@@ -77,6 +77,17 @@ public sealed class SkillTreeValidationTests
     /// </summary>
     private const int Seed = 20260918;
 
+    /// <summary>
+    /// The one class <see cref="EveryShippedCharacter_HasATree"/> skips, and the only one it ever
+    /// may: M5-02 authored the Gravecaller's numbers and M5-06 authors its twelve nodes, so for the
+    /// tasks between them the project ships a class with no tree on purpose.
+    /// </summary>
+    /// <remarks>
+    /// Named here rather than expressed as a rule, so that the skip covers this omission and not the
+    /// next one — and <see cref="TheTreelessClass_IsStillTreeless"/> is what makes it temporary.
+    /// </remarks>
+    private const string TreelessUntilM506 = "character.gravecaller";
+
     // ---- Rule 5: CH §5's shape --------------------------------------------------------------------
 
     [Test]
@@ -405,6 +416,11 @@ public sealed class SkillTreeValidationTests
 
             CharacterSpec spec = definition.ToSpec();
 
+            if (spec.Id.Value == TreelessUntilM506)
+            {
+                continue;
+            }
+
             if (!catalog.TryGetTreeFor(spec.Id, out SkillTreeSpec _))
             {
                 problems.Add(
@@ -414,6 +430,36 @@ public sealed class SkillTreeValidationTests
         }
 
         ContentValidationTests.AssertNoProblems(problems, "Every character has a tree");
+    }
+
+    [Test]
+    public void TheTreelessClass_IsStillTreeless()
+    {
+        // **The exemption above, asserted rather than tolerated, so it cannot outlive its reason.**
+        // M5-02 ships the Gravecaller's numbers and M5-06 ships its twelve nodes, so between the two
+        // there is one authored class with no tree — which is the state the sweep above exists to
+        // refuse, and it is refusing something true. It is skipped by name rather than by a rule
+        // ("a class no menu offers"), because a rule would quietly cover the next omission too.
+        //
+        // **This row goes red the day M5-06 merges, and the fix is to delete both it and the
+        // `continue` above.** That is the point: a green suite is what says the exemption is gone.
+        ContentCatalog catalog = ShippedCatalog();
+
+        Assert.That(
+            catalog.TryGetTreeFor(new ContentId(TreelessUntilM506), out SkillTreeSpec _),
+            Is.False,
+            $"'{TreelessUntilM506}' now has a tree, so EveryShippedCharacter_HasATree no longer "
+                + "needs to skip it. Delete this row and the skip beside it — the sweep is the "
+                + "stronger check and it should be doing the work.");
+
+        // And the half that says the exemption is narrow: nothing reachable from a menu is in it.
+        // PendingRun.CharacterId is written by a screen that offers one class until M5-07 (M5-02
+        // rule 9), so no run this build can start levels into an empty tree.
+        Assert.That(
+            catalog.TryGetTreeFor(new ContentId("character.oathbound"), out SkillTreeSpec oathbound),
+            Is.True);
+
+        Assert.That(oathbound, Is.Not.Null);
     }
 
     [Test]

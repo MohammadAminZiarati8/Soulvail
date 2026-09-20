@@ -303,6 +303,90 @@ public sealed class ContentTests
     }
 
     [Test]
+    public void CharacterSpec_MinionsAreOptionalAndDefaultToNone()
+    {
+        // Rule 6: the Oathbound's is null, exactly as a class without an Aegis has no ShieldSpec.
+        // The default is "none" rather than "a zeroed block" because a zeroed block would have to
+        // be read against the id to be understood, which puts the meaning of the data in a second
+        // place — ProjectileSpec's own argument, and the reason MinionSpec refuses every zero.
+        Assert.That(Oathbound().Minions, Is.Null);
+
+        var withMinions = new CharacterSpec(
+            OathboundId(), OathboundNameKey(), 80f, OathboundMovement(), OathboundTargeting(),
+            OathboundWeapon(), OathboundFocus(), OathboundMovementSkill(), null, 0.5f, Wight());
+
+        Assert.That(withMinions.Minions, Is.Not.Null);
+        Assert.That(withMinions.Minions.SpecId.Value, Is.EqualTo("minion.wight"));
+        Assert.That(withMinions.Shield, Is.Null, "The two optional blocks are independent.");
+    }
+
+    [Test]
+    public void MinionSpec_StoresValues()
+    {
+        MinionSpec wight = Wight();
+
+        Assert.That(wight.SpecId.Value, Is.EqualTo("minion.wight"));
+        Assert.That(wight.NameKey.Key, Is.EqualTo("minion.wight.name"));
+        Assert.That(wight.Cap, Is.EqualTo(3));
+        Assert.That(wight.Lifespan, Is.EqualTo(20f));
+        Assert.That(wight.RiseChance, Is.EqualTo(0.25f));
+        Assert.That(wight.MaxHp, Is.EqualTo(20f));
+        Assert.That(wight.MoveSpeed, Is.EqualTo(3f));
+        Assert.That(wight.Damage, Is.EqualTo(8f));
+        Assert.That(wight.AttackInterval, Is.EqualTo(1f));
+        Assert.That(wight.Reach, Is.EqualTo(1.5f));
+    }
+
+    [Test]
+    public void MinionSpec_RefusesAnImpossibleBlock()
+    {
+        // A rise chance is the one number here with a ceiling, so it is guarded at both ends: zero
+        // is the class's signature switched off — better said by passing no spec — and above one is
+        // a probability that is not one, which a draw would satisfy every time while reading as a
+        // multiplier.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: 1.01f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: float.NaN));
+        Assert.DoesNotThrow(() => Minion(riseChance: 1f), "Every kill raising one is legal.");
+
+        // A cap of zero is a class whose minions can never be alive, which is a class with none.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(cap: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(cap: -1));
+
+        // The six that are simply positive. NaN is refused with the negatives by the `!(x > 0f)`
+        // spelling, and infinity separately because it passes a `> 0` test: an infinite lifespan is
+        // a permanent army bought with one kill.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(lifespan: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(lifespan: float.PositiveInfinity));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(maxHp: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(maxHp: float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(moveSpeed: -1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(damage: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(attackInterval: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(reach: float.NaN));
+
+        // The message names the field, because a content error is read by whoever authored the
+        // asset rather than by whoever wrote the guard.
+        ArgumentOutOfRangeException thrown =
+            Assert.Throws<ArgumentOutOfRangeException>(() => Minion(attackInterval: 0f));
+
+        Assert.That(thrown.ParamName, Is.EqualTo("attackInterval"));
+    }
+
+    [Test]
+    public void MinionSpec_DefaultIdOrKey_Throws()
+    {
+        // A minion nothing can look up, and one with no name to fail to display. Refused where the
+        // data is built rather than where it is read — CharacterSpec's rule, and the reason a
+        // struct with an invariant is checked at both ends (AR §18.3).
+        Assert.Throws<ArgumentException>(
+            () => new MinionSpec(default, new LocKey("minion.wight.name"), 3, 20f, 0.25f, 20f, 3f, 8f, 1f, 1.5f));
+
+        Assert.Throws<ArgumentException>(
+            () => new MinionSpec(new ContentId("minion.wight"), default, 3, 20f, 0.25f, 20f, 3f, 8f, 1f, 1.5f));
+    }
+
+    [Test]
     public void CharacterSpec_DefaultId_Throws()
     {
         // A spec with no id would sit in the catalog under a key that Character() reports as
@@ -609,6 +693,33 @@ public sealed class ContentTests
     /// <summary>CC §7's Charge table: 10 m / 0.22 s, 2.5 s, 20 / 5 m, buffer 0.15, trail 0.05.</summary>
     private static MovementSkillSpec OathboundMovementSkill() =>
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f);
+
+    /// <summary>CH §3.2's Rise as <c>Gravecaller.asset</c> ships it: cap 3, 20 s, 25 %.</summary>
+    private static MinionSpec Wight() => Minion();
+
+    /// <summary>
+    /// The Wight with one field replaced, so a guard row says which field it is testing rather
+    /// than repeating ten arguments to move one of them.
+    /// </summary>
+    private static MinionSpec Minion(
+        int cap = 3,
+        float lifespan = 20f,
+        float riseChance = 0.25f,
+        float maxHp = 20f,
+        float moveSpeed = 3f,
+        float damage = 8f,
+        float attackInterval = 1f,
+        float reach = 1.5f) => new MinionSpec(
+            new ContentId("minion.wight"),
+            new LocKey("minion.wight.name"),
+            cap,
+            lifespan,
+            riseChance,
+            maxHp,
+            moveSpeed,
+            damage,
+            attackInterval,
+            reach);
 
     private static CharacterSpec Oathbound() =>
         new CharacterSpec(

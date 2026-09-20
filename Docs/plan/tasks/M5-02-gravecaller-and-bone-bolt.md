@@ -240,4 +240,81 @@ non-finite door on each of its six floats, and `CharacterDefinition.OnValidate` 
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Two code files, one asset, and every number of rules 1–7 converts as authored.** `MinionSpec.cs`
+(Core), `GravecallerTests.cs` (Tests.Game, 12 rows), `Gravecaller.asset`, and additive edits to
+`CharacterSpec`, `MovementSkillKind`, `CharacterDefinition`, `TimeToKillTests`, `ContentTests`,
+`ContentValidationTests` and three docs. The asset came from a `RunCommand` through
+`CreateInstance(Type)` and `SerializedProperty`, never hand-written YAML, and
+`MonoScript.FromScriptableObject` resolves off a freshly loaded handle (Traps §5, M3-12c's recipe).
+
+**Nine deviations. Three change something; the rest are counts and placements.**
+
+**1 — `BootScope.prefab` gained the Gravecaller, and it is not in the Files table.** The Tests table's
+first row says *"the boot catalog resolves it beside the Oathbound"*, and the boot catalog is the
+prefab's `_characters` array. `GravecallerTests.BootCatalog` builds from that array rather than from
+two paths, so the edit is load-bearing, not tidy. `_characters` reads 2; PlayMode's
+`Boot_ReachesMenu_WithinFiveSeconds` boots the real prefab and did not move.
+
+**2 — `English.asset` gained one row, and rule 10 is half spent.** The defect M5-00b reported rather
+than edited: `EveryLocKey_ResolvesInEnglish` sweeps every `CharacterDefinition`'s name key, so an
+unresolved `character.gravecaller.name` is a red row in another fixture rather than a deferral. It
+ships as **"Gravecaller"**. **`minion.wight.name` ships unresolved exactly as rule 10 intends** —
+`EveryAuthoredKey` walks a character's own name key and stops, so nothing reaches a minion block —
+and `Keys_AreAuthoredAndUnresolved` asserts one of each, the absence included, so M6-10 has to add
+it on purpose. M6-10 owes one row instead of two.
+
+**3 — an unpredicted red row, and it is a real gap rather than a broken test.**
+`SkillTreeValidationTests.EveryShippedCharacter_HasATree` failed on the first run: the Gravecaller has
+no tree until M5-06b, and that sweep is M3-02a rule 11's obligation that a class with no tree is a
+run-breaking omission. It now skips `character.gravecaller` **by name** — a rule would quietly cover
+the next omission too — with `TheTreelessClass_IsStillTreeless` beside it asserting the class is
+still treeless, and saying in its own message that **it goes red the day M5-06b merges and the fix
+is to delete both it and the skip**.
+
+**4 — ten minion fields on `CharacterDefinition`, not the Files table's six.** `MinionSpec` takes ten
+values and all ten are authored; `_minionCap` is the null switch, on `_shieldMax`'s precedent and a
+sharper version of its reason — a cap is the one field `MinionSpec` cannot represent at zero.
+
+**5 — `Characters.md` §3.2 gained a paragraph, beyond rule 1's three named doc edits.** CH §3.2 still
+publishes *7 dmg* and the control test is named for it, so the number stays; what was missing is any
+record that the game ships 9. A table alone with nothing beside it is the CC §2.5 failure this task
+exists to clean up, so the ruling is written under it.
+
+**6 — `Minions_AreNullOnTheOathbound` asserts the behaviour and a conditional disk check, not
+"unchanged".** `Minions` is null, and *if* `Oathbound.asset` ever carries a `_minionCap` line it must
+read 0. The byte-level claim is manual step 3's: a re-serialised asset is correct content, and a row
+reddening for it would report a diff rather than a defect. **Verified for this PR anyway —
+`Oathbound.asset` does not appear in `git status`**, and the converted spec still reads Cone 13 / 3.0
+/ 8 m / 60° / 0.4, speed 3, HP 140. M4-01a's finding holds.
+
+**7 — rule 8's derivation was applied to stage 30 as well, and that is where the confirmation is.**
+The ruling names only the stage-15 literal. `LevelAt` walks B(n) priced in Husks (`XpValue /
+ThreatCost` = 3) through a real `LevelTracker`, one grant a stage; `OverflowLevelsAt` subtracts
+`1 + 12`. Stage 15 is **level 21, overflow 8** — not the table's ~20 and 7. Stage 30 is **level 42,
+overflow 29**, the table's own number, so it was wrong in one row rather than systematically. Both
+hit counts are unmoved at 4 and 5.
+
+**8 — `ShippedCharacters` 1 → 2**, a floor rather than an equality, so the anti-vacuity row keeps
+meaning something. `minion.new.name` was deliberately **not** added to `AuthoringPlaceholders`: it is
+the default on two classes of three and nothing sweeps it.
+
+**9 — one row over the Tests table.** `BoneBolt_IsTheQuickestThingInTheAir` pins rule 3's two "ours"
+numbers against the Spitter shot they were chosen relative to (40 against 12 m/s, 0.8 against 1.6 m):
+a number justified by a comparison and asserted as a literal is one nobody can check. **Also authored
+without being named:** accel / decel / turn are the Oathbound's 0.06 / 0.08 / 720 — CC §2.5 publishes
+one set of handling numbers, which is rule 4's argument.
+
+**Ledger row 5(ii) DISCHARGES**; row 5 stays open on (i) → M5-06b and (iii) → M6-10. **Two parking-lot
+lines close**: the speed band's, whose condition was the three document edits, and the
+ratio-versus-pair line, whose home was `Speed_EveryClassOutrunsEveryEnemy`. The pinned pairs in
+`EnemyDefinitionTests` were left alone — a different claim.
+
+**Verified.** **2 250 EditMode / 0 / 0** (+22 on M5-01's 2 228), twice on the final code, and
+**PlayMode 16 / 0 / 0**, both through `TestRunnerApi` with the Editor focused. Console after the run:
+3 errors, 2 warnings, every one a fixture provoking its own failure path and none naming a new file —
+baseline unmoved, no new analyzer warnings. `dotnet format whitespace --folder
+--verify-no-changes` green over all nine touched C# files. The content was probed by calling `ToSpec`
+from a `RunCommand` rather than by trusting a green compile: every field of rules 3, 4, 5 and 7
+printed as the tables say.
+`ProjectSettings/TimeManager.asset` re-serialised itself again and was reverted before handover
+(Traps §5). Manual step 2 — playing a run — is the owner's.

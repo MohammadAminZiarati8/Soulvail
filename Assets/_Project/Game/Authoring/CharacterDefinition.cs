@@ -117,6 +117,25 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Extra seconds of invulnerability after the dash ends — 0.05.")]
         [SerializeField, Min(0f)] private float _movementSkillIFrameTrail = 0.05f;
 
+        [Tooltip("The class's minions (CH §3.2's Rise). Cap 0 means this class has none — only " +
+                 "the Gravecaller's Wights do in V1, and every field below is ignored at 0. The " +
+                 "cap is the switch for the reason the shield max above is: a zeroed block would " +
+                 "have to be read against the class id to be understood.")]
+        [SerializeField, Min(0)] private int _minionCap;
+        [SerializeField] private string _minionSpecId = "minion.new";
+        [SerializeField] private string _minionNameKey = "minion.new.name";
+        [SerializeField, Min(0.01f)] private float _minionLifespan = 20f;
+
+        [Tooltip("The fraction of kills that raise one — 0.25 is CH §3.2's 25 %. A fraction, " +
+                 "never a percentage: 25 here would be a probability that is not one.")]
+        [SerializeField, Range(0.01f, 1f)] private float _minionRiseChance = 0.25f;
+
+        [SerializeField, Min(0.01f)] private float _minionMaxHp = 20f;
+        [SerializeField, Min(0.01f)] private float _minionMoveSpeed = 3f;
+        [SerializeField, Min(0.01f)] private float _minionDamage = 8f;
+        [SerializeField, Min(0.01f)] private float _minionAttackInterval = 1f;
+        [SerializeField, Min(0.01f)] private float _minionReach = 1.5f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -145,6 +164,15 @@ namespace Soulvail.Game.Authoring
         /// rather than the absence of a spec. The <see cref="MovementSkillSpec"/> joins them:
         /// CC §5 opens with "every class has exactly one, on a permanent button", so there is no
         /// "no dash" to author either.
+        /// </para>
+        /// <para>
+        /// A <see cref="_minionCap"/> of zero is the shield's switch a second time, and it is the
+        /// same argument rather than a copy of it: CH §3.2's Rise is one class's signature, so a
+        /// class with no minions produces a <see langword="null"/>
+        /// <see cref="CharacterSpec.Minions"/> rather than a block of zeroes that would have to be
+        /// read against the id to be understood (M5-02 rule 6). The cap is the switch rather than
+        /// the hit points because it is the one field a <see cref="MinionSpec"/> cannot represent
+        /// at zero — a cap of nothing is a class whose minions can never be alive.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -192,7 +220,20 @@ namespace Soulvail.Game.Authoring
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,
-                    _hitIFrames);
+                    _hitIFrames,
+                    _minionCap > 0
+                        ? new MinionSpec(
+                            new ContentId(_minionSpecId),
+                            new LocKey(_minionNameKey),
+                            _minionCap,
+                            _minionLifespan,
+                            _minionRiseChance,
+                            _minionMaxHp,
+                            _minionMoveSpeed,
+                            _minionDamage,
+                            _minionAttackInterval,
+                            _minionReach)
+                        : null);
             }
             catch (ArgumentException inner)
             {
@@ -207,10 +248,15 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <remarks>
-        /// Only the id, and only its shape. A malformed id is the one authoring mistake that
+        /// Only the ids, and only their shape. A malformed id is the one authoring mistake that
         /// cannot be caught any earlier — a bad number is visibly a bad number in the
         /// Inspector, while <c>Character.Oathbound</c> looks perfectly reasonable and fails at
         /// boot. The asset is passed as the log context so clicking the warning selects it.
+        /// <para>
+        /// The minion's id is asked about only when <see cref="_minionCap"/> says there are
+        /// minions: the field keeps its authoring placeholder on every class without them, and a
+        /// warning about an id nothing converts would be noise on two shipped assets out of three.
+        /// </para>
         /// </remarks>
         private void OnValidate()
         {
@@ -219,6 +265,15 @@ namespace Soulvail.Game.Authoring
                 Debug.LogWarning(
                     $"CharacterDefinition '{name}': '{_id}' is not a valid content id. Expected " +
                     "lowercase dot-separated segments, at least two, e.g. 'character.oathbound'.",
+                    this);
+            }
+
+            if (_minionCap > 0 && !ContentId.IsValid(_minionSpecId))
+            {
+                Debug.LogWarning(
+                    $"CharacterDefinition '{name}': '{_minionSpecId}' is not a valid content id " +
+                    "for its minion. Expected lowercase dot-separated segments, at least two, " +
+                    "e.g. 'minion.wight'.",
                     this);
             }
         }

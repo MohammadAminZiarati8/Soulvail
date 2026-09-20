@@ -62,6 +62,7 @@ public sealed class RunState
         SkillTree tree,
         SkillRunner skills,
         ZoneSystem zones,
+        LureSystem lures,
         LevelUpFlow levelUp)
     {
         ModeId = modeId;
@@ -78,6 +79,7 @@ public sealed class RunState
         Tree = tree;
         Skills = skills;
         Zones = zones;
+        Lures = lures;
         LevelUp = levelUp;
     }
 
@@ -553,6 +555,21 @@ public sealed class RunState
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">There is no zone at that index.</exception>
     public Vector3 ZoneAt(int index) => Zones.PositionAt(index);
+
+    /// <summary>
+    /// The corpse decoys a Shroudstep has left standing — CH §3.2, and the first thing in this game
+    /// an enemy walks at that is not the player.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2), and with <em>no</em>
+    /// scalar read beside it, which is the one way it differs from <see cref="Zones"/>. A zone needs
+    /// <see cref="ActiveZoneCount"/> and <see cref="ZoneAt"/> because a decal is drawn from a place
+    /// that persists; a decoy's view (M5-05) is built from the <c>DecoySpawned</c> it was handed and
+    /// torn down on the <c>DecoyExpired</c> that follows, the way a projectile's is — so a read here
+    /// would be public API nothing asked for. <b>Never null</b>: a run of the Oathbound has a
+    /// <c>LureSystem</c> and it stands empty for ever.
+    /// </remarks>
+    internal LureSystem Lures { get; }
 
     /// <summary>
     /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).

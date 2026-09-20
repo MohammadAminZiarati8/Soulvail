@@ -633,8 +633,19 @@ public sealed class EnemySystem
     /// view, from the other side: the enemy was spawned this frame and its view has not reported
     /// yet, and the spawn position it was given is the best answer available.
     /// </para>
+    /// <para>
+    /// <b>And as of M5-03 the second pass may be told about a corpse rather than about the
+    /// player</b> — see <see cref="Perceive"/>, which is the one site that writes those fields and
+    /// therefore the one site the redirect can live at without touching a behaviour.
+    /// </para>
     /// </remarks>
-    public void Ingest(WorldSnapshot snapshot)
+    /// <param name="lures">
+    /// Where the arena's decoys are, or null when there are none. Passed in rather than held, for
+    /// the reason <c>PlayerCombat</c> is handed the world each time it is asked about it: this class
+    /// owns no view of what is standing on the floor, and a retained reference would be one more
+    /// thing to keep in step with a run's lifetime. Null and empty mean the same thing.
+    /// </param>
+    public void Ingest(WorldSnapshot snapshot, LureSystem lures = null)
     {
         // Stops at EnemyCount, never at Enemies.Length: Clear() leaves the array's contents alone,
         // so everything past the count is last frame's enemies (AR §4.2).
@@ -662,7 +673,7 @@ public sealed class EnemySystem
         // because an empty arena is precisely when a respawn is about to be decided.
         _playerPosition = snapshot.PlayerPosition;
 
-        Perceive(snapshot.PlayerPosition);
+        Perceive(snapshot.PlayerPosition, lures);
     }
 
     /// <summary>
@@ -975,9 +986,29 @@ public sealed class EnemySystem
     }
 
     /// <summary>
-    /// Fills every living agent's derived perception from the positions just ingested.
+    /// Fills every living agent's derived perception from the positions just ingested — or from a
+    /// corpse decoy, while one is standing.
     /// </summary>
-    private void Perceive(Vector3 playerPosition)
+    /// <remarks>
+    /// <para>
+    /// <b>The redirect lives here and nowhere else, which is what keeps it out of the
+    /// behaviours</b> (M5-03 rule 2). This method is the one writer of
+    /// <see cref="EnemyBlackboard.PlayerPosition"/>, <see cref="EnemyBlackboard.DistanceToPlayer"/>
+    /// and <see cref="EnemyBlackboard.DirectionToPlayer"/>, so a decoy is one local variable
+    /// swapped before the three are derived from it and not a branch in four state machines.
+    /// </para>
+    /// <para>
+    /// <b><see cref="EnemyBlackboard.PathDirectionToPlayer"/> is zeroed for a lured agent</b>, and
+    /// that is the half a reader will not guess. The path in <c>EnemySense</c> was computed by the
+    /// body against the <em>player</em>, and left alone it would steer the enemy around the arena
+    /// towards a player it is not walking at any more. The behaviours already fall back to the
+    /// straight line when it is zero (<c>ChaserBehaviour.TickChase</c>'s ternary) — the fallback
+    /// M1-19 built for a missing NavMesh, and this is the first thing that uses it on purpose.
+    /// <b>So a lured enemy walks in a straight line and can be stopped by a pillar</b>, which is
+    /// acceptable over six metres and three seconds and is written down rather than discovered.
+    /// </para>
+    /// </remarks>
+    private void Perceive(Vector3 playerPosition, LureSystem lures)
     {
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
 
@@ -993,20 +1024,45 @@ public sealed class EnemySystem
             EnemyBlackboard blackboard = agent.Blackboard;
             Vector3 position = agent.Position;
 
+            // Where this enemy's quarry is: the player, unless a corpse is standing. Asked per
+            // agent rather than once for the arena because the answer is "the nearest decoy to
+            // *you*" — which is not a filter on who is taunted (every living enemy is, rule 8) but
+            // a choice between the two that may stand at once.
+            Vector3 quarry = playerPosition;
+            bool lured = false;
+
+            if (lures is not null && lures.TryGetLure(position, out Vector3 decoy))
+            {
+                quarry = decoy;
+                lured = true;
+            }
+
             blackboard.SelfPosition = position;
             blackboard.SelfVelocity = agent.Velocity;
-            blackboard.PlayerPosition = playerPosition;
+            blackboard.PlayerPosition = quarry;
 
             // XZ, not the full 3D separation: everything here happens on the ground plane, and the
             // Y difference between a player capsule's centre and an enemy's is a rendering detail
             // that would otherwise inflate every distance a strike or a spell is checked against.
-            var toPlayer = new Vector2(playerPosition.X - position.X, playerPosition.Z - position.Z);
+            var toPlayer = new Vector2(quarry.X - position.X, quarry.Z - position.Z);
             float distance = toPlayer.Length();
 
             blackboard.DistanceToPlayer = distance;
             blackboard.DirectionToPlayer = distance < MinDirectionDistance
                 ? Vector2.Zero
                 : toPlayer / distance;
+
+            // Written unconditionally, so a decoy that rotted since the last tick lowers it — the
+            // same discipline every perception field on this blackboard keeps.
+            blackboard.QuarryIsADecoy = lured;
+
+            // After the copy in Ingest's first pass and therefore winning over it. See the remarks:
+            // the body's path was computed against the player, so it is the one sense that lies
+            // while a decoy stands.
+            if (lured)
+            {
+                blackboard.PathDirectionToPlayer = Vector2.Zero;
+            }
 
             blackboard.AlliesNearby = CountAlliesNearby(agents, i, position);
 

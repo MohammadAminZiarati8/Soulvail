@@ -625,7 +625,10 @@ public sealed class TimeToKillTests
             BoltShotSpeed,
             BoltShotRadius),
         new FocusSpec(0.4f, 1f, 1f),
-        new MovementSkillSpec(MovementSkillKind.Shroudstep, 6f, 0.05f, 2.5f, 0.15f, 0f, 0f, 0.05f));
+        // CH §3.2's three-second decoy is required of a Shroudstep as of M5-03 — the duration is
+        // validated against the kind, so a blink authored without one is refused at the spec's
+        // door. Nothing in this fixture blinks; the number is here because the class does.
+        new MovementSkillSpec(MovementSkillKind.Shroudstep, 6f, 0.05f, 2.5f, 0.15f, 0f, 0f, 0.05f, 3f));
 
     /// <summary>GD §8.1's Husk, Static so that it stands where it was put.</summary>
     private static EnemySpec Husk() => new EnemySpec(

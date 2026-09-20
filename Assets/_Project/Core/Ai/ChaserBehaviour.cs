@@ -331,12 +331,23 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// <c>PlayerDamaged</c> either way, so a strike that arrives during a dodge is still a strike
     /// that arrived.
     /// </para>
+    /// <para>
+    /// <b>And a strike at a corpse hurts nobody</b> (M5-03 rule 7). While a Shroudstep's decoy
+    /// stands, <c>DistanceToPlayer</c> is the distance to <em>it</em> — so a Husk that walked to a
+    /// decoy six metres from the player is inside its reach of a thing with no hit points, and
+    /// swinging at it must not reach across the arena. This is the only place in the game that
+    /// needed telling: every other way an enemy hurts the player resolves against the real player
+    /// position and misses by construction — a Spitter's bolt is landed by <c>ProjectileSystem</c>
+    /// and a Bloater's blast by <c>EnemySystem.Explode</c>, both against <c>RunState.PlayerPosition</c>.
+    /// The windup, the cancel and the recovery are deliberately left alone: the Husk should be seen
+    /// to commit to the corpse, which is what makes the three seconds legible.
+    /// </para>
     /// </remarks>
     private void EnterStrike()
     {
         _agent.Blackboard.StateTimer = 0f;
 
-        if (_agent.Blackboard.DistanceToPlayer <= _agent.Spec.Reach)
+        if (!_agent.Blackboard.QuarryIsADecoy && _agent.Blackboard.DistanceToPlayer <= _agent.Spec.Reach)
         {
             // The agent's stat rather than the spec's float, for the reason TickChase's speed is
             // one: a stage-40 Husk hits for 8 × d(40), and the 8 is the base.

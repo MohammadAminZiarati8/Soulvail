@@ -84,7 +84,7 @@
 | M5-00b | Specs for M5-05…M5-08 — the views, the tree, class select and acceptance | S | 00a | ☐ |
 | M5-01 | [A weapon that throws something, and the lead that makes it hit](tasks/M5-01-projectile-weapon-and-leading.md) | M | M2-07a | ☑ |
 | M5-02 | [The Gravecaller, and the numbers a second class forces us to settle](tasks/M5-02-gravecaller-and-bone-bolt.md) | M | M5-01 | ☑ |
-| M5-03 | [Shroudstep, and the first thing in this game that is not the player](tasks/M5-03-shroudstep-and-corpse-decoy.md) | S | M5-02 | ☐ |
+| M5-03 | [Shroudstep, and the first thing in this game that is not the player](tasks/M5-03-shroudstep-and-corpse-decoy.md) | S | M5-02 | ☑ |
 | M5-04a | [Wights: a body on the player's side](tasks/M5-04a-minion-agents-and-registry.md) | M | M5-02 | ☐ |
 | M5-04b | [Rise, and an address book for something that is neither the player nor an enemy](tasks/M5-04b-rise-and-minion-stats.md) | M | M5-04a | ☐ |
 | M5-05a | [Wights on screen, and the frame step a body costs](tasks/M5-05a-wight-views-and-concurrency.md) — CH §8 q1's concurrency ruling, and [row 4](#carry-forward-into-m5) | M | M5-04a | ☐ |
@@ -251,14 +251,19 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   of the first offer that draws a foreign node, `SkillTree.Available`'s short-buffer refusal, and a
   `KeyNotFoundException` that blames content validation. **This line leaves when M5-07a-i's *As
   built* says so**, not before.
-- **`EnemyBlackboard`'s four player fields will have to be renamed, and M5-03 is the first task that
-  makes them lie.** `PlayerPosition`, `DistanceToPlayer`, `DirectionToPlayer` and
+- **`EnemyBlackboard`'s four player fields lie while a corpse stands, and M5-03 made them do it
+  rather than renaming them.** `PlayerPosition`, `DistanceToPlayer`, `DirectionToPlayer` and
   `PathDirectionToPlayer` mean *"where this enemy's quarry is"* for as long as a Shroudstep's corpse
   stands ([M5-03](tasks/M5-03-shroudstep-and-corpse-decoy.md) rule 2), which arrives one milestone
   before the blackboard's own remarks expect it — they say the sketch's `TargetId` *"returns with the
   first enemy that chooses among targets — the Choir, M7-01."* **Deliberately not renamed at M5-03:**
   it is roughly forty reader sites across four behaviours and their fixtures, it is a rename rather
   than a feature, and the honest version needs the `TargetId` that **M7-01** has to build anyway.
+  **What M5-03 added instead is a fifth field, `QuarryIsADecoy`**, written unconditionally by the one
+  site that writes the other four — and it has exactly one reader, `ChaserBehaviour.EnterStrike`,
+  because a melee strike is the only way an enemy hurts the player that does *not* already resolve
+  against the real `RunState.PlayerPosition`. **That reader is what the rename would delete**: with a
+  target id, "am I in reach of my quarry" and "did I hit the player" stop being the same question.
   Promoted by M7-01, or by the second mechanic that redirects an enemy.
 - **`handslot.l` / `handslot.r` are empty**, so the Knight swings a fist. The 31 props in
   `ThirdParty/KayKit/Adventurers/Props` are built to parent there. Promoted when the weapon-ownership

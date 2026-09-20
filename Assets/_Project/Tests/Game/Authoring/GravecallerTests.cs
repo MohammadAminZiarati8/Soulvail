@@ -208,7 +208,7 @@ public sealed class GravecallerTests
         Assert.That(bolt.ShotSpread, Is.Zero, "Reserved (M5-01): a spread is a change to a seed.");
     }
 
-    // ---- Rule 7: the member without the behaviour ----------------------------------------------------
+    // ---- Rule 7: the member, and as of M5-03 the behaviour behind it ---------------------------------
 
     [Test]
     public void Gravecaller_MovementIsAShroudstepThatIsNotYetOne()
@@ -218,15 +218,20 @@ public sealed class GravecallerTests
         Assert.That(step.Kind, Is.EqualTo(MovementSkillKind.Shroudstep),
             "The kind is content identity and lands with the class; what it does is M5-03's.");
 
+        Assert.That(step.DecoyDuration, Is.EqualTo(3f).Within(Tolerance),
+            "CH §3.2: the corpse taunts for three seconds. Authored here by M5-03, and validated "
+                + "against the kind — a Shroudstep with no duration is refused at the spec's door.");
+
         Assert.That(step.Distance, Is.EqualTo(6f).Within(Tolerance), "CH §3.2: a 6 m blink.");
         Assert.That(step.Duration, Is.EqualTo(0.05f).Within(Tolerance), "Ours: a blink, not a dash.");
         Assert.That(step.Cooldown, Is.EqualTo(2.5f).Within(Tolerance),
             "The Charge's clock — the decoy is the payload, not a shorter cooldown.");
 
-        // The two zeroes are the whole of rule 7's honesty. Until M5-03 merges, PlayerCombat builds
-        // a ChargeSkill from this spec whatever the kind says, so a Gravecaller in this build blinks
-        // 6 m and damages nothing — an honest intermediate state rather than a Charge in disguise
-        // dealing 20 damage down a corridor nobody authored.
+        // The two zeroes are the whole of rule 7's honesty, and M5-03 left them alone: PlayerCombat
+        // still builds a ChargeSkill from this spec whatever the kind says, and the kind selects a
+        // *payload* on the start edge. So a Gravecaller blinks 6 m, damages nothing on the way, and
+        // leaves a corpse — rather than being a Charge in disguise dealing 20 damage down a
+        // corridor nobody authored.
         Assert.That(step.Damage, Is.Zero, "A blink hits nothing on the way.");
         Assert.That(step.Knockback, Is.Zero, "…and shoves nothing.");
 

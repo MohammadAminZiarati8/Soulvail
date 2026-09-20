@@ -117,6 +117,12 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Extra seconds of invulnerability after the dash ends — 0.05.")]
         [SerializeField, Min(0f)] private float _movementSkillIFrameTrail = 0.05f;
 
+        [Tooltip("Seconds a Shroudstep's corpse decoy stands and taunts — 3 (CH §3.2). It is " +
+                 "validated against the kind above: a Shroudstep must be above 0, and every " +
+                 "other kind must be exactly 0. A Charge with a duration here is a forgotten " +
+                 "field, and nothing would ever read it.")]
+        [SerializeField, Min(0f)] private float _movementSkillDecoyDuration;
+
         [Tooltip("The class's minions (CH §3.2's Rise). Cap 0 means this class has none — only " +
                  "the Gravecaller's Wights do in V1, and every field below is ignored at 0. The " +
                  "cap is the switch for the reason the shield max above is: a zeroed block would " +
@@ -216,7 +222,8 @@ namespace Soulvail.Game.Authoring
                         _movementSkillInputBuffer,
                         _movementSkillDamage,
                         _movementSkillKnockback,
-                        _movementSkillIFrameTrail),
+                        _movementSkillIFrameTrail,
+                        _movementSkillDecoyDuration),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

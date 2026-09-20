@@ -507,6 +507,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
         effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
 
+        // One per run like everything above: a second Start must not inherit the first run's
+        // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
+        // decoy — a Shroudstep drops one on the start edge of a dash, and that is its only door
+        // (M5-03 rule 6). Beside the zones because it is the other thing standing on the floor,
+        // and on RunState for the reason the zones are there: something outside core will want to
+        // know, and M5-05's view is that something.
+        var lures = new LureSystem(_events);
+
         // **Above the tree rather than below it, which is the one thing this block's order now
         // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
         // needed it sooner; ModifySkillCooldownHandler holds it, and SkillTree's constructor asks
@@ -596,6 +604,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             tree,
             skills,
             zones,
+            lures,
             levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
@@ -785,7 +794,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             combat,
             _events,
             plan,
-            seed);
+            seed,
+            lures);
 
         // Last, and after RunStarted and SpawnAll for the reason SpawnAll itself is after them: this
         // publishes StageArrived, and a handler dressing an arena from it may reasonably assume
@@ -818,11 +828,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
 
+        // **Immediately above the ingest, which is the whole of this step's ordering** (M5-03
+        // rule 10, AR §18.1). Perception is where an enemy is told which way its quarry is, and it
+        // happens inside Ingest — so the decoys that have rotted have to be gone by the line below
+        // or an enemy spends a frame walking at a corpse that is not there any more. It is above
+        // the player for the other half of the same sentence: a decoy dropped by this tick's blink
+        // is standing by the time the *next* tick perceives, which is the one-frame grace every
+        // fact in this loop already has.
+        //
+        // Unconditional, and the common path is a comparison against a count of zero: every run
+        // this build ships is the Oathbound, whose Charge leaves nothing behind.
+        State.Lures.Tick(State.Time);
+
         // Ingest first, always. It is what makes every position in core this frame's rather than
         // last frame's, so anything that reads an enemy — perception, targeting, cone hits in
         // M1-11 — has to come after it, and a target chosen from stale positions is the whole bug
         // the snapshot exists to prevent.
-        State.Enemies.Ingest(snapshot);
+        //
+        // The decoys go in with it, because perception is the one site that writes the four fields
+        // a decoy redirects and no behaviour is touched (M5-03 rule 2).
+        State.Enemies.Ingest(snapshot, State.Lures);
 
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
         // Before the behaviours, so the target is chosen from the same positions the enemies were
@@ -833,12 +858,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // last tick's turn: combat cannot be given a facing that has not been decided yet. A swing
         // landing mid-turn is therefore aimed up to one frame of rotation behind the pose that gets
         // drawn — see PlayerCombat.Tick's bodyFacing, which is where that trade is argued.
+        // The lures go down with it, and this is the one step that *writes* one: a Shroudstep drops
+        // its corpse on the start edge of the dash, from the position this snapshot reported
+        // (M5-03 rule 6).
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
             snapshot,
             State.Enemies.Registry.Alive,
-            State.Motor.Facing);
+            State.Motor.Facing,
+            State.Lures);
 
         // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
         //
@@ -1330,6 +1359,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
         // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
         State.Zones.Clear();
+
+        // And the corpses a Shroudstep left standing, in the same silence — but *not* for the
+        // zone's reason, and the difference is the line (M5-03 rule 9). A zone is the player's own
+        // and deliberately survives a stage boundary; a decoy is a taunt aimed at bodies the
+        // boundary has just taken out of the world, so StageFlow.Advance clears it too. It has to:
+        // a decoy stands for 3 s against a boundary's 2 s of gate and arrival, which makes it the
+        // one thing on the floor that can genuinely cross one — the projectiles' reason exactly.
+        State.Lures.Clear();
 
         // And the ground the boss made dangerous, in the same silence — but **not** for the zone's
         // reason, and the difference is worth the line (M4-02). A zone is the player's own and

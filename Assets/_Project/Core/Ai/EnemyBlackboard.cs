@@ -23,9 +23,14 @@ namespace Soulvail.Core.Ai;
 /// </para>
 /// <para>
 /// <b>Where this differs from AR §9's sketch.</b> The sketch carries a <c>TargetId</c>; this does
-/// not, because every enemy in V1 attacks the player and nothing else, so the field would have one
-/// legal value. It returns with the first enemy that chooses among targets — the Choir, M7-01,
-/// which picks an ally to heal. In exchange this carries <see cref="SelfPosition"/>,
+/// not, because nothing an enemy walks at is an <em>entity</em> it could hold an id of: the player
+/// is not in the registry, and M5-03's corpse decoy is a place and a moment rather than a body. It
+/// returns with the first enemy that chooses among <em>agents</em> — the Choir, M7-01, which picks
+/// an ally to heal — and that is the task that should pay for renaming the four fields below
+/// (<c>DistanceToQuarry</c> and its three siblings), which is forty reader sites across four
+/// behaviours and their fixtures. Until then they keep their names and mean "where this enemy's
+/// quarry is" for as long as a decoy stands, with <see cref="QuarryIsADecoy"/> saying which.
+/// In exchange this carries <see cref="SelfPosition"/>,
 /// <see cref="SelfVelocity"/>, <see cref="PlayerPosition"/>, <see cref="DistanceToPlayer"/> and
 /// <see cref="NextAttackAt"/>, which the sketch predates.
 /// </para>
@@ -71,6 +76,34 @@ public sealed class EnemyBlackboard
 
     /// <summary>Whether the player is visible from here.</summary>
     public bool HasLineOfSight;
+
+    /// <summary>
+    /// Whether the four fields above describe a <em>corpse decoy</em> rather than the player
+    /// themselves. False for every enemy in the arena except while a Shroudstep's decoy stands.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Perception, not a threat table</b> (M5-03 rule 8). It is written unconditionally in
+    /// <c>EnemySystem.Perceive</c> — the one site that writes the four player fields — from the one
+    /// question <c>LureSystem.TryGetLure</c> answers the same way about every agent, so there is
+    /// still no <c>TargetId</c>, no per-enemy taunt to remember across ticks, and no way for a
+    /// decoy to pull <em>some</em> enemies and not others. It is recomputed every tick like
+    /// <see cref="HasLineOfSight"/> beside it, and a decoy that rots lowers it on the next one.
+    /// </para>
+    /// <para>
+    /// <b>It exists because one behaviour reaches past perception and hits the player
+    /// directly.</b> <c>ChaserBehaviour.EnterStrike</c> calls <c>PlayerCombat.ApplyDamage</c> when
+    /// <see cref="DistanceToPlayer"/> is inside its reach — and while that distance is a decoy's, a
+    /// Husk standing on a corpse six metres from the player would hit them. Every other way an
+    /// enemy hurts the player already resolves against the <em>real</em> player position and
+    /// therefore misses by construction: a Spitter's bolt is aimed at <see cref="PlayerPosition"/>
+    /// and landed by <c>ProjectileSystem</c> against <c>RunState.PlayerPosition</c>, and a
+    /// Bloater's blast is resolved by <c>EnemySystem.Explode</c> against the same. This field is
+    /// the one place the asymmetry is paid for, and M7-01's Choir — which brings a real target id —
+    /// is where it stops being a special case.
+    /// </para>
+    /// </remarks>
+    public bool QuarryIsADecoy;
 
     /// <summary>How many other enemies are within 6 m. GD §8.1's clustering pressure reads this.</summary>
     public int AlliesNearby;
@@ -157,6 +190,7 @@ public sealed class EnemyBlackboard
         DirectionToPlayer = Vector2.Zero;
         PathDirectionToPlayer = Vector2.Zero;
         HasLineOfSight = false;
+        QuarryIsADecoy = false;
         AlliesNearby = 0;
         HpFraction = 0f;
         ShieldFraction = 0f;

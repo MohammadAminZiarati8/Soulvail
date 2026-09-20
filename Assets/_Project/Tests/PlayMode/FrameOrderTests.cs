@@ -109,6 +109,7 @@ public sealed class FrameOrderTests
     private ProjectileViews _projectileViews;
     private TelegraphRings _telegraphRings;
     private ZoneViews _zoneViews;
+    private BossViews _bossViews;
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
@@ -167,6 +168,22 @@ public sealed class FrameOrderTests
         // one (M3-11c rule 3).
         _zoneViews = new ZoneViews(_container, ZoneTemplate(), null, _hub, prewarm: 0);
 
+        // Empty on the zones' terms and with a null arena pool besides: nothing here reaches a
+        // boss, so no ring, crack or shell is ever rented. It is here because the ticker takes one
+        // (M4-03 rule 5).
+        _bossViews = new BossViews(
+            _container,
+            Template<ShockwaveView>("ShockwaveTemplate"),
+            Template<FissureView>("FissureTemplate"),
+            Template<BossBeatView>("BeatTemplate"),
+            null,
+            _hub,
+            _enemyViews,
+            null,
+            shockwavePrewarm: 0,
+            fissurePrewarm: 0,
+            beatPrewarm: 0);
+
         _input = new InputAdapter();
 
         // Never enabled, which is what makes the command phase a no-op: both properties the ticker
@@ -205,11 +222,16 @@ public sealed class FrameOrderTests
             _projectileViews,
             _telegraphRings,
             _zoneViews,
+            _bossViews,
 
             // Nothing here takes a snapshot, so this writes nothing — it is on the constructor for
             // the reason the rings above are (M2-14a rule 8): being on that constructor is what
             // guarantees the writer is subscribed before a run can announce its opening snapshot.
             new SaveWriter(new InertSaveStore(), _hub),
+
+            // And M4-05b's writer, on the constructor for the same reason: a Scoped registration
+            // nobody resolves is never constructed, so the parameter is what makes the object exist.
+            new ShardWriter(new ProfileStore(new InertSaveStore()), _hub),
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
@@ -248,6 +270,9 @@ public sealed class FrameOrderTests
 
         _zoneViews?.Dispose();
         _zoneViews = null;
+
+        _bossViews?.Dispose();
+        _bossViews = null;
 
         _input?.Dispose();
         _input = null;
@@ -834,6 +859,25 @@ public sealed class FrameOrderTests
         Track(root);
 
         return root.AddComponent<ZoneView>();
+    }
+
+    /// <summary>
+    /// An inactive body carrying <typeparamref name="T"/>, for a pool that is never rented from.
+    /// </summary>
+    /// <remarks>
+    /// The three templates above are each a method because each dresses something; these three
+    /// dress nothing, so one generic is the whole of what M4-03's censuses need from this fixture.
+    /// </remarks>
+    private T Template<T>(string name)
+        where T : Component
+    {
+        var root = new GameObject(name);
+
+        root.SetActive(false);
+
+        Track(root);
+
+        return root.AddComponent<T>();
     }
 
     private T Track<T>(T o)

@@ -58,18 +58,23 @@ public sealed class OathboundTreeTests
     private const string TreePath = "Assets/_Project/Data/Trees/Oathbound.asset";
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     /// <summary>
-    /// All three, not just the Husk: <c>Descent.asset</c>'s roster names every one of them, and
+    /// All four, not just the Husk: <c>Descent.asset</c>'s roster names three of them, and
     /// <c>RunSession.Start</c> resolves the whole roster before it announces anything. A catalog one
     /// enemy short refuses the run with a <c>KeyNotFoundException</c> — which is that check working,
     /// and how this fixture found out it had to ship the real roster rather than a convenient subset.
+    /// <b>The Warden joined them at M4-02</b>, and by the same route: the mode's <em>boss</em>
+    /// roster now names <c>boss.warden</c>, the boss names the body it wears, and <c>Start</c>
+    /// resolves both before it announces anything. The fixture's own comment predicted this.
     /// </summary>
     private static readonly string[] EnemyPaths =
     {
         "Assets/_Project/Data/Enemies/Husk.asset",
         "Assets/_Project/Data/Enemies/Spitter.asset",
         "Assets/_Project/Data/Enemies/Bloater.asset",
+        "Assets/_Project/Data/Enemies/Warden.asset",
     };
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
+    private const string WardenBossPath = "Assets/_Project/Data/Enemies/WardenBoss.asset";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
 
     private const string OathboundId = "character.oathbound";
@@ -495,6 +500,41 @@ public sealed class OathboundTreeTests
     }
 
     [Test]
+    public void Modify_ShippedAssetsAllTargetThePlayer()
+    {
+        // M4-01a rule 4's ripple, asserted rather than assumed. StatTarget defaults to Player and
+        // the field is new, so every one of these assets keeps meaning exactly what it meant with
+        // nothing in Data/ touched — but "the default is the old behaviour" is a claim about
+        // deserialisation, and a claim about deserialisation is measured against the files rather
+        // than reasoned about. A Self here would be a node quietly buffing whoever last cast.
+        string[] guids = AssetDatabase.FindAssets(
+            $"t:{nameof(ModifyStatDefinition)}",
+            new[] { EffectDir });
+
+        Assert.That(
+            guids.Length,
+            Is.EqualTo(9),
+            "Nine of the thirteen shipped effect assets are ModifyStats. Update the number and say "
+                + "which task added one.");
+
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var definition = AssetDatabase.LoadAssetAtPath<ModifyStatDefinition>(path);
+
+            Assert.That(definition, Is.Not.Null, $"No ModifyStatDefinition at {path}.");
+
+            var effect = (ModifyStat)definition.ToEffect();
+
+            Assert.That(
+                effect.Target,
+                Is.EqualTo(StatTarget.Player),
+                $"{path} must still aim at the player. Nothing in this milestone authors Self, and "
+                    + "an asset that did would be a node whose number lands on a boss.");
+        }
+    }
+
+    [Test]
     public void Tree_IsSixStatsFourRulesAndTwoActives()
     {
         // The mix M3-00c's ruling asked to be counted honestly, counted off the assets rather than
@@ -712,8 +752,9 @@ public sealed class OathboundTreeTests
     }
 
     /// <summary>
-    /// The shipped catalog: the Oathbound, the Husk, Descent, the twelve nodes and their tree — all
-    /// read off <c>Data/</c>, which is what makes this fixture worth having its own file.
+    /// The shipped catalog: the Oathbound, the four archetypes, the Warden, Descent, the twelve
+    /// nodes and their tree — all read off <c>Data/</c>, which is what makes this fixture worth
+    /// having its own file.
     /// </summary>
     private static ContentCatalog Catalog()
     {
@@ -736,7 +777,8 @@ public sealed class OathboundTreeTests
             enemies,
             new[] { Load<ModeDefinition>(DescentPath).ToSpec() },
             skills,
-            new[] { Tree() });
+            new[] { Tree() },
+            new[] { Load<BossDefinition>(WardenBossPath).ToSpec() });
     }
 
     private static T Load<T>(string path) where T : ScriptableObject

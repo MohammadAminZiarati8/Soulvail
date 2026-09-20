@@ -201,6 +201,40 @@ public static class Palette
     public static readonly Color EnemyDying = Rgb(0x3B, 0x24, 0x22);
 
     /// <summary>
+    /// <c>#CCC4B7</c> — the boss's own bar across the top of the screen (M4-04). <see cref="Neutral"/>
+    /// brightened: the same bone, at the value a full-width band needs.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It is the tenth colour the class remarks promised, and the argument is by elimination.</b>
+    /// GD §16.4 has five meanings and a boss is only one of them. It is not the player and not
+    /// something that keeps them safe; it is not Veilrot and not a reward; and it may <em>not</em> be
+    /// <see cref="Danger"/> — M4-04 rule 6 forbids it outright, because a permanent red-orange band
+    /// across the top of the screen is the most visible breach of <em>"for nothing else, ever"</em>
+    /// this project could ship, and a boss bar is up for the whole of the two minutes GD §9.1 rule 5
+    /// gives a fight. So a boss is <em>everything else</em>, and the only freedom §16.4 leaves inside
+    /// that band is value.
+    /// </para>
+    /// <para>
+    /// <b>Which is why this is a brightened <see cref="Neutral"/> rather than a new hue</b> — exactly
+    /// <see cref="PlayerBlocked"/>'s move, one band over. Each channel is <see cref="Neutral"/>'s
+    /// times 1.85, so the two are the same bone and one of them is loud; <c>Palette_IsEntirelyOpaque</c>
+    /// and <c>Danger_IsUsedByNothingElse</c> sweep it with the rest by reflection, so it needed no row
+    /// of its own in <c>PaletteTests</c> to be held to the file's two rules.
+    /// </para>
+    /// <para>
+    /// <b>A separate member was necessary rather than tidy, and that is a fact about what is already
+    /// taken.</b> <see cref="Neutral"/> itself is spoken for on an enemy <em>body</em> twice over —
+    /// M3-13b's health-bar fill and M4-03's invulnerable-beat shell — and <see cref="EnemyDying"/> is
+    /// the third thing on one. A boss's bar drawn in any of those would say <em>"an ordinary
+    /// enemy"</em> in the one place GD §16.2 wants <em>"the fight you are in"</em>. <c>BossBarView</c>
+    /// reads this for the fill and <see cref="Neutral"/> for the seams between segments, which is the
+    /// contrast that makes a mark legible on a filled bar.
+    /// </para>
+    /// </remarks>
+    public static readonly Color Boss = Rgb(0xCC, 0xC4, 0xB7);
+
+    /// <summary>
     /// The enemy the player tapped, when it is off screen: <see cref="Player"/>'s colour, and
     /// deliberately not <see cref="Danger"/>.
     /// </summary>

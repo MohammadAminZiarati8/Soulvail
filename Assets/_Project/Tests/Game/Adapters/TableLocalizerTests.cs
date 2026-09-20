@@ -51,6 +51,13 @@ public sealed class TableLocalizerTests
 {
     private const string MenuScenePath = "Assets/_Project/Scenes/Menu.unity";
     private const string HudPrefabPath = "Assets/_Project/Prefabs/UI/Hud.prefab";
+
+    /// <summary>
+    /// Where the two death strings live as of M4-06: <c>HudPresenter</c>'s overlay was replaced by a
+    /// run-end screen on its own prefab, and the keys came with it unchanged (M4-06 rule 3).
+    /// </summary>
+    private const string RunEndPrefabPath = "Assets/_Project/Prefabs/UI/RunEnd.prefab";
+
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string TablePath = "Assets/_Project/Data/Localisation/English.asset";
 
@@ -415,6 +422,13 @@ public sealed class TableLocalizerTests
     /// carries its own <c>"Soulvail"</c> splash, which nothing resolves because nothing in that scene
     /// is a presenter. It shares <c>ui.app.title</c>'s row, so wiring it later costs a field.
     /// </para>
+    /// <para>
+    /// <b>The two death strings moved asset at M4-06 and this row followed them</b> (rule 3). They
+    /// keep their keys, and the prefab they are drawn on is <c>RunEnd.prefab</c> now rather than
+    /// <c>Hud.prefab</c> — so the sweep is on that asset, with the three new run-end rows beside
+    /// them. <c>Hud.prefab</c> is still read here for the one string that is deliberately <em>not</em>
+    /// a key.
+    /// </para>
     /// </remarks>
     [Test]
     public void Menu_AndDeathOverlayDrawFromTheTable()
@@ -432,28 +446,37 @@ public sealed class TableLocalizerTests
                     + "anywhere, and M6-10 must inherit no English typed into a scene.");
         }
 
-        IReadOnlyList<string> hud = AuthoredText(HudPrefabPath);
+        // **The prefab the two death strings are swept on is RunEnd.prefab as of M4-06.** The
+        // overlay they were typed into left Hud.prefab with rule 2's deletion, so a row that kept
+        // reading the HUD would go green on an asset that no longer has the labels at all — which is
+        // a row asserting nothing rather than a row that passes.
+        IReadOnlyList<string> runEnd = AuthoredText(RunEndPrefabPath);
 
-        Assert.That(hud, Is.Not.Empty, "the prefab has no TMP_Text at all, so this row tests nothing.");
+        Assert.That(runEnd, Is.Not.Empty, "the prefab has no TMP_Text at all, so this row tests nothing.");
 
-        foreach (string authored in new[] { "You died", "Tap to return" })
+        foreach (string authored in new[] { "You died", "Tap to return", "Depth", "Bosses", "Soul Shards" })
         {
             Assert.That(
-                hud,
+                runEnd,
                 Does.Not.Contain(authored),
-                $"'{authored}' is still typed into Hud.prefab.");
+                $"'{authored}' is still typed into RunEnd.prefab.");
         }
 
-        // And the five have rows, so the screens that now ask for them get words rather than keys.
+        // And the eight have rows, so the screens that now ask for them get words rather than keys.
         TableLocalizer shipped = new TableLocalizer(LoadShippedTable());
 
         foreach (string key in new[]
         {
             "ui.app.title", "ui.menu.descend", "ui.menu.continue", "ui.death.title", "ui.death.hint",
+            "ui.runend.depth", "ui.runend.bosses", "ui.runend.shards",
         })
         {
             Assert.That(shipped.Has(new LocKey(key)), Is.True, $"English.asset has no row for {key}.");
         }
+
+        IReadOnlyList<string> hud = AuthoredText(HudPrefabPath);
+
+        Assert.That(hud, Is.Not.Empty, "the prefab has no TMP_Text at all, so this row tests nothing.");
 
         // **The HP readout is deliberately still not among them** — "{0:0}/{1:0}" is a number format
         // rather than a sentence and survives localisation unchanged, which is the distinction the

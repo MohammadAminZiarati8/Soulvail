@@ -53,7 +53,7 @@ _Only if a Game-side change is visible._ Numbered steps, each with the expected 
 
 ## As built
 
-_Filled at merge. Deviations from the above with their reasons, or "as specified". This footer owns the deviations; the PROGRESS entry only counts them and links here._
+_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one paragraph that links to the test that pins it, and the argument that does not fit is the argument that was not needed. This footer owns the deviations; the PROGRESS entry only counts them and links here. No superlatives._
 
 ---
 
@@ -61,4 +61,5 @@ _Spec self-check, before a spec is called finished — delete this block from th
 - [ ] Every § reference resolves to a heading that exists.
 - [ ] Every member Behaviour names is in the Public API block, with the same signature.
 - [ ] Every Behaviour rule has at least one Tests row, and no row tests a rule that isn't written.
-- [ ] Every [ledger](../ROADMAP.md#carry-forward-into-m2) row naming this task is answered in Behaviour or Out of scope.
+- [ ] Every row of the current milestone's [ledger](../ROADMAP.md) naming this task is answered in Behaviour or Out of scope.
+- [ ] Code is cited by member (`HudPresenter.ReturnToMenu`), never by line number — a line drifts by the next task, and M4-05a recorded two drifted citations as deviations.

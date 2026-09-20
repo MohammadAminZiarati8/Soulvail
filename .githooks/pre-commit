@@ -9,6 +9,8 @@
 # 6. C# whitespace formatting via `dotnet format` if the .NET SDK is present
 # 7. ProjectSettings/ changes are deliberate: staged ones need ALLOW_PROJECT_SETTINGS=1,
 #    unstaged ones are pointed out (Unity backfills defaults — Docs/Traps.md §5)
+# 8. Docs/plan/PROGRESS.md, when staged: its "Last merged task" row names the newest Log
+#    entry's task (ALLOW_STALE_STATE=1 to override)
 #
 # Bypass in an emergency: git commit --no-verify
 
@@ -171,6 +173,20 @@ if [ -n "$settings_unstaged" ]; then
   warn "ProjectSettings/ has unstaged changes (not in this commit):"
   printf '%s\n' "$settings_unstaged" | while IFS= read -r p; do printf '         %s\n' "$p" >&2; done
   warn "  Unity may have backfilled them (Docs/Traps.md §5). Revert them, or stage them on purpose."
+fi
+
+# ------------------------------------------ 8. PROGRESS Current State was rotated
+# The "Last merged task" row must name the task of the newest Log entry. M3-14c appended its
+# entry and left the row saying M3-14b for a whole task; only M3-15 noticed (M4 ledger row 7).
+progress=Docs/plan/PROGRESS.md
+if awk -F'\t' -v p="$progress" '$1=="A" && $2==p {f=1} END {exit !f}' "$expanded_file"; then
+  id_re='M[0-9][0-9]*-[0-9][0-9]*[a-z]*\(-[iv][iv]*\)\{0,1\}'
+  last_merged=$(git show ":$progress" | awk -F'|' '/^\| \*\*Last merged task\*\*/ {print $3; exit}' | grep -o "$id_re" | head -1)
+  newest=$(git show ":$progress" | awk '/^### 20[0-9][0-9]-/ {h=$0} END {print h}' | grep -o "$id_re" | head -1)
+  if [ -n "$last_merged" ] && [ -n "$newest" ] && [ "$last_merged" != "$newest" ] && [ "${ALLOW_STALE_STATE:-0}" != "1" ]; then
+    err "PROGRESS.md: Current State says 'Last merged task: $last_merged' but the newest Log entry is $newest."
+    err "  Rotate Current State with the entry, or ALLOW_STALE_STATE=1 git commit ... if the row is right on purpose."
+  fi
 fi
 
 # ------------------------------------------------------------------ result

@@ -40,9 +40,9 @@ public readonly struct RunStarted
 /// </summary>
 /// <remarks>
 /// Carries no cause — death, a completed descent, the player quitting to the menu. Whatever ends
-/// a run publishes its own event first (M4-05's payout reads <c>PlayerDied</c>), and this one
-/// closes the run for everyone who only needs to know that it did: the HUD, the ticker, the
-/// scope teardown.
+/// a run publishes its own event first (a death publishes <c>PlayerDied</c> and then
+/// <see cref="ShardsAwarded"/>), and this one closes the run for everyone who only needs to know
+/// that it did: the HUD, the ticker, the scope teardown.
 /// </remarks>
 public readonly struct RunEnded
 {
@@ -52,5 +52,44 @@ public readonly struct RunEnded
     public RunEnded(float time)
     {
         Time = time;
+    }
+}
+
+/// <summary>
+/// What the run just paid, in Soul Shards (GD §14.1). Published on the death path and nowhere else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Its own event rather than a field on <see cref="RunEnded"/>, and that is a ruling.</b>
+/// <c>RunEnded</c> is also published when <c>RunScope</c> is torn down for any other reason —
+/// <c>RunSession.End</c> is a deliberate no-op-if-not-running so disposal can call it blind, which
+/// is why <c>SaveWriter</c>, <c>HudPresenter</c> and <c>PausePresenter</c> have each already
+/// refused that event. A payout riding <c>RunEnded</c> would pay a player for quitting to the menu,
+/// and would pay them again on every scope teardown. So the payout gets this event instead,
+/// published only inside <c>RunSession.Tick</c>'s death branch: the order on the wire is
+/// <c>PlayerDied</c> → <c>ShardsAwarded</c> → <c>RunEnded</c>.
+/// </para>
+/// <para>
+/// <b>It carries its own breakdown</b> — the two terms as well as the total — because the screen
+/// that draws it is a readout and must not hold a handle to the thing that computed it. That is
+/// M4-04's precedent, applied to the event the payout actually rides.
+/// </para>
+/// </remarks>
+public readonly struct ShardsAwarded
+{
+    /// <summary>What this run is worth, all terms summed.</summary>
+    public readonly int Total;
+
+    /// <summary>The first term's input: <c>RunState.StageIndex</c> at the moment of death.</summary>
+    public readonly int DeepestStage;
+
+    /// <summary>The second term's input: how many boss stages the run left behind it.</summary>
+    public readonly int BossesKilled;
+
+    public ShardsAwarded(int total, int deepestStage, int bossesKilled)
+    {
+        Total = total;
+        DeepestStage = deepestStage;
+        BossesKilled = bossesKilled;
     }
 }

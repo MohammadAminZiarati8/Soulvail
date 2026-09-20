@@ -89,6 +89,7 @@ public sealed class LocalJsonSaveStore : ISaveStore
             version = profile.Version,
             hapticsEnabled = profile.HapticsEnabled,
             seenFirstActiveHint = profile.SeenFirstActiveHint,
+            shards = profile.Shards,
         };
 
         return Write(_profilePath, JsonUtility.ToJson(mirror));
@@ -353,7 +354,7 @@ public sealed class LocalJsonSaveStore : ISaveStore
         }
 
         var decoded = new PlayerProfile(
-            mirror.version, mirror.hapticsEnabled, mirror.seenFirstActiveHint);
+            mirror.version, mirror.hapticsEnabled, mirror.seenFirstActiveHint, mirror.shards);
 
         return SaveMigrations.MigrateProfile(mirror.version, decoded);
     }
@@ -608,5 +609,18 @@ public sealed class LocalJsonSaveStore : ISaveStore
         /// the authority and overwrites it regardless.
         /// </remarks>
         public bool seenFirstActiveHint;
+
+        /// <summary>
+        /// v3's one, appended after <see cref="seenFirstActiveHint"/> for its reason: field order is
+        /// key order on disk, and the three profile fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <b>Left at <c>0</c> rather than initialised</b>, for the field above's reason and with
+        /// the same conclusion: a v1 or v2 document has no <c>shards</c> key, so this keeps the
+        /// default constructor's zero — which is also exactly what the v2 → v3 step writes
+        /// unconditionally (M4-05b rule 3). The step is the authority either way; this field is only
+        /// ever the authority for a v3 document, which is the one case where the key is really there.
+        /// </remarks>
+        public int shards;
     }
 }

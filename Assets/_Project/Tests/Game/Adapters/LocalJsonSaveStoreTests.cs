@@ -107,23 +107,38 @@ public sealed class LocalJsonSaveStoreTests
     /// rather than anything this build writes.
     /// </summary>
     /// <remarks>
-    /// <b>Not one character of it changed at the bump, deliberately.</b> It is a real v1 document
-    /// with no <c>seenFirstActiveHint</c> key, which is what makes
-    /// <c>Fixture_V1Profile_DecodesToTheExpectedProfile</c> a test of the step through the real
-    /// adapter instead of a test of a step in isolation — and a fixture rewritten alongside the
+    /// <b>Not one character of it changed at either bump, deliberately.</b> It is a real v1 document
+    /// with no <c>seenFirstActiveHint</c> key and no <c>shards</c> key, which is what makes
+    /// <c>Fixture_V1Profile_DecodesToTheExpectedProfile</c> a test of the whole chain through the
+    /// real adapter instead of a test of a step in isolation — and a fixture rewritten alongside the
     /// format it pins stops being evidence.
     /// </remarks>
     private const string V1Profile = "{\"version\":1,\"hapticsEnabled\":false}";
 
-    /// <summary>A v2 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v2 profile, as it is spelled on disk — and as of M4-05b, the v2 → v3 step's input rather
+    /// than anything this build writes.
+    /// </summary>
     /// <remarks>
-    /// <b>One new key, <c>seenFirstActiveHint</c>, following <c>hapticsEnabled</c></b>, because field
-    /// order in <c>ProfileMirror</c> is key order on disk and v2 only appends. Typed by hand like
-    /// its predecessor: a fixture produced by the code under test asserts only that the code agrees
-    /// with itself.
+    /// <b>One new key at v2, <c>seenFirstActiveHint</c>, following <c>hapticsEnabled</c></b>, because
+    /// field order in <c>ProfileMirror</c> is key order on disk and each bump only appends. Typed by
+    /// hand like its predecessor: a fixture produced by the code under test asserts only that the
+    /// code agrees with itself. <b>Not one character of it changed at the v3 bump</b>, for
+    /// <see cref="V1Profile"/>'s reason — it is a real v2 document with no <c>shards</c> key, and a
+    /// fixture rewritten alongside the format it pins stops being evidence.
     /// </remarks>
     private const string V2Profile =
         "{\"version\":2,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true}";
+
+    /// <summary>A v3 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b>One new key, <c>shards</c>, following <c>seenFirstActiveHint</c></b>, for the key order
+    /// reason above. This is the third profile literal and they play the three parts the run
+    /// literals do: <see cref="V1Profile"/> and <see cref="V2Profile"/> are migration inputs, and
+    /// this one is both what the build writes and the shape a migrated document has to arrive at.
+    /// </remarks>
+    private const string V3Profile =
+        "{\"version\":3,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220}";
 
     private static readonly ContentId Mode = new ContentId("mode.descent");
     private static readonly ContentId Character = new ContentId("character.oathbound");
@@ -290,7 +305,10 @@ public sealed class LocalJsonSaveStoreTests
     public void Store_RoundTripsAProfile()
     {
         Await(_store.SaveProfile(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true)));
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: false,
+            seenFirstActiveHint: true,
+            shards: 220)));
 
         PlayerProfile? loaded = Result(_store.LoadProfile());
 
@@ -301,6 +319,10 @@ public sealed class LocalJsonSaveStoreTests
         // Set the opposite way from `hapticsEnabled` above, so a mirror that wrote one field into
         // both keys — or dropped the second — cannot round-trip green.
         Assert.That(loaded.Value.SeenFirstActiveHint, Is.True);
+
+        // And v3's number, which is the one field here a wrong answer would cost the player
+        // something they had earned rather than a setting they can flip back.
+        Assert.That(loaded.Value.Shards, Is.EqualTo(220));
     }
 
     [Test]
@@ -332,7 +354,10 @@ public sealed class LocalJsonSaveStoreTests
     {
         Await(_store.SaveRun(Snapshot()));
         Await(_store.SaveProfile(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false)));
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: false,
+            seenFirstActiveHint: false,
+            shards: 0)));
 
         Await(_store.ClearRun());
 
@@ -512,33 +537,64 @@ public sealed class LocalJsonSaveStoreTests
 
         PlayerProfile profile = Result(_store.LoadProfile()).Value;
 
-        // **v2, because this literal is now the v1 → v2 step's input.** The document is unchanged
-        // from M2-13b; what changed is that loading it is a migration rather than a read — and this
-        // is the only place the step and the code that calls it are tested together.
-        Assert.That(profile.Version, Is.EqualTo(2));
+        // **v3, because this literal is now the input to a two-step chain.** The document is
+        // unchanged from M2-13b; what changed is first that loading it became a migration rather
+        // than a read (M3-09c), and now that the migration is two steps deep — and this is the only
+        // place the steps and the code that calls them are tested together.
+        Assert.That(profile.Version, Is.EqualTo(3));
 
-        // Haptics as before: the one v1 field is something the player chose and survives the step.
+        // Haptics as before: the one v1 field is something the player chose and survives both steps.
         Assert.That(profile.HapticsEnabled, Is.False);
 
         // And the hint is unseen, which is true rather than a default: a v1 profile was written by
         // a build with no skills in it, so there was no first Active to be told about.
         Assert.That(profile.SeenFirstActiveHint, Is.False);
+
+        // And nothing is banked, for the same kind of reason one step further on: a v1 build had no
+        // payout in it either, so zero is the truth about that player rather than a placeholder.
+        Assert.That(profile.Shards, Is.Zero);
     }
 
     [Test]
-    public void Fixture_V2Profile_IsWhatThisBuildWrites()
+    public void Fixture_V2Profile_DecodesToTheExpectedProfile()
+    {
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName), V2Profile);
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        // **Renamed from Fixture_V2Profile_IsWhatThisBuildWrites rather than joined by a second
+        // row**: "what this build writes" is a property of the current version and moves up with
+        // every bump, and what used to be this row's subject is now a migration input — which is
+        // exactly the transition a bump makes. `Fixture_V2Run_DecodesToTheExpectedSnapshot` made
+        // the same move on the other format at M3-07b.
+        Assert.That(profile.Version, Is.EqualTo(3));
+
+        // The document has no `shards` key at all, so this is the v2 → v3 step's answer read
+        // through the real adapter rather than through the mirror's field initialiser: JsonUtility
+        // leaves the field at zero and the step writes zero over it, and both being zero is the
+        // point — a v2 document is a v2 document, and there is no number here to disagree about.
+        Assert.That(profile.Shards, Is.Zero);
+
+        // And both v2 fields survive, set the opposite way round from each other.
+        Assert.That(profile.HapticsEnabled, Is.False);
+        Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Fixture_V3Profile_IsWhatThisBuildWrites()
     {
         Await(_store.SaveProfile(new PlayerProfile(
-            version: 2, hapticsEnabled: false, seenFirstActiveHint: true)));
+            version: 3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220)));
 
         string written = File.ReadAllText(
             Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName));
 
         // Byte for byte. A field renamed, reordered or added changes this text, and a save format
         // that drifts without its fixture moving with it is one that stops loading after a release.
-        // `Fixture_V3Run_IsWhatThisBuildWrites`' job, for the other format — and the first time the
-        // profile has had one, because until v2 the only document it could write was its own input.
-        Assert.That(written, Is.EqualTo(V2Profile));
+        // `Fixture_V3Run_IsWhatThisBuildWrites`' job, for the other format — and the row that says
+        // the `shards` key is really on disk rather than merely on the struct in memory, which is
+        // the difference between a payout banked and a payout shown and forgotten.
+        Assert.That(written, Is.EqualTo(V3Profile));
     }
 
     [Test]

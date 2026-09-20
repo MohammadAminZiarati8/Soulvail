@@ -91,6 +91,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private SimulatedClock _clock;
 
     /// <summary>
+    /// The ground a boss has made dangerous: the rings a slam has sent out and the cracks it has
+    /// opened (M4-02).
+    /// </summary>
+    /// <remarks>
+    /// <b>Here rather than on <c>RunState</c>, unlike <c>Zones</c>, because nothing reads them</b>
+    /// (AR §18.2). A ring is a complete description the moment it leaves — <c>ShockwaveEmitted</c>
+    /// carries the origin, the speed and the ceiling — and a crack is one too, so whatever draws
+    /// either integrates its own animation off the event and never asks core where a hazard is this
+    /// frame. A zone is the opposite and needs the two reads it has: it stands still and a decal
+    /// has to be told where.
+    /// </remarks>
+    private ShockwaveSystem _shockwaves;
+
+    private FissureSystem _fissures;
+
+    /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
     /// to hand movement back to the stick — see the remarks there.
     /// </summary>
@@ -408,12 +424,34 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
         // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
         // it at each boundary.
+        // Built before the census, because the factory below closes over both of them and a boss
+        // can stand up on the director's first tick of a boss stage. One pair per run, like every
+        // live object here: a second Start must not inherit the first run's rings.
+        _shockwaves = new ShockwaveSystem(_events);
+        _fissures = new FissureSystem(_events);
+
         var enemies = new EnemySystem(
             _catalog,
             _events,
             _random,
             new DepthScaling(mode.Scaling),
-            _enemyCapacity)
+            _enemyCapacity,
+            // **What a boss fights with, decided once per run in the one place that holds the
+            // hazards, the generator and the census at the same time** (M4-02). A factory rather
+            // than an instance because a behaviour holds the agent it drives and the agent does
+            // not exist until SpawnBoss has made one — EnemySystem._bossInner argues that at
+            // length. The Misc stream and no other: a boss drawing from Spawn would make every
+            // later stage of a seeded run depend on how long this fight took (ADR-0011).
+            //
+            // **Every boss gets a WardenBehaviour, and V1 has exactly one boss.** That is stated
+            // rather than hidden: the moment GD §9.2's second boss is authored (M7's Choirmother,
+            // whose whole mechanic is rotating shields and a sonic cone) this line becomes a
+            // dispatch, and the honest place for it is here, where the alternative — a
+            // `switch` on a ContentId, or an attack-set enum invented for a single implementer —
+            // would be content identity in code or an abstraction guessed ahead of its second
+            // caller (AR §6). Nothing can reach it today: RunSession.Start refuses a run whose
+            // roster names a boss the catalog does not hold, and the catalog holds one.
+            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc))
         {
             Depth = config.StageIndex,
         };
@@ -839,6 +877,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // something has to take back (rule 9).
         State.Zones.Tick(State.Time);
 
+        // **The two boss hazards, immediately beside the zone step, and the placement is the same
+        // argument reached from the other side** (M4-02 rule 5, AR §18.1). All three are ground
+        // that does something to whoever is standing on it, all three run on absolute times
+        // against the simulated clock, and putting them in one block is what makes the order they
+        // resolve in a thing that is written down rather than a thing that happened.
+        //
+        // *Above the enemy behaviours*, so a ring emitted by this tick's slam first grows on the
+        // next one — the same one-frame grace a bolt gets, and the reason a shockwave cannot bite
+        // on the frame the telegraph ended.
+        //
+        // *Above the death check*, which is the half that matters: a ring or a crack that killed
+        // the player after that line had run would leave them playing a frame with no hit points,
+        // which is exactly what M2-07a rule 10 put the projectile step above it for.
+        //
+        // The position is this tick's, handed in rather than held, and the combat object is who a
+        // hazard hurts — core decides the outcome and calls PlayerCombat.ApplyDamage itself
+        // (ledger row 7).
+        _shockwaves.Tick(State.Time, State.PlayerPosition, State.Combat);
+        _fissures.Tick(State.Time, State.PlayerPosition, State.Combat);
+
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
         // whose i-frames and Aegis have already been advanced — so a dodge that expired this tick
@@ -889,6 +947,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // driving any more.
         if (State.Combat.IsDead)
         {
+            // GD §14.1's payout, here and deliberately not inside End() (M4-05a rules 1 and 5).
+            // End() is reachable from RunScope's disposal — it is a no-op-if-not-running so that
+            // disposal can call it blind — and a payout published from there would pay a player for
+            // quitting to the menu, and pay them again on every teardown. This line is only
+            // reachable from a death, which is what makes ShardsAwarded's own refusal of RunEnded
+            // true rather than aspirational. The order on the wire is PlayerDied (published by
+            // PlayerCombat in one of the two passes above) → ShardsAwarded → RunEnded.
+            //
+            // The mode is looked up rather than held, because RunState already carries the id the
+            // catalog answers to and a second field for it could only disagree. BossesKilled is
+            // asked for the event's breakdown and again inside For, which is one redundant walk of
+            // an authored array on the one frame a run ever ends — paid instead of re-declaring
+            // GD §14.1's arithmetic at the call site.
+            ModeSpec mode = _catalog.Mode(State.ModeId);
+
+            _events.Publish(new ShardsAwarded(
+                ShardPayout.For(State.StageIndex, mode),
+                State.StageIndex,
+                ShardPayout.BossesKilled(State.StageIndex, mode)));
+
             End();
             return;
         }
@@ -1230,6 +1308,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
         // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
         State.Zones.Clear();
+
+        // And the ground the boss made dangerous, in the same silence — but **not** for the zone's
+        // reason, and the difference is worth the line (M4-02). A zone is the player's own and
+        // deliberately survives a stage boundary; a ring belongs to a body the boundary has just
+        // taken out of the world. **No boundary sweep is needed all the same**, and that is
+        // arithmetic rather than luck: a ring lives at most `MaxRadius / Speed` — 0.875 s at the
+        // shipped numbers — and a crack at most its arm plus its open window, both of which are
+        // over well inside the two seconds of gate and arrival a boundary already costs (M2-10).
+        // The day either is authored longer than that, this line gains a sibling in StageFlow.
+        _shockwaves.Clear();
+        _fissures.Clear();
     }
 
     /// <summary>
@@ -1318,6 +1407,29 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         for (int i = 0; i < mode.Roster.Count; i++)
         {
             RequireArchetype(mode.Roster[i].SpecId, $"'{mode.Id}'s roster");
+        }
+
+        // **And the boss roster, for the enemy roster's reason one milestone later** (M4-02). A
+        // mode saying *every 5th* against a boss nobody has authored is a run that plays perfectly
+        // for four stages and then throws out of `ContentCatalog.Boss` on the fifth — a hundred
+        // seconds in, at a moment that looks like a director bug. Checked here, it is a refusal
+        // before anything has been announced, naming the mode and the id.
+        for (int i = 0; i < mode.BossRoster.Count; i++)
+        {
+            ContentId bossId = mode.BossRoster[i].BossId;
+
+            if (!_catalog.TryGetBoss(bossId, out BossSpec boss))
+            {
+                throw new KeyNotFoundException(
+                    $"No boss with id '{bossId}' in the catalog, and '{mode.Id}'s boss roster "
+                        + "names it. Nothing about this run has been announced; add a "
+                        + "BossDefinition to BootScope's boss list or correct the id.");
+            }
+
+            // And the body it wears, through the same door every other archetype goes through: a
+            // boss whose EnemySpecId nobody authored fails one layer deeper and names the enemy
+            // rather than the boss.
+            RequireArchetype(boss.EnemySpecId, $"'{bossId}'");
         }
     }
 

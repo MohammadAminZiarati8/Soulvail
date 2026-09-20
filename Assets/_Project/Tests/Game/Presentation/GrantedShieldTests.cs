@@ -518,7 +518,7 @@ public sealed class GrantedShieldTests
         Assert.That(_bar, Is.Not.Null, "HpBarView did not load off Hud.prefab (Traps §5).");
         Assert.That(_ring, Is.Not.Null, "ShieldRingView did not load off Hud.prefab (Traps §5).");
 
-        _presenter.Construct(_hub, _session, new SceneLoader(), Track(new InputAdapter()), Passthrough());
+        _presenter.Construct(_hub, _session);
 
         Invoke(_presenter, "Start");
     }

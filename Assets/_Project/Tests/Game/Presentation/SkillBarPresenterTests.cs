@@ -1072,6 +1072,22 @@ public sealed class SkillBarPresenterTests
         var zones = Track(new ZoneViews(
             container, Template<ZoneView>("ZoneTemplate"), null, _hub, prewarm: 0));
 
+        // Empty on the zones' terms, and with a null arena pool besides: nothing in this fixture
+        // reaches a boss, so no ring, crack or shell is ever rented. It is here because the ticker
+        // takes one (M4-03).
+        var boss = Track(new BossViews(
+            container,
+            Template<ShockwaveView>("ShockwaveTemplate"),
+            Template<FissureView>("FissureTemplate"),
+            Template<BossBeatView>("BeatTemplate"),
+            null,
+            _hub,
+            enemyViews,
+            null,
+            shockwavePrewarm: 0,
+            fissurePrewarm: 0,
+            beatPrewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -1105,7 +1121,12 @@ public sealed class SkillBarPresenterTests
             projectileViews,
             rings,
             zones,
+            boss,
             Track(new SaveWriter(new InertSaveStore(), _hub)),
+
+            // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
+            // so it banks nothing — the parameter is what guarantees it exists at all.
+            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, _session, cameraObject.AddComponent<Camera>()),

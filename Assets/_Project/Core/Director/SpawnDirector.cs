@@ -163,6 +163,21 @@ public sealed class SpawnDirector
     /// <summary>The earliest this stage may telegraph its next body. Rule 3's whole implementation.</summary>
     private float _nextSpawnAt = float.NegativeInfinity;
 
+    /// <summary>
+    /// The boss this stage holds, or <c>default</c> on an ordinary stage — the one thing this
+    /// object branches on (M4-01b rule 1).
+    /// </summary>
+    private ContentId _bossId;
+
+    /// <summary>The boss's agent id once it is standing, or 0 while it is not.</summary>
+    /// <remarks>
+    /// Zero is a safe sentinel because <c>EnemyRegistry</c> hands out ids from 1 and never reuses
+    /// one within a run.
+    /// </remarks>
+    private int _bossEnemyId;
+
+    private bool _bossCleared;
+
     /// <param name="enemies">Who brings a body into being, and who knows how many are breathing.</param>
     /// <param name="events">Where the three events go.</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -183,6 +198,23 @@ public sealed class SpawnDirector
 
     /// <summary>The wave being spawned, numbered from 1. Zero until the first wave starts.</summary>
     public int Wave { get; private set; }
+
+    /// <summary>
+    /// This stage is a boss stage: one authored body and no waves at all (GD §9, M4-01b rule 1).
+    /// </summary>
+    /// <remarks>
+    /// Which stages these are is the mode's authored statement, asked by <c>StageFlow</c> and
+    /// handed in at <see cref="Begin"/> — nothing here computes it, and no <c>stage % 5</c> exists
+    /// anywhere in the game.
+    /// </remarks>
+    public bool IsBossStage => _bossId.Value is not null;
+
+    /// <summary>The boss's agent id once it is standing, or 0 before that and on an ordinary stage.</summary>
+    /// <remarks>
+    /// Public so a fixture and the debug overlay can ask which body the fight is about without
+    /// having to search the registry for the largest health bar.
+    /// </remarks>
+    public int BossEnemyId => _bossEnemyId;
 
     /// <summary>How many bodies have been telegraphed and are not yet standing.</summary>
     /// <remarks>
@@ -206,6 +238,13 @@ public sealed class SpawnDirector
     {
         get
         {
+            // The one branch, from the other side (M4-01b rule 1). A boss stage has no waves at
+            // all, so the walk below would report it complete before the boss had stood up.
+            if (IsBossStage)
+            {
+                return _bossCleared;
+            }
+
             if (_plan is null || Wave < _plan.WaveCount)
             {
                 return false;
@@ -262,7 +301,11 @@ public sealed class SpawnDirector
     /// this object reporting a stage it cannot run, and the failure would surface a frame later as
     /// an arena that stays empty.
     /// </exception>
-    public void Begin(WavePlan plan, IReadOnlyList<Vector3> spawnPoints, float now)
+    public void Begin(
+        WavePlan plan,
+        IReadOnlyList<Vector3> spawnPoints,
+        float now,
+        ContentId bossId = default)
     {
         if (plan is null)
         {
@@ -306,6 +349,20 @@ public sealed class SpawnDirector
         ReleaseClaims();
 
         _nextSpawnAt = float.NegativeInfinity;
+
+        _bossId = bossId;
+        _bossEnemyId = 0;
+        _bossCleared = false;
+
+        // A boss stage opens no wave: its one body stands up on the first tick, which is the tick
+        // that knows where the player is and can therefore owe it the same clearance every other
+        // spawn owes (rule 1 of GD §12.4). The plan is still adopted above and still composed by
+        // the same draw, so a seeded run's stream position does not depend on which stages hold a
+        // boss — only on how many stages it has played.
+        if (IsBossStage)
+        {
+            return;
+        }
 
         StartWave(1, now);
     }
@@ -365,6 +422,16 @@ public sealed class SpawnDirector
             return;
         }
 
+        // **The one branch** (M4-01b rule 1). Everything below is about waves — telegraphs, the
+        // overlap rule, the per-wave census — and a boss stage has none of them: it has one body,
+        // and the fight is over when that body is down.
+        if (IsBossStage)
+        {
+            TickBoss(now, playerPosition, spawn);
+
+            return;
+        }
+
         FireDueTelegraphs(now);
 
         SweepTheDead();
@@ -392,6 +459,10 @@ public sealed class SpawnDirector
         _queueHead = 0;
         _pendingCount = 0;
         _nextSpawnAt = float.NegativeInfinity;
+
+        _bossId = default;
+        _bossEnemyId = 0;
+        _bossCleared = false;
 
         // The arena goes with the stage. Left standing, this object would be holding places in a
         // room that has been torn down — and a Clear between two stages is exactly the moment the
@@ -442,6 +513,76 @@ public sealed class SpawnDirector
         }
 
         _spawnPointCount = count;
+    }
+
+    /// <summary>
+    /// One tick of a boss stage: stand the boss up if it is not yet standing, and notice when it
+    /// is down.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>No ring and no interval.</b> GD §7.1's telegraph is a promise about a body appearing in a
+    /// place the player is about to be standing in; a boss arrives after the two seconds of arrival
+    /// the stage already owes, is the only thing in the arena, and is the size of a building. What
+    /// its arrival looks like is M4-03's.
+    /// </para>
+    /// <para>
+    /// <b>It still owes the player <see cref="MinPlayerDistance"/> and it still costs exactly one
+    /// draw</b> (rule 9), so a stage whose every point is under the player's feet waits a tick
+    /// rather than spawning on top of them — the same bargain a wave body gets, and the reason this
+    /// happens on a tick rather than in <see cref="Begin"/>.
+    /// </para>
+    /// <para>
+    /// <b>It publishes the wave events rather than new ones.</b> A boss stage is one wave of one
+    /// body as far as anything drawing <em>"wave 1 of 1"</em> is concerned, and an event per boss
+    /// would be a second vocabulary for a HUD that already has one. The three genuinely new facts —
+    /// the phase, the beat opening, the beat ending — are the boss's own and are published by
+    /// <c>BossBehaviour</c>.
+    /// </para>
+    /// <para>
+    /// <b>The fight is over when the boss stops breathing, asked of the registry and never of a
+    /// health fraction</b> (M4-01a's <c>Blackboard_ACorpseKeepsItsLastReading</c>).
+    /// <c>EnemySystem.Perceive</c> skips the dead, so a corpse's <c>EnemyBlackboard.HpFraction</c>
+    /// is frozen at the last reading it was perceived with — a stage that waited for that to reach
+    /// zero would wait for the rest of the run.
+    /// </para>
+    /// </remarks>
+    private void TickBoss(float now, Vector3 playerPosition, IRandomStream spawn)
+    {
+        if (_bossEnemyId == 0)
+        {
+            if (!TryPickPoint(now, playerPosition, spawn, out int index, out Vector3 point))
+            {
+                return;
+            }
+
+            _bossEnemyId = _enemies.SpawnBoss(_bossId, point).Id;
+
+            // Claimed like any other spawn, so nothing else can be put on top of it while the
+            // player is still working out what just appeared.
+            _claimExpiry[index] = now + TelegraphTime;
+
+            _events.Publish(new WaveStarted(_stage, 1, 1));
+
+            return;
+        }
+
+        if (_bossCleared)
+        {
+            return;
+        }
+
+        // Registered is not breathing (AR §18.4): a corpse sits in the registry for
+        // EnemySystem.CorpseTime while its dissolve plays, and a fight the player has finished must
+        // end on the kill rather than 0.6 s later.
+        if (_enemies.Registry.TryGet(_bossEnemyId, out EnemyAgent boss) && boss.IsAlive)
+        {
+            return;
+        }
+
+        _bossCleared = true;
+
+        _events.Publish(new WaveCleared(_stage, 1));
     }
 
     /// <summary>Spawns every body whose ring has finished, in the order they were announced.</summary>
@@ -602,33 +743,69 @@ public sealed class SpawnDirector
             return;
         }
 
-        int points = _spawnPointCount;
-
-        // Rule 12: an arena with nowhere to put anything makes this object inert rather than
-        // broken, and inert has to include drawing nothing — a seed whose stream advanced
-        // according to how an arena was dressed would not replay in a differently dressed one.
-        if (points == 0)
+        if (_enemies.LivingCount() + _pendingCount >= _plan.Concurrency)
         {
             return;
         }
 
-        if (_enemies.LivingCount() + _pendingCount >= _plan.Concurrency)
+        if (!TryPickPoint(now, playerPosition, spawn, out int index, out Vector3 point))
         {
+            // Every point is inside the player's clearance or too close to a ring already up.
+            // Nothing is announced and nothing is said about it: the player will move, the claims
+            // will expire, and GD §12.4's rule is that a spawn on top of you is worse than a pause.
             return;
+        }
+
+        Telegraph(index, point, now);
+    }
+
+    /// <summary>
+    /// Picks somewhere to put a body: the first point, from a drawn starting index, that is clear
+    /// of the player and of every ring already up.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Exactly one draw per attempt, whatever the attempt costs</b> (rule 9). An arena with no
+    /// points draws nothing and answers false — rule 12's inertness, which has to include drawing
+    /// nothing, because a seed whose stream advanced according to how a room was dressed would not
+    /// replay in a differently dressed one. Every other path draws once and then walks, so a
+    /// refused position costs the same single draw as an accepted one.
+    /// </para>
+    /// <para>
+    /// Extracted from <see cref="MaybeTelegraph"/> in M4-01b, unchanged, because a boss needs the
+    /// same answer to the same question and a second copy of GD §12.4's clearance rule is a second
+    /// copy that can drift.
+    /// </para>
+    /// </remarks>
+    private bool TryPickPoint(
+        float now,
+        Vector3 playerPosition,
+        IRandomStream spawn,
+        out int index,
+        out Vector3 point)
+    {
+        index = -1;
+        point = default;
+
+        int points = _spawnPointCount;
+
+        if (points == 0)
+        {
+            return false;
         }
 
         int first = spawn.NextInt(0, points);
 
         for (int i = 0; i < points; i++)
         {
-            int index = first + i;
+            int candidateIndex = first + i;
 
-            if (index >= points)
+            if (candidateIndex >= points)
             {
-                index -= points;
+                candidateIndex -= points;
             }
 
-            Vector3 candidate = _spawnPoints[index];
+            Vector3 candidate = _spawnPoints[candidateIndex];
 
             if (DistanceSquaredXZ(candidate, playerPosition) < MinPlayerDistanceSquared)
             {
@@ -640,14 +817,13 @@ public sealed class SpawnDirector
                 continue;
             }
 
-            Telegraph(index, candidate, now);
+            index = candidateIndex;
+            point = candidate;
 
-            return;
+            return true;
         }
 
-        // Every point is inside the player's clearance or too close to a ring already up. Nothing
-        // is announced and nothing is said about it: the player will move, the claims will expire,
-        // and GD §12.4's rule is that a spawn on top of you is worse than a pause.
+        return false;
     }
 
     /// <summary>Announces the next queued body at <paramref name="position"/> and claims the point.</summary>

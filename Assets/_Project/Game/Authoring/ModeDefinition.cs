@@ -72,6 +72,12 @@ namespace Soulvail.Game.Authoring
                  "every stage in whatever the scene was dressed with.")]
         [SerializeField] private string[] _arenas = Array.Empty<string>();
 
+        [Tooltip("Which stages this mode holds a boss on, and which boss (GD §9). 'Every N " +
+                 "Stages' = 5 means stages 5, 10, 15 and so on. The first row that matches wins, " +
+                 "so a rarer boss goes above a more frequent one. Empty means the mode never " +
+                 "reaches a boss stage.")]
+        [SerializeField] private BossRosterRow[] _bossRoster = Array.Empty<BossRosterRow>();
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -102,7 +108,8 @@ namespace Soulvail.Game.Authoring
                     BuildScaling(),
                     BuildXp(),
                     BuildRoster(),
-                    BuildArenas());
+                    BuildArenas(),
+                    BuildBossRoster());
             }
             catch (ArgumentException inner)
             {
@@ -211,6 +218,33 @@ namespace Soulvail.Game.Authoring
             }
 
             return ids;
+        }
+
+        /// <summary>
+        /// Turns the authored boss rows into <see cref="BossRosterEntry"/>s, in the order authored.
+        /// </summary>
+        /// <remarks>
+        /// A null or empty array is a legal mode, for <see cref="BuildRoster"/>'s reason, and is
+        /// what every mode this build ships is: <b>M4-01b builds the schedule and authors no rows
+        /// into it</b>, because <c>RunSession.Start</c> would refuse a run naming a boss nobody has
+        /// authored yet. M4-02 adds Descent's row in the same change that authors the Warden — the
+        /// bargain M2-02 rule 10 made for the enemy roster, made again.
+        /// </remarks>
+        private IReadOnlyList<BossRosterEntry> BuildBossRoster()
+        {
+            if (_bossRoster is null || _bossRoster.Length == 0)
+            {
+                return Array.Empty<BossRosterEntry>();
+            }
+
+            var entries = new BossRosterEntry[_bossRoster.Length];
+
+            for (int i = 0; i < _bossRoster.Length; i++)
+            {
+                entries[i] = _bossRoster[i].ToEntry();
+            }
+
+            return entries;
         }
 
         /// <remarks>
@@ -419,6 +453,28 @@ namespace Soulvail.Game.Authoring
             /// <summary>Converts this row, letting <see cref="RosterEntry"/> refuse a bad one.</summary>
             public RosterEntry ToEntry() =>
                 new RosterEntry(new ContentId(_specId), _introducedAtStage);
+        }
+
+        /// <summary>
+        /// One authored boss row: a boss id and how often it comes round.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="RosterRow"/>'s shape exactly, and for its reasons — a serializable struct so
+        /// the two numbers cannot get out of step, carrying the id as a <see cref="string"/>
+        /// because <see cref="ContentId"/> validates in a constructor Unity's serialiser never
+        /// calls.
+        /// </remarks>
+        [Serializable]
+        private struct BossRosterRow
+        {
+            [SerializeField] private string _bossId;
+
+            [Tooltip("How often this boss comes round. 5 = stages 5, 10, 15, …")]
+            [SerializeField, Min(1)] private int _everyNStages;
+
+            /// <summary>Converts this row, letting <see cref="BossRosterEntry"/> refuse a bad one.</summary>
+            public BossRosterEntry ToEntry() =>
+                new BossRosterEntry(new ContentId(_bossId), _everyNStages);
         }
     }
 }

@@ -203,7 +203,17 @@ Editor has the code — which is a stronger statement than any timestamp, and it
      `CommandScript`.
   2. **Calling `Execute` again from inside `RunFinished` is silently ignored.** Not an error, not a
      refusal — the chain simply stops after one run and your tally is short. One `Execute` per
-     submitted command; loop from the outside.
+     submitted command; loop from the outside. **Narrowed at M4-07, and the narrowing is what makes a
+     repeat-run experiment affordable: the ban is on re-entering `Execute` *from inside the callback*,
+     not on looping inside one submission.** Set a countdown in `RunFinished`, subscribe a `static`
+     handler to `EditorApplication.update`, and call `Execute` from there once it drains — **63
+     consecutive PlayMode runs and 5 EditMode runs went through one submitted command each this way, on
+     an unfocused Editor**, about 25 s per PlayMode iteration. Two things make it survive: the counters
+     live in **`SessionState`**, never in a field (item 4 below), and each submission stamps a **token**
+     into `SessionState` that its own `RunFinished` checks, so the still-registered sinks from earlier
+     submissions (item 3) see a stranger's token and unregister themselves instead of double-counting.
+     `EditorApplication.update` does fire unfocused between runs, which §3's table does not say and
+     which `EditorApplication.delayCall` (M0-14) does not do.
   3. **Callback sinks from *earlier* commands stay registered and keep firing.** Each submission compiles
      a fresh dynamic assembly, but the old `ICallbacks` instances are still attached to the runner, so a
      naive counter double- and triple-counts. Key your results per submission, or read the *number of
@@ -278,6 +288,20 @@ Editor has the code — which is a stronger statement than any timestamp, and it
   probe that changes project data must restore it in the same synchronous command (M1-17).
 - **`result.Log` ignores format specifiers.** `{0:F2}` is emitted literally while a bare `{0}`
   substitutes — pre-format with `ToString("F2")` (M0-20).
+- **`RegisterCallbacks` + `Execute` + `System.IO` in one command is refused before it runs**, with
+  `UNEXPECTED_ERROR: User interactions are not supported for MCP tool calls`. The refusal is not
+  about the API: `RegisterCallbacks` alone passes, `Execute` alone passes, and the two together pass
+  when the callbacks only `Debug.Log`. It is the *file write* alongside them that trips the guard,
+  and the error names none of that — it reads as though the Editor put a dialog up. **The
+  `Temp/`-file recipe below therefore cannot be written from inside the command that starts the
+  run**; use the results file Unity writes anyway (M4-06).
+- **Unity writes `TestResults.xml` to the persistent data path on every `TestRunnerApi` run**, at
+  `%USERPROFILE%/AppData/LocalLow/<Company>/<Product>/TestResults.xml`, and logs the path as it
+  does. It carries `passed=`, `failed=` and every row's `result=` with its failure message, it is
+  readable from the shell with `grep`, and it needs no harness and no `static` field to survive a
+  domain reload — which makes it the cheaper source for a suite count than anything a command can
+  write for itself. **The only care it needs is the timestamp**: a stale file from the previous run
+  looks exactly like a finished one, so check `start-time` before believing a count (M4-06).
 
 ### `Unity_GetConsoleLogs`
 
@@ -286,6 +310,12 @@ empty even while the Console is visibly showing them. A `TestRunnerApi` run ther
 through the Console — **write results to a file under `Temp/` from `RunFinished` and read them
 from the shell**, which also keeps the Editor focused, since every extra MCP round-trip risks
 stealing focus back and stalling a queued run (M1-09, M0-20).
+
+**Refined at M4-06, and the refinement is the difference between "empty" and "filtered out":** a
+call passing `logTypes: "Log"` returns nothing, while the *same* entries come back on an unfiltered
+call typed **`Info`**. So `Debug.Log` is reachable after all — by not asking for it by name. That
+matters because the recommended `Temp/`-file route is refused when it shares a command with
+`RegisterCallbacks` (§4 above), which leaves logging as the only in-command channel a runner has.
 
 ### Captures
 
@@ -388,6 +418,24 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   of `Idle_A` and the character freezes mid-stride. `loopTime` lives on `ModelImporter`'s
   `clipAnimations`, which must be assigned as a whole array read from `defaultClipAnimations` —
   there is no per-clip setter (M2-art).
+- **Unity 6.3 rewrites `ProjectSettings/TimeManager.asset` the moment the Editor touches the
+  project, and it looks exactly like a change somebody made.** `Fixed Timestep: 0.02` becomes a
+  `serializedVersion: 2` block — `m_Count: 2822399` over `m_Rate: 141120000 / 1` — which *is*
+  0.02 to the bit. **It is a no-op re-serialisation, not a setting.** The pre-commit hook refuses a
+  staged `ProjectSettings/` change without `ALLOW_PROJECT_SETTINGS=1`, so the right move is
+  `git checkout -- ProjectSettings/TimeManager.asset` and not an override; it will come back for
+  whoever opens the Editor next. Do not grant it the flag and do not commit it as *"Unity churn"* —
+  the flag exists for a `ProjectSettings/` change somebody meant, and the whole value of
+  `git diff m3 HEAD -- ProjectSettings/` being empty is that nothing has slipped through it
+  (M4-04).
+- **The MCP's `Unity_RunCommand` wraps your snippet in `namespace Unity.AI.Assistant.Agent.Dynamic.Extension.Editor`,
+  which puts `Unity.AI.Image` in scope and shadows `UnityEngine.UI.Image`.** `Image.Type.Simple`
+  fails with *"'Image' is a namespace but is used like a type"* and `Image.FillMethod` with *"does
+  not exist in the namespace 'Unity.AI.Image'"* — both of which read as a missing assembly
+  reference and are not. Alias it (`using UiImage = UnityEngine.UI.Image;`). **The sandbox also
+  refuses `System.Reflection.BindingFlags` outright** — *"unauthorized namespaces"* — so an MCP
+  probe can only drive a component through its public API, which is a reason to keep a view's
+  readouts public rather than reflected (M4-04).
 
 ---
 
@@ -596,6 +644,18 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
 - **A *Scale With Screen Size* canvas measures in reference pixels, not dp**: a `sizeDelta` of 120
   is 48 dp on a 400 dpi phone. Any HUD element whose size is specified in dp must be sized at
   runtime as `dp × pxPerDp ÷ canvas.scaleFactor`, not authored into the prefab (M0-15).
+- **`Screen.dpi` reads `120` in this Editor, so every dp this project has ever measured in it was
+  drawn at 30 % of its device size.** `StickShaper.PixelsPerDp(120)` is **0.75**; a 400 dpi phone —
+  the density the project's own *"~432 dp landscape safe area"* is quoted at, 1080 px at 2.5 px/dp —
+  gives **2.5**. That is a factor of **3.33**, and it applies to every element placed through
+  `HudPresenter.Place`, `SkillBarPresenter`, `BossBarView` and `XpBarView`. **The Editor is therefore
+  not a legibility instrument at all**, in either direction: a dp-sized element is drawn a third of
+  its device size, while a *font* size is authored in reference px and scales by the canvas instead,
+  so the two move independently and a screenshot shows neither at its real proportion. **Legibility
+  is arithmetic here, not observation** — `pt × canvasScaleFactor ÷ (dpi ÷ 160)`, with the canvas
+  factor read off the prefab's own `CanvasScaler` (`1920 × 1080`, match 0.5 on both `Hud.prefab` and
+  `RunEnd.prefab`). Same family as M4-06's *"the safe-area inset is 0 on all four edges in the
+  Editor"*: an Editor number about a phone's screen is usually a number about this monitor (M4-07).
 - **TMP reads a bare `{0}` in `SetText(string, float, …)` as *nine* decimal places, not as an
   integer.** The integer form is `{0:0}`, whose `0` counts as padding and leaves precision at zero,
   rounding half-up (M1-17).
@@ -640,6 +700,13 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
 
 ## 11. Process
 
+- **`.githooks/pre-commit` check 8 cannot see an acceptance commit, and that is correct rather than a
+  hole.** It compares PROGRESS.md's *Last merged task* row against the newest Log entry and **skips when
+  either is empty** — which is exactly the state a milestone's acceptance leaves, because archiving the
+  milestone empties the live Log. So the one commit per milestone that rotates Current State furthest is
+  the one commit nothing checks. There is nothing to compare against, so the skip is right; what is worth
+  knowing is that the check's coverage has a hole at exactly the boundary, and that the next acceptance
+  should rotate the row by hand rather than trust the hook to catch it (M4-07).
 - **A "known issue" describing uncommitted working-tree state has a short shelf life.** Check it
   against `git status` before repeating it into a new session — M0-19's block was fully stale by
   M0-20 (M0-20).

@@ -121,6 +121,12 @@ MonoBehaviour:
     _text: You died
   - _key: ui.death.hint
     _text: Tap to return
+  - _key: ui.runend.depth
+    _text: Depth
+  - _key: ui.runend.bosses
+    _text: Bosses
+  - _key: ui.runend.shards
+    _text: Soul Shards
   - _key: ui.pause.resume
     _text: Resume
   - _key: ui.pause.skills
@@ -147,5 +153,7 @@ MonoBehaviour:
     _text: Spitter
   - _key: enemy.bloater.name
     _text: Bloater
+  - _key: enemy.warden.name
+    _text: The Warden of Ash
   - _key: mode.descent.name
     _text: Descent

@@ -632,6 +632,22 @@ public sealed class ResumeFlowTests
         var zones = Track(new ZoneViews(
             container, Template<ZoneView>("ZoneTemplate"), null, hub, prewarm: 0));
 
+        // Empty on the zones' terms, and with a null arena pool besides: nothing in this fixture
+        // reaches a boss, so no ring, crack or shell is ever rented. It is here because the ticker
+        // takes one (M4-03).
+        var boss = Track(new BossViews(
+            container,
+            Template<ShockwaveView>("ShockwaveTemplate"),
+            Template<FissureView>("FissureTemplate"),
+            Template<BossBeatView>("BeatTemplate"),
+            null,
+            hub,
+            enemyViews,
+            null,
+            shockwavePrewarm: 0,
+            fissurePrewarm: 0,
+            beatPrewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -661,7 +677,13 @@ public sealed class ResumeFlowTests
             projectileViews,
             rings,
             zones,
+            boss,
             Track(new SaveWriter(new StubStore(), hub)),
+
+            // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
+            // so it banks nothing — but a Scoped registration nobody resolves is never constructed,
+            // which is exactly what this parameter exists to prevent in the real scope.
+            Track(new ShardWriter(new ProfileStore(new StubStore()), hub)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, session, cameraObject.AddComponent<Camera>()),

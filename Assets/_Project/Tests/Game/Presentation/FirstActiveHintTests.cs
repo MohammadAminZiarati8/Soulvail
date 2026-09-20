@@ -286,7 +286,8 @@ public sealed class FirstActiveHintTests : InputTestFixture
     public void Hint_NeverShowsWhenTheFlagIsSpent()
     {
         _profiles.Adopt(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true));
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true,
+            shards: 0));
 
         StartRun(pending: 1);
         BuildHint();

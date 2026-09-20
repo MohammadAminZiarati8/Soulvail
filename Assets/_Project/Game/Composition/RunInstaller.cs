@@ -76,6 +76,18 @@ public static class RunInstaller
         // objects renaming the same file.
         builder.Register<SaveWriter>(Lifetime.Scoped);
 
+        // What banks a dead run's payout (M4-05b). The same shape as the writer above and for the
+        // same reasons — scoped so its subscription dies with the run, a plain type rather than an
+        // entry point because it has no frame to be part of, and constructed by being on
+        // RunTicker's dependency chain.
+        //
+        // ProfileStore is resolved from the parent scope, the way ISaveStore is above: a profile
+        // outlives a run by definition, and a store registered here would forget the payout between
+        // the death that earned it and the menu that will one day spend it. A run scope built
+        // against a container with no ProfileStore does not compose at all, which is the loud
+        // failure this wants rather than a run that silently banks nothing.
+        builder.Register<ShardWriter>(Lifetime.Scoped);
+
         // The one-frame buffer between a slot button and CommandPhase (M3-10a rule 3). Here rather
         // than on RunScope, unlike TapToFocusAdapter: that one needs this scene's camera and this
         // one needs nothing but the command port, which is exactly the line the split is drawn on.

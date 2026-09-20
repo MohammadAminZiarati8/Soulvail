@@ -96,6 +96,26 @@ public sealed class EnemySystem
     /// </summary>
     private readonly DepthScaling _scaling;
 
+    /// <summary>
+    /// Ids queued by <see cref="DespawnAtEndOfTick"/>, retired at the bottom of <see cref="Tick"/>.
+    /// </summary>
+    private readonly int[] _deferredDespawn;
+
+    /// <summary>
+    /// What a boss delegates its fighting to, or null while nothing does.
+    /// </summary>
+    /// <remarks>
+    /// <b>A factory rather than an instance, and it lives here rather than at the call site
+    /// because there is nowhere else it could</b> (M4-02). An <see cref="IEnemyBehaviour"/> holds
+    /// the agent it drives — every implementer does, because <see cref="IEnemyBehaviour.Tick"/> is
+    /// handed a context with no <em>self</em> on it — and the agent does not exist until
+    /// <see cref="SpawnBoss"/> has spawned one. So a caller cannot build the <c>inner</c> it would
+    /// pass, and the one thing it can hand over is the means of building it. The explicit
+    /// <c>inner</c> parameter is untouched and still wins where a caller supplies one, which is
+    /// what a fixture does.
+    /// </remarks>
+    private readonly Func<EnemyAgent, BossSpec, IEnemyBehaviour> _bossInner;
+
     private int _depth = MinDepth;
 
     /// <summary>
@@ -108,6 +128,8 @@ public sealed class EnemySystem
     /// immediately before <c>Tick</c> in <c>RunSession</c>, so this is always this frame's.
     /// </remarks>
     private Vector3 _playerPosition;
+
+    private int _deferredCount;
 
     /// <param name="catalog">Where a spawn's <see cref="ContentId"/> becomes an <see cref="EnemySpec"/>.</param>
     /// <param name="events">Where <see cref="EnemySpawned"/> and <see cref="EnemyDespawned"/> go.</param>
@@ -127,6 +149,12 @@ public sealed class EnemySystem
     /// and it must match the snapshot's enemy capacity — an enemy core knows about but the
     /// snapshot cannot carry is one core is blind to the position of.
     /// </param>
+    /// <param name="bossInner">
+    /// What a boss delegates its fighting to, built once per boss from the agent and the spec —
+    /// or null for a boss that only changes phase and summons, which is every boss until M4-02
+    /// authors one. See <see cref="SpawnBoss"/> for why the factory lives here rather than at the
+    /// call site.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     public EnemySystem(
@@ -134,14 +162,21 @@ public sealed class EnemySystem
         IDomainEvents events,
         IRandom random,
         DepthScaling scaling,
-        int capacity)
+        int capacity,
+        Func<EnemyAgent, BossSpec, IEnemyBehaviour> bossInner = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _scaling = scaling ?? throw new ArgumentNullException(nameof(scaling));
+        _bossInner = bossInner;
 
         Registry = new EnemyRegistry(capacity);
+
+        // Sized to the registry it drains into, because nothing can be queued that is not
+        // registered and nothing is queued twice — see DespawnAtEndOfTick. Allocated here rather
+        // than grown, so the one path that uses it never allocates.
+        _deferredDespawn = new int[Registry.Capacity];
     }
 
     /// <summary>
@@ -274,6 +309,99 @@ public sealed class EnemySystem
         _events.Publish(new EnemySpawned(agent.Id, spec.Id, position, spec.IsElite));
 
         return agent;
+    }
+
+    /// <summary>
+    /// Brings the boss <paramref name="bossId"/> names into being at <paramref name="position"/>:
+    /// an ordinary agent wearing its authored body, with a <see cref="BossBehaviour"/> on it.
+    /// </summary>
+    /// <param name="bossId">The boss, e.g. <c>boss.warden</c>. Resolved against the catalog.</param>
+    /// <param name="position">Where it stands up.</param>
+    /// <param name="inner">
+    /// What actually fights, or null to let the run's boss-behaviour factory decide — M4-02's
+    /// <c>WardenBehaviour</c> is the first thing to arrive here, and it does so without changing
+    /// this signature. An explicit one wins over the factory, which is what a fixture supplies.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>It spawns through <see cref="Spawn"/> and adds one thing to it</b> (M4-01b rule 2). The
+    /// registry, the depth scaling and the <see cref="EnemySpawned"/> announcement are all the
+    /// ordinary ones, because a boss is an ordinary agent; what this method exists for is the one
+    /// step <c>EnemyAgent.Initialise</c> cannot take, which is building a behaviour that needs a
+    /// <see cref="BossSpec"/> the archetype does not name.
+    /// </para>
+    /// <para>
+    /// <b><see cref="EnemySpawned"/> gains nothing and carries no <c>IsBoss</c> flag</b> (rule 7).
+    /// What a view needs is the phase count, and that rides on <c>BossPhaseChanged</c>, published
+    /// here for phase 0 immediately after the spawn — so a segmented bar (M4-04) is sized at the
+    /// moment the body appears rather than at the first threshold.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="KeyNotFoundException">
+    /// The catalog holds no boss with that id, or no enemy with the id the boss names. Let through
+    /// rather than rewrapped, exactly as <see cref="Spawn"/> does: it is the catalog's answer and it
+    /// already names the id.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The registry is full at its capacity.</exception>
+    public EnemyAgent SpawnBoss(ContentId bossId, Vector3 position, IEnemyBehaviour inner = null)
+    {
+        BossSpec boss = _catalog.Boss(bossId);
+
+        EnemyAgent agent = Spawn(boss.EnemySpecId, position);
+
+        // After the spawn, because a behaviour holds the agent it drives and there is no agent to
+        // hold until this line has run — see _bossInner. An explicit `inner` wins, so a fixture
+        // that hands one over is never second-guessed.
+        var behaviour = new BossBehaviour(agent, boss, inner ?? _bossInner?.Invoke(agent, boss));
+
+        agent.Behaviour = behaviour;
+
+        // After the attachment, so a handler that resolves the id and asks the agent what phase it
+        // is in finds a behaviour to ask — the same register-then-announce order Spawn itself uses.
+        behaviour.Announce(_events);
+
+        return agent;
+    }
+
+    /// <summary>
+    /// Queues <paramref name="id"/> to be retired at the end of this tick, rather than now.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is what a behaviour uses to retire an agent that is not itself</b>, and the reason it
+    /// exists is the hazard <see cref="Tick"/>'s remarks have named since M2-08:
+    /// <c>EnemyRegistry.Despawn</c> is an order-preserving removal that shifts the array
+    /// <c>Registry.Alive</c> spans and nulls the slot that falls off the end, so a despawn from
+    /// inside the behaviour pass would move the agents the pass has not reached yet and walk it past
+    /// its own length. M4-01b's boss is the first behaviour to reach that — the beat clears the adds
+    /// it summoned — and this is the answer, rather than the backwards walk the old note predicted:
+    /// a backwards walk would have changed the order every enemy in the arena acts in, and spawn
+    /// order is what <c>TargetScorer</c>'s tie-break reads.
+    /// </para>
+    /// <para>
+    /// <b>Queued twice is not an error and costs one extra <see cref="Despawn"/> that answers
+    /// false</b>, which is that method's own bargain. The drain runs inside <see cref="Tick"/>, so
+    /// an id queued outside one waits until the next — there is no path to that in a live run,
+    /// because the only caller is a behaviour.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// More ids have been queued this tick than the registry could possibly hold. Unreachable while
+    /// a caller queues living agents, and loud rather than silent, because the alternative is a
+    /// write past the end of the buffer.
+    /// </exception>
+    public void DespawnAtEndOfTick(int id)
+    {
+        if (_deferredCount >= _deferredDespawn.Length)
+        {
+            throw new InvalidOperationException(
+                $"More than {_deferredDespawn.Length} despawns were queued in one tick, which is "
+                    + "more agents than the registry can hold. Something is queuing the same id "
+                    + "repeatedly.");
+        }
+
+        _deferredDespawn[_deferredCount] = id;
+        _deferredCount++;
     }
 
     /// <summary>
@@ -578,9 +706,17 @@ public sealed class EnemySystem
     /// the span survives it because <see cref="ApplyDamage"/> leaves the corpse <em>registered</em>:
     /// a death marks an agent not-alive and stamps it, and <see cref="SweepCorpses"/> retires it
     /// <see cref="CorpseTime"/> seconds later at the top of a subsequent tick. Nothing is removed
-    /// underneath the walk, so no index shifts and no slot is nulled. <b>The backwards walk is still
-    /// owed by the next behaviour that calls <see cref="Despawn"/> directly</b>, which would compact
-    /// the registry in place — that is the case this paragraph is kept for.
+    /// underneath the walk, so no index shifts and no slot is nulled.
+    /// </para>
+    /// <para>
+    /// <b>M4-01b is the day the rest of that warning came due, and it was paid a different way.</b>
+    /// The paragraph used to end: <em>the backwards walk is still owed by the next behaviour that
+    /// calls <see cref="Despawn"/> directly</em>. A boss's beat clears the adds it summoned, which
+    /// is exactly that — and a backwards walk would have changed the order every enemy in the arena
+    /// acts in, which is the order <c>TargetScorer</c>'s tie-break reads. So a behaviour queues
+    /// through <see cref="DespawnAtEndOfTick"/> instead and the walk is left alone; the ban on
+    /// calling <see cref="Despawn"/> from inside this pass stands, and is now a ban with somewhere
+    /// to go.
     /// </para>
     /// </remarks>
     public void Tick(in EnemyTickContext ctx)
@@ -616,11 +752,33 @@ public sealed class EnemySystem
                     agent.Behaviour.Tick(ctx);
                     break;
 
+                case EnemyBehaviourKind.Boss:
+                    // The one kind EnemyAgent.Initialise deliberately leaves without a behaviour,
+                    // because building one needs the BossSpec that names this body and an
+                    // EnemySpec does not carry it (M4-01b rule 2). Loud rather than a null-safe
+                    // call: a boss authored Boss and spawned through the ordinary Spawn would
+                    // otherwise stand in the arena for the whole fight, never changing phase, with
+                    // nothing in the log — which is the silence M2-06 rule 11 refuses.
+                    if (agent.Behaviour is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"'{agent.Spec.Id}' is authored as a Boss but has no behaviour. A boss "
+                                + "is brought into being through EnemySystem.SpawnBoss, which is "
+                                + "the one place that holds both its BossSpec and its body.");
+                    }
+
+                    agent.Behaviour.Tick(ctx);
+                    break;
+
                 default:
                     throw new InvalidOperationException(
                         $"Unhandled enemy behaviour '{agent.Spec.Behaviour}' on '{agent.Spec.Id}'.");
             }
         }
+
+        // Last, and after the walk rather than inside it — see DespawnAtEndOfTick. Nothing between
+        // here and the loop may take a span over the registry.
+        DrainDeferredDespawns();
     }
 
     /// <summary>
@@ -644,6 +802,11 @@ public sealed class EnemySystem
     public void Clear()
     {
         Registry.Clear();
+
+        // The queue goes with the bodies. An id queued by a boss's last beat and drained after the
+        // arena was emptied would be a despawn of whatever the pool had handed that agent out as
+        // next — the same staleness EnemyRegistry rule 1 is about, one tick wide.
+        _deferredCount = 0;
 
         // Banked experience goes with the bodies that earned it, and nothing is actually lost
         // either way (M3-01a rule 7): at a stage boundary the drain has already run this tick,
@@ -751,6 +914,27 @@ public sealed class EnemySystem
     }
 
     /// <summary>
+    /// Retires everything <see cref="DespawnAtEndOfTick"/> queued this tick, in the order it was
+    /// queued, and announces each one.
+    /// </summary>
+    /// <remarks>
+    /// The count is zeroed <em>before</em> the walk, so a handler of <see cref="EnemyDespawned"/>
+    /// that queued another despawn would be queuing it for the next tick rather than growing the
+    /// list this one is walking.
+    /// </remarks>
+    private void DrainDeferredDespawns()
+    {
+        int count = _deferredCount;
+
+        _deferredCount = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            Despawn(_deferredDespawn[i]);
+        }
+    }
+
+    /// <summary>
     /// Retires every corpse that has been dead for at least <see cref="CorpseTime"/> seconds.
     /// </summary>
     /// <remarks>
@@ -825,6 +1009,15 @@ public sealed class EnemySystem
                 : toPlayer / distance;
 
             blackboard.AlliesNearby = CountAlliesNearby(agents, i, position);
+
+            // The trigger half (M4-01a rule 6), written here rather than anywhere else for the
+            // reason the perception half is written here: one writer, once a tick, above the
+            // behaviour step — so a condition asked about this enemy's own health this tick reads
+            // this tick's health. Copied from Health rather than derived, so the shield fraction
+            // is honestly zero today instead of a literal that would be wrong the day something
+            // grants an enemy one.
+            blackboard.HpFraction = agent.Health.Fraction;
+            blackboard.ShieldFraction = agent.Health.ShieldFraction;
         }
     }
 

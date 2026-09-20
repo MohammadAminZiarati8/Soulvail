@@ -10,14 +10,22 @@ using UnityEngine;
 namespace Soulvail.Game.Authoring
 {
     /// <summary>
-    /// The first primitive's Inspector half: which player number this moves, which stack position
+    /// The first primitive's Inspector half: which number this moves, on whom, which stack position
     /// the modifier occupies, and by how much. The authoring side of <see cref="ModifyStat"/>.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>One modifier, not one node.</b> A node granting <em>"+2 damage and +15 %"</em> references
     /// two of these assets, which is <see cref="ModifyStat"/>'s own remark and the reason this type
-    /// carries three fields rather than a list.
+    /// carries four fields rather than a list.
+    /// </para>
+    /// <para>
+    /// <b><c>Target</c> arrived at M4-01a and every shipped asset reads <c>Player</c> without
+    /// having been touched</b>, because <see cref="StatTarget.Player"/> is the default and the
+    /// field is new: Unity does not rewrite an asset on disk merely because the script that reads
+    /// it grew a field, and a field absent from the YAML deserialises to its default. The line
+    /// appears the first time each asset is saved for some other reason, and says
+    /// <c>_target: 0</c>, which is what it already meant.
     /// </para>
     /// <para>
     /// The same shape as every other definition in this folder: <c>[SerializeField] private</c>
@@ -60,6 +68,12 @@ namespace Soulvail.Game.Authoring
                  "either percentage kind — 0.15 is +15 %.")]
         [SerializeField] private float _value;
 
+        [Tooltip("Who this is aimed at. Player is every node in the game and is the default; Self " +
+                 "means whoever cast it, and is only legal inside a cast — a skill on a boss. " +
+                 "There is no Enemy: an effect that debuffs someone else needs a selection rule " +
+                 "and is a different primitive.")]
+        [SerializeField] private StatTarget _target;
+
         /// <inheritdoc/>
         /// <remarks>
         /// The address door runs first, then the three fields go to <see cref="ModifyStat"/>
@@ -83,7 +97,12 @@ namespace Soulvail.Game.Authoring
                             + "it would otherwise throw at the moment a player picked the node.");
                 }
 
-                return new ModifyStat(_stat, _kind, _value);
+                // The target is *not* checked at this door, unlike the address, and the asymmetry
+                // is deliberate: ModifyStat's own constructor refuses a StatTarget that is not a
+                // member, so a stale ordinal here already fails with the file named by the rewrap
+                // below. The address needs a check here only because ModifyStat deliberately does
+                // not validate it at all.
+                return new ModifyStat(_stat, _kind, _value, _target);
             }
             catch (ArgumentException inner)
             {

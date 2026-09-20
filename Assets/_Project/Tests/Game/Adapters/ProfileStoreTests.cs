@@ -60,6 +60,7 @@ public sealed class ProfileStoreTests
         Assert.That(current.Version, Is.EqualTo(PlayerProfile.CurrentVersion));
         Assert.That(current.HapticsEnabled, Is.True);
         Assert.That(current.SeenFirstActiveHint, Is.False);
+        Assert.That(current.Shards, Is.Zero, "a player who has never died has never been paid.");
 
         // **And it asked the disk for nothing.** A store that loaded at construction would have to
         // block on I/O or return before the value it promised had arrived — BootFlow owns the one
@@ -72,7 +73,7 @@ public sealed class ProfileStoreTests
     public void Store_AdoptDoesNotWrite()
     {
         var loaded = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true);
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
 
         _profiles.Adopt(loaded);
 
@@ -89,7 +90,7 @@ public sealed class ProfileStoreTests
     public void Store_SaveWritesAndUpdates()
     {
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true);
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
 
         _profiles.Save(profile);
 
@@ -110,18 +111,25 @@ public sealed class ProfileStoreTests
     public void Store_CopiesThroughOneFieldAtATime()
     {
         _profiles.Adopt(new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false));
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false,
+            shards: 0));
 
         _profiles.Save(_profiles.Current.WithSeenFirstActiveHint(true));
         _profiles.Save(_profiles.Current.WithHaptics(false));
 
-        // Two features, two writes, and neither erased the other's field. This is the shape the
-        // whole task is for: `Current` is read, one field is moved, and the result is handed back.
+        // **Three features as of M4-05b**, and the third is the one that would have proved the rule
+        // expensive: `ShardWriter` knows nothing about haptics or the hint, and a write that reset
+        // either would do it on the frame the player died.
+        _profiles.Save(_profiles.Current.WithShards(220));
+
+        // Three writes, and none erased another's field. This is the shape the whole task is for:
+        // `Current` is read, one field is moved, and the result is handed back.
         PlayerProfile written = _inner.LoadProfile().GetAwaiter().GetResult().Value;
 
         Assert.That(written.SeenFirstActiveHint, Is.True);
         Assert.That(written.HapticsEnabled, Is.False);
-        Assert.That(_store.ProfileWriteCount, Is.EqualTo(2));
+        Assert.That(written.Shards, Is.EqualTo(220));
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(3));
     }
 
     [Test]
@@ -132,7 +140,7 @@ public sealed class ProfileStoreTests
         LogAssert.Expect(LogType.Error, new Regex("Could not save the player profile"));
 
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true);
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true, shards: 0);
 
         // Rule 5: a profile write that fails must not take down a run, and the smallest possible
         // consequence in the project is a hint shown twice because a disk was full.

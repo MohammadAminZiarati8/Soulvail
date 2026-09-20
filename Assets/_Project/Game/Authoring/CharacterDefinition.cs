@@ -78,6 +78,14 @@ namespace Soulvail.Game.Authoring
                  "0.4 is CC §4.2's readable-but-not-a-commitment windup.")]
         [SerializeField, Range(0f, 0.99f)] private float _weaponDamageFrame = 0.4f;
 
+        [Tooltip("Shot numbers — Projectile weapons only. Leave all three at 0 for a Cone; a " +
+                 "cone carrying a shot speed is refused rather than ignored. A Projectile needs " +
+                 "a speed and a radius above 0 and the cone angle set to exactly 360, since an " +
+                 "arc does not gate a shot. Spread must stay 0: it is reserved.")]
+        [SerializeField, Min(0f)] private float _weaponShotSpeed;
+        [SerializeField, Min(0f)] private float _weaponShotRadius;
+        [SerializeField, Min(0f)] private float _weaponShotSpread;
+
         [Tooltip("The Focus ramp (CC §4.3): standing still speeds the swing up. Nothing to do " +
                  "with tap-to-focus, which is the targeting block above. Every class has one — " +
                  "set the multiplier to 1 for a class that should not ramp at all.")]
@@ -167,7 +175,10 @@ namespace Soulvail.Game.Authoring
                         _weaponSwingsPerSecond,
                         _weaponRange,
                         _weaponConeAngleDeg,
-                        _weaponDamageFrame),
+                        _weaponDamageFrame,
+                        _weaponShotSpeed,
+                        _weaponShotRadius,
+                        _weaponShotSpread),
                     new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
                     new MovementSkillSpec(
                         _movementSkillKind,

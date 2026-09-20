@@ -840,6 +840,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Enemies.Registry.Alive,
             State.Motor.Facing);
 
+        // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
+        //
+        // *Immediately after combat*, because that is the step that decided it: a shot the damage
+        // frame produced this tick is in the air this tick, aimed with this tick's positions. Any
+        // lower and a bolt would be one frame stale before it left.
+        //
+        // *Above the skills block*, which is where the rest of AR §18.1 already puts the difference
+        // between deciding and arriving: State.Projectiles.Tick runs after the enemy behaviours, so a
+        // shot fired here cannot land on the tick it left — the same one-frame grace M2-07a rule 10
+        // gives every Spitter's bolt, now given to the player's. Nothing else about the order moved.
+        //
+        // Unconditional, and the common path is one nullable read: every run this build ships is the
+        // Oathbound, whose Censer is a cone and offers nothing. TryTakeShot is the only way to look,
+        // so a shot cannot be seen without also being consumed and cannot be fired twice.
+        if (State.Combat.TryTakeShot(out Projectile shot))
+        {
+            // The return value is deliberately not read. Fire answers NoProjectile when the sky is
+            // full and the player believes they fired, which is M2-07a rule 7's reading applied to
+            // the one shooter that would otherwise need to know the projectile system's capacity.
+            State.Projectiles.Fire(shot, State.Time);
+        }
+
         // **After combat and before the enemy behaviours — which puts it above the projectile step
         // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).
         //
@@ -932,7 +954,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
         // the body (ledger row 7, settled at M2-07a rule 1).
-        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat);
+        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat, State.Enemies);
 
         // The first thing that ends a run from inside one (M1-17). Asked here rather than
         // subscribed to, because core has no business listening to its own events: PlayerCombat

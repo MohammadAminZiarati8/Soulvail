@@ -82,7 +82,7 @@
 |---|---|---|---|---|
 | M5-00a | Specs for M5-01…M5-04 — the projectile weapon, the Gravecaller's body, and its minions | S | — | ☑ |
 | M5-00b | Specs for M5-05…M5-08 — the views, the tree, class select and acceptance | S | 00a | ☐ |
-| M5-01 | [A weapon that throws something, and the lead that makes it hit](tasks/M5-01-projectile-weapon-and-leading.md) | M | M2-07a | ☐ |
+| M5-01 | [A weapon that throws something, and the lead that makes it hit](tasks/M5-01-projectile-weapon-and-leading.md) | M | M2-07a | ☑ |
 | M5-02 | [The Gravecaller, and the numbers a second class forces us to settle](tasks/M5-02-gravecaller-and-bone-bolt.md) | M | M5-01 | ☐ |
 | M5-03 | [Shroudstep, and the first thing in this game that is not the player](tasks/M5-03-shroudstep-and-corpse-decoy.md) | S | M5-02 | ☐ |
 | M5-04a | [Wights: a body on the player's side](tasks/M5-04a-minion-agents-and-registry.md) | M | M5-02 | ☐ |

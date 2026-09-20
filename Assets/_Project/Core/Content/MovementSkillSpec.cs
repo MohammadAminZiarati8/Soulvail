@@ -21,9 +21,11 @@ namespace Soulvail.Core.Content;
 /// <para>
 /// <b>A member may land a task before its behaviour does</b>, and <see cref="Shroudstep"/> is the
 /// first that has: the kind is <em>content identity</em>, so it belongs to the asset that names it,
-/// while what it does is a system. Until M5-03 merges, <c>PlayerCombat</c> builds a <c>ChargeSkill</c>
-/// from the spec whatever the kind says — which is why the Gravecaller's numbers author 0 damage and
-/// 0 knockback rather than leaving CC §5's defaults to be dealt by a blink (M5-02 rule 7).
+/// while what it does is a system. It landed at M5-02 and means something as of M5-03 — which is
+/// also why the Gravecaller's numbers author 0 damage and 0 knockback rather than leaving CC §5's
+/// defaults to be dealt by a blink (M5-02 rule 7). <b>Still no second skill class:</b>
+/// <c>PlayerCombat</c> builds a <c>ChargeSkill</c> from the spec whatever the kind says, and the
+/// kind selects a <em>payload</em> on the start edge (M5-03 rule 1).
 /// </para>
 /// </remarks>
 public enum MovementSkillKind
@@ -36,8 +38,8 @@ public enum MovementSkillKind
 
     /// <summary>
     /// The Gravecaller's Shroudstep (CH §3.2): a 6 m blink leaving a corpse decoy that taunts for
-    /// 3 s. The member is content identity and lands here; what it <em>does</em> is
-    /// <see href="../../../../Docs/plan/tasks/M5-03-shroudstep-and-corpse-decoy.md">M5-03</see>'s.
+    /// <see cref="MovementSkillSpec.DecoyDuration"/> seconds. The clock, the buffer and the i-frame
+    /// window are the Charge's; the corpse is the difference (M5-03).
     /// </summary>
     Shroudstep,
 }
@@ -111,11 +113,25 @@ public sealed class MovementSkillSpec
     /// the trail is there so that a dodge which visually cleared an attack is not undone by the
     /// frames between the input and the simulation.
     /// </param>
+    /// <param name="decoyDuration">
+    /// Seconds a <see cref="MovementSkillKind.Shroudstep"/>'s corpse decoy stands — 3 (CH §3.2).
+    /// <b>Validated against <paramref name="kind"/> rather than on its own</b> (M5-03 rule 5), the
+    /// way <see cref="WeaponSpec"/>'s three shot numbers are: a Shroudstep must carry a finite
+    /// number greater than zero, and every other kind must carry exactly zero. A
+    /// <see cref="MovementSkillKind.Charge"/> with a decoy duration is a forgotten field rather
+    /// than a design statement, and a Shroudstep without one is a blink that leaves nothing —
+    /// which is the whole of the skill.
+    /// <para>
+    /// Defaulted, so every <c>new MovementSkillSpec(...)</c> written before M5-03 keeps meaning
+    /// what it meant and no shipped asset is rewritten (M4-01a rule 4's trade).
+    /// </para>
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="distance"/>, <paramref name="duration"/> or <paramref name="cooldown"/> is
-    /// not a finite number greater than zero; or <paramref name="inputBuffer"/>,
+    /// not a finite number greater than zero; <paramref name="inputBuffer"/>,
     /// <paramref name="damage"/>, <paramref name="knockback"/> or <paramref name="iFrameTrail"/> is
-    /// negative, NaN or infinite.
+    /// negative, NaN or infinite; or <paramref name="decoyDuration"/> disagrees with
+    /// <paramref name="kind"/>.
     /// </exception>
     public MovementSkillSpec(
         MovementSkillKind kind,
@@ -125,7 +141,8 @@ public sealed class MovementSkillSpec
         float inputBuffer,
         float damage,
         float knockback,
-        float iFrameTrail)
+        float iFrameTrail,
+        float decoyDuration = 0f)
     {
         Kind = kind;
         Distance = Positive(distance, nameof(distance));
@@ -135,6 +152,7 @@ public sealed class MovementSkillSpec
         Damage = NonNegative(damage, nameof(damage));
         Knockback = NonNegative(knockback, nameof(knockback));
         IFrameTrail = NonNegative(iFrameTrail, nameof(iFrameTrail));
+        DecoyDuration = Decoy(kind, decoyDuration);
     }
 
     /// <summary>Which movement skill this is.</summary>
@@ -160,6 +178,17 @@ public sealed class MovementSkillSpec
 
     /// <summary>Extra seconds of invulnerability after the dash ends. 0.05.</summary>
     public float IFrameTrail { get; }
+
+    /// <summary>
+    /// Seconds a Shroudstep's decoy stands. Zero on a movement skill that leaves none.
+    /// </summary>
+    /// <remarks>
+    /// 3 for the Gravecaller (CH §3.2) against a 2.5 s cooldown, which is why
+    /// <c>LureSystem.Capacity</c> is two rather than one: the overlap is half a second wide and it
+    /// is legitimate. Read once per blink by <c>PlayerCombat.TickCharge</c>, which is the only
+    /// caller — the decoy is dropped where the blink left, not where it arrived (M5-03 rule 6).
+    /// </remarks>
+    public float DecoyDuration { get; }
 
     /// <remarks>
     /// `!(x &gt; 0f)` rather than `x &lt;= 0f`, so NaN is refused with everything else — the
@@ -199,5 +228,49 @@ public sealed class MovementSkillSpec
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// The one number on this spec whose legal range depends on <see cref="Kind"/> — M5-03 rule 5,
+    /// and <c>WeaponSpec</c>'s kind-conditional shot numbers one folder over.
+    /// </summary>
+    /// <remarks>
+    /// Written as "the kind that leaves something behind, and everything else", rather than as a
+    /// <c>switch</c> over every member: a third kind is <c>Blink</c> (M6-07), which leaves a fire
+    /// pool and not a decoy, so it belongs on the zero side of this line until something says
+    /// otherwise. A kind added without a thought about this field therefore refuses a duration
+    /// rather than silently accepting one nothing reads.
+    /// </remarks>
+    private static float Decoy(MovementSkillKind kind, float decoyDuration)
+    {
+        if (kind == MovementSkillKind.Shroudstep)
+        {
+            // `!(value > 0f)` so NaN is refused with everything at or below zero, and infinity
+            // separately because it passes a `> 0` test — a decoy that never rots is a permanent
+            // taunt bought with one blink.
+            if (!(decoyDuration > 0f) || float.IsInfinity(decoyDuration))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(decoyDuration),
+                    decoyDuration,
+                    "A Shroudstep's decoyDuration must be a finite number greater than zero. The "
+                        + "corpse is the skill (CH §3.2); a blink that leaves nothing is a Charge "
+                        + "with a shorter distance.");
+            }
+
+            return decoyDuration;
+        }
+
+        if (decoyDuration != 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(decoyDuration),
+                decoyDuration,
+                $"A {kind} leaves no decoy, so its decoyDuration must be exactly zero. A non-zero "
+                    + "one is a forgotten field rather than a design statement — nothing would "
+                    + "ever read it.");
+        }
+
+        return 0f;
     }
 }

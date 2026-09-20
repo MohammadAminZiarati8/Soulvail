@@ -49,6 +49,7 @@ MonoBehaviour:
   _movementSkillDamage: 0
   _movementSkillKnockback: 0
   _movementSkillIFrameTrail: 0.05
+  _movementSkillDecoyDuration: 3
   _minionCap: 3
   _minionSpecId: minion.wight
   _minionNameKey: minion.wight.name

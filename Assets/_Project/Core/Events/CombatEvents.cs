@@ -7,7 +7,8 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These ten are what happens *to* or *by* the player. What happens to an enemy is EnemyEvents'
+// These twelve are what happens *to* or *by* the player — a corpse decoy is the player's, because
+// nothing but a movement skill can leave one (M5-03). What happens to an enemy is EnemyEvents'
 // (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
 // one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
 // so the owner decides which vocabulary a result is spoken in.
@@ -391,5 +392,65 @@ public readonly struct ShieldGrantExpired
     {
         Removed = removed;
         Total = total;
+    }
+}
+
+/// <summary>
+/// A movement skill left a corpse decoy standing. Published by <c>LureSystem.Drop</c> after the
+/// decoy exists, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>The cue half of a pair whose instruction half does not exist</b>, and that is the difference
+/// between this and <see cref="ChargeStarted"/>. A dash tells one body where to go and everyone
+/// else that a dodge happened; a decoy is not a body at all — nothing moves, nothing is spawned in
+/// the world by core's instruction, and what a view does with this is put a prop down and take it
+/// away again on <see cref="DecoyExpired"/>. That view is M5-05's; until it exists a decoy is
+/// entirely invisible and the only evidence of one is the arena walking the wrong way.
+/// </para>
+/// <para>
+/// It carries the duration as well as the place, for <see cref="ShieldGranted"/>'s reason: a
+/// countdown is what a view draws, and a listener with only the position would have to read the
+/// spec that caused it to know how long to draw one for.
+/// </para>
+/// </remarks>
+public readonly struct DecoySpawned
+{
+    /// <summary>Its run-stable id, issued from 1 and never reused within a run.</summary>
+    public readonly int Id;
+
+    /// <summary>Where it stands, in world metres — where the blink <em>left</em>, not where it arrived.</summary>
+    public readonly Vector3 Position;
+
+    /// <summary>How long it stands, in simulated seconds.</summary>
+    public readonly float Duration;
+
+    public DecoySpawned(int id, Vector3 position, float duration)
+    {
+        Id = id;
+        Position = position;
+        Duration = duration;
+    }
+}
+
+/// <summary>
+/// A corpse decoy has rotted. Published by <c>LureSystem.Tick</c> once per
+/// <see cref="DecoySpawned"/> that was allowed to run out, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <b>Not published by <c>LureSystem.Clear</c></b>, which forgets every decoy in silence — the
+/// stage or the run is ending and the subscribers a farewell could reach are going with it, which
+/// is <c>ProjectileSystem.Clear</c>'s bargain exactly. So a view that pairs this with
+/// <see cref="DecoySpawned"/> must also tidy up on <c>RunEnded</c> and on a stage boundary, the
+/// same as every other view that holds something core stopped believing in.
+/// </remarks>
+public readonly struct DecoyExpired
+{
+    /// <summary>The decoy that is gone — the id its <see cref="DecoySpawned"/> carried.</summary>
+    public readonly int Id;
+
+    public DecoyExpired(int id)
+    {
+        Id = id;
     }
 }

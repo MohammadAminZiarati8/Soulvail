@@ -192,4 +192,54 @@ seconds?* — goes on [ledger row 3](../ROADMAP.md#carry-forward-into-m5) at thi
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Branch:** `m5-03-shroudstep`, not the spec's `m5-03-shroudstep-decoy` — the owner named it.
+
+**Six deviations. Two change something.**
+
+**1. Rule 7 was false against the code, and the Tests table settled it.** *"An enemy that reaches one
+… swings at the corpse and hurts nobody"* is true of every way an enemy hurts the player **except
+one**: a Spitter's bolt is aimed at `PlayerPosition` and landed by `ProjectileSystem` against the
+real `RunState.PlayerPosition`, and a Bloater's blast is resolved by `EnemySystem.Explode` against
+the same — both miss by construction, which is the nicest thing found here. But
+`ChaserBehaviour.EnterStrike` calls `PlayerCombat.ApplyDamage` when `DistanceToPlayer` is inside its
+reach, and while that distance is a *decoy's*, a Husk standing on a corpse hits a player six metres
+away. So `Chaser_StrikesTheDecoyAndHurtsNobody` fails on rule 2's letter (*"no behaviour is
+touched"*). **`EnemyBlackboard` gained `QuarryIsADecoy` and `EnterStrike` gained one clause** — two
+files outside the table. It is written as perception, not as a threat table: one writer, in
+`Perceive`, recomputed every tick from the question `TryGetLure` answers the same way about every
+agent, so rule 8's *"no `TargetId`, no threat table, no way to pull some enemies and not others"*
+holds. The alternative — testing the real player distance in `EnterStrike` — reddens most of
+`ChaserBehaviourTests`, whose fixtures set `DistanceToPlayer` by hand and never a position.
+[Parking lot](../ROADMAP.md#parking-lot) records it, and names the reader the M7-01 rename deletes.
+
+**2. Rule 9's *"cleared with the stage"* needed `StageFlow`, which the table does not list.**
+`ZoneSystem.Clear` and `ProjectileSystem.Clear` do **not** run in the same places — a zone survives
+a boundary on purpose and a shot does not — so "runs where both run" is two answers. The heading
+decides it: a decoy stands 3 s against a boundary's 2 s of gate and arrival, so unlike a shockwave
+it can genuinely cross one, and a taunt aimed at the torn-down arena is `ProjectileSystem.Clear`'s
+own defect. `StageFlow` gained a **defaulted** `LureSystem` argument (null = nothing to clear), so
+its nine existing constructions are untouched. **No row covers it**: this build's fixtures all run
+empty-roster modes, where `RunSession` builds no `StageFlow` at all.
+
+**3–6, which change nothing.** *(3)* **`PlayerCombat.Tick` gained a defaulted `lures` argument**
+rather than the constructor or a field — the spec's own shape for `Ingest`, and it leaves all 37
+existing call sites unedited. *(4)* **The *ripple* row was not needed:** `Ingest`'s new argument is
+defaulted, so `EnemySystemTests` never changed; the lure-aware rows live in the new fixture instead.
+*(5)* **Rows landed in two files, not three.** `Skill_`, `Spec_` and `Lure_` are all in
+`LureSystemTests` (Combat), `Perception_`, `Chaser_` and `Run_` in `LurePerceptionTests` (Ai) — the
+table names two test files and every row exists. *(6)* **Four files outside the table were edited
+and each was required:** `Gravecaller.asset` (`_movementSkillDecoyDuration: 3`, without which rule
+5's kind-conditional validation throws on the shipped asset), `GravecallerTests` (one assertion, and
+a comment that had gone stale), `TimeToKillTests` (a `Shroudstep` fixture the same validation
+refused — the only ripple in the suite), and `Architecture.md` §18.1 (M5-01's lesson: a task that
+adds an ordering the code depends on and leaves §18 describing the old one has filed nothing).
+
+**Rule 10's first half is not what the frame does, and is not claimed.** *"A decoy dropped this tick
+is standing by the time this tick's enemies perceive"* is unreachable — the ingest runs above the
+combat step that drops it, and moving either breaks a rule §18.1 already carries. A decoy dropped on
+tick *n* is perceived on *n+1*, the one-frame grace every fact in the loop has. The half that **is**
+load-bearing shipped exactly: `Lures.Tick` sits immediately above `Enemies.Ingest`, which is what
+`Run_TheExpiryIsAbovePerception` pins.
+
+**What was not touched, as promised:** `ChargeSkill.cs`, any `IMovementSkill`, `RunSnapshot`'s
+version, `TargetId`, and any path by which a decoy could be hit.

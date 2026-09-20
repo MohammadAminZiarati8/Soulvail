@@ -404,10 +404,11 @@ public sealed class PlayerCombat
     /// second opinion on whether the player can be hurt.
     /// </para>
     /// <para>
-    /// Named for the Oathbound's version because that is the only one V1 ships, and typed as the
-    /// concrete class for the same reason: a <c>IMovementSkill</c> with one implementation would be
-    /// an abstraction invented for a Shroudstep nobody has written yet, and M5-03 is where the
-    /// second one gets to say what the two have in common.
+    /// Named for the Oathbound's version and typed as the concrete class, and M5-03 is what
+    /// settled that rather than what changed it: a Shroudstep is <em>this</em> clock with a corpse
+    /// dropped on its start edge, so the second movement skill in the game added one branch to
+    /// <see cref="TickCharge"/> and no interface. An <c>IMovementSkill</c> would be an abstraction
+    /// with one implementation and two payloads, which is a switch spelled expensively.
     /// </para>
     /// </remarks>
     public ChargeSkill Charge { get; }
@@ -989,17 +990,25 @@ public sealed class PlayerCombat
     /// silently dropping the tail would make the character blind to enemies the run knows about,
     /// and the two numbers come from one constant precisely so this cannot happen.
     /// </exception>
+    /// <param name="lures">
+    /// Where a Shroudstep's decoy goes, or null for a run that has none. Passed in rather than
+    /// held, for the reason this class is handed the enemies and the snapshot: it owns no view of
+    /// the world, and a constructor argument would ripple through every fixture that builds one.
+    /// Null means "nowhere to put a decoy" and the blink still happens, which is what every run of
+    /// the Oathbound is — see <see cref="TickCharge"/>.
+    /// </param>
     public void Tick(
         float dt,
         float now,
         WorldSnapshot snapshot,
         ReadOnlySpan<EnemyAgent> enemies,
-        Vector3 bodyFacing)
+        Vector3 bodyFacing,
+        LureSystem lures = null)
     {
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        TickCharge(dt, now, snapshot.MoveInput, bodyFacing);
+        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1128,8 +1137,23 @@ public sealed class PlayerCombat
     /// be hurt", and this is a caller raising a flag it is also responsible for lowering, exactly as
     /// <c>Health.SetExternalInvulnerable</c> asks.
     /// </para>
+    /// <para>
+    /// <b>And as of M5-03 the start edge has a payload, which is the only thing a second
+    /// <see cref="MovementSkillKind"/> changed anywhere</b> (rule 1). A Shroudstep is a
+    /// <see cref="ChargeSkill"/> with a corpse behind it: the cooldown, the buffer, the i-frames
+    /// and the <see cref="ChargeIntent"/> are the Charge's, unmodified, and the one branch below is
+    /// the difference. No <c>IMovementSkill</c> and no second skill class — that would be an
+    /// abstraction with one implementation and a second payload, which is the trade
+    /// <see cref="Charge"/>'s own remarks refuse.
+    /// </para>
     /// </remarks>
-    private void TickCharge(float dt, float now, Vector2 stickXZ, Vector3 bodyFacing)
+    private void TickCharge(
+        float dt,
+        float now,
+        Vector2 stickXZ,
+        Vector3 bodyFacing,
+        Vector3 playerPosition,
+        LureSystem lures)
     {
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
@@ -1156,6 +1180,29 @@ public sealed class PlayerCombat
                 _movementSkill.Duration));
 
             _events.Publish(new ChargeStarted(Charge.Direction));
+
+            // **And the corpse, where the blink *left*** (rule 6). CH §3.2 says the Shroudstep
+            // "leaves a corpse-decoy" — a thing left behind — so it is dropped from the player's
+            // position as of this tick rather than from the destination. Dropped at the
+            // destination it would stand on top of the player and taunt the whole arena straight
+            // at them, which inverts the mechanic.
+            //
+            // Below the ChargeStarted rather than above it, so a listener handling the dodge has
+            // not yet been told about a decoy the dodge is what produced.
+            //
+            // Guarded on the kind and not on the duration: the spec has already refused a
+            // Shroudstep with no decoy and a Charge with one (MovementSkillSpec, rule 5), so this
+            // is the one branch and there is no second opinion about what the number means. A null
+            // lure system is a run with nowhere to put one and the blink still happens, exactly as
+            // a refused drop does.
+            if (_movementSkill.Kind == MovementSkillKind.Shroudstep && lures is not null)
+            {
+                // The return value is deliberately not read. Drop answers NoLure at capacity and
+                // the player believes they blinked, which is ProjectileSystem.Fire's reading
+                // applied to the one dropper that would otherwise need to know the lure system's
+                // capacity (rule 4).
+                lures.Drop(playerPosition, now, _movementSkill.DecoyDuration);
+            }
         }
         else if (_wasChargeInvulnerable && !invulnerable)
         {

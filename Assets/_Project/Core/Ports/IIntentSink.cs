@@ -83,6 +83,28 @@ public interface IIntentSink
     void EnemyMove(in EnemyMoveIntent intent);
 
     /// <summary>
+    /// Tells one Wight's body where to walk and where to look this tick. Written once per standing
+    /// minion, every tick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The same struct as <see cref="EnemyMove"/> and a different door, and the door is the
+    /// point</b> (M5-04a rule 4). The three facts are the same three facts — an id, a velocity, a
+    /// facing — so a second struct would be a copy of <see cref="EnemyMoveIntent"/> with a different
+    /// name. But the ids come from different registries: <c>MinionSystem</c> issues from 1 and so
+    /// does <c>EnemyRegistry</c>, so a shared door would let a Wight's id steer a Husk on the frame
+    /// the two happened to collide.
+    /// </para>
+    /// <para>
+    /// Accumulated, like <see cref="EnemyMove"/> and for its reason: these are instructions to up to
+    /// eight different bodies, not eight opinions about one. Within a tick each Wight is named
+    /// exactly once, zero velocity included — a tick with no intent is a body applying whatever it
+    /// last read.
+    /// </para>
+    /// </remarks>
+    void MinionMove(in EnemyMoveIntent intent);
+
+    /// <summary>
     /// Tells the body to shove an enemy: this far, this way. Written while core resolves a
     /// pass-through fact, once per enemy hit.
     /// </summary>

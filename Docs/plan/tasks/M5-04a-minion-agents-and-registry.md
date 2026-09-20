@@ -247,4 +247,62 @@ tests**, which is stated here so an empty array is not read as a fault.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Eight deviations. Two change a decision, and one is a row this spec asked for that cannot be written.**
+
+1. **`MinionSystem.Tick` takes a fourth argument, `PlayerCombat player`.** Rule 11 sends a Wight's
+   kill through `EnemySystem.ApplyDamage`, and that method's signature has required a
+   `PlayerCombat` since M2-08 because a dying Bloater explodes and a blast catches the player. The
+   *Public API*'s three-argument sketch cannot call it. Taken rather than held, and required rather
+   than optional, for the reason `EnemySystem.ApplyDamage` gives: the compiler should enumerate every
+   call site the day something else explodes. **What it means in play: a Wight that kills a Bloater
+   can hurt the person who raised it**, which is correct and would have been silently untrue if this
+   class had reached for a narrower door.
+2. **`Run_MinionsTickAfterTheEnemiesAndAboveTheDeathCheck` could not be written, and that is a
+   finding rather than a skip.** It needs a Wight standing inside a live `RunSession`. Nothing
+   produces one until [M5-04b](M5-04b-rise-and-minion-stats.md)'s Rise; `RunState.Minions` is
+   `internal` because [AR §18.2](../../Architecture.md#182-the-boundary) says *"a live object is
+   never handed out of `RunState`"*; and `Soulvail.Tests.Core` has no `InternalsVisibleTo`. There is
+   no door. Making `Minions` public would have been the project's first violation of that invariant,
+   for one test. **What ships instead is `Run_AGravecallerRunTicksItsArmyAndAnOathboundHasNone`** —
+   120 ticks of each class, no throw, no `MinionMove`, `IsRunning` true — which is the *Manual
+   verification* section's claim made into a row. **The kill-on-the-death-tick half is
+   M5-04b rule 4's**, which states the same ordering and will have a producer.
+3. **`MinionSystem` is built only for a class with a `MinionSpec`, so `RunState.Minions` is
+   nullable.** The Files table says *"`RunState` holds the system"* without saying when.
+   M5-04b rule 10 requires that an Oathbound run hold none, so building one unconditionally here
+   would be a thing M5-04b had to undo. It follows `Tree` and `LevelUp`: absent rather than empty.
+4. **`RunSession.End` clears the army.** Not in the Files table's four small edits, one line in a
+   file already open. A Wight lives twenty seconds, so at the end of a run there is always one
+   standing if any were raised, and a system left full would hand the next run an army. **The stage
+   boundary is deliberately *not* swept and is owed to M5-04b** — twenty seconds against a
+   boundary's two makes a Wight the one body that can genuinely cross one, which is
+   [M5-03](M5-03-shroudstep-and-corpse-decoy.md)'s decoy problem at seven times the duration.
+5. **Five files outside the table changed, all of them forced by the one edit the table names.**
+   `IIntentSink.MinionMove` is an interface member, so every implementer had to grow it:
+   `Game/Adapters/IntentBuffer.cs` (which gains a `MinionMoves` list sized from `MaxConcurrent`),
+   `Tests/Core/Fakes/RecordingIntents.cs`, and the three private `SilentIntents` classes in
+   `ChargeIntegrationTests`, `ConeHitsToDamageTests` and `PlayerProjectileTests`.
+6. **The retarget cadence is one clock on the system, not a field per agent.** The *Public API*
+   gives `MinionAgent` three pieces of working memory and no deadline, so the cadence had to live
+   somewhere — and a shared accumulator is what makes `Tick`'s `dt` argument mean something. A Wight
+   with no quarry chooses immediately whatever the clock says, which is what makes a freshly raised
+   one walk on its first tick.
+7. **A Wight stops inside its reach rather than walking into its quarry**, and **ties in `Nearest`
+   go to the earlier spawn.** Neither is in the spec. The first is `ChaserBehaviour`'s discipline —
+   without it a Wight shoves a Husk across the arena. The second is `LureSystem.TryGetLure`'s rule
+   and its reason: two identical frames must not disagree.
+
+8. **[AR §18](../../Architecture.md#181-ordering) gained a row and a bullet**, which is M5-01's lesson applied rather than relearned: the tick order grew two steps, so §18.1's `RunSession.Tick` row lists them and a new row states the minion pass's own orderings; §18.2 gains the reason `MinionMove` is a second door for the same struct.
+
+**Three things worth knowing that are not deviations.** `WorldSnapshot.Minions` is sized from
+`MinionSystem.MaxConcurrent` rather than from a constructor argument, so no call site changed and the
+array cannot fall behind the cap. A Wight's death retires it **immediately** — there is no corpse
+time, because `MinionDied` carries the position a view needs and the id stops resolving with the
+body. And `MinionSystem.ApplyDamage` is documented as unsafe to call from inside `Tick`'s own passes,
+because a death shifts the array they walk; nothing calls it, and the day something does it queues
+the way `EnemySystem.DespawnAtEndOfTick` does.
+
+**[Ledger row 6] is discharged and produced no finding.** `Boss_TickAllocatesNothing` drives a
+thousand full cycles — a crossing that summons four Husks, fifteen ticks of beat, a second crossing
+whose `ClearAdds` queues four deferred despawns, then a reset — and measures zero.
+`BossBehaviour.cs` is untouched.

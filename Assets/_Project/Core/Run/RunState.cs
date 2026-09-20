@@ -64,6 +64,7 @@ public sealed class RunState
         ZoneSystem zones,
         LureSystem lures,
         MinionSystem minions,
+        RisePassive rise,
         LevelUpFlow levelUp)
     {
         ModeId = modeId;
@@ -82,6 +83,7 @@ public sealed class RunState
         Zones = zones;
         Lures = lures;
         Minions = minions;
+        Rise = rise;
         LevelUp = levelUp;
     }
 
@@ -594,6 +596,31 @@ public sealed class RunState
     /// </para>
     /// </remarks>
     internal MinionSystem Minions { get; }
+
+    /// <summary>
+    /// CH §3.2's Rise — what turns a quarter of this run's kills into Wights — or
+    /// <see langword="null"/> for a class that raises none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>OnDeaths</c> stands
+    /// bodies up and draws from the run's <c>Drops</c> stream, so a public handle would let a view
+    /// raise an army <em>and</em> spend draws the simulation is counting on — the same argument that
+    /// keeps <see cref="LevelUp"/> behind four reads.
+    /// </para>
+    /// <para>
+    /// <b>Null in exactly the runs <see cref="Minions"/> is null in</b>, and it is built from the
+    /// same <c>MinionSpec</c>: an Oathbound run holds neither, draws nothing from <c>Drops</c>, and
+    /// is byte-identical to the run it was before M5-04b (rule 10).
+    /// </para>
+    /// <para>
+    /// <b>No scalar read beside it</b>, for <see cref="Lures"/>'s reason. <c>RisePassive.Raised</c>
+    /// exists for a readout, and nothing draws one: a Wight has no view until M5-05a and the
+    /// Gravecaller is not selectable until M5-07, so a read here would be public API nobody asked
+    /// for. The first screen that wants the number gets one then.
+    /// </para>
+    /// </remarks>
+    internal RisePassive Rise { get; }
 
     /// <summary>
     /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).

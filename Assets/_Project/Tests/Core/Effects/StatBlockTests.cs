@@ -31,12 +31,21 @@ namespace Soulvail.Tests.Core.Effects;
 /// than about a behaviour a player can see. That is M3-05's and M3-12a's bargain again, and it is
 /// what makes <c>Player_BehaviourIsUnchanged</c> the row that matters most.
 /// </para>
+/// <para>
+/// <b>A third implementation arrived at M5-04b, which is what turns the claim above into a
+/// measurement.</b> <see cref="MinionStats"/> is <see cref="CombatantStats"/>' mirror over a body
+/// that is neither the player nor an enemy, and <c>Minion_AndCombatantAnswerTheSameSet</c> is the
+/// row that says so in a form a later generalisation has to argue with: the same three of twelve
+/// answered, the same nine refused, and <b>different messages</b>, because a refusal that could not
+/// name its content would be one diagnostic for two different authoring mistakes (M5-04b rule 6).
+/// </para>
 /// </remarks>
 [TestFixture]
 public sealed class StatBlockTests
 {
     private const string OathboundId = "character.oathbound";
     private const string HuskId = "enemy.husk";
+    private const string WightId = "minion.wight";
     private const string DescentId = "mode.descent";
 
     /// <summary>GD §8.1's Husk, and the numbers every combatant row here is over.</summary>
@@ -49,12 +58,23 @@ public sealed class StatBlockTests
     private const float PlayerMaxHp = 140f;
     private const float PlayerMoveSpeed = 3f;
 
+    /// <summary>The Gravecaller's authored Wight (M5-02), for the third block's rows.</summary>
+    private const float MinionMaxHp = 20f;
+
+    private const float MinionMoveSpeed = 3f;
+    private const float MinionDamage = 8f;
+    private const float MinionReach = 1.5f;
+
     private const int Capacity = 8;
     private const float Tolerance = 1e-3f;
+
+    /// <summary>One frame, for the one row that has to make a Wight actually swing.</summary>
+    private const float Frame = 0.1f;
 
     private SilentEvents _events;
     private RecordingIntents _intents;
     private EnemySystem _system;
+    private MinionSystem _minions;
 
     [SetUp]
     public void SetUp()
@@ -67,6 +87,8 @@ public sealed class StatBlockTests
             new FixedRandom(),
             new DepthScaling(Scalings.Design()),
             Capacity);
+
+        _minions = new MinionSystem(WightSpec(), _events, _intents);
     }
 
     // ---- Rule 1 and rule 8: the player is a block, and is otherwise untouched --------------------
@@ -217,6 +239,174 @@ public sealed class StatBlockTests
     public void Combatant_NullAgent_Throws()
     {
         Assert.That(() => new CombatantStats(null), Throws.ArgumentNullException);
+    }
+
+    // ---- M5-04b rules 6 and 7: the third block ----------------------------------------------------
+
+    [Test]
+    public void Minion_ImplementsTheBlock()
+    {
+        MinionAgent wight = Wight();
+        IStatBlock block = new MinionStats(wight);
+
+        // SameAs, never EqualTo, for Combatant_AnswersItsThreeStats' reason: an address that handed
+        // back a copy holding 20 would pass every equality check in this file and move nothing.
+        Assert.That(block.Resolve(PlayerStat.MaxHp), Is.SameAs(wight.Health.MaxHp));
+        Assert.That(block.Resolve(PlayerStat.MoveSpeed), Is.SameAs(wight.MoveSpeed));
+        Assert.That(block.Resolve(PlayerStat.ContactDamage), Is.SameAs(wight.ContactDamage));
+
+        block.Resolve(PlayerStat.MoveSpeed).Add(new Modifier(ModifierKind.Flat, 1f, new object()));
+
+        Assert.That(
+            wight.MoveSpeed.Value,
+            Is.EqualTo(MinionMoveSpeed + 1f).Within(Tolerance),
+            "The block hands back the agent's live stat, so a modifier on it moves the Wight.");
+    }
+
+    [Test]
+    public void Minion_RefusesAnAddressItDoesNotHave()
+    {
+        IStatBlock block = new MinionStats(Wight());
+
+        ArgumentOutOfRangeException thrown = Assert.Throws<ArgumentOutOfRangeException>(
+            () => block.Resolve(PlayerStat.WeaponRange),
+            "A Wight has no weapon range. Minting a Stat here would put a modifier on a number "
+                + "nothing reads, which no check in this project can see.");
+
+        Assert.That(thrown.Message, Does.Contain(nameof(PlayerStat.WeaponRange)));
+        Assert.That(thrown.Message, Does.Contain(WightId));
+    }
+
+    [Test]
+    public void Minion_HasAgreesWithResolve()
+    {
+        IStatBlock block = new MinionStats(Wight());
+
+        AssertHasAgreesWithResolve(block, "MinionStats");
+
+        Assert.That(block.Has(PlayerStat.MaxHp), Is.True);
+        Assert.That(block.Has(PlayerStat.MoveSpeed), Is.True);
+        Assert.That(block.Has(PlayerStat.ContactDamage), Is.True);
+        Assert.That(block.Has(PlayerStat.WeaponDamage), Is.False);
+    }
+
+    [Test]
+    public void Minion_AndCombatantAnswerTheSameSet()
+    {
+        // **The row a later generalisation has to argue with** (M5-04b rule 6). A shared base class
+        // would remove about ten lines and would also make the two messages one — and
+        // "'enemy.husk' has no stat at address WeaponRange" and "'minion.wight' has no stat at
+        // address WeaponRange" are different facts for different authors (M4-01a rule 2).
+        IStatBlock combatant = new CombatantStats(Husk());
+        IStatBlock minion = new MinionStats(Wight());
+
+        var answered = 0;
+        var refused = 0;
+
+        foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
+        {
+            Assert.That(
+                minion.Has(member),
+                Is.EqualTo(combatant.Has(member)),
+                $"PlayerStat.{member} is answered by one body and not the other. The three a "
+                    + "MinionAgent carries are the three an EnemyAgent carries, deliberately "
+                    + "(M5-04a rule 2) — a difference here is one of the two having drifted.");
+
+            if (minion.Has(member))
+            {
+                answered++;
+                continue;
+            }
+
+            refused++;
+
+            string combatantMessage = Refusal(combatant, member);
+            string minionMessage = Refusal(minion, member);
+
+            Assert.That(
+                combatantMessage, Does.Contain(HuskId), $"PlayerStat.{member} on the Husk.");
+            Assert.That(
+                minionMessage, Does.Contain(WightId), $"PlayerStat.{member} on the Wight.");
+            Assert.That(
+                minionMessage,
+                Is.Not.EqualTo(combatantMessage),
+                $"PlayerStat.{member} refuses with the same words on both, so one message is now "
+                    + "serving two content errors.");
+        }
+
+        Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
+        Assert.That(refused, Is.EqualTo(9), "The other nine of twelve are player numbers.");
+    }
+
+    [Test]
+    public void Minion_NullAgent_Throws()
+    {
+        Assert.That(() => new MinionStats(null), Throws.ArgumentNullException);
+    }
+
+    [Test]
+    public void Modify_ReachesAWightsDamage()
+    {
+        // **What M5-04b actually ships for CH §3.2's Legion branch** (rule 9): a Wight has an
+        // address book and a live ContactDamage a modifier can sit on. *Who* is allowed to put one
+        // there — "every Wight I own" is neither Player nor Self — is M5-06's first question.
+        MinionAgent wight = Wight();
+        PlayerCombat combat = Combat();
+        var stats = new PlayerStats(combat, Motor(), Progression());
+        var handler = new ModifyStatHandler(stats);
+
+        EnemyAgent husk = HuskAt(new Vector3(1f, 0f, 0f));
+
+        using (handler.Aiming(new MinionStats(wight)))
+        {
+            handler.Apply(
+                new ModifyStat(PlayerStat.ContactDamage, ModifierKind.PercentAdd, 0.2f, StatTarget.Self),
+                new object());
+        }
+
+        _minions.Tick(Frame, now: 0f, _system, combat);
+
+        // Read off the Husk rather than off the stat, which is the whole point: the node named a
+        // member of an enum and the number a *strike* costs moved.
+        Assert.That(
+            husk.Health.Current,
+            Is.EqualTo(HuskMaxHp - (MinionDamage * 1.2f)).Within(Tolerance),
+            "A +20 % ContactDamage aimed at the Wight is 20 % more damage on the swing it throws.");
+
+        Assert.That(
+            combat.Weapon.Damage.Value,
+            Is.EqualTo(WeaponDamage).Within(Tolerance),
+            "And the player's numbers did not move — which is the entire point of the seam.");
+    }
+
+    [Test]
+    public void PlayerStat_GainedNothing()
+    {
+        // **The row that proves M4-01a rule 1 was about the design rather than about the one case in
+        // front of it** (M5-04b rule 8). A Wight is the second caller that is not the player, and it
+        // needs no new member — so the shared address space has now been asked for by two things and
+        // widened by neither.
+        //
+        // The names in ordinal order, not merely the count: every authored ModifyStatDefinition
+        // serialises `_stat` as a raw int, so a member *inserted* rather than appended silently
+        // re-points every asset that names one after it. PlayerStatCoverageTests counts twelve; this
+        // says which twelve and in what order.
+        Assert.That(Enum.GetNames(typeof(PlayerStat)), Is.EqualTo(new[]
+        {
+            nameof(PlayerStat.MaxHp),
+            nameof(PlayerStat.WeaponDamage),
+            nameof(PlayerStat.FireRate),
+            nameof(PlayerStat.MoveSpeed),
+            nameof(PlayerStat.MovementSkillCooldown),
+            nameof(PlayerStat.XpGain),
+            nameof(PlayerStat.WeaponRange),
+            nameof(PlayerStat.WeaponConeAngle),
+            nameof(PlayerStat.ChargeDamage),
+            nameof(PlayerStat.ShieldRechargeDelay),
+            nameof(PlayerStat.HealPerKill),
+            nameof(PlayerStat.ContactDamage),
+        }), "The same twelve members as after M4-01a, in the same order. A new member goes *after* "
+            + "ContactDamage and updates this row saying which task added it.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------
@@ -444,7 +634,34 @@ public sealed class StatBlockTests
         }
     }
 
-    private EnemyAgent Husk() => _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+    /// <summary>
+    /// The refusal message <paramref name="block"/> gives for an address it does not have.
+    /// </summary>
+    /// <exception cref="AssertionException">It answered instead of refusing.</exception>
+    private static string Refusal(IStatBlock block, PlayerStat member)
+    {
+        try
+        {
+            block.Resolve(member);
+        }
+        catch (ArgumentOutOfRangeException thrown)
+        {
+            return thrown.Message;
+        }
+
+        Assert.Fail($"{block.GetType().Name} answered PlayerStat.{member} rather than refusing it.");
+
+        return null;
+    }
+
+    private EnemyAgent Husk() => HuskAt(Vector3.Zero);
+
+    private EnemyAgent HuskAt(Vector3 position) => _system.Spawn(new ContentId(HuskId), position);
+
+    /// <summary>
+    /// A standing Wight, out of a real <see cref="MinionSystem"/> — the only thing that makes one.
+    /// </summary>
+    private MinionAgent Wight() => _minions.Spawn(Vector3.Zero, now: 0f);
 
     private PlayerCombat Combat() =>
         new PlayerCombat(Character(), _events, _intents, Capacity);
@@ -474,6 +691,19 @@ public sealed class StatBlockTests
         recoverTime: 0.6f,
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
+
+    /// <summary>The Gravecaller's authored minion block (M5-02), for the third block's rows.</summary>
+    private static MinionSpec WightSpec() => new MinionSpec(
+        new ContentId(WightId),
+        new LocKey("minion.wight.name"),
+        cap: 3,
+        lifespan: 20f,
+        riseChance: 0.25f,
+        MinionMaxHp,
+        MinionMoveSpeed,
+        MinionDamage,
+        attackInterval: 1f,
+        MinionReach);
 
     private static ModeSpec Descent() => new ModeSpec(
         new ContentId(DescentId),

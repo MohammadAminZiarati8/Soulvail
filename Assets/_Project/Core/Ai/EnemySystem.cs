@@ -10,6 +10,62 @@ using Soulvail.Core.Run;
 namespace Soulvail.Core.Ai;
 
 /// <summary>
+/// One enemy's death, as much of it as anything downstream needs.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Three fields, and each is here because something reads it</b> (M5-04b). <see cref="Position"/>
+/// is what <c>RisePassive</c> stands a Wight up at — CH §3.2's corpse <em>is</em> the Wight — and it
+/// is the whole reason this type exists at all, since <see cref="EnemySystem.PendingKills"/> is a
+/// count and a count cannot say <em>where</em>. <see cref="WasBoss"/> is M5-04b rule 11's one rule.
+/// <see cref="SpecId"/> is what a reader of a drained buffer has to have to know what died.
+/// </para>
+/// <para>
+/// <b>A struct, and copied into a caller's span rather than handed out as a list</b> (AR §4.3):
+/// <c>RunSession</c> drains once a tick into a buffer it owns, so a death costs one array write on
+/// the kill path and one copy on the drain, and nothing on either allocates.
+/// </para>
+/// <para>
+/// <b>It is not <see cref="Events.EnemyDied"/>, and the duplication is deliberate.</b> That one is an
+/// announcement with an <em>id</em> on it, for views; this one is a fact with a <em>position</em> on
+/// it, for core. Core does not subscribe to its own events (<c>RunSession</c>'s own remarks refuse
+/// it), so a pull needs something to pull.
+/// </para>
+/// </remarks>
+public readonly struct EnemyDeath
+{
+    /// <param name="specId">The archetype that died.</param>
+    /// <param name="position">Where it stood when it died, in world metres.</param>
+    /// <param name="wasBoss">Whether it was authored <see cref="EnemyBehaviourKind.Boss"/>.</param>
+    /// <remarks>
+    /// Unguarded, like every other struct core fills for itself: the one caller is
+    /// <see cref="EnemySystem.ApplyDamage"/>, reading an agent it has already resolved.
+    /// </remarks>
+    public EnemyDeath(ContentId specId, Vector3 position, bool wasBoss)
+    {
+        SpecId = specId;
+        Position = position;
+        WasBoss = wasBoss;
+    }
+
+    /// <summary>What died, e.g. <c>enemy.husk</c>.</summary>
+    public ContentId SpecId { get; }
+
+    /// <summary>Where it stood as of the frame it died on.</summary>
+    public Vector3 Position { get; }
+
+    /// <summary>
+    /// Whether it was a boss — the one thing CH §3.2's Rise refuses to raise (M5-04b rule 11).
+    /// </summary>
+    /// <remarks>
+    /// Read off <see cref="EnemySpec.Behaviour"/> rather than off a flag somebody has to remember to
+    /// set, because <c>SpawnBoss</c> is the only way a <see cref="EnemyBehaviourKind.Boss"/> body
+    /// ever stands up and <c>EnemySystem.Tick</c> already refuses one that arrived another way.
+    /// </remarks>
+    public bool WasBoss { get; }
+}
+
+/// <summary>
 /// Enemies, end to end, from core's side: it decides they exist, learns where they are, works out
 /// what each of them can perceive, ticks their behaviour, and tells the body about the census
 /// through events. The run owns one; nothing else may spawn or retire an enemy. See AR §3, §4.1–4.3
@@ -102,6 +158,17 @@ public sealed class EnemySystem
     private readonly int[] _deferredDespawn;
 
     /// <summary>
+    /// The deaths since the last <see cref="DrainDeaths"/>, oldest first in <c>[0, _deathCount)</c>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Sized at the registry's capacity and never grown</b> (M5-04b rule 2), which is the most
+    /// bodies that can exist and therefore the most that can die between two drains while the drain
+    /// runs every tick. A full buffer drops the <em>oldest</em> rather than growing — see
+    /// <see cref="Bank"/>.
+    /// </remarks>
+    private readonly EnemyDeath[] _deaths;
+
+    /// <summary>
     /// What a boss delegates its fighting to, or null while nothing does.
     /// </summary>
     /// <remarks>
@@ -130,6 +197,8 @@ public sealed class EnemySystem
     private Vector3 _playerPosition;
 
     private int _deferredCount;
+
+    private int _deathCount;
 
     /// <param name="catalog">Where a spawn's <see cref="ContentId"/> becomes an <see cref="EnemySpec"/>.</param>
     /// <param name="events">Where <see cref="EnemySpawned"/> and <see cref="EnemyDespawned"/> go.</param>
@@ -177,6 +246,11 @@ public sealed class EnemySystem
         // registered and nothing is queued twice — see DespawnAtEndOfTick. Allocated here rather
         // than grown, so the one path that uses it never allocates.
         _deferredDespawn = new int[Registry.Capacity];
+
+        // Sized the same way and for a nearby reason: nothing can die that is not registered, so
+        // the registry's capacity is the most deaths one tick can produce. Allocated here rather
+        // than grown, because Rise puts this write behind every kill (M5-04b rule 2).
+        _deaths = new EnemyDeath[Registry.Capacity];
     }
 
     /// <summary>
@@ -546,6 +620,15 @@ public sealed class EnemySystem
             // becomes true of a kill is banked here.
             PendingKills++;
 
+            // The third thing banked on that line, and the first that is not a number (M5-04b rule
+            // 2). CH §3.2's Rise stands a Wight up *where the corpse fell*, and neither counter above
+            // can say where — so the death itself is written down and drained the same way, by a
+            // pull from the tick rather than by core subscribing to its own event.
+            //
+            // Above the publish, like the two counters and like Spawn's register-then-announce: by
+            // the time anything handles EnemyDied, everything this death is worth has been banked.
+            Bank(agent);
+
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
             // After the death and not instead of it (M2-08 rule 1). The trigger is the spec rather
@@ -830,6 +913,12 @@ public sealed class EnemySystem
         // caveat — banked on the same line, so they are dropped on the same one.
         PendingKills = 0;
 
+        // And the deaths themselves, third on that line and third here (M5-04b rule 2). It matters
+        // slightly more than the two above: an undrained death carries a *position*, and a position
+        // belonging to an arena that has been torn down would stand a Wight up in the next one at
+        // coordinates that no longer mean anything — the decoy's problem in M5-03 rule 9 exactly.
+        _deathCount = 0;
+
         // The census's own reading of the world goes with it. A player position left behind would
         // make the next arena's first frame of perception measure against where the last run stood
         // — inert until Ingest runs, and exactly the kind of thing a stage boundary makes reachable.
@@ -891,6 +980,56 @@ public sealed class EnemySystem
         return killed;
     }
 
+    /// <summary>
+    /// Copies the deaths since the last drain into <paramref name="destination"/>, oldest first,
+    /// and empties the buffer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><see cref="DrainXp"/>'s shape, and beside it for its reason</b> (M5-04b rule 2). A death
+    /// can be reported between ticks — <c>ReportConeHits</c> is a fact arriving mid-frame (ADR-0003)
+    /// — so what it is worth is decided on the tick, by the one object that knows whether the run is
+    /// still running. <c>RunSession.Tick</c> calls this once a tick and nothing else does.
+    /// </para>
+    /// <para>
+    /// <b>Take-and-clear in one call</b>, for the reason the two above give: two calls is a pair a
+    /// future caller can get half of, and the half that is forgotten raises a stage's dead over and
+    /// over, every tick, for the rest of the run.
+    /// </para>
+    /// <para>
+    /// <b>Into a caller-owned span rather than out as a list</b> (AR §4.3). The buffer here is the
+    /// registry's capacity and is refilled in place; the destination is <c>RunSession</c>'s own
+    /// array, built once with the same number. Returns 0 on the overwhelming majority of ticks,
+    /// which is the ordinary case and not one worth branching on here.
+    /// </para>
+    /// </remarks>
+    /// <param name="destination">Where to write them. Must be at least as long as what is pending.</param>
+    /// <returns>How many were written into <paramref name="destination"/>.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="destination"/> is shorter than the pending deaths. Loud rather than truncating:
+    /// a silently dropped death is a kill that never rises, and the caller sized its buffer from the
+    /// same capacity this one was sized from, so a short span is a wiring mistake.
+    /// </exception>
+    public int DrainDeaths(Span<EnemyDeath> destination)
+    {
+        int count = _deathCount;
+
+        if (destination.Length < count)
+        {
+            throw new ArgumentException(
+                $"destination holds {destination.Length} and {count} deaths are pending. The "
+                    + "buffer is sized at the registry's capacity, and a caller that drains every "
+                    + "tick should size its own the same way.",
+                nameof(destination));
+        }
+
+        new ReadOnlySpan<EnemyDeath>(_deaths, 0, count).CopyTo(destination);
+
+        _deathCount = 0;
+
+        return count;
+    }
+
     /// <summary>How many registered agents are breathing.</summary>
     /// <remarks>
     /// <para>
@@ -922,6 +1061,41 @@ public sealed class EnemySystem
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Writes one death into the drain buffer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A full buffer drops the oldest rather than growing</b> (M5-04b rule 2), which is the one
+    /// behaviour here worth stating out loud. Growing would allocate on the kill path; throwing
+    /// would end a run over a bookkeeping buffer; keeping the oldest and refusing the newest would
+    /// make the arena's most recent death the one thing that cannot be acted on. So the oldest
+    /// entry falls off the front — one <see cref="Array.Copy"/> of at most <c>capacity − 1</c>
+    /// entries, which allocates nothing.
+    /// </para>
+    /// <para>
+    /// <b>It is unreachable while the drain runs every tick</b>, and it does: <c>RunSession.Tick</c>
+    /// calls <see cref="DrainDeaths"/> unconditionally, for every class, which is most of why rule
+    /// 10 says an Oathbound run pays one array write per kill and nothing else.
+    /// </para>
+    /// </remarks>
+    private void Bank(EnemyAgent agent)
+    {
+        if (_deathCount == _deaths.Length)
+        {
+            Array.Copy(_deaths, 1, _deaths, 0, _deaths.Length - 1);
+
+            _deathCount--;
+        }
+
+        _deaths[_deathCount] = new EnemyDeath(
+            agent.Spec.Id,
+            agent.Position,
+            agent.Spec.Behaviour == EnemyBehaviourKind.Boss);
+
+        _deathCount++;
     }
 
     /// <summary>

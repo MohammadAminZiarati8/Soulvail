@@ -115,6 +115,20 @@ public sealed class StageFlow
     private readonly LureSystem _lures;
 
     /// <summary>
+    /// The Wights standing on the player's side, or null for a class that raises none and for a
+    /// fixture that has none.
+    /// </summary>
+    /// <remarks>
+    /// Held for one line, exactly like <see cref="_lures"/> and for a sharper version of its reason
+    /// (M5-04b, ledger row 9). A Wight lives twenty seconds against a boundary's two seconds of gate
+    /// and arrival, which makes it <b>the one body in the game that can genuinely cross one</b> — it
+    /// would stand in the next arena walking at enemies from the last, and <c>EnemyRegistry</c> has
+    /// just been emptied under it. M5-04a left the sweep undone on purpose because nothing could
+    /// raise one; Rise is what made it reachable.
+    /// </remarks>
+    private readonly MinionSystem _minions;
+
+    /// <summary>
     /// The run's seed, for <see cref="ArenaFor"/> and nothing else. Held rather than drawn from,
     /// which is the whole of rule 6 — see that method.
     /// </summary>
@@ -145,6 +159,13 @@ public sealed class StageFlow
     /// allocate one.
     /// </param>
     /// <param name="seed">The run's seed, for <see cref="ArenaFor"/>.</param>
+    /// <param name="lures">
+    /// The corpse decoys, or null when there are none. Optional for the reason given below.
+    /// </param>
+    /// <param name="minions">
+    /// The Wights, or null for a class that raises none — which is every class but the Gravecaller.
+    /// Optional for <paramref name="lures"/>' reason.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     public StageFlow(
         ModeSpec mode,
@@ -156,7 +177,8 @@ public sealed class StageFlow
         IDomainEvents events,
         WavePlan plan,
         int seed,
-        LureSystem lures = null)
+        LureSystem lures = null,
+        MinionSystem minions = null)
     {
         _mode = mode ?? throw new ArgumentNullException(nameof(mode));
         _composer = composer ?? throw new ArgumentNullException(nameof(composer));
@@ -167,12 +189,17 @@ public sealed class StageFlow
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _plan = plan ?? throw new ArgumentNullException(nameof(plan));
 
-        // **Optional, and the only argument here that is** (M5-03). A run has one, but a fixture
-        // asserting on waves and doors has nothing to say about corpse decoys, so a null means "no
-        // decoys to clear" rather than a refusal — the same reading `EnemySystem.Ingest` gives the
-        // same object. Defaulted so that the nine existing constructions keep meaning what they
-        // meant, which is M4-01a rule 4's trade one class over.
+        // **Optional, and the only two arguments here that are** (M5-03, M5-04b). A run has a
+        // LureSystem, but a fixture asserting on waves and doors has nothing to say about corpse
+        // decoys, so a null means "no decoys to clear" rather than a refusal — the same reading
+        // `EnemySystem.Ingest` gives the same object. Defaulted so that the existing constructions
+        // keep meaning what they meant, which is M4-01a rule 4's trade one class over.
+        //
+        // The army is optional for a second reason as well as that one: a run of any class but the
+        // Gravecaller genuinely holds no MinionSystem, so null here is the ordinary case rather
+        // than a fixture's convenience.
         _lures = lures;
+        _minions = minions;
 
         // Every int is a legal seed — it is a bit pattern, not a quantity — so there is nothing here
         // for a guard to reject.
@@ -482,6 +509,13 @@ public sealed class StageFlow
         // arena's bodies from the last arena's floor is the same defect as a bolt landing there
         // (M5-03 rule 9). Null for a fixture that was built without one.
         _lures?.Clear();
+
+        // And the army, in the same silence and for a sharper version of the same sentence
+        // (M5-04b, ledger row 9). A Wight lives twenty seconds against the two this crossing costs,
+        // so it is the one body that can genuinely cross a boundary — and it would arrive in the
+        // next arena still walking at an enemy id the line above has just wiped out of the registry.
+        // Null for every class but the Gravecaller.
+        _minions?.Clear();
 
         _player.Targeter.Reset();
 

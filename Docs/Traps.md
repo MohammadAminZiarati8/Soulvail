@@ -203,7 +203,17 @@ Editor has the code — which is a stronger statement than any timestamp, and it
      `CommandScript`.
   2. **Calling `Execute` again from inside `RunFinished` is silently ignored.** Not an error, not a
      refusal — the chain simply stops after one run and your tally is short. One `Execute` per
-     submitted command; loop from the outside.
+     submitted command; loop from the outside. **Narrowed at M4-07, and the narrowing is what makes a
+     repeat-run experiment affordable: the ban is on re-entering `Execute` *from inside the callback*,
+     not on looping inside one submission.** Set a countdown in `RunFinished`, subscribe a `static`
+     handler to `EditorApplication.update`, and call `Execute` from there once it drains — **63
+     consecutive PlayMode runs and 5 EditMode runs went through one submitted command each this way, on
+     an unfocused Editor**, about 25 s per PlayMode iteration. Two things make it survive: the counters
+     live in **`SessionState`**, never in a field (item 4 below), and each submission stamps a **token**
+     into `SessionState` that its own `RunFinished` checks, so the still-registered sinks from earlier
+     submissions (item 3) see a stranger's token and unregister themselves instead of double-counting.
+     `EditorApplication.update` does fire unfocused between runs, which §3's table does not say and
+     which `EditorApplication.delayCall` (M0-14) does not do.
   3. **Callback sinks from *earlier* commands stay registered and keep firing.** Each submission compiles
      a fresh dynamic assembly, but the old `ICallbacks` instances are still attached to the runner, so a
      naive counter double- and triple-counts. Key your results per submission, or read the *number of
@@ -634,6 +644,18 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
 - **A *Scale With Screen Size* canvas measures in reference pixels, not dp**: a `sizeDelta` of 120
   is 48 dp on a 400 dpi phone. Any HUD element whose size is specified in dp must be sized at
   runtime as `dp × pxPerDp ÷ canvas.scaleFactor`, not authored into the prefab (M0-15).
+- **`Screen.dpi` reads `120` in this Editor, so every dp this project has ever measured in it was
+  drawn at 30 % of its device size.** `StickShaper.PixelsPerDp(120)` is **0.75**; a 400 dpi phone —
+  the density the project's own *"~432 dp landscape safe area"* is quoted at, 1080 px at 2.5 px/dp —
+  gives **2.5**. That is a factor of **3.33**, and it applies to every element placed through
+  `HudPresenter.Place`, `SkillBarPresenter`, `BossBarView` and `XpBarView`. **The Editor is therefore
+  not a legibility instrument at all**, in either direction: a dp-sized element is drawn a third of
+  its device size, while a *font* size is authored in reference px and scales by the canvas instead,
+  so the two move independently and a screenshot shows neither at its real proportion. **Legibility
+  is arithmetic here, not observation** — `pt × canvasScaleFactor ÷ (dpi ÷ 160)`, with the canvas
+  factor read off the prefab's own `CanvasScaler` (`1920 × 1080`, match 0.5 on both `Hud.prefab` and
+  `RunEnd.prefab`). Same family as M4-06's *"the safe-area inset is 0 on all four edges in the
+  Editor"*: an Editor number about a phone's screen is usually a number about this monitor (M4-07).
 - **TMP reads a bare `{0}` in `SetText(string, float, …)` as *nine* decimal places, not as an
   integer.** The integer form is `{0:0}`, whose `0` counts as padding and leaves precision at zero,
   rounding half-up (M1-17).
@@ -678,6 +700,13 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
 
 ## 11. Process
 
+- **`.githooks/pre-commit` check 8 cannot see an acceptance commit, and that is correct rather than a
+  hole.** It compares PROGRESS.md's *Last merged task* row against the newest Log entry and **skips when
+  either is empty** — which is exactly the state a milestone's acceptance leaves, because archiving the
+  milestone empties the live Log. So the one commit per milestone that rotates Current State furthest is
+  the one commit nothing checks. There is nothing to compare against, so the skip is right; what is worth
+  knowing is that the check's coverage has a hole at exactly the boundary, and that the next acceptance
+  should rotate the row by hand rather than trust the hook to catch it (M4-07).
 - **A "known issue" describing uncommitted working-tree state has a short shelf life.** Check it
   against `git status` before repeating it into a new session — M0-19's block was fully stale by
   M0-20 (M0-20).

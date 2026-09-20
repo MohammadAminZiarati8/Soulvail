@@ -577,6 +577,26 @@ Earned on death regardless of outcome. Dying must always pay something, or the l
 Shards = 10·(deepest stage) + 50·(bosses killed) + 25·(new archetype first encountered)
 ```
 
+> **Two of these three terms ship. The third does not, and this note is here so a later milestone does not
+> re-discover the decision.** As of `m4` the game pays `10·(deepest stage) + 50·(bosses killed)` and nothing
+> else — `ShardPayout`, computed on the death tick.
+>
+> **The missing term is `25·(new archetype first encountered)`,** and what it needs is not arithmetic: *first*
+> is a **lifetime** fact, so it wants a `PlayerProfile` field holding a **set** of `ContentId`s, where the two
+> shipped terms are a pure function of the run's depth and its mode. That is a save-format bump, and it was
+> ruled out of M4 rather than smuggled into `PlayerProfile` v3, which is one `int`.
+>
+> **Why deferring it is safe, stated rather than assumed:** an empty set pays 25 on the next Husk a returning
+> player ever sees, so shipping the term late **over**-pays them. That is the opposite of the Shard *total*,
+> where a number not written is data destroyed — which is why the total was persisted at M4-05b with nothing
+> to spend it on and this term was not.
+>
+> **It is guarded rather than merely absent:** `ShardPayoutTests.Payout_HasNoArchetypeTerm` asserts 10 at
+> stage 1 and `Is.Not.EqualTo(35)`, so nobody can add the term without reading why it was left out. When it
+> ships it needs no new run tracking — `ModeSpec.TryGetIntroduction` already authors which archetype arrives
+> at which stage. **It belongs to M6-09**, the next task that bumps the profile format; M6-02's Sanctum is
+> where a Shard first buys anything at all.
+
 ### 14.2 What Shards buy
 
 | Unlock | Cost | Also unlockable by |

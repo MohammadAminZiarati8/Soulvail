@@ -41,6 +41,14 @@ namespace Soulvail.Core.Combat;
 /// named.
 /// </para>
 /// <para>
+/// <b>Unless the weapon throws something, in which case nothing is asked at all</b> (M5-01). A
+/// <see cref="WeaponKind.Projectile"/> damage frame produces a <see cref="Projectile"/> on
+/// <see cref="PendingShot"/> rather than an intent, because an arrival is a point and a moment core
+/// computes for itself — the body is owed a question only when the answer depends on colliders core
+/// does not hold. The cadence above is shared exactly between the two kinds: <see cref="Weapon"/>
+/// knows neither exists.
+/// </para>
+/// <para>
 /// <b>The dash is the same round trip, asked twice as long.</b> <see cref="Charge"/> decides when
 /// CC §5's dodge fires and which way it goes and nothing else (M1-14); this class raises the
 /// i-frames it implies, sends the movement out as a <see cref="ChargeIntent"/>, and turns the ids
@@ -117,6 +125,31 @@ public sealed class PlayerCombat
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly TargetingSpec _targeting;
+
+    /// <summary>
+    /// The class being played, as a content id — what a shot this character fires is stamped with.
+    /// </summary>
+    /// <remarks>
+    /// The only thing this class keeps off <c>CharacterSpec</c> that is not a number or a block it
+    /// reads every tick, and it is here because <c>Projectile.SpecId</c> is what a view picks a mesh
+    /// from: a player's bolt has to be identifiable as <em>this class's</em> bolt, and the alternative
+    /// — inventing an id for the weapon — would be a second name for something already named.
+    /// </remarks>
+    private readonly ContentId _characterId;
+
+    /// <summary>
+    /// The class's basic attack as authored: the block <see cref="Weapon"/> deliberately does not
+    /// read past its own four stats — <see cref="WeaponSpec.Kind"/>,
+    /// <see cref="WeaponSpec.ShotSpeed"/> and <see cref="WeaponSpec.ShotRadius"/>.
+    /// </summary>
+    /// <remarks>
+    /// The same split <see cref="_movementSkill"/> makes, for the same reason and with the same
+    /// boundary: <see cref="Weapon"/> owns <em>when</em> a swing lands, and these three describe
+    /// <em>what</em> lands, which is this class's question. A weapon does not need to know it throws
+    /// anything (M5-01 rule 1) — which is what left <c>Weapon.cs</c> untouched by the task that added
+    /// a second kind.
+    /// </remarks>
+    private readonly WeaponSpec _weaponSpec;
 
     /// <summary>
     /// The class's authored movement skill: the numbers <see cref="Charge"/> deliberately does not
@@ -277,6 +310,8 @@ public sealed class PlayerCombat
 
         _targeting = spec.Targeting;
         _movementSkill = spec.MovementSkill;
+        _characterId = spec.Id;
+        _weaponSpec = spec.Weapon;
         _candidates = new TargetCandidate[enemyCapacity];
         _hitIds = new int[enemyCapacity];
         _chargeHitIds = new int[enemyCapacity];
@@ -483,6 +518,51 @@ public sealed class PlayerCombat
     /// without guessing.
     /// </remarks>
     public int PendingConeRequestId { get; private set; } = -1;
+
+    /// <summary>
+    /// The shot this tick's damage frame produced, or <see langword="null"/>. Read and cleared by
+    /// the run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This class fires nothing; it offers a shot</b> (M5-01 rule 6). It deliberately owns no
+    /// <see cref="ProjectileSystem"/>, for the reason it owns no registry: it is handed the world each
+    /// time it is asked to think about it, and a constructor argument here would ripple through every
+    /// fixture that builds one. <c>RunSession.Tick</c> takes the shot immediately after the combat
+    /// step and puts it in the air on the same tick.
+    /// </para>
+    /// <para>
+    /// <b>Overwritten rather than queued.</b> A <see cref="Projectile"/> in a nullable is a struct in
+    /// a struct — nothing allocates, and there is no buffer to size. A second damage frame before the
+    /// first shot was taken replaces it, which is <see cref="PendingConeRequestId"/>'s bargain
+    /// exactly: a shot decided two frames ago was aimed with two-frame-old positions and is worth
+    /// less than the newest one. It cannot happen while the run takes one every tick.
+    /// </para>
+    /// </remarks>
+    public Projectile? PendingShot { get; private set; }
+
+    /// <summary>Takes the pending shot, leaving none behind.</summary>
+    /// <remarks>
+    /// The clearing half matters more than the taking half: a shot left here would be fired again on
+    /// the next tick that read it, so "take" is the only operation offered and there is no way to
+    /// look without also consuming. Called unconditionally once a tick by <c>RunSession</c>, which is
+    /// why it answers <see langword="false"/> rather than throwing when there is nothing.
+    /// </remarks>
+    /// <param name="shot">The shot, or <see langword="default"/> when there was none.</param>
+    /// <returns>Whether there was a shot to take.</returns>
+    public bool TryTakeShot(out Projectile shot)
+    {
+        if (PendingShot is null)
+        {
+            shot = default;
+            return false;
+        }
+
+        shot = PendingShot.Value;
+        PendingShot = null;
+
+        return true;
+    }
 
     /// <summary>
     /// Applies <paramref name="amount"/> to the player at time <paramref name="now"/> and announces
@@ -966,7 +1046,7 @@ public sealed class PlayerCombat
         UpdateBlackboard(count, snapshot.PlayerPosition);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
-        TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count);
+        TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
     }
 
     /// <summary>
@@ -1016,6 +1096,11 @@ public sealed class PlayerCombat
         // enemies have been cleared out from under it.
         PendingConeRequestId = -1;
         _lastConeRequestId = 0;
+
+        // And the other kind of damage frame's leftover, for the same reason as the line above: a
+        // shot offered on the last tick of a stage and never taken would be fired into the next one,
+        // aimed at a point in an arena that no longer exists.
+        PendingShot = null;
     }
 
     /// <summary>
@@ -1096,8 +1181,21 @@ public sealed class PlayerCombat
     /// is ADR-0003's split, and it is why the view can play a windup on a swing that ends up
     /// hitting nothing.
     /// </para>
+    /// <para>
+    /// <b>And as of M5-01 the damage frame has two shapes, which is the only thing a second
+    /// <see cref="WeaponKind"/> changed anywhere.</b> A cone asks the body a question it alone can
+    /// answer; a bolt asks nothing, because an arrival is a point and a moment core computes itself
+    /// (<see cref="ProjectileSystem"/>). The timing above is shared exactly — see
+    /// <see cref="Weapon"/>, which is untouched and knows neither kind exists.
+    /// </para>
     /// </remarks>
-    private void TickWeapon(float dt, float now, Vector3 playerPosition, Vector3 bodyFacing, int count)
+    private void TickWeapon(
+        float dt,
+        float now,
+        Vector3 playerPosition,
+        Vector3 bodyFacing,
+        int count,
+        ReadOnlySpan<EnemyAgent> enemies)
     {
         WeaponTick tick = Weapon.Tick(dt, now, IsTargetInWeaponRange(count));
 
@@ -1115,6 +1213,33 @@ public sealed class PlayerCombat
             return;
         }
 
+        switch (_weaponSpec.Kind)
+        {
+            case WeaponKind.Cone:
+                ThrowCone(playerPosition, facingXZ);
+                return;
+
+            case WeaponKind.Projectile:
+                OfferShot(playerPosition, enemies);
+                return;
+
+            default:
+                // Unreachable: WeaponSpec refuses an undefined kind at the door, which is what makes
+                // this line a statement about that guard rather than a branch anybody can take. Loud
+                // rather than silent, because the silent version is a class whose basic attack does
+                // nothing at all and never says so.
+                throw new InvalidOperationException(
+                    $"The weapon's kind is {_weaponSpec.Kind}, which PlayerCombat cannot throw. "
+                        + "WeaponSpec is meant to have refused it.");
+        }
+    }
+
+    /// <summary>
+    /// A <see cref="WeaponKind.Cone"/> damage frame: the wedge leaves as a question and core
+    /// remembers what it asked.
+    /// </summary>
+    private void ThrowCone(Vector3 playerPosition, Vector2 facingXZ)
+    {
         _lastConeRequestId++;
         PendingConeRequestId = _lastConeRequestId;
 
@@ -1132,6 +1257,123 @@ public sealed class PlayerCombat
             facingXZ,
             ConeRange(Weapon.Range.Value),
             ConeAngle(Weapon.ConeAngleDeg.Value)));
+    }
+
+    /// <summary>
+    /// A <see cref="WeaponKind.Projectile"/> damage frame: a shot aimed at where the target will be,
+    /// left on <see cref="PendingShot"/> for the run to put in the air (M5-01 rules 6 and 8).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>No target, no shot — and a target that died between the swing start and this moment is no
+    /// target.</b> <c>Weapon.Tick</c> already refuses to <em>start</em> a swing without something in
+    /// range, so the lead is never solved against an enemy that does not exist; what this method adds
+    /// is the other end of CC §4.2's "not a commitment". A cone resolves against whoever is standing
+    /// in the wedge, so a swing thrown at a Husk that died mid-windup still kills the two beside it —
+    /// but a bolt is aimed at a point, and one aimed at where a corpse used to be would land on nobody
+    /// and look like a miss the player did not make. It is no shot instead.
+    /// </para>
+    /// <para>
+    /// <b>The velocity is the agent's live one, not a heading.</b> <c>EnemyAgent.Velocity</c> is what
+    /// the body reported the enemy actually doing this frame (M1-06), which is the number CC §3.7's
+    /// solve is written against: an intended direction would lead a Husk that is standing against a
+    /// wall as though it were still walking.
+    /// </para>
+    /// <para>
+    /// <b>The damage is the live stat and is sampled here</b>, at the moment the shot is decided, for
+    /// the reason the cone's is (M3-12a rules 2 and 6): a node taken mid-stage is in the very next
+    /// bolt. The speed and the radius come off the authored spec, which is where they stay until
+    /// something asks to move them — see <see cref="WeaponSpec.ShotSpeed"/>.
+    /// </para>
+    /// <para>
+    /// <b><c>SourceId</c> is 0, which means "nobody", and that is the honest answer.</b> That field is
+    /// an <em>enemy</em> id — a record of which agent fired, never resolved against the registry — and
+    /// the player is not in the registry. A view wanting where the player's bolt came from wants
+    /// <c>Projectile.Origin</c>, which is exactly what it is handed.
+    /// </para>
+    /// <para>
+    /// A linear scan for the target agent, for the reason <see cref="UpdateFaceDirection"/> gives: the
+    /// span is at most the enemy cap and a dictionary would allocate on a per-frame path. The
+    /// candidate buffer cannot answer it — <see cref="TargetCandidate"/> deliberately carries neither
+    /// a position nor a velocity.
+    /// </para>
+    /// </remarks>
+    private void OfferShot(Vector3 playerPosition, ReadOnlySpan<EnemyAgent> enemies)
+    {
+        int id = Targeter.CurrentTargetId;
+
+        if (id < 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            EnemyAgent agent = enemies[i];
+
+            if (agent.Id != id)
+            {
+                continue;
+            }
+
+            // Registered is not breathing. The span carries corpses on purpose (see
+            // BuildCandidates), and the one that the targeter has not moved off yet is precisely the
+            // case this method is here to refuse.
+            if (!agent.IsAlive)
+            {
+                return;
+            }
+
+            PendingShot = new Projectile(
+                _characterId,
+                sourceId: 0,
+                playerPosition,
+                ProjectileLead.Solve(
+                    playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed),
+                _weaponSpec.ShotSpeed,
+                _weaponSpec.ShotRadius,
+                ShotDamage(Weapon.Damage.Value),
+                ShotSide.AtEnemies);
+
+            return;
+        }
+
+        // Unreachable while the targeter is fed from this same span, and cheap to be right about: a
+        // target with no agent behind it is nothing to shoot at.
+    }
+
+    /// <summary>
+    /// A live <see cref="Weapon.Damage"/> as a number a shot can actually carry: not negative, with
+    /// an unreadable value answered by zero.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="ConeAngle"/> and <see cref="ConeRange"/>'s job for the one number a bolt has that a
+    /// cone does not have to clamp, and it is here because <see cref="Projectile"/>'s door
+    /// <em>throws</em> where a <c>ConeHitIntent</c>'s does not. <see cref="Stat"/> clamps nothing
+    /// (ADR-0008), so a stack driving weapon damage negative or non-finite is reachable — a −200 %
+    /// Pact, an overflow inside the stack — and reaching that door with one would end the run from
+    /// inside a damage frame, on a phone, mid-stage. Zero says "this shot deals nothing" and says it
+    /// reversibly: take the modifier off and the next bolt is ordinary, which is the same bargain
+    /// <c>Weapon.TryGetInterval</c> strikes with a silenced fire rate.
+    /// </para>
+    /// <para>
+    /// The shot still flies and still publishes its impact, which is the difference between this and
+    /// refusing to fire: a bolt that does nothing is visible and diagnosable, where a weapon that
+    /// silently stopped shooting looks like a bug in the targeting.
+    /// </para>
+    /// <para>
+    /// The other three numbers the shot carries need no equivalent. The speed and the radius are
+    /// authored and <see cref="WeaponSpec"/> has already refused a non-finite one; the origin is the
+    /// position the snapshot brought in and the aim point is <see cref="ProjectileLead.Solve"/>'s,
+    /// which is documented never to manufacture a NaN from finite inputs.
+    /// </para>
+    /// </remarks>
+    private static float ShotDamage(float damage)
+    {
+        // The negated comparison, so NaN lands on zero rather than falling through — the spelling
+        // ConeAngle uses, for its reason.
+        return damage > 0f && !float.IsInfinity(damage) ? damage : 0f;
     }
 
     /// <summary>

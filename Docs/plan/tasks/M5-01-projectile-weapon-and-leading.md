@@ -231,4 +231,54 @@ seen is [M5-02](M5-02-gravecaller-and-bone-bolt.md), which authors a weapon that
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Built as specced, four counted files, and every rule landed where it said it would.** `ProjectileLead.Solve`
+is CC §3.7 twice over, XZ only, keeping the target's Y; `ProjectileSystem.Land` split into
+`LandOnPlayer` (M2-07a's code, moved not changed) and `LandOnEnemies` (a walk of `Registry.Alive`);
+`WeaponSpec` gained the three defaulted numbers and kind-conditional validation; `PlayerCombat.TickWeapon`
+became a two-branch switch over `ThrowCone` and `OfferShot`; `RunSession.Tick` takes the shot between the
+combat step and the skills block. **2 228 EditMode / 0 / 0** — thirty-one new rows — and **PlayMode 16 / 0 / 0**.
+
+**Four deviations, three of them beyond the Files table.**
+
+1. **`ProjectileImpacted.HitPlayer` was renamed `Hit`** — `Core/Events/ProjectileEvents.cs`, plus eight
+   reads in `ProjectileSystemTests`, `SpitterBehaviourTests` and `ProjectileViewsTests`. Rule 4 and the
+   *Public API* both write `ProjectileImpacted.Hit`, the shipped field was `HitPlayer`, and after this task
+   that name is a lie: an `AtEnemies` bolt setting `HitPlayer` describes an arrival that never went near the
+   player. **Behaviour outranks Files** by the spec's own precedence line, and this is the same defect
+   `PlayerStat` has and is a known issue for — caught while it was eight call sites. No view reads it;
+   `TelegraphRings` says in a comment that it deliberately does not.
+2. **`CombatBlackboard.IncomingProjectiles` now counts `AtPlayer` shots only** — one method in
+   `ProjectileSystem`, and **the spec does not state it**. That field is CC §6.4's Bulwark trigger, "an
+   enemy projectile is inbound"; counted raw, a Gravecaller firing four bolts a second would hold the
+   predicate true for the whole run and auto-cast Bulwark off the player's own fire. The field's name always
+   meant one side — until a side existed there was no way for it to be wrong. Pinned by
+   `Shot_OnlyInboundShotsCountForBulwark`, which is beyond the Tests table and says so.
+3. **`WeaponSpec` refuses an undefined `WeaponKind`**, reversing that enum's own remark that it is
+   *"deliberately unvalidated by `WeaponSpec`"*. That remark was written when there was one member and no
+   kind-conditional validation; with two, an undefined kind satisfies neither set of rule 2's rules and would
+   be constructed with three unchecked numbers on it. Refused at the door, remark rewritten in place. The
+   implied guard row asked for exactly this.
+4. **Two ripple sites the Files table does not name** — `StageFlowTests.Step` and
+   `SpitterBehaviourTests.Land`, one line each, because `Tick` gained a non-defaulted `EnemySystem`. The
+   table named only `ProjectileSystemTests`; the guard row requiring a null `EnemySystem` to throw is what
+   makes the parameter non-defaulted, and therefore what makes those two lines unavoidable.
+
+**`Architecture.md` §18.1 was edited too**, which the Files table does not cover: rule 7 adds a step to the
+enumerated `RunSession.Tick` order, and that table is the one place the order is written down. The chain gained
+*take the shot* and one row explains why it sits where it does. A spec cannot add an ordering the code depends
+on and leave §18 describing the old one.
+
+**Two guards added that no rule asked for, both on the frame path.** `PlayerCombat.ShotDamage` clamps a live
+`Weapon.Damage` to zero when it is negative or non-finite, because `Projectile`'s constructor *throws* where a
+`ConeHitIntent`'s door does not — `Stat` clamps nothing (ADR-0008), so a −200 % Pact would end the run from
+inside a damage frame. `ConeAngle` and `ConeRange`'s job, reached from the other side. And `Projectile` refuses
+an undefined `ShotSide` with two comparisons rather than `Enum.IsDefined`, which boxes.
+
+**`ShotSide.AtPlayer` is first in the enum as well as the parameter default**, so an unwritten side reads as
+the thing every shot in the game has always been. `Weapon.cs` was not opened. Rule 1's claim that the cadence
+is identical is asserted rather than assumed: `Weapon_AProjectileWeaponKeepsTheConesCadence` compares the
+damage-frame *moments* of both kinds over ten seconds, not merely their count.
+
+**The Oathbound asset was converted in the Editor after the change** and comes out unmoved — `Cone`, 13, 3.0,
+8 m, 60°, 0.4, with the three new fields at zero. Nothing renders differently and nothing is playable: M5-02
+authors the first weapon that walks through any of this.

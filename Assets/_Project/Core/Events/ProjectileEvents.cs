@@ -101,9 +101,16 @@ public readonly struct ProjectileFired
 /// <para>
 /// The damage, if there was any, has already been applied and announced by the time this is
 /// published: <c>PlayerCombat.ApplyDamage</c> publishes <c>PlayerDamaged</c> — and
-/// <c>PlayerDied</c> — from inside the same landing. <see cref="HitPlayer"/> is therefore a fact
-/// about the geometry, not about the outcome: a shot that arrives on a dodging player is a hit here
-/// and a blocked <c>PlayerDamaged</c> there (<c>ProjectileSystem</c>, rule 6).
+/// <c>PlayerDied</c> — from inside the same landing, and <c>EnemySystem.ApplyDamage</c> publishes
+/// <c>EnemyDamaged</c> and <c>EnemyDied</c> from inside the other one. <see cref="Hit"/> is therefore
+/// a fact about the geometry, not about the outcome: a shot that arrives on a dodging player is a hit
+/// here and a blocked <c>PlayerDamaged</c> there (<c>ProjectileSystem</c>, rule 6).
+/// </para>
+/// <para>
+/// <b>The field was <c>HitPlayer</c> until M5-01, and the rename is the widening.</b> A shot now
+/// carries a <c>ShotSide</c> and the player's bolts hit enemies, so a flag named for the player would
+/// have been true for an arrival that never went near them — the same defect <c>PlayerStat</c> has
+/// and is a known issue for, caught here while it was still eight call sites.
 /// </para>
 /// </remarks>
 public readonly struct ProjectileImpacted
@@ -122,13 +129,16 @@ public readonly struct ProjectileImpacted
     /// </remarks>
     public readonly Vector3 Position;
 
-    /// <summary>The player was inside the shot's radius when it arrived.</summary>
-    public readonly bool HitPlayer;
+    /// <summary>
+    /// Something the shot was allowed to hurt was inside its radius when it arrived — the player for
+    /// an <c>ShotSide.AtPlayer</c> shot, at least one living enemy for an <c>AtEnemies</c> one.
+    /// </summary>
+    public readonly bool Hit;
 
-    public ProjectileImpacted(int id, Vector3 position, bool hitPlayer)
+    public ProjectileImpacted(int id, Vector3 position, bool hit)
     {
         Id = id;
         Position = position;
-        HitPlayer = hitPlayer;
+        Hit = hit;
     }
 }

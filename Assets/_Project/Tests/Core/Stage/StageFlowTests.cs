@@ -956,7 +956,7 @@ public sealed class StageFlowTests
 
         _player.Tick(dt, _now, _snapshot, _enemies.Registry.Alive, Vector3.UnitZ);
 
-        _projectiles.Tick(_now, _snapshot.PlayerPosition, _player);
+        _projectiles.Tick(_now, _snapshot.PlayerPosition, _player, _enemies);
 
         _director.Tick(_now, _snapshot.PlayerPosition, _spawn);
 

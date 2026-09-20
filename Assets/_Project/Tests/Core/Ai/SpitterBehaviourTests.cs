@@ -485,7 +485,7 @@ public sealed class SpitterBehaviourTests
         // And the forgiveness on it is the block's 1.6 m, not some default: 1.7 m away is a miss.
         Land(fired, playerPosition: Offset(fired.Target, BlastRadius + 0.1f));
 
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.False);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.False);
 
         // A second Spitter and a second shot, because one arrival can only be resolved against one
         // player position. 1.5 m away is inside the same radius and lands.
@@ -499,7 +499,7 @@ public sealed class SpitterBehaviourTests
 
         Land(second, playerPosition: Offset(second.Target, BlastRadius - 0.1f));
 
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.True);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.True);
     }
 
     [Test]
@@ -1127,7 +1127,7 @@ public sealed class SpitterBehaviourTests
     /// <summary>Lands <paramref name="fired"/> with the player standing at <paramref name="playerPosition"/>.</summary>
     private void Land(in ProjectileFired fired, Vector3 playerPosition)
     {
-        _projectiles.Tick(_clock + fired.FlightTime, playerPosition, _player);
+        _projectiles.Tick(_clock + fired.FlightTime, playerPosition, _player, _system);
     }
 
     /// <summary>This frame's context, built from the fixture's own clock and ports.</summary>

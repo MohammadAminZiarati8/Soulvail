@@ -114,7 +114,10 @@ public sealed class SnapshotBuilderTests : InputTestFixture
                 PathRefreshBudget.DefaultMaxPerFrame),
             LineOfSightSense.DefaultRefreshHz);
 
-        _builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, _arenas, _sight);
+        // No minion census: every row in this fixture is about the enemies, and a Wight's slots are
+        // MinionViewsTests'. Null is a real answer on a null arena pool's terms — core reads an
+        // empty army, which is what every run this build can start has (M5-05a rule 12).
+        _builder = new SnapshotBuilder(_player, _input, _enemyViews, null, _paths, _arenas, _sight);
         _snapshot = new WorldSnapshot(8);
     }
 
@@ -229,7 +232,7 @@ public sealed class SnapshotBuilderTests : InputTestFixture
         // A builder composed without a pool at all — a fixture rather than a run, and the same
         // bargain a null NavPathSense makes. The cover sense goes with it, which is the M2-11b half
         // of the same row: an arena with no geometry to raycast is one where everybody can see.
-        var builder = new SnapshotBuilder(_player, _input, _enemyViews, _paths, null, null);
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, null, _paths, null, null);
 
         _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 4f)));
 

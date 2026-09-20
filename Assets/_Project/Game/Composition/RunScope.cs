@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
@@ -176,6 +177,16 @@ namespace Soulvail.Game.Composition
                  "without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _enemyParent;
 
+        [Tooltip("The one Wight body prefab (CH §3.2). There is one kind of minion, and it shares " +
+                 "the enemy body's mesh at 0.7 of its scale in the player's own cyan — smaller " +
+                 "than every archetype, so size is what separates a Wight from the player.")]
+        [SerializeField] private MinionView _minionPrefab;
+
+        [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
+                 "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
+                 "is torn down and raised again at every stage boundary (M2-11a).")]
+        [SerializeField] private Transform _minionParent;
+
         [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
                  "enemy prefab makes — a body per kind of shot arrives with the art.")]
         [SerializeField] private ProjectileView _projectilePrefab;
@@ -272,6 +283,20 @@ namespace Soulvail.Game.Composition
                     $"{nameof(RunScope)} has no {nameof(EnemyView)} prefab assigned. Drag " +
                     "Prefabs/Enemies/Enemy.prefab onto its Enemy Prefab field — without it core " +
                     "spawns enemies that have no body and never report a position.");
+            }
+
+            // Guarded like the enemy prefab and for its sentence, one side of the fight over: core
+            // raises Wights whether or not anything can draw them (M5-04b), so a scene dressed
+            // without this field is one where a quarter of a Gravecaller's kills stand an
+            // *invisible* body up that fights for twenty seconds. Nothing on screen would report
+            // it, and the enemies would simply start dying to nobody.
+            if (_minionPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(MinionView)} prefab assigned. Drag " +
+                    "Prefabs/Minions/Wight.prefab onto its Minion Prefab field — without it a " +
+                    "Gravecaller's Wights are raised, walk, and kill with no body anywhere in the " +
+                    "scene (CH §3.2).");
             }
 
             if (_projectilePrefab == null)
@@ -558,6 +583,22 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent)
                 .WithParameter("prewarm", PrewarmCount());
+
+            // The army (M5-05a). The census above's registration exactly, for its reasons — two of
+            // its arguments are references to this scene, and the static installer is deliberately
+            // the half a headless test can build.
+            //
+            // Prewarmed to MinionSystem.MaxConcurrent, which is the whole of what can ever stand at
+            // once whatever a Legion node says, so the pool cannot be asked for a body it does not
+            // already hold. Sized from the constant rather than a literal, so the two cannot
+            // disagree the day the ceiling moves — and flat rather than conditional on the arena
+            // being dressed, unlike PrewarmCount below, because eight bodies cost a fraction of the
+            // enemy pool and the moment a raise happens is the moment a hitch cannot be afforded:
+            // Rise puts one behind every fourth kill (M5-04b).
+            builder.Register<MinionViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _minionPrefab)
+                .WithParameter("parent", _minionParent)
+                .WithParameter("prewarm", MinionSystem.MaxConcurrent);
 
             // The same three-argument shape as the census above, and registered here rather than in
             // RunInstaller for the reason EnemyViews is: two of its arguments are references to

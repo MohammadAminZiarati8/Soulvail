@@ -621,6 +621,12 @@ public sealed class ResumeFlowTests
             new EnemyLookBook(new Dictionary<ContentId, EnemyLook>()),
             prewarm: 0));
 
+        // Empty, and it stays that way: this fixture plays the Oathbound, which raises nothing.
+        // It is here because the ticker takes one (M5-05a) — and being on that constructor is what
+        // guarantees the census is listening before a run can raise anything.
+        var minionViews = Track(new MinionViews(
+            container, Template<MinionView>("MinionTemplate"), null, hub, prewarm: 0));
+
         var projectileViews = Track(new ProjectileViews(
             container, Template<ProjectileView>("ProjectileTemplate"), null, hub));
 
@@ -669,11 +675,12 @@ public sealed class ResumeFlowTests
             Catalog(),
             random,
             new WorldSnapshot(8),
-            new SnapshotBuilder(player, input, enemyViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
             new IntentBuffer(),
             player,
             charge,
             enemyViews,
+            minionViews,
             projectileViews,
             rings,
             zones,

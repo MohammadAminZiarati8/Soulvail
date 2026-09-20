@@ -267,4 +267,61 @@ census; a negative `prewarm`; a destroyed `parent` normalised to the scene root;
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Eight deviations. Three change something, and one of them is a finding the task's own instrument
+produced while it was being built.**
+
+1. **[Ledger row 4] The instrument fired during the build, and it named an answer.** On the second
+   of six PlayMode runs `Ticker_RunsTheStepsInOrder` failed and the re-issued query said **"the
+   wedge was in the wrong place"** — the same cone, re-asked in the same frame against the settled
+   physics scene, also found nothing. So the sync at the seam is *not* late, and thirteen tasks of
+   tallies have their first diagnosis. The message then grew the measurement rule 10 did not ask
+   for: distance from the apex, metres along the facing and metres across it, against the wedge's
+   own range and angle — because *"wrong place"* is a shrug without them, and a body a millimetre
+   **behind** the apex is a different fault from one outside the range. `RecordingCore` places the
+   apex at the body's *expected post-move point*, so a 60° wedge there is a half-plane with zero
+   margin and any undershoot is outside it while assertion 3's 1e-2 tolerance still passes. **That
+   is a hypothesis, not a verdict, and nothing was fixed**: the out-of-scope line refuses a fix and
+   the next failure will print the number that settles it. The control row asserts the verdict with
+   `Does.StartWith`.
+2. **`Ticker_MinionsMoveBeforeTheFlush` found a real window and the fixture works around it.**
+   `Bind` teleports the transform, `autoSyncTransforms` is 0, and the `CharacterController` PhysX
+   holds is still parked where the pool left the body — so the first `Move` can resolve from
+   *there* and snap the body back. It failed one run in three with the Wight a kilometre from where
+   it was raised. `RaiseTheWight` now calls `Physics.SyncTransforms()`, which is what the row is
+   about rather than a spawn artefact. **`EnemyView` has had the identical shape since M1-19 and
+   `RunTicker` applies the first move above its own flush, so the window is open in the game** —
+   out of this Files table, and a parking-lot line.
+3. **[M5-04b's finding, ledger row 9] `MinionViews` tears down on `StageArrived`.** The boundary
+   sweep is silent, so a census built on `MinionSpawned` alone stands its whole army in the next
+   arena for the rest of the run — eight bodies under ids that no longer resolve, an empty pool,
+   and id 1's entry overwritten by the next stage's first Wight. A fourth subscription, the event
+   `ArenaPool` already swaps the room on, published immediately after the sweep it mirrors.
+   `Minions_AreSweptAtAStageBoundary` is a row the Tests table does not list. **`ProjectileViews`
+   has the identical gap and no answer**, and so will the decoy view — named in the class remarks,
+   in AR §18.1 and on the parking lot.
+4. **`MinionView` carries a tint and a renderer, which the *Public API* does not list.** The Tests
+   table's `Minions_AreTintedThePlayersCyan` reads a tint off the prefab and the Tests table wins.
+   A serialized `Color` defaulted to `Palette.Player`, driven through a `MaterialPropertyBlock` once
+   in `Awake` — `EnemyLook`'s mechanism, so eight Wights keep one shared material and one draw call
+   rather than costing a second material asset and a batch (GD §11.3).
+5. **`Wight.prefab` has a trigger `CapsuleCollider` as well as the controller.** `EnemyView`'s
+   two-collider split: the controller moves, the capsule is what a query can ask about. Nothing
+   sweeps a Wight in M5 — it is on the Default layer, which no mask selects — but rule 6's claim is
+   *unobservable* without it, because `CharacterController.Move` moves its own shape and is the one
+   collider the flush does not govern. It is also what `Minions_AreNotInTheColliderIndex`
+   presupposes by asking about "the Wight's collider".
+6. **`CopyInto` writes a fifth field.** Rule 3's headline says *every* field and then names four;
+   `HasLineOfSight` is written `false` because nothing else writes a minion slot at all, so an
+   unwritten one carries a stale answer for the rest of the run.
+7. **The ripple was three test files, not the two named**, and one is a *guard-order* ripple the
+   spec did not predict. `SnapshotBuilder`'s constructor grew, so `SnapshotBuilderTests`,
+   `ResumeFlowTests` and `SkillBarPresenterTests` moved; `InstallerTests` did **not** — it composes
+   through `RunInstaller` and never touches `RunScope`'s field list. `RunEndPresenterTests.Compose`
+   dresses "everything the guards before rule 7's need", and the new minion-prefab guard joins that
+   list: without the line the row reads back the Wight's refusal and looks like rule 7 deleted.
+8. **`Run.unity` was dressed and `Minions_DoNotInflateTheSightBudget` was re-sized.** The scene is
+   not in the Files table but manual step 1 requires it: a `Minions` root beside `Enemies`, and both
+   `RunScope` fields filled. And the sight-budget row runs **10 enemies and 8 Wights** rather than
+   the spec's three and two, because `ceil(population × refreshHz × dt)` floored at one rounds 3 and
+   5 to the same number — at the spec's figures the row could not have failed. The expected count is
+   derived from a real `PathRefreshBudget` rather than written down.

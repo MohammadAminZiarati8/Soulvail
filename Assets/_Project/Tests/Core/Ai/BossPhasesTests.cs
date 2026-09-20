@@ -250,6 +250,100 @@ public sealed class BossPhasesTests
         });
     }
 
+    [Test]
+    public void Boss_TickAllocatesNothing()
+    {
+        // **[M5 ledger row 6] The one M4 tick path nobody measured**, and it is measured across a
+        // *phase threshold* rather than at full health. A row that only ticked a boss at full
+        // health would be measuring whatever the inner behaviour costs — which has its own row
+        // (WardenBehaviourTests.Tick_AllocatesNothing) — and would never reach the branch that is
+        // actually new: EnterPhase's add-clear, its beat, its summon and its two publishes.
+        //
+        // Nothing in BossBehaviour.cs changes for this; it is a measurement, not a fix.
+        var silent = new SilentEvents();
+        var intents = new RecordingIntents();
+        var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
+        var projectiles = new ProjectileSystem(silent, ProjectileCapacity);
+        var enemies = new EnemySystem(
+            Catalog(), silent, new FixedRandom(0.1f), new DepthScaling(Scalings.Design()), Capacity);
+
+        EnemyAgent boss = enemies.SpawnBoss(Id(BossId), new Vector3(0f, 0f, 5f));
+        var behaviour = (BossBehaviour)boss.Behaviour;
+
+        float clock = 0f;
+
+        void Step()
+        {
+            enemies.Tick(new EnemyTickContext(
+                Frame, clock, player, intents, silent, projectiles, enemies));
+
+            clock += Frame;
+        }
+
+        void CrossInto(float fraction)
+        {
+            enemies.ApplyDamage(
+                boss.Id, boss.Health.Current - (boss.Health.MaxHp.Value * fraction), clock, player);
+
+            Step();
+        }
+
+        void Cycle()
+        {
+            intents.Clear();
+
+            // Into phase 1: nothing to clear, four Husks called in.
+            CrossInto(SecondPhase);
+
+            // The beat suppresses the next crossing while it runs (BossPhases.Tick), so it has to
+            // shut before the second one can be seen — and those fifteen ticks are the quiet path,
+            // measured alongside the loud one rather than instead of it.
+            for (int i = 0; i < 64 && behaviour.IsInBeat; i++)
+            {
+                Step();
+            }
+
+            // Into phase 2, which is the branch this row exists for: four DespawnAtEndOfTick
+            // queued by ClearAdds, drained at the bottom of EnemySystem.Tick, with no summons
+            // behind them.
+            CrossInto(ThirdPhase);
+
+            // Back to the top of the fight — the phase machine, the beat and the hit points. The
+            // adds have already gone, so the next cycle calls four more in out of the same four
+            // pooled agents, which is what makes the spawn path free after the warm-up.
+            behaviour.Reset();
+            boss.Health.Reset();
+        }
+
+        // Warmed outside the measurement, so the jit, the four agents the pool builds and the three
+        // modifier lists depth scaling grows on each of them are not what is being counted.
+        for (int i = 0; i < 20; i++)
+        {
+            Cycle();
+        }
+
+        Assert.That(
+            enemies.Registry.AliveCount,
+            Is.EqualTo(1),
+            "Sanity: a cycle ends with the boss alone in the arena.");
+
+        _allocationStep = 0;
+
+        // A thousand rather than the default ten, because one iteration here is a whole phase
+        // change and eighteen ticks rather than a single call — see AllocationAssert.None, whose
+        // repetition is about catching amortised growth rather than about the count itself.
+        AllocationAssert.None(
+            () =>
+            {
+                _allocationStep++;
+
+                Cycle();
+            },
+            iterations: 1_000);
+
+        Assert.That(_allocationStep, Is.GreaterThan(1_000), "The probe is live.");
+    }
+
     // ---- Rule 4: the beat, on a real agent --------------------------------------------------------
 
     [Test]

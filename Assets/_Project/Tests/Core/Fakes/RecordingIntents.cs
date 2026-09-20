@@ -30,6 +30,7 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<ChargeIntent> _charges = new();
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
     private readonly List<EnemyMoveIntent> _enemyMoves = new();
+    private readonly List<EnemyMoveIntent> _minionMoves = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
     /// <remarks>
@@ -149,6 +150,34 @@ public sealed class RecordingIntents : IIntentSink
         }
     }
 
+    /// <summary>Every Wight's walk written, in the order core decided them.</summary>
+    /// <remarks>
+    /// Kept apart from <see cref="EnemyMoves"/> because the ids are — a Wight's comes from
+    /// <c>MinionSystem</c> and an enemy's from <c>EnemyRegistry</c>, and both count from 1
+    /// (M5-04a rule 4). A row that asserted over one list would be asserting about whichever of the
+    /// two happened to be written last.
+    /// </remarks>
+    public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
+
+    /// <summary>The most recent Wight's walk.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// Nothing has been written. Louder than a default intent, which would read as Wight 0 standing
+    /// still and quietly pass a test whose army never ticked.
+    /// </exception>
+    public EnemyMoveIntent LastMinionMove
+    {
+        get
+        {
+            if (_minionMoves.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No minion EnemyMoveIntent has been written to this sink.");
+            }
+
+            return _minionMoves[_minionMoves.Count - 1];
+        }
+    }
+
     /// <summary>How many walks were written for <paramref name="enemyId"/>.</summary>
     /// <remarks>
     /// The question "did this enemy act at all" — which is what a dead agent's row asks — cannot be
@@ -182,6 +211,7 @@ public sealed class RecordingIntents : IIntentSink
         _charges.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
+        _minionMoves.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
@@ -202,6 +232,11 @@ public sealed class RecordingIntents : IIntentSink
     void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
     {
         _enemyMoves.Add(intent);
+    }
+
+    void IIntentSink.MinionMove(in EnemyMoveIntent intent)
+    {
+        _minionMoves.Add(intent);
     }
 
     void IIntentSink.EnemyKnockback(in EnemyKnockbackIntent intent)

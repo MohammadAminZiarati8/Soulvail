@@ -972,6 +972,11 @@ public sealed class PlayerProjectileTests
             // Deliberately nothing.
         }
 
+        public void MinionMove(in EnemyMoveIntent intent)
+        {
+            // Deliberately nothing. No run in this fixture raises a Wight.
+        }
+
         public void EnemyKnockback(in EnemyKnockbackIntent intent)
         {
             // Deliberately nothing.

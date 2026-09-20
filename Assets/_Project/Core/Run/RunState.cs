@@ -63,6 +63,7 @@ public sealed class RunState
         SkillRunner skills,
         ZoneSystem zones,
         LureSystem lures,
+        MinionSystem minions,
         LevelUpFlow levelUp)
     {
         ModeId = modeId;
@@ -80,6 +81,7 @@ public sealed class RunState
         Skills = skills;
         Zones = zones;
         Lures = lures;
+        Minions = minions;
         LevelUp = levelUp;
     }
 
@@ -570,6 +572,28 @@ public sealed class RunState
     /// <c>LureSystem</c> and it stands empty for ever.
     /// </remarks>
     internal LureSystem Lures { get; }
+
+    /// <summary>
+    /// The Wights standing on the player's side, or <see langword="null"/> for a class that raises
+    /// none — CH §3.2, and every class but the Gravecaller.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>Spawn</c> stands a
+    /// body up and <c>Tick</c> hits enemies with it, so a public handle would let a view raise an
+    /// army and swing it. It follows <see cref="Tree"/> and <see cref="LevelUp"/> in being
+    /// <em>null</em> rather than empty for a class without the feature, which is M5-04b rule 10's
+    /// shape brought forward one task: an Oathbound run holds no <c>MinionSystem</c>, ingests
+    /// nothing and ticks nothing, so it is byte-identical to the run it was before this task.
+    /// </para>
+    /// <para>
+    /// <b>No scalar read beside it, for <see cref="Lures"/>'s reason.</b> Nothing outside core can
+    /// see a Wight until M5-05a builds the views, and those are built from the
+    /// <c>MinionSpawned</c> they were handed and torn down on the <c>MinionDespawned</c> or
+    /// <c>MinionDied</c> that follows — so a count here would be public API nobody asked for.
+    /// </para>
+    /// </remarks>
+    internal MinionSystem Minions { get; }
 
     /// <summary>
     /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).

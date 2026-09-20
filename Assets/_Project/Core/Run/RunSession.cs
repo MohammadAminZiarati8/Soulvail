@@ -515,6 +515,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // know, and M5-05's view is that something.
         var lures = new LureSystem(_events);
 
+        // **Only for a class that raises the dead, which is the Gravecaller and nothing else**
+        // (M5-04a rule 1, M5-04b rule 10). A run with no MinionSpec holds no system, so an Oathbound
+        // run ingests nothing, ticks nothing and is byte-identical to the run it was before this
+        // task — the same shape as the tree and the level-up flow two blocks down, and for the same
+        // reason: a feature a class does not have is absent rather than empty.
+        //
+        // One per run like everything above: a second Start must not inherit the first run's army or
+        // its ids. It takes the events and the intent sink because a Wight is announced like a body
+        // and walks like one; it takes no clock, because a raise is stamped with the RunState.Time
+        // its caller was holding (M5-04b's Rise is that caller).
+        MinionSystem minions = character.Minions is null
+            ? null
+            : new MinionSystem(character.Minions, _events, _intents);
+
         // **Above the tree rather than below it, which is the one thing this block's order now
         // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
         // needed it sooner; ModifySkillCooldownHandler holds it, and SkillTree's constructor asks
@@ -605,6 +619,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             skills,
             zones,
             lures,
+            minions,
             levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
@@ -849,6 +864,15 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // a decoy redirects and no behaviour is touched (M5-03 rule 2).
         State.Enemies.Ingest(snapshot, State.Lures);
 
+        // **With the enemies, and that is the half of rule 8 nobody would guess** (M5-04a rule 8,
+        // AR §18.1). Perception is one phase: the Wights are bodies that report where they are
+        // exactly as the Husks do, and splitting the two ingests would let a Wight act on last
+        // frame's positions while everything around it acted on this frame's — the one bug the
+        // snapshot exists to prevent.
+        //
+        // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
+        State.Minions?.Ingest(snapshot);
+
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
         // Before the behaviours, so the target is chosen from the same positions the enemies were
         // just seen at rather than from wherever this tick's AI moved them; and before the motor,
@@ -971,6 +995,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Enemies);
 
         State.Enemies.Tick(enemies);
+
+        // **Immediately after the enemy behaviours and above the death check** (M5-04a rule 8,
+        // AR §18.1).
+        //
+        // *After the behaviours*, because that is where a Husk decides to strike — so a Wight that
+        // kills its quarry this tick removes an enemy that has already acted rather than one that
+        // never got to. It is the same trade this method already documents between the player's
+        // swing and an enemy's, made on the friendly side: whoever acts first this frame is
+        // resolved against a world that has not moved yet.
+        //
+        // *Above the death check*, so a kill a Wight scores on the tick the player dies is counted
+        // before the run ends — exactly as a bolt's arrival is, one line down. A minion pass below
+        // that check would silently lose a kill depending on when the player happened to die.
+        //
+        // It takes the census to choose from and the player because the kill goes through
+        // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
+        State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
 
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
         //
@@ -1367,6 +1408,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // a decoy stands for 3 s against a boundary's 2 s of gate and arrival, which makes it the
         // one thing on the floor that can genuinely cross one — the projectiles' reason exactly.
         State.Lures.Clear();
+
+        // And the army, in the same silence and for the run's own reason: a Wight lives twenty
+        // seconds, so at the end of a run there is always one standing if any were raised, and a
+        // system left full would hand the next run's first tick an army the player did not earn.
+        // Null for every class but the Gravecaller.
+        //
+        // **A stage boundary is deliberately not swept here and is owed to M5-04b**, which is the
+        // first task where a Wight can exist in play: twenty seconds against a boundary's two makes
+        // a Wight the one body that can genuinely cross one, which is exactly the decoy's problem
+        // one line up.
+        State.Minions?.Clear();
 
         // And the ground the boss made dangerous, in the same silence — but **not** for the zone's
         // reason, and the difference is worth the line (M4-02). A zone is the player's own and

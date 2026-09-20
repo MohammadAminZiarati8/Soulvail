@@ -1061,6 +1061,11 @@ public sealed class SkillBarPresenterTests
             new EnemyLookBook(new Dictionary<ContentId, EnemyLook>()),
             prewarm: 0));
 
+        // Empty, and it stays that way: this fixture plays the Oathbound, which raises nothing.
+        // It is here because the ticker takes one (M5-05a).
+        var minionViews = Track(new MinionViews(
+            container, Template<MinionView>("MinionTemplate"), null, _hub, prewarm: 0));
+
         var projectileViews = Track(new ProjectileViews(
             container, Template<ProjectileView>("ProjectileTemplate"), null, _hub));
 
@@ -1113,11 +1118,12 @@ public sealed class SkillBarPresenterTests
             _catalog,
             _random,
             _tickerSnapshot,
-            new SnapshotBuilder(player, input, enemyViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
             new IntentBuffer(),
             player,
             charge,
             enemyViews,
+            minionViews,
             projectileViews,
             rings,
             zones,

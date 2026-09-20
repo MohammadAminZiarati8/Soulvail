@@ -27,6 +27,14 @@ namespace Soulvail.Game.Adapters;
 /// of what it needs: a route is measured from an enemy <em>to the player</em>, and the census knows
 /// only where its own bodies are. This class already holds both ends of that line.
 /// </para>
+/// <para>
+/// The Wights arrive the same way as of M5-05a, through <see cref="MinionViews.CopyInto"/>, and
+/// into the snapshot's <em>own</em> minion slots rather than the enemy ones — two registries both
+/// numbering from 1 (M5-04a rule 4). <b><see cref="WriteSenses"/> is deliberately not extended to
+/// them:</b> a route is measured to the player and a Wight is walking at an enemy, so a path
+/// computed for one would be to the wrong place, costed per Wight per frame, and read by nothing.
+/// The census writes the zero; nothing here runs the search.
+/// </para>
 /// </remarks>
 public sealed class SnapshotBuilder
 {
@@ -46,6 +54,18 @@ public sealed class SnapshotBuilder
     private readonly PlayerView _player;
     private readonly InputAdapter _input;
     private readonly EnemyViews _enemies;
+
+    /// <summary>
+    /// The Wights standing in the scene (M5-05a), asked the same two questions the enemies are.
+    /// </summary>
+    /// <remarks>
+    /// A second census rather than more entries in the first, because the two id spaces are
+    /// different and both count from 1: a Wight reported into an enemy slot would be a fact about a
+    /// Husk. <c>WorldSnapshot</c> keeps them apart from the other side (M5-04a rule 4), and this is
+    /// the writer that fills the second array.
+    /// </remarks>
+    private readonly MinionViews _minions;
+
     private readonly NavPathSense _paths;
 
     /// <summary>
@@ -103,6 +123,12 @@ public sealed class SnapshotBuilder
     /// dependency rather than found, so the builder never searches a scene and the run's census
     /// has exactly one owner.
     /// </param>
+    /// <param name="minions">
+    /// Every Wight body in the scene (M5-05a). Null is a real answer on the terms a null
+    /// <paramref name="arenas"/> is: a fixture with no minion census reports no Wights, which core
+    /// reads as an empty army — the state every run in this build is in anyway, because nothing a
+    /// player can start raises one until M5-07.
+    /// </param>
     /// <param name="paths">
     /// The NavMesh, asked which way each enemy should walk (M1-19). A dependency like the rest, so
     /// a headless test can build a frame without one — see <see cref="Build"/>.
@@ -123,6 +149,7 @@ public sealed class SnapshotBuilder
         PlayerView player,
         InputAdapter input,
         EnemyViews enemies,
+        MinionViews minions,
         NavPathSense paths,
         ArenaPool arenas,
         LineOfSightSense sight)
@@ -130,6 +157,7 @@ public sealed class SnapshotBuilder
         _player = player;
         _input = input;
         _enemies = enemies;
+        _minions = minions;
         _paths = paths;
         _arenas = arenas;
         _sight = sight;
@@ -208,6 +236,19 @@ public sealed class SnapshotBuilder
         // only variable-length part of the frame, and the count they leave behind is what core
         // reads to know how many of the array's slots are this frame's (AR §4.2).
         _enemies.CopyInto(snapshot);
+
+        // Between the enemies and the second pass, and both adjacencies are load-bearing (M5-05a
+        // rule 4). *After* the enemies, because the enemy count is what LineOfSightSense's
+        // per-frame budget is sized from and a Wight must not inflate it — the arithmetic that
+        // decides how many raycasts a frame may afford is about the swarm, not about the army.
+        // *Before* WriteSenses, because that method walks snapshot.EnemyCount and would otherwise
+        // run against a count this line had not finished settling.
+        //
+        // Null for a fixture built without a census, on the terms the arena pool above is.
+        if (_minions is not null)
+        {
+            _minions.CopyInto(snapshot);
+        }
 
         WriteSenses(snapshot);
     }

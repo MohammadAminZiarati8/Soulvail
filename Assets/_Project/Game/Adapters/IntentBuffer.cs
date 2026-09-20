@@ -150,11 +150,20 @@ public sealed class IntentBuffer : IIntentSink
     /// Where core wants each Wight to walk this tick, one entry per standing minion.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>Its own list because the ids are its own</b> (M5-04a rule 4): a Wight's id comes from
     /// <c>MinionSystem</c> and an enemy's from <c>EnemyRegistry</c>, both counting from 1, so a
-    /// reader that resolved these against the enemy views would steer the wrong bodies. Empty in
-    /// every run this build plays — nothing raises a Wight until M5-04b — and read by nothing until
-    /// M5-05a builds the views.
+    /// reader that resolved these against the enemy views would steer the wrong bodies.
+    /// <c>RunTicker.ApplyMinionMoves</c> is that reader as of M5-05a, and it resolves through
+    /// <c>MinionViews</c> and through nothing else.
+    /// </para>
+    /// <para>
+    /// <b>Empty is no longer the expected state.</b> Until M5-04b nothing raised a Wight, so this
+    /// list was empty in every run that could be played and said so here; Rise fills it behind
+    /// every fourth kill a Gravecaller scores. What is still true is narrower and belongs to the
+    /// menu rather than to this list: no run this build can <em>start</em> plays the Gravecaller,
+    /// because class select is M5-07.
+    /// </para>
     /// </remarks>
     public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
 

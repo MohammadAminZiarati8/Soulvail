@@ -700,6 +700,12 @@ public sealed class RunEndPresenterTests
         Set(serialized, "_playerView", Component<PlayerView>("Player"));
         Set(serialized, "_chargeMotion", Component<ChargeMotion>("Player"));
         Set(serialized, "_enemyPrefab", Component<EnemyView>("Enemy"));
+
+        // M5-05a's guard sits with the other body prefabs, above rule 7's, so it joins this list.
+        // Without the line, the row below reads back the *Wight's* refusal and looks like rule 7
+        // having been deleted.
+        Set(serialized, "_minionPrefab", Component<MinionView>("Wight"));
+
         Set(serialized, "_projectilePrefab", Component<ProjectileView>("Projectile"));
         Set(serialized, "_camera", Component<Camera>("Main Camera"));
 

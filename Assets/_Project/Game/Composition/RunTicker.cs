@@ -76,6 +76,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly EnemyViews _enemyViews;
 
     /// <summary>
+    /// The Wights standing on the player's side (M5-05a). Held for the reason the enemies are: core
+    /// decides a velocity for each of them every tick and something has to walk them with the
+    /// snapshot's <c>Dt</c>.
+    /// </summary>
+    private readonly MinionViews _minionViews;
+
+    /// <summary>
     /// The bolts in the air. Held for two reasons and both are the same one: it has to be stepped
     /// with the snapshot's <c>Dt</c> (M2-09 rule 3), and being on this object's dependency chain is
     /// what guarantees it is listening before <see cref="Start"/> can let core fire anything.
@@ -150,6 +157,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         PlayerView player,
         ChargeMotion charge,
         EnemyViews enemyViews,
+        MinionViews minionViews,
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
         ZoneViews zoneViews,
@@ -173,6 +181,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
+        _minionViews = minionViews ?? throw new ArgumentNullException(nameof(minionViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
         _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
@@ -392,6 +401,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         ApplyEnemyMoves();
 
+        // Immediately after the enemies, and above the flush (M5-05a rule 6). *Beside the enemies*
+        // because both are bodies core decided a velocity for this tick and both must step on
+        // snapshot.Dt rather than Time.deltaTime — the whole of M1-18's argument, and the reason
+        // ApplyEnemyMoves is where it is. *Above the flush* because the flush is what makes
+        // "everything has finished moving" true of the physics scene and not only of the call order
+        // (M2-15a): nothing sweeps a Wight today, and a body written after the flush would be the
+        // one exception nobody remembered on the day something does.
+        ApplyMinionMoves();
+
         // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
         // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on
         // Time.deltaTime would arrive at the target ahead of the damage it stands for on exactly
@@ -510,6 +528,46 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             EnemyMoveIntent move = moves[i];
 
             if (!_enemyViews.TryGet(move.Id, out EnemyView view) || view == null)
+            {
+                continue;
+            }
+
+            view.Apply(move, _snapshot.Dt);
+        }
+    }
+
+    /// <summary>
+    /// Walks every Wight core gave a direction to this tick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A second list and a second census, never the enemies'</b> (M5-05a rule 7). The two
+    /// intent structs are identical and the two id spaces are not: a minion id resolved through
+    /// <c>EnemyViews.TryGet</c> would either find no body and be skipped in silence or — worse and
+    /// just as likely, since both registries number from 1 — find an <em>enemy</em> with the same
+    /// number and walk it. M5-04a rule 4 argued this from the port's side; this is the same
+    /// argument standing at the reader.
+    /// </para>
+    /// <para>
+    /// An id with no body is skipped in silence, exactly as <see cref="ApplyEnemyMoves"/> skips
+    /// one: core is entitled to decide a walk for a Wight whose body has not been rented yet, or
+    /// one returned earlier in this frame, and neither is an error.
+    /// </para>
+    /// <para>
+    /// A <c>for</c> over the count rather than a <c>foreach</c>, for the reason
+    /// <see cref="ApplyEnemyMoves"/> gives: the buffer hands out an <c>IReadOnlyList</c> and
+    /// enumerating that would box an enumerator on every frame a Wight is standing.
+    /// </para>
+    /// </remarks>
+    private void ApplyMinionMoves()
+    {
+        IReadOnlyList<EnemyMoveIntent> moves = _intents.MinionMoves;
+
+        for (int i = 0; i < moves.Count; i++)
+        {
+            EnemyMoveIntent move = moves[i];
+
+            if (!_minionViews.TryGet(move.Id, out MinionView view) || view == null)
             {
                 continue;
             }

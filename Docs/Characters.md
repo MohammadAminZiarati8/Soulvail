@@ -62,12 +62,14 @@ Vailkeepers were an order, not a job. Different hands for different work.
 |---|---|---|---|
 | Archetype | Paladin | Necromancer | Wizard |
 | Unlock | **Free — the starter** | 2,000 Shards *or* kill Choirmother | 3,500 Shards *or* reach stage 20 |
-| HP / Speed | 140 / 5.4 | 80 / 5.6 | 70 / 6.2 |
+| HP / Speed | 140 / **3.0** | 80 / **3.1** | 70 / **3.4** |
 | Difficulty | Easy | Medium | Hard |
 | Veilrot | **Resists** it | **Thrives** on it | **Spends** it |
 | Fantasy | Walk into the swarm. Make it regret touching you. | You don't fight. The dead do. | Enormous, slow, unforgiving. |
 
 The Oathbound starts unlocked because tanky and forgiving is the right teaching class — a new player learning a one-thumb game should not also be learning to survive at 70 HP.
+
+**The speed column was 5.4 / 5.6 / 6.2 until M5-02.** The owner retuned the Oathbound to 3 m/s after playtesting at M2-03 and dropped the Husk 3.5 → 2 in the same pass; the documents kept the old band for two milestones because moving it is a statement about two classes that did not exist. M5-02 is the first task that has to author a second class's speed, so it scaled the whole band by the factor the retune already applied — **3 / 5.4 = 0.5556** — and rounded to a decimal. The *ordering* is what the design asked for and it is preserved exactly: the tank is the slowest, the wizard the fastest. See [GD §6.1](GameDesign.md) and [CoreCombat.md](CoreCombat.md) §2.5.
 
 ### 3.1 Oathbound — *paladin*
 
@@ -91,7 +93,7 @@ Martyr is the class's best node: it turns the defensive stat into a damage resou
 
 | | |
 |---|---|
-| **Weapon** | **Bone Bolt** — 7 dmg, 4.0/s. Deliberately weak; you are not the damage. |
+| **Weapon** | **Bone Bolt** — 7 dmg, 4.0/s. Deliberately weak; you are not the damage. **The asset ships 9** — see below. |
 | **Movement** | **Shroudstep** — 6m blink leaving a corpse-decoy that taunts enemies for 3s |
 | **Signature** | **Rise** — 25% of enemies killed rise as **Wights**: autonomous minions, 20s lifespan, base cap 3 |
 | **Veilrot** | **Starts at 15.** Gains +50% faster. Gains **+1% damage per Veilrot point.** |
@@ -106,6 +108,8 @@ Martyr is the class's best node: it turns the defensive stat into a damage resou
 **Rot Bloom is the best node in the game.** It's the point where a class fantasy and the game's signature system become the same sentence — the necromancer is the one for whom corruption was never a cost. It creates the game's most interesting build: a Gravecaller who *rushes* to 100 Veilrot on purpose and plays the back half of a run inside what is normally a death spiral.
 
 Minions are also pure class identity at zero input cost, which is why this is the right second class to build.
+
+**7 damage breaks GD §6.2 and `Gravecaller.asset` ships 9.** A Husk has 36 HP, so `ceil(36 / 7)` is six hits at stage 1 with no tree and no Overflow, against the *"3–5 hits from any class, at any depth"* GD §6.2 calls the primary balance invariant of the whole game — and the Wights cannot rescue it, because Rise needs a kill, so the first enemy of every run is fought with the weapon alone. At 9 it is four hits, and the class still trades down: 36 DPS against the Censer's 39, on 80 HP against 140. The 7 stays in the table above because it is what the design published and M5-02's control test measures it; the number the game plays is the asset's, and the owner overrides it by typing a different one.
 
 **Watch item:** Wights must be unmistakable from enemies at phone scale. Cyan-tinted, per the colour language. If players can't tell their army from the swarm, the class fails.
 

@@ -157,3 +157,5 @@ MonoBehaviour:
     _text: The Warden of Ash
   - _key: mode.descent.name
     _text: Descent
+  - _key: character.gravecaller.name
+    _text: Gravecaller

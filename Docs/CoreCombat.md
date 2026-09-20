@@ -82,7 +82,9 @@ An 8-direction blend tree over `localVelocity` handles the animation. No aim IK,
 | Max HP | **140** |
 | Aegis shield | **30**, recharges after 4s without damage, refills in 2s (15/s) |
 
-**Move speed was 5.4 m/s until the owner retuned it to 3 after playtesting**, in the same pass that dropped the Husk from 3.5 to 2 m/s. The whole game got slower; the speed *ratio* barely moved — 5.4 / 3.5 was 1.543×, 3 / 2 is 1.5× — which is what keeps [GD §6.1](GameDesign.md)'s rule that every class must feel faster than almost every enemy true. **[Characters.md](Characters.md) §3's class table and GD §6.1's "5.4–6.2 m/s across classes" row still carry the old band**, because moving it is a statement about the Gravecaller and the Emberwright, neither of which is built — flagged for the owner rather than guessed at.
+**Move speed was 5.4 m/s until the owner retuned it to 3 after playtesting**, in the same pass that dropped the Husk from 3.5 to 2 m/s. The whole game got slower; the speed *ratio* barely moved — 5.4 / 3.5 was 1.543×, 3 / 2 is 1.5× — which is what keeps [GD §6.1](GameDesign.md)'s rule that every class must feel faster than almost every enemy true.
+
+**The band moved with it at M5-02, and this paragraph no longer flags anything.** It stood here for two milestones saying that [Characters.md](Characters.md) §3 and GD §6.1's *"5.4–6.2 m/s across classes"* still carried the old numbers, because moving them is a statement about the Gravecaller and the Emberwright and neither existed. M5-02 authors the Gravecaller, so it is the first task that cannot re-park the question: the band was scaled by the same **0.5556** rather than left, giving **3.0 / 3.1 / 3.4** and a GD §6.1 row of **3.0–3.4 m/s**. The alternative — leave the band and call the Oathbound *"simply the slow class"* — puts the starter outside a row that describes *"the range across classes"*, which makes the row false rather than loose, and it would have put the Gravecaller at 5.6, or **1.87×** the class the whole game's pacing was tuned around. The Emberwright's 3.4 is authored the day it has an asset.
 
 ---
 

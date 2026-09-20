@@ -11,12 +11,19 @@ namespace Soulvail.Core.Content;
 /// into this from content, and a movement skill is named by its owning
 /// <see cref="CharacterSpec.Id"/> rather than by an ordinal.
 /// <para>
-/// One member in V1. <c>Shroudstep</c> arrives with M5-03 and <c>Blink</c> with M6-07; both differ
-/// from a Charge in what happens along the path — a corpse decoy, a teleport — rather than in the
-/// cooldown, buffer and i-frame window every one of them has, which is why
-/// <see cref="MovementSkillSpec"/> holds the shared numbers and the kind selects the behaviour.
+/// Two members as of M5-02, which authors the class that carries the second; <c>Blink</c> arrives
+/// with M6-07. Each differs from a Charge in what happens along the path — a corpse decoy, a
+/// teleport — rather than in the cooldown, buffer and i-frame window every one of them has, which is
+/// why <see cref="MovementSkillSpec"/> holds the shared numbers and the kind selects the behaviour.
 /// Deliberately unvalidated here: the loud place for an unrecognised kind is whatever has to build
 /// a skill from it, which is the one site that knows the full set.
+/// </para>
+/// <para>
+/// <b>A member may land a task before its behaviour does</b>, and <see cref="Shroudstep"/> is the
+/// first that has: the kind is <em>content identity</em>, so it belongs to the asset that names it,
+/// while what it does is a system. Until M5-03 merges, <c>PlayerCombat</c> builds a <c>ChargeSkill</c>
+/// from the spec whatever the kind says — which is why the Gravecaller's numbers author 0 damage and
+/// 0 knockback rather than leaving CC §5's defaults to be dealt by a blink (M5-02 rule 7).
 /// </para>
 /// </remarks>
 public enum MovementSkillKind
@@ -26,6 +33,13 @@ public enum MovementSkillKind
     /// passes through, invulnerable for its whole duration and a little past it.
     /// </summary>
     Charge,
+
+    /// <summary>
+    /// The Gravecaller's Shroudstep (CH §3.2): a 6 m blink leaving a corpse decoy that taunts for
+    /// 3 s. The member is content identity and lands here; what it <em>does</em> is
+    /// <see href="../../../../Docs/plan/tasks/M5-03-shroudstep-and-corpse-decoy.md">M5-03</see>'s.
+    /// </summary>
+    Shroudstep,
 }
 
 /// <summary>

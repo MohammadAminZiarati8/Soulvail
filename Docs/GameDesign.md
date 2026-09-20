@@ -205,7 +205,7 @@ Per-class values (HP, speed, weapon) live in [Characters.md §3](Characters.md).
 | Hit i-frames | 0.5 s | Prevents multi-hit chip death in a swarm |
 | Collision | `CharacterController` | Not rigidbody. Predictable, cheap, no physics jank. |
 | HP range across classes | 70–140 | Anything outside this band breaks the one-shot rule's arithmetic (§12.4) |
-| Speed range across classes | 5.4–6.2 m/s | Every class must feel faster than almost every enemy |
+| Speed range across classes | **3.0–3.4 m/s** | Every class must feel faster than almost every enemy. **Scaled from 5.4–6.2 at M5-02**, by the same 0.5556 the owner's M2-03 retune already applied to the Oathbound — which is why the *rule* is unchanged and only the numbers moved. See [Characters.md](Characters.md) §3 and [CoreCombat.md](CoreCombat.md) §2.5. |
 
 ### 6.2 Weapon rules
 

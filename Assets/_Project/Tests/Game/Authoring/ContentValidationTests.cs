@@ -84,6 +84,12 @@ public sealed class ContentValidationTests
     /// is an asset nobody finished, and it would otherwise fail only on the resolution row — which
     /// says "no row for this key" rather than "nobody named this node".
     /// </summary>
+    /// <remarks>
+    /// <c>minion.new.name</c> is <em>not</em> on this list, and the omission is deliberate: it is
+    /// the default on every class without minions, which is two of the three, and
+    /// <see cref="EveryAuthoredKey"/> does not walk a class's minion block anyway (M5-02). The day
+    /// something reads it, it joins the list with the sweep that reaches it.
+    /// </remarks>
     private static readonly string[] AuthoringPlaceholders =
     {
         "character.new.name",
@@ -101,7 +107,7 @@ public sealed class ContentValidationTests
     /// They are floors, not equalities, because adding content must not turn this row red; M3-12c's
     /// own suite is what pins the twelve.
     /// </remarks>
-    private const int ShippedCharacters = 1;
+    private const int ShippedCharacters = 2;
 
     private const int ShippedEnemies = 3;
     private const int ShippedModes = 1;

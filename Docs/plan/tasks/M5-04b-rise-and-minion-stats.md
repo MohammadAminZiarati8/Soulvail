@@ -1,7 +1,7 @@
 # M5-04b — Rise, and an address book for something that is neither the player nor an enemy
 
 **Size:** M · **Depends on:** M5-04a · **Branch:** `m5-04b-rise`
-**Design refs:** CH §3.2; GD §12.3; AR §14, §18.1, §18.2, §18.3; ADR-0006, ADR-0008, ADR-0011 · **Ledger rows:** none
+**Design refs:** CH §3.2; GD §12.3; AR §14, §18.1, §18.2, §18.3; ADR-0006, ADR-0008, ADR-0011 · **Ledger rows:** [9](../ROADMAP.md#carry-forward-into-m5) *(corrected at build: the row was opened at M5-04a and placed here after this spec was written — see* As built *deviation 1)*
 
 ## Goal
 
@@ -198,4 +198,63 @@ must be unmistakable from enemies at phone scale.*
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Six deviations. One changes a decision, two are the ledger's, and the spec's *Ledger rows: none*
+header was wrong — [row 9](../ROADMAP.md#carry-forward-into-m5) is this task's, both halves.**
+
+1. **`StageFlow.cs` and `StageFlowTests.cs` changed, and they are [row 9(ii)](../ROADMAP.md#carry-forward-into-m5).**
+   Not in the Files table; the row was opened at M5-04a and placed here, and the header above was
+   written before it existed. `StageFlow` gains an optional `MinionSystem minions = null` on
+   `LureSystem`'s precedent, a field, and one `_minions?.Clear()` in `Advance` beside the decoys' —
+   twenty seconds against a boundary's two makes a Wight the one body that can genuinely cross one.
+   `Advance_SweepsTheArmy` raises two at the door and asserts none survives the crossing.
+   **`RunSession.End`'s comment promising this task the sweep was rewritten to point at where it
+   landed.**
+2. **`RisePassive` draws for a boss's death too, and rule 11's refusal comes after the draw.** Rule 1
+   says *"one draw per death, whether or not it succeeds"* and rule 3 spends a draw at the cap, so
+   the draw is taken before **every** reason a raise might not happen — a boss, a full army, an
+   unreadable chance. The alternative would make the `Drops` sequence a function of what the arena
+   allowed rather than of how many things died, which is the property ADR-0011 is about.
+   `Rise_ABossDoesNotRise` asserts both halves: no Wight, and `Drops` advanced by one.
+3. **Rule 5's clamp is one named case, not four.** `IRandomStream.Chance` is `NextFloat() <
+   probability` and `NextFloat` is in `[0, 1)`, so a live chance at or below zero is never drawn
+   under, one at or above one always is, and NaN loses every comparison — three of rule 5's four
+   directions for free. `+∞` is the only one that needs writing down, because it passes every `>=`
+   in the language. **Reaching a non-finite chance at all took arithmetic**: `Stat.Base` and
+   `Modifier` both refuse a non-finite *input*, so `RiseTests.Unreadable` overflows the stack with
+   two `PercentMult` at `float.MaxValue` — which is exactly rule 5's *"a modifier stack nobody can
+   read"*, reached the way a stack of Legion nodes would reach it.
+4. **`Rise_AQuarterOfKillsStandBackUp` expires the army between deaths rather than raising the cap
+   past four hundred.** The row says *"cap raised past them"* and `MinionSystem.MaxConcurrent` is 8,
+   so a hundred standing at once is not a state that exists. The cap is lifted to the ceiling and the
+   army timed out between offers, which is the row's intent — the cap never refuses, so the only
+   thing deciding the count is the draw. `Rise_AlwaysAtOrAboveOne` does the same for its ten.
+5. **`Deaths_AFullBufferDropsTheOldest` is not named "Loudly", because nothing is loud.** The Tests
+   table's own Given/Then asks for the behaviour to be *asserted rather than left to be discovered*,
+   which is what shipped; a throw would end a run over a bookkeeping buffer, and growing would
+   allocate on the kill path. `EnemySystem.Bank` shifts the oldest off the front with one
+   `Array.Copy`. **It is unreachable in a live run** — `RunSession.Tick` drains unconditionally, for
+   every class — which is also most of rule 10's cost.
+6. **Two rows were added beyond the Tests table, both integration.**
+   `Run_MinionsTickAfterTheEnemiesAndAboveTheDeathCheck` is
+   [row 9(i)](../ROADMAP.md#carry-forward-into-m5) by its M5-04a name, and
+   `Run_AGravecallerRunDrawsFromDrops` pins the one thing no unit row can see — that
+   `RunSession.Start` hands the passive `_random.Drops` and not one of the other four.
+   **Both are driven by one scenario**, which is worth stating because it is the whole of what Rise
+   made testable: a Frail at one metre and a Bomb at two, the Censer's swing answered through
+   `ReportConeHits`, the drain raising a Wight *on the corpse* inside the Bomb's reach, and the
+   Wight's strike killing the Bomb whose blast kills the player — `EnemyDied` → `PlayerDied` →
+   `MinionSpawned` → `RunEnded`, all on one tick. Both enemies are `Static` and the Bomb explodes
+   anyway, which is M2-08 rule 1 doing the work a Bloater's fuse would otherwise have to.
+
+**Findings.** *(i)* **A stage boundary now clears the army silently, and M5-05a inherits what that
+means for a view.** `MinionSystem.Clear` publishes nothing — `EnemySystem.Clear`'s silence, for its
+reason — so a Wight view built on `MinionSpawned` has no `MinionDespawned` to tear itself down on at
+a crossing. The projectile and decoy views have the same shape and the same answer (the stage events),
+so this is a note for M5-05a rather than a defect here. *(ii)* **`PlayerStat` gained nothing**, which
+is rule 8's claim measured: `PlayerStat_GainedNothing` asserts the same twelve members in the same
+order as after M4-01a, so the shared address space has now been asked for by two things that are not
+the player and widened by neither.
+
+**Rule 9 is carried to [M5-06a](M5-06a-what-a-legion-node-may-reach.md) as stated**: a Wight has an
+address book and a live `ContactDamage` a modifier can sit on (`Modify_ReachesAWightsDamage`), and
+*"every Wight I own"* is still neither `StatTarget.Player` nor `Self`.

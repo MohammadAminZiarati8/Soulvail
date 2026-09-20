@@ -53,6 +53,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private readonly int _projectileCapacity;
 
     /// <summary>
+    /// Where <c>EnemySystem.DrainDeaths</c> writes each tick's dead, for Rise to read.
+    /// </summary>
+    /// <remarks>
+    /// <b>A field rather than a <c>stackalloc</c>, and that is the language rather than a
+    /// preference</b> (M5-04b rule 12): <c>EnemyDeath</c> carries a <c>ContentId</c>, which carries a
+    /// <see cref="string"/>, so it is not an unmanaged type and cannot be stack-allocated. Built once
+    /// here at the same capacity the registry and the snapshot use — the drain refuses a span shorter
+    /// than what is pending, and sizing both from one number is what makes that unreachable.
+    /// <b>On the session rather than on <c>RunState</c></b>, because nothing reads it: it is scratch
+    /// for one step of one tick, which is <see cref="_timed"/>'s reason exactly (AR §18.2).
+    /// </remarks>
+    private readonly EnemyDeath[] _deaths;
+
+    /// <summary>
     /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
     /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
     /// downstream has to ask whether this run has a director.
@@ -223,6 +237,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _enemyCapacity = enemyCapacity;
         _deviceEnemyCap = deviceEnemyCap;
         _projectileCapacity = projectileCapacity;
+
+        // Once for the session rather than once per run: it is scratch, it holds nothing between
+        // ticks, and a run boundary is not a reason to allocate an array of the same size again.
+        _deaths = new EnemyDeath[enemyCapacity];
     }
 
     /// <inheritdoc />
@@ -529,6 +547,21 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new MinionSystem(character.Minions, _events, _intents);
 
+        // **CH §3.2's Rise, null in exactly the runs the army is null in** (M5-04b rule 10). Beside
+        // the system rather than inside it, because raising a Wight and being one are two different
+        // jobs: MinionSystem owns bodies and knows nothing about kills, and this owns a chance and
+        // knows nothing about walking.
+        //
+        // **The Drops stream and no other** (rule 1, ADR-0011). It is "a kill produced something",
+        // it is what GD §14's loot will draw from when it exists, and **nothing draws from it
+        // today** — so Rise costs no sixth stream, no RandomState field and no RunSnapshot v4, and
+        // every seeded run that has ever been played replays identically. Read here rather than held
+        // by the passive, so the one object that owns the run's randomness stays the one that hands
+        // it out — SpawnDirector.Tick's shape.
+        RisePassive rise = minions is null
+            ? null
+            : new RisePassive(character.Minions, minions, _random.Drops);
+
         // **Above the tree rather than below it, which is the one thing this block's order now
         // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
         // needed it sooner; ModifySkillCooldownHandler holds it, and SkillTree's constructor asks
@@ -620,6 +653,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             zones,
             lures,
             minions,
+            rise,
             levelUp);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
@@ -810,7 +844,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             _events,
             plan,
             seed,
-            lures);
+            lures,
+            minions);
 
         // Last, and after RunStarted and SpawnAll for the reason SpawnAll itself is after them: this
         // publishes StageArrived, and a handler dressing an arena from it may reasonably assume
@@ -1025,6 +1060,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
         // the body (ledger row 7, settled at M2-07a rule 1).
         State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat, State.Enemies);
+
+        // **After every pass that can kill an enemy, and above the death check** (M5-04b rule 4,
+        // AR §18.1).
+        //
+        // *After all of them*, so a kill never waits a frame to rise. There are four ways an enemy
+        // dies: the player's swing, which is a fact reported between ticks and was banked before
+        // this method began; a Wight's strike, three steps up; a Bloater's own fuse, in the
+        // behaviour step; and a bolt's arrival, on the line immediately above. Anything earlier than
+        // this line would miss the last of them by a frame.
+        //
+        // *Above the death check*, for the reason every other pass here is: a Wight raised on the
+        // tick the player dies is raised into a run that is ending, and the alternative is a kill
+        // silently losing its rise depending on when the player happened to die.
+        //
+        // **The drain runs for every run and the offer does not** (rule 10). An Oathbound run holds
+        // no passive, so what it pays for this task is one array write per kill and a copy of a
+        // usually-empty buffer — and draining unconditionally is also what keeps that buffer from
+        // ever reaching the capacity its overflow rule is written for.
+        int died = State.Enemies.DrainDeaths(_deaths);
+
+        State.Rise?.OnDeaths(new ReadOnlySpan<EnemyDeath>(_deaths, 0, died), State.Time);
 
         // The first thing that ends a run from inside one (M1-17). Asked here rather than
         // subscribed to, because core has no business listening to its own events: PlayerCombat
@@ -1414,10 +1470,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // system left full would hand the next run's first tick an army the player did not earn.
         // Null for every class but the Gravecaller.
         //
-        // **A stage boundary is deliberately not swept here and is owed to M5-04b**, which is the
-        // first task where a Wight can exist in play: twenty seconds against a boundary's two makes
-        // a Wight the one body that can genuinely cross one, which is exactly the decoy's problem
-        // one line up.
+        // **And a stage boundary is swept too, as of M5-04b** — `StageFlow.Advance`, beside the
+        // decoys and for their sentence ([ledger row 9](../../../../Docs/plan/ROADMAP.md)). Twenty
+        // seconds against a boundary's two seconds of gate and arrival makes a Wight the one body in
+        // the game that can genuinely cross one, which is the decoy's problem at seven times the
+        // duration. Rise is what made it reachable, which is why the sweep lands in the task that
+        // ships Rise rather than in the one that shipped the body.
         State.Minions?.Clear();
 
         // And the ground the boss made dangerous, in the same silence — but **not** for the zone's

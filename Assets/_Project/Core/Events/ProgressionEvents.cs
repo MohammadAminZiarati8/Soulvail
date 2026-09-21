@@ -178,6 +178,82 @@ public readonly struct LevelUpClosed
 }
 
 /// <summary>
+/// CH §5.4's half-tree moment is on the table: the run stops and asks which class it borrows a
+/// branch from, and it is the only question in the game the player cannot decline.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It does not carry the candidates.</b> They are <c>RunState.SplashCandidates</c>, built once
+/// when the run started — so a handler that kept this event would be keeping a count rather than a
+/// stale list. <c>OfferPresented</c>'s rule, for its reason: this says <em>why it fired</em>, and
+/// the screen reads what there is to choose from.
+/// </para>
+/// <para>
+/// <b>It exists so the moment can be traced without reading the tree.</b> The two numbers are the
+/// whole of rule 2's condition, so a log line says <em>"14 of 14"</em> rather than leaving the
+/// reader to recompute <c>ceil(NodeCount × 0.5)</c> for whichever class was being played.
+/// </para>
+/// <para>
+/// <b>Nothing publishes this during a restore</b>, which is <c>SkillTree.Restore</c>'s rule: a
+/// branch borrowed in a previous session is not news.
+/// </para>
+/// </remarks>
+public readonly struct SplashOffered
+{
+    /// <summary>How many nodes of the primary tree are taken as of this moment.</summary>
+    public readonly int TakenCount;
+
+    /// <summary>
+    /// How many it takes to open the moment — <c>ceil(NodeCount × <c>SplashFlow.Threshold</c>)</c>,
+    /// six against v1's twelve-node tree.
+    /// </summary>
+    public readonly int Threshold;
+
+    public SplashOffered(int takenCount, int threshold)
+    {
+        TakenCount = takenCount;
+        Threshold = threshold;
+    }
+}
+
+/// <summary>
+/// A branch of a second class was borrowed, for the rest of the run. Published after the branch is
+/// installed and the tree has been rebuilt around it, so a handler reads the state it is being told
+/// about.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b><see cref="Branch"/> is the borrowed class's own index, never
+/// <c>TreeRules.SplashBranch</c>.</b> The run's index is 3 whichever branch was taken, so it could
+/// not say which one the player chose; this one can, and a readout that wants the run's index has
+/// it on <c>NodeTaken.Branch</c> the first time a borrowed node is picked.
+/// </para>
+/// <para>
+/// <b>It carries what it granted</b> — <see cref="NodesGained"/> is the post-Keystone count
+/// (CH §5.4's <em>"one branch minus its Keystone is 7"</em>), which is what a readout draws and what
+/// a later achievement counts. Nothing publishes it during a restore, for <c>NodeTaken</c>'s reason.
+/// </para>
+/// </remarks>
+public readonly struct SplashChosen
+{
+    /// <summary>The class the branch came from.</summary>
+    public readonly ContentId CharacterId;
+
+    /// <summary>Which of that class's branches, 0-based — an index into its own tree.</summary>
+    public readonly int Branch;
+
+    /// <summary>How many nodes the run gained, the Keystone already dropped.</summary>
+    public readonly int NodesGained;
+
+    public SplashChosen(ContentId characterId, int branch, int nodesGained)
+    {
+        CharacterId = characterId;
+        Branch = branch;
+        NodesGained = nodesGained;
+    }
+}
+
+/// <summary>
 /// A pick was spent with nothing left to offer, and paid out as CH §5.2's Overflow instead.
 /// </summary>
 /// <remarks>

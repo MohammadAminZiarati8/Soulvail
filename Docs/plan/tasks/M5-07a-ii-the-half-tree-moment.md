@@ -262,4 +262,72 @@ branch index; `Restore` called twice.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+Built as specced: a state machine, a command and a screen. **2 521 EditMode / 0 / 0** (+43 on
+M5-07a-i's 2 478 — 30 in `SplashFlowTests`, 11 in `SplashPresenterTests`, 2 in `FrameOrderTests`),
+twice on the final code, and **PlayMode 21 / 0 / 0** (+2). Console after the three runs: 24 errors
+and 53 warnings, every one a fixture provoking its own failure path and none naming a new file.
+Format check green over all sixteen touched C# files. `TimeManager.asset` re-serialised itself and
+was reverted ([Traps §5](../../Traps.md)).
+
+**Sixteen deviations, seven changing something.**
+
+1. **`IProgressionCommands` grew *four* members, not the two the *Public API* lists.**
+   `RunTicker.LevelUpPhase` needs `IsSplashPending` and `IsSplashOpen` as well — `RunState`'s
+   constructor is `internal` with no `InternalsVisibleTo`, so the frame loop reaches core only
+   through the port. `IsLevelUpPending` and `HasOffer` are on it for exactly that reason, and the
+   port's own remarks say so.
+2. **`SplashFlow` takes an `EffectRegistry`**, which the *Public API* does not list, and rule 10's
+   *"the branch is not installed"* is why. `SkillTree.OnSplashInstalled` sweeps the borrowed nodes
+   for handlers before *it* commits — but `TreeRules.InstallSplash` has already committed by then,
+   so a refusal there would leave the pair disagreeing about how many nodes the run has. Swept in
+   `Choose` before either call, a missing `Register` line leaves the run untouched.
+3. **`RunState.IsSplashPending` carries a fourth term the spec does not state: no offer on the
+   table.** Taking the sixth node as pick 1 of 2 leaves a second offer up, and a splash screen
+   raised over it would be two screens wanting one `RunPause`. `IsLevelUpPending`'s own shape —
+   *"one question rather than three"* — and it is what makes rule 5's *"the splash is checked
+   first"* true without the ticker holding a copy of the rule.
+4. **`LevelUpPhase` gives the pause back before it takes it.** The frame a splash becomes owed is
+   usually the frame a level-up stops being: written as two independent blocks, the splash finds the
+   pause still held by `LevelUp` and declines it, the level-up block then hands it back, and the
+   screen is up over a running fight. Release-then-acquire changes hands in one frame.
+5. **`SplashChosen.Branch` is the lender's own index, not `TreeRules.SplashBranch`.** The run's index
+   is 3 whichever branch was taken, so it could not say which one the player chose.
+6. **`Run_TheSplashPauseIsItsOwnReason` and `Run_TheSplashIsReadBeforeTheLevelUp` are PlayMode rows,
+   in `FrameOrderTests`.** Both are about a real `RunTicker` holding a real `RunPause`, which
+   `Soulvail.Tests.Core` cannot reference. The core half — that both can be owed at once, so
+   something has to choose — is `SplashFlowTests.Run_BothCanBeOwedOnOneFrame`.
+7. **Two rows beyond the Tests table.** `Splash_RefusesABranchAimedAtMinionsThisClassCannotRaise` is
+   M5-07a-i's handed-over finding closed; `Splash_BranchesOfDropsTheKeystone` is the core half of
+   `Screen_TheBranchCountExcludesTheKeystone`.
+8. **The ripple was three test files and neither of the two the Files table named.** `RunSessionTests`
+   and `RunSessionResumeTests` *cast* to the port rather than implementing it, so they needed
+   nothing; what had to change was `ResumeFlowTests.RecordingSession`, `FrameOrderTests.RecordingCore`
+   and — unlisted — `RunPauseTests.Reason_HasBothMembers`, which asserted the enum held exactly two.
+   A grep scoped the ripple ([Traps §2](../../Traps.md)), for the second task running.
+9. **`SplashFlow.OpensAt`, `TryDerive` and `BranchesOf` are members the *Public API* does not list.**
+   The Tests table asks for the threshold as a number, the resume asks for the derivation, and the
+   screen asks for a branch's *post-Keystone* count — which `SkillBranchSpec.NodeCount` cannot give.
+10. **`SplashOption` is a second public type in `SplashFlow.cs`**, on `SkillBranchSpec`'s precedent:
+    a borrowable branch outside the moment that offers it is not a thing the game has.
+11. **`RunState` gained a fifth read, `IsSplashOpen`**, beside rule 11's four. It is what the pause is
+    held against; `HasOffer`'s pair.
+12. **An out-of-range branch throws `ArgumentOutOfRangeException`**, where the *Public API* files it
+    under `ArgumentException`. M5-07a-i deviation 4's house style, and AOORE *is* an
+    `ArgumentException`.
+13. **`ui.splash.nodes` is a table row rather than a `const` format**, where `ClassCard.HpFormat` is a
+    const. *"140 HP"* is a number and a unit; *"nodes"* is an English word, and AR §11.5 has no
+    exception for a word that happens to sit beside a number.
+14. **`Splash.prefab` joins `StaticLabelWiringTests.Screens`** — that array's own remarks say a fifth
+    screen should be a decision made there. `ClassSelect.prefab` is still absent (M5-07's choice), so
+    the array is the four run screens plus this one rather than every prefab that authors a key.
+15. **The screen's canvas sorts at 105** — above the level-up's 100, below the tree view's 110. The
+    two cannot be up together, and a sorting order is a fact about the asset where *"the level-up is
+    at alpha 0 by then"* is a promise made in another file.
+16. **The two pages are laid out by uGUI layout groups rather than by authored positions.** One
+    candidate is the shipped case (rule 3), and three fixed slots would pin the only card to the
+    left of a full-screen overlay. A `HorizontalLayoutGroup` centres one, two or three for free, with
+    no arithmetic in the presenter — `LevelUpPresenter.Place`'s problem answered by the asset.
+
+**Rule 12 stands and goes to [M5-08](M5-08-acceptance-and-tag.md) as an observation:**
+`TreeViewPresenter` still draws three columns, so a borrowed node is owned, taken, and invisible on
+the tree screen. Manual step 3 is what records whether it reads as a bug.

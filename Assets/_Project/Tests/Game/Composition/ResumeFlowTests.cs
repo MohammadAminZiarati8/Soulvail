@@ -949,6 +949,21 @@ public sealed class ResumeFlowTests
         public void ChooseOffer(int index)
         {
         }
+
+        // And M5-07a-ii grew it again, with CH §5.4's moment. Inert like the four above, for their
+        // reason: the rows here are about the RunConfig a resume hands over, and IsSplashPending
+        // answering false is what keeps the level-up phase a no-op for every one of them.
+        public bool IsSplashPending => false;
+
+        public bool IsSplashOpen => false;
+
+        public void OpenSplash()
+        {
+        }
+
+        public void ChooseSplash(ContentId characterId, int branch)
+        {
+        }
     }
 
     /// <summary>

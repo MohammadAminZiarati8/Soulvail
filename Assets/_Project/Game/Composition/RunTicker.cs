@@ -646,9 +646,27 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
-    /// Opens the level-up for a pick that is owed, and holds or releases the pause to match.
+    /// Opens CH §5.4's half-tree moment or a level-up for a pick that is owed, and holds or releases
+    /// the pause to match.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <b>The splash is read first, and only one of the two may open on a frame</b> (M5-07a-ii rule
+    /// 5). Both can be owed at once — a sixth node taken between ticks and a kill that levelled on
+    /// the same tick — and <c>RunPause.Pause</c> throws for a second holder, so the choice is made
+    /// here rather than discovered. The splash wins because it is the rarer and more consequential
+    /// of the two, and because a player who took a node and then chose a discipline has seen them in
+    /// the order they happened. The other direction is core's: <c>RunState.IsSplashPending</c> is
+    /// false while an offer is on the table, so a level-up already mid-episode finishes first.
+    /// </para>
+    /// <para>
+    /// <b>The release runs before the acquire, and that ordering is the whole of why this is one
+    /// method rather than two.</b> The frame a splash becomes owed is usually the frame a level-up
+    /// stops being: written as two independent blocks, the splash would find the pause still held by
+    /// <c>PauseReason.LevelUp</c> and decline it, and the level-up block would then hand it back —
+    /// leaving the splash screen up over a running fight. Given back first, the reason that wants it
+    /// can take it on the same frame.
+    /// </para>
     /// <para>
     /// <b>The <em>when</em> belongs here, in the file that already writes the frame down</b>, and
     /// that is <see cref="CommandPhase"/>'s own argument (M3-08a rule 4): an ordering decision made
@@ -676,20 +694,38 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </remarks>
     private void LevelUpPhase()
     {
-        if (_progression.IsLevelUpPending)
+        if (_progression.IsSplashPending)
+        {
+            _progression.OpenSplash();
+        }
+        else if (_progression.IsLevelUpPending)
         {
             _progression.OpenLevelUp();
         }
 
-        bool wantsPause = _progression.HasOffer;
+        bool splash = _progression.IsSplashOpen;
+        bool offer = _progression.HasOffer;
 
-        if (wantsPause && !_pause.IsPaused)
+        // Given back first — see the remarks. Only ever this object's own two reasons: a
+        // PauseReason.Menu raised by M3-09's panel is neither stamped on nor stolen.
+        if (_pause.Holder == PauseReason.Splash && !splash)
         {
-            _pause.Pause(PauseReason.LevelUp);
+            _pause.Resume(PauseReason.Splash);
         }
-        else if (!wantsPause && _pause.Holder == PauseReason.LevelUp)
+        else if (_pause.Holder == PauseReason.LevelUp && !offer)
         {
             _pause.Resume(PauseReason.LevelUp);
+        }
+
+        // And taken second, guarded on nothing else holding it, so a screen collision is a screen
+        // that does not open rather than a dead run.
+        if (splash && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.Splash);
+        }
+        else if (offer && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.LevelUp);
         }
     }
 

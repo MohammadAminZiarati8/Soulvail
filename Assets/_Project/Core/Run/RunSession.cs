@@ -696,6 +696,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow);
 
+        // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
+        // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
+        // spends no pick, draws from no stream, grants no node, happens once a run and may
+        // legitimately never happen at all.
+        //
+        // It takes the registry as well as the catalog, and that is rule 10's "the branch is not
+        // installed": a borrowed node carrying a primitive nobody registered — or a `ModifyStat`
+        // aimed at minions on a class that raises none — has to be refused *before*
+        // `TreeRules.InstallSplash` commits, because `SkillTree.OnSplashInstalled`'s own sweep runs
+        // after it and a throw there would leave the two disagreeing about how many nodes the run
+        // has. That second check is M5-07a-i's handed-over finding: `RequireNoMinionTarget` below
+        // sweeps the *primary* tree at Start and a branch borrowed mid-run never meets it.
+        SplashFlow splash = tree is null
+            ? null
+            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -714,7 +730,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             lures,
             minions,
             rise,
-            levelUp);
+            levelUp,
+            splash);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -745,6 +762,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // the phone down in front of. It is also the reason this task depends on M3-01b rather
             // than the other way round.
             //
+            // **Above the replay, and that is an AR §18.1 row rather than a preference**
+            // (M5-07a-ii rule 6). CH §5.4's branch is *derived* from the saved ids rather than
+            // written down — every foreign id in TakenNodeIds is in the same branch of the same
+            // class, because the choice is locked for the run — so the branch is resolved here and
+            // installed before SkillTree.Restore replays the takes. Replayed first, the tree would
+            // refuse a node it has never heard of, with a message about content validation.
+            //
+            // Silent, like everything else in this block. **The one case it costs is stated rather
+            // than hidden**: a run saved after the choice and before its first borrowed pick carries
+            // no foreign id, so TryDerive answers false and the moment is owed again. The window is
+            // narrow — a boundary snapshot is taken at stage edges (M2-14a) — and the failure is a
+            // second choice rather than a broken tree. A saved id that resolves to no class at all
+            // is left for SkillTree.Restore's existing refusal, which is the one that names it.
+            //
+            // This is what makes a **v4** and a migration unnecessary for a single enum-sized fact,
+            // which is LevelUpFlow.GrantOverflow's bargain exactly.
+            if (splash is not null &&
+                splash.TryDerive(resumed.TakenNodeIds, out ContentId lender, out int lentBranch))
+            {
+                splash.Restore(lender, lentBranch);
+            }
+
             // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
             // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
             // for a class with no tree, which ignores the ids the same way this method did between
@@ -1481,6 +1520,60 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         }
 
         State.LevelUp.Choose(index, _random.Offers);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <see cref="IsLevelUpPending"/>'s reasoning — a read, false outside a run — with the fourth
+    /// term <c>RunState.IsSplashPending</c> carries: no offer may be on the table, or the splash
+    /// screen would open over a level-up's second card and the two would want one <c>RunPause</c>.
+    /// </remarks>
+    public bool IsSplashPending => IsRunning && State.IsSplashPending;
+
+    /// <inheritdoc />
+    /// <remarks><see cref="HasOffer"/>'s reasoning — a read, false outside a run.</remarks>
+    public bool IsSplashOpen => IsRunning && State.IsSplashOpen;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>Guarded on the same read the frame loop polls, rather than forwarded blind</b>, which is
+    /// where this differs from <see cref="OpenLevelUp"/>: that one is idempotent inside the flow and
+    /// this one has a term the flow cannot see — an offer on the table belongs to a different screen
+    /// holding a pause that admits one holder. Null for a class with no tree, which is the same
+    /// silence <see cref="OpenLevelUp"/> keeps (M3-08a rule 5).
+    /// <para>
+    /// It consumes no stream: CH §5.4's moment offers every candidate in catalog order, so there is
+    /// nothing here for a second call to spend (rule 4).
+    /// </para>
+    /// </remarks>
+    public void OpenSplash()
+    {
+        RequireRunning(nameof(OpenSplash));
+
+        if (State.IsSplashPending)
+        {
+            State.Splash.Open();
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Throws rather than no-ops when the class has no tree, unlike <see cref="OpenSplash"/>, for
+    /// <see cref="ChooseOffer"/>'s reason: an open call is the frame loop asking a standing question,
+    /// where this one is a view reporting a tap on a card that cannot exist.
+    /// </remarks>
+    public void ChooseSplash(ContentId characterId, int branch)
+    {
+        RequireRunning(nameof(ChooseSplash));
+
+        if (State.Splash is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so CH §5.4's moment can never open and there is "
+                    + "nothing to choose. A view sent ChooseSplash without a screen to send it for.");
+        }
+
+        State.Splash.Choose(characterId, branch);
     }
 
     /// <inheritdoc />

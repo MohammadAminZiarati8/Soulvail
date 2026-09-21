@@ -43,10 +43,18 @@ namespace Soulvail.Core.Progression;
 /// what the next level-up screen shows.
 /// </para>
 /// <para>
-/// <b>Allocates nothing after construction.</b> Two buffers sized <see cref="TreeRules.Count"/> and
-/// three per-branch counters on the stack, refilled per call. A level-up screen is a moment the
-/// frame is already spending on UI, but the buffers exist so that a reroll — a second
-/// <see cref="Draw"/> against the same generator — costs nothing either.
+/// <b>Allocates nothing after construction, bar one regrow a run.</b> Two buffers sized
+/// <see cref="TreeRules.Count"/> and a per-branch counter each on the stack, refilled per call. A
+/// level-up screen is a moment the frame is already spending on UI, but the buffers exist so that a
+/// reroll — a second <see cref="Draw"/> against the same generator — costs nothing either. The
+/// exception is a run that borrows CH §5.4's branch: the tree grows, and the first draw after it
+/// replaces both buffers once (see <see cref="Draw"/>).
+/// </para>
+/// <para>
+/// <b>Everything is indexed against <see cref="TreeRules.BranchCount"/>, which is the run's number
+/// of branches, and never against <see cref="SkillTreeSpec.BranchCount"/>, which is the class's.</b>
+/// The two are equal until a branch is borrowed, and the difference is what made the borrowed
+/// branch fail here rather than be refused where it was chosen.
 /// </para>
 /// <para>
 /// <b>Which stat a node moves is not read here.</b> The generator sees kinds and branches. A weight
@@ -84,18 +92,27 @@ public sealed class OfferGenerator
     /// Everything available at the moment of the call, and then what is left as picks are made.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Sized by <see cref="TreeRules.Count"/> because <see cref="SkillTree.Available"/> refuses a
     /// destination shorter than the whole tree rather than truncating it — a short buffer would
     /// silently narrow the offer, which is a content-shaped bug with no symptom (M3-03).
+    /// </para>
+    /// <para>
+    /// <b>That count can grow, which is why neither buffer is <see langword="readonly"/>.</b>
+    /// <c>LevelUpFlow</c> builds this generator in its own constructor — before a run could have
+    /// borrowed CH §5.4's branch — so both are sized from a number that is three branches' worth at
+    /// the time and four later. They are regrown in <see cref="Draw"/>, once, on the first pick
+    /// after a splash.
+    /// </para>
     /// </remarks>
-    private readonly ContentId[] _candidates;
+    private ContentId[] _candidates;
 
     /// <summary>Each remaining candidate's weight for the pick being made, indexed as above.</summary>
     /// <remarks>
     /// Refilled per pick rather than per call: every pick changes at least one branch's drawn count,
     /// so every survivor's weight is a different number the next time round.
     /// </remarks>
-    private readonly float[] _weights;
+    private float[] _weights;
 
     /// <param name="rules">
     /// The class's tree, resolved and cross-checked — the same instance the <see cref="SkillTree"/>
@@ -187,12 +204,28 @@ public sealed class OfferGenerator
 
         RequireOwnTree(tree);
 
+        // **The one allocation this class makes after construction, and it happens at most once a
+        // run.** A branch borrowed under CH §5.4 grows the tree the buffers were sized for, and
+        // `Available` refuses a destination shorter than the tree rather than truncating it — so a
+        // generator built before the splash would fail with a message about a buffer. An offer is
+        // drawn once per level and this is not the frame path (AR §14, and `EnemyRegistry`'s own
+        // bargain); the next draw finds the buffers already big enough and grows nothing.
+        if (_candidates.Length < _rules.Count)
+        {
+            _candidates = new ContentId[_rules.Count];
+            _weights = new float[_rules.Count];
+        }
+
         int remaining = tree.Available(_candidates);
         int picks = count < remaining ? count : remaining;
 
-        // Three counters rather than a field, because they mean nothing between calls: a branch's
-        // penalty is "already drawn *this call*". On the stack, so it costs no allocation (AR §7).
-        Span<int> drawnPerBranch = stackalloc int[SkillTreeSpec.BranchCount];
+        // Counters rather than a field, because they mean nothing between calls: a branch's penalty
+        // is "already drawn *this call*". Sized by the *run's* branches — three, or four once a
+        // branch has been borrowed — and never by `SkillTreeSpec.BranchCount`, which is what a
+        // class authors: read as the run's number it made a borrowed node an
+        // IndexOutOfRangeException at `drawnPerBranch[branch]++` below. On the stack, so it costs
+        // no allocation (AR §7), and at most four.
+        Span<int> drawnPerBranch = stackalloc int[_rules.BranchCount];
 
         int ownedActives = tree.OwnedActives;
 

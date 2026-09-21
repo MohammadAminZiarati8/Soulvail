@@ -130,6 +130,91 @@ public readonly struct BossRosterEntry
 }
 
 /// <summary>
+/// What one CH §5.2 Overflow level is worth in this mode: the fraction it adds to the player's
+/// weapon damage, and the fraction it adds to their maximum hit points.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It belongs to the mode for the reason <see cref="XpCurve"/> does</b> (M5-06b rule 9). GD §4.5
+/// already makes <em>"how fast a mode levels you"</em> the mode's own statement, and what a level is
+/// worth <em>when there is nothing left to buy</em> is the same sentence finished. Until M5-06b both
+/// numbers were <c>public const float</c> on <c>LevelUpFlow</c>, which made retuning the single most
+/// load-bearing number in the levelling curve a rebuild rather than an Inspector edit — M3-12c rule
+/// 8's table has twenty-nine Overflow levels against twelve nodes at stage 30, so more than half of
+/// a deep run's power came through here (ADR-0006, <see href="../../../../Docs/plan/ROADMAP.md">ledger
+/// row 5(i)</see>).
+/// </para>
+/// <para>
+/// A <see langword="readonly"/> struct beside <see cref="RosterEntry"/> and
+/// <see cref="BossRosterEntry"/> rather than in a file of its own: it is two numbers and no
+/// arithmetic. <see cref="XpCurve"/> earned its own file by carrying <c>ToReach</c>; this carries
+/// nothing a caller could not write, and <c>LevelUpFlow</c> turns the pair into two
+/// <c>ModifyStat</c>s once at construction.
+/// </para>
+/// <para>
+/// <b><c>default(OverflowSpec)</c> is legal and means <em>Overflow grants nothing</em></b>, which is
+/// why <see cref="ModeSpec"/> makes no second check of it the way it does of a defaulted
+/// <see cref="XpCurve"/>. AR §18.3's <em>"a struct with an invariant needs the check at both ends"</em>
+/// does not bite here, for <c>TriggerClause</c>'s reason: the invariant is that both numbers are
+/// finite and not negative, and zero is both. A mode that says nothing about Overflow is a mode
+/// whose spare levels are worth nothing — a statement, not an omission.
+/// </para>
+/// </remarks>
+public readonly struct OverflowSpec
+{
+    /// <param name="damage">
+    /// What one Overflow level adds to <c>PlayerStat.WeaponDamage</c>, as a
+    /// <c>ModifierKind.PercentAdd</c> fraction — 0.02 is +2 %. Zero is legal.
+    /// </param>
+    /// <param name="maxHp">
+    /// What one Overflow level adds to <c>PlayerStat.MaxHp</c>, on the same terms. Zero is legal.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Either value is NaN, infinite or negative. Refused where the curve is <em>authored</em>
+    /// rather than where it is granted, for <c>ModifyStat</c>'s reason: a NaN here poisons the
+    /// player's damage the first time a level has nothing left to buy, which is thirty minutes into
+    /// a run and a long way from the asset that caused it. A negative one is a mode that punishes
+    /// the player for levelling.
+    /// </exception>
+    public OverflowSpec(float damage, float maxHp)
+    {
+        Damage = Require(damage, nameof(damage));
+        MaxHp = Require(maxHp, nameof(maxHp));
+    }
+
+    /// <summary>The fraction one Overflow level adds to weapon damage. 0.02 in Descent.</summary>
+    public float Damage { get; }
+
+    /// <summary>The fraction one Overflow level adds to maximum hit points. 0.02 in Descent.</summary>
+    public float MaxHp { get; }
+
+    /// <summary>
+    /// The one door, written once rather than twice: both numbers are the same kind of thing and
+    /// owe the same sentence.
+    /// </summary>
+    /// <remarks>
+    /// <c>!(value &gt;= 0f)</c> rather than <c>value &lt; 0f</c>, so NaN is refused with the
+    /// negatives instead of waved through — every comparison against NaN is false (AR §18.3) — and
+    /// infinity separately, because it passes a <c>&gt;= 0</c> test.
+    /// </remarks>
+    private static float Require(float value, string field)
+    {
+        if (!(value >= 0f) || float.IsInfinity(value))
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Overflow {field} must be a finite fraction, zero or more. It is added to "
+                    + "a player stat as a PercentAdd modifier once per level with nothing left to "
+                    + "buy (CH §5.2), so a NaN poisons that stat for the rest of the run and a "
+                    + "negative one makes levelling a punishment.");
+        }
+
+        return value;
+    }
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -235,6 +320,14 @@ public sealed class ModeSpec
     /// reaches a boss stage, which is every mode in every build until M4-02 authors one.
     /// <b>Order is meaningful and the first match wins</b> — see <see cref="TryGetBossFor"/>.
     /// </param>
+    /// <param name="overflow">
+    /// CH §5.2's Overflow for this mode — what a level is worth when there is nothing left to buy
+    /// (M5-06b rule 9). <b>Optional, and last, which is placement rather than importance:</b> it
+    /// belongs beside <paramref name="xp"/>, and putting it there would have moved forty-two call
+    /// sites for a widening that changes nothing any of them says. Omitted, it is
+    /// <c>default(OverflowSpec)</c> — a mode whose spare levels are worth nothing, which is the
+    /// honest reading of a mode that never mentioned them.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -266,7 +359,8 @@ public sealed class ModeSpec
         XpCurve xp,
         IReadOnlyList<RosterEntry> roster,
         IReadOnlyList<ContentId> arenas = null,
-        IReadOnlyList<BossRosterEntry> bossRoster = null)
+        IReadOnlyList<BossRosterEntry> bossRoster = null,
+        OverflowSpec overflow = default)
     {
         if (id.Value is null)
         {
@@ -327,6 +421,11 @@ public sealed class ModeSpec
         Scaling = scaling;
         Xp = xp;
 
+        // No second look, unlike the curve above: OverflowSpec's own constructor is the single
+        // account of what a legal one is, and its zeroed form satisfies that account — see the
+        // remarks on that type for why AR §18.3's both-ends rule does not reach it.
+        Overflow = overflow;
+
         _roster = CopyRoster(roster, id);
 
         // Wrapped rather than handed out as the array it is: an array exposed as
@@ -386,6 +485,16 @@ public sealed class ModeSpec
     /// fast the player pushes back — and a mode is free to change one without the other.
     /// </remarks>
     public XpCurve Xp { get; }
+
+    /// <summary>
+    /// CH §5.2's Overflow for this mode — 2 % damage and 2 % hit points per spare level in Descent.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>RunSession.Start</c>, which hands it to the run's one <c>LevelUpFlow</c>, and by
+    /// nothing else. It sits beside <see cref="Xp"/> for that type's reason and finishes its
+    /// sentence: one says what a level costs, the other what a level is worth once the tree is full.
+    /// </remarks>
+    public OverflowSpec Overflow { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

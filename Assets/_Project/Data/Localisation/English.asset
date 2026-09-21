@@ -163,3 +163,57 @@ MonoBehaviour:
     _text: Descent
   - _key: character.gravecaller.name
     _text: Gravecaller
+  - _key: skill.gravecaller.exhume.name
+    _text: Exhume
+  - _key: skill.gravecaller.exhume.description
+    _text: Raises three Wights around you.
+  - _key: skill.gravecaller.grave-strength.name
+    _text: Grave Strength
+  - _key: skill.gravecaller.grave-strength.description
+    _text: +20% Wight damage.
+  - _key: skill.gravecaller.deeper-graves.name
+    _text: Deeper Graves
+  - _key: skill.gravecaller.deeper-graves.description
+    _text: Exhume recharges a quarter sooner.
+  - _key: skill.gravecaller.knitted-bone.name
+    _text: Knitted Bone
+  - _key: skill.gravecaller.knitted-bone.description
+    _text: +50% Wight health.
+  - _key: skill.gravecaller.sharpened-bone.name
+    _text: Sharpened Bone
+  - _key: skill.gravecaller.sharpened-bone.description
+    _text: +15% bolt damage.
+  - _key: skill.gravecaller.quick-hands.name
+    _text: Quick Hands
+  - _key: skill.gravecaller.quick-hands.description
+    _text: +12% fire rate.
+  - _key: skill.gravecaller.marrow-tithe.name
+    _text: Marrow Tithe
+  - _key: skill.gravecaller.marrow-tithe.description
+    _text: Each kill heals you 2.
+  - _key: skill.gravecaller.pale-vigour.name
+    _text: Pale Vigour
+  - _key: skill.gravecaller.pale-vigour.description
+    _text: +15 maximum health.
+  - _key: skill.gravecaller.shroud-veil.name
+    _text: Shroud Veil
+  - _key: skill.gravecaller.shroud-veil.description
+    _text: Shroudstep recharges a fifth sooner.
+  - _key: skill.gravecaller.rot-feast.name
+    _text: Rot Feast
+  - _key: skill.gravecaller.rot-feast.description
+    _text: +15% experience from kills.
+  - _key: skill.gravecaller.withering-step.name
+    _text: Withering Step
+  - _key: skill.gravecaller.withering-step.description
+    _text: +0.3 m/s movement speed.
+  - _key: skill.gravecaller.restless-dead.name
+    _text: Restless Dead
+  - _key: skill.gravecaller.restless-dead.description
+    _text: +30% Wight speed.
+  - _key: tree.gravecaller.legion
+    _text: Legion
+  - _key: tree.gravecaller.grave-work
+    _text: Grave-Work
+  - _key: tree.gravecaller.rot
+    _text: Rot

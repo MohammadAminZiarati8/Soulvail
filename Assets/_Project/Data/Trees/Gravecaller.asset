@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af5b70d26e54754493bd72f817c8629, type: 3}
+  m_Name: Gravecaller
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillTreeDefinition
+  _id: tree.gravecaller
+  _character: {fileID: 11400000, guid: 6411b5d0347b42d429b770b1ed2db1bc, type: 2}
+  _branches:
+  - _nameKey: tree.gravecaller.legion
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 510c9681e98d3bf163a73933244fb807, type: 2}
+      - {fileID: 11400000, guid: 404bf0490a9121ef46c85d5045c5d1b6, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: ee5b75f25916b6cc471ebf6537af8c20, type: 2}
+      - {fileID: 11400000, guid: d2a218e82ec47305535604cf2f0a71b7, type: 2}
+  - _nameKey: tree.gravecaller.grave-work
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: aabb0a7a57a17666804c0400ac621ec6, type: 2}
+      - {fileID: 11400000, guid: 5eef6b5ce47fdfd12736ac5a5026f66b, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 533a41c4de9ccc1c9ba94e59d0b03db2, type: 2}
+      - {fileID: 11400000, guid: 7b2a50c9362684a7441785db4d3af618, type: 2}
+  - _nameKey: tree.gravecaller.rot
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 51ac463f28e642ed69af5f18240f9432, type: 2}
+      - {fileID: 11400000, guid: 1652e076d35c6caa6f6731eebf1a48f9, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: fd3a71b2efd19c97a39c138168ce0112, type: 2}
+      - {fileID: 11400000, guid: cfacbf4cc414bc1451cbe32f565ad105, type: 2}

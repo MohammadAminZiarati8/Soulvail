@@ -548,6 +548,25 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   carries these values" test vacuous** — it passes identically if the YAML key binds to nothing.
   Prove the binding with `AssetDatabase.ForceReserializeAssets`, which drops keys matching no field
   (M1-03).
+- **Moving a number into an asset moves it out of `Soulvail.Tests.Core`'s reach, and ADR-0006 does
+  that on purpose.** That assembly references `Soulvail.Core` alone, so it has no `AssetDatabase`
+  and cannot read the authored value — which means every `const` promoted to a `ScriptableObject`
+  field takes its EditMode assertions with it. **Do not answer this by re-pointing the row at a
+  fixture value it invents**, which is a test agreeing with itself. Write the number out as a
+  `private const` in the core-side fixture with a remark naming the asset, and put the row that
+  *opens* the asset in `Soulvail.Tests.Game`; the two meet at the number and a retune reddens
+  whichever one was not updated. `TimeToKillTests` ↔ `OathboundTreeTests` over `KeenCenser.asset`
+  (M3-12c) and `LevelUpFlowTests` ↔ `GravecallerTreeTests` over `Descent.asset`'s Overflow block
+  (M5-06b) are the two shipped pairs.
+- **A content sweep's counts are equalities until a second instance of that kind ships, and then
+  three of them go red at once.** At M5-06b a second character's tree, twelve skills and a sixth
+  effect primitive reddened `OathboundTreeTests`' boot row (`arraySize == 12`),
+  `ContentValidationTests`' three floors and all three `SkillTreeValidationTests.NoTree_CanStarve_*`
+  walks — none of which was about the new content. **A fixture named for one piece of content must
+  assert a superset over its own ids, never a total**, and a hand-kept list of primitives (that
+  file's `Registry()`, `ContentValidationTests.Written`) is a list a new primitive has to be added
+  to. Before authoring content, grep the validation fixtures for its **kind**, not its name
+  (M5-02, M5-06b).
 - **Never pin an FSM's transitions to exact frame counts.** A running sum of 1/120 s steps lands
   within an ulp of 0.4 at the forty-eighth, so which frame a 0.4 s windup completes on is float
   accumulation. Tick until the state arrives — which is also the only way to observe a one-tick

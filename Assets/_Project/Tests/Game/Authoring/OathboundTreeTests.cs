@@ -583,10 +583,17 @@ public sealed class OathboundTreeTests
         SerializedProperty skills = serialized.FindProperty("_skills");
         SerializedProperty trees = serialized.FindProperty("_trees");
 
-        // **Empty since M3-02b, and this is the task that fills them** (M3-02b rule 7). The moment
-        // the milestone becomes playable is this array reading 12 instead of 0.
-        Assert.That(skills.arraySize, Is.EqualTo(12));
-        Assert.That(trees.arraySize, Is.EqualTo(1));
+        // **Empty since M3-02b, and M3-12c is the task that filled them** (M3-02b rule 7). The
+        // moment the milestone became playable was this array reading 12 instead of 0.
+        //
+        // **It stopped being an equality at M5-06b and this fixture is what found out.** A second
+        // class's twelve nodes and its tree went into the same two arrays, so a row asserting 12
+        // and 1 was asserting that nobody had shipped since — which is a claim about the whole
+        // project made from a file about one class. What is this fixture's is that *its* twelve are
+        // all there, each once; what the arrays hold in total is
+        // `SkillAuthoringTests.Boot_ScopeCarriesTheTwoLists`'.
+        Assert.That(skills.arraySize, Is.GreaterThanOrEqualTo(12));
+        Assert.That(trees.arraySize, Is.GreaterThanOrEqualTo(1));
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -598,11 +605,19 @@ public sealed class OathboundTreeTests
             Assert.That(ids.Add(node.Id), Is.True, $"_skills[{i}] repeats {node.Id}.");
         }
 
-        Assert.That(ids, Is.EquivalentTo(NodeIds));
+        Assert.That(ids, Is.SupersetOf(NodeIds));
 
-        var tree = trees.GetArrayElementAtIndex(0).objectReferenceValue as SkillTreeDefinition;
-        Assert.That(tree, Is.Not.Null, "_trees[0] is an empty slot.");
-        Assert.That(tree.Id, Is.EqualTo("tree.oathbound"));
+        var treeIds = new HashSet<string>(StringComparer.Ordinal);
+
+        for (int i = 0; i < trees.arraySize; i++)
+        {
+            var slot = trees.GetArrayElementAtIndex(i).objectReferenceValue as SkillTreeDefinition;
+
+            Assert.That(slot, Is.Not.Null, $"_trees[{i}] is an empty slot.");
+            Assert.That(treeIds.Add(slot.Id), Is.True, $"_trees[{i}] repeats {slot.Id}.");
+        }
+
+        Assert.That(treeIds, Contains.Item("tree.oathbound"));
 
         // And the answer that has been false in every build ever played.
         Assert.That(

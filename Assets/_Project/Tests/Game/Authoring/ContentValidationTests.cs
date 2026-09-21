@@ -134,15 +134,18 @@ public sealed class ContentValidationTests
     /// A sweep over an empty set passes, silently and for ever — the one way a fixture like this can
     /// be green while doing nothing. These floors are what say the <c>t:</c> filters still match.
     /// They are floors, not equalities, because adding content must not turn this row red; M3-12c's
-    /// own suite is what pins the twelve.
+    /// own suite is what pins the Oathbound's twelve and M5-06b's pins the Gravecaller's.
+    /// <b>They are still raised when content ships</b>, which is what keeps them floors worth
+    /// having: left at twelve after a second tree landed, the skill filter could stop matching half
+    /// the project and the row would say nothing.
     /// </remarks>
     private const int ShippedCharacters = 2;
 
     private const int ShippedEnemies = 3;
     private const int ShippedModes = 1;
-    private const int ShippedSkills = 12;
-    private const int ShippedTrees = 1;
-    private const int ShippedEffects = 13;
+    private const int ShippedSkills = 24;
+    private const int ShippedTrees = 2;
+    private const int ShippedEffects = 25;
     private const int ShippedTables = 1;
 
     /// <summary>

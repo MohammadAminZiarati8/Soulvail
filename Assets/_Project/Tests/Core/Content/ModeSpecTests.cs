@@ -291,6 +291,62 @@ public sealed class ModeSpecTests
             "Held, not copied: a ScalingSpec is immutable, so sharing one is what a spec does.");
     }
 
+    // ---- CH §5.2's Overflow, the mode's as of M5-06b (ledger row 5(i)) ---------------------------
+
+    [Test]
+    public void Overflow_IsWhatItWasGiven()
+    {
+        // Beside the XP curve and finishing its sentence: one says what a level costs, the other
+        // what a spare one buys once the tree is full (GD §4.5, M5-06b rule 9).
+        ModeSpec mode = new ModeSpec(
+            Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+            overflow: new OverflowSpec(0.05f, 0.01f));
+
+        Assert.That(mode.Overflow.Damage, Is.EqualTo(0.05f).Within(1e-7f));
+        Assert.That(mode.Overflow.MaxHp, Is.EqualTo(0.01f).Within(1e-7f), "two numbers, not one.");
+    }
+
+    [Test]
+    public void Overflow_OmittedIsNothing()
+    {
+        // **Last and optional, which is placement rather than importance** — it belongs beside the
+        // XP curve, and putting it there would have moved forty-two call sites for a widening that
+        // changes nothing any of them says. Omitted it is `default(OverflowSpec)`, which is the
+        // honest reading of a mode that never mentioned Overflow: spare levels are worth nothing.
+        // Unlike a defaulted XpCurve this is legal content rather than a hole, which is why the
+        // constructor makes no second check of it.
+        Assert.That(Mode(DesignRoster).Overflow.Damage, Is.Zero);
+        Assert.That(Mode(DesignRoster).Overflow.MaxHp, Is.Zero);
+    }
+
+    [Test]
+    public void Overflow_RefusesAnImpossibleValue()
+    {
+        // Refused where the curve is *authored*, for ModifyStat's reason: a NaN here is a
+        // PercentAdd modifier that poisons a player stat for the rest of the run, thirty minutes
+        // from the asset that caused it. The message names the field, so a designer reading the
+        // Console knows which of the two moved.
+        foreach (float bad in new[] { float.NaN, float.PositiveInfinity, -0.01f })
+        {
+            var damage = Assert.Throws<ArgumentOutOfRangeException>(
+                () => new ModeSpec(
+                    Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+                    overflow: new OverflowSpec(bad, 0.02f)));
+
+            Assert.That(damage.ParamName, Is.EqualTo("damage"), $"{bad} on the damage field.");
+
+            var maxHp = Assert.Throws<ArgumentOutOfRangeException>(
+                () => new ModeSpec(
+                    Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+                    overflow: new OverflowSpec(0.02f, bad)));
+
+            Assert.That(maxHp.ParamName, Is.EqualTo("maxHp"), $"{bad} on the maxHp field.");
+        }
+
+        // And the shape that is legal and looks like the ones above: a mode that pays nothing.
+        Assert.DoesNotThrow(() => new OverflowSpec(0f, 0f));
+    }
+
     [Test]
     public void Ctor_CopiesRoster()
     {

@@ -77,17 +77,6 @@ public sealed class SkillTreeValidationTests
     /// </summary>
     private const int Seed = 20260918;
 
-    /// <summary>
-    /// The one class <see cref="EveryShippedCharacter_HasATree"/> skips, and the only one it ever
-    /// may: M5-02 authored the Gravecaller's numbers and M5-06 authors its twelve nodes, so for the
-    /// tasks between them the project ships a class with no tree on purpose.
-    /// </summary>
-    /// <remarks>
-    /// Named here rather than expressed as a rule, so that the skip covers this omission and not the
-    /// next one — and <see cref="TheTreelessClass_IsStillTreeless"/> is what makes it temporary.
-    /// </remarks>
-    private const string TreelessUntilM506 = "character.gravecaller";
-
     // ---- Rule 5: CH §5's shape --------------------------------------------------------------------
 
     [Test]
@@ -402,6 +391,13 @@ public sealed class SkillTreeValidationTests
         // gap (f), and M3-02a rule 11's named obligation: a character with no tree is legal in the
         // catalog and a run-breaking omission in a shipped build. This is what retires M3-03 rule
         // 10's null-tree branch from a real build.
+        //
+        // **The Gravecaller's named skip is gone as of M5-06b, with the row that dated it.** From
+        // M5-02 to M5-06a the project shipped one authored class with no tree on purpose, and this
+        // sweep exempted `character.gravecaller` by name — narrowly, so the exemption could not
+        // quietly cover the next omission — under `TheTreelessClass_IsStillTreeless`, whose whole
+        // job was to go red the day the tree landed. It did, and both halves were deleted rather
+        // than moved: the sweep is the stronger check and it is doing the work again.
         ContentCatalog catalog = ShippedCatalog();
         var problems = new List<string>();
 
@@ -416,11 +412,6 @@ public sealed class SkillTreeValidationTests
 
             CharacterSpec spec = definition.ToSpec();
 
-            if (spec.Id.Value == TreelessUntilM506)
-            {
-                continue;
-            }
-
             if (!catalog.TryGetTreeFor(spec.Id, out SkillTreeSpec _))
             {
                 problems.Add(
@@ -433,33 +424,27 @@ public sealed class SkillTreeValidationTests
     }
 
     [Test]
-    public void TheTreelessClass_IsStillTreeless()
+    public void BothShippedClasses_ResolveTheirOwnTree()
     {
-        // **The exemption above, asserted rather than tolerated, so it cannot outlive its reason.**
-        // M5-02 ships the Gravecaller's numbers and M5-06 ships its twelve nodes, so between the two
-        // there is one authored class with no tree — which is the state the sweep above exists to
-        // refuse, and it is refusing something true. It is skipped by name rather than by a rule
-        // ("a class no menu offers"), because a rule would quietly cover the next omission too.
-        //
-        // **This row goes red the day M5-06 merges, and the fix is to delete both it and the
-        // `continue` above.** That is the point: a green suite is what says the exemption is gone.
+        // **What `TheTreelessClass_IsStillTreeless` turned into when it expired.** That row said
+        // "the Gravecaller has no tree, and this exemption is temporary"; it went red at M5-06b as
+        // designed. What is worth keeping from it is the other half it also asserted — that a class
+        // resolves *its own* tree rather than merely some tree — which is now a claim about two
+        // classes instead of a claim about one plus an excuse.
         ContentCatalog catalog = ShippedCatalog();
 
-        Assert.That(
-            catalog.TryGetTreeFor(new ContentId(TreelessUntilM506), out SkillTreeSpec _),
-            Is.False,
-            $"'{TreelessUntilM506}' now has a tree, so EveryShippedCharacter_HasATree no longer "
-                + "needs to skip it. Delete this row and the skip beside it — the sweep is the "
-                + "stronger check and it should be doing the work.");
+        foreach (string id in new[] { "character.oathbound", "character.gravecaller" })
+        {
+            var characterId = new ContentId(id);
 
-        // And the half that says the exemption is narrow: nothing reachable from a menu is in it.
-        // PendingRun.CharacterId is written by a screen that offers one class until M5-07 (M5-02
-        // rule 9), so no run this build can start levels into an empty tree.
-        Assert.That(
-            catalog.TryGetTreeFor(new ContentId("character.oathbound"), out SkillTreeSpec oathbound),
-            Is.True);
+            Assert.That(
+                catalog.TryGetTreeFor(characterId, out SkillTreeSpec tree),
+                Is.True,
+                $"'{id}' resolves no tree, so every level-up in a run of it pays Overflow.");
 
-        Assert.That(oathbound, Is.Not.Null);
+            Assert.That(tree, Is.Not.Null);
+            Assert.That(tree.CharacterId, Is.EqualTo(characterId), $"'{id}' got someone else's.");
+        }
     }
 
     [Test]
@@ -726,6 +711,17 @@ public sealed class SkillTreeValidationTests
         registry.Register<KnockbackOnSwing>(new Ignoring<KnockbackOnSwing>());
         registry.Register<GrantShield>(new Ignoring<GrantShield>());
         registry.Register<SpawnHealZone>(new Ignoring<SpawnHealZone>());
+
+        // **The sixth, and it arrived exactly as the remark above predicted: loudly.** M5-06b's
+        // Exhume is the first shipped node to cast a RaiseMinions, and the three starve walks went
+        // red together with `no handler is registered for it`.
+        //
+        // **Registered unconditionally here, unlike in RunSession.Start**, which registers it only
+        // for a class that has an army — because these walks are about tier gating and nothing
+        // else. Whether a *run* can answer for the primitive is M5-06a rule 11's refusal, which
+        // RunSession owns and RunSessionTests asserts; a walk that skipped the Gravecaller's tree
+        // for it would stop proving the one thing it exists to prove.
+        registry.Register<RaiseMinions>(new Ignoring<RaiseMinions>());
 
         return registry;
     }

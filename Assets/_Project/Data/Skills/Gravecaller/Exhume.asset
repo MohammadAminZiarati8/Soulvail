@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: Exhume
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.gravecaller.exhume
+  _nameKey: skill.gravecaller.exhume.name
+  _descriptionKey: skill.gravecaller.exhume.description
+  _kind: 1
+  _effects: []
+  _cooldown: 20
+  _trigger:
+  - _field: 9
+    _comparison: 0
+    _threshold: 2
+  _onCast:
+  - {fileID: 11400000, guid: 6b42fd2cbc635ee8d0151e5c68da27d3, type: 2}
+  _parent: {fileID: 0}

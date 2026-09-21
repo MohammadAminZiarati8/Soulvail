@@ -149,6 +149,27 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Descent_CarriesItsOverflow()
+    {
+        // **CH §5.2's other half, on the asset for the first time** (M5-06b rules 8, 9, 11). From
+        // M3-08a to M5-06b these two were `public const float` on LevelUpFlow, so what more than
+        // half of a deep run's power is worth could not be retuned without a rebuild — ledger row
+        // 5(i). Traps §7 applies exactly as it does to the XP row above: OverflowBlock's C#
+        // initialisers *are* 0.02 and 0.02, so Descent_EveryYamlKeyBindsToAField is the row that
+        // can tell a bound key from a dropped one and this one cannot.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        OverflowSpec overflow = definition.ToSpec().Overflow;
+
+        // **Rule 11: the shipped values are the values that shipped.** Moving a number out of code
+        // and into an asset is an ADR-0006 change, not a balance change, and these two literals are
+        // what says so. Retuning them is M8-05's, and now costs an Inspector edit.
+        Assert.That(overflow.Damage, Is.EqualTo(0.02f).Within(1e-7f));
+        Assert.That(overflow.MaxHp, Is.EqualTo(0.02f).Within(1e-7f));
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

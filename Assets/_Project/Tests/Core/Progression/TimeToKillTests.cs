@@ -32,8 +32,9 @@ namespace Soulvail.Tests.Core.Progression;
 /// thing that makes this fixture worth writing. The Husk's hit points at a depth come from
 /// <see cref="DepthScaling"/> applied to the shipped 36, with <see cref="Scalings.Design"/>'s curves
 /// (identical to <c>Descent.asset</c>'s, field for field), so a retune of <c>h(n)</c> moves these
-/// rows. Overflow's per-level damage comes from <see cref="LevelUpFlow.OverflowDamage"/> rather than
-/// from the 2 % anybody typed. <b>The spec's table says 66 and 99 hit points; the shipped curve says
+/// rows. Overflow's per-level damage is <see cref="OverflowPerLevel"/>, which is what that same
+/// asset authors as of M5-06b rather than the 2 % anybody typed — see that field for where the
+/// number is checked against the file. <b>The spec's table says 66 and 99 hit points; the shipped curve says
 /// 66.24 and 98.64</b>, and a row that hard-coded the former would be asserting the prose. The hits
 /// still land 3 / 4 / 5 either way, which is the table being right for a reason it did not state.
 /// </para>
@@ -120,6 +121,21 @@ public sealed class TimeToKillTests
     /// How many nodes M3-12c's tree holds — the number a level stops being able to buy one at.
     /// </summary>
     private const int TreeNodeCount = 12;
+
+    /// <summary>
+    /// What <c>Descent.asset</c> authors per Overflow level, as of M5-06b — written out, for the
+    /// reason the Censer's and the Bolt's numbers are.
+    /// </summary>
+    /// <remarks>
+    /// <b>The source of this number changed at M5-06b and the claim got stronger for it.</b> It
+    /// used to be <c>LevelUpFlow.OverflowDamage</c>, a <c>public const</c> this assembly could
+    /// reach; ledger row 5(i) moved both Overflow numbers onto <c>ModeDefinition</c>, so there is
+    /// nothing in <c>Soulvail.Core</c> left to read and <c>AssetDatabase</c> is one assembly away
+    /// (M0-10). <c>GravecallerTreeTests.Overflow_ComesFromTheMode</c> is the row that opens the
+    /// asset, and this is the fixture that divides by it — the same meeting-at-a-number these rows
+    /// already have with <c>KeenCenser.asset</c>, one number along.
+    /// </remarks>
+    private const float OverflowPerLevel = 0.02f;
 
     /// <summary>
     /// GD §11.1's mid tier. It does not enter <see cref="ThreatBudget.Budget"/> at all — the cap
@@ -380,18 +396,21 @@ public sealed class TimeToKillTests
     }
 
     [Test]
-    public void Ttk_OverflowPerLevelIsTheShippedConstant()
+    public void Ttk_OverflowPerLevelIsTheAuthoredValue()
     {
-        // The table's "+2 % damage per level" is read off M3-08a's code rather than out of CH §5.2,
-        // because a retune there has to redden this file rather than pass silently through it.
-        Assert.That(LevelUpFlow.OverflowDamage, Is.EqualTo(0.02f).Within(1e-7f));
+        // **The table's "+2 % damage per level", read off the shipped mode rather than out of
+        // CH §5.2 — and as of M5-06b that is an authored number rather than a compiled one.** A
+        // retune of Descent.asset's Overflow block has to redden this file rather than pass
+        // silently through it, which is a stronger claim than the row made before: the number can
+        // now move without a rebuild, so it can move without anybody noticing.
+        Assert.That(OverflowPerLevel, Is.EqualTo(0.02f).Within(1e-7f));
 
         World world = NewWorld();
         ApplyOverflow(world, 7);
 
         Assert.That(
             world.Combat.Weapon.Damage.Value,
-            Is.EqualTo(WeaponDamage * (1f + (7f * LevelUpFlow.OverflowDamage))).Within(Tolerance),
+            Is.EqualTo(WeaponDamage * (1f + (7f * OverflowPerLevel))).Within(Tolerance),
             "Seven levels, pooled: 13 × 1.14.");
     }
 
@@ -540,14 +559,14 @@ public sealed class TimeToKillTests
 
     /// <summary>
     /// <paramref name="levels"/> Overflow levels, one <see cref="ModifyStat"/> each under one
-    /// source — <c>LevelUpFlow.GrantOne</c>'s own shape, with its own constant.
+    /// source — <c>LevelUpFlow.GrantOne</c>'s own shape, with the value the shipped mode authors.
     /// </summary>
     private static void ApplyOverflow(World world, int levels)
     {
         var overflow = new object();
 
         var effect = new ModifyStat(
-            PlayerStat.WeaponDamage, ModifierKind.PercentAdd, LevelUpFlow.OverflowDamage);
+            PlayerStat.WeaponDamage, ModifierKind.PercentAdd, OverflowPerLevel);
 
         for (int i = 0; i < levels; i++)
         {

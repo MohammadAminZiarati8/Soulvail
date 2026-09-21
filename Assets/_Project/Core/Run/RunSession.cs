@@ -687,9 +687,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
         // authors one. Below the runner because it pushes a chosen Active into it, and below the
         // registry because Overflow's two modifiers go on through it.
+        //
+        // **What a spare level is worth comes off the mode** (M5-06b rules 8 and 9), like the curve
+        // that decides when one is earned: LevelTracker above reads mode.Xp, and this reads
+        // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
+        // CH §5.2 an Inspector edit and the other half a rebuild.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events);
+            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow);
 
         State = new RunState(
             config.ModeId,

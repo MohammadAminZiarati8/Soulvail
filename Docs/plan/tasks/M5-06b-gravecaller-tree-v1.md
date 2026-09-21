@@ -214,4 +214,70 @@ row for the new argument, and `ModeDefinition.OnValidate` on the two new fields.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Twelve nodes, twenty-five assets, and Overflow off the mode. 2 425 EditMode / 0 / 0 (+33 on
+M5-06a's 2 392), twice on the final code; PlayMode 19 / 0 / 0 first run, known issue 1 quiet.**
+Console after the run: 14 errors / 25 warnings, every one a fixture on its own failure path and none
+naming a new file. Six assemblies compiled clean against Unity's own `csc` argument list with the
+shipped analyzers — zero new warnings. `dotnet format whitespace --verify-no-changes` green over all
+fifteen touched C# files. `ProjectSettings/TimeManager.asset` re-serialised itself again and was
+reverted ([Traps §5](../../Traps.md)). `Oathbound.asset` and `Gravecaller.asset` are not in
+`git status`.
+
+**Ten deviations. Four change something.**
+
+1. **The tree asset is `Data/Trees/Gravecaller.asset`, not `GravecallerTree.asset`** (Files table).
+   CLAUDE.md's rule is that a data asset's file name is the last segment of its id;
+   `tree.gravecaller` ends in `gravecaller`, the folder says it is a tree, and M3-14b renamed the
+   Oathbound's for exactly this. `ContentValidationTests.EveryFileName_MatchesTheLastSegmentOfItsId`
+   sweeps both and would have refused the spec's name.
+2. **Twenty-five assets, not twenty-seven.** 12 skills + 12 effects + 1 tree. The header's
+   *"twenty-seven assets"* is the twenty-seven **keys** counted twice; the Tests table says
+   twenty-five and wins.
+3. **`OverflowSpec` lives in `Core/Content/ModeSpec.cs`, not in a file of its own.** That file
+   already declares `RosterEntry` and `BossRosterEntry` — authored value types belonging to the mode
+   — and this is two floats with no arithmetic. `XpCurve` earned its own file by carrying `ToReach`.
+   Keeping it here holds the spec's declared *three code files*; a fourth would still have been M.
+4. **CHANGES SOMETHING — `ModeSpec`'s new argument is optional and last, so an unauthored mode
+   grants nothing.** It belongs beside `xp`; putting it there moves **forty-two** call sites for a
+   widening none of them says anything about. Appended, `default(OverflowSpec)` is (0, 0) — a legal
+   statement rather than a hole, so unlike a defaulted `XpCurve` there is no second check. **The
+   cost is a ripple rule 10 did not count:** `RunSessionResumeTests.Resume_DerivesOverflow` and
+   `Resume_OverflowRunsBeforeHealthRestore` assert ×1.28 through a fixture mode and went red at 0 %.
+   One edit to that file's `Mode()` helper, which makes the dependency visible where it was implicit.
+5. **CHANGES SOMETHING — rule 10's *"changes its source from the `const` to `Descent.asset`"* is
+   impossible and was replaced.** `TimeToKillTests` is in `Soulvail.Tests.Core`, which cannot reach
+   `AssetDatabase` (M0-10) and now has nothing in `Soulvail.Core` left to read. Both it and
+   `LevelUpFlowTests` hold a `private const float OverflowPerLevel = 0.02f` naming the asset in its
+   remarks, and meet `GravecallerTreeTests.Overflow_ComesFromTheMode` at the number — the
+   arrangement that file has had with `KeenCenser.asset` since M3-12c. The existing row is renamed
+   `Ttk_OverflowPerLevelIsTheAuthoredValue`.
+6. **CHANGES SOMETHING — `SkillTreeValidationTests.Registry()` needed a sixth primitive, and its own
+   remarks predicted it.** All three `NoTree_CanStarve_*` walks went red with *"`RaiseMinions` … no
+   handler is registered"*: that helper is a hand-kept list, like `ContentValidationTests.Written`.
+   It is registered **unconditionally**, unlike `RunSession.Start`, which registers it only for a
+   class with an army — the walks are about tier gating, and skipping the Gravecaller's tree would
+   stop them proving the one thing they exist to prove.
+7. **CHANGES SOMETHING — `OathboundTreeTests.Boot_RegistersTheTreeAndTwelveSkills` asserted 12 and
+   1 as equalities**, so a file about one class was asserting that nobody had shipped since. Now a
+   superset over its own twelve ids and `Contains.Item("tree.oathbound")`; the totals are
+   `SkillAuthoringTests.Boot_ScopeCarriesTheTwoLists`' (24 and 2), and
+   `ContentValidationTests`' three floors moved with them.
+8. **No `OnValidate` branch on the two new fields**, against the *Guard rows are implied* note.
+   `ModeDefinition.OnValidate` is documented as checking the id and only its shape — *"a bad stage
+   number is visibly a bad stage number in the Inspector"* — and a negative Overflow is visibly
+   negative. `[Min(0f)]` clamps the GUI and `OverflowSpec`'s constructor is the one account of what
+   is legal, on `XpBlock`'s precedent.
+9. **`Overflow_StillPoolsAdditively` was not added**; the existing `Overflow_PoolsAdditively` is
+   that row unchanged, and now runs against an authored pair. Three rows were added instead —
+   `Overflow_TheConstantsAreGone`, `Overflow_ARetunedModeMovesTheGrant` and
+   `Overflow_DamageAndMaxHpAreTwoNumbers`, the last because the ledger called them *"the 2 %"*
+   singular for a milestone.
+10. **The damage half of the two `Overflow_*` run rows is asserted in `Tests.Core`, not through the
+    session.** `RunState` hands out no weapon number — `Combat` is `internal` on
+    [AR §18.2](../../Architecture.md#182-the-boundary) — so the run rows own `PlayerMaxHp` and
+    `LevelUpFlowTests.Overflow_ARetunedModeMovesTheGrant` owns damage, over a flow built by hand.
+
+**Rule 6 held with no finding:** `EveryTriggerField_HasAWriter` is green — Exhume authors
+`MinionCount`, which has a writer. **The named skip expired as designed:**
+`TheTreelessClass_IsStillTreeless` went red, and it and the `continue` beside it were deleted; what
+was worth keeping from it is now `BothShippedClasses_ResolveTheirOwnTree`.

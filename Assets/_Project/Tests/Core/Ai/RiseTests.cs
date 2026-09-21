@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -125,7 +126,11 @@ public sealed class RiseTests
         _intents = new RecordingIntents();
         _enemies = NewEnemies(_events);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
-        _minions = new MinionSystem(Wight(), _events, _intents);
+        MinionSpec wight = Wight();
+
+        // The recipe a run would build from this spec (M5-06a rule 3) — one per army, so the
+        // bodies this fixture raises are born from the numbers a Legion node would move.
+        _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, _intents);
         _buffer = new EnemyDeath[Capacity];
         _allocationStep = 0;
     }
@@ -382,8 +387,8 @@ public sealed class RiseTests
 
         // A short life and the full ceiling, so the army is genuinely recycled under the probe rather
         // than standing full and refusing every raise — which would measure the cheap branch only.
-        var minions = new MinionSystem(
-            Wight(cap: MinionSystem.MaxConcurrent, lifespan: 1f), silent, intents);
+        MinionSpec spec = Wight(cap: MinionSystem.MaxConcurrent, lifespan: 1f);
+        var minions = new MinionSystem(spec, new MinionRecipe(spec), silent, intents);
 
         var script = new float[ScriptLength];
 

@@ -1,6 +1,7 @@
 using System.Numerics;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 
 namespace Soulvail.Core.Ai;
 
@@ -45,11 +46,30 @@ namespace Soulvail.Core.Ai;
 /// <see cref="Initialise"/> wipes all three stacks before re-basing them, so a Wight handed back out
 /// cannot arrive wearing the modifiers of the one that died.
 /// </para>
+/// <para>
+/// <b>It is born from the run's <see cref="MinionRecipe"/> rather than from its
+/// <see cref="MinionSpec"/></b> (M5-06a rule 3). The spec is what a designer typed and never moves;
+/// the recipe is that spec's three numbers as live <c>Stat</c>s, which is where CH §3.2's Legion
+/// nodes land. <see cref="Initialise"/> is the one place the difference shows, and it is why a node
+/// taken while three Wights are up buffs the <em>fourth</em>: this body re-bases when it is handed
+/// out, not when the modifier arrives.
+/// </para>
 /// </remarks>
 public sealed class MinionAgent
 {
+    /// <summary>
+    /// What this run says a Wight is born with. Held rather than read through
+    /// <see cref="MinionSystem"/> so that <see cref="Initialise"/> stays the single place a spawned
+    /// Wight's state is set; the instance is the run's one recipe, stable for the run's whole life.
+    /// </summary>
+    private readonly MinionRecipe _recipe;
+
     /// <param name="id">The run-stable id the system assigned.</param>
     /// <param name="spec">The minion this is an instance of — the run's one <c>minion.wight</c>.</param>
+    /// <param name="recipe">
+    /// This run's live numbers for that minion — what it is born with, after whatever nodes the
+    /// player has taken.
+    /// </param>
     /// <param name="position">Where it stood up.</param>
     /// <param name="expiresAt">Simulated run time at which it dissolves.</param>
     /// <remarks>
@@ -58,17 +78,23 @@ public sealed class MinionAgent
     /// no <c>InternalsVisibleTo</c> — so a guard here would be unreachable from any test that could
     /// prove it works. The same decision <see cref="EnemyAgent"/>'s internal constructor made.
     /// </remarks>
-    internal MinionAgent(int id, MinionSpec spec, Vector3 position, float expiresAt)
+    internal MinionAgent(
+        int id,
+        MinionSpec spec,
+        MinionRecipe recipe,
+        Vector3 position,
+        float expiresAt)
     {
         Spec = spec;
+        _recipe = recipe;
 
         // Built once and reused for the life of the system — see the class remarks. No shield and
         // no i-frames, exactly like an enemy: a Wight takes every hit that reaches it, and nothing
         // reaches one until something is written that hurts one (rule 9).
-        Health = new Health(new Stat(spec.MaxHp), shield: null, hitIFrames: 0f);
+        Health = new Health(new Stat(recipe.MaxHp.Value), shield: null, hitIFrames: 0f);
 
-        MoveSpeed = new Stat(spec.MoveSpeed);
-        ContactDamage = new Stat(spec.Damage);
+        MoveSpeed = new Stat(recipe.MoveSpeed.Value);
+        ContactDamage = new Stat(recipe.ContactDamage.Value);
 
         Initialise(id, position, expiresAt);
     }
@@ -140,14 +166,32 @@ public sealed class MinionAgent
 
     /// <summary>
     /// Establishes a fresh Wight: a new id, a position, a clock, no quarry, full health and three
-    /// stats wiped and re-based to the spec.
+    /// stats wiped and re-based to <em>this run's recipe</em>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The single place a spawned Wight's state is set, whether it was just constructed or taken
     /// back off the pool — so the two paths cannot drift. <c>EnemyAgent.Initialise</c>'s shape, with
     /// its orderings kept for its reasons: every modifier goes before the bases are re-set, so
     /// nothing is ever briefly true, and <c>Health.MaxHp.Base</c> is set before
     /// <c>Health.Reset</c>, which refills from it.
+    /// </para>
+    /// <para>
+    /// <b>The bases come from <see cref="_recipe"/>'s live values rather than from
+    /// <see cref="Spec"/></b> (M5-06a rule 3), and this line is the whole of what <em>"a Legion node
+    /// changes what being born means"</em> costs. It is also why it is here rather than in
+    /// <c>MinionSystem.Spawn</c>: <c>Health.Reset</c> refills <c>Current</c> from
+    /// <c>MaxHp.Value</c>, so a caller that re-based afterwards would stand every buffed Wight up on
+    /// the unbuffed maximum.
+    /// </para>
+    /// <para>
+    /// A <c>Stat</c> clamps nothing (ADR-0008), so a modifier stack could in principle drive one of
+    /// the three somewhere absurd. <c>Stat.Base</c> refuses a non-finite value at its own door,
+    /// which is the case that would otherwise spread silently — a NaN maximum makes every health
+    /// fraction NaN for the body's whole life. The rest is the same exposure
+    /// <see cref="MinionSystem.Cap"/> has and is deliberately not re-litigated here; that one is
+    /// clamped because it indexes an array.
+    /// </para>
     /// </remarks>
     internal void Initialise(int id, Vector3 position, float expiresAt)
     {
@@ -161,20 +205,22 @@ public sealed class MinionAgent
         QuarryId = 0;
         NextAttackAt = float.NegativeInfinity;
 
-        // Every modifier goes, whoever put it there — M5-06's Legion nodes included. The
+        // Every modifier goes, whoever put it there. Nothing in the build puts one on a *body* —
+        // M5-06a's Legion nodes land on the recipe below, which is the point of rule 3 — so this is
+        // a wipe of an empty stack today and the thing that keeps it empty tomorrow. The
         // no-argument overload rather than a list of known sources, because a list is what gets one
         // entry short the first time something else buffs a Wight (Stat.RemoveAll).
         Health.MaxHp.RemoveAll();
         MoveSpeed.RemoveAll();
         ContactDamage.RemoveAll();
 
-        MoveSpeed.Base = Spec.MoveSpeed;
-        ContactDamage.Base = Spec.Damage;
+        MoveSpeed.Base = _recipe.MoveSpeed.Value;
+        ContactDamage.Base = _recipe.ContactDamage.Value;
 
         // Base before Reset, and the order is load-bearing: Health.Reset refills Current from
         // MaxHp.Value, so re-basing afterwards would leave a recycled Wight at whatever maximum the
         // previous life's modifiers had left standing.
-        Health.MaxHp.Base = Spec.MaxHp;
+        Health.MaxHp.Base = _recipe.MaxHp.Value;
         Health.Reset();
     }
 }

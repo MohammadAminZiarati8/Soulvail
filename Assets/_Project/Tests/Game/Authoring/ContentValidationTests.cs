@@ -90,6 +90,35 @@ public sealed class ContentValidationTests
     /// <see cref="EveryAuthoredKey"/> does not walk a class's minion block anyway (M5-02). The day
     /// something reads it, it joins the list with the sweep that reaches it.
     /// </remarks>
+    /// <summary>
+    /// The <see cref="TriggerField"/>s something in the build actually writes, each with its writer
+    /// (M5-06a rule 8). <see cref="EveryTriggerField_HasAWriter"/> is what reads it, and that row's
+    /// remarks are why this is a list rather than reflection.
+    /// </summary>
+    /// <remarks>
+    /// <b><see cref="TriggerField.Veilrot"/> is deliberately absent</b>: GD §13's meter is a field
+    /// AR §9 names and M6-04 fills, and until then a clause over it would be read every tick and
+    /// always be zero. Its absence here is the whole value of the row.
+    /// </remarks>
+    private static readonly TriggerField[] Written =
+    {
+        // PlayerCombat.UpdateBlackboard — seven of the ten, in one block, every tick.
+        TriggerField.HpFraction,
+        TriggerField.ShieldFraction,
+        TriggerField.EnemiesWithin6m,
+        TriggerField.EnemiesWithin8m,
+        TriggerField.EnemiesInAcquireRange,
+        TriggerField.FocusRampLevel,
+        TriggerField.StationaryTime,
+
+        // PlayerCombat.UpdateBlackboard again, from the army it is handed (M5-06a rule 6).
+        TriggerField.MinionCount,
+
+        // ProjectileSystem.Tick, at the end of its own step, so a trigger reads the sky as it was
+        // before this tick's arrivals were resolved (M3-06 rule 7).
+        TriggerField.IncomingProjectiles,
+    };
+
     private static readonly string[] AuthoringPlaceholders =
     {
         "character.new.name",
@@ -472,8 +501,8 @@ public sealed class ContentValidationTests
     [Test]
     public void EveryTriggerKey_ResolvesInEnglish()
     {
-        // Eighteen: nine TriggerFields × two comparisons. A trigger line with no row reads as a key
-        // on the Skills list, which is a screen the player uses constantly — and TriggerText's own
+        // Twenty: ten TriggerFields × two comparisons. A trigger line with no row reads as a key on
+        // the Skills list, which is a screen the player uses constantly — and TriggerText's own
         // Trigger_EveryPairHasAKey proves the *table* is complete, not that the words exist.
         TableLocalizer localizer = English();
         var problems = new List<string>();
@@ -495,9 +524,90 @@ public sealed class ContentValidationTests
             }
         }
 
-        Assert.That(pairs, Is.EqualTo(18), "Nine TriggerFields × two comparisons.");
+        Assert.That(pairs, Is.EqualTo(20), "Ten TriggerFields × two comparisons.");
 
         AssertNoProblems(problems, "Trigger keys resolvable");
+    }
+
+    /// <summary>
+    /// M3-06's starve check, owed since M3-06 and finally taken (M5-06a rule 8): no shipped asset
+    /// may author a trigger clause over a field nothing in the build writes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Over the <em>authored</em> fields rather than over the enum, and the difference is
+    /// <see cref="TriggerField.Veilrot"/>.</b> That member must stay — M6-04 is what writes it, and
+    /// AR §9 names it — so a check phrased over <c>Enum.GetValues</c> would be red today with the
+    /// only available fix being to delete a field the design needs. Phrased over what assets
+    /// actually author, it is green until somebody authors the clause that would silently never
+    /// fire, which is exactly the day it should go red. It is why
+    /// <see href="../../../../Docs/plan/tasks/M5-06b-gravecaller-tree-v1.md">M5-06b</see> rule 6
+    /// authors Rot Nova without its Veilrot clause.
+    /// </para>
+    /// <para>
+    /// <b><see cref="Written"/> is a hand-kept list and that is deliberate</b>, against the
+    /// reflection <c>Trigger_EveryFieldReads</c> uses one assembly over. That row proves every
+    /// member <em>names</em> a blackboard field; no reflection can prove anything <em>writes</em>
+    /// one, because a write is a statement in a method rather than a member. So the list is written
+    /// out with its writer beside each entry, and a new field arrives absent from it — which fails
+    /// here the moment content authors it, with a message saying which writer is missing. The cost
+    /// of the list being wrong in the safe direction is a false red; in the unsafe direction it is
+    /// a field somebody added to the list without adding the write, and that is a two-line diff a
+    /// reviewer is looking straight at.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void EveryTriggerField_HasAWriter()
+    {
+        var problems = new List<string>();
+        var authored = 0;
+
+        foreach (string path in PathsOf<SkillDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<SkillDefinition>(path);
+
+            if (definition is null)
+            {
+                problems.Add($"{path}: did not load as a SkillDefinition.");
+
+                continue;
+            }
+
+            ActiveSpec active = definition.ToSpec().Active;
+
+            if (active is null)
+            {
+                continue;
+            }
+
+            IReadOnlyList<TriggerClause> clauses = active.Trigger.Clauses;
+
+            for (int i = 0; i < clauses.Count; i++)
+            {
+                TriggerField field = clauses[i].Field;
+                authored++;
+
+                if (Array.IndexOf(Written, field) >= 0)
+                {
+                    continue;
+                }
+
+                problems.Add(
+                    $"{path}: authors a trigger clause over {nameof(TriggerField)}.{field}, and "
+                        + "nothing in the build writes that blackboard field — so the condition is "
+                        + "read every tick, is always its default, and the skill silently never "
+                        + "auto-casts. Give the field a writer, or author the skill against one of "
+                        + $"the {Written.Length} that have one.");
+            }
+        }
+
+        Assert.That(
+            authored,
+            Is.GreaterThan(0),
+            "Sanity: no shipped SkillDefinition authors a trigger clause at all, so this row swept "
+                + "nothing. Consecrate and Bulwark each author one.");
+
+        AssertNoProblems(problems, "Trigger fields with a writer");
     }
 
     // ---- Rule 10: a message names the asset path, always -----------------------------------------

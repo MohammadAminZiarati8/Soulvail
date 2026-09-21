@@ -7,6 +7,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -100,7 +101,13 @@ public sealed class MinionSystemTests
         _intents = new RecordingIntents();
         _enemies = NewEnemies(_events);
         _player = new PlayerCombat(Oathbound(), _events, _intents, Capacity);
-        _minions = new MinionSystem(Wight(), _events, _intents);
+        MinionSpec wight = Wight();
+
+        // The recipe a run would build from this spec (M5-06a rule 3). Hoisted rather than inlined
+        // so that the army and any block over it name the same three Stats — two recipes off one
+        // spec would hold identical numbers and independent stacks, which is the bug the parameter
+        // is required to prevent.
+        _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, _intents);
         _snapshot = new WorldSnapshot(Capacity);
         _allocationStep = 0;
     }
@@ -219,7 +226,8 @@ public sealed class MinionSystemTests
     {
         var silent = new SilentEvents();
         var intents = new RecordingIntents();
-        var system = new MinionSystem(Wight(), silent, intents);
+        MinionSpec spec = Wight();
+        var system = new MinionSystem(spec, new MinionRecipe(spec), silent, intents);
         var enemies = NewEnemies(silent);
         var player = new PlayerCombat(Oathbound(), silent, intents, Capacity);
 
@@ -647,8 +655,8 @@ public sealed class MinionSystemTests
         // A full army and an arena at GD §11's kind of density. The bodies are anvils rather than
         // Husks so that nothing dies mid-measurement and the census stops changing shape, and the
         // lifespan is long enough that nobody expires inside a thousand seconds of ticking.
-        var system = new MinionSystem(
-            Wight(cap: MinionSystem.MaxConcurrent, lifespan: 100_000f), silent, intents);
+        MinionSpec spec = Wight(cap: MinionSystem.MaxConcurrent, lifespan: 100_000f);
+        var system = new MinionSystem(spec, new MinionRecipe(spec), silent, intents);
 
         for (int i = 0; i < 28; i++)
         {
@@ -772,9 +780,13 @@ public sealed class MinionSystemTests
     [Test]
     public void Minion_Guards()
     {
-        Assert.Throws<ArgumentNullException>(() => new MinionSystem(null, _events, _intents));
-        Assert.Throws<ArgumentNullException>(() => new MinionSystem(Wight(), null, _intents));
-        Assert.Throws<ArgumentNullException>(() => new MinionSystem(Wight(), _events, null));
+        MinionSpec spec = Wight();
+        var recipe = new MinionRecipe(spec);
+
+        Assert.Throws<ArgumentNullException>(() => new MinionSystem(null, recipe, _events, _intents));
+        Assert.Throws<ArgumentNullException>(() => new MinionSystem(spec, null, _events, _intents));
+        Assert.Throws<ArgumentNullException>(() => new MinionSystem(spec, recipe, null, _intents));
+        Assert.Throws<ArgumentNullException>(() => new MinionSystem(spec, recipe, _events, null));
 
         // A Wight standing at NaN is one every distance test answers nonsense about, and a
         // non-finite clock is an expiry that can never be compared against — both refused at the

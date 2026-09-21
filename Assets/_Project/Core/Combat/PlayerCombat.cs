@@ -997,13 +997,21 @@ public sealed class PlayerCombat
     /// Null means "nowhere to put a decoy" and the blink still happens, which is what every run of
     /// the Oathbound is — see <see cref="TickCharge"/>.
     /// </param>
+    /// <param name="minions">
+    /// The army whose size the blackboard reports, or null for a class that raises none — which is
+    /// every class but the Gravecaller. <see cref="LureSystem"/>'s treatment one parameter over and
+    /// its reason: this class owns no view of the world, and a constructor argument would ripple
+    /// through every fixture that builds one. Null reads as <b>zero standing</b>, which is the
+    /// honest count for a run that holds no <c>MinionSystem</c> at all (M5-06a rules 6 and 7).
+    /// </param>
     public void Tick(
         float dt,
         float now,
         WorldSnapshot snapshot,
         ReadOnlySpan<EnemyAgent> enemies,
         Vector3 bodyFacing,
-        LureSystem lures = null)
+        LureSystem lures = null,
+        MinionSystem minions = null)
     {
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
@@ -1052,7 +1060,7 @@ public sealed class PlayerCombat
         Health.Tick(dt, now);
         PublishShieldIfDrifted();
 
-        UpdateBlackboard(count, snapshot.PlayerPosition);
+        UpdateBlackboard(count, snapshot.PlayerPosition, minions?.Count ?? 0);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
         TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
@@ -1590,7 +1598,12 @@ public sealed class PlayerCombat
     /// blackboard and does not decide anything on it. See
     /// <see cref="CombatBlackboard.PlayerPosition"/> for who reads it.
     /// </param>
-    private void UpdateBlackboard(int count, Vector3 playerPosition)
+    /// <param name="minionCount">
+    /// How many Wights are standing, already resolved to zero for a class that raises none. Handed
+    /// in rather than read off a system this class holds, for the reason the position is: this
+    /// method writes the blackboard and decides nothing on it.
+    /// </param>
+    private void UpdateBlackboard(int count, Vector3 playerPosition, int minionCount)
     {
         int within6 = 0;
         int within8 = 0;
@@ -1634,6 +1647,14 @@ public sealed class PlayerCombat
         Blackboard.EnemiesWithin6m = within6;
         Blackboard.EnemiesWithin8m = within8;
         Blackboard.EnemiesInAcquireRange = inRange;
+
+        // The fourth count, and the only one that is not about enemies (M5-06a rule 6). Written in
+        // this block rather than by the army itself — the way ProjectileSystem writes
+        // IncomingProjectiles — because the army ticks *below* this step: a system that wrote its
+        // own count would leave a class with no army writing nothing at all, and the field would
+        // read whatever the last run that had one left behind.
+        Blackboard.MinionCount = minionCount;
+
         Blackboard.CurrentTargetId = Targeter.CurrentTargetId;
         Blackboard.IsTargetBlocked = Targeter.IsCurrentBlocked;
         Blackboard.HasFocus = Targeter.HasFocus;

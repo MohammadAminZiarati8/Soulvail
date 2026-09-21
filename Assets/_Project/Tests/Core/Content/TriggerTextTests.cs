@@ -14,7 +14,7 @@ namespace Soulvail.Tests.Core.Content;
 /// <b>Both tables are walked over their enums rather than spot-checked</b>, which is the whole
 /// reason they are worth testing at all: the failure this file is written against is a
 /// <c>TriggerField</c> added to the enum and not to the tables that describe it, and a fixture
-/// listing nine names by hand would have to be edited by the same person who forgot.
+/// listing ten names by hand would have to be edited by the same person who forgot.
 /// <c>Stats_ResolveEveryMember</c>'s shape (M3-05), one module over.
 /// </para>
 /// <para>
@@ -27,8 +27,8 @@ namespace Soulvail.Tests.Core.Content;
 [TestFixture]
 public sealed class TriggerTextTests
 {
-    /// <summary>Nine fields times two comparisons — the cross product this file walks.</summary>
-    private const int PairCount = 18;
+    /// <summary>Ten fields times two comparisons — the cross product this file walks.</summary>
+    private const int PairCount = 20;
 
     [Test]
     public void Trigger_EveryPairHasAKey()
@@ -70,7 +70,7 @@ public sealed class TriggerTextTests
         Assert.That(
             seen.Count,
             Is.EqualTo(PairCount),
-            "Nine fields and two comparisons is eighteen keys. If the enum grew, this number grows "
+            "Ten fields and two comparisons is twenty keys. If the enum grew, this number grows "
                 + "with it — and so does the table.");
     }
 

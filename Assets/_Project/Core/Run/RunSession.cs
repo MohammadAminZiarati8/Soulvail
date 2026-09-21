@@ -497,7 +497,25 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         var playerStats = new PlayerStats(combat, motor, progression);
         var effects = new EffectRegistry();
 
-        effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
+        // **What a Wight is born with, this run** (M5-06a rules 1 and 4). Built here rather than
+        // inside MinionSystem because two things need the same instance: the army, which re-bases
+        // every body it hands out from it, and the handler below, which is where CH §3.2's Legion
+        // nodes land. Two recipes would be a node moving numbers no body reads.
+        //
+        // Null exactly where the army is null — the class has no MinionSpec — and the spec itself is
+        // untouched, so two runs of the Gravecaller hold two recipes with independent stacks.
+        MinionRecipe minionRecipe = character.Minions is null
+            ? null
+            : new MinionRecipe(character.Minions);
+
+        // The second block is null for every class but the Gravecaller, and **null is a real answer
+        // rather than a missing dependency** (rule 5): a ModifyStat aimed at Minions on a class that
+        // raises none is refused by the handler, naming the class, and refused earlier still by the
+        // sweep below — which exists because EffectRegistry.CanApply keys on an effect's *type* and
+        // a target is a field on one.
+        effects.Register<ModifyStat>(new ModifyStatHandler(
+            playerStats,
+            minionRecipe is null ? null : new MinionRecipeStats(minionRecipe)));
 
         // One per run like everything above, and the clock with them: a second Start must not
         // inherit the first run's held effects, and a clock that carried the last run's seconds
@@ -545,7 +563,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // its caller was holding (M5-04b's Rise is that caller).
         MinionSystem minions = character.Minions is null
             ? null
-            : new MinionSystem(character.Minions, _events, _intents);
+            : new MinionSystem(character.Minions, minionRecipe, _events, _intents);
+
+        // **CH §4.2's Exhume, registered in exactly the runs that can raise** (M5-06a rules 10, 11).
+        // Conditional where the five primitives above are unconditional, and that asymmetry is the
+        // whole of why this one needs no bespoke refusal: a verb is a *type*, so SkillTree's
+        // constructor sweep already asks CanApply of it and refuses a tree carrying one on a class
+        // with no army — before RunStarted, naming the node. A target is a *field* on a registered
+        // type, which is invisible to that sweep, which is why the Minions check below had to be
+        // written by hand.
+        //
+        // It takes the blackboard rather than a position per cast, which is SpawnHealZoneHandler's
+        // shape: Apply is handed no position and no time, and the blackboard carries this frame's
+        // feet. One per run like everything above.
+        if (minions is not null)
+        {
+            effects.Register<RaiseMinions>(
+                new RaiseMinionsHandler(minions, combat.Blackboard, _clock));
+        }
 
         // **CH §3.2's Rise, null in exactly the runs the army is null in** (M5-04b rule 10). Beside
         // the system rather than inside it, because raising a Wight and being one are two different
@@ -626,6 +661,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                     + "27 nodes is about seven, so a tree this far past it is an authoring mistake "
                     + "rather than a capacity to raise.",
                 nameof(config));
+        }
+
+        // **A tree that aims at Minions on a class with no minions refuses the *run*, not the pick**
+        // (M5-06a rule 5). Written by hand, beside the Active-count check and for its argument,
+        // because the door that would otherwise catch it cannot: EffectRegistry.CanApply answers
+        // "is there a handler for this effect's type" and nothing more, so a ModifyStat aimed at
+        // Minions passes SkillTree's constructor sweep and would throw at the moment a player
+        // tapped the card — a mistake a designer made weeks earlier, killing a run with the node
+        // half taken. Asked here it is TreeRules' own argument one class over: an authoring mistake
+        // refuses the run, with nothing announced and nothing standing.
+        //
+        // The handler still throws if it is ever reached, for the reason Self-outside-a-scope does
+        // (M4-01a rule 5): this is the sweep, and the throw is the backstop.
+        //
+        // There is no sibling check for RaiseMinions, and its absence is the point: a verb is a
+        // *type*, so the run simply does not register a handler for it and the sweep above refuses
+        // a tree carrying one. A target is a field on a type that *is* registered.
+        if (tree is not null && character.Minions is null)
+        {
+            RequireNoMinionTarget(tree.Rules, character.Id);
         }
 
         // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
@@ -920,13 +975,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // The lures go down with it, and this is the one step that *writes* one: a Shroudstep drops
         // its corpse on the start edge of the dash, from the position this snapshot reported
         // (M5-03 rule 6).
+        // The army goes down with the lures, and this step *reads* it rather than writing it: the
+        // blackboard's MinionCount is filled here so a CC §6.4 trigger can compare against it
+        // (M5-06a rule 6). Null for every class but the Gravecaller, which reads as zero standing —
+        // the honest count for a run that holds no army at all.
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
             snapshot,
             State.Enemies.Registry.Alive,
             State.Motor.Facing,
-            State.Lures);
+            State.Lures,
+            State.Minions);
 
         // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
         //
@@ -1614,6 +1674,74 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             $"No enemy with id '{specId}' in the catalog, and {source} names it. Nothing about "
                 + "this run has been announced; add an EnemyDefinition to BootScope's enemy list "
                 + "or correct the id.");
+    }
+
+    /// <summary>
+    /// Refuses a tree that aims a <see cref="ModifyStat"/> at <see cref="StatTarget.Minions"/> when
+    /// the class raises none, naming the node and the class (M5-06a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both lists, take and cast, for <c>SkillTree.RequireHandlers</c>' reason: an Active's cast
+    /// effects are applied by M3-06's runner rather than by <c>Take</c>, so a node whose
+    /// <em>cast</em> carries the mistake would otherwise survive the pick and die on the first
+    /// firing — later still than the moment this exists to move it off.
+    /// </para>
+    /// <para>
+    /// A walk of at most twenty-seven nodes, once, at <c>Start</c>. It allocates the enumerators a
+    /// <c>foreach</c> over <see cref="IReadOnlyList{T}"/> costs, which is fine here and nowhere in a
+    /// frame: this runs once per run, on the path that is already building a tree.
+    /// </para>
+    /// </remarks>
+    private static void RequireNoMinionTarget(TreeRules rules, ContentId characterId)
+    {
+        IReadOnlyList<SkillBranchSpec> branches = rules.Tree.Branches;
+
+        for (int b = 0; b < branches.Count; b++)
+        {
+            SkillBranchSpec branch = branches[b];
+
+            // Tiers are numbered from 1 (CH §5), which SkillBranchSpec.Tier refuses a zero for.
+            for (int t = 1; t <= branch.TierCount; t++)
+            {
+                IReadOnlyList<ContentId> tier = branch.Tier(t);
+
+                for (int n = 0; n < tier.Count; n++)
+                {
+                    SkillSpec spec = rules.Skill(tier[n]);
+
+                    RequireNoMinionTarget(spec, spec.Effects, "takes", characterId);
+
+                    if (spec.Active is not null)
+                    {
+                        RequireNoMinionTarget(spec, spec.Active.OnCast, "casts", characterId);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void RequireNoMinionTarget(
+        SkillSpec spec,
+        IReadOnlyList<IEffect> effects,
+        string when,
+        ContentId characterId)
+    {
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (effects[i] is not ModifyStat modify || modify.Target != StatTarget.Minions)
+            {
+                continue;
+            }
+
+            throw new ArgumentException(
+                $"'{spec.Id}' {when} a ModifyStat aimed at {StatTarget.Minions}, and "
+                    + $"'{characterId}' has no MinionSpec — so there is no minion recipe for it to "
+                    + "move. The run is refused here rather than at the moment the node is picked, "
+                    + "because EffectRegistry.CanApply keys on an effect's type and a target is a "
+                    + "field on one. Nothing about this run has been announced.",
+                nameof(characterId));
+        }
     }
 
     /// <summary>

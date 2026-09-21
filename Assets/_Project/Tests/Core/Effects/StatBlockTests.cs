@@ -88,7 +88,9 @@ public sealed class StatBlockTests
             new DepthScaling(Scalings.Design()),
             Capacity);
 
-        _minions = new MinionSystem(WightSpec(), _events, _intents);
+        MinionSpec wight = WightSpec();
+
+        _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, _intents);
     }
 
     // ---- Rule 1 and rule 8: the player is a block, and is otherwise untouched --------------------

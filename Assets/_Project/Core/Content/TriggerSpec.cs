@@ -56,6 +56,12 @@ public enum TriggerField
 
     /// <summary>How far into CC §4.3's Focus ramp the character is, in <c>[0, 1]</c>.</summary>
     FocusRampLevel,
+
+    /// <summary>
+    /// Wights standing right now. CH §4.2's Exhume fires below half the cap; zero on a class with no
+    /// minions, which is what makes the clause false rather than absent (M5-06a rule 7).
+    /// </summary>
+    MinionCount,
 }
 
 /// <summary>
@@ -164,7 +170,7 @@ public readonly struct TriggerClause
     /// </para>
     /// <para>
     /// <b>The int fields widen to <see cref="float"/> and <see cref="Threshold"/> does not narrow.</b>
-    /// Five of the nine fields are counts and four are fractions; one <see cref="float"/> threshold
+    /// Six of the ten fields are counts and four are fractions; one <see cref="float"/> threshold
     /// says both, and every count this game can hold is exactly representable. Narrowing instead
     /// would have to decide what <em>"at least 3.5 enemies"</em> means, and either answer is a rule
     /// nobody authored.
@@ -202,6 +208,7 @@ public readonly struct TriggerClause
             TriggerField.Veilrot => blackboard.Veilrot,
             TriggerField.StationaryTime => blackboard.StationaryTime,
             TriggerField.FocusRampLevel => blackboard.FocusRampLevel,
+            TriggerField.MinionCount => blackboard.MinionCount,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(Field),
                 Field,

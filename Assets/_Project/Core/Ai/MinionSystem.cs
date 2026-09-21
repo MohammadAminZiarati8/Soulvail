@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -109,12 +110,31 @@ public sealed class MinionSystem
     private float _sinceRetarget;
 
     /// <param name="spec">The class's minions — the run's one <c>minion.wight</c>.</param>
+    /// <param name="recipe">
+    /// What this run says a Wight is born with (M5-06a rule 3). Built from <paramref name="spec"/>
+    /// by <c>RunSession.Start</c> and handed in rather than made here, because the same object is
+    /// what <c>ModifyStatHandler</c> aims <see cref="StatTarget.Minions"/> at — one recipe per run,
+    /// or a node would move numbers no body reads.
+    /// </param>
     /// <param name="events">Where <see cref="MinionSpawned"/> and its three siblings go.</param>
     /// <param name="intents">Where a Wight's walk leaves through — <see cref="IIntentSink.MinionMove"/>.</param>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
-    public MinionSystem(MinionSpec spec, IDomainEvents events, IIntentSink intents)
+    public MinionSystem(
+        MinionSpec spec,
+        MinionRecipe recipe,
+        IDomainEvents events,
+        IIntentSink intents)
     {
         _spec = spec ?? throw new ArgumentNullException(nameof(spec));
+
+        // Checked here and then handed on rather than stored: the army holds the recipe through its
+        // bodies, which is where Initialise reads it, and a second reference on this class would be
+        // a field nothing reads.
+        if (recipe is null)
+        {
+            throw new ArgumentNullException(nameof(recipe));
+        }
+
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
 
@@ -126,7 +146,7 @@ public sealed class MinionSystem
         // Initialise sets every one of them on the way out of the pool.
         for (int i = 0; i < _agents.Length; i++)
         {
-            _agents[i] = new MinionAgent(0, spec, Vector3.Zero, float.NegativeInfinity);
+            _agents[i] = new MinionAgent(0, spec, recipe, Vector3.Zero, float.NegativeInfinity);
         }
     }
 
@@ -186,12 +206,20 @@ public sealed class MinionSystem
     /// announces it.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <b>The Wight is born from this run's <c>MinionRecipe</c></b> (M5-06a rule 3), which
+    /// <see cref="MinionAgent.Initialise"/> re-bases all three of its <see cref="Stat"/>s from on
+    /// the way out of the pool. So a Legion node taken a moment ago is on this body and a Wight
+    /// already standing is unchanged — the lag CH §3.2's twenty-second lifespan bounds.
+    /// </para>
+    /// <para>
     /// <b>A refused spawn is silent</b> (rule 3). At the live cap — or at
     /// <see cref="MaxConcurrent"/>, whichever is lower — this publishes nothing and returns null,
     /// because <c>ProjectileSystem.Fire</c>'s bargain holds here too: one lost Wight is better than
     /// an exception that ends a run, and M5-04b's Rise draws against a full army often enough that
     /// a throw would be a routine event. The oldest are kept rather than the newest, which is the
     /// honest reading of <em>"cap 3"</em> — a cap is not a queue.
+    /// </para>
     /// </remarks>
     /// <param name="position">Where it stands up, in world metres — where the corpse fell.</param>
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>

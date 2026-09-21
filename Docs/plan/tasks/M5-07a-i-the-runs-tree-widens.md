@@ -262,4 +262,71 @@ the first thing that will draw one is `TreeViewPresenter`, which rule 12 of that
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+Built as specced: one branch index space, the borrowed branch at 3, `SkillTreeSpec.BranchCount`
+still 3 and no longer the number anything indexes against. **2 478 EditMode / 0 / 0** (+28 on
+M5-07's 2 450 — fifteen `Rules_` rows, thirteen in `SplashBranchTests`, `Available_AllocatesNothing`
+extended in place), twice on the final code, and **PlayMode 19 / 0 / 0**. Format check green over
+all six files. `TimeManager.asset` re-serialised itself and was reverted ([Traps §5](../../Traps.md)).
+
+**Fourteen deviations, six changing something.**
+
+1. **Branch `m5-07a-i-runs-tree-widens`**, not the header's `m5-07a-i-splash-branch` — the owner
+   named it in the task brief.
+2. **`TreeRules.Branch(int)` is new and is not in the *Public API* block.** Rule 5 needs
+   `SkillTree.Flatten` to walk the borrowed branch and the block gave it no door: the run's branches
+   were reachable only as `Tree.Branches`, which is the class's three. `Flatten` now loops
+   `rules.Branch(b)` to `rules.BranchCount` and **lost its special case rather than gaining one**;
+   `NodeCountOf` became one line over it.
+3. **The borrowed branch is a rebuilt `SkillBranchSpec`, not a list of ids** — so everything already
+   written against a branch reads it unchanged, and M5-07a-ii's fourth column has a `NameKey` to
+   draw without a second shape to special-case.
+4. **An out-of-range `branch` throws `ArgumentOutOfRangeException`**, where the *Public API* lists it
+   under `ArgumentException`. House style for an index is AOORE (`NodeCountOf`, `TakenInBranch`,
+   `SkillBranchSpec.Tier`, `OfferGenerator.Weight`), and NUnit's `Assert.Throws<ArgumentException>`
+   does not match a derived type — the looser doc would have made a later row surprising. AOORE *is*
+   an `ArgumentException`, so the documented contract still holds.
+5. **`InstallSplash` refuses a tree of the same *class*, not only the same tree id.** CH §5.4 borrows
+   from *a second class*; a differently-named tree with the same `CharacterId` is the same mistake
+   wearing a different id, and `Rules_ItsOwnTreeIsRefused` asserts both.
+6. **A tier emptied by the Keystone drop with a non-empty tier above it is refused** — not in the
+   spec. A Keystone is the sole node of its branch's last tier, so the only tier a drop can empty is
+   the last one and trimming it keeps every surviving tier's number, which is what lets a borrowed
+   node keep its tier (rule 1). A Keystone lower down would renumber, and **a tier number is the
+   gate** — so it is refused rather than renumbered.
+7. **`OnSplashInstalled` sweeps the borrowed nodes for handlers before it commits.** Rule 5 does not
+   ask for it; `SkillTree`'s own argument does, one moment later in the run — `Record` writes the
+   node down *before* applying its effects, so a borrowed node carrying an unregistered primitive
+   would leave the node owned and its effects half on. Swept before the commit, a missing `Register`
+   line leaves the tree exactly as it was.
+8. **`RequireHandlers` gained `(Node[], int from)` and the index rebuild became `Reindex`** —
+   refactors inside the file, so construction and the rebuild are one code path rather than two.
+9. **`OfferGeneratorTests` needed no edit**, where the Files table predicted a ripple in two test
+   files. Its three-branch rows assert nothing about a fourth, and `TakenInBranch(3)` /
+   `NodeCountOf(3)` still throw un-splashed. `SkillTreeTests` took the one edit there is. **The grep
+   scoped the ripple and the ripple was smaller than the table** ([Traps §2](../../Traps.md)).
+10. **`TreeRulesTests` gained a second class's fixture and eight helpers went `internal`**, plus
+    `FullSkills` refactored to `FullBranchSkills(char)` and `Skills` widened from `SkillSpec[]` to
+    `IReadOnlyList<SkillSpec>`. `SplashBranchTests` composes its trees out of them rather than
+    restating a 27-node fixture.
+11. **`Offer_DrawsFromBothTrees` is a sweep, not 10 000 random draws.** Eight candidates of equal
+    weight make the first pick a function of where the draw lands and nothing else, so 800 evenly
+    spread values give **exactly 200 borrowed** — a count rather than a confidence interval, and no
+    second copy of `OfferGeneratorTests`' private `Lcg`.
+12. **`Offer_BuffersGrowOnceAndThenNotAgain` counts instead of probing the private buffers** — the
+    grow is *the draw does not throw* (`Available` refuses a short destination), and *then nothing
+    allocates* is `AllocationAssert.None` over the ten after it.
+13. **`Offer_DoesNotThrowOnABorrowedNode` asserts the exact offer.** 0.99 walks the cumulative
+    weights to the end three times over, which is `[x1b, x1a, c1b]` — two borrowed then one primary,
+    with `drawnPerBranch[3]++` run twice. That line is the `IndexOutOfRangeException`.
+14. **`Skill`'s and `TakenInBranch`'s refusal messages now describe the run rather than the tree.**
+    *"not a node of 'tree.oathbound'"* would be false for a borrowed node the moment one exists.
+
+**One finding, handed to M5-07a-ii rather than fixed here.** `RunSession.RequireNoMinionTarget`
+(M5-06a rule 5) is a `Start`-time sweep over `rules.Tree.Branches` that needs the run's
+`characterId` — which `TreeRules` does not hold — so **a borrowed branch never meets it**. An
+Oathbound run borrowing the Gravecaller's Legion branch could take a node whose `ModifyStat` aims at
+`StatTarget.Minions`, and `ModifyStatHandler` would throw at the moment the card is tapped, with the
+node owned. That is the exact failure M5-06a rule 5 exists to move off the pick, one door further
+along. `OnSplashInstalled`'s sweep cannot catch it: `CanApply` answers *"is there a handler for this
+type"* and a `ModifyStat` handler is registered. **M5-07a-ii owns it** — that task has the class in
+hand at the moment the branch is chosen, which is where the check belongs.

@@ -92,7 +92,7 @@
 | M5-06a | [What a Legion node may reach: a target, a trigger and a verb](tasks/M5-06a-what-a-legion-node-may-reach.md) | M | M5-04b | ☑ |
 | M5-06b | [The Gravecaller tree v1, and what a level is worth](tasks/M5-06b-gravecaller-tree-v1.md) — [row 5(i)](#carry-forward-into-m5) | M | M5-02, M5-06a | ☑ |
 | M5-07 | [Class select: the first screen that asks the player a question before a run](tasks/M5-07-class-select-screen.md) | M | M5-02, M5-06b | ☑ |
-| M5-07a-i | [The run's tree stops being one tree](tasks/M5-07a-i-the-runs-tree-widens.md) — the forcing question | M | M5-06b | ☐ |
+| M5-07a-i | [The run's tree stops being one tree](tasks/M5-07a-i-the-runs-tree-widens.md) — the forcing question | M | M5-06b | ☑ |
 | M5-07a-ii | [The half-tree moment, and the branch a run borrows](tasks/M5-07a-ii-the-half-tree-moment.md) (CH §5.4) | M | M5-07, M5-07a-i | ☐ |
 | M5-08 | [M5 acceptance, tag `m5`](tasks/M5-08-acceptance-and-tag.md). Also [row 2](#carry-forward-into-m5)'s three numbers, [row 7](#carry-forward-into-m5)'s gate observation and [row 8](#carry-forward-into-m5)'s played minute | S | everything | ☐ |
 
@@ -262,25 +262,6 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   gated on the class) — which is also the first task with a second implementer to write the member
   against. Until then a new primitive owes its own door, and `SkillTree`'s remarks are where that
   rule is written down.
-- **`TreeRules` and `SkillTree` address a branch by index into one tree, and CH §5.4 needs a second
-  tree's branch beside it.** **Its promoter now exists as a row:** M5's spec-group note names this as one
-  of the two things that forced the group. **Corrected at M5-00a: M5-07a's spec is written by
-  M5-00b, not by M5-00a** — this line and M5's note have said M5-00a since M3-03, and M5-00b is the
-  task whose ID range (M5-05…M5-08) contains it. M5-00a's four specs each say which of the two
-  forcing questions they answer, and none of them answers this one.
-  [M3-03](tasks/M3-03-tree-rules.md)'s constructor takes a single
-  `SkillTreeSpec`, and every branch-shaped member — `TryLocate(… out int branch …)`,
-  `NodeCountOf(int)`, `TakenInBranch(int)` — is an index into that one tree. Correct for a milestone
-  with one class, and it has nowhere to put a branch borrowed from another. **The content side is
-  already fine**: a class still has exactly one tree, so M3-02a rule 11's refusal stands and
-  `TryGetTreeFor` resolves the second one unchanged — what widens is the *run's* view, not the
-  catalog. **Promoted at M5-00b, and the spec now exists: [M5-07a-i](tasks/M5-07a-i-the-runs-tree-widens.md).**
-  It rules one branch index space with the borrowed branch at **3**, `SkillTreeSpec.BranchCount`
-  still 3 and no longer the number anything indexes against, and it names the three failures the
-  shipped shape actually produces — `OfferGenerator.Draw`'s `drawnPerBranch[-1]` on the second card
-  of the first offer that draws a foreign node, `SkillTree.Available`'s short-buffer refusal, and a
-  `KeyNotFoundException` that blames content validation. **This line leaves when M5-07a-i's *As
-  built* says so**, not before.
 - **`EnemyBlackboard`'s four player fields lie while a corpse stands, and M5-03 made them do it
   rather than renaming them.** `PlayerPosition`, `DistanceToPlayer`, `DirectionToPlayer` and
   `PathDirectionToPlayer` mean *"where this enemy's quarry is"* for as long as a Shroudstep's corpse

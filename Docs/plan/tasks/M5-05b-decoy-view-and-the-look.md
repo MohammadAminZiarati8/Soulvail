@@ -230,4 +230,59 @@ namespace Soulvail.Game.Views
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Nine deviations. Three change something, and the largest is that this task's own probe refuted
+[ledger row 3](../ROADMAP.md#carry-forward-into-m5)'s ruling before implementing it.**
+
+1. **[Ledger row 3] The keyword does not exist, and rules 8 and 9 are inverted.**
+   `Universal Render Pipeline/Unlit` declares **no `_ALPHAPREMULTIPLY_ON`** in Unity 6.3 — its
+   keyword space holds `_SURFACE_TYPE_TRANSPARENT`, `_ALPHATEST_ON` and `_ALPHAMODULATE_ON`, and no
+   premultiply branch. `EnableKeyword` accepted it, wrote it to **`m_InvalidKeywords`**, logged
+   nothing, and left `IsKeywordEnabled` answering false; the render was byte-identical. **Rule 8's
+   fix, applied exactly as written, would have shipped a green suite and an unchanged game.** The
+   row's *diagnosis* was right: `_SrcBlend: One` over a straight-colour fragment contributes rgb at
+   full strength while halving only the background. **The fix is `_Blend: 1 → 0` and
+   `_SrcBlend: 1 → 5`** — two fields, which is the entire delta between this material and
+   `M_Reticle.mat`, the same shader as written by URP's own Inspector. The owner ruled it in.
+   `Telegraph_MaterialIsPremultiplied` → **`Telegraph_AlphaMeansWhatItSays`**, and
+   `Telegraph_BlendStateIsUnchanged` → **`Telegraph_BlendStateIsAlpha`**, which now asserts the
+   keyword is **absent** — its presence would mean somebody re-applied the ruling without reading
+   the row. Filed as [Traps §1](../../Traps.md) and [§9](../../Traps.md).
+2. **`Materials/M_DecoyCyan.mat` is a new asset the Files table does not list.** Rule 1 asks for
+   50 % alpha and no shipped material was both translucent and the corpse's: `M_BoneGrey` and
+   `M_PlayerCyan` are `_Surface: 0`, so the tint would have drawn solid (Traps §9's first bullet),
+   and `M_TelegraphRing` is refused by rule 9's own count — `VFX_Decoy` sits in `Prefabs/Vfx/`, so
+   sharing it would redden the six-prefab row on this PR. The owner chose a new material over
+   reusing `M_Reticle.mat`, which would have coupled every corpse to the reticle's recolours.
+3. **`DecoyViews` tears down on `StageArrived`, because rule 4's answer cannot work.** The rule says
+   the census is told about the boundary *"by `Dispose`"*; `Dispose` runs when `RunScope` is
+   disposed, and **a stage crossing does not dispose the run** — it swaps an arena underneath one.
+   A 3 s corpse against a boundary's 2 s of gate and arrival is reachable, which is M5-04b's
+   arithmetic one class over, so the fourth subscription is `MinionViews`' exactly.
+   **`Decoy_IsSweptAtAStageBoundary` is a row the Tests table does not list**;
+   `Decoy_ClearLeavesNoOrphan` stays, because leaving the scene is a different claim.
+4. **`ProjectileViews` was promoted, not fixed** — the owner's call. It has the identical gap and is
+   inert by arithmetic rather than design (a bolt lives well under two seconds), so the
+   [parking-lot](../ROADMAP.md#parking-lot) line is rewritten to say the decoy's half is closed and
+   the bolts' is not, rather than struck.
+5. **The ripple was four test files, not the two the Files table names, and the fourth repeats
+   M5-05a's deviation 7 word for word.** `RunTicker`'s constructor grew, so `ResumeFlowTests`,
+   `SkillBarPresenterTests` and `FrameOrderTests` moved. **`RunEndPresenterTests` went red** —
+   `RunScope_RefusesToComposeWithoutTheScreen` read back the *decoy's* refusal and looked like rule
+   7 deleted, because the new guard sits with the body prefabs above the run-end guard. That is the
+   second consecutive task to grow that list, which M5-05a's own comment predicted.
+6. **`Run.unity` was dressed** — outside the Files table, and manual step 4 requires it. One line:
+   `_decoyPrefab`. **No new scene object**, because the corpse parents under the existing `Decals`
+   root like the rings and the zones (M2-11a's rule).
+7. **Rule 6's measurement is tight, and it was taken before the row was written.** *"Consecrate"* at
+   28 pt needs **143.6 px of S1's 150** — it fits with 4 % to spare, and *"Bulwark"* needs 99.6.
+   **One thing in row 1 is corrected by it:** auto-sizing at the shipped 8–18 was already rendering
+   both words at a full **18 pt**, so 7.9 dp was the *actual* size rather than an upper bound. The
+   upper-bound caveat is real for a future longer name and was not true of today's content.
+8. **`VFX_Decoy.prefab` is scale 1.0 with shadows off.** Rule 1 says *"the player's silhouette"*, so
+   unlike the Wight's 0.7 (M5-05a rule 8) it is not shrunk; the mesh child is the enemy body's 0.8
+   at y 0.8, which is what makes it the *shared* body. Shadow casting is off, which the spec does
+   not mention: a solid shadow under a half-alpha body is the one thing that would read it as solid
+   again.
+9. **`Hud_NothingElseMoved` asserts the *set* as well as the sizes.** A new `TMP_Text` appearing on
+   `Hud.prefab` reddens it, because every text element on that prefab is a legibility question
+   against Android's floor and the seven M4-07 measured are the only ones anybody has measured.

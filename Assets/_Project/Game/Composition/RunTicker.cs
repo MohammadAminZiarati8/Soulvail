@@ -162,6 +162,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         TelegraphRings telegraphRings,
         ZoneViews zoneViews,
         BossViews bossViews,
+        DecoyViews decoyViews,
         SaveWriter saveWriter,
         ShardWriter shardWriter,
         InputAdapter input,
@@ -186,6 +187,18 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
         _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
         _bossViews = bossViews ?? throw new ArgumentNullException(nameof(bossViews));
+
+        // Taken and deliberately not kept, which is the two writers below's bargain rather than the
+        // censuses above's — and it is the first *view* on this list to take it. A decoy has no
+        // Step (M5-05b rule 2): it appears and disappears on two events and interpolates nothing in
+        // between, so there is no per-frame call for a field to exist for. What the parameter buys
+        // is the other half of what the views above get for free — being on this object's
+        // dependency chain is what guarantees the census is subscribed before Start can let core
+        // drop anything, and a VContainer Scoped registration nothing ever resolves is never
+        // constructed at all (M4-05b rule 6). A field assigned and never read is what the compiler
+        // is right to object to.
+        _ = decoyViews ?? throw new ArgumentNullException(nameof(decoyViews));
+
         // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
         // announced as an event — so the parameter exists for one reason: being on this object's
         // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take

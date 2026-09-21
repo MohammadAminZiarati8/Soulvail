@@ -754,6 +754,7 @@ MonoBehaviour:
   _enemyParent: {fileID: 2056789031}
   _minionPrefab: {fileID: 6272270846140008837, guid: 68a94f1510c4876499a90a37c348b863, type: 3}
   _minionParent: {fileID: 1308062827}
+  _decoyPrefab: {fileID: 4371545654905838427, guid: be769f9045463a8488f422c8a2240320, type: 3}
   _projectilePrefab: {fileID: 5055392040755623392, guid: f0748e4cd0d908349af56a4260b5bbb4, type: 3}
   _projectileParent: {fileID: 894525614}
   _enemyLayer:

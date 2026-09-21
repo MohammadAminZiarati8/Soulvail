@@ -654,6 +654,11 @@ public sealed class ResumeFlowTests
             fissurePrewarm: 0,
             beatPrewarm: 0));
 
+        // Empty on the zones' terms: this fixture plays the Oathbound, which has no Shroudstep, so
+        // nothing ever drops a corpse. It is here because the ticker takes one (M5-05b).
+        var decoys = Track(new DecoyViews(
+            container, Template<DecoyView>("DecoyTemplate"), null, hub, prewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -685,6 +690,7 @@ public sealed class ResumeFlowTests
             rings,
             zones,
             boss,
+            decoys,
             Track(new SaveWriter(new StubStore(), hub)),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,

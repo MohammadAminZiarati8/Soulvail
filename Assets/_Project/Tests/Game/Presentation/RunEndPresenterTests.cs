@@ -706,6 +706,11 @@ public sealed class RunEndPresenterTests
         // having been deleted.
         Set(serialized, "_minionPrefab", Component<MinionView>("Wight"));
 
+        // And M5-05b's, for the identical reason one task later — the corpse's guard sits with the
+        // body prefabs too. This is the second time this list has grown for a new view, which is
+        // what the comment above predicted rather than a coincidence.
+        Set(serialized, "_decoyPrefab", Component<DecoyView>("Decoy"));
+
         Set(serialized, "_projectilePrefab", Component<ProjectileView>("Projectile"));
         Set(serialized, "_camera", Component<Camera>("Main Camera"));
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
@@ -8,6 +9,7 @@ using Soulvail.Game.Adapters;
 using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Support;
+using UnityEditor;
 using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
@@ -49,6 +51,15 @@ public sealed class TelegraphRingsTests
 {
     private static readonly ContentId Husk = new ContentId("enemy.husk");
     private static readonly ContentId Bloater = new ContentId("enemy.bloater");
+
+    /// <summary>
+    /// [Ledger row 3] The one material the whole telegraph family shares, and the reason one edit to
+    /// it is a look change across six prefabs rather than a one-line correction.
+    /// </summary>
+    private const string TelegraphMaterialPath = "Assets/_Project/Materials/M_TelegraphRing.mat";
+
+    /// <summary>Where the six live, walked by <see cref="Telegraph_SixPrefabsShareOneMaterial"/>.</summary>
+    private const string VfxPrefabFolder = "Assets/_Project/Prefabs/Vfx";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
@@ -579,6 +590,126 @@ public sealed class TelegraphRingsTests
         Assert.That(TelegraphRings.SpawnRingRadius, Is.EqualTo(SpawnRadius).Within(1e-6f));
     }
 
+    // ---- [Ledger row 3] The one material six prefabs share ---------------------------------------
+
+    /// <summary>
+    /// <b>Alpha means what it says on the telegraph family, and it did not until M5-05b.</b>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The row's finding was right and its prescribed fix was wrong, which is why this row
+    /// measures the blend rather than a keyword.</b> Ledger row 3 ruled the answer was
+    /// <c>_ALPHAPREMULTIPLY_ON</c> on this material. <c>Universal Render Pipeline/Unlit</c> does not
+    /// declare that keyword in Unity 6.3 — its local keyword space holds <c>_ALPHAMODULATE_ON</c>
+    /// and no premultiply at all — so <c>EnableKeyword</c> files it under <c>m_InvalidKeywords</c>,
+    /// <c>IsKeywordEnabled</c> keeps answering false, <b>nothing warns anywhere</b>, and the render
+    /// is byte-identical. A row asserting the keyword's presence would therefore have gone green
+    /// over a fix that did nothing, which is the most expensive shape a test can have.
+    /// </para>
+    /// <para>
+    /// <b>What was actually wrong was the blend factors.</b> The material carried
+    /// <c>_SrcBlend: One</c> with <c>_DstBlend: OneMinusSrcAlpha</c> — premultiplied blending — over
+    /// a fragment shader that outputs straight colour, so at alpha 0.5 the surface contributed its
+    /// rgb at <em>full</em> strength while only the background was halved. That is the
+    /// <em>"draws at full brightness whatever its alpha says"</em> the row describes, arrived at
+    /// from the hardware rather than from a missing branch. <c>SrcAlpha</c> is the fix, and it is
+    /// what <c>M_Reticle.mat</c> — the same shader, written by URP's own Inspector — has shipped
+    /// since M1.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Telegraph_AlphaMeansWhatItSays()
+    {
+        Material material = TelegraphMaterial();
+
+        Assert.That(
+            material.GetFloat("_Surface"),
+            Is.EqualTo(1f),
+            "The telegraph material is no longer a transparent surface at all.");
+
+        Assert.That(
+            material.GetFloat("_SrcBlend"),
+            Is.EqualTo((float)UnityEngine.Rendering.BlendMode.SrcAlpha),
+            "_SrcBlend is back to One, so every surface in the telegraph family draws its colour at "
+                + "full strength whatever its alpha says — a 0.35 Consecrate zone and a 1.0 one are "
+                + "the same pixels (ledger row 3).");
+
+        Assert.That(
+            material.GetFloat("_DstBlend"),
+            Is.EqualTo((float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha),
+            "_DstBlend is not OneMinusSrcAlpha, so the two factors no longer sum to a blend.");
+
+        // URP's BlendMode.Alpha, which is the dropdown a human would pick and the value that makes
+        // the two factors above the Inspector's own answer rather than a pair somebody typed.
+        Assert.That(material.GetFloat("_Blend"), Is.EqualTo(0f), "The blend mode is not URP's Alpha.");
+
+        // And the keyword the ledger row named is *absent*, deliberately. Its presence would mean
+        // somebody re-applied the ruling without reading this row — harmless to the render, because
+        // the shader has nowhere to put it, and a lie about what fixed this.
+        Assert.That(
+            material.IsKeywordEnabled("_ALPHAPREMULTIPLY_ON"),
+            Is.False,
+            "URP's Unlit shader does not declare _ALPHAPREMULTIPLY_ON, so a material claiming it is "
+                + "carrying an invalid keyword that does nothing. The blend factors are the fix.");
+    }
+
+    /// <summary>
+    /// Rule 9: exactly six prefabs share this material, so a seventh joining the family is a
+    /// considered diff rather than a silent one.
+    /// </summary>
+    /// <remarks>
+    /// <b>The count is the point.</b> One edit to this material is a look change across every
+    /// telegraph, both boss hazards, the beat shell, Bulwark and the Consecrate zone at once — which
+    /// is why row 3 was placed on a task whose reviewer is already judging translucency. The
+    /// corpse M5-05b also ships is deliberately <em>not</em> in this list: <c>VFX_Decoy.prefab</c>
+    /// sits in the same folder and carries <c>M_DecoyCyan.mat</c>, so a body that is not a telegraph
+    /// does not inherit the telegraph's tuning.
+    /// </remarks>
+    [Test]
+    public void Telegraph_SixPrefabsShareOneMaterial()
+    {
+        string materialGuid = AssetDatabase.AssetPathToGUID(TelegraphMaterialPath);
+
+        Assert.That(materialGuid, Is.Not.Empty, $"No material at {TelegraphMaterialPath}.");
+
+        var expected = new[]
+        {
+            "VFX_TelegraphRing", "VFX_Shockwave", "VFX_Fissure",
+            "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
+        };
+
+        var found = new List<string>();
+
+        foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { VfxPrefabFolder }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
+            {
+                foreach (Material material in renderer.sharedMaterials)
+                {
+                    if (material != null && AssetDatabase.GetAssetPath(material) == TelegraphMaterialPath)
+                    {
+                        found.Add(prefab.name);
+                    }
+                }
+            }
+        }
+
+        Assert.That(
+            found,
+            Is.EquivalentTo(expected),
+            "The set of prefabs sharing M_TelegraphRing.mat has changed. That material's blend is a "
+                + "look decision for the whole VFX language, so a prefab joining or leaving the "
+                + "family is a change somebody should have argued for (ledger row 3, rule 9).");
+    }
+
     /// <summary>A census over the fixture's prefab, parent, hub and container.</summary>
     private TelegraphRings Census(int prewarm) =>
         new TelegraphRings(_container, _prefab, _parentObject.transform, _hub, prewarm);
@@ -619,6 +750,16 @@ public sealed class TelegraphRingsTests
         Assert.That(found, Is.Not.Null, $"No ring of radius {radius} is in service.");
 
         return found;
+    }
+
+    /// <summary>The one material the telegraph family shares, loaded off disk.</summary>
+    private static Material TelegraphMaterial()
+    {
+        var material = AssetDatabase.LoadAssetAtPath<Material>(TelegraphMaterialPath);
+
+        Assert.That(material, Is.Not.Null, $"No material at {TelegraphMaterialPath}.");
+
+        return material;
     }
 
     private void Telegraph(Vector3 position) =>

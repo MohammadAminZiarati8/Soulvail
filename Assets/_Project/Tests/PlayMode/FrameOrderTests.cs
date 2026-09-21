@@ -168,6 +168,7 @@ public sealed class FrameOrderTests
     private TelegraphRings _telegraphRings;
     private ZoneViews _zoneViews;
     private BossViews _bossViews;
+    private DecoyViews _decoyViews;
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
@@ -257,6 +258,12 @@ public sealed class FrameOrderTests
             fissurePrewarm: 0,
             beatPrewarm: 0);
 
+        // Empty on the zones' terms and for a sharper version of their reason: nothing here drops a
+        // decoy, and this census has no Step for the order below to place even if one did (M5-05b
+        // rule 2). It is here because the ticker takes one — the subscription guarantee, and
+        // nothing else.
+        _decoyViews = new DecoyViews(_container, Template<DecoyView>("DecoyTemplate"), null, _hub, prewarm: 0);
+
         _input = new InputAdapter();
 
         // Never enabled, which is what makes the command phase a no-op: both properties the ticker
@@ -299,6 +306,7 @@ public sealed class FrameOrderTests
             _telegraphRings,
             _zoneViews,
             _bossViews,
+            _decoyViews,
 
             // Nothing here takes a snapshot, so this writes nothing — it is on the constructor for
             // the reason the rings above are (M2-14a rule 8): being on that constructor is what
@@ -352,6 +360,9 @@ public sealed class FrameOrderTests
 
         _bossViews?.Dispose();
         _bossViews = null;
+
+        _decoyViews?.Dispose();
+        _decoyViews = null;
 
         _input?.Dispose();
         _input = null;

@@ -187,6 +187,12 @@ namespace Soulvail.Game.Composition
                  "is torn down and raised again at every stage boundary (M2-11a).")]
         [SerializeField] private Transform _minionParent;
 
+        [Tooltip("The corpse a Shroudstep leaves (CH §3.2, M5-03). The shared body at the player's " +
+                 "silhouette, in the player's own cyan at half alpha — theirs, and dead. Not a " +
+                 "floor decal: a flat patch an enemy walks at would read as a hazard, and that " +
+                 "colour is reserved.")]
+        [SerializeField] private DecoyView _decoyPrefab;
+
         [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
                  "enemy prefab makes — a body per kind of shot arrives with the art.")]
         [SerializeField] private ProjectileView _projectilePrefab;
@@ -297,6 +303,21 @@ namespace Soulvail.Game.Composition
                     "Prefabs/Minions/Wight.prefab onto its Minion Prefab field — without it a " +
                     "Gravecaller's Wights are raised, walk, and kill with no body anywhere in the " +
                     "scene (CH §3.2).");
+            }
+
+            // Guarded like the Wight prefab above and for a quieter version of its sentence: core
+            // drops a decoy whether or not anything can draw one (M5-03), so a scene dressed
+            // without this field is one where every Shroudstep taunts the whole arena for three
+            // seconds with nothing on the floor to say why the swarm walked off. The evidence of a
+            // decoy would be the arena walking the wrong way, which is what DecoySpawned's own
+            // remarks have said since M5-03.
+            if (_decoyPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(DecoyView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_Decoy.prefab onto its Decoy Prefab field — without it a " +
+                    "Gravecaller's Shroudstep pulls every enemy in the arena towards a corpse " +
+                    "nobody can see (CH §3.2).");
             }
 
             if (_projectilePrefab == null)
@@ -599,6 +620,22 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _minionPrefab)
                 .WithParameter("parent", _minionParent)
                 .WithParameter("prewarm", MinionSystem.MaxConcurrent);
+
+            // The corpses (M5-05b). The army's registration exactly, for its reasons — two of its
+            // arguments are references to this scene, and the static installer is deliberately the
+            // half a headless test can build.
+            //
+            // Prewarmed to LureSystem.Capacity, which is two and is never a third: the Shroudstep's
+            // cooldown is 2.5 s against a decoy's 3, so two can legitimately overlap for half a
+            // second and nothing in the design lets a player hold more. Sized from the constant so
+            // the pool and core's own ceiling cannot disagree — and parented under the decal root
+            // rather than the arena, because an arena is torn down and raised again at every stage
+            // boundary (M2-11a) and a corpse parented to one would be destroyed mid-life by a swap
+            // it has nothing to do with.
+            builder.Register<DecoyViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _decoyPrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", LureSystem.Capacity);
 
             // The same three-argument shape as the census above, and registered here rather than in
             // RunInstaller for the reason EnemyViews is: two of its arguments are references to

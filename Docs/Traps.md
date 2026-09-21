@@ -27,6 +27,7 @@ project, and every instance below was found the hard way:
 | `GC.CollectionCount(0)` | barely moves | same (M0-02) |
 | `Application.CanStreamedLevelBeLoaded` | `false` for every scene in the build | inert in the Editor, by bare name *and* full path (M0-13) |
 | `SerializedProperty.objectReferenceValue` | assignment reports success | stores `None` if the handle went fake-null (M1-07) |
+| `Material.EnableKeyword("_ALPHAPREMULTIPLY_ON")` | the name appears in `shaderKeywords` | the shader never declared it, so it is filed under `m_InvalidKeywords` and changes no pixel — and `IsKeywordEnabled` keeps answering `false` (M5-05b) |
 
 **The rule that falls out of it: when an API answers yes/no about project state, prove it says
 "yes" to something true before trusting its "no".** Seed a control. When probing whether a remote
@@ -641,6 +642,25 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   `_BaseColor` on a `_Surface: 0` material compiles, runs, changes the number and draws exactly the
   same pixels. **Anything that wants to fade a body owes this check before it writes an alpha**
   (M1-12).
+- **A material keyword the shader does not declare is accepted, stored, and silently inert — and
+  `IsKeywordEnabled` will tell you so if you ask, which nobody does.** `Material.EnableKeyword` does
+  not validate: Unity sorts the name into `m_ValidKeywords` or `m_InvalidKeywords` by whether the
+  shader's `keywordSpace` declares it, writes the invalid ones to the asset anyway, and logs
+  **nothing**. `shaderKeywords` then reports the name back — so the obvious probe confirms the fix —
+  while `IsKeywordEnabled` and `enabledKeywords` both say it is off. **Ask
+  `shader.keywordSpace.keywords` whether the keyword exists before spending a task on it.**
+  Concretely, in Unity 6.3: **`Universal Render Pipeline/Unlit` declares no `_ALPHAPREMULTIPLY_ON`
+  at all** — its local keywords include `_SURFACE_TYPE_TRANSPARENT`, `_ALPHATEST_ON` and
+  `_ALPHAMODULATE_ON`, and premultiply is not among them, so URP's own premultiply *maths* lives in
+  the blend factors and in author-premultiplied colour rather than in a branch. This cost
+  [ledger row 3](plan/ROADMAP.md#carry-forward-into-m5) its ruling: the row diagnosed the symptom
+  correctly for three milestones and prescribed a keyword that could never have done anything.
+  **What was actually wrong was `_SrcBlend: One`** — which, over a fragment that outputs straight
+  colour, contributes rgb at full strength while halving only the background, which is exactly
+  *"draws at full brightness whatever its alpha says"*. `SrcAlpha` is the fix. **The general
+  shape:** when a material looks wrong, read the blend factors before reaching for a keyword, and
+  compare against a shipped material on the same shader that already looks right — `M_Reticle.mat`
+  was the control here (M5-05b).
 - **A *Scale With Screen Size* canvas measures in reference pixels, not dp**: a `sizeDelta` of 120
   is 48 dp on a 400 dpi phone. Any HUD element whose size is specified in dp must be sized at
   runtime as `dp × pxPerDp ÷ canvas.scaleFactor`, not authored into the prefab (M0-15).

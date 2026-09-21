@@ -228,4 +228,53 @@ anybody has seen the thing it names.**
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+`Descend` opens `ClassSelect.prefab` over the menu; a card's tap writes `PendingRun` and loads the
+Run scene. `ClassCard` draws a name, a sentence and three numbers off `CharacterSpec`; the prefab
+carries three cards and `Open` binds two and clears the third. **2 450 EditMode / 0 / 0** (+25) and
+**PlayMode 19 / 0 / 0**.
+
+**Ten deviations. Four change something.**
+
+1. **`MenuPresenterTests` does not exist, and neither does `Menu_ContinueVisibilityIsUnchanged`.**
+   The menu's rows have lived in [`ResumeFlowTests`](../../../Assets/_Project/Tests/Game/Composition/ResumeFlowTests.cs)
+   since M3-07b, as `Menu_ContinueHiddenWithNoSave`, `Menu_ContinueShownWithASave` and
+   `Menu_VisibilityIsDecidedOnEveryEnable`. The Tests table's row is built as
+   `TableLocalizerTests.RewrittenRows_StillAssertWhatTheyAsserted`'s device — it names the three and
+   asserts they still exist and still carry `[Test]` — rather than copied into a second fixture that
+   would have to be kept in step. `ResumeFlowTests` took the constructor and `OnEnable` ripple.
+2. **`CharacterSpec`'s new parameter is a 42-file ripple, not a 4-file one.** `new CharacterSpec(`
+   has **57 call sites**, 11 of them target-typed `new(`, which the Files table's *ripple* row does
+   not mention. Under the [sizing rule](../ROADMAP.md#how-to-read-this) these are additive one-line
+   edits and the task does not split; the count is recorded because the spec's estimate was off by
+   38 files.
+3. **`English.asset` gains four rows, not eight.** Rule 8 enumerates six keys and two —
+   `character.oathbound.name`, `character.gravecaller.name` — were already in the table. The four
+   new ones are `ui.classselect.title`, `ui.classselect.back` and the two descriptions.
+4. **The three figures are formatted from `const`s in code, not from table rows** — `"{0:0} HP"`,
+   `"{0:0.0} m/s"`, `"{0:0} DPS"`. `SkillRow.CooldownFormat` is `"{0:0.0} s"` and
+   `HudPresenter.HpFormat` is `"{0:0}/{1:0}"`, and `TableLocalizerTests` rules a number format out
+   of AR §11.5's sweep explicitly. This is what keeps the card at rule 4's **five** `TMP_Text`s and
+   the tripwire's bet intact; three static unit labels per card would have made it eight.
+5. **`Select_InstantiatesNothing` counts objects rather than bytes.** `AllocationAssert.None` over
+   the binding path cannot pass: composing `"140 HP"` allocates a string before TMP is reached, and
+   **nothing in this project asserts a presenter *draw* allocation-free** — every existing use is
+   over pure computation. The row asserts what rule 3 actually states: the same `ClassCard`
+   instances and the same `Transform` count after 100 open/close cycles. Filed as [Traps §7](../../Traps.md).
+6. **`MenuPresenter` lost `ContentCatalog`** and both helpers. `FirstCharacterId` is deleted outright
+   — the class is a tap now — and `FirstModeId` moved verbatim onto `ClassSelectPresenter`, beside
+   the write it feeds, so GD §4.5's *no code may assume Descent* is still enforced in one place.
+   Rule 2 says the method is "unchanged"; it is, but it is not in this file any more.
+7. **`ClassCard` is not added to `TableLocalizerTests`' `Readers_DrawNoKeyDirectly` or
+   `Cells_TakeThePortOnTheirDrawCall`.** The second asserts a public `Show`, and this card's draw
+   call is `Bind`. Neither list is in the Files table, so both are left alone.
+8. **`MenuScope` registers the screen and refuses an undressed one**, unlike `RunScope`'s optional
+   presenters: there is no play-the-Menu-scene-undressed workflow to protect, and a `Descend` that
+   opens a dead panel is worse than one that says so at boot.
+9. **`ClassCard` gained `IsShown` and `IsInteractable`** beyond the *Public API* block — both are
+   reads the Tests table's rows need (`the third Clear`ed and switched off`, `both buttons
+   interactable`) and neither is reachable otherwise.
+10. **M5-06b left `☐☑` in its own ROADMAP box**; corrected to `☑` here.
+
+**Not done, and named:** manual step 8 is the device question ([row 3](../ROADMAP.md#carry-forward-into-m5)).
+Card layout is authored in reference pixels rather than placed in dp — no rule asks for it, and
+[Traps §9](../../Traps.md) says the Editor cannot judge it anyway.

@@ -485,6 +485,7 @@ public sealed class LurePerceptionTests
     private static CharacterSpec Gravecaller() => new(
         new ContentId(GravecallerId),
         new LocKey("character.gravecaller.name"),
+        new LocKey("character.gravecaller.description"),
         PlayerMaxHp,
         new MovementSpec(3.1f, 0.06f, 0.08f, 720f),
         new TargetingSpec(BoltRange, 3f, 2f, 1f, 1.5f, 0.1f),

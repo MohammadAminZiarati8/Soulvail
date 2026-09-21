@@ -25,6 +25,15 @@ public sealed class CharacterSpec
 {
     /// <param name="id">The class's stable content id, e.g. <c>character.oathbound</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
+    /// <param name="descriptionKey">
+    /// Localisation key for the one line about the class that the class-select card draws
+    /// (M5-07 rule 5). <b>Required, and guarded, unlike <paramref name="nameKey"/></b>: the
+    /// screen this exists for has a sentence-shaped hole in every card, and a
+    /// <c>default(LocKey)</c> would fill it with an empty string rather than with a diagnosis.
+    /// Third rather than last, so the two keys sit together in <c>SkillSpec</c>'s order — that
+    /// type has carried a name and a description since M3-02b and is what the level-up card
+    /// draws.
+    /// </param>
     /// <param name="maxHp">Starting maximum health.</param>
     /// <param name="movement">How the class moves.</param>
     /// <param name="targeting">
@@ -84,6 +93,9 @@ public sealed class CharacterSpec
     /// up, cannot be saved, and would sit in the catalog under a key that
     /// <see cref="ContentCatalog.Character"/> reports as missing — a lie the catalog would tell
     /// forever. Rejected here, where the data is built, rather than where it is read.
+    /// <para>
+    /// Or <paramref name="descriptionKey"/> is <c>default(LocKey)</c> (M5-07 rule 5).
+    /// </para>
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="maxHp"/> is not greater than zero — a class that starts dead is a content
@@ -96,6 +108,7 @@ public sealed class CharacterSpec
     public CharacterSpec(
         ContentId id,
         LocKey nameKey,
+        LocKey descriptionKey,
         float maxHp,
         MovementSpec movement,
         TargetingSpec targeting,
@@ -109,6 +122,18 @@ public sealed class CharacterSpec
         if (id.Value is null)
         {
             throw new ArgumentException("id must be a valid ContentId; default(ContentId) has none.", nameof(id));
+        }
+
+        // Guarded where nameKey is not, and the asymmetry is rule 5's whole argument: a name is
+        // drawn by screens that already have the id to fall back on, while the description exists
+        // only for the class-select card — so a default here is a card with a blank half and
+        // nothing anywhere saying which asset forgot it.
+        if (descriptionKey.Key is null)
+        {
+            throw new ArgumentException(
+                "descriptionKey must be a valid LocKey; default(LocKey) names no string. Every "
+                    + "class needs the one line the class-select card draws (M5-07 rule 5).",
+                nameof(descriptionKey));
         }
 
         // `!(maxHp > 0f)` rather than `maxHp <= 0f`, because every comparison against NaN is
@@ -132,6 +157,7 @@ public sealed class CharacterSpec
 
         Id = id;
         NameKey = nameKey;
+        DescriptionKey = descriptionKey;
         MaxHp = maxHp;
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
         Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
@@ -148,6 +174,17 @@ public sealed class CharacterSpec
 
     /// <summary>Localisation key for the display name — never the name itself.</summary>
     public LocKey NameKey { get; }
+
+    /// <summary>
+    /// One line about the class, for the class-select card — never the sentence itself. Never
+    /// <c>default(LocKey)</c>: the constructor refuses one (M5-07 rule 5).
+    /// </summary>
+    /// <remarks>
+    /// CH §3's table has nine columns and a phone card has room for three numbers, so the rest of
+    /// what separates two classes has to be said in words. <c>"You are not the damage"</c> is a
+    /// sentence here rather than a fourth row of figures.
+    /// </remarks>
+    public LocKey DescriptionKey { get; }
 
     /// <summary>Starting maximum health.</summary>
     public float MaxHp { get; }

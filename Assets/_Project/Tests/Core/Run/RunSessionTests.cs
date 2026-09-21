@@ -851,6 +851,7 @@ public sealed class RunSessionTests
     private static CharacterSpec Oathbound() => new(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         100f,
         new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg),
         // Required as of M1-03, and irrelevant to every row in this fixture: the run session

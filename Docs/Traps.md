@@ -58,7 +58,17 @@ probe from a wrong answer.
   UTF-8 locales") (M1-07).
 - **A `grep` for `new TypeName` does not find every construction.** Target-typed `new(...)` is
   invisible to it. When a constructor grows a required parameter, let the compiler enumerate the
-  call sites (M1-03).
+  call sites (M1-03). **This row caught nobody at M5-07 and cost a round trip anyway:**
+  `grep -rn "new CharacterSpec("` found 46 sites across 42 files and the compiler then named
+  **11 more** written `private static CharacterSpec X() => new(`. The grep is fine for *scoping* the
+  ripple; it is never the list. Compile before believing a count (M5-07).
+- **A Python script that rewrites a file on Windows converts its line endings to CRLF, silently.**
+  `Path.read_text()` translates CRLF *and* LF to `\n`, and `write_text()` translates `\n` back to
+  `os.linesep` — so a one-line insertion into fifty LF files rewrites all fifty as CRLF. Nothing
+  reports it: Unity compiles, the suite is green, and `git diff --stat` shows `1 +` per file because
+  `.gitattributes` normalises on commit. **`dotnet format whitespace --verify-no-changes` is what
+  catches it**, as ~1 200 `ENDOFLINE` errors. Read and write **bytes** (`read_bytes` /
+  `write_bytes`), or pass `newline="\n"` explicitly (M5-07).
 
 ---
 
@@ -525,6 +535,20 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   once (M0-10).
 - **An allocation test over a cached read measures one field read N times.** To measure the
   recompute, invalidate inside the measured body (M1-01).
+- **A presenter's *draw* path cannot be asserted allocation-free, and no fixture in this project
+  claims otherwise.** Every `AllocationAssert.None` in the suite is over pure computation —
+  `ConeOverlapQuery.Query`, `SnapshotBuilder.Build`, `TableLocalizer.Get`, `DomainEventHub.Publish`.
+  A screen that draws a number allocates before TMP is reached at all: `string.Format` and every
+  `float.ToString` produce a fresh string, and `TMP_Text.text = …` takes one. **So a spec asking for
+  `AllocationAssert.None` "over the binding path" is asking for something that cannot pass** — M5-07
+  rule 3's own words were *"none is instantiated"*, which is a **count of objects**, and the row
+  became one: the same component instances and the same `Transform` count after 100 open/close
+  cycles. When a spec names an allocation probe over UI, check what the rule actually claims before
+  writing the probe (M5-07).
+- **NUnit's `Has.Count` reflects for a `Count` *property* on the runtime type, not on the declared
+  one.** `Assert.That(cards, Has.Count.EqualTo(3))` where `cards` is an `IReadOnlyList<T>` holding a
+  `T[]` fails with *"Property Count was not found"* — the array carries `Length`. The interface is
+  irrelevant; the constraint never sees it. Assert `cards.Count` directly (M5-07).
 - **`Awake` never runs in EditMode**, so anything cached there is null to a test — and a lookup
   that silently finds nothing is a *passing test of a broken feature*. `EnemyViews`' collider index
   was empty in every EditMode test for exactly this reason. **The general rule: when a test's setup

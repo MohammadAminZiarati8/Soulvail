@@ -217,3 +217,13 @@ MonoBehaviour:
     _text: Grave-Work
   - _key: tree.gravecaller.rot
     _text: Rot
+  - _key: ui.classselect.title
+    _text: Choose your class
+  - _key: ui.classselect.back
+    _text: Back
+  - _key: character.oathbound.description
+    _text: A paladin who stands in it. The only regenerating shield in the game,
+      and a swing that hits everything in front of you.
+  - _key: character.gravecaller.description
+    _text: "A necromancer. The bolt is weak on purpose \u2014 you are not the damage.
+      A quarter of what you kill gets back up and fights for you."

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.CharacterDefinition
   _id: character.gravecaller
   _nameKey: character.gravecaller.name
+  _descriptionKey: character.gravecaller.description
   _maxHp: 80
   _speed: 3.1
   _accelTime: 0.06

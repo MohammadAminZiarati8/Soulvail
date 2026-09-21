@@ -90,8 +90,8 @@
 | M5-05a | [Wights on screen, and the frame step a body costs](tasks/M5-05a-wight-views-and-concurrency.md) — CH §8 q1's concurrency ruling, and [row 4](#carry-forward-into-m5) | M | M5-04a | ☑ |
 | M5-05b | [The corpse, twelve font values, and one keyword that dims six prefabs](tasks/M5-05b-decoy-view-and-the-look.md) — [rows 1](#carry-forward-into-m5) and [3](#carry-forward-into-m5) | M | M5-03, M5-05a | ☑ |
 | M5-06a | [What a Legion node may reach: a target, a trigger and a verb](tasks/M5-06a-what-a-legion-node-may-reach.md) | M | M5-04b | ☑ |
-| M5-06b | [The Gravecaller tree v1, and what a level is worth](tasks/M5-06b-gravecaller-tree-v1.md) — [row 5(i)](#carry-forward-into-m5) | M | M5-02, M5-06a | ☐☑ |
-| M5-07 | [Class select: the first screen that asks the player a question before a run](tasks/M5-07-class-select-screen.md) | M | M5-02, M5-06b | ☐ |
+| M5-06b | [The Gravecaller tree v1, and what a level is worth](tasks/M5-06b-gravecaller-tree-v1.md) — [row 5(i)](#carry-forward-into-m5) | M | M5-02, M5-06a | ☑ |
+| M5-07 | [Class select: the first screen that asks the player a question before a run](tasks/M5-07-class-select-screen.md) | M | M5-02, M5-06b | ☑ |
 | M5-07a-i | [The run's tree stops being one tree](tasks/M5-07a-i-the-runs-tree-widens.md) — the forcing question | M | M5-06b | ☐ |
 | M5-07a-ii | [The half-tree moment, and the branch a run borrows](tasks/M5-07a-ii-the-half-tree-moment.md) (CH §5.4) | M | M5-07, M5-07a-i | ☐ |
 | M5-08 | [M5 acceptance, tag `m5`](tasks/M5-08-acceptance-and-tag.md). Also [row 2](#carry-forward-into-m5)'s three numbers, [row 7](#carry-forward-into-m5)'s gate observation and [row 8](#carry-forward-into-m5)'s played minute | S | everything | ☐ |

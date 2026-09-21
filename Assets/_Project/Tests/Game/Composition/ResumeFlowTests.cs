@@ -559,7 +559,15 @@ public sealed class ResumeFlowTests
         Set(presenter, "_descend", descend);
         Set(presenter, "_continue", @continue);
 
-        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader(), Passthrough());
+        // M5-07: OnEnable refuses a menu with no class-select screen, for the reason it refuses one
+        // with no Descend button — without it there is no way into a run. Dressed as a bare
+        // component because these rows are about the Continue button's visibility and never open it;
+        // ClassSelectPresenterTests is what drives the screen itself.
+        Set(presenter, "_classSelect", root.AddComponent<ClassSelectPresenter>());
+
+        // The ContentCatalog left this signature at M5-07 with the two methods that read it — the
+        // class-select screen resolves its own.
+        presenter.Construct(new PendingRun(), saved, new SceneLoader(), Passthrough());
 
         return presenter;
     }

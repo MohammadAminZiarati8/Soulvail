@@ -950,6 +950,7 @@ public sealed class MinionSystemTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         Id(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         140f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
@@ -963,6 +964,7 @@ public sealed class MinionSystemTests
     private static CharacterSpec Gravecaller() => new CharacterSpec(
         Id(GravecallerId),
         new LocKey("character.gravecaller.name"),
+        new LocKey("character.gravecaller.description"),
         80f,
         new MovementSpec(3.1f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

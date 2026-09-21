@@ -122,6 +122,7 @@ public sealed class ContentValidationTests
     private static readonly string[] AuthoringPlaceholders =
     {
         "character.new.name",
+        "character.new.description",
         "enemy.new.name",
         "mode.new.name",
         "skill.new.name",

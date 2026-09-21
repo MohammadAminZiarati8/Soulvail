@@ -35,6 +35,12 @@ namespace Soulvail.Game.Authoring
     {
         [SerializeField] private string _id = "character.new";
         [SerializeField] private string _nameKey = "character.new.name";
+
+        [Tooltip("The one line the class-select screen's card draws under the name (M5-07). " +
+                 "Required — there is no such thing as a class with nothing to say about it, and " +
+                 "a card with a blank half is what the spec's constructor refuses.")]
+        [SerializeField] private string _descriptionKey = "character.new.description";
+
         [SerializeField, Min(1f)] private float _maxHp = 100f;
         [SerializeField, Min(0.01f)] private float _speed = 6f;
         [SerializeField, Min(0.001f)] private float _accelTime = 0.06f;
@@ -194,6 +200,7 @@ namespace Soulvail.Game.Authoring
                 return new CharacterSpec(
                     new ContentId(_id),
                     new LocKey(_nameKey),
+                    new LocKey(_descriptionKey),
                     _maxHp,
                     new MovementSpec(_speed, _accelTime, _decelTime, _turnSpeedDeg),
                     new TargetingSpec(

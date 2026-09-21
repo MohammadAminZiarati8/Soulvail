@@ -920,6 +920,7 @@ public sealed class SkillTreeTests
     private static CharacterSpec Character() => new CharacterSpec(
         Id(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         MaxHp,
         new MovementSpec(MoveSpeed, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

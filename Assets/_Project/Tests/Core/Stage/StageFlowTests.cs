@@ -6,6 +6,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -1169,7 +1170,9 @@ public sealed class StageFlowTests
         _composer = new WaveComposer(_catalog, new ThreatBudget(_mode.Scaling, DeviceCap));
         _plan = new WavePlan(MaxWaves, Math.Max(1, _mode.Roster.Count));
         _spawn = new FixedRandom(seed, Alternating(8_192)).Spawn;
-        _minions = new MinionSystem(Wight(), _events, new RecordingIntents());
+        MinionSpec wight = Wight();
+
+        _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, new RecordingIntents());
 
         _flow = Flow();
     }

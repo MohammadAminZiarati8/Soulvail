@@ -21,8 +21,12 @@ namespace Soulvail.Core.Effects;
 /// <para>
 /// <b>There is deliberately no <c>Enemy</c> and no <c>Nearest</c>.</b> An effect that debuffs
 /// <em>someone else</em> is a different primitive with a selection rule — which target, chosen how,
-/// and what happens when there is none — and that is M6's, not this one's. Adding a third member
-/// here would smuggle a selection rule in as an enum value with nowhere to author it.
+/// and what happens when there is none — and that is M6's, not this one's. Adding a member for one
+/// of those would smuggle a selection rule in as an enum value with nowhere to author it.
+/// <b><see cref="Minions"/> is not that member and does not weaken the rule</b> (M5-06a rule 1):
+/// what it addresses is a <see cref="MinionRecipe"/>, of which a run has exactly one, for its whole
+/// life, found without choosing anything. The rule is about a <em>someone</em>, and a recipe is not
+/// one.
 /// </para>
 /// </remarks>
 public enum StatTarget
@@ -38,6 +42,15 @@ public enum StatTarget
     /// outside one rather than falling back — see that method.
     /// </summary>
     Self,
+
+    /// <summary>
+    /// The run's minions, aimed at the <see cref="MinionRecipe"/> rather than at the bodies —
+    /// M5-06a rule 1. Legal only on a class with a <c>MinionSpec</c>; a run whose tree aims here
+    /// without one is refused at <c>RunSession.Start</c> (rule 5), because
+    /// <see cref="EffectRegistry.CanApply"/> answers <em>"is there a handler for this type"</em> and
+    /// a target is a field rather than a type, so the registry's own sweep cannot see it.
+    /// </summary>
+    Minions,
 }
 
 /// <summary>
@@ -126,7 +139,7 @@ public sealed class ModifyStat : IEffect
             throw new ArgumentOutOfRangeException(
                 nameof(target),
                 target,
-                "A ModifyStat is aimed at Player or Self.");
+                "A ModifyStat is aimed at Player, Self or Minions.");
         }
 
         Stat = stat;
@@ -187,6 +200,12 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
     private readonly IStatBlock _player;
 
     /// <summary>
+    /// This run's minion recipe as an address book, or <see langword="null"/> on a class that raises
+    /// nothing. Null is a real answer rather than a missing dependency — see the constructor.
+    /// </summary>
+    private readonly IStatBlock _minions;
+
+    /// <summary>
     /// The one scope instance, handed out by every <see cref="Aiming"/> call. Built here rather
     /// than per call because a <c>using</c> on a freshly allocated scope is an allocation on the
     /// cast path, and a struct scope would box on the way out as <see cref="IDisposable"/>.
@@ -201,10 +220,20 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
     private IStatBlock _self;
 
     /// <param name="player">Where each of the player's addresses lives this run.</param>
+    /// <param name="minions">
+    /// This run's minion recipe as an address book, or <see langword="null"/> on a class that has
+    /// none — which is every class but the Gravecaller. <b>Null is a real answer and not a missing
+    /// dependency</b> (M5-06a rule 5): it is defaulted for the same reason
+    /// <see cref="ModifyStat.Target"/> is, so every call site written before there was a second
+    /// block still says what it always said, and the throw that follows a
+    /// <see cref="StatTarget.Minions"/> effect reaching it names the class rather than reporting a
+    /// null.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
-    public ModifyStatHandler(IStatBlock player)
+    public ModifyStatHandler(IStatBlock player, IStatBlock minions = null)
     {
         _player = player ?? throw new ArgumentNullException(nameof(player));
+        _minions = minions;
         _scope = new AimScope(this);
     }
 
@@ -319,13 +348,21 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// <paramref name="target"/> is <see cref="StatTarget.Self"/> and no scope is open — see
-    /// <see cref="Aiming"/>.
+    /// <see cref="Aiming"/> — or it is <see cref="StatTarget.Minions"/> on a class that raises
+    /// nothing. Both are refused rather than sent to the player, and for one reason: a fallback
+    /// would move a real number by the authored amount and nothing would report it.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A <see cref="StatTarget"/> member with no case here. Unreachable through
     /// <see cref="ModifyStat"/>'s constructor, which refuses one, and loud anyway for
     /// <c>Stat.Pool</c>'s reason.
     /// </exception>
+    /// <remarks>
+    /// <b><see cref="StatTarget.Minions"/> is one case beside the other two, and that is the whole
+    /// of rule 1.</b> <see cref="Aiming"/> is untouched and does not nest around it: the recipe is
+    /// found rather than chosen, so there is no scope to open and nothing wraps a minion node in a
+    /// <c>using</c>.
+    /// </remarks>
     private IStatBlock Block(StatTarget target)
     {
         return target switch
@@ -336,6 +373,13 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
                     + "rather than sent to the player: a self-buff that quietly landed on the "
                     + "player would move a real number by the authored amount and nothing would "
                     + "report it. Open a scope with ModifyStatHandler.Aiming(caster)."),
+            StatTarget.Minions => _minions ?? throw new InvalidOperationException(
+                "A ModifyStat aimed at Minions was applied on a class that raises none, so there "
+                    + "is no minion recipe to move. It is refused rather than sent to the player "
+                    + "for the reason a Self effect outside a scope is: the player's own number "
+                    + "would move by the authored amount and nothing would report it. A tree that "
+                    + "aims here belongs to a class with a MinionSpec, and RunSession.Start "
+                    + "refuses the run before this is ever reached."),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(target),
                 target,

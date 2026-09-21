@@ -316,4 +316,66 @@ bargain and what keeps this PR's review about the mechanism.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**Seven deviations. Three change something, and two of those are this spec's own claims refuted by
+probing them before building — the shape [Traps §1](../../Traps.md) gained a row for at M5-05b.**
+
+1. **Rule 3's mechanism was wrong: `MinionSystem.Spawn` does not seed a Wight's `Stat`s.**
+   `MinionAgent.Initialise` does, re-basing all three from `Spec` on the way out of the pool, and its
+   own remarks call the ordering load-bearing — `Health.Reset` refills `Current` from `MaxHp.Value`,
+   so a caller that re-based *after* `Initialise` would stand every buffed Wight up on the unbuffed
+   maximum. So the recipe is read in `Initialise`, and **`MinionAgent.cs` is a file the *small edits*
+   row does not name.** `MinionSystem` takes the recipe and hands it to the bodies; it holds no field
+   of its own, because one nothing read would be a warning.
+2. **`MinionSystem`'s recipe parameter is required, not optional, which rippled to four test files.**
+   Ten of eleven construction sites are in `MinionSystemTests`, `RiseTests`, `StatBlockTests` and
+   `StageFlowTests`. An optional parameter defaulting to a recipe built from the spec would have
+   rippled to none — and would have let a later caller silently create a *second* recipe, which is a
+   node moving numbers no body reads. That is Traps §1's own failure mode, so the noisy option won.
+3. **Rule 8's Tests-table wording would have landed the starve check red on arrival.** The row is
+   written *"against `UpdateBlackboard`'s writes"*, and `Bulwark.asset` authors `_field: 5` —
+   `IncomingProjectiles`, which `ProjectileSystem.Tick` writes and `UpdateBlackboard` does not. Scoped
+   as written the row fails on a correct, shipped, written field. It is implemented as the row's own
+   *name* says — **has a writer anywhere in the build** — against a hand-kept `Written` table with
+   each entry's writer beside it. `Veilrot` is still the one it would catch, and the handover's
+   prediction held: **it is green on arrival and nothing had to be weakened.**
+4. **Rule 10's ring is anchored to the world, not to the player's facing.** The rule cites
+   `BossBehaviour`'s adds ring as precedent; that ring puts its first body at **+X**
+   (`angle = placed * 2π / wanted`), not at the boss's facing, and `CombatBlackboard` carries no
+   facing for a handler to read. The formula is copied exactly. The Tests-table row — same position
+   and facing, same three points — is satisfied either way, and `Raise_IsOnADerivedRingAndDrawsNothing`
+   asserts it.
+5. **`RaiseMinions` is registered only in runs that can raise, and that is the spec's own implied
+   guard talking.** The guard list requires `RaiseMinionsHandler` to refuse a null `MinionSystem`, so
+   it cannot exist on an Oathbound — and the conditional registration is what makes rule 5's bespoke
+   sweep *unnecessary* for the verb: a verb is a **type**, so `SkillTree`'s existing `CanApply` sweep
+   refuses a tree carrying one before `RunStarted`, naming the node; a target is a **field** on a
+   registered type, which that sweep cannot see. **An Oathbound run's registry therefore holds five
+   primitives, not six.** `Registry_HoldsSixPrimitives` is a Gravecaller run carrying all six, plus
+   the Oathbound refusal as its other half.
+6. **`TriggerText.UnitOf` gained a case the Files table does not name**, beside the two `KeyFor`
+   pairs it does: `UnitOf`'s own throw says a new member needs *"a line here and two in KeyFor"*, and
+   `TriggerTextTests.Trigger_EveryPairHasAKey` walks the cross product. `MinionCount` answers `Count`,
+   which is what `TriggerUnit`'s remarks predicted a tenth field would do.
+7. **Three ripple sites the spec did not list**, all count assertions that hard-code nine fields:
+   `TriggerTextTests.PairCount` (18 → 20) and `ContentValidationTests.EveryTriggerKey_ResolvesInEnglish`
+   (18 → 20), plus the prose that carries the number in each.
+
+**Two spec claims probed and confirmed rather than assumed.** `EffectRegistry.CanApply` is
+`_bindings.ContainsKey(effect.GetType())` and nothing more, so rule 5's refusal genuinely had to be
+written by hand. `SkillSpecTests.Trigger_EveryFieldReads` does walk `Enum.GetValues` — **and is
+stricter than rule 6 says**: it reflects a `CombatBlackboard` **public field of exactly the member's
+name** and sets it, so `MinionCount` had to be a public `int` field spelled that way, which it is.
+
+**One bug of mine, caught by the suite rather than by review:** `SkillBranchSpec.Tier` numbers tiers
+from 1 and refuses 0, and the first sweep walked from 0 — 213 red rows, every one of them a run with
+a tree. Fixed and re-run green.
+
+**Verified:** **2 392 EditMode / 0 / 0** (+31 on M5-05b's 2 361), twice on the final code, and
+**PlayMode 19 / 0 / 0** on two of three runs — run 2 was [known issue 1](../PROGRESS.md#current-state),
+which had been quiet for three tasks. It fired with M5-05a's instrument answering ***wrong wedge***
+again: the body **0.0001 m behind the apex**, which no wedge of any width contains. That is the
+zero-margin-apex hypothesis confirmed a second time, on an untouched fixture. Console swept: 14
+errors, 25 warnings, every one a fixture provoking its own failure path (`BrokenId`,
+`RefusingLoader`, *"told to fail this write"*) and none naming a file this task added. Zero new
+analyzer warnings; `dotnet format whitespace --verify-no-changes` green over all eighteen touched
+files. `TimeManager.asset` re-serialised itself again and was reverted ([Traps §5](../../Traps.md)).

@@ -126,6 +126,26 @@ public sealed class CombatBlackboard
     public float Veilrot;
 
     /// <summary>
+    /// Wights standing right now — CH §4.2's Exhume trigger, which fires below half the cap.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Written by <see cref="PlayerCombat.Tick"/> from the army it is handed, in the same block as
+    /// the three enemy counts, and <b>zero on a class with no minions</b> — which is what makes an
+    /// Exhume clause on such a class <em>false</em> rather than absent (M5-06a rule 7). The run
+    /// holds no <c>MinionSystem</c> at all for those classes, so the zero is the honest answer
+    /// rather than a placeholder: there is nothing that could ever be counted.
+    /// </para>
+    /// <para>
+    /// <b>The army ticks below the combat step</b> (AR §18.1), so a trigger reads the count as it
+    /// stood before this tick's expiries and raises — deliberately one step old, exactly as
+    /// <see cref="IncomingProjectiles"/> is, and for a gentler version of the same reason: a Wight
+    /// that dissolves this tick was standing when the decision to Exhume was taken.
+    /// </para>
+    /// </remarks>
+    public int MinionCount;
+
+    /// <summary>
     /// Enemy projectiles currently inbound — CC §6.4's Bulwark trigger.
     /// </summary>
     /// <remarks>
@@ -186,6 +206,7 @@ public sealed class CombatBlackboard
         FocusRampLevel = 0f;
         StationaryTime = 0f;
         Veilrot = 0f;
+        MinionCount = 0;
         IncomingProjectiles = 0;
         PlayerPosition = Vector3.Zero;
     }

@@ -227,3 +227,11 @@ MonoBehaviour:
   - _key: character.gravecaller.description
     _text: "A necromancer. The bolt is weak on purpose \u2014 you are not the damage.
       A quarter of what you kill gets back up and fights for you."
+  - _key: ui.splash.title
+    _text: Borrow a discipline
+  - _key: ui.splash.class
+    _text: Choose a class
+  - _key: ui.splash.branch
+    _text: Choose a branch
+  - _key: ui.splash.nodes
+    _text: '{0} nodes'

@@ -823,6 +823,104 @@ public sealed class FrameOrderTests
         LogAssert.NoUnexpectedReceived();
     }
 
+    // ---- CH §5.4's moment and the second pause reason (M5-07a-ii rule 5) -------------------------
+
+    /// <summary>
+    /// The half-tree moment holds the pause under its own reason, and a level-up owed on the same
+    /// frame does not throw.
+    /// </summary>
+    /// <remarks>
+    /// <b>The premise is not hypothetical.</b> A sixth node taken between ticks crosses CH §5.4's
+    /// threshold, and a kill on the same tick can bank a pick — so the two arrive together, and
+    /// <c>RunPause.Pause</c> throws for a second holder. A gate that discovered that from inside the
+    /// frame loop would turn a screen collision into a dead run.
+    /// </remarks>
+    [UnityTest]
+    public IEnumerator Run_TheSplashPauseIsItsOwnReason()
+    {
+        _core.IsSplashPending = true;
+        _core.OnOpenSplash = () =>
+        {
+            _core.IsSplashPending = false;
+            _core.IsSplashOpen = true;
+        };
+
+        // Owed on the same frame, and deliberately left owed: the phase must not reach for it while
+        // the splash is holding the run.
+        _core.IsLevelUpPending = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.True);
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Splash));
+        Assert.That(Time.timeScale, Is.EqualTo(0f));
+
+        // Answered: the screen closes and the pause comes back on the next frame, under the reason
+        // that took it.
+        _core.IsSplashOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False, "the splash never gave the pause back.");
+        Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// Both owed on one frame: the splash opens and the level-up does not.
+    /// </summary>
+    /// <remarks>
+    /// The splash is the rarer and more consequential of the two, and a player who took a node and
+    /// then chose a discipline has seen them in the order they happened. The other direction is
+    /// core's: <c>RunState.IsSplashPending</c> is false while an offer is on the table, so a
+    /// level-up already mid-episode finishes first (<c>SplashFlowTests.Run_BothCanBeOwedOnOneFrame</c>).
+    /// </remarks>
+    [UnityTest]
+    public IEnumerator Run_TheSplashIsReadBeforeTheLevelUp()
+    {
+        _core.IsSplashPending = true;
+        _core.IsLevelUpPending = true;
+
+        _core.OnOpenSplash = () =>
+        {
+            _core.IsSplashPending = false;
+            _core.IsSplashOpen = true;
+        };
+
+        _core.OnOpenLevelUp = () => { _core.IsLevelUpPending = false; _core.HasOffer = true; };
+
+        yield return Frame();
+
+        // The only thing that reached core this frame was the splash: no level-up was opened, so no
+        // offer was drawn and the Offers stream is where it was.
+        Assert.That(_core.Touched, Is.EqualTo(new[] { "splash:open" }));
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Splash));
+
+        // And the level-up is still owed — it was deferred rather than lost, which is the half a
+        // "the splash won" assertion alone would not say.
+        Assert.That(_core.IsLevelUpPending, Is.True);
+
+        // The branch is chosen, and the frame after is the level-up's: the pause changes hands in
+        // one frame, which is what release-before-acquire buys.
+        _core.IsSplashOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_core.Touched, Does.Contain("level-up:open"));
+        Assert.That(_pause.IsPaused, Is.True);
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp));
+
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+        Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
     /// <summary>A paused run is <em>idled</em>, not clocked at zero.</summary>
     [UnityTest]
     public IEnumerator Frame_PausedFrameDoesNotTickCore()
@@ -1568,6 +1666,31 @@ public sealed class FrameOrderTests
         }
 
         public void ChooseOffer(int index) => _touched.Add("level-up:choose");
+
+        // M5-07a-ii grew the port again, with CH §5.4's moment: a second pair of reads and a second
+        // pair of commands, settable for the reason the level-up's pair is. The two Frame_Splash*
+        // rows drive them, and every other row in this file leaves both false, which is what keeps
+        // the phase's new branch inert everywhere it is not the subject.
+        public bool IsSplashPending { get; set; }
+
+        public bool IsSplashOpen { get; set; }
+
+        /// <summary>
+        /// What <see cref="OpenSplash"/> does when the frame calls it. <see cref="OnOpenLevelUp"/>'s
+        /// shape: a row that wants the screen to appear sets <see cref="IsSplashOpen"/> from here,
+        /// the way core would.
+        /// </summary>
+        public Action OnOpenSplash { get; set; }
+
+        public void OpenSplash()
+        {
+            _touched.Add("splash:open");
+
+            OnOpenSplash?.Invoke();
+        }
+
+        public void ChooseSplash(ContentId characterId, int branch) =>
+            _touched.Add("splash:choose");
 
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {

@@ -67,6 +67,14 @@ public sealed class StaticLabelWiringTests
         ("Assets/_Project/Prefabs/UI/Skills.prefab", "SkillsPresenter"),
         ("Assets/_Project/Prefabs/UI/TreeView.prefab", "TreeViewPresenter"),
         ("Assets/_Project/Prefabs/UI/LevelUp.prefab", "LevelUpPresenter"),
+
+        // **The fifth, and it is the decision this array's remarks ask for** (M5-07a-ii).
+        // CH §5.4's screen authors two of its four keys as placeholder text, and its whole argument
+        // is that there is no way off it — so a key drawn raw there is a key a player is stuck
+        // looking at. `ClassSelect.prefab` is deliberately still absent: it lives in the Menu scene
+        // and M5-07 pinned its two keys in its own fixture, so this array is the four *run* screens
+        // plus this one rather than a complete list of prefabs that author a key.
+        ("Assets/_Project/Prefabs/UI/Splash.prefab", "SplashPresenter"),
     };
 
     [Test]

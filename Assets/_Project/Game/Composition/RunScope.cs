@@ -122,6 +122,12 @@ namespace Soulvail.Game.Composition
                  "empty, because what its absence costs is not what the HUD's costs.")]
         [SerializeField] private LevelUpPresenter _levelUpPresenter;
 
+        [Tooltip("CH §5.4's half-tree moment: classes, then branches, on its own canvas above the " +
+                 "level-up's. Optional on the level-up screen's terms — and read its registration " +
+                 "below before leaving it empty, because a run that reaches six nodes without it " +
+                 "stops for good.")]
+        [SerializeField] private SplashPresenter _splashPresenter;
+
         [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
                  "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
                  "without one plays exactly the same fight, it just cannot be stopped from inside.")]
@@ -437,6 +443,24 @@ namespace Soulvail.Game.Composition
             if (_levelUpPresenter != null)
             {
                 builder.RegisterComponent(_levelUpPresenter);
+            }
+
+            // CH §5.4's moment (M5-07a-ii). The level-up screen's registration exactly, including
+            // the half that is not obvious: the gate is RunTicker's rather than this screen's, so
+            // the run stops whenever core has the moment open whether or not anything is drawing it
+            // — and a scene dressed without this presenter does not play "the same without a splash
+            // screen". On the sixth node it stops dead, shows nothing, and **there is no way past
+            // it at all**, because CH §5.4's choice is mandatory and nothing else can answer it.
+            //
+            // It is still optional rather than guarded, and that is the same statement about *when*
+            // the level-up screen's line makes: this is the undressed-Run-scene workflow every
+            // optional field on this scope protects, and M0-19's release build. **Unlike the
+            // level-up's, the failure it guards is reachable today** — both shipped classes have a
+            // tree — which is why the tooltip says so and why M5-08's checklist walks a run to six
+            // nodes.
+            if (_splashPresenter != null)
+            {
+                builder.RegisterComponent(_splashPresenter);
             }
 
             // Optional, and — unlike the level-up screen directly above — its absence really does

@@ -93,7 +93,7 @@
 | M5-06b | [The Gravecaller tree v1, and what a level is worth](tasks/M5-06b-gravecaller-tree-v1.md) — [row 5(i)](#carry-forward-into-m5) | M | M5-02, M5-06a | ☑ |
 | M5-07 | [Class select: the first screen that asks the player a question before a run](tasks/M5-07-class-select-screen.md) | M | M5-02, M5-06b | ☑ |
 | M5-07a-i | [The run's tree stops being one tree](tasks/M5-07a-i-the-runs-tree-widens.md) — the forcing question | M | M5-06b | ☑ |
-| M5-07a-ii | [The half-tree moment, and the branch a run borrows](tasks/M5-07a-ii-the-half-tree-moment.md) (CH §5.4) | M | M5-07, M5-07a-i | ☐ |
+| M5-07a-ii | [The half-tree moment, and the branch a run borrows](tasks/M5-07a-ii-the-half-tree-moment.md) (CH §5.4) | M | M5-07, M5-07a-i | ☑ |
 | M5-08 | [M5 acceptance, tag `m5`](tasks/M5-08-acceptance-and-tag.md). Also [row 2](#carry-forward-into-m5)'s three numbers, [row 7](#carry-forward-into-m5)'s gate observation and [row 8](#carry-forward-into-m5)'s played minute | S | everything | ☐ |
 
 ### Carry-forward into M5

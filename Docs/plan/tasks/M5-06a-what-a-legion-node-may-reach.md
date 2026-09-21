@@ -1,7 +1,7 @@
 # M5-06a — What a Legion node may reach: a target, a trigger and a verb
 
 **Size:** M · **Depends on:** M5-04b · **Branch:** `m5-06a-legion-effects`
-**Design refs:** CH §3.2, §4.2, §5; AR §10.1, §14, §18.2, §18.3; ADR-0006, ADR-0008 · **Ledger rows:** none — this task answers the `StatTarget` question [M5-04b](M5-04b-rise-and-minion-stats.md) rule 9 carried to M5-06, which is not a ledger row
+**Design refs:** CH §3.2, §4.2, §5; AR §10.1, §14, §18.2, §18.3; ADR-0006, ADR-0008 · **Ledger rows:** none — this task answers the `StatTarget` question [M5-04b](M5-04b-rise-and-minion-stats.md) rule 9 carried to M5-06a, which is not a ledger row
 
 ## Goal
 
@@ -31,7 +31,7 @@ mechanism.
 CH §3.2 gives Legion the minion cap (The Host's +4), the rise chance and the Wights themselves.
 Against the shipped code:
 
-| Wanted | Where the number lives after M5-04 | Ships here |
+| Wanted | Where the number lives after M5-04a/b | Ships here |
 |---|---|---|
 | **Minion damage / HP / speed** | `MinionAgent.ContactDamage`, `MaxHp`, `MoveSpeed` — three `Stat`s per body, created at `Spawn` | **Yes**, rules 1–4 |
 | **Raise Wights on demand** | nowhere — `MinionSystem.Spawn` exists and no effect calls it, so CH §4.2's Exhume has a system and no verb | **Yes**, rules 10, 11 |

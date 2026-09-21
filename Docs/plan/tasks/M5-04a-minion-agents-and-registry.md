@@ -173,7 +173,7 @@ public sealed class MinionSystem
    into the arena's whole attention economy with no playtest behind it. `ApplyDamage` exists so that
    when something does hurt one there is a door rather than a new mechanism.
 10. **A Wight's death and a Wight's expiry are two different events.** `MinionDied` carries the
-    position (M5-06's Second Death keystone wants it); `MinionDespawned` is the clock running out,
+    position (Second Death wants it; M5-06b rule 2 ships no Keystone, so M7-04); `MinionDespawned` is the clock running out,
     and **it is what happens in every run this milestone can play**. They are separate because a
     keystone that says *"enemies killed by minions explode"* must not fire on a Wight that simply
     timed out.
@@ -229,8 +229,8 @@ has expired.
 ## Manual verification (Editor / device)
 
 _None._ Nothing produces a Wight until [M5-04b](M5-04b-rise-and-minion-stats.md) and nothing draws
-one until M5-05, so every run this build plays is unchanged. `WorldSnapshot.Minions` is filled by
-`SnapshotBuilder`, which is M5-05's edit — **until then the array is empty in play and filled only by
+one until M5-05a, so every run this build plays is unchanged. `WorldSnapshot.Minions` is filled by
+`SnapshotBuilder`, which is M5-05a's edit — **until then the array is empty in play and filled only by
 tests**, which is stated here so an empty array is not read as a fault.
 
 ## Out of scope
@@ -238,9 +238,9 @@ tests**, which is stated here so an empty array is not read as a fault.
 - **Rise, and anything that produces a Wight in play.** M5-04b.
 - **`IStatBlock` for a minion.** M5-04b, and rule 2 is the shape it mirrors.
 - **Views, prefabs, pooling, and the concurrency policy of CH §8 q1** — whether a Wight counts
-  against GD §11.1's enemy cap is a *rendering and fairness* question with a device answer. M5-05.
+  against GD §11.1's enemy cap is a *rendering and fairness* question with a device answer. M5-05a.
 - **Enemies fighting back.** Rule 9.
-- **Second Death, The Host, and every Legion node.** M5-06. Rule 3 and rule 10 exist so those are
+- **Second Death, The Host, and every Legion node.** M5-06a and M5-06b, except the two Keystones, which are M7-04's (M5-06b rule 2). Rule 3 and rule 10 exist so those are
   authoring rather than surgery.
 - **Saving a Wight.** Rule 11.
 - **Touching `BossBehaviour.cs`.** Rule 13 adds a measurement, not a change.

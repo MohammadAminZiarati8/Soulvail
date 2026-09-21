@@ -1,7 +1,7 @@
 # M5-03 — Shroudstep, and the first thing in this game that is not the player
 
 **Size:** S · **Depends on:** M5-02 · **Branch:** `m5-03-shroudstep-decoy`
-**Design refs:** CH §3.2; CC §5; AR §3, §9, §18.1, §18.3 · **Ledger rows:** none — rows 1 and 3 are ruled at M5-00a and placed on **M5-05**, the views task
+**Design refs:** CH §3.2; CC §5; AR §3, §9, §18.1, §18.3 · **Ledger rows:** none — rows 1 and 3 are ruled at M5-00a and placed on **M5-05b**, the views task
 
 ## Goal
 
@@ -11,7 +11,7 @@ three seconds every enemy in the arena walks at the corpse instead of at the pla
 ## Which forcing question this answers
 
 **Neither** — but it is the task that makes the *second* one arrive early, and that is worth saying
-before M5-04 finds it. `EnemyBlackboard`'s own remarks explain why it carries no `TargetId`: *"every
+before M5-04a finds it. `EnemyBlackboard`'s own remarks explain why it carries no `TargetId`: *"every
 enemy in V1 attacks the player and nothing else, so the field would have one legal value. It returns
 with the first enemy that chooses among targets — the Choir, M7-01."* **A decoy is the first thing an
 enemy walks at that is not the player, one milestone early.** Rule 2 is the cheapest honest answer to
@@ -120,7 +120,7 @@ public float DecoyDuration { get; }
    is not in the snapshot, and takes no damage — an enemy that reaches one stands next to it and
    strikes at a `DistanceToPlayer` that is the decoy's, which means **it swings at the corpse and
    hurts nobody**. That is the mechanic working: three seconds of the arena's attention, bought with
-   a dodge. A decoy with hit points would be a minion, and minions are M5-04's.
+   a dodge. A decoy with hit points would be a minion, and minions are M5-04a/b's.
 8. **This is not a targeting system and must not become one.** There is no `TargetId`, no threat
    table, no per-enemy taunt state, and no way for a decoy to pull *some* enemies and not others. The
    blackboard's four player fields keep their names and keep meaning *"where this enemy's quarry is"*
@@ -174,14 +174,14 @@ to `Ingest` meaning "no decoys", and a non-finite `now` to `Tick`.
 ## Manual verification (Editor / device)
 
 _None this task, deliberately._ The Gravecaller is not selectable (M5-02 rule 9), so no run this
-build plays can drop a decoy, and **a decoy has no view until M5-05** — a corpse nobody can see is
-the thing to be honest about rather than to half-render here. The first eye on it is M5-05's, and the
+build plays can drop a decoy, and **a decoy has no view until M5-05b** — a corpse nobody can see is
+the thing to be honest about rather than to half-render here. The first eye on it is M5-05b's, and the
 device question it raises — *does a taunted swarm read as taunted, at phone scale, in three
 seconds?* — goes on [ledger row 3](../ROADMAP.md#carry-forward-into-m5) at this task's merge.
 
 ## Out of scope
 
-- **A view for the decoy.** M5-05, with the Wights. Named here so it is not a surprise there.
+- **A view for the decoy.** M5-05b, beside M5-05a's Wights. Named here so it is not a surprise there.
 - **`TargetId`, threat tables, per-enemy taunt.** Rule 8. M7-01's Choir pays for the rename.
 - **A decoy that can be attacked, damaged or destroyed.** Rule 7.
 - **Pathfinding to a decoy.** Rule 2 zeroes the path direction and accepts the straight line; a

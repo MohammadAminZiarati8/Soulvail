@@ -11,7 +11,7 @@ is built and used on the same day rather than built at M2 and discovered wrong a
 
 ## Which forcing question this answers
 
-**Neither.** The tree's branch-index limitation is M5-07a's and is specced by M5-00b; `IStatBlock`
+**Neither.** The tree's branch-index limitation is M5-07a-i's and is specced by M5-00b; `IStatBlock`
 for a minion is [M5-04b](M5-04b-rise-and-minion-stats.md)'s. What this task carries instead is the
 **one-directional `ProjectileSystem`**, found by grep at M5-00a and stated here because it is the
 reason this is size M rather than size S: `ProjectileSystem.Land` tests the *player's* position
@@ -140,7 +140,7 @@ public bool TryTakeShot(out Projectile shot);
    bounded by the enemy capacity and allocates nothing.
 5. **`Side` is a defaulted parameter and there is no third member.** Every existing `Projectile`
    construction keeps meaning what it meant. `ShotSide` is deliberately not a faction, a team or a
-   layer mask: M5-04's Wights do **not** fire, so nothing in M5 asks for a third value, and
+   layer mask: M5-04a's Wights do **not** fire, so nothing in M5 asks for a third value, and
    inventing one would be M7's Archon arriving early (CH §8.5).
 6. **`PlayerCombat` fires nothing; it *offers* a shot.** On a damage frame, a `Cone` weapon emits the
    `ConeHitIntent` it always has, and a `Projectile` weapon instead writes `PendingShot` — origin the
@@ -219,7 +219,7 @@ seen is [M5-02](M5-02-gravecaller-and-bone-bolt.md), which authors a weapon that
 - **The Gravecaller, Bone Bolt, and any authored asset.** M5-02. This task ships the machinery and
   no content that walks through it — M4-01a's bargain, and what keeps the review honest.
 - **A view for a player's bolt.** `ProjectileViews` is already the pool for `ProjectileFired` and
-  needs nothing; whether a player's bolt should look different from a Spitter's is M5-05's.
+  needs nothing; whether a player's bolt should look different from a Spitter's is M5-05b's.
 - **Manual aim / Precision mode (CC §3.8).** The lead exists for the auto-targeter; a thumb-aimed
   shot is not led at all, and CC §3.8 is V1-but-not-M5.
 - **Spread, multi-shot, piercing, bouncing.** Rule 9 refuses the first and the rest have no design

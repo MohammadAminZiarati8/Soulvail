@@ -15,7 +15,7 @@ the first minions to ask `IStatBlock` for anything, that `CombatantStats` answer
 an `EnemyAgent` and refuses the rest by name, and that a friendly minion is neither the player nor an
 enemy. Rules 6–8 are the answer: **a third implementation, `MinionStats`, deliberately not a
 generalisation of the first two** — with the alternative priced rather than dismissed, and with the
-one thing it still cannot do named in rule 9 rather than discovered at M5-06.
+one thing it still cannot do named in rule 9 rather than discovered at M5-06a.
 
 ## Files
 
@@ -124,14 +124,14 @@ public sealed class MinionStats : IStatBlock
    caller that is not the player and it needs **no new member** — which is the evidence that argument
    was about the design and not about the one case in front of it. `PlayerStat.cs` is not in the
    Files table.
-9. **What a node still cannot do, named here rather than found at M5-06.** `ModifyStat` carries
+9. **What a node still cannot do, named here rather than found at M5-06a.** `ModifyStat` carries
    `StatTarget { Player, Self }` and `ModifyStatHandler.Aiming(self)` aims it for one call. **Neither
    spells *"every Wight I own"***, and a Legion node that says *"+20 % minion damage"* is exactly
    that. It is not fixed here: M4-01a rule 3 rules that an effect aimed at *someone else* is a
    different primitive with a selection rule, and inventing `StatTarget.Minions` with one authored
    node behind it would be guessing at the shape. **What this task ships is that a Wight has an
    address book and a live `ContactDamage` a modifier can sit on**; who is allowed to put one there
-   is M5-06's first question, and it is carried to M5-06 as a ledger row at this task's merge.
+   is M5-06a's first question, and it is carried to M5-06a as a ledger row at this task's merge.
 10. **Only the Gravecaller has one, and every other run is byte-identical.** `RisePassive` is
     constructed only where `CharacterSpec.Minions` is non-null; an Oathbound run holds no passive, no
     `MinionSystem`, draws nothing from `Drops`, and its `DrainDeaths` is called but is the only new
@@ -180,19 +180,19 @@ than the pending deaths.
 
 ## Manual verification (Editor / device)
 
-_None._ The Gravecaller is not selectable until M5-07 and a Wight has no view until M5-05, so no run
-this build plays raises one. **The first time anyone sees a Wight is M5-05**, and the question it
+_None._ The Gravecaller is not selectable until M5-07 and a Wight has no view until M5-05a, so no run
+this build plays raises one. **The first time anyone sees a Wight is M5-05a**, and the question it
 carries to [ledger row 3](../ROADMAP.md#carry-forward-into-m5) is CH §3.2's own watch item: *Wights
 must be unmistakable from enemies at phone scale.*
 
 ## Out of scope
 
-- **`StatTarget.Minions`, or any way to buff every Wight at once.** Rule 9, carried to M5-06.
-- **Second Death (CH §3.2's Grave-Work Keystone).** M5-06. `MinionDied` already carries the position
+- **`StatTarget.Minions`, or any way to buff every Wight at once.** Rule 9, carried to M5-06a.
+- **Second Death (CH §3.2's Grave-Work Keystone).** M7-04 — M5-06b rule 2 ships no Keystone. `MinionDied` already carries the position
   it needs (M5-04a rule 10).
-- **The Host's +4 cap.** M5-06 authors it; M5-04a rule 3 already made the cap a `Stat`.
+- **The Host's +4 cap.** M7-04 authors it, for the same reason; M5-04a rule 3 already made the cap a `Stat`.
 - **Enemies fighting back, or damaging a Wight in play.** M5-04a rule 9.
-- **Views.** M5-05.
+- **Views.** M5-05a.
 - **A sixth random stream, and any save-format change.** Rule 1.
 - **Veilrot, and CH §3.2's *"+1 % damage per Veilrot point"*.** GD §10's meter does not exist; M6-04.
 

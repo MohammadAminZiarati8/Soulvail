@@ -230,10 +230,10 @@ non-finite door on each of its six floats, and `CharacterDefinition.OnValidate` 
 - **Making the class playable.** M5-07's class-select screen. Rule 9.
 - **Wights doing anything.** M5-04a builds the agent, M5-04b the Rise that produces one.
 - **The corpse decoy, and what `Shroudstep` means.** M5-03. Rule 7 ships the member, not the behaviour.
-- **The Gravecaller's tree, its Veilrot relationship, its Keystones.** M5-06, and GD §10's Veilrot
+- **The Gravecaller's tree, its Veilrot relationship, its Keystones.** M5-06b, and GD §10's Veilrot
   does not exist at all yet.
 - **Ledger row 5(i)** — `LevelUpFlow`'s two Overflow `const`s onto `ModeDefinition`. Ruled at M5-00a
-  and placed on **M5-06**: it is a change to what a *level* is worth, it ripples through every
+  and placed on **M5-06b**: it is a change to what a *level* is worth, it ripples through every
   `LevelUpFlow` construction site, and folding it in here would put two arguments in one review.
 - **A minion `EnemySpec`.** A Wight is not an enemy and must never be one — the director would spawn
   it. [M5-04a](M5-04a-minion-agents-and-registry.md) rule 1 is where that is argued.

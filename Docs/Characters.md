@@ -146,6 +146,8 @@ Every tree node is one of four kinds.
 
 Upgrade nodes are what make this feel like a *tree* rather than a list: taking **Consecrate** early makes three later nodes meaningful, so an early pick reshapes the whole rest of the run.
 
+**The shares are over a full 27-node class tree, and what ships today is under all of them — deliberately, and flagged rather than quietly true.** Both v1 trees hold **twelve** nodes of the eventual twenty-seven, and across the 24 shipped nodes there are **3 Actives** (Consecrate, Bulwark, Exhume) — **12.5 %** against this table's ~25 % — and **no Keystones at all** against *3 per class*. Neither number is a tuning miss: a v1 tree is the half of a branch a run can actually walk, and the missing Actives are missing for a stated reason rather than for want of authoring. **M5-06b rule 3 ruled on the Gravecaller's own three**: Exhume ships because M5-06a built the verb it needs; **Tether and Rot Nova do not**, because each wants an effect primitive nobody has built, and Rot Nova's trigger reads a `TriggerField.Veilrot` nothing writes until M6-04. **The share becomes measurable — and this row becomes checkable — at M7-04**, which authors all 81 nodes and the three Keystones a class. Until then the table describes the target, not the build.
+
 ### 4.1 Cooldowns
 
 Every active has a base cooldown, reducible by Upgrade nodes and passives. Cooldown reduction is **multiplicative and floored at 40%** of base — otherwise late-run stacking produces permanently-active everything, which flattens the moment-to-moment loop into a single held note.
@@ -353,7 +355,7 @@ Merging cards into the tree and cutting Anchors makes this **smaller** than v0.1
 | Meta systems | XP, levels, skill points, respec, meta tree UI | **Class unlocks only** |
 | Total content units | ~110 | **~81** |
 
-**v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen and a wider draw, both in **M5-07a**.
+**v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen (**M5-07a-ii**) and a wider draw (**M5-07a-i**).
 
 ### 7.1 Build order — one class, all the way through
 
@@ -382,7 +384,7 @@ The expensive part remains the **balance pass per class**, which does not parall
 
 ## 8. Open questions
 
-1. **Do Wights count against the enemy concurrency cap?** ([GameDesign.md §11.1](GameDesign.md)) Rendering says yes, fairness says no. Leaning: separate pool with a tighter cap, and low-tier devices get fewer Wights *plus* a compensating minion damage buff, so difficulty stays device-independent.
+1. ~~**Do Wights count against the enemy concurrency cap?**~~ ([GameDesign.md §11.1](GameDesign.md)) Rendering says yes, fairness says no. Leaning: separate pool with a tighter cap, and low-tier devices get fewer Wights *plus* a compensating minion damage buff, so difficulty stays device-independent. **Answered at M5-05a rule 5, and the answer takes half the leaning and refuses the other half.** A Wight is **not** in `EnemyRegistry` at all, so it cannot count against GD §11.1's enemy cap even in principle; `MinionSystem.MaxConcurrent` is a **separate pool capped at 8**, which is the tighter cap the leaning asked for. **The device-tiered damage buff is refused**: nothing in the build reads a device tier yet, and authoring a compensating buff against a tier that does not exist would pin a balance number to a guess. It is **M8-03's**, with the rest of device tiering — the day a tier exists is the day *"fewer Wights"* becomes a real consequence worth compensating. **What the cap of 8 has never met is a phone**: 37 bodies in one arena against GD §11.3 is a device row on [ledger row 3](plan/ROADMAP.md#carry-forward-into-m5), not an Editor one.
 2. **Does levelling pause the game?** Assumed yes. Vampire Survivors pauses; Survivor.io pauses. The alternative — choosing while enemies close in — sounds tense and mostly produces mis-taps on a phone.
 3. **Should the level-up offer guarantee variety?** e.g. never 3 nodes from the same branch, or always ≥1 Active if you own fewer than 2. Probably yes, with soft weighting — pure random produces genuinely dead offers, and a dead offer at level 12 costs a run.
 4. **Is Overflow (§5.2) enough for very deep runs?** A player at level 45 with a full tree is gaining +2%/level against quadratic enemy scaling. That's intentionally a losing race, but it needs playtesting to confirm it feels like a heroic last stand rather than a slow suffocation.

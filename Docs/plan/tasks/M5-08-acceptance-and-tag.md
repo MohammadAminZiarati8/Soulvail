@@ -30,6 +30,17 @@ playtest verdict rather than attested one at a time; unmarked rows are verified 
 the assets, the code and the suite. **[device]** rows cannot be answered in the Editor and are
 deferred (rule 7).
 
+> **The boxes below are left as written, and that is the two-grain rule doing its job rather than an
+> omission.** The **[play]** rows were answered by two instrumented runs — an Oathbound to stage 16
+> and a Gravecaller to stage 19, three bosses each — and the answers are numbers, not ticks: they are
+> in [*As built*](#as-built) and in the [M5 log entry](../archive/PROGRESS-M5.md). **Three rows were
+> not answered and say so rather than being ticked:** row 2's *two-second read* on twenty-four
+> descriptions, CH §3.2's *are Wights unmistakable at phone scale*, and the feel question itself —
+> all three are judgements a person makes at device scale, and the owner deferred them to **M8-01**
+> with M7's content and art in. **Two rows were answered in the opposite direction to their
+> expectation**, which is the point of writing them down in advance: row 7 came back *yes*, and the
+> Gravecaller's hit counts came back **outside** GD §12.4's band.
+
 **A second class exists** — the ROADMAP's *ends when* for M5, read literally
 
 - [ ] **[play]** The class-select screen offers two cards and the card tapped is the run that starts ([M5-07](M5-07-class-select-screen.md))
@@ -148,15 +159,15 @@ deferred (rule 7).
 
 ## Acceptance
 
-- [ ] Checklist ticked; feel verdict recorded, with the Editor-versus-device grain stated
-- [ ] **Rows 2, 7 and 8 each carry a number or a sentence, not a shrug** — three playtest numbers or
+- [x] Checklist ticked; feel verdict recorded, with the Editor-versus-device grain stated
+- [x] **Rows 2, 7 and 8 each carry a number or a sentence, not a shrug** — three playtest numbers or
   a written reason they carry a third time, a yes-or-no on the add that hit after the boss fell, and
   **a bar that moved or did not**. These three are the reason this task is not a formality
-- [ ] Every ledger row struck or carried, with the *As built* that closed it named, and **every
+- [x] Every ledger row struck or carried, with the *As built* that closed it named, and **every
   carried row naming an unmerged owner** (rule 2)
-- [ ] `PROGRESS.md` updated, M5 entries archived, Current State pointing at **M6-00a**, and rule 5's
+- [x] `PROGRESS.md` updated, M5 entries archived, Current State pointing at **M6-00a**, and rule 5's
   rolling treatment applied under the measured 10 000-byte cap
-- [ ] Rule 11's id-drift pass done, and the parking-lot line updated with the fifth milestone it has
+- [x] Rule 11's id-drift pass done, and the parking-lot line updated with the fifth milestone it has
   now applied to
 - [ ] `m5` exists on `main` — **the owner's to make**, with rule 7's message
 
@@ -173,4 +184,57 @@ deferred (rule 7).
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**The checklist was instrumented rather than watched, and that is the whole account of why this
+acceptance closed rows the last three could not.** Rule 8's *"a bug found here becomes `M5-08a`"* is
+the only part of the plan that ran as written; the rest was re-shaped the moment the first row was
+attempted. **Row 8 asked for "one played minute" and got a false answer twice:** the owner reported
+the Warden's bar as not moving, and every static reading of the damage path — `Health.ApplyDamage`,
+`EnemySystem.ApplyDamage`, the cone resolve, `ProjectileSystem.Land`, `ProjectileLead` against a
+standing target, `BossPhases`, the band's prefab `m_Type: 3` — said it was sound. What settled it was
+asking the owner which of **two** readouts moved: the floating bar did and the band appeared not to.
+Both draw `EnemyDamaged.HpFraction`; at 4 200 HP one hit moves the bar **0.29 %**, so the fight was
+never broken and was only ever out of band. **A temporary `HudPresenter` probe then wrote two runs to
+`Logs/`**, and the owner played an Oathbound to stage 16 and a Gravecaller to stage 19, three bosses
+each. The probe was reverted before handover.
+
+**Rule 1's retune, measured:** 4 200 → **3 200** on `Warden.asset`, with `WardenBehaviourTests` and
+`BossBarViewTests` following because each file says it mirrors the asset. Six kills at the new value
+ran **74, 89, 89, 94, 99 and 103–108 s** against GD §9.1 rule 5's 75–120 s. `GameDesign.md` needed no
+number: §9.1 states the rule, and the asset was what violated it.
+
+**Rule 9 resolved a contradiction the checklist did not list, and it had to be resolved first.**
+GD §12.4's TTK invariant said *3–5 hits at every depth* while §12.5 says the power curves cross on
+purpose; if they cross, TTK must exceed 5 eventually, so §12.4 forbade the thing that makes Descent
+losable. **§12.4 is now scoped to *"up to the death horizon"*** and cross-references §12.5 — a
+balance pass cannot run against a self-contradictory target, which is why the ruling preceded the
+tuning rather than following it. The tuning is M8-05's.
+
+**Three rows discharged by measurement, one answered yes, two findings.** [Row 2](../ROADMAP.md#carry-forward-into-m5):
+the Oathbound kills a Husk in **4 hits flat from stage 4 to 16**, the Gravecaller drifts **4 → 8 by
+stage 16**, breaking the band at stage 9 **with its entire sixteen-node tree taken** — its twelve
+nodes carry one weapon-damage node, so damage grew 15 % against a Husk's 108 %; stage timings and an
+interruption budget of 0.3–7 s a stage came with it. [Row 7](../ROADMAP.md#carry-forward-into-m5):
+**yes** — `BOSS DEAD` and `STAGE 10 CLEARED` are 0.01 s apart and a hit landed **5.2 s** after the
+boss fell, so M5-00a's *"nobody has observed it"* objection is spent and the fix is owed → M6.
+[Row 8](../ROADMAP.md#carry-forward-into-m5): **a number**, discharged. GD §12.4's one-shot rule was
+measured for the first time — **70 hits taken, none above 35 %** of max HP.
+
+**Rule 8's bug, and it is the finding M5-06a rule 5 predicted.** `SplashFlow.Options` builds an
+option per branch unconditionally while `RequireInstallable` runs only inside `Install`, so an
+Oathbound borrowing the Gravecaller finds **two of three branches throw out of a `Button.onClick`** —
+*Legion* (`RaiseMinions` unregistered) and *Rot* (**Restless Dead targets `Minions`**, filed in the
+wrong branch). The guard is correct and atomic; the screen is the defect. It composes badly with
+M5-07a-ii's deliberate *no way off it but through*: a dead button, no feedback, and the only escape
+is quitting and pressing `Continue` — **rule 6's stated *cost*, the derive-on-resume, turns out to be
+the escape hatch**, which nobody designed and nothing tells the player. →
+[M5-08a](M5-08a-splash-offers-what-install-refuses.md).
+
+**Rule 11's id-drift pass and rules 9–10's doc annotations merged ahead of this**, in PR #135 on the
+same branch name; this footer covers the rest. **Rules 6 and 7 are the owner's** — the tag is theirs
+to make, and `M5-08a` is unbuilt, so what `m5` marks is the owner's call. **The feel verdict is
+deferred by the owner's ruling:** the three mechanics exist and were played for ~40 minutes, but
+*"second class or reskin"* cannot be judged on capsules and placeholder VFX; re-taken at **M8-01**
+with M7's content and art in. **Two probe defects are disclosed rather than buried:** the body census
+double-decremented (`EnemyDied` *and* `EnemyDespawned`), so GD §11.3's 37-body question is **not**
+answered; and `_probeBossDiedAt` never reset, so most row-7 lines were spurious and the two real
+windows were verified by hand.

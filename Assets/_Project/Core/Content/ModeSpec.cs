@@ -215,6 +215,127 @@ public readonly struct OverflowSpec
 }
 
 /// <summary>
+/// What a run is paid, in Essence, for getting through things. GD §15's income table as authored
+/// data (ADR-0006).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It belongs to the mode for the reason <see cref="OverflowSpec"/> does</b> (M5-06b rule 9, and
+/// GD §4.5 before it): what a mode <em>pays</em> is as much a statement about itself as how fast it
+/// levels you or how hard it pushes. A Boss Rush pays per boss and nothing per stage; Descent pays
+/// for depth.
+/// </para>
+/// <para>
+/// A <see langword="readonly"/> struct beside <see cref="OverflowSpec"/> rather than in a file of
+/// its own, for that type's stated reason: a mode's authored blocks are read together. Unlike it,
+/// this one carries arithmetic — <see cref="ForStageClear"/> — because GD §15's formula has to live
+/// somewhere and the two alternatives are worse. Not on the wallet, which knows nothing about
+/// depth; and not at the call site, which is where a second copy would start.
+/// </para>
+/// <para>
+/// <b><c>default(EssenceSpec)</c> is legal and means <em>this mode pays nothing</em></b>, which is
+/// why <see cref="ModeSpec"/> makes no second check of it — <see cref="OverflowSpec"/>'s bargain
+/// exactly, and AR §18.3's <em>"a struct with an invariant needs the check at both ends"</em> does
+/// not bite for its reason: the invariant is that the four numbers are not negative, and zero is
+/// not. It is also what keeps <c>new ModeSpec(...)</c>'s sixty-three call sites compiling;
+/// <c>ContentValidationTests.EveryShippedMode_PricesItsEssence</c> is what stops a silent zero
+/// reaching a build.
+/// </para>
+/// </remarks>
+public readonly struct EssenceSpec
+{
+    /// <param name="perStageBase">The flat half of a stage clear. 20 in Descent.</param>
+    /// <param name="perStageDepth">What each stage of depth adds to it. 4 in Descent.</param>
+    /// <param name="perElite">What one Elite is worth. 15, and nothing pays it until M7-02.</param>
+    /// <param name="perBoss">What clearing a boss stage adds on top of the stage itself. 60.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Any value is negative — a mode that charges the player for clearing a stage. Refused where
+    /// the table is <em>authored</em> rather than where it is paid, for <see cref="OverflowSpec"/>'s
+    /// reason: the symptom is a balance nobody can explain, half an hour into a run and a long way
+    /// from the asset that caused it.
+    /// </exception>
+    public EssenceSpec(int perStageBase, int perStageDepth, int perElite, int perBoss)
+    {
+        PerStageBase = Require(perStageBase, nameof(perStageBase));
+        PerStageDepth = Require(perStageDepth, nameof(perStageDepth));
+        PerElite = Require(perElite, nameof(perElite));
+        PerBoss = Require(perBoss, nameof(perBoss));
+    }
+
+    /// <summary>The flat half of a stage clear. 20 in Descent.</summary>
+    public int PerStageBase { get; }
+
+    /// <summary>What each stage of depth adds to it. 4 in Descent.</summary>
+    public int PerStageDepth { get; }
+
+    /// <summary>What one Elite is worth. 15, and nothing pays it until M7-02.</summary>
+    /// <remarks>
+    /// <b>Authored with no payer, deliberately.</b> The asset is what a designer reads, and a blank
+    /// here would read as <em>"Elites pay nothing"</em> rather than as <em>"nothing is an Elite
+    /// yet"</em>. The day one dies it is a call site, not a content change.
+    /// </remarks>
+    public int PerElite { get; }
+
+    /// <summary>What clearing a boss stage adds on top of the stage itself. 60.</summary>
+    public int PerBoss { get; }
+
+    /// <summary>
+    /// What clearing <paramref name="stage"/> pays — GD §15's formula, in the one place it is
+    /// written.
+    /// </summary>
+    /// <param name="stage">The depth cleared. Numbered from 1 (GD §8.2).</param>
+    /// <param name="bossStage">
+    /// Whether that stage held a boss. A boss stage <em>is</em> a stage clear and pays both terms,
+    /// which is why this is one method rather than two.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="stage"/> is below 1. A stage-zero payment is a hand-edited save reaching the
+    /// economy, and the honest answer to it is a throw rather than the base rate.
+    /// </exception>
+    /// <remarks>
+    /// Cumulative rather than flat, so the prices in GD §13.3 can be read against something: a
+    /// stage-1 clear pays 24, and a run that reaches stage 10 has been paid 540 — <c>Σ(20 + 4n)</c>
+    /// for <em>n</em> = 1…10 is 420, plus two bosses at 60. <b>Nothing is tuned here</b>; the
+    /// numbers are the asset's, and GD §13.4's Famine multiplies at the award site (M6-06b) rather
+    /// than in this expression.
+    /// </remarks>
+    public int ForStageClear(int stage, bool bossStage)
+    {
+        if (stage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(stage),
+                stage,
+                "Stages are numbered from 1 (GD §8.2), so there is no stage 0 to be paid for "
+                    + "clearing.");
+        }
+
+        int paid = PerStageBase + (PerStageDepth * stage);
+
+        return bossStage ? paid + PerBoss : paid;
+    }
+
+    /// <summary>
+    /// The one door, written once rather than four times: the four numbers are the same kind of
+    /// thing and owe the same sentence — <c>OverflowSpec.Require</c>'s shape.
+    /// </summary>
+    private static int Require(int value, string field)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Essence {field} must be zero or more. A negative one is a mode that "
+                    + "charges the player for getting through it, which the wallet would refuse at "
+                    + "the award site with nothing to point at but the asset.");
+        }
+
+        return value;
+    }
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -328,6 +449,14 @@ public sealed class ModeSpec
     /// <c>default(OverflowSpec)</c> — a mode whose spare levels are worth nothing, which is the
     /// honest reading of a mode that never mentioned them.
     /// </param>
+    /// <param name="essence">
+    /// GD §15's income table for this mode — what a stage clear, an Elite and a boss are worth
+    /// (M6-01a rule 2). <b>Optional, and last, which is <paramref name="overflow"/>'s placement and
+    /// its argument:</b> it belongs beside that block, and putting it there would have moved
+    /// sixty-three call sites across forty-four files for a widening that changes nothing any of
+    /// them says. Omitted, it is <c>default(EssenceSpec)</c> — a mode that pays nothing, which is
+    /// the honest reading of a mode that never mentioned an economy.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -360,7 +489,8 @@ public sealed class ModeSpec
         IReadOnlyList<RosterEntry> roster,
         IReadOnlyList<ContentId> arenas = null,
         IReadOnlyList<BossRosterEntry> bossRoster = null,
-        OverflowSpec overflow = default)
+        OverflowSpec overflow = default,
+        EssenceSpec essence = default)
     {
         if (id.Value is null)
         {
@@ -425,6 +555,13 @@ public sealed class ModeSpec
         // account of what a legal one is, and its zeroed form satisfies that account — see the
         // remarks on that type for why AR §18.3's both-ends rule does not reach it.
         Overflow = overflow;
+
+        // No second look either, for the line above's reason: EssenceSpec's own constructor is the
+        // single account of what a legal income table is, and its zeroed form satisfies that
+        // account. What stops a *shipped* mode quietly pricing nothing is
+        // ContentValidationTests.EveryShippedMode_PricesItsEssence, which is an author-time sweep
+        // over assets rather than a run-time check over specs (M3-14b rule 11's split).
+        Essence = essence;
 
         _roster = CopyRoster(roster, id);
 
@@ -495,6 +632,16 @@ public sealed class ModeSpec
     /// sentence: one says what a level costs, the other what a level is worth once the tree is full.
     /// </remarks>
     public OverflowSpec Overflow { get; }
+
+    /// <summary>
+    /// GD §15's income for this mode — 20 + 4·n a stage, 15 an Elite and 60 a boss in Descent.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>StageFlow.EnterClear</c>, which pays the run's <c>EssenceWallet</c> on the edge
+    /// into <c>Clear</c>, and by nothing else. All zeroes for a mode that authors none — a mode with
+    /// no economy at all, which is every fixture that does not mention one.
+    /// </remarks>
+    public EssenceSpec Essence { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

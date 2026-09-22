@@ -49,6 +49,11 @@ MonoBehaviour:
   _overflow:
     _damage: 0.02
     _maxHp: 0.02
+  _essence:
+    _perStageBase: 20
+    _perStageDepth: 4
+    _perElite: 15
+    _perBoss: 60
   _roster:
   - _specId: enemy.husk
     _introducedAtStage: 1

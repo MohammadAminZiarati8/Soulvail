@@ -67,6 +67,11 @@ namespace Soulvail.Game.Authoring
                  "finished — so it lives beside it (GD §4.5).")]
         [SerializeField] private OverflowBlock _overflow = new OverflowBlock();
 
+        [Tooltip("GD §15's income for this mode: what a stage clear, an Elite and a boss pay in " +
+                 "Essence. What a mode pays is the mode's own statement (GD §4.5) — a Boss Rush " +
+                 "would pay per boss and nothing per stage.")]
+        [SerializeField] private EssenceBlock _essence = new EssenceBlock();
+
         [Tooltip("Every archetype this mode may spawn, and the stage each is introduced at " +
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
@@ -115,7 +120,8 @@ namespace Soulvail.Game.Authoring
                     BuildRoster(),
                     BuildArenas(),
                     BuildBossRoster(),
-                    BuildOverflow());
+                    BuildOverflow(),
+                    BuildEssence());
             }
             catch (ArgumentException inner)
             {
@@ -196,6 +202,31 @@ namespace Soulvail.Game.Authoring
             }
 
             return _overflow.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored income block into the <see cref="EssenceSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// A missing block is refused rather than defaulted, for <see cref="BuildOverflow"/>'s
+        /// reason and with its consequence: a mode with no Essence block would clear stage after
+        /// stage and pay nothing, with no error and nothing on screen to say the economy had
+        /// stopped meaning anything. A block that is <em>present</em> and says zero is a different
+        /// statement and is legal (<see cref="EssenceSpec"/>) — what stops a <em>shipped</em> mode
+        /// making it is <c>ContentValidationTests.EveryShippedMode_PricesItsEssence</c>.
+        /// </remarks>
+        private EssenceSpec BuildEssence()
+        {
+            if (_essence is null)
+            {
+                throw new ArgumentException(
+                    "its essence block is missing. GD §15's income is not optional — a mode "
+                        + "without one clears every stage and pays nothing, and says nothing about "
+                        + "it.",
+                    nameof(_essence));
+            }
+
+            return _essence.ToSpec();
         }
 
         /// <summary>
@@ -453,6 +484,59 @@ namespace Soulvail.Game.Authoring
 
             /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
             public OverflowSpec ToSpec() => new OverflowSpec(_damage, _maxHp);
+        }
+
+        /// <summary>
+        /// GD §15's income table as a designer tunes it — what a run is paid for getting through
+        /// things.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="OverflowBlock"/>'s reason, and it draws as
+        /// the foldout beside it: one says what a level is worth, the other what a stage is.
+        /// </para>
+        /// <para>
+        /// <b>The initialisers are GD §15's own numbers</b>, so a mode created from the Create menu
+        /// pays for its stages rather than being silently worth nothing —
+        /// <see cref="ScalingBlock"/>'s bargain, fourth of four. Traps §7 applies exactly as it does
+        /// there: <c>Descent.asset</c> ships the same 20 / 4 / 15 / 60, so
+        /// <c>ModeDefinitionTests.Descent_EveryYamlKeyBindsToAField</c> is the row that can tell a
+        /// bound key from a dropped one and <c>Descent_CarriesItsEssence</c> cannot.
+        /// </para>
+        /// <para>
+        /// <b>Per Elite is authored with no payer and that is deliberate</b> (M6-01a rule 2):
+        /// Elites are M7-02's, and a blank here would read as <em>"Elites pay nothing"</em> rather
+        /// than as <em>"nothing is an Elite yet"</em>.
+        /// </para>
+        /// <para>
+        /// It validates nothing <see cref="EssenceSpec"/> already validates; <c>[Min]</c> clamps
+        /// the Inspector GUI and nothing else (Traps §5), which is why a hand-edited negative still
+        /// meets a door at conversion.
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class EssenceBlock
+        {
+            [Header("Essence — GD §15: a stage clear pays base + depth·n, a boss pays more")]
+            [Tooltip("The flat half of a stage clear. 20 in GD §15.")]
+            [SerializeField, Min(0)] private int _perStageBase = 20;
+
+            [Tooltip("What each stage of depth adds to it. 4 in GD §15 — so stage 1 pays 24 and " +
+                     "stage 10 pays 60, and the step is meant to be visible as a run gets deeper.")]
+            [SerializeField, Min(0)] private int _perStageDepth = 4;
+
+            [Tooltip("What one Elite is worth. 15 in GD §15. Nothing pays it until M7-02 authors " +
+                     "an Elite — the number is here so the table is complete, not because it is " +
+                     "reachable.")]
+            [SerializeField, Min(0)] private int _perElite = 15;
+
+            [Tooltip("What clearing a boss stage adds on top of the stage itself. 60 in GD §15 — " +
+                     "on top, because a boss stage is a stage clear.")]
+            [SerializeField, Min(0)] private int _perBoss = 60;
+
+            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
+            public EssenceSpec ToSpec() =>
+                new EssenceSpec(_perStageBase, _perStageDepth, _perElite, _perBoss);
         }
 
         /// <summary>

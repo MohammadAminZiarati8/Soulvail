@@ -99,6 +99,20 @@ public sealed class StageFlow
     private readonly EnemySystem _enemies;
     private readonly ProjectileSystem _projectiles;
     private readonly PlayerCombat _player;
+
+    /// <summary>
+    /// The run's Essence, paid on the edge into <see cref="StagePhase.Clear"/> (M6-01a rule 4).
+    /// </summary>
+    /// <remarks>
+    /// <b>Required, unlike <see cref="_lures"/> and <see cref="_minions"/>, and that is rule 5
+    /// rather than a preference.</b> Every run has a wallet — there is no class and no mode that
+    /// does without one — so an optional argument defaulting to null would make a mis-wired run
+    /// clear stages and be paid nothing, with no throw and no log. That is the exact failure
+    /// M5-06a's <em>As built</em> deviation 2 refused for <c>MinionRecipe</c>, and refusing it here
+    /// costs eleven call sites across two files.
+    /// </remarks>
+    private readonly EssenceWallet _essence;
+
     private readonly IDomainEvents _events;
     private readonly WavePlan _plan;
 
@@ -152,6 +166,9 @@ public sealed class StageFlow
     /// the narrowness of what is reset is visible at the call site rather than hidden in a
     /// constructor argument — see <see cref="Advance"/>, rule 12.
     /// </param>
+    /// <param name="essence">
+    /// The run's wallet, paid once per stage at <see cref="EnterClear"/>. Required — see the field.
+    /// </param>
     /// <param name="events">Where the three stage events go.</param>
     /// <param name="plan">
     /// The run's single <c>WavePlan</c>, built once by <c>RunSession.Start</c> at the wave curve's
@@ -174,6 +191,7 @@ public sealed class StageFlow
         EnemySystem enemies,
         ProjectileSystem projectiles,
         PlayerCombat player,
+        EssenceWallet essence,
         IDomainEvents events,
         WavePlan plan,
         int seed,
@@ -186,6 +204,7 @@ public sealed class StageFlow
         _enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
         _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         _player = player ?? throw new ArgumentNullException(nameof(player));
+        _essence = essence ?? throw new ArgumentNullException(nameof(essence));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _plan = plan ?? throw new ArgumentNullException(nameof(plan));
 
@@ -435,8 +454,16 @@ public sealed class StageFlow
     /// The arena is empty. The barrier drops, the door opens, and the next arena is named.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The gate position is read off this frame's snapshot rather than held, and it is carried on the
     /// event so that whatever draws a door does not have to ask core where one is.
+    /// </para>
+    /// <para>
+    /// <b>It is also where the run is paid, and it fires exactly once a stage</b> (M6-01a rule 4).
+    /// <c>Enter</c> is an edge: the flow parks in <see cref="StagePhase.Clear"/> for
+    /// <see cref="ClearTime"/> and this method is called once — the same property M2-14a rule 1's
+    /// boundary write already depends on.
+    /// </para>
     /// </remarks>
     private void EnterClear(float now, WorldSnapshot snapshot)
     {
@@ -449,6 +476,16 @@ public sealed class StageFlow
         bool hasNext = _mode.HasStage(Stage + 1);
 
         IsModeComplete = !hasNext;
+
+        // **GD §15's income, and it is paid above the publish below** (M6-01a rule 4). A reader
+        // handling StageCleared therefore sees a wallet that has already been paid, which is what
+        // lets a float-up and a readout react to one tick rather than to two.
+        //
+        // The formula is the mode's — EssenceSpec.ForStageClear — because what a mode pays is its
+        // own statement (GD §4.5), and the boss term is asked of the director rather than computed:
+        // `IsBossStage` is the existing read and no `stage % 5` exists anywhere in the game
+        // (M4-01b rule 1). A mode that authors no Essence pays zero, and Earn is silent for it.
+        _essence.Earn(_mode.Essence.ForStageClear(Stage, _director.IsBossStage));
 
         Vector3 gate = snapshot.HasGate ? snapshot.GatePosition : Vector3.Zero;
 

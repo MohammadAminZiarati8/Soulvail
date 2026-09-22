@@ -141,7 +141,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-00a | Specs for the economy in core — the wallet, the format, the meter and the shop | S | — | ☑ |
 | M6-00b | Specs for M6-03, M6-05 and M6-06 — the Sanctum screen, Pacts and Ordeals | S | 00a | ☑ |
 | M6-00c | Specs for M6-07…M6-11 — the Emberwright, unlocks, localisation and acceptance | S | 00b | ☑ |
-| M6-01a | [The Essence wallet, and the one event that fills it](tasks/M6-01a-essence-wallet-and-drops.md) | S | M6-00a | ☐ |
+| M6-01a | [The Essence wallet, and the one event that fills it](tasks/M6-01a-essence-wallet-and-drops.md) | S | M6-00a | ☑ |
 | M6-01b | [Save format v4: the one bump this milestone gets](tasks/M6-01b-save-format-v4.md) | S | M6-01a | ☐ |
 | M6-04 | [Veilrot: a meter that only goes up, four thresholds, and the gamble at the top](tasks/M6-04-veilrot-thresholds-and-the-claiming.md) | M | M6-01b | ☐ |
 | M6-02a | [The sixth phase, and the boss stage that was never over](tasks/M6-02a-the-sixth-phase.md) — [row 5](#carry-forward-into-m6) | S | M6-01a | ☐ |

@@ -499,6 +499,17 @@ namespace Soulvail.Game.Presentation
             _line.Append(" owed ").Append(
                 (state is null ? 0 : state.PendingLevelUps).ToString(CultureInfo.InvariantCulture));
 
+            // GD §15's Essence, in points, read from core for the level line's reason: nothing
+            // publishes a balance a run *starts* at, and a readout has to draw one on its first
+            // frame. It is the whole of M6-01a's manual step 1 — there is no view for the wallet
+            // until M6-03a draws the Sanctum and M6-03b puts GD §16.1's counter in the corner.
+            //
+            // What the step actually watches is the *step changing*: 0, 24, 52, 84 through stages
+            // 1 to 3, because a flat payment and GD §15's depth term are indistinguishable from any
+            // single number and tell each other apart the moment there are three.
+            _line.Append("  ess ").Append(
+                (state is null ? 0 : state.Essence).ToString(CultureInfo.InvariantCulture));
+
             // How many actives the player owns, and how far round the first one's cooldown is.
             //
             // It reads `actives 0` for the whole of this milestone until M3-12 authors a tree with

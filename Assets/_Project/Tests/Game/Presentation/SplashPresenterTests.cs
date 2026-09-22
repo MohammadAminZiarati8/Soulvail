@@ -8,6 +8,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
@@ -182,7 +183,71 @@ public sealed class SplashPresenterTests
         Assert.That(Text(BranchCounts()[1]), Does.Not.Contain("9"));
 
         Assert.That(Text(BranchCounts()[0]), Does.Contain("4"), "the four-node branch.");
-        Assert.That(Text(BranchCounts()[2]), Does.Contain("3"), "a branch with no Keystone.");
+
+        // **Branch 2 draws a reason rather than a count from M5-08a on**, because this run raises no
+        // minions and that branch opens on a ModifyStat aimed at them. Its node count is no longer
+        // observable through the screen, which is the point: the screen promises nothing there.
+        Assert.That(
+            Text(BranchCounts()[2]),
+            Is.EqualTo("Commands minions — your class raises none"),
+            "A refused branch says why where its count was.");
+    }
+
+    // ---- M5-08a: a branch the run cannot borrow is drawn dead -----------------------------------
+
+    /// <summary>
+    /// M5-08a rule 5. The row keeps its name, loses its count to a reason, and cannot be tapped.
+    /// </summary>
+    /// <remarks>
+    /// Before this task the same row was <em>live</em>, and tapping it threw an
+    /// <c>ArgumentException</c> out of <c>Button.onClick</c> on a screen with no way off it but
+    /// through — which on a phone is a button that silently does nothing, for ever. M5-08's playtest
+    /// found it by tapping <em>Legion</em>.
+    /// </remarks>
+    [Test]
+    public void Screen_ARefusedBranchIsDrawnDeadAndSaysWhy()
+    {
+        StartRun();
+        BuildScreen(new TableLocalizer(EnglishTable()));
+
+        Open();
+
+        Tap(Cards()[0]);
+
+        Assert.That(
+            BranchButtons()[2].interactable,
+            Is.False,
+            "The run raises no minions, so branch 2 cannot be borrowed.");
+
+        Assert.That(BranchNames()[2], Is.Not.Empty, "It keeps its name (rule 5).");
+
+        Assert.That(BranchButtons()[0].interactable, Is.True, "The borrowable rows are untouched.");
+        Assert.That(BranchButtons()[1].interactable, Is.True);
+    }
+
+    /// <summary>
+    /// M5-08a rule 4's second door: even invoked directly, a refused row borrows nothing and throws
+    /// nothing. <c>onClick.Invoke</c> bypasses <c>interactable</c>, which is exactly how a mis-wired
+    /// button would reach the handler in play.
+    /// </summary>
+    [Test]
+    public void Screen_ARefusedBranchBorrowsNothingEvenWhenInvokedDirectly()
+    {
+        StartRun();
+        BuildScreen();
+
+        Open();
+
+        Tap(Cards()[0]);
+
+        Frame();
+
+        Assert.DoesNotThrow(() => TapBranch(2));
+
+        Assert.That(
+            _spy.Count<SplashChosen>(),
+            Is.Zero,
+            "Nothing was borrowed, and nothing was thrown — the defect M5-08a exists to remove.");
     }
 
     [Test]
@@ -324,6 +389,7 @@ public sealed class SplashPresenterTests
         foreach (string key in new[]
         {
             "ui.splash.title", "ui.splash.class", "ui.splash.branch", "ui.splash.nodes",
+            SplashFlow.RefusedPrimitiveKeyId, SplashFlow.RefusedMinionsKeyId,
         })
         {
             Assert.That(shipped.Has(new LocKey(key)), Is.True, $"English.asset has no row for {key}.");
@@ -627,7 +693,14 @@ public sealed class SplashPresenterTests
                 new LocKey("tree.gravecaller.grave-work"),
                 new IReadOnlyList<ContentId>[]
                 {
-                    new[] { Id(Unhandled), GraveWork(1, 'b') },
+                    // **`Unhandled` moved to branch 2 at M5-08a**, and the move is what keeps two
+                    // existing rows meaning what they meant. A refused branch now draws its reason
+                    // where its node count was and its button is dead, so a fixture with two refused
+                    // branches would leave `Screen_TheBranchCountExcludesTheKeystone` with no
+                    // borrowable Keystone branch to count, and `Screen_ATapIsTakenOnce` with no
+                    // second live row to prove the latch covers the buttons beside the one tapped.
+                    // Two borrowable branches and one refused keeps both claims and adds the new one.
+                    new[] { GraveWork(1, 'a'), GraveWork(1, 'b') },
                     new[] { GraveWork(2, 'a'), GraveWork(2, 'b') },
                     new[] { GraveWork(3, 'a'), GraveWork(3, 'b') },
                     new[] { GraveWork(4, 'a'), GraveWork(4, 'b') },
@@ -637,7 +710,7 @@ public sealed class SplashPresenterTests
                 new LocKey("tree.gravecaller.rot"),
                 new IReadOnlyList<ContentId>[]
                 {
-                    new[] { Id(MinionAimed) },
+                    new[] { Id(MinionAimed), Id(Unhandled) },
                     new[] { Id("skill.gravecaller.horde") },
                     new[] { Id("skill.gravecaller.blight") },
                 }),
@@ -665,6 +738,8 @@ public sealed class SplashPresenterTests
             new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, 0.1f, StatTarget.Minions)));
         skills.Add(Passive(Id("skill.gravecaller.horde")));
         skills.Add(Passive(Id("skill.gravecaller.blight")));
+        // Tier 1 slot 'a' was `Unhandled` until M5-08a moved that node to branch 2 — see the tree.
+        skills.Add(Passive(GraveWork(1, 'a')));
         skills.Add(Passive(GraveWork(1, 'b')));
 
         for (int tier = 2; tier <= 4; tier++)

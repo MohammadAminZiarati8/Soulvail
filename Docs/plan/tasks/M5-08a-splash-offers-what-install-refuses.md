@@ -96,4 +96,49 @@ public sealed partial class SplashFlow
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Five files, as the table says, and the behaviour is rules 1–5 unchanged.** `TryRefusal` is the
+sweep as a predicate, `RequireInstallable` is untouched beside it, `BranchesOf` sets `Borrowable` and
+`RefusedKey` on every option it builds, and `SplashPresenter.Redraw` derives `interactable` from
+`Borrowable` and draws the reason where the node count was.
+
+**Four deviations, and three of them are the test fixture.**
+
+*1. The Files table named the wrong core test file.* `BranchesOf` is covered in `SplashFlowTests.cs`,
+not `SplashBranchTests.cs` — the latter is about what a borrowed branch does once installed. Four rows
+went to `SplashFlowTests.cs`; `SplashBranchTests.cs` is untouched. The Files table's *count* is right
+and its *name* was wrong, which is the cheaper half to get wrong.
+
+*2. `Unhandled` moved from branch 1 to branch 2 of the presenter fixture's lender tree, and this is
+the deviation worth reading.* Rule 5 makes a refused branch draw its reason **instead of** its node
+count, which silently broke two existing rows that had nothing to do with this task:
+`Screen_TheBranchCountExcludesTheKeystone` counts the Keystone-dropped number on branch 1, and
+`Screen_ATapIsTakenOnce` taps two *different* live rows to prove the latch covers the buttons beside
+the one hit — *"uGUI refuses a second touch on the button it hit and says nothing about the ones
+beside it."* With two of three branches refused, the first had no borrowable Keystone branch left to
+count and the second had no second live row, so both would have kept passing while testing less. One
+node moved buys two borrowable branches and one refused, and both rows keep their original claim.
+**The alternative — rewriting both assertions — would have quietly narrowed two tests to fit a change
+they are not about.**
+
+*3. A stale comment corrected in place.* `GravecallerTree`'s remarks in `SplashFlowTests.cs` said
+branch **2** ends in a Keystone; the tree has it in branch **1**, and
+`Splash_BranchesOfDropsTheKeystone` has asserted so since M5-07a-ii. Read against the tree while
+adding rows beside it.
+
+*4. The refusal keys are `const string` on `SplashFlow` with `new LocKey(...)` at the point of use,
+not `static readonly LocKey` fields.* `SaveDtos.EmptySlots` is precedent for a `private static
+readonly` immutable, so the project would have allowed it — but `LocKey`'s constructor throws, and a
+throw inside a static initialiser surfaces as `TypeInitializationException` with the real message one
+level down. The keys are built once a run on a paused frame; there is nothing to save.
+
+**Verified:** **2 527 EditMode / 0 / 0** (+6 on M5-08's 2 521) and **PlayMode 21 / 0 / 0**, the
+PlayMode suite run twice — the first pass was 20 / 1 on `FrameOrderTests.Ticker_RunsTheStepsInOrder`
+with known issue 1's exact signature (***wrong wedge***, the body 0.0001 m *behind* the apex), and the
+second was clean. Console otherwise silent; zero new analyzer warnings; `dotnet format whitespace
+--verify-no-changes` green over all four touched C# files. `ProjectSettings/TimeManager.asset`
+re-serialised itself and was reverted ([Traps §5](../../Traps.md)).
+
+**Out of scope held.** Restless Dead stays in *Rot* — moving it makes Legion five nodes and Rot three,
+which is authoring, and M7-04 places all 81 nodes anyway ([parking lot](../ROADMAP.md#parking-lot)).
+Rule 6's *a class with no borrowable branch at all* is still unasserted and still cannot happen with
+two classes; M6-07's third class changes the arithmetic before it could.

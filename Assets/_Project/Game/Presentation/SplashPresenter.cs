@@ -428,10 +428,16 @@ namespace Soulvail.Game.Presentation
                 Button row = _branchButtons[i];
                 bool drawn = i < _options.Count;
 
+                // **A branch the run cannot borrow is drawn and dead, never hidden** (M5-08a rules 2
+                // and 5). Before that task this read `row.interactable = drawn`, and a refused branch
+                // was a live button that threw out of its own click handler — on a screen with no way
+                // off it but through, which made a dead end out of a caught exception.
+                bool borrowable = drawn && _options[i].Borrowable;
+
                 if (row != null)
                 {
                     SetActive(row.gameObject, drawn);
-                    row.interactable = drawn;
+                    row.interactable = borrowable;
                 }
 
                 if (!drawn)
@@ -451,8 +457,15 @@ namespace Soulvail.Game.Presentation
                     // resolves to its own text, which has no placeholder, and string.Format leaves
                     // such a string alone: a missing row is a row that reads as a key rather than a
                     // screen that throws.
-                    count.text = string.Format(
-                        CultureInfo.InvariantCulture, _localizer.Get(NodesKey), option.NodeCount);
+                    //
+                    // **The refusal takes the node count's place rather than a line of its own**
+                    // (rule 5): the number is what the row promises, so where a row promises nothing
+                    // it should say why instead. The branch keeps its name either way, because
+                    // reading what you cannot have is half of what CH §5.4's screen is for.
+                    count.text = option.Borrowable
+                        ? string.Format(
+                            CultureInfo.InvariantCulture, _localizer.Get(NodesKey), option.NodeCount)
+                        : _localizer.Get(option.RefusedKey);
                 }
             }
         }
@@ -461,6 +474,15 @@ namespace Soulvail.Game.Presentation
         private void OnBranchChosen(int row)
         {
             if (_choosing || _options is null || row < 0 || row >= _options.Count)
+            {
+                return;
+            }
+
+            // **The second door, and it is deliberately not the only one** (M5-08a rule 4). Redraw
+            // already leaves a refused row non-interactable, so this is unreachable through the UI;
+            // it is here because the alternative to an unreachable guard is an ArgumentException out
+            // of a click handler, which is exactly the defect this task exists to remove.
+            if (!_options[row].Borrowable)
             {
                 return;
             }

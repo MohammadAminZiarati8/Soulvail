@@ -312,6 +312,104 @@ public sealed class SplashFlowTests
         Assert.That(branches[2].NodeCount, Is.EqualTo(3), "A branch with no Keystone loses nothing.");
     }
 
+    // ---- M5-08a: the screen and the model ask one question --------------------------------------
+
+    /// <summary>
+    /// M5-08a rule 1. The offer now carries the answer <see cref="SplashFlow.Choose"/> would give, so
+    /// a branch that would throw is drawn dead instead of tapped and thrown.
+    /// </summary>
+    /// <remarks>
+    /// Found by playing M5-08's checklist rather than by reading: an Oathbound borrowing the
+    /// Gravecaller was offered three branches of which <b>two</b> threw an <c>ArgumentException</c>
+    /// out of a <c>Button.onClick</c>, on a screen M5-07a-ii built with no way off it but through.
+    /// The sweep was always correct; only <c>Choose</c> ran it.
+    /// </remarks>
+    [Test]
+    public void Splash_BranchesOfMarksTheBranchesThisRunCannotBorrow()
+    {
+        World world = Build();
+
+        IReadOnlyList<SplashOption> branches = world.Flow.BranchesOf(new ContentId(GravecallerId));
+
+        // Branch 0 is plain, branch 1 opens on a primitive nobody registered, branch 2 opens on a
+        // ModifyStat aimed at minions — see GravecallerTree's remarks.
+        Assert.That(branches[0].Borrowable, Is.True, "Branch 0 carries nothing this run refuses.");
+        Assert.That(branches[0].RefusedKey, Is.EqualTo(default(LocKey)));
+
+        Assert.That(branches[1].Borrowable, Is.False);
+        Assert.That(
+            branches[1].RefusedKey,
+            Is.EqualTo(new LocKey(SplashFlow.RefusedPrimitiveKeyId)),
+            "An effect with no handler is a different mistake from one aimed at minions, and the "
+                + "screen has to be able to say which.");
+
+        Assert.That(branches[2].Borrowable, Is.False);
+        Assert.That(branches[2].RefusedKey, Is.EqualTo(new LocKey(SplashFlow.RefusedMinionsKeyId)));
+    }
+
+    /// <summary>
+    /// M5-08a rule 2, and it is <see cref="SplashFlow.BranchesOf"/>'s own standing remark: a refused
+    /// branch is listed and drawn dead, never omitted.
+    /// </summary>
+    /// <remarks>
+    /// Hiding it would make a mis-authored tree look like a two-branch class, and CH §5.4's screen is
+    /// as much about seeing what the other class <em>is</em> as about taking part of it.
+    /// </remarks>
+    [Test]
+    public void Splash_BranchesOfListsARefusedBranchRatherThanHidingIt()
+    {
+        World world = Build();
+
+        IReadOnlyList<SplashOption> branches = world.Flow.BranchesOf(new ContentId(GravecallerId));
+
+        Assert.That(branches.Count, Is.EqualTo(SkillTreeSpec.BranchCount));
+
+        Assert.That(
+            branches.Count(option => option.Borrowable),
+            Is.EqualTo(1),
+            "One of three — the state M5-08's playtest walked into and nothing reported.");
+
+        // Every branch keeps its name whether or not it can be taken: rule 5's half of the screen.
+        Assert.That(branches.All(option => option.NameKey != default), Is.True);
+    }
+
+    /// <summary>
+    /// M5-08a rule 1's other half: a refusal is about <em>this run</em> rather than about the branch,
+    /// so a class that raises minions finds the same tree wholly borrowable.
+    /// </summary>
+    [Test]
+    public void Splash_AClassThatRaisesFindsEveryBranchBorrowable()
+    {
+        World raiser = BuildGravecallerRun();
+
+        IReadOnlyList<SplashOption> branches = raiser.Flow.BranchesOf(new ContentId(OathboundId));
+
+        Assert.That(
+            branches.All(option => option.Borrowable),
+            Is.True,
+            "The Oathbound authors no minion effects, so nothing in its tree can be refused — the "
+                + "asymmetry M5-08 measured across two played runs, pinned.");
+    }
+
+    /// <summary>
+    /// M5-08a rule 4. The predicate is the gate; the exception stays the invariant, so a caller that
+    /// reaches <see cref="SplashFlow.Choose"/> without consulting the offer still fails loudly rather
+    /// than installing half a branch.
+    /// </summary>
+    [Test]
+    public void Splash_ChooseStillThrowsForABranchTheOfferMarkedRefused()
+    {
+        World world = Opened();
+
+        IReadOnlyList<SplashOption> branches = world.Flow.BranchesOf(new ContentId(GravecallerId));
+
+        Assert.That(branches[1].Borrowable, Is.False, "Guard: this row is about a refused branch.");
+
+        Assert.Catch<ArgumentException>(() => world.Flow.Choose(new ContentId(GravecallerId), 1));
+
+        Assert.That(world.Tree.Rules.BranchCount, Is.EqualTo(3), "Nothing was installed.");
+    }
+
     [Test]
     public void Splash_ChooseIsRefusedBeforeItIsOpen()
     {
@@ -1026,8 +1124,12 @@ public sealed class SplashFlowTests
     /// <remarks>
     /// <b>Branch 1 carries a primitive nobody registered and branch 2 aims at minions</b>, which are
     /// the two refusals <see cref="Splash_RefusesABranchWhoseEffectsHaveNoHandler"/> and
-    /// <see cref="Splash_RefusesABranchAimedAtMinionsThisClassCannotRaise"/> are about. Branch 2 also
-    /// ends in a Keystone, so <see cref="Splash_BranchesOfDropsTheKeystone"/> has one to drop.
+    /// <see cref="Splash_RefusesABranchAimedAtMinionsThisClassCannotRaise"/> are about. <b>Branch
+    /// 1</b> also ends in a Keystone, so <see cref="Splash_BranchesOfDropsTheKeystone"/> has one to
+    /// drop — this line said branch 2 until M5-08a read it against the tree below.
+    /// <b>So exactly one of the three is borrowable by a class that raises no minions</b>, which is
+    /// the shape <see cref="Splash_BranchesOfListsARefusedBranchRatherThanHidingIt"/> pins and the
+    /// shape M5-08's playtest walked into on a screen with no way out.
     /// </remarks>
     private static SkillTreeSpec GravecallerTree() => new SkillTreeSpec(
         new ContentId(GravecallerTreeId),

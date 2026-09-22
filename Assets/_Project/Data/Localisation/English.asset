@@ -235,3 +235,7 @@ MonoBehaviour:
     _text: Choose a branch
   - _key: ui.splash.nodes
     _text: '{0} nodes'
+  - _key: ui.splash.refused.primitive
+    _text: Needs a power your class cannot use
+  - _key: ui.splash.refused.minions
+    _text: Commands minions — your class raises none

@@ -4,7 +4,7 @@ _Moved verbatim from [ROADMAP.md](../ROADMAP.md) at [M5-08](../tasks/M5-08-accep
 
 **The ledger below is kept as it stood; how each row closed is the table that follows it.** What carries is [M6's table](../ROADMAP.md#carry-forward-into-m6), and every carried row there names an unmerged owner — M4-07 rule 11, still holding.
 
-**One task in the table below is unticked, and that is not an oversight.** [M5-08a](../tasks/M5-08a-splash-offers-what-install-refuses.md) was created *by* the acceptance, under M5-08 rule 8's *"a bug found here becomes `M5-08a` with its own PR"*. It is M2-15a's precedent — a milestone's task merged after that milestone's archive closed — and its log entry will land in M6's PROGRESS.
+**One task in the table below was created *by* the acceptance and merged after this archive closed.** [M5-08a](../tasks/M5-08a-splash-offers-what-install-refuses.md) is M5-08 rule 8's *"a bug found here becomes `M5-08a` with its own PR"*, on M2-15a's precedent — a milestone's task merged after that milestone's archive closed. It shipped before the `m5` tag by the owner's ruling, so the tag marks a build whose half-tree moment works; **its log entry is in M6's PROGRESS rather than here**, because this file was written first.
 
 ---
 
@@ -42,7 +42,7 @@ _Moved verbatim from [ROADMAP.md](../ROADMAP.md) at [M5-08](../tasks/M5-08-accep
 | M5-07a-i | [The run's tree stops being one tree](../tasks/M5-07a-i-the-runs-tree-widens.md) — the forcing question | M | M5-06b | ☑ |
 | M5-07a-ii | [The half-tree moment, and the branch a run borrows](../tasks/M5-07a-ii-the-half-tree-moment.md) (CH §5.4) | M | M5-07, M5-07a-i | ☑ |
 | M5-08 | [M5 acceptance, tag `m5`](../tasks/M5-08-acceptance-and-tag.md). Also [row 2](#carry-forward-into-m5)'s three numbers, [row 7](#carry-forward-into-m5)'s gate observation and [row 8](#carry-forward-into-m5)'s played minute | S | everything | ☑ |
-| M5-08a | [The splash offers what the install refuses](../tasks/M5-08a-splash-offers-what-install-refuses.md) — found *by* M5-08 under its rule 8 | S | M5-08 | ☐ |
+| M5-08a | [The splash offers what the install refuses](../tasks/M5-08a-splash-offers-what-install-refuses.md) — found *by* M5-08 under its rule 8 | S | M5-08 | ☑ |
 
 ### Carry-forward into M5
 

@@ -33,11 +33,15 @@ public readonly struct SplashOption
     /// <param name="branch">The branch's index in its own class's tree, 0-based.</param>
     /// <param name="nameKey">What that branch is called — never the name itself (AR §11.5).</param>
     /// <param name="nodeCount">How many nodes come over, the Keystone already dropped.</param>
-    public SplashOption(int branch, LocKey nameKey, int nodeCount)
+    /// <param name="borrowable">Whether <see cref="SplashFlow.Choose"/> would accept this branch.</param>
+    /// <param name="refusedKey">Why not, or <see langword="default"/> when it would.</param>
+    public SplashOption(int branch, LocKey nameKey, int nodeCount, bool borrowable, LocKey refusedKey)
     {
         Branch = branch;
         NameKey = nameKey;
         NodeCount = nodeCount;
+        Borrowable = borrowable;
+        RefusedKey = refusedKey;
     }
 
     /// <summary>
@@ -59,6 +63,39 @@ public readonly struct SplashOption
     /// Keystone is 7"</em>.
     /// </summary>
     public int NodeCount { get; }
+
+    /// <summary>
+    /// Whether <see cref="SplashFlow.Choose"/> would accept this branch. <see langword="false"/> means
+    /// the screen draws the row dead.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The screen and the model ask one question, and that is the whole of M5-08a.</b> Before it,
+    /// <c>BranchesOf</c> offered every branch unconditionally while <c>Choose</c> swept for an
+    /// unregistered primitive and for a <c>ModifyStat</c> aimed at minions — so an Oathbound borrowing
+    /// the Gravecaller was shown three branches of which two threw an <c>ArgumentException</c> out of
+    /// a button handler, on a screen M5-07a-ii deliberately built with no way off it but through. The
+    /// sweep now lives in one predicate that both callers read.
+    /// </para>
+    /// <para>
+    /// <b>A refused branch is still listed</b> (rule 2), which is what <see cref="SplashFlow.BranchesOf"/>'s
+    /// remarks already asked for: hiding it would make a mis-authored tree look like a two-branch
+    /// class, and CH §5.4's screen is as much about seeing what the other class *is* as about taking
+    /// part of it.
+    /// </para>
+    /// </remarks>
+    public bool Borrowable { get; }
+
+    /// <summary>
+    /// Why the branch cannot be borrowed, or <see langword="default"/> when it can.
+    /// </summary>
+    /// <remarks>
+    /// A key, never a sentence (AR §11.5). The two reasons are distinct because they mean different
+    /// things to whoever authored the tree: <c>ui.splash.refused.primitive</c> is an effect this run
+    /// registered no handler for, and <c>ui.splash.refused.minions</c> is a stat aimed at minions by a
+    /// class that raises none.
+    /// </remarks>
+    public LocKey RefusedKey { get; }
 }
 
 /// <summary>
@@ -111,6 +148,25 @@ public sealed class SplashFlow
     /// which is what lets the moment be playtested now and still be right later.
     /// </remarks>
     public const float Threshold = 0.5f;
+
+    /// <summary>
+    /// Why a branch carrying an effect this run registered no handler for cannot be borrowed —
+    /// <c>SplashOption.RefusedKey</c>'s first value.
+    /// </summary>
+    /// <remarks>
+    /// <b>A key on this class rather than a string on the screen</b> (AR §11.5), and a <c>const</c>
+    /// rather than an asset field because it names a *mechanism* rather than a tuned number: the
+    /// condition is <c>EffectRegistry.CanApply</c> answering false, which no designer sets. The
+    /// English text lives in <c>English.asset</c> with every other key.
+    /// </remarks>
+    public const string RefusedPrimitiveKeyId = "ui.splash.refused.primitive";
+
+    /// <summary>
+    /// Why a branch aiming a <c>ModifyStat</c> at <see cref="StatTarget.Minions"/> cannot be borrowed
+    /// by a class that raises none — <c>SplashOption.RefusedKey</c>'s second value.
+    /// </summary>
+    /// <inheritdoc cref="RefusedPrimitiveKeyId" />
+    public const string RefusedMinionsKeyId = "ui.splash.refused.minions";
 
     private readonly SkillTree _tree;
     private readonly ContentCatalog _catalog;
@@ -294,7 +350,12 @@ public sealed class SplashFlow
         {
             SkillBranchSpec branch = tree.Branches[b];
 
-            options[b] = new SplashOption(b, branch.NameKey, LentNodeCount(branch));
+            // The same question Choose asks, asked before the player commits rather than after
+            // (M5-08a rule 1). A refused branch is listed and drawn dead, never omitted (rule 2).
+            bool refused = TryRefusal(tree, b, out LocKey reason);
+
+            options[b] = new SplashOption(
+                b, branch.NameKey, LentNodeCount(branch), !refused, reason);
         }
 
         return options;
@@ -537,6 +598,96 @@ public sealed class SplashFlow
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="branch"/> of <paramref name="tree"/> may <em>not</em> be borrowed, and
+    /// why. The same sweep <see cref="RequireInstallable(SkillTreeSpec, int, string)"/> performs, as a
+    /// question rather than an assertion.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One sweep, two callers, and that is the whole of M5-08a</b> (rule 1). <see cref="Choose"/>
+    /// needs an exception — an install that got half way would leave a run holding a node whose
+    /// effects are partly on — and <see cref="BranchesOf"/> needs a flag, because a screen may not
+    /// learn what it can offer by catching one. A second copy of the sweep is precisely how the two
+    /// came apart: the screen offered three branches while the model accepted one.
+    /// </para>
+    /// <para>
+    /// <b>It answers the first refusal it finds and stops.</b> A branch refused twice over is still
+    /// one dead row, and the reason shown is the one nearest the front of the tier order — stable,
+    /// because <c>SkillBranchSpec.Tier</c> is.
+    /// </para>
+    /// </remarks>
+    /// <param name="tree">The lending class's tree. Never this run's own.</param>
+    /// <param name="branch">An index into <paramref name="tree"/>'s branches.</param>
+    /// <param name="reason">The refusal key, or <see langword="default"/> when the answer is false.</param>
+    /// <returns><see langword="true"/> when the branch is refused.</returns>
+    private bool TryRefusal(SkillTreeSpec tree, int branch, out LocKey reason)
+    {
+        SkillBranchSpec source = tree.Branches[branch];
+
+        for (int t = 1; t <= source.TierCount; t++)
+        {
+            IReadOnlyList<ContentId> tier = source.Tier(t);
+
+            for (int i = 0; i < tier.Count; i++)
+            {
+                if (!_catalog.TryGetSkill(tier[i], out SkillSpec spec) ||
+                    spec.Kind == SkillKind.Keystone)
+                {
+                    continue;
+                }
+
+                if (TryRefusal(spec.Effects, out reason))
+                {
+                    return true;
+                }
+
+                if (spec.Active is not null && TryRefusal(spec.Active.OnCast, out reason))
+                {
+                    return true;
+                }
+            }
+        }
+
+        reason = default;
+
+        return false;
+    }
+
+    /// <summary>The per-effect half of <see cref="TryRefusal(SkillTreeSpec, int, out LocKey)"/>.</summary>
+    /// <remarks>
+    /// The two tests are in the order the thrown versions use them, and they mean different things:
+    /// the first is <em>"this run registered no handler for that type"</em>, the second is
+    /// <em>"there is a handler, and no minion recipe for it to move"</em>. Keeping them apart is what
+    /// lets the screen say which.
+    /// </remarks>
+    private bool TryRefusal(IReadOnlyList<IEffect> effects, out LocKey reason)
+    {
+        for (int i = 0; i < effects.Count; i++)
+        {
+            IEffect effect = effects[i];
+
+            if (!_effects.CanApply(effect))
+            {
+                reason = new LocKey(RefusedPrimitiveKeyId);
+
+                return true;
+            }
+
+            if (!_raisesMinions && effect is ModifyStat modify &&
+                modify.Target == StatTarget.Minions)
+            {
+                reason = new LocKey(RefusedMinionsKeyId);
+
+                return true;
+            }
+        }
+
+        reason = default;
+
+        return false;
     }
 
     private void RequireInstallable(

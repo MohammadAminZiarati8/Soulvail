@@ -116,7 +116,7 @@ public float ShieldFraction;   // rule 6 — always 0 until something grants an 
 3. **`StatTarget` has two members and `Self` means *the thing that cast it*, not *the enemy*.** A boss buffing
    itself and a player node buffing the player are the same operation aimed differently. There is deliberately
    no `Target.Enemy` or `Target.Nearest`: an effect that debuffs *someone else* is a different primitive with a
-   selection rule, and it is [M6](../ROADMAP.md#m6--systems-complete-titles-only)'s, not this task's.
+   selection rule, and it is [M6](../ROADMAP.md#m6--systems-complete)'s, not this task's.
 4. **The parameter is defaulted to `StatTarget.Player`, and that is what keeps the ripple to nothing.** Every
    existing `ModifyStat` call site and **all nine shipped `ModifyStatDefinition` assets** keep meaning exactly
    what they meant, with no asset touched and no migration — the same defaulted-parameter ruling M3-13b used

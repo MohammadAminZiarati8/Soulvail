@@ -647,8 +647,10 @@ public sealed class Health
     /// Nothing here reports a death. A maximum driven to zero clamps <see cref="Current"/> to
     /// zero and <see cref="IsDead"/> becomes true, but no <see cref="DamageResult"/> exists to
     /// carry <c>Killed</c> — a caller watching for death through damage results alone would miss
-    /// it. That is a content mistake rather than a mechanic (nothing in V1 removes max HP), and
-    /// the first thing that does needs the owner to check <see cref="IsDead"/> after the change.
+    /// it. <b>GD §10.2's Claiming is the first thing in V1 that removes max HP</b> (M6-04), and
+    /// its owner answers this by calling <c>PlayerCombat.AnnounceDeath</c> after every step —
+    /// the one publisher of <c>PlayerDied</c>, reachable without a damage result. Anything else
+    /// that shrinks a player's maximum owes the same call.
     /// </para>
     /// </remarks>
     private void OnMaxHpChanged(Stat stat)

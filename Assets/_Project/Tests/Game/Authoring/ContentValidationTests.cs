@@ -96,9 +96,12 @@ public sealed class ContentValidationTests
     /// remarks are why this is a list rather than reflection.
     /// </summary>
     /// <remarks>
-    /// <b><see cref="TriggerField.Veilrot"/> is deliberately absent</b>: GD §13's meter is a field
-    /// AR §9 names and M6-04 fills, and until then a clause over it would be read every tick and
-    /// always be zero. Its absence here is the whole value of the row.
+    /// <b><see cref="TriggerField.Veilrot"/> was deliberately absent from M5-06a to M6-04, and its
+    /// absence was the whole value of the row</b>: GD §10's meter was a field AR §9 named and
+    /// nothing wrote, so a clause over it would have been read every tick and always been zero.
+    /// M6-04 built the meter and <c>Veilrot.Tick</c> writes the field, so the list is now every
+    /// member of the enum — which <see cref="EveryTriggerField_HasAWriter"/>'s companion row says
+    /// out loud, so that a <em>new</em> member arrives absent and reddens it.
     /// </remarks>
     private static readonly TriggerField[] Written =
     {
@@ -117,6 +120,11 @@ public sealed class ContentValidationTests
         // ProjectileSystem.Tick, at the end of its own step, so a trigger reads the sky as it was
         // before this tick's arrivals were resolved (M3-06 rule 7).
         TriggerField.IncomingProjectiles,
+
+        // Veilrot.Tick, immediately above the combat step — ProjectileSystem's arrangement rather
+        // than UpdateBlackboard's, and deliberately *not* one step stale, because the runner reads
+        // a trigger over it two steps later on the same frame (M6-04 rule 10).
+        TriggerField.Veilrot,
     };
 
     private static readonly string[] AuthoringPlaceholders =
@@ -587,14 +595,16 @@ public sealed class ContentValidationTests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Over the <em>authored</em> fields rather than over the enum, and the difference is
-    /// <see cref="TriggerField.Veilrot"/>.</b> That member must stay — M6-04 is what writes it, and
-    /// AR §9 names it — so a check phrased over <c>Enum.GetValues</c> would be red today with the
-    /// only available fix being to delete a field the design needs. Phrased over what assets
-    /// actually author, it is green until somebody authors the clause that would silently never
-    /// fire, which is exactly the day it should go red. It is why
+    /// <b>Over the <em>authored</em> fields rather than over the enum, and the difference used to be
+    /// <see cref="TriggerField.Veilrot"/>.</b> From M5-06a to M6-04 that member had no writer and had
+    /// to stay — AR §9 names it — so a check phrased over <c>Enum.GetValues</c> would have been red
+    /// with the only available fix being to delete a field the design needs. Phrased over what assets
+    /// actually author, it was green until somebody authored the clause that would silently never
+    /// fire, which is exactly the day it should have gone red. It is why
     /// <see href="../../../../Docs/plan/tasks/M5-06b-gravecaller-tree-v1.md">M5-06b</see> rule 6
-    /// authors Rot Nova without its Veilrot clause.
+    /// authored Rot Nova without its Veilrot clause. <b>M6-04 closed that gap and this row keeps its
+    /// shape</b>: the next field AR §9 names before anything fills it will be in exactly the same
+    /// position, and <see cref="Content_VeilrotHasAWriter"/> is what says the gap is shut today.
     /// </para>
     /// <para>
     /// <b><see cref="Written"/> is a hand-kept list and that is deliberate</b>, against the
@@ -660,6 +670,48 @@ public sealed class ContentValidationTests
                 + "nothing. Consecrate and Bulwark each author one.");
 
         AssertNoProblems(problems, "Trigger fields with a writer");
+    }
+
+    /// <summary>
+    /// M6-04 rule 10: <see cref="TriggerField.Veilrot"/> has a writer, and so now does every other
+    /// member — the five-milestone deliberate absence is over.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The row above is a floor and this is the ceiling.</b> That one goes red when an asset
+    /// authors a clause nothing fills; this one goes red when a member of the enum has no writer at
+    /// all, whether or not anybody has authored against it yet. Both were needed because neither can
+    /// be derived: a write is a statement in a method rather than a member, so <see cref="Written"/>
+    /// is hand-kept, and the only thing that can be checked mechanically is that it covers the enum.
+    /// </para>
+    /// <para>
+    /// <b>It is legitimate for this row to go red, and the fix is not to edit the list.</b> A new
+    /// <see cref="TriggerField"/> member arrives absent from <see cref="Written"/> and reddens here
+    /// on the day it is added rather than on the day content is authored against it — which is the
+    /// order those two things should be noticed in. What the day's decision is, is whether the field
+    /// gets a writer now or the member waits; adding a line here without adding the write is a
+    /// two-line diff a reviewer is looking straight at.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Content_VeilrotHasAWriter()
+    {
+        Assert.That(
+            Written,
+            Contains.Item(TriggerField.Veilrot),
+            "GD §10's meter is written by Veilrot.Tick as of M6-04, and CH §4.2's Rot Nova is "
+                + "authorable because of it (M7-04).");
+
+        foreach (TriggerField field in Enum.GetValues(typeof(TriggerField)))
+        {
+            Assert.That(
+                Written,
+                Contains.Item(field),
+                $"{nameof(TriggerField)}.{field} is a blackboard field nothing in the build writes, "
+                    + "so a skill authored against it would be read every tick, always be its "
+                    + "default, and silently never auto-cast. Give it a writer and name the writer "
+                    + "beside its entry in Written — do not add the entry alone.");
+        }
     }
 
     // ---- Rule 10: a message names the asset path, always -----------------------------------------

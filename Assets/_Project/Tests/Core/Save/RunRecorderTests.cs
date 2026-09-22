@@ -435,7 +435,7 @@ public sealed class RunRecorderTests
         // only alternative. Not circular — `RunSessionResumeTests.Resume_TheWalletComesBack` is
         // what says the restore works, and it fails there rather than here if it does not.
         StartAt(1, restore: Saved(
-            1, level: 1, xp: 0f, pendingLevelUps: 0, economy: new RunEconomy(84, 0f, 0, 0)));
+            1, level: 1, xp: 0f, pendingLevelUps: 0, economy: new RunEconomy(84, 42.5f, 0, 0)));
 
         Assert.That(
             _session.State.Essence,
@@ -448,11 +448,13 @@ public sealed class RunRecorderTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        // **One real value and five placeholders, and the asymmetry is the whole of rule 7.** The
-        // wallet is read off the run; the rest are the shape v4 reserves for M6-02b, M6-04, M6-05a
-        // and M6-06a, each of which replaces exactly one argument here without bumping the version.
+        // **Two real values and four placeholders** (rule 7, and M6-04 taking the first of the four
+        // it reserved). The wallet and the meter are read off the run — 42.5 rather than a round
+        // threshold, so a recorder still passing a literal could not match it by accident; the rest
+        // are the shape v4 reserves for M6-02b, M6-05a and M6-06a, each of which replaces exactly
+        // one argument here without bumping the version.
         Assert.That(snapshot.Economy.Essence, Is.EqualTo(84));
-        Assert.That(snapshot.Economy.Veilrot, Is.Zero);
+        Assert.That(snapshot.Economy.Veilrot, Is.EqualTo(42.5f));
         Assert.That(snapshot.Economy.RerollsBought, Is.Zero);
         Assert.That(snapshot.Economy.RerollsSpent, Is.Zero);
 

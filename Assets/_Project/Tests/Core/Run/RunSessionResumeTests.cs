@@ -854,9 +854,10 @@ public sealed class RunSessionResumeTests
             stage: 4,
             Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
 
-        // The same run as the row above, read through the four fields nothing writes yet (rule 8).
-        // No throw is half of what this row is about: a restore that reached for a meter, a shop or
-        // an ordeal set would not compile, and one that reached for a null list would fail here.
+        // The same run as the row above, read through the other four v4 fields (rule 8). Veilrot
+        // has a meter since M6-04 and comes back at the saved zero; the three lists have no writer
+        // yet. No throw is half of what this row is about: one that reached for a null list would
+        // fail here.
         Assert.That(_session.State.Veilrot, Is.Zero);
         Assert.That(_session.State.BanishedNodeIds, Is.Empty);
         Assert.That(_session.State.PactedNodeIds, Is.Empty);
@@ -877,9 +878,9 @@ public sealed class RunSessionResumeTests
 
         RunState state = _session.State;
 
-        // **Real answers rather than stubs** (rule 8). A run with no meter genuinely has no
-        // Veilrot, the way TakenNodeIds was genuinely empty for a class with no tree — and empty,
-        // never null, so no reader ever has to ask.
+        // **Real answers rather than stubs** (rule 8). A fresh run's meter genuinely reads zero
+        // (M6-04), the way TakenNodeIds was genuinely empty for a class with no tree — and the
+        // lists are empty, never null, so no reader ever has to ask.
         Assert.That(state.Veilrot, Is.Zero);
         Assert.That(state.BanishedNodeIds, Is.Not.Null);
         Assert.That(state.BanishedNodeIds, Is.Empty);
@@ -891,8 +892,8 @@ public sealed class RunSessionResumeTests
         // **And the seal did not move to let them out** (AR §18.2). Every public member of
         // RunState is a scalar, an id, a list of ids, or the authored CharacterSpec — never a live
         // system — so there is no meter, no shop, no tree and no ordeal set for a view to reach.
-        // Each of the four reads becomes a forward at M6-02b, M6-04, M6-05a and M6-06a, and this
-        // row is what says none of them may arrive as a handle instead.
+        // Veilrot became a forward at M6-04 (and IsClaimed beside it, a bool); the other three do at
+        // M6-02b, M6-05a and M6-06a, and this row is what says none of them may arrive as a handle.
         string[] handles = typeof(RunState)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(property => !IsANarrowRead(property.PropertyType))

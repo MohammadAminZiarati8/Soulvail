@@ -496,6 +496,71 @@ public sealed class PlayerCombatTests
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
     }
 
+    // ---- M6-04 rule 8: the one publisher, reachable without a DamageResult -----------------------
+
+    [Test]
+    public void Combat_AnnounceDeathIsSilentForTheLiving()
+    {
+        // **Silent for the living, so a caller can announce unconditionally** after anything that
+        // might have killed the player — which is what GD §10's drain does once a second.
+        PlayerCombat combat = Combat();
+
+        combat.AnnounceDeath(1f);
+
+        Assert.That(combat.IsDead, Is.False);
+        Assert.That(_events.All, Is.Empty);
+    }
+
+    [Test]
+    public void Combat_AnnounceDeathIsSilentTwice()
+    {
+        // **One publisher, one flag, one place.** A second publisher with its own flag would make
+        // "exactly once per life" a property of two objects agreeing rather than of one field.
+        var combat = new PlayerCombat(
+            Character(maxHp: 5f, withShield: false, hitIFrames: 0f),
+            _events,
+            _intents,
+            EnemyCapacity);
+
+        // Straight to the maximum, which is the door Health.OnMaxHpChanged opened and no
+        // DamageResult describes: Current is pulled down with it and nothing reports a kill.
+        combat.Health.MaxHp.Add(new Modifier(ModifierKind.PercentMult, -1f, new object()));
+
+        Assert.That(combat.IsDead, Is.True, "Sanity: a maximum of nothing is a death.");
+        Assert.That(_events.All, Is.Empty, "…and nothing said so on its own.");
+
+        combat.AnnounceDeath(2f);
+        combat.AnnounceDeath(2.5f);
+
+        Assert.That(_events.Count<PlayerDied>(), Is.EqualTo(1));
+        Assert.That(_events.Single<PlayerDied>().Time, Is.EqualTo(2f).Within(1e-6f), "The first moment.");
+    }
+
+    [Test]
+    public void Combat_ResetClearsTheFlag()
+    {
+        // "Once per life" means a life rather than a run: Reset puts the player back at full, so the
+        // next death is a new one and is owed its own PlayerDied.
+        var combat = new PlayerCombat(
+            Character(maxHp: 5f, withShield: false, hitIFrames: 0f),
+            _events,
+            _intents,
+            EnemyCapacity);
+
+        combat.ApplyDamage(50f, 1f);
+
+        Assert.That(_events.Count<PlayerDied>(), Is.EqualTo(1));
+
+        combat.Reset();
+
+        Assert.That(combat.IsDead, Is.False);
+
+        combat.ApplyDamage(50f, 2f);
+
+        Assert.That(_events.Count<PlayerDied>(), Is.EqualTo(2));
+        Assert.That(_events.Of<PlayerDied>()[1].Time, Is.EqualTo(2f).Within(1e-6f));
+    }
+
     [Test]
     public void Tick_PublishesShieldChanged_WhileRecharging()
     {

@@ -312,16 +312,16 @@ public sealed class GravecallerTreeTests
             foreach (TriggerClause clause in spec.Active.Trigger.Clauses)
             {
                 // **The clause rule 3 refused to author.** CH §4.2's Rot Nova is "Veilrot ≥ 50 and
-                // ≥ 4 enemies within 8 m", and nothing in the build writes TriggerField.Veilrot —
-                // so the skill would be read every tick, always be false, and never fire, with
-                // nothing anywhere saying why. Authoring it *without* the clause would ship a skill
-                // under a false name. Both, so neither: M7-04's.
+                // ≥ 4 enemies within 8 m", and when this tree was authored nothing wrote
+                // TriggerField.Veilrot. M6-04's meter writes it now, but nothing in the build gains
+                // Veilrot until M6-05b's Pacts, so the clause would still never hold — and Rot Nova
+                // also needs a radial-damage primitive nobody has built. M7-04 authors both, and
+                // this row is what it edits when it does.
                 Assert.That(
                     clause.Field,
                     Is.Not.EqualTo(TriggerField.Veilrot),
-                    $"{spec.Id} authors a Veilrot clause and nothing writes that field (M6-04 "
-                        + "does). ContentValidationTests.EveryTriggerField_HasAWriter is the "
-                        + "project-wide version of this row.");
+                    $"{spec.Id} authors a Veilrot clause. Rot Nova is M7-04's (M5-06b rule 6); "
+                        + "change this row with it rather than before it.");
             }
         }
     }

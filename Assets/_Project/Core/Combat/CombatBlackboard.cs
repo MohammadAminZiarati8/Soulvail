@@ -32,15 +32,14 @@ namespace Soulvail.Core.Combat;
 /// stop Unity components leaking their innards — there is no component within reach of this type.
 /// </para>
 /// <para>
-/// <b>One field is a placeholder, on purpose.</b> <see cref="Veilrot"/> is zero until M6-04, and
-/// <see cref="PlayerCombat"/> deliberately does not touch it — a field written to zero every tick
-/// by something that does not know the answer is worse than one that is honestly untouched,
-/// because the first cannot be filled in by the system that eventually learns it. It is here now
-/// because AR §9 names it and because a skill authored against a blackboard that lacks it would
-/// have to be re-authored. <b><see cref="IncomingProjectiles"/> was the second until M2-07
-/// shipped</b>: <c>ProjectileSystem.Tick</c> has written it since, at the end of its own step, so
-/// a trigger reading it sees the sky as it was *before* this tick's arrivals were resolved — which
-/// is deliberately one step old, and is the mechanic rather than a lag to fix (M3-06 rule 7).
+/// <b>Two fields have writers other than <see cref="PlayerCombat"/>, on purpose.</b>
+/// <see cref="IncomingProjectiles"/> is written by <c>ProjectileSystem.Tick</c> at the end of its
+/// own step, so a trigger reading it sees the sky as it was *before* this tick's arrivals were
+/// resolved — deliberately one step old, the mechanic rather than a lag (M3-06 rule 7).
+/// <see cref="Veilrot"/> was a placeholder until M6-04 and is now written by <c>Veilrot.Tick</c>,
+/// immediately above the combat step, so it is this tick's by the time the runner reads it. In
+/// both cases the system that owns the number writes it: a field written every tick by something
+/// that does not know the answer is worse than one written by the thing that does.
 /// </para>
 /// </remarks>
 public sealed class CombatBlackboard
@@ -121,7 +120,8 @@ public sealed class CombatBlackboard
     public float StationaryTime;
 
     /// <summary>
-    /// Veilrot, GD §13's corruption meter. Zero until M6-04 owns it — see the class remarks.
+    /// Veilrot, GD §10's corruption meter, in <c>[0, 100]</c>. Written by <c>Veilrot.Tick</c> — see
+    /// the class remarks. CH §4.2's Rot Nova wants ≥ 50.
     /// </summary>
     public float Veilrot;
 

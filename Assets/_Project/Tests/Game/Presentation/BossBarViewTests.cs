@@ -1205,7 +1205,7 @@ public sealed class BossBarViewTests
     private static EnemySpec Warden() => new EnemySpec(
         new ContentId(WardenEnemyId),
         new LocKey("enemy.warden.name"),
-        maxHp: 4200f,
+        maxHp: 3200f,
         moveSpeed: 1.8f,
         targetPriority: 8,
         threatCost: 40,

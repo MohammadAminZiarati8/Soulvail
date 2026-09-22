@@ -43,7 +43,15 @@ may not offer what the model refuses.*
 | `Prefabs/UI/Sanctum.prefab` | — | The screen, dressed. `Splash.prefab`'s two-page shape |
 | `Tests/Game/Presentation/SanctumPresenterTests.cs` | Tests.Game | The four rows, the three refusals, the picker, and the pause |
 | *small edits* | Game | `Game/Composition/RunPause.cs` — `PauseReason.Sanctum` (rule 4); `Game/Composition/RunTicker.cs` — `SanctumPhase` (rule 5); `Game/Composition/RunScope.cs` — the field and its optional registration; `Scenes/Run.unity` — the prefab dressed in; `Data/Localisation/English.asset` — fourteen rows; `Game/Presentation/Palette.cs` — `Essence`'s summary corrected (rule 10) |
-| *ripple* | Tests.Game | `PaletteTests` — rules 10 and 11; `RunTickerTests` — one more phase; `RunScopeTests` — one more optional component |
+| *ripple* | Tests.Game, **Tests.PlayMode** | `PaletteTests` — rules 10 and 11; `RunScopeTests` — one more optional component; **`Tests/PlayMode/FrameOrderTests.cs` — one more phase** (see the amendment below) |
+
+> **Amended at M6-00c: the ripple row said `RunTickerTests` and there is no such fixture.** Grepped,
+> `RunTicker`'s phase ordering is asserted in **`Tests/PlayMode/FrameOrderTests.cs`** —
+> `Frame_LevelUpPhaseRunsAboveCommands` is the neighbour rule 5's `Pause_TheOrderIsLevelUpThenSanctum`
+> sits beside. **So this is the first M6 task with a reason to be in that file**, which makes
+> [ledger row 4](../ROADMAP.md#carry-forward-into-m6)'s *"M6 opens `Tests/PlayMode` for nothing"*
+> true of M6-00a's group and false of this one — corrected on the row, and the verdict it asks for
+> stays [M6-11](M6-11-acceptance-and-tag.md)'s.
 
 Only these files change. Anything else is a deviation: say so in *As built*.
 

@@ -191,7 +191,8 @@ public sealed class PlayerCombat
    there is nothing to cleanse at all. There is deliberately **no `Spend`** beside it: CH §3.3's
    Emberwright spends 5 Veilrot to cast off-cooldown and *must have* the 5, which is a different
    question with a different failure, and a port grows a member when its mechanic lands (AR §6).
-   M6-07 adds `CanSpend`/`Spend`; this task ships the one caller that exists.
+   [M6-07c](M6-07c-what-each-class-does-with-the-veil.md) adds `CanSpend`/`Spend`, beside the other
+   two classes' relationships; this task ships the one caller that exists.
 4. **The 25 threshold is applied when an enemy is *spawned*, and a body already standing keeps its
    speed.** `EnemySystem.Spawn` adds `new Modifier(PercentMult, _veilrot.EnemySpeedBonus, _veilrot)`
    to `agent.MoveSpeed` immediately after `_scaling.Apply(agent, _depth)`, where
@@ -331,7 +332,9 @@ a non-finite `Gain`/`Cleanse` amount.
 - **Anything that *gains* Veilrot.** Pacts are [M6-05b](M6-05b-the-offer-that-rolls-one.md)'s and
   Hunger is [M6-06b](M6-06b-four-ordeals-and-two-refusals.md)'s; the only caller of `Gain` after this
   task is a test and the debug overlay.
-- **`Spend`, and the Emberwright's 5-Rot instant cast.** Rule 3, and M6-07's.
+- **`Spend`, and the Emberwright's 5-Rot instant cast.** Rule 3, and
+  [M6-07c](M6-07c-what-each-class-does-with-the-veil.md)'s — which also takes CH §3.1's and §3.2's
+  Veilrot rows, neither of which had an owner when this spec was written.
 - **Cleansing shrines** (GD §10.1's *"or at rare Cleansing shrines"*). There is no shrine, no arena
   feature and no task that owns one; the Sanctum is the only sink in V1.
 - **The Revenant, and the 50 threshold doing anything.** See above; a parking-lot line promoted by

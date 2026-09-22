@@ -183,6 +183,20 @@ public sealed class EnemySystem
     /// </remarks>
     private readonly Func<EnemyAgent, BossSpec, IEnemyBehaviour> _bossInner;
 
+    /// <summary>
+    /// GD §10's meter, read at every <see cref="Spawn"/> for the 25 row's 5 % (M6-04 rule 4), or
+    /// null for a run without one.
+    /// </summary>
+    /// <remarks>
+    /// <b>Held rather than asked at the crossing, and that is M5-06a rule 3's trade with a shorter
+    /// bound.</b> There, a node buffed the <em>next</em> Wight and the lag was one lifespan; here a
+    /// crossing speeds up the <em>next</em> body and the lag is the rest of the current wave. The
+    /// alternative — walking <see cref="Registry"/> when the meter crosses 25 — needs the meter to
+    /// hold the census, or a second call site in <c>RunSession</c> and a method here, for five per
+    /// cent of one wave's move speed.
+    /// </remarks>
+    private readonly Veilrot _veilrot;
+
     private int _depth = MinDepth;
 
     /// <summary>
@@ -224,6 +238,19 @@ public sealed class EnemySystem
     /// authors one. See <see cref="SpawnBoss"/> for why the factory lives here rather than at the
     /// call site.
     /// </param>
+    /// <param name="veilrot">
+    /// GD §10's meter, or null for a run without one — which is every fixture and no live run
+    /// (M6-04 rule 4).
+    /// </param>
+    /// <remarks>
+    /// <b><paramref name="veilrot"/> is optional where <paramref name="scaling"/> is required, and
+    /// the asymmetry is what each of them costs to be missing.</b> An unscaled enemy is not a loud
+    /// failure, it is a stage-20 Husk that dies in two hits; a meterless one is a Husk at exactly
+    /// its authored speed, which is the honest answer for a run whose Veilrot is zero and for every
+    /// fixture that has no meter to hand. It is a constructor argument rather than a settable
+    /// property for the reason everything else here is one: a dependency that can be attached later
+    /// is a dependency a spawn can happen without.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     public EnemySystem(
@@ -232,13 +259,15 @@ public sealed class EnemySystem
         IRandom random,
         DepthScaling scaling,
         int capacity,
-        Func<EnemyAgent, BossSpec, IEnemyBehaviour> bossInner = null)
+        Func<EnemyAgent, BossSpec, IEnemyBehaviour> bossInner = null,
+        Veilrot veilrot = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _scaling = scaling ?? throw new ArgumentNullException(nameof(scaling));
         _bossInner = bossInner;
+        _veilrot = veilrot;
 
         Registry = new EnemyRegistry(capacity);
 
@@ -376,6 +405,22 @@ public sealed class EnemySystem
         // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
         // authored numbers and never on top of a previous life's.
         _scaling.Apply(agent, _depth);
+
+        // **GD §10.2's first row, applied here because here is where a body is born** (M6-04
+        // rule 4). Immediately after the depth scaling, on top of it rather than instead of it: a
+        // stage-20 Husk at 50 Veilrot is fast for both reasons. Sourced to the meter, which is what
+        // makes it legible in a Stat.Describe beside the depth's own modifier.
+        //
+        // Skipped rather than added as a zero when the meter is below 25 or absent: a PercentMult of
+        // 0 is a factor of 1 and changes nothing, but it would put a modifier on every enemy in
+        // every run for the life of the project, and "does this body carry the Veilrot bonus" is a
+        // question a test and a debug panel should be able to ask by looking.
+        float veilrotSpeed = _veilrot?.EnemySpeedBonus ?? 0f;
+
+        if (veilrotSpeed > 0f)
+        {
+            agent.MoveSpeed.Add(new Modifier(ModifierKind.PercentMult, veilrotSpeed, _veilrot));
+        }
 
         // IsElite rides the event rather than being looked up, for the reason the field's own remarks
         // give: the one view that needs it holds a look book and not the catalog, and M7-02's Elites

@@ -67,7 +67,8 @@ public sealed class RunState
         RisePassive rise,
         LevelUpFlow levelUp,
         SplashFlow splash,
-        EssenceWallet wallet)
+        EssenceWallet wallet,
+        Veilrot rot)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -89,6 +90,7 @@ public sealed class RunState
         LevelUp = levelUp;
         Splash = splash;
         Wallet = wallet;
+        Rot = rot;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -793,17 +795,41 @@ public sealed class RunState
     public int Essence => Wallet.Balance;
 
     /// <summary>
-    /// GD §10's meter, in [0, 100] — what a save writes down and, from M6-04, what the Claiming
-    /// fires on.
+    /// GD §10's corruption meter, its four thresholds and the Claiming. The run owns it; nothing
+    /// else may.
     /// </summary>
     /// <remarks>
-    /// <b>Zero, and that is a real answer rather than a stub</b> (M6-01b rule 8). A run with no
-    /// meter genuinely has no Veilrot, the way <see cref="TakenNodeIds"/> was genuinely empty for a
-    /// class with no tree (M3-03). M6-04 turns this into a forward to the meter it builds, and
-    /// **that does not widen this class's seal** (AR §18.2): a scalar read is what a HUD and a
-    /// recorder need, and the object behind it will have verbs nothing outside core may reach.
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-04 rule 6).
+    /// <c>Gain</c>, <c>Cleanse</c> and <c>Tick</c> are all public on the meter, so a public handle
+    /// would let a view corrupt the player, absolve them, or advance the drain that is killing them
+    /// — the argument that keeps <see cref="Wallet"/> and <see cref="Progression"/> behind scalar
+    /// reads, with two of the shortest routes to abuse in the project. <b>Never null</b>, like
+    /// <see cref="Skills"/>: every run has a meter, whatever its class, and a run that gains nothing
+    /// holds one that reads zero.
     /// </remarks>
-    public float Veilrot => 0f;
+    internal Veilrot Rot { get; }
+
+    /// <summary>
+    /// GD §10's meter, in <c>[0, 100]</c> — what a save writes down and what the Claiming fires on.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Rot"/> gives, and the read
+    /// <c>RunRecorder.Take</c> has been writing to disk as a literal zero since M6-01b. **The seal
+    /// did not move to let it out** (AR §18.2): what a HUD and a recorder need is a number.
+    /// </remarks>
+    public float Veilrot => Rot.Value;
+
+    /// <summary>
+    /// Whether GD §10.2's last row has closed. True for the rest of the run once it has.
+    /// </summary>
+    /// <remarks>
+    /// <b>Separate from <see cref="Veilrot"/> because it cannot be derived from it</b> (M6-04
+    /// rule 6). The Claiming is a latch and the meter is not, so a run cleansed from 100 to 40 reads
+    /// 40 here with the buffs still on — the one state combination that looks like a bug and is not.
+    /// Nothing on disk carries it either: a resumed run comes back Claimed because its saved meter
+    /// reads 100, which is why v4 needed no field for it.
+    /// </remarks>
+    public bool IsClaimed => Rot.IsClaimed;
 
     /// <summary>
     /// The nodes GD §13.3's Banish has taken out of this run's pool — what a save writes down and

@@ -432,6 +432,51 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // question has to leave on the tick that produced it rather than be relayed through here.
         var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity);
 
+        // Built before the census below, because the factory it is closed over runs the moment a
+        // boss stands up on the director's first tick of a boss stage. One pair per run, like every
+        // live object here: a second Start must not inherit the first run's rings.
+        _shockwaves = new ShockwaveSystem(_events);
+        _fissures = new FissureSystem(_events);
+
+        // One per run, like the two above: a second Start must not inherit the first run's shots or
+        // its ids. It takes no generator, because a shot goes exactly where it was aimed and spread
+        // would be a change to what a seed means (ADR-0011).
+        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
+
+        // One per run, like the two above: a second Start must not inherit the first run's level.
+        // The curve comes off the mode rather than off the character or a constant here, because
+        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
+        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
+        // back where it was in the restore block below, before RunStarted.
+        var progression = new LevelTracker(mode.Xp, _events);
+
+        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
+        // rule: the address table holds this run's live stats, so it cannot be built before them,
+        // and the tree that will read the registry (M3-03) validates every effect it holds at
+        // Start — so an unregistered primitive has to be reportable before the run is announced.
+        //
+        // One Register line per primitive, and that is the entire cost of adding the eleventh
+        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
+        // existed this was a table that was built, filled and never read.
+        var playerStats = new PlayerStats(combat, motor, progression);
+        var effects = new EffectRegistry();
+
+        // **GD §10's meter, one per run and never null** (M6-04). A second Start must not inherit
+        // the first run's corruption — it is the one number in the game that only goes up, so a
+        // stale one would open a new run at somebody else's Claiming.
+        //
+        // **It is built here rather than beside the wallet three blocks down, because the census
+        // needs it and the address table is what it needs first** (rule 4). The meter puts modifiers
+        // on four of `playerStats`' addresses, so it cannot exist before that table; `EnemySystem`
+        // reads `EnemySpeedBonus` at every spawn, so it cannot exist before this. That is the whole
+        // of why the census moved below this line and nothing else about the order changed — nothing
+        // between the old position and the new one touches `enemies`.
+        //
+        // It takes the blackboard as well as the combat object, which is `SkillRunner`'s and
+        // `ZoneSystem`'s shape: borrowed, not owned, one writer and many readers (ADR-0005). This is
+        // the writer of the ninth field, and the last one that had none.
+        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events);
+
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
         // generator because respawning draws a position (M1-19) — from the Spawn stream and no
@@ -442,12 +487,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
         // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
         // it at each boundary.
-        // Built before the census, because the factory below closes over both of them and a boss
-        // can stand up on the director's first tick of a boss stage. One pair per run, like every
-        // live object here: a second Start must not inherit the first run's rings.
-        _shockwaves = new ShockwaveSystem(_events);
-        _fissures = new FissureSystem(_events);
-
         var enemies = new EnemySystem(
             _catalog,
             _events,
@@ -469,33 +508,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // would be content identity in code or an abstraction guessed ahead of its second
             // caller (AR §6). Nothing can reach it today: RunSession.Start refuses a run whose
             // roster names a boss the catalog does not hold, and the catalog holds one.
-            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc))
+            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+            // **GD §10.2's 25 row, read at every spawn rather than pushed at the crossing**
+            // (M6-04 rule 4). Optional on the constructor and never absent here: a run without a
+            // meter is a fixture, and every run this class starts has one.
+            veilrot)
         {
             Depth = config.StageIndex,
         };
-
-        // One per run, like the registry above and for the same reason: a second Start must not
-        // inherit the first run's shots or its ids. It takes no generator, because a shot goes
-        // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
-        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
-
-        // One per run, like the two above: a second Start must not inherit the first run's level.
-        // The curve comes off the mode rather than off the character or a constant here, because
-        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
-        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
-        // back where it was in the restore block below, before RunStarted.
-        var progression = new LevelTracker(mode.Xp, _events);
-
-        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
-        // rule: the address table holds this run's live stats, so it cannot be built before them,
-        // and the tree that will read the registry (M3-03) validates every effect it holds at
-        // Start — so an unregistered primitive has to be reportable before the run is announced.
-        //
-        // One Register line per primitive, and that is the entire cost of adding the eleventh
-        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
-        // existed this was a table that was built, filled and never read.
-        var playerStats = new PlayerStats(combat, motor, progression);
-        var effects = new EffectRegistry();
 
         // **What a Wight is born with, this run** (M5-06a rules 1 and 4). Built here rather than
         // inside MinionSystem because two things need the same instance: the army, which re-bases
@@ -744,7 +764,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             rise,
             levelUp,
             splash,
-            essence);
+            essence,
+            veilrot);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -891,10 +912,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             //
             // Silent, like everything else in this block: nothing may publish before RunStarted, and
             // an EssenceChanged raised here would reach a HUD that has not subscribed yet
-            // (EssenceWallet.Restore, M6-01a rule 8). **Only the wallet is restored here**; Veilrot,
-            // the banishes, the Pacts and the Ordeals are the lines their own tasks add, on this
-            // line's other side or beside it as AR §18.1 now states.
+            // (EssenceWallet.Restore, M6-01a rule 8). The banishes, the Pacts and the Ordeals are
+            // the lines their own tasks add, on this line's other side or beside it as AR §18.1
+            // now states.
             essence.Restore(resumed.Economy.Essence);
+
+            // **Beside the wallet and above Health.Restore, which is an AR §18.1 row rather than a
+            // preference** (M6-04 rule 9). The meter puts a −20 % PercentMult on MaxHp at 75 and the
+            // saved hit points are absolute, so the clamp should meet the maximum the run was saved
+            // under. **Stated honestly, the order is uniformity rather than arithmetic for this
+            // writer alone**: a modifier that only *shrinks* the maximum lands the same on either
+            // side, because Health.OnMaxHpChanged pulls Current down with a falling maximum. It is
+            // the *raising* writers above — the tree, Overflow — for which the other side costs hit
+            // points on every resume, and a block read as an order is kept as one.
+            //
+            // Silent, like everything else in this block: no VeilrotChanged, no crossings and no
+            // ClaimingBegan, for the reason the wallet's line is silent. A run restored at exactly
+            // 100 therefore comes back Claimed with ClaimedFor at zero — Veilrot.ClaimedFor states
+            // what that costs, and it is smaller than the free cooldown reset the same Continue
+            // already grants.
+            veilrot.Restore(resumed.Economy.Veilrot);
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
@@ -1036,6 +1073,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
         State.Minions?.Ingest(snapshot);
+
+        // **Immediately above the combat step, and both halves of that are the mechanic's**
+        // (M6-04 rule 9, AR §18.1).
+        //
+        // *Above combat*, because this is the one writer of CombatBlackboard.Veilrot and
+        // State.Skills.Tick two steps down reads a trigger over it: written below, CH §4.2's Rot
+        // Nova would compare against last tick's meter for ever. It is the arrangement
+        // ProjectileSystem has with IncomingProjectiles rather than the one
+        // PlayerCombat.UpdateBlackboard has with the other eight — the system that owns the number
+        // writes it — and the difference from that field is that this one is deliberately *not*
+        // stale.
+        //
+        // *Above the death check*, which is the half that matters: the Claiming's drain takes 1 % of
+        // the maximum a second and a step that reaches zero kills, so the run has to end on the tick
+        // it happened rather than on the next one. PlayerCombat.AnnounceDeath is what makes that
+        // death audible (rule 8), and State.Combat.IsDead is what reads it further down.
+        //
+        // Unconditional, and the common path is a field write and a comparison: every run this build
+        // ships is at zero Veilrot, because nothing gains any until M6-05b's Pacts.
+        State.Rot.Tick(snapshot.Dt, State.Time);
 
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
         // Before the behaviours, so the target is chosen from the same positions the enemies were

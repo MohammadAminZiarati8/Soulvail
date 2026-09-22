@@ -181,19 +181,23 @@ public sealed class RunRecorder
             // snapshot of an M3-era run without content correctly says.
             state.ManualSkillIds,
 
-            // **One real value and five placeholders, and the asymmetry is this task's honesty**
-            // (M6-01b rule 7). The wallet is M6-01a's and is read off `RunState` for the reason the
-            // two lists above are — the handle is internal and a recorder has no business holding
-            // one (AR §18.2). The other four fields are v4's reserved shape: Veilrot is M6-04's,
-            // the two counters and the banishes are M6-02b's, the Pacts are M6-05a's and the Ordeals
-            // are M6-06a's, and **each of those tasks replaces exactly one argument here without
-            // touching CurrentVersion** — `Fixture_V4Run_IsWhatThisBuildWrites` is the row that
+            // **Two real values and four placeholders** (M6-01b rule 7, and M6-04 taking the first
+            // of the four it reserved). Both are read off `RunState` for the reason the two lists
+            // above are — the handles are internal and a recorder has no business holding one
+            // (AR §18.2). The rest is still v4's reserved shape: the two counters and the banishes
+            // are M6-02b's, the Pacts are M6-05a's and the Ordeals are M6-06a's, and **each of those
+            // tasks replaces exactly one argument here without touching CurrentVersion** — which is
+            // what M6-04 has just done, and `Fixture_V4Run_IsWhatThisBuildWrites` is the row that
             // objects if one of them bumps it.
+            //
+            // `RunSnapshot`'s own constructor is what refuses a meter outside `[0, 100]`, and the
+            // meter cannot leave that range — so the guard is a boundary check on a hand-edited file
+            // rather than a second opinion about this line.
             //
             // The three empty lists cost nothing: a copy of an empty list is the shared zero-length
             // array, which is what keeps `Take_AllocatesNothing` measuring a real zero for every run
             // until M6-02b merges.
-            new RunEconomy(state.Essence, veilrot: 0f, rerollsBought: 0, rerollsSpent: 0),
+            new RunEconomy(state.Essence, state.Veilrot, rerollsBought: 0, rerollsSpent: 0),
             Array.Empty<ContentId>(),
             Array.Empty<ContentId>(),
             Array.Empty<ContentId>());

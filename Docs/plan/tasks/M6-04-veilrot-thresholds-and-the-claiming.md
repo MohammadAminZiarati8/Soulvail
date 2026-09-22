@@ -345,4 +345,56 @@ a non-finite `Gain`/`Cleanse` amount.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built as specced in shape.** `Veilrot` with three sources (`this` for the 75 row, one for the
+Claiming's buffs, one for the drain), three events, `PlayerCombat.AnnounceDeath` behind one flag
+cleared by `Reset`, the 25 row read in `EnemySystem.Spawn`, and `RunState.Veilrot`/`IsClaimed`
+forwarding to an internal `Rot`. 2 575 → **2 612, +37**: 32 in `VeilrotTests`, three `Combat_` rows
+in `PlayerCombatTests`, one in `EnemySystemTests`, one in `ContentValidationTests`.
+
+### Deviations
+
+1. **`Tick(float dt, float now)`, not `Tick(float dt)`.** Rule 8 has the meter call
+   `AnnounceDeath(now)` and `PlayerDied` carries a time; the meter owns no clock. `Health.Tick`'s pair.
+2. **The drain counts a whole second with a 1 ms tolerance.** Measured: sixty additions of `1f/60f`
+   sum to 0.9999997 and three thousand to 49.99941, so a bare `>=` loses the step
+   `Claiming_StepsOncePerSecondNotPerFrame` asks for. **And the hundredth step is exactly −1 by step
+   count**, because `0.01f × 100` is 0.99999998 — a maximum of three millionths and a player not quite
+   dead (`Claiming_ReachesZeroInAHundredSeconds`).
+3. **`Claiming_SurvivesCleansing` cannot assert the 25 state off at 40**: 40 is above 25. The row
+   asserts 40 with 25 still on, then cleanses to 20 and asserts it off — the evident intent, stated
+   true. Rule 6's prose carries the same slip.
+4. **`EnemySystem` takes the meter as an optional last constructor argument**, not required: 46 test
+   sites build one and a meterless body at its authored speed is the honest zero. **`RunSession.Start`
+   builds the census below the meter** because the meter needs `PlayerStats` first; nothing between
+   the old and new positions touched `enemies`.
+5. **`Seventy5_TakesAFifthOfWhateverYouBuilt`** asserts ×0.8 of a 200 base, then adds a +40 % node
+   and asserts 224, not the pooled 240 — rule 5's claim, with round numbers.
+6. **`Claiming_PublishesPlayerDied` reaches 100 through a resume**, the only door: `RunState.Rot` is
+   internal and nothing gains Veilrot until M6-05b. It also asserts the restored run comes back
+   Claimed, silent, and at 160 of 160 from a saved 200.
+7. **`Content_VeilrotHasAWriter` is new, not existing**, and asserts `Written` covers every
+   `TriggerField` — the ceiling beside `EveryTriggerField_HasAWriter`'s floor. No asset is authored.
+8. **Files outside the table, all prose a merged meter made false or a row it made weak:**
+   `CombatBlackboard.cs` and `Health.cs` (remarks naming M6-04 as future), `GravecallerTreeTests`
+   (a message saying nothing writes the field), `RunSessionResumeTests` (three comments),
+   `RunRecorderTests` (restores 42.5 and asserts it, instead of pinning the literal zero this task
+   removes). `SaveDtoTests` was read and needed nothing: its Veilrot rows already argue from the
+   Claiming.
+
+### Findings
+
+- **The restore order is uniformity, not arithmetic, for this writer.** A modifier that only shrinks
+  the maximum lands on the same hit points either side of `Health.Restore`, because
+  `Health.OnMaxHpChanged` pulls `Current` down with it. The order matters for the *raising* writers
+  (tree, Overflow). Placed as AR §18.1 rules; the `RunSession.Start` comment says why.
+- **From the second drain step on, a step raises `Stat.Changed` twice**: `RemoveAll` springs the
+  maximum back, `Add` takes it away. Rule 7's shape, and still two a second against sixty.
+- **Known issue 1 fired** on the first PlayMode pass, its first since M5-08a: the documented wrong
+  wedge, body 0.0001 m behind the apex. The meter's tick writes one float and touches no position.
+
+### Verified
+
+**2 612 EditMode / 0 / 0 twice consecutively** (+37 on M6-01b's 2 575). **PlayMode 20 / 1, then
+21 / 0 / 0** — the one red is known issue 1 above. Console: every entry is a test deliberately
+provoking a log, none new; zero errors, zero new analyzer warnings. `dotnet format whitespace` green
+over all 16 touched C# files; new files LF. `TimeManager.asset` re-serialised and was reverted.

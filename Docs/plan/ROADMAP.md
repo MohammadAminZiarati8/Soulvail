@@ -143,7 +143,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-00c | Specs for M6-07…M6-11 — the Emberwright, unlocks, localisation and acceptance | S | 00b | ☑ |
 | M6-01a | [The Essence wallet, and the one event that fills it](tasks/M6-01a-essence-wallet-and-drops.md) | S | M6-00a | ☑ |
 | M6-01b | [Save format v4: the one bump this milestone gets](tasks/M6-01b-save-format-v4.md) | S | M6-01a | ☑ |
-| M6-04 | [Veilrot: a meter that only goes up, four thresholds, and the gamble at the top](tasks/M6-04-veilrot-thresholds-and-the-claiming.md) | M | M6-01b | ☐ |
+| M6-04 | [Veilrot: a meter that only goes up, four thresholds, and the gamble at the top](tasks/M6-04-veilrot-thresholds-and-the-claiming.md) | M | M6-01b | ☑ |
 | M6-02a | [The sixth phase, and the boss stage that was never over](tasks/M6-02a-the-sixth-phase.md) — [row 5](#carry-forward-into-m6) | S | M6-01a | ☐ |
 | M6-02b | [Four things Essence buys, and the one that sculpts](tasks/M6-02b-four-things-essence-buys.md) | M | M6-02a, M6-04 | ☐ |
 | M6-03a | [The Sanctum screen, and a price that cannot be paid](tasks/M6-03a-the-sanctum-screen.md) | M | M6-02b | ☐ |

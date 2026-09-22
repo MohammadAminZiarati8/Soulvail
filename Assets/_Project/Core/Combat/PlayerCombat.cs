@@ -228,6 +228,21 @@ public sealed class PlayerCombat
     private bool _wasChargeInvulnerable;
 
     /// <summary>
+    /// <see cref="PlayerDied"/> has gone out for the life the player is currently on.
+    /// </summary>
+    /// <remarks>
+    /// <b>One flag in one place, and it exists because death stopped arriving only through damage</b>
+    /// (M6-04 rule 8). Until the Claiming, <see cref="ApplyDamage"/> needed none:
+    /// <see cref="DamageResult.Killed"/> is true only on the call that took hit points to zero, and
+    /// every later call finds a dead target and reports <see cref="DamageResult.None"/>. A maximum
+    /// driven to zero is the other way in — <c>Health.OnMaxHpChanged</c> pulls <c>Current</c> down
+    /// and no <see cref="DamageResult"/> exists to carry <c>Killed</c> — so the two doors have to
+    /// agree about what <em>"exactly once per life"</em> means, and a flag on each of them would make
+    /// that a property of two objects agreeing rather than of one field.
+    /// </remarks>
+    private bool _deathAnnounced;
+
+    /// <summary>
     /// The shield fraction as last announced, by either a <see cref="PlayerShieldChanged"/> or the
     /// <see cref="PlayerDamaged"/> that carried one.
     /// </summary>
@@ -609,14 +624,53 @@ public sealed class PlayerCombat
             Health.ShieldFraction,
             result.Blocked));
 
-        // Exactly once per life without a flag to remember it: Killed is true only on the call that
-        // took HP to zero, and every later call finds a dead target and returns None above.
+        // **Routed through the one publisher rather than publishing here** (M6-04 rule 8). Killed is
+        // true only on the call that took HP to zero and every later call finds a dead target and
+        // returns None above, so this branch was already exactly-once on its own — but it is no
+        // longer the only way a player can die, and the second way has no DamageResult to be
+        // exactly-once about. One publisher, one flag, one place.
         if (result.Killed)
         {
-            _events.Publish(new PlayerDied(now));
+            AnnounceDeath(now);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Publishes <see cref="PlayerDied"/> if the player is dead and it has not been said yet.
+    /// </summary>
+    /// <param name="now">
+    /// Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock. The same clock
+    /// <see cref="ApplyDamage"/> stamps a death with.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>The one publisher of <see cref="PlayerDied"/> in the project, now reachable by a death that
+    /// arrives without a <see cref="DamageResult"/></b> (M6-04 rule 8). <c>Health.OnMaxHpChanged</c>
+    /// asked for this in writing: <em>"no <c>DamageResult</c> exists to carry <c>Killed</c> … that is
+    /// a content mistake rather than a mechanic (nothing in V1 removes max HP), and the first thing
+    /// that does needs the owner to check <c>IsDead</c> after the change."</em> GD §10.2's Claiming
+    /// is the first thing in V1 that removes maximum hit points and its 75 row is the second, so this
+    /// is that owner. Without it a run drained to nothing would end — <c>RunSession.Tick</c> reads
+    /// <see cref="IsDead"/> — with the HUD, the haptics and every other subscriber never told.
+    /// </para>
+    /// <para>
+    /// <b>Silent for the living and silent twice</b>, so a caller can announce unconditionally after
+    /// anything that might have killed the player. The flag is cleared by <see cref="Reset"/> and
+    /// nowhere else, which is what makes <em>"once per life"</em> mean a life rather than a run.
+    /// </para>
+    /// </remarks>
+    public void AnnounceDeath(float now)
+    {
+        if (_deathAnnounced || !Health.IsDead)
+        {
+            return;
+        }
+
+        _deathAnnounced = true;
+
+        _events.Publish(new PlayerDied(now));
     }
 
     /// <summary>
@@ -1102,6 +1156,11 @@ public sealed class PlayerCombat
         _chargeHitCount = 0;
 
         Blackboard.Reset();
+
+        // With Health.Reset above, which is what makes this a *life* rather than a run: the player
+        // is back at full, so the next death is a new one and is owed its own PlayerDied (M6-04
+        // rule 8). Cleared here and nowhere else.
+        _deathAnnounced = false;
 
         FaceDirection = null;
         DpsOneSecond = 0f;

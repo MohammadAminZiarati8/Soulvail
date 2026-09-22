@@ -289,7 +289,7 @@ public sealed class LevelUpFlow
 - **Cleansing shrines**, and any second sink for Essence. GD §10.1 names shrines and nothing owns one.
 - **Famine's −40 % on income, and any Ordeal touching a price.** [M6-06b](M6-06b-four-ordeals-and-two-refusals.md)'s.
 - **Un-banishing.** GD §13.3 says *permanently*, and CH §7 deleted respec.
-- **The Emberwright's 5-Veilrot instant cast.** M6-07's, and it needs `Veilrot.Spend` rather than
+- **The Emberwright's 5-Veilrot instant cast.** [M6-07c](M6-07c-what-each-class-does-with-the-veil.md)'s, which also takes the Oathbound's half-price Cleanse against this task's `PriceOf`. It needs `Veilrot.Spend` rather than
   `Cleanse` — [M6-04](M6-04-veilrot-thresholds-and-the-claiming.md) rule 3.
 
 ## As built

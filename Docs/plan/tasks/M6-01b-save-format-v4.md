@@ -257,7 +257,9 @@ guard still firing unchanged.
   exists for that stream anywhere in the project. The constraint is this task's.
 - **The `PlayerProfile` bump.** GD §14.2's unlocks, GD §14.1's archetype set and M6-10's locale are
   all profile fields, and the two formats version independently (`SaveMigrations`' own remarks).
-  **M6-09** is the profile's one bump, by the same argument this task makes for the run's.
+  **[M6-09a](M6-09a-profile-v4-and-what-a-shard-buys.md)** is the profile's one bump, by the same
+  argument this task makes for the run's — and it carries all three, at **38 call sites across 13
+  files** against this format's 36 across 30.
 - **Any field's writer.** Essence is [M6-01a](M6-01a-essence-wallet-and-drops.md)'s and already
   exists; the other four are their own tasks' — Veilrot [M6-04](M6-04-veilrot-thresholds-and-the-claiming.md),
   the counters and the banishes [M6-02b](M6-02b-four-things-essence-buys.md), the Pacts

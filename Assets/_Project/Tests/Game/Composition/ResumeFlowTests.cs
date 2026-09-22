@@ -968,6 +968,13 @@ public sealed class ResumeFlowTests
         public void ChooseSplash(ContentId characterId, int branch)
         {
         }
+
+        // M6-02a's pair, inert for the same reason: nothing here reaches a stage's end.
+        public bool IsSanctumOpen => false;
+
+        public void LeaveSanctum()
+        {
+        }
     }
 
     /// <summary>

@@ -7,7 +7,7 @@ namespace Soulvail.Core.Events;
 // the same reason: an event is three lines, and reading a module's vocabulary in one place is worth
 // more than one type per file. See AR §5, §8 and <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// Three events and no fourth, and the gaps are deliberate. There is no `StageGateOpened` — the door
+// Three events and, since M6-02a, a fourth for the Sanctum — and the gaps are still deliberate. There is no `StageGateOpened` — the door
 // opening is what `StageCleared` means, and a second event for the same instant would be a second
 // thing to keep in step. There is no `StageTransitionFinished` either: the next `StageArrived` is
 // that, and it carries the stage the screen is uncovering onto (rule 9).
@@ -87,6 +87,38 @@ public readonly struct StageCleared
         Stage = stage;
         GatePosition = gatePosition;
         NextArenaId = nextArenaId;
+    }
+}
+
+/// <summary>
+/// The shop is open. Carries the stage and what the player has to spend, so a screen that opens on
+/// this event does not have to read the run to draw its first frame (AR §8).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>A fourth event, and the gap-list above does not argue against it</b>: the Sanctum is a phase
+/// of its own rather than a second name for an instant another event already marks. It lands
+/// <c>StageFlow.ClearTime</c> after <see cref="StageCleared"/>, and nothing publishes the door opening
+/// when it is left — that is still what <see cref="StageCleared"/> told the view to draw, and
+/// the command that leaves came <em>from</em> the view (M6-02a).
+/// </para>
+/// <para>
+/// <see cref="Essence"/> is the balance on the instant the shop opens, this stage's pay included.
+/// Every frame after the first is <c>RunState.Essence</c>'s, because spending moves it (M6-03a).
+/// </para>
+/// </remarks>
+public readonly struct SanctumOpened
+{
+    /// <summary>The depth just cleared — the stage the shop sits at the end of.</summary>
+    public readonly int Stage;
+
+    /// <summary>What the run's wallet held as the shop opened.</summary>
+    public readonly int Essence;
+
+    public SanctumOpened(int stage, int essence)
+    {
+        Stage = stage;
+        Essence = essence;
     }
 }
 

@@ -719,6 +719,16 @@ public sealed class RunState
     /// <summary>Whether the splash screen is up — what the pause is held against.</summary>
     public bool IsSplashOpen => Splash is not null && Splash.IsOpen;
 
+    /// <summary>Whether GD §13.3's shop is up — the stage is in <c>StagePhase.Sanctum</c>.</summary>
+    /// <remarks>
+    /// <b>Copied rather than derived</b>, <see cref="StageIndex"/>'s bargain and for its reason: the
+    /// stage flow is built after this object and is null for a mode with nothing to compose, so the
+    /// session writes this beside the depth after every flow tick and again when the shop is left
+    /// (M6-02a rule 4). <c>internal set</c> because a view that could open the shop would be deciding
+    /// something core owns.
+    /// </remarks>
+    public bool IsSanctumOpen { get; internal set; }
+
     /// <summary>
     /// Whether this run has already borrowed a branch. True for the rest of the run once it has.
     /// </summary>

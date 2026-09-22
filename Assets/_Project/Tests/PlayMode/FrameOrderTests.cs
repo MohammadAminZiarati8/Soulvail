@@ -1692,6 +1692,12 @@ public sealed class FrameOrderTests
         public void ChooseSplash(ContentId characterId, int branch) =>
             _touched.Add("splash:choose");
 
+        // M6-02a's pair. Nothing in RunTicker asks either until M6-03a puts a Sanctum phase in the
+        // frame, so the read answers false and the command is recorded like every other.
+        public bool IsSanctumOpen => false;
+
+        public void LeaveSanctum() => _touched.Add("sanctum:leave");
+
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {
             for (int i = 0; i < snapshot.EnemyCount; i++)

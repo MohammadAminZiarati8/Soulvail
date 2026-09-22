@@ -1521,13 +1521,21 @@ public sealed class RunSessionResumeTests
                 + "fixture rather than about the run.");
     }
 
-    /// <summary>Waits out the clear beat, walks into the door and lets the fade run out.</summary>
+    /// <summary>
+    /// Waits out the clear beat, leaves the Sanctum, walks into the door and lets the fade run out.
+    /// </summary>
     private void CrossTheBoundary()
     {
         int arrivals = _events.Count<StageArrived>();
 
         for (int i = 0; i < 900 && _events.Count<StageArrived>() == arrivals; i++)
         {
+            // The way a screen will (M6-02a rule 4): ask, then send.
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
+
             _session.Tick(Snapshot(Frame, Door));
         }
 

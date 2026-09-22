@@ -17,10 +17,11 @@ namespace Soulvail.Core.Ports;
 /// level-up screen being handed <c>MovementSkill</c> and the input adapter being handed the tree.
 /// </para>
 /// <para>
-/// <b>Four members in M3, four more at M5-07a-ii, and none of M6's.</b> AR §6 has listed
+/// <b>Four members in M3, four more at M5-07a-ii, and two at M6-02a.</b> AR §6 has listed
 /// <c>Reroll()</c>, <c>Banish(skillId)</c>, <c>BuyHeal()</c> and <c>BuyCleanse()</c> on this row
-/// since M0-09, and none of the four is written here: a port grows a member when the mechanic that
-/// needs it lands, not before (AR §6, §18.2). They arrive with M6-02, M6-05 and M6-06.
+/// since M0-09, and none of the four is written here yet: a port grows a member when the mechanic
+/// that needs it lands, not before (AR §6, §18.2). M6-02a's pair is the Sanctum's own — the read
+/// and the one command that leaves it; the four purchases arrive with M6-02b.
 /// </para>
 /// <para>
 /// <b>CH §5.4's half-tree moment is a second pair of reads and a second pair of commands, and it is
@@ -185,4 +186,22 @@ public interface IProgressionCommands
     /// <paramref name="branch"/> is not an index into that class's branches.
     /// </exception>
     void ChooseSplash(ContentId characterId, int branch);
+
+    /// <summary>Whether the shop is up — what a pause would be held against.</summary>
+    /// <remarks>
+    /// <see cref="IsSplashOpen"/>'s shape, one screen over: <see langword="false"/> when no run is
+    /// running, and <see langword="false"/> again the instant <see cref="LeaveSanctum"/> lands. True
+    /// exactly while the stage is in <c>StagePhase.Sanctum</c> (M6-02a rule 4).
+    /// </remarks>
+    bool IsSanctumOpen { get; }
+
+    /// <summary>Closes the shop and opens the door.</summary>
+    /// <remarks>
+    /// <b>Here rather than on <see cref="IRunSession"/></b>, for this port's own reason: it is a tap on
+    /// a screen that exists for ten seconds, not a verb an input adapter holds for the run. The first
+    /// of AR §6's four M6 members to land — <c>BuyHeal</c>, <c>BuyCleanse</c>, <c>Reroll</c> and
+    /// <c>Banish</c> are M6-02b's.
+    /// </remarks>
+    /// <exception cref="System.InvalidOperationException">No run is running, or the shop is not open.</exception>
+    void LeaveSanctum();
 }

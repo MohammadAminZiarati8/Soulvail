@@ -14,9 +14,10 @@ namespace Soulvail.Core.Stage;
 /// Which part of a stage's life is running. GD §7.1's anatomy, one state per beat.
 /// </summary>
 /// <remarks>
-/// <c>Clear</c> is a state rather than an instant because the Sanctum (GD §7.1, M6-02) lands between
-/// it and <c>Gate</c>: when there is an economy to spend, a sixth phase goes in that gap without
-/// moving anything either side of it.
+/// <c>Clear</c> is a state rather than an instant because the Sanctum (GD §7.1) lands between it and
+/// <c>Gate</c> — and as of M6-02a it has: the sixth phase went into that gap without moving anything
+/// either side of it. <b>No ordinal here is identity</b>: nothing saves or serialises a phase, which
+/// is why a member could be inserted mid-list.
 /// </remarks>
 public enum StagePhase
 {
@@ -26,8 +27,14 @@ public enum StagePhase
     /// <summary>The director runs, until every body of every wave is down.</summary>
     Waves,
 
-    /// <summary>The last body is down; the barrier drops, the door opens, the next arena is named.</summary>
+    /// <summary>The last body is down; the barrier drops and the next arena is named.</summary>
     Clear,
+
+    /// <summary>
+    /// GD §13.3's economy moment: the arena is empty, the shop is open, and nothing is counting
+    /// down. Left by a command and by nothing else (M6-02a rule 3).
+    /// </summary>
+    Sanctum,
 
     /// <summary>Waiting for the player to walk into the door. No timeout (rule 8).</summary>
     Gate,
@@ -371,9 +378,16 @@ public sealed class StageFlow
                 // stage the mode says does not exist, and the session ends the run on the flag.
                 if (!IsModeComplete && PhaseElapsed >= ClearTime)
                 {
-                    EnterGate(now);
+                    EnterSanctum(now);
                 }
 
+                break;
+
+            case StagePhase.Sanctum:
+                // Untimed, and this empty case is the whole of that (M6-02a rule 3): GD §13.3's
+                // room is left by LeaveSanctum and never by a clock — Gate's rule, one phase early.
+                // Written out rather than left to the default, which throws for a phase this switch
+                // has forgotten.
                 break;
 
             case StagePhase.Gate:
@@ -490,6 +504,57 @@ public sealed class StageFlow
         Vector3 gate = snapshot.HasGate ? snapshot.GatePosition : Vector3.Zero;
 
         _events.Publish(new StageCleared(Stage, gate, hasNext ? ArenaFor(Stage + 1) : default));
+    }
+
+    /// <summary>
+    /// Leaves the Sanctum and opens the door. The one way out of <see cref="StagePhase.Sanctum"/>.
+    /// </summary>
+    /// <param name="now">Simulated run seconds — <c>RunState.Time</c>, as <see cref="Tick"/> takes it.</param>
+    /// <remarks>
+    /// <b>It throws rather than no-ops outside the Sanctum</b> (M6-02a rule 4): the only caller is a
+    /// tap on a screen, and a tap arriving for a screen that is not up is a wiring mistake a silent
+    /// return would hide. The phase is checked before the clock, <see cref="Begin"/>'s order — the
+    /// state that makes the call meaningless is the more useful thing to be told about.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The flow is not in the Sanctum — a view reporting a tap on a screen that is not up.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is not finite.</exception>
+    public void LeaveSanctum(float now)
+    {
+        if (Phase != StagePhase.Sanctum)
+        {
+            throw new InvalidOperationException(
+                $"The Sanctum is not open — the stage is in {Phase}. LeaveSanctum is a tap on the "
+                    + "Sanctum's own screen, so a call arriving now is a control nobody is drawing.");
+        }
+
+        RequireFinite(now, nameof(now));
+
+        EnterGate(now);
+    }
+
+    /// <summary>
+    /// The shop opens: GD §13.3's room, between the barrier dropping and the door opening.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Its event goes out here and the boundary snapshot does not</b> (M6-02a rule 1). The save
+    /// is taken on the edge into <see cref="StagePhase.Clear"/>, <see cref="ClearTime"/> earlier, so
+    /// a run killed in the shop resumes with the Essence it walked in with rather than whatever it
+    /// was halfway through spending.
+    /// </para>
+    /// <para>
+    /// The balance rides on the event so a screen opening on it can draw its first frame without
+    /// reading the run (AR §8). It is the wallet as of this instant, which already includes this
+    /// stage's pay: <see cref="EnterClear"/> earned it a phase ago.
+    /// </para>
+    /// </remarks>
+    private void EnterSanctum(float now)
+    {
+        Enter(StagePhase.Sanctum, now);
+
+        _events.Publish(new SanctumOpened(Stage, _essence.Balance));
     }
 
     /// <summary>Waiting for the player, for as long as they like (rule 8).</summary>

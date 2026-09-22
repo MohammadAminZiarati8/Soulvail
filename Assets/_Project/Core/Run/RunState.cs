@@ -66,7 +66,8 @@ public sealed class RunState
         MinionSystem minions,
         RisePassive rise,
         LevelUpFlow levelUp,
-        SplashFlow splash)
+        SplashFlow splash,
+        EssenceWallet wallet)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -87,6 +88,7 @@ public sealed class RunState
         Rise = rise;
         LevelUp = levelUp;
         Splash = splash;
+        Wallet = wallet;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -764,6 +766,31 @@ public sealed class RunState
 
         return Splash.BranchesOf(characterId);
     }
+
+    /// <summary>
+    /// GD §15's second currency, this run — what the player has been paid and has not spent.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-01a rule 6). <c>Earn</c> and
+    /// <c>Spend</c> are both public on the wallet, so a public handle here would let a view pay
+    /// itself for a stage it did not clear — the same argument that keeps <see cref="Progression"/>
+    /// and <see cref="LevelUp"/> behind scalar reads, with the shortest route to abuse of any of
+    /// them. <b>Never null</b>, like <see cref="Skills"/>: every run has a wallet, whatever its
+    /// class and whatever its mode pays.
+    /// </remarks>
+    internal EssenceWallet Wallet { get; }
+
+    /// <summary>
+    /// What the wallet holds, in Essence — the one thing outside core that may ask about the
+    /// economy.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Wallet"/> gives. One read,
+    /// for the HUD M6-03b draws and the debug overlay before it — <see cref="PlayerHp"/>'s bargain,
+    /// a dozen reads on. Zero for the whole of this task: nothing spends it until M6-02b and
+    /// nothing draws it until M6-03a.
+    /// </remarks>
+    public int Essence => Wallet.Balance;
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

@@ -170,6 +170,33 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Descent_CarriesItsEssence()
+    {
+        // **GD §15's income table, on the asset from the first task that needs it** (M6-01a rule
+        // 2). Traps §7 applies exactly as it does to the Overflow row above: EssenceBlock's C#
+        // initialisers *are* 20 / 4 / 15 / 60, so Descent_EveryYamlKeyBindsToAField is the row that
+        // can tell a bound key from a dropped one and this one cannot.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        EssenceSpec essence = definition.ToSpec().Essence;
+
+        Assert.That(essence.PerStageBase, Is.EqualTo(20), "GD §15: 20 + 4·n a stage.");
+        Assert.That(essence.PerStageDepth, Is.EqualTo(4));
+        Assert.That(essence.PerElite, Is.EqualTo(15),
+            "GD §15's Elite term, authored with no payer until M7-02 — rule 2.");
+        Assert.That(essence.PerBoss, Is.EqualTo(60), "GD §15: +60 a boss, on top of the stage.");
+
+        // Asserted through the formula as well as the fields, because the formula is what the game
+        // reads and these four numbers are the ones GD §13.3's prices were set against: a stage-1
+        // clear pays 24, and a run that reaches stage 10 has been paid 540 — Σ(20 + 4n) for n = 1…10
+        // is 420, plus two bosses at 60. EssenceWalletTests owns the arithmetic; this row owns "the
+        // asset really carries GD §15's numbers and not some others".
+        Assert.That(essence.ForStageClear(1, false), Is.EqualTo(24));
+        Assert.That(essence.ForStageClear(5, true), Is.EqualTo(100));
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

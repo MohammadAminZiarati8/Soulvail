@@ -347,6 +347,57 @@ public sealed class ModeSpecTests
         Assert.DoesNotThrow(() => new OverflowSpec(0f, 0f));
     }
 
+    // ---- GD §15's income, the mode's as of M6-01a -------------------------------------------------
+
+    [Test]
+    public void Essence_IsWhatItWasGiven()
+    {
+        // Beside the Overflow block and last after it, for that block's reason: what a mode *pays*
+        // is as much a statement about itself as how fast it levels you (GD §4.5, M6-01a rule 2).
+        ModeSpec mode = new ModeSpec(
+            Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+            essence: new EssenceSpec(11, 3, 7, 41));
+
+        Assert.That(mode.Essence.PerStageBase, Is.EqualTo(11));
+        Assert.That(mode.Essence.PerStageDepth, Is.EqualTo(3));
+        Assert.That(mode.Essence.PerElite, Is.EqualTo(7), "authored with no payer — rule 2.");
+        Assert.That(mode.Essence.PerBoss, Is.EqualTo(41));
+    }
+
+    [Test]
+    public void Mode_WithoutABlockIsUnchanged()
+    {
+        // **Optional and last, which is placement rather than importance** (M6-01a rule 2):
+        // `new ModeSpec(...)` has sixty-three call sites across forty-four files, so placing
+        // `essence` anywhere but last would have moved every one of them for a block only the
+        // shipped asset fills. Omitted it is `default(EssenceSpec)` — a mode that pays nothing,
+        // which is the honest reading of a mode that never mentioned an economy, and legal content
+        // rather than a hole (so the constructor makes no second check of it).
+        ModeSpec mode = Mode(DesignRoster);
+
+        Assert.That(mode.Essence.PerStageBase, Is.Zero);
+        Assert.That(mode.Essence.PerStageDepth, Is.Zero);
+        Assert.That(mode.Essence.PerElite, Is.Zero);
+        Assert.That(mode.Essence.PerBoss, Is.Zero);
+
+        // And the other half of the claim, which is the half a defaulted argument can break: every
+        // property this mode had before the widening still says what it said. A row that only
+        // checked the four zeroes would pass against a constructor that had quietly dropped the
+        // overflow block into the essence slot.
+        Assert.That(mode.Id, Is.EqualTo(Id()));
+        Assert.That(mode.NameKey, Is.EqualTo(Name()));
+        Assert.That(mode.StartingStage, Is.EqualTo(1));
+        Assert.That(mode.IsEndless, Is.True);
+        Assert.That(mode.FinalStage, Is.EqualTo(int.MaxValue));
+        Assert.That(mode.Scaling, Is.Not.Null);
+        Assert.That(mode.Xp.IsAuthored, Is.True);
+        Assert.That(mode.Roster.Count, Is.EqualTo(3));
+        Assert.That(mode.Arenas, Is.Empty);
+        Assert.That(mode.BossRoster, Is.Empty);
+        Assert.That(mode.Overflow.Damage, Is.Zero);
+        Assert.That(mode.Overflow.MaxHp, Is.Zero);
+    }
+
     [Test]
     public void Ctor_CopiesRoster()
     {

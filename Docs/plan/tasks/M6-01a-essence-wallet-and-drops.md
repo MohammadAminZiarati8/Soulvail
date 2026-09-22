@@ -264,4 +264,66 @@ where there is an enum to check — there is not one here, which is rule 1's oth
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+Built as the Files table wrote it, plus one file it does not list: three new files, seven small
+edits, four rippled fixtures. **2 553 EditMode / 0 / 0** (+26 on 2 527) and **PlayMode 21 / 0 / 0**,
+clean on the first pass.
+
+**Deviations: 6.**
+
+1. **`ForStageClear` is `base + depth·stage`, not `base + depth·(stage − 1)`.** GD §15's
+   `20 + 4·n` reads either way and the difference is 4 Essence at every depth; the Tests table's
+   own numbers settle it — *"stages 1, 5, 10, 30 … 24, 40, 60, 140"* is only true of the first
+   spelling. Written down because the second is what a reader who knows `BudgetCurve`'s
+   `linear·(n − 1)` would expect, and the two are indistinguishable from the formula alone.
+2. **`essence` sits after `player` on `StageFlow`, not beside `events`.** It is a live object and
+   it is grouped with the live objects; being required it moves every call site wherever it goes,
+   so the position was chosen for reading rather than for the diff. Eleven sites, as priced.
+3. **`RunState`'s constructor gained a sixteenth argument, which the Files table does not list.**
+   Rule 6 implies it — a scalar read needs something to read — and it is one call site, because
+   the constructor is `internal` and `RunSession.Start` is its only caller.
+4. **`CanAfford` answers `true` for a negative cost rather than throwing.** The Public API
+   documents no exception on it, and rule 7 makes it *the question a screen asks*: a predicate
+   that threw would have to be guarded before it was called, which is the shape it exists to
+   remove. `Spend` is where a negative meets a door and `Wallet_SpendRefusesANegative` is the row.
+5. **Two test names differ from the Tests table, both to their fixture's local convention.**
+   `Mode_CarriesTheAuthoredBlock` shipped as `ModeDefinitionTests.Descent_CarriesItsEssence`,
+   beside `Descent_CarriesItsOverflow` and `Descent_CarriesItsDesignScaling`;
+   `Content_EveryShippedModePricesItsEssence` shipped as `EveryShippedMode_PricesItsEssence`,
+   which is the name the Files table and rule 3 both give and the shape of every sweep in that
+   file. One row was **added** to the table: `ModeSpecTests.Essence_IsWhatItWasGiven`, mirroring
+   `Overflow_IsWhatItWasGiven` — without it nothing in that fixture asserts that an *authored*
+   block survives the constructor, only that an omitted one defaults.
+
+6. **`Game/Presentation/DebugOverlay.cs` gained an `ess` field, and it is not in the Files table.**
+   Without it *Manual verification* step 1 cannot be performed at all — it reads the Essence off
+   the overlay, and nothing else in the build draws the number until
+   [M6-03a](M6-03a-the-sanctum-screen.md). *Out of scope* already says the overlay is the reader
+   until then, so the table is what is incomplete rather than the intent. One appended
+   `_line.Append`, reading `RunState.Essence` beside `owed`: a small additive edit, which the
+   [ROADMAP's sizing rule](../ROADMAP.md#how-to-read-this) does not count, so the task stays an S
+   at three new files.
+
+**One correction to the spec's own prose, changing nothing that was built.** Rule 3 cites
+`Overflow_ComesFromTheMode` as the precedent in `ContentValidationTests`; it is in
+`GravecallerTreeTests`. The new sweep still went where the Files table says, because that is the
+fixture that walks every asset under `Data/` — which is the property rule 3 actually wants.
+
+**What the Tests table cost, and it was worth naming.** *"The award at the edge"* is a subject of
+`EssenceWalletTests.cs`, and the ripple row calls `StageFlowTests`' change compiler-guided — so the
+five `Stage_` rows and the two `Run_` rows needed a `StageFlow` fixture and a `RunSession` fixture
+of their own rather than borrowing the ones next door. That is about 200 lines of world-building in
+a file whose subject is a number, and it buys the thing the split was for: `StageFlowTests` still
+asserts nothing about money, and a wallet row that fails names the wallet.
+
+**One thing the boss row needed that the spec did not predict:** a boss stage only reaches `Clear`
+when the boss is *down*, so the fixture stands a `BossSpec` up and cuts it down with `ApplyDamage`.
+It never ticks the enemy behaviours — `StageFlowTests`' own rule — so there is no `WardenBehaviour`
+anywhere in it and no boss factory on the `EnemySystem`. `+100` at stage 5 and `+44` at stage 6,
+across a real boundary, which is the half a single boss-stage row could not see.
+
+**Unreached, as scoped:** nothing spends it, nothing draws it, nothing saves it. `Restore` is
+written, `internal`, and called by no production code until [M6-01b](M6-01b-save-format-v4.md) —
+reached here by reflection, which is `LevelUpFlowTests`' route to `GrantOverflow` and for its
+reason. `PerElite` is authored at 15 and paid to nobody until M7-02.
+
+**No ledger row moved.** Row 1 gains nothing: this task makes no draw and adds no stream.

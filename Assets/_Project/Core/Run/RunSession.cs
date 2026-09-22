@@ -712,6 +712,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events);
 
+        // **One per run, unconditionally, and that is M6-01a rule 5 from the other end.** Every run
+        // has a wallet whatever its class and whatever its mode pays — a mode with no Essence block
+        // pays zero into a wallet that exists, rather than having none — so the flow below takes it
+        // as a required argument and a mis-wired run cannot clear stages in silence. A second Start
+        // must not inherit the first run's balance, which is why it is built here beside everything
+        // else rather than held by the session.
+        //
+        // It is built before RunState and handed to both: the state reads it (AR §18.2's narrow
+        // read) and StageFlow pays it. Nothing restores it in this task — a run killed before
+        // M6-01b comes back with an empty wallet, the same thing that happens to its cooldowns.
+        var essence = new EssenceWallet(_events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -731,7 +743,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             minions,
             rise,
             levelUp,
-            splash);
+            splash,
+            essence);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -940,6 +953,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             enemies,
             projectiles,
             combat,
+            essence,
             _events,
             plan,
             seed,

@@ -393,6 +393,54 @@ public sealed class ContentValidationTests
         AssertNoProblems(problems, "Boss telegraph lengths (GD §9.1 rule 1)");
     }
 
+    // ---- GD §15, over the modes that ship (M6-01a rule 3) ----------------------------------------
+
+    [Test]
+    public void EveryShippedMode_PricesItsEssence()
+    {
+        // **A shipped mode that prices nothing is a content failure, not a quiet zero.**
+        // `EssenceSpec` is an optional, last `ModeSpec` argument defaulting to all zeroes, which is
+        // what keeps sixty-three fixtures compiling (M6-01a rule 2) — and the cost of that default
+        // is that a mode which never authored an economy is indistinguishable, to every constructor
+        // in the game, from one that authored zeroes on purpose. A run on it would clear stage after
+        // stage, be paid nothing, and say nothing about it.
+        //
+        // The two terms checked are the two something in this build actually pays: `PerElite` is
+        // authored with no payer until M7-02 (rule 2) and asserting on it here would be asserting
+        // about a number nothing reads. It is the same bargain M5-06b made for Overflow one
+        // milestone ago.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            EssenceSpec essence = definition.ToSpec().Essence;
+
+            if (essence.PerStageBase <= 0)
+            {
+                problems.Add(
+                    $"{path}: pays {essence.PerStageBase} Essence for a stage clear. GD §15 prices "
+                        + "one at 20 + 4·n, and a mode that pays nothing per stage has no economy "
+                        + "at all — every price in GD §13.3 is out of reach for the whole run.");
+            }
+
+            if (essence.PerBoss <= 0)
+            {
+                problems.Add(
+                    $"{path}: pays {essence.PerBoss} Essence for a boss. GD §15 prices one at 60, "
+                        + "on top of the stage clear itself.");
+            }
+        }
+
+        AssertNoProblems(problems, "Mode Essence income (GD §15)");
+    }
+
     // ---- Rule 2: an id's namespace matches its kind ---------------------------------------------
 
     [Test]

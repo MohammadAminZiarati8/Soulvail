@@ -197,6 +197,25 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Sanctum_PricesComeFromTheMode()
+    {
+        // **GD §13.3's shop, on the asset** (M6-02b rule 1). Traps §7 applies as it does to the two
+        // rows above: SanctumBlock's C# initialisers are these same six numbers, so
+        // Descent_EveryYamlKeyBindsToAField is the row that can tell a bound key from a dropped one.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        SanctumSpec sanctum = definition.ToSpec().Sanctum;
+
+        Assert.That(sanctum.RerollPrice, Is.EqualTo(25), "GD §13.3: 25, doubling per use.");
+        Assert.That(sanctum.BanishPrice, Is.EqualTo(40));
+        Assert.That(sanctum.HealPrice, Is.EqualTo(40));
+        Assert.That(sanctum.HealAmount, Is.EqualTo(30f), "+30 HP.");
+        Assert.That(sanctum.CleansePrice, Is.EqualTo(60));
+        Assert.That(sanctum.CleanseAmount, Is.EqualTo(15f), "−15 Veilrot.");
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

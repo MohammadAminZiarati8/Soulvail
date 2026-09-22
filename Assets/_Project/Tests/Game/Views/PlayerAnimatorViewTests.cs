@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -455,6 +457,65 @@ public sealed class PlayerAnimatorViewTests
     public void Animator_ConstructRefusesANullHub()
     {
         Assert.Throws<ArgumentNullException>(() => _view.Construct(null));
+    }
+
+    /// <summary>
+    /// Every parameter this component sets exists on the controller the game ships — not on the
+    /// double <see cref="BuildController"/> builds.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The double is why this row exists.</b> It has named <c>Cast</c> since M3-06 and
+    /// <c>AC_Player.controller</c> never did, so every row above passed while every cast in Play
+    /// logged <em>"Parameter 'Hash -1299573048' does not exist"</em> — found only when
+    /// <c>BootSmokeTests</c> resumed a saved run with an Active and failed on the warning (M6-02a,
+    /// Findings). A missing parameter is now a red row naming it rather than a smoke test.
+    /// </para>
+    /// <para>
+    /// <b>The component's own hashes are read, by reflection, rather than a list typed here.</b> A
+    /// list in this file is a third place the names live and would miss the next field exactly as
+    /// the double missed this one. Every private <see cref="int"/> field named <c>_…Id</c> is a
+    /// parameter hash by this component's convention; the count is asserted so the sweep cannot
+    /// pass by finding nothing.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Animator_EveryParameterItSetsExistsOnTheShippedController()
+    {
+        const string path = "Assets/_Project/Animation/Controllers/AC_Player.controller";
+
+        var shipped = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+        Assert.That(shipped, Is.Not.Null, $"No AnimatorController at {path}.");
+
+        var authored = new HashSet<int>();
+
+        foreach (AnimatorControllerParameter parameter in shipped.parameters)
+        {
+            authored.Add(parameter.nameHash);
+        }
+
+        var missing = new List<string>();
+        int swept = 0;
+
+        foreach (FieldInfo field in typeof(PlayerAnimatorView).GetFields(Private))
+        {
+            if (field.FieldType != typeof(int) || !field.Name.EndsWith("Id", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            swept++;
+
+            var hash = (int)field.GetValue(_view);
+
+            if (!authored.Contains(hash))
+            {
+                missing.Add($"{field.Name} (hash {hash})");
+            }
+        }
+
+        Assert.That(swept, Is.EqualTo(7), "Speed, AttackSpeed, Attack, Charge, Hit, Dead and Cast.");
+        Assert.That(missing, Is.Empty, $"{path} lacks a parameter PlayerAnimatorView sets.");
     }
 
     /// <summary>

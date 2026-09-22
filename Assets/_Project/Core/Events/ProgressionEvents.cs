@@ -125,6 +125,32 @@ public readonly struct NodeTaken
 }
 
 /// <summary>
+/// A node left this run's pool for good — GD §13.3's Banish, bought in the Sanctum.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Beside <see cref="NodeTaken"/> because it is the same kind of fact</b> (M6-02b rule 8): one
+/// node enters the player's build, the other leaves the pool, and a tree screen listens for both.
+/// Published after the tree has recorded it, so a handler asking <c>IsNodeAvailable</c> from inside
+/// it is told no.
+/// </para>
+/// <para>
+/// <b>Nothing publishes it during a restore</b> — <c>SkillTree.RestoreBanished</c> is silent, for
+/// <see cref="NodeTaken"/>'s reason.
+/// </para>
+/// </remarks>
+public readonly struct NodeBanished
+{
+    /// <summary>The node that can no longer be offered.</summary>
+    public readonly ContentId SkillId;
+
+    public NodeBanished(ContentId skillId)
+    {
+        SkillId = skillId;
+    }
+}
+
+/// <summary>
 /// An offer is on the table: the player is being asked to choose, and the run stops being ticked
 /// until they have (GD §11.4).
 /// </summary>

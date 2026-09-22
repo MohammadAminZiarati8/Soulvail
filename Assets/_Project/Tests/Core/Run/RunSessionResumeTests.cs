@@ -9,6 +9,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
@@ -869,6 +870,139 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
     }
 
+    // ---- M6-02b: the shop's counters and banishes come back (rule 9) -------------------------------
+
+    [Test]
+    public void Restore_ComesBackWithItsCountersAndBanishes()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                economy: new RunEconomy(SavedEssence, 0f, rerollsBought: 2, rerollsSpent: 1),
+                banishedNodeIds: new[] { new ContentId(NodeSpare), new ContentId(NodeB) }));
+
+        RunState state = _session.State;
+
+        Assert.That(state.RerollsBought, Is.EqualTo(2));
+        Assert.That(state.RerollsSpent, Is.EqualTo(1));
+        Assert.That(state.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeSpare), new ContentId(NodeB) }));
+        Assert.That(state.IsNodeBanished(new ContentId(NodeSpare)), Is.True);
+        Assert.That(state.IsNodeAvailable(new ContentId(NodeSpare)), Is.False, "out of the pool, not merely listed.");
+        Assert.That(state.SanctumPriceOf(SanctumService.Reroll), Is.EqualTo(100), "the third costs 25 × 2².");
+
+        // **Nothing published** (rule 9): a resume is not news, and a NodeBanished raised inside
+        // Start would reach a tree screen that has not subscribed.
+        Assert.That(_events.Count<NodeBanished>(), Is.Zero);
+        Assert.That(_events.Count<SanctumServiceBought>(), Is.Zero);
+
+        // And the stock is live, not just readable: the one charge left is spent by the pick the
+        // save still owes (SavedPending is 1).
+        _session.OpenLevelUp();
+
+        Assert.That(_session.State.HasOffer, Is.True);
+        Assert.That(_session.State.RerollsSpent, Is.EqualTo(2), "bought − spent was one, and it went.");
+    }
+
+    [Test]
+    public void Restore_DropsABanishThatIsAlsoTaken()
+    {
+        BuildWithTree(seed: 7);
+
+        var both = new ContentId(NodeDamage);
+
+        Assert.DoesNotThrow(() => StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, takenNodeIds: new[] { both }, banishedNodeIds: new[] { both })));
+
+        // The take is the stronger fact; a save carrying both is corrupt rather than stale.
+        Assert.That(_session.State.TakenNodeIds, Is.EqualTo(new[] { both }));
+        Assert.That(_session.State.IsNodeBanished(both), Is.False);
+        Assert.That(_session.State.BanishedNodeIds, Is.Empty);
+    }
+
+    [Test]
+    public void Restore_DropsABanishThisBuildDoesNotShip()
+    {
+        BuildWithTree(seed: 7);
+
+        Assert.DoesNotThrow(() => StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                banishedNodeIds: new[] { new ContentId("skill.deleted"), new ContentId(NodeB) })));
+
+        Assert.That(_session.State.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeB) }), "dropped silently.");
+    }
+
+    [Test]
+    public void Recorder_WritesTheThree()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                economy: new RunEconomy(SavedEssence, 0f, rerollsBought: 3, rerollsSpent: 1),
+                banishedNodeIds: new[] { new ContentId(NodeC) }));
+
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        Assert.That(written.Economy.RerollsBought, Is.EqualTo(3));
+        Assert.That(written.Economy.RerollsSpent, Is.EqualTo(1));
+        Assert.That(written.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeC) }));
+    }
+
+    [Test]
+    public void Port_BuysOnlyInTheSanctum()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // Mid-stage, with the money: refused, because AR §18.1's boundary row assumes every
+        // purchase happens between the Clear-edge snapshot and the door.
+        Assert.That(_session.IsSanctumOpen, Is.False);
+        Assert.That(_session.CanBuy(SanctumService.Reroll), Is.False);
+        Assert.Throws<InvalidOperationException>(() => _session.Buy(SanctumService.Reroll));
+        Assert.Throws<InvalidOperationException>(() => _session.Banish(new ContentId(NodeB)));
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence), "nothing was spent.");
+
+        ClearTheStage();
+
+        for (int i = 0; i < 600 && !_session.IsSanctumOpen; i++)
+        {
+            _session.Tick(Snapshot(Frame, Vector3.Zero));
+        }
+
+        Assert.That(_session.IsSanctumOpen, Is.True, "the fixture reached the Sanctum.");
+
+        int paid = _session.State.Essence;
+
+        Assert.That(_session.CanBuy(SanctumService.Reroll), Is.True);
+        Assert.That(_session.PriceOf(SanctumService.Reroll), Is.EqualTo(25));
+
+        _session.Buy(SanctumService.Reroll);
+        _session.Banish(new ContentId(NodeB));
+
+        Assert.That(_session.State.Essence, Is.EqualTo(paid - 25 - 40));
+        Assert.That(_session.State.RerollsBought, Is.EqualTo(1));
+        Assert.That(_session.State.IsNodeBanished(new ContentId(NodeB)), Is.True);
+
+        var buffer = new ContentId[_session.State.TreeNodeCount];
+        Assert.That(_session.BanishableInto(buffer), Is.EqualTo(_session.State.TreeNodeCount - _session.State.TakenNodeCount - 1));
+    }
+
     [Test]
     public void State_TheFourReadsAnswerWithoutASystem()
     {
@@ -913,6 +1047,11 @@ public sealed class RunSessionResumeTests
 
         Assert.That(
             typeof(RunState).GetProperty("Tree", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+
+        // M6-02b's shop has Buy and Banish on it; the reads are SanctumPriceOf and CanBuySanctum.
+        Assert.That(
+            typeof(RunState).GetProperty("Shop", BindingFlags.Public | BindingFlags.Instance),
             Is.Null);
     }
 
@@ -1434,7 +1573,8 @@ public sealed class RunSessionResumeTests
         IReadOnlyList<ContentId> takenNodeIds = null,
         float playerHp = SavedHp,
         IReadOnlyList<ContentId> manualSkillIds = null,
-        RunEconomy economy = default) =>
+        RunEconomy economy = default,
+        IReadOnlyList<ContentId> banishedNodeIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -1452,7 +1592,7 @@ public sealed class RunSessionResumeTests
             takenNodeIds ?? Array.Empty<ContentId>(),
             manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
             economy,
-            Array.Empty<ContentId>(),
+            banishedNodeIds ?? Array.Empty<ContentId>(),
             Array.Empty<ContentId>(),
             Array.Empty<ContentId>());
 
@@ -1644,7 +1784,11 @@ public sealed class RunSessionResumeTests
             // 8). Since Overflow moved off LevelUpFlow's two consts and onto the mode, a ModeSpec
             // built without one grants nothing per spare level — which is the honest default and
             // would make Resume_DerivesOverflow's ×1.28 a ×1.00. Descent's own shipped pair.
-            overflow: new OverflowSpec(0.02f, 0.02f));
+            overflow: new OverflowSpec(0.02f, 0.02f),
+
+            // GD §13.3's shop at Descent's prices, for the M6-02b rows: nothing else here buys, and
+            // the mode pays no Essence, so every other row is untouched by it.
+            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
     }
 
     /// <summary>

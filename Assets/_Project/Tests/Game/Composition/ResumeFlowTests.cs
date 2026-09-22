@@ -975,6 +975,21 @@ public sealed class ResumeFlowTests
         public void LeaveSanctum()
         {
         }
+
+        // M6-02b's five, inert for the same reason: nothing here opens a shop.
+        public int PriceOf(Soulvail.Core.Progression.SanctumService service) => 0;
+
+        public bool CanBuy(Soulvail.Core.Progression.SanctumService service) => false;
+
+        public void Buy(Soulvail.Core.Progression.SanctumService service)
+        {
+        }
+
+        public void Banish(ContentId skillId)
+        {
+        }
+
+        public int BanishableInto(Span<ContentId> destination) => 0;
     }
 
     /// <summary>

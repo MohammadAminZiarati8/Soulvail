@@ -68,7 +68,8 @@ public sealed class RunState
         LevelUpFlow levelUp,
         SplashFlow splash,
         EssenceWallet wallet,
-        Veilrot rot)
+        Veilrot rot,
+        SanctumShop shop)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -91,6 +92,7 @@ public sealed class RunState
         Splash = splash;
         Wallet = wallet;
         Rot = rot;
+        Shop = shop;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -268,6 +270,12 @@ public sealed class RunState
     /// nothing else it could usefully say, and <see cref="TakenNodeIds"/> is empty in both cases.
     /// </remarks>
     public int TakenNodeCount => Tree is null ? 0 : Tree.TakenCount;
+
+    /// <summary>
+    /// How many nodes this run's tree has, a borrowed branch included — the size a buffer handed to
+    /// <c>IProgressionCommands.BanishableInto</c> must be. Zero with no tree.
+    /// </summary>
+    public int TreeNodeCount => Tree is null ? 0 : Tree.Rules.Count;
 
     /// <summary>
     /// Whether every node of the class's tree is taken — what M3-08 reads to know a pick has
@@ -842,15 +850,50 @@ public sealed class RunState
     public bool IsClaimed => Rot.IsClaimed;
 
     /// <summary>
-    /// The nodes GD §13.3's Banish has taken out of this run's pool — what a save writes down and
-    /// what the offer draw will have to skip.
+    /// GD §13.3's shop — its prices, its refusals and the verbs that buy. Null exactly when
+    /// <see cref="Tree"/> is: a class with no tree has nothing to reroll or banish (M6-02b).
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>Buy</c> and
+    /// <c>Banish</c> are public on the shop, so a public handle would let a view spend the player's
+    /// Essence. Screens read <see cref="SanctumPriceOf"/> and <see cref="CanBuySanctum"/>.
+    /// </remarks>
+    internal SanctumShop Shop { get; }
+
+    /// <summary>What a Sanctum service costs right now. Zero for a run with no shop.</summary>
+    public int SanctumPriceOf(SanctumService service) => Shop is null ? 0 : Shop.PriceOf(service);
+
+    /// <summary>
+    /// Whether a Sanctum service can be bought right now — affordable, worth something, and the
+    /// Sanctum open. False for a run with no shop.
+    /// </summary>
+    /// <remarks>
+    /// The open-shop term is here rather than on <c>SanctumShop</c>, which knows nothing about
+    /// phases: AR §18.1's boundary row rests on purchases happening only in the Sanctum.
+    /// </remarks>
+    public bool CanBuySanctum(SanctumService service) =>
+        Shop is not null && IsSanctumOpen && Shop.CanBuy(service);
+
+    /// <summary>Rerolls bought this run — what the save's counter carries. Zero with no shop.</summary>
+    public int RerollsBought => Shop is null ? 0 : Shop.RerollsBought;
+
+    /// <summary>Rerolls a draw has spent this run. Zero with no shop.</summary>
+    public int RerollsSpent => Shop is null ? 0 : Shop.RerollsSpent;
+
+    /// <summary>
+    /// The nodes GD §13.3's Banish has taken out of this run's pool, in banish order — what a save
+    /// writes down.
     /// </summary>
     /// <remarks>
     /// <b>Empty, never null</b>, for <see cref="TakenNodeIds"/>' own rule: no reader ever has to ask.
-    /// Empty is the truth for every run until M6-02b sells a Banish, and the shared zero-length
-    /// array is what keeps <c>RunRecorder.Take</c> allocation-free until then.
+    /// A live view over the tree's list, so <c>RunSnapshot</c>'s copy is what keeps a queued save
+    /// from being rewritten by the next banish; a run that banished nothing copies nothing.
     /// </remarks>
-    public IReadOnlyList<ContentId> BanishedNodeIds => Array.Empty<ContentId>();
+    public IReadOnlyList<ContentId> BanishedNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.BanishedIds;
+
+    /// <summary>Whether <paramref name="skillId"/> has been banished this run. False with no tree.</summary>
+    public bool IsNodeBanished(ContentId skillId) => Tree is not null && Tree.IsBanished(skillId);
 
     /// <summary>
     /// Which of <see cref="TakenNodeIds"/> were taken in GD §13.2's corrupted form — a subset of

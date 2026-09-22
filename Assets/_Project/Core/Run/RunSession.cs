@@ -744,6 +744,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // restore block, reading the balance out of RunSnapshot.Economy.
         var essence = new EssenceWallet(_events);
 
+        // **GD §13.3's shop, null in exactly the runs the tree is** (M6-02b). Reroll charges the
+        // flow and Banish narrows the tree, so a class with neither has no shop — the flow's own
+        // bargain. Built after the wallet it spends and the meter it cleanses; the prices are the
+        // mode's (rule 1), like the income the wallet is paid from.
+        SanctumShop shop = tree is null
+            ? null
+            : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -765,7 +773,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             levelUp,
             splash,
             essence,
-            veilrot);
+            veilrot,
+            shop);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -916,6 +925,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // the lines their own tasks add, on this line's other side or beside it as AR §18.1
             // now states.
             essence.Restore(resumed.Economy.Essence);
+
+            // **M6-02b rule 9: the banishes below the tree's own restore, and the counters beside
+            // them.** Below, because an id both taken and banished is dropped from the banishes —
+            // the take is the stronger fact — and that is only knowable once the takes are in. Both
+            // silent, and neither moves a stat, so their place against Health.Restore is uniformity.
+            // A class with no tree has no shop, and ignores both the way it ignores the taken ids.
+            tree?.RestoreBanished(resumed.BanishedNodeIds);
+            shop?.Restore(resumed.Economy.RerollsBought, resumed.Economy.RerollsSpent);
 
             // **Beside the wallet and above Health.Restore, which is an AR §18.1 row rather than a
             // preference** (M6-04 rule 9). The meter puts a −20 % PercentMult on MaxHp at 75 and the
@@ -1699,6 +1716,69 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _flow.LeaveSanctum(State.Time);
 
         State.IsSanctumOpen = false;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>A read: zero outside a run and for a class with no shop.</remarks>
+    public int PriceOf(SanctumService service) => IsRunning ? State.SanctumPriceOf(service) : 0;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A read: false outside a run, for a class with no shop, and whenever the Sanctum is not open —
+    /// see <see cref="RequireShopOpen"/> for why that last term is here.
+    /// </remarks>
+    public bool CanBuy(SanctumService service) => IsRunning && State.CanBuySanctum(service);
+
+    /// <inheritdoc />
+    public void Buy(SanctumService service)
+    {
+        RequireRunning(nameof(Buy));
+        RequireShopOpen(nameof(Buy));
+
+        State.Shop.Buy(service);
+    }
+
+    /// <inheritdoc />
+    public void Banish(ContentId skillId)
+    {
+        RequireRunning(nameof(Banish));
+        RequireShopOpen(nameof(Banish));
+
+        State.Shop.Banish(skillId);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>A read: zero outside a run and for a class with no shop, whatever the buffer.</remarks>
+    public int BanishableInto(Span<ContentId> destination) =>
+        IsRunning && State.Shop is not null ? State.Shop.BanishableInto(destination) : 0;
+
+    /// <summary>
+    /// Refuses a purchase outside the Sanctum, or in a run with no shop.
+    /// </summary>
+    /// <remarks>
+    /// <b>AR §18.1's boundary row is what makes this a rule rather than a courtesy.</b> The snapshot
+    /// is taken on entering <c>Clear</c>, before the Sanctum opens, so everything bought in the
+    /// Sanctum is rolled back by a kill before the next clear — the row says so and means it. A
+    /// purchase made mid-stage would instead be written by the next clear's snapshot like any other
+    /// change, and the two would disagree about what an app kill undoes. Refused here, the shop is
+    /// the only place Essence is spent and the row's reasoning covers every purchase.
+    /// </remarks>
+    private void RequireShopOpen(string member)
+    {
+        if (State.Shop is null)
+        {
+            throw new InvalidOperationException(
+                $"This run's class has no tree, so it has no Sanctum shop. A view sent {member} "
+                    + "without a screen to send it for.");
+        }
+
+        if (!State.IsSanctumOpen)
+        {
+            throw new InvalidOperationException(
+                $"The Sanctum is not open, so nothing can be bought. {member} is a tap on the "
+                    + "Sanctum's screen, which exists only between a stage's clear and its door "
+                    + "(M6-02a).");
+        }
     }
 
     /// <inheritdoc />

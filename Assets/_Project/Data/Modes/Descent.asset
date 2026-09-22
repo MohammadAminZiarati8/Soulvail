@@ -54,6 +54,13 @@ MonoBehaviour:
     _perStageDepth: 4
     _perElite: 15
     _perBoss: 60
+  _sanctum:
+    _rerollPrice: 25
+    _banishPrice: 40
+    _healPrice: 40
+    _healAmount: 30
+    _cleansePrice: 60
+    _cleanseAmount: 15
   _roster:
   - _specId: enemy.husk
     _introducedAtStage: 1

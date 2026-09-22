@@ -449,6 +449,48 @@ public sealed class ContentValidationTests
         AssertNoProblems(problems, "Mode Essence income (GD §15)");
     }
 
+    [Test]
+    public void Content_EveryShippedModePricesItsSanctum()
+    {
+        // **M6-01a rule 3's guard with one more column** (M6-02b rule 1). `SanctumSpec` is an
+        // optional, last `ModeSpec` argument whose default is worse than Essence's: every price zero
+        // is a shop that gives everything away, and both magnitudes zero are two services that
+        // deliver nothing for their price. All six are asserted, because unlike Essence's Elite
+        // term every one of them has a reader in this build.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            SanctumSpec sanctum = definition.ToSpec().Sanctum;
+
+            void Require(bool positive, string what, object value)
+            {
+                if (!positive)
+                {
+                    problems.Add(
+                        $"{path}: its Sanctum {what} is {value}. GD §13.3 prices every service "
+                            + "above zero, and a zero here is a shop that gives it away.");
+                }
+            }
+
+            Require(sanctum.RerollPrice > 0, "reroll price", sanctum.RerollPrice);
+            Require(sanctum.BanishPrice > 0, "banish price", sanctum.BanishPrice);
+            Require(sanctum.HealPrice > 0, "heal price", sanctum.HealPrice);
+            Require(sanctum.HealAmount > 0f, "heal amount", sanctum.HealAmount);
+            Require(sanctum.CleansePrice > 0, "cleanse price", sanctum.CleansePrice);
+            Require(sanctum.CleanseAmount > 0f, "cleanse amount", sanctum.CleanseAmount);
+        }
+
+        AssertNoProblems(problems, "Mode Sanctum prices (GD §13.3)");
+    }
+
     // ---- Rule 2: an id's namespace matches its kind ---------------------------------------------
 
     [Test]

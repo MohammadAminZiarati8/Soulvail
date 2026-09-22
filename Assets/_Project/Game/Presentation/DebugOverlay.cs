@@ -2,8 +2,10 @@ using System;
 using System.Globalization;
 using System.Text;
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
@@ -175,6 +177,11 @@ namespace Soulvail.Game.Presentation
         private IDisposable _clearedSubscription;
         private IDisposable _sanctumSubscription;
         private IDisposable _transitionSubscription;
+        private IDisposable _offerSubscription;
+
+        /// <summary>The first card of the last offer shown — what F6 banishes. See <see cref="BuyFromTheKeyboard"/>.</summary>
+        private ContentId _lastOffered;
+
         private float _untilRefresh;
         private float _fps;
 
@@ -273,6 +280,9 @@ namespace Soulvail.Game.Presentation
             _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
             _sanctumSubscription = hub.Subscribe<SanctumOpened>(OnSanctumOpened);
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
+
+            // M6-02b: which node F6 banishes.
+            _offerSubscription = hub.Subscribe<OfferPresented>(OnOfferPresented);
         }
 
         private void Awake()
@@ -344,6 +354,9 @@ namespace Soulvail.Game.Presentation
 
             _transitionSubscription?.Dispose();
             _transitionSubscription = null;
+
+            _offerSubscription?.Dispose();
+            _offerSubscription = null;
         }
 
         private void OnTargetChanged(TargetChanged evt)
@@ -403,6 +416,8 @@ namespace Soulvail.Game.Presentation
         private void LateUpdate()
         {
             LeaveSanctumAtTheDoor();
+
+            BuyFromTheKeyboard();
 
             // Sampled every frame even though it is drawn ten times a second — an average that only
             // saw every sixth frame would miss exactly the stutter it exists to catch.
@@ -468,6 +483,106 @@ namespace Soulvail.Game.Presentation
             _progression.LeaveSanctum();
 
             _phase = "gate";
+        }
+
+        /// <summary>
+        /// The Sanctum's four services on F5–F8, while the shop is open — M6-02b's manual steps.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>A stand-in for M6-03a's screen, Editor-only in practice, and the second write this
+        /// component makes</b> — <see cref="LeaveSanctumAtTheDoor"/>'s bargain. F5 Reroll, F6 Banish,
+        /// F7 Heal, F8 Cleanse. Each asks <c>CanBuy</c> first and logs a refusal rather than letting
+        /// the command throw, which is exactly what the screen will do with a dead button.
+        /// </para>
+        /// <para>
+        /// F6 banishes the first card of the most recent offer — the node manual step 2 has "been
+        /// offered twice" — or, when that one is gone, the first banishable node in tree order.
+        /// </para>
+        /// </remarks>
+        private void BuyFromTheKeyboard()
+        {
+            UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
+
+            if (keyboard is null || _progression is null || !_progression.IsSanctumOpen)
+            {
+                return;
+            }
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                BuyOrSay(SanctumService.Reroll);
+            }
+            else if (keyboard.f6Key.wasPressedThisFrame)
+            {
+                BanishOrSay();
+            }
+            else if (keyboard.f7Key.wasPressedThisFrame)
+            {
+                BuyOrSay(SanctumService.Heal);
+            }
+            else if (keyboard.f8Key.wasPressedThisFrame)
+            {
+                BuyOrSay(SanctumService.Cleanse);
+            }
+        }
+
+        private void BuyOrSay(SanctumService service)
+        {
+            int price = _progression.PriceOf(service);
+
+            if (!_progression.CanBuy(service))
+            {
+                Debug.Log($"[Sanctum] {service} refused: {price} Essence, or nothing for it to do.");
+
+                return;
+            }
+
+            _progression.Buy(service);
+
+            Debug.Log($"[Sanctum] {service} bought for {price}.");
+        }
+
+        private void BanishOrSay()
+        {
+            if (!_progression.CanBuy(SanctumService.Banish))
+            {
+                Debug.Log(
+                    $"[Sanctum] Banish refused: {_progression.PriceOf(SanctumService.Banish)} "
+                        + "Essence, or nothing left to banish.");
+
+                return;
+            }
+
+            RunState state = _session.State;
+            var banishable = new ContentId[state.TreeNodeCount];
+            int count = _progression.BanishableInto(banishable);
+
+            ContentId target = count > 0 ? banishable[0] : default;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (banishable[i] == _lastOffered)
+                {
+                    target = banishable[i];
+
+                    break;
+                }
+            }
+
+            _progression.Banish(target);
+
+            Debug.Log($"[Sanctum] Banished '{target}'.");
+        }
+
+        private void OnOfferPresented(OfferPresented evt)
+        {
+            RunState state = _session.State;
+
+            if (state is not null && state.Offer.Count > 0)
+            {
+                _lastOffered = state.Offer[0];
+            }
         }
 
         private void Refresh()
@@ -579,6 +694,15 @@ namespace Soulvail.Game.Presentation
             // single number and tell each other apart the moment there are three.
             _line.Append("  ess ").Append(
                 (state is null ? 0 : state.Essence).ToString(CultureInfo.InvariantCulture));
+
+            // M6-02b's two counters and the banish count, for the manual steps: `rr 1/0` is a
+            // charge banked and not yet spent, and it becomes `1/1` on the next offer.
+            _line.Append("  rr ").Append(
+                (state is null ? 0 : state.RerollsBought).ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(
+                (state is null ? 0 : state.RerollsSpent).ToString(CultureInfo.InvariantCulture));
+            _line.Append("  ban ").Append(
+                (state is null ? 0 : state.BanishedNodeIds.Count).ToString(CultureInfo.InvariantCulture));
 
             // How many actives the player owns, and how far round the first one's cooldown is.
             //

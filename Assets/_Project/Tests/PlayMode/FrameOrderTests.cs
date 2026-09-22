@@ -1698,6 +1698,18 @@ public sealed class FrameOrderTests
 
         public void LeaveSanctum() => _touched.Add("sanctum:leave");
 
+        // M6-02b's five. RunTicker asks none of them; the commands are recorded like every other.
+        public int PriceOf(Soulvail.Core.Progression.SanctumService service) => 0;
+
+        public bool CanBuy(Soulvail.Core.Progression.SanctumService service) => false;
+
+        public void Buy(Soulvail.Core.Progression.SanctumService service) =>
+            _touched.Add("sanctum:buy");
+
+        public void Banish(ContentId skillId) => _touched.Add("sanctum:banish");
+
+        public int BanishableInto(Span<ContentId> destination) => 0;
+
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {
             for (int i = 0; i < snapshot.EnemyCount; i++)

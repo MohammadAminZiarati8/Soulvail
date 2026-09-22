@@ -105,6 +105,18 @@ public sealed class SkillTree
     /// <summary>The same list as a view, wrapped once so <see cref="TakenIds"/> allocates nothing.</summary>
     private readonly ReadOnlyCollection<ContentId> _takenIdsView;
 
+    /// <summary>
+    /// One flag per node, indexed as <see cref="_nodes"/> is — GD §13.3's Banish, the third flag
+    /// beside <see cref="_taken"/> (M6-02b rule 4).
+    /// </summary>
+    private bool[] _banished;
+
+    /// <summary>The banished ids in banish order, which is what a save writes down.</summary>
+    private readonly List<ContentId> _banishedIds;
+
+    /// <summary>Wrapped once, for <see cref="_takenIdsView"/>'s reason.</summary>
+    private readonly ReadOnlyCollection<ContentId> _banishedIdsView;
+
     private readonly EffectRegistry _effects;
     private readonly IDomainEvents _events;
 
@@ -132,6 +144,9 @@ public sealed class SkillTree
         _takenInBranch = new int[rules.BranchCount];
         _takenIds = new List<ContentId>(_nodes.Length);
         _takenIdsView = new ReadOnlyCollection<ContentId>(_takenIds);
+        _banished = new bool[_nodes.Length];
+        _banishedIds = new List<ContentId>();
+        _banishedIdsView = new ReadOnlyCollection<ContentId>(_banishedIds);
 
         Reindex();
 
@@ -206,6 +221,156 @@ public sealed class SkillTree
     /// </remarks>
     public bool IsTaken(ContentId id) => _index.TryGetValue(id, out int ordinal) && _taken[ordinal];
 
+    /// <summary>Whether <paramref name="id"/> has been banished this run.</summary>
+    /// <remarks>False for a stranger, as <see cref="IsTaken"/> is and for its reason.</remarks>
+    public bool IsBanished(ContentId id) =>
+        _index.TryGetValue(id, out int ordinal) && _banished[ordinal];
+
+    /// <summary>The banished ids, in banish order — a read-only view, never a copy.</summary>
+    /// <remarks>What <c>RunRecorder</c> writes and <see cref="RestoreBanished"/> replays.</remarks>
+    public IReadOnlyList<ContentId> BanishedIds => _banishedIdsView;
+
+    /// <summary>
+    /// Whether <paramref name="id"/> may be banished: a node of this tree, not taken, not already
+    /// banished. Availability is not asked (M6-02b rule 5).
+    /// </summary>
+    /// <remarks>
+    /// The question <see cref="Banish"/> would refuse on, asked without throwing, so a caller that
+    /// must take money before the banish lands can ask first — <c>SanctumShop.Banish</c>. False for
+    /// a stranger.
+    /// </remarks>
+    public bool CanBanish(ContentId id) =>
+        _index.TryGetValue(id, out int ordinal) && !_taken[ordinal] && !_banished[ordinal];
+
+    /// <summary>
+    /// Fills <paramref name="destination"/> with every node <see cref="CanBanish"/> would accept, in
+    /// tree order, and returns how many were written.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Available"/>'s shape and its refusal of a short buffer, for its reason; allocates
+    /// nothing. Rule 5: every untaken node, available or not.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="destination"/> is shorter than <see cref="TreeRules.Count"/>.
+    /// </exception>
+    public int Banishable(Span<ContentId> destination)
+    {
+        RequireWholeTree(destination.Length);
+
+        int written = 0;
+
+        for (int ordinal = 0; ordinal < _nodes.Length; ordinal++)
+        {
+            if (!_taken[ordinal] && !_banished[ordinal])
+            {
+                destination[written] = _nodes[ordinal].Spec.Id;
+                written++;
+            }
+        }
+
+        return written;
+    }
+
+    /// <summary>
+    /// Takes <paramref name="id"/> out of this run's pool for good (GD §13.3), and publishes
+    /// <see cref="NodeBanished"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A third flag, not a filter on the generator</b> (M6-02b rule 4): <see cref="Check"/>
+    /// closes for a banished ordinal, so <see cref="IsAvailable"/>, <see cref="Available"/> and
+    /// therefore <c>OfferGenerator</c> all agree without the generator being edited.
+    /// </para>
+    /// <para>
+    /// <b>Any untaken node, available or not, and the consequences are the player's</b> (rule 5).
+    /// Banishing an Upgrade's parent makes the Upgrade unreachable, and banishing enough of a
+    /// branch makes its Keystone unreachable; <c>LevelUpFlow.Open</c> already spends a pick with
+    /// nothing to draw on Overflow. Nothing here takes that back — GD §13.3 says <em>permanently</em>.
+    /// </para>
+    /// <para>
+    /// Public, sealed one layer out at <c>RunState.Tree</c>, for <see cref="Take"/>'s reason. The
+    /// price is <c>SanctumShop</c>'s; this is the verb.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is <c>default</c>, not a node of this tree, already taken, or already
+    /// banished.
+    /// </exception>
+    public void Banish(ContentId id)
+    {
+        if (id.Value is null)
+        {
+            throw new ArgumentException("default(ContentId) names no node to banish.", nameof(id));
+        }
+
+        if (!_index.TryGetValue(id, out int ordinal))
+        {
+            throw new ArgumentException(
+                $"'{id}' is not a node of '{Rules.Tree.Id}', so there is nothing to banish.",
+                nameof(id));
+        }
+
+        if (_taken[ordinal])
+        {
+            throw new ArgumentException(
+                $"'{id}' is already taken. Banish removes a node from the offers; it does not "
+                    + "take one back (GD §13.3, and CH §7 deleted respec).",
+                nameof(id));
+        }
+
+        if (_banished[ordinal])
+        {
+            throw new ArgumentException($"'{id}' is already banished.", nameof(id));
+        }
+
+        _banished[ordinal] = true;
+        _banishedIds.Add(id);
+
+        _events.Publish(new NodeBanished(id));
+    }
+
+    /// <summary>
+    /// Replays a save's banishes, silently. Drops what it cannot apply (M6-02b rule 9).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>After <see cref="Restore"/>, never before</b>: an id in both lists is dropped from this
+    /// one — the take is the stronger fact and a save carrying both is corrupt rather than stale —
+    /// and that is only knowable once the takes are in.
+    /// </para>
+    /// <para>
+    /// <b>Drops rather than throws</b>, unlike <see cref="Restore"/>: an id this build no longer
+    /// ships, a duplicate, or one also taken is skipped — <c>SkillRunner.Restore</c>'s silent-drop
+    /// rule (M3-07b rule 6). A banish narrows the offers and grants nothing, so losing one costs
+    /// the player 40 Essence of sculpting rather than a broken tree. <b>Silent</b>: no
+    /// <see cref="NodeBanished"/> before <c>RunStarted</c>.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="banished"/> is null.</exception>
+    public void RestoreBanished(IReadOnlyList<ContentId> banished)
+    {
+        if (banished is null)
+        {
+            throw new ArgumentNullException(nameof(banished));
+        }
+
+        for (int i = 0; i < banished.Count; i++)
+        {
+            ContentId id = banished[i];
+
+            if (id.Value is null
+                || !_index.TryGetValue(id, out int ordinal)
+                || _taken[ordinal]
+                || _banished[ordinal])
+            {
+                continue;
+            }
+
+            _banished[ordinal] = true;
+            _banishedIds.Add(id);
+        }
+    }
+
     /// <summary>Whether <paramref name="id"/> may be taken right now.</summary>
     /// <remarks>
     /// CH §5's gating in one question: not already taken, enough of its own branch taken, and — for
@@ -252,14 +417,7 @@ public sealed class SkillTree
     /// </exception>
     public int Available(Span<ContentId> destination)
     {
-        if (destination.Length < _nodes.Length)
-        {
-            throw new ArgumentException(
-                $"destination holds {destination.Length} and this tree has {_nodes.Length} nodes. "
-                    + "Size it to the tree: a buffer that could not hold every available node would "
-                    + "silently narrow the offer rather than fail.",
-                nameof(destination));
-        }
+        RequireWholeTree(destination.Length);
 
         int written = 0;
 
@@ -449,13 +607,16 @@ public sealed class SkillTree
         RequireHandlers(widened, from: _nodes.Length);
 
         var taken = new bool[widened.Length];
+        var banished = new bool[widened.Length];
         var takenInBranch = new int[Rules.BranchCount];
 
         Array.Copy(_taken, taken, _taken.Length);
+        Array.Copy(_banished, banished, _banished.Length);
         Array.Copy(_takenInBranch, takenInBranch, _takenInBranch.Length);
 
         _nodes = widened;
         _taken = taken;
+        _banished = banished;
         _takenInBranch = takenInBranch;
 
         Reindex();
@@ -517,6 +678,12 @@ public sealed class SkillTree
             return Gate.Taken;
         }
 
+        // M6-02b rule 4: closed for good, whatever the branch count says.
+        if (_banished[ordinal])
+        {
+            return Gate.Banished;
+        }
+
         Node node = _nodes[ordinal];
         SkillSpec spec = node.Spec;
 
@@ -564,6 +731,9 @@ public sealed class SkillTree
         {
             Gate.Taken => $"'{spec.Id}' is already taken; nothing in V1 takes a node twice.",
 
+            Gate.Banished =>
+                $"'{spec.Id}' was banished in the Sanctum and is out of this run for good (GD §13.3).",
+
             Gate.Tier =>
                 $"'{spec.Id}' is at branch {node.Branch}, tier {node.Tier}, which needs "
                     + $"{Rules.RequiredTakenInBranch(spec.Id)} nodes of that branch taken and has "
@@ -586,6 +756,22 @@ public sealed class SkillTree
                 gate,
                 "No refusal is written for this gate."),
         };
+    }
+
+    /// <summary>
+    /// <see cref="Available"/>'s refusal, shared with <see cref="Banishable"/>: a buffer that could
+    /// not hold the whole tree would silently narrow the answer rather than fail.
+    /// </summary>
+    private void RequireWholeTree(int length)
+    {
+        if (length < _nodes.Length)
+        {
+            throw new ArgumentException(
+                $"destination holds {length} and this tree has {_nodes.Length} nodes. "
+                    + "Size it to the tree: a buffer that could not hold every node would "
+                    + "silently narrow the answer rather than fail.",
+                "destination");
+        }
     }
 
     /// <summary>Rebuilds <see cref="_index"/> from <see cref="_nodes"/> as it now stands.</summary>
@@ -722,6 +908,9 @@ public sealed class SkillTree
 
         /// <summary>It is already owned.</summary>
         Taken,
+
+        /// <summary>It was banished — GD §13.3, M6-02b.</summary>
+        Banished,
 
         /// <summary>Not enough of its branch is taken for its tier.</summary>
         Tier,

@@ -797,6 +797,42 @@ public sealed class SkillTreeTests
         Assert.That(session.State.IsNodeAvailable(default), Is.False);
     }
 
+    // ---- M6-02b: the third flag survives the one rebuild the tree ever does ------------------------
+
+    [Test]
+    public void Banish_SurvivesASplash()
+    {
+        SkillTree tree = FullTree();
+        var banished = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        tree.Banish(banished);
+
+        // OnSplashInstalled rebuilds the flag arrays by ordinal; a copy that forgot the third
+        // would hand the banished node back the moment CH §5.4's branch arrived.
+        TreeRulesTests.Install(tree.Rules);
+        tree.OnSplashInstalled();
+
+        Assert.That(tree.IsBanished(banished), Is.True);
+        Assert.That(tree.IsAvailable(banished), Is.False);
+        Assert.That(tree.BanishedIds, Is.EqualTo(new[] { banished }));
+
+        // And the borrowed nodes arrive banishable, which is what a Sanctum after the splash sells.
+        Assert.That(tree.CanBanish(Id(TreeRulesTests.Node('x', 1, 'a'))), Is.True);
+    }
+
+    [Test]
+    public void Banish_RefusesToBeTaken()
+    {
+        SkillTree tree = FullTree();
+        var banished = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        tree.Banish(banished);
+
+        var refused = Assert.Throws<InvalidOperationException>(() => tree.Take(banished));
+
+        Assert.That(refused.Message, Does.Contain("banished"), "Take's refusal names the gate that closed.");
+    }
+
     // ---- Fixture --------------------------------------------------------------------------------
 
     private static ContentId Id(string value) => new ContentId(value);

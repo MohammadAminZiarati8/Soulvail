@@ -145,6 +145,36 @@ public sealed class LevelUpFlow
     /// </summary>
     public int OverflowLevels { get; private set; }
 
+    /// <summary>Rerolls bought in the Sanctum and not yet spent by a draw (M6-02b rule 3).</summary>
+    public int RerollCharges { get; private set; }
+
+    /// <summary>How many offers this run has rerolled — what the save's <c>RerollsSpent</c> is.</summary>
+    public int RerollsSpent { get; private set; }
+
+    /// <summary>
+    /// Banks one reroll, to be spent by the next draw that finds something — M6-02b rule 3.
+    /// </summary>
+    /// <remarks>
+    /// <b>A charge, not a button.</b> GD §13.3 sells the reroll between stages, before there is an
+    /// offer to look at, so the player never sees the three they avoided. <c>SanctumShop.Buy</c> is
+    /// the one caller; the price is its.
+    /// </remarks>
+    internal void GrantReroll()
+    {
+        RerollCharges++;
+    }
+
+    /// <summary>
+    /// What a resumed run comes back with: <paramref name="spent"/> rerolls already used, and
+    /// <paramref name="charges"/> still banked. Silent, and unguarded for
+    /// <c>EssenceWallet.Restore</c>'s reason — <c>RunEconomy</c> already refused a negative stock.
+    /// </summary>
+    internal void RestoreRerolls(int charges, int spent)
+    {
+        RerollCharges = charges;
+        RerollsSpent = spent;
+    }
+
     /// <summary>
     /// Opens the level-up for the pick that is owed: draws an offer, or spends the pick as Overflow,
     /// or does nothing when nothing is owed.
@@ -183,6 +213,20 @@ public sealed class LevelUpFlow
 
             if (drawn > 0)
             {
+                // **M6-02b rule 3: a banked reroll is spent here, and only on a draw that found
+                // something** — an Overflow level below spends no charge, because there was no
+                // offer to reroll. The first three are discarded unseen and the second draw comes
+                // from the same Offers stream, so the only thing the extra draw moves is which
+                // nodes this run is offered later (ADR-0011). The tree has not changed between the
+                // two draws, so the second finds something whenever the first did.
+                if (RerollCharges > 0)
+                {
+                    RerollCharges--;
+                    RerollsSpent++;
+
+                    drawn = _generator.Draw(_tree, offers, _offer.Length, _offer);
+                }
+
                 _count = drawn;
                 _events.Publish(new OfferPresented(drawn, _progression.PendingLevelUps));
 

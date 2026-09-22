@@ -709,6 +709,9 @@ public sealed class EssenceWalletTests
     {
         Step(StageFlow.ClearTime + (1f / 60f));
 
+        // Out of the Sanctum, the one way there is (M6-02a rule 3).
+        _flow.LeaveSanctum(_now);
+
         _snapshot.PlayerPosition = Door;
 
         Step(1f / 60f);
@@ -801,6 +804,12 @@ public sealed class EssenceWalletTests
 
         for (int i = 0; i < 600 && _events.Count<StageArrived>() == before; i++)
         {
+            // Leaving the Sanctum the way a screen will (M6-02a rule 4).
+            if (session.IsSanctumOpen)
+            {
+                session.LeaveSanctum();
+            }
+
             session.Tick(SessionSnapshot(1f / 60f, Door));
         }
 

@@ -737,15 +737,20 @@ public sealed class RunRecorderTests
 
         Assert.That(_random.Capture().Spawn, Is.EqualTo(atClear.Spawn));
 
-        // Every tick of Clear, Gate and Transition, up to and including the one that crosses.
-        // Nothing in any of them may draw, or the position the snapshot carries is not the position
-        // the resumed run will compose from.
+        // Every tick of Clear, Sanctum, Gate and Transition, up to and including the one that
+        // crosses. Nothing in any of them may draw, or the position the snapshot carries is not the
+        // position the resumed run will compose from — and leaving the Sanctum is inside that span.
         for (int i = 0; i < 600 && _events.Count<StageArrived>() < 2; i++)
         {
             Assert.That(
                 _random.Capture().Spawn,
                 Is.EqualTo(atClear.Spawn),
                 "Something drew between the capture and the recompose.");
+
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
 
             _session.Tick(Snapshot(Frame, Door));
         }
@@ -1188,13 +1193,21 @@ public sealed class RunRecorderTests
                 + "fixture rather than about the run.");
     }
 
-    /// <summary>Waits out the clear beat, walks into the door and lets the fade run out.</summary>
+    /// <summary>
+    /// Waits out the clear beat, leaves the Sanctum, walks into the door and lets the fade run out.
+    /// </summary>
     private void CrossTheBoundary()
     {
         int arrivals = _events.Count<StageArrived>();
 
         for (int i = 0; i < 900 && _events.Count<StageArrived>() == arrivals; i++)
         {
+            // The way a screen will (M6-02a rule 4): ask, then send.
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
+
             _session.Tick(Snapshot(Frame, Door));
         }
 

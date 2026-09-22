@@ -214,4 +214,59 @@ public interface IProgressionCommands
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built as specced in shape.** `StagePhase.Sanctum` between `Clear` and `Gate`; `EnterSanctum`
+publishes `SanctumOpened(stage, wallet balance)`; the Sanctum's `case` in `Tick` is empty;
+`StageFlow.LeaveSanctum(now)` is the one way to `Gate`. `SpawnDirector.IsStageComplete`'s boss branch
+is `_bossCleared && !AnythingBreathes()`, a walk over `Registry.Alive` asking `IsAlive`, stopping at
+the first breath. `IProgressionCommands` gains `IsSanctumOpen` and `LeaveSanctum`; `RunSession`
+implements both. 2 612 → **2 630, +18**, all in `StageFlowTests`.
+
+### Deviations
+
+1. **`DebugOverlay.cs` is edited, outside the table, and it is the one to know.** Nothing in Game
+   called `LeaveSanctum`, so every Editor run would have stopped in the first Sanctum until M6-03a —
+   and manual step 2's *"press the debug leave command"* named a command that did not exist. The
+   overlay now takes `IProgressionCommands`, sends `LeaveSanctum` **when the player walks into the
+   door** (XZ, `StageFlow.GateReachRadius`) while `IsSanctumOpen` is true, and reads `sanctum` from
+   `SanctumOpened` for step 1. **The first build used the Enter key, and the owner's playtest refused
+   it**: the door is drawn on `StageCleared`, so a player who has killed everything walks to it and a
+   door that does nothing reads as a broken game. The door is also reachable on a phone. It is a
+   stand-in for M6-03a's Leave button; core's rule 3 is unchanged — a view sends the command.
+2. **`RunState.IsSanctumOpen` is a copied `internal set` bool**, not derived: the flow is built after
+   the state and is null for a mode that composes nothing. `RunSession.Tick` writes it beside
+   `StageIndex`, and `LeaveSanctum` clears it on the tap so a read straight after is true.
+3. **`RunSession.LeaveSanctum` throws for a run with no flow** — a mode that composes nothing has no
+   Sanctum to leave — in addition to the no-run throw the spec lists.
+4. **The `Boss_` rows and `Director_CompletionAllocatesNothing` live in `StageFlowTests`, not
+   `SpawnDirectorTests`.** That fixture has no boss, mode or catalog support; `StageFlowTests` already
+   builds director, flow and enemies together and gained `EssenceWalletTests`' Warden. The adds are
+   dressed with `EnemySystem.Spawn`, the registry a `BossBehaviour` summon lands in either way.
+5. **`Stage_TheOrderIsArrivalWavesClearSanctumGateTransition` is new, not extended**: no phase-order
+   row existed. Likewise the `Run_` rows and `Stage_TheBoundarySnapshotIsStillTakenOnTheClearEdge`
+   sit in `StageFlowTests` beside its existing session rows. `LeaveSanctum_Guards` is the implied guard row.
+6. **The ripple was wider than the table**: four fixtures' door-walking helpers had to leave the shop —
+   `StageFlowTests`, `EssenceWalletTests`, `RunSessionResumeTests` (the table's *"ResumeFlowTests"*
+   row, which is a different file), and `RunRecorderTests`, which the table does not name.
+   `ResumeFlowTests` and PlayMode's `FrameOrderTests` changed only because their fakes implement the
+   port: inert members, and `RunTicker` does not ask either until M6-03a.
+7. **`Stage_AnOrdinaryStageIsUnchanged` dresses a body the director never issued on every stage**,
+   and the stage completes anyway. That is M2-05's behaviour, kept — and it is why rule 5 walks the
+   registry rather than an id list on boss stages only.
+8. **AR §18.1's boundary-snapshot row gains the Sanctum clause** and cites
+   `Stage_TheBoundarySnapshotIsStillTakenOnTheClearEdge`. Not in the table; it is a rule the code now
+   depends on.
+
+### Findings
+
+- **The ordinal of `StagePhase` is not identity anywhere** — nothing saves, serialises or casts it,
+  checked by grep before inserting mid-list. The enum's remarks now say so.
+- **`LocalJsonSaveStoreTests.Store_SaveReplaces` failed once** with Windows' *"Unable to remove the
+  file to be replaced"* on the second of four EditMode passes, then passed twice. It touches nothing
+  here; the disk was at 96 %. One sighting — spent, not filed.
+- **Nothing publishes the door opening when the Sanctum is left.** `StageCleared` still carries the
+  gate and is what a view draws the door from, so the door is drawn before core will let anyone
+  through it — the owner walked into exactly that. M6-03a's pause over the shop is what hides it.
+- **`AC_Player.controller` has no `Cast` parameter and never has**, so every `SkillCast` in Play logs
+  *"Parameter 'Hash -1299573048' does not exist"*. Found because `BootSmokeTests` resumed the owner's
+  saved Gravecaller run (Continue is the first button once `run.json` exists) and Exhume auto-cast.
+  Pre-existing and outside this task; reported, not fixed.

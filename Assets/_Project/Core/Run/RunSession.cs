@@ -1378,6 +1378,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // saves (M2-13). They agree because this is the one line that moves the second one.
             State.StageIndex = _flow.Stage;
 
+            // The same copy for the same reason, one line down (M6-02a rule 4). Written every tick
+            // rather than on the edge, because a flow parked in the Sanctum for ten minutes must
+            // still read true on the ten-minute frame and nothing publishes on that one.
+            State.IsSanctumOpen = _flow.Phase == StagePhase.Sanctum;
+
             // A finite mode that has run out of stages. The flow sets the flag and stays in Clear;
             // ending the run is this class's word and nobody else's (rule 14). Inert for Descent,
             // which is endless — and written anyway, because ModeSpec.FinalStage exists and the
@@ -1661,6 +1666,39 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         }
 
         State.Splash.Choose(characterId, branch);
+    }
+
+    /// <inheritdoc />
+    /// <remarks><see cref="IsSplashOpen"/>'s reasoning — a read, false outside a run.</remarks>
+    public bool IsSanctumOpen => IsRunning && State.IsSanctumOpen;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Stamped with <see cref="RunState.Time"/>, the clock the flow's phases are measured on — a tap
+    /// between ticks is at most a frame older than it says, the lag every command already has.
+    /// </para>
+    /// <para>
+    /// <b>The flag is cleared here and not left to the next tick</b>, so a frame loop asking
+    /// <see cref="IsSanctumOpen"/> straight after the tap is told the truth rather than the last
+    /// frame's (M6-02a rule 4). A run with no flow — a mode with nothing to compose — can never be in
+    /// the shop, so it refuses the call for the same reason the flow would.
+    /// </para>
+    /// </remarks>
+    public void LeaveSanctum()
+    {
+        RequireRunning(nameof(LeaveSanctum));
+
+        if (_flow is null)
+        {
+            throw new InvalidOperationException(
+                "This run's mode composes no stages, so it has no Sanctum to leave. A view sent "
+                    + "LeaveSanctum without a screen to send it for.");
+        }
+
+        _flow.LeaveSanctum(State.Time);
+
+        State.IsSanctumOpen = false;
     }
 
     /// <inheritdoc />

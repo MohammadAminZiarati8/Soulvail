@@ -5,6 +5,7 @@ using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Views;
@@ -105,6 +106,18 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
 
         /// <summary>
+        /// The run's progression port, for the one command this overlay sends: leaving the Sanctum.
+        /// </summary>
+        /// <remarks>
+        /// <b>A stand-in, and the only write this component makes</b> (M6-02a). Core's Sanctum is
+        /// left by a command and never by a clock, and no screen sends that command until M6-03a —
+        /// so without this, every run would stop at the first stage it cleared. It is sent when the
+        /// player walks into the door, which is what the door has always meant; see
+        /// <see cref="LeaveSanctumAtTheDoor"/>. It goes when M6-03a's Leave button arrives.
+        /// </remarks>
+        private IProgressionCommands _progression;
+
+        /// <summary>
         /// The run's path cache, for <c>StalePathCount</c>. An adapter rather than core state, like
         /// the snapshot and the intent buffer either side of it — and the number it reports is one
         /// nothing else in the game can see (M2-05 rule 19).
@@ -160,6 +173,7 @@ namespace Soulvail.Game.Presentation
         private IDisposable _waveSubscription;
         private IDisposable _arrivedSubscription;
         private IDisposable _clearedSubscription;
+        private IDisposable _sanctumSubscription;
         private IDisposable _transitionSubscription;
         private float _untilRefresh;
         private float _fps;
@@ -178,11 +192,12 @@ namespace Soulvail.Game.Presentation
         /// Which beat of the stage the last stage event pointed at.
         /// </summary>
         /// <remarks>
-        /// Derived from the three events rather than read from <c>StageFlow.Phase</c>, which is the
+        /// Derived from the four events rather than read from <c>StageFlow.Phase</c>, which is the
         /// same bargain the target line makes: a phase read out of core would agree with core by
         /// construction and so could never show the boundary disagreeing with itself. The one thing
-        /// the events cannot see is <c>Clear</c> turning into <c>Gate</c> after 1.5 s — nothing is
-        /// published for it, because nothing outside core has to know — so both read <c>clear</c>.
+        /// the events cannot see is the Sanctum being left for <c>Gate</c> — nothing is published for
+        /// it, because the command that leaves came from outside core — so the stand-in that sends
+        /// it writes <c>gate</c> here itself.
         /// </remarks>
         private string _phase = "—";
 
@@ -201,6 +216,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
         /// <param name="session">The run, for the one number that has no other way out. See the class remarks.</param>
+        /// <param name="progression">The run's progression port, for the Sanctum's stand-in exit.</param>
         /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
         /// <param name="paths">The run's path cache, for the stale count.</param>
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
@@ -218,6 +234,7 @@ namespace Soulvail.Game.Presentation
             WorldSnapshot snapshot,
             IntentBuffer intents,
             IRunSession session,
+            IProgressionCommands progression,
             DomainEventHub hub,
             NavPathSense paths,
             ProjectileViews projectileViews,
@@ -228,6 +245,7 @@ namespace Soulvail.Game.Presentation
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
             _sight = sight ?? throw new ArgumentNullException(nameof(sight));
@@ -253,6 +271,7 @@ namespace Soulvail.Game.Presentation
             // which is indistinguishable from a director that has quietly stopped.
             _arrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
             _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
+            _sanctumSubscription = hub.Subscribe<SanctumOpened>(OnSanctumOpened);
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
         }
 
@@ -320,6 +339,9 @@ namespace Soulvail.Game.Presentation
             _clearedSubscription?.Dispose();
             _clearedSubscription = null;
 
+            _sanctumSubscription?.Dispose();
+            _sanctumSubscription = null;
+
             _transitionSubscription?.Dispose();
             _transitionSubscription = null;
         }
@@ -361,6 +383,11 @@ namespace Soulvail.Game.Presentation
             _phase = "clear";
         }
 
+        private void OnSanctumOpened(SanctumOpened evt)
+        {
+            _phase = "sanctum";
+        }
+
         private void OnTransitionStarted(StageTransitionStarted evt)
         {
             _phase = "fade";
@@ -375,6 +402,8 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void LateUpdate()
         {
+            LeaveSanctumAtTheDoor();
+
             // Sampled every frame even though it is drawn ten times a second — an average that only
             // saw every sixth frame would miss exactly the stutter it exists to catch.
             float dt = Time.unscaledDeltaTime;
@@ -398,6 +427,47 @@ namespace Soulvail.Game.Presentation
             _untilRefresh = RefreshInterval;
 
             Refresh();
+        }
+
+        /// <summary>
+        /// The Sanctum's stand-in exit: walking into the door while the shop is open. See
+        /// <see cref="_progression"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The door, and not a key, because the door is what the player can see.</b> It is drawn
+        /// on <c>StageCleared</c>, a <c>ClearTime</c> before the shop even opens, so a player who has
+        /// killed everything walks straight to it — and a door that does nothing reads as a broken
+        /// game. The first build of this used Enter, and the owner's playtest found exactly that. A
+        /// door also works on a phone, where no key exists.
+        /// </para>
+        /// <para>
+        /// Core's rule is unchanged: the Sanctum is left by a command and nothing else (M6-02a rule
+        /// 3). This is a view sending that command, measured on XZ against
+        /// <see cref="StageFlow.GateReachRadius"/> — core's own reach, so the leave and the crossing
+        /// agree on where the door is, and the flow trips <c>Gate</c> into <c>Transition</c> on the
+        /// next frame. Asked of the port first, because the command throws outside the shop.
+        /// </para>
+        /// </remarks>
+        private void LeaveSanctumAtTheDoor()
+        {
+            if (_progression is null || !_progression.IsSanctumOpen || !_snapshot.HasGate)
+            {
+                return;
+            }
+
+            // XZ, and no square root: AR §18.4, and StageFlow.IsInsideTheDoor's arithmetic exactly.
+            float dx = _snapshot.PlayerPosition.X - _snapshot.GatePosition.X;
+            float dz = _snapshot.PlayerPosition.Z - _snapshot.GatePosition.Z;
+
+            if ((dx * dx) + (dz * dz) > StageFlow.GateReachRadius * StageFlow.GateReachRadius)
+            {
+                return;
+            }
+
+            _progression.LeaveSanctum();
+
+            _phase = "gate";
         }
 
         private void Refresh()

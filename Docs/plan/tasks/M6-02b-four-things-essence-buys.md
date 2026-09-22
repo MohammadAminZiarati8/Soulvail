@@ -294,4 +294,51 @@ public sealed class LevelUpFlow
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built as specced in shape.** `SanctumSpec` last on `ModeSpec`, Descent at 25/40/40/30/60/15;
+`SanctumShop` prices, refuses and delivers; `SkillTree` carries a third flag that `Check` closes on,
+so `OfferGenerator` is untouched; `LevelUpFlow.Open` spends a banked charge on the first draw that
+finds something; `RunRecorder` writes the two counters and the banishes. 2 630 → **2 675, +45**.
+
+### Deviations
+
+1. **The owner's ruling, outside the table: `AC_Player.controller` gains a `Cast` trigger**, added
+   through `AnimatorController.AddParameter` (six YAML lines). **Parameter only**: the controller
+   has no cast state and nothing under `Animation/` is a cast clip. KayKit's `Rig_Medium_CombatRanged`
+   ships `Ranged_Magic_Spellcasting`, `_Shoot` and `_Summon`, unwired because picking one is an art
+   call. `PlayerAnimatorViewTests.Animator_EveryParameterItSetsExistsOnTheShippedController` sweeps
+   the view's `_…Id` hashes against the shipped asset. The fixture's hand-built double had carried
+   `Cast` since M3-06, which is why no row ever caught the gap.
+2. **`RunSession` refuses a purchase outside the Sanctum.** `CanBuy` is false and `Buy`/`Banish`
+   throw unless `IsSanctumOpen`. AR §18.1's boundary row rests on it: the snapshot is taken on the
+   `Clear` edge, so a Sanctum purchase is rolled back by a kill before the next clear, while a
+   mid-stage purchase would be kept. The row gains the clause; `Port_BuysOnlyInTheSanctum` pins it.
+3. **`SanctumShop.Restore` is public**, for `SkillTree.Restore`'s reason: `Soulvail.Tests.Core` has no
+   `InternalsVisibleTo`. `LevelUpFlow.GrantReroll` stays internal and its rows reach it by
+   reflection, as `Grant` reaches `GrantOverflow`. `RestoreRerolls` and two reads are beside it.
+4. **`SkillTree` gains `CanBanish` and `Banishable(span)`**, public and outside the API block. The
+   shop must ask the tree's refusal before the wallet moves (rule 8's order) and walk tree order,
+   which is private to the tree. `Available`'s short-buffer refusal became `RequireWholeTree`.
+5. **The enum guard is a range check, not `Enum.IsDefined`**, which boxes; `Shop_CanBuyAllocatesNothing` would fail.
+6. **`Shop_RefusesWhatCannotBeAfforded` banks 24, not 39.** 39 affords the 25 reroll, so the row as
+   written failed once; 24 is the largest balance that refuses all four.
+7. **`DebugOverlay`, outside the table**: F5–F8 buy Reroll / Banish / Heal / Cleanse while the shop is
+   open, asking `CanBuy` first and logging a refusal. F6 banishes the first card of the last offer.
+   The line gains `rr bought/spent` and `ban n`. It makes manual steps 1–3 playable, and goes with M6-03a.
+8. **`RunState` gains `TreeNodeCount`**, the size a `BanishableInto` buffer must be. It also gains
+   `SanctumPriceOf`, `CanBuySanctum`, `RerollsBought/Spent` and `IsNodeBanished`, narrow reads under
+   an `internal Shop`; the narrow-read row now asserts `Shop` is not public.
+9. **Where rows live.** The five `Reroll_` draw rows are in `LevelUpFlowTests`, `Banish_IsNeverOffered`
+   in `OfferGeneratorTests`, and the `Restore_`/`Recorder_` rows in `RunSessionResumeTests`, whose
+   mode now carries Descent's shop. Added beyond the table: `Banish_SurvivesASplash`,
+   `Banish_RefusesToBeTaken`, `Port_BuysOnlyInTheSanctum`, and the guard rows.
+
+### Findings
+
+- **Manual step 3 cannot pass as written.** *"Buy a reroll, quit to the menu, Continue"* rolls the
+  purchase back, Essence included, because the file was written on the `Clear` edge before the
+  shop (AR §18.1). That is the invariant working, not a defect. The step that exercises rule 9 is:
+  buy in the Sanctum, clear the **next** stage, then quit and Continue.
+- **`BootSmokeTests` with a `run.json` on disk: PlayMode 21 / 0 / 0, zero warnings.** It was
+  run against a v4 Gravecaller run written through `LocalJsonSaveStore`, with Exhume taken, one
+  reroll banked and one node banished. Continue resumed it, and the opening rewrite carried
+  `rerollsBought: 1` and the banish back out. The file was deleted afterwards; the disk had none before.

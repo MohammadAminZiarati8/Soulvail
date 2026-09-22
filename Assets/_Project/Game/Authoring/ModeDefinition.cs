@@ -72,6 +72,11 @@ namespace Soulvail.Game.Authoring
                  "would pay per boss and nothing per stage.")]
         [SerializeField] private EssenceBlock _essence = new EssenceBlock();
 
+        [Tooltip("GD §13.3's Sanctum for this mode: what its four services cost, and what Heal and " +
+                 "Cleanse are worth. The other half of the income block above — one says what a " +
+                 "run is paid, this what it can buy.")]
+        [SerializeField] private SanctumBlock _sanctum = new SanctumBlock();
+
         [Tooltip("Every archetype this mode may spawn, and the stage each is introduced at " +
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
@@ -121,7 +126,8 @@ namespace Soulvail.Game.Authoring
                     BuildArenas(),
                     BuildBossRoster(),
                     BuildOverflow(),
-                    BuildEssence());
+                    BuildEssence(),
+                    BuildSanctum());
             }
             catch (ArgumentException inner)
             {
@@ -227,6 +233,27 @@ namespace Soulvail.Game.Authoring
             }
 
             return _essence.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored shop block into the <see cref="SanctumSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// A missing block is refused rather than defaulted, for <see cref="BuildEssence"/>'s reason
+        /// and with a louder consequence: <c>default(SanctumSpec)</c> is a shop that gives
+        /// everything away, and heals and cleanses for nothing.
+        /// </remarks>
+        private SanctumSpec BuildSanctum()
+        {
+            if (_sanctum is null)
+            {
+                throw new ArgumentException(
+                    "its sanctum block is missing. GD §13.3's prices are not optional — a mode "
+                        + "without them sells every service for nothing.",
+                    nameof(_sanctum));
+            }
+
+            return _sanctum.ToSpec();
         }
 
         /// <summary>
@@ -537,6 +564,52 @@ namespace Soulvail.Game.Authoring
             /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
             public EssenceSpec ToSpec() =>
                 new EssenceSpec(_perStageBase, _perStageDepth, _perElite, _perBoss);
+        }
+
+        /// <summary>
+        /// GD §13.3's shop as a designer tunes it — four prices and two magnitudes.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="EssenceBlock"/>'s reason, drawn as the
+        /// foldout beside it. <b>The initialisers are GD §13.3's own numbers</b> — the same bargain
+        /// and the same Traps §7 caveat: <c>Descent.asset</c> ships 25 / 40 / 40 / 30 / 60 / 15 too,
+        /// so <c>Descent_EveryYamlKeyBindsToAField</c> is the row that can tell a bound key from a
+        /// dropped one.
+        /// </para>
+        /// <para>
+        /// The reroll's doubling is not a field (M6-02b rule 2): it is the shape of the economy, and
+        /// lives as <c>SanctumShop.RerollDoubling</c>. It validates nothing <see cref="SanctumSpec"/>
+        /// already validates; <c>[Min]</c> clamps the Inspector GUI and nothing else (Traps §5).
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class SanctumBlock
+        {
+            [Header("Sanctum — GD §13.3: four services between stages")]
+            [Tooltip("The first reroll's price. 25 in GD §13.3, and it doubles with every reroll " +
+                     "bought — the doubling is a rule, not a field.")]
+            [SerializeField, Min(0)] private int _rerollPrice = 25;
+
+            [Tooltip("What taking one untaken node out of this run's offers costs. 40 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _banishPrice = 40;
+
+            [Tooltip("What a heal costs. 40 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _healPrice = 40;
+
+            [Tooltip("Hit points a heal restores. 30 in GD §13.3. Never overfills the bar.")]
+            [SerializeField, Min(0f)] private float _healAmount = 30f;
+
+            [Tooltip("What a cleanse costs. 60 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _cleansePrice = 60;
+
+            [Tooltip("Veilrot a cleanse removes. 15 in GD §13.3. Clamps at zero, and never ends " +
+                     "the Claiming.")]
+            [SerializeField, Min(0f)] private float _cleanseAmount = 15f;
+
+            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
+            public SanctumSpec ToSpec() => new SanctumSpec(
+                _rerollPrice, _banishPrice, _healPrice, _healAmount, _cleansePrice, _cleanseAmount);
         }
 
         /// <summary>

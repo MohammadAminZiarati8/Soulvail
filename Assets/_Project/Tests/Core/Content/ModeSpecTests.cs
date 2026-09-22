@@ -364,6 +364,45 @@ public sealed class ModeSpecTests
         Assert.That(mode.Essence.PerBoss, Is.EqualTo(41));
     }
 
+    // ---- GD §13.3's shop, the mode's as of M6-02b ------------------------------------------------
+
+    [Test]
+    public void Sanctum_RefusesANegativePriceOrAZeroMagnitude()
+    {
+        // Each field in turn, and each refusal names it — a designer reads the parameter name, not
+        // the position. Negative for the four prices; zero, negative, NaN and infinity for the two
+        // magnitudes, because a heal worth NaN is found by a player paying for it.
+        AssertRefuses("rerollPrice", () => new SanctumSpec(-1, 40, 40, 30f, 60, 15f));
+        AssertRefuses("banishPrice", () => new SanctumSpec(25, -1, 40, 30f, 60, 15f));
+        AssertRefuses("healPrice", () => new SanctumSpec(25, 40, -1, 30f, 60, 15f));
+        AssertRefuses("cleansePrice", () => new SanctumSpec(25, 40, 40, 30f, -1, 15f));
+
+        foreach (float bad in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+        {
+            AssertRefuses("healAmount", () => new SanctumSpec(25, 40, 40, bad, 60, 15f));
+            AssertRefuses("cleanseAmount", () => new SanctumSpec(25, 40, 40, 30f, 60, bad));
+        }
+
+        // A free service is a legal statement, like a mode that pays nothing: prices may be zero.
+        Assert.DoesNotThrow(() => new SanctumSpec(0, 0, 0, 30f, 0, 15f));
+
+        // And the block rides on the mode, optional and last, exactly as given.
+        ModeSpec mode = new ModeSpec(
+            Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
+
+        Assert.That(mode.Sanctum.RerollPrice, Is.EqualTo(25));
+        Assert.That(mode.Sanctum.CleanseAmount, Is.EqualTo(15f));
+        Assert.That(Mode(DesignRoster).Sanctum.HealPrice, Is.Zero, "omitted, it is default — rule 1.");
+    }
+
+    private static void AssertRefuses(string field, TestDelegate construct)
+    {
+        var thrown = Assert.Throws<ArgumentOutOfRangeException>(construct, field);
+
+        Assert.That(thrown.ParamName, Is.EqualTo(field));
+    }
+
     [Test]
     public void Mode_WithoutABlockIsUnchanged()
     {

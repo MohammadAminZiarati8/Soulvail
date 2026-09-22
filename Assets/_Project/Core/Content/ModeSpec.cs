@@ -336,6 +336,102 @@ public readonly struct EssenceSpec
 }
 
 /// <summary>
+/// GD §13.3's shop, as authored data: what each of the four Sanctum services costs, and what Heal
+/// and Cleanse are worth. Prices and magnitudes both (ADR-0006).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It belongs to the mode for <see cref="EssenceSpec"/>'s reason, and finishes its
+/// sentence</b> (M6-02b rule 1): one says what a run is paid, this says what it can buy with it.
+/// </para>
+/// <para>
+/// <b>The reroll's doubling is not here</b> (rule 2). GD §13.3's <em>"doubles per use"</em> is the
+/// shape of the economy rather than a number in it, so it is <c>SanctumShop.RerollDoubling</c>; the
+/// base price is content and lives here.
+/// </para>
+/// <para>
+/// <b><c>default(SanctumSpec)</c> is legal and worse than <see cref="EssenceSpec"/>'s</b>: every
+/// price at zero is a shop that gives everything away, and both magnitudes at zero are two services
+/// that do nothing. It is what keeps <c>new ModeSpec(...)</c>'s call sites compiling, so the
+/// constructor makes no second check of it; what stops a shipped mode carrying it is
+/// <c>ContentValidationTests.Content_EveryShippedModePricesItsSanctum</c>.
+/// </para>
+/// </remarks>
+public readonly struct SanctumSpec
+{
+    /// <param name="rerollPrice">The first reroll's price, before doubling. 25 in Descent.</param>
+    /// <param name="banishPrice">What taking one node out of the run costs. 40.</param>
+    /// <param name="healPrice">What a heal costs. 40.</param>
+    /// <param name="healAmount">Hit points a heal restores. 30.</param>
+    /// <param name="cleansePrice">What a cleanse costs. 60.</param>
+    /// <param name="cleanseAmount">Veilrot a cleanse removes. 15.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// A price is negative, or a magnitude is not a finite number greater than zero. Refused where
+    /// the shop is <em>authored</em>, for <see cref="EssenceSpec"/>'s reason: a heal worth NaN would
+    /// be found by a player paying for it.
+    /// </exception>
+    public SanctumSpec(
+        int rerollPrice, int banishPrice, int healPrice, float healAmount,
+        int cleansePrice, float cleanseAmount)
+    {
+        RerollPrice = RequirePrice(rerollPrice, nameof(rerollPrice));
+        BanishPrice = RequirePrice(banishPrice, nameof(banishPrice));
+        HealPrice = RequirePrice(healPrice, nameof(healPrice));
+        HealAmount = RequireAmount(healAmount, nameof(healAmount));
+        CleansePrice = RequirePrice(cleansePrice, nameof(cleansePrice));
+        CleanseAmount = RequireAmount(cleanseAmount, nameof(cleanseAmount));
+    }
+
+    /// <summary>The first reroll's price, before GD §13.3's doubling. 25 in Descent.</summary>
+    public int RerollPrice { get; }
+
+    /// <summary>What taking one node out of the run's pool costs. 40.</summary>
+    public int BanishPrice { get; }
+
+    /// <summary>What a heal costs. 40.</summary>
+    public int HealPrice { get; }
+
+    /// <summary>Hit points a heal restores. 30.</summary>
+    public float HealAmount { get; }
+
+    /// <summary>What a cleanse costs. 60.</summary>
+    public int CleansePrice { get; }
+
+    /// <summary>Veilrot a cleanse removes. 15.</summary>
+    public float CleanseAmount { get; }
+
+    private static int RequirePrice(int value, string field)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Sanctum {field} must be zero or more. A negative price is a shop that "
+                    + "pays the player to shop in it, which EssenceWallet.Spend would refuse at the "
+                    + "counter with nothing to point at but the asset.");
+        }
+
+        return value;
+    }
+
+    private static float RequireAmount(float value, string field)
+    {
+        // `!(v > 0f)` so NaN is refused with zero and the negatives — every guard in core's spelling.
+        if (!(value > 0f) || float.IsInfinity(value))
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Sanctum {field} must be a finite number greater than zero. A service "
+                    + "worth nothing is one the shop would sell for a price and deliver nothing for.");
+        }
+
+        return value;
+    }
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -457,6 +553,12 @@ public sealed class ModeSpec
     /// them says. Omitted, it is <c>default(EssenceSpec)</c> — a mode that pays nothing, which is
     /// the honest reading of a mode that never mentioned an economy.
     /// </param>
+    /// <param name="sanctum">
+    /// GD §13.3's four prices and two magnitudes (M6-02b rule 1). Optional and last, for
+    /// <paramref name="essence"/>'s reason one argument over. Omitted, it is
+    /// <c>default(SanctumSpec)</c> — every service free and worthless, which a fixture that never
+    /// opens the shop cannot tell apart and a shipped mode is refused by content validation.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -490,7 +592,8 @@ public sealed class ModeSpec
         IReadOnlyList<ContentId> arenas = null,
         IReadOnlyList<BossRosterEntry> bossRoster = null,
         OverflowSpec overflow = default,
-        EssenceSpec essence = default)
+        EssenceSpec essence = default,
+        SanctumSpec sanctum = default)
     {
         if (id.Value is null)
         {
@@ -562,6 +665,10 @@ public sealed class ModeSpec
         // ContentValidationTests.EveryShippedMode_PricesItsEssence, which is an author-time sweep
         // over assets rather than a run-time check over specs (M3-14b rule 11's split).
         Essence = essence;
+
+        // No second look, for Essence's reason: SanctumSpec's constructor is the one account of a
+        // legal shop, and the zeroed form is ContentValidationTests' to refuse on a shipped asset.
+        Sanctum = sanctum;
 
         _roster = CopyRoster(roster, id);
 
@@ -642,6 +749,13 @@ public sealed class ModeSpec
     /// no economy at all, which is every fixture that does not mention one.
     /// </remarks>
     public EssenceSpec Essence { get; }
+
+    /// <summary>
+    /// What this mode charges in the Sanctum — 25 / 40 / 40 / 60 in Descent, for 30 hit points and
+    /// 15 Veilrot. All zeroes for a mode that authors none (M6-02b rule 1).
+    /// </summary>
+    /// <remarks>Read by <c>RunSession.Start</c>, which hands it to the run's one <c>SanctumShop</c>.</remarks>
+    public SanctumSpec Sanctum { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

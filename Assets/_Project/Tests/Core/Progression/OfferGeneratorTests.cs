@@ -508,6 +508,48 @@ public sealed class OfferGeneratorTests
             () => OfferGenerator.Weight((SkillKind)99, 0, new[] { 0, 0, 0 }, 0));
     }
 
+    // ---- M6-02b: a banished node, through the generator that was not edited (rule 4) -------------
+
+    [Test]
+    public void Banish_IsNeverOffered()
+    {
+        // A tree of four with one banished: three candidates left and an offer of three, so every
+        // draw has to reach past the banished node to fill itself if the exclusion were missing.
+        SkillTreeSpec spec = Tree(
+            TrioId,
+            OneTier('a', N('a', 1), N('a', 2)),
+            OneTier('b', N('b', 1)),
+            OneTier('c', N('c', 1)));
+
+        SkillTree tree = TreeOver(spec, Passives(N('a', 1), N('a', 2), N('b', 1), N('c', 1)));
+
+        var banished = new ContentId(N('a', 2));
+        tree.Banish(banished);
+
+        OfferGenerator generator = GeneratorFor(tree);
+        var stream = new Lcg(20260923);
+        var offer = new ContentId[3];
+        int seen = 0;
+        int drawn = 0;
+
+        for (int i = 0; i < 10_000; i++)
+        {
+            int count = generator.Draw(tree, stream, offer.Length, offer);
+            drawn += count;
+
+            for (int j = 0; j < count; j++)
+            {
+                if (offer[j] == banished)
+                {
+                    seen++;
+                }
+            }
+        }
+
+        Assert.That(drawn, Is.EqualTo(30_000), "every draw filled all three from what was left.");
+        Assert.That(seen, Is.Zero);
+    }
+
     // ---- Fixture --------------------------------------------------------------------------------
 
     /// <summary>The 27-node tree, over a registry that can answer for what its nodes carry.</summary>

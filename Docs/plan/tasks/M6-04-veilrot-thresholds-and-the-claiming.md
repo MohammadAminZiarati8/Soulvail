@@ -16,7 +16,7 @@ to cleanse until this task exists, and the two ways of shipping
 with a fourth added later is a screen re-dressed twice, and four services with one that refuses is
 exactly the defect [M5-08a](M5-08a-splash-offers-what-install-refuses.md) was written to close —
 *a screen may not offer what the model refuses.* So M6 builds **M6-01a → M6-01b → M6-04 → M6-02a →
-M6-02b → M6-03**, and [the ROADMAP](../ROADMAP.md#m6--systems-complete)'s `Depends on` column says
+M6-02b → M6-03a**, and [the ROADMAP](../ROADMAP.md#m6--systems-complete)'s `Depends on` column says
 so. The IDs are the ROADMAP's and do not move; what moves is the order they are taken in.
 
 ## What GD §10.2 asks for, and what a build with six archetypes can give
@@ -25,7 +25,7 @@ so. The IDs are the ROADMAP's and do not move; what moves is the order they are 
 |---|---|---|
 | **25** | All enemies +5 % move speed | **Yes** — rule 4, one modifier at spawn |
 | **50** | A Revenant stalks you each stage, regardless of depth. Ambient audio shifts | **No, and neither half is this task's.** See below |
-| **75** | Max HP −20 %. Screen edges begin to fray | **The number, yes** — rule 5. The fraying is a post-process and is [M6-03](../ROADMAP.md#m6--systems-complete)'s at most, M8-01's at best |
+| **75** | Max HP −20 %. Screen edges begin to fray | **The number, yes** — rule 5. The fraying is a post-process and is [M6-03b](M6-03b-the-meter-on-the-right-edge.md)'s at most, M8-01's at best |
 | **100** | The Claiming: +100 % damage, +30 % move speed, dash cooldown halved, −1 % max HP per second until you die | **Yes, all four** — rules 6, 7 |
 
 **The 50 threshold names an enemy this game will not have in V1.** The Revenant is GD §8.1's
@@ -69,8 +69,25 @@ public sealed class Veilrot
 {
     public const float Max = 100f;
 
-    /// <summary>GD §10.2's four rows, in order. Public because a HUD draws the ticks.</summary>
-    public static readonly float[] Thresholds = { 25f, 50f, 75f, 100f };
+    /// <summary>How many rows GD §10.2 has. Four.</summary>
+    /// <remarks>
+    /// <b>Amended at M6-00b: this was drafted as <c>public static readonly float[] Thresholds</c>
+    /// and that is static mutable state, which AR §7 bans.</b> <c>readonly</c> protects the handle
+    /// and not the four floats, so any caller could write <c>Thresholds[3] = 5f</c> and every later
+    /// comparison in the meter would be wrong for the rest of the session — <c>PaletteTests</c>'
+    /// <c>Palette_IsTheOneSanctionedStatic</c> states the rule in as many words, and grepped,
+    /// <c>Soulvail.Core</c> has no <c>public static readonly</c> field at all today, so this would
+    /// have been the first and nothing would have caught it. Two members handing out floats by value
+    /// cost the one reader — <see href="M6-03b-the-meter-on-the-right-edge.md">M6-03b</see>'s HUD
+    /// meter — four calls at <c>Start</c>.
+    /// </remarks>
+    public static int ThresholdCount { get; }
+
+    /// <summary>GD §10.2's four rows, in order: 25, 50, 75, 100.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is outside <c>[0, ThresholdCount)</c>.
+    /// </exception>
+    public static float Threshold(int index);
 
     /// <summary>What one second of the Claiming takes, as a fraction of the maximum it began at.</summary>
     public const float ClaimingDrainPerSecond = 0.01f;
@@ -170,7 +187,7 @@ public sealed class PlayerCombat
    *"permanently, until you die."*
 3. **`Cleanse` clamps at zero and does not refuse a partial one.** Buying a 15-point cleanse at 8
    Rot takes the meter to 0 and wastes 7, which is the player's decision and not the model's to
-   prevent; what [M6-03](../ROADMAP.md#m6--systems-complete) rule 4 does refuse is buying one at **0**, where
+   prevent; what [M6-02b](M6-02b-four-things-essence-buys.md) rule 7 does refuse is buying one at **0**, where
    there is nothing to cleanse at all. There is deliberately **no `Spend`** beside it: CH §3.3's
    Emberwright spends 5 Veilrot to cast off-cooldown and *must have* the 5, which is a different
    question with a different failure, and a port grows a member when its mechanic lands (AR §6).
@@ -257,6 +274,8 @@ public sealed class PlayerCombat
 | `Meter_GainIsSilentForNothing` | `Gain(0)`, `Gain(-5)`, `Gain(NaN)` / — / unmoved, nothing published, no throw — rule 1 |
 | `Meter_GainClampsAtMax` | 85 / `Gain(20)` / **100**, delta **+15**, and the Claiming fires — rule 1 |
 | `Meter_NeverDecays` | 40 / 600 s of `Tick` / still 40 — rule 1 |
+| `Meter_TheThresholdsAreNotAMutableStatic` | `typeof(Veilrot)` / reflection / **no `public static` field**, `ThresholdCount` 4, and `Threshold(0…3)` are 25, 50, 75, 100 — AR §7, the Public API's amendment |
+| `Meter_ThresholdRefusesAnIndexOutsideIt` | `Threshold(-1)`, `Threshold(4)` / — / throws |
 | `Meter_CleanseTakesAway` | 40 / `Cleanse(15)` / 25, one event carrying −15 |
 | `Meter_CleanseClampsAtZero` | 8 / `Cleanse(15)` / **0**, delta −8 — rule 3 |
 | `Twenty5_SpeedsWhatSpawnsNext` | a run crossing 25 / an enemy spawned / its `MoveSpeed` carries a `PercentMult` of **0.05** sourced to the meter, on top of depth scaling — rule 4 |
@@ -305,11 +324,13 @@ a non-finite `Gain`/`Cleanse` amount.
 ## Out of scope
 
 - **Drawing any of it.** No meter, no fraying screen edge, no Claimed vignette. GD §16.4's
-  `Palette.Veilrot` is still read by nothing after this task — [M6-03](../ROADMAP.md#m6--systems-complete) puts
-  the first readout on a screen, and GD §10.2's *"screen edges begin to fray"* is a post-process
-  effect and belongs with M8-01's game-feel pass.
-- **Anything that *gains* Veilrot.** Pacts are M6-05's and Hunger is M6-06's; the only caller of
-  `Gain` after this task is a test and the debug overlay.
+  `Palette.Veilrot` is still read by nothing after this task —
+  [M6-03b](M6-03b-the-meter-on-the-right-edge.md) puts GD §16.1's meter down the right edge and is
+  the first reader of both `Threshold` and that colour — and GD §10.2's *"screen edges begin to
+  fray"* is a post-process effect and belongs with M8-01's game-feel pass.
+- **Anything that *gains* Veilrot.** Pacts are [M6-05b](M6-05b-the-offer-that-rolls-one.md)'s and
+  Hunger is [M6-06b](M6-06b-four-ordeals-and-two-refusals.md)'s; the only caller of `Gain` after this
+  task is a test and the debug overlay.
 - **`Spend`, and the Emberwright's 5-Rot instant cast.** Rule 3, and M6-07's.
 - **Cleansing shrines** (GD §10.1's *"or at rare Cleansing shrines"*). There is no shrine, no arena
   feature and no task that owns one; the Sanctum is the only sink in V1.

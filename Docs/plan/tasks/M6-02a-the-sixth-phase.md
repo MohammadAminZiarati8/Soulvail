@@ -16,7 +16,7 @@ moment the boss falls **whatever its adds are doing** — witnessed at [M5-08](M
 where two Husks were still being killed **six seconds after the stage completed**. Putting an
 untimed room in that gap does not expose the bug; it makes it permanent. A player shopping with a
 live Husk in the arena is the clearest possible statement that the room is not safe, and no amount
-of screen work in [M6-03](../ROADMAP.md#m6--systems-complete) can fix it.
+of screen work in [M6-03a](M6-03a-the-sanctum-screen.md) can fix it.
 
 So the row is discharged by the task whose own feature breaks on it, which is the placement
 [M5-00a](../ROADMAP.md#carry-forward-into-m5) could not make: that spec weighed two fixes and
@@ -134,8 +134,9 @@ public interface IProgressionCommands
    GD §13.3 says *untimed*, and the honest reading of untimed is that `StageFlow.Tick` has no case
    for this phase at all — it falls through, exactly as `Gate` does until the player's feet arrive.
    **The run is still ticking**: the arena is empty by rule 5, cooldowns recover, and `RunState.Time`
-   advances. Whether the *screen* raises a `RunPause` is [M6-03](../ROADMAP.md#m6--systems-complete)'s
-   ruling and not core's; what core promises is that nothing spawns, nothing is owed and nothing
+   advances. Whether the *screen* raises a `RunPause` is [M6-03a](M6-03a-the-sanctum-screen.md)'s
+   ruling and not core's — **taken there, and the answer is yes**, which makes this sentence's
+   *"cooldowns recover"* false in the shipped game and correct in this object (that task's rule 4); what core promises is that nothing spawns, nothing is owed and nothing
    expires while the player reads four prices.
 4. **`LeaveSanctum` is a command on the progression port, not on `IRunSession`.** It is a tap on a
    screen that exists for ten seconds, which is the exact distinction `IProgressionCommands`' own
@@ -200,7 +201,7 @@ public interface IProgressionCommands
 
 - **Anything a player can buy.** [M6-02b](M6-02b-four-things-essence-buys.md).
 - **Any screen.** No prefab, no presenter, no `PauseReason`, no localisation row. The debug overlay
-  is what shows the phase until [M6-03](../ROADMAP.md#m6--systems-complete).
+  is what shows the phase until [M6-03a](M6-03a-the-sanctum-screen.md).
 - **A Sanctum *room*.** GD §13.3 says *"a small safe room"*, and this ships a phase in the arena the
   player already cleared. A second arena at every boundary is an `ArenaPool` swap, a second load and
   a stage of its own; M7-05/06's art pass is the earliest task that could make one worth having.

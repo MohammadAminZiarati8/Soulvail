@@ -22,7 +22,7 @@ bargain and what keeps this PR's review about the arithmetic. It is also what le
 | **Stage clear at depth *n*** | `20 + 4·n` | **Yes** — rule 4, at the `Clear` edge |
 | **Per boss** | `+60` | **Yes** — rule 4, on the same edge, because a boss stage *is* a stage clear |
 | **Per Elite** | `+15` | **No payer.** Elites are **M7-02**; the number is authored anyway (rule 2) so the asset is complete and the day an Elite dies it is one call site, not a content change |
-| **Famine's −40 %** | GD §13.4 | **No.** [M6-06](../ROADMAP.md#m6--systems-complete) multiplies at the award site; a wallet that knew about Ordeals would be the Ordeal system in the wrong file |
+| **Famine's −40 %** | GD §13.4 | **No.** [M6-06b](M6-06b-four-ordeals-and-two-refusals.md) multiplies at the award site; a wallet that knew about Ordeals would be the Ordeal system in the wrong file |
 
 Cumulative, so the prices in GD §13.3 can be read against something: a stage-1 clear pays **24**, and
 a run that reaches stage 10 has been paid **540** — `Σ(20 + 4n)` for *n* = 1…10 is 420, plus two
@@ -181,14 +181,14 @@ public readonly struct EssenceChanged
    `MinionRecipe`, and it costs **11 call sites across 2 files** to refuse it here.
 6. **`RunState.Essence` is a scalar read and the wallet is not handed out** (AR §18.2). `Earn` and
    `Spend` are both public on it, so a public handle would let a view pay itself for a stage it did
-   not clear. One read, for the HUD [M6-03](../ROADMAP.md#m6--systems-complete) draws and the debug overlay
+   not clear. One read, for the HUD [M6-03b](M6-03b-the-meter-on-the-right-edge.md) draws and the debug overlay
    before it — `RunState.PlayerHp`'s bargain, thirteen reads on.
 7. **`CanAfford` is the predicate and `Spend` is the invariant behind it, and that pairing is
    M5-08a's lesson made structural.** That task's finding was that *a screen may not offer what the
    model refuses*: `RequireInstallable` was correct, atomic and well tested, and the only fault was
    that nothing asked it before the player committed. So the refusal ships **as a question a caller
    can ask** from the first line of the economy rather than as an exception discovered on a phone.
-   `Spend` still throws — the invariant survives — and [M6-03](../ROADMAP.md#m6--systems-complete) rule 4 is
+   `Spend` still throws — the invariant survives — and [M6-03a](M6-03a-the-sanctum-screen.md) rule 3 is
    what makes a button that cannot be afforded undrawable rather than unhappy.
 8. **`Restore` is `internal`, publishes nothing, and exists for a task that has not landed.**
    `LevelTracker.Restore` and `SkillRunner.Restore`'s shape (M3-01b rule 7, M3-07b rule 6): a resume
@@ -238,19 +238,20 @@ where there is an enum to check — there is not one here, which is rule 1's oth
    52, 84 — and the step *changes* at each depth, which is the only thing that distinguishes GD
    §15's formula from a flat payment by looking at it.
 2. **[device]** *Nothing, and that is the point:* there is no new drawn element. The Sanctum screen's
-   readability is [M6-03](../ROADMAP.md#m6--systems-complete)'s row on
+   readability is [M6-03a](M6-03a-the-sanctum-screen.md)'s row on
    [ledger row 1](../ROADMAP.md#carry-forward-into-m6).
 
 ## Out of scope
 
 - **Anything that spends it.** [M6-02b](M6-02b-four-things-essence-buys.md).
-- **Drawing it.** [M6-03](../ROADMAP.md#m6--systems-complete) puts it on a screen; the debug overlay is what
-  reads it until then.
+- **Drawing it.** [M6-03a](M6-03a-the-sanctum-screen.md) draws the balance and every price in the
+  Sanctum and [M6-03b](M6-03b-the-meter-on-the-right-edge.md) puts GD §16.1's counter in the
+  top-right corner; the debug overlay is what reads it until then.
 - **Persisting it.** [M6-01b](M6-01b-save-format-v4.md), which is the milestone's one format bump.
   A run killed between this task and that one comes back with an empty wallet, which is the same
   thing that happens to a run's cooldowns today.
 - **The Elite term paying anybody.** M7-02 authors Elites; rule 2 authors the number.
-- **Famine, and any multiplier on an award.** [M6-06](../ROADMAP.md#m6--systems-complete)
+- **Famine, and any multiplier on an award.** [M6-06b](M6-06b-four-ordeals-and-two-refusals.md)
   wraps rule 4's call; a wallet that knew about Ordeals would be the Ordeal system in the wrong file.
 - **Moving `ShardPayout.PerStage` and `PerBoss` onto the mode.** The
   [parking-lot line](../ROADMAP.md#parking-lot) names M6-02 as the promoter and this task is the one

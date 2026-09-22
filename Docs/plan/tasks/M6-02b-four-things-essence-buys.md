@@ -171,7 +171,7 @@ public sealed class LevelUpFlow
    Banish's sculpting — *"Banish is the most interesting purchase: it's how a player sculpts their
    offers rather than just re-rolling luck."* The button version also costs a second port member, a
    second command path and an edit to `LevelUpPresenter`, for a screen
-   [M6-03](../ROADMAP.md#m6--systems-complete) is not otherwise opening. **The extra
+   [M6-03a](M6-03a-the-sanctum-screen.md) is not otherwise opening. **The extra
    draw is a real seed consequence and is confined to `Offers`** (ADR-0011, `OfferGenerator`'s own
    remarks): a rerolled run's later offers differ, and nothing about what it fights does.
 4. **Banish is a third flag on the tree, not a filter on the generator.** `SkillTree` already owns
@@ -200,7 +200,7 @@ public sealed class LevelUpFlow
 7. **`CanBuy` refuses what is unaffordable *and* what is worthless, and that second half is M5-08a's
    lesson.** Heal at full health is 40 Essence for nothing; Cleanse at 0 Veilrot is 60 for nothing;
    Banish with nothing banishable is 40 for nothing. Each is refused by the model, so
-   [M6-03](../ROADMAP.md#m6--systems-complete) draws a dead button with a reason rather
+   [M6-03a](M6-03a-the-sanctum-screen.md) rule 3 draws a dead button with a reason rather
    than taking the player's money — *"a guard that is correct and a screen that ignores it compose
    into a defect neither one contains."* **Reroll has no usefulness test**: a charge is never
    wasted, because it is spent by whatever offer comes next. **`Buy` still throws**, so the
@@ -274,7 +274,7 @@ public sealed class LevelUpFlow
    health: refused, balance unmoved. Take a hit, buy again: 30 HP and 12 left.
 2. **[Editor]** Banish a node you have been offered twice, then play four more level-ups. It never
    appears again, and the tree screen still draws it (as *Locked* until
-   [M6-03](../ROADMAP.md#m6--systems-complete) gives it a state of its own).
+   [M6-03b](M6-03b-the-meter-on-the-right-edge.md) gives it a state of its own).
 3. **[Editor]** Buy a reroll, quit to the menu, press `Continue`, and level up. The charge is still
    there and is spent. This is the only step that exercises rule 9 against
    [M6-01b](M6-01b-save-format-v4.md)'s two counters.
@@ -283,11 +283,11 @@ public sealed class LevelUpFlow
 
 - **Any screen, and `NodeState.Banished`.** `TreeNodeView`'s own remarks name *"M6-02's `Banished`"*
   as a member it is waiting for; with this task split, the member belongs to the first task that
-  **draws** one, which is [M6-03](../ROADMAP.md#m6--systems-complete). Until then a
+  **draws** one, which is [M6-03b](M6-03b-the-meter-on-the-right-edge.md) rule 7. Until then a
   banished node draws as `Locked`, which is what it is.
 - **A Reroll button on the level-up screen.** Rule 3, with the reason.
 - **Cleansing shrines**, and any second sink for Essence. GD §10.1 names shrines and nothing owns one.
-- **Famine's −40 % on income, and any Ordeal touching a price.** M6-06's.
+- **Famine's −40 % on income, and any Ordeal touching a price.** [M6-06b](M6-06b-four-ordeals-and-two-refusals.md)'s.
 - **Un-banishing.** GD §13.3 says *permanently*, and CH §7 deleted respec.
 - **The Emberwright's 5-Veilrot instant cast.** M6-07's, and it needs `Veilrot.Spend` rather than
   `Cleanse` — [M6-04](M6-04-veilrot-thresholds-and-the-claiming.md) rule 3.

@@ -6,10 +6,19 @@
 ## Goal
 
 `RunSnapshot` becomes v4 carrying **everything M6 will ask a run to remember** — Essence, Veilrot,
-the reroll counters, the banished nodes and the Ordeals — three of the five with no writer yet, the
-v3 → v4 step ships in the same PR, and the milestone pays the ripple once instead of four times.
+the reroll counters, the banished nodes, the pacted nodes and the Ordeals — four of the six with no
+writer yet, the v3 → v4 step ships in the same PR, and the milestone pays the ripple once instead of
+five times.
 
-## Why every field lands now, including the three nothing writes
+> **Amended at M6-00b: `pactedNodeIds` is a sixth field and it was not in the first cut.**
+> [M6-05a](M6-05a-what-a-pact-is.md) rule 5 found the hole by grepping `SkillTree.Restore`, which
+> replays each saved id through `Record` and applies `Spec.Effects` — so without this list a run
+> that took a Pact comes back with the **clean** node's power and the Veilrot it already paid,
+> because `RunEconomy.Veilrot` *is* saved. Added here rather than there under the licence this task
+> wrote for exactly that case (see the risk paragraph below): naming it now costs one argument, and
+> re-cutting v4 after this PR merges costs 36 call sites a second time.
+
+## Why every field lands now, including the four nothing writes
 
 This is [M3-01b](M3-01b-save-format-v2.md)'s ruling applied a second time, and this time it is
 counted rather than argued. That task put `TakenNodeIds` on disk two tasks before `SkillTree`
@@ -20,24 +29,27 @@ for a format nobody has shipped."*
 **The number that makes it not a matter of taste:** `new RunSnapshot(...)` has **36 call sites
 across 30 files.** Bumping once per mechanic — Essence here, Veilrot at
 [M6-04](M6-04-veilrot-thresholds-and-the-claiming.md), the shop's counters at
-[M6-02b](M6-02b-four-things-essence-buys.md), Ordeals at M6-06 — is **four** migration steps, four fixture
-sets and **144** edited call sites, for a format no player has ever seen. One bump is 36.
+[M6-02b](M6-02b-four-things-essence-buys.md), Pacts at [M6-05a](M6-05a-what-a-pact-is.md), Ordeals at
+[M6-06a](M6-06a-what-an-ordeal-is.md) — is **five** migration steps, five fixture sets and **180**
+edited call sites, for a format no player has ever seen. One bump is 36.
 
-**The risk is stated rather than waved at.** Three of these fields are shaped by specs
-[M6-00b](../ROADMAP.md#m6--systems-complete) has not written. If one of them wants a
-different shape, that is a deviation on *that* task and this format is re-cut before `m6` is tagged
-— which costs nothing, because **v4 has never left the machine it was written on.** What would cost
-something is the opposite mistake: a field omitted, and a run's Veilrot silently destroyed by the
-first `Continue` after M6-04 merges. `PlayerProfile.Shards` is the precedent for which direction
-matters (M4-05b rule 8) — *a number not written is data destroyed.*
+**The risk is stated rather than waved at, and it fired once before anything was built.** Four of
+these fields are shaped by specs [M6-00b](../ROADMAP.md#m6--systems-complete) had not written when
+this one was cut. If one of them wants a different shape, that is a deviation on *that* task and this
+format is re-cut before `m6` is tagged — which costs nothing, because **v4 has never left the machine
+it was written on.** **M6-00b exercised exactly that**: `pactedNodeIds` did not exist in the first
+cut and is in this one, at the cost of one argument rather than 36. What would cost something is the
+opposite mistake: a field omitted, and a run's Veilrot silently destroyed by the first `Continue`
+after M6-04 merges. `PlayerProfile.Shards` is the precedent for which direction matters (M4-05b rule
+8) — *a number not written is data destroyed.*
 
 ## Files
 
 | Path (under `Assets/_Project/`) | Assembly | Purpose |
 |---|---|---|
-| *small edits* | Core, Game | `Core/Save/SaveDtos.cs` — `CurrentVersion` 4, the `RunEconomy` struct, three arguments and their guards (rules 1–4); `Core/Save/SaveMigrations.cs` — the `if (version < 4)` step, below the `< 3` one (rule 5); `Game/Adapters/LocalJsonSaveStore.cs` — `RunMirror` gains six flat fields (rule 6); `Core/Save/RunRecorder.cs` — `Take` reads the wallet and passes empties for the rest (rule 7); `Core/Run/RunState.cs` — the `Veilrot`, `BanishedNodeIds` and `OrdealIds` reads, answering zero and empty until their systems exist (rule 8); `Core/Run/RunSession.cs` — one restore line, below the tree's and above `Health.Restore` (rule 9); **AR §18.1**'s restore-order row gains its sixth line |
-| *tests* | Tests.Core / Tests.Game | `SaveDtoTests` (the struct's guards, the copy, `default`, the two lists' opposite rules), `SaveMigrationTests` (the step, the chain now **four** long, v1 through three steps), `LocalJsonSaveStoreTests` (a v4 literal is what this build writes; the v3 literal becomes the new step's input; v1 and v2 still decode), `RunRecorderTests` (capture), `RunSessionResumeTests` (restore, and an Essence balance that survives a kill) |
-| *ripple* | | **36 `new RunSnapshot(...)` sites across 30 files** gain three arguments — compiler-guided, M3-01b's thirteen at three times the size |
+| *small edits* | Core, Game | `Core/Save/SaveDtos.cs` — `CurrentVersion` 4, the `RunEconomy` struct, four arguments and their guards (rules 1–4); `Core/Save/SaveMigrations.cs` — the `if (version < 4)` step, below the `< 3` one (rule 5); `Game/Adapters/LocalJsonSaveStore.cs` — `RunMirror` gains seven flat fields (rule 6); `Core/Save/RunRecorder.cs` — `Take` reads the wallet and passes empties for the rest (rule 7); `Core/Run/RunState.cs` — the `Veilrot`, `BanishedNodeIds`, `PactedNodeIds` and `OrdealIds` reads, answering zero and empty until their systems exist (rule 8); `Core/Run/RunSession.cs` — one restore line, below the tree's and above `Health.Restore` (rule 9); **AR §18.1**'s restore-order row gains its sixth line |
+| *tests* | Tests.Core / Tests.Game | `SaveDtoTests` (the struct's guards, the copy, `default`, the three lists' shared rules), `SaveMigrationTests` (the step, the chain now **four** long, v1 through three steps), `LocalJsonSaveStoreTests` (a v4 literal is what this build writes; the v3 literal becomes the new step's input; v1 and v2 still decode), `RunRecorderTests` (capture), `RunSessionResumeTests` (restore, and an Essence balance that survives a kill) |
+| *ripple* | | **36 `new RunSnapshot(...)` sites across 30 files** gain four arguments — compiler-guided, M3-01b's thirteen at three times the size |
 
 Only these files change. Anything else is a deviation: say so in *As built*.
 
@@ -85,20 +97,37 @@ public readonly struct RunSnapshot
 
     // ... the fifteen v3 arguments, then:
     //     RunEconomy economy
-    //     IReadOnlyList<ContentId> banishedNodeIds   // v4: empty until M6-02; no default(ContentId)
-    //     IReadOnlyList<ContentId> ordealIds         // v4: empty until M6-06; no default(ContentId)
+    //     IReadOnlyList<ContentId> banishedNodeIds   // v4: empty until M6-02b; no default(ContentId)
+    //     IReadOnlyList<ContentId> pactedNodeIds     // v4: empty until M6-05a; no default(ContentId)
+    //     IReadOnlyList<ContentId> ordealIds         // v4: empty until M6-06a; no default(ContentId)
 
     public RunEconomy Economy { get; }
 
     /// <summary>Nodes GD §13.3's Banish took out of this run's pool. Never null; empty is ordinary.</summary>
     public IReadOnlyList<ContentId> BanishedNodeIds { get; }
 
+    /// <summary>
+    /// Which of <c>TakenNodeIds</c> were taken in GD §13.2's corrupted form — a **subset** of that
+    /// list, and the only thing that tells a resumed run which effects it paid Veilrot for
+    /// (<see href="M6-05a-what-a-pact-is.md">M6-05a</see> rule 5). Never null.
+    /// </summary>
+    /// <remarks>
+    /// <b>A parallel list rather than a second id per node</b>, which is the alternative M6-05a
+    /// weighed: giving a Pact its own <c>ContentId</c> would make <c>TakenNodeIds</c> stop being
+    /// "ids of this tree", and <c>IsTaken</c>, <c>IsBanished</c>, <c>TreeViewPresenter</c> and this
+    /// recorder would each need to know that two ids mean one node. <b>Its subset relation is
+    /// deliberately *not* checked here</b>, unlike <c>RunEconomy</c>'s one relational guard: the two
+    /// lists are independent arguments at this layer and the tree is what can answer, so the refusal
+    /// is <c>SkillTree.Restore</c>'s — <c>takenNodeIds</c>' rule about unshipped ids, one list over.
+    /// </remarks>
+    public IReadOnlyList<ContentId> PactedNodeIds { get; }
+
     /// <summary>GD §13.4's Ordeals, in the order they were drawn. Never null.</summary>
     public IReadOnlyList<ContentId> OrdealIds { get; }
 }
 
 // SaveMigrations.MigrateRun (changed): a third step, `if (version < 4)`, below the other two —
-// it rebuilds at v4 with default(RunEconomy) and two empty lists, keeping every v3 field as read.
+// it rebuilds at v4 with default(RunEconomy) and three empty lists, keeping every v3 field as read.
 ```
 
 ## Behaviour
@@ -119,37 +148,39 @@ public readonly struct RunSnapshot
    pair is a stock — `Bought − Spent` is what the player may still use — and a hand-edited file with
    `spent: 0, bought: 99` is merely rich, while `spent: 99, bought: 0` is a negative stock that
    [M6-02b](M6-02b-four-things-essence-buys.md)'s reroll counter would carry for the rest of the run.
-4. **Both new lists refuse `default(ContentId)`, which puts them with `TakenNodeIds` and against
-   `ManualSkillIds`.** M3-07b rule 3 wrote that contrast down at both ends because it is exactly
-   what a later reader gets wrong: a slot's empty is expressible only as a defaulted id, and these
-   two lists have no such state — a banished node has an id and an Ordeal has an id. **An id this
-   build no longer ships is *not* refused here**, for `takenNodeIds`' reason: that is content
-   validation's answer at `RunSession.Start`, with the diagnostic that names the asset. Both are
-   copied and wrapped on the way in, and an empty one costs nothing (`Array.Empty<ContentId>()`),
-   which is what keeps `RunRecorder.Take` allocation-free for every run until M6-02 merges.
+4. **All three new lists refuse `default(ContentId)`, which puts them with `TakenNodeIds` and
+   against `ManualSkillIds`.** M3-07b rule 3 wrote that contrast down at both ends because it is
+   exactly what a later reader gets wrong: a slot's empty is expressible only as a defaulted id, and
+   these three lists have no such state — a banished node has an id, a pacted node has an id and an
+   Ordeal has an id. **An id this build no longer ships is *not* refused here**, for `takenNodeIds`'
+   reason: that is content validation's answer at `RunSession.Start`, with the diagnostic that names
+   the asset. All three are copied and wrapped on the way in, and an empty one costs nothing
+   (`Array.Empty<ContentId>()`), which is what keeps `RunRecorder.Take` allocation-free for every run
+   until M6-02b merges.
 5. **The v3 → v4 step is written unconditionally from the shape rather than from what was decoded**
    — the rule both earlier steps state and the reason M3-01b rule 3 gives: a v3 document that
    somehow carried an Essence field is still a v3 document and gets v3's meaning, which is a run
-   that had no economy by construction. So the step rebuilds at 4 with `default(RunEconomy)` and two
-   empty lists and keeps every v3 field as read. **The chain now runs three steps**, and
+   that had no economy by construction. So the step rebuilds at 4 with `default(RunEconomy)` and
+   three empty lists and keeps every v3 field as read. **The chain now runs three steps**, and
    `MigrateRun_V1_RunsEveryStepInOrder` is what proves a v1 file arrives as a playable v4.
 6. **`RunMirror` flattens `RunEconomy` into six fields rather than nesting it.** `RandomState`'s
    treatment exactly — `randomSpawn`, `randomOffers`, … — because `JsonUtility` serialises a nested
    `[Serializable]` class and the mirror's whole job is to be a flat document a human can read in a
-   bug report. The two lists are `string[]`, defaulted to `Array.Empty<string>()` so a v3 document
+   bug report. The three lists are `string[]`, defaulted to `Array.Empty<string>()` so a v3 document
    decodes without them, which is the same shape `takenNodeIds` has carried since M3-01b.
 7. **`RunRecorder.Take` reads the wallet and passes empties for everything else.** One real value
-   and four placeholders, and that asymmetry is the whole of this task's honesty: the recorder is
-   where a field stops being a promise. It writes `new RunEconomy(state.Essence, 0f, 0, 0)` and two
-   `Array.Empty<ContentId>()`, and each of the four later tasks replaces exactly one of those
+   and five placeholders, and that asymmetry is the whole of this task's honesty: the recorder is
+   where a field stops being a promise. It writes `new RunEconomy(state.Essence, 0f, 0, 0)` and three
+   `Array.Empty<ContentId>()`, and each of the five later tasks replaces exactly one of those
    arguments **without touching `CurrentVersion`** — `Store_WritesAV4Literal` is the row that
    objects if one of them bumps it.
-8. **`RunState` grows three reads that answer zero and empty, and they are not placeholders.**
-   `RunState.Veilrot` is `0f`, `BanishedNodeIds` and `OrdealIds` are `Array.Empty<ContentId>()`,
-   each written as a real answer rather than a stub: a run with no meter genuinely has no Veilrot,
-   the way `TakenNodeIds` was genuinely empty for a class with no tree (M3-03). **Empty, never
-   null**, for that property's own rule — no reader ever has to ask. Each becomes a forward to its
-   system in the task that builds one, and none of them widens `RunState`'s seal (AR §18.2).
+8. **`RunState` grows four reads that answer zero and empty, and they are not placeholders.**
+   `RunState.Veilrot` is `0f`, and `BanishedNodeIds`, `PactedNodeIds` and `OrdealIds` are
+   `Array.Empty<ContentId>()`, each written as a real answer rather than a stub: a run with no meter
+   genuinely has no Veilrot, the way `TakenNodeIds` was genuinely empty for a class with no tree
+   (M3-03). **Empty, never null**, for that property's own rule — no reader ever has to ask. Each
+   becomes a forward to its system in the task that builds one, and none of them widens `RunState`'s
+   seal (AR §18.2).
 9. **The restore line goes below the tree's and above `Health.Restore`**, which is
    `SkillRunner.Restore`'s placement one line over (M3-07b rule 7). Below the tree because a banished
    node has to be refused against a tree that already exists; above `Health.Restore` because
@@ -171,27 +202,28 @@ public readonly struct RunSnapshot
 | `Economy_RefusesVeilrotOutsideItsRange` | −0.1, 100.1, NaN, +∞ / — / throws in each case — rule 2 |
 | `Economy_AcceptsBothEnds` | 0 and 100 exactly / — / no throw: 100 is the Claiming, not an error |
 | `Economy_RefusesMoreSpentThanBought` | `(0, 0f, 0, 1)` / — / throws; `(0, 0f, 5, 5)` does not — rule 3 |
-| `Snapshot_CarriesTheThreeNewFields` | a v4 built with a stocked economy and two lists / — / all three read back, lists copied |
-| `Snapshot_DefaultAnswersEmptyForBothLists` | `default(RunSnapshot)` / — / `BanishedNodeIds` and `OrdealIds` are empty and **not null**; `Economy` is `default` |
-| `Snapshot_BothNewListsRefuseADefaultedId` | a list containing `default(ContentId)` / — / throws for each, and the message names **which** list and the index — rule 4 |
-| `Snapshot_BothNewListsRefuseNull` | null for each / — / `ArgumentNullException`, whose message says empty and null are not the same thing |
-| `Snapshot_BothNewListsAreCopied` | a caller's `List<ContentId>` passed, then mutated / — / the snapshot is unmoved — `TakenNodeIds`' rule |
+| `Snapshot_CarriesTheFourNewFields` | a v4 built with a stocked economy and three lists / — / all four read back, lists copied |
+| `Snapshot_DefaultAnswersEmptyForEveryList` | `default(RunSnapshot)` / — / `BanishedNodeIds`, `PactedNodeIds` and `OrdealIds` are empty and **not null**; `Economy` is `default` |
+| `Snapshot_EveryNewListRefusesADefaultedId` | a list containing `default(ContentId)` / — / throws for each, and the message names **which** list and the index — rule 4 |
+| `Snapshot_EveryNewListRefusesNull` | null for each / — / `ArgumentNullException`, whose message says empty and null are not the same thing |
+| `Snapshot_EveryNewListIsCopied` | a caller's `List<ContentId>` passed, then mutated / — / the snapshot is unmoved — `TakenNodeIds`' rule |
 | `Snapshot_AnUnshippedIdIsNotRefusedHere` | a list naming `skill.deleted` / — / constructs; the refusal is `RunSession.Start`'s — rule 4 |
+| `Snapshot_APactedIdNeedNotBeTakenHere` | `pactedNodeIds` naming an id absent from `takenNodeIds` / — / constructs; the refusal is `SkillTree.Restore`'s — the `PactedNodeIds` remark |
 | `Snapshot_EmptyListsAllocateNothing` | 10 000 constructions with empty lists / `AllocationAssert.None` / zero — rule 4 |
-| `Migrate_V3ToV4IsAnEmptyEconomy` | a v3 snapshot with every field set / migrated / version 4, `Economy` is `default`, both lists empty, **every v3 field unchanged** — rule 5 |
+| `Migrate_V3ToV4IsAnEmptyEconomy` | a v3 snapshot with every field set / migrated / version 4, `Economy` is `default`, all three lists empty, **every v3 field unchanged** — rule 5 |
 | `Migrate_V4IsTheIdentity` | a v4 snapshot / migrated at 4 / byte-identical |
-| `Migrate_V1RunsEveryStepInOrder` | a v1 snapshot / migrated / v4, level 1, four empty slots, empty economy, empty lists — the chain, now three steps — rule 5 |
+| `Migrate_V1RunsEveryStepInOrder` | a v1 snapshot / migrated / v4, level 1, four empty slots, empty economy, three empty lists — the chain, now three steps — rule 5 |
 | `Migrate_V3DocumentCarryingAnEconomyStillGetsV3sMeaning` | a v3 `RunMirror` with `essence: 500` decoded / migrated / `Economy.Essence` is **0** — rule 5 |
 | `Migrate_RefusesAVersionAboveThis` | version 5 / `CanReadRun` / false, and `MigrateRun` throws |
-| `Store_WritesAV4Literal` | this build's `SaveRun` / the file on disk / the six flat fields and both arrays are present — rule 6 |
+| `Store_WritesAV4Literal` | this build's `SaveRun` / the file on disk / the six flat fields and all three arrays are present — rule 6 |
 | `Store_ReadsTheV3Literal` | the checked-in v3 JSON / loaded / decodes and migrates, `Essence` 0 |
 | `Store_ReadsTheV2AndV1Literals` | both older literals / loaded / still decode — the chain is not broken by the third step |
-| `Store_ADocumentWithoutTheNewArraysDecodes` | a v4 document with both arrays absent / loaded / empty, not null — rule 6 |
-| `Recorder_CapturesTheWallet` | a run with 84 Essence / `Take` / `Economy.Essence` 84, Veilrot 0, both counters 0, both lists empty — rule 7 |
+| `Store_ADocumentWithoutTheNewArraysDecodes` | a v4 document with all three arrays absent / loaded / empty, not null — rule 6 |
+| `Recorder_CapturesTheWallet` | a run with 84 Essence / `Take` / `Economy.Essence` 84, Veilrot 0, both counters 0, all three lists empty — rule 7 |
 | `Recorder_TakeAllocatesNothing` | 10 000 takes on a run with no nodes and no banishes / `AllocationAssert.None` / zero |
 | `Resume_TheWalletComesBack` | a run saved at 84 Essence, killed, resumed / — / `RunState.Essence` is 84 — rule 9 |
-| `Resume_TheOtherThreeComeBackEmpty` | the same run / — / `Veilrot` 0, both lists empty, no throw — rule 8 |
-| `State_TheThreeReadsAnswerWithoutASystem` | a live run / — / `Veilrot` 0, both lists empty and non-null, and `RunState` exposes no meter, no shop and no ordeal set — rule 8 |
+| `Resume_TheOtherFourComeBackEmpty` | the same run / — / `Veilrot` 0, all three lists empty, no throw — rule 8 |
+| `State_TheFourReadsAnswerWithoutASystem` | a live run / — / `Veilrot` 0, all three lists empty and non-null, and `RunState` exposes no meter, no shop, no tree and no ordeal set — rule 8 |
 
 **Guard rows are implied, not listed:** `version` below 1 on the widened constructor, and every v3
 guard still firing unchanged.
@@ -199,8 +231,8 @@ guard still firing unchanged.
 ## Manual verification (Editor / device)
 
 1. **[Editor]** Play to stage 3, quit to the menu, and open `run.json` in the persistent data path.
-   It carries `"version": 4`, `"essence": 84`, `"veilrot": 0`, both counters at 0 and both arrays
-   empty. Press `Continue`: the debug overlay reads 84.
+   It carries `"version": 4`, `"essence": 84`, `"veilrot": 0`, both counters at 0 and all three
+   arrays empty. Press `Continue`: the debug overlay reads 84.
 2. **[Editor]** Replace the file with the checked-in v1 literal and press `Continue`. The run loads
    at stage 1 with an empty wallet and nothing in the Console. This is the only manual step that
    exercises three migration steps in one load.
@@ -216,17 +248,21 @@ guard still firing unchanged.
   is a free cooldown reset, bounded by the longest cooldown.
 - **Shields granted and live zones**, unchanged from the standing ruling.
 - **A sixth random stream.** `RandomState` keeps its five, and that is a *format* decision made here
-  because a sixth member would be a v5. [M6-05](../ROADMAP.md#m6--systems-complete)'s
-  Pact roll belongs on `Offers` — it is part of the offer and happens in the same moment — and
-  M6-06's Ordeal draw must pick one of the five: **`Affixes` is the candidate** (drawn by nothing
-  until M7-02, and an Ordeal is the same kind of thing as an affix — a modifier on what you fight),
-  with `Spawn` the alternative at the stated cost that every seed's wave sequence past stage 25
-  changes. That choice is M6-06's; the constraint is this task's.
+  because a sixth member would be a v5. [M6-05b](M6-05b-the-offer-that-rolls-one.md)'s Pact roll
+  belongs on `Offers` — it is part of the offer and happens in the same moment — and [M6-06a](M6-06a-what-an-ordeal-is.md)'s Ordeal
+  draw must pick one of the five: **`Affixes` is the candidate** (drawn by nothing until M7-02, and
+  an Ordeal is the same kind of thing as an affix — a modifier on what you fight), with `Spawn` the
+  alternative at the stated cost that every seed's wave sequence past stage 25 changes. **Taken at
+  [M6-06a](M6-06a-what-an-ordeal-is.md): `Affixes`, with the count behind it** — grepped, no reader
+  exists for that stream anywhere in the project. The constraint is this task's.
 - **The `PlayerProfile` bump.** GD §14.2's unlocks, GD §14.1's archetype set and M6-10's locale are
   all profile fields, and the two formats version independently (`SaveMigrations`' own remarks).
   **M6-09** is the profile's one bump, by the same argument this task makes for the run's.
 - **Any field's writer.** Essence is [M6-01a](M6-01a-essence-wallet-and-drops.md)'s and already
-  exists; the other three are their own tasks', and none of them bumps the version.
+  exists; the other four are their own tasks' — Veilrot [M6-04](M6-04-veilrot-thresholds-and-the-claiming.md),
+  the counters and the banishes [M6-02b](M6-02b-four-things-essence-buys.md), the Pacts
+  [M6-05a](M6-05a-what-a-pact-is.md), the Ordeals [M6-06a](M6-06a-what-an-ordeal-is.md) — and none of
+  them bumps the version.
 
 ## As built
 

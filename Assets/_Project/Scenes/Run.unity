@@ -438,6 +438,114 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b817cf5d63066e94da3d92350318b5ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.LevelUpPresenter
+--- !u!1001 &547251406
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4694438604615473814, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7403779906203355673, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+      propertyPath: m_Name
+      value: Splash
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+--- !u!114 &547251407 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1396285911821025937, guid: 575bbd8ea68ed004cbce867ac9625928, type: 3}
+  m_PrefabInstance: {fileID: 547251406}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 573170928ba09424b93f80fcf3e5c286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.SplashPresenter
 --- !u!1001 &742289267
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -740,6 +848,7 @@ MonoBehaviour:
   _autoCastRow: {fileID: 2052539130}
   _overflowToast: {fileID: 2052539129}
   _levelUpPresenter: {fileID: 529708800}
+  _splashPresenter: {fileID: 547251407}
   _pausePresenter: {fileID: 1924286364}
   _skillsPresenter: {fileID: 385136883}
   _treeViewPresenter: {fileID: 840378153}
@@ -752,6 +861,9 @@ MonoBehaviour:
   _bulwark: {fileID: 1333328736}
   _enemyPrefab: {fileID: 7969668158964918823, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   _enemyParent: {fileID: 2056789031}
+  _minionPrefab: {fileID: 6272270846140008837, guid: 68a94f1510c4876499a90a37c348b863, type: 3}
+  _minionParent: {fileID: 1308062827}
+  _decoyPrefab: {fileID: 4371545654905838427, guid: be769f9045463a8488f422c8a2240320, type: 3}
   _projectilePrefab: {fileID: 5055392040755623392, guid: f0748e4cd0d908349af56a4260b5bbb4, type: 3}
   _projectileParent: {fileID: 894525614}
   _enemyLayer:
@@ -1058,6 +1170,37 @@ MonoBehaviour:
   _yawDeg: 0
   _distance: 16
   _smoothTime: 0.12
+--- !u!1 &1308062826
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1308062827}
+  m_Layer: 0
+  m_Name: Minions
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1308062827
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1308062826}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1333328736 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8351018017451638207, guid: b211b59ccd3f1644b968a1f01861a8c6, type: 3}
@@ -1911,3 +2054,5 @@ SceneRoots:
   - {fileID: 742289267}
   - {fileID: 840378152}
   - {fileID: 1819475266}
+  - {fileID: 1308062827}
+  - {fileID: 547251406}

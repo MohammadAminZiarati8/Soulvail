@@ -1164,6 +1164,7 @@ public sealed class BossBarViewTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         140f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
@@ -1204,7 +1205,7 @@ public sealed class BossBarViewTests
     private static EnemySpec Warden() => new EnemySpec(
         new ContentId(WardenEnemyId),
         new LocKey("enemy.warden.name"),
-        maxHp: 4200f,
+        maxHp: 3200f,
         moveSpeed: 1.8f,
         targetPriority: 8,
         threatCost: 40,

@@ -216,11 +216,39 @@ public sealed class RunPauseTests
     }
 
     [Test]
-    public void Reason_HasBothMembers()
+    public void Reason_HasAllThreeMembers()
     {
-        // Menu has no caller until M3-09 and is written now, because RunPause's whole contract is
-        // that a second reason is refused and a one-member enum cannot express the case.
-        Assert.That(Enum.GetValues(typeof(PauseReason)).Length, Is.EqualTo(2));
+        // Menu had no caller until M3-09 and was written before it, because RunPause's whole
+        // contract is that a second reason is refused and a one-member enum cannot express the case.
+        // Splash is M5-07a-ii's, and unlike Menu it arrives with its caller: RunTicker.LevelUpPhase
+        // raises it for CH §5.4's moment.
+        Assert.That(Enum.GetValues(typeof(PauseReason)).Length, Is.EqualTo(3));
         Assert.That(Enum.IsDefined(typeof(PauseReason), PauseReason.Menu), Is.True);
+        Assert.That(Enum.IsDefined(typeof(PauseReason), PauseReason.Splash), Is.True);
+    }
+
+    /// <summary>
+    /// The two reasons <c>RunTicker</c> raises are refused against each other, which is what makes
+    /// M5-07a-ii rule 5's release-before-acquire ordering load-bearing rather than tidy.
+    /// </summary>
+    [Test]
+    public void Reason_SplashAndLevelUpCannotBothHoldIt()
+    {
+        var pause = new RunPause();
+
+        pause.Pause(PauseReason.LevelUp);
+
+        InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(
+            () => pause.Pause(PauseReason.Splash));
+
+        Assert.That(thrown.Message, Does.Contain(nameof(PauseReason.LevelUp)));
+        Assert.That(pause.Holder, Is.EqualTo(PauseReason.LevelUp), "the refusal left the holder alone.");
+
+        // And the other way round, which is the frame a level-up becomes owed under an open splash.
+        pause.Resume(PauseReason.LevelUp);
+        pause.Pause(PauseReason.Splash);
+
+        Assert.Throws<InvalidOperationException>(() => pause.Pause(PauseReason.LevelUp));
+        Assert.That(pause.Holder, Is.EqualTo(PauseReason.Splash));
     }
 }

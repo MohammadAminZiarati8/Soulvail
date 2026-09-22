@@ -76,6 +76,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly EnemyViews _enemyViews;
 
     /// <summary>
+    /// The Wights standing on the player's side (M5-05a). Held for the reason the enemies are: core
+    /// decides a velocity for each of them every tick and something has to walk them with the
+    /// snapshot's <c>Dt</c>.
+    /// </summary>
+    private readonly MinionViews _minionViews;
+
+    /// <summary>
     /// The bolts in the air. Held for two reasons and both are the same one: it has to be stepped
     /// with the snapshot's <c>Dt</c> (M2-09 rule 3), and being on this object's dependency chain is
     /// what guarantees it is listening before <see cref="Start"/> can let core fire anything.
@@ -150,10 +157,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         PlayerView player,
         ChargeMotion charge,
         EnemyViews enemyViews,
+        MinionViews minionViews,
         ProjectileViews projectileViews,
         TelegraphRings telegraphRings,
         ZoneViews zoneViews,
         BossViews bossViews,
+        DecoyViews decoyViews,
         SaveWriter saveWriter,
         ShardWriter shardWriter,
         InputAdapter input,
@@ -173,10 +182,23 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         _enemyViews = enemyViews ?? throw new ArgumentNullException(nameof(enemyViews));
+        _minionViews = minionViews ?? throw new ArgumentNullException(nameof(minionViews));
         _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
         _telegraphRings = telegraphRings ?? throw new ArgumentNullException(nameof(telegraphRings));
         _zoneViews = zoneViews ?? throw new ArgumentNullException(nameof(zoneViews));
         _bossViews = bossViews ?? throw new ArgumentNullException(nameof(bossViews));
+
+        // Taken and deliberately not kept, which is the two writers below's bargain rather than the
+        // censuses above's — and it is the first *view* on this list to take it. A decoy has no
+        // Step (M5-05b rule 2): it appears and disappears on two events and interpolates nothing in
+        // between, so there is no per-frame call for a field to exist for. What the parameter buys
+        // is the other half of what the views above get for free — being on this object's
+        // dependency chain is what guarantees the census is subscribed before Start can let core
+        // drop anything, and a VContainer Scoped registration nothing ever resolves is never
+        // constructed at all (M4-05b rule 6). A field assigned and never read is what the compiler
+        // is right to object to.
+        _ = decoyViews ?? throw new ArgumentNullException(nameof(decoyViews));
+
         // Taken and deliberately not kept. Nothing here ever calls it — a save is core's decision,
         // announced as an event — so the parameter exists for one reason: being on this object's
         // dependency chain is what guarantees SaveWriter is subscribed before Start lets core take
@@ -392,6 +414,15 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         ApplyEnemyMoves();
 
+        // Immediately after the enemies, and above the flush (M5-05a rule 6). *Beside the enemies*
+        // because both are bodies core decided a velocity for this tick and both must step on
+        // snapshot.Dt rather than Time.deltaTime — the whole of M1-18's argument, and the reason
+        // ApplyEnemyMoves is where it is. *Above the flush* because the flush is what makes
+        // "everything has finished moving" true of the physics scene and not only of the call order
+        // (M2-15a): nothing sweeps a Wight today, and a body written after the flush would be the
+        // one exception nobody remembered on the day something does.
+        ApplyMinionMoves();
+
         // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
         // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on
         // Time.deltaTime would arrive at the target ahead of the damage it stands for on exactly
@@ -519,6 +550,46 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
+    /// Walks every Wight core gave a direction to this tick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A second list and a second census, never the enemies'</b> (M5-05a rule 7). The two
+    /// intent structs are identical and the two id spaces are not: a minion id resolved through
+    /// <c>EnemyViews.TryGet</c> would either find no body and be skipped in silence or — worse and
+    /// just as likely, since both registries number from 1 — find an <em>enemy</em> with the same
+    /// number and walk it. M5-04a rule 4 argued this from the port's side; this is the same
+    /// argument standing at the reader.
+    /// </para>
+    /// <para>
+    /// An id with no body is skipped in silence, exactly as <see cref="ApplyEnemyMoves"/> skips
+    /// one: core is entitled to decide a walk for a Wight whose body has not been rented yet, or
+    /// one returned earlier in this frame, and neither is an error.
+    /// </para>
+    /// <para>
+    /// A <c>for</c> over the count rather than a <c>foreach</c>, for the reason
+    /// <see cref="ApplyEnemyMoves"/> gives: the buffer hands out an <c>IReadOnlyList</c> and
+    /// enumerating that would box an enumerator on every frame a Wight is standing.
+    /// </para>
+    /// </remarks>
+    private void ApplyMinionMoves()
+    {
+        IReadOnlyList<EnemyMoveIntent> moves = _intents.MinionMoves;
+
+        for (int i = 0; i < moves.Count; i++)
+        {
+            EnemyMoveIntent move = moves[i];
+
+            if (!_minionViews.TryGet(move.Id, out MinionView view) || view == null)
+            {
+                continue;
+            }
+
+            view.Apply(move, _snapshot.Dt);
+        }
+    }
+
+    /// <summary>
     /// Walks this frame's slice of a dash, if one is in flight, and reports whoever it passed
     /// through.
     /// </summary>
@@ -575,9 +646,27 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
-    /// Opens the level-up for a pick that is owed, and holds or releases the pause to match.
+    /// Opens CH §5.4's half-tree moment or a level-up for a pick that is owed, and holds or releases
+    /// the pause to match.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <b>The splash is read first, and only one of the two may open on a frame</b> (M5-07a-ii rule
+    /// 5). Both can be owed at once — a sixth node taken between ticks and a kill that levelled on
+    /// the same tick — and <c>RunPause.Pause</c> throws for a second holder, so the choice is made
+    /// here rather than discovered. The splash wins because it is the rarer and more consequential
+    /// of the two, and because a player who took a node and then chose a discipline has seen them in
+    /// the order they happened. The other direction is core's: <c>RunState.IsSplashPending</c> is
+    /// false while an offer is on the table, so a level-up already mid-episode finishes first.
+    /// </para>
+    /// <para>
+    /// <b>The release runs before the acquire, and that ordering is the whole of why this is one
+    /// method rather than two.</b> The frame a splash becomes owed is usually the frame a level-up
+    /// stops being: written as two independent blocks, the splash would find the pause still held by
+    /// <c>PauseReason.LevelUp</c> and decline it, and the level-up block would then hand it back —
+    /// leaving the splash screen up over a running fight. Given back first, the reason that wants it
+    /// can take it on the same frame.
+    /// </para>
     /// <para>
     /// <b>The <em>when</em> belongs here, in the file that already writes the frame down</b>, and
     /// that is <see cref="CommandPhase"/>'s own argument (M3-08a rule 4): an ordering decision made
@@ -605,20 +694,38 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </remarks>
     private void LevelUpPhase()
     {
-        if (_progression.IsLevelUpPending)
+        if (_progression.IsSplashPending)
+        {
+            _progression.OpenSplash();
+        }
+        else if (_progression.IsLevelUpPending)
         {
             _progression.OpenLevelUp();
         }
 
-        bool wantsPause = _progression.HasOffer;
+        bool splash = _progression.IsSplashOpen;
+        bool offer = _progression.HasOffer;
 
-        if (wantsPause && !_pause.IsPaused)
+        // Given back first — see the remarks. Only ever this object's own two reasons: a
+        // PauseReason.Menu raised by M3-09's panel is neither stamped on nor stolen.
+        if (_pause.Holder == PauseReason.Splash && !splash)
         {
-            _pause.Pause(PauseReason.LevelUp);
+            _pause.Resume(PauseReason.Splash);
         }
-        else if (!wantsPause && _pause.Holder == PauseReason.LevelUp)
+        else if (_pause.Holder == PauseReason.LevelUp && !offer)
         {
             _pause.Resume(PauseReason.LevelUp);
+        }
+
+        // And taken second, guarded on nothing else holding it, so a screen collision is a screen
+        // that does not open rather than a dead run.
+        if (splash && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.Splash);
+        }
+        else if (offer && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.LevelUp);
         }
     }
 

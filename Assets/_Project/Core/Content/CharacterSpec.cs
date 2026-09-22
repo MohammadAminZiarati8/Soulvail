@@ -25,6 +25,15 @@ public sealed class CharacterSpec
 {
     /// <param name="id">The class's stable content id, e.g. <c>character.oathbound</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
+    /// <param name="descriptionKey">
+    /// Localisation key for the one line about the class that the class-select card draws
+    /// (M5-07 rule 5). <b>Required, and guarded, unlike <paramref name="nameKey"/></b>: the
+    /// screen this exists for has a sentence-shaped hole in every card, and a
+    /// <c>default(LocKey)</c> would fill it with an empty string rather than with a diagnosis.
+    /// Third rather than last, so the two keys sit together in <c>SkillSpec</c>'s order — that
+    /// type has carried a name and a description since M3-02b and is what the level-up card
+    /// draws.
+    /// </param>
     /// <param name="maxHp">Starting maximum health.</param>
     /// <param name="movement">How the class moves.</param>
     /// <param name="targeting">
@@ -72,11 +81,21 @@ public sealed class CharacterSpec
     /// two optional parameters together describe "no shield, no mercy" — which is what an
     /// enemy-shaped character would be, and what a class author has to override on purpose.
     /// </param>
+    /// <param name="minions">
+    /// The class's minions, or <see langword="null"/> for a class with none. Optional for the
+    /// reason <paramref name="shield"/> is, and it is the same argument rather than a second one:
+    /// CH §3.2's Rise is the Gravecaller's signature, so <see langword="null"/> is the honest
+    /// default and a block of zeroes would have to be read against <paramref name="id"/> to be
+    /// understood (M5-02 rule 6).
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
     /// <see cref="ContentCatalog.Character"/> reports as missing — a lie the catalog would tell
     /// forever. Rejected here, where the data is built, rather than where it is read.
+    /// <para>
+    /// Or <paramref name="descriptionKey"/> is <c>default(LocKey)</c> (M5-07 rule 5).
+    /// </para>
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="maxHp"/> is not greater than zero — a class that starts dead is a content
@@ -89,6 +108,7 @@ public sealed class CharacterSpec
     public CharacterSpec(
         ContentId id,
         LocKey nameKey,
+        LocKey descriptionKey,
         float maxHp,
         MovementSpec movement,
         TargetingSpec targeting,
@@ -96,11 +116,24 @@ public sealed class CharacterSpec
         FocusSpec focus,
         MovementSkillSpec movementSkill,
         ShieldSpec shield = null,
-        float hitIFrames = 0f)
+        float hitIFrames = 0f,
+        MinionSpec minions = null)
     {
         if (id.Value is null)
         {
             throw new ArgumentException("id must be a valid ContentId; default(ContentId) has none.", nameof(id));
+        }
+
+        // Guarded where nameKey is not, and the asymmetry is rule 5's whole argument: a name is
+        // drawn by screens that already have the id to fall back on, while the description exists
+        // only for the class-select card — so a default here is a card with a blank half and
+        // nothing anywhere saying which asset forgot it.
+        if (descriptionKey.Key is null)
+        {
+            throw new ArgumentException(
+                "descriptionKey must be a valid LocKey; default(LocKey) names no string. Every "
+                    + "class needs the one line the class-select card draws (M5-07 rule 5).",
+                nameof(descriptionKey));
         }
 
         // `!(maxHp > 0f)` rather than `maxHp <= 0f`, because every comparison against NaN is
@@ -124,6 +157,7 @@ public sealed class CharacterSpec
 
         Id = id;
         NameKey = nameKey;
+        DescriptionKey = descriptionKey;
         MaxHp = maxHp;
         Movement = movement ?? throw new ArgumentNullException(nameof(movement));
         Targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
@@ -132,6 +166,7 @@ public sealed class CharacterSpec
         MovementSkill = movementSkill ?? throw new ArgumentNullException(nameof(movementSkill));
         Shield = shield;
         HitIFrames = hitIFrames;
+        Minions = minions;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -139,6 +174,17 @@ public sealed class CharacterSpec
 
     /// <summary>Localisation key for the display name — never the name itself.</summary>
     public LocKey NameKey { get; }
+
+    /// <summary>
+    /// One line about the class, for the class-select card — never the sentence itself. Never
+    /// <c>default(LocKey)</c>: the constructor refuses one (M5-07 rule 5).
+    /// </summary>
+    /// <remarks>
+    /// CH §3's table has nine columns and a phone card has room for three numbers, so the rest of
+    /// what separates two classes has to be said in words. <c>"You are not the damage"</c> is a
+    /// sentence here rather than a fourth row of figures.
+    /// </remarks>
+    public LocKey DescriptionKey { get; }
 
     /// <summary>Starting maximum health.</summary>
     public float MaxHp { get; }
@@ -183,4 +229,16 @@ public sealed class CharacterSpec
 
     /// <summary>Seconds of invulnerability after a hit lands; 0 for none.</summary>
     public float HitIFrames { get; }
+
+    /// <summary>
+    /// The class's minions, or <see langword="null"/> when it has none. Only the Gravecaller has
+    /// any in V1, and CH §3.2's Wights are <em>raised</em> rather than summoned — see
+    /// <see cref="MinionSpec.RiseChance"/>.
+    /// </summary>
+    /// <remarks>
+    /// Read by nothing until M5-04a, which builds the body, and M5-04b, which builds the Rise.
+    /// Authored here with the rest of the class because a class's numbers are authored together or
+    /// they are authored twice (M5-02 rule 5).
+    /// </remarks>
+    public MinionSpec Minions { get; }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Soulvail.Core.Ai;
 
 namespace Soulvail.Core.Run;
 
@@ -104,6 +105,38 @@ public sealed class WorldSnapshot
     /// </summary>
     public readonly EnemySense[] Enemies;
 
+    /// <summary>How many entries of <see cref="Minions"/> are live: <c>[0, MinionCount)</c>.</summary>
+    public int MinionCount;
+
+    /// <summary>
+    /// The preallocated Wight slots — the same <see cref="EnemySense"/> struct, because the facts
+    /// are the same facts (M5-04a rule 4). Length is <see cref="MinionCapacity"/> for the life of
+    /// the snapshot and the array instance is never replaced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A second array rather than more entries in <see cref="Enemies"/>, because the two ids come
+    /// from different registries.</b> A Wight's id is <c>MinionSystem</c>'s and an enemy's is
+    /// <c>EnemyRegistry</c>'s, and both start at 1 — so one shared array would let a Wight's report
+    /// land on a Husk. The same argument that gives the walk its own door on
+    /// <c>IIntentSink.MinionMove</c>, arriving from the other side of the boundary.
+    /// </para>
+    /// <para>
+    /// <b>Two of the struct's five fields are deliberately unread</b> (rule 4).
+    /// <see cref="EnemySense.PathDirectionToPlayer"/> is a route to the player, which is not where a
+    /// Wight is going, and <see cref="EnemySense.HasLineOfSight"/> is a question nothing on the
+    /// friendly side asks. Reusing the struct anyway is what keeps <c>SnapshotBuilder</c> filling one
+    /// shape instead of two.
+    /// </para>
+    /// <para>
+    /// <b>Sized from <see cref="MinionSystem.MaxConcurrent"/> rather than from a constructor
+    /// argument</b>, so the array and the army it carries cannot disagree and no call site had to
+    /// change to admit it. The enemy capacity is a device tier's cap and belongs to whoever composes
+    /// the run; a Wight's is a property of the one system that raises them.
+    /// </para>
+    /// </remarks>
+    public readonly EnemySense[] Minions = new EnemySense[MinionSystem.MaxConcurrent];
+
     /// <param name="enemyCapacity">
     /// The device tier's concurrency cap. M0-12 supplies a constant; a tuning field later.
     /// </param>
@@ -129,6 +162,12 @@ public sealed class WorldSnapshot
     /// the two can never disagree.
     /// </summary>
     public int EnemyCapacity => Enemies.Length;
+
+    /// <summary>
+    /// How many Wights this snapshot can carry — <see cref="MinionSystem.MaxConcurrent"/>. Read
+    /// from the array rather than stored, so the two can never disagree.
+    /// </summary>
+    public int MinionCapacity => Minions.Length;
 
     /// <summary>An arena with nowhere to put a body — what <see cref="Clear"/> leaves behind.</summary>
     /// <remarks>
@@ -162,6 +201,32 @@ public sealed class WorldSnapshot
     }
 
     /// <summary>
+    /// Claims the next Wight slot and returns it by reference, for the caller to fill in place.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AddEnemy"/>'s shape exactly, including the hazard it carries: a writer into a
+    /// reused slot assigns <em>every</em> field, zeroes included (AR §18.2), because
+    /// <see cref="Clear"/> leaves the contents alone.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The snapshot is full at <see cref="MinionCapacity"/>. Deliberately loud, for
+    /// <see cref="AddEnemy"/>'s reason — and unreachable while the builder walks a system that
+    /// refuses to stand more than that many up.
+    /// </exception>
+    public ref EnemySense AddMinion()
+    {
+        if (MinionCount >= Minions.Length)
+        {
+            throw new InvalidOperationException(
+                $"WorldSnapshot is full at {Minions.Length} minions. The builder must respect the capacity.");
+        }
+
+        int slot = MinionCount;
+        MinionCount = slot + 1;
+        return ref Minions[slot];
+    }
+
+    /// <summary>
     /// Resets the snapshot for a fresh frame: scalars to zero, no enemies.
     /// </summary>
     /// <remarks>
@@ -189,5 +254,10 @@ public sealed class WorldSnapshot
         SpawnPoints = NoSpawnPoints;
 
         EnemyCount = 0;
+
+        // The Wights go with the enemies, and their array's contents are left alone for the same
+        // reason: every reader stops at the count, and AddMinion hands out slots to be overwritten
+        // rather than appended to.
+        MinionCount = 0;
     }
 }

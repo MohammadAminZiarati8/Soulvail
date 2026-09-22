@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Director;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Progression;
 using Soulvail.Tests.Core.Fakes;
@@ -13,16 +14,27 @@ namespace Soulvail.Tests.Core.Progression;
 /// <summary>
 /// <b>Ledger row 1, measured rather than argued:</b> how many swings of the Censer a Husk takes at
 /// stages 1, 15 and 30, under a stated path through M3-12c's tree plus CH §5.2's Overflow, against
-/// GD §12.4's band of three to five.
+/// GD §12.4's band of three to five. <b>And, since M5-02, the same question of a second weapon:</b>
+/// the Bone Bolt at the opening stage, at the damage that ships and at the damage CH §3.2 publishes.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>Two things arrived with M5-02 and they are separable.</b> The Bone Bolt rows are the band
+/// asked of a class whose weapon had never been measured against it — rule 2's whole argument, with
+/// <see cref="BoneBolt_AtTheDocumentedSevenWouldBreakTheBand"/> as the control that says the ruling
+/// moved something that was wrong. <see cref="Ttk_OverflowLevelsAreDerivedFromTheCurve"/> is
+/// unrelated to the Gravecaller: it is ledger row 5(ii), which is that the stage-15 row passed an
+/// Overflow count <em>copied out of a spec table</em> rather than derived from the shipped curves,
+/// and the table was one out. The band did not move; the input did.
+/// </para>
 /// <para>
 /// <b>Every number here is read off shipped code, never off the spec's table</b> — which is the one
 /// thing that makes this fixture worth writing. The Husk's hit points at a depth come from
 /// <see cref="DepthScaling"/> applied to the shipped 36, with <see cref="Scalings.Design"/>'s curves
 /// (identical to <c>Descent.asset</c>'s, field for field), so a retune of <c>h(n)</c> moves these
-/// rows. Overflow's per-level damage comes from <see cref="LevelUpFlow.OverflowDamage"/> rather than
-/// from the 2 % anybody typed. <b>The spec's table says 66 and 99 hit points; the shipped curve says
+/// rows. Overflow's per-level damage is <see cref="OverflowPerLevel"/>, which is what that same
+/// asset authors as of M5-06b rather than the 2 % anybody typed — see that field for where the
+/// number is checked against the file. <b>The spec's table says 66 and 99 hit points; the shipped curve says
 /// 66.24 and 98.64</b>, and a row that hard-coded the former would be asserting the prose. The hits
 /// still land 3 / 4 / 5 either way, which is the table being right for a reason it did not state.
 /// </para>
@@ -55,6 +67,7 @@ namespace Soulvail.Tests.Core.Progression;
 public sealed class TimeToKillTests
 {
     private const string OathboundId = "character.oathbound";
+    private const string GravecallerId = "character.gravecaller";
     private const string HuskId = "enemy.husk";
 
     /// <summary>CC §7's Censer, as <c>Oathbound.asset</c> ships it.</summary>
@@ -63,11 +76,72 @@ public sealed class TimeToKillTests
     private const float WeaponRange = 8f;
     private const float ConeAngle = 60f;
 
+    /// <summary>
+    /// M5-02 rule 3's Bone Bolt, as <c>Gravecaller.asset</c> ships it. Written out for the reason
+    /// the Censer's numbers are: this assembly cannot open an asset (M0-10), and
+    /// <c>GravecallerTests.Gravecaller_BoneBoltIsTheRuledWeapon</c> is the row in the assembly that
+    /// can. The two fixtures meet at 9 and 4.0, and a retune that moved one and not the other
+    /// reddens this file.
+    /// </summary>
+    private const float BoltDamage = 9f;
+
+    private const float BoltSwingsPerSecond = 4f;
+    private const float BoltRange = 12f;
+    private const float BoltShotSpeed = 40f;
+    private const float BoltShotRadius = 0.8f;
+
+    /// <summary>What CH §3.2 publishes, and what rule 2 moved. Kept as the control's input.</summary>
+    private const float DocumentedBoltDamage = 7f;
+
+    /// <summary>GD §8.1's Spitter shot, as <c>Spitter.asset</c> ships it — the bolt's yardstick.</summary>
+    private const float SpitterShotSpeed = 12f;
+
+    private const float SpitterShotRadius = 1.6f;
+
     /// <summary>GD §8.1's Husk, as <c>Husk.asset</c> ships it, before any depth.</summary>
     private const float HuskMaxHp = 36f;
 
+    /// <summary>The Husk's price and its payout — <c>Husk.asset</c>'s own two numbers.</summary>
+    /// <remarks>
+    /// The pair is what turns GD §12.1's budget into experience: a stage's budget buys Husks at 4
+    /// threat each and each of them pays 12, so a stage is worth three times what it costs. Used by
+    /// <see cref="OverflowLevelsAt"/> and by nothing else.
+    /// </remarks>
+    private const int HuskThreatCost = 4;
+
+    private const float HuskXpValue = 12f;
+
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
+
+    /// <summary>The Gravecaller's, for the one row that compares the two classes.</summary>
+    private const float GravecallerMaxHp = 80f;
+
+    /// <summary>
+    /// How many nodes M3-12c's tree holds — the number a level stops being able to buy one at.
+    /// </summary>
+    private const int TreeNodeCount = 12;
+
+    /// <summary>
+    /// What <c>Descent.asset</c> authors per Overflow level, as of M5-06b — written out, for the
+    /// reason the Censer's and the Bolt's numbers are.
+    /// </summary>
+    /// <remarks>
+    /// <b>The source of this number changed at M5-06b and the claim got stronger for it.</b> It
+    /// used to be <c>LevelUpFlow.OverflowDamage</c>, a <c>public const</c> this assembly could
+    /// reach; ledger row 5(i) moved both Overflow numbers onto <c>ModeDefinition</c>, so there is
+    /// nothing in <c>Soulvail.Core</c> left to read and <c>AssetDatabase</c> is one assembly away
+    /// (M0-10). <c>GravecallerTreeTests.Overflow_ComesFromTheMode</c> is the row that opens the
+    /// asset, and this is the fixture that divides by it — the same meeting-at-a-number these rows
+    /// already have with <c>KeenCenser.asset</c>, one number along.
+    /// </remarks>
+    private const float OverflowPerLevel = 0.02f;
+
+    /// <summary>
+    /// GD §11.1's mid tier. It does not enter <see cref="ThreatBudget.Budget"/> at all — the cap
+    /// bounds concurrency, not spending — and is passed because the type requires one.
+    /// </summary>
+    private const int DeviceCap = 28;
 
     /// <summary><c>KeenCenser.asset</c>'s +15 %, pooled additively under ADR-0008's order.</summary>
     private const float KeenCenser = 0.15f;
@@ -104,8 +178,11 @@ public sealed class TimeToKillTests
     public void Ttk_StageFifteen_IsWithinTheBand()
     {
         // The median path at stage 15: the tree filled around stage 9, so twelve nodes are taken and
-        // seven levels have overflowed past them (rule 8's table).
-        int hits = HitsToKill(stage: 15, keenCenser: true, overflowLevels: 7);
+        // the rest of the levels have overflowed past them. **The count is derived rather than
+        // quoted** (ledger row 5(ii)): M3-12c rule 8's table said seven and the shipped curve says
+        // eight. The hits do not move — ×1.29 against ×1.31, and 66.24 over either is 4 — which is
+        // what makes the row a wrong *input* rather than a wrong answer.
+        int hits = HitsToKill(stage: 15, keenCenser: true, overflowLevels: OverflowLevelsAt(15));
 
         Assert.That(hits, Is.EqualTo(4));
         Assert.That(hits, Is.InRange(BandLow, BandHigh), "GD §12.4's three to five.");
@@ -117,7 +194,7 @@ public sealed class TimeToKillTests
         // **Ledger row 1's headline.** Twenty-nine uncapped Overflow levels against twelve nodes, so
         // the reason the band holds this deep is CH §5.2 rather than the tree — which is the warning
         // rule 8 attaches to its own table, and what M7-04's full twenty-seven will shift back.
-        int hits = HitsToKill(stage: 30, keenCenser: true, overflowLevels: 29);
+        int hits = HitsToKill(stage: 30, keenCenser: true, overflowLevels: OverflowLevelsAt(30));
 
         Assert.That(hits, Is.EqualTo(5));
         Assert.That(hits, Is.InRange(BandLow, BandHigh), "GD §12.4's three to five.");
@@ -133,6 +210,91 @@ public sealed class TimeToKillTests
 
         Assert.That(hits, Is.EqualTo(8));
         Assert.That(hits, Is.GreaterThan(BandHigh), "The state M2-15 left row 1 in.");
+    }
+
+    // ---- M5-02 rule 2: a second weapon in the same band -------------------------------------------
+
+    [Test]
+    public void BoneBolt_KillsAStageOneHuskInFourHits()
+    {
+        // **Rule 2's whole argument, in the fixture that owns the band.** The first Husk of every
+        // Gravecaller run is fought with the weapon and nothing else — no tree, no Overflow, and no
+        // Wights, because Rise needs a kill before it can produce one.
+        int hits = BoltHitsToKill(BoltDamage, stage: 1);
+
+        Assert.That(hits, Is.EqualTo(4));
+        Assert.That(hits, Is.InRange(BandLow, BandHigh), "GD §6.2's three to five, at the opening.");
+    }
+
+    [Test]
+    public void BoneBolt_AtTheDocumentedSevenWouldBreakTheBand()
+    {
+        // **The control that proves rule 2 moved something that was actually wrong.** Without it the
+        // row above is a number agreeing with itself: 9 was chosen because it lands inside the band,
+        // so of course it lands inside the band. This is the measurement of what CH §3.2 publishes.
+        int hits = BoltHitsToKill(DocumentedBoltDamage, stage: 1);
+
+        Assert.That(hits, Is.EqualTo(6), "ceil(36 / 7).");
+        Assert.That(hits, Is.GreaterThan(BandHigh),
+            "GD §6.2 calls three-to-five the primary balance invariant of the whole game, and CH "
+                + "§3.2's own number is outside it before a run has started.");
+    }
+
+    [Test]
+    public void BoneBolt_IsWeakerThanTheCenser()
+    {
+        // CH §3.2's "deliberately weak; you are not the damage", asserted as a comparison rather
+        // than as a number: the claim is about the trade the class makes, and a pinned 36 would
+        // still pass the day the Censer dropped to 30.
+        float bolt = DpsOneSecond(BoltDamage, BoltSwingsPerSecond);
+        float censer = DpsOneSecond(WeaponDamage, SwingsPerSecond);
+
+        Assert.That(bolt, Is.EqualTo(36f).Within(Tolerance), "9 × 4.0.");
+        Assert.That(censer, Is.EqualTo(39f).Within(Tolerance), "13 × 3.0.");
+        Assert.That(bolt, Is.LessThan(censer), "The Gravecaller's weapon is 92 % of the Oathbound's…");
+        Assert.That(GravecallerMaxHp, Is.LessThan(MaxHp), "…and its body is 57 % of it.");
+
+        // And the half of the trade a DPS figure hides: the bolt reaches every metre the class can
+        // see, where the Censer reaches two thirds of it.
+        Assert.That(BoltRange, Is.GreaterThan(WeaponRange));
+    }
+
+    [Test]
+    public void BoneBolt_IsTheQuickestThingInTheAir()
+    {
+        // Rule 3's two "ours" numbers, against the enemy shot they were chosen relative to: the
+        // Spitter's 12 m/s across a 1.6 m radius. A player's bolt is faster and less forgiving,
+        // which is what keeps CC §3.7's lead worth solving — a shot that forgave 1.6 m would
+        // arrive near enough whatever the aim.
+        Assert.That(BoltShotSpeed, Is.GreaterThan(SpitterShotSpeed));
+        Assert.That(BoltShotRadius, Is.LessThan(SpitterShotRadius));
+
+        Assert.That(BoltRange / BoltShotSpeed, Is.EqualTo(0.3f).Within(Tolerance),
+            "12 m at 40 m/s — a 0.3 s flight at maximum range.");
+    }
+
+    // ---- Ledger row 5(ii): the Overflow input, derived ---------------------------------------------
+
+    [Test]
+    public void Ttk_OverflowLevelsAreDerivedFromTheCurve()
+    {
+        // **The literal this row replaces was 7 and the shipped content says 8.** M3-12c rule 8's
+        // table estimated the level at stage 15 as "~20"; walked through the real curves it is 21.
+        // Asserted as the derived answer so the estimate cannot quietly come back — and asserted at
+        // stage 30 too, where the table's 29 turns out to have been right.
+        Assert.That(OverflowLevelsAt(15), Is.EqualTo(8), "Not M3-12c rule 8's 7.");
+        Assert.That(OverflowLevelsAt(30), Is.EqualTo(29), "The table was right at this depth.");
+
+        // The two inputs it is derived from, pinned so that a change to either arrives as a failure
+        // with a number on it rather than as a silently different band.
+        Assert.That(LevelAt(15), Is.EqualTo(21));
+        Assert.That(LevelAt(30), Is.EqualTo(42));
+
+        // And the shape of the derivation: Level − 1 − the tree's size (M3-03 rule 6's mirror),
+        // which is only meaningful once the tree is full. It fills around stage 9.
+        Assert.That(OverflowLevelsAt(15), Is.EqualTo(LevelAt(15) - 1 - TreeNodeCount));
+        Assert.That(LevelAt(9), Is.GreaterThan(TreeNodeCount),
+            "The tree is full by stage 9, which is what makes the subtraction above honest.");
     }
 
     // ---- Rule 9: what the measurement deliberately cannot see -------------------------------------
@@ -234,18 +396,21 @@ public sealed class TimeToKillTests
     }
 
     [Test]
-    public void Ttk_OverflowPerLevelIsTheShippedConstant()
+    public void Ttk_OverflowPerLevelIsTheAuthoredValue()
     {
-        // The table's "+2 % damage per level" is read off M3-08a's code rather than out of CH §5.2,
-        // because a retune there has to redden this file rather than pass silently through it.
-        Assert.That(LevelUpFlow.OverflowDamage, Is.EqualTo(0.02f).Within(1e-7f));
+        // **The table's "+2 % damage per level", read off the shipped mode rather than out of
+        // CH §5.2 — and as of M5-06b that is an authored number rather than a compiled one.** A
+        // retune of Descent.asset's Overflow block has to redden this file rather than pass
+        // silently through it, which is a stronger claim than the row made before: the number can
+        // now move without a rebuild, so it can move without anybody noticing.
+        Assert.That(OverflowPerLevel, Is.EqualTo(0.02f).Within(1e-7f));
 
         World world = NewWorld();
         ApplyOverflow(world, 7);
 
         Assert.That(
             world.Combat.Weapon.Damage.Value,
-            Is.EqualTo(WeaponDamage * (1f + (7f * LevelUpFlow.OverflowDamage))).Within(Tolerance),
+            Is.EqualTo(WeaponDamage * (1f + (7f * OverflowPerLevel))).Within(Tolerance),
             "Seven levels, pooled: 13 × 1.14.");
     }
 
@@ -282,6 +447,79 @@ public sealed class TimeToKillTests
 
         return Hits(ScaledHuskHp(stage), world.Combat.Weapon.Damage.Value);
     }
+
+    /// <summary>
+    /// The same arithmetic for the Bone Bolt: a Husk scaled to <paramref name="stage"/>, divided by
+    /// a bolt of <paramref name="damage"/> with no tree and no Overflow.
+    /// </summary>
+    /// <remarks>
+    /// Through a real <see cref="PlayerCombat"/> built from a real <see cref="CharacterSpec"/>,
+    /// like the Censer's path above, so that the number divided by is the one a <c>Weapon</c>
+    /// resolves rather than the one this file typed — and so that the whole projectile spec has to
+    /// be valid for the row to run at all (M5-01's kind-conditional validation).
+    /// </remarks>
+    private int BoltHitsToKill(float damage, int stage)
+    {
+        World world = NewWorld(Gravecaller(damage));
+
+        return Hits(ScaledHuskHp(stage), world.Combat.Weapon.Damage.Value);
+    }
+
+    /// <summary>Damage in one second of uninterrupted fire, at rest.</summary>
+    /// <remarks>
+    /// Named rather than written out at each site because it is the number CH §3.2's
+    /// <em>"deliberately weak"</em> is a claim about, and the two weapons have different swing
+    /// rates — 9 against 13 is not the comparison, and 36 against 39 is.
+    /// </remarks>
+    private static float DpsOneSecond(float damage, float swingsPerSecond) =>
+        damage * swingsPerSecond;
+
+    /// <summary>
+    /// What level a run is at by the end of <paramref name="stage"/>, walked through the shipped
+    /// curves rather than estimated.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Every stage's experience is its threat budget priced in Husks</b> — GD §12.1's B(n)
+    /// divided by what a Husk costs and multiplied by what one pays. It is the simplest honest
+    /// model of a stage: the composer spends the budget on bodies and the player kills them, so a
+    /// stage is worth <c>B(n) × XpValue / ThreatCost</c> whatever mix it actually spawned. A stage
+    /// bought entirely in Bloaters would pay differently, and the roster's other two archetypes are
+    /// priced within a few per cent of the Husk.
+    /// </para>
+    /// <para>
+    /// <b>Through a real <see cref="LevelTracker"/>, one grant a stage</b>, for the reason
+    /// <see cref="ScaledHuskHp"/> goes through a real <c>DepthScaling</c>: the curve is walked the
+    /// way a run walks it, so a retune of <see cref="XpCurve"/> moves this and a re-derivation by
+    /// hand cannot drift from it.
+    /// </para>
+    /// </remarks>
+    private int LevelAt(int stage)
+    {
+        var budget = new ThreatBudget(Scalings.Design(), DeviceCap);
+        var tracker = new LevelTracker(Scalings.Xp(), _events);
+
+        float xpPerThreat = HuskXpValue / HuskThreatCost;
+
+        for (int n = 1; n <= stage; n++)
+        {
+            tracker.Grant(budget.Budget(n) * xpPerThreat);
+        }
+
+        return tracker.Level;
+    }
+
+    /// <summary>
+    /// How many of a run's levels have nowhere to go by the end of <paramref name="stage"/> —
+    /// <c>Level − 1 − TreeNodeCount</c>, the mirror of <c>LevelUpFlow.GrantOverflow</c>'s own
+    /// derivation (M3-03 rule 6).
+    /// </summary>
+    /// <remarks>
+    /// Meaningful only once the tree is full, which is around stage 9; before that the levels are
+    /// being spent on nodes and the subtraction is negative. Ledger row 5(ii): the number this
+    /// answers used to be a literal copied out of M3-12c rule 8's table, and the table was one out.
+    /// </remarks>
+    private int OverflowLevelsAt(int stage) => LevelAt(stage) - 1 - TreeNodeCount;
 
     /// <summary>Whole swings, because a Husk at one hit point is still standing.</summary>
     private static int Hits(float hp, float damagePerHit) =>
@@ -321,14 +559,14 @@ public sealed class TimeToKillTests
 
     /// <summary>
     /// <paramref name="levels"/> Overflow levels, one <see cref="ModifyStat"/> each under one
-    /// source — <c>LevelUpFlow.GrantOne</c>'s own shape, with its own constant.
+    /// source — <c>LevelUpFlow.GrantOne</c>'s own shape, with the value the shipped mode authors.
     /// </summary>
     private static void ApplyOverflow(World world, int levels)
     {
         var overflow = new object();
 
         var effect = new ModifyStat(
-            PlayerStat.WeaponDamage, ModifierKind.PercentAdd, LevelUpFlow.OverflowDamage);
+            PlayerStat.WeaponDamage, ModifierKind.PercentAdd, OverflowPerLevel);
 
         for (int i = 0; i < levels; i++)
         {
@@ -336,10 +574,10 @@ public sealed class TimeToKillTests
         }
     }
 
-    private World NewWorld()
-    {
-        CharacterSpec spec = Oathbound();
+    private World NewWorld() => NewWorld(Oathbound());
 
+    private World NewWorld(CharacterSpec spec)
+    {
         var combat = new PlayerCombat(spec, _events, _intents, EnemyCapacity);
         var motor = new PlayerMotor(spec.Movement, Vector3.UnitZ);
         var progression = new LevelTracker(Scalings.Xp(), _events);
@@ -371,6 +609,7 @@ public sealed class TimeToKillTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         MaxHp,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
@@ -379,6 +618,38 @@ public sealed class TimeToKillTests
         new MovementSkillSpec(MovementSkillKind.Charge, 8f, 0.5f, 2.5f, 0.15f, 20f, 4f, 0.05f),
         new ShieldSpec(ShieldMax, 4f, 15f),
         0.5f);
+
+    /// <summary>
+    /// M5-02's Gravecaller, with the Focus ramp switched off for <see cref="Oathbound"/>'s reason
+    /// and the damage taken as an argument so the control row can author CH §3.2's 7.
+    /// </summary>
+    /// <remarks>
+    /// The minion block is deliberately absent: a Wight needs a kill before it exists, so the first
+    /// Husk of every run is fought with the weapon alone — which is the sequencing rule 2's second
+    /// alternative failed on, and a spec carrying minions here would invite a later row to count
+    /// them.
+    /// </remarks>
+    private static CharacterSpec Gravecaller(float damage) => new CharacterSpec(
+        new ContentId(GravecallerId),
+        new LocKey("character.gravecaller.name"),
+        new LocKey("character.gravecaller.description"),
+        GravecallerMaxHp,
+        new MovementSpec(3.1f, 0.06f, 0.08f, 720f),
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        new WeaponSpec(
+            WeaponKind.Projectile,
+            damage,
+            BoltSwingsPerSecond,
+            BoltRange,
+            360f,
+            0.15f,
+            BoltShotSpeed,
+            BoltShotRadius),
+        new FocusSpec(0.4f, 1f, 1f),
+        // CH §3.2's three-second decoy is required of a Shroudstep as of M5-03 — the duration is
+        // validated against the kind, so a blink authored without one is refused at the spec's
+        // door. Nothing in this fixture blinks; the number is here because the class does.
+        new MovementSkillSpec(MovementSkillKind.Shroudstep, 6f, 0.05f, 2.5f, 0.15f, 0f, 0f, 0.05f, 3f));
 
     /// <summary>GD §8.1's Husk, Static so that it stands where it was put.</summary>
     private static EnemySpec Husk() => new EnemySpec(

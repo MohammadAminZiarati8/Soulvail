@@ -508,6 +508,19 @@ public sealed class SkillTreeTests
         // The probe measured something real: a body that returned nothing would pass this row
         // whatever it allocated.
         Assert.That(tree.Available(destination), Is.EqualTo(3 + 2 + 2));
+
+        // **And over a splashed tree**, because the walk is what M3-04 runs once per pick and
+        // CH §5.4's borrowed branch put two more dictionary probes on it — one per candidate, in
+        // `TreeRules.TryLocate`. A fourth branch that cost an allocation here would cost it on the
+        // one path this class promises costs none (M5-07a-i rule 11).
+        TreeRulesTests.Install(tree.Rules);
+        tree.OnSplashInstalled();
+
+        var widened = new ContentId[tree.Rules.Count];
+
+        AllocationAssert.None(() => tree.Available(widened));
+
+        Assert.That(tree.Available(widened), Is.EqualTo(3 + 2 + 2 + 2), "And two more, borrowed.");
     }
 
     [Test]
@@ -920,6 +933,7 @@ public sealed class SkillTreeTests
     private static CharacterSpec Character() => new CharacterSpec(
         Id(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         MaxHp,
         new MovementSpec(MoveSpeed, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

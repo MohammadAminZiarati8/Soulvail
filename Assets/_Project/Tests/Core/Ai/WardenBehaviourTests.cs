@@ -61,7 +61,7 @@ public sealed class WardenBehaviourTests
     private const string OathboundId = "character.oathbound";
 
     // ---- Warden.asset, exactly as it ships. A retune reddens the rows that describe it. ----------
-    private const float WardenMaxHp = 4200f;
+    private const float WardenMaxHp = 3200f;
     private const float WardenMoveSpeed = 1.8f;
     private const float WardenContactDamage = 22f;
     private const float WardenWindup = 0.9f;
@@ -938,6 +938,7 @@ public sealed class WardenBehaviourTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         140f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

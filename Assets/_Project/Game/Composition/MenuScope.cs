@@ -21,15 +21,23 @@ namespace Soulvail.Game.Composition
     /// </para>
     /// <para>
     /// There is no <c>MenuInstaller</c> beside it. The split that <c>RunInstaller</c> earns — a
-    /// static half an EditMode test can build a container from — buys nothing for a scope whose one
-    /// registration <em>is</em> a scene object; a headless test of this class would be a test of
+    /// static half an EditMode test can build a container from — buys nothing for a scope whose
+    /// registrations <em>are</em> scene objects; a headless test of this class would be a test of
     /// <c>RegisterComponent</c>. The Menu's behaviour is proven by playing it (M0-17's PlayMode
     /// tests) instead.
+    /// </para>
+    /// <para>
+    /// <b>Two presenters as of M5-07</b>, and the second is required rather than optional — unlike
+    /// <c>RunScope</c>'s screens, which may be left undressed so the Run scene can be played
+    /// directly. There is no equivalent workflow here: the Menu scene exists to be walked through,
+    /// and a class-select screen nothing injects is a <c>Descend</c> that opens a dead panel.
     /// </para>
     /// </remarks>
     public sealed class MenuScope : LifetimeScope
     {
         [SerializeField] private MenuPresenter _menu;
+
+        [SerializeField] private ClassSelectPresenter _classSelect;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -41,10 +49,19 @@ namespace Soulvail.Game.Composition
                     "and the Descend button does nothing.");
             }
 
-            // The scene owns this object's lifetime, and VContainer does not dispose what it did
-            // not construct, so registering the live component is exactly right: the container
-            // injects it and destroys nothing.
+            if (_classSelect == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(MenuScope)} has no {nameof(ClassSelectPresenter)} assigned. Drag the " +
+                    "ClassSelect object in this scene onto its Class Select field — without it " +
+                    "nothing injects the screen and Descend opens a panel that cannot start a run.");
+            }
+
+            // The scene owns both objects' lifetimes, and VContainer does not dispose what it did
+            // not construct, so registering the live components is exactly right: the container
+            // injects them and destroys nothing.
             builder.RegisterComponent(_menu);
+            builder.RegisterComponent(_classSelect);
         }
     }
 }

@@ -1,10 +1,35 @@
 using System;
 using System.Numerics;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 
 namespace Soulvail.Core.Combat;
+
+/// <summary>Who a shot may hurt. Not a faction system: two members, and there is no third.</summary>
+/// <remarks>
+/// <para>
+/// <b>Deliberately not a faction, a team or a layer mask.</b> Everything that fires in this game
+/// fires at one of two things, and M5-04's Wights do not fire at all — so a third value would be an
+/// abstraction invented for M7's Archon (CH §8.5) rather than one any content asks for. When
+/// something does want minions shot at, that is a member added with a branch beside it, which is a
+/// smaller change than a general faction matrix would be to undo.
+/// </para>
+/// <para>
+/// <see cref="AtPlayer"/> is first, so it is the default of the enum as well as the default of
+/// <see cref="Projectile"/>'s parameter: every shot in the game before M5-01 was fired at the
+/// player, and a side field left unwritten therefore reads as the thing it has always been.
+/// </para>
+/// </remarks>
+public enum ShotSide
+{
+    /// <summary>Fired at the player. Every shot in the game before M5-01.</summary>
+    AtPlayer,
+
+    /// <summary>Fired by the player, at enemies.</summary>
+    AtEnemies,
+}
 
 /// <summary>
 /// One shot in flight: a point and a moment, not a body.
@@ -45,10 +70,14 @@ public readonly struct Projectile
     /// (M2-06 rule 5). Finite and not negative; zero is legal and lands nothing, which is what
     /// <c>PlayerCombat.ApplyDamage</c> already does with it.
     /// </param>
+    /// <param name="side">
+    /// Who it may hurt. Defaulted to <see cref="ShotSide.AtPlayer"/>, which is what every shot in
+    /// the game meant before M5-01 — see <see cref="Side"/>.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A position is not finite, <paramref name="speed"/> or <paramref name="radius"/> is not a
-    /// finite number greater than zero, or <paramref name="damage"/> is not a finite number of at
-    /// least zero.
+    /// finite number greater than zero, <paramref name="damage"/> is not a finite number of at
+    /// least zero, or <paramref name="side"/> is not a defined <see cref="ShotSide"/>.
     /// </exception>
     public Projectile(
         ContentId specId,
@@ -57,7 +86,8 @@ public readonly struct Projectile
         Vector3 target,
         float speed,
         float radius,
-        float damage)
+        float damage,
+        ShotSide side = ShotSide.AtPlayer)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -66,6 +96,7 @@ public readonly struct Projectile
         Speed = Positive(speed, nameof(speed));
         Radius = Positive(radius, nameof(radius));
         Damage = NotNegative(damage, nameof(damage));
+        Side = Defined(side);
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
@@ -96,6 +127,15 @@ public readonly struct Projectile
 
     /// <summary>What it deals on arrival — the shooter's <c>ContactDamage</c> as of the shot.</summary>
     public float Damage { get; }
+
+    /// <summary>Who it may hurt, decided when it was fired and never revised.</summary>
+    /// <remarks>
+    /// A property of the shot rather than of the shooter, which is why it is not derived from
+    /// <see cref="SourceId"/>: that id is a record of who fired and is deliberately never resolved
+    /// against the registry, so asking it who to hurt would mean resolving it. One field on the
+    /// struct answers the question without ever looking anything up.
+    /// </remarks>
+    public ShotSide Side { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3),
@@ -150,6 +190,32 @@ public readonly struct Projectile
     }
 
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+    /// <remarks>
+    /// An undefined side is a cast integer, and it would land in neither branch of
+    /// <c>ProjectileSystem.Land</c> — a shot that flies, publishes its impact and hurts nobody,
+    /// which is the silence this struct's guards exist to refuse. Refused at the door instead, where
+    /// the caller that invented the value is still on the stack.
+    /// <para>
+    /// Two comparisons rather than <c>Enum.IsDefined</c>, and the reason is the frame path: that
+    /// method boxes its argument and walks the type's value table, and this constructor runs every
+    /// time anything in the game fires. Two members are cheaper to compare than to enumerate, and
+    /// the day a third arrives the compiler does not help — which is what the test row exists for.
+    /// </para>
+    /// </remarks>
+    private static ShotSide Defined(ShotSide side)
+    {
+        if (side != ShotSide.AtPlayer && side != ShotSide.AtEnemies)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(side),
+                side,
+                "side must be a defined ShotSide. An undefined one is a shot that lands on nobody "
+                    + "and reports that it landed.");
+        }
+
+        return side;
+    }
 }
 
 /// <summary>
@@ -331,9 +397,11 @@ public sealed class ProjectileSystem
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Landing one means: is the player inside the radius, and if so, hurt them.</b> The distance
-    /// is XZ (AR §18.4), the comparison is inclusive, and <c>ProjectileImpacted</c> is published
-    /// either way — the view has to stop existing whether or not the shot hit anything.
+    /// <b>Landing one means: is anything the shot may hurt inside the radius, and if so, hurt it.</b>
+    /// Which side that is comes off the shot itself (M5-01 rule 4) — the player for a Spitter's bolt,
+    /// every living agent in the radius for the player's. The distance is XZ (AR §18.4), the
+    /// comparison is inclusive, and <c>ProjectileImpacted</c> is published either way — the view has
+    /// to stop existing whether or not the shot hit anything.
     /// </para>
     /// <para>
     /// <b>i-frames are not consulted here.</b> <c>PlayerCombat.ApplyDamage</c> owns that question
@@ -346,7 +414,8 @@ public sealed class ProjectileSystem
     /// The field has existed since M1-08 saying "zero until M2-07 gives something the means to fire
     /// one", and this is that; it is CC §6.4's Bulwark trigger and M3's auto-cast reads it.
     /// <c>PlayerCombat</c> deliberately does not touch it, so there is one owner for one field, and
-    /// the tick order is what makes the value this frame's rather than last frame's.
+    /// the tick order is what makes the value this frame's rather than last frame's. As of M5-01 it
+    /// counts <see cref="ShotSide.AtPlayer"/> shots only — see the line that writes it.
     /// </para>
     /// </remarks>
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>.</param>
@@ -356,13 +425,26 @@ public sealed class ProjectileSystem
     /// time it is asked about it: this class owns no view of where anything is.
     /// </param>
     /// <param name="player">Who a landing shot hurts, and who owns the blackboard it reports to.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
+    /// <param name="enemies">
+    /// Who an <see cref="ShotSide.AtEnemies"/> shot may reach. Passed in rather than held, for the
+    /// reason <c>PlayerCombat.ResolveConeHits</c> is handed the world each time it is asked about it:
+    /// this class owns no view of who is alive, and a retained reference would be one more thing to
+    /// keep in step with a run's lifetime.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="player"/> or <paramref name="enemies"/> is null.
+    /// </exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is not finite.</exception>
-    public void Tick(float now, Vector3 playerPosition, PlayerCombat player)
+    public void Tick(float now, Vector3 playerPosition, PlayerCombat player, EnemySystem enemies)
     {
         if (player is null)
         {
             throw new ArgumentNullException(nameof(player));
+        }
+
+        if (enemies is null)
+        {
+            throw new ArgumentNullException(nameof(enemies));
         }
 
         RequireFinite(now);
@@ -393,12 +475,22 @@ public sealed class ProjectileSystem
 
         for (int i = 0; i < landingCount; i++)
         {
-            Land(_landing[i], now, playerPosition, player);
+            Land(_landing[i], now, playerPosition, player, enemies);
         }
 
-        // After the landings, so a shot fired from inside an impact handler is counted and a shot
-        // that just landed is not.
-        player.Blackboard.IncomingProjectiles = _count;
+        // **The count is of <see cref="ShotSide.AtPlayer"/> shots rather than of every shot in the
+        // air, and that is M5-01's one addition to this field.**
+        // <c>CombatBlackboard.IncomingProjectiles</c> is CC §6.4's Bulwark trigger — "an enemy
+        // projectile is inbound" — and a class whose basic attack is a bolt keeps its own in the air
+        // almost continuously, so a raw census would hold that predicate true for the whole run and
+        // auto-cast Bulwark off the player's own fire. The field's name always meant one side; until
+        // a side existed there was no way for it to be wrong.
+        //
+        // A second walk rather than a counter threaded through the loop above, and the reason is the
+        // same one that put this line after the landings: a <see cref="Fire"/> from inside an impact
+        // handler has already appended to the store by now, and counting as we compacted would have
+        // missed it. One pass over at most <see cref="Capacity"/> struct reads, once a frame.
+        player.Blackboard.IncomingProjectiles = CountInbound();
     }
 
     /// <summary>
@@ -416,17 +508,43 @@ public sealed class ProjectileSystem
         _nextId = FirstId;
     }
 
-    /// <summary>Resolves one arrival: the hit test, the damage, and the event that says it is over.</summary>
+    /// <summary>
+    /// Resolves one arrival: the side's hit test, the damage, and the event that says it is over.
+    /// </summary>
     /// <param name="now">
     /// This tick's clock, not the shot's own <c>ArrivesAt</c>. The two differ by at most a frame,
     /// and <c>Health</c> believes the last time it was told: handing it the earlier one would start
     /// the i-frames in the past and, worse, walk its clock backwards against the
     /// <c>PlayerCombat.Tick</c> that already ran at <paramref name="now"/> this frame.
     /// </param>
-    private void Land(in InFlight flight, float now, Vector3 playerPosition, PlayerCombat player)
+    private void Land(
+        in InFlight flight,
+        float now,
+        Vector3 playerPosition,
+        PlayerCombat player,
+        EnemySystem enemies)
     {
         Projectile shot = flight.Shot;
 
+        bool hit = shot.Side == ShotSide.AtEnemies
+            ? LandOnEnemies(shot, now, player, enemies)
+            : LandOnPlayer(shot, now, playerPosition, player);
+
+        // After the damage, so a listener handling this has already seen the PlayerDamaged — or the
+        // EnemyDamaged and EnemyDied — that the same arrival caused.
+        _events.Publish(new ProjectileImpacted(flight.Id, shot.Target, hit));
+    }
+
+    /// <summary>
+    /// An <see cref="ShotSide.AtPlayer"/> arrival, unchanged since M2-07a: one distance test against
+    /// where the body last reported the player, and the damage if it reached them.
+    /// </summary>
+    private static bool LandOnPlayer(
+        in Projectile shot,
+        float now,
+        Vector3 playerPosition,
+        PlayerCombat player)
+    {
         float dx = playerPosition.X - shot.Target.X;
         float dz = playerPosition.Z - shot.Target.Z;
 
@@ -440,9 +558,110 @@ public sealed class ProjectileSystem
             player.ApplyDamage(shot.Damage, now);
         }
 
-        // After the damage, so a listener handling this has already seen the PlayerDamaged — and,
-        // if it killed, the PlayerDied — that the same arrival caused.
-        _events.Publish(new ProjectileImpacted(flight.Id, shot.Target, hit));
+        return hit;
+    }
+
+    /// <summary>
+    /// An <see cref="ShotSide.AtEnemies"/> arrival: every living agent inside the radius takes the
+    /// shot's damage.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The two branches are not symmetrical, and the asymmetry is the mechanic.</b> A shot at the
+    /// player tests one position, because there is one player; a shot at enemies walks the registry,
+    /// because <b>a bolt is a small blast rather than a single-target hit</b> — the same bargain the
+    /// Censer's arc makes, and what keeps one authored damage number honest: a weapon that could only
+    /// ever reach the one enemy it was aimed at would have to be worth more per shot than the arc,
+    /// and GD §6.2's time-to-kill is written against neither.
+    /// </para>
+    /// <para>
+    /// <b>The dead are skipped rather than left to <c>ApplyDamage</c>.</b> That door already refuses a
+    /// corpse, so the damage would be right either way — but the answer this method returns would
+    /// not: a bolt that arrived on a body dissolving through its <c>CorpseTime</c> would report
+    /// <c>Hit</c> true and nothing would have happened, which is a hit flash for a miss.
+    /// </para>
+    /// <para>
+    /// <b><c>Hit</c> means "reached a living agent", not "took hit points off one".</b> A zero-damage
+    /// bolt and one turned away by a Warden's shield both reached something, and both should look
+    /// like an impact rather than like a bolt that sailed through — <c>EnemyDamaged</c> is where the
+    /// question of what the damage did is already answered, by the one publisher entitled to answer
+    /// it.
+    /// </para>
+    /// <para>
+    /// <b>The span is taken once and stays valid across every landing inside it.</b> Damage can kill,
+    /// a kill can detonate a Bloater, and a detonation can kill more — none of which removes anything
+    /// from the registry, because a corpse is retired by <c>EnemySystem.Tick</c>'s own sweep
+    /// <c>CorpseTime</c> later. That is the same argument the behaviour pass rests on, and it is why
+    /// an agent this walk has already passed cannot be resurrected behind it or an index invalidated
+    /// under it. Nothing here allocates: a span, a struct result per agent, and no buffer at all —
+    /// the walk is bounded by the enemy capacity and needs no dedupe, since the registry holds each
+    /// agent once.
+    /// </para>
+    /// </remarks>
+    private static bool LandOnEnemies(
+        in Projectile shot,
+        float now,
+        PlayerCombat player,
+        EnemySystem enemies)
+    {
+        ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
+
+        float radiusSquared = shot.Radius * shot.Radius;
+        bool hit = false;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent agent = agents[i];
+
+            // Registered is not breathing: the span carries corpses on purpose, and a bolt does not
+            // land on one. See the remarks.
+            if (!agent.IsAlive)
+            {
+                continue;
+            }
+
+            Vector3 position = agent.Position;
+
+            float dx = position.X - shot.Target.X;
+            float dz = position.Z - shot.Target.Z;
+
+            // XZ (AR §18.4) and inclusive, exactly as the player's branch tests it, and spelled as
+            // the negated `<=` so that a distance which somehow is not a number skips the agent
+            // rather than catching it.
+            if (!((dx * dx) + (dz * dz) <= radiusSquared))
+            {
+                continue;
+            }
+
+            hit = true;
+
+            // The player is who a resulting blast would catch, for the reason PlayerCombat passes
+            // `this` to the same door: a bolt that kills a Bloater is a bolt that set one off, and
+            // whether that reaches the player is PlayerCombat.ApplyDamage's question rather than
+            // this method's. The result is deliberately not read — see the remarks on Hit.
+            enemies.ApplyDamage(agent.Id, shot.Damage, now, player);
+        }
+
+        return hit;
+    }
+
+    /// <summary>
+    /// How many shots in the air were fired at the player. What
+    /// <c>CombatBlackboard.IncomingProjectiles</c> means — see <see cref="Tick"/>.
+    /// </summary>
+    private int CountInbound()
+    {
+        int inbound = 0;
+
+        for (int i = 0; i < _count; i++)
+        {
+            if (_shots[i].Shot.Side == ShotSide.AtPlayer)
+            {
+                inbound++;
+            }
+        }
+
+        return inbound;
     }
 
     /// <remarks>

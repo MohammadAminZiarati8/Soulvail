@@ -60,26 +60,44 @@ namespace Soulvail.Core.Progression;
 /// authored order, then tier 2, then branch 1 — because M3-04 makes one draw against it and the
 /// same seed against the same tree state has to produce the same offer (AR §18.3).
 /// </para>
+/// <para>
+/// <b>The one exception is <see cref="OnSplashInstalled"/></b>, which rebuilds those arrays when
+/// CH §5.4's borrowed branch arrives: once per run, at a moment the game is paused, and never on a
+/// frame path. Everything else here is written against <see cref="TreeRules.BranchCount"/> and
+/// <see cref="TreeRules.Count"/> — the <em>run's</em> numbers — so the fourth branch is a value
+/// rather than a case.
+/// </para>
 /// </remarks>
 public sealed class SkillTree
 {
     /// <summary>Every node of the tree in tree order, with the position each sits at.</summary>
     /// <remarks>
+    /// <para>
     /// Flattened once at construction so that the two questions asked per candidate — what kind is
     /// it, and which branch and tier is it in — are array reads rather than two dictionary probes
     /// through <see cref="Rules"/>. The order <em>is</em> the contract
     /// <see cref="Available"/> states.
+    /// </para>
+    /// <para>
+    /// <b>Not <see langword="readonly"/>, and <see cref="OnSplashInstalled"/> is the only reason.</b>
+    /// A branch borrowed mid-run appends nodes after the primary's, so the four arrays below are
+    /// rebuilt once, at a moment the game is paused — never on a frame path and never twice.
+    /// </para>
     /// </remarks>
-    private readonly Node[] _nodes;
+    private Node[] _nodes;
 
     /// <summary>Where each id sits in <see cref="_nodes"/>, for the questions asked by id.</summary>
-    private readonly Dictionary<ContentId, int> _index;
+    private Dictionary<ContentId, int> _index;
 
     /// <summary>One flag per node, indexed as <see cref="_nodes"/> is.</summary>
-    private readonly bool[] _taken;
+    private bool[] _taken;
 
     /// <summary>How many nodes of each branch are taken — the left-hand side of every tier gate.</summary>
-    private readonly int[] _takenInBranch;
+    /// <remarks>
+    /// One entry per branch <em>this run</em> has (<see cref="TreeRules.BranchCount"/>), so the
+    /// borrowed branch's picks are counted at index 3 and nowhere else.
+    /// </remarks>
+    private int[] _takenInBranch;
 
     /// <summary>The ids in take order, which is what a save writes down.</summary>
     private readonly List<ContentId> _takenIds;
@@ -111,16 +129,13 @@ public sealed class SkillTree
         _nodes = Flatten(rules);
         _index = new Dictionary<ContentId, int>(_nodes.Length);
         _taken = new bool[_nodes.Length];
-        _takenInBranch = new int[rules.Tree.Branches.Count];
+        _takenInBranch = new int[rules.BranchCount];
         _takenIds = new List<ContentId>(_nodes.Length);
         _takenIdsView = new ReadOnlyCollection<ContentId>(_takenIds);
 
-        for (int ordinal = 0; ordinal < _nodes.Length; ordinal++)
-        {
-            _index.Add(_nodes[ordinal].Spec.Id, ordinal);
-        }
+        Reindex();
 
-        RequireHandlers();
+        RequireHandlers(_nodes, from: 0);
     }
 
     /// <summary>The class's tree, resolved and cross-checked — the shape and the rules.</summary>
@@ -129,18 +144,29 @@ public sealed class SkillTree
     /// <summary>How many nodes have been taken, this run.</summary>
     public int TakenCount => _takenIds.Count;
 
-    /// <summary>Whether every node of the tree has been taken.</summary>
+    /// <summary>Whether every node of the run's tree has been taken.</summary>
     /// <remarks>
+    /// <para>
     /// What M3-08 reads to know that a pick has nothing to buy and becomes Overflow instead
     /// (CH §5.2). It is a comparison against <see cref="TreeRules.Count"/> rather than a flag,
     /// because a flag would be a second place the count is recorded.
+    /// </para>
+    /// <para>
+    /// <b>It counts the borrowed branch too, which is what makes it widen for free.</b> A run that
+    /// completes its own twelve and its borrowed seven is full at nineteen; one that never splashed
+    /// is full at twelve. <c>LevelUpFlow</c> is untouched by that — it asks
+    /// <c>OfferGenerator.Draw</c> what is available and never this.
+    /// </para>
     /// </remarks>
     public bool IsFull => _takenIds.Count == _nodes.Length;
 
     /// <summary>How many nodes of branch <paramref name="branch"/> have been taken.</summary>
-    /// <param name="branch">The branch index, 0-based.</param>
+    /// <param name="branch">
+    /// The branch index, 0-based and into <em>this run's</em> branches — so
+    /// <see cref="TreeRules.SplashBranch"/> is legal once one is installed and not before.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="branch"/> is not an index into the tree's branches.
+    /// <paramref name="branch"/> is not an index into this run's branches.
     /// </exception>
     public int TakenInBranch(int branch)
     {
@@ -149,7 +175,7 @@ public sealed class SkillTree
             throw new ArgumentOutOfRangeException(
                 nameof(branch),
                 branch,
-                $"Branches are indexed from 0 and this tree has {_takenInBranch.Length}.");
+                $"Branches are indexed from 0 and this run has {_takenInBranch.Length}.");
         }
 
         return _takenInBranch[branch];
@@ -200,16 +226,20 @@ public sealed class SkillTree
     /// <remarks>
     /// <para>
     /// <b>The order is load-bearing rather than cosmetic.</b> Branch 0's tier 1 in authored order,
-    /// then its tier 2, then branch 1: M3-04 walks this with one draw per pick, so the same seed
-    /// against the same tree state has to yield the same offer (AR §18.3's <em>one draw whatever it
-    /// then finds</em>). Anything that reorders this changes what every seed means.
+    /// then its tier 2, then branch 1, and a borrowed branch last of all: M3-04 walks this with one
+    /// draw per pick, so the same seed against the same tree state has to yield the same offer
+    /// (AR §18.3's <em>one draw whatever it then finds</em>). Anything that reorders this changes
+    /// what every seed means — which is why <see cref="OnSplashInstalled"/> appends rather than
+    /// interleaves.
     /// </para>
     /// <para>
     /// <b>A destination too short to hold the tree is refused rather than truncated.</b> A caller
     /// asking what is available wants all of it, and a short buffer would silently narrow the offer
     /// — which is a content-shaped bug with no symptom. Sizing by <see cref="TreeRules.Count"/> is
-    /// the contract; twenty-seven is the number, and with layered tiers the answer can be six on
-    /// the first pick.
+    /// the contract; twenty-seven is the number until a branch is borrowed and thirty-four after,
+    /// and with layered tiers the answer can be six on the first pick. <b>A buffer sized before a
+    /// splash is one the tree now refuses</b>, and <c>OfferGenerator</c> is the one caller that
+    /// holds one across the moment — it regrows on the next draw.
     /// </para>
     /// <para>
     /// Allocates nothing: a walk over arrays built at construction against the flags, with no
@@ -363,6 +393,75 @@ public sealed class SkillTree
     }
 
     /// <summary>
+    /// Rebuilds the flattened walk to include the branch <see cref="Rules"/> has just borrowed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Called by <see cref="TreeRules"/>' owner immediately after
+    /// <see cref="TreeRules.InstallSplash"/>, never independently.</b> Between the two calls the
+    /// pair disagrees about how many nodes the run has, so they are one step of one caller. It is a
+    /// method rather than a subscription for the reason core never subscribes to its own events
+    /// (<c>RunSession</c>'s own remark on <c>PlayerDied</c>).
+    /// </para>
+    /// <para>
+    /// <b>The borrowed branch is appended after the primary's three, never interleaved, and that is
+    /// the seed contract rather than a preference.</b> <see cref="Available"/>'s walk order is what
+    /// M3-04 draws against, so the same seed against the same tree state has to yield the same
+    /// offer (AR §18.3). Appending means every seed's meaning <em>before</em> the splash is
+    /// unchanged and every seed's meaning after it is a function of one authored order.
+    /// </para>
+    /// <para>
+    /// <b>The flags already set are copied across by ordinal, because the primary's ordinals do not
+    /// move.</b> That is the whole of what appending buys: <see cref="_taken"/> and
+    /// <see cref="_takenInBranch"/> grow, and every entry in them still means what it meant.
+    /// </para>
+    /// <para>
+    /// <b>The borrowed nodes are swept for handlers before anything is assigned</b>, for the
+    /// constructor's reason one moment later in the run: <see cref="Record"/> writes the node down
+    /// before it applies the effects, so a borrowed node carrying a primitive this run never
+    /// registered would leave the node owned and its effects half on. Swept before the commit, a
+    /// missing <c>Register</c> line leaves this object exactly as it was.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// No branch is installed on <see cref="Rules"/>, so there is nothing to rebuild for.
+    /// </exception>
+    /// <exception cref="KeyNotFoundException">
+    /// A borrowed node carries an effect nothing in this run knows how to apply.
+    /// </exception>
+    public void OnSplashInstalled()
+    {
+        if (Rules.SplashBranch == TreeRules.NoSplash)
+        {
+            throw new InvalidOperationException(
+                "No branch has been borrowed, so there is nothing to rebuild. This is called by "
+                    + "whoever called TreeRules.InstallSplash, immediately after it and never on "
+                    + "its own.");
+        }
+
+        if (_nodes.Length == Rules.Count)
+        {
+            return;
+        }
+
+        Node[] widened = Flatten(Rules);
+
+        RequireHandlers(widened, from: _nodes.Length);
+
+        var taken = new bool[widened.Length];
+        var takenInBranch = new int[Rules.BranchCount];
+
+        Array.Copy(_taken, taken, _taken.Length);
+        Array.Copy(_takenInBranch, takenInBranch, _takenInBranch.Length);
+
+        _nodes = widened;
+        _taken = taken;
+        _takenInBranch = takenInBranch;
+
+        Reindex();
+    }
+
+    /// <summary>
     /// Records the node, applies its effects and — for a live take — says so.
     /// </summary>
     /// <remarks>
@@ -489,19 +588,41 @@ public sealed class SkillTree
         };
     }
 
+    /// <summary>Rebuilds <see cref="_index"/> from <see cref="_nodes"/> as it now stands.</summary>
+    /// <remarks>
+    /// Rebuilt whole rather than appended to, even though appending would be correct — the
+    /// primary's ordinals never move — because a map built once from the array it maps cannot drift
+    /// from it, and this runs twice a run at most.
+    /// </remarks>
+    private void Reindex()
+    {
+        _index.Clear();
+
+        for (int ordinal = 0; ordinal < _nodes.Length; ordinal++)
+        {
+            _index.Add(_nodes[ordinal].Spec.Id, ordinal);
+        }
+    }
+
     /// <summary>
-    /// Refuses the tree if anything in it carries an effect this run has no handler for.
+    /// Refuses the tree if anything from <paramref name="from"/> on carries an effect this run has
+    /// no handler for.
     /// </summary>
+    /// <param name="nodes">The flattened walk to sweep — the live one, or the widened one.</param>
+    /// <param name="from">
+    /// The first ordinal to ask about. 0 at construction; the old length at a splash, because
+    /// everything below it was swept when the run started and the specs have not moved.
+    /// </param>
     /// <remarks>
     /// Both lists, take and cast: an Active's cast effects are applied by M3-06's runner rather
     /// than by <see cref="Take"/>, and the first cast of a skill taken twenty minutes earlier is
     /// the worst possible moment to discover a missing <c>Register</c> line.
     /// </remarks>
-    private void RequireHandlers()
+    private void RequireHandlers(Node[] nodes, int from)
     {
-        for (int ordinal = 0; ordinal < _nodes.Length; ordinal++)
+        for (int ordinal = from; ordinal < nodes.Length; ordinal++)
         {
-            SkillSpec spec = _nodes[ordinal].Spec;
+            SkillSpec spec = nodes[ordinal].Spec;
 
             RequireHandlers(spec, spec.Effects, "takes");
 
@@ -532,18 +653,22 @@ public sealed class SkillTree
     }
 
     /// <summary>
-    /// Flattens the tree into tree order, which is the order <see cref="Available"/> promises.
+    /// Flattens the run's tree into tree order, which is the order <see cref="Available"/> promises.
     /// </summary>
+    /// <remarks>
+    /// <b>Every branch the <em>run</em> has, through <see cref="TreeRules.Branch"/>.</b> A borrowed
+    /// branch is index 3, so it falls out of this loop appended after the primary's three with no
+    /// special case — which is the whole reason <see cref="TreeRules"/> hands one back as a
+    /// <see cref="SkillBranchSpec"/> rather than as a shape of its own.
+    /// </remarks>
     private static Node[] Flatten(TreeRules rules)
     {
         var nodes = new Node[rules.Count];
         int ordinal = 0;
 
-        IReadOnlyList<SkillBranchSpec> branches = rules.Tree.Branches;
-
-        for (int b = 0; b < branches.Count; b++)
+        for (int b = 0; b < rules.BranchCount; b++)
         {
-            SkillBranchSpec branch = branches[b];
+            SkillBranchSpec branch = rules.Branch(b);
 
             for (int t = 1; t <= branch.TierCount; t++)
             {

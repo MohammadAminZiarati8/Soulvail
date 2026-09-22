@@ -59,6 +59,13 @@ public sealed class TableLocalizerTests
     private const string RunEndPrefabPath = "Assets/_Project/Prefabs/UI/RunEnd.prefab";
 
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
+
+    /// <summary>
+    /// M5-07's class-select screen. Swept here for the same thing the Menu scene is swept for — no
+    /// raw English typed into an asset — and the shape of what it <em>does</em> draw is
+    /// <c>ClassSelectPresenterTests.Select_DrawsNoRawEnglish</c>'s.
+    /// </summary>
+    private const string ClassSelectPrefabPath = "Assets/_Project/Prefabs/UI/ClassSelect.prefab";
     private const string TablePath = "Assets/_Project/Data/Localisation/English.asset";
 
     private readonly List<Object> _created = new List<Object>();
@@ -462,13 +469,32 @@ public sealed class TableLocalizerTests
                 $"'{authored}' is still typed into RunEnd.prefab.");
         }
 
-        // And the eight have rows, so the screens that now ask for them get words rather than keys.
+        // **And the class-select screen, as of M5-07.** The sweep gains the prefab rather than the
+        // scene: the screen is a prefab instance in Menu.unity, so its labels live in the asset and
+        // a scene-only read would see none of them.
+        IReadOnlyList<string> classSelect = AuthoredText(ClassSelectPrefabPath);
+
+        Assert.That(
+            classSelect,
+            Is.Not.Empty,
+            "the prefab has no TMP_Text at all, so this row tests nothing.");
+
+        foreach (string authored in new[] { "Choose your class", "Back", "Oathbound", "Gravecaller" })
+        {
+            Assert.That(
+                classSelect,
+                Does.Not.Contain(authored),
+                $"'{authored}' is still typed into ClassSelect.prefab.");
+        }
+
+        // And the ten have rows, so the screens that now ask for them get words rather than keys.
         TableLocalizer shipped = new TableLocalizer(LoadShippedTable());
 
         foreach (string key in new[]
         {
             "ui.app.title", "ui.menu.descend", "ui.menu.continue", "ui.death.title", "ui.death.hint",
             "ui.runend.depth", "ui.runend.bosses", "ui.runend.shards",
+            "ui.classselect.title", "ui.classselect.back",
         })
         {
             Assert.That(shipped.Has(new LocKey(key)), Is.True, $"English.asset has no row for {key}.");

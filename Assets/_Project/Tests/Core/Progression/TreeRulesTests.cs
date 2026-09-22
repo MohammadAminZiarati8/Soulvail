@@ -426,26 +426,380 @@ public sealed class TreeRulesTests
         Assert.That(new TreeRules(tree, Catalog(tree, skills)).ActiveCount, Is.EqualTo(3));
     }
 
+    // ---- One branch index space over two trees (M5-07a-i rules 1, 2) ---------------------------
+
+    [Test]
+    public void Rules_UnsplashedIsThreeBranches()
+    {
+        TreeRules rules = FullRules();
+
+        Assert.That(rules.BranchCount, Is.EqualTo(3), "A class's three, and nothing borrowed.");
+        Assert.That(rules.SplashBranch, Is.EqualTo(TreeRules.NoSplash));
+        Assert.That(rules.SplashBranch, Is.EqualTo(-1), "NoSplash is −1, which is TryLocate's miss.");
+        Assert.That(rules.SplashCharacterId.Value, Is.Null, "Nothing has been borrowed from anybody.");
+        Assert.That(rules.Count, Is.EqualTo(27), "The run's node count is the class's until it is not.");
+    }
+
+    [Test]
+    public void Rules_BranchCountMatchesTheConstUntilASplash()
+    {
+        TreeRules rules = FullRules();
+
+        // **The two mean different things and are equal exactly while nothing is installed.**
+        // `SkillTreeSpec.BranchCount` is branches *per class* — CH §5's identical skeleton — and
+        // reading it as branches *per run* is what put an IndexOutOfRangeException in
+        // OfferGenerator.Draw.
+        Assert.That(rules.BranchCount, Is.EqualTo(SkillTreeSpec.BranchCount));
+
+        Install(rules);
+
+        Assert.That(rules.BranchCount, Is.EqualTo(4));
+        Assert.That(rules.BranchCount, Is.Not.EqualTo(SkillTreeSpec.BranchCount));
+        Assert.That(SkillTreeSpec.BranchCount, Is.EqualTo(3), "The const did not move; the run did.");
+    }
+
+    [Test]
+    public void Rules_InstallAddsAFourthBranch()
+    {
+        TreeRules rules = FullRules();
+
+        Install(rules);
+
+        Assert.That(rules.BranchCount, Is.EqualTo(4));
+        Assert.That(rules.SplashBranch, Is.EqualTo(3), "One past the primary's last, always.");
+        Assert.That(rules.SplashCharacterId, Is.EqualTo(new ContentId(SplashCharacter)));
+
+        // CH §5.4's "one branch minus its Keystone", added to the class's own 27.
+        Assert.That(rules.Count, Is.EqualTo(27 + 8));
+    }
+
+    [Test]
+    public void Rules_ABorrowedNodeLocatesAtBranchThree()
+    {
+        TreeRules rules = FullRules();
+
+        Install(rules);
+
+        Assert.That(rules.TryLocate(new ContentId(Node('x', 3, 'a')), out int branch, out int tier), Is.True);
+        Assert.That(branch, Is.EqualTo(3), "Branch 3 whichever class and whichever branch it came from.");
+
+        // **The tier it had in its own tree**, which is what makes CH §5.4's "gated by the same
+        // tier rule (§5)" the same arithmetic rather than a second one.
+        Assert.That(tier, Is.EqualTo(3));
+
+        Assert.That(rules.Skill(new ContentId(Node('x', 3, 'a'))), Is.Not.Null);
+
+        // A stranger still answers −1, and the borrowed branch did not turn a miss into a hit.
+        Assert.That(rules.TryLocate(new ContentId("skill.ghost"), out branch, out tier), Is.False);
+        Assert.That(branch, Is.EqualTo(TreeRules.NoSplash));
+        Assert.That(tier, Is.Zero);
+    }
+
+    [Test]
+    public void Rules_ThePrimaryIsUnmoved()
+    {
+        IReadOnlyList<SkillSpec> skills = FullSkills();
+
+        TreeRules rules = FullRules();
+
+        var branches = new int[skills.Count];
+        var tiers = new int[skills.Count];
+
+        for (int i = 0; i < skills.Count; i++)
+        {
+            rules.TryLocate(skills[i].Id, out branches[i], out tiers[i]);
+        }
+
+        Install(rules);
+
+        // **Every one of the twenty-seven, where it was.** The borrowed branch is appended, so a
+        // primary id that moved would mean every seed drawn before the splash now means something
+        // else (AR §18.3).
+        for (int i = 0; i < skills.Count; i++)
+        {
+            Assert.That(rules.TryLocate(skills[i].Id, out int branch, out int tier), Is.True);
+            Assert.That(branch, Is.EqualTo(branches[i]), $"'{skills[i].Id}' changed branch.");
+            Assert.That(tier, Is.EqualTo(tiers[i]), $"'{skills[i].Id}' changed tier.");
+        }
+
+        Assert.That(rules.NodeCountOf(0), Is.EqualTo(9));
+        Assert.That(rules.NodeCountOf(1), Is.EqualTo(9));
+        Assert.That(rules.NodeCountOf(2), Is.EqualTo(9));
+    }
+
+    [Test]
+    public void Rules_NodeCountOfThree()
+    {
+        TreeRules rules = FullRules();
+
+        // Two tiers of two, no keystone in it at all, so the drop takes nothing and four is four.
+        Install(rules, Shallow('x'), Skills(ShallowSkills('x'), SplashFillerSkills()));
+
+        Assert.That(rules.NodeCountOf(3), Is.EqualTo(4));
+
+        // 0-based, so 4 is one past the end of a four-branch run — and the message says four
+        // rather than three, which is the whole of what this task changed about the number.
+        var thrown = Assert.Throws<ArgumentOutOfRangeException>(() => rules.NodeCountOf(4));
+
+        Assert.That(thrown.Message, Does.Contain("4"));
+    }
+
+    // ---- What does not come with the branch (rule 3) -------------------------------------------
+
+    [Test]
+    public void Rules_TheKeystoneIsDropped()
+    {
+        TreeRules rules = FullRules();
+
+        Install(rules);
+
+        // **CH §5.4: "what you do not gain: … and its Keystone".** Nine were authored, eight came
+        // over, and the count is what a Keystone's own gate would have asked for.
+        Assert.That(rules.NodeCountOf(3), Is.EqualTo(8));
+
+        var keystone = new ContentId(KeystoneId('x'));
+
+        Assert.That(rules.TryLocate(keystone, out _, out _), Is.False, "It is not anywhere.");
+        Assert.That(rules.IsKeystone(keystone), Is.False, "Not a keystone of this run — not a node of it.");
+        Assert.Throws<KeyNotFoundException>(() => rules.Skill(keystone));
+
+        // Dropped at the install and not filtered at the offer, so there is one place that knows
+        // rather than three — the tree view and IsAvailable never hear of it.
+        Assert.That(rules.Count, Is.EqualTo(27 + 8));
+    }
+
+    [Test]
+    public void Rules_AKeystoneOnlyBranchIsRefused()
+    {
+        TreeRules rules = FullRules();
+
+        SkillBranchSpec branch = Branch('x', One(KeystoneId('x')));
+        IReadOnlyList<SkillSpec> skills = Skills(Keystone(KeystoneId('x')), SplashFillerSkills());
+
+        var thrown = Assert.Throws<ArgumentException>(() => Install(rules, branch, skills));
+
+        Assert.That(thrown.Message, Does.Contain(SplashTreeId), "Which tree.");
+        Assert.That(thrown.Message, Does.Contain("Branch 0"), "And which branch of it.");
+
+        // Nothing was installed, so the run still holds the tree it started with.
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+        Assert.That(rules.SplashBranch, Is.EqualTo(TreeRules.NoSplash));
+    }
+
+    [Test]
+    public void Rules_AnOrphanedUpgradeIsRefused()
+    {
+        TreeRules rules = FullRules();
+
+        // The tier-2 Upgrade's parent is the Keystone the install is about to drop, so taking it
+        // could never be possible — the exact deadlock RequireParentBelowInBranch exists to stop,
+        // arriving through the one door that check does not cover.
+        SkillBranchSpec branch = Branch(
+            'x',
+            One(Node('x', 1, 'a')),
+            One(Node('x', 2, 'a')),
+            One(KeystoneId('x')));
+
+        IReadOnlyList<SkillSpec> skills = Skills(
+            Passive(Node('x', 1, 'a')),
+            Upgrade(Node('x', 2, 'a'), KeystoneId('x')),
+            Keystone(KeystoneId('x')),
+            SplashFillerSkills());
+
+        var thrown = Assert.Throws<ArgumentException>(() => Install(rules, branch, skills));
+
+        Assert.That(thrown.Message, Does.Contain(Node('x', 2, 'a')), "The upgrade.");
+        Assert.That(thrown.Message, Does.Contain(KeystoneId('x')), "And the parent it lost.");
+
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+    }
+
+    // ---- What may not be borrowed at all (rules 4, 9) ------------------------------------------
+
+    [Test]
+    public void Rules_ItsOwnTreeIsRefused()
+    {
+        TreeRules rules = FullRules();
+
+        // The same tree, by id: a class does not splash itself, or every node of it would be in
+        // the offer twice and count against two branches' gating.
+        Assert.Throws<ArgumentException>(
+            () => rules.InstallSplash(FullTree(), 0, Catalog(FullTree(), FullSkills())));
+
+        // And a *differently named* tree of the same class, which is the same mistake wearing a
+        // different id — CH §5.4 borrows from a second class, not from a second tree.
+        SkillTreeSpec sameClass = new SkillTreeSpec(
+            new ContentId("tree.oathbound.alternate"),
+            new ContentId(CharacterId),
+            new[] { FullBranch('x'), Plain('y'), Plain('z') });
+
+        Assert.Throws<ArgumentException>(
+            () => rules.InstallSplash(sameClass, 0, Catalog(BorrowedSkills(), sameClass)));
+
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Rules_ASharedNodeIdIsRefused()
+    {
+        TreeRules rules = FullRules();
+
+        // `SkillTreeSpec` refuses one id twice inside one tree; borrowing is the first thing in the
+        // game that can put one id in two branches of one *run*.
+        SkillBranchSpec branch = Branch('x', new[] { Node('a', 1, 'a'), Node('x', 1, 'b') });
+        IReadOnlyList<SkillSpec> skills = Skills(
+            Passive(Node('a', 1, 'a')),
+            Passive(Node('x', 1, 'b')),
+            SplashFillerSkills());
+
+        var thrown = Assert.Throws<ArgumentException>(() => Install(rules, branch, skills));
+
+        Assert.That(thrown.Message, Does.Contain(Node('a', 1, 'a')));
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Rules_InstallIsOncePerRun()
+    {
+        TreeRules rules = FullRules();
+
+        Install(rules);
+
+        // CH §5.4: "Reversible: no. Locked for the run." A silent replacement would leave nodes
+        // taken from a branch the run no longer has, all counted in `TakenInBranch(3)` together.
+        Assert.Throws<InvalidOperationException>(
+            () => Install(rules, Shallow('x'), Skills(ShallowSkills('x'), SplashFillerSkills())));
+
+        Assert.That(rules.BranchCount, Is.EqualTo(4), "The first branch is still installed.");
+        Assert.That(rules.NodeCountOf(3), Is.EqualTo(8), "And it is still the first one.");
+        Assert.That(rules.SplashCharacterId, Is.EqualTo(new ContentId(SplashCharacter)));
+    }
+
+    [Test]
+    public void Rules_ActiveCountIncludesTheBorrowed()
+    {
+        SkillTreeSpec tree = FullTree();
+
+        var skills = new List<SkillSpec>(FullSkills());
+
+        skills[skills.FindIndex(s => s.Id == new ContentId(Node('a', 1, 'a')))] =
+            Active(Node('a', 1, 'a'));
+
+        var rules = new TreeRules(tree, Catalog(tree, skills));
+
+        Assert.That(rules.ActiveCount, Is.EqualTo(1));
+
+        // A borrowed branch of four, two of them Actives.
+        IReadOnlyList<SkillSpec> borrowed = Skills(
+            Active(Node('x', 1, 'a')),
+            Passive(Node('x', 1, 'b')),
+            Active(Node('x', 2, 'a')),
+            Passive(Node('x', 2, 'b')),
+            SplashFillerSkills());
+
+        Install(rules, Shallow('x'), borrowed);
+
+        Assert.That(rules.ActiveCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Rules_RefusesABranchThatOverflowsTheRunner()
+    {
+        SkillTreeSpec tree = FullTree();
+
+        var skills = new List<SkillSpec>(FullSkills());
+
+        // One short of the runner's twelve, so the branch below is what tips it over.
+        for (int i = 0; i < SkillRunner.MaxActives - 1; i++)
+        {
+            skills[i] = Active(skills[i].Id.Value);
+        }
+
+        var rules = new TreeRules(tree, Catalog(tree, skills));
+
+        Assert.That(rules.ActiveCount, Is.EqualTo(SkillRunner.MaxActives - 1));
+
+        IReadOnlyList<SkillSpec> borrowed = Skills(
+            Active(Node('x', 1, 'a')),
+            Passive(Node('x', 1, 'b')),
+            Active(Node('x', 2, 'a')),
+            Passive(Node('x', 2, 'b')),
+            SplashFillerSkills());
+
+        // **`RunSession.Start`'s check, made at the one moment it could not be made then** (rule 9).
+        // Left to `SkillRunner.Add` it would throw on the thirteenth Active, inside ChooseOffer,
+        // after the node had been taken and its effects applied.
+        var thrown = Assert.Throws<ArgumentException>(() => Install(rules, Shallow('x'), borrowed));
+
+        Assert.That(thrown.Message, Does.Contain(SkillRunner.MaxActives.ToString()), "Naming the cap.");
+
+        // **And the run is unaffected**: it keeps the tree it started with, down to the count.
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+        Assert.That(rules.SplashBranch, Is.EqualTo(TreeRules.NoSplash));
+        Assert.That(rules.Count, Is.EqualTo(27));
+        Assert.That(rules.ActiveCount, Is.EqualTo(SkillRunner.MaxActives - 1));
+        Assert.Throws<KeyNotFoundException>(() => rules.Skill(new ContentId(Node('x', 1, 'a'))));
+    }
+
+    [Test]
+    public void Rules_InstallGuards_Throw()
+    {
+        TreeRules rules = FullRules();
+
+        SkillTreeSpec other = SplashTree(BorrowedBranch());
+        ContentCatalog catalog = Catalog(BorrowedSkills(), other);
+
+        Assert.Throws<ArgumentNullException>(() => rules.InstallSplash(null, 0, catalog));
+        Assert.Throws<ArgumentNullException>(() => rules.InstallSplash(other, 0, null));
+
+        // 0-based, and `other` has three branches.
+        Assert.Throws<ArgumentOutOfRangeException>(() => rules.InstallSplash(other, -1, catalog));
+        Assert.Throws<ArgumentOutOfRangeException>(() => rules.InstallSplash(other, 3, catalog));
+
+        Assert.That(rules.BranchCount, Is.EqualTo(3));
+    }
+
     // ---- Content --------------------------------------------------------------------------------
+
+    /// <summary>Borrows <see cref="BorrowedBranch"/> — branch 0 of the second class's tree.</summary>
+    internal static void Install(TreeRules rules) =>
+        Install(rules, BorrowedBranch(), BorrowedSkills());
+
+    /// <summary>Borrows <paramref name="branch"/> as branch 0 of the second class's tree.</summary>
+    /// <remarks>
+    /// The catalog is built around the branch each row authors, because <c>InstallSplash</c>
+    /// resolves the borrowed ids through one — a row that forgot would fail on a message about the
+    /// catalog rather than on the rule it is about.
+    /// </remarks>
+    internal static void Install(
+        TreeRules rules,
+        SkillBranchSpec branch,
+        IReadOnlyList<SkillSpec> skills)
+    {
+        SkillTreeSpec other = SplashTree(branch);
+
+        rules.InstallSplash(other, 0, Catalog(skills, other));
+    }
 
     /// <summary>The 27-node tree CH §5 ships: three branches of 2/2/2/2 plus a keystone.</summary>
     internal static SkillTreeSpec FullTree() => Tree(FullBranch('a'), FullBranch('b'), FullBranch('c'));
 
     /// <summary>One spec per position of <see cref="FullTree"/>, all Passive but the keystones.</summary>
-    internal static IReadOnlyList<SkillSpec> FullSkills()
+    internal static IReadOnlyList<SkillSpec> FullSkills() =>
+        Skills(FullBranchSkills('a'), FullBranchSkills('b'), FullBranchSkills('c'));
+
+    /// <summary>One spec per position of <see cref="FullBranch"/>: eight Passives and a keystone.</summary>
+    internal static SkillSpec[] FullBranchSkills(char letter)
     {
-        var skills = new List<SkillSpec>();
+        var skills = new SkillSpec[9];
 
-        foreach (char letter in Letters)
+        for (int tier = 1; tier <= 4; tier++)
         {
-            for (int tier = 1; tier <= 4; tier++)
-            {
-                skills.Add(Passive(Node(letter, tier, 'a')));
-                skills.Add(Passive(Node(letter, tier, 'b')));
-            }
-
-            skills.Add(Keystone(KeystoneId(letter)));
+            skills[(2 * tier) - 2] = Passive(Node(letter, tier, 'a'));
+            skills[(2 * tier) - 1] = Passive(Node(letter, tier, 'b'));
         }
+
+        skills[8] = Keystone(KeystoneId(letter));
 
         return skills;
     }
@@ -472,6 +826,57 @@ public sealed class TreeRulesTests
             null,
             skills,
             new[] { tree });
+
+    /// <summary>A catalog over two classes' trees and every node of both.</summary>
+    /// <remarks>
+    /// What a splash row needs: <c>InstallSplash</c> resolves the borrowed branch's ids through a
+    /// catalog, and the two trees are indexed by different classes so the catalog's one-tree-a-class
+    /// rule is satisfied rather than dodged.
+    /// </remarks>
+    internal static ContentCatalog Catalog(
+        IReadOnlyList<SkillSpec> skills,
+        params SkillTreeSpec[] trees) =>
+        new ContentCatalog(Array.Empty<CharacterSpec>(), null, null, skills, trees);
+
+    // ---- The second class a run borrows from (M5-07a-i) -----------------------------------------
+
+    /// <summary>The tree CH §5.4's borrowed branch comes out of, in every row that borrows one.</summary>
+    internal const string SplashTreeId = "tree.gravecaller";
+
+    /// <summary>
+    /// The class that tree belongs to — the id <c>SplashCharacterId</c> is asserted against.
+    /// </summary>
+    internal const string SplashCharacter = "character.gravecaller";
+
+    /// <summary>
+    /// A second class's tree whose branch 0 is <paramref name="borrowed"/>, with two filler
+    /// branches around it.
+    /// </summary>
+    /// <remarks>
+    /// Branch 0 every time, so a row says which branch it is borrowing by building one rather than
+    /// by counting. The fillers use letters <c>y</c> and <c>z</c> so that nothing in this tree can
+    /// collide with the primary's <c>a</c>, <c>b</c> and <c>c</c> by accident — the one row where a
+    /// collision is the point plants it deliberately.
+    /// </remarks>
+    internal static SkillTreeSpec SplashTree(SkillBranchSpec borrowed) =>
+        new SkillTreeSpec(
+            new ContentId(SplashTreeId),
+            new ContentId(SplashCharacter),
+            new[] { borrowed, Plain('y'), Plain('z') });
+
+    /// <summary>The specs behind <see cref="SplashTree"/>'s two filler branches.</summary>
+    internal static IReadOnlyList<SkillSpec> SplashFillerSkills() =>
+        Skills(PlainSkills('y'), PlainSkills('z'));
+
+    /// <summary>
+    /// The borrowed branch most rows use: CH §5.4's <em>"one branch minus its Keystone is 7"</em>
+    /// read off this fixture's nine-node shape, so eight survive the drop.
+    /// </summary>
+    internal static SkillBranchSpec BorrowedBranch() => FullBranch('x');
+
+    /// <summary>One spec per position of <see cref="BorrowedBranch"/>, plus the fillers'.</summary>
+    internal static IReadOnlyList<SkillSpec> BorrowedSkills() =>
+        Skills(FullBranchSkills('x'), SplashFillerSkills());
 
     internal static string Node(char branch, int tier, char slot) => $"skill.{branch}{tier}{slot}";
 
@@ -517,14 +922,11 @@ public sealed class TreeRulesTests
     internal static ModifyStat Damage(float percent) =>
         new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, percent);
 
-    /// <summary>The three branch letters, in index order.</summary>
-    private static readonly char[] Letters = { 'a', 'b', 'c' };
-
-    private static SkillTreeSpec Tree(params SkillBranchSpec[] branches) =>
+    internal static SkillTreeSpec Tree(params SkillBranchSpec[] branches) =>
         new SkillTreeSpec(new ContentId(TreeId), new ContentId(CharacterId), branches);
 
     /// <summary>A branch from tiers written as arrays of id strings, tier 1 first.</summary>
-    private static SkillBranchSpec Branch(char letter, params string[][] tiers)
+    internal static SkillBranchSpec Branch(char letter, params string[][] tiers)
     {
         var copy = new IReadOnlyList<ContentId>[tiers.Length];
 
@@ -544,7 +946,7 @@ public sealed class TreeRulesTests
     }
 
     /// <summary>One branch of <see cref="FullTree"/>: four tiers of two, then the keystone.</summary>
-    private static SkillBranchSpec FullBranch(char letter) => Branch(
+    internal static SkillBranchSpec FullBranch(char letter) => Branch(
         letter,
         new[] { Node(letter, 1, 'a'), Node(letter, 1, 'b') },
         new[] { Node(letter, 2, 'a'), Node(letter, 2, 'b') },
@@ -556,10 +958,10 @@ public sealed class TreeRulesTests
     /// A filler branch: two tiers of one Passive each, so a row about branch A can supply the other
     /// two legally without saying anything about them.
     /// </summary>
-    private static SkillBranchSpec Plain(char letter) =>
+    internal static SkillBranchSpec Plain(char letter) =>
         Branch(letter, One(Node(letter, 1, 'a')), One(Node(letter, 2, 'a')));
 
-    private static SkillSpec[] PlainSkills(char letter) => new[]
+    internal static SkillSpec[] PlainSkills(char letter) => new[]
     {
         Passive(Node(letter, 1, 'a')),
         Passive(Node(letter, 2, 'a')),
@@ -568,12 +970,12 @@ public sealed class TreeRulesTests
     /// <summary>
     /// M3-12's v1 shape for one branch: two tiers of two, every node ordinary and no keystone.
     /// </summary>
-    private static SkillBranchSpec Shallow(char letter) => Branch(
+    internal static SkillBranchSpec Shallow(char letter) => Branch(
         letter,
         new[] { Node(letter, 1, 'a'), Node(letter, 1, 'b') },
         new[] { Node(letter, 2, 'a'), Node(letter, 2, 'b') });
 
-    private static SkillSpec[] ShallowSkills(char letter) => new[]
+    internal static SkillSpec[] ShallowSkills(char letter) => new[]
     {
         Passive(Node(letter, 1, 'a')),
         Passive(Node(letter, 1, 'b')),
@@ -581,13 +983,13 @@ public sealed class TreeRulesTests
         Passive(Node(letter, 2, 'b')),
     };
 
-    private static string[] One(string id) => new[] { id };
+    internal static string[] One(string id) => new[] { id };
 
     /// <summary>
     /// Flattens specs and groups of specs into one list, so a row can read as the content it
     /// authored plus "and two ordinary branches".
     /// </summary>
-    private static IReadOnlyList<SkillSpec> Skills(params object[] parts)
+    internal static IReadOnlyList<SkillSpec> Skills(params object[] parts)
     {
         var skills = new List<SkillSpec>();
 
@@ -599,7 +1001,7 @@ public sealed class TreeRulesTests
                     skills.Add(spec);
                     break;
 
-                case SkillSpec[] group:
+                case IReadOnlyList<SkillSpec> group:
                     skills.AddRange(group);
                     break;
 

@@ -215,16 +215,18 @@ public sealed class ContentTests
     {
         var id = new ContentId("character.oathbound");
         var nameKey = new LocKey("character.oathbound.name");
+        var descriptionKey = new LocKey("character.oathbound.description");
         MovementSpec movement = OathboundMovement();
         TargetingSpec targeting = OathboundTargeting();
         WeaponSpec weapon = OathboundWeapon();
         FocusSpec focus = OathboundFocus();
         MovementSkillSpec movementSkill = OathboundMovementSkill();
 
-        var spec = new CharacterSpec(id, nameKey, 120f, movement, targeting, weapon, focus, movementSkill);
+        var spec = new CharacterSpec(id, nameKey, descriptionKey, 120f, movement, targeting, weapon, focus, movementSkill);
 
         Assert.That(spec.Id, Is.EqualTo(id));
         Assert.That(spec.NameKey, Is.EqualTo(nameKey));
+        Assert.That(spec.DescriptionKey, Is.EqualTo(descriptionKey));
         Assert.That(spec.MaxHp, Is.EqualTo(120f));
         Assert.That(spec.Movement, Is.SameAs(movement));
         Assert.That(spec.Targeting, Is.SameAs(targeting));
@@ -237,23 +239,23 @@ public sealed class ContentTests
     public void CharacterSpec_InvalidHp_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 0f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 0f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), -1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), -1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
 
         // Same NaN hole as MovementSpec's guard, and the same spelling closes it.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), float.NaN, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), float.NaN, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
 
         Assert.DoesNotThrow(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 1f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
     public void CharacterSpec_NullMovement_Throws()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, null, OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, null, OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -264,7 +266,7 @@ public sealed class ContentTests
         // that does not aim. The guard is what stops it becoming a NullReferenceException
         // somewhere inside M1-04's targeting loop instead.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), null, OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), null, OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -275,7 +277,7 @@ public sealed class ContentTests
         // class that does not attack. Without the guard it would be a character who aims perfectly
         // and never swings — a bug that looks like broken targeting rather than missing content.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), null, OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), OathboundTargeting(), null, OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -287,7 +289,7 @@ public sealed class ContentTests
         // the stationary clock CombatBlackboard.StationaryTime mirrors, and a class without one
         // would silently stop counting a CC §6.4 trigger field.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), null, OathboundMovementSkill()));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), null, OathboundMovementSkill()));
     }
 
     [Test]
@@ -299,7 +301,91 @@ public sealed class ContentTests
         // place the design has no fallback for — the dodge is the whole defensive layer for a class
         // without an Aegis.
         Assert.Throws<ArgumentNullException>(
-            () => new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), null));
+            () => new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), null));
+    }
+
+    [Test]
+    public void CharacterSpec_MinionsAreOptionalAndDefaultToNone()
+    {
+        // Rule 6: the Oathbound's is null, exactly as a class without an Aegis has no ShieldSpec.
+        // The default is "none" rather than "a zeroed block" because a zeroed block would have to
+        // be read against the id to be understood, which puts the meaning of the data in a second
+        // place — ProjectileSpec's own argument, and the reason MinionSpec refuses every zero.
+        Assert.That(Oathbound().Minions, Is.Null);
+
+        var withMinions = new CharacterSpec(
+            OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 80f, OathboundMovement(), OathboundTargeting(),
+            OathboundWeapon(), OathboundFocus(), OathboundMovementSkill(), null, 0.5f, Wight());
+
+        Assert.That(withMinions.Minions, Is.Not.Null);
+        Assert.That(withMinions.Minions.SpecId.Value, Is.EqualTo("minion.wight"));
+        Assert.That(withMinions.Shield, Is.Null, "The two optional blocks are independent.");
+    }
+
+    [Test]
+    public void MinionSpec_StoresValues()
+    {
+        MinionSpec wight = Wight();
+
+        Assert.That(wight.SpecId.Value, Is.EqualTo("minion.wight"));
+        Assert.That(wight.NameKey.Key, Is.EqualTo("minion.wight.name"));
+        Assert.That(wight.Cap, Is.EqualTo(3));
+        Assert.That(wight.Lifespan, Is.EqualTo(20f));
+        Assert.That(wight.RiseChance, Is.EqualTo(0.25f));
+        Assert.That(wight.MaxHp, Is.EqualTo(20f));
+        Assert.That(wight.MoveSpeed, Is.EqualTo(3f));
+        Assert.That(wight.Damage, Is.EqualTo(8f));
+        Assert.That(wight.AttackInterval, Is.EqualTo(1f));
+        Assert.That(wight.Reach, Is.EqualTo(1.5f));
+    }
+
+    [Test]
+    public void MinionSpec_RefusesAnImpossibleBlock()
+    {
+        // A rise chance is the one number here with a ceiling, so it is guarded at both ends: zero
+        // is the class's signature switched off — better said by passing no spec — and above one is
+        // a probability that is not one, which a draw would satisfy every time while reading as a
+        // multiplier.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: 1.01f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(riseChance: float.NaN));
+        Assert.DoesNotThrow(() => Minion(riseChance: 1f), "Every kill raising one is legal.");
+
+        // A cap of zero is a class whose minions can never be alive, which is a class with none.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(cap: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(cap: -1));
+
+        // The six that are simply positive. NaN is refused with the negatives by the `!(x > 0f)`
+        // spelling, and infinity separately because it passes a `> 0` test: an infinite lifespan is
+        // a permanent army bought with one kill.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(lifespan: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(lifespan: float.PositiveInfinity));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(maxHp: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(maxHp: float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(moveSpeed: -1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(damage: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(attackInterval: 0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Minion(reach: float.NaN));
+
+        // The message names the field, because a content error is read by whoever authored the
+        // asset rather than by whoever wrote the guard.
+        ArgumentOutOfRangeException thrown =
+            Assert.Throws<ArgumentOutOfRangeException>(() => Minion(attackInterval: 0f));
+
+        Assert.That(thrown.ParamName, Is.EqualTo("attackInterval"));
+    }
+
+    [Test]
+    public void MinionSpec_DefaultIdOrKey_Throws()
+    {
+        // A minion nothing can look up, and one with no name to fail to display. Refused where the
+        // data is built rather than where it is read — CharacterSpec's rule, and the reason a
+        // struct with an invariant is checked at both ends (AR §18.3).
+        Assert.Throws<ArgumentException>(
+            () => new MinionSpec(default, new LocKey("minion.wight.name"), 3, 20f, 0.25f, 20f, 3f, 8f, 1f, 1.5f));
+
+        Assert.Throws<ArgumentException>(
+            () => new MinionSpec(new ContentId("minion.wight"), default, 3, 20f, 0.25f, 20f, 3f, 8f, 1f, 1.5f));
     }
 
     [Test]
@@ -308,7 +394,7 @@ public sealed class ContentTests
         // A spec with no id would sit in the catalog under a key that Character() reports as
         // missing, so it is refused where the data is built.
         Assert.Throws<ArgumentException>(
-            () => new CharacterSpec(default, OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
+            () => new CharacterSpec(default, OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill()));
     }
 
     [Test]
@@ -360,8 +446,8 @@ public sealed class ContentTests
     [Test]
     public void Catalog_DuplicateId_Throws_NamingId()
     {
-        var first = new CharacterSpec(OathboundId(), OathboundNameKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
-        var second = new CharacterSpec(OathboundId(), OathboundNameKey(), 200f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
+        var first = new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 120f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
+        var second = new CharacterSpec(OathboundId(), OathboundNameKey(), OathboundDescriptionKey(), 200f, OathboundMovement(), OathboundTargeting(), OathboundWeapon(), OathboundFocus(), OathboundMovementSkill());
 
         ArgumentException ex = Assert.Throws<ArgumentException>(
             () => new ContentCatalog(new[] { first, second }));
@@ -595,6 +681,9 @@ public sealed class ContentTests
 
     private static LocKey OathboundNameKey() => new LocKey("character.oathbound.name");
 
+    private static LocKey OathboundDescriptionKey() =>
+        new LocKey("character.oathbound.description");
+
     private static MovementSpec OathboundMovement() => new MovementSpec(5.4f, 0.06f, 0.08f, 720f);
 
     /// <summary>CC §7's targeting table: range 12, weights 3 / 2 / 1 / 1.5, cadence 0.1.</summary>
@@ -610,10 +699,38 @@ public sealed class ContentTests
     private static MovementSkillSpec OathboundMovementSkill() =>
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f);
 
+    /// <summary>CH §3.2's Rise as <c>Gravecaller.asset</c> ships it: cap 3, 20 s, 25 %.</summary>
+    private static MinionSpec Wight() => Minion();
+
+    /// <summary>
+    /// The Wight with one field replaced, so a guard row says which field it is testing rather
+    /// than repeating ten arguments to move one of them.
+    /// </summary>
+    private static MinionSpec Minion(
+        int cap = 3,
+        float lifespan = 20f,
+        float riseChance = 0.25f,
+        float maxHp = 20f,
+        float moveSpeed = 3f,
+        float damage = 8f,
+        float attackInterval = 1f,
+        float reach = 1.5f) => new MinionSpec(
+            new ContentId("minion.wight"),
+            new LocKey("minion.wight.name"),
+            cap,
+            lifespan,
+            riseChance,
+            maxHp,
+            moveSpeed,
+            damage,
+            attackInterval,
+            reach);
+
     private static CharacterSpec Oathbound() =>
         new CharacterSpec(
             OathboundId(),
             OathboundNameKey(),
+            OathboundDescriptionKey(),
             120f,
             OathboundMovement(),
             OathboundTargeting(),

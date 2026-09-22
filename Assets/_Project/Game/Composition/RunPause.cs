@@ -13,9 +13,14 @@ namespace Soulvail.Game.Composition;
 /// holder.
 /// </summary>
 /// <remarks>
-/// <see cref="Menu"/> has no caller until M3-09 and is written now rather than later, because
+/// <see cref="Menu"/> had no caller until M3-09 and was written before it, because
 /// <see cref="RunPause"/>'s whole contract is that a second reason is refused — and a one-member
 /// enum cannot express the case the refusal exists for.
+/// <para>
+/// <see cref="Splash"/> is the third and it is a <em>reason</em> rather than a second level-up
+/// (M5-07a-ii rules 1 and 5): <c>RunTicker.LevelUpPhase</c> raises whichever of the two is wanted
+/// and never both, so a refusal there can name which screen is holding the run.
+/// </para>
 /// </remarks>
 public enum PauseReason
 {
@@ -24,6 +29,12 @@ public enum PauseReason
 
     /// <summary>The pause menu is open (GD §5.2, §7.3). M3-09's, and unused until then.</summary>
     Menu,
+
+    /// <summary>
+    /// CH §5.4's half-tree moment is on the table: the run has stopped to ask which class it borrows
+    /// a branch from, and the choice is mandatory (M5-07a-ii).
+    /// </summary>
+    Splash,
 }
 
 /// <summary>

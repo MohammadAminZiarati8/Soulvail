@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Run;
@@ -121,6 +122,12 @@ namespace Soulvail.Game.Composition
                  "empty, because what its absence costs is not what the HUD's costs.")]
         [SerializeField] private LevelUpPresenter _levelUpPresenter;
 
+        [Tooltip("CH §5.4's half-tree moment: classes, then branches, on its own canvas above the " +
+                 "level-up's. Optional on the level-up screen's terms — and read its registration " +
+                 "below before leaving it empty, because a run that reaches six nodes without it " +
+                 "stops for good.")]
+        [SerializeField] private SplashPresenter _splashPresenter;
+
         [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
                  "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
                  "without one plays exactly the same fight, it just cannot be stopped from inside.")]
@@ -175,6 +182,22 @@ namespace Soulvail.Game.Composition
         [Tooltip("Where spawned enemy bodies are parented. Optional — they go to the scene root " +
                  "without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _enemyParent;
+
+        [Tooltip("The one Wight body prefab (CH §3.2). There is one kind of minion, and it shares " +
+                 "the enemy body's mesh at 0.7 of its scale in the player's own cyan — smaller " +
+                 "than every archetype, so size is what separates a Wight from the player.")]
+        [SerializeField] private MinionView _minionPrefab;
+
+        [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
+                 "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
+                 "is torn down and raised again at every stage boundary (M2-11a).")]
+        [SerializeField] private Transform _minionParent;
+
+        [Tooltip("The corpse a Shroudstep leaves (CH §3.2, M5-03). The shared body at the player's " +
+                 "silhouette, in the player's own cyan at half alpha — theirs, and dead. Not a " +
+                 "floor decal: a flat patch an enemy walks at would read as a hazard, and that " +
+                 "colour is reserved.")]
+        [SerializeField] private DecoyView _decoyPrefab;
 
         [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
                  "enemy prefab makes — a body per kind of shot arrives with the art.")]
@@ -272,6 +295,35 @@ namespace Soulvail.Game.Composition
                     $"{nameof(RunScope)} has no {nameof(EnemyView)} prefab assigned. Drag " +
                     "Prefabs/Enemies/Enemy.prefab onto its Enemy Prefab field — without it core " +
                     "spawns enemies that have no body and never report a position.");
+            }
+
+            // Guarded like the enemy prefab and for its sentence, one side of the fight over: core
+            // raises Wights whether or not anything can draw them (M5-04b), so a scene dressed
+            // without this field is one where a quarter of a Gravecaller's kills stand an
+            // *invisible* body up that fights for twenty seconds. Nothing on screen would report
+            // it, and the enemies would simply start dying to nobody.
+            if (_minionPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(MinionView)} prefab assigned. Drag " +
+                    "Prefabs/Minions/Wight.prefab onto its Minion Prefab field — without it a " +
+                    "Gravecaller's Wights are raised, walk, and kill with no body anywhere in the " +
+                    "scene (CH §3.2).");
+            }
+
+            // Guarded like the Wight prefab above and for a quieter version of its sentence: core
+            // drops a decoy whether or not anything can draw one (M5-03), so a scene dressed
+            // without this field is one where every Shroudstep taunts the whole arena for three
+            // seconds with nothing on the floor to say why the swarm walked off. The evidence of a
+            // decoy would be the arena walking the wrong way, which is what DecoySpawned's own
+            // remarks have said since M5-03.
+            if (_decoyPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no {nameof(DecoyView)} prefab assigned. Drag " +
+                    "Prefabs/Vfx/VFX_Decoy.prefab onto its Decoy Prefab field — without it a " +
+                    "Gravecaller's Shroudstep pulls every enemy in the arena towards a corpse " +
+                    "nobody can see (CH §3.2).");
             }
 
             if (_projectilePrefab == null)
@@ -391,6 +443,24 @@ namespace Soulvail.Game.Composition
             if (_levelUpPresenter != null)
             {
                 builder.RegisterComponent(_levelUpPresenter);
+            }
+
+            // CH §5.4's moment (M5-07a-ii). The level-up screen's registration exactly, including
+            // the half that is not obvious: the gate is RunTicker's rather than this screen's, so
+            // the run stops whenever core has the moment open whether or not anything is drawing it
+            // — and a scene dressed without this presenter does not play "the same without a splash
+            // screen". On the sixth node it stops dead, shows nothing, and **there is no way past
+            // it at all**, because CH §5.4's choice is mandatory and nothing else can answer it.
+            //
+            // It is still optional rather than guarded, and that is the same statement about *when*
+            // the level-up screen's line makes: this is the undressed-Run-scene workflow every
+            // optional field on this scope protects, and M0-19's release build. **Unlike the
+            // level-up's, the failure it guards is reachable today** — both shipped classes have a
+            // tree — which is why the tooltip says so and why M5-08's checklist walks a run to six
+            // nodes.
+            if (_splashPresenter != null)
+            {
+                builder.RegisterComponent(_splashPresenter);
             }
 
             // Optional, and — unlike the level-up screen directly above — its absence really does
@@ -558,6 +628,38 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _enemyPrefab)
                 .WithParameter("parent", _enemyParent)
                 .WithParameter("prewarm", PrewarmCount());
+
+            // The army (M5-05a). The census above's registration exactly, for its reasons — two of
+            // its arguments are references to this scene, and the static installer is deliberately
+            // the half a headless test can build.
+            //
+            // Prewarmed to MinionSystem.MaxConcurrent, which is the whole of what can ever stand at
+            // once whatever a Legion node says, so the pool cannot be asked for a body it does not
+            // already hold. Sized from the constant rather than a literal, so the two cannot
+            // disagree the day the ceiling moves — and flat rather than conditional on the arena
+            // being dressed, unlike PrewarmCount below, because eight bodies cost a fraction of the
+            // enemy pool and the moment a raise happens is the moment a hitch cannot be afforded:
+            // Rise puts one behind every fourth kill (M5-04b).
+            builder.Register<MinionViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _minionPrefab)
+                .WithParameter("parent", _minionParent)
+                .WithParameter("prewarm", MinionSystem.MaxConcurrent);
+
+            // The corpses (M5-05b). The army's registration exactly, for its reasons — two of its
+            // arguments are references to this scene, and the static installer is deliberately the
+            // half a headless test can build.
+            //
+            // Prewarmed to LureSystem.Capacity, which is two and is never a third: the Shroudstep's
+            // cooldown is 2.5 s against a decoy's 3, so two can legitimately overlap for half a
+            // second and nothing in the design lets a player hold more. Sized from the constant so
+            // the pool and core's own ceiling cannot disagree — and parented under the decal root
+            // rather than the arena, because an arena is torn down and raised again at every stage
+            // boundary (M2-11a) and a corpse parented to one would be destroyed mid-life by a swap
+            // it has nothing to do with.
+            builder.Register<DecoyViews>(Lifetime.Scoped)
+                .WithParameter("prefab", _decoyPrefab)
+                .WithParameter("parent", _decalRoot)
+                .WithParameter("prewarm", LureSystem.Capacity);
 
             // The same three-argument shape as the census above, and registered here rather than in
             // RunInstaller for the reason EnemyViews is: two of its arguments are references to

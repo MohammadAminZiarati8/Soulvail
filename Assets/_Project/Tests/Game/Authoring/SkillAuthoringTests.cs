@@ -928,8 +928,12 @@ public sealed class SkillAuthoringTests
         // so the assertion inverts rather than being deleted. *How many* and *which* is
         // `OathboundTreeTests.Boot_RegistersTheTreeAndTwelveSkills`; what is owed here is only that
         // the two fields are still present and still reachable from this fixture's own prefab load.
-        Assert.That(skills.arraySize, Is.EqualTo(12), "M3-12c's twelve Oathbound nodes.");
-        Assert.That(trees.arraySize, Is.EqualTo(1), "M3-12c's OathboundTree.");
+        Assert.That(
+            skills.arraySize,
+            Is.EqualTo(24),
+            "M3-12c's twelve Oathbound nodes and M5-06b's twelve Gravecaller ones.");
+
+        Assert.That(trees.arraySize, Is.EqualTo(2), "One tree per shipped class, since M5-06b.");
     }
 
     // ------------------------------------------------------------------------------- helpers

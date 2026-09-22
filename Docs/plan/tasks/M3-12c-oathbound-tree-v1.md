@@ -128,7 +128,7 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 - **Keystones, and the remaining fifteen nodes** — M7-04. Rule 5 keeps their names free.
 - **General content validation** — M3-14: unique ids across every catalog, every `LocKey` present, every tree well-formed. This task pins *these* assets; that one pins the rules for all of them.
 - **Retuning against the playtest.** Rule 1 says the owner retunes in the Inspector; M3-15 is where a measured run either accepts the table or sends it back.
-- **The other two classes' trees** — M5-05 and M6-08.
+- **The other two classes' trees** — M5-06b and M6-08.
 - **Pacts, Veilrot, Ordeals** — rule 6, and M6-05.
 - **CH §5.2's exponent.** M3-01a rule 9 flagged that the curve fills the tree early and ruled *ship as authored*; rule 8's table is computed against 1.4 as shipped, and M3-15 owns the retune.
 

@@ -33,6 +33,22 @@ public sealed class LevelUpFlowTests
     private const float MoveSpeed = 3f;
     private const int EnemyCapacity = 32;
 
+    /// <summary>
+    /// What <c>Descent.asset</c> authors per Overflow level, written out — the number every row
+    /// below reasons with, and no longer a <c>const</c> anybody can reach from here.
+    /// </summary>
+    /// <remarks>
+    /// <b>Two fixtures meeting at a number, which is this assembly's standing bargain and not a new
+    /// one</b> (M5-06b rule 10). Until M5-06b these rows read <c>LevelUpFlow.OverflowDamage</c>, so
+    /// a retune moved the test with the code and neither could disagree with the other — which also
+    /// meant a retune was a rebuild, which is what ledger row 5(i) was about.
+    /// <c>Soulvail.Tests.Core</c> cannot reach <c>AssetDatabase</c> (M0-10), so it cannot open the
+    /// mode; <c>GravecallerTreeTests.Overflow_ComesFromTheMode</c> is the row in the assembly that
+    /// can, and a retune that moved one and not the other reddens one of the two. That is the same
+    /// arrangement <c>TimeToKillTests</c> has had with <c>KeenCenser.asset</c> since M3-12c.
+    /// </remarks>
+    private const float OverflowPerLevel = 0.02f;
+
     private RecordingEvents _events;
     private RecordingIntents _intents;
     private PlayerCombat _combat;
@@ -348,8 +364,8 @@ public sealed class LevelUpFlowTests
         // stat from ×2.80 to ×2.82 — a ×1.007 change, not a ×1.02 one. Asserting the *delta* against
         // the base is what says that out loud; a row written as `before × 1.02` would have been red
         // against correct code, and was.
-        Assert.That(Damage - damageBefore, Is.EqualTo(WeaponDamage * LevelUpFlow.OverflowDamage).Within(0.0001f));
-        Assert.That(MaxHpValue - maxHpBefore, Is.EqualTo(MaxHp * LevelUpFlow.OverflowMaxHp).Within(0.0001f));
+        Assert.That(Damage - damageBefore, Is.EqualTo(WeaponDamage * OverflowPerLevel).Within(0.0001f));
+        Assert.That(MaxHpValue - maxHpBefore, Is.EqualTo(MaxHp * OverflowPerLevel).Within(0.0001f));
     }
 
     [Test]
@@ -518,6 +534,89 @@ public sealed class LevelUpFlowTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Grant(flow, -1));
     }
 
+    // ---- Ledger row 5(i): what a level is worth is the mode's (M5-06b rules 8–11) ----------------
+
+    [Test]
+    public void Overflow_TheConstantsAreGone()
+    {
+        // **The row that stops the literal coming back.** ADR-0006 says every number is in an
+        // asset; these two were `public const float` from M3-08a to M5-06b, and rule 10's ruling is
+        // that they are *deleted* rather than left as defaults — a default beside an authored value
+        // is a second place the number lives, and the next reader would not know which one the game
+        // used. Reflection over every member, not just the public ones: a private const would be
+        // the same fault, quieter.
+        foreach (string name in new[] { "OverflowDamage", "OverflowMaxHp" })
+        {
+            Assert.That(
+                typeof(LevelUpFlow).GetField(
+                    name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static),
+                Is.Null,
+                $"LevelUpFlow.{name} is back. What a level is worth is the mode's statement "
+                    + "(GD §4.5) and lives on ModeDefinition — a constant here would be a second "
+                    + "copy that the game may or may not be the one reading.");
+        }
+    }
+
+    [Test]
+    public void Overflow_ARetunedModeMovesTheGrant()
+    {
+        // **The whole point of row 5(i), asserted.** The same ten levels over the same clean stack,
+        // under a mode that authors 5 % rather than 2 %: ×1.50, not ×1.20. Before this task the
+        // only way to get this number was to edit `Core/Progression/` and rebuild.
+        LevelUpFlow flow = Flow(FullTree(), new OverflowSpec(0.05f, 0.05f));
+
+        Grant(flow, 10);
+
+        Assert.That(Damage, Is.EqualTo(WeaponDamage * 1.50f).Within(0.0001f));
+        Assert.That(MaxHpValue, Is.EqualTo(MaxHp * 1.50f).Within(0.0001f));
+
+        // And the control, so the row cannot pass on a flow that ignores its argument and happens
+        // to be right: the shipped pair over the same ten levels is the ×1.20 above.
+        Assert.That(
+            WeaponDamage * 1.50f,
+            Is.Not.EqualTo(WeaponDamage * (1f + (10f * OverflowPerLevel))).Within(0.0001f));
+    }
+
+    [Test]
+    public void Overflow_DamageAndMaxHpAreTwoNumbers()
+    {
+        // **The ledger called them "the 2 %", singular, for a milestone**, and they are two fields
+        // that happen to ship equal. A mode is free to move one — a Boss Rush that pays for spare
+        // levels in damage alone is the obvious shape — so this is the row that says the pair is
+        // not one number wearing two names.
+        LevelUpFlow flow = Flow(FullTree(), new OverflowSpec(0.05f, 0f));
+
+        Grant(flow, 10);
+
+        Assert.That(Damage, Is.EqualTo(WeaponDamage * 1.50f).Within(0.0001f));
+        Assert.That(MaxHpValue, Is.EqualTo(MaxHp).Within(0.0001f), "maxHp was authored at zero.");
+    }
+
+    [Test]
+    public void Overflow_AZeroedModeGrantsNothing()
+    {
+        // `default(OverflowSpec)` is legal content, which is why the constructor has no null row for
+        // its sixth argument (see Flow_NullArguments_Throw). A mode that never mentioned Overflow is
+        // a mode whose spare levels are worth nothing — still counted, still announced, worth zero.
+        SkillTree tree = FullTree();
+        LevelUpFlow flow = Flow(tree, default);
+
+        TakeEverything(tree);
+
+        float damageBefore = Damage;
+        float maxHpBefore = MaxHpValue;
+
+        BankPicks(1);
+
+        flow.Open(Offers());
+
+        Assert.That(flow.OverflowLevels, Is.EqualTo(1), "the pick was still spent on Overflow.");
+        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(1), "and still announced.");
+
+        Assert.That(Damage, Is.EqualTo(damageBefore).Within(0.0001f));
+        Assert.That(MaxHpValue, Is.EqualTo(maxHpBefore).Within(0.0001f));
+    }
+
     // ---- The boundary (rule 15) ------------------------------------------------------------------
 
     [Test]
@@ -580,11 +679,23 @@ public sealed class LevelUpFlowTests
     {
         SkillTree tree = FullTree();
 
-        Assert.Throws<ArgumentNullException>(() => new LevelUpFlow(null, _progression, _runner, _registry, _events));
-        Assert.Throws<ArgumentNullException>(() => new LevelUpFlow(tree, null, _runner, _registry, _events));
-        Assert.Throws<ArgumentNullException>(() => new LevelUpFlow(tree, _progression, null, _registry, _events));
-        Assert.Throws<ArgumentNullException>(() => new LevelUpFlow(tree, _progression, _runner, null, _events));
-        Assert.Throws<ArgumentNullException>(() => new LevelUpFlow(tree, _progression, _runner, _registry, null));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow()));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow()));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow()));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow()));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow()));
+
+        // And the sixth argument has no null row, because it cannot be one: an OverflowSpec is a
+        // struct, its zeroed form is legal content (a mode whose spare levels are worth nothing),
+        // and every value that is not passes its own constructor. Overflow_AZeroedModeGrantsNothing
+        // is what the missing row would have been.
+        Assert.DoesNotThrow(
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default));
     }
 
     [Test]
@@ -673,7 +784,7 @@ public sealed class LevelUpFlowTests
         var runner = new SkillRunner(registry, combat.Blackboard, events);
 
         SkillTree tree = WideTree(10);
-        var flow = new LevelUpFlow(tree, progression, runner, registry, events);
+        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow());
 
         IRandomStream offers = new FixedRandom(99).Offers;
 
@@ -690,8 +801,14 @@ public sealed class LevelUpFlowTests
 
     // ---- Fixture ---------------------------------------------------------------------------------
 
-    private LevelUpFlow Flow(SkillTree tree) =>
-        new LevelUpFlow(tree, _progression, _runner, _registry, _events);
+    private LevelUpFlow Flow(SkillTree tree) => Flow(tree, Overflow());
+
+    private LevelUpFlow Flow(SkillTree tree, OverflowSpec overflow) =>
+        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow);
+
+    /// <summary><c>Descent.asset</c>'s pair, as a spec — see <see cref="OverflowPerLevel"/>.</summary>
+    private static OverflowSpec Overflow() =>
+        new OverflowSpec(OverflowPerLevel, OverflowPerLevel);
 
     /// <summary><c>GrantOverflow</c> is internal; this assembly has no access, so it goes through the port's own route.</summary>
     /// <remarks>
@@ -874,6 +991,7 @@ public sealed class LevelUpFlowTests
     private static CharacterSpec Character() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         MaxHp,
         new MovementSpec(MoveSpeed, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

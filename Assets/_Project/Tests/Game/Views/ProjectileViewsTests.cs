@@ -471,5 +471,5 @@ public sealed class ProjectileViewsTests
         _hub.Publish(new ProjectileFired(id, Spitter, sourceId: 7, origin, target, flightTime));
 
     private void Impact(int id, Vector3 position) =>
-        _hub.Publish(new ProjectileImpacted(id, position, hitPlayer: false));
+        _hub.Publish(new ProjectileImpacted(id, position, hit: false));
 }

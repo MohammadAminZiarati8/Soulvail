@@ -559,7 +559,15 @@ public sealed class ResumeFlowTests
         Set(presenter, "_descend", descend);
         Set(presenter, "_continue", @continue);
 
-        presenter.Construct(new PendingRun(), saved, Catalog(), new SceneLoader(), Passthrough());
+        // M5-07: OnEnable refuses a menu with no class-select screen, for the reason it refuses one
+        // with no Descend button — without it there is no way into a run. Dressed as a bare
+        // component because these rows are about the Continue button's visibility and never open it;
+        // ClassSelectPresenterTests is what drives the screen itself.
+        Set(presenter, "_classSelect", root.AddComponent<ClassSelectPresenter>());
+
+        // The ContentCatalog left this signature at M5-07 with the two methods that read it — the
+        // class-select screen resolves its own.
+        presenter.Construct(new PendingRun(), saved, new SceneLoader(), Passthrough());
 
         return presenter;
     }
@@ -621,6 +629,12 @@ public sealed class ResumeFlowTests
             new EnemyLookBook(new Dictionary<ContentId, EnemyLook>()),
             prewarm: 0));
 
+        // Empty, and it stays that way: this fixture plays the Oathbound, which raises nothing.
+        // It is here because the ticker takes one (M5-05a) — and being on that constructor is what
+        // guarantees the census is listening before a run can raise anything.
+        var minionViews = Track(new MinionViews(
+            container, Template<MinionView>("MinionTemplate"), null, hub, prewarm: 0));
+
         var projectileViews = Track(new ProjectileViews(
             container, Template<ProjectileView>("ProjectileTemplate"), null, hub));
 
@@ -648,6 +662,11 @@ public sealed class ResumeFlowTests
             fissurePrewarm: 0,
             beatPrewarm: 0));
 
+        // Empty on the zones' terms: this fixture plays the Oathbound, which has no Shroudstep, so
+        // nothing ever drops a corpse. It is here because the ticker takes one (M5-05b).
+        var decoys = Track(new DecoyViews(
+            container, Template<DecoyView>("DecoyTemplate"), null, hub, prewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -669,15 +688,17 @@ public sealed class ResumeFlowTests
             Catalog(),
             random,
             new WorldSnapshot(8),
-            new SnapshotBuilder(player, input, enemyViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
             new IntentBuffer(),
             player,
             charge,
             enemyViews,
+            minionViews,
             projectileViews,
             rings,
             zones,
             boss,
+            decoys,
             Track(new SaveWriter(new StubStore(), hub)),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
@@ -926,6 +947,21 @@ public sealed class ResumeFlowTests
         }
 
         public void ChooseOffer(int index)
+        {
+        }
+
+        // And M5-07a-ii grew it again, with CH §5.4's moment. Inert like the four above, for their
+        // reason: the rows here are about the RunConfig a resume hands over, and IsSplashPending
+        // answering false is what keeps the level-up phase a no-op for every one of them.
+        public bool IsSplashPending => false;
+
+        public bool IsSplashOpen => false;
+
+        public void OpenSplash()
+        {
+        }
+
+        public void ChooseSplash(ContentId characterId, int branch)
         {
         }
     }

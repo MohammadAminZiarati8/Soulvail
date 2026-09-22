@@ -53,6 +53,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private readonly int _projectileCapacity;
 
     /// <summary>
+    /// Where <c>EnemySystem.DrainDeaths</c> writes each tick's dead, for Rise to read.
+    /// </summary>
+    /// <remarks>
+    /// <b>A field rather than a <c>stackalloc</c>, and that is the language rather than a
+    /// preference</b> (M5-04b rule 12): <c>EnemyDeath</c> carries a <c>ContentId</c>, which carries a
+    /// <see cref="string"/>, so it is not an unmanaged type and cannot be stack-allocated. Built once
+    /// here at the same capacity the registry and the snapshot use — the drain refuses a span shorter
+    /// than what is pending, and sizing both from one number is what makes that unreachable.
+    /// <b>On the session rather than on <c>RunState</c></b>, because nothing reads it: it is scratch
+    /// for one step of one tick, which is <see cref="_timed"/>'s reason exactly (AR §18.2).
+    /// </remarks>
+    private readonly EnemyDeath[] _deaths;
+
+    /// <summary>
     /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
     /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
     /// downstream has to ask whether this run has a director.
@@ -223,6 +237,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _enemyCapacity = enemyCapacity;
         _deviceEnemyCap = deviceEnemyCap;
         _projectileCapacity = projectileCapacity;
+
+        // Once for the session rather than once per run: it is scratch, it holds nothing between
+        // ticks, and a run boundary is not a reason to allocate an array of the same size again.
+        _deaths = new EnemyDeath[enemyCapacity];
     }
 
     /// <inheritdoc />
@@ -479,7 +497,25 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         var playerStats = new PlayerStats(combat, motor, progression);
         var effects = new EffectRegistry();
 
-        effects.Register<ModifyStat>(new ModifyStatHandler(playerStats));
+        // **What a Wight is born with, this run** (M5-06a rules 1 and 4). Built here rather than
+        // inside MinionSystem because two things need the same instance: the army, which re-bases
+        // every body it hands out from it, and the handler below, which is where CH §3.2's Legion
+        // nodes land. Two recipes would be a node moving numbers no body reads.
+        //
+        // Null exactly where the army is null — the class has no MinionSpec — and the spec itself is
+        // untouched, so two runs of the Gravecaller hold two recipes with independent stacks.
+        MinionRecipe minionRecipe = character.Minions is null
+            ? null
+            : new MinionRecipe(character.Minions);
+
+        // The second block is null for every class but the Gravecaller, and **null is a real answer
+        // rather than a missing dependency** (rule 5): a ModifyStat aimed at Minions on a class that
+        // raises none is refused by the handler, naming the class, and refused earlier still by the
+        // sweep below — which exists because EffectRegistry.CanApply keys on an effect's *type* and
+        // a target is a field on one.
+        effects.Register<ModifyStat>(new ModifyStatHandler(
+            playerStats,
+            minionRecipe is null ? null : new MinionRecipeStats(minionRecipe)));
 
         // One per run like everything above, and the clock with them: a second Start must not
         // inherit the first run's held effects, and a clock that carried the last run's seconds
@@ -506,6 +542,60 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // file and one Register line, with nothing in the clock, the registry or Tick changing to
         // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
         effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
+
+        // One per run like everything above: a second Start must not inherit the first run's
+        // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
+        // decoy — a Shroudstep drops one on the start edge of a dash, and that is its only door
+        // (M5-03 rule 6). Beside the zones because it is the other thing standing on the floor,
+        // and on RunState for the reason the zones are there: something outside core will want to
+        // know, and M5-05's view is that something.
+        var lures = new LureSystem(_events);
+
+        // **Only for a class that raises the dead, which is the Gravecaller and nothing else**
+        // (M5-04a rule 1, M5-04b rule 10). A run with no MinionSpec holds no system, so an Oathbound
+        // run ingests nothing, ticks nothing and is byte-identical to the run it was before this
+        // task — the same shape as the tree and the level-up flow two blocks down, and for the same
+        // reason: a feature a class does not have is absent rather than empty.
+        //
+        // One per run like everything above: a second Start must not inherit the first run's army or
+        // its ids. It takes the events and the intent sink because a Wight is announced like a body
+        // and walks like one; it takes no clock, because a raise is stamped with the RunState.Time
+        // its caller was holding (M5-04b's Rise is that caller).
+        MinionSystem minions = character.Minions is null
+            ? null
+            : new MinionSystem(character.Minions, minionRecipe, _events, _intents);
+
+        // **CH §4.2's Exhume, registered in exactly the runs that can raise** (M5-06a rules 10, 11).
+        // Conditional where the five primitives above are unconditional, and that asymmetry is the
+        // whole of why this one needs no bespoke refusal: a verb is a *type*, so SkillTree's
+        // constructor sweep already asks CanApply of it and refuses a tree carrying one on a class
+        // with no army — before RunStarted, naming the node. A target is a *field* on a registered
+        // type, which is invisible to that sweep, which is why the Minions check below had to be
+        // written by hand.
+        //
+        // It takes the blackboard rather than a position per cast, which is SpawnHealZoneHandler's
+        // shape: Apply is handed no position and no time, and the blackboard carries this frame's
+        // feet. One per run like everything above.
+        if (minions is not null)
+        {
+            effects.Register<RaiseMinions>(
+                new RaiseMinionsHandler(minions, combat.Blackboard, _clock));
+        }
+
+        // **CH §3.2's Rise, null in exactly the runs the army is null in** (M5-04b rule 10). Beside
+        // the system rather than inside it, because raising a Wight and being one are two different
+        // jobs: MinionSystem owns bodies and knows nothing about kills, and this owns a chance and
+        // knows nothing about walking.
+        //
+        // **The Drops stream and no other** (rule 1, ADR-0011). It is "a kill produced something",
+        // it is what GD §14's loot will draw from when it exists, and **nothing draws from it
+        // today** — so Rise costs no sixth stream, no RandomState field and no RunSnapshot v4, and
+        // every seeded run that has ever been played replays identically. Read here rather than held
+        // by the passive, so the one object that owns the run's randomness stays the one that hands
+        // it out — SpawnDirector.Tick's shape.
+        RisePassive rise = minions is null
+            ? null
+            : new RisePassive(character.Minions, minions, _random.Drops);
 
         // **Above the tree rather than below it, which is the one thing this block's order now
         // insists on** (M3-12b rule 10). The runner used to be built after the tree because nothing
@@ -573,13 +663,54 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 nameof(config));
         }
 
+        // **A tree that aims at Minions on a class with no minions refuses the *run*, not the pick**
+        // (M5-06a rule 5). Written by hand, beside the Active-count check and for its argument,
+        // because the door that would otherwise catch it cannot: EffectRegistry.CanApply answers
+        // "is there a handler for this effect's type" and nothing more, so a ModifyStat aimed at
+        // Minions passes SkillTree's constructor sweep and would throw at the moment a player
+        // tapped the card — a mistake a designer made weeks earlier, killing a run with the node
+        // half taken. Asked here it is TreeRules' own argument one class over: an authoring mistake
+        // refuses the run, with nothing announced and nothing standing.
+        //
+        // The handler still throws if it is ever reached, for the reason Self-outside-a-scope does
+        // (M4-01a rule 5): this is the sweep, and the throw is the backstop.
+        //
+        // There is no sibling check for RaiseMinions, and its absence is the point: a verb is a
+        // *type*, so the run simply does not register a handler for it and the sweep above refuses
+        // a tree carrying one. A target is a field on a type that *is* registered.
+        if (tree is not null && character.Minions is null)
+        {
+            RequireNoMinionTarget(tree.Rules, character.Id);
+        }
+
         // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
         // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
         // authors one. Below the runner because it pushes a chosen Active into it, and below the
         // registry because Overflow's two modifiers go on through it.
+        //
+        // **What a spare level is worth comes off the mode** (M5-06b rules 8 and 9), like the curve
+        // that decides when one is earned: LevelTracker above reads mode.Xp, and this reads
+        // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
+        // CH §5.2 an Inspector edit and the other half a rebuild.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events);
+            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow);
+
+        // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
+        // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
+        // spends no pick, draws from no stream, grants no node, happens once a run and may
+        // legitimately never happen at all.
+        //
+        // It takes the registry as well as the catalog, and that is rule 10's "the branch is not
+        // installed": a borrowed node carrying a primitive nobody registered — or a `ModifyStat`
+        // aimed at minions on a class that raises none — has to be refused *before*
+        // `TreeRules.InstallSplash` commits, because `SkillTree.OnSplashInstalled`'s own sweep runs
+        // after it and a throw there would leave the two disagreeing about how many nodes the run
+        // has. That second check is M5-07a-i's handed-over finding: `RequireNoMinionTarget` below
+        // sweeps the *primary* tree at Start and a branch borrowed mid-run never meets it.
+        SplashFlow splash = tree is null
+            ? null
+            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events);
 
         State = new RunState(
             config.ModeId,
@@ -596,7 +727,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             tree,
             skills,
             zones,
-            levelUp);
+            lures,
+            minions,
+            rise,
+            levelUp,
+            splash);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -627,6 +762,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // the phone down in front of. It is also the reason this task depends on M3-01b rather
             // than the other way round.
             //
+            // **Above the replay, and that is an AR §18.1 row rather than a preference**
+            // (M5-07a-ii rule 6). CH §5.4's branch is *derived* from the saved ids rather than
+            // written down — every foreign id in TakenNodeIds is in the same branch of the same
+            // class, because the choice is locked for the run — so the branch is resolved here and
+            // installed before SkillTree.Restore replays the takes. Replayed first, the tree would
+            // refuse a node it has never heard of, with a message about content validation.
+            //
+            // Silent, like everything else in this block. **The one case it costs is stated rather
+            // than hidden**: a run saved after the choice and before its first borrowed pick carries
+            // no foreign id, so TryDerive answers false and the moment is owed again. The window is
+            // narrow — a boundary snapshot is taken at stage edges (M2-14a) — and the failure is a
+            // second choice rather than a broken tree. A saved id that resolves to no class at all
+            // is left for SkillTree.Restore's existing refusal, which is the one that names it.
+            //
+            // This is what makes a **v4** and a migration unnecessary for a single enum-sized fact,
+            // which is LevelUpFlow.GrantOverflow's bargain exactly.
+            if (splash is not null &&
+                splash.TryDerive(resumed.TakenNodeIds, out ContentId lender, out int lentBranch))
+            {
+                splash.Restore(lender, lentBranch);
+            }
+
             // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
             // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
             // for a class with no tree, which ignores the ids the same way this method did between
@@ -785,7 +942,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             combat,
             _events,
             plan,
-            seed);
+            seed,
+            lures,
+            minions);
 
         // Last, and after RunStarted and SpawnAll for the reason SpawnAll itself is after them: this
         // publishes StageArrived, and a handler dressing an arena from it may reasonably assume
@@ -818,11 +977,35 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // up. Core never assigns a position to move anyone.
         State.PlayerPosition = snapshot.PlayerPosition;
 
+        // **Immediately above the ingest, which is the whole of this step's ordering** (M5-03
+        // rule 10, AR §18.1). Perception is where an enemy is told which way its quarry is, and it
+        // happens inside Ingest — so the decoys that have rotted have to be gone by the line below
+        // or an enemy spends a frame walking at a corpse that is not there any more. It is above
+        // the player for the other half of the same sentence: a decoy dropped by this tick's blink
+        // is standing by the time the *next* tick perceives, which is the one-frame grace every
+        // fact in this loop already has.
+        //
+        // Unconditional, and the common path is a comparison against a count of zero: every run
+        // this build ships is the Oathbound, whose Charge leaves nothing behind.
+        State.Lures.Tick(State.Time);
+
         // Ingest first, always. It is what makes every position in core this frame's rather than
         // last frame's, so anything that reads an enemy — perception, targeting, cone hits in
         // M1-11 — has to come after it, and a target chosen from stale positions is the whole bug
         // the snapshot exists to prevent.
-        State.Enemies.Ingest(snapshot);
+        //
+        // The decoys go in with it, because perception is the one site that writes the four fields
+        // a decoy redirects and no behaviour is touched (M5-03 rule 2).
+        State.Enemies.Ingest(snapshot, State.Lures);
+
+        // **With the enemies, and that is the half of rule 8 nobody would guess** (M5-04a rule 8,
+        // AR §18.1). Perception is one phase: the Wights are bodies that report where they are
+        // exactly as the Husks do, and splitting the two ingests would let a Wight act on last
+        // frame's positions while everything around it acted on this frame's — the one bug the
+        // snapshot exists to prevent.
+        //
+        // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
+        State.Minions?.Ingest(snapshot);
 
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
         // Before the behaviours, so the target is chosen from the same positions the enemies were
@@ -833,12 +1016,43 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // last tick's turn: combat cannot be given a facing that has not been decided yet. A swing
         // landing mid-turn is therefore aimed up to one frame of rotation behind the pose that gets
         // drawn — see PlayerCombat.Tick's bodyFacing, which is where that trade is argued.
+        // The lures go down with it, and this is the one step that *writes* one: a Shroudstep drops
+        // its corpse on the start edge of the dash, from the position this snapshot reported
+        // (M5-03 rule 6).
+        // The army goes down with the lures, and this step *reads* it rather than writing it: the
+        // blackboard's MinionCount is filled here so a CC §6.4 trigger can compare against it
+        // (M5-06a rule 6). Null for every class but the Gravecaller, which reads as zero standing —
+        // the honest count for a run that holds no army at all.
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
             snapshot,
             State.Enemies.Registry.Alive,
-            State.Motor.Facing);
+            State.Motor.Facing,
+            State.Lures,
+            State.Minions);
+
+        // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
+        //
+        // *Immediately after combat*, because that is the step that decided it: a shot the damage
+        // frame produced this tick is in the air this tick, aimed with this tick's positions. Any
+        // lower and a bolt would be one frame stale before it left.
+        //
+        // *Above the skills block*, which is where the rest of AR §18.1 already puts the difference
+        // between deciding and arriving: State.Projectiles.Tick runs after the enemy behaviours, so a
+        // shot fired here cannot land on the tick it left — the same one-frame grace M2-07a rule 10
+        // gives every Spitter's bolt, now given to the player's. Nothing else about the order moved.
+        //
+        // Unconditional, and the common path is one nullable read: every run this build ships is the
+        // Oathbound, whose Censer is a cone and offers nothing. TryTakeShot is the only way to look,
+        // so a shot cannot be seen without also being consumed and cannot be fired twice.
+        if (State.Combat.TryTakeShot(out Projectile shot))
+        {
+            // The return value is deliberately not read. Fire answers NoProjectile when the sky is
+            // full and the player believes they fired, which is M2-07a rule 7's reading applied to
+            // the one shooter that would otherwise need to know the projectile system's capacity.
+            State.Projectiles.Fire(shot, State.Time);
+        }
 
         // **After combat and before the enemy behaviours — which puts it above the projectile step
         // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).
@@ -921,6 +1135,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         State.Enemies.Tick(enemies);
 
+        // **Immediately after the enemy behaviours and above the death check** (M5-04a rule 8,
+        // AR §18.1).
+        //
+        // *After the behaviours*, because that is where a Husk decides to strike — so a Wight that
+        // kills its quarry this tick removes an enemy that has already acted rather than one that
+        // never got to. It is the same trade this method already documents between the player's
+        // swing and an enemy's, made on the friendly side: whoever acts first this frame is
+        // resolved against a world that has not moved yet.
+        //
+        // *Above the death check*, so a kill a Wight scores on the tick the player dies is counted
+        // before the run ends — exactly as a bolt's arrival is, one line down. A minion pass below
+        // that check would silently lose a kill depending on when the player happened to die.
+        //
+        // It takes the census to choose from and the player because the kill goes through
+        // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
+        State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
+
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
         //
         // After, because a shot fired this tick starts flying now and must not be able to arrive on
@@ -932,7 +1163,28 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
         // the body (ledger row 7, settled at M2-07a rule 1).
-        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat);
+        State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat, State.Enemies);
+
+        // **After every pass that can kill an enemy, and above the death check** (M5-04b rule 4,
+        // AR §18.1).
+        //
+        // *After all of them*, so a kill never waits a frame to rise. There are four ways an enemy
+        // dies: the player's swing, which is a fact reported between ticks and was banked before
+        // this method began; a Wight's strike, three steps up; a Bloater's own fuse, in the
+        // behaviour step; and a bolt's arrival, on the line immediately above. Anything earlier than
+        // this line would miss the last of them by a frame.
+        //
+        // *Above the death check*, for the reason every other pass here is: a Wight raised on the
+        // tick the player dies is raised into a run that is ending, and the alternative is a kill
+        // silently losing its rise depending on when the player happened to die.
+        //
+        // **The drain runs for every run and the offer does not** (rule 10). An Oathbound run holds
+        // no passive, so what it pays for this task is one array write per kill and a copy of a
+        // usually-empty buffer — and draining unconditionally is also what keeps that buffer from
+        // ever reaching the capacity its overflow rule is written for.
+        int died = State.Enemies.DrainDeaths(_deaths);
+
+        State.Rise?.OnDeaths(new ReadOnlySpan<EnemyDeath>(_deaths, 0, died), State.Time);
 
         // The first thing that ends a run from inside one (M1-17). Asked here rather than
         // subscribed to, because core has no business listening to its own events: PlayerCombat
@@ -1271,6 +1523,60 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <see cref="IsLevelUpPending"/>'s reasoning — a read, false outside a run — with the fourth
+    /// term <c>RunState.IsSplashPending</c> carries: no offer may be on the table, or the splash
+    /// screen would open over a level-up's second card and the two would want one <c>RunPause</c>.
+    /// </remarks>
+    public bool IsSplashPending => IsRunning && State.IsSplashPending;
+
+    /// <inheritdoc />
+    /// <remarks><see cref="HasOffer"/>'s reasoning — a read, false outside a run.</remarks>
+    public bool IsSplashOpen => IsRunning && State.IsSplashOpen;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>Guarded on the same read the frame loop polls, rather than forwarded blind</b>, which is
+    /// where this differs from <see cref="OpenLevelUp"/>: that one is idempotent inside the flow and
+    /// this one has a term the flow cannot see — an offer on the table belongs to a different screen
+    /// holding a pause that admits one holder. Null for a class with no tree, which is the same
+    /// silence <see cref="OpenLevelUp"/> keeps (M3-08a rule 5).
+    /// <para>
+    /// It consumes no stream: CH §5.4's moment offers every candidate in catalog order, so there is
+    /// nothing here for a second call to spend (rule 4).
+    /// </para>
+    /// </remarks>
+    public void OpenSplash()
+    {
+        RequireRunning(nameof(OpenSplash));
+
+        if (State.IsSplashPending)
+        {
+            State.Splash.Open();
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Throws rather than no-ops when the class has no tree, unlike <see cref="OpenSplash"/>, for
+    /// <see cref="ChooseOffer"/>'s reason: an open call is the frame loop asking a standing question,
+    /// where this one is a view reporting a tap on a card that cannot exist.
+    /// </remarks>
+    public void ChooseSplash(ContentId characterId, int branch)
+    {
+        RequireRunning(nameof(ChooseSplash));
+
+        if (State.Splash is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so CH §5.4's moment can never open and there is "
+                    + "nothing to choose. A view sent ChooseSplash without a screen to send it for.");
+        }
+
+        State.Splash.Choose(characterId, branch);
+    }
+
+    /// <inheritdoc />
     public void End()
     {
         // A no-op rather than a throw, so RunScope's disposal can call it without first asking
@@ -1308,6 +1614,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
         // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
         State.Zones.Clear();
+
+        // And the corpses a Shroudstep left standing, in the same silence — but *not* for the
+        // zone's reason, and the difference is the line (M5-03 rule 9). A zone is the player's own
+        // and deliberately survives a stage boundary; a decoy is a taunt aimed at bodies the
+        // boundary has just taken out of the world, so StageFlow.Advance clears it too. It has to:
+        // a decoy stands for 3 s against a boundary's 2 s of gate and arrival, which makes it the
+        // one thing on the floor that can genuinely cross one — the projectiles' reason exactly.
+        State.Lures.Clear();
+
+        // And the army, in the same silence and for the run's own reason: a Wight lives twenty
+        // seconds, so at the end of a run there is always one standing if any were raised, and a
+        // system left full would hand the next run's first tick an army the player did not earn.
+        // Null for every class but the Gravecaller.
+        //
+        // **And a stage boundary is swept too, as of M5-04b** — `StageFlow.Advance`, beside the
+        // decoys and for their sentence ([ledger row 9](../../../../Docs/plan/ROADMAP.md)). Twenty
+        // seconds against a boundary's two seconds of gate and arrival makes a Wight the one body in
+        // the game that can genuinely cross one, which is the decoy's problem at seven times the
+        // duration. Rise is what made it reachable, which is why the sweep lands in the task that
+        // ships Rise rather than in the one that shipped the body.
+        State.Minions?.Clear();
 
         // And the ground the boss made dangerous, in the same silence — but **not** for the zone's
         // reason, and the difference is worth the line (M4-02). A zone is the player's own and
@@ -1445,6 +1772,74 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             $"No enemy with id '{specId}' in the catalog, and {source} names it. Nothing about "
                 + "this run has been announced; add an EnemyDefinition to BootScope's enemy list "
                 + "or correct the id.");
+    }
+
+    /// <summary>
+    /// Refuses a tree that aims a <see cref="ModifyStat"/> at <see cref="StatTarget.Minions"/> when
+    /// the class raises none, naming the node and the class (M5-06a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both lists, take and cast, for <c>SkillTree.RequireHandlers</c>' reason: an Active's cast
+    /// effects are applied by M3-06's runner rather than by <c>Take</c>, so a node whose
+    /// <em>cast</em> carries the mistake would otherwise survive the pick and die on the first
+    /// firing — later still than the moment this exists to move it off.
+    /// </para>
+    /// <para>
+    /// A walk of at most twenty-seven nodes, once, at <c>Start</c>. It allocates the enumerators a
+    /// <c>foreach</c> over <see cref="IReadOnlyList{T}"/> costs, which is fine here and nowhere in a
+    /// frame: this runs once per run, on the path that is already building a tree.
+    /// </para>
+    /// </remarks>
+    private static void RequireNoMinionTarget(TreeRules rules, ContentId characterId)
+    {
+        IReadOnlyList<SkillBranchSpec> branches = rules.Tree.Branches;
+
+        for (int b = 0; b < branches.Count; b++)
+        {
+            SkillBranchSpec branch = branches[b];
+
+            // Tiers are numbered from 1 (CH §5), which SkillBranchSpec.Tier refuses a zero for.
+            for (int t = 1; t <= branch.TierCount; t++)
+            {
+                IReadOnlyList<ContentId> tier = branch.Tier(t);
+
+                for (int n = 0; n < tier.Count; n++)
+                {
+                    SkillSpec spec = rules.Skill(tier[n]);
+
+                    RequireNoMinionTarget(spec, spec.Effects, "takes", characterId);
+
+                    if (spec.Active is not null)
+                    {
+                        RequireNoMinionTarget(spec, spec.Active.OnCast, "casts", characterId);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void RequireNoMinionTarget(
+        SkillSpec spec,
+        IReadOnlyList<IEffect> effects,
+        string when,
+        ContentId characterId)
+    {
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (effects[i] is not ModifyStat modify || modify.Target != StatTarget.Minions)
+            {
+                continue;
+            }
+
+            throw new ArgumentException(
+                $"'{spec.Id}' {when} a ModifyStat aimed at {StatTarget.Minions}, and "
+                    + $"'{characterId}' has no MinionSpec — so there is no minion recipe for it to "
+                    + "move. The run is refused here rather than at the moment the node is picked, "
+                    + "because EffectRegistry.CanApply keys on an effect's type and a target is a "
+                    + "field on one. Nothing about this run has been announced.",
+                nameof(characterId));
+        }
     }
 
     /// <summary>

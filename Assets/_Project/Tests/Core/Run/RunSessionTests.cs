@@ -570,10 +570,14 @@ public sealed class RunSessionTests
         var progression = (IProgressionCommands)_session;
         ContentId anySkill = new ContentId("skill.test.none");
 
+        var anyClass = new ContentId("character.nobody");
+
         Assert.Throws<InvalidOperationException>(() => commands.CastSkill(0));
         Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
         Assert.Throws<InvalidOperationException>(() => progression.OpenLevelUp());
         Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
+        Assert.Throws<InvalidOperationException>(() => progression.OpenSplash());
+        Assert.Throws<InvalidOperationException>(() => progression.ChooseSplash(anyClass, 0));
 
         StartRun();
         _session.End();
@@ -582,15 +586,20 @@ public sealed class RunSessionTests
         Assert.Throws<InvalidOperationException>(() => commands.SetAutoCast(anySkill, auto: false));
         Assert.Throws<InvalidOperationException>(() => progression.OpenLevelUp());
         Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
+        Assert.Throws<InvalidOperationException>(() => progression.OpenSplash());
+        Assert.Throws<InvalidOperationException>(() => progression.ChooseSplash(anyClass, 0));
 
         // The guard is reached *before* either argument is looked at, which is what makes the row
         // honest here: this fixture's catalog carries no skills and no tree, so slot 0 is empty and
         // the id is owned by nobody — and neither of those is what throws.
 
-        // **The two reads answer rather than throw**, and that asymmetry is deliberate: RunTicker
-        // polls them every frame and is still an ITickable after a run has ended (M3-08a's port).
+        // **The four reads answer rather than throw**, and that asymmetry is deliberate: RunTicker
+        // polls them every frame and is still an ITickable after a run has ended (M3-08a's port,
+        // and M5-07a-ii's two).
         Assert.That(progression.IsLevelUpPending, Is.False);
         Assert.That(progression.HasOffer, Is.False);
+        Assert.That(progression.IsSplashPending, Is.False);
+        Assert.That(progression.IsSplashOpen, Is.False);
     }
 
     [Test]
@@ -618,6 +627,25 @@ public sealed class RunSessionTests
 
         // Choosing, on the other hand, is a view reporting a tap on a card that cannot exist.
         Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));
+
+        // **And CH §5.4's moment is the same pair of answers, for the same reason** (M5-07a-ii
+        // rule 1). A class with no tree has no `SplashFlow` at all, so the moment can never be owed
+        // — and the run neither draws a screen nor throws for one.
+        Assert.That(_session.State.IsSplashPending, Is.False, "no tree, so no moment is owed.");
+        Assert.That(_session.State.IsSplashOpen, Is.False);
+        Assert.That(_session.State.HasSplashed, Is.False);
+        Assert.That(_session.State.SplashCandidates, Is.Empty, "empty, never null.");
+        Assert.That(progression.IsSplashPending, Is.False);
+
+        Assert.DoesNotThrow(() => progression.OpenSplash(), "a run with no tree must not throw.");
+
+        Assert.That(_events.Count<SplashOffered>(), Is.EqualTo(0));
+
+        Assert.Throws<InvalidOperationException>(
+            () => progression.ChooseSplash(new ContentId(OathboundId), 0));
+
+        Assert.Throws<InvalidOperationException>(
+            () => _session.State.SplashBranchesOf(new ContentId(OathboundId)));
     }
 
     [Test]
@@ -851,6 +879,7 @@ public sealed class RunSessionTests
     private static CharacterSpec Oathbound() => new(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         100f,
         new MovementSpec(Speed, AccelTime, DecelTime, TurnSpeedDeg),
         // Required as of M1-03, and irrelevant to every row in this fixture: the run session

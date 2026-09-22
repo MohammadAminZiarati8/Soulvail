@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using NUnit.Framework;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
@@ -80,11 +81,28 @@ public sealed class ProjectileSystemTests
     private RecordingEvents _events;
     private RecordingIntents _intents;
 
+    /// <summary>
+    /// Required by <c>ProjectileSystem.Tick</c> as of M5-01, and <b>empty in every row here</b>.
+    /// </summary>
+    /// <remarks>
+    /// Every shot this fixture builds is <c>ShotSide.AtPlayer</c> — that is what the whole fixture is
+    /// about — so the enemy side is never walked, and an empty registry is the honest way to say so.
+    /// One instance, held rather than built per call, because the allocation row ticks inside a
+    /// measured window. <c>PlayerProjectileTests</c> is where the other side's rows live.
+    /// </remarks>
+    private EnemySystem _enemies;
+
     [SetUp]
     public void SetUp()
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
+        _enemies = new EnemySystem(
+            new ContentCatalog(new[] { Character() }, null, new[] { Descent() }),
+            _events,
+            new FixedRandom(Seed),
+            new DepthScaling(Scalings.Design()),
+            EnemyCapacity);
     }
 
     // ---- Rule 2 and 3: a shot is a point and a moment ------------------------------------------
@@ -141,7 +159,7 @@ public sealed class ProjectileSystemTests
 
         Assert.That(_events.Single<ProjectileFired>().FlightTime, Is.Zero);
 
-        Assert.DoesNotThrow(() => projectiles.Tick(0f, Vector3.Zero, player));
+        Assert.DoesNotThrow(() => projectiles.Tick(0f, Vector3.Zero, player, _enemies));
 
         Assert.That(_events.Single<ProjectileImpacted>().Id, Is.EqualTo(id));
         Assert.That(projectiles.InFlightCount, Is.Zero);
@@ -155,7 +173,7 @@ public sealed class ProjectileSystemTests
 
         int first = projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
 
-        projectiles.Tick(FlightTime, Far(), player);
+        projectiles.Tick(FlightTime, Far(), player, _enemies);
 
         int second = projectiles.Fire(Shot(From(0f), At(Standoff)), FlightTime);
 
@@ -198,7 +216,7 @@ public sealed class ProjectileSystemTests
         projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
         projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
 
-        projectiles.Tick(FlightTime, Far(), player);
+        projectiles.Tick(FlightTime, Far(), player, _enemies);
 
         _events.Clear();
 
@@ -220,7 +238,7 @@ public sealed class ProjectileSystemTests
 
         projectiles.Fire(Shot(From(0f), At(Standoff), speed: 1f, distance: 1f), 0f);
 
-        projectiles.Tick(0.99f, Vector3.Zero, player);
+        projectiles.Tick(0.99f, Vector3.Zero, player, _enemies);
 
         Assert.That(_events.Count<ProjectileImpacted>(), Is.Zero);
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
@@ -238,7 +256,7 @@ public sealed class ProjectileSystemTests
 
         // "At or before now", not "before": a frame boundary that fell exactly on the arrival
         // would otherwise defer the shot by a whole frame, and with a fixed dt that is every shot.
-        projectiles.Tick(1f, Vector3.Zero, player);
+        projectiles.Tick(1f, Vector3.Zero, player, _enemies);
 
         Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(1));
     }
@@ -253,11 +271,11 @@ public sealed class ProjectileSystemTests
 
         // 1.5 m from the impact point against a 1.6 m radius: inside, and only just, because the
         // interesting failures are at the edge rather than at the centre.
-        projectiles.Tick(FlightTime, At(Standoff - 1.5f), player);
+        projectiles.Tick(FlightTime, At(Standoff - 1.5f), player, _enemies);
 
         ProjectileImpacted impacted = _events.Single<ProjectileImpacted>();
 
-        Assert.That(impacted.HitPlayer, Is.True);
+        Assert.That(impacted.Hit, Is.True);
         Assert.That(impacted.Position, Is.EqualTo(At(Standoff)));
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp - Damage));
 
@@ -282,13 +300,13 @@ public sealed class ProjectileSystemTests
 
         projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
 
-        projectiles.Tick(FlightTime, At(Standoff - 1.7f), player);
+        projectiles.Tick(FlightTime, At(Standoff - 1.7f), player, _enemies);
 
         // The event is published anyway, because the view has to stop existing either way — this
         // is the mirror of EnemyDespawned rather than of EnemyDied.
         ProjectileImpacted impacted = _events.Single<ProjectileImpacted>();
 
-        Assert.That(impacted.HitPlayer, Is.False);
+        Assert.That(impacted.Hit, Is.False);
         Assert.That(impacted.Position, Is.EqualTo(At(Standoff)));
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp));
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
@@ -306,9 +324,9 @@ public sealed class ProjectileSystemTests
         // 1 m away on the ground and 4 m above it — on a ledge, or mid-jump in a game that has
         // neither. A hit, because the height is not counted (AR §18.4). The same rule as the
         // flight time, asked at the other end of the shot.
-        projectiles.Tick(FlightTime, new Vector3(0f, 4f, Standoff - 1f), player);
+        projectiles.Tick(FlightTime, new Vector3(0f, 4f, Standoff - 1f), player, _enemies);
 
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.True);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.True);
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp - Damage));
     }
 
@@ -326,9 +344,9 @@ public sealed class ProjectileSystemTests
         // And by the time it lands they are 6 m away — a shade over a second of walking at the
         // Oathbound's retuned 3 m/s. GD §8.1's whole archetype: a homing shot would punish
         // nothing, because the only counter left would be an i-frame.
-        projectiles.Tick(FlightTime, At(Standoff - 6f), player);
+        projectiles.Tick(FlightTime, At(Standoff - 6f), player, _enemies);
 
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.False);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.False);
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp));
     }
 
@@ -345,7 +363,7 @@ public sealed class ProjectileSystemTests
 
         projectiles.Fire(Shot(From(0f), At(Standoff), speed: 5f, distance: 1f), 0f);
 
-        projectiles.Tick(0.2f, At(1f), player);
+        projectiles.Tick(0.2f, At(1f), player, _enemies);
 
         // Published, blocked, and by PlayerCombat rather than by anything here: a shot that arrives
         // during a dodge is still a shot that arrived, and the dodge is what made it harmless
@@ -359,7 +377,7 @@ public sealed class ProjectileSystemTests
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp - 1f));
 
         // And the impact is a fact about the geometry, not about the outcome.
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.True);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.True);
     }
 
     // ---- Rule 6 and 8: order, and a store that does not shift what it has not examined ----------
@@ -375,7 +393,7 @@ public sealed class ProjectileSystemTests
             projectiles.Fire(Shot(From(0f), At(Standoff), speed: 1f, distance: 1f), 0f);
         }
 
-        projectiles.Tick(1f, Far(), player);
+        projectiles.Tick(1f, Far(), player, _enemies);
 
         IReadOnlyList<ProjectileImpacted> impacts = _events.Of<ProjectileImpacted>();
 
@@ -401,7 +419,7 @@ public sealed class ProjectileSystemTests
 
         projectiles.Fire(Shot(From(0f), At(Standoff), speed: 1f, distance: 10f), 0f);
 
-        projectiles.Tick(1f, Far(), player);
+        projectiles.Tick(1f, Far(), player, _enemies);
 
         IReadOnlyList<ProjectileImpacted> impacts = _events.Of<ProjectileImpacted>();
 
@@ -411,7 +429,7 @@ public sealed class ProjectileSystemTests
         // And the two survivors are still the two survivors, in the order they were fired.
         _events.Clear();
 
-        projectiles.Tick(10f, Far(), player);
+        projectiles.Tick(10f, Far(), player, _enemies);
 
         Assert.That(Ids(_events.Of<ProjectileImpacted>()), Is.EqualTo(new[] { 1, 5 }));
     }
@@ -431,9 +449,9 @@ public sealed class ProjectileSystemTests
 
         Assert.That(_events.Single<ProjectileFired>().SourceId, Is.EqualTo(4));
 
-        projectiles.Tick(FlightTime, At(Standoff), player);
+        projectiles.Tick(FlightTime, At(Standoff), player, _enemies);
 
-        Assert.That(_events.Single<ProjectileImpacted>().HitPlayer, Is.True);
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.True);
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp - Damage));
     }
 
@@ -448,7 +466,7 @@ public sealed class ProjectileSystemTests
         projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
         projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
 
-        projectiles.Tick(0f, Far(), player);
+        projectiles.Tick(0f, Far(), player, _enemies);
 
         // CC §6.4's Bulwark trigger, and the field M1-08 left saying "zero until M2-07 gives
         // something the means to fire one". PlayerCombat still does not touch it — one owner for
@@ -456,7 +474,7 @@ public sealed class ProjectileSystemTests
         // frame's.
         Assert.That(player.Blackboard.IncomingProjectiles, Is.EqualTo(2));
 
-        projectiles.Tick(FlightTime, Far(), player);
+        projectiles.Tick(FlightTime, Far(), player, _enemies);
 
         Assert.That(player.Blackboard.IncomingProjectiles, Is.Zero);
     }
@@ -476,9 +494,9 @@ public sealed class ProjectileSystemTests
 
         // A warm-up tick, so that anything the first call touches is already touched — the steady
         // state of a run with shots in the air is what this measures.
-        projectiles.Tick(0f, Vector3.Zero, player);
+        projectiles.Tick(0f, Vector3.Zero, player, _enemies);
 
-        AllocationAssert.None(() => projectiles.Tick(1f, Vector3.Zero, player));
+        AllocationAssert.None(() => projectiles.Tick(1f, Vector3.Zero, player, _enemies));
 
         Assert.That(projectiles.InFlightCount, Is.EqualTo(16));
     }
@@ -494,7 +512,7 @@ public sealed class ProjectileSystemTests
             projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
         }
 
-        projectiles.Tick(FlightTime, Far(), player);
+        projectiles.Tick(FlightTime, Far(), player, _enemies);
 
         Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(10));
 
@@ -534,7 +552,7 @@ public sealed class ProjectileSystemTests
         Assert.That(projectiles.InFlightCount, Is.Zero);
         Assert.That(_events.All, Is.Empty);
 
-        projectiles.Tick(100f, At(Standoff), player);
+        projectiles.Tick(100f, At(Standoff), player, _enemies);
 
         Assert.That(_events.All, Is.Empty);
         Assert.That(player.Health.Current, Is.EqualTo(MaxHp));
@@ -554,7 +572,7 @@ public sealed class ProjectileSystemTests
         // no hit points.
         projectiles.Fire(Shot(From(0f), At(Standoff), damage: MaxHp), 0f);
 
-        projectiles.Tick(FlightTime, At(Standoff), player);
+        projectiles.Tick(FlightTime, At(Standoff), player, _enemies);
 
         Assert.That(player.IsDead, Is.True);
 
@@ -679,10 +697,15 @@ public sealed class ProjectileSystemTests
                 () => projectiles.Fire(Shot(From(0f), At(Standoff)), bad));
 
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => projectiles.Tick(bad, Vector3.Zero, player));
+                () => projectiles.Tick(bad, Vector3.Zero, player, _enemies));
         }
 
-        Assert.Throws<ArgumentNullException>(() => projectiles.Tick(0f, Vector3.Zero, null));
+        Assert.Throws<ArgumentNullException>(() => projectiles.Tick(0f, Vector3.Zero, null, _enemies));
+
+        // The second reference the step needs as of M5-01, guarded the same way and for the same
+        // reason: a null here is a mis-wired run, and it must fail on the first tick rather than on
+        // the first bolt the player fires.
+        Assert.Throws<ArgumentNullException>(() => projectiles.Tick(0f, Vector3.Zero, player, null));
     }
 
     // ---- Fixture -------------------------------------------------------------------------------
@@ -749,7 +772,11 @@ public sealed class ProjectileSystemTests
             target = origin + (Vector3.UnitZ * distance);
         }
 
-        return new Projectile(Spec(), sourceId, origin, target, speed, Radius, damage);
+        // The side, named rather than defaulted: every row in this fixture is about a shot fired *at*
+        // the player, and M5-01 is the task that made that a thing a shot says out loud rather than
+        // the only thing a shot could be.
+        return new Projectile(
+            Spec(), sourceId, origin, target, speed, Radius, damage, ShotSide.AtPlayer);
     }
 
     /// <summary>
@@ -760,6 +787,7 @@ public sealed class ProjectileSystemTests
     private static CharacterSpec Character() => new(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         MaxHp,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

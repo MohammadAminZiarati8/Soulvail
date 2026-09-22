@@ -27,6 +27,7 @@ project, and every instance below was found the hard way:
 | `GC.CollectionCount(0)` | barely moves | same (M0-02) |
 | `Application.CanStreamedLevelBeLoaded` | `false` for every scene in the build | inert in the Editor, by bare name *and* full path (M0-13) |
 | `SerializedProperty.objectReferenceValue` | assignment reports success | stores `None` if the handle went fake-null (M1-07) |
+| `Material.EnableKeyword("_ALPHAPREMULTIPLY_ON")` | the name appears in `shaderKeywords` | the shader never declared it, so it is filed under `m_InvalidKeywords` and changes no pixel — and `IsKeywordEnabled` keeps answering `false` (M5-05b) |
 
 **The rule that falls out of it: when an API answers yes/no about project state, prove it says
 "yes" to something true before trusting its "no".** Seed a control. When probing whether a remote
@@ -57,7 +58,17 @@ probe from a wrong answer.
   UTF-8 locales") (M1-07).
 - **A `grep` for `new TypeName` does not find every construction.** Target-typed `new(...)` is
   invisible to it. When a constructor grows a required parameter, let the compiler enumerate the
-  call sites (M1-03).
+  call sites (M1-03). **This row caught nobody at M5-07 and cost a round trip anyway:**
+  `grep -rn "new CharacterSpec("` found 46 sites across 42 files and the compiler then named
+  **11 more** written `private static CharacterSpec X() => new(`. The grep is fine for *scoping* the
+  ripple; it is never the list. Compile before believing a count (M5-07).
+- **A Python script that rewrites a file on Windows converts its line endings to CRLF, silently.**
+  `Path.read_text()` translates CRLF *and* LF to `\n`, and `write_text()` translates `\n` back to
+  `os.linesep` — so a one-line insertion into fifty LF files rewrites all fifty as CRLF. Nothing
+  reports it: Unity compiles, the suite is green, and `git diff --stat` shows `1 +` per file because
+  `.gitattributes` normalises on commit. **`dotnet format whitespace --verify-no-changes` is what
+  catches it**, as ~1 200 `ENDOFLINE` errors. Read and write **bytes** (`read_bytes` /
+  `write_bytes`), or pass `newline="\n"` explicitly (M5-07).
 
 ---
 
@@ -524,6 +535,20 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   once (M0-10).
 - **An allocation test over a cached read measures one field read N times.** To measure the
   recompute, invalidate inside the measured body (M1-01).
+- **A presenter's *draw* path cannot be asserted allocation-free, and no fixture in this project
+  claims otherwise.** Every `AllocationAssert.None` in the suite is over pure computation —
+  `ConeOverlapQuery.Query`, `SnapshotBuilder.Build`, `TableLocalizer.Get`, `DomainEventHub.Publish`.
+  A screen that draws a number allocates before TMP is reached at all: `string.Format` and every
+  `float.ToString` produce a fresh string, and `TMP_Text.text = …` takes one. **So a spec asking for
+  `AllocationAssert.None` "over the binding path" is asking for something that cannot pass** — M5-07
+  rule 3's own words were *"none is instantiated"*, which is a **count of objects**, and the row
+  became one: the same component instances and the same `Transform` count after 100 open/close
+  cycles. When a spec names an allocation probe over UI, check what the rule actually claims before
+  writing the probe (M5-07).
+- **NUnit's `Has.Count` reflects for a `Count` *property* on the runtime type, not on the declared
+  one.** `Assert.That(cards, Has.Count.EqualTo(3))` where `cards` is an `IReadOnlyList<T>` holding a
+  `T[]` fails with *"Property Count was not found"* — the array carries `Length`. The interface is
+  irrelevant; the constraint never sees it. Assert `cards.Count` directly (M5-07).
 - **`Awake` never runs in EditMode**, so anything cached there is null to a test — and a lookup
   that silently finds nothing is a *passing test of a broken feature*. `EnemyViews`' collider index
   was empty in every EditMode test for exactly this reason. **The general rule: when a test's setup
@@ -547,6 +572,25 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   carries these values" test vacuous** — it passes identically if the YAML key binds to nothing.
   Prove the binding with `AssetDatabase.ForceReserializeAssets`, which drops keys matching no field
   (M1-03).
+- **Moving a number into an asset moves it out of `Soulvail.Tests.Core`'s reach, and ADR-0006 does
+  that on purpose.** That assembly references `Soulvail.Core` alone, so it has no `AssetDatabase`
+  and cannot read the authored value — which means every `const` promoted to a `ScriptableObject`
+  field takes its EditMode assertions with it. **Do not answer this by re-pointing the row at a
+  fixture value it invents**, which is a test agreeing with itself. Write the number out as a
+  `private const` in the core-side fixture with a remark naming the asset, and put the row that
+  *opens* the asset in `Soulvail.Tests.Game`; the two meet at the number and a retune reddens
+  whichever one was not updated. `TimeToKillTests` ↔ `OathboundTreeTests` over `KeenCenser.asset`
+  (M3-12c) and `LevelUpFlowTests` ↔ `GravecallerTreeTests` over `Descent.asset`'s Overflow block
+  (M5-06b) are the two shipped pairs.
+- **A content sweep's counts are equalities until a second instance of that kind ships, and then
+  three of them go red at once.** At M5-06b a second character's tree, twelve skills and a sixth
+  effect primitive reddened `OathboundTreeTests`' boot row (`arraySize == 12`),
+  `ContentValidationTests`' three floors and all three `SkillTreeValidationTests.NoTree_CanStarve_*`
+  walks — none of which was about the new content. **A fixture named for one piece of content must
+  assert a superset over its own ids, never a total**, and a hand-kept list of primitives (that
+  file's `Registry()`, `ContentValidationTests.Written`) is a list a new primitive has to be added
+  to. Before authoring content, grep the validation fixtures for its **kind**, not its name
+  (M5-02, M5-06b).
 - **Never pin an FSM's transitions to exact frame counts.** A running sum of 1/120 s steps lands
   within an ulp of 0.4 at the forty-eighth, so which frame a 0.4 s windup completes on is float
   accumulation. Tick until the state arrives — which is also the only way to observe a one-tick
@@ -641,6 +685,25 @@ camera fails with "No GameObject found with Instance ID" (M1-07).
   `_BaseColor` on a `_Surface: 0` material compiles, runs, changes the number and draws exactly the
   same pixels. **Anything that wants to fade a body owes this check before it writes an alpha**
   (M1-12).
+- **A material keyword the shader does not declare is accepted, stored, and silently inert — and
+  `IsKeywordEnabled` will tell you so if you ask, which nobody does.** `Material.EnableKeyword` does
+  not validate: Unity sorts the name into `m_ValidKeywords` or `m_InvalidKeywords` by whether the
+  shader's `keywordSpace` declares it, writes the invalid ones to the asset anyway, and logs
+  **nothing**. `shaderKeywords` then reports the name back — so the obvious probe confirms the fix —
+  while `IsKeywordEnabled` and `enabledKeywords` both say it is off. **Ask
+  `shader.keywordSpace.keywords` whether the keyword exists before spending a task on it.**
+  Concretely, in Unity 6.3: **`Universal Render Pipeline/Unlit` declares no `_ALPHAPREMULTIPLY_ON`
+  at all** — its local keywords include `_SURFACE_TYPE_TRANSPARENT`, `_ALPHATEST_ON` and
+  `_ALPHAMODULATE_ON`, and premultiply is not among them, so URP's own premultiply *maths* lives in
+  the blend factors and in author-premultiplied colour rather than in a branch. This cost
+  [ledger row 3](plan/ROADMAP.md#carry-forward-into-m5) its ruling: the row diagnosed the symptom
+  correctly for three milestones and prescribed a keyword that could never have done anything.
+  **What was actually wrong was `_SrcBlend: One`** — which, over a fragment that outputs straight
+  colour, contributes rgb at full strength while halving only the background, which is exactly
+  *"draws at full brightness whatever its alpha says"*. `SrcAlpha` is the fix. **The general
+  shape:** when a material looks wrong, read the blend factors before reaching for a keyword, and
+  compare against a shipped material on the same shader that already looks right — `M_Reticle.mat`
+  was the control here (M5-05b).
 - **A *Scale With Screen Size* canvas measures in reference pixels, not dp**: a `sizeDelta` of 120
   is 48 dp on a 400 dpi phone. Any HUD element whose size is specified in dp must be sized at
   runtime as `dp × pxPerDp ÷ canvas.scaleFactor`, not authored into the prefab (M0-15).

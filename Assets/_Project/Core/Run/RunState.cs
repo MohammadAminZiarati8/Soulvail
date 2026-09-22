@@ -62,7 +62,11 @@ public sealed class RunState
         SkillTree tree,
         SkillRunner skills,
         ZoneSystem zones,
-        LevelUpFlow levelUp)
+        LureSystem lures,
+        MinionSystem minions,
+        RisePassive rise,
+        LevelUpFlow levelUp,
+        SplashFlow splash)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -78,7 +82,11 @@ public sealed class RunState
         Tree = tree;
         Skills = skills;
         Zones = zones;
+        Lures = lures;
+        Minions = minions;
+        Rise = rise;
         LevelUp = levelUp;
+        Splash = splash;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -555,6 +563,68 @@ public sealed class RunState
     public Vector3 ZoneAt(int index) => Zones.PositionAt(index);
 
     /// <summary>
+    /// The corpse decoys a Shroudstep has left standing — CH §3.2, and the first thing in this game
+    /// an enemy walks at that is not the player.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2), and with <em>no</em>
+    /// scalar read beside it, which is the one way it differs from <see cref="Zones"/>. A zone needs
+    /// <see cref="ActiveZoneCount"/> and <see cref="ZoneAt"/> because a decal is drawn from a place
+    /// that persists; a decoy's view (M5-05) is built from the <c>DecoySpawned</c> it was handed and
+    /// torn down on the <c>DecoyExpired</c> that follows, the way a projectile's is — so a read here
+    /// would be public API nothing asked for. <b>Never null</b>: a run of the Oathbound has a
+    /// <c>LureSystem</c> and it stands empty for ever.
+    /// </remarks>
+    internal LureSystem Lures { get; }
+
+    /// <summary>
+    /// The Wights standing on the player's side, or <see langword="null"/> for a class that raises
+    /// none — CH §3.2, and every class but the Gravecaller.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>Spawn</c> stands a
+    /// body up and <c>Tick</c> hits enemies with it, so a public handle would let a view raise an
+    /// army and swing it. It follows <see cref="Tree"/> and <see cref="LevelUp"/> in being
+    /// <em>null</em> rather than empty for a class without the feature, which is M5-04b rule 10's
+    /// shape brought forward one task: an Oathbound run holds no <c>MinionSystem</c>, ingests
+    /// nothing and ticks nothing, so it is byte-identical to the run it was before this task.
+    /// </para>
+    /// <para>
+    /// <b>No scalar read beside it, for <see cref="Lures"/>'s reason.</b> Nothing outside core can
+    /// see a Wight until M5-05a builds the views, and those are built from the
+    /// <c>MinionSpawned</c> they were handed and torn down on the <c>MinionDespawned</c> or
+    /// <c>MinionDied</c> that follows — so a count here would be public API nobody asked for.
+    /// </para>
+    /// </remarks>
+    internal MinionSystem Minions { get; }
+
+    /// <summary>
+    /// CH §3.2's Rise — what turns a quarter of this run's kills into Wights — or
+    /// <see langword="null"/> for a class that raises none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>OnDeaths</c> stands
+    /// bodies up and draws from the run's <c>Drops</c> stream, so a public handle would let a view
+    /// raise an army <em>and</em> spend draws the simulation is counting on — the same argument that
+    /// keeps <see cref="LevelUp"/> behind four reads.
+    /// </para>
+    /// <para>
+    /// <b>Null in exactly the runs <see cref="Minions"/> is null in</b>, and it is built from the
+    /// same <c>MinionSpec</c>: an Oathbound run holds neither, draws nothing from <c>Drops</c>, and
+    /// is byte-identical to the run it was before M5-04b (rule 10).
+    /// </para>
+    /// <para>
+    /// <b>No scalar read beside it</b>, for <see cref="Lures"/>'s reason. <c>RisePassive.Raised</c>
+    /// exists for a readout, and nothing draws one: a Wight has no view until M5-05a and the
+    /// Gravecaller is not selectable until M5-07, so a read here would be public API nobody asked
+    /// for. The first screen that wants the number gets one then.
+    /// </para>
+    /// </remarks>
+    internal RisePassive Rise { get; }
+
+    /// <summary>
     /// The run's level-up flow, or null for a class with no tree (M3-03 rule 10).
     /// </summary>
     /// <remarks>
@@ -610,6 +680,90 @@ public sealed class RunState
     /// read exists because the number is otherwise only observable through the stats it moved.
     /// </remarks>
     public int OverflowLevels => LevelUp is null ? 0 : LevelUp.OverflowLevels;
+
+    /// <summary>
+    /// CH §5.4's half-tree moment, or null for a class with no tree — the same runs
+    /// <see cref="LevelUp"/> is null in.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, and this is the eighth time</b> (AR §18.2). <c>Choose</c> borrows a branch
+    /// of a second class for the rest of the run and CH §5.4 says <em>"Reversible: no"</em>, so a
+    /// public handle would let a view spend the one irreversible decision a run has — a sharper
+    /// version of the argument that keeps <see cref="Tree"/> and <see cref="LevelUp"/> behind scalar
+    /// reads. The four reads below are what a screen gets.
+    /// </remarks>
+    internal SplashFlow Splash { get; }
+
+    /// <summary>
+    /// Whether the run should stop and ask CH §5.4's question this frame: half the primary tree is
+    /// taken, nothing has been borrowed, there is a class to borrow from, and no offer is on the
+    /// table.
+    /// </summary>
+    /// <remarks>
+    /// <b>One question rather than four, and the last term is why it is not simply
+    /// <c>SplashFlow.IsPending</c></b> — <see cref="IsLevelUpPending"/>'s shape exactly. A pick taken
+    /// on the frame the threshold is crossed can leave a second offer on the table, and the splash
+    /// screen opening over it would be two screens wanting one <c>RunPause</c>. The offer is
+    /// finished first and the moment is read on the frame after it closes.
+    /// <para>
+    /// False for a class with no tree, and false for ever in a build with one authored class — CH
+    /// §5.4's own branch (rule 3).
+    /// </para>
+    /// </remarks>
+    public bool IsSplashPending => Splash is not null && Splash.IsPending && !HasOffer;
+
+    /// <summary>Whether the splash screen is up — what the pause is held against.</summary>
+    public bool IsSplashOpen => Splash is not null && Splash.IsOpen;
+
+    /// <summary>
+    /// Whether this run has already borrowed a branch. True for the rest of the run once it has.
+    /// </summary>
+    /// <remarks>
+    /// False for a class with no tree, which is the same answer a run that has not splashed gives —
+    /// there is nothing else it could usefully say, and <see cref="SplashCandidates"/> is empty in
+    /// both cases.
+    /// </remarks>
+    public bool HasSplashed => Splash is not null && Splash.HasSplashed;
+
+    /// <summary>
+    /// The classes this run may borrow from, in catalog order — the cards on the screen's first page.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty, never null</b>, including for a class with no tree, so no reader has to ask —
+    /// <see cref="TakenNodeIds"/>' own rule. A read-only view built once when the run started rather
+    /// than a copy per call, for the reason <see cref="ManualSkillIds"/> is one: a screen draws it on
+    /// the frame the moment opens and nothing about it can change afterwards.
+    /// </remarks>
+    public IReadOnlyList<ContentId> SplashCandidates =>
+        Splash is null ? Array.Empty<ContentId>() : Splash.Candidates;
+
+    /// <summary>
+    /// The three branches of <paramref name="characterId"/> as the screen's second page draws them:
+    /// a name key and the node count <em>after</em> the Keystone is dropped.
+    /// </summary>
+    /// <remarks>
+    /// <b>A read rather than the handle</b> (AR §18.2), and the post-drop count is the whole of why
+    /// it is not <c>SkillTreeSpec.Branches</c>: the screen would then draw a number that includes a
+    /// node CH §5.4 does not lend (rule 8). A presenter re-deriving it would need the catalog and the
+    /// Keystone rule, which is <c>TreeRules</c> in the presentation layer — M3-09d rule 3's refusal.
+    /// </remarks>
+    /// <param name="characterId">One of <see cref="SplashCandidates"/>.</param>
+    /// <exception cref="InvalidOperationException">This run's class has no tree.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="characterId"/> is this run's own, is not in the catalog, or has no tree.
+    /// </exception>
+    public IReadOnlyList<SplashOption> SplashBranchesOf(ContentId characterId)
+    {
+        if (Splash is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so there is no half-tree moment and no branch to "
+                    + "draw. A screen asking this without SplashCandidates to ask it for is a "
+                    + "wiring mistake.");
+        }
+
+        return Splash.BranchesOf(characterId);
+    }
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

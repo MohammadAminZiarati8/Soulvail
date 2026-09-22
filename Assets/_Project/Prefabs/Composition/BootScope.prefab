@@ -50,6 +50,7 @@ MonoBehaviour:
   autoInjectGameObjects: []
   _characters:
   - {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}
+  - {fileID: 11400000, guid: 6411b5d0347b42d429b770b1ed2db1bc, type: 2}
   _enemies:
   - {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   - {fileID: 11400000, guid: c0721c0db9f90994eb335150497c3400, type: 2}
@@ -70,8 +71,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fce9f8aa368ac084e9ec4abc1597c9af, type: 2}
   - {fileID: 11400000, guid: 59bf6f6e497d9f7468e3c552e23a4fb2, type: 2}
   - {fileID: 11400000, guid: f6f47a3cd58c2ec4ab858311f540ea2b, type: 2}
+  - {fileID: 11400000, guid: 510c9681e98d3bf163a73933244fb807, type: 2}
+  - {fileID: 11400000, guid: 404bf0490a9121ef46c85d5045c5d1b6, type: 2}
+  - {fileID: 11400000, guid: ee5b75f25916b6cc471ebf6537af8c20, type: 2}
+  - {fileID: 11400000, guid: d2a218e82ec47305535604cf2f0a71b7, type: 2}
+  - {fileID: 11400000, guid: aabb0a7a57a17666804c0400ac621ec6, type: 2}
+  - {fileID: 11400000, guid: 5eef6b5ce47fdfd12736ac5a5026f66b, type: 2}
+  - {fileID: 11400000, guid: 533a41c4de9ccc1c9ba94e59d0b03db2, type: 2}
+  - {fileID: 11400000, guid: 7b2a50c9362684a7441785db4d3af618, type: 2}
+  - {fileID: 11400000, guid: 51ac463f28e642ed69af5f18240f9432, type: 2}
+  - {fileID: 11400000, guid: 1652e076d35c6caa6f6731eebf1a48f9, type: 2}
+  - {fileID: 11400000, guid: fd3a71b2efd19c97a39c138168ce0112, type: 2}
+  - {fileID: 11400000, guid: cfacbf4cc414bc1451cbe32f565ad105, type: 2}
   _trees:
   - {fileID: 11400000, guid: 552e56837856cfa43975643ea6cab493, type: 2}
+  - {fileID: 11400000, guid: cbfbf7fc1482c7d104ca2fbfef607ee2, type: 2}
   _bosses:
   - {fileID: 11400000, guid: 74a6fdaa03d6e184fbff110ee9000655, type: 2}
   _localization: {fileID: 11400000, guid: e8534041bde963a4185ebefd2397811d, type: 2}

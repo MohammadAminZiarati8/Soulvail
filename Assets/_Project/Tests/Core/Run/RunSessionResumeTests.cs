@@ -1501,7 +1501,14 @@ public sealed class RunSessionResumeTests
             scaling,
             Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) });
+            new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) },
+            bossRoster: null,
+
+            // **Authored here, and it is the two Overflow rows below that need it** (M5-06b rule
+            // 8). Since Overflow moved off LevelUpFlow's two consts and onto the mode, a ModeSpec
+            // built without one grants nothing per spare level — which is the honest default and
+            // would make Resume_DerivesOverflow's ×1.28 a ×1.00. Descent's own shipped pair.
+            overflow: new OverflowSpec(0.02f, 0.02f));
     }
 
     /// <summary>
@@ -1533,6 +1540,7 @@ public sealed class RunSessionResumeTests
     private static CharacterSpec Oathbound(float maxHp = MaxHp) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         maxHp,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

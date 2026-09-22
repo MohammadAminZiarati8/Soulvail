@@ -52,7 +52,7 @@ public enum TriggerUnit
 /// the half a localiser cannot fix afterwards.
 /// </para>
 /// <para>
-/// <b>A key per pair, and the threshold is the only substitution.</b> Eighteen keys for nine
+/// <b>A key per pair, and the threshold is the only substitution.</b> Twenty keys for ten
 /// fields, each resolving at M6-10 into a format string with one placeholder: <em>"Player HP below
 /// {0}"</em>. A key per field with the comparison bolted on separately was the alternative and it
 /// is wrong for exactly the reason word order is — <em>"below"</em> lands in different places in
@@ -134,6 +134,11 @@ public static class TriggerText
             (TriggerField.FocusRampLevel, TriggerComparison.AtLeast) =>
                 new LocKey("trigger.focusRampLevel.atLeast"),
 
+            (TriggerField.MinionCount, TriggerComparison.Below) =>
+                new LocKey("trigger.minionCount.below"),
+            (TriggerField.MinionCount, TriggerComparison.AtLeast) =>
+                new LocKey("trigger.minionCount.atLeast"),
+
             _ => throw Unknown(field, comparison),
         };
     }
@@ -158,6 +163,11 @@ public static class TriggerText
     /// here rather than quietly corrected because the spec is the contract and the arithmetic in
     /// its own sentence (five counts, nine fields) is what would otherwise look wrong.
     /// </para>
+    /// <para>
+    /// <b><see cref="TriggerField.MinionCount"/> is the tenth field and reuses
+    /// <see cref="TriggerUnit.Count"/></b>, which is what this enum's remarks predicted a tenth
+    /// field would do: a standing Wight is a body, and bodies are counted.
+    /// </para>
     /// </remarks>
     public static TriggerUnit UnitOf(TriggerField field)
     {
@@ -171,6 +181,7 @@ public static class TriggerText
             TriggerField.EnemiesInAcquireRange => TriggerUnit.Count,
             TriggerField.IncomingProjectiles => TriggerUnit.Count,
             TriggerField.FocusRampLevel => TriggerUnit.Count,
+            TriggerField.MinionCount => TriggerUnit.Count,
 
             TriggerField.Veilrot => TriggerUnit.Points,
 

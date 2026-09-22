@@ -84,6 +84,35 @@ public sealed class SkillBarPresenterTests
     /// <summary>The button diameter the prefab ships, and the field's default. CC §6.2.</summary>
     private const float ButtonDp = 60f;
 
+    /// <summary>
+    /// [Ledger row 1] What S1–S4's labels are set to, in points. The ruled target: the smallest
+    /// value that clears Android's floor inside a 60 dp circle.
+    /// </summary>
+    private const float SlotFontPoints = 28f;
+
+    /// <summary>Android's floor for body text, in sp. Material's comfortable figure is 14.</summary>
+    private const float AndroidBodyTextFloorSp = 12f;
+
+    /// <summary>
+    /// The canvas's serialized reference resolution, duplicated here rather than read off the
+    /// prefab: <see cref="Slots_ClearTheAndroidFloor"/>'s claim is that the shipped canvas produces
+    /// 12.3 dp, and reading the number from the same asset on both sides would make that true by
+    /// construction.
+    /// </summary>
+    private static readonly Vector2 CanvasReference = new Vector2(1920f, 1080f);
+
+    /// <summary>
+    /// The reference device the project's dp figures are quoted against — a 2340 × 1080 phone, which
+    /// is where GD's <em>"~432 dp landscape safe area"</em> comes from.
+    /// </summary>
+    private static readonly Vector2 ReferenceScreen = new Vector2(2340f, 1080f);
+
+    /// <summary>
+    /// The reference density: 1080 px across 432 dp. Not <c>Screen.dpi</c>, which reads 120 in this
+    /// Editor against a phone's 400 ([Traps §9](../../../../../Docs/Traps.md)).
+    /// </summary>
+    private const float ReferencePixelsPerDp = 2.5f;
+
     /// <summary>Where this fixture's player stands — a kilometre out, like <c>FrameOrderTests</c>'.</summary>
     private static readonly Vector3 Origin = new Vector3(1000f, 0f, 1000f);
 
@@ -793,6 +822,249 @@ public sealed class SkillBarPresenterTests
             () => _bar.Construct(_session, _input, _hub, _catalog, null));
     }
 
+    // ---- [Ledger row 1] The word under the thumb, and whether it can be read ----------------------
+
+    /// <summary>
+    /// <b>Twelve serialized values, not four</b> — rule 5, and M5-00a's correction to the row.
+    /// </summary>
+    /// <remarks>
+    /// <c>m_fontSize</c> alone changes nothing that survives the first layout pass: auto-sizing
+    /// rewrites it from <c>m_fontSizeBase</c> against <c>m_fontSizeMax</c>, so a task that set the
+    /// one field would have shipped a diff, a green suite and a HUD that looked exactly as it did
+    /// before. Three fields on four objects is the edit.
+    /// </remarks>
+    [Test]
+    public void Slots_LabelsAreTwentyEightPoint()
+    {
+        TMP_Text[] labels = SlotLabels();
+
+        for (int slot = 0; slot < labels.Length; slot++)
+        {
+            Assert.That(
+                labels[slot].fontSize,
+                Is.EqualTo(SlotFontPoints).Within(1e-3f),
+                $"S{slot + 1}'s m_fontSize");
+
+            Assert.That(
+                Field<float>(labels[slot], "m_fontSizeBase"),
+                Is.EqualTo(SlotFontPoints).Within(1e-3f),
+                $"S{slot + 1}'s m_fontSizeBase — the field auto-sizing actually reads from, so a "
+                    + "label with the right m_fontSize and the old base renders at the old size.");
+
+            Assert.That(
+                labels[slot].fontSizeMax,
+                Is.EqualTo(SlotFontPoints).Within(1e-3f),
+                $"S{slot + 1}'s m_fontSizeMax — the ceiling auto-sizing clamps to, so a label left "
+                    + "at 18 here can never reach 28 whatever its base says.");
+        }
+    }
+
+    /// <summary>
+    /// Rule 6: <c>m_fontSizeMin</c> stays at 8, and it is a decision rather than an oversight.
+    /// </summary>
+    /// <remarks>
+    /// Raising the floor to 28 would turn auto-sizing off in effect, and a word too long for its
+    /// rect would then <em>overflow</em> the 60 dp circle rather than shrink inside it — a different
+    /// wrong answer, not a right one. What makes leaving it at 8 safe is
+    /// <see cref="Slots_TheShippedWordsFitAtTwentyEight"/>, not this row: this one only pins that
+    /// nobody closed the shrink off while raising the ceiling.
+    /// </remarks>
+    [Test]
+    public void Slots_AutoSizingIsStillOn()
+    {
+        TMP_Text[] labels = SlotLabels();
+
+        for (int slot = 0; slot < labels.Length; slot++)
+        {
+            Assert.That(
+                labels[slot].enableAutoSizing,
+                Is.True,
+                $"S{slot + 1} no longer auto-sizes, so a word too long for the circle overflows it.");
+
+            Assert.That(
+                labels[slot].fontSizeMin,
+                Is.EqualTo(8f).Within(1e-3f),
+                $"S{slot + 1}'s auto-size floor moved. At 8 a word that will not fit shrinks to "
+                    + "3.5 dp and is illegible; the answer to that is a shorter LocKey or M7's "
+                    + "icon, which is what the row below is for.");
+        }
+    }
+
+    /// <summary>
+    /// <b>The row that makes rule 6's floor safe:</b> both shipped Active names fit at 28 pt without
+    /// auto-sizing having to shrink them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <em>"Consecrate"</em> is the longest thing this build can put under a thumb, at ten
+    /// characters, and it fits with about 6 px of a 150 px rect to spare — tight, and measured
+    /// rather than assumed. A future name that will not fit reddens this row instead of quietly
+    /// rendering at 3.5 dp, and [ledger row 1](../../../../../Docs/plan/ROADMAP.md#carry-forward-into-m5)'s
+    /// ruling is then binding: the answer is <b>a shorter <c>LocKey</c> in <c>English.asset</c> or
+    /// M7's icon, never a smaller font</b> — the change that put the row there in the first place.
+    /// </para>
+    /// <para>
+    /// Measured on an instance rather than on the asset because <c>GetPreferredValues</c> needs a
+    /// live text object, and with auto-sizing switched off, because the question is what 28 pt
+    /// <em>needs</em> rather than what TMP would settle for.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Slots_TheShippedWordsFitAtTwentyEight()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
+
+        Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
+
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+
+        _spawned.Add(instance);
+
+        var bar = instance.GetComponentInChildren<SkillBarPresenter>(true);
+        var buttons = Field<ManualSkillButton[]>(bar, "_buttons");
+
+        // Every Active this build ships a name for. Read off English.asset rather than quoted, so a
+        // renamed skill is measured rather than a string here going quietly out of date.
+        var localizer = new TableLocalizer(ShippedTable());
+
+        string[] words =
+        {
+            localizer.Get(new LocKey("skill.oathbound.bulwark.name")),
+            localizer.Get(new LocKey("skill.oathbound.consecrate.name")),
+        };
+
+        for (int slot = 0; slot < buttons.Length; slot++)
+        {
+            var label = Field<TMP_Text>(buttons[slot], "_label");
+
+            label.enableAutoSizing = false;
+            label.fontSize = SlotFontPoints;
+
+            Rect rect = label.rectTransform.rect;
+
+            foreach (string word in words)
+            {
+                Vector2 preferred = label.GetPreferredValues(word);
+
+                Assert.That(
+                    preferred.x,
+                    Is.LessThanOrEqualTo(rect.width),
+                    $"\"{word}\" needs {preferred.x:0.0} of S{slot + 1}'s {rect.width:0.0} px at "
+                        + $"{SlotFontPoints} pt, so auto-sizing shrinks it below the Android floor. "
+                        + "Ledger row 1's ruling is binding: shorten the LocKey or wait for M7's "
+                        + "icon — do not lower the font.");
+
+                Assert.That(
+                    preferred.y,
+                    Is.LessThanOrEqualTo(rect.height),
+                    $"\"{word}\" is taller than S{slot + 1}'s circle at {SlotFontPoints} pt.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// [Ledger row 1] 28 pt is <b>12.3 dp</b> at the project's reference density, which clears
+    /// Android's 12 sp floor. The arithmetic is in the row rather than in a comment.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is arithmetic and not an observation, deliberately.</b> <c>Screen.dpi</c> reads 120
+    /// in this Editor against a phone's 400, so every dp-sized element ever looked at here was drawn
+    /// at 30 % of its device size ([Traps §9](../../../../../Docs/Traps.md)) — the Editor is not a
+    /// weak instrument for this question, it is the wrong one. So the row computes the figure from
+    /// the canvas's own serialized settings and the reference screen, and reads <c>Screen</c>
+    /// nowhere.
+    /// </para>
+    /// <para>
+    /// A <c>Scale With Screen Size</c> canvas at match 0.5 scales by the geometric mean of the two
+    /// axis ratios, so on the project's reference 2340 × 1080 against a 1920 × 1080 canvas one
+    /// reference px is <c>sqrt(2340 / 1920)</c> = 1.104 device px; at 2.5 px/dp — 1080 short edge
+    /// across the documented ~432 dp safe area — 28 pt is 12.36 dp. The old 18 pt was 7.95, which is
+    /// the <b>66 % of the floor</b> M4-07 measured.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Slots_ClearTheAndroidFloor()
+    {
+        Assert.That(
+            DeviceDp(SlotFontPoints),
+            Is.GreaterThan(AndroidBodyTextFloorSp),
+            $"{SlotFontPoints} pt is {DeviceDp(SlotFontPoints):0.00} dp at the project's reference "
+                + $"density, which is below Android's {AndroidBodyTextFloorSp} sp floor for body "
+                + "text.");
+
+        Assert.That(DeviceDp(SlotFontPoints), Is.EqualTo(12.36f).Within(0.01f));
+
+        // The before, kept so the row states the size of the change rather than only its direction.
+        Assert.That(
+            DeviceDp(18f),
+            Is.LessThan(AndroidBodyTextFloorSp),
+            "18 pt was supposed to be below the floor — that is what ledger row 1 is about. If this "
+                + "passes, the density arithmetic here has drifted from M4-07's measurement.");
+
+        Assert.That(DeviceDp(18f), Is.EqualTo(7.95f).Within(0.01f));
+    }
+
+    /// <summary>
+    /// Rule 7: the other seven text elements on <c>Hud.prefab</c> are untouched.
+    /// </summary>
+    /// <remarks>
+    /// M4-07 measured eight and seven of them clear the floor, so this task raises the eighth and
+    /// nothing else. <b>The redesign is not this task's and has not moved</b> — every taken node
+    /// shown, an Auto skill marked by something orbiting it — and it is still blocked on M7's icons.
+    /// This row is what says the legibility half was closed without the look half being touched on
+    /// the way past.
+    /// </remarks>
+    [Test]
+    public void Hud_NothingElseMoved()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
+
+        Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
+
+        // Keyed by the object's own name, which is what a reader of the prefab sees. The four slot
+        // labels are all called "Label" and are excluded by identity rather than by name.
+        var expected = new Dictionary<string, float>
+        {
+            { "HpText", 36f },
+            { "Level", 40f },
+            { "Label", 34f },   // the Overflow toast's, the one other object called Label
+        };
+
+        var slotLabels = new HashSet<TMP_Text>(SlotLabels());
+        var seen = new List<string>();
+
+        foreach (TMP_Text text in prefab.GetComponentsInChildren<TMP_Text>(true))
+        {
+            // Matched by the shipped asset's own object, not by a second copy of the prefab: the
+            // four raised labels are the ones this task edited and every other one is this row's.
+            if (slotLabels.Contains(text))
+            {
+                continue;
+            }
+
+            seen.Add(text.gameObject.name);
+
+            Assert.That(
+                expected.ContainsKey(text.gameObject.name),
+                Is.True,
+                $"A text element called '{text.gameObject.name}' has appeared on Hud.prefab that "
+                    + "M4-07 did not measure. Measure it against Android's floor before shipping it.");
+
+            Assert.That(
+                text.fontSize,
+                Is.EqualTo(expected[text.gameObject.name]).Within(1e-3f),
+                $"'{text.gameObject.name}' moved. M4-07 measured it clearing the floor at its "
+                    + "current size, and this task's scope is the four slot labels alone (rule 7).");
+        }
+
+        Assert.That(
+            seen,
+            Is.EquivalentTo(expected.Keys),
+            "The set of text elements on Hud.prefab has changed. Every one of them is a legibility "
+                + "question against Android's 12 sp floor (ledger row 1).");
+    }
+
     // ---- The asset (Traps §5) ---------------------------------------------------------------------
 
     [Test]
@@ -1061,6 +1333,11 @@ public sealed class SkillBarPresenterTests
             new EnemyLookBook(new Dictionary<ContentId, EnemyLook>()),
             prewarm: 0));
 
+        // Empty, and it stays that way: this fixture plays the Oathbound, which raises nothing.
+        // It is here because the ticker takes one (M5-05a).
+        var minionViews = Track(new MinionViews(
+            container, Template<MinionView>("MinionTemplate"), null, _hub, prewarm: 0));
+
         var projectileViews = Track(new ProjectileViews(
             container, Template<ProjectileView>("ProjectileTemplate"), null, _hub));
 
@@ -1088,6 +1365,11 @@ public sealed class SkillBarPresenterTests
             fissurePrewarm: 0,
             beatPrewarm: 0));
 
+        // Empty on the zones' terms: this fixture plays the Oathbound, which has no Shroudstep, so
+        // nothing ever drops a corpse. It is here because the ticker takes one (M5-05b).
+        var decoys = Track(new DecoyViews(
+            container, Template<DecoyView>("DecoyTemplate"), null, _hub, prewarm: 0));
+
         var input = Track(new InputAdapter());
 
         var cameraObject = new GameObject("Camera");
@@ -1113,15 +1395,17 @@ public sealed class SkillBarPresenterTests
             _catalog,
             _random,
             _tickerSnapshot,
-            new SnapshotBuilder(player, input, enemyViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
             new IntentBuffer(),
             player,
             charge,
             enemyViews,
+            minionViews,
             projectileViews,
             rings,
             zones,
             boss,
+            decoys,
             Track(new SaveWriter(new InertSaveStore(), _hub)),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
@@ -1172,6 +1456,65 @@ public sealed class SkillBarPresenterTests
     /// scale <see cref="Bar"/> pinned.
     /// </summary>
     private static float PixelsPerDp() => StickShaper.PixelsPerDp(Screen.dpi);
+
+    /// <summary>
+    /// [Ledger row 1] What <paramref name="points"/> of canvas type measures on the reference
+    /// device, in dp. Pure arithmetic — it reads nothing off <c>Screen</c>, for
+    /// <see cref="Slots_ClearTheAndroidFloor"/>'s reason.
+    /// </summary>
+    /// <remarks>
+    /// A point on a <c>Scale With Screen Size</c> canvas is a <em>reference</em> pixel, and at
+    /// <c>m_ScreenMatchMode: 0</c> with match 0.5 the scale factor is the geometric mean of the two
+    /// axis ratios — which is the one line that makes a point size and a dp size comparable at all,
+    /// and the reason nobody caught this row for three milestones: the two units sit on the same
+    /// object and scale by different things.
+    /// </remarks>
+    private static float DeviceDp(float points)
+    {
+        float scale = Mathf.Sqrt(
+            (ReferenceScreen.x / CanvasReference.x) * (ReferenceScreen.y / CanvasReference.y));
+
+        return points * scale / ReferencePixelsPerDp;
+    }
+
+    /// <summary>S1–S4's four <c>Label</c> objects, read off the shipped prefab.</summary>
+    private static TMP_Text[] SlotLabels()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
+
+        Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
+
+        var bar = prefab.GetComponentInChildren<SkillBarPresenter>(true);
+
+        Assert.That(bar, Is.Not.Null, "SkillBarPresenter did not load off Hud.prefab (Traps §5).");
+
+        var buttons = Field<ManualSkillButton[]>(bar, "_buttons");
+
+        Assert.That(buttons, Is.Not.Null.And.Length.EqualTo(SkillRunner.MaxManualSlots));
+
+        var labels = new TMP_Text[buttons.Length];
+
+        for (int slot = 0; slot < buttons.Length; slot++)
+        {
+            labels[slot] = Field<TMP_Text>(buttons[slot], "_label");
+
+            Assert.That(labels[slot], Is.Not.Null, $"S{slot + 1} has no label assigned.");
+        }
+
+        return labels;
+    }
+
+    /// <summary>The shipped English table, for the two Active names rule 6 measures.</summary>
+    private static LocalizationTable ShippedTable()
+    {
+        const string Path = "Assets/_Project/Data/Localisation/English.asset";
+
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Path);
+
+        Assert.That(table, Is.Not.Null, $"No localization table at {Path}.");
+
+        return table;
+    }
 
     private T Template<T>(string name, int layer = 0)
         where T : Component
@@ -1309,6 +1652,7 @@ public sealed class SkillBarPresenterTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         140f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

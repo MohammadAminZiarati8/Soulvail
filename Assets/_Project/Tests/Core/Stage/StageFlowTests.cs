@@ -6,6 +6,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -79,6 +80,13 @@ public sealed class StageFlowTests
     private WorldSnapshot _snapshot;
     private IRandomStream _spawn;
     private float _now;
+
+    /// <summary>
+    /// The army a boundary has to sweep (M5-04b, ledger row 9(ii)). Built for every row rather than
+    /// for the one that uses it, because an empty <c>MinionSystem</c> is inert — it is ticked by
+    /// nothing here — and a second <c>Build</c> would be a second place the fixture's world is made.
+    /// </summary>
+    private MinionSystem _minions;
 
     [SetUp]
     public void SetUp()
@@ -528,6 +536,31 @@ public sealed class StageFlowTests
     }
 
     [Test]
+    public void Advance_SweepsTheArmy()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+        ClearTheStage();
+
+        // Raised on the last frame of the stage that is ending, which is the worst case and the only
+        // one that matters: a Wight lives twenty seconds against the two a crossing costs, so it is
+        // the one body in the game that can genuinely cross a boundary (ledger row 9(ii)).
+        _minions.Spawn(new Vector3(3f, 0f, 0f), _now);
+        _minions.Spawn(new Vector3(-3f, 0f, 0f), _now);
+
+        Assert.That(_minions.Count, Is.EqualTo(2), "Sanity: two standing at the door.");
+
+        WalkThroughTheDoor();
+
+        Assert.That(
+            _minions.Count,
+            Is.Zero,
+            "Otherwise it arrives in the next arena still walking at an enemy id the crossing has "
+                + "just wiped out of the registry — the decoy's problem (M5-03 rule 9) at seven "
+                + "times the duration.");
+    }
+
+    [Test]
     public void Advance_ResetsTheTargetOnly()
     {
         Build(OneHuskStage());
@@ -956,7 +989,7 @@ public sealed class StageFlowTests
 
         _player.Tick(dt, _now, _snapshot, _enemies.Registry.Alive, Vector3.UnitZ);
 
-        _projectiles.Tick(_now, _snapshot.PlayerPosition, _player);
+        _projectiles.Tick(_now, _snapshot.PlayerPosition, _player, _enemies);
 
         _director.Tick(_now, _snapshot.PlayerPosition, _spawn);
 
@@ -1137,6 +1170,9 @@ public sealed class StageFlowTests
         _composer = new WaveComposer(_catalog, new ThreatBudget(_mode.Scaling, DeviceCap));
         _plan = new WavePlan(MaxWaves, Math.Max(1, _mode.Roster.Count));
         _spawn = new FixedRandom(seed, Alternating(8_192)).Spawn;
+        MinionSpec wight = Wight();
+
+        _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, new RecordingIntents());
 
         _flow = Flow();
     }
@@ -1170,7 +1206,25 @@ public sealed class StageFlowTests
         _player,
         _events,
         _plan,
-        seed: 0);
+        seed: 0,
+        lures: null,
+        minions: _minions);
+
+    /// <summary>
+    /// The Gravecaller's authored Wight (M5-02) — twenty seconds, which is ten times the two a
+    /// crossing costs.
+    /// </summary>
+    private static MinionSpec Wight() => new MinionSpec(
+        new ContentId("minion.wight"),
+        new LocKey("minion.wight.name"),
+        cap: 3,
+        lifespan: 20f,
+        riseChance: 0.25f,
+        maxHp: 20f,
+        moveSpeed: 3f,
+        damage: 8f,
+        attackInterval: 1f,
+        reach: 1.5f);
 
     /// <summary>A whole run, for the rows that are about where the session ticks the flow.</summary>
     private RunSession Session(RecordingIntents intents)
@@ -1360,6 +1414,7 @@ public sealed class StageFlowTests
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
+        new LocKey("character.oathbound.description"),
         100f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

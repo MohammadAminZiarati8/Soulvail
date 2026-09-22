@@ -60,18 +60,6 @@ namespace Soulvail.Core.Progression;
 /// </remarks>
 public sealed class LevelUpFlow
 {
-    /// <summary>
-    /// What one Overflow level adds to <see cref="PlayerStat.WeaponDamage"/>, as a
-    /// <see cref="ModifierKind.PercentAdd"/> fraction (CH §5.2).
-    /// </summary>
-    public const float OverflowDamage = 0.02f;
-
-    /// <summary>
-    /// What one Overflow level adds to <see cref="PlayerStat.MaxHp"/>, as a
-    /// <see cref="ModifierKind.PercentAdd"/> fraction (CH §5.2).
-    /// </summary>
-    public const float OverflowMaxHp = 0.02f;
-
     private readonly SkillTree _tree;
     private readonly LevelTracker _progression;
     private readonly SkillRunner _runner;
@@ -110,9 +98,17 @@ public sealed class LevelUpFlow
     /// its own events (M3-03 rule 7).</param>
     /// <param name="effects">Where Overflow's two modifiers go on.</param>
     /// <param name="events">Where the three announcements go out.</param>
-    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
+    /// <param name="overflow">
+    /// CH §5.2's Overflow for the mode being played — what a spare level is worth
+    /// (<see cref="ModeSpec.Overflow"/>). <b>An argument rather than two <c>const</c>s, and the
+    /// <c>const</c>s are gone rather than kept as defaults</b> (M5-06b rules 8 and 10): a default
+    /// beside an authored value is a second place the number lives, and the next reader would not
+    /// know which one the game used. A zeroed spec is ordinary and means Overflow is worth nothing
+    /// in this mode.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
-                       EffectRegistry effects, IDomainEvents events)
+                       EffectRegistry effects, IDomainEvents events, OverflowSpec overflow)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -123,8 +119,11 @@ public sealed class LevelUpFlow
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
 
-        _overflowDamage = new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, OverflowDamage);
-        _overflowMaxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, OverflowMaxHp);
+        // Built here rather than per grant for the reason the fields say, and read off the mode
+        // rather than off a constant as of M5-06b: OverflowSpec has already refused a NaN, an
+        // infinity and a negative, so nothing below has an opinion about the two numbers.
+        _overflowDamage = new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, overflow.Damage);
+        _overflowMaxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, overflow.MaxHp);
     }
 
     /// <summary>Whether an offer is on the table.</summary>
@@ -305,8 +304,9 @@ public sealed class LevelUpFlow
 
     /// <summary>
     /// The arithmetic both paths share: two <c>PercentAdd</c> modifiers under one source, so ten
-    /// Overflow levels are ×1.20 rather than 1.02¹⁰ (GD §13.1's <em>"additively within a family"</em>,
-    /// ADR-0008's order). Raising <c>MaxHp</c> is deliberately <b>not</b> a heal (M3-05).
+    /// Overflow levels at Descent's authored 2 % are ×1.20 rather than 1.02¹⁰ (GD §13.1's
+    /// <em>"additively within a family"</em>, ADR-0008's order). Raising <c>MaxHp</c> is
+    /// deliberately <b>not</b> a heal (M3-05).
     /// </summary>
     private void ApplyOneOverflow()
     {

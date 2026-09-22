@@ -205,7 +205,7 @@ Per-class values (HP, speed, weapon) live in [Characters.md §3](Characters.md).
 | Hit i-frames | 0.5 s | Prevents multi-hit chip death in a swarm |
 | Collision | `CharacterController` | Not rigidbody. Predictable, cheap, no physics jank. |
 | HP range across classes | 70–140 | Anything outside this band breaks the one-shot rule's arithmetic (§12.4) |
-| Speed range across classes | 5.4–6.2 m/s | Every class must feel faster than almost every enemy |
+| Speed range across classes | **3.0–3.4 m/s** | Every class must feel faster than almost every enemy. **Scaled from 5.4–6.2 at M5-02**, by the same 0.5556 the owner's M2-03 retune already applied to the Oathbound — which is why the *rule* is unchanged and only the numbers moved. See [Characters.md](Characters.md) §3 and [CoreCombat.md](CoreCombat.md) §2.5. |
 
 ### 6.2 Weapon rules
 
@@ -221,6 +221,8 @@ Weapons differ per class, but all obey the same laws:
 > A basic enemy dies in **3–5 hits from any class, at any depth.**
 
 At stage 1 an unlevelled class kills a Husk in ~3 hits. At stage 30 a well-built one should still kill a Husk in ~3–5 hits, because tree power and enemy HP scale together by design. If basic enemies start taking 10 hits, the curve has failed and no amount of content fixes it.
+
+**This holds up to the death horizon and not past it** — see §12.4's TTK row and §12.5. **And it is not holding today, measured rather than assumed:** at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md) the Oathbound killed a Husk in 4 hits at every stage from 4 to 16, while the Gravecaller went 4 → 8 by stage 16 with **its entire tree taken**. The cause is the tree rather than the player: the Gravecaller's twelve nodes carry **one** weapon-damage node, so its damage grew 15 % over nineteen stages against a Husk's 108 %. **"Tree power and enemy HP scale together by design" is the design; it is not yet the game.** M8-05 owns closing that gap.
 
 ### 6.3 Skills
 
@@ -480,7 +482,7 @@ Invariants. Violating them is a bug, not a tuning choice.
 |---|---|
 | **One-shot rule** | No non-boss attack may exceed **35% of max HP** at any depth. Boss attacks cap at **50%**. |
 | **Spawn safety** | Nothing spawns within **6m** of the player. Revenant teleports are exempt but telegraph 0.5s. |
-| **TTK invariant** | A basic enemy dies in **3–5 hits** at every depth. Drift above 5 means HP scaling is too steep or player scaling too weak. |
+| **TTK invariant** | A basic enemy dies in **3–5 hits** **up to the death horizon** (§12.5). Drift above 5 *before* that horizon means HP scaling is too steep or player scaling too weak. **Scoped at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md), because "at every depth" contradicted §12.5**: if the power curves cross on purpose, TTK must exceed 5 eventually, so the unscoped rule forbade the very thing that makes Descent losable. Measured there: the Oathbound holds **4 hits flat from stage 4 to 16**; the Gravecaller drifts **4 → 8 by stage 16** and breaks the band at **stage 9**, which is a real violation inside the horizon and is **M8-05**'s. |
 | **On-screen rule** | No damage originates from outside the camera frustum without a visible edge indicator. Tighter than the PC version of this rule — a phone screen shows less. |
 | **Thumb rule** | Nothing critical may resolve in the bottom-left or bottom-right ~15% of the screen. Thumbs live there. |
 | **Cover guarantee** | Every arena has a valid circle-strafe path at all times. |

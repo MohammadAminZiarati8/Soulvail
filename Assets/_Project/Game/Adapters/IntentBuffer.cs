@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 
@@ -57,6 +58,13 @@ public sealed class IntentBuffer : IIntentSink
     private readonly List<ConeHitIntent> _coneHits = new(ConeHitCapacity);
     private readonly List<EnemyKnockbackIntent> _knockbacks = new(KnockbackCapacity);
     private readonly List<EnemyMoveIntent> _enemyMoves = new(EnemyMoveCapacity);
+
+    /// <summary>
+    /// Room for the whole army — <see cref="MinionSystem.MaxConcurrent"/>, which is the most that
+    /// can ever stand at once whatever a node says. Sized from the constant rather than from a
+    /// literal, so the buffer cannot fall behind the cap the day one moves.
+    /// </summary>
+    private readonly List<EnemyMoveIntent> _minionMoves = new(MinionSystem.MaxConcurrent);
 
     private PlayerMoveIntent _playerMove;
     private ChargeIntent _charge;
@@ -138,6 +146,27 @@ public sealed class IntentBuffer : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyMoveIntent> EnemyMoves => _enemyMoves;
 
+    /// <summary>
+    /// Where core wants each Wight to walk this tick, one entry per standing minion.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Its own list because the ids are its own</b> (M5-04a rule 4): a Wight's id comes from
+    /// <c>MinionSystem</c> and an enemy's from <c>EnemyRegistry</c>, both counting from 1, so a
+    /// reader that resolved these against the enemy views would steer the wrong bodies.
+    /// <c>RunTicker.ApplyMinionMoves</c> is that reader as of M5-05a, and it resolves through
+    /// <c>MinionViews</c> and through nothing else.
+    /// </para>
+    /// <para>
+    /// <b>Empty is no longer the expected state.</b> Until M5-04b nothing raised a Wight, so this
+    /// list was empty in every run that could be played and said so here; Rise fills it behind
+    /// every fourth kill a Gravecaller scores. What is still true is narrower and belongs to the
+    /// menu rather than to this list: no run this build can <em>start</em> plays the Gravecaller,
+    /// because class select is M5-07.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
+
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
     {
         _playerMove = intent;
@@ -160,6 +189,11 @@ public sealed class IntentBuffer : IIntentSink
         _enemyMoves.Add(intent);
     }
 
+    void IIntentSink.MinionMove(in EnemyMoveIntent intent)
+    {
+        _minionMoves.Add(intent);
+    }
+
     void IIntentSink.EnemyKnockback(in EnemyKnockbackIntent intent)
     {
         _knockbacks.Add(intent);
@@ -171,7 +205,7 @@ public sealed class IntentBuffer : IIntentSink
     /// intents the views have not read yet.
     /// </summary>
     /// <remarks>
-    /// The three lists are genuinely emptied, where the two flags are only lowered, and the
+    /// The four lists are genuinely emptied, where the two flags are only lowered, and the
     /// asymmetry is the two shapes rather than an inconsistency: a list has no flag to check first,
     /// so leftovers would read as this tick's swings, walks and knockbacks — the body would sweep
     /// the same cone every frame until the next one replaced it, walk a dead enemy for ever, and
@@ -185,5 +219,6 @@ public sealed class IntentBuffer : IIntentSink
         _coneHits.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
+        _minionMoves.Clear();
     }
 }

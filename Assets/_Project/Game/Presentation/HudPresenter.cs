@@ -104,13 +104,21 @@ namespace Soulvail.Game.Presentation
         /// How wide the level label is, in dp.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// <b>A constant rather than a serialized field, and that is deliberate.</b> Every other
         /// number in this row is an Inspector door the owner can tune on a device (ledger row 4) —
         /// and each of those doors owes a non-finite row that <see cref="Place"/> has never had, this
         /// method having laid the row out untested since M1-17. A width that no caller can pass a
-        /// value through owes none: it is <c>LevelUpFlow.OverflowDamage</c>'s argument, applied to a
-        /// layout. Two digits at the readout's own point size fit inside 48 with room to spare, and
-        /// a level past 99 is stage 60-odd.
+        /// value through owes none. Two digits at the readout's own point size fit inside 48 with
+        /// room to spare, and a level past 99 is stage 60-odd.
+        /// </para>
+        /// <para>
+        /// <b>This used to cite <c>LevelUpFlow.OverflowDamage</c> as the same argument, and that
+        /// citation died at M5-06b</b>: Overflow's two numbers were exactly the case ADR-0006 was
+        /// about — a number a designer wants to retune — and they are now
+        /// <c>ModeDefinition</c> fields. A layout width that nothing in the game reads twice is
+        /// still not one, which is why this constant stayed.
+        /// </para>
         /// </remarks>
         private const float LevelWidthDp = 48f;
 

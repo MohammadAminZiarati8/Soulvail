@@ -391,6 +391,13 @@ public sealed class SkillTreeValidationTests
         // gap (f), and M3-02a rule 11's named obligation: a character with no tree is legal in the
         // catalog and a run-breaking omission in a shipped build. This is what retires M3-03 rule
         // 10's null-tree branch from a real build.
+        //
+        // **The Gravecaller's named skip is gone as of M5-06b, with the row that dated it.** From
+        // M5-02 to M5-06a the project shipped one authored class with no tree on purpose, and this
+        // sweep exempted `character.gravecaller` by name — narrowly, so the exemption could not
+        // quietly cover the next omission — under `TheTreelessClass_IsStillTreeless`, whose whole
+        // job was to go red the day the tree landed. It did, and both halves were deleted rather
+        // than moved: the sweep is the stronger check and it is doing the work again.
         ContentCatalog catalog = ShippedCatalog();
         var problems = new List<string>();
 
@@ -414,6 +421,30 @@ public sealed class SkillTreeValidationTests
         }
 
         ContentValidationTests.AssertNoProblems(problems, "Every character has a tree");
+    }
+
+    [Test]
+    public void BothShippedClasses_ResolveTheirOwnTree()
+    {
+        // **What `TheTreelessClass_IsStillTreeless` turned into when it expired.** That row said
+        // "the Gravecaller has no tree, and this exemption is temporary"; it went red at M5-06b as
+        // designed. What is worth keeping from it is the other half it also asserted — that a class
+        // resolves *its own* tree rather than merely some tree — which is now a claim about two
+        // classes instead of a claim about one plus an excuse.
+        ContentCatalog catalog = ShippedCatalog();
+
+        foreach (string id in new[] { "character.oathbound", "character.gravecaller" })
+        {
+            var characterId = new ContentId(id);
+
+            Assert.That(
+                catalog.TryGetTreeFor(characterId, out SkillTreeSpec tree),
+                Is.True,
+                $"'{id}' resolves no tree, so every level-up in a run of it pays Overflow.");
+
+            Assert.That(tree, Is.Not.Null);
+            Assert.That(tree.CharacterId, Is.EqualTo(characterId), $"'{id}' got someone else's.");
+        }
     }
 
     [Test]
@@ -680,6 +711,17 @@ public sealed class SkillTreeValidationTests
         registry.Register<KnockbackOnSwing>(new Ignoring<KnockbackOnSwing>());
         registry.Register<GrantShield>(new Ignoring<GrantShield>());
         registry.Register<SpawnHealZone>(new Ignoring<SpawnHealZone>());
+
+        // **The sixth, and it arrived exactly as the remark above predicted: loudly.** M5-06b's
+        // Exhume is the first shipped node to cast a RaiseMinions, and the three starve walks went
+        // red together with `no handler is registered for it`.
+        //
+        // **Registered unconditionally here, unlike in RunSession.Start**, which registers it only
+        // for a class that has an army — because these walks are about tier gating and nothing
+        // else. Whether a *run* can answer for the primitive is M5-06a rule 11's refusal, which
+        // RunSession owns and RunSessionTests asserts; a walk that skipped the Gravecaller's tree
+        // for it would stop proving the one thing it exists to prove.
+        registry.Register<RaiseMinions>(new Ignoring<RaiseMinions>());
 
         return registry;
     }

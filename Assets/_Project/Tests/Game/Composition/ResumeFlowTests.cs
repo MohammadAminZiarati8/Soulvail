@@ -796,7 +796,11 @@ public sealed class ResumeFlowTests
             xp: 0f,
             pendingLevelUps: 0,
             takenNodeIds: Array.Empty<ContentId>(),
-            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
     private static void Set(MenuPresenter presenter, string field, Object value) =>
         typeof(MenuPresenter).GetField(field, Private).SetValue(presenter, value);

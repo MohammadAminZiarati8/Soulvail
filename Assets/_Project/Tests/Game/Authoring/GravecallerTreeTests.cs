@@ -1019,7 +1019,11 @@ public sealed class GravecallerTreeTests
             0f,
             pending,
             Array.Empty<ContentId>(),
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

@@ -114,8 +114,8 @@ public readonly struct SplashOption
 /// mandatory"</em> inside a class whose whole contract is <em>"three cards, take one"</em>.
 /// </para>
 /// <para>
-/// <b>Nothing here is stored on the snapshot and <c>RunSnapshot.CurrentVersion</c> stays 3</b>
-/// (rule 6). CH §5.4 locks the branch for the run, so every foreign id in <c>TakenNodeIds</c> is in
+/// <b>Nothing here is stored on the snapshot, and v4 deliberately did not add a field for it
+/// either</b> (rule 6, unchanged at M6-01b). CH §5.4 locks the branch for the run, so every foreign id in <c>TakenNodeIds</c> is in
 /// the same branch of the same class — which makes the choice recoverable from what is already
 /// written down. <see cref="TryDerive"/> is that recovery and <see cref="Restore"/> replays it,
 /// silently, <b>before</b> <c>SkillTree.Restore</c> replays the takes. It is

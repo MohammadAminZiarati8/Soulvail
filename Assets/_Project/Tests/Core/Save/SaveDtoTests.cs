@@ -8,6 +8,7 @@ using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
+using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Save;
 
@@ -29,6 +30,13 @@ public sealed class SaveDtoTests
     /// </summary>
     private static readonly ContentId Bulwark = new ContentId("skill.oathbound.bulwark");
     private static readonly ContentId Consecrate = new ContentId("skill.oathbound.consecrate");
+
+    /// <summary>
+    /// Two more ids, for v4's three lists — one node and one Ordeal, so no row can pass by putting
+    /// the same value in every list.
+    /// </summary>
+    private static readonly ContentId Reprisal = new ContentId("skill.oathbound.reprisal");
+    private static readonly ContentId Thinblood = new ContentId("ordeal.thinblood");
 
     private static readonly DateTimeOffset Written =
         new DateTimeOffset(2026, 9, 12, 10, 30, 0, TimeSpan.Zero);
@@ -55,7 +63,11 @@ public sealed class SaveDtoTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: Array.Empty<ContentId>(),
-            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         Assert.That(snapshot.Version, Is.EqualTo(RunSnapshot.CurrentVersion));
         Assert.That(snapshot.ModeId, Is.EqualTo(Mode));
@@ -73,8 +85,13 @@ public sealed class SaveDtoTests
         Assert.That(snapshot.PendingLevelUps, Is.EqualTo(1));
     }
 
+    /// <remarks>
+    /// <b>Renamed from <c>Snapshot_RecordsTheFourNewFields</c> at M6-01b</b>, because v4 brings four
+    /// new fields of its own and two rows under that name in one file is a reader's trap rather
+    /// than a history. What is new moves on; what each row is about does not.
+    /// </remarks>
     [Test]
-    public void Snapshot_RecordsTheFourNewFields()
+    public void Snapshot_RecordsTheV2Fields()
     {
         var taken = new[] { Bulwark, Consecrate };
 
@@ -144,7 +161,11 @@ public sealed class SaveDtoTests
             xp: 0f,
             pendingLevelUps: 0,
             takenNodeIds: null,
-            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]));
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>()));
     }
 
     [Test]
@@ -231,7 +252,11 @@ public sealed class SaveDtoTests
             xp: 0f,
             pendingLevelUps: 0,
             takenNodeIds: Array.Empty<ContentId>(),
-            manualSkillIds: null));
+            manualSkillIds: null,
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>()));
     }
 
     [Test]
@@ -283,6 +308,284 @@ public sealed class SaveDtoTests
         Assert.That(snapshot.ManualSkillIds, Is.Not.Null);
         Assert.That(snapshot.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
         Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
+    }
+
+    // ---- v4: the economy and its three lists (M6-01b rules 1–4) ---------------------------------
+
+    [Test]
+    public void Economy_CarriesItsFour()
+    {
+        var economy = new RunEconomy(317, 42.5f, 2, 1);
+
+        // Every value distinct and none of them a zero, so a constructor that assigned two fields
+        // from one parameter could not pass — and the two adjacent ints are the pair rule 1 puts
+        // behind a struct precisely because a transposition between them is invisible.
+        Assert.That(economy.Essence, Is.EqualTo(317));
+        Assert.That(economy.Veilrot, Is.EqualTo(42.5f));
+        Assert.That(economy.RerollsBought, Is.EqualTo(2));
+        Assert.That(economy.RerollsSpent, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Economy_DefaultIsAFreshRun()
+    {
+        RunEconomy zeroed = default;
+
+        // **The zeroed form is the *valid* opening state, not the invalid one RunSnapshot.Version
+        // is** (rule 1). Nothing earned, nothing corrupted, nothing bought — which is what makes the
+        // v3 → v4 migration step one token rather than an arithmetic problem, and what AR §18.3's
+        // "check at both ends" is answered with here.
+        Assert.That(zeroed.Essence, Is.Zero);
+        Assert.That(zeroed.Veilrot, Is.Zero);
+        Assert.That(zeroed.RerollsBought, Is.Zero);
+        Assert.That(zeroed.RerollsSpent, Is.Zero);
+
+        Assert.DoesNotThrow(() => new RunEconomy(0, 0f, 0, 0), "and the same values pass the door.");
+    }
+
+    [Test]
+    public void Economy_RefusesNegatives()
+    {
+        // Each int in turn, and each exception names its own field — a single row that only ever
+        // moved one of the three could not tell a shared guard from three.
+        Assert.That(
+            Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(-1, 0f, 0, 0)).ParamName,
+            Is.EqualTo("essence"));
+
+        Assert.That(
+            Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, 0f, -1, 0)).ParamName,
+            Is.EqualTo("rerollsBought"));
+
+        Assert.That(
+            Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, 0f, 0, -1)).ParamName,
+            Is.EqualTo("rerollsSpent"));
+    }
+
+    [Test]
+    public void Economy_RefusesVeilrotOutsideItsRange()
+    {
+        // **Both ends, and above 100 is not symmetry for its own sake** (rule 2). GD §10.2's
+        // Claiming fires at 100, so a saved 10 000 would arrive Claimed with headroom nothing can
+        // ever cleanse. NaN goes with the negatives because `!(v >= 0f)` is the spelling `playerHp`
+        // uses, and a NaN meter makes every threshold comparison false for the rest of the run.
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, -0.1f, 0, 0));
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, 100.1f, 0, 0));
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, float.NaN, 0, 0));
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, float.PositiveInfinity, 0, 0));
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, float.NegativeInfinity, 0, 0));
+    }
+
+    [Test]
+    public void Economy_AcceptsBothEnds()
+    {
+        // 100 is the Claiming rather than an error: a run standing exactly on GD §10.2's threshold
+        // is a run the game has a rule for, and refusing it would make the one state the mechanic
+        // is named after unsaveable.
+        Assert.DoesNotThrow(() => new RunEconomy(0, 0f, 0, 0));
+        Assert.That(new RunEconomy(0, 100f, 0, 0).Veilrot, Is.EqualTo(100f));
+    }
+
+    [Test]
+    public void Economy_RefusesMoreSpentThanBought()
+    {
+        // **The one *relational* guard this format has** (rule 3). The pair is a stock — what the
+        // player may still use is bought minus spent — so a negative stock is a file nothing in the
+        // game can produce, and M6-02b's counter would carry it for the rest of the run.
+        Assert.Catch<ArgumentOutOfRangeException>(() => new RunEconomy(0, 0f, 0, 1));
+
+        // Equal is ordinary: every reroll bought has been used.
+        Assert.DoesNotThrow(() => new RunEconomy(0, 0f, 5, 5));
+
+        // And the other direction is merely a rich file, which is not this guard's business.
+        Assert.DoesNotThrow(() => new RunEconomy(0, 0f, 99, 0));
+    }
+
+    [Test]
+    public void Snapshot_CarriesTheFourNewFields()
+    {
+        var banished = new[] { Reprisal };
+        var pacted = new[] { Consecrate };
+        var ordeals = new[] { Thinblood };
+
+        RunSnapshot snapshot = Snapshot(
+            takenNodeIds: new[] { Bulwark, Consecrate },
+            economy: new RunEconomy(317, 42.5f, 2, 1),
+            banishedNodeIds: banished,
+            pactedNodeIds: pacted,
+            ordealIds: ordeals);
+
+        // Each list holds a different id, so a constructor that assigned one parameter to two
+        // fields — the mistake an eighteen-argument constructor exists to make — could not pass.
+        Assert.That(snapshot.Economy.Essence, Is.EqualTo(317));
+        Assert.That(snapshot.Economy.Veilrot, Is.EqualTo(42.5f));
+        Assert.That(snapshot.Economy.RerollsBought, Is.EqualTo(2));
+        Assert.That(snapshot.Economy.RerollsSpent, Is.EqualTo(1));
+
+        Assert.That(snapshot.BanishedNodeIds, Is.EqualTo(banished));
+        Assert.That(snapshot.PactedNodeIds, Is.EqualTo(pacted));
+        Assert.That(snapshot.OrdealIds, Is.EqualTo(ordeals));
+
+        // Equal to the inputs and not the same objects, which is what the copy is about.
+        Assert.That(snapshot.BanishedNodeIds, Is.Not.SameAs(banished));
+        Assert.That(snapshot.PactedNodeIds, Is.Not.SameAs(pacted));
+        Assert.That(snapshot.OrdealIds, Is.Not.SameAs(ordeals));
+    }
+
+    [Test]
+    public void Snapshot_DefaultAnswersEmptyForEveryList()
+    {
+        RunSnapshot zeroed = default;
+
+        // Three more fields a zeroed struct could hand out as nulls. They answer an empty list
+        // instead, so no reader has to ask — including the readers that do not exist until M6-02b,
+        // M6-05a and M6-06a (AR §18.3).
+        Assert.That(zeroed.BanishedNodeIds, Is.Not.Null);
+        Assert.That(zeroed.BanishedNodeIds, Is.Empty);
+        Assert.That(zeroed.PactedNodeIds, Is.Not.Null);
+        Assert.That(zeroed.PactedNodeIds, Is.Empty);
+        Assert.That(zeroed.OrdealIds, Is.Not.Null);
+        Assert.That(zeroed.OrdealIds, Is.Empty);
+
+        // And the economy is `default`, which is the *valid* fresh run rather than the invalid form
+        // Version carries — see Economy_DefaultIsAFreshRun.
+        Assert.That(zeroed.Economy.Essence, Is.Zero);
+        Assert.That(zeroed.Economy.Veilrot, Is.Zero);
+        Assert.That(zeroed.Economy.RerollsBought, Is.Zero);
+        Assert.That(zeroed.Economy.RerollsSpent, Is.Zero);
+    }
+
+    [Test]
+    public void Snapshot_EveryNewListRefusesADefaultedId()
+    {
+        // **All three go with TakenNodeIds and against ManualSkillIds** (rule 4). A slot's empty is
+        // expressible only as a defaulted id; these three lists have no such state, because a
+        // banished node has an id, a pacted node has an id and an Ordeal has an id. The valid entry
+        // comes first in each list, so no row can pass by refusing the list wholesale.
+        Assert.That(
+            Assert.Catch<ArgumentException>(
+                () => Snapshot(banishedNodeIds: new[] { Reprisal, default })).Message,
+            Does.Contain("banishedNodeIds[1]"));
+
+        Assert.That(
+            Assert.Catch<ArgumentException>(
+                () => Snapshot(pactedNodeIds: new[] { Consecrate, default })).Message,
+            Does.Contain("pactedNodeIds[1]"));
+
+        Assert.That(
+            Assert.Catch<ArgumentException>(
+                () => Snapshot(ordealIds: new[] { Thinblood, default })).Message,
+            Does.Contain("ordealIds[1]"));
+    }
+
+    [Test]
+    public void Snapshot_EveryNewListRefusesNull()
+    {
+        ContentId[] empty = Array.Empty<ContentId>();
+
+        // Built through a helper that passes all three straight down rather than through Snapshot(),
+        // which substitutes the empty list for a parameter that was not supplied and so cannot tell
+        // "not supplied" from "supplied as null" — Snapshot_NullNodes_Throws' reason, three lists
+        // on. The other two are supplied empty each time, so each row names the list it is about.
+        ArgumentNullException banished =
+            Assert.Catch<ArgumentNullException>(() => Lists(null, empty, empty));
+        ArgumentNullException pacted =
+            Assert.Catch<ArgumentNullException>(() => Lists(empty, null, empty));
+        ArgumentNullException ordeals =
+            Assert.Catch<ArgumentNullException>(() => Lists(empty, empty, null));
+
+        Assert.That(banished.ParamName, Is.EqualTo("banishedNodeIds"));
+        Assert.That(pacted.ParamName, Is.EqualTo("pactedNodeIds"));
+        Assert.That(ordeals.ParamName, Is.EqualTo("ordealIds"));
+
+        // And each says what an empty one would have meant, because null and empty are not two ways
+        // of saying the same thing here — a reader must never have to ask.
+        Assert.That(banished.Message, Does.Contain("empty for a run that has banished no nodes"));
+        Assert.That(pacted.Message, Does.Contain("empty for a run that has taken no Pacts"));
+        Assert.That(ordeals.Message, Does.Contain("empty for a run that has drawn no Ordeals"));
+    }
+
+    [Test]
+    public void Snapshot_EveryNewListIsCopied()
+    {
+        var banished = new List<ContentId> { Reprisal };
+        var pacted = new List<ContentId> { Consecrate };
+        var ordeals = new List<ContentId> { Thinblood };
+
+        RunSnapshot snapshot = Snapshot(
+            banishedNodeIds: banished, pactedNodeIds: pacted, ordealIds: ordeals);
+
+        banished.Add(Bulwark);
+        pacted.Add(Bulwark);
+        ordeals.Add(Bulwark);
+
+        // TakenNodeIds' rule: SaveWriter *enqueues* the write, so a snapshot is held across frames
+        // and a borrowed buffer would be rewritten under a save that had not happened yet.
+        Assert.That(snapshot.BanishedNodeIds, Has.Count.EqualTo(1));
+        Assert.That(snapshot.PactedNodeIds, Has.Count.EqualTo(1));
+        Assert.That(snapshot.OrdealIds, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Snapshot_AnUnshippedIdIsNotRefusedHere()
+    {
+        var deleted = new ContentId("skill.deleted");
+
+        // takenNodeIds' rule, one list over (rule 4): this constructor checks the *grammar*, and
+        // "does this build still ship that node" is content validation's answer to give at
+        // RunSession.Start, with the diagnostic that names the asset.
+        Assert.DoesNotThrow(() => Snapshot(
+            banishedNodeIds: new[] { deleted },
+            pactedNodeIds: new[] { deleted },
+            ordealIds: new[] { deleted }));
+    }
+
+    [Test]
+    public void Snapshot_APactedIdNeedNotBeTakenHere()
+    {
+        // **The subset relation is deliberately not checked**, unlike RunEconomy's one relational
+        // guard. The two lists are independent arguments at this layer and the tree is what can
+        // answer, so the refusal is SkillTree.Restore's.
+        RunSnapshot snapshot = Snapshot(
+            takenNodeIds: new[] { Bulwark }, pactedNodeIds: new[] { Consecrate });
+
+        Assert.That(snapshot.PactedNodeIds, Is.EqualTo(new[] { Consecrate }));
+        Assert.That(snapshot.TakenNodeIds, Has.No.Member(Consecrate), "The fixture's own claim.");
+    }
+
+    [Test]
+    public void Snapshot_EmptyListsAllocateNothing()
+    {
+        // Everything the constructor is handed is built once, up here: the row is about the copy,
+        // and a `new ContentId[4]` inside the measured body would be measuring the fixture.
+        ContentId[] empty = Array.Empty<ContentId>();
+        var slots = new ContentId[SkillRunner.MaxManualSlots];
+        RunSnapshot sink = default;
+
+        // An empty list costs nothing — there is no copy to make, so the shared zero-length array
+        // answers — and four empty slots are indistinguishable, so one shared instance answers
+        // those. That is what keeps RunRecorder.Take allocation-free for every run until M6-02b.
+        AllocationAssert.None(() => sink = new RunSnapshot(
+            RunSnapshot.CurrentVersion,
+            Mode,
+            Character,
+            seed: 7,
+            stageIndex: 1,
+            default,
+            playerHp: 100f,
+            playerShield: 0f,
+            runTime: 0f,
+            Written,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            empty,
+            slots,
+            default,
+            empty,
+            empty,
+            empty));
+
+        Assert.That(sink.Version, Is.EqualTo(RunSnapshot.CurrentVersion), "The body really ran.");
     }
 
     [Test]
@@ -365,7 +668,11 @@ public sealed class SaveDtoTests
             xp: 0f,
             pendingLevelUps: 0,
             takenNodeIds: Array.Empty<ContentId>(),
-            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]));
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>()));
     }
 
     [Test]
@@ -680,7 +987,11 @@ public sealed class SaveDtoTests
         float xp = 0f,
         int pendingLevelUps = 0,
         IReadOnlyList<ContentId> takenNodeIds = null,
-        IReadOnlyList<ContentId> manualSkillIds = null)
+        IReadOnlyList<ContentId> manualSkillIds = null,
+        RunEconomy economy = default,
+        IReadOnlyList<ContentId> banishedNodeIds = null,
+        IReadOnlyList<ContentId> pactedNodeIds = null,
+        IReadOnlyList<ContentId> ordealIds = null)
     {
         return new RunSnapshot(
             version,
@@ -697,6 +1008,46 @@ public sealed class SaveDtoTests
             xp,
             pendingLevelUps,
             takenNodeIds ?? Array.Empty<ContentId>(),
-            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
+            economy,
+            banishedNodeIds ?? Array.Empty<ContentId>(),
+            pactedNodeIds ?? Array.Empty<ContentId>(),
+            ordealIds ?? Array.Empty<ContentId>());
+    }
+
+    /// <summary>
+    /// A valid snapshot built with v4's three lists passed straight through, so a row can hand one
+    /// of them a null.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Snapshot"/> coalesces a null away and so cannot tell "not supplied" from
+    /// "supplied as null" — the same reason <c>Snapshot_NullNodes_Throws</c> builds its own. Three
+    /// parameters with no <c>??</c> behind them is the whole of the difference.
+    /// </remarks>
+    private static RunSnapshot Lists(
+        IReadOnlyList<ContentId> banished,
+        IReadOnlyList<ContentId> pacted,
+        IReadOnlyList<ContentId> ordeals)
+    {
+        return new RunSnapshot(
+            RunSnapshot.CurrentVersion,
+            Mode,
+            Character,
+            seed: 7,
+            stageIndex: 1,
+            default,
+            playerHp: 100f,
+            playerShield: 0f,
+            runTime: 0f,
+            Written,
+            level: 1,
+            xp: 0f,
+            pendingLevelUps: 0,
+            takenNodeIds: Array.Empty<ContentId>(),
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            economy: default,
+            banishedNodeIds: banished,
+            pactedNodeIds: pacted,
+            ordealIds: ordeals);
     }
 }

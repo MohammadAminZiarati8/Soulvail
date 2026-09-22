@@ -1001,7 +1001,11 @@ public sealed class ClassSelectPresenterTests
         xp: 0f,
         pendingLevelUps: 0,
         takenNodeIds: Array.Empty<ContentId>(),
-        manualSkillIds: new ContentId[Soulvail.Core.Combat.SkillRunner.MaxManualSlots]);
+        manualSkillIds: new ContentId[Soulvail.Core.Combat.SkillRunner.MaxManualSlots],
+        default,
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>());
 
     /// <summary>A loader that records rather than loading — <c>PausePresenterTests</c>' shape.</summary>
     private sealed class RecordingLoader : SceneLoader

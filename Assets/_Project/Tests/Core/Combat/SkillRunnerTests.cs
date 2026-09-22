@@ -1479,7 +1479,7 @@ public sealed class SkillRunnerTests
         // `RunSnapshot` looking like a slot — a red row M3-07b had to *change* rather than
         // remember. Kept and turned over rather than deleted, because the thing worth asserting for
         // ever is the same thing from the other side: the runner's table is what reaches the file.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "M3-07b is the bump.");
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(4), "M3-07b was the bump; M6-01b is v4.");
 
         Assert.That(
             typeof(RunSnapshot).GetProperty(nameof(RunSnapshot.ManualSkillIds)),
@@ -1503,7 +1503,7 @@ public sealed class SkillRunnerTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        Assert.That(snapshot.Version, Is.EqualTo(3));
+        Assert.That(snapshot.Version, Is.EqualTo(4));
         Assert.That(
             snapshot.TakenNodeIds.Count,
             Is.EqualTo(2),
@@ -1913,7 +1913,11 @@ public sealed class SkillRunnerTests
                 0f,
                 0,
                 tier.ToArray(),
-                new ContentId[SkillRunner.MaxManualSlots])));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>())));
 
         Assert.That(
             _session.State.OwnedActiveCount,

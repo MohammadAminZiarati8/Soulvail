@@ -704,7 +704,11 @@ public sealed class SkillTargetedEffectTests
                 0f,
                 0,
                 taken,
-                new ContentId[SkillRunner.MaxManualSlots])));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>())));
 
         Assert.That(
             session.State.OwnedActiveCount,

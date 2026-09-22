@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
@@ -82,6 +84,13 @@ public sealed class RunSessionResumeTests
     private const int SavedLevel = 4;
     private const float SavedXp = 30f;
     private const int SavedPending = 1;
+
+    /// <summary>
+    /// What the two economy rows put in the wallet. 84 rather than anything GD §15's income table
+    /// could produce by accident, and never zero — a fresh run's balance is zero, so a restore that
+    /// was quietly deleted shows up as a wrong number rather than as a plausible one.
+    /// </summary>
+    private const int SavedEssence = 84;
 
     /// <summary>
     /// The tree the node rows turn on: five positions, three of them sharing branch 0's only tier
@@ -596,7 +605,11 @@ public sealed class RunSessionResumeTests
             Is.EqualTo(0),
             "a resumed run's Overflow was earned in a previous session and is not news.");
 
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "deriving it is what keeps the format at 3.");
+        Assert.That(
+            RunSnapshot.CurrentVersion,
+            Is.EqualTo(4),
+            "deriving it is what keeps Overflow off the format — v4 added six fields and "
+                + "still carries none for this one.");
     }
 
     [Test]
@@ -803,6 +816,115 @@ public sealed class RunSessionResumeTests
 
         Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
         Assert.That(naming.TakenNodeIds, Has.Count.EqualTo(2), "The fixture named two, so the row is not vacuous.");
+    }
+
+    // ---- v4: the economy comes back (M6-01b rules 8, 9) ------------------------------------------
+
+    [Test]
+    public void Resume_TheWalletComesBack()
+    {
+        Build(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // **The line M6-01a shipped with no caller** (rule 9). Without it a run killed at 84
+        // Essence comes back at 0 and nothing anywhere says so — the failure mode
+        // `PlayerProfile.Shards` is the precedent for: a number not written is data destroyed,
+        // and a number not read back is the same loss one layer on.
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
+
+        // The fixture's own claim, checked out loud: a fresh run's wallet is empty, so if the
+        // restore were deleted this row would read zero rather than a plausible number.
+        Assert.That(SavedEssence, Is.Not.Zero);
+
+        // **Silently**, for the reason the whole restore block is silent: nothing may publish
+        // before RunStarted, and an EssenceChanged raised here would reach a HUD that has not
+        // subscribed yet (EssenceWallet.Restore, M6-01a rule 8).
+        Assert.That(_events.Count<EssenceChanged>(), Is.Zero);
+    }
+
+    [Test]
+    public void Resume_TheOtherFourComeBackEmpty()
+    {
+        Build(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // The same run as the row above, read through the four fields nothing writes yet (rule 8).
+        // No throw is half of what this row is about: a restore that reached for a meter, a shop or
+        // an ordeal set would not compile, and one that reached for a null list would fail here.
+        Assert.That(_session.State.Veilrot, Is.Zero);
+        Assert.That(_session.State.BanishedNodeIds, Is.Empty);
+        Assert.That(_session.State.PactedNodeIds, Is.Empty);
+        Assert.That(_session.State.OrdealIds, Is.Empty);
+
+        // And the rest of the restore still ran, so this is not a row about a run that failed to
+        // start.
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel));
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
+    }
+
+    [Test]
+    public void State_TheFourReadsAnswerWithoutASystem()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        RunState state = _session.State;
+
+        // **Real answers rather than stubs** (rule 8). A run with no meter genuinely has no
+        // Veilrot, the way TakenNodeIds was genuinely empty for a class with no tree — and empty,
+        // never null, so no reader ever has to ask.
+        Assert.That(state.Veilrot, Is.Zero);
+        Assert.That(state.BanishedNodeIds, Is.Not.Null);
+        Assert.That(state.BanishedNodeIds, Is.Empty);
+        Assert.That(state.PactedNodeIds, Is.Not.Null);
+        Assert.That(state.PactedNodeIds, Is.Empty);
+        Assert.That(state.OrdealIds, Is.Not.Null);
+        Assert.That(state.OrdealIds, Is.Empty);
+
+        // **And the seal did not move to let them out** (AR §18.2). Every public member of
+        // RunState is a scalar, an id, a list of ids, or the authored CharacterSpec — never a live
+        // system — so there is no meter, no shop, no tree and no ordeal set for a view to reach.
+        // Each of the four reads becomes a forward at M6-02b, M6-04, M6-05a and M6-06a, and this
+        // row is what says none of them may arrive as a handle instead.
+        string[] handles = typeof(RunState)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(property => !IsANarrowRead(property.PropertyType))
+            .Select(property => $"{property.Name}: {property.PropertyType.Name}")
+            .ToArray();
+
+        Assert.That(
+            handles,
+            Is.Empty,
+            "A live system escaped RunState. Narrow reads are the contract (AR §18.2).");
+
+        // Said the other way round for the two that exist today, because an allow-list is only as
+        // strong as what it is measured against.
+        Assert.That(
+            typeof(RunState).GetProperty("Wallet", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+
+        Assert.That(
+            typeof(RunState).GetProperty("Tree", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is something <c>RunState</c> may hand out: a value — scalar,
+    /// <c>ContentId</c> or <c>Vector3</c> — a read-only list of ids, or the authored
+    /// <c>CharacterSpec</c>, which is content rather than a system with verbs on it.
+    /// </summary>
+    private static bool IsANarrowRead(Type type)
+    {
+        return type.IsValueType
+            || type == typeof(CharacterSpec)
+            || type == typeof(IReadOnlyList<ContentId>);
     }
 
     [Test]
@@ -1310,7 +1432,8 @@ public sealed class RunSessionResumeTests
         int pendingLevelUps = SavedPending,
         IReadOnlyList<ContentId> takenNodeIds = null,
         float playerHp = SavedHp,
-        IReadOnlyList<ContentId> manualSkillIds = null) =>
+        IReadOnlyList<ContentId> manualSkillIds = null,
+        RunEconomy economy = default) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -1326,7 +1449,11 @@ public sealed class RunSessionResumeTests
             xp,
             pendingLevelUps,
             takenNodeIds ?? Array.Empty<ContentId>(),
-            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
+            economy,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
     private void TickFor(int ticks)
     {

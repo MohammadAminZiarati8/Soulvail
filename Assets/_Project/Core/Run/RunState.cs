@@ -792,6 +792,43 @@ public sealed class RunState
     /// </remarks>
     public int Essence => Wallet.Balance;
 
+    /// <summary>
+    /// GD §10's meter, in [0, 100] — what a save writes down and, from M6-04, what the Claiming
+    /// fires on.
+    /// </summary>
+    /// <remarks>
+    /// <b>Zero, and that is a real answer rather than a stub</b> (M6-01b rule 8). A run with no
+    /// meter genuinely has no Veilrot, the way <see cref="TakenNodeIds"/> was genuinely empty for a
+    /// class with no tree (M3-03). M6-04 turns this into a forward to the meter it builds, and
+    /// **that does not widen this class's seal** (AR §18.2): a scalar read is what a HUD and a
+    /// recorder need, and the object behind it will have verbs nothing outside core may reach.
+    /// </remarks>
+    public float Veilrot => 0f;
+
+    /// <summary>
+    /// The nodes GD §13.3's Banish has taken out of this run's pool — what a save writes down and
+    /// what the offer draw will have to skip.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty, never null</b>, for <see cref="TakenNodeIds"/>' own rule: no reader ever has to ask.
+    /// Empty is the truth for every run until M6-02b sells a Banish, and the shared zero-length
+    /// array is what keeps <c>RunRecorder.Take</c> allocation-free until then.
+    /// </remarks>
+    public IReadOnlyList<ContentId> BanishedNodeIds => Array.Empty<ContentId>();
+
+    /// <summary>
+    /// Which of <see cref="TakenNodeIds"/> were taken in GD §13.2's corrupted form — a subset of
+    /// that list, and the only thing a resumed run can learn which effects it paid Veilrot for from.
+    /// </summary>
+    /// <remarks><see cref="BanishedNodeIds"/>' rule exactly. Empty until M6-05a.</remarks>
+    public IReadOnlyList<ContentId> PactedNodeIds => Array.Empty<ContentId>();
+
+    /// <summary>
+    /// GD §13.4's Ordeals, in the order they were drawn.
+    /// </summary>
+    /// <remarks><see cref="BanishedNodeIds"/>' rule exactly. Empty until M6-06a.</remarks>
+    public IReadOnlyList<ContentId> OrdealIds => Array.Empty<ContentId>();
+
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;
 

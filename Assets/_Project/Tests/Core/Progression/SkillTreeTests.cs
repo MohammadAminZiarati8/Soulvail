@@ -857,7 +857,11 @@ public sealed class SkillTreeTests
             0f,
             0,
             takenIds,
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         session.Start(new RunConfig(
             Id(ModeId),

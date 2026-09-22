@@ -1042,7 +1042,11 @@ public sealed class PausePresenterTests
             0f,
             pending,
             takenIds,
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         _session.Start(new RunConfig(
             new ContentId(ModeId),

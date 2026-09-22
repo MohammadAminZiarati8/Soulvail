@@ -45,7 +45,8 @@ namespace Soulvail.Core.Progression;
 /// stopping the game.
 /// </para>
 /// <para>
-/// <b>Nothing here is stored on the snapshot and <c>RunSnapshot.CurrentVersion</c> stays 3.</b>
+/// <b>Nothing here is stored on the snapshot, and v4 deliberately did not add a field for it
+/// either</b> (M6-01b).
 /// Every pick a run has earned is spent on a node, spent on Overflow, or unspent, so the Overflow
 /// count is <em>derived</em> on resume — see <see cref="GrantOverflow"/>. The offer is not saved
 /// either: the lazy draw means a resumed run re-draws the identical three from the same stream

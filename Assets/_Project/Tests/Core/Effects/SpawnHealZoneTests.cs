@@ -679,7 +679,11 @@ public sealed class SpawnHealZoneTests
                 0f,
                 0,
                 taken,
-                new ContentId[SkillRunner.MaxManualSlots])));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>())));
 
         Assert.That(
             _session.State.OwnedActiveCount,

@@ -268,4 +268,75 @@ guard still firing unchanged.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built as specced.** `RunEconomy` with five guards, `RunSnapshot` at v4 with four more arguments,
+the `if (version < 4)` step, seven flat mirror fields, one recorder call, four `RunState` reads and
+one restore line. **The ripple was exactly the number the spec counted** — 36 sites across 30 files,
+of which 32 in 27 test files are `default` plus three `Array.Empty<ContentId>()` appended
+mechanically and 4 are production.
+
+**The arithmetic lands to the row.** 2 553 → **2 575, +22**, and the Tests table is 26: four rows
+already existed and were renamed or extended in place — `Fixture_V3Run_IsWhatThisBuildWrites` →
+`Fixture_V4Run_IsWhatThisBuildWrites`, `Migrate_V3_IsIdentity` → `Migrate_V4_IsIdentity`,
+`Gate_AcceptsOneToThreeRefusesFour` → `Gate_AcceptsOneToFourRefusesFive` (which absorbed
+`Migrate_RefusesAVersionAboveThis`), and `Take_AllocatesNothing`, which is already
+`Recorder_TakeAllocatesNothing`: `AllocationAssert.None` defaults to 10 000 iterations, so the row
+the table asks for was the row that existed.
+
+### Deviations
+
+1. **Test names follow the fixtures' local conventions rather than the Tests table's, in five
+   places.** Every literal row in `LocalJsonSaveStoreTests` is `Fixture_<version><DTO>_…`, so
+   `Store_WritesAV4Literal` is `Fixture_V4Run_IsWhatThisBuildWrites`, `Store_ADocumentWithoutTheNewArraysDecodes`
+   is `Fixture_V4Run_WithoutTheNewArrays_Decodes`, and `Migrate_V3DocumentCarryingAnEconomyStillGetsV3sMeaning`
+   is `Fixture_V3Run_CarryingAnEconomy_StillGetsV3sMeaning` **and lives in that fixture rather than
+   `SaveMigrationTests`**, because it needs the mirror to decode a key the DTO has no other way to
+   receive. `Store_ReadsTheV3Literal` and `Store_ReadsTheV2AndV1Literals` are the three existing
+   `Fixture_V…Run_DecodesToTheExpectedSnapshot` rows, extended: collapsing v1 and v2 into one row
+   would have deleted tested behaviour.
+2. **`Snapshot_RecordsTheFourNewFields` was renamed `Snapshot_RecordsTheV2Fields`.** The table's
+   `Snapshot_CarriesTheFourNewFields` would otherwise have sat one screen from a row of almost the
+   same name about a different four fields. What is *new* moves on with each bump; what a row is
+   *about* does not.
+3. **`SplashFlowTests.Resume_TheFormatIsStillVersionThree` is `Resume_TheFormatCarriesNoBorrowedBranch`,
+   and it is the one row this bump turned red.** It pinned `CurrentVersion == 3` as shorthand for
+   *"this object puts nothing in the format"*, which was only ever true because nothing else had
+   asked the format to move. The property sweep beside it was always the real claim and is untouched;
+   the version assertion is now `Is.GreaterThan(3)`, which says the format **did** move and this
+   object still contributed nothing. Two other rows pinned the same literal for the same kind of
+   reason and were corrected in place (`SkillRunnerTests.Snapshot_CarriesTheLoadout`,
+   `RunSessionResumeTests.Resume_DerivesOverflow`).
+4. **Four files outside the Files table, all of them stale prose about the number 3:**
+   `Core/Progression/LevelUpFlow.cs` and `Core/Progression/SplashFlow.cs` each carried *"nothing here
+   is stored on the snapshot and `RunSnapshot.CurrentVersion` stays 3"*, which is now a false
+   sentence in front of a true argument; both say *"v4 deliberately did not add a field for it
+   either"*. `Tests/Core/Combat/SkillRunnerTests.cs` and `Tests/Core/Progression/SplashFlowTests.cs`
+   are deviation 3.
+5. **`CopyNodes` became `CopyIds(ids, name)`**, shared by all four id lists that refuse a defaulted
+   entry, and the null guards for the three new lists are one `RequireList(ids, name, whatEmptyMeans)`.
+   `CopySlots` is deliberately not folded in: an empty slot **is** a defaulted id there, and a shared
+   helper is the first place that contrast could be forgotten. `takenNodeIds`' message changed by two
+   words as a consequence — *"names no node"* → *"names nothing"*.
+6. **`RunEconomy` has a `private const float MaxVeilrot = 100f`** rather than the bare literal the
+   Public API block implies. Private, so the public surface is the four properties and the
+   constructor the spec names; M6-04 will want it public and that is M6-04's to decide.
+
+### Learned
+
+- **A row that pins a version number is usually pinning something else.** Three of the four
+  behavioural rows this bump broke asserted `CurrentVersion == 3` as a proxy for *"my feature is
+  derived, not stored"* — the claim survives the bump, the spelling does not. The shape that does
+  not need rewriting is the property sweep next to it.
+- **The spec's own risk paragraph was collected, from the other end.** It said that if a later spec
+  wants a different shape, v4 is re-cut before `m6` is tagged. Nothing wanted one — but `pactedNodeIds`
+  had already been added at M6-00b for exactly that reason, which is the mechanism working before the
+  code existed rather than after.
+
+### Verified
+
+**2 575 EditMode / 0 / 0 twice consecutively** (+22 on M6-01a's 2 553) and **PlayMode 21 / 0 / 0**,
+clean on the first pass — known issue 1 did not fire. One red row on the first EditMode pass,
+deviation 3, fixed rather than waived. 42 Console entries, every one a test deliberately provoking a
+log — `LogAssert.Expect`ed write failures, discarded saves, authoring-validation warnings — and none
+new; two of them now read *"outside the range this build reads (1–4)"*, which is the bump in the
+Console. Zero errors, zero new analyzer warnings, `dotnet format whitespace` green over all 36
+touched C# files. `TimeManager.asset` re-serialised and was reverted ([Traps §5](../../Traps.md)).

@@ -422,6 +422,50 @@ public sealed class RunRecorderTests
         Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
     }
 
+    // ---- v4: the economy, and the five fields nothing writes (M6-01b rule 7) --------------------
+
+    [Test]
+    public void Recorder_CapturesTheWallet()
+    {
+        Build(OneHuskStage());
+
+        // 84 rather than a number GD §15's income table could produce by accident, and resumed
+        // rather than earned for `Saved`'s stated reason: `RunState.Wallet` is internal and this
+        // assembly has no InternalsVisibleTo, so playing until the balance happens to land is the
+        // only alternative. Not circular — `RunSessionResumeTests.Resume_TheWalletComesBack` is
+        // what says the restore works, and it fails there rather than here if it does not.
+        StartAt(1, restore: Saved(
+            1, level: 1, xp: 0f, pendingLevelUps: 0, economy: new RunEconomy(84, 0f, 0, 0)));
+
+        Assert.That(
+            _session.State.Essence,
+            Is.EqualTo(84),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // **One real value and five placeholders, and the asymmetry is the whole of rule 7.** The
+        // wallet is read off the run; the rest are the shape v4 reserves for M6-02b, M6-04, M6-05a
+        // and M6-06a, each of which replaces exactly one argument here without bumping the version.
+        Assert.That(snapshot.Economy.Essence, Is.EqualTo(84));
+        Assert.That(snapshot.Economy.Veilrot, Is.Zero);
+        Assert.That(snapshot.Economy.RerollsBought, Is.Zero);
+        Assert.That(snapshot.Economy.RerollsSpent, Is.Zero);
+
+        // Empty, never null, so no reader has to ask — RunSnapshot.TakenNodeIds' rule, three lists
+        // on (M3-03 rule 10).
+        Assert.That(snapshot.BanishedNodeIds, Is.Not.Null);
+        Assert.That(snapshot.BanishedNodeIds, Is.Empty);
+        Assert.That(snapshot.PactedNodeIds, Is.Not.Null);
+        Assert.That(snapshot.PactedNodeIds, Is.Empty);
+        Assert.That(snapshot.OrdealIds, Is.Not.Null);
+        Assert.That(snapshot.OrdealIds, Is.Empty);
+    }
+
     [Test]
     public void Recorder_BoundaryCarriesTheClearingKillsLevel()
     {
@@ -481,6 +525,14 @@ public sealed class RunRecorderTests
     /// first boundary write to allocate</b>, and the trade was named in advance rather than
     /// discovered by this row going red. If a future row measures a run that owns nodes, it is
     /// measuring the copy and should say so.
+    /// <para>
+    /// <b>It survives M6-01b for the same reason, three lists further on.</b> v4's economy is a
+    /// <c>readonly struct</c> published by value, and its three id lists are
+    /// <c>Array.Empty&lt;ContentId&gt;()</c> — so the copy of each is the shared zero-length array
+    /// and no heap is asked for. That holds for every run until M6-02b sells a Banish, and
+    /// <c>AllocationAssert.None</c>'s default is 10 000 iterations, so this is already the ten
+    /// thousand takes M6-01b's Tests table asks for.
+    /// </para>
     /// </remarks>
     [Test]
     public void Take_AllocatesNothing()
@@ -937,7 +989,8 @@ public sealed class RunRecorderTests
         float xp,
         int pendingLevelUps,
         IReadOnlyList<ContentId> takenNodeIds = null,
-        IReadOnlyList<ContentId> manualSkillIds = null) => new RunSnapshot(
+        IReadOnlyList<ContentId> manualSkillIds = null,
+        RunEconomy economy = default) => new RunSnapshot(
         RunSnapshot.CurrentVersion,
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -952,7 +1005,11 @@ public sealed class RunRecorderTests
         xp,
         pendingLevelUps,
         takenNodeIds ?? Array.Empty<ContentId>(),
-        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
+        economy,
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>());
 
     /// <summary>
     /// A tree of three branches, with three nodes sharing branch 0's only tier so that any order of

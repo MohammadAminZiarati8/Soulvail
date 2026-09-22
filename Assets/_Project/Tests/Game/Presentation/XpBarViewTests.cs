@@ -885,7 +885,11 @@ public sealed class XpBarViewTests
                 xp,
                 pending,
                 takenIds,
-                new ContentId[SkillRunner.MaxManualSlots]));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>()));
     }
 
     /// <summary><see cref="CreateRun"/>, started.</summary>

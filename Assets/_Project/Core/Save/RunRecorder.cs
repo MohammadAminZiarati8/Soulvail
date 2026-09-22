@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -178,7 +179,24 @@ public sealed class RunRecorder
             // and a run with no Manual skills still costs nothing because four empties are shared.
             // A run with no tree has no actives and therefore four empty slots, which is what a
             // snapshot of an M3-era run without content correctly says.
-            state.ManualSkillIds);
+            state.ManualSkillIds,
+
+            // **One real value and five placeholders, and the asymmetry is this task's honesty**
+            // (M6-01b rule 7). The wallet is M6-01a's and is read off `RunState` for the reason the
+            // two lists above are — the handle is internal and a recorder has no business holding
+            // one (AR §18.2). The other four fields are v4's reserved shape: Veilrot is M6-04's,
+            // the two counters and the banishes are M6-02b's, the Pacts are M6-05a's and the Ordeals
+            // are M6-06a's, and **each of those tasks replaces exactly one argument here without
+            // touching CurrentVersion** — `Fixture_V4Run_IsWhatThisBuildWrites` is the row that
+            // objects if one of them bumps it.
+            //
+            // The three empty lists cost nothing: a copy of an empty list is the shared zero-length
+            // array, which is what keeps `Take_AllocatesNothing` measuring a real zero for every run
+            // until M6-02b merges.
+            new RunEconomy(state.Essence, veilrot: 0f, rerollsBought: 0, rerollsSpent: 0),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

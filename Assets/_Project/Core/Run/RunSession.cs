@@ -720,8 +720,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // else rather than held by the session.
         //
         // It is built before RunState and handed to both: the state reads it (AR §18.2's narrow
-        // read) and StageFlow pays it. Nothing restores it in this task — a run killed before
-        // M6-01b comes back with an empty wallet, the same thing that happens to its cooldowns.
+        // read) and StageFlow pays it. **M6-01b is what restores it** — the line below, inside the
+        // restore block, reading the balance out of RunSnapshot.Economy.
         var essence = new EssenceWallet(_events);
 
         State = new RunState(
@@ -789,8 +789,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // second choice rather than a broken tree. A saved id that resolves to no class at all
             // is left for SkillTree.Restore's existing refusal, which is the one that names it.
             //
-            // This is what makes a **v4** and a migration unnecessary for a single enum-sized fact,
-            // which is LevelUpFlow.GrantOverflow's bargain exactly.
+            // This is what keeps a single enum-sized fact off the save format altogether, which is
+            // LevelUpFlow.GrantOverflow's bargain exactly — and v4 shipping at M6-01b did not change
+            // it: the branch is still derived, because the reason was never that a bump was dear.
             if (splash is not null &&
                 splash.TryDerive(resumed.TakenNodeIds, out ContentId lender, out int lentBranch))
             {
@@ -848,7 +849,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // clamp, a run saved at 170 of 179 comes back at 140: the same loss SkillTree.Restore is
             // ordered against, from a second writer.
             //
-            // **Derived, because no field carries it and RunSnapshot.CurrentVersion stays 3.** Every
+            // **Derived, because no field carries it, and v4 deliberately did not add one.** Every
             // pick a run has earned is spent on a node, spent on Overflow, or unspent — the exact
             // mirror of M3-03 rule 6, which says the *pending* count is the one that cannot be
             // derived. Anything that later spends a pick without taking a node owes this identity or
@@ -879,6 +880,21 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 // and a resumed run's Overflow was earned in a previous session and is not news.
                 levelUp.GrantOverflow(overflow);
             }
+
+            // **Below the tree's restore and above Health.Restore, and that is an AR §18.1 row
+            // rather than a preference** (M6-01b rule 9). Below the tree because M6-02b's banished
+            // nodes have to be refused against a tree that already exists, and the four v4 restores
+            // belong in one place rather than wherever each task happens to put them. Above
+            // Health.Restore because M6-04's meter puts a −20 % max HP modifier on at 75, and a
+            // maximum restored before the modifier that shrinks it would refill the player to a
+            // number they never had — SkillTree.Restore's ordering, from a third writer.
+            //
+            // Silent, like everything else in this block: nothing may publish before RunStarted, and
+            // an EssenceChanged raised here would reach a HUD that has not subscribed yet
+            // (EssenceWallet.Restore, M6-01a rule 8). **Only the wallet is restored here**; Veilrot,
+            // the banishes, the Pacts and the Ordeals are the lines their own tasks add, on this
+            // line's other side or beside it as AR §18.1 now states.
+            essence.Restore(resumed.Economy.Essence);
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 

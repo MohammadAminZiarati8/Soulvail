@@ -311,7 +311,11 @@ public sealed class SaveWriterTests
         xp: 0f,
         pendingLevelUps: 0,
         takenNodeIds: Array.Empty<ContentId>(),
-        manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
+        manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+        default,
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>());
 
     /// <summary>A store that remembers what it was asked to do, and can be told to fail once.</summary>
     private sealed class RecordingStore : ISaveStore

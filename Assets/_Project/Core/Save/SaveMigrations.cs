@@ -17,8 +17,8 @@ namespace Soulvail.Core.Save;
 /// <c>Migrations_HoldsNoState</c> is what keeps that true rather than remembered.
 /// </para>
 /// <para>
-/// <b>The run chain has two steps, and M3-07b is the first time more than one of them ran on one
-/// document.</b> It shipped at v1 with nothing to migrate, on the strength of
+/// <b>The run chain has three steps as of M6-01b, and M3-07b is where more than one of them first
+/// ran on one document.</b> It shipped at v1 with nothing to migrate, on the strength of
 /// <c>Chain_IsUnbrokenFromOldestToCurrent</c> — the row that fails the day a
 /// <c>CurrentVersion</c> is bumped without a step being written, and the only mechanism in the
 /// project that makes AR §11.6's promise self-enforcing rather than remembered. It is also the trap
@@ -29,17 +29,18 @@ namespace Soulvail.Core.Save;
 /// <b>The profile chain has two steps as of M4-05b, and that is where it first runs more than one
 /// of them on one document.</b> <see cref="MigrateProfile"/> was the identity from M2-13b until v2,
 /// on the strength of the same self-enforcing row — and <b>the two formats version
-/// independently</b>, so the profile gaining Shards at v3 leaves
-/// <see cref="RunSnapshot.CurrentVersion"/> at 3 and touches no run on any device (M2-13b, M3-09c
-/// rule 2, M4-05b rule 4). The two numbers being equal today is a coincidence of arithmetic and
-/// nothing may be built on it.
+/// independently</b>, so the profile gaining Shards at v3 left
+/// <see cref="RunSnapshot.CurrentVersion"/> alone and touched no run on any device (M2-13b, M3-09c
+/// rule 2, M4-05b rule 4). <b>M6-01b is where the two numbers part company</b> — the run reaches 4
+/// and the profile stays at 3 until M6-09a — which is what their having been equal between M4-05b
+/// and here was always a coincidence of arithmetic about.
 /// </para>
 /// <para>
 /// <b>The steps run in order and each rebuilds at its own version</b>, which is what lets a v1
-/// document walk through both and arrive at v3 rather than at v2 with a v3 number on it. Each step
-/// reads <c>current</c> — never <c>decoded</c> — so the second is handed what the first produced;
-/// that is the single line of discipline the whole chain rests on, and
-/// <c>Migrate_V1_RunsBothStepsInOrder</c> is the row that notices if a later step is ever written
+/// document walk through all three and arrive at v4 rather than at v2 with a v4 number on it. Each
+/// step reads <c>current</c> — never <c>decoded</c> — so each is handed what the one before it
+/// produced; that is the single line of discipline the whole chain rests on, and
+/// <c>Migrate_V1_RunsEveryStepInOrder</c> is the row that notices if a later step is ever written
 /// against the original instead.
 /// </para>
 /// <para>
@@ -80,9 +81,10 @@ public static class SaveMigrations
     /// <remarks>
     /// A second method rather than one taking a version floor, because the two formats version
     /// independently: the profile gaining Shards at v3 (M4-05b) had no reason to bump the run
-    /// format, and a shared gate would make every reader guess which number it was being asked
-    /// about — which is exactly the confusion the two <c>CurrentVersion</c>s now both reading 3
-    /// invites.
+    /// format, and the run reaching v4 at M6-01b has none to bump the profile — M6-09a is the
+    /// profile's own one bump. A shared gate would make every reader guess which number it was being
+    /// asked about, which is the confusion the two <c>CurrentVersion</c>s both reading 3 for one
+    /// milestone invited.
     /// </remarks>
     public static bool CanReadProfile(int version)
     {
@@ -137,7 +139,11 @@ public static class SaveMigrations
                 xp: 0f,
                 pendingLevelUps: 0,
                 Array.Empty<ContentId>(),
-                new ContentId[SkillRunner.MaxManualSlots]);
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>());
         }
 
         // **v2 → v3: a run that had no loadout by construction.** v2 had no Auto/Manual state at
@@ -165,7 +171,44 @@ public static class SaveMigrations
                 current.Xp,
                 current.PendingLevelUps,
                 current.TakenNodeIds,
-                new ContentId[SkillRunner.MaxManualSlots]);
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>());
+        }
+
+        // **v3 → v4: a run that had no economy by construction.** v3 had no Essence, no Veilrot, no
+        // reroll counters, no banishes, no Pacts and no Ordeals — none of the mechanics existed — so
+        // its v4 form is `default(RunEconomy)` and three empty lists, which is exactly the opening
+        // state of a fresh run. That is what makes this step one token per field rather than an
+        // arithmetic problem (M6-01b rule 5). Written unconditionally rather than from what the
+        // adapter decoded, for the two steps above's reason (M3-01b rule 3): a v3 document that
+        // somehow carried an Essence field is still a v3 document and gets v3's meaning. Every v3
+        // field is kept as it was read — including the ones the two earlier steps may have written a
+        // moment ago, which is what makes the chain three deep rather than three separate answers.
+        if (version < 4)
+        {
+            current = new RunSnapshot(
+                4,
+                current.ModeId,
+                current.CharacterId,
+                current.Seed,
+                current.StageIndex,
+                current.Random,
+                current.PlayerHp,
+                current.PlayerShield,
+                current.RunTime,
+                current.WrittenAt,
+                current.Level,
+                current.Xp,
+                current.PendingLevelUps,
+                current.TakenNodeIds,
+                current.ManualSkillIds,
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>());
         }
 
         return current;

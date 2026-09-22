@@ -780,22 +780,31 @@ public sealed class SplashFlowTests
         Assert.That(_session.State.IsSplashPending, Is.True, "The moment is owed a second time.");
     }
 
+    /// <remarks>
+    /// <b>Renamed from <c>Resume_TheFormatIsStillVersionThree</c> at M6-01b</b>, which is the task
+    /// that bumped the format to 4 — and the rename is the row being read correctly rather than
+    /// weakened. Rule 6's claim was never <em>"this format never moves"</em>; it was <em>"this
+    /// object puts nothing in it"</em>, and the version number was standing in for that because
+    /// nothing else had asked the format to move. v4 came, added six fields for M6's mechanics, and
+    /// **still carries no field for the borrowed branch** — which is what the sweep below has always
+    /// been the real statement of.
+    /// </remarks>
     [Test]
-    public void Resume_TheFormatIsStillVersionThree()
+    public void Resume_TheFormatCarriesNoBorrowedBranch()
     {
-        Assert.That(
-            RunSnapshot.CurrentVersion,
-            Is.EqualTo(3),
-            "The snapshot moved version. CH §5.4's branch is derived from TakenNodeIds, so a v4 "
-                + "and a migration would be paid for a single enum-sized fact (rule 6).");
-
         Assert.That(
             typeof(RunSnapshot)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(property => property.Name)
                 .Where(name => name.Contains("Splash") || name.Contains("Borrow")),
             Is.Empty,
-            "RunSnapshot gained a field for the borrowed branch.");
+            "RunSnapshot gained a field for the borrowed branch. CH §5.4's branch is derived from "
+                + "TakenNodeIds, so a field and a migration step would be paid for a single "
+                + "enum-sized fact (rule 6).");
+
+        // And the run format has moved since, which is what makes the sweep above a claim about
+        // this object rather than a claim about the format standing still.
+        Assert.That(RunSnapshot.CurrentVersion, Is.GreaterThan(3), "M6-01b is v4.");
     }
 
     [Test]
@@ -1056,7 +1065,11 @@ public sealed class SplashFlowTests
             0f,
             pendingLevelUps,
             taken,
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
     /// <summary>One frame of the world, with nothing in it: these rows are about the tree.</summary>
     private static WorldSnapshot Sense() =>

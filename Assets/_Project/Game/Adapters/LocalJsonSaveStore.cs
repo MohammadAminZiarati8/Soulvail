@@ -130,6 +130,17 @@ public sealed class LocalJsonSaveStore : ISaveStore
             pendingLevelUps = run.PendingLevelUps,
             takenNodeIds = ToStrings(run.TakenNodeIds),
             manualSkillIds = ToStrings(run.ManualSkillIds),
+
+            // v4's seven, flattened rather than nested — `randomSpawn`'s treatment exactly, and for
+            // its reason: JsonUtility serialises a nested [Serializable] class, and this mirror's
+            // whole job is to be a flat document a human can read in a bug report (M6-01b rule 6).
+            essence = run.Economy.Essence,
+            veilrot = run.Economy.Veilrot,
+            rerollsBought = run.Economy.RerollsBought,
+            rerollsSpent = run.Economy.RerollsSpent,
+            banishedNodeIds = ToStrings(run.BanishedNodeIds),
+            pactedNodeIds = ToStrings(run.PactedNodeIds),
+            ordealIds = ToStrings(run.OrdealIds),
         };
 
         return Write(_runPath, JsonUtility.ToJson(mirror));
@@ -328,7 +339,12 @@ public sealed class LocalJsonSaveStore : ISaveStore
             mirror.xp,
             mirror.pendingLevelUps,
             ToContentIds(mirror.takenNodeIds),
-            ToSlots(mirror.manualSkillIds));
+            ToSlots(mirror.manualSkillIds),
+            new RunEconomy(
+                mirror.essence, mirror.veilrot, mirror.rerollsBought, mirror.rerollsSpent),
+            ToContentIds(mirror.banishedNodeIds),
+            ToContentIds(mirror.pactedNodeIds),
+            ToContentIds(mirror.ordealIds));
 
         return SaveMigrations.MigrateRun(mirror.version, decoded);
     }
@@ -588,6 +604,45 @@ public sealed class LocalJsonSaveStore : ISaveStore
         /// carried slots is still a v2 document (M3-01b rule 3's reason).
         /// </remarks>
         public string[] manualSkillIds = new string[SkillRunner.MaxManualSlots];
+
+        /// <summary>
+        /// v4's seven, appended after <see cref="manualSkillIds"/>: field order is key order on
+        /// disk, and the four run fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The economy is four flat fields rather than a nested <c>[Serializable]</c> class</b>
+        /// (M6-01b rule 6). <c>JsonUtility</c> would happily serialise a nested one, and the reason
+        /// not to is the same one the five stream positions above are flattened for: this mirror's
+        /// whole job is to be a flat document a human can read in a bug report.
+        /// </para>
+        /// <para>
+        /// <b>Left at their zeroes rather than initialised</b>, unlike <see cref="level"/> and
+        /// <see cref="manualSkillIds"/>. A pre-v4 document has none of these keys, so each field
+        /// keeps the default constructor's zero — which is also exactly what the v3 → v4 step writes
+        /// unconditionally, and <c>RunEconomy</c> accepts all four zeroes as the legal fresh run
+        /// they describe. There is no value here a wrong initialiser could hide.
+        /// </para>
+        /// </remarks>
+        public int essence;
+        public float veilrot;
+        public int rerollsBought;
+        public int rerollsSpent;
+
+        /// <summary>
+        /// v4's three lists, after the four scalars above.
+        /// </summary>
+        /// <remarks>
+        /// <b>Initialised to the empty array and that is load-bearing</b>, exactly as
+        /// <see cref="takenNodeIds"/> is: a pre-v4 document has none of these keys, and a null would
+        /// reach <c>RunSnapshot</c>'s null guard and turn every save on every device into
+        /// "Discarding the save" <em>before</em> the step that fills them ever ran. The step is
+        /// still the authority and overwrites all three regardless — a v3 document that somehow
+        /// carried a Pact is still a v3 document (M3-01b rule 3's reason).
+        /// </remarks>
+        public string[] banishedNodeIds = Array.Empty<string>();
+        public string[] pactedNodeIds = Array.Empty<string>();
+        public string[] ordealIds = Array.Empty<string>();
     }
 
     /// <summary><see cref="PlayerProfile"/> as it is spelled on disk. See <see cref="RunMirror"/>.</summary>

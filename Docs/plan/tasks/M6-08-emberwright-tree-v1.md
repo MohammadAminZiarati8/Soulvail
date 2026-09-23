@@ -393,3 +393,60 @@ existing `PlayerStats`, `SplashFlow` and `TreeRules` guard firing unchanged.
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+
+**Built to the Public API, except where a deviation says otherwise.** `SpawnBurnZone` and its handler,
+which beat at `MovementSkillSpec.PoolPulseInterval`. Four appended `PlayerStat` members. `Has` now
+answers for the run. `SplashFlow`'s third sweep and `RefusedAddressKeyId`. One `Register` line and
+the address table handed to the splash in `RunSession`. `SpawnBurnZoneDefinition`. Twenty-five
+assets, twelve boot skills and one boot tree, and twenty-eight English rows. **EditMode 2 979 →
+3 026 (+47), twice; PlayMode 26 / 0 / 0, twice.**
+
+### Deviations
+
+1. **Rule 5 overclaims, and the build follows rule 8 instead.** Ash's Scorching Ground and
+   Lingering Ash name `PoolDamage`/`PoolDuration`. Rule 8 says a Charge has no pool, and a
+   Shroudstep has none either. So the third sweep refuses Ash to both other classes, and **only
+   Arcana is lendable to everyone**. A live Ash would throw out of `Take` into a button, which is
+   M5-08a's defect. `Burn_AshAndArcanaAreBorrowableByEveryClass` became
+   `Burn_ArcanaIsBorrowableByEveryClass`, and `Splash_RefusesAshToAClassWithNoPool` was added.
+2. **No public `TryRefusal(SkillBranchSpec)`.** The existing private sweep got the clause
+   (`AimsAtAMissingAddress`), both in the flag path and in the throw path. `SplashFlow` takes the
+   table as an **optional** last `IStatBlock`, so no fixture rippled. `RunSession` always passes it.
+3. **"Is a Blink" is read off `Charge.PoolDuration.Base` once, at construction.** Nothing exposes
+   the movement kind. `MovementSkillSpec.Pool` makes a pool base above zero exactly when the skill
+   is a Blink. `ChargeSkill` is untouched. Only the two Kindling checks are null checks.
+4. **Rule 8's first caller does not exist.** `ModifyStatHandler` never asks `Has`: it resolves,
+   and `Resolve` throws. It is unedited. The splash is the only caller that matters.
+5. **`EffectDefinition.cs` is unedited.** It has no list of kinds; a new primitive is a new
+   subclass and nothing more, as that file's remarks say.
+6. **Ripple past the table:** `GravecallerTreeTests` pinned 24 skills read off disk, and eight of
+   its rows went red. Its catalog now holds all three classes. `BurningGroundTests` and
+   `KindlingTests` each had a row asserting "no address yet (M6-08)". Both were rewritten to name
+   the addresses that exist, and the pool row still refuses a `PoolRadius`. `StatBlockTests`' two
+   player rows skip a named `NotAnOathbounds` set. Its minion count went from 9 to 13, and its
+   ordinal row was appended. `PlayerStatCoverageTests` went from 12 to 16.
+7. **Row placement:** the `Has`/`Resolve` rows are in `ModifyStatTests`, beside
+   `Stats_ResolveEveryMember`. `Burn_IsRegisteredForEveryClass`, `Stats_NoPoolRadiusAddressExists`
+   and `Stats_TheEnumIsAppendedNotInserted` need shipped runs, source or assets, so they are in
+   `EmberwrightTreeTests`.
+8. **`Splash_AnEmberwrightCanTakeItsOwnBranches` applies every node's effects to an Emberwright
+   run.** A class cannot borrow from itself (`RequireCandidate`).
+9. **`Run_TheOtherTwoAreUnchanged` walks both full trees.** It asserts neither tree asset
+   references an Emberwright guid. The `git status` half was checked at handover, and neither file
+   is modified.
+10. **Seven rows beyond the table:** Cinder Nova's own burn, placement on the run's clock, the
+    handler's guards, a system that cannot burn, registry dispatch, a Blink without Kindling, and
+    Ash's refusal (deviation 1).
+
+### Findings
+
+- **Rule 11's third curve, logged:** a stage-15 Husk has 66.2 HP. The orb deals 17 at base. With a
+  full Ember branch it takes **4 hits cold and 2 at a full 40-stack ramp**, which is under
+  GD §12.4's floor when hot. Ledger row 2 carries it for M6-11 and M8-05.
+- **Emberfall triggers at 8 m and burns 4 m.** Half the enemies it counts can stand outside it.
+  Rule 3 names this as the cost, and the owner can retune it in the asset.
+- **`SkillDefinition` serialises `_cooldown: 8` on every Passive and Upgrade.** Nothing reads it.
+  The new assets match the shipped ones.
+- **`Burn_AllocatesNothing` casts in over half of its 100 000 iterations.** A 10⁷ HP body is used
+  because a float near 10⁸ has a step of 8 and cannot record a 6-point pulse.
+- **Known issue 1 did not fire.** Both PlayMode passes were 26 / 0.

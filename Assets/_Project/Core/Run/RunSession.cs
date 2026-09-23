@@ -596,6 +596,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
         effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
 
+        // **Its mirror, and unconditional for the same reason the system above burns for every
+        // run** (M6-08 rule 5): a burn needs the zones and nothing class-specific, so CH §5.4 can
+        // lend the Emberwright's Ash and Arcana to any class. RaiseMinions below is the opposite call.
+        effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
+
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
         // decoy — a Shroudstep drops one on the start edge of a dash, and that is its only door
@@ -767,7 +772,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sweeps the *primary* tree at Start and a branch borrowed mid-run never meets it.
         SplashFlow splash = tree is null
             ? null
-            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events);
+            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events, playerStats);
 
         // **One per run, unconditionally, and that is M6-01a rule 5 from the other end.** Every run
         // has a wallet whatever its class and whatever its mode pays — a mode with no Essence block

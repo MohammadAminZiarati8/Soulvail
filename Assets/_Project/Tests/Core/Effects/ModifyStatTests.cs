@@ -65,11 +65,15 @@ public sealed class ModifyStatTests
     [Test]
     public void Stats_ResolveEveryMember()
     {
-        PlayerCombat combat = Combat();
+        // **Against an Emberwright since M6-08** (rule 8): it is the one class with a Kindling and a
+        // Blink, so it is the one run that answers all sixteen but ContactDamage. The Oathbound's
+        // four refusals are Stats_HasIsFalseForAClassWithoutTheObject's.
+        PlayerCombat combat = Ember();
         PlayerMotor motor = Motor();
         LevelTracker progression = Progression();
 
         var stats = new PlayerStats(combat, motor, progression);
+        var answered = 0;
 
         foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
         {
@@ -110,6 +114,12 @@ public sealed class ModifyStatTests
                 PlayerStat.ChargeDamage => combat.Charge.Damage,
                 PlayerStat.ShieldRechargeDelay => combat.Health.ShieldRechargeDelay,
                 PlayerStat.HealPerKill => combat.HealPerKill,
+
+                // M6-08's four, each on the object that owns it.
+                PlayerStat.KindlingPerStack => combat.Kindling.PerStack,
+                PlayerStat.KindlingMaxStacks => combat.Kindling.MaxStacks,
+                PlayerStat.PoolDamage => combat.Charge.PoolDamagePerPulse,
+                PlayerStat.PoolDuration => combat.Charge.PoolDuration,
                 _ => null,
             };
 
@@ -133,7 +143,83 @@ public sealed class ModifyStatTests
                 Is.True,
                 $"PlayerStat.{member} resolves, so Has must say so — no address may answer one way "
                     + "here and the other way there.");
+
+            answered++;
         }
+
+        Assert.That(answered, Is.EqualTo(15), "Sixteen members, one named exception.");
+    }
+
+    // ---- M6-08 rule 8: four addresses a run may not have -----------------------------------------
+
+    /// <summary>The four members that depend on the class — Kindling on the weapon, a pool on the Blink.</summary>
+    private static readonly PlayerStat[] ClassBound =
+    {
+        PlayerStat.KindlingPerStack,
+        PlayerStat.KindlingMaxStacks,
+        PlayerStat.PoolDamage,
+        PlayerStat.PoolDuration,
+    };
+
+    [Test]
+    public void Stats_KindlingAddressesAreTheRunsKindling()
+    {
+        PlayerCombat combat = Ember();
+        var stats = new PlayerStats(combat, Motor(), Progression());
+
+        Assert.That(stats.Resolve(PlayerStat.KindlingPerStack), Is.SameAs(combat.Kindling.PerStack));
+        Assert.That(stats.Resolve(PlayerStat.KindlingMaxStacks), Is.SameAs(combat.Kindling.MaxStacks));
+
+        // And a modifier through the handler moves the ramp — Stoked Coals' +0.01, ten stacks.
+        new ModifyStatHandler(stats).Apply(new ModifyStat(PlayerStat.KindlingPerStack, ModifierKind.Flat, 0.01f), this);
+
+        for (int i = 0; i < 10; i++)
+        {
+            combat.Kindling.OnWeaponHitLanded();
+        }
+
+        Assert.That(combat.Kindling.Bonus, Is.EqualTo(0.30f).Within(Tolerance), "ten stacks at 3 %, not 2 %.");
+    }
+
+    [Test]
+    public void Stats_HasIsFalseForAClassWithoutTheObject()
+    {
+        // An Oathbound: no Kindling, and a Charge that leaves no pool.
+        var stats = new PlayerStats(Combat(), Motor(), Progression());
+
+        foreach (PlayerStat member in ClassBound)
+        {
+            Assert.That(stats.Has(member), Is.False, $"an Oathbound has no {member}.");
+
+            var thrown = Assert.Throws<ArgumentOutOfRangeException>(() => stats.Resolve(member), member.ToString());
+
+            Assert.That(thrown.ParamName, Is.EqualTo("stat"));
+        }
+    }
+
+    [Test]
+    public void Stats_HasIsTrueForTheClassThatHasThem()
+    {
+        var stats = new PlayerStats(Ember(), Motor(), Progression());
+
+        foreach (PlayerStat member in ClassBound)
+        {
+            Assert.That(stats.Has(member), Is.True, member.ToString());
+            Assert.That(stats.Resolve(member), Is.Not.Null, member.ToString());
+        }
+    }
+
+    [Test]
+    public void Stats_APoolIsTheBlinksAndKindlingTheWeapons()
+    {
+        // The two halves apart, which the two rows above cannot tell: a Blink without Kindling has
+        // the pool and not the ramp. Has asks each object on its own, not "is this the Emberwright".
+        var stats = new PlayerStats(Ember(withKindling: false), Motor(), Progression());
+
+        Assert.That(stats.Has(PlayerStat.PoolDamage), Is.True);
+        Assert.That(stats.Has(PlayerStat.PoolDuration), Is.True);
+        Assert.That(stats.Has(PlayerStat.KindlingPerStack), Is.False);
+        Assert.That(stats.Has(PlayerStat.KindlingMaxStacks), Is.False);
     }
 
     [Test]
@@ -405,6 +491,29 @@ public sealed class ModifyStatTests
         new PlayerCombat(Character(withShield), _events, _intents, EnemyCapacity);
 
     private LevelTracker Progression() => new LevelTracker(Scalings.Xp(), _events);
+
+    /// <summary>
+    /// The Emberwright's shape for M6-08's rows: a Blink with M6-07b's pool and, unless told
+    /// otherwise, M6-07a's Kindling. The numbers are the shipped ones; nothing here is about them.
+    /// </summary>
+    private PlayerCombat Ember(bool withKindling = true) =>
+        new PlayerCombat(
+            new CharacterSpec(
+                new ContentId("character.emberwright"),
+                new LocKey("character.emberwright.name"),
+                new LocKey("character.emberwright.description"),
+                70f,
+                new MovementSpec(MoveSpeed, 0.06f, 0.08f, 720f),
+                new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+                new WeaponSpec(WeaponKind.Projectile, 17f, 1.5f, 12f, 360f, 0.15f, 25f, 3f),
+                new FocusSpec(0.4f, 1f, 1f),
+                new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f, 0f, 3f, 3f, 4f),
+                null,
+                HitIFrames,
+                kindling: withKindling ? new KindlingSpec(0.02f, 30) : null),
+            _events,
+            _intents,
+            EnemyCapacity);
 
     /// <summary>The Oathbound's movement at the owner's retuned 3 m/s, facing +Z where a run starts.</summary>
     private static PlayerMotor Motor() =>

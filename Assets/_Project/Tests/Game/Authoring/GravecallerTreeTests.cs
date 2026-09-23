@@ -68,6 +68,8 @@ public sealed class GravecallerTreeTests
     private const string OathboundTreePath = "Assets/_Project/Data/Trees/Oathbound.asset";
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
+    private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
+    private const string EmberwrightTreePath = "Assets/_Project/Data/Trees/Emberwright.asset";
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
     private const string WardenBossPath = "Assets/_Project/Data/Enemies/WardenBoss.asset";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
@@ -707,8 +709,8 @@ public sealed class GravecallerTreeTests
         SerializedProperty skills = serialized.FindProperty("_skills");
         SerializedProperty trees = serialized.FindProperty("_trees");
 
-        Assert.That(skills.arraySize, Is.EqualTo(24), "Twelve Oathbound nodes and twelve Gravecaller ones.");
-        Assert.That(trees.arraySize, Is.EqualTo(2));
+        Assert.That(skills.arraySize, Is.EqualTo(36), "Twelve nodes for each of three classes, since M6-08.");
+        Assert.That(trees.arraySize, Is.EqualTo(3));
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -735,7 +737,7 @@ public sealed class GravecallerTreeTests
             treeIds.Add(tree.Id);
         }
 
-        Assert.That(treeIds, Is.EquivalentTo(new[] { "tree.oathbound", "tree.gravecaller" }));
+        Assert.That(treeIds, Is.EquivalentTo(new[] { "tree.oathbound", "tree.gravecaller", "tree.emberwright" }));
 
         // And the answer that has been false for every Gravecaller since M5-02.
         ContentCatalog catalog = Catalog();
@@ -933,13 +935,14 @@ public sealed class GravecallerTreeTests
     private static SkillTreeSpec LoadTree(string path) => Load<SkillTreeDefinition>(path).ToSpec();
 
     /// <summary>
-    /// The shipped catalog: <b>both</b> classes, both trees and all twenty-four nodes, read off
-    /// <c>Data/</c>. Both, and not the Gravecaller alone — the run rows below are as much about the
-    /// two trees not leaking into each other as about either one being right.
+    /// The shipped catalog: <b>all three</b> classes, their trees and all thirty-six nodes, read off
+    /// <c>Data/</c> — M6-08 added the third, because the skill sweep reads every node on disk. All,
+    /// and not the Gravecaller alone — the run rows below are as much about the trees not leaking
+    /// into each other as about any one being right.
     /// </summary>
     private static ContentCatalog Catalog()
     {
-        var skills = new List<SkillSpec>(24);
+        var skills = new List<SkillSpec>(36);
 
         foreach (string path in ContentValidationTests.PathsOf<SkillDefinition>())
         {
@@ -950,7 +953,7 @@ public sealed class GravecallerTreeTests
             skills.Add(definition.ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(24), "Twelve nodes a class, two classes.");
+        Assert.That(skills, Has.Count.EqualTo(36), "Twelve nodes a class, three classes since M6-08.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 
@@ -964,11 +967,12 @@ public sealed class GravecallerTreeTests
             {
                 Load<CharacterDefinition>(OathboundPath).ToSpec(),
                 Load<CharacterDefinition>(GravecallerPath).ToSpec(),
+                Load<CharacterDefinition>(EmberwrightPath).ToSpec(),
             },
             enemies,
             new[] { Load<ModeDefinition>(DescentPath).ToSpec() },
             skills,
-            new[] { LoadTree(OathboundTreePath), Tree() },
+            new[] { LoadTree(OathboundTreePath), Tree(), LoadTree(EmberwrightTreePath) },
             new[] { Load<BossDefinition>(WardenBossPath).ToSpec() });
     }
 

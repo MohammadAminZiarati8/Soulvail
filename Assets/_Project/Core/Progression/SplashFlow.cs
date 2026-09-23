@@ -168,6 +168,13 @@ public sealed class SplashFlow
     /// <inheritdoc cref="RefusedPrimitiveKeyId" />
     public const string RefusedMinionsKeyId = "ui.splash.refused.minions";
 
+    /// <summary>
+    /// Why a branch aiming a <c>ModifyStat</c> at a number this class does not have cannot be
+    /// borrowed — <c>SplashOption.RefusedKey</c>'s third value (M6-08 rule 8).
+    /// </summary>
+    /// <inheritdoc cref="RefusedPrimitiveKeyId" />
+    public const string RefusedAddressKeyId = "ui.splash.refused.address";
+
     private readonly SkillTree _tree;
     private readonly ContentCatalog _catalog;
 
@@ -201,6 +208,18 @@ public sealed class SplashFlow
     /// </remarks>
     private readonly bool _raisesMinions;
 
+    /// <summary>
+    /// This run's player numbers, asked <c>Has</c> of every borrowed <c>ModifyStat</c> aimed at the
+    /// player — the third sweep (M6-08 rule 8). Null in a fixture that never borrows one.
+    /// </summary>
+    /// <remarks>
+    /// <b>The sweep M5-08a's fix did not cover.</b> Until M6-08 every player address existed on every
+    /// class, so a borrowed stat node could not miss. The Emberwright's Kindling and pool numbers
+    /// exist only on a class with the object that owns them, and without this an Oathbound offered
+    /// the Ember branch would take Stoked Coals and throw out of <c>SkillTree.Take</c> into a button.
+    /// </remarks>
+    private readonly IStatBlock _player;
+
     private readonly ReadOnlyCollection<ContentId> _candidates;
 
     private bool _open;
@@ -219,7 +238,11 @@ public sealed class SplashFlow
     /// construction — <c>RunSession.Start</c> resolves the same id before it builds anything.
     /// </param>
     /// <param name="events">Where the two announcements go out.</param>
-    /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
+    /// <param name="player">
+    /// This run's player numbers — see the field. <b>Optional</b>, so every fixture written before
+    /// M6-08 still says what it said; <c>RunSession</c> always passes it.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any required reference argument is null.</exception>
     /// <exception cref="KeyNotFoundException">
     /// <paramref name="ownCharacterId"/> is not a class the catalog holds.
     /// </exception>
@@ -228,13 +251,15 @@ public sealed class SplashFlow
         ContentCatalog catalog,
         EffectRegistry effects,
         ContentId ownCharacterId,
-        IDomainEvents events)
+        IDomainEvents events,
+        IStatBlock player = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _effects = effects ?? throw new ArgumentNullException(nameof(effects));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _ownCharacterId = ownCharacterId;
+        _player = player;
 
         _raisesMinions = catalog.Character(ownCharacterId).Minions is not null;
 
@@ -683,6 +708,13 @@ public sealed class SplashFlow
 
                 return true;
             }
+
+            if (AimsAtAMissingAddress(effect))
+            {
+                reason = new LocKey(RefusedAddressKeyId);
+
+                return true;
+            }
         }
 
         reason = default;
@@ -711,6 +743,16 @@ public sealed class SplashFlow
                     paramName);
             }
 
+            if (AimsAtAMissingAddress(effect))
+            {
+                throw new ArgumentException(
+                    $"'{spec.Id}' {when} a ModifyStat aimed at {((ModifyStat)effect).Stat}, and "
+                        + $"'{_ownCharacterId}' has no such number — its PlayerStats answers Has "
+                        + $"false. Branch {branch} of '{tree.Id}' is refused here rather than at the "
+                        + "moment the node is picked (M6-08 rule 8). Nothing has been installed.",
+                    paramName);
+            }
+
             if (_raisesMinions || effect is not ModifyStat modify ||
                 modify.Target != StatTarget.Minions)
             {
@@ -726,6 +768,22 @@ public sealed class SplashFlow
                     + "has been installed.",
                 paramName);
         }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="effect"/> is a player-aimed <c>ModifyStat</c> naming an address this
+    /// run does not have — the third sweep, one clause over <c>IStatBlock.Has</c> (M6-08 rule 8).
+    /// </summary>
+    /// <remarks>
+    /// Player-aimed only: a <see cref="StatTarget.Minions"/> node is the second sweep's, and a
+    /// <see cref="StatTarget.Self"/> node is aimed at whoever casts it rather than at this run.
+    /// </remarks>
+    private bool AimsAtAMissingAddress(IEffect effect)
+    {
+        return _player is not null
+            && effect is ModifyStat modify
+            && modify.Target == StatTarget.Player
+            && !_player.Has(modify.Stat);
     }
 
     /// <summary>How many of <paramref name="branch"/>'s nodes would come over.</summary>

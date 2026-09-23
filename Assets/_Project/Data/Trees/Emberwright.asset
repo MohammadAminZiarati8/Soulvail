@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af5b70d26e54754493bd72f817c8629, type: 3}
+  m_Name: Emberwright
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillTreeDefinition
+  _id: tree.emberwright
+  _character: {fileID: 11400000, guid: 8b4c6635d5a94bd29425d12fc83b56ea, type: 2}
+  _branches:
+  - _nameKey: tree.emberwright.ember
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 385a5d251c01e07e85758ec7eb5d4f6a, type: 2}
+      - {fileID: 11400000, guid: cf706be3752542c6c3f58a085fa99810, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 34ad327d2b9d9d18d7ee8c3baa7b29ea, type: 2}
+      - {fileID: 11400000, guid: d3068aa45404b9eac9c18409f31c78e1, type: 2}
+  - _nameKey: tree.emberwright.arcana
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 96755ce099a6f02649d1bb36d5d0dec6, type: 2}
+      - {fileID: 11400000, guid: 8ce540c17638c2272217cff3aef715f3, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 57d7e37a44856b8a97b93b2b3f99a6ea, type: 2}
+      - {fileID: 11400000, guid: 6306e01bc033594ba70694617ba3fd41, type: 2}
+  - _nameKey: tree.emberwright.ash
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: c678dc0c9754e70e9ef7af521a9872e8, type: 2}
+      - {fileID: 11400000, guid: 3ef8b38dd5f6fb9a93d2f8b3c7a45a48, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: d41dd78f879c9f550621cb2fe5d2b04c, type: 2}
+      - {fileID: 11400000, guid: fc2a37e8f889b5432135840d756dc7be, type: 2}

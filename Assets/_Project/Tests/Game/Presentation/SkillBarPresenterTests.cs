@@ -1029,7 +1029,22 @@ public sealed class SkillBarPresenterTests
             { "HpText", 36f },
             { "Level", 40f },
             { "Label", 34f },   // the Overflow toast's, the one other object called Label
+
+            // M6-03b's four: the Essence counter at the level's size, and three captions at the
+            // slot labels' 28, which is the smallest size on this prefab that clears the floor.
+            { "EssenceCounter", 40f },
+            { "EssenceLabel", SlotFontPoints },
+            { "VeilrotLabel", SlotFontPoints },
+            { "ClaimedLabel", SlotFontPoints },
         };
+
+        foreach (float points in expected.Values)
+        {
+            Assert.That(
+                DeviceDp(points),
+                Is.GreaterThan(AndroidBodyTextFloorSp),
+                $"{points} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
+        }
 
         var slotLabels = new HashSet<TMP_Text>(SlotLabels());
         var seen = new List<string>();

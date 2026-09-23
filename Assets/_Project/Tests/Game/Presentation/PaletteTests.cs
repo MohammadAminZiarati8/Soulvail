@@ -574,23 +574,51 @@ public sealed class PaletteTests
         }
     }
 
+    /// <summary>
+    /// M6-03b rule 6: <c>Palette_HasTheColourNobodyReadsYet</c>, retired — the meter is its reader.
+    /// </summary>
+    /// <remarks>
+    /// That row was narrowed at M6-03a to the one colour it was still true of, and there is nothing
+    /// left for it to say. Replaced rather than narrowed a second time (ledger row 8).
+    /// </remarks>
     [Test]
-    public void Palette_HasTheColourNobodyReadsYet()
+    public void Palette_VeilrotIsTheMetersColour()
     {
-        // **Rule 7 stated as an asserted fact, narrowed at M6-03a to the one colour it is still true
-        // of.** The row used to claim Veilrot *and* Essence, and asked only the nine Readers — which
-        // is how it stayed green for two milestones after RunEndPresenter started reading Essence.
-        // It now sweeps every type in Soulvail.Game, so it is about the build rather than a list,
-        // and M6-03b retires it by giving the meter a reader.
         FieldInfo member = typeof(Palette).GetField(nameof(Palette.Veilrot));
 
-        Assert.That(member, Is.Not.Null, "Palette.Veilrot was tidied away for having no reader.");
+        Assert.That(Sweep(member), Does.Contain(typeof(VeilrotMeterView)), "the meter does not read Palette.Veilrot.");
+
+        AssertHex(Palette.Veilrot, 0xA8, 0x55, 0xF7, nameof(Palette.Veilrot));
 
         Assert.That(
-            Sweep(member).Select(type => type.Name),
-            Is.Empty,
-            "Palette.Veilrot has a reader. If it is M6-03b's meter, this row is that task's to retire; "
-                + "if not, the milestone's colour language arrived before the mechanic did.");
+            Palette.IsDanger(Palette.Veilrot),
+            Is.False,
+            "Palette.Veilrot is the danger colour, so the one readout up for a whole run breaks GD §16.4.");
+    }
+
+    /// <summary>
+    /// Ledger row 8, closed: both reserved colours that shipped with no reader have one, and neither
+    /// summary still says otherwise.
+    /// </summary>
+    [Test]
+    public void Palette_BothReservedColoursHaveReaders()
+    {
+        string[] source = System.IO.File.ReadAllLines(PalettePath);
+
+        foreach (string name in new[] { nameof(Palette.Veilrot), nameof(Palette.Essence) })
+        {
+            Assert.That(Sweep(typeof(Palette).GetField(name)), Is.Not.Empty, $"Palette.{name} has no reader.");
+
+            int field = Array.FindIndex(source, line => line.Contains($"public static readonly Color {name} "));
+
+            Assert.That(field, Is.GreaterThan(4), $"Palette.{name} is not declared in {PalettePath}.");
+
+            // The summary above the field, however many lines it runs to.
+            int start = Array.FindLastIndex(source, field, line => line.Contains("<summary>"));
+            string summary = string.Join(" ", source.Skip(start).Take(field - start));
+
+            Assert.That(summary, Does.Not.Contain("No reader yet"), $"Palette.{name}'s summary still says it has no reader.");
+        }
     }
 
     [Test]
@@ -601,12 +629,16 @@ public sealed class PaletteTests
         Type[] readers = Sweep(member);
 
         // GD §16.4's reward gold on the run-end payout (M4-06) and on the Sanctum's balance (M6-03a).
-        // ServiceRow reads it too, for the prices, and is the Sanctum's own control.
+        // ServiceRow reads it too, for the prices, and is the Sanctum's own control; HudPresenter
+        // joined at M6-03b for GD §16.1's corner counter.
         Assert.That(readers, Does.Contain(typeof(RunEndPresenter)));
         Assert.That(readers, Does.Contain(typeof(SanctumPresenter)));
         Assert.That(
             readers,
-            Is.EquivalentTo(new[] { typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow) }));
+            Is.EquivalentTo(new[]
+            {
+                typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow), typeof(HudPresenter),
+            }));
 
         // And the summary says so. XML docs do not exist at run time, so the source is read: the
         // three lines above the field are its summary.

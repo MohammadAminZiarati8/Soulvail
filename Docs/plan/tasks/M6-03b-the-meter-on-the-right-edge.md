@@ -219,4 +219,48 @@ a stopped run), and `Threshold(-1)` / `Threshold(4)`.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the table's shape.** `VeilrotMeterView` (track, vertical fill, four marks cloned from one
+template, a Claiming cap); `HudPresenter` drives it and a top-right counter off `EssenceChanged`,
+`VeilrotChanged` and `ClaimingBegan`, seeded from `RunState` on `RunStarted`; `NodeState.Banished` +
+`Palette.NodeBanished` `(0.15, 0.16, 0.19)`; `TreeViewPresenter.StateOf` scans `BanishedNodeIds`.
+EditMode 2 709 → **2 736, +27**; PlayMode **26**, unchanged.
+
+### Deviations
+
+1. **The HUD reads words again — this changes M4-06 rule 2's decision.** `ui.hud.claimed` is on the
+   Tests table, and a word needs an `ILocalizer`, so `HudPresenter.Construct` is three parameters.
+   `RunEndPresenterTests.Hud_NoLongerOwnsTheDeathOverlay` now pins `(hub, session, localizer)`, keeps
+   `SceneLoader`/`InputAdapter` out, and asserts the class's only `LocKey`s are this task's three.
+   The three words are written once at `Start`, never per event.
+2. **The three keys are `ui.hud.essence`, `ui.hud.veilrot`, `ui.hud.claimed`.** The spec named one.
+   The counter is a bare number (`{0:0}`, TMP's non-allocating overload) with a caption under it;
+   the meter has a caption under it; the Claiming's name sits left of the meter's top, hidden until
+   claimed. All three are violet or gold, never `Danger`.
+3. **No `HudPresenterTests` exists** — the HUD's rows have always lived with their view. The
+   `Hud_*` rows are in `VeilrotMeterViewTests`.
+4. **Five test files outside the table.** `BossBarViewTests`, `GrantedShieldTests`,
+   `XpBarViewTests` — the new `Construct` argument; `RunEndPresenterTests` — deviation 1;
+   `SkillBarPresenterTests.Hud_NothingElseMoved` — **M4-07's legibility guard caught four unmeasured
+   text elements on its first run.** The captions shipped at 24 pt (≈ 10.6 dp, under Android's
+   12 sp); they are 28 pt (12.36 dp, the slot labels' size) and the row now measures all four
+   against the floor. `Palette_EssenceHasTwoReadersAndItsSummarySaysSo`'s exact set gains
+   `HudPresenter`, the corner counter's reader.
+5. **A negative value clamps to 0 rather than being ignored** — the Public API's remark and
+   `Meter_ClampsAtBothEnds` disagreed and the table wins. Non-finite is still ignored.
+6. **The view latches `IsClaimed` itself**, so `Set(40, false)` after a Claiming leaves the mark up.
+   Stronger than rule 4 asked; `RunState.IsClaimed` never goes false, so no correct caller notices.
+7. **Placement, which the spec left open.** `PausePresenter` owns the top-right corner (44 dp at a
+   16 dp margin), so the counter's default inset is **68 dp** in, beside the icon, and the meter's is
+   **76 dp** down, under it: 12 × 160 dp. Serialized, so the owner can move either on a device.
+8. **Public reads beyond the API:** `MarkCount` and `MarkFraction(int)`, `BossBarView`'s shape.
+   **Rows beyond the table:** `Construct_RefusesNulls`, `Hud_AnUndressedReadoutIsSilent`,
+   `Hud_DropsItsEconomySubscriptions`. The `Node_*` rows are in `TreeViewPresenterTests`.
+
+### Findings
+
+- **Manual steps 1 and 2 cannot be run in this build.** Nothing gains Veilrot until M6-05b and
+  M6-03a removed the debug overlay's F-keys, so there is no grant to press. Steps 3 and 4 can.
+- **`FrameOrderTests.Ticker_SnapshotPrecedesTheTick` failed once** — *"the body walked"*, 0.24 m
+  against a 0.5 m sanity floor on the first frame. Not known issue 1's row; a fake core and a bare
+  body, nothing this task touched. The next two PlayMode runs were clean. One sighting, not a rate.
+- **Ledger row 8 DISCHARGED**; ledger rows 1 and 3 touched and not moved, as rule 8 says.

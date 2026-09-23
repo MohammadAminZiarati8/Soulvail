@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -505,16 +506,22 @@ public sealed class RunEndPresenterTests
             .GetMethod(nameof(HudPresenter.Construct))
             .GetParameters();
 
+        // **Three parameters as of M6-03b, and the third is not the death path coming back.** The
+        // death path was the only reader of SceneLoader, InputAdapter and ILocalizer, and all three
+        // left with it (rule 2); an ILocalizer returned for GD §16.1's economy readouts — the Essence
+        // caption, the meter's caption and the Claiming's name — and the two that are still gone are
+        // what this row keeps out.
         Assert.That(
             parameters,
-            Has.Length.EqualTo(2),
-            "HudPresenter.Construct is not two parameters. The death path was the only reader of "
-                + "SceneLoader, InputAdapter and ILocalizer, and all three left with it (rule 2).");
+            Has.Length.EqualTo(3),
+            "HudPresenter.Construct is not three parameters: the hub, the run, and the localizer "
+                + "M6-03b's three captions read.");
 
         Assert.That(parameters[0].ParameterType, Is.EqualTo(typeof(DomainEventHub)));
         Assert.That(parameters[1].ParameterType, Is.EqualTo(typeof(IRunSession)));
+        Assert.That(parameters[2].ParameterType, Is.EqualTo(typeof(ILocalizer)));
 
-        foreach (Type gone in new[] { typeof(SceneLoader), typeof(InputAdapter), typeof(ILocalizer) })
+        foreach (Type gone in new[] { typeof(SceneLoader), typeof(InputAdapter) })
         {
             foreach (FieldInfo field in typeof(HudPresenter).GetFields(Everything))
             {
@@ -525,13 +532,14 @@ public sealed class RunEndPresenterTests
             }
         }
 
-        // No LocKey either: the HUD draws no word at all now. HpFormat and LevelFormat are number
-        // formats rather than sentences and survive localisation unchanged, which is the distinction
-        // M3-14a drew and this task inherits.
-        foreach (FieldInfo field in typeof(HudPresenter).GetFields(Everything))
-        {
-            Assert.That(field.FieldType, Is.Not.EqualTo(typeof(LocKey)), $"{field.Name} is a LocKey.");
-        }
+        // The only words it draws are M6-03b's three, and neither death key is among them — those
+        // live on this screen now (M4-06 rule 3).
+        string[] keys = typeof(HudPresenter).GetFields(Everything)
+            .Where(field => field.FieldType == typeof(LocKey))
+            .Select(field => ((LocKey)field.GetValue(null)).Key)
+            .ToArray();
+
+        Assert.That(keys, Is.EquivalentTo(new[] { "ui.hud.essence", "ui.hud.veilrot", "ui.hud.claimed" }));
 
         AssertNothingHandles(typeof(HudPresenter), typeof(PlayerDied));
 

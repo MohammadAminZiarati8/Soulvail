@@ -867,7 +867,7 @@ public sealed class BossBarViewTests
 
         var presenter = hud.GetComponent<HudPresenter>();
 
-        presenter.Construct(_hub, _session);
+        presenter.Construct(_hub, _session, Passthrough());
 
         Assert.That(_hub.SubscriberCount<BossPhaseChanged>(), Is.EqualTo(1), "the fixture's premise.");
         Assert.That(_hub.SubscriberCount<BossBeatStarted>(), Is.EqualTo(1));
@@ -907,12 +907,12 @@ public sealed class BossBarViewTests
 
         // The implied guard row. The band still needs no dependency of its own — it is a dumb view
         // this presenter hands fractions to, which is why RunScope registers nothing new for it
-        // (M4-04 rule 7) — and the signature has **shrunk** rather than grown since: M4-06 rule 2
-        // took the death overlay out of this class and SceneLoader, InputAdapter and ILocalizer left
-        // with it. The arity is asserted by `Hud_NoLongerOwnsTheDeathOverlay` in
-        // `RunEndPresenterTests`, which is the fixture that owns the reason it is two.
-        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(null, _session));
-        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, null));
+        // (M4-04 rule 7). M4-06 rule 2 took the death overlay and three dependencies out of this
+        // class; M6-03b brought an ILocalizer back for the economy readouts' captions. The arity is
+        // asserted by `Hud_NoLongerOwnsTheDeathOverlay` in `RunEndPresenterTests`.
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(null, _session, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, null, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, _session, null));
     }
 
     [Test]
@@ -1082,7 +1082,7 @@ public sealed class BossBarViewTests
         // instantiated prefab in EditMode: the placement and the first draw both live there. The band
         // is deliberately *not* constructed — nothing injects it, which is the whole of why RunScope
         // registers nothing new.
-        _presenter.Construct(_hub, _session);
+        _presenter.Construct(_hub, _session, Passthrough());
         _strip.Construct(_session, _hub);
 
         Invoke(_presenter, "Start");

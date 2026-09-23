@@ -232,4 +232,58 @@ and a `pactIndex` outside the offer refused by `Choose`.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the table's shape.** `OfferGenerator.PactChance` is 0.25. `Draw` gains `out pactIndex`, and
+anything it writes costs `picks + 2` draws: the slot, then the chance, both always taken. The slot
+is a Pact only if the chance says yes **and** its node carries a block. `LevelUpFlow` takes a
+required `Veilrot`, holds `_pactIndex` next to `_offer`, and publishes it on `OfferPresented`.
+`Choose` calls `Take(id, asPact)` and then `Gain`, so the meter moves after `NodeTaken`.
+`RunState.PactIndex` forwards the value. `OfferCard.Show` gains `isPact`, which turns on a violet
+frame, swaps in the Pact's description and writes the price, and `IsPact` reads back how the card
+was drawn. `Palette` gains no member. EditMode 2 766 → **2 793, +27**; PlayMode **26**, unchanged.
+
+### Deviations
+
+1. **No `OfferCardTests` exists.** `OfferCard`'s rows have always been in `LevelUpPresenterTests`,
+   so the six `Card_*` rows and `Presenter_PassesThePactThrough` are there.
+   `Palette_ThePactFrameIsNotATenthColour` is in `PaletteTests`. It pins the member count at
+   **19**, which is what reflection returns.
+2. **The frame is a UGUI `Outline` on the card's own `Image`** (4 px, off by default). Unity ships
+   no hollow sprite, and a filled child `Image` would cover the body. `OfferCard` writes
+   `effectColor` from `Palette.Veilrot` on every draw, so the colour serialized on the `Outline` is
+   never what the player sees and `Card_CarriesNoSerializedColour` holds. The prefab gained the
+   `Outline` and a `Rot` TMP label (18 pt, bold, bottom edge) on each card, and `Prefab_IsDressed`
+   now checks both references.
+3. **The label reads *"Pact · +15 Rot"*: two rows, `ui.offer.pact` and `ui.offer.rot`.** Ledger
+   row 7 counted *"the card's frame label and its Rot figure"*, and the word means a Pact is not
+   told by colour alone. `ILocalizer` has no `Format` (M6-10's), so the card builds the line with
+   an invariant `string.Format`, `ClassCard`'s way.
+4. **`Flow_PublishesThePactIndex` asserts `LevelUpFlow.PactIndex`**, because a bare flow has no
+   `RunState`. The `RunState` half is the first assertion of `Presenter_PassesThePactThrough`,
+   which runs over a real session.
+5. **`Flow_AVigilOfferStillRollsTwo` calls the generator directly.** Rule 10 puts `count` 2 at the
+   call site, and the flow has no Vigil yet.
+6. **The ripple counts were wrong.** `Draw` has **24 sites across 2 files**, not 10 across 3
+   (`OfferGeneratorTests` 20, `SplashBranchTests` 4). Five existing rows had pinned rule 1's old
+   cost and were re-pinned: `Draw_OneDrawPerPickAndOnlyOffers` 3 → 5,
+   `Draw_FewerThanCountWhenScarce` 2 → 4, `Open_DrawsFromOffersAndNoOtherStream` 3 → 5,
+   `Reroll_TheNextOfferIsTheSecondDraw` (script padded, 6 → 10), and
+   `SplashBranchTests.Offer_DrawsFromBothTrees`. That last one's sweep of 800 values assumed one
+   value per draw. It went red at 67 against 200 and now strides three.
+7. **`LevelUpPresenterTests`' fixture nodes carry a Pact** (every kind that allows one: +15 %, 15
+   Rot), so a real offer can roll one. Fifteen Rot stays under the 25 threshold, so no existing row
+   moves.
+8. **No row for *"a `pactIndex` outside the offer refused by `Choose`"*.** `Choose` takes a
+   position, and the only writer of `_pactIndex` is the generator's `[-1, picks)`. The existing
+   index guard is the refusal.
+9. **`RunSession`'s comment on `State.Rot.Tick`** said nothing gains Veilrot until this task. It is
+   corrected.
+
+### Findings
+
+- **Coverage is the real rate.** With 4 Pacts in 24 nodes, an offer shows one about
+  `0.25 × P(the slot holds one of the four)` of the time, well under a quarter. Manual step 1's
+  *"at least one of six offers is violet"* may need a second seed. Rule 3 says so, and **M7-04**
+  moves it.
+- **M6-05a's manual step 2 can now be run** through the card rather than a debug command.
+- **Known issue 1 did not fire.** PlayMode was 26 / 0 twice.
+- **Ledger row 7** gets its two strings. It is touched and not moved.

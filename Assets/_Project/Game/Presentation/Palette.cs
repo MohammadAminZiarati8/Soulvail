@@ -44,8 +44,11 @@ namespace Soulvail.Game.Presentation;
 /// </para>
 /// <para>
 /// <b>The tenth colour is a field here, which is how ledger row 6 closes rather than pauses.</b>
-/// M3-13b's damage tint, M4-04's boss segments, M6-04's Veilrot meter and M6-05's Pact frames each
-/// add a member and a test row instead of a placeholder. <see cref="Veilrot"/> and
+/// M3-13b's damage tint, M4-04's boss segments and M6-04's Veilrot meter each add a member and a
+/// test row instead of a placeholder. <b>M6-05b's Pact frame adds no member</b>, and that is the
+/// rule working rather than an exception to it: GD §16.4 makes one violet mean Veilrot, Pacts and
+/// corruption, so the frame reads <see cref="Veilrot"/>, and a second violet would be the drift
+/// ledger row 6 exists to catch arriving from inside this file. <see cref="Veilrot"/> and
 /// <see cref="Essence"/> both shipped with no reader at all, which is the cheapest possible statement
 /// of that rule; Essence has had readers since M4-06 and Veilrot since M6-03b's meter, and
 /// <see cref="IsDanger"/> is the door every new member has to pass.
@@ -86,8 +89,8 @@ public static class Palette
     public static readonly Color Danger = Rgb(0xFF, 0x4A, 0x1F);
 
     /// <summary>
-    /// <c>#A855F7</c> — corruption, Veilrot, Pacts. GD §16.4. Read by the HUD's Veilrot meter and the
-    /// Claiming's name beside it.
+    /// <c>#A855F7</c> — corruption, Veilrot, Pacts. GD §16.4. Read by the HUD's Veilrot meter, the
+    /// Claiming's name beside it, and a Pact offer card's frame and price.
     /// </summary>
     public static readonly Color Veilrot = Rgb(0xA8, 0x55, 0xF7);
 

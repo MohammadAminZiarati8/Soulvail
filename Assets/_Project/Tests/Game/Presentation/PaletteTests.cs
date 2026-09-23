@@ -597,6 +597,28 @@ public sealed class PaletteTests
     }
 
     /// <summary>
+    /// M6-05b rule 8: the Pact frame reads <see cref="Palette.Veilrot"/>, and the palette gained no
+    /// member for it.
+    /// </summary>
+    /// <remarks>
+    /// GD §16.4 makes one violet mean Veilrot, Pacts and corruption. Nineteen is the count as
+    /// M6-05b found it; a twentieth colour is a decision, and this row is where it has to be argued.
+    /// </remarks>
+    [Test]
+    public void Palette_ThePactFrameIsNotATenthColour()
+    {
+        Assert.That(
+            Sweep(typeof(Palette).GetField(nameof(Palette.Veilrot))),
+            Does.Contain(typeof(OfferCard)),
+            "the Pact frame does not read Palette.Veilrot.");
+
+        Assert.That(
+            typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
+            Is.EqualTo(19),
+            "Palette gained a member. A Pact is GD §16.4's violet, not a second one.");
+    }
+
+    /// <summary>
     /// Ledger row 8, closed: both reserved colours that shipped with no reader have one, and neither
     /// summary still says otherwise.
     /// </summary>

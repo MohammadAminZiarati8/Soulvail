@@ -56,6 +56,7 @@ public sealed class LevelUpFlowTests
     private PlayerStats _stats;
     private EffectRegistry _registry;
     private SkillRunner _runner;
+    private Veilrot _veilrot;
 
     [SetUp]
     public void SetUp()
@@ -76,6 +77,7 @@ public sealed class LevelUpFlowTests
         _registry.Register<ModifyStat>(new ModifyStatHandler(_stats));
 
         _runner = new SkillRunner(_registry, _combat.Blackboard, _events);
+        _veilrot = new Veilrot(_stats, _combat, _combat.Blackboard, _events);
     }
 
     // ---- The offer (rules 1, 2, 3) ---------------------------------------------------------------
@@ -152,7 +154,8 @@ public sealed class LevelUpFlowTests
 
         flow.Open(random.Offers);
 
-        Assert.That(random.OffersDraws, Is.EqualTo(3), "one draw per pick, whatever the walk found.");
+        // One per pick and M6-05b's two for the Pact roll, whatever the walk found.
+        Assert.That(random.OffersDraws, Is.EqualTo(3 + 2), "one draw per pick and two for the roll.");
 
         // ADR-0011: a level-up must never shift what the next wave is made of.
         Assert.That(random.OtherDraws, Is.EqualTo(0));
@@ -680,22 +683,22 @@ public sealed class LevelUpFlowTests
         SkillTree tree = FullTree();
 
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow()));
+            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow()));
+            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow()));
+            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow()));
+            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow()));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow(), _veilrot));
 
         // And the sixth argument has no null row, because it cannot be one: an OverflowSpec is a
         // struct, its zeroed form is legal content (a mode whose spare levels are worth nothing),
         // and every value that is not passes its own constructor. Overflow_AZeroedModeGrantsNothing
         // is what the missing row would have been.
         Assert.DoesNotThrow(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default, _veilrot));
     }
 
     [Test]
@@ -784,7 +787,8 @@ public sealed class LevelUpFlowTests
         var runner = new SkillRunner(registry, combat.Blackboard, events);
 
         SkillTree tree = WideTree(10);
-        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow());
+        var veilrot = new Veilrot(stats, combat, combat.Blackboard, events);
+        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow(), veilrot);
 
         IRandomStream offers = new FixedRandom(99).Offers;
 
@@ -824,7 +828,10 @@ public sealed class LevelUpFlowTests
         LevelUpFlow rerolled = Flow(WideTree(10));
         GrantReroll(rerolled);
 
-        var random = new CountingRandom(new FixedRandom(0.05f, 0.05f, 0.05f, 0.95f, 0.95f, 0.95f));
+        // Each draw is its three picks and M6-05b's two Pact draws, so the second three start at
+        // the sixth value rather than the fourth (M6-05b rule 9).
+        var random = new CountingRandom(
+            new FixedRandom(0.05f, 0.05f, 0.05f, 0.5f, 0.5f, 0.95f, 0.95f, 0.95f, 0.5f, 0.5f));
 
         rerolled.Open(random.Offers);
 
@@ -832,7 +839,7 @@ public sealed class LevelUpFlowTests
         Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(1), "and is told about one offer, not two.");
         Assert.That(rerolled.RerollsSpent, Is.EqualTo(1));
         Assert.That(rerolled.RerollCharges, Is.Zero);
-        Assert.That(random.OffersDraws, Is.EqualTo(6), "two draws of three from the same stream.");
+        Assert.That(random.OffersDraws, Is.EqualTo(10), "two draws of three and two from the same stream.");
     }
 
     [Test]
@@ -929,7 +936,7 @@ public sealed class LevelUpFlowTests
     private LevelUpFlow Flow(SkillTree tree) => Flow(tree, Overflow());
 
     private LevelUpFlow Flow(SkillTree tree, OverflowSpec overflow) =>
-        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow);
+        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow, _veilrot);
 
     /// <summary><c>Descent.asset</c>'s pair, as a spec — see <see cref="OverflowPerLevel"/>.</summary>
     private static OverflowSpec Overflow() =>

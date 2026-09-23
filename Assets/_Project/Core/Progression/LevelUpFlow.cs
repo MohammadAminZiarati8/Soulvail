@@ -6,6 +6,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Progression;
 
@@ -66,6 +67,7 @@ public sealed class LevelUpFlow
     private readonly SkillRunner _runner;
     private readonly EffectRegistry _effects;
     private readonly IDomainEvents _events;
+    private readonly Veilrot _veilrot;
     private readonly OfferGenerator _generator;
 
     /// <summary>
@@ -93,6 +95,12 @@ public sealed class LevelUpFlow
 
     private int _count;
 
+    /// <summary>
+    /// Which of <see cref="_offer"/> is a Pact, or <c>-1</c>. Written by the same draw that writes
+    /// the ids, and reset with them (M6-05b rule 5).
+    /// </summary>
+    private int _pactIndex = -1;
+
     /// <param name="tree">The run's live tree. Never null — a class without one builds no flow.</param>
     /// <param name="progression">Where the picks are banked and spent.</param>
     /// <param name="runner">Told directly about a chosen Active, because core does not subscribe to
@@ -107,15 +115,21 @@ public sealed class LevelUpFlow
     /// know which one the game used. A zeroed spec is ordinary and means Overflow is worth nothing
     /// in this mode.
     /// </param>
+    /// <param name="veilrot">
+    /// GD §10's meter, which a corrupted take pays into (M6-05b rule 6). Required — every run has
+    /// one, and a null would be a run that took Pacts for free (M6-01a rule 5's argument).
+    /// </param>
     /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
-                       EffectRegistry effects, IDomainEvents events, OverflowSpec overflow)
+                       EffectRegistry effects, IDomainEvents events, OverflowSpec overflow,
+                       Veilrot veilrot)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _effects = effects ?? throw new ArgumentNullException(nameof(effects));
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _veilrot = veilrot ?? throw new ArgumentNullException(nameof(veilrot));
 
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
@@ -139,6 +153,9 @@ public sealed class LevelUpFlow
     /// <see cref="Choose"/>.
     /// </remarks>
     public IReadOnlyList<ContentId> Offer => _offerView;
+
+    /// <summary>Which offered card is a Pact, or <c>-1</c>. Empty offer answers <c>-1</c>.</summary>
+    public int PactIndex => _count > 0 ? _pactIndex : -1;
 
     /// <summary>
     /// How many levels this run has spent on CH §5.2's Overflow rather than on a node.
@@ -209,7 +226,7 @@ public sealed class LevelUpFlow
 
         while (_progression.PendingLevelUps > 0)
         {
-            int drawn = _generator.Draw(_tree, offers, _offer.Length, _offer);
+            int drawn = _generator.Draw(_tree, offers, _offer.Length, _offer, out int pactIndex);
 
             if (drawn > 0)
             {
@@ -219,16 +236,21 @@ public sealed class LevelUpFlow
                 // from the same Offers stream, so the only thing the extra draw moves is which
                 // nodes this run is offered later (ADR-0011). The tree has not changed between the
                 // two draws, so the second finds something whenever the first did.
+                //
+                // **And the Pact is rolled again with it** (M6-05b rule 9): each draw costs
+                // picks + 2, so a rerolled level spends twice that, and the second three may be
+                // corrupted where the first were not.
                 if (RerollCharges > 0)
                 {
                     RerollCharges--;
                     RerollsSpent++;
 
-                    drawn = _generator.Draw(_tree, offers, _offer.Length, _offer);
+                    drawn = _generator.Draw(_tree, offers, _offer.Length, _offer, out pactIndex);
                 }
 
                 _count = drawn;
-                _events.Publish(new OfferPresented(drawn, _progression.PendingLevelUps));
+                _pactIndex = pactIndex;
+                _events.Publish(new OfferPresented(drawn, _progression.PendingLevelUps, pactIndex));
 
                 return;
             }
@@ -279,11 +301,24 @@ public sealed class LevelUpFlow
         }
 
         ContentId id = _offer[index];
-
-        _tree.Take(id);
-        _progression.SpendLevelUp();
-
         SkillSpec spec = _tree.Rules.Skill(id);
+
+        // **M6-05b rule 6: one take and one gain, in that order.** The position the player tapped
+        // is corrupted only if the model said so when it drew — a view cannot ask for a Pact it was
+        // not offered. `Take` applies the Pact's effects and publishes `NodeTaken`; then the meter
+        // moves, so a `VeilrotChanged` reader finds the node already owned. A gain that reaches 100
+        // begins the Claiming from here, on a screen the player is looking at, which is M6-04 rule
+        // 6's latch closing on the tick the meter got there.
+        bool asPact = index == _pactIndex;
+
+        _tree.Take(id, asPact);
+
+        if (asPact)
+        {
+            _veilrot.Gain(spec.Pact.Veilrot);
+        }
+
+        _progression.SpendLevelUp();
 
         if (spec.Kind == SkillKind.Active)
         {
@@ -292,6 +327,7 @@ public sealed class LevelUpFlow
 
         // Cleared before the redraw, or Open would see its own stale offer and return immediately.
         _count = 0;
+        _pactIndex = -1;
 
         Open(offers);
 

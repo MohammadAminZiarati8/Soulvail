@@ -669,6 +669,12 @@ public sealed class RunState
         LevelUp is null ? Array.Empty<ContentId>() : LevelUp.Offer;
 
     /// <summary>
+    /// Which of <see cref="Offer"/> is GD §13.2's Pact, or <c>-1</c> — for no offer, for no Pact,
+    /// and for a run with no tree. <see cref="Offer"/>'s bargain, one field over (M6-05b rule 5).
+    /// </summary>
+    public int PactIndex => LevelUp is null ? -1 : LevelUp.PactIndex;
+
+    /// <summary>
     /// Whether this frame should open a level-up: a pick is owed, no offer is open, and the class
     /// has a tree to spend it on.
     /// </summary>

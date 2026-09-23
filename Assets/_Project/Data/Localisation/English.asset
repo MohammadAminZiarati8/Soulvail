@@ -287,3 +287,7 @@ MonoBehaviour:
     _text: +40% bolt damage, but -15% movement speed.
   - _key: skill.gravecaller.rot-feast.pact.description
     _text: +40% experience from kills, but -15% maximum health.
+  - _key: ui.offer.pact
+    _text: Pact
+  - _key: ui.offer.rot
+    _text: Rot

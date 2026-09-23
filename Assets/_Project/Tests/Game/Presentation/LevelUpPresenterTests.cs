@@ -300,6 +300,120 @@ public sealed class LevelUpPresenterTests
         Assert.That(keystone, Is.EqualTo(Palette.KindKeystone));
     }
 
+    // ---- A Pact on the card (M6-05b rules 5, 7, 8) -----------------------------------------------
+
+    [Test]
+    public void Card_DrawsAPactViolet()
+    {
+        var card = BuildLooseCard();
+
+        card.Show(0, Node(NodeOne, SkillKind.Keystone), Passthrough(), _ => { }, isPact: true);
+
+        Outline frame = Field<Outline>(card, "_pactFrame");
+
+        Assert.That(card.IsPact, Is.True);
+        Assert.That(frame.enabled, Is.True, "a Pact card has no frame.");
+        Assert.That(frame.effectColor, Is.EqualTo(Palette.Veilrot), "GD §16.4 gives Pacts one violet.");
+
+        // The stripe stays CH §4's: a corrupted Keystone is still a Keystone, and the stripe is the
+        // only thing on the card that says so.
+        Assert.That(Field<Image>(card, "_kindStrip").color, Is.EqualTo(Palette.KindKeystone));
+    }
+
+    [Test]
+    public void Card_DrawsThePactsDescriptionAndTheCleanName()
+    {
+        var card = BuildLooseCard();
+        var localizer = new DictionaryLocalizer(
+            $"{NodeOne}.name", "Keen Censer",
+            $"{NodeOne}.desc", "+15% censer damage.",
+            $"{NodeOne}.pact", "+45% censer damage, but -25 maximum health.");
+
+        card.Show(0, Node(NodeOne, SkillKind.Passive), localizer, _ => { }, isPact: true);
+
+        // M6-05a rule 4: the player recognises the node they were offered clean before.
+        Assert.That(NameOn(card), Is.EqualTo("Keen Censer"));
+        Assert.That(DescriptionOn(card), Is.EqualTo("+45% censer damage, but -25 maximum health."));
+    }
+
+    [Test]
+    public void Card_DrawsTheRotPrice()
+    {
+        var card = BuildLooseCard();
+
+        card.Show(0, Node(NodeOne, SkillKind.Passive), Shipped(), _ => { }, isPact: true);
+
+        // Through the shipped English.asset, so inverting either word is a red row.
+        Assert.That(RotOn(card), Does.EndWith("+15 Rot"));
+        Assert.That(RotOn(card), Is.EqualTo("Pact · +15 Rot"));
+
+        card.Show(0, Node(NodeOne, SkillKind.Passive), Shipped(), _ => { }, isPact: false);
+
+        Assert.That(RotOn(card), Is.Empty, "a clean card named a price.");
+    }
+
+    [Test]
+    public void Card_RepaintsBackToClean()
+    {
+        var card = BuildLooseCard();
+        SkillSpec spec = Node(NodeOne, SkillKind.Passive);
+
+        card.Show(0, spec, Passthrough(), _ => { }, isPact: true);
+        card.Show(0, spec, Passthrough(), _ => { }, isPact: false);
+
+        // A second pick repaints the same three objects in place, and the second may be clean.
+        Assert.That(card.IsPact, Is.False);
+        Assert.That(Field<Outline>(card, "_pactFrame").enabled, Is.False, "the violet frame stayed on.");
+        Assert.That(DescriptionOn(card), Is.EqualTo(spec.DescriptionKey.Key), "the Pact's description stayed.");
+        Assert.That(RotOn(card), Is.Empty, "the price stayed.");
+    }
+
+    [Test]
+    public void Card_RefusesAPactItCannotDraw()
+    {
+        var card = BuildLooseCard();
+
+        Assert.That(
+            () => card.Show(0, Node(NodeTwo, SkillKind.Active), Passthrough(), _ => { }, isPact: true),
+            Throws.ArgumentException,
+            "a presenter read past the model and the card drew it clean.");
+    }
+
+    [Test]
+    public void Card_CarriesNoSerializedColour()
+    {
+        // Views_CarryNoSerializedColour, still: the frame's colour is written from Palette on every
+        // draw, so the Outline component's own serialized colour is never what a player sees.
+        FieldInfo[] colours = typeof(OfferCard)
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(f => f.FieldType == typeof(Color) || f.FieldType == typeof(Color[]))
+            .ToArray();
+
+        Assert.That(colours.Select(f => f.Name), Is.Empty);
+    }
+
+    [Test]
+    public void Presenter_PassesThePactThrough()
+    {
+        StartRun(level: 2, pending: 1);
+        BuildScreen();
+
+        _session.OpenLevelUp();
+
+        // The real publish first: RunState's read and the event agree (M6-05b rule 5).
+        Assert.That(_session.State.PactIndex, Is.EqualTo(_spy.Single<OfferPresented>().PactIndex));
+
+        IReadOnlyList<ContentId> offer = _session.State.Offer;
+        int pact = Enumerable.Range(0, offer.Count).Last(i => _catalog.Skill(offer[i]).HasPact);
+
+        _hub.Publish(new OfferPresented(offer.Count, 1, pactIndex: pact));
+
+        for (int i = 0; i < offer.Count; i++)
+        {
+            Assert.That(_cards[i].IsPact, Is.EqualTo(i == pact), $"card {i} was drawn wrong.");
+        }
+    }
+
     // ---- The pause is not this screen's (the owner's ruling; the spec's rule 3 rewritten) -------
 
     [Test]
@@ -797,6 +911,10 @@ public sealed class LevelUpPresenterTests
             Assert.That(cardSo.FindProperty("_description").objectReferenceValue, Is.Not.Null, $"card {i}: no description.");
             Assert.That(cardSo.FindProperty("_kindStrip").objectReferenceValue, Is.Not.Null, $"card {i}: no kind strip.");
             Assert.That(cardSo.FindProperty("_button").objectReferenceValue, Is.Not.Null, $"card {i}: no button.");
+
+            // M6-05b: the Pact frame and its price.
+            Assert.That(cardSo.FindProperty("_pactFrame").objectReferenceValue, Is.Not.Null, $"card {i}: no Pact frame.");
+            Assert.That(cardSo.FindProperty("_rot").objectReferenceValue, Is.Not.Null, $"card {i}: no Rot label.");
         }
 
         // Rule 9: its own canvas, above the HUD's, so the screen can be switched off whole and
@@ -907,18 +1025,18 @@ public sealed class LevelUpPresenterTests
         var card = BuildLooseCard();
 
         Assert.That(
-            () => card.Show(0, null, Passthrough(), _ => { }),
+            () => card.Show(0, null, Passthrough(), _ => { }, isPact: false),
             Throws.ArgumentNullException,
             "a card with no node to draw is a presenter that read past the end of a short offer.");
 
         Assert.That(
-            () => card.Show(0, Node(NodeOne, SkillKind.Passive), Passthrough(), null),
+            () => card.Show(0, Node(NodeOne, SkillKind.Passive), Passthrough(), null, isPact: false),
             Throws.ArgumentNullException,
             "a card with nobody to report to is one the player can tap while nothing happens — the "
                 + "one failure here that is indistinguishable from a frozen game.");
 
         Assert.That(
-            () => card.Show(-1, Node(NodeOne, SkillKind.Passive), Passthrough(), _ => { }),
+            () => card.Show(-1, Node(NodeOne, SkillKind.Passive), Passthrough(), _ => { }, isPact: false),
             Throws.InstanceOf<ArgumentOutOfRangeException>(),
             "a card's index is its position in the offer, from 0.");
     }
@@ -1204,9 +1322,11 @@ public sealed class LevelUpPresenterTests
 
     private static string DescriptionOn(OfferCard card) => Field<TMP_Text>(card, "_description").text;
 
+    private static string RotOn(OfferCard card) => Field<TMP_Text>(card, "_rot").text;
+
     private static Color TintFor(OfferCard card, SkillKind kind)
     {
-        card.Show(0, Node($"skill.test.{kind}".ToLowerInvariant(), kind), Passthrough(), _ => { });
+        card.Show(0, Node($"skill.test.{kind}".ToLowerInvariant(), kind), Passthrough(), _ => { }, isPact: false);
 
         return Field<Image>(card, "_kindStrip").color;
     }
@@ -1279,6 +1399,8 @@ public sealed class LevelUpPresenterTests
             active: null,
             parentId: new ContentId(NodeOne)),
 
+        // Every node that may carry a Pact carries one (M6-05b), so a real offer can roll one onto
+        // any card but the Active's — and 15 Rot, so a take moves the meter without crossing 25.
         _ => new SkillSpec(
             new ContentId(id),
             new LocKey($"{id}.name"),
@@ -1287,7 +1409,14 @@ public sealed class LevelUpPresenterTests
             new IEffect[]
             {
                 new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
-            }),
+            },
+            pact: new PactSpec(
+                new IEffect[]
+                {
+                    new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.15f),
+                },
+                15f,
+                new LocKey($"{id}.pact"))),
     };
 
     /// <summary>

@@ -93,6 +93,11 @@ namespace Soulvail.Game.Authoring
                  "reaches a boss stage.")]
         [SerializeField] private BossRosterRow[] _bossRoster = Array.Empty<BossRosterRow>();
 
+        [Tooltip("When this mode deals GD §13.4's Ordeals, and the pool they are drawn from. " +
+                 "A schedule with an empty pool, or a pool with no schedule, is refused on a " +
+                 "shipped mode by content validation.")]
+        [SerializeField] private OrdealsBlock _ordeals = new OrdealsBlock();
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -127,7 +132,9 @@ namespace Soulvail.Game.Authoring
                     BuildBossRoster(),
                     BuildOverflow(),
                     BuildEssence(),
-                    BuildSanctum());
+                    BuildSanctum(),
+                    BuildOrdealSchedule(),
+                    BuildOrdeals());
             }
             catch (ArgumentException inner)
             {
@@ -254,6 +261,42 @@ namespace Soulvail.Game.Authoring
             }
 
             return _sanctum.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored Ordeal schedule into the <see cref="OrdealScheduleSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// <b>Unlike the four blocks above, a missing or zeroed block is legal and means "deals
+        /// none"</b> (M6-06a rule 1): every mode but Descent deals none, and a period of 0 is how the
+        /// Inspector spells that. A period above zero goes through the struct's constructor, which
+        /// refuses a first stage below 1.
+        /// </remarks>
+        private OrdealScheduleSpec BuildOrdealSchedule()
+        {
+            if (_ordeals is null)
+            {
+                return default;
+            }
+
+            return _ordeals.ToSchedule();
+        }
+
+        /// <summary>
+        /// Converts every listed <see cref="OrdealDefinition"/>, in the order authored.
+        /// </summary>
+        /// <remarks>
+        /// A null reference in the list is refused naming its row, because an empty slot in an
+        /// Inspector list is easy to leave behind and would otherwise surface as a null inside core.
+        /// </remarks>
+        private IReadOnlyList<OrdealSpec> BuildOrdeals()
+        {
+            if (_ordeals is null)
+            {
+                return Array.Empty<OrdealSpec>();
+            }
+
+            return _ordeals.ToPool();
         }
 
         /// <summary>
@@ -610,6 +653,67 @@ namespace Soulvail.Game.Authoring
             /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
             public SanctumSpec ToSpec() => new SanctumSpec(
                 _rerollPrice, _banishPrice, _healPrice, _healAmount, _cleansePrice, _cleanseAmount);
+        }
+
+        /// <summary>
+        /// GD §13.4's Ordeals as a designer tunes them — a schedule and a pool, in one foldout.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="SanctumBlock"/>'s reason, drawn as the
+        /// foldout after the roster lists because it names assets as they do. <b>Its initialisers
+        /// are zero and empty, unlike the four blocks above</b>: a mode created from the Create menu
+        /// deals no Ordeals, which is the honest default for every mode but Descent (rule 1).
+        /// </para>
+        /// <para>
+        /// The pool holds asset references rather than ids, <c>SkillTreeDefinition</c>'s nodes'
+        /// shape: an Ordeal is content with its own strings, not a number on a mode.
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class OrdealsBlock
+        {
+            [Header("Ordeals — GD §13.4: from stage 25, one per biome loop (GD §3: 10 stages)")]
+            [Tooltip("The first stage an Ordeal is dealt on. 25 in Descent. Ignored while the " +
+                     "period is 0.")]
+            [SerializeField, Min(0)] private int _firstStage;
+
+            [Tooltip("How many stages apart the rest come. 10 in Descent. 0 means this mode deals " +
+                     "no Ordeals.")]
+            [SerializeField, Min(0)] private int _everyNStages;
+
+            [Tooltip("The pool, drawn from without replacement. Order matters only to the seed.")]
+            [SerializeField] private OrdealDefinition[] _pool = Array.Empty<OrdealDefinition>();
+
+            /// <summary>The schedule, or <c>default</c> for a period of 0 — "deals none".</summary>
+            public OrdealScheduleSpec ToSchedule() =>
+                _everyNStages == 0 ? default : new OrdealScheduleSpec(_firstStage, _everyNStages);
+
+            /// <summary>Converts the pool, refusing an empty slot by its row.</summary>
+            public IReadOnlyList<OrdealSpec> ToPool()
+            {
+                if (_pool is null || _pool.Length == 0)
+                {
+                    return Array.Empty<OrdealSpec>();
+                }
+
+                var specs = new OrdealSpec[_pool.Length];
+
+                for (int i = 0; i < _pool.Length; i++)
+                {
+                    if (_pool[i] == null)
+                    {
+                        throw new ArgumentException(
+                            $"its Ordeal pool's row {i} names no OrdealDefinition. An empty slot "
+                                + "is a missing Ordeal, not a smaller pool — remove the row.",
+                            nameof(_pool));
+                    }
+
+                    specs[i] = _pool[i].ToSpec();
+                }
+
+                return specs;
+            }
         }
 
         /// <summary>

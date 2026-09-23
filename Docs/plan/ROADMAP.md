@@ -150,7 +150,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-03b | [The meter on the right edge, the counter in the corner, and the node that is gone](tasks/M6-03b-the-meter-on-the-right-edge.md) | S | M6-03a | ☑ |
 | M6-05a | [What a Pact is, and why 1.8× is a budget rather than an operation](tasks/M6-05a-what-a-pact-is.md) | M | M6-04 | ☑ |
 | M6-05b | [The offer that rolls one, and the two draws it always spends](tasks/M6-05b-the-offer-that-rolls-one.md) | M | M6-05a | ☑ |
-| M6-06a | [What an Ordeal is, and the loop that deals one](tasks/M6-06a-what-an-ordeal-is.md) | M | M6-02b, M6-04 | ☐ |
+| M6-06a | [What an Ordeal is, and the loop that deals one](tasks/M6-06a-what-an-ordeal-is.md) | M | M6-02b, M6-04 | ☑ |
 | M6-06b | [Four Ordeals that work, and two this build cannot ship](tasks/M6-06b-four-ordeals-and-two-refusals.md) | S | M6-06a | ☐ |
 | M6-07a | [The Emberwright, the Cinder Orb, and heat that builds while nothing touches you](tasks/M6-07a-the-emberwright-and-the-cinder-orb.md) | M | M6-06b | ☐ |
 | M6-07b | [Blink, and the first ground in this game that burns](tasks/M6-07b-blink-and-the-ground-that-burns.md) | S | M6-07a | ☐ |

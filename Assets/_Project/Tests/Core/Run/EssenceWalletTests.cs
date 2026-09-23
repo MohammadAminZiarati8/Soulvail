@@ -428,6 +428,8 @@ public sealed class EssenceWalletTests
                 _projectiles,
                 _player,
                 essence: null,
+                new Ordeals(_mode, _events),
+                new FixedRandom(0).Affixes,
                 _events,
                 _plan,
                 seed: 0));
@@ -621,6 +623,8 @@ public sealed class EssenceWalletTests
             _projectiles,
             _player,
             _wallet,
+            new Ordeals(_mode, sink),
+            new FixedRandom(0).Affixes,
             sink,
             _plan,
             seed: 0);

@@ -531,6 +531,31 @@ namespace Soulvail.Game.Presentation
             _line.Append("  ban ").Append(
                 (state is null ? 0 : state.BanishedNodeIds.Count).ToString(CultureInfo.InvariantCulture));
 
+            // GD §13.4's Ordeals, by id, for M6-06a's three manual steps: `ord —` until stage 25,
+            // then one more last segment every ten stages. Ids rather than names, because a
+            // player-facing readout is M6-11's call; the segment strings are the ids' own, so the
+            // append copies characters and allocates nothing.
+            _line.Append("  ord ");
+
+            if (state is null || state.OrdealIds.Count == 0)
+            {
+                _line.Append('—');
+            }
+            else
+            {
+                for (int i = 0; i < state.OrdealIds.Count; i++)
+                {
+                    string id = state.OrdealIds[i].Value;
+
+                    if (i > 0)
+                    {
+                        _line.Append(',');
+                    }
+
+                    _line.Append(id, id.LastIndexOf('.') + 1, id.Length - id.LastIndexOf('.') - 1);
+                }
+            }
+
             // How many actives the player owns, and how far round the first one's cooldown is.
             //
             // It reads `actives 0` for the whole of this milestone until M3-12 authors a tree with

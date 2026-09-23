@@ -98,6 +98,15 @@ public sealed class StageFlowTests
     /// </summary>
     private EssenceWallet _essence;
 
+    /// <summary>
+    /// The run's Ordeals and the stream they draw on, for <see cref="_essence"/>'s reason: required
+    /// arguments with no rows here. The modes here schedule none, so nothing is ever dealt; the rows
+    /// that deal live in <c>OrdealsTests</c>.
+    /// </summary>
+    private Ordeals _ordeals;
+
+    private IRandomStream _affixes;
+
     [SetUp]
     public void SetUp()
     {
@@ -1252,33 +1261,40 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
 
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(null, _composer, _director, _enemies, _projectiles, _player, _essence, _events, _plan, 0));
+            () => new StageFlow(null, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, null, _director, _enemies, _projectiles, _player, _essence, _events, _plan, 0));
+            () => new StageFlow(_mode, null, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, null, _enemies, _projectiles, _player, _essence, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, null, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, null, _projectiles, _player, _essence, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, null, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, null, _player, _essence, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, null, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, null, _essence, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, null, _essence, _ordeals, _affixes, _events, _plan, 0));
 
         // The wallet is a *required* argument, unlike the lures and the army below it (M6-01a rule
         // 5). The row that says why rather than merely that is
         // `EssenceWalletTests.Stage_RefusesANullWallet`.
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, null, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, null, _ordeals, _affixes, _events, _plan, 0));
+
+        // The Ordeals and their stream, required for the wallet's reason (M6-06a rule 5); the row
+        // that says why is `OrdealsTests.Stage_RefusesANullSet`.
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, null, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, null, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _events, null, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, null, _events, _plan, 0));
+        Assert.Throws<ArgumentNullException>(
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, null, _plan, 0));
+        Assert.Throws<ArgumentNullException>(
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, null, 0));
 
         // Every int is a legal seed — it is a bit pattern, not a quantity — so there is nothing
         // there for a guard to reject and this row does not pretend otherwise.
         Assert.DoesNotThrow(
             () => new StageFlow(
-                _mode, _composer, _director, _enemies, _projectiles, _player, _essence, _events, _plan, int.MinValue));
+                _mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, int.MinValue));
     }
 
     [Test]
@@ -1719,6 +1735,8 @@ public sealed class StageFlowTests
 
         _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, new RecordingIntents());
         _essence = new EssenceWallet(_events);
+        _ordeals = new Ordeals(_mode, _events);
+        _affixes = new FixedRandom(seed).Affixes;
 
         _flow = Flow();
     }
@@ -1751,6 +1769,8 @@ public sealed class StageFlowTests
         _projectiles,
         _player,
         _essence,
+        _ordeals,
+        _affixes,
         _events,
         _plan,
         seed: 0,

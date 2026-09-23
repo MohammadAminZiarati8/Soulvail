@@ -69,7 +69,8 @@ public sealed class RunState
         SplashFlow splash,
         EssenceWallet wallet,
         Veilrot rot,
-        SanctumShop shop)
+        SanctumShop shop,
+        Ordeals ordeals)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -93,6 +94,7 @@ public sealed class RunState
         Wallet = wallet;
         Rot = rot;
         Shop = shop;
+        Ordeals = ordeals;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -914,10 +916,25 @@ public sealed class RunState
         Tree is null ? Array.Empty<ContentId>() : Tree.PactedIds;
 
     /// <summary>
-    /// GD §13.4's Ordeals, in the order they were drawn.
+    /// GD §13.4's Ordeals as the run holds them — what has been dealt and what it adds up to.
     /// </summary>
-    /// <remarks><see cref="BanishedNodeIds"/>' rule exactly. Empty until M6-06a.</remarks>
-    public IReadOnlyList<ContentId> OrdealIds => Array.Empty<ContentId>();
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-06a). <c>OnStageEntered</c>
+    /// is public on the set, so a public handle would let a view deal the player an Ordeal. <b>Never
+    /// null</b>, like <see cref="Wallet"/>: every run has one, and a mode that schedules none holds a
+    /// set that is always empty.
+    /// </remarks>
+    internal Ordeals Ordeals { get; }
+
+    /// <summary>
+    /// GD §13.4's Ordeals, in the order they were drawn — what a save writes down.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BanishedNodeIds"/>' rule exactly: empty, never null, and a live view over the set's
+    /// own list, so <c>RunSnapshot</c>'s copy is what keeps a queued save from being rewritten by the
+    /// next deal.
+    /// </remarks>
+    public IReadOnlyList<ContentId> OrdealIds => Ordeals.Applied;
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

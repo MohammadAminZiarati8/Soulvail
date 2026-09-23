@@ -827,14 +827,21 @@ public readonly struct RunSnapshot
 }
 
 /// <summary>
-/// What survives every run: the player's own settings, what the game has already shown them, and —
-/// when the mechanics that own them exist — their Shards and unlocks.
+/// What survives every run: the player's own settings, what the game has already shown them, their
+/// Shards, the classes they own, the archetypes they have met, and the language they read.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Three fields at v3, and Shards are now one of them.</b> ADR-0007 names Shards and unlocks;
-/// <see cref="Shards"/> arrives here, at M4-05b, and unlocks are still M6-09's — reserving a field
-/// for those now would put a number nothing reads into a format every later migration has to carry.
+/// <b>Seven fields at v4, and the last three arrived together on purpose</b> (M6-09a). A bump is
+/// every <c>new PlayerProfile(...)</c> site whether it carries one field or three, so GD §14.2's
+/// unlocks, GD §14.1's archetype set and M6-10's locale share one step rather than three —
+/// <see cref="Locale"/> ships a milestone-internal two tasks before its reader, which is the one
+/// exception to the rule below and is named here for that reason.
+/// </para>
+/// <para>
+/// <b>At v3, Shards arrived alone.</b> ADR-0007 names Shards and unlocks;
+/// <see cref="Shards"/> arrived at M4-05b, and unlocks waited for M6-09a — reserving a field
+/// for those then would have put a number nothing read into a format every later migration had to carry.
 /// <see cref="HapticsEnabled"/> shipped at v1 because it had a consumer that day;
 /// <see cref="SeenFirstActiveHint"/> shipped at v2 for the same reason; <see cref="Shards"/> ships
 /// at v3 with two — <c>ShardWriter</c>, which banks a dead run's payout, and M4-06's screen, which
@@ -872,7 +879,7 @@ public readonly struct RunSnapshot
 public readonly struct PlayerProfile
 {
     /// <summary>The format this build writes.</summary>
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 
     /// <param name="version">The format the profile is written in.</param>
     /// <param name="hapticsEnabled">Whether the device is allowed to buzz (GD §16.3).</param>
@@ -882,17 +889,38 @@ public readonly struct PlayerProfile
     /// <param name="shards">
     /// Soul Shards banked across every run this install has ever finished. v3, and never negative.
     /// </param>
+    /// <param name="unlockedCharacterIds">
+    /// The classes this install has earned, in the order it earned them. v4. Never null, never
+    /// holding <c>default(ContentId)</c>; copied.
+    /// </param>
+    /// <param name="metArchetypeIds">
+    /// Every enemy archetype this install has met, in first-meeting order. v4. Never null, never
+    /// holding <c>default(ContentId)</c>; copied.
+    /// </param>
+    /// <param name="locale">
+    /// The language table to read, or empty for the device's. v4. Never null.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="version"/> is below 1 — the value <c>default(PlayerProfile)</c> carries — or
     /// <paramref name="shards"/> is negative.
     /// </exception>
+    /// <exception cref="ArgumentNullException">Either list, or <paramref name="locale"/>, is null.</exception>
+    /// <exception cref="ArgumentException">Either list holds <c>default(ContentId)</c>.</exception>
     /// <remarks>
     /// <b>There is deliberately no overload that omits a field.</b> One would compile at every
     /// existing call site on the day a fourth field lands and quietly reset it, which is exactly the
     /// bug v2 exists to have fixed rather than repeated — and v3 is the bump that would have
-    /// repeated it, because the writer that lands with it knows one field out of three.
+    /// repeated it, because the writer that lands with it knows one field out of three. v4 is the
+    /// same argument at seven (M6-09a rule 1).
     /// </remarks>
-    public PlayerProfile(int version, bool hapticsEnabled, bool seenFirstActiveHint, int shards)
+    public PlayerProfile(
+        int version,
+        bool hapticsEnabled,
+        bool seenFirstActiveHint,
+        int shards,
+        IReadOnlyList<ContentId> unlockedCharacterIds,
+        IReadOnlyList<ContentId> metArchetypeIds,
+        string locale)
     {
         if (version < 1)
         {
@@ -917,10 +945,24 @@ public readonly struct PlayerProfile
                 "negative is a hand-edited file rather than anything a writer can produce.");
         }
 
+        // Null and empty differ here for the reason the run's lists already taught (M6-01b rule 4):
+        // empty is a real answer — nothing earned, nothing met, the device's language — while null
+        // is nobody having set the field at all.
+        if (locale is null)
+        {
+            throw new ArgumentNullException(
+                nameof(locale),
+                "locale must not be null. Empty means \"the device's language\"; null means nobody " +
+                "set the field, and those are different answers.");
+        }
+
         Version = version;
         HapticsEnabled = hapticsEnabled;
         SeenFirstActiveHint = seenFirstActiveHint;
         Shards = shards;
+        UnlockedCharacterIds = CopyIds(unlockedCharacterIds, nameof(unlockedCharacterIds));
+        MetArchetypeIds = CopyIds(metArchetypeIds, nameof(metArchetypeIds));
+        Locale = locale;
     }
 
     /// <summary>The format this profile was written in. 0 for <c>default(PlayerProfile)</c>.</summary>
@@ -951,19 +993,57 @@ public readonly struct PlayerProfile
     /// there may only ever be one thing doing that.
     /// </para>
     /// <para>
-    /// <b>One <c>int</c> and deliberately not two fields.</b> GD §14.1's third term — a bonus for
-    /// each archetype the run met — needs a <em>set</em> of <c>ContentId</c>s and was ruled out of
-    /// this milestone at <c>M4-05a</c> rule 6; GD §14.2's unlocks are M6-09's and are a second set.
-    /// The largest cost GD §14.2 names is 3 500, so an <c>int</c> is not close to tight.
+    /// <b>One <c>int</c>.</b> GD §14.1's third term — a bonus for each archetype the run met —
+    /// needs a <em>set</em> of <c>ContentId</c>s, which is <see cref="MetArchetypeIds"/> at v4
+    /// rather than a second number here. The largest cost GD §14.2 names is 3 500, so an
+    /// <c>int</c> is not close to tight.
     /// </para>
     /// </remarks>
     public int Shards { get; }
+
+    /// <summary>
+    /// Which classes this install may pick, in the order they were earned (GD §14.2). v4. <b>The
+    /// starter is not in this list and does not need to be</b> — a class that authors no
+    /// <c>UnlockSpec</c> is playable without one (M6-09a rule 3).
+    /// </summary>
+    /// <remarks>
+    /// <b>An id this build no longer ships is not refused</b>, for <c>RunSnapshot.TakenNodeIds</c>'
+    /// reason: a class deleted from the catalog is content validation's answer, and a profile that
+    /// refuses to load because a designer renamed an asset is the worse failure (M6-09a rule 1).
+    /// </remarks>
+    public IReadOnlyList<ContentId> UnlockedCharacterIds { get; }
+
+    /// <summary>
+    /// Every enemy archetype this install has ever met, in first-meeting order — GD §14.1's third
+    /// term, which is a <em>lifetime</em> fact and is why it is here rather than on a run. v4.
+    /// </summary>
+    /// <remarks>
+    /// Read by one thing in core, <c>ShardPayout</c>, and it moves no number a run plays with —
+    /// GD §14.3's <em>"no permanent power progression"</em>, which
+    /// <c>Profile_CarriesNoNumberThatAffectsARun</c> asserts rather than remembers.
+    /// </remarks>
+    public IReadOnlyList<ContentId> MetArchetypeIds { get; }
+
+    /// <summary>
+    /// Which language table to read, or empty for the device's — M6-10's. v4, and written by
+    /// nothing until then.
+    /// </summary>
+    /// <remarks>
+    /// <b>A <see langword="string"/> rather than a <c>LocKey</c> or an enum</b>, and each was
+    /// weighed. A <c>LocKey</c> is a key into a table and a locale names the table. An enum is a
+    /// closed set, and ADR-0012's whole promise is that <em>"adding a language is adding a
+    /// table"</em> — a member per language would make it adding a table and an enum member and a
+    /// migration. A BCP-47 tag is what Unity's own <c>Application.systemLanguage</c> maps to and
+    /// what a file name can be.
+    /// </remarks>
+    public string Locale { get; }
 
     /// <summary>This profile with <see cref="HapticsEnabled"/> moved and nothing else touched.</summary>
     /// <remarks>The shape a multi-field record needs — see the type's remarks.</remarks>
     public PlayerProfile WithHaptics(bool value)
     {
-        return new PlayerProfile(Version, value, SeenFirstActiveHint, Shards);
+        return new PlayerProfile(
+            Version, value, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale);
     }
 
     /// <summary>
@@ -972,7 +1052,8 @@ public readonly struct PlayerProfile
     /// <remarks><see cref="WithHaptics"/>'s mirror, and the reason it is a pair rather than one.</remarks>
     public PlayerProfile WithSeenFirstActiveHint(bool value)
     {
-        return new PlayerProfile(Version, HapticsEnabled, value, Shards);
+        return new PlayerProfile(
+            Version, HapticsEnabled, value, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale);
     }
 
     /// <summary>This profile with <see cref="Shards"/> moved and nothing else touched.</summary>
@@ -983,12 +1064,45 @@ public readonly struct PlayerProfile
     /// </remarks>
     public PlayerProfile WithShards(int value)
     {
-        return new PlayerProfile(Version, HapticsEnabled, SeenFirstActiveHint, value);
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, value, UnlockedCharacterIds, MetArchetypeIds, Locale);
+    }
+
+    /// <summary>
+    /// This profile with <see cref="UnlockedCharacterIds"/> replaced and nothing else touched.
+    /// </summary>
+    /// <remarks>
+    /// Replaced rather than appended to, for <see cref="WithShards"/>' reason in the other
+    /// direction: the caller holds the whole list and says what it now is. <c>ShardWriter</c> and
+    /// <c>ProfileStore.Unlock</c> are the two writers, and each builds the list from
+    /// <see cref="UnlockedCharacterIds"/> before handing it in.
+    /// </remarks>
+    public PlayerProfile WithUnlocked(IReadOnlyList<ContentId> value)
+    {
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, value, MetArchetypeIds, Locale);
+    }
+
+    /// <summary>
+    /// This profile with <see cref="MetArchetypeIds"/> replaced and nothing else touched.
+    /// </summary>
+    public PlayerProfile WithMetArchetypes(IReadOnlyList<ContentId> value)
+    {
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, value, Locale);
+    }
+
+    /// <summary>This profile with <see cref="Locale"/> moved and nothing else touched.</summary>
+    public PlayerProfile WithLocale(string value)
+    {
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, value);
     }
 
     /// <summary>
     /// A profile for a player who has never had one: the current format, GD §16.3's defaults,
-    /// nothing seen yet, and nothing banked.
+    /// nothing seen, nothing banked, <b>nothing unlocked, nothing met, and no locale</b> — an empty
+    /// unlock list is a playable game, because the starter needs no entry (M6-09a rule 3).
     /// </summary>
     /// <remarks>
     /// A property rather than <c>default</c>, because <c>default</c> is deliberately the
@@ -998,5 +1112,55 @@ public readonly struct PlayerProfile
     /// </remarks>
     public static PlayerProfile Default =>
         new PlayerProfile(
-            CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0);
+            CurrentVersion,
+            hapticsEnabled: true,
+            seenFirstActiveHint: false,
+            shards: 0,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            locale: string.Empty);
+
+    /// <summary>
+    /// <paramref name="ids"/> as a list of this profile's own, refusing null and an entry that
+    /// names nothing.
+    /// </summary>
+    /// <remarks>
+    /// The profile's own copy of <c>RunSnapshot</c>'s helper rather than a shared one: the two
+    /// formats version independently, and the messages name different consequences.
+    /// </remarks>
+    private static IReadOnlyList<ContentId> CopyIds(IReadOnlyList<ContentId> ids, string name)
+    {
+        if (ids is null)
+        {
+            throw new ArgumentNullException(
+                name,
+                $"{name} must be a list, empty for an install that has none yet. Null and empty " +
+                "are not two ways of saying the same thing here — a reader must never have to ask.");
+        }
+
+        if (ids.Count == 0)
+        {
+            return Array.Empty<ContentId>();
+        }
+
+        var copy = new ContentId[ids.Count];
+
+        for (int i = 0; i < ids.Count; i++)
+        {
+            ContentId id = ids[i];
+
+            if (id.Value is null)
+            {
+                throw new ArgumentException(
+                    $"{name}[{i}] is default(ContentId) and names nothing. An id this build no " +
+                    "longer ships is kept (M6-09a rule 1); an id that is not an id at all is a " +
+                    "file that cannot be read.",
+                    name);
+            }
+
+            copy[i] = id;
+        }
+
+        return Array.AsReadOnly(copy);
+    }
 }

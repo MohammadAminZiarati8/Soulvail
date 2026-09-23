@@ -167,15 +167,28 @@ public sealed class LocalJsonSaveStoreTests
     private const string V2Profile =
         "{\"version\":2,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true}";
 
-    /// <summary>A v3 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v3 profile, as it is spelled on disk — and as of M6-09a, the v3 → v4 step's input rather
+    /// than anything this build writes.
+    /// </summary>
     /// <remarks>
-    /// <b>One new key, <c>shards</c>, following <c>seenFirstActiveHint</c></b>, for the key order
-    /// reason above. This is the third profile literal and they play the three parts the run
-    /// literals do: <see cref="V1Profile"/> and <see cref="V2Profile"/> are migration inputs, and
-    /// this one is both what the build writes and the shape a migrated document has to arrive at.
+    /// <b>One new key at v3, <c>shards</c>, following <c>seenFirstActiveHint</c></b>, for the key
+    /// order reason above. <b>Not one character of it changed at the v4 bump</b>, for
+    /// <see cref="V1Profile"/>'s reason: it is the document every install since the <c>m4</c> tag
+    /// holds, and the one the grandfathering exists for.
     /// </remarks>
     private const string V3Profile =
         "{\"version\":3,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220}";
+
+    /// <summary>A v4 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b>Three new keys, flat, following <c>shards</c></b> (M6-09a rule 7): two string arrays and a
+    /// string, so the document stays one a human can read in a bug report.
+    /// </remarks>
+    private const string V4Profile =
+        "{\"version\":4,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220," +
+        "\"unlockedCharacterIds\":[\"character.emberwright\"],\"metArchetypeIds\":[\"enemy.husk\"]," +
+        "\"locale\":\"fr\"}";
 
     private static readonly ContentId Mode = new ContentId("mode.descent");
     private static readonly ContentId Character = new ContentId("character.oathbound");
@@ -360,7 +373,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 220)));
+            shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
 
         PlayerProfile? loaded = Result(_store.LoadProfile());
 
@@ -409,7 +422,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: false,
-            shards: 0)));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
 
         Await(_store.ClearRun());
 
@@ -595,11 +608,12 @@ public sealed class LocalJsonSaveStoreTests
 
         PlayerProfile profile = Result(_store.LoadProfile()).Value;
 
-        // **v3, because this literal is now the input to a two-step chain.** The document is
+        // **v4, because this literal is now the input to a three-step chain.** The document is
         // unchanged from M2-13b; what changed is first that loading it became a migration rather
-        // than a read (M3-09c), and now that the migration is two steps deep — and this is the only
-        // place the steps and the code that calls them are tested together.
-        Assert.That(profile.Version, Is.EqualTo(3));
+        // than a read (M3-09c), and now that the migration is three steps deep — and this is the
+        // only place the steps and the code that calls them are tested together.
+        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "grandfathered.");
 
         // Haptics as before: the one v1 field is something the player chose and survives both steps.
         Assert.That(profile.HapticsEnabled, Is.False);
@@ -625,7 +639,7 @@ public sealed class LocalJsonSaveStoreTests
         // every bump, and what used to be this row's subject is now a migration input — which is
         // exactly the transition a bump makes. `Fixture_V2Run_DecodesToTheExpectedSnapshot` made
         // the same move on the other format at M3-07b.
-        Assert.That(profile.Version, Is.EqualTo(3));
+        Assert.That(profile.Version, Is.EqualTo(4));
 
         // The document has no `shards` key at all, so this is the v2 → v3 step's answer read
         // through the real adapter rather than through the mirror's field initialiser: JsonUtility
@@ -639,21 +653,80 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Fixture_V3Profile_IsWhatThisBuildWrites()
+    public void Store_ReadsTheV3ProfileLiteral()
+    {
+        // Was Fixture_V3Profile_IsWhatThisBuildWrites: "what this build writes" moved up with the
+        // bump, and the literal became the v3 → v4 step's input through the real adapter (rule 10).
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName), V3Profile);
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Shards, Is.EqualTo(220), "the banked total survives the step.");
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "and the Gravecaller is unlocked.");
+        Assert.That(profile.MetArchetypeIds, Is.Empty);
+        Assert.That(profile.Locale, Is.EqualTo(string.Empty));
+        Assert.That(profile.HapticsEnabled, Is.False);
+        Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Store_WritesAV4ProfileLiteral()
     {
         Await(_store.SaveProfile(new PlayerProfile(
-            version: 3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220)));
+            version: 4, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
+            new[] { new ContentId("character.emberwright") }, new[] { new ContentId("enemy.husk") }, locale: "fr")));
 
         string written = File.ReadAllText(
             Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName));
 
-        // Byte for byte. A field renamed, reordered or added changes this text, and a save format
-        // that drifts without its fixture moving with it is one that stops loading after a release.
-        // `Fixture_V3Run_IsWhatThisBuildWrites`' job, for the other format — and the row that says
-        // the `shards` key is really on disk rather than merely on the struct in memory, which is
-        // the difference between a payout banked and a payout shown and forgotten.
-        Assert.That(written, Is.EqualTo(V3Profile));
+        // Byte for byte, and the three new keys flat on the end (rule 7). A field renamed,
+        // reordered or added changes this text.
+        Assert.That(written, Is.EqualTo(V4Profile));
+
+        // And it reads back as written: the round trip of every one of the seven.
+        PlayerProfile loaded = Result(_store.LoadProfile()).Value;
+
+        Assert.That(loaded.UnlockedCharacterIds, Is.EqualTo(new[] { new ContentId("character.emberwright") }));
+        Assert.That(loaded.MetArchetypeIds, Is.EqualTo(new[] { new ContentId("enemy.husk") }));
+        Assert.That(loaded.Locale, Is.EqualTo("fr"));
     }
+
+    [Test]
+    public void Store_ADocumentWithoutTheNewFieldsDecodes()
+    {
+        // A v4 document with all three keys absent: the mirror's initialisers are what stand
+        // between that and PlayerProfile's null guards (rule 7).
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName),
+            "{\"version\":4,\"hapticsEnabled\":true,\"seenFirstActiveHint\":false,\"shards\":5}");
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.UnlockedCharacterIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.MetArchetypeIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.Locale, Is.EqualTo(string.Empty));
+        Assert.That(profile.Shards, Is.EqualTo(5));
+    }
+
+    [Test]
+    public void Store_AnUnparseableIdIsDroppedNotFatal()
+    {
+        // A refused profile is replaced by the default at boot and the next write destroys every
+        // Shard the install banked. So an entry that is not an id costs that entry, not the file.
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName),
+            "{\"version\":4,\"hapticsEnabled\":true,\"seenFirstActiveHint\":false,\"shards\":900," +
+            "\"unlockedCharacterIds\":[\"Not An Id\",\"character.gravecaller\"],\"metArchetypeIds\":[\"\"],\"locale\":\"\"}");
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Shards, Is.EqualTo(900));
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }));
+        Assert.That(profile.MetArchetypeIds, Is.Empty);
+    }
+
+    private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
 
     [Test]
     public void Fixture_V2Run_DecodesToTheExpectedSnapshot()

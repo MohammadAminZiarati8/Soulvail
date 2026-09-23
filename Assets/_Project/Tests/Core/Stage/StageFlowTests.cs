@@ -746,7 +746,17 @@ public sealed class StageFlowTests
         // What a death right now would be paid: stage 5, and the boss on it not counted — exactly
         // what it was before M6-02a, when this same instant was Clear or Gate at the same depth.
         Assert.That(_flow.Stage, Is.EqualTo(5));
-        Assert.That(ShardPayout.For(_flow.Stage, _mode), Is.EqualTo(50));
+        //
+        // The mode's whole roster is passed as already met (M6-09a), so GD §14.1's third term is
+        // zero and this row goes on asserting what it is about — the depth and the boss.
+        var everyArchetype = new List<ContentId>();
+
+        foreach (RosterEntry entry in _mode.Roster)
+        {
+            everyArchetype.Add(entry.SpecId);
+        }
+
+        Assert.That(ShardPayout.For(_flow.Stage, _mode, everyArchetype), Is.EqualTo(50));
         Assert.That(ShardPayout.BossesKilled(_flow.Stage, _mode), Is.Zero);
 
         Kill(add);
@@ -755,7 +765,7 @@ public sealed class StageFlowTests
 
         Assert.That(_flow.Stage, Is.EqualTo(6), "The depth moves at the door, as it always did.");
         Assert.That(ShardPayout.BossesKilled(_flow.Stage, _mode), Is.EqualTo(1));
-        Assert.That(ShardPayout.For(_flow.Stage, _mode), Is.EqualTo(110), "10·6 + 50·1.");
+        Assert.That(ShardPayout.For(_flow.Stage, _mode, everyArchetype), Is.EqualTo(110), "10·6 + 50·1.");
     }
 
     [Test]

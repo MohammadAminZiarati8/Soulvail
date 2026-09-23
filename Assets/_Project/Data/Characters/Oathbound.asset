@@ -52,3 +52,6 @@ MonoBehaviour:
   _veilrotCleansePriceMultiplier: 0.5
   _veilrotDamagePerPoint: 0
   _veilrotInstantCastCost: 0
+  _unlockShardPrice: 0
+  _unlockDeedStage: 0
+  _unlockDeedBossId: 

@@ -99,6 +99,13 @@ public sealed class CharacterSpec
     /// other (M6-07c rule 1). Optional and last beside <paramref name="kindling"/>, for its counted
     /// reason.
     /// </param>
+    /// <param name="unlock">
+    /// What this class costs and what proves it (GD §14.2), or <see langword="null"/> for the
+    /// starter. Optional and last for the counted reason above, and it makes three blocks appended
+    /// in three tasks (M6-09a rule 2): the list is fifteen long, four of them nullable blocks — the
+    /// price of CH §3's identity axes being real, and M7's fourth class is the day it wants
+    /// restructuring.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -130,7 +137,8 @@ public sealed class CharacterSpec
         float hitIFrames = 0f,
         MinionSpec minions = null,
         KindlingSpec kindling = null,
-        VeilrotSpec veilrot = null)
+        VeilrotSpec veilrot = null,
+        UnlockSpec unlock = null)
     {
         if (id.Value is null)
         {
@@ -182,6 +190,7 @@ public sealed class CharacterSpec
         Minions = minions;
         Kindling = kindling;
         Veilrot = veilrot;
+        Unlock = unlock;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -272,4 +281,11 @@ public sealed class CharacterSpec
     /// the meter — the runner (M6-07c rule 6).
     /// </remarks>
     public VeilrotSpec Veilrot { get; }
+
+    /// <summary>What this class costs, or <see langword="null"/> for the starter.</summary>
+    /// <remarks>
+    /// Read by <c>ClassUnlocks</c> and nothing else. <b>Null is what makes a class playable on a
+    /// fresh install</b>, not an entry in the profile (M6-09a rule 3).
+    /// </remarks>
+    public UnlockSpec Unlock { get; }
 }

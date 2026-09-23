@@ -481,25 +481,6 @@ public sealed class ClassSelectPresenterTests
         }
     }
 
-    /// <summary>
-    /// The profile did not gain a version or a field for a gate nothing can open (rule 6).
-    /// </summary>
-    [Test]
-    public void Select_ProfileIsStillVersionThree()
-    {
-        Assert.That(
-            PlayerProfile.CurrentVersion,
-            Is.EqualTo(3),
-            "the profile moved version. CH §6's unlock set is M6-09's, and nothing spends a Shard "
-                + "until M6-02 — a v4 here would be a migration for a gate with nothing behind it.");
-
-        Assert.That(
-            typeof(PlayerProfile).GetProperties(BindingFlags.Instance | BindingFlags.Public),
-            Has.Length.EqualTo(4),
-            "PlayerProfile gained a field. Its four are Version, HapticsEnabled, "
-                + "SeenFirstActiveHint and Shards.");
-    }
-
     // ---- Rule 7: a Continue takes none of this ---------------------------------------------------
 
     [Test]

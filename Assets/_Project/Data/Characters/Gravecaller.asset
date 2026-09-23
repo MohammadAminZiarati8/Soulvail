@@ -66,3 +66,6 @@ MonoBehaviour:
   _veilrotCleansePriceMultiplier: 1
   _veilrotDamagePerPoint: 0.01
   _veilrotInstantCastCost: 0
+  _unlockShardPrice: 2000
+  _unlockDeedStage: 0
+  _unlockDeedBossId: boss.choirmother

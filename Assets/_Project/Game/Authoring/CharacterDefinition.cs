@@ -186,6 +186,20 @@ namespace Soulvail.Game.Authoring
                  "class cannot buy one; the Emberwright's 5.")]
         [SerializeField, Min(0f)] private float _veilrotInstantCastCost;
 
+        [Header("Unlock (GD §14.2) — a price of 0 means free, which is the starter")]
+        [Tooltip("Soul Shards this class costs. 0 means it is always playable and every field " +
+                 "below is ignored — the Oathbound's. The Gravecaller's 2000, the Emberwright's 3500.")]
+        [SerializeField, Min(0)] private int _unlockShardPrice;
+
+        [Tooltip("The depth whose reaching unlocks it for free, or 0 for none. The Emberwright's " +
+                 "20. At most one deed: set this or the boss below, never both.")]
+        [SerializeField, Min(0)] private int _unlockDeedStage;
+
+        [Tooltip("The boss whose death unlocks it for free, or empty for none. The Gravecaller's " +
+                 "'boss.choirmother' — which no mode authors until M7-03, so the deed cannot be " +
+                 "done yet and the id is deliberately not validated against the catalog.")]
+        [SerializeField] private string _unlockDeedBossId = "";
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -313,7 +327,15 @@ namespace Soulvail.Game.Authoring
                             _veilrotGainMultiplier,
                             _veilrotCleansePriceMultiplier,
                             _veilrotDamagePerPoint,
-                            _veilrotInstantCastCost));
+                            _veilrotInstantCastCost),
+                    _unlockShardPrice > 0
+                        ? new UnlockSpec(
+                            _unlockShardPrice,
+                            _unlockDeedStage,
+                            string.IsNullOrEmpty(_unlockDeedBossId)
+                                ? default
+                                : new ContentId(_unlockDeedBossId))
+                        : null);
             }
             catch (ArgumentException inner)
             {
@@ -328,6 +350,11 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
+        /// <remarks>
+        /// The Unlock block beside it has a single switch, the price, for the minion cap's reason: it
+        /// is the one field an <see cref="UnlockSpec"/> cannot represent at zero, and a free class is
+        /// one that authors none (M6-09a rule 3).
+        /// </remarks>
         private bool VeilrotIsNeutral() =>
             _veilrotStart == 0f
             && _veilrotGainMultiplier == 1f

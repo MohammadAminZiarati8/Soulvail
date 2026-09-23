@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Save;
 
@@ -64,6 +65,14 @@ public sealed class RunConfig
     /// about two objects, and it is asked at <c>RunSession.Start</c>, where the generator is
     /// visible as well (rule 4).
     /// </param>
+    /// <param name="archetypesAlreadyMet">
+    /// Every archetype this install had met before this run — <c>PlayerProfile.MetArchetypeIds</c>
+    /// — or <see langword="null"/> for none. <b>Optional and last, against <paramref name="restore"/>'s
+    /// required-null rule, and the difference is which way a forgotten one fails</b> (M6-09a rule 6,
+    /// M6-06b rule 5's test): a run that forgets the set pays 25 Shards for a Husk the player has
+    /// seen before, which is generous rather than destructive, and 76 sites write exactly the null
+    /// every fixture and every first run means.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="modeId"/> or <paramref name="characterId"/> is
     /// <c>default(ContentId)</c> — the one id no constructor can prevent, because a struct always
@@ -91,7 +100,8 @@ public sealed class RunConfig
         int seed,
         int stageIndex,
         SpawnPlan spawnPlan,
-        RunSnapshot? restore)
+        RunSnapshot? restore,
+        IReadOnlyCollection<ContentId> archetypesAlreadyMet = null)
     {
         if (modeId.Value is null)
         {
@@ -121,6 +131,7 @@ public sealed class RunConfig
         StageIndex = stageIndex;
         SpawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         Restore = restore;
+        ArchetypesAlreadyMet = archetypesAlreadyMet;
     }
 
     /// <summary>The mode being played. Resolved against the <see cref="ContentCatalog"/> at <c>Start</c>.</summary>
@@ -179,4 +190,14 @@ public sealed class RunConfig
     /// </para>
     /// </remarks>
     public RunSnapshot? Restore { get; }
+
+    /// <summary>
+    /// What the install had met before this run, or <see langword="null"/> for nothing — GD §14.1's
+    /// third term's memory, read once, by the payout on the death tick.
+    /// </summary>
+    /// <remarks>
+    /// Held as given rather than copied: the one writer hands over the profile's own list, which is
+    /// already a read-only copy, and nothing here reads it until the run is over.
+    /// </remarks>
+    public IReadOnlyCollection<ContentId> ArchetypesAlreadyMet { get; }
 }

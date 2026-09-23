@@ -2,10 +2,13 @@ using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Tests.Core.Fakes;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -73,7 +76,7 @@ public sealed class ProfileStoreTests
     public void Store_AdoptDoesNotWrite()
     {
         var loaded = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         _profiles.Adopt(loaded);
 
@@ -90,7 +93,7 @@ public sealed class ProfileStoreTests
     public void Store_SaveWritesAndUpdates()
     {
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         _profiles.Save(profile);
 
@@ -112,7 +115,7 @@ public sealed class ProfileStoreTests
     {
         _profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
         _profiles.Save(_profiles.Current.WithSeenFirstActiveHint(true));
         _profiles.Save(_profiles.Current.WithHaptics(false));
@@ -140,7 +143,7 @@ public sealed class ProfileStoreTests
         LogAssert.Expect(LogType.Error, new Regex("Could not save the player profile"));
 
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true, shards: 0);
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         // Rule 5: a profile write that fails must not take down a run, and the smallest possible
         // consequence in the project is a hint shown twice because a disk was full.
@@ -153,6 +156,60 @@ public sealed class ProfileStoreTests
     }
 
     /// <summary>An <see cref="ISaveStore"/> that counts the profile calls its inner one does not.</summary>
+    // ---- M6-09a: buying a class --------------------------------------------------------------------
+
+    [Test]
+    public void Store_UnlockSpendsAndGrantsInOneSave()
+    {
+        _profiles.Adopt(PlayerProfile.Default.WithShards(4000).WithHaptics(false));
+
+        _profiles.Unlock(Emberwright, ShippedCatalog());
+
+        // GD §14.2's 3 500 off the balance and the class on the list, in one write: a purchase in
+        // two saves would leave a crash between them charging for nothing.
+        Assert.That(_profiles.Current.Shards, Is.EqualTo(500));
+        Assert.That(_profiles.Current.UnlockedCharacterIds, Is.EqualTo(new[] { Emberwright }));
+        Assert.That(_profiles.Current.HapticsEnabled, Is.False, "and nothing else moved.");
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Store_UnlockRefusesWhatCanBuyRefuses()
+    {
+        ContentCatalog catalog = ShippedCatalog();
+
+        _profiles.Adopt(PlayerProfile.Default.WithShards(3499));
+
+        // Short by one, the starter, and — after a purchase — the same class twice.
+        Assert.Throws<InvalidOperationException>(() => _profiles.Unlock(Emberwright, catalog));
+        Assert.Throws<InvalidOperationException>(() => _profiles.Unlock(new ContentId("character.oathbound"), catalog));
+
+        _profiles.Adopt(PlayerProfile.Default.WithShards(9000));
+        _profiles.Unlock(Emberwright, catalog);
+
+        Assert.Throws<InvalidOperationException>(() => _profiles.Unlock(Emberwright, catalog));
+        Assert.That(_profiles.Current.Shards, Is.EqualTo(5500), "a refused purchase charges nothing.");
+        Assert.Throws<ArgumentNullException>(() => _profiles.Unlock(Emberwright, null));
+    }
+
+    private static readonly ContentId Emberwright = new ContentId("character.emberwright");
+
+    /// <summary>The three shipped classes, converted as boot converts them.</summary>
+    private static ContentCatalog ShippedCatalog()
+    {
+        string[] classes = { "Oathbound", "Gravecaller", "Emberwright" };
+        var characters = new CharacterSpec[classes.Length];
+
+        for (int i = 0; i < classes.Length; i++)
+        {
+            characters[i] = AssetDatabase
+                .LoadAssetAtPath<CharacterDefinition>($"Assets/_Project/Data/Characters/{classes[i]}.asset")
+                .ToSpec();
+        }
+
+        return new ContentCatalog(characters);
+    }
+
     private sealed class CountingStore : ISaveStore
     {
         private readonly InMemorySaveStore _inner;

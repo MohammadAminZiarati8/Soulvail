@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Save;
 using UnityEngine;
 
@@ -115,5 +118,64 @@ public sealed class ProfileStore
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Buys <paramref name="characterId"/> with Shards (GD §14.2): takes its price off the balance,
+    /// appends it to <see cref="PlayerProfile.UnlockedCharacterIds"/>, and saves once.
+    /// </summary>
+    /// <param name="characterId">The class to buy.</param>
+    /// <param name="catalog">What the class costs.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="catalog"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <c>ClassUnlocks.CanBuy</c> is false — the class is owned, free, or unaffordable. A throw
+    /// rather than a no-op, for <c>SplashFlow.Choose</c>'s reason (M5-08a): the predicate is the
+    /// gate a screen asks before it offers the button, and this is the invariant behind it. No
+    /// screen asks it yet; M6-09b's card is the first.
+    /// </exception>
+    /// <remarks>
+    /// Here rather than on a feature of its own, because it moves two fields at once and this is
+    /// the one writer of the profile: a purchase that spent the Shards in one save and granted the
+    /// class in a second would leave a crash between them charging for nothing.
+    /// </remarks>
+    public void Unlock(ContentId characterId, ContentCatalog catalog)
+    {
+        if (catalog is null)
+        {
+            throw new ArgumentNullException(nameof(catalog));
+        }
+
+        PlayerProfile current = _current;
+
+        if (!ClassUnlocks.CanBuy(characterId, current, catalog))
+        {
+            throw new InvalidOperationException(
+                $"'{characterId}' cannot be bought: it is owned, free, or costs more than the " +
+                $"{current.Shards} Shards banked. Ask ClassUnlocks.CanBuy before offering it.");
+        }
+
+        int price = catalog.Character(characterId).Unlock.ShardPrice;
+
+        Save(current
+            .WithShards(current.Shards - price)
+            .WithUnlocked(Appended(current.UnlockedCharacterIds, characterId)));
+    }
+
+    /// <summary><paramref name="ids"/> with <paramref name="id"/> on the end, as a new array.</summary>
+    /// <remarks>
+    /// Shared with <c>ShardWriter</c>, which grows both of the profile's lists this way: the
+    /// profile's own lists are read-only copies, so growing one is building its successor.
+    /// </remarks>
+    internal static ContentId[] Appended(IReadOnlyList<ContentId> ids, ContentId id)
+    {
+        var grown = new ContentId[ids.Count + 1];
+
+        for (int i = 0; i < ids.Count; i++)
+        {
+            grown[i] = ids[i];
+        }
+
+        grown[ids.Count] = id;
+        return grown;
     }
 }

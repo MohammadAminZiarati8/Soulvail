@@ -1429,7 +1429,7 @@ public sealed class SkillBarPresenterTests
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
             // so it banks nothing — the parameter is what guarantees it exists at all.
-            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub)),
+            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub, _catalog)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, _session, cameraObject.AddComponent<Camera>()),

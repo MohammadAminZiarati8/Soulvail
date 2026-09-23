@@ -796,6 +796,118 @@ public sealed class RunSessionTests
         Assert.That(session.IsRunning, Is.False);
     }
 
+    // ---- M6-09a: the third term, live -----------------------------------------------------------
+
+    [Test]
+    public void Awarded_CarriesTheNewArchetypes()
+    {
+        RunSession session = RosterSession();
+
+        KillThePlayer(session, stage: 12, alreadyMet: Array.Empty<ContentId>());
+
+        ShardsAwarded awarded = _events.Single<ShardsAwarded>();
+
+        // A fresh install met all three on the way to 12, in the order it met them.
+        Assert.That(awarded.NewArchetypes, Is.EqualTo(new[] { Id(HuskId), Id(SpitterId), Id(BloaterId) }));
+        Assert.That(awarded.Total, Is.EqualTo(120 + 75), "twelve stages and three first meetings.");
+        Assert.That(awarded.ModeId, Is.EqualTo(Id(DescentId)), "and the mode, for the writer's deeds.");
+    }
+
+    [Test]
+    public void Awarded_IsEmptyForAReturningPlayer()
+    {
+        RunSession session = RosterSession();
+
+        KillThePlayer(session, stage: 12, alreadyMet: new[] { Id(HuskId), Id(SpitterId), Id(BloaterId) });
+
+        ShardsAwarded awarded = _events.Single<ShardsAwarded>();
+
+        Assert.That(awarded.NewArchetypes, Is.Empty);
+        Assert.That(awarded.Total, Is.EqualTo(120), "the two-term figure M4-05a shipped.");
+    }
+
+    [Test]
+    public void Run_TheLifetimeSetReachesThePayout()
+    {
+        RunSession session = RosterSession();
+
+        KillThePlayer(session, stage: 12, alreadyMet: new[] { Id(HuskId) });
+
+        ShardsAwarded awarded = _events.Single<ShardsAwarded>();
+
+        Assert.That(awarded.Total, Is.EqualTo(120 + 50), "the Husk was not paid for twice.");
+        Assert.That(awarded.NewArchetypes, Is.EqualTo(new[] { Id(SpitterId), Id(BloaterId) }));
+    }
+
+    [Test]
+    public void Run_ANullSetIsLegal()
+    {
+        RunSession session = RosterSession();
+
+        // As 76 sites write a RunConfig: no set at all. Rule 6's generous direction.
+        Assert.DoesNotThrow(() => KillThePlayer(session, stage: 12));
+
+        Assert.That(
+            _events.Single<ShardsAwarded>().NewArchetypes,
+            Is.EqualTo(new[] { Id(HuskId), Id(SpitterId), Id(BloaterId) }),
+            "everything is new.");
+    }
+
+    private const string SpitterId = "enemy.spitter";
+    private const string BloaterId = "enemy.bloater";
+
+    private static ContentId Id(string value) => new ContentId(value);
+
+    /// <summary>
+    /// <see cref="LethalSession"/> over a Descent that authors Descent.asset's roster — the Husk at 1,
+    /// the Spitter at 2, the Bloater at 4 — each a Static stand-in, because what is under test is
+    /// which ids were introduced and not how any of them behave.
+    /// </summary>
+    private RunSession RosterSession() => new RunSession(
+        new ContentCatalog(
+            new[] { Oathbound() },
+            new[] { Executioner(), Stand(HuskId), Stand(SpitterId), Stand(BloaterId) },
+            new[]
+            {
+                new ModeSpec(
+                    Id(DescentId),
+                    new LocKey("mode.descent.name"),
+                    1,
+                    true,
+                    0,
+                    Scalings.Design(),
+                    Scalings.Xp(),
+                    new[]
+                    {
+                        new RosterEntry(Id(HuskId), 1),
+                        new RosterEntry(Id(SpitterId), 2),
+                        new RosterEntry(Id(BloaterId), 4),
+                    }),
+            }),
+        _random,
+        _events,
+        _intents,
+        Recorder(_events),
+        EnemyCapacity,
+        DeviceCap,
+        ProjectileCapacity);
+
+    private static EnemySpec Stand(string id) => new(
+        Id(id),
+        new LocKey(id + ".name"),
+        36f,
+        3.5f,
+        1,
+        4,
+        12f,
+        false,
+        8f,
+        1.2f,
+        0.4f,
+        0.6f,
+        aggroRange: 30f,
+        EnemyBehaviourKind.Static);
+
     [Test]
     public void Start_OrderUnchanged()
     {
@@ -996,7 +1108,8 @@ public sealed class RunSessionTests
     /// spawn plan put it — at the player's feet, permanently inside its own reach. Nothing here has to
     /// simulate a walk.
     /// </remarks>
-    private static void KillThePlayer(RunSession session, int stage)
+    private static void KillThePlayer(
+        RunSession session, int stage, IReadOnlyCollection<ContentId> alreadyMet = null)
     {
         session.Start(new RunConfig(
             new ContentId(DescentId),
@@ -1004,7 +1117,8 @@ public sealed class RunSessionTests
             Seed,
             stage,
             new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(ExecutionerId), Vector3.Zero) }),
-            restore: null));
+            restore: null,
+            alreadyMet));
 
         for (int i = 0; i < 240 && session.IsRunning; i++)
         {

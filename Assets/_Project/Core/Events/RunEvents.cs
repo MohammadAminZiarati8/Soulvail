@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Events;
@@ -86,10 +88,43 @@ public readonly struct ShardsAwarded
     /// <summary>The second term's input: how many boss stages the run left behind it.</summary>
     public readonly int BossesKilled;
 
-    public ShardsAwarded(int total, int deepestStage, int bossesKilled)
+    /// <summary>
+    /// The archetypes this run met for the first time, in the order they were met — the third
+    /// term's input. Empty on almost every death, never null; what <c>ShardWriter</c> adds to the
+    /// profile's set (M6-09a rule 8).
+    /// </summary>
+    /// <remarks>
+    /// The ids rather than a count, because the writer has to add them to a set and a count cannot
+    /// say which. <b>One allocation per run</b>, on the death tick, which is not a frame path
+    /// (M6-09a rule 6).
+    /// </remarks>
+    public readonly IReadOnlyList<ContentId> NewArchetypes;
+
+    /// <summary>
+    /// The mode the run was played in — what <c>ShardWriter</c> hands <c>ClassUnlocks.Earned</c> for
+    /// its boss roster. <c>default</c> only from a publisher that is not a run.
+    /// </summary>
+    /// <remarks>
+    /// On the event because the writer cannot look it up: by the time a listener hears this, the
+    /// run that knew its mode is being torn down, and nothing else in the run scope states it.
+    /// </remarks>
+    public readonly ContentId ModeId;
+
+    /// <param name="newArchetypes">
+    /// Optional, and null reads as none: most readers of this event draw a number and never ask.
+    /// </param>
+    /// <param name="modeId">Optional for the same reason; <c>RunSession</c> always states it.</param>
+    public ShardsAwarded(
+        int total,
+        int deepestStage,
+        int bossesKilled,
+        IReadOnlyList<ContentId> newArchetypes = null,
+        ContentId modeId = default)
     {
         Total = total;
         DeepestStage = deepestStage;
         BossesKilled = bossesKilled;
+        NewArchetypes = newArchetypes ?? Array.Empty<ContentId>();
+        ModeId = modeId;
     }
 }

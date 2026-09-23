@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 
@@ -26,9 +27,11 @@ namespace Soulvail.Core.Save;
 /// the field merges green — a v1 file still decodes.
 /// </para>
 /// <para>
-/// <b>The profile chain has two steps as of M4-05b, and that is where it first runs more than one
-/// of them on one document.</b> <see cref="MigrateProfile"/> was the identity from M2-13b until v2,
-/// on the strength of the same self-enforcing row — and <b>the two formats version
+/// <b>The profile chain has three steps as of M6-09a, and its third is the one migration in the
+/// project that writes content rather than an empty opening state</b> — see the v3 → v4 step.
+/// M4-05b is where it first ran more than one step on one document.
+/// <see cref="MigrateProfile"/> was the identity from M2-13b until v2, on the strength of the same
+/// self-enforcing row — and <b>the two formats version
 /// independently</b>, so the profile gaining Shards at v3 left
 /// <see cref="RunSnapshot.CurrentVersion"/> alone and touched no run on any device (M2-13b, M3-09c
 /// rule 2, M4-05b rule 4). <b>M6-01b is where the two numbers part company</b> — the run reaches 4
@@ -248,7 +251,13 @@ public static class SaveMigrations
         if (version < 2)
         {
             current = new PlayerProfile(
-                2, current.HapticsEnabled, seenFirstActiveHint: false, shards: 0);
+                2,
+                current.HapticsEnabled,
+                seenFirstActiveHint: false,
+                shards: 0,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                locale: string.Empty);
         }
 
         // **v2 → v3: a player who has never been paid for dying.** A v2 profile was written by a
@@ -263,13 +272,58 @@ public static class SaveMigrations
         // The `shards: 0` above is not this step repeated: the v1 → v2 step has to name *every*
         // field the constructor takes, and naming the one it knows nothing about with the value
         // this step would write anyway is what keeps the two steps independent of each other's
-        // order. `MigrateProfile_V1_RunsBothStepsInOrder` is the row that would notice either way.
+        // order. `Migrate_V1RunsEveryStepInOrder` is the row that would notice either way.
         if (version < 3)
         {
             current = new PlayerProfile(
-                3, current.HapticsEnabled, current.SeenFirstActiveHint, shards: 0);
+                3,
+                current.HapticsEnabled,
+                current.SeenFirstActiveHint,
+                shards: 0,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                locale: string.Empty);
+        }
+
+        // **v3 → v4: a player who owns what their build let them pick — and the one step in this
+        // project that is not empty.** A v3 profile has no unlock list, and the shape-driven reading
+        // (M3-01b rule 3: a v3 document is a v3 document) would give it an empty one — which takes
+        // the Gravecaller away from an install that has been playing it since the `m5` tag. That is
+        // `Shards`' failure direction exactly (M4-05b rule 8): **a thing not written is data
+        // destroyed.** So this writes the classes a v3 build could pick beside the starter, which
+        // needs no entry (M6-09a rule 3), and keeps every v3 field as it was read.
+        //
+        // **The Emberwright is deliberately not here.** It was free to pick for four unmerged tasks
+        // inside M6 and no build played outside that branch ever had it, so grandfathering it would
+        // gate nothing in the only install that exists. Two literal ids in a migration is the right
+        // amount of content in one, and it is bounded: this step runs once per install and never
+        // again mentions a class (M6-09a rule 10).
+        //
+        // The archetype set and the locale are written empty unconditionally, for the earlier
+        // steps' reason: no v3 build recorded a meeting or chose a language. An empty set
+        // over-pays on the next Husk rather than under-paying (GD §14.1).
+        if (version < 4)
+        {
+            current = new PlayerProfile(
+                4,
+                current.HapticsEnabled,
+                current.SeenFirstActiveHint,
+                current.Shards,
+                GrandfatheredCharacterIds,
+                Array.Empty<ContentId>(),
+                locale: string.Empty);
         }
 
         return current;
     }
+
+    /// <summary>
+    /// What a v3 build let an install pick besides the starter — the v3 → v4 step's list.
+    /// </summary>
+    /// <remarks>
+    /// A read-only array, so the one instance can be handed to every migrated profile; the
+    /// profile's constructor copies it regardless.
+    /// </remarks>
+    private static readonly IReadOnlyList<ContentId> GrandfatheredCharacterIds =
+        Array.AsReadOnly(new[] { new ContentId("character.gravecaller") });
 }

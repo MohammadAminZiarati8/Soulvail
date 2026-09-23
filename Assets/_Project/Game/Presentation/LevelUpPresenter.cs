@@ -346,7 +346,7 @@ namespace Soulvail.Game.Presentation
                 _episodeTotal = evt.PicksOwed;
             }
 
-            Draw(state, evt.Count);
+            Draw(state, evt.Count, evt.PactIndex);
             WriteHeader(state.Level, evt.PicksOwed);
 
             ShowScreen();
@@ -371,9 +371,10 @@ namespace Soulvail.Game.Presentation
         /// the same frame for a reason: <c>RunState.Offer</c> is a live view over one buffer the
         /// next draw rewrites, safe only because it is read on a frame that is not ticking. Nothing
         /// here holds it across a <c>ChooseOffer</c> — it is indexed and the specs are resolved
-        /// immediately.
+        /// immediately. <paramref name="pactIndex"/> comes off the event for the same reason: which
+        /// card is corrupted is the model's fact, and a card cannot ask (M6-05b rule 5).
         /// </remarks>
-        private void Draw(RunState state, int count)
+        private void Draw(RunState state, int count, int pactIndex)
         {
             IReadOnlyList<ContentId> offer = state.Offer;
 
@@ -397,7 +398,7 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                card.Show(i, _catalog.Skill(offer[i]), _localizer, OnCardChosen);
+                card.Show(i, _catalog.Skill(offer[i]), _localizer, OnCardChosen, i == pactIndex);
             }
         }
 

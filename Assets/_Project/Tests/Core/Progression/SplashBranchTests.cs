@@ -356,11 +356,15 @@ public sealed class SplashBranchTests
         // The expected share is 2/8 exactly, which is a claim rather than a confidence interval.
         const int Draws = 800;
 
-        var script = new float[Draws];
+        // Three values a draw since M6-05b — the pick, then the Pact roll's slot and chance, which
+        // are spent whatever they find — so the sweep sits on every third and the other two pad.
+        const int PerDraw = 1 + 2;
+
+        var script = new float[Draws * PerDraw];
 
         for (int i = 0; i < Draws; i++)
         {
-            script[i] = (i + 0.5f) / Draws;
+            script[i * PerDraw] = (i + 0.5f) / Draws;
         }
 
         IRandomStream offers = new FixedRandom(script).Offers;
@@ -422,7 +426,7 @@ public sealed class SplashBranchTests
         IRandomStream offers = new FixedRandom().Offers;
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        Assert.That(generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination), Is.EqualTo(3));
+        Assert.That(generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination, out _), Is.EqualTo(3));
 
         Splash(tree);
 
@@ -430,14 +434,14 @@ public sealed class SplashBranchTests
         // tree — the offer would die with a message about a buffer, on the first pick after the
         // moment CH §5.4's screen closed.
         Assert.That(
-            () => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination),
+            () => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination, out _),
             Throws.Nothing);
 
         // **Then none.** An offer is drawn once per level, so one array grow there is not the frame
         // path — but a generator that regrew on every draw would be allocating inside the one call
         // this class promises costs nothing (AR §14).
         AllocationAssert.None(
-            () => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination),
+            () => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination, out _),
             iterations: 10);
     }
 
@@ -528,7 +532,7 @@ public sealed class SplashBranchTests
     {
         var destination = new ContentId[count];
 
-        int written = generator.Draw(tree, offers, count, destination);
+        int written = generator.Draw(tree, offers, count, destination, out _);
 
         Assert.That(written, Is.EqualTo(count), "The fixture asked for more than the tree had.");
 

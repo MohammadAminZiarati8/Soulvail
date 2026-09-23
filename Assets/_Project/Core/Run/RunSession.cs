@@ -714,7 +714,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // CH §5.2 an Inspector edit and the other half a rebuild.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow);
+            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow, veilrot);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -1109,8 +1109,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // it happened rather than on the next one. PlayerCombat.AnnounceDeath is what makes that
         // death audible (rule 8), and State.Combat.IsDead is what reads it further down.
         //
-        // Unconditional, and the common path is a field write and a comparison: every run this build
-        // ships is at zero Veilrot, because nothing gains any until M6-05b's Pacts.
+        // Unconditional, and the common path is a field write and a comparison: a run gains Veilrot
+        // only by taking a Pact at a level-up (M6-05b), so most ticks of most runs sit below 25.
         State.Rot.Tick(snapshot.Dt, State.Time);
 
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.

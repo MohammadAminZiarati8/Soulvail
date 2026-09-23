@@ -486,7 +486,7 @@ public sealed class SanctumShopTests
             _events);
 
         _levelUp = new LevelUpFlow(
-            _tree, _progression, _runner, _registry, _events, new OverflowSpec(0.02f, 0.02f));
+            _tree, _progression, _runner, _registry, _events, new OverflowSpec(0.02f, 0.02f), _veilrot);
 
         _shop = new SanctumShop(Descent, _wallet, _combat, _veilrot, _tree, _levelUp, _events);
     }

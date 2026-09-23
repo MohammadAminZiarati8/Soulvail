@@ -27,7 +27,10 @@ namespace Soulvail.Core.Progression;
 /// cost three draws whether the tree holds six candidates or twenty-seven — which is the property
 /// both spawners already owe for the same reason. Consumption that depended on how full the tree
 /// was is the one thing a seed cannot survive: the same seed would replay differently the moment
-/// the player had taken a different node an hour earlier.
+/// the player had taken a different node an hour earlier. <b>As of M6-05b an offer that writes
+/// anything also spends two more on GD §13.2's Pact roll, unconditionally</b> — see
+/// <see cref="Draw"/> — so the whole cost is <c>picks + 2</c>, still a function of the pick count
+/// alone.
 /// </para>
 /// <para>
 /// <b>The order of the walk is the tree's, and it is load-bearing.</b>
@@ -85,6 +88,27 @@ public sealed class OfferGenerator
     /// <summary>How many Actives are worth having before the boost stops (CH §8 Q3).</summary>
     public const int ActivesWorthBoosting = 2;
 
+    /// <summary>
+    /// How often an offer holds a Pact — GD §13.2's <em>"one of the three offered nodes <b>may</b>
+    /// appear as a Pact."</em>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A <c>const</c> beside <see cref="SameBranchPenalty"/> rather than a number on the mode.</b>
+    /// M4-05a put <c>ShardPayout</c>'s two numbers in code, M4-07 struck the row that wanted them
+    /// moved, and M6-00a answered that parking-lot line's promoter <b>no</b> with the count behind
+    /// it: an authored home for a number nothing tunes costs 63 fixtures or a second home for the
+    /// value. Nothing in V1 turns this; <b>M8-05</b> is the first task that would.
+    /// </para>
+    /// <para>
+    /// <b>The rate a player sees is this times coverage, not this.</b> The roll lands on a written
+    /// card and a card whose node has no Pact block is not one (M6-05b rule 3), so four Pacts in
+    /// twenty-four nodes show up far less than a quarter of the time — and M7-04 raises that by
+    /// authoring rather than by editing this line.
+    /// </para>
+    /// </remarks>
+    public const float PactChance = 0.25f;
+
     /// <summary>The rules this generator's buffers were sized by, and the tree it answers for.</summary>
     private readonly TreeRules _rules;
 
@@ -140,11 +164,32 @@ public sealed class OfferGenerator
     /// (GD §13.4). Clamped to what is available, so the return value is what to read.
     /// </param>
     /// <param name="destination">Where the ids go. Must hold <paramref name="count"/>.</param>
+    /// <param name="pactIndex">
+    /// The index into <paramref name="destination"/> of the corrupted card, or <c>-1</c>. Never
+    /// more than one (GD §13.2).
+    /// </param>
     /// <remarks>
     /// <para>
     /// <b>Nothing available writes nothing and makes no draw.</b> There is no pick to make one for,
     /// and a draw taken anyway would move the stream by an amount that depended on the state of the
-    /// tree — which is the consumption rule read from the other end.
+    /// tree — which is the consumption rule read from the other end. That includes the Pact roll's
+    /// two: there is no card to roll for, and <paramref name="pactIndex"/> is <c>-1</c>.
+    /// </para>
+    /// <para>
+    /// <b>Anything written costs exactly two more draws, both always taken — the slot, then the
+    /// chance</b> (M6-05b rule 1). A roll that drew only when it could matter would advance the
+    /// stream by an amount that depended on how many offered nodes carried a Pact block, and the
+    /// same seed would replay differently after a content edit. So <c>picks</c> cards cost
+    /// <c>picks + 2</c> draws whatever the tree holds, which is the consumption rule above with the
+    /// roll added to it, and <see cref="IRandomStream.Chance"/>'s own promise to consume one draw
+    /// either way.
+    /// </para>
+    /// <para>
+    /// <b>The slot is drawn over every written card, and a card whose node has no Pact is simply
+    /// not one</b> (rule 3). Drawing over the Pact-carrying cards only would keep the draw count
+    /// fixed and make what the draw <em>means</em> depend on content — the same hazard one layer
+    /// down. And the roll comes after the picks, over what <see cref="SkillTree.Available"/> has
+    /// already allowed, so a banished node or a shut tier is out before it exists (rule 4).
     /// </para>
     /// <para>
     /// <b>The tree is checked against the rules this generator was built over, and that is a
@@ -174,8 +219,15 @@ public sealed class OfferGenerator
     /// <paramref name="destination"/> is shorter than <paramref name="count"/>, or
     /// <paramref name="tree"/> was not built over this generator's rules.
     /// </exception>
-    public int Draw(SkillTree tree, IRandomStream offers, int count, Span<ContentId> destination)
+    public int Draw(
+        SkillTree tree,
+        IRandomStream offers,
+        int count,
+        Span<ContentId> destination,
+        out int pactIndex)
     {
+        pactIndex = -1;
+
         if (tree is null)
         {
             throw new ArgumentNullException(nameof(tree));
@@ -249,7 +301,28 @@ public sealed class OfferGenerator
             remaining--;
         }
 
+        if (picks > 0)
+        {
+            pactIndex = RollPact(offers, picks, destination);
+        }
+
         return picks;
+    }
+
+    /// <summary>
+    /// GD §13.2's roll over the cards just written: two draws, always, and the answer is the slot
+    /// only when the chance said yes <em>and</em> the node there carries a Pact.
+    /// </summary>
+    /// <remarks>
+    /// Both draws are taken into locals before either is looked at, so no short-circuit can ever
+    /// skip the second — the whole of rule 1 is that the stream moves by two here whatever happens.
+    /// </remarks>
+    private int RollPact(IRandomStream offers, int picks, ReadOnlySpan<ContentId> written)
+    {
+        int slot = offers.NextInt(0, picks);
+        bool rolled = offers.Chance(PactChance);
+
+        return rolled && _rules.Skill(written[slot]).HasPact ? slot : -1;
     }
 
     /// <summary>

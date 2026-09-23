@@ -177,10 +177,18 @@ public readonly struct OfferPresented
     /// </summary>
     public readonly int PicksOwed;
 
-    public OfferPresented(int count, int picksOwed)
+    /// <summary>
+    /// Which card is GD §13.2's Pact, or <c>-1</c> — M6-05b rule 5. The screen is told because a
+    /// card cannot ask: what the player taps is a position, and whether that position was corrupted
+    /// is the model's fact.
+    /// </summary>
+    public readonly int PactIndex;
+
+    public OfferPresented(int count, int picksOwed, int pactIndex)
     {
         Count = count;
         PicksOwed = picksOwed;
+        PactIndex = pactIndex;
     }
 }
 

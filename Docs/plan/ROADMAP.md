@@ -154,7 +154,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-06b | [Four Ordeals that work, and two this build cannot ship](tasks/M6-06b-four-ordeals-and-two-refusals.md) | S | M6-06a | ☑ |
 | M6-07a | [The Emberwright, the Cinder Orb, and heat that builds while nothing touches you](tasks/M6-07a-the-emberwright-and-the-cinder-orb.md) | M | M6-06b | ☑ |
 | M6-07b | [Blink, and the first ground in this game that burns](tasks/M6-07b-blink-and-the-ground-that-burns.md) | S | M6-07a | ☑ |
-| M6-07c | [What each class does with the Veil, and the cast you buy with it](tasks/M6-07c-what-each-class-does-with-the-veil.md) | M | M6-07b, M6-02b | ☐ |
+| M6-07c | [What each class does with the Veil, and the cast you buy with it](tasks/M6-07c-what-each-class-does-with-the-veil.md) | M | M6-07b, M6-02b | ☑ |
 | M6-08 | [The Emberwright tree v1, two Actives, and the five addresses its nodes need](tasks/M6-08-emberwright-tree-v1.md) | M | M6-07c | ☐ |
 | M6-09a | [Profile v4: the classes you own, the archetypes you have met, and a field for a language nobody speaks yet](tasks/M6-09a-profile-v4-and-what-a-shard-buys.md) | M | M6-08 | ☐ |
 | M6-09b | [A class you cannot pick yet, and the first Shard anyone has ever spent](tasks/M6-09b-a-class-you-cannot-pick-yet.md) | S | M6-09a | ☐ |

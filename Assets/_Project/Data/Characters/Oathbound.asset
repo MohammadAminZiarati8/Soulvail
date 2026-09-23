@@ -47,3 +47,8 @@ MonoBehaviour:
   _movementSkillDamage: 20
   _movementSkillKnockback: 4
   _movementSkillIFrameTrail: 0.05
+  _veilrotStart: 0
+  _veilrotGainMultiplier: 0.6
+  _veilrotCleansePriceMultiplier: 0.5
+  _veilrotDamagePerPoint: 0
+  _veilrotInstantCastCost: 0

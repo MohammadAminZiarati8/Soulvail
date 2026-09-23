@@ -498,7 +498,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // **And the run's Ordeals, for Hunger** (M6-06b rule 5): optional on the constructor and
         // never absent here, which `OrdealEffectsTests.Run_TheSetReachesAllThree` asserts.
-        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events, ordeals);
+        //
+        // **And the class's relationship with the Veil** (M6-07c rule 6), which the meter, the shop
+        // and — through the meter — the runner all read; `ClassVeilrotTests.Run_TheBlockReachesAllThree`
+        // asserts the three. A Gravecaller's 15 is applied inside this constructor, silently, which is
+        // why RunStarted is what the HUD's meter seeds from.
+        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events, ordeals, character.Veilrot);
 
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
@@ -657,7 +662,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // cooldowns, and a runner that outlived a run would be casting a dead player's skills. The
         // blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many readers
         // (ADR-0005), and this is the first reader that decides something with it.
-        var skills = new SkillRunner(effects, combat.Blackboard, _events);
+        //
+        // The meter goes in too, for CH §3.3's cast bought through a cooldown (M6-07c rule 7). Every
+        // runner gets it; InstantCastCost is 0 for a class that cannot buy one.
+        var skills = new SkillRunner(effects, combat.Blackboard, _events, veilrot);
 
         // The two primitives a PlayerStat cannot express, registered beside ModifyStatHandler and
         // before RunStarted like every one before them (M3-12b rule 10) — so SkillTree's CanApply
@@ -779,7 +787,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // mode's (rule 1), like the income the wallet is paid from.
         SanctumShop shop = tree is null
             ? null
-            : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events);
+            : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events, character.Veilrot);
 
         State = new RunState(
             config.ModeId,

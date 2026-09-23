@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -29,18 +30,24 @@ namespace Soulvail.Core.Run;
 /// drain off with the threshold.
 /// </para>
 /// <para>
-/// <b>There is deliberately no <c>Spend</c> beside <see cref="Cleanse"/></b> (rule 3). CH §3.3's
-/// Emberwright spends 5 Veilrot to cast off-cooldown and <em>must have</em> the 5, which is a
-/// different question with a different failure;
-/// <see href="../../../../Docs/plan/tasks/M6-07c-what-each-class-does-with-the-veil.md">M6-07c</see>
-/// adds <c>CanSpend</c>/<c>Spend</c> beside the other two classes' relationships, and a port grows a
-/// member when its mechanic lands (AR §6).
+/// <b><see cref="Spend"/> is not <see cref="Cleanse"/>, and the difference is the refusal</b>
+/// (M6-07c rule 5). A cleanse clamps at zero and wastes the remainder, because buying one at 8 Rot is
+/// the player's decision; a spend is a <em>price</em>, so it throws when the meter is short and
+/// <see cref="CanSpend"/> is the predicate in front of it — M6-04 rule 3's <em>"a different question
+/// with a different failure"</em>, answered.
+/// </para>
+/// <para>
+/// <b>And a class's relationship with the Veil is read here</b> (M6-07c). A
+/// <see cref="VeilrotSpec"/> sets where a fresh run opens, multiplies every gain, and — for a class
+/// that authors a <see cref="VeilrotSpec.DamagePerPoint"/> — keeps one <c>PercentAdd</c> on the
+/// weapon's damage sourced to <see cref="_feeding"/>, rewritten when the meter moves and never on a
+/// tick. Null is every class GD §10 describes and no other.
 /// </para>
 /// <para>
 /// <b>It allocates nothing</b> (rule 11). Four floats, two <see langword="bool"/>s, an
-/// <see langword="int"/>, two <see langword="object"/> sources built once here, and a
-/// <c>Stat.RemoveAll</c>/<c>Add</c> pair at most once a second. <see cref="Tick"/> on an unclaimed
-/// run is one field write and one comparison.
+/// <see langword="int"/>, three <see langword="object"/> sources built once here, and a
+/// <c>Stat.RemoveAll</c>/<c>Add</c> pair at most once a second or once a movement. <see cref="Tick"/>
+/// on an unclaimed run is one field write and one comparison.
 /// </para>
 /// </remarks>
 public sealed class Veilrot
@@ -132,6 +139,16 @@ public sealed class Veilrot
     /// <summary>Who the once-a-second drain is applied by — see the class remarks.</summary>
     private readonly object _drain = new();
 
+    /// <summary>
+    /// Who the damage that rides the meter is applied by (M6-07c rule 9). A fourth source rather
+    /// than <see langword="this"/>, so the modifier can be rewritten without reading which stat the
+    /// 75 row's lives on.
+    /// </summary>
+    private readonly object _feeding = new();
+
+    /// <summary>This class's relationship with the Veil, or null for none (M6-07c).</summary>
+    private readonly VeilrotSpec _relationship;
+
     private float _value;
     private float _claimedFor;
     private bool _isClaimed;
@@ -163,13 +180,23 @@ public sealed class Veilrot
     /// which is a true statement below the mode's first Ordeal stage rather than a mis-wiring
     /// (M6-06b rule 5). Optional and last; <c>RunSession</c> always passes the run's set.
     /// </param>
-    /// <exception cref="ArgumentNullException">Any argument but <paramref name="ordeals"/> is null.</exception>
+    /// <param name="relationship">
+    /// The class's <see cref="VeilrotSpec"/>, or <see langword="null"/> for a class the Veil treats
+    /// ordinarily (M6-07c rule 6). Optional and last; <c>RunSession</c> always passes the class's.
+    /// <b>Its start is applied here, silently</b> (rule 3): before anything subscribes, so
+    /// <c>RunStarted</c> is what seeds the HUD's meter, and a resumed run's <see cref="Restore"/>
+    /// overwrites it rather than adding to it.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Any argument but <paramref name="ordeals"/> and <paramref name="relationship"/> is null.
+    /// </exception>
     public Veilrot(
         PlayerStats stats,
         PlayerCombat combat,
         CombatBlackboard blackboard,
         IDomainEvents events,
-        Ordeals ordeals = null)
+        Ordeals ordeals = null,
+        VeilrotSpec relationship = null)
     {
         if (stats is null)
         {
@@ -187,6 +214,19 @@ public sealed class Veilrot
         _weaponDamage = stats.Resolve(PlayerStat.WeaponDamage);
         _moveSpeed = stats.Resolve(PlayerStat.MoveSpeed);
         _dashCooldown = stats.Resolve(PlayerStat.MovementSkillCooldown);
+
+        _relationship = relationship;
+
+        // **CH §3.2's "starts at 15", silently** (M6-07c rule 3): M6-04 rule 9's "a resume is not
+        // news" at the other end of the same run. Settled through the same two writers a restore
+        // uses, so a class authored to open above 25 would open with the 25 row on and nothing said.
+        if (relationship is not null && relationship.StartingVeilrot > 0f)
+        {
+            _value = relationship.StartingVeilrot;
+
+            ApplyStates(0f, publish: false);
+            RewriteFeeding();
+        }
     }
 
     /// <summary>How many rows GD §10.2 has. Four.</summary>
@@ -256,6 +296,14 @@ public sealed class Veilrot
     /// </remarks>
     public float EnemySpeedBonus => _value >= FirstThreshold ? EnemySpeedAtTwentyFive : 0f;
 
+    /// <summary>What one cast through a cooldown costs this class, or 0 — <c>SkillRunner</c>'s read.</summary>
+    /// <remarks>
+    /// Zero for a class with no relationship and for one whose relationship buys nothing, which is
+    /// two of the three shipped classes (M6-07c rule 7): the runner's paid branch asks this first and
+    /// leaves.
+    /// </remarks>
+    public float InstantCastCost => _relationship is null ? 0f : _relationship.InstantCastCost;
+
     /// <summary>
     /// Adds <paramref name="amount"/> to the meter. Pacts and Ordeals.
     /// </summary>
@@ -283,6 +331,16 @@ public sealed class Veilrot
         // nothing — the multiplier is finite and above zero (OrdealSpec's door) and cannot make one.
         // Cleanse does not read it: a cleanse is not a gain, and multiplying it would make Hunger a
         // discount at the Sanctum.
+        //
+        // **The class's multiplier first, then Hunger's, then the clamp** (M6-07c rule 4): a 15-Rot
+        // Pact is 9 for an Oathbound, 22.5 for a Gravecaller and 33.75 for one under Hunger. The
+        // order of two multiplications is not arithmetic; it is where a reader looks first. Cleanse
+        // ignores this one for Hunger's reason — resisting corruption is not resisting the cure.
+        if (_relationship is not null)
+        {
+            amount *= _relationship.GainMultiplier;
+        }
+
         if (_ordeals is not null)
         {
             amount *= _ordeals.VeilrotMultiplier;
@@ -311,6 +369,51 @@ public sealed class Veilrot
         }
 
         MoveTo(MathF.Max(0f, _value - amount));
+    }
+
+    /// <summary>
+    /// Whether <paramref name="amount"/> could be spent right now. The predicate <see cref="Spend"/>
+    /// is the invariant behind — M6-01a rule 7's pairing.
+    /// </summary>
+    /// <param name="amount">
+    /// Points of Veilrot. False for zero, a negative, NaN or an infinity, none of which is a price.
+    /// </param>
+    public bool CanSpend(float amount) => IsPrice(amount) && _value >= amount;
+
+    /// <summary>
+    /// Takes <paramref name="amount"/> off the meter as a price rather than as a cleanse (M6-07c
+    /// rule 5).
+    /// </summary>
+    /// <remarks>
+    /// <b>It crosses thresholds downward the way <see cref="Cleanse"/> does</b>, so a spend from 26 to
+    /// 21 loses the 25 row's enemy speed. That is the Emberwright paying twice for one cast and it is
+    /// correct: the meter is the meter. <b>It never un-Claims</b> — see <see cref="IsClaimed"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="amount"/> is not a finite number above zero.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The meter holds less than <paramref name="amount"/>. Nothing has moved when it throws.
+    /// </exception>
+    public void Spend(float amount)
+    {
+        if (!IsPrice(amount))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                amount,
+                "A spend must be a finite number of points above zero.");
+        }
+
+        if (!CanSpend(amount))
+        {
+            throw new InvalidOperationException(
+                $"The meter holds {_value} and {amount} was spent. CanSpend answers this before "
+                    + "anything is bought (M6-07c rule 5), so reaching here is a cast that happened "
+                    + "and was not paid for.");
+        }
+
+        MoveTo(_value - amount);
     }
 
     /// <summary>
@@ -419,9 +522,13 @@ public sealed class Veilrot
     {
         float before = _value;
 
+        // **Overwrites a class's start rather than adding to it** (M6-07c rule 3): a Gravecaller
+        // saved at 40 comes back at 40, not 55, because `before` is the 15 the constructor opened at
+        // and the states are settled from there.
         _value = value;
 
         ApplyStates(before, publish: false);
+        RewriteFeeding();
     }
 
     /// <summary>
@@ -445,10 +552,47 @@ public sealed class Veilrot
 
         _value = next;
 
+        // Before the event, so a listener reading the weapon's damage from inside VeilrotChanged
+        // reads the number the meter now implies (M6-07c rule 9).
+        RewriteFeeding();
+
         _events.Publish(new VeilrotChanged(_value, delta));
 
         ApplyStates(before, publish: true);
     }
+
+    /// <summary>
+    /// CH §3.2's <em>"+1 % damage per Veilrot point"</em>: one <c>PercentAdd</c> on the weapon's
+    /// damage, sourced to <see cref="_feeding"/>, rewritten to match <see cref="_value"/> (M6-07c
+    /// rule 9).
+    /// </summary>
+    /// <remarks>
+    /// <b>A <c>PercentAdd</c>, pooled</b> (ADR-0008), so 60 Rot is ×1.60 and not 1.01⁶⁰ — M6-07a's
+    /// arrangement for Kindling. <b>Called when the meter moves and never on a tick</b>: a Pact, a
+    /// Cleanse, a Spend or a restore, a handful of times a stage, against sixty a second on the stat
+    /// the HUD is subscribed to. A class with no dial leaves before touching the stat, so it raises
+    /// nothing and puts nothing on it.
+    /// </remarks>
+    private void RewriteFeeding()
+    {
+        if (_relationship is null || !(_relationship.DamagePerPoint > 0f))
+        {
+            return;
+        }
+
+        _weaponDamage.RemoveAll(_feeding);
+
+        if (_value > 0f)
+        {
+            _weaponDamage.Add(new Modifier(
+                ModifierKind.PercentAdd,
+                _relationship.DamagePerPoint * _value,
+                _feeding));
+        }
+    }
+
+    /// <summary>Whether <paramref name="amount"/> is something a price could be.</summary>
+    private static bool IsPrice(float amount) => amount > 0f && !float.IsInfinity(amount);
 
     /// <summary>
     /// Brings every one of GD §10.2's four rows into line with <see cref="_value"/>, given where the

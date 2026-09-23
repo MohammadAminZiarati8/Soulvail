@@ -94,6 +94,11 @@ public sealed class CharacterSpec
     /// CharacterSpec(...)</c> sites across 45 files build one, and CH §3.3's Kindling is the
     /// Emberwright's alone, so <see langword="null"/> is the honest default.
     /// </param>
+    /// <param name="veilrot">
+    /// How the Veil treats this class, or <see langword="null"/> for the way GD §10 describes and no
+    /// other (M6-07c rule 1). Optional and last beside <paramref name="kindling"/>, for its counted
+    /// reason.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -124,7 +129,8 @@ public sealed class CharacterSpec
         ShieldSpec shield = null,
         float hitIFrames = 0f,
         MinionSpec minions = null,
-        KindlingSpec kindling = null)
+        KindlingSpec kindling = null,
+        VeilrotSpec veilrot = null)
     {
         if (id.Value is null)
         {
@@ -175,6 +181,7 @@ public sealed class CharacterSpec
         HitIFrames = hitIFrames;
         Minions = minions;
         Kindling = kindling;
+        Veilrot = veilrot;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -258,4 +265,11 @@ public sealed class CharacterSpec
     /// <c>PlayerCombat</c> builds a <c>Kindling</c> from this and nothing else reads it (M6-07a).
     /// </remarks>
     public KindlingSpec Kindling { get; }
+
+    /// <summary>How the Veil treats this class, or <see langword="null"/> for ordinarily.</summary>
+    /// <remarks>
+    /// CH §3's third identity axis. <c>RunSession</c> hands it to the meter, the shop and — through
+    /// the meter — the runner (M6-07c rule 6).
+    /// </remarks>
+    public VeilrotSpec Veilrot { get; }
 }

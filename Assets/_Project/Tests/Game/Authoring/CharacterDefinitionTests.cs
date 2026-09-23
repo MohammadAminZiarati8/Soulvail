@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Game.Authoring;
+using Soulvail.Tests.Core.Run;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -335,6 +336,57 @@ public sealed class CharacterDefinitionTests
         SetString(definition, "_id", "Character.Oathbound");
     }
 
+    // ---- M6-07c: CH §3's Veilrot column, off the shipped assets ------------------------------------
+
+    [Test]
+    public void Oathbound_ResistsTheVeil()
+    {
+        AssertVeilrot(Shipped(OathboundPath), start: 0f, gain: 0.6f, cleanse: 0.5f, damage: 0f, cast: 0f);
+    }
+
+    [Test]
+    public void Gravecaller_ThrivesOnIt()
+    {
+        AssertVeilrot(Shipped(GravecallerPath), start: 15f, gain: 1.5f, cleanse: 1f, damage: 0.01f, cast: 0f);
+    }
+
+    [Test]
+    public void Emberwright_SpendsIt()
+    {
+        AssertVeilrot(Shipped(EmberwrightPath), start: 0f, gain: 1f, cleanse: 1f, damage: 0f, cast: 5f);
+    }
+
+    [Test]
+    public void Price_TheOathboundCleansesAtHalf()
+    {
+        var descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+
+        Assert.That(descent, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        SanctumSpec prices = descent.ToSpec().Sanctum;
+
+        Assert.That(prices.CleansePrice, Is.EqualTo(60), "the shipped mode's own price, the premise.");
+
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(OathboundPath).Veilrot), Is.EqualTo(30), "CH §3.1.");
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(GravecallerPath).Veilrot), Is.EqualTo(60));
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(EmberwrightPath).Veilrot), Is.EqualTo(60));
+    }
+
+    [Test]
+    public void Veilrot_AllFiveNeutralConvertsToNull()
+    {
+        // The authoring switch (M6-07c rule 1): a fresh definition carries the neutral defaults and
+        // produces no block, and moving any one dial produces one.
+        CharacterDefinition definition = NewDefinition("NeutralVeil");
+
+        Assert.That(definition.ToSpec().Veilrot, Is.Null);
+
+        SetFloat(definition, "_veilrotInstantCastCost", 5f);
+
+        Assert.That(definition.ToSpec().Veilrot, Is.Not.Null);
+        Assert.That(definition.ToSpec().Veilrot.InstantCastCost, Is.EqualTo(5f));
+    }
+
     [Test]
     public void AllCharacterDefinitions_HaveValidUniqueIds()
     {
@@ -365,6 +417,32 @@ public sealed class CharacterDefinitionTests
     /// assertion, loose enough to survive Unity writing a float back as decimal text.
     /// </summary>
     private const float Tolerance = 1e-6f;
+
+    private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
+    private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
+    private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
+
+    private static CharacterSpec Shipped(string path)
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
+
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {path}.");
+
+        return definition.ToSpec();
+    }
+
+    /// <summary>All five dials, each against its own property — M0-07's transposition lesson.</summary>
+    private static void AssertVeilrot(CharacterSpec spec, float start, float gain, float cleanse, float damage, float cast)
+    {
+        VeilrotSpec veilrot = spec.Veilrot;
+
+        Assert.That(veilrot, Is.Not.Null, $"{spec.Id} authors no Veilrot relationship; CH §3 gives every class one.");
+        Assert.That(veilrot.StartingVeilrot, Is.EqualTo(start).Within(Tolerance), "start.");
+        Assert.That(veilrot.GainMultiplier, Is.EqualTo(gain).Within(Tolerance), "gain.");
+        Assert.That(veilrot.CleansePriceMultiplier, Is.EqualTo(cleanse).Within(Tolerance), "cleanse price.");
+        Assert.That(veilrot.DamagePerPoint, Is.EqualTo(damage).Within(Tolerance), "damage per point.");
+        Assert.That(veilrot.InstantCastCost, Is.EqualTo(cast).Within(Tolerance), "instant cast.");
+    }
 
     private CharacterDefinition NewDefinition(string assetName)
     {

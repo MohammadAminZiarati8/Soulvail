@@ -72,6 +72,9 @@ public sealed class SanctumShop
     private readonly LevelUpFlow _levelUp;
     private readonly IDomainEvents _events;
 
+    /// <summary>The class's relationship with the Veil, for the Cleanse's price. Null for none.</summary>
+    private readonly VeilrotSpec _relationship;
+
     /// <param name="prices">The mode's shop — <c>ModeSpec.Sanctum</c>.</param>
     /// <param name="wallet">Where the price comes out of.</param>
     /// <param name="combat">Whose health Heal restores.</param>
@@ -82,10 +85,17 @@ public sealed class SanctumShop
     /// <param name="tree">The run's tree, which Banish narrows.</param>
     /// <param name="levelUp">The run's level-up flow, which a Reroll charges.</param>
     /// <param name="events">Where <see cref="SanctumServiceBought"/> goes.</param>
-    /// <exception cref="ArgumentNullException">Any argument but <paramref name="veilrot"/> is null.</exception>
+    /// <param name="relationship">
+    /// The class's <see cref="VeilrotSpec"/>, for CH §3.1's <em>"cleanses at half price"</em>, or
+    /// <see langword="null"/> for M6-02b's prices unmoved (M6-07c rule 6). Optional and last;
+    /// <c>RunSession</c> always passes the class's.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Any argument but <paramref name="veilrot"/> and <paramref name="relationship"/> is null.
+    /// </exception>
     public SanctumShop(
         SanctumSpec prices, EssenceWallet wallet, PlayerCombat combat, Veilrot veilrot,
-        SkillTree tree, LevelUpFlow levelUp, IDomainEvents events)
+        SkillTree tree, LevelUpFlow levelUp, IDomainEvents events, VeilrotSpec relationship = null)
     {
         _prices = prices;
         _wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -94,6 +104,7 @@ public sealed class SanctumShop
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _levelUp = levelUp ?? throw new ArgumentNullException(nameof(levelUp));
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _relationship = relationship;
     }
 
     /// <summary>Rerolls bought this run — what the save carries, and what doubles the price.</summary>
@@ -113,7 +124,7 @@ public sealed class SanctumShop
             SanctumService.Reroll => RerollPrice(),
             SanctumService.Banish => _prices.BanishPrice,
             SanctumService.Heal => _prices.HealPrice,
-            _ => _prices.CleansePrice,
+            _ => CleansePrice(),
         };
     }
 
@@ -299,6 +310,34 @@ public sealed class SanctumShop
         }
 
         return (int)price;
+    }
+
+    /// <summary>
+    /// The mode's Cleanse price times the class's multiplier, rounded and floored at 1 (M6-07c
+    /// rule 4). The Oathbound's 60 × 0.5 is 30.
+    /// </summary>
+    /// <remarks>
+    /// <b>Floored at 1</b>, because a free service is M6-02b rule 7's <em>worthless</em> half arriving
+    /// from the price side, and a shop row reading 0 is a button nobody believes. A mode that prices
+    /// the Cleanse at 0 is left at 0: that is the mode's statement, not the class's.
+    /// </remarks>
+    private int CleansePrice()
+    {
+        int price = _prices.CleansePrice;
+
+        if (_relationship is null || price <= 0)
+        {
+            return price;
+        }
+
+        float scaled = MathF.Round(price * _relationship.CleansePriceMultiplier);
+
+        if (scaled >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return scaled < 1f ? 1 : (int)scaled;
     }
 
     /// <summary>Whether any node is left to banish — asked without a buffer, so without allocating.</summary>

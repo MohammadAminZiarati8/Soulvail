@@ -66,3 +66,8 @@ MonoBehaviour:
   _minionReach: 1.5
   _kindlingMaxStacks: 30
   _kindlingPerStack: 0.02
+  _veilrotStart: 0
+  _veilrotGainMultiplier: 1
+  _veilrotCleansePriceMultiplier: 1
+  _veilrotDamagePerPoint: 0
+  _veilrotInstantCastCost: 5

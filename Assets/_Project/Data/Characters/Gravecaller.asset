@@ -61,3 +61,8 @@ MonoBehaviour:
   _minionDamage: 8
   _minionAttackInterval: 1
   _minionReach: 1.5
+  _veilrotStart: 15
+  _veilrotGainMultiplier: 1.5
+  _veilrotCleansePriceMultiplier: 1
+  _veilrotDamagePerPoint: 0.01
+  _veilrotInstantCastCost: 0

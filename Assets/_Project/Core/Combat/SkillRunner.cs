@@ -5,6 +5,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Combat;
 
@@ -109,6 +110,19 @@ public sealed class SkillRunner
     private readonly bool[] _isAuto = new bool[MaxActives];
 
     /// <summary>
+    /// Whether each entry has already been bought through the cooldown it is serving — M6-07c rule
+    /// 7's governor. Cleared by <see cref="Fire"/>, which is where a new cooldown begins, so there
+    /// is no second clock.
+    /// </summary>
+    private readonly bool[] _paid = new bool[MaxActives];
+
+    /// <summary>
+    /// The run's meter, which a paid cast is charged to — or null for a runner built without one,
+    /// which never buys a cast (M6-07c rule 6).
+    /// </summary>
+    private readonly Veilrot _veilrot;
+
+    /// <summary>
     /// Which skill sits in each of CC §6.2's four thumb positions;
     /// <c>default(ContentId)</c> for an empty one.
     /// </summary>
@@ -179,12 +193,23 @@ public sealed class SkillRunner
     /// (ADR-0005). Borrowed, never owned: <c>PlayerCombat</c> writes it.
     /// </param>
     /// <param name="events">Where <see cref="SkillCast"/> goes.</param>
-    /// <exception cref="ArgumentNullException">Any of the three is null.</exception>
-    public SkillRunner(EffectRegistry effects, CombatBlackboard blackboard, IDomainEvents events)
+    /// <param name="veilrot">
+    /// The run's meter, for CH §3.3's cast bought through a cooldown — or <see langword="null"/> for
+    /// none (M6-07c rule 6). Optional and last, so the thirteen fixtures that build a runner are
+    /// untouched; <c>RunSession</c> always passes the run's. What a cast costs is the meter's
+    /// <see cref="Veilrot.InstantCastCost"/>, which is 0 for two classes of three.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any of the first three is null.</exception>
+    public SkillRunner(
+        EffectRegistry effects,
+        CombatBlackboard blackboard,
+        IDomainEvents events,
+        Veilrot veilrot = null)
     {
         _effects = effects ?? throw new ArgumentNullException(nameof(effects));
         _blackboard = blackboard ?? throw new ArgumentNullException(nameof(blackboard));
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _veilrot = veilrot;
 
         // Once, here, and never again — see the field. This is the only allocation this class makes
         // after its arrays, and it is made before a run has started rather than while one is drawn.
@@ -193,6 +218,26 @@ public sealed class SkillRunner
 
     /// <summary>How many actives the player owns.</summary>
     public int Count => _count;
+
+    /// <summary>
+    /// How many casts this run has bought through a cooldown. Zero for every run of two of the
+    /// three shipped classes, and the one number a playtest reads to know the mechanic fired.
+    /// </summary>
+    public int PaidCasts { get; private set; }
+
+    /// <summary>
+    /// Whether the active at <paramref name="index"/> has already been bought during the cooldown it
+    /// is currently serving — M6-07c rule 7's governor.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is not an owned active.
+    /// </exception>
+    public bool WasPaidFor(int index)
+    {
+        Require(index);
+
+        return _paid[index];
+    }
 
     /// <summary>
     /// Names the one thing that wants to be told when an Active arrives, for the life of this run.
@@ -332,6 +377,7 @@ public sealed class SkillRunner
         _specs[_count] = skill;
         _cooldowns[_count] = new Stat(skill.Active.Cooldown);
         _readyAt[_count] = 0f;
+        _paid[_count] = false;
 
         // **Auto is the default and takes no slot** (rule 1). CC §6.1: "every skill defaults to
         // Auto. A player who never opens the menu has a complete, playable game with one button."
@@ -600,6 +646,14 @@ public sealed class SkillRunner
             // every tick for the rest of the run. AR §18.3.
             if (!(now >= _readyAt[i]))
             {
+                // **CH §3.3's cast bought through a cooldown** (M6-07c rule 7), below the Manual
+                // rule rather than beside it, so a Manual skill is never bought. `now < ready`
+                // spelled positively here, so an unreadable clock buys nothing either.
+                if (now < _readyAt[i] && TryBuy(i, now))
+                {
+                    return;
+                }
+
                 continue;
             }
 
@@ -887,6 +941,7 @@ public sealed class SkillRunner
         for (int i = 0; i < _count; i++)
         {
             _readyAt[i] = 0f;
+            _paid[i] = false;
         }
     }
 
@@ -896,7 +951,89 @@ public sealed class SkillRunner
     private void Fire(int index, float now, bool auto)
     {
         SkillSpec spec = _specs[index];
-        ActiveSpec active = spec.Active;
+
+        ApplyCast(index);
+
+        // Sampled here and held — see the class remarks. The floor is what stops a stack driving
+        // this to zero or below (ADR-0008 clamps nothing), and it is taken from the *authored*
+        // base rather than from Stat.Base so a node that re-based the cooldown could not raise its
+        // own floor with it. Through EffectiveCooldownOf rather than spelled out again, so the
+        // number this schedules, the number CooldownFraction divides by and the number the Skills
+        // screen prints cannot come apart.
+        float cooldown = EffectiveCooldownOf(index);
+
+        _readyAt[index] = now + cooldown;
+
+        // A new cooldown begins here, and it has not been bought (M6-07c rule 7). Cleared on the
+        // line that starts the clock rather than on the comparison that ends it, so a cast through
+        // either door — the trigger or a thumb — hands the next wait a fresh latch.
+        _paid[index] = false;
+
+        // Last, after the effects and after _readyAt moved, so a handler reading
+        // CooldownFraction from inside this sees 1 and a view drawing a buff sees it applied.
+        _events.Publish(new SkillCast(spec.Id, cooldown, auto));
+    }
+
+    /// <summary>
+    /// Buys the active at <paramref name="index"/> through the cooldown it is serving, if this class
+    /// can, the meter holds the price, this cooldown is unbought and the trigger is met (M6-07c
+    /// rule 7).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The clock is left where it is</b> — CH §3.3's <em>"cast instantly off-cooldown"</em> read
+    /// literally: the ability is on cooldown and fires anyway. <b>The latch is what makes that
+    /// safe</b>: without it a trigger held true pays every tick, sixty casts and three hundred Rot a
+    /// second. With it, an active casts at most twice per cooldown — once free, once bought — so the
+    /// whole mechanic is bounded at <c>cost × actives / cooldown</c> Rot a second.
+    /// </para>
+    /// <para>
+    /// Asked cheapest first, and <see cref="Veilrot.CanSpend"/> before <see cref="Veilrot.Spend"/>,
+    /// so a short meter is a skipped entry rather than a throw. The price buys the cooldown and
+    /// never the condition: a trigger that is false buys nothing.
+    /// </para>
+    /// </remarks>
+    private bool TryBuy(int index, float now)
+    {
+        if (_veilrot is null || _paid[index])
+        {
+            return false;
+        }
+
+        float cost = _veilrot.InstantCastCost;
+
+        if (!(cost > 0f) || !_veilrot.CanSpend(cost))
+        {
+            return false;
+        }
+
+        if (!_specs[index].Active.Trigger.IsMet(_blackboard))
+        {
+            return false;
+        }
+
+        // Paid first, so the meter a cast effect or a listener reads is the one after the price.
+        _veilrot.Spend(cost);
+
+        _paid[index] = true;
+        PaidCasts++;
+
+        ApplyCast(index);
+
+        ContentId id = _specs[index].Id;
+
+        // SkillCast carries the wait that is actually left, because the clock did not move; then the
+        // price, beside it rather than as a flag on it (the event's own remarks).
+        _events.Publish(new SkillCast(id, _readyAt[index] - now, wasAuto: true));
+        _events.Publish(new CastBought(id, cost, _veilrot.Value));
+
+        return true;
+    }
+
+    /// <summary>Applies the cast effects of the active at <paramref name="index"/>.</summary>
+    private void ApplyCast(int index)
+    {
+        ActiveSpec active = _specs[index].Active;
 
         // **With the ActiveSpec as the source, and deliberately not the SkillSpec** (rule 8).
         // M3-05 rule 7 says the source is whoever owns the effect, and `SkillTree.Take` already
@@ -909,20 +1046,6 @@ public sealed class SkillRunner
         {
             _effects.Apply(active.OnCast[i], active);
         }
-
-        // Sampled here and held — see the class remarks. The floor is what stops a stack driving
-        // this to zero or below (ADR-0008 clamps nothing), and it is taken from the *authored*
-        // base rather than from Stat.Base so a node that re-based the cooldown could not raise its
-        // own floor with it. Through EffectiveCooldownOf rather than spelled out again, so the
-        // number this schedules, the number CooldownFraction divides by and the number the Skills
-        // screen prints cannot come apart.
-        float cooldown = EffectiveCooldownOf(index);
-
-        _readyAt[index] = now + cooldown;
-
-        // Last, after the effects and after _readyAt moved, so a handler reading
-        // CooldownFraction from inside this sees 1 and a view drawing a buff sees it applied.
-        _events.Publish(new SkillCast(spec.Id, cooldown, auto));
     }
 
     /// <summary>The lowest slot holding nobody, or −1 when all four are taken.</summary>

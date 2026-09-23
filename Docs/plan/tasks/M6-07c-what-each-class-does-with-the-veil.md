@@ -389,4 +389,55 @@ public readonly struct CastBought
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the Public API.** `VeilrotSpec` with five dials and the all-neutral refusal;
+`CharacterSpec.Veilrot`, optional and last; `Veilrot` takes the block, opens at its start silently,
+multiplies every gain before Hunger, keeps one `PercentAdd` on weapon damage for a class with a
+per-point dial, and gains `CanSpend`/`Spend`/`InstantCastCost`; `SanctumShop` prices the Cleanse ×
+the dial, rounded and floored at 1; `SkillRunner` takes the meter and buys a cast through a cooldown
+once per cooldown, publishing `SkillCast` then `CastBought`. `RunSession` passes the block to the
+meter and the shop, and the meter to the runner. The three assets carry rule 2's table.
+**EditMode 2 927 → 2 979 (+52), twice; PlayMode 26 / 0 / 0, twice.**
+
+### Deviations
+
+1. **`CastBought` lives in `Core/Events/SkillEvents.cs`**, beside `SkillCast`. Not in the table;
+   M6-07b deviation 1's precedent.
+2. **Five rows sit in `Tests/Game/Authoring/CharacterDefinitionTests.cs`**: the three class rows,
+   `Price_TheOathboundCleansesAtHalf` and `Veilrot_AllFiveNeutralConvertsToNull`.
+   `Soulvail.Tests.Core` cannot open an asset (M6-07b deviation 5). The price row reaches a live
+   shop through `ClassVeilrotTests.CleansePrice`, a public static helper.
+3. **The latch clears in `Fire`, not in the comparison that makes a skill ready.** `Fire` is where a
+   new cooldown starts, so either door (trigger or thumb) hands the next wait a fresh latch. Clearing
+   on the comparison would miss a skill whose ready tick was spent casting an earlier entry. `Add`
+   and `Reset` clear it too. Still one `bool[]` and no second clock.
+4. **`Paid_AgainAfterTheCooldownTurnsOver` asserts five paid casts, not four.** Over 10 s a 2 s
+   cooldown casts free at 0, 2, 4, 6 and 8, and each free cast is bought once a frame later. The row
+   asserts the order `FPFPFPFPFP` and 15 Rot left of 40.
+5. **A bought cast's `SkillCast.Cooldown` is the wait left** (`readyAt − now`), not the effective
+   cooldown. The clock did not move, and the field's own doc says *"seconds until it may fire
+   again"*.
+6. **`Run_TheBlockReachesAllThree` checks that the runner holds the meter, not the spec.** The Public
+   API gives `SkillRunner` a `Veilrot`, and the spec reaches it through `InstantCastCost`.
+7. **`VeilrotSpec` reads `Veilrot.Max` for its upper bound.** That is the first `Content → Run`
+   reference, and it keeps one source for 100 rather than a second literal.
+8. **Five rows beyond the table:** `Spend_RefusesANonPrice`, `Damage_FollowsAGainAndACleanse`,
+   `Paid_StopsTheMomentTheMeterRunsOut`, `Paid_ReadsTheCostOffTheMeter` and the authoring row in
+   deviation 2. Each one is a guard or a premise the table implies.
+9. **The ripple is 15 `new SkillRunner(...)` sites in 7 files by today's count, not 13 in 5.** None
+   was edited: the argument is optional.
+10. **The branch was cut from M6-07b's head**, because `origin/dev` still stops at M6-05b. This PR
+    carries 06a, 06b, 07a and 07b until those merge.
+
+### Findings
+
+- **A constructor start runs through `ApplyStates` too.** A class authored to open above 25 would
+  open with the 25 row on and nothing published. No shipped class does that; the Gravecaller's 15
+  sits under every row.
+- **The Gravecaller now opens at ×1.15 weapon damage.** None of its TTK rows moved, because they
+  build `PlayerCombat` rather than a run. The stage-9 TTK break in *What does not work yet* is
+  measured on a played run, and M6-11 should re-read it with this in.
+- **Rule 9's ×4.0 is pinned** (`Damage_AClaimedGravecallerIsFourTimesBase`). M8-05 should look at
+  it first.
+- **The parking-lot line for the Oathbound's third clause already existed** (M6-00c). Nothing was
+  added.
+- **Known issue 1 did not fire.** Both PlayMode passes were 26 / 0.

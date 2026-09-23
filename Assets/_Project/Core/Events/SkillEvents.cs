@@ -64,6 +64,34 @@ public readonly struct SkillCast
 }
 
 /// <summary>
+/// An ability was cast through its cooldown and the Veil was charged for it — CH §3.3's Emberwright
+/// (M6-07c rule 7). Published by <c>SkillRunner</c> immediately after the <see cref="SkillCast"/> it
+/// paid for.
+/// </summary>
+/// <remarks>
+/// <b>Beside <see cref="SkillCast"/> rather than a flag on it</b>: every subscriber of that event
+/// would otherwise have to learn a field that is false in every run of two classes out of three.
+/// </remarks>
+public readonly struct CastBought
+{
+    /// <summary>Which active was bought.</summary>
+    public readonly ContentId SkillId;
+
+    /// <summary>What it cost, in Veilrot.</summary>
+    public readonly float Cost;
+
+    /// <summary>The meter after the price — so a reader needs no second read.</summary>
+    public readonly float VeilrotAfter;
+
+    public CastBought(ContentId skillId, float cost, float veilrotAfter)
+    {
+        SkillId = skillId;
+        Cost = cost;
+        VeilrotAfter = veilrotAfter;
+    }
+}
+
+/// <summary>
 /// A skill's CC §6.1 switch moved: it now fires itself, or it now waits for a thumb.
 /// </summary>
 /// <remarks>

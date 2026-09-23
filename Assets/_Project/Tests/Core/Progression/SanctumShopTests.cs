@@ -432,6 +432,16 @@ public sealed class SanctumShopTests
     }
 
     [Test]
+    public void Shop_ANullRelationshipIsTheModesPrice()
+    {
+        // M6-07c: the fixture's shop is built with no VeilrotSpec, and every price is M6-02b's.
+        Assert.That(_shop.PriceOf(SanctumService.Reroll), Is.EqualTo(25));
+        Assert.That(_shop.PriceOf(SanctumService.Banish), Is.EqualTo(40));
+        Assert.That(_shop.PriceOf(SanctumService.Heal), Is.EqualTo(40));
+        Assert.That(_shop.PriceOf(SanctumService.Cleanse), Is.EqualTo(60));
+    }
+
+    [Test]
     public void Shop_RefusesAServiceThatIsNotOne()
     {
         var stranger = (SanctumService)99;

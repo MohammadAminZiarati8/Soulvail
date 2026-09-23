@@ -166,6 +166,26 @@ namespace Soulvail.Game.Authoring
                  "Never a percentage: 2 here would be +200 % a hit.")]
         [SerializeField, Min(0f)] private float _kindlingPerStack = 0.02f;
 
+        [Header("Veilrot (CH §3) — all five neutral means the Veil treats this class ordinarily")]
+        [Tooltip("Where a fresh run opens on the meter, below 100. The Gravecaller's 15.")]
+        [SerializeField, Min(0f)] private float _veilrotStart;
+
+        [Tooltip("Every Veilrot gain is multiplied by this. 1 is neutral; the Oathbound's 0.6, " +
+                 "the Gravecaller's 1.5. Above 0.")]
+        [SerializeField, Min(0.01f)] private float _veilrotGainMultiplier = 1f;
+
+        [Tooltip("The Sanctum's Cleanse price is multiplied by this, rounded, and never below 1. " +
+                 "1 is neutral; the Oathbound's 0.5.")]
+        [SerializeField, Min(0.01f)] private float _veilrotCleansePriceMultiplier = 1f;
+
+        [Tooltip("Weapon damage per point on the meter, as a fraction — 0.01 is CH §3.2's +1 %. " +
+                 "0 is neutral.")]
+        [SerializeField, Min(0f)] private float _veilrotDamagePerPoint;
+
+        [Tooltip("Veilrot one cast through a cooldown costs, once per cooldown. 0 means this " +
+                 "class cannot buy one; the Emberwright's 5.")]
+        [SerializeField, Min(0f)] private float _veilrotInstantCastCost;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -210,6 +230,13 @@ namespace Soulvail.Game.Authoring
         /// <see langword="null"/> <see cref="CharacterSpec.Kindling"/>. The count rather than the
         /// per-stack, for the minion cap's reason — it is the field a <see cref="KindlingSpec"/>
         /// cannot represent at zero.
+        /// </para>
+        /// <para>
+        /// The Veilrot block has no single switch, because none of its five dials is the one a
+        /// <see cref="VeilrotSpec"/> cannot represent: <b>all five neutral is the switch</b>
+        /// (M6-07c rule 1), and it produces a <see langword="null"/>
+        /// <see cref="CharacterSpec.Veilrot"/> — which is also what the spec's own constructor
+        /// refuses to be built as.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -278,7 +305,15 @@ namespace Soulvail.Game.Authoring
                         : null,
                     _kindlingMaxStacks > 0
                         ? new KindlingSpec(_kindlingPerStack, _kindlingMaxStacks)
-                        : null);
+                        : null,
+                    VeilrotIsNeutral()
+                        ? null
+                        : new VeilrotSpec(
+                            _veilrotStart,
+                            _veilrotGainMultiplier,
+                            _veilrotCleansePriceMultiplier,
+                            _veilrotDamagePerPoint,
+                            _veilrotInstantCastCost));
             }
             catch (ArgumentException inner)
             {
@@ -291,6 +326,14 @@ namespace Soulvail.Game.Authoring
                     inner);
             }
         }
+
+        /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
+        private bool VeilrotIsNeutral() =>
+            _veilrotStart == 0f
+            && _veilrotGainMultiplier == 1f
+            && _veilrotCleansePriceMultiplier == 1f
+            && _veilrotDamagePerPoint == 0f
+            && _veilrotInstantCastCost == 0f;
 
         /// <remarks>
         /// Only the ids, and only their shape. A malformed id is the one authoring mistake that

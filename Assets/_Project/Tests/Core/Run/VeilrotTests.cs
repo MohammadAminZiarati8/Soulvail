@@ -809,6 +809,28 @@ public sealed class VeilrotTests
             "A hundred seconds of godhood, near enough to see it was the drain that did it.");
     }
 
+    // ---- M6-07c: a class with no relationship -------------------------------------------------------
+
+    [Test]
+    public void Relationship_NoneIsEveryNumberAbove()
+    {
+        // The fixture's meter is built with no VeilrotSpec, which is every class GD §10 describes and
+        // no other. M6-07c's dials must leave it exactly as M6-04 shipped it.
+        Stat damage = _stats.Resolve(PlayerStat.WeaponDamage);
+
+        Assert.That(_meter.Value, Is.Zero, "no start.");
+        Assert.That(_meter.InstantCastCost, Is.Zero, "no cast to buy.");
+
+        _meter.Gain(15f);
+
+        Assert.That(_meter.Value, Is.EqualTo(15f), "an unmultiplied gain.");
+        Assert.That(damage.Value, Is.EqualTo(BaseWeaponDamage), "no damage rides the meter.");
+
+        _meter.Gain(Veilrot.Max);
+
+        Assert.That(damage.Value, Is.EqualTo(BaseWeaponDamage * 2f).Within(1e-4f), "the Claiming's ×2 and nothing else.");
+    }
+
     // ---- Guards ------------------------------------------------------------------------------------
 
     [Test]

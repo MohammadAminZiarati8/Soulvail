@@ -331,4 +331,54 @@ scene with no run returning rather than throwing.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the table's shape.** `SanctumPresenter`, `ServiceRow`, `BanishPicker`, `Sanctum.prefab`
+(canvas sort 90, between Skills and LevelUp) dressed into `Run.unity`; `PauseReason.Sanctum`;
+`RunTicker.SanctumPhase` below `LevelUpPhase`, above the gate. EditMode 2 675 → **2 709, +34**;
+PlayMode 21 → **26, +5**.
+
+### Deviations
+
+1. **The first draw waits a frame — a finding, rule 2 amended.** `StageFlow` publishes
+   `SanctumOpened` from inside its tick; `RunSession` copies the phase onto
+   `RunState.IsSanctumOpen` only after the tick returns. Drawn in the handler, the port says the
+   shop is shut, `CanBuy` refuses all four, and the Sanctum opens with every row dead — the suite's
+   first run caught it. The handler latches; `Update` draws off the event's balance once
+   `IsSanctumOpen` is true. One frame, the frame the run pauses on. Moving core's write is an AR
+   §18.1 change and was not made: a [parking-lot](../ROADMAP.md#parking-lot) line, and
+   `Sanctum_TheFirstDrawWaitsForTheShopToOpen` pins the ordering so it fails the day core moves.
+   Rule 12's *"`Update` clears the latch and nothing else"* is now *"and one pending draw"*.
+2. **Seventeen strings, not fourteen.** M6-00b's count missed the Leave label, the balance line
+   (*"84 Essence"* is a word, so a row with `{0}`, `SplashPresenter.NodesKey`'s argument) and the
+   banish page's Back. Ledger row 7 says so.
+3. **The four rows are four named fields** (`_reroll`, `_banish`, `_heal`, `_cleanse`), not an
+   array indexed by `SanctumService`, and no row serializes its service: an enum ordinal in a prefab
+   is ordinal-as-identity. `Show` hands a row its service; `Prefab_IsDressed` checks four distinct.
+4. **`DebugOverlay`, outside the table** — the brief's instruction. F5–F8 and the door stand-in are
+   gone, and so is the overlay's `IProgressionCommands` dependency; it is read-only again. The
+   `gate` phase word, which the door wrote, is now read off `RunState.IsSanctumOpen` in `Refresh`.
+5. **`RunPauseTests.Reason_HasAllThreeMembers` → `Reason_HasAllFourMembers`**, outside the table:
+   it pinned the enum at three.
+6. **No `RunScopeTests` exists**, so the ripple row had nothing to amend; no fixture tests
+   RunScope's optional fields.
+7. **`Sanctum_ARowThatCannotBeAffordedIsDrawnAndDead` banks 24, not 39** — M6-02b's finding: 39
+   affords the 25 reroll.
+8. **Rows beyond the table:** `Sanctum_TheFirstDrawWaitsForTheShopToOpen`,
+   `Prefab_DrawsNoRawEnglish`, `Screen_ItsOwnLabelsAreWords`, and the guard rows (`Construct`,
+   `Start`, no-run, `Row_Show`, `Picker_Open`).
+9. **`Sanctum_CommandsBypassTheCommandPhase` is split across the two assemblies.** EditMode proves
+   each tap reaches the port inside its own call (a recording port over the real session);
+   `FrameOrderTests.Pause_TheSanctumHoldsIt` proves the ticker returns above `CommandPhase` with
+   the Sanctum holding the pause. No EditMode fixture can build a `RunTicker`.
+10. **`ServiceRow` reads `Palette.Essence` for the prices**, beside `SanctumPresenter` for the
+    balance, so the sweep finds three readers. `Palette_EssenceHasTwoReadersAndItsSummarySaysSo`
+    asserts the named two and the exact three.
+
+### Findings
+
+- **The Sanctum pause works as rule 4 argued**: 120 gated frames moved neither the simulated clock
+  nor core (`Ticker_TheSanctumIsGatedNotClocked`). M6-02a's *"cooldowns recover"* is false in the
+  shipped game, as stated.
+- **`Ticker_RunsTheStepsInOrder` stayed green** through one PlayMode run with the sixth phase in —
+  one run, not a flake rate; [ledger row 4](../ROADMAP.md#carry-forward-into-m6)'s verdict is M6-11's.
+- **Manual steps 1–4 are the owner's**; nothing here was played. Step 1 now needs the Leave button,
+  not the door: the stand-in is gone.

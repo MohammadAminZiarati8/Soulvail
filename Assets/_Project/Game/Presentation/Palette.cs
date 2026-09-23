@@ -45,9 +45,10 @@ namespace Soulvail.Game.Presentation;
 /// <para>
 /// <b>The tenth colour is a field here, which is how ledger row 6 closes rather than pauses.</b>
 /// M3-13b's damage tint, M4-04's boss segments, M6-04's Veilrot meter and M6-05's Pact frames each
-/// add a member and a test row instead of a placeholder. <see cref="Veilrot"/> and
-/// <see cref="Essence"/> ship with no reader at all, which is the cheapest possible statement of that
-/// rule, and <see cref="IsDanger"/> is the door every new member has to pass.
+/// add a member and a test row instead of a placeholder. <see cref="Veilrot"/> ships with no reader
+/// at all, which is the cheapest possible statement of that rule, and <see cref="IsDanger"/> is the
+/// door every new member has to pass. <see cref="Essence"/> shipped the same way and has had readers
+/// since M4-06 — M6-03a corrected the sentence that said otherwise.
 /// </para>
 /// <para>
 /// <b>It is <c>Soulvail.Game</c> and it could not be anything else.</b> A colour is presentation:
@@ -87,7 +88,10 @@ public static class Palette
     /// <summary><c>#A855F7</c> — corruption, Veilrot, Pacts. GD §16.4. No reader yet (M6).</summary>
     public static readonly Color Veilrot = Rgb(0xA8, 0x55, 0xF7);
 
-    /// <summary><c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. No reader yet (M6).</summary>
+    /// <summary>
+    /// <c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. Read by the run-end payout and the
+    /// Sanctum's prices.
+    /// </summary>
     public static readonly Color Essence = Rgb(0xFB, 0xBF, 0x24);
 
     /// <summary>

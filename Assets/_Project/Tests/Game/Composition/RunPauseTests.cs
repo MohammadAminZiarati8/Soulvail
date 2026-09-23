@@ -216,15 +216,16 @@ public sealed class RunPauseTests
     }
 
     [Test]
-    public void Reason_HasAllThreeMembers()
+    public void Reason_HasAllFourMembers()
     {
         // Menu had no caller until M3-09 and was written before it, because RunPause's whole
         // contract is that a second reason is refused and a one-member enum cannot express the case.
         // Splash is M5-07a-ii's, and unlike Menu it arrives with its caller: RunTicker.LevelUpPhase
-        // raises it for CH §5.4's moment.
-        Assert.That(Enum.GetValues(typeof(PauseReason)).Length, Is.EqualTo(3));
+        // raises it for CH §5.4's moment. Sanctum is M6-03a's, raised by RunTicker.SanctumPhase.
+        Assert.That(Enum.GetValues(typeof(PauseReason)).Length, Is.EqualTo(4));
         Assert.That(Enum.IsDefined(typeof(PauseReason), PauseReason.Menu), Is.True);
         Assert.That(Enum.IsDefined(typeof(PauseReason), PauseReason.Splash), Is.True);
+        Assert.That(Enum.IsDefined(typeof(PauseReason), PauseReason.Sanctum), Is.True);
     }
 
     /// <summary>

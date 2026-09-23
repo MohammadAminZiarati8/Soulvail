@@ -128,6 +128,12 @@ namespace Soulvail.Game.Composition
                  "stops for good.")]
         [SerializeField] private SplashPresenter _splashPresenter;
 
+        [Tooltip("GD §13.3's Sanctum: four priced services and a Leave button, on its own canvas " +
+                 "between the pause's and the level-up's. Optional on the splash screen's terms — " +
+                 "and read its registration below, because a run without it stops at the first " +
+                 "stage it clears.")]
+        [SerializeField] private SanctumPresenter _sanctumPresenter;
+
         [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
                  "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
                  "without one plays exactly the same fight, it just cannot be stopped from inside.")]
@@ -461,6 +467,17 @@ namespace Soulvail.Game.Composition
             if (_splashPresenter != null)
             {
                 builder.RegisterComponent(_splashPresenter);
+            }
+
+            // GD §13.3's shop (M6-03a). The splash's registration exactly, and its cost is sharper:
+            // RunTicker.SanctumPhase pauses the run whenever core has the shop open, and the Leave
+            // button on this screen is the only thing in the build that sends LeaveSanctum — the
+            // debug overlay's door stand-in went with this task. So a scene dressed without it stops
+            // dead at the first stage it clears. Optional anyway, for the undressed-Run-scene
+            // workflow every optional field here protects.
+            if (_sanctumPresenter != null)
+            {
+                builder.RegisterComponent(_sanctumPresenter);
             }
 
             // Optional, and — unlike the level-up screen directly above — its absence really does

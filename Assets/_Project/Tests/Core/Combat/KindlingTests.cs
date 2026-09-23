@@ -207,14 +207,20 @@ public sealed class KindlingTests
         Assert.That(kindling.PerStack.Value, Is.EqualTo(PerStack), "seeded from the spec.");
         Assert.That(kindling.MaxStacks.Value, Is.EqualTo(MaxStacks), "seeded from the spec.");
 
-        // Rule 4 and M3-12a's sequence: the stat exists because the number is authored, and the
-        // address arrives with the node that names it (M6-08). Asked by name, so the day M6-08 adds
-        // one this row is where it says so.
+        // Rule 4 and M3-12a's sequence: the stat existed because the number is authored, and the
+        // address arrived with the node that names it. This row said "none yet" until M6-08, whose
+        // Stoked Coals and Long Burn name exactly these two.
+        var addresses = new List<string>();
+
         foreach (string name in Enum.GetNames(typeof(PlayerStat)))
         {
-            Assert.That(name, Does.Not.Contain("Kindling"),
-                $"PlayerStat.{name} addresses Kindling before any node does — M6-08's to add.");
+            if (name.Contains("Kindling"))
+            {
+                addresses.Add(name);
+            }
         }
+
+        Assert.That(addresses, Is.EquivalentTo(new[] { nameof(PlayerStat.KindlingPerStack), nameof(PlayerStat.KindlingMaxStacks) }));
     }
 
     [Test]

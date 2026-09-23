@@ -217,6 +217,60 @@ MonoBehaviour:
     _text: Grave-Work
   - _key: tree.gravecaller.rot
     _text: Rot
+  - _key: skill.emberwright.ember-touch.name
+    _text: Ember Touch
+  - _key: skill.emberwright.ember-touch.description
+    _text: +15% orb damage.
+  - _key: skill.emberwright.stoked-coals.name
+    _text: Stoked Coals
+  - _key: skill.emberwright.stoked-coals.description
+    _text: Each Kindling stack is worth 3%, not 2%.
+  - _key: skill.emberwright.quickened-flame.name
+    _text: Quickened Flame
+  - _key: skill.emberwright.quickened-flame.description
+    _text: +12% fire rate.
+  - _key: skill.emberwright.long-burn.name
+    _text: Long Burn
+  - _key: skill.emberwright.long-burn.description
+    _text: Kindling holds 40 stacks, not 30.
+  - _key: skill.emberwright.emberfall.name
+    _text: Emberfall
+  - _key: skill.emberwright.emberfall.description
+    _text: A 4 m fire at your feet for 4 seconds.
+  - _key: skill.emberwright.arcane-haste.name
+    _text: Arcane Haste
+  - _key: skill.emberwright.arcane-haste.description
+    _text: Blink recharges a fifth sooner.
+  - _key: skill.emberwright.deep-well.name
+    _text: Deep Well
+  - _key: skill.emberwright.deep-well.description
+    _text: Emberfall recharges a quarter sooner.
+  - _key: skill.emberwright.ashen-lore.name
+    _text: Ashen Lore
+  - _key: skill.emberwright.ashen-lore.description
+    _text: +15% experience from kills.
+  - _key: skill.emberwright.cinder-nova.name
+    _text: Cinder Nova
+  - _key: skill.emberwright.cinder-nova.description
+    _text: A 6 m blaze around you for 1.5 seconds.
+  - _key: skill.emberwright.scorching-ground.name
+    _text: Scorching Ground
+  - _key: skill.emberwright.scorching-ground.description
+    _text: Blink's fire burns 50% hotter.
+  - _key: skill.emberwright.lingering-ash.name
+    _text: Lingering Ash
+  - _key: skill.emberwright.lingering-ash.description
+    _text: Blink's fire lasts 50% longer.
+  - _key: skill.emberwright.emberheart.name
+    _text: Emberheart
+  - _key: skill.emberwright.emberheart.description
+    _text: +15 maximum health.
+  - _key: tree.emberwright.ember
+    _text: Ember
+  - _key: tree.emberwright.arcana
+    _text: Arcana
+  - _key: tree.emberwright.ash
+    _text: Ash
   - _key: ui.classselect.title
     _text: Choose your class
   - _key: ui.classselect.back
@@ -244,6 +298,8 @@ MonoBehaviour:
     _text: Needs a power your class cannot use
   - _key: ui.splash.refused.minions
     _text: Commands minions — your class raises none
+  - _key: ui.splash.refused.address
+    _text: Needs a number your class does not have
   - _key: ui.sanctum.title
     _text: Sanctum
   - _key: ui.sanctum.balance

@@ -156,9 +156,9 @@ public sealed class ContentValidationTests
 
     private const int ShippedEnemies = 3;
     private const int ShippedModes = 1;
-    private const int ShippedSkills = 24;
-    private const int ShippedTrees = 2;
-    private const int ShippedEffects = 33;
+    private const int ShippedSkills = 36;
+    private const int ShippedTrees = 3;
+    private const int ShippedEffects = 45;
     private const int ShippedTables = 1;
 
     /// <summary>GD §13.4's four that M6-06b makes work (M6-06a) — Fracture and Echo are refused.</summary>

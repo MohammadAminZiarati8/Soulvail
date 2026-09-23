@@ -530,13 +530,21 @@ public sealed class BurningGroundTests
             Assert.That(((Stat)property.GetValue(skill)).Value, Is.EqualTo(seeded).Within(Tolerance), $"{name} is seeded from the spec.");
         }
 
+        // M3-12a's sequence, kept: the address arrived with the node that names it. M6-08's Ash
+        // branch names two of the three, and the third stays unaddressable until a node widens a
+        // pool (M7-04). This row said "none yet" until M6-08 and now says which.
+        var pool = new List<string>();
+
         foreach (string member in Enum.GetNames(typeof(PlayerStat)))
         {
-            StringAssert.DoesNotContain(
-                "Pool",
-                member,
-                "M3-12a's sequence: the address arrives with the node that names it (M6-08).");
+            if (member.Contains("Pool"))
+            {
+                pool.Add(member);
+            }
         }
+
+        Assert.That(pool, Is.EquivalentTo(new[] { nameof(PlayerStat.PoolDamage), nameof(PlayerStat.PoolDuration) }),
+            "Scorching Ground and Lingering Ash name these two; no node widens a pool, so no PoolRadius.");
     }
 
     [Test]

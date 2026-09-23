@@ -71,6 +71,23 @@ public sealed class StatBlockTests
     /// <summary>One frame, for the one row that has to make a Wight actually swing.</summary>
     private const float Frame = 0.1f;
 
+    /// <summary>
+    /// What this file's Oathbound fixture has no stat for: <see cref="PlayerStat.ContactDamage"/>, which
+    /// no player has, and M6-08's four, which only a class with Kindling and a Blink has (rule 8).
+    /// </summary>
+    /// <remarks>
+    /// Named rather than read off <c>Has</c>, so a <c>Has</c> that wrongly said false for a member
+    /// every player owns would still be walked below rather than skipped with it.
+    /// </remarks>
+    private static readonly PlayerStat[] NotAnOathbounds =
+    {
+        PlayerStat.ContactDamage,
+        PlayerStat.KindlingPerStack,
+        PlayerStat.KindlingMaxStacks,
+        PlayerStat.PoolDamage,
+        PlayerStat.PoolDuration,
+    };
+
     private SilentEvents _events;
     private RecordingIntents _intents;
     private EnemySystem _system;
@@ -107,10 +124,11 @@ public sealed class StatBlockTests
 
         foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
         {
-            // The one address the player does not have. Its refusal is ModifyStatTests'
-            // Stats_ResolveEveryMember; here it is skipped so this row can say the thing it is
-            // about, which is that the interface and the class are the same method.
-            if (member == PlayerStat.ContactDamage)
+            // The addresses this Oathbound does not have. Their refusals are ModifyStatTests'
+            // Stats_ResolveEveryMember and Stats_HasIsFalseForAClassWithoutTheObject; here they are
+            // skipped so this row can say the thing it is about, which is that the interface and
+            // the class are the same method.
+            if (Array.IndexOf(NotAnOathbounds, member) >= 0)
             {
                 continue;
             }
@@ -143,7 +161,7 @@ public sealed class StatBlockTests
         // stale scope or by a block resolved from the wrong side, the number would differ here.
         foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
         {
-            if (member == PlayerStat.ContactDamage)
+            if (Array.IndexOf(NotAnOathbounds, member) >= 0)
             {
                 continue;
             }
@@ -337,7 +355,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(9), "The other nine of twelve are player numbers.");
+        Assert.That(refused, Is.EqualTo(13), "The other thirteen of sixteen are player numbers — M6-08 added four.");
     }
 
     [Test]
@@ -407,8 +425,15 @@ public sealed class StatBlockTests
             nameof(PlayerStat.ShieldRechargeDelay),
             nameof(PlayerStat.HealPerKill),
             nameof(PlayerStat.ContactDamage),
-        }), "The same twelve members as after M4-01a, in the same order. A new member goes *after* "
-            + "ContactDamage and updates this row saying which task added it.");
+
+            // M6-08, appended — and none of the four is a Wight's, so the claim above still holds:
+            // two callers that are not the player, and neither has widened the space.
+            nameof(PlayerStat.KindlingPerStack),
+            nameof(PlayerStat.KindlingMaxStacks),
+            nameof(PlayerStat.PoolDamage),
+            nameof(PlayerStat.PoolDuration),
+        }), "M4-01a's twelve in the same order, then M6-08's four. A new member goes *after* "
+            + "PoolDuration and updates this row saying which task added it.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

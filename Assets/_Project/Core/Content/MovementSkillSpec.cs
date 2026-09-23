@@ -11,8 +11,7 @@ namespace Soulvail.Core.Content;
 /// into this from content, and a movement skill is named by its owning
 /// <see cref="CharacterSpec.Id"/> rather than by an ordinal.
 /// <para>
-/// Two members as of M5-02, which authors the class that carries the second; <c>Blink</c> arrives
-/// with M6-07. Each differs from a Charge in what happens along the path — a corpse decoy, a
+/// Three members as of M6-07a, which authors the class that carries the third. Each differs from a Charge in what happens along the path — a corpse decoy, a
 /// teleport — rather than in the cooldown, buffer and i-frame window every one of them has, which is
 /// why <see cref="MovementSkillSpec"/> holds the shared numbers and the kind selects the behaviour.
 /// Deliberately unvalidated here: the loud place for an unrecognised kind is whatever has to build
@@ -25,7 +24,8 @@ namespace Soulvail.Core.Content;
 /// also why the Gravecaller's numbers author 0 damage and 0 knockback rather than leaving CC §5's
 /// defaults to be dealt by a blink (M5-02 rule 7). <b>Still no second skill class:</b>
 /// <c>PlayerCombat</c> builds a <c>ChargeSkill</c> from the spec whatever the kind says, and the
-/// kind selects a <em>payload</em> on the start edge (M5-03 rule 1).
+/// kind selects a <em>payload</em> on the start edge (M5-03 rule 1). <see cref="Blink"/> is the
+/// second member to land before its behaviour, and M6-07b is where it gets one.
 /// </para>
 /// </remarks>
 public enum MovementSkillKind
@@ -42,6 +42,18 @@ public enum MovementSkillKind
     /// window are the Charge's; the corpse is the difference (M5-03).
     /// </summary>
     Shroudstep,
+
+    /// <summary>
+    /// The Emberwright's Blink (CH §3.3): an instant 10 m teleport leaving a fire pool. The kind is
+    /// content identity and lands here; what it <em>does</em> is M6-07b's — M6-07a rule 8, and M5-02
+    /// rule 7's arrangement for <see cref="Shroudstep"/> one class earlier.
+    /// </summary>
+    /// <remarks>
+    /// <b>Until M6-07b it is a Charge with nothing on the way</b>: <c>PlayerCombat</c> builds a
+    /// <c>ChargeSkill</c> whatever the kind says, and the Emberwright authors 0 damage and 0 knockback,
+    /// so a Blink moves 10 m in 0.05 s, hurts nothing and leaves no fire.
+    /// </remarks>
+    Blink,
 }
 
 /// <summary>
@@ -236,9 +248,9 @@ public sealed class MovementSkillSpec
     /// </summary>
     /// <remarks>
     /// Written as "the kind that leaves something behind, and everything else", rather than as a
-    /// <c>switch</c> over every member: a third kind is <c>Blink</c> (M6-07), which leaves a fire
-    /// pool and not a decoy, so it belongs on the zero side of this line until something says
-    /// otherwise. A kind added without a thought about this field therefore refuses a duration
+    /// <c>switch</c> over every member: the third kind is <see cref="MovementSkillKind.Blink"/>
+    /// (M6-07a), which leaves a fire pool and not a decoy, so it belongs on the zero side of this
+    /// line until something says otherwise. A kind added without a thought about this field therefore refuses a duration
     /// rather than silently accepting one nothing reads.
     /// </remarks>
     private static float Decoy(MovementSkillKind kind, float decoyDuration)

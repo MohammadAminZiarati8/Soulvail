@@ -432,4 +432,56 @@ firing unchanged.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the Public API, with one owner moved.** `KindlingSpec`, `Kindling` and
+`KindlingChanged` exist. `CharacterSpec` takes `kindling` optional and last, and
+`MovementSkillKind.Blink` is appended, so no serialized ordinal moves. `Emberwright.asset` carries
+rule 2's table and a Kindling block of 0.02 / 30. It is the third entry on
+`BootScope._characters`, and English has two rows. Neither shipped class asset was rewritten. **EditMode 2 858 → 2 900 (+42),
+twice; PlayMode 26 / 0 / 0, twice.**
+
+### Deviations
+
+1. **`PlayerCombat` builds `Kindling`, not `RunSession`, and `RunSession.cs` is untouched.** The
+   passive rides `Weapon.Damage` and is fed by two edges `PlayerCombat` already sees, which is
+   `FocusTracker`'s arrangement. Built by the run, it would need a setter or a fifth constructor
+   argument on `PlayerCombat`. Built here, every fixture that makes a `PlayerCombat` gets it.
+2. **The orb's door is `player.Kindling?.OnWeaponHitLanded()` inside `ProjectileSystem.Land`**,
+   not a new `PlayerCombat` method. Only the player's weapon fires an `AtEnemies` shot, so the
+   branch *is* the weapon.
+3. **`KindlingChanged` went into `Core/Events/CombatEvents.cs`**, a file the table does not list.
+   Every player-facing combat event lives there, and the Public API names the namespace.
+4. **`Orb_AtTheDocumentedThirtyWouldBreakTheBand` asserts stage 12, not stage 13.** The shipped
+   curve gives h(12) = 1.66 (59.76 HP, two hits at 30) and h(13) = 1.72 (61.92, three). The row
+   pins 12 as the last stage under the band and 13 as the boundary.
+5. **`Orb_IsTheSlowestKillerAndTheWidestBlast` uses hits ÷ rate for all three weapons.** The
+   spec's table gives the Bone Bolt 0.75 s. By the same formula as the other two it is 1.00 s. The
+   ordering holds either way, and the row asserts only the ordering and the orb's 2.00.
+6. **`Speed_EveryClassOutrunsEveryEnemy` needed no widening.** It already sweeps every
+   `CharacterDefinition` on disk, so the third class was in it the moment the asset existed.
+7. **Four files outside the ripple row.** `GravecallerTests`' boot-catalog count went 2 → 3, and
+   its band-ceiling remark no longer says the Emberwright has no asset.
+   `ContentValidationTests.ShippedCharacters` is raised to 3, which that file's own remark asks
+   for. `CharacterDefinitionTests` gained the two guard rows the spec implies.
+8. **Two rows beyond the table.** `Kindling_IsTheAuthoredBlock` reads 0.02 / 30 off the asset, and
+   `Kindling_IsNullOnAClassWithoutTheBlock` pins rule 1 in core.
+9. **`Kindling_IsNullOnBothShippedClasses` reads the files, not `git status`.** A test that shells
+   out to git depends on the machine it runs on. It asserts that no
+   `_kindlingMaxStacks` line in either file reads anything but 0. That is
+   `Minions_AreNullOnTheOathbound`'s treatment.
+
+### Findings
+
+- **A node that moves `PerStack` is felt on the next hit, not at the pick.** The modifier is
+  rewritten when the count moves, not when a stat does. That delay is at most one 0.67 s interval.
+  `Kindling`'s remarks record it for M6-08.
+- **The cone door counts a Warden's shielded hit as a stack.** `_hitCount` records a blocked
+  enemy hit as well as a damaging one, and `ProjectileImpacted.Hit` means the same thing.
+  CH §3.3 says *hits*, and a hit the shield ate still landed.
+- **Unlike M5-02's treelessness, this one is reachable from the menu.**
+  `Tree_TheTreelessClassIsStillTreeless` says so, and says why it is safe: a treeless run builds
+  no `LevelUpFlow`.
+- **Known issue 1 did not fire.** Both PlayMode passes were 26 / 0.
+- **Ledger rows.** Row 2's two predicted figures, 3 cold and 2 hot, are now asserted rows rather
+  than predictions. Row 7's two strings shipped. Neither row moves owner.
+- **M6-06a/b are not on `origin/dev`.** This branch was cut from `m6-06b-ordeal-effects`, so its
+  PR carries those two commits until they merge.

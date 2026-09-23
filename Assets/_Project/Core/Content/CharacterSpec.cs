@@ -88,6 +88,12 @@ public sealed class CharacterSpec
     /// default and a block of zeroes would have to be read against <paramref name="id"/> to be
     /// understood (M5-02 rule 6).
     /// </param>
+    /// <param name="kindling">
+    /// The class's stacking signature, or <see langword="null"/> for a class with none. Optional and
+    /// last for <paramref name="minions"/>' counted reason (M6-07a rule 1): 64 <c>new
+    /// CharacterSpec(...)</c> sites across 45 files build one, and CH §3.3's Kindling is the
+    /// Emberwright's alone, so <see langword="null"/> is the honest default.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -117,7 +123,8 @@ public sealed class CharacterSpec
         MovementSkillSpec movementSkill,
         ShieldSpec shield = null,
         float hitIFrames = 0f,
-        MinionSpec minions = null)
+        MinionSpec minions = null,
+        KindlingSpec kindling = null)
     {
         if (id.Value is null)
         {
@@ -167,6 +174,7 @@ public sealed class CharacterSpec
         Shield = shield;
         HitIFrames = hitIFrames;
         Minions = minions;
+        Kindling = kindling;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -241,4 +249,13 @@ public sealed class CharacterSpec
     /// they are authored twice (M5-02 rule 5).
     /// </remarks>
     public MinionSpec Minions { get; }
+
+    /// <summary>
+    /// The class's stacking signature, or <see langword="null"/> for a class with none. Only the
+    /// Emberwright has one in V1.
+    /// </summary>
+    /// <remarks>
+    /// <c>PlayerCombat</c> builds a <c>Kindling</c> from this and nothing else reads it (M6-07a).
+    /// </remarks>
+    public KindlingSpec Kindling { get; }
 }

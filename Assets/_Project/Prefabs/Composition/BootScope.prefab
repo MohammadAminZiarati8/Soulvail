@@ -51,6 +51,7 @@ MonoBehaviour:
   _characters:
   - {fileID: 11400000, guid: c540d868e2cdd7947a4d1fbd712b7dc3, type: 2}
   - {fileID: 11400000, guid: 6411b5d0347b42d429b770b1ed2db1bc, type: 2}
+  - {fileID: 11400000, guid: 8b4c6635d5a94bd29425d12fc83b56ea, type: 2}
   _enemies:
   - {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   - {fileID: 11400000, guid: c0721c0db9f90994eb335150497c3400, type: 2}

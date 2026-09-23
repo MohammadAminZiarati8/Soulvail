@@ -530,6 +530,16 @@ public sealed class ProjectileSystem
             ? LandOnEnemies(shot, now, player, enemies)
             : LandOnPlayer(shot, now, playerPosition, player);
 
+        // **One orb is one Kindling stack however many it caught, and a miss is nothing** (M6-07a
+        // rule 5). `hit` is already "reached a living agent", which is the question CH §3.3 asks, and
+        // the only thing that fires an AtEnemies shot is the player's weapon — so this is the
+        // projectile half of the door ResolveConeHits is for a swing. After the damage, so the orb
+        // that raised the ramp was not itself raised by it.
+        if (hit && shot.Side == ShotSide.AtEnemies)
+        {
+            player.Kindling?.OnWeaponHitLanded();
+        }
+
         // After the damage, so a listener handling this has already seen the PlayerDamaged — or the
         // EnemyDamaged and EnemyDied — that the same arrival caused.
         _events.Publish(new ProjectileImpacted(flight.Id, shot.Target, hit));

@@ -152,7 +152,7 @@ public sealed class ContentValidationTests
     /// having: left at twelve after a second tree landed, the skill filter could stop matching half
     /// the project and the row would say nothing.
     /// </remarks>
-    private const int ShippedCharacters = 2;
+    private const int ShippedCharacters = 3;
 
     private const int ShippedEnemies = 3;
     private const int ShippedModes = 1;

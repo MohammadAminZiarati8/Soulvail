@@ -129,6 +129,14 @@ namespace Soulvail.Game.Authoring
                  "field, and nothing would ever read it.")]
         [SerializeField, Min(0f)] private float _movementSkillDecoyDuration;
 
+        [Tooltip("A Blink's fire pool (CH §3.3): how far it reaches, how long it burns, and what " +
+                 "one pulse takes off — 3 m, 3 s and 4 for the Emberwright. It pulses every " +
+                 "0.5 s, which is not authored. Validated against the kind above: a Blink must " +
+                 "have all three above 0, and every other kind must have all three at exactly 0.")]
+        [SerializeField, Min(0f)] private float _movementSkillPoolRadius;
+        [SerializeField, Min(0f)] private float _movementSkillPoolDuration;
+        [SerializeField, Min(0f)] private float _movementSkillPoolDamagePerPulse;
+
         [Tooltip("The class's minions (CH §3.2's Rise). Cap 0 means this class has none — only " +
                  "the Gravecaller's Wights do in V1, and every field below is ignored at 0. The " +
                  "cap is the switch for the reason the shield max above is: a zeroed block would " +
@@ -247,7 +255,10 @@ namespace Soulvail.Game.Authoring
                         _movementSkillDamage,
                         _movementSkillKnockback,
                         _movementSkillIFrameTrail,
-                        _movementSkillDecoyDuration),
+                        _movementSkillDecoyDuration,
+                        _movementSkillPoolRadius,
+                        _movementSkillPoolDuration,
+                        _movementSkillPoolDamagePerPulse),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

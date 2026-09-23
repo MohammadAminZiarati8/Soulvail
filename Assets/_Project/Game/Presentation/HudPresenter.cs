@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -52,11 +53,22 @@ namespace Soulvail.Game.Presentation
     /// five parameters to two and <see cref="Update"/> now does nothing but <see cref="TickFade"/>.
     /// </para>
     /// <para>
-    /// <b>The HUD is therefore not an <c>ILocalizer</c> reader at all, and draws no word</b>:
-    /// <see cref="HpFormat"/> and <see cref="LevelFormat"/> are number formats rather than sentences
-    /// and survive localisation unchanged, which is the distinction M3-14a drew and this class
-    /// inherits. The two keys that were here — <c>ui.death.title</c> and <c>ui.death.hint</c> — kept
-    /// their spellings and moved to the new screen (M4-06 rule 3).
+    /// <b>The HUD drew no word from M4-06 to M6-03b, and draws three now.</b> <see cref="HpFormat"/>,
+    /// <see cref="LevelFormat"/> and <see cref="EssenceFormat"/> are number formats rather than
+    /// sentences and survive localisation unchanged, which is the distinction M3-14a drew. The two
+    /// death keys that were here moved to <c>RunEndPresenter</c> (M4-06 rule 3) and the
+    /// <c>ILocalizer</c> left with them; it came back at M6-03b for the Essence counter's caption,
+    /// the meter's caption and the Claiming's name — all three written once at <c>Start</c>, never
+    /// per event.
+    /// </para>
+    /// <para>
+    /// <b>GD §16.1's two economy readouts are driven from here, on the boss band's terms</b>
+    /// (M6-03b). The Essence counter sits top-right, left of the pause icon; the
+    /// <see cref="VeilrotMeterView"/> hangs down the right edge under it. Both are handed numbers by
+    /// events — <c>EssenceChanged</c>, <c>VeilrotChanged</c>, <c>ClaimingBegan</c> — and seeded
+    /// from <c>RunState</c> on <c>RunStarted</c>, because a resumed run's wallet and meter are
+    /// restored <em>silently</em> (M6-01a rule 8, M6-04 rule 9): a screen that only listened would
+    /// draw a resumed run at zero on both.
     /// </para>
     /// <para>
     /// <b>The boss's bar is driven from here, and it is not the player's own row</b> (M4-04). GD
@@ -99,6 +111,30 @@ namespace Soulvail.Game.Presentation
         /// TMP's float overload so it allocates nothing.
         /// </summary>
         private const string LevelFormat = "{0:0}";
+
+        /// <summary>
+        /// The Essence balance, on its own — <see cref="LevelFormat"/>'s spelling for its reasons.
+        /// </summary>
+        private const string EssenceFormat = "{0:0}";
+
+        /// <summary>
+        /// How tall the two captions and the Claiming's name are, in dp. A constant for
+        /// <see cref="LevelWidthDp"/>'s reason: no caller passes a value through it. Room for 28 pt,
+        /// which is 12.36 dp and the smallest size on this prefab that clears Android's floor.
+        /// </summary>
+        private const float CaptionHeightDp = 20f;
+
+        /// <summary>How wide the meter's caption and the Claiming's name are, in dp.</summary>
+        private const float MeterWordWidthDp = 80f;
+
+        /// <summary>GD §16.1's <em>"small counter"</em>, captioned.</summary>
+        private static readonly LocKey EssenceKey = new LocKey("ui.hud.essence");
+
+        /// <summary>The meter's caption, under it.</summary>
+        private static readonly LocKey VeilrotKey = new LocKey("ui.hud.veilrot");
+
+        /// <summary>What the Claiming is called, beside the meter once it has begun — rule 5's word.</summary>
+        private static readonly LocKey ClaimedKey = new LocKey("ui.hud.claimed");
 
         /// <summary>
         /// How wide the level label is, in dp.
@@ -181,7 +217,38 @@ namespace Soulvail.Game.Presentation
         [Min(0f)]
         [SerializeField] private float _gapDp = 8f;
 
+        [Tooltip("GD §16.1's Veilrot meter, down the right edge. Optional on the boss band's terms: " +
+                 "a HUD without one plays the same run, the player just cannot see the Veil.")]
+        [SerializeField] private VeilrotMeterView _meter;
+
+        [Tooltip("The meter's caption, under it.")]
+        [SerializeField] private TMP_Text _veilrotLabel;
+
+        [Tooltip("The Claiming's name, beside the meter's top. Hidden until the Claiming begins.")]
+        [SerializeField] private TMP_Text _claimedLabel;
+
+        [Tooltip("GD §16.1's Essence counter, top-right. Optional on the same terms as the meter.")]
+        [SerializeField] private TMP_Text _essenceText;
+
+        [Tooltip("The counter's caption, under it.")]
+        [SerializeField] private TMP_Text _essenceLabel;
+
+        [Tooltip("The meter's width and height in dp. Applied at runtime for the health bar's reason.")]
+        [SerializeField] private Vector2 _meterSizeDp = new Vector2(12f, 160f);
+
+        [Tooltip("Where the meter's top-right corner sits, in dp in from the safe area's right edge " +
+                 "and down from its top. Under the pause icon, which owns the corner itself.")]
+        [SerializeField] private Vector2 _meterInsetDp = new Vector2(16f, 76f);
+
+        [Tooltip("The Essence counter's width and height in dp.")]
+        [SerializeField] private Vector2 _essenceSizeDp = new Vector2(96f, 24f);
+
+        [Tooltip("Where the counter's top-right corner sits, in dp in from the safe area's right " +
+                 "edge and down from its top — left of the 44 dp pause icon and its 16 dp margin.")]
+        [SerializeField] private Vector2 _essenceInsetDp = new Vector2(68f, 16f);
+
         private IRunSession _session;
+        private ILocalizer _localizer;
 
         private IDisposable _startedSubscription;
         private IDisposable _damagedSubscription;
@@ -196,6 +263,15 @@ namespace Soulvail.Game.Presentation
         private IDisposable _bossBeatEndedSubscription;
         private IDisposable _enemyDamagedSubscription;
         private IDisposable _enemyDiedSubscription;
+        private IDisposable _essenceSubscription;
+        private IDisposable _veilrotSubscription;
+        private IDisposable _claimingSubscription;
+
+        /// <summary>The meter's last value, so <c>ClaimingBegan</c> can raise the mark without moving it.</summary>
+        private float _veilrot;
+
+        /// <summary>Whether the Claiming has begun — <c>RunState.IsClaimed</c>'s latch, mirrored.</summary>
+        private bool _isClaimed;
 
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
@@ -218,7 +294,10 @@ namespace Soulvail.Game.Presentation
         /// The run, for the four health reads a <c>RunStarted</c> has no payload for. Not
         /// <c>IPlayerCommands</c>: a HUD asks the game for nothing.
         /// </param>
-        /// <exception cref="ArgumentNullException">Either dependency is null.</exception>
+        /// <param name="localizer">
+        /// The three captions' words (M6-03b) — written once at <c>Start</c>, never per event.
+        /// </param>
+        /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// <para>
         /// Subscribed here rather than in <c>OnEnable</c>, which is what the M1-17 spec sketched and
@@ -230,14 +309,15 @@ namespace Soulvail.Game.Presentation
         /// <para>
         /// <b>Two parameters, down from five</b> (M4-06 rule 2). <c>SceneLoader</c>,
         /// <c>InputAdapter</c> and <c>ILocalizer</c> left with the death overlay, because the death
-        /// path was the only reader of all three — so a HUD now asks the app for nothing at all and
-        /// reads no words.
+        /// path was the only reader of all three. <b>Three again as of M6-03b</b>, and the third is
+        /// an <c>ILocalizer</c> for GD §16.1's economy readouts rather than for a death screen.
         /// </para>
         /// </remarks>
         [Inject]
-        public void Construct(DomainEventHub hub, IRunSession session)
+        public void Construct(DomainEventHub hub, IRunSession session, ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -281,6 +361,12 @@ namespace Soulvail.Game.Presentation
             _bossBeatEndedSubscription = hub.Subscribe<BossBeatEnded>(OnBossBeatEnded);
             _enemyDamagedSubscription = hub.Subscribe<EnemyDamaged>(OnEnemyDamaged);
             _enemyDiedSubscription = hub.Subscribe<EnemyDied>(OnEnemyDied);
+
+            // GD §16.1's economy readouts (M6-03b rule 2). Each event carries the value after the
+            // movement, so nothing here keeps a sum; RunStarted seeds all three from the run.
+            _essenceSubscription = hub.Subscribe<EssenceChanged>(OnEssenceChanged);
+            _veilrotSubscription = hub.Subscribe<VeilrotChanged>(OnVeilrotChanged);
+            _claimingSubscription = hub.Subscribe<ClaimingBegan>(OnClaimingBegan);
         }
 
         /// <exception cref="MissingReferenceException">A view or the readout is not dressed.</exception>
@@ -310,6 +396,7 @@ namespace Soulvail.Game.Presentation
             }
 
             Place();
+            WriteWords();
 
             // Down whatever the prefab was left dressed as, so a cover someone was editing cannot
             // ship over the arena.
@@ -346,7 +433,13 @@ namespace Soulvail.Game.Presentation
             _bossBeatEndedSubscription?.Dispose();
             _enemyDamagedSubscription?.Dispose();
             _enemyDiedSubscription?.Dispose();
+            _essenceSubscription?.Dispose();
+            _veilrotSubscription?.Dispose();
+            _claimingSubscription?.Dispose();
 
+            _essenceSubscription = null;
+            _veilrotSubscription = null;
+            _claimingSubscription = null;
             _grantedSubscription = null;
             _grantExpiredSubscription = null;
             _bossPhaseSubscription = null;
@@ -619,6 +712,86 @@ namespace Soulvail.Game.Presentation
             _bossBar.Hide();
         }
 
+        /// <summary>M6-03b rule 2: the wallet moved, and the event carries where it landed.</summary>
+        private void OnEssenceChanged(EssenceChanged evt)
+        {
+            WriteEssence(evt.Balance);
+        }
+
+        /// <summary>M6-03b rule 2: the meter moved, up or down, and the event carries where to.</summary>
+        private void OnVeilrotChanged(VeilrotChanged evt)
+        {
+            _veilrot = evt.Value;
+
+            WriteMeter();
+        }
+
+        /// <summary>
+        /// M6-03b rule 4: the Claiming began. The mark goes up and the fill stays where
+        /// <c>VeilrotChanged</c> left it.
+        /// </summary>
+        private void OnClaimingBegan(ClaimingBegan evt)
+        {
+            _isClaimed = true;
+
+            WriteMeter();
+        }
+
+        /// <summary>The counter, in GD §16.4's reward gold.</summary>
+        /// <remarks>TMP's float overload for <see cref="WriteHp"/>'s reason: it allocates nothing.</remarks>
+        private void WriteEssence(int balance)
+        {
+            if (_essenceText == null)
+            {
+                return;
+            }
+
+            _essenceText.color = Palette.Essence;
+            _essenceText.SetText(EssenceFormat, balance);
+        }
+
+        /// <summary>The meter and the Claiming's name, from the two values this class mirrors.</summary>
+        /// <remarks>
+        /// The name is <see cref="Palette.Veilrot"/> and never <see cref="Palette.Danger"/> — rule 5,
+        /// which is about the word as much as the bar.
+        /// </remarks>
+        private void WriteMeter()
+        {
+            if (_meter != null)
+            {
+                _meter.Set(_veilrot, _isClaimed);
+            }
+
+            if (_claimedLabel != null)
+            {
+                _claimedLabel.color = Palette.Veilrot;
+
+                if (_claimedLabel.gameObject.activeSelf != _isClaimed)
+                {
+                    _claimedLabel.gameObject.SetActive(_isClaimed);
+                }
+            }
+        }
+
+        /// <summary>The three captions, once. A missing label is a HUD dressed without it.</summary>
+        private void WriteWords()
+        {
+            Write(_essenceLabel, EssenceKey, Palette.Essence);
+            Write(_veilrotLabel, VeilrotKey, Palette.Veilrot);
+            Write(_claimedLabel, ClaimedKey, Palette.Veilrot);
+        }
+
+        private void Write(TMP_Text label, LocKey key, Color colour)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
+            label.color = colour;
+        }
+
         /// <summary>
         /// Draws <paramref name="points"/> of granted shield over the player's live maximum.
         /// </summary>
@@ -669,6 +842,14 @@ namespace Soulvail.Game.Presentation
             // already been published depends on an order Unity does not give — so that the HUD never
             // has to know which of those two facts is keeping it correct.
             WriteGrantedShield(state.PlayerGrantedShield);
+
+            // M6-03b rule 2: the wallet and the meter are restored silently on a resume, so this is
+            // the only way a resumed run's 317 Essence and 78 Veilrot ever reach the screen.
+            _veilrot = state.Veilrot;
+            _isClaimed = state.IsClaimed;
+
+            WriteEssence(state.Essence);
+            WriteMeter();
         }
 
         /// <remarks>
@@ -767,7 +948,87 @@ namespace Soulvail.Game.Presentation
                 _marginDp.y,
                 new Vector2(LevelWidthDp, _barSizeDp.y),
                 pxPerDp);
+
+            PlaceRightEdge(pxPerDp);
         }
+
+        /// <summary>
+        /// M6-03b rule 10: the Essence counter and the Veilrot meter, in dp from the top-right corner.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A second method rather than more of <see cref="Place"/>'s row, because nothing here shares
+        /// an edge with it: the row reads left to right from the top-left, and these two hang from the
+        /// top-right around the pause icon, which <c>PausePresenter</c> places 44 dp across at a 16 dp
+        /// margin. So the counter's default inset is 68 dp from the right and the meter's is 76 dp
+        /// down — beside the icon and under it respectively.
+        /// </para>
+        /// <para>
+        /// <b>A nonsense dp field leaves the prefab's layout alone</b>, <c>XpBarView.Place</c>'s
+        /// answer: both readouts are authored on <c>Hud.prefab</c>, so there is something honest to
+        /// fall back to, where writing a NaN into a <c>sizeDelta</c> is a rect that never renders
+        /// again. The meter's marks are placed either way — they are fractions of whatever the meter
+        /// is.
+        /// </para>
+        /// </remarks>
+        private void PlaceRightEdge(float pxPerDp)
+        {
+            if (IsUsableSize(_essenceSizeDp) && IsUsableInset(_essenceInsetDp))
+            {
+                PlaceFromRight(_essenceText, _essenceInsetDp, _essenceSizeDp, pxPerDp);
+                PlaceFromRight(
+                    _essenceLabel,
+                    new Vector2(_essenceInsetDp.x, _essenceInsetDp.y + _essenceSizeDp.y),
+                    new Vector2(_essenceSizeDp.x, CaptionHeightDp),
+                    pxPerDp);
+            }
+
+            if (IsUsableSize(_meterSizeDp) && IsUsableInset(_meterInsetDp))
+            {
+                PlaceFromRight(_meter, _meterInsetDp, _meterSizeDp, pxPerDp);
+
+                // The caption right-aligned under the meter, and the Claiming's name beside its top —
+                // both wider than a 12 dp bar, so both hang to the bar's left rather than over it.
+                PlaceFromRight(
+                    _veilrotLabel,
+                    new Vector2(_meterInsetDp.x, _meterInsetDp.y + _meterSizeDp.y),
+                    new Vector2(MeterWordWidthDp, CaptionHeightDp),
+                    pxPerDp);
+                PlaceFromRight(
+                    _claimedLabel,
+                    new Vector2(_meterInsetDp.x + _meterSizeDp.x + _gapDp, _meterInsetDp.y),
+                    new Vector2(MeterWordWidthDp, CaptionHeightDp),
+                    pxPerDp);
+            }
+
+            if (_meter != null)
+            {
+                _meter.PlaceThresholds(pxPerDp);
+            }
+        }
+
+        /// <summary>
+        /// Pins one component's top-right corner <paramref name="insetDp"/> in from the parent's.
+        /// </summary>
+        private static void PlaceFromRight(Component piece, Vector2 insetDp, Vector2 sizeDp, float pxPerDp)
+        {
+            if (piece == null || piece.transform is not RectTransform rect)
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.sizeDelta = sizeDp * pxPerDp;
+            rect.anchoredPosition = new Vector2(-insetDp.x * pxPerDp, -insetDp.y * pxPerDp);
+        }
+
+        private static bool IsUsableSize(Vector2 dp) =>
+            float.IsFinite(dp.x) && float.IsFinite(dp.y) && dp.x > 0f && dp.y > 0f;
+
+        private static bool IsUsableInset(Vector2 dp) =>
+            float.IsFinite(dp.x) && float.IsFinite(dp.y) && dp.x >= 0f && dp.y >= 0f;
 
         /// <summary>
         /// Pins one rect's top-left corner <paramref name="leftDp"/> in and <paramref name="topDp"/>

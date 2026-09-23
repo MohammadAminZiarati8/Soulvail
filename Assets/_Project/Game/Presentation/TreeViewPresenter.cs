@@ -447,7 +447,7 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Rule 3's three answers for one node, from the two reads <c>RunState</c> hands out.
+        /// The four answers for one node, from the three reads <c>RunState</c> hands out.
         /// </summary>
         /// <remarks>
         /// <b>Taken is asked first and by a scan</b>, because <c>RunState</c> has no
@@ -458,6 +458,12 @@ namespace Soulvail.Game.Presentation
         /// list on a frame nothing is ticking — AR §14 permits it here for
         /// <c>SkillRow.WriteTrigger</c>'s reason, and a <c>HashSet</c> built per open would allocate
         /// to save a comparison nobody is timing.
+        /// <para>
+        /// <b>Banished is the fourth answer, and the order of the checks still cannot matter</b>
+        /// (M6-03b rule 9): <c>SkillTree.Banish</c> refuses a taken node and <c>Check</c> answers
+        /// closed for a banished one (M6-02b rules 4, 5), so no id is ever two of taken, banished and
+        /// available. A second scan of the same shape — at most the banished count per cell.
+        /// </para>
         /// </remarks>
         private static NodeState StateOf(RunState state, ContentId id)
         {
@@ -468,6 +474,16 @@ namespace Soulvail.Game.Presentation
                 if (taken[i] == id)
                 {
                     return NodeState.Taken;
+                }
+            }
+
+            IReadOnlyList<ContentId> banished = state.BanishedNodeIds;
+
+            for (int i = 0; i < banished.Count; i++)
+            {
+                if (banished[i] == id)
+                {
+                    return NodeState.Banished;
                 }
             }
 

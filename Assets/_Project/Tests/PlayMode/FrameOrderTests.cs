@@ -315,7 +315,10 @@ public sealed class FrameOrderTests
 
             // And M4-05b's writer, on the constructor for the same reason: a Scoped registration
             // nobody resolves is never constructed, so the parameter is what makes the object exist.
-            new ShardWriter(new ProfileStore(new InertSaveStore()), _hub),
+            new ShardWriter(
+                new ProfileStore(new InertSaveStore()),
+                _hub,
+                new ContentCatalog(Array.Empty<CharacterSpec>())),
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),

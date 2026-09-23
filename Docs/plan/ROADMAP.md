@@ -156,7 +156,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-07b | [Blink, and the first ground in this game that burns](tasks/M6-07b-blink-and-the-ground-that-burns.md) | S | M6-07a | ☑ |
 | M6-07c | [What each class does with the Veil, and the cast you buy with it](tasks/M6-07c-what-each-class-does-with-the-veil.md) | M | M6-07b, M6-02b | ☑ |
 | M6-08 | [The Emberwright tree v1, two Actives, and the five addresses its nodes need](tasks/M6-08-emberwright-tree-v1.md) | M | M6-07c | ☑ |
-| M6-09a | [Profile v4: the classes you own, the archetypes you have met, and a field for a language nobody speaks yet](tasks/M6-09a-profile-v4-and-what-a-shard-buys.md) | M | M6-08 | ☐ |
+| M6-09a | [Profile v4: the classes you own, the archetypes you have met, and a field for a language nobody speaks yet](tasks/M6-09a-profile-v4-and-what-a-shard-buys.md) | M | M6-08 | ☑ |
 | M6-09b | [A class you cannot pick yet, and the first Shard anyone has ever spent](tasks/M6-09b-a-class-you-cannot-pick-yet.md) | S | M6-09a | ☐ |
 | M6-10 | [The rest of localisation: a second table, a sweep that finds raw strings, and the language nobody has written](tasks/M6-10-the-rest-of-localisation.md) — `ILocalizer`, `TableLocalizer` and one English table land early at [M3-14a](tasks/M3-14a-localizer-and-english-table.md), by the owner's M3-00d ruling | M | M6-09a | ☐ |
 | M6-11 | [M6 acceptance: two instruments, a frame-order verdict, and tag `m6`](tasks/M6-11-acceptance-and-tag.md) — [row 4](#carry-forward-into-m6) | S | everything | ☐ |

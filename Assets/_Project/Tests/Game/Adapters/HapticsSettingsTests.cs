@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
+using Soulvail.Core.Content;
 using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
 using Soulvail.Tests.Core.Fakes;
@@ -29,7 +30,7 @@ namespace Soulvail.Tests.Game.Adapters;
 /// <para>
 /// <b><see cref="Haptics_ToggleKeepsTheHintFlag"/> is the row this fixture gained at M3-09c and the
 /// reason <c>ProfileStore</c> exists.</b> Until then this class persisted with
-/// <c>new PlayerProfile(CurrentVersion, value)</c> — the whole struct, authored from the one field
+/// <c>new PlayerProfile(CurrentVersion, value, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")</c> — the whole struct, authored from the one field
 /// it knew — which is correct for a record with one field in it and silently destructive at v2.
 /// </para>
 /// </remarks>
@@ -51,7 +52,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
         Assert.That(settings.Enabled, Is.False);
     }
@@ -82,7 +83,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
         // A load that immediately re-saves is a load that can corrupt what it just read — and on a
         // fresh install it would put a profile on disk for a player who has changed nothing. The
@@ -130,7 +131,7 @@ public sealed class HapticsSettingsTests
     /// </summary>
     /// <remarks>
     /// Against the code that shipped at M1-20 this goes red on its last assertion: the setter wrote
-    /// <c>new PlayerProfile(CurrentVersion, value)</c>, so the persisted flag came back at the
+    /// <c>new PlayerProfile(CurrentVersion, value, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")</c>, so the persisted flag came back at the
     /// constructor's default and a player who had already dismissed CC §6.3's one-time callout would
     /// be shown it again the next time they turned haptics off.
     /// </remarks>
@@ -143,7 +144,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
         settings.Enabled = false;
 

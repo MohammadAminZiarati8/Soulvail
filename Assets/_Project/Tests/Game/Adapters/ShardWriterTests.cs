@@ -3,10 +3,13 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -37,10 +40,12 @@ public sealed class ShardWriterTests
     private DomainEventHub _hub;
     private RecordingStore _store;
     private ProfileStore _profiles;
+    private ContentCatalog _catalog;
 
     [SetUp]
     public void SetUp()
     {
+        _catalog = ShippedCatalog();
         _hub = new DomainEventHub();
         _store = new RecordingStore();
         _profiles = new ProfileStore(_store);
@@ -55,13 +60,21 @@ public sealed class ShardWriterTests
     [Test]
     public void Construct_NullProfiles_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new ShardWriter(null, _hub));
+        Assert.Throws<ArgumentNullException>(() => new ShardWriter(null, _hub, _catalog));
     }
 
     [Test]
     public void Construct_NullHub_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new ShardWriter(_profiles, null));
+        Assert.Throws<ArgumentNullException>(() => new ShardWriter(_profiles, null, _catalog));
+    }
+
+    [Test]
+    public void Construct_NullCatalog_Throws()
+    {
+        // Required rather than defaulted: a writer without one banks the Shards and drops the class
+        // a player just earned, which is the destructive direction (M6-09a rule 8).
+        Assert.Throws<ArgumentNullException>(() => new ShardWriter(_profiles, _hub, null));
     }
 
     [Test]
@@ -69,7 +82,7 @@ public sealed class ShardWriterTests
     {
         Adopt(shards: 100);
 
-        using var writer = new ShardWriter(_profiles, _hub);
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         _hub.Publish(new ShardsAwarded(total: 220, deepestStage: 12, bossesKilled: 2));
 
@@ -89,7 +102,7 @@ public sealed class ShardWriterTests
     {
         Adopt(shards: 100);
 
-        using var writer = new ShardWriter(_profiles, _hub);
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         _hub.Publish(new ShardsAwarded(total: 40, deepestStage: 4, bossesKilled: 0));
         _hub.Publish(new ShardsAwarded(total: 40, deepestStage: 4, bossesKilled: 0));
@@ -107,7 +120,7 @@ public sealed class ShardWriterTests
     {
         Adopt(shards: 100);
 
-        using var writer = new ShardWriter(_profiles, _hub);
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         // Rule 5's refusal, and `SaveWriter.Writer_IgnoresRunEnded`'s shape. RunEnded is also
         // published when RunScope is torn down, which is every ordinary exit from the Run scene —
@@ -130,9 +143,9 @@ public sealed class ShardWriterTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
-        using var writer = new ShardWriter(_profiles, _hub);
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         _hub.Publish(new ShardsAwarded(total: 10, deepestStage: 1, bossesKilled: 0));
 
@@ -155,7 +168,7 @@ public sealed class ShardWriterTests
         // a full disk, which must not throw out of an event callback on the frame they died.
         LogAssert.Expect(LogType.Error, new Regex("Could not save the player profile"));
 
-        using var writer = new ShardWriter(_profiles, _hub);
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         Assert.DoesNotThrow(
             () => _hub.Publish(new ShardsAwarded(total: 220, deepestStage: 12, bossesKilled: 2)));
@@ -171,7 +184,7 @@ public sealed class ShardWriterTests
     {
         Adopt(shards: 100);
 
-        var writer = new ShardWriter(_profiles, _hub);
+        var writer = new ShardWriter(_profiles, _hub, _catalog);
 
         writer.Dispose();
 
@@ -188,6 +201,123 @@ public sealed class ShardWriterTests
         Assert.DoesNotThrow(writer.Dispose);
     }
 
+    // ---- M6-09a rule 8: one run's outcome, three fields, one subscriber ---------------------------
+
+    [Test]
+    public void Writer_BanksAllThree()
+    {
+        Adopt(shards: 0);
+
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
+
+        // A death at stage 20 on a fresh install: all three archetypes new, and the Emberwright's
+        // deed done on the way.
+        _hub.Publish(Death(stage: 20, total: 425, Husk, Spitter, Bloater));
+
+        PlayerProfile written = Written();
+
+        Assert.That(written.Shards, Is.EqualTo(425), "the total.");
+        Assert.That(written.MetArchetypeIds, Is.EqualTo(new[] { Husk, Spitter, Bloater }), "the set, in meeting order.");
+        Assert.That(written.UnlockedCharacterIds, Is.EqualTo(new[] { Emberwright }), "the deed.");
+        Assert.That(_store.ProfileWrites, Is.EqualTo(1), "and one save for all three.");
+    }
+
+    [Test]
+    public void Writer_DoesNotDuplicateAnArchetype()
+    {
+        Adopt(shards: 0);
+
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
+
+        _hub.Publish(Death(stage: 12, total: 295, Husk, Spitter, Bloater));
+        _hub.Publish(Death(stage: 12, total: 295, Husk, Spitter, Bloater));
+
+        Assert.That(Written().MetArchetypeIds, Has.Count.EqualTo(3), "a union, not an append.");
+    }
+
+    [Test]
+    public void Writer_TouchesNothingElse()
+    {
+        // Every one of the seven away from a fresh profile's value, so a writer that authored the
+        // whole struct from what it knew would visibly move one — M4-05b rule 2 at seven fields.
+        _profiles.Adopt(new PlayerProfile(
+            PlayerProfile.CurrentVersion,
+            hapticsEnabled: false,
+            seenFirstActiveHint: true,
+            shards: 5,
+            new[] { Gravecaller },
+            new[] { Husk },
+            locale: "fr"));
+
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
+
+        _hub.Publish(Death(stage: 3, total: 55, Spitter));
+
+        PlayerProfile written = Written();
+
+        Assert.That(written.HapticsEnabled, Is.False, "haptics.");
+        Assert.That(written.SeenFirstActiveHint, Is.True, "the hint.");
+        Assert.That(written.Locale, Is.EqualTo("fr"), "the locale.");
+        Assert.That(written.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "no deed at stage 3.");
+        Assert.That(written.Shards, Is.EqualTo(60));
+        Assert.That(written.MetArchetypeIds, Is.EqualTo(new[] { Husk, Spitter }));
+    }
+
+    [Test]
+    public void Writer_AnUnstatedModeProvesNothing()
+    {
+        Adopt(shards: 0);
+
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
+
+        // Only a publisher that is not a run leaves the mode unstated. It banks the rest and does
+        // not throw out of an event callback on the frame the player died.
+        Assert.DoesNotThrow(() => _hub.Publish(new ShardsAwarded(200, 20, 3)));
+        Assert.That(Written().Shards, Is.EqualTo(200));
+        Assert.That(Written().UnlockedCharacterIds, Is.Empty);
+    }
+
+    [Test]
+    public void Writer_StatesTheSetARunStartsWith()
+    {
+        _profiles.Adopt(PlayerProfile.Default.WithMetArchetypes(new[] { Husk }));
+
+        using var writer = new ShardWriter(_profiles, _hub, _catalog);
+
+        // What RunTicker hands RunConfig: the set this writer grows is the set the payout reads.
+        Assert.That(writer.ArchetypesAlreadyMet, Is.EqualTo(new[] { Husk }));
+    }
+
+    private static readonly ContentId Husk = new ContentId("enemy.husk");
+    private static readonly ContentId Spitter = new ContentId("enemy.spitter");
+    private static readonly ContentId Bloater = new ContentId("enemy.bloater");
+    private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
+    private static readonly ContentId Emberwright = new ContentId("character.emberwright");
+
+    private static ShardsAwarded Death(int stage, int total, params ContentId[] newArchetypes) =>
+        new ShardsAwarded(
+            total, stage, bossesKilled: (stage - 1) / 5, newArchetypes, new ContentId("mode.descent"));
+
+    /// <summary>The three shipped classes and the shipped Descent, converted as boot converts them.</summary>
+    private static ContentCatalog ShippedCatalog()
+    {
+        string[] classes = { "Oathbound", "Gravecaller", "Emberwright" };
+        var characters = new CharacterSpec[classes.Length];
+
+        for (int i = 0; i < classes.Length; i++)
+        {
+            characters[i] = AssetDatabase
+                .LoadAssetAtPath<CharacterDefinition>($"Assets/_Project/Data/Characters/{classes[i]}.asset")
+                .ToSpec();
+        }
+
+        ModeSpec descent = AssetDatabase
+            .LoadAssetAtPath<ModeDefinition>("Assets/_Project/Data/Modes/Descent.asset")
+            .ToSpec();
+
+        return new ContentCatalog(characters, modes: new[] { descent });
+    }
+
     /// <summary>A profile at <paramref name="shards"/>, adopted without being written back.</summary>
     private void Adopt(int shards)
     {
@@ -195,7 +325,7 @@ public sealed class ShardWriterTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: true,
             seenFirstActiveHint: false,
-            shards: shards));
+            shards: shards, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
     }
 
     /// <summary>The profile as it stands on the fake's "disk".</summary>

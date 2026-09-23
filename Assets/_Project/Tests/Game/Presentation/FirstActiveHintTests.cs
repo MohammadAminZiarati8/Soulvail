@@ -287,7 +287,7 @@ public sealed class FirstActiveHintTests : InputTestFixture
     {
         _profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true,
-            shards: 0));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
 
         StartRun(pending: 1);
         BuildHint();

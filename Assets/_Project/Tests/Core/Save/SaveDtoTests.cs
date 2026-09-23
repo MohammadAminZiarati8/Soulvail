@@ -703,7 +703,7 @@ public sealed class SaveDtoTests
     public void Profile_RecordsTheNewField()
     {
         var profile = new PlayerProfile(
-            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0);
+            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         // All three read back, and the two bools are set the opposite way round from each other —
         // a constructor that assigned one field to both would pass a row where they agree.
@@ -716,7 +716,7 @@ public sealed class SaveDtoTests
     public void Profile_CarriesShards()
     {
         var profile = new PlayerProfile(
-            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220);
+            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         // v3's field, and the other three with it. The two bools are set the opposite way round
         // from each other and neither matches the version's parity, so a constructor that crossed
@@ -739,7 +739,7 @@ public sealed class SaveDtoTests
                 PlayerProfile.CurrentVersion,
                 hapticsEnabled: true,
                 seenFirstActiveHint: false,
-                shards: -1));
+                shards: -1, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
     }
 
     [Test]
@@ -751,7 +751,7 @@ public sealed class SaveDtoTests
         // than convenient — and it is the answer a fresh install gets, because a missing file is
         // substituted with this and never written back.
         Assert.That(profile.SeenFirstActiveHint, Is.False);
-        Assert.That(profile.Version, Is.EqualTo(3), "v3 is what this build writes (M4-05b rule 1).");
+        Assert.That(profile.Version, Is.EqualTo(4), "v4 is what this build writes (M6-09a).");
     }
 
     [Test]
@@ -774,7 +774,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: true,
             seenFirstActiveHint: true,
-            shards: 0);
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         PlayerProfile haptics = profile.WithHaptics(false);
 
@@ -789,7 +789,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: false,
-            shards: 0);
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         PlayerProfile hint = seen.WithSeenFirstActiveHint(true);
 
@@ -809,7 +809,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 0);
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         PlayerProfile banked = profile.WithShards(50);
 
@@ -828,7 +828,7 @@ public sealed class SaveDtoTests
     public void Profile_WithHelpersKeepTheVersion()
     {
         var profile = new PlayerProfile(
-            2, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0);
+            2, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
 
         // Not CurrentVersion — the version a profile carries is the format it was *read* in, and a
         // helper that quietly stamped the current one would turn a decoded v1 into a v2 document
@@ -836,6 +836,9 @@ public sealed class SaveDtoTests
         Assert.That(profile.WithHaptics(false).Version, Is.EqualTo(2));
         Assert.That(profile.WithSeenFirstActiveHint(true).Version, Is.EqualTo(2));
         Assert.That(profile.WithShards(10).Version, Is.EqualTo(2));
+        Assert.That(profile.WithUnlocked(new[] { Gravecaller }).Version, Is.EqualTo(2));
+        Assert.That(profile.WithMetArchetypes(new[] { Husk }).Version, Is.EqualTo(2));
+        Assert.That(profile.WithLocale("fr").Version, Is.EqualTo(2));
     }
 
     [Test]
@@ -843,11 +846,11 @@ public sealed class SaveDtoTests
     {
         Assert.Catch<ArgumentOutOfRangeException>(
             () => new PlayerProfile(
-                0, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0));
+                0, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
     }
 
     [Test]
-    public void Profile_HasNoUnlocks()
+    public void Profile_PropertiesArePinned()
     {
         string[] properties = typeof(PlayerProfile)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -855,15 +858,156 @@ public sealed class SaveDtoTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        // Pinned rather than remembered, and **renamed from Profile_HasNoShards rather than joined
-        // by a second row**: the list is the subject, and what it refuses moves on as each field
-        // arrives with the mechanic that owns it. ADR-0007 names Shards and unlocks; Shards joined
-        // at v3 with its writer and its migration step in the same PR, and GD §14.2's unlocks are
-        // still M6-09's — a field written now that nothing reads is one every later migration
-        // carries for ever. That is the bar this row holds every future field to.
+        // Was Profile_HasNoUnlocks, which held every field to the bar "no field before its
+        // mechanic". M6-09a is the unlocks' mechanic, and it brings the archetype set and the
+        // locale with it on purpose — one bump for three fields rather than three bumps (rule 1).
+        // The list stays the subject: a field that joins without being named here is a red row.
         Assert.That(
             properties,
-            Is.EqualTo(new[] { "HapticsEnabled", "SeenFirstActiveHint", "Shards", "Version" }));
+            Is.EqualTo(new[]
+            {
+                "HapticsEnabled", "Locale", "MetArchetypeIds", "SeenFirstActiveHint", "Shards",
+                "UnlockedCharacterIds", "Version",
+            }));
+    }
+
+    // ---- M6-09a: v4's three ---------------------------------------------------------------------
+
+    [Test]
+    public void Profile_CarriesItsThreeNewFields()
+    {
+        var unlocked = new[] { Gravecaller, Emberwright };
+        var met = new[] { Husk };
+
+        var profile = new PlayerProfile(4, true, false, 10, unlocked, met, "fr");
+
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(unlocked));
+        Assert.That(profile.MetArchetypeIds, Is.EqualTo(met));
+        Assert.That(profile.Locale, Is.EqualTo("fr"));
+
+        // Copied: the profile's lists are not the caller's arrays.
+        Assert.That(profile.UnlockedCharacterIds, Is.Not.SameAs(unlocked));
+        Assert.That(profile.MetArchetypeIds, Is.Not.SameAs(met));
+    }
+
+    [Test]
+    public void Profile_DefaultIsAFreshInstall()
+    {
+        PlayerProfile profile = PlayerProfile.Default;
+
+        // Rule 3: an empty unlock list is a playable game, because the starter needs no entry.
+        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.UnlockedCharacterIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.MetArchetypeIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.Locale, Is.EqualTo(string.Empty));
+        Assert.That(profile.Shards, Is.Zero);
+    }
+
+    [Test]
+    public void Profile_RefusesNullForAnyOfThem()
+    {
+        ContentId[] none = Array.Empty<ContentId>();
+
+        var unlocked = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, null, none, ""));
+        var met = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, null, ""));
+        var locale = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, none, null));
+
+        Assert.That(unlocked.ParamName, Is.EqualTo("unlockedCharacterIds"));
+        Assert.That(met.ParamName, Is.EqualTo("metArchetypeIds"));
+        Assert.That(locale.ParamName, Is.EqualTo("locale"));
+
+        // Each message says empty and null differ, which is the whole reason for refusing.
+        Assert.That(unlocked.Message, Does.Contain("empty").IgnoreCase);
+        Assert.That(met.Message, Does.Contain("empty").IgnoreCase);
+        Assert.That(locale.Message, Does.Contain("empty").IgnoreCase);
+    }
+
+    [Test]
+    public void Profile_RefusesADefaultedId()
+    {
+        ContentId[] holed = { Husk, default };
+        ContentId[] none = Array.Empty<ContentId>();
+
+        var unlocked = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, holed, none, ""));
+        var met = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, none, holed, ""));
+
+        Assert.That(unlocked.Message, Does.Contain("unlockedCharacterIds[1]"), "names the list and the index.");
+        Assert.That(met.Message, Does.Contain("metArchetypeIds[1]"));
+    }
+
+    [Test]
+    public void Profile_AnUnshippedIdIsNotRefused()
+    {
+        // Rule 1: a class deleted from the catalog is content validation's answer, and a profile
+        // that refused to load over it would cost the player every Shard they ever banked.
+        var deleted = new ContentId("character.deleted");
+
+        var profile = new PlayerProfile(4, true, false, 0, new[] { deleted }, Array.Empty<ContentId>(), "");
+
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { deleted }));
+    }
+
+    [Test]
+    public void Profile_ListsAreCopied()
+    {
+        var unlocked = new List<ContentId> { Gravecaller };
+        var met = new List<ContentId> { Husk };
+
+        var profile = new PlayerProfile(4, true, false, 0, unlocked, met, "");
+
+        unlocked.Add(Emberwright);
+        met[0] = Spitter;
+
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }));
+        Assert.That(profile.MetArchetypeIds, Is.EqualTo(new[] { Husk }));
+    }
+
+    [Test]
+    public void Profile_TheThreeWithHelpersTouchNothingElse()
+    {
+        // Every field away from a fresh profile's value, so a helper that authored the struct from
+        // its one argument visibly moves one — M4-05b rule 2's rule at seven fields.
+        var full = new PlayerProfile(4, false, true, 650, new[] { Gravecaller }, new[] { Husk }, "fr");
+
+        PlayerProfile unlocked = full.WithUnlocked(new[] { Gravecaller, Emberwright });
+        PlayerProfile met = full.WithMetArchetypes(new[] { Husk, Spitter });
+        PlayerProfile locale = full.WithLocale("de");
+
+        Assert.That(unlocked.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller, Emberwright }));
+        AssertSameExcept(full, unlocked, nameof(PlayerProfile.UnlockedCharacterIds));
+
+        Assert.That(met.MetArchetypeIds, Is.EqualTo(new[] { Husk, Spitter }));
+        AssertSameExcept(full, met, nameof(PlayerProfile.MetArchetypeIds));
+
+        Assert.That(locale.Locale, Is.EqualTo("de"));
+        AssertSameExcept(full, locale, nameof(PlayerProfile.Locale));
+
+        // And the three older helpers carry the new fields, which is the same bug from the other side.
+        AssertSameExcept(full, full.WithHaptics(true), nameof(PlayerProfile.HapticsEnabled));
+        AssertSameExcept(full, full.WithSeenFirstActiveHint(false), nameof(PlayerProfile.SeenFirstActiveHint));
+        AssertSameExcept(full, full.WithShards(1), nameof(PlayerProfile.Shards));
+    }
+
+    private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
+    private static readonly ContentId Emberwright = new ContentId("character.emberwright");
+    private static readonly ContentId Husk = new ContentId("enemy.husk");
+    private static readonly ContentId Spitter = new ContentId("enemy.spitter");
+
+    /// <summary>Every one of the seven equal between the two profiles, except the one named.</summary>
+    private static void AssertSameExcept(PlayerProfile expected, PlayerProfile actual, string moved)
+    {
+        foreach (PropertyInfo property in typeof(PlayerProfile).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (property.Name == moved)
+            {
+                continue;
+            }
+
+            Assert.That(
+                property.GetValue(actual),
+                Is.EqualTo(property.GetValue(expected)),
+                $"{property.Name} moved when only {moved} should have.");
+        }
     }
 
     [Test]
@@ -878,7 +1022,7 @@ public sealed class SaveDtoTests
         // exact bug v2 exists to have fixed rather than repeated, with a far worse consequence than
         // the one it was fixed for.
         Assert.That(constructors, Has.Length.EqualTo(1));
-        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(4));
+        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(7), "seven as of M6-09a.");
     }
 
     [Test]

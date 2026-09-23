@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Soulvail.Core.Content;
+using Soulvail.Core.Progression;
+using Soulvail.Core.Save;
 using Soulvail.Game.Authoring;
 using Soulvail.Tests.Core.Run;
 using UnityEditor;
@@ -385,6 +388,71 @@ public sealed class CharacterDefinitionTests
 
         Assert.That(definition.ToSpec().Veilrot, Is.Not.Null);
         Assert.That(definition.ToSpec().Veilrot.InstantCastCost, Is.EqualTo(5f));
+    }
+
+    // ---- M6-09a: GD §14.2's table, off the shipped assets -------------------------------------------
+
+    [Test]
+    public void Unlock_ThePricesAreTheDocumentsNumbers()
+    {
+        // Rule 4's table: the starter authors nothing, and the other two carry GD §14.2's prices.
+        Assert.That(Shipped(OathboundPath).Unlock, Is.Null, "CH §3: Free — the starter.");
+
+        UnlockSpec gravecaller = Shipped(GravecallerPath).Unlock;
+        UnlockSpec emberwright = Shipped(EmberwrightPath).Unlock;
+
+        Assert.That(gravecaller.ShardPrice, Is.EqualTo(2000));
+        Assert.That(gravecaller.DeedBossId, Is.EqualTo(new ContentId("boss.choirmother")));
+        Assert.That(gravecaller.DeedStage, Is.Zero);
+
+        Assert.That(emberwright.ShardPrice, Is.EqualTo(3500));
+        Assert.That(emberwright.DeedStage, Is.EqualTo(20));
+        Assert.That(emberwright.DeedBossId, Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Unlock_TheGravecallersDeedCannotBeDoneYet()
+    {
+        var descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        ModeSpec mode = descent.ToSpec();
+
+        var catalog = new ContentCatalog(
+            new[] { Shipped(OathboundPath), Shipped(GravecallerPath), Shipped(EmberwrightPath) },
+            modes: new[] { mode });
+
+        // A run deep enough to have killed every boss Descent.asset authors many times over.
+        var earned = new ContentId[3];
+        int count = ClassUnlocks.Earned(100, mode, PlayerProfile.Default, catalog, earned);
+
+        Assert.That(
+            earned.Take(count),
+            Has.No.Member(new ContentId("character.gravecaller")),
+            "The Gravecaller's deed names 'boss.choirmother', which no mode in this build authors — "
+                + "GD §9.2's Choirmother is M7-03's. Until M7-03 merges it has exactly one route, the "
+                + "price. If this row went red, M7-03 has landed: retire it (M6-09a rule 4).");
+
+        // The absence, pinned rather than inferred: the shipped roster really is the Warden alone.
+        foreach (BossRosterEntry entry in mode.BossRoster)
+        {
+            Assert.That(entry.BossId, Is.Not.EqualTo(new ContentId("boss.choirmother")));
+        }
+
+        Assert.That(catalog.TryGetBoss(new ContentId("boss.choirmother"), out _), Is.False, "unresolvable.");
+    }
+
+    [Test]
+    public void Unlock_APriceOfZeroConvertsToNull()
+    {
+        // The authoring switch: a fresh definition authors no price and produces no block, and a
+        // price produces one.
+        CharacterDefinition definition = NewDefinition("FreeClass");
+
+        Assert.That(definition.ToSpec().Unlock, Is.Null);
+
+        SetInt(definition, "_unlockShardPrice", 2000);
+
+        Assert.That(definition.ToSpec().Unlock.ShardPrice, Is.EqualTo(2000));
+        Assert.That(definition.ToSpec().Unlock.HasDeed, Is.False, "an empty boss id is no deed.");
     }
 
     [Test]

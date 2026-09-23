@@ -406,3 +406,57 @@ public readonly struct ShardsAwarded
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+
+**Built to the Public API, except where a deviation says otherwise.** `PlayerProfile` v4 with three
+fields, three `With` helpers and the guards; the v3 → v4 step grandfathering `character.gravecaller`.
+`UnlockSpec`, `ClassUnlocks`, `ShardPayout`'s third term and `NewArchetypes`, `RunConfig`'s optional
+set, `ShardsAwarded.NewArchetypes`, `ProfileStore.Unlock`, and `ShardWriter` banking all three in one
+save. The three assets carry rule 4's table. **EditMode 3 026 → 3 080 (+54), twice; PlayMode 26 / 0 / 0
+twice**, after a first pass that was 25 / 1 on known issue 1's exact *wrong wedge* signature.
+
+### Deviations
+
+1. **`Game/Composition/RunTicker.cs` is edited, outside the table.** It is the only place a
+   `RunConfig` is built, so the lifetime set has to pass through it. It reads
+   `ShardWriter.ArchetypesAlreadyMet`, because `RunTicker` already takes the writer. Taking
+   `ProfileStore` instead would have rippled three `new RunTicker(...)` test sites.
+2. **`ShardsAwarded` also gains `ModeId`, optional and last, and `ShardWriter` takes a required
+   `ContentCatalog`.** `ClassUnlocks.Earned` needs the mode, and a listener cannot look it up once
+   the run is torn down. The catalog is required because a writer without one would drop an earned
+   class. That is the destructive direction (M6-06b rule 5's test). A mode the catalog cannot
+   resolve proves nothing and does not throw. Three test files that build a writer rippled.
+3. **`UnlockSpec` is its own file**, `Core/Content/UnlockSpec.cs`, because the project puts one
+   class in each file.
+4. **`Profile_CarriesNoNumberThatAffectsARun` asserts something different from its table row.**
+   `ShardPayout` never sees a profile: the set reaches it by value through `RunConfig`. And
+   `ClassUnlocks` reads `UnlockedCharacterIds` and `Shards`. So the IL sweep asserts that the only
+   profile reader outside `Core.Save` is `ClassUnlocks`, and that its public methods return only
+   `bool` or `int`.
+5. **The adapter drops a profile id that does not parse instead of refusing the file.** A refused
+   profile becomes `Default` at boot, and the next write would destroy every banked Shard. Dropping
+   costs one entry. `Store_AnUnparseableIdIsDroppedNotFatal` covers it.
+6. **Manual step 1's 55 is wrong.** `Descent.asset` introduces the Spitter at stage 2, so a stage-3
+   death on a fresh profile pays **30 + 25 + 25 = 80**. `metArchetypeIds` then holds the Husk
+   *and* the Spitter.
+7. **Ripple past the table:** `StageFlowTests.Boss_TheDepthIsUnchanged` passes the mode's roster
+   as already met, so it still asserts depth and bosses. `ClassSelectPresenterTests.Select_ProfileIsStillVersionThree`
+   is **retired** by the task it named, like `Payout_HasNoArchetypeTerm`. `Profile_HasNoUnlocks` is
+   renamed `Profile_PropertiesArePinned`. `ProfileGate_…` is renamed for v4.
+8. **Row placement:** the `Awarded_*` and `Run_*` rows are in `RunSessionTests`, beside M4-05a's
+   death rows. The two asset rows are in `CharacterDefinitionTests`, since Tests.Core cannot open an
+   asset. `Payout_AllocatesNothingPerTick` is in `ClassUnlocksTests`, where its subject is.
+9. **`Migrate_V1RunsEveryStepInOrder` asserts haptics as read (off), not "on".** The v1 field is
+   the player's choice, and off is the value a pass-through bug could not fake.
+10. **Eleven rows beyond the table:** short-buffer refusals for both `Span` writers, a negative
+    deed stage, the null guards, a boss deed driven through a mode that authors one, the Unlock
+    authoring switch, an unstated mode, the writer stating the set, a null catalog, and two
+    `ProfileStore.Unlock` rows.
+
+### Findings
+
+- **The death tick allocates one array, and only when something is new.** `RunSession` sizes a
+  scratch buffer to the roster at `Start` and copies out only what was met, so a returning player's
+  death allocates nothing. `ShardPayout`'s membership probe can box an enumerator. That also happens
+  only on the death tick.
+- **GD §14.2 places the Choirmother at stage 10.** M7-03 should check that against Descent's
+  every-fifth Warden: `TryGetBossFor` lets the first matching row win.

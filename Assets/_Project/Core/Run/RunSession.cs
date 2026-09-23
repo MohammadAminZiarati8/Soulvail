@@ -67,6 +67,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private readonly EnemyDeath[] _deaths;
 
     /// <summary>
+    /// What the install had met before this run (<c>RunConfig.ArchetypesAlreadyMet</c>), or null for
+    /// nothing. Read once, on the death tick, by GD §14.1's third term (M6-09a rule 6).
+    /// </summary>
+    private IReadOnlyCollection<ContentId> _archetypesAlreadyMet;
+
+    /// <summary>
+    /// Where the death tick writes the archetypes this run met first, sized to the mode's roster at
+    /// <c>Start</c> — so a returning player's death, which meets nothing new, allocates nothing, and
+    /// any other allocates exactly the list the event carries.
+    /// </summary>
+    private ContentId[] _newArchetypeScratch = Array.Empty<ContentId>();
+
+    /// <summary>
     /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
     /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
     /// downstream has to ask whether this run has a director.
@@ -1014,6 +1027,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // publish — would let a listener tick or end a run whose composition is still mid-flight.
         // The same order holds in End: during a lifecycle event the session still reports the
         // state it is leaving.
+        _archetypesAlreadyMet = config.ArchetypesAlreadyMet;
+        _newArchetypeScratch = new ContentId[mode.Roster.Count];
+
         _events.Publish(new RunStarted(config.CharacterId, seed));
 
         IsRunning = true;
@@ -1373,10 +1389,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // GD §14.1's arithmetic at the call site.
             ModeSpec mode = _catalog.Mode(State.ModeId);
 
+            // GD §14.1's third term (M6-09a rule 6): the ids rather than a count, because
+            // ShardWriter has to add them to the profile's set. The copy is the run's one
+            // allocation on a death tick, sized to what was actually met — and none at all on the
+            // usual death of a returning player, who meets nothing new.
+            int met = ShardPayout.NewArchetypes(
+                State.StageIndex, mode, _archetypesAlreadyMet, _newArchetypeScratch);
+
+            ContentId[] newArchetypes = met == 0
+                ? Array.Empty<ContentId>()
+                : _newArchetypeScratch.AsSpan(0, met).ToArray();
+
             _events.Publish(new ShardsAwarded(
-                ShardPayout.For(State.StageIndex, mode),
+                ShardPayout.For(State.StageIndex, mode, _archetypesAlreadyMet),
                 State.StageIndex,
-                ShardPayout.BossesKilled(State.StageIndex, mode)));
+                ShardPayout.BossesKilled(State.StageIndex, mode),
+                newArchetypes,
+                State.ModeId));
 
             End();
             return;

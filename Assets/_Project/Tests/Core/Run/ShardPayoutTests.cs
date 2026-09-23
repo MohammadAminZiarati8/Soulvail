@@ -9,8 +9,7 @@ using Soulvail.Tests.Core.Support;
 namespace Soulvail.Tests.Core.Run;
 
 /// <summary>
-/// GD §14.1's two shipped terms, the shipped <c>Descent.asset</c> numbers, and the term that is
-/// <em>not</em> here.
+/// GD §14.1's three terms and the shipped <c>Descent.asset</c> numbers.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,11 +18,9 @@ namespace Soulvail.Tests.Core.Run;
 /// is ticked, and no fake is needed beyond a <see cref="ModeSpec"/> with a boss roster on it.
 /// </para>
 /// <para>
-/// <b><see cref="Payout_HasNoArchetypeTerm"/> exists to be read, not just to pass.</b> GD §14.1's
-/// third term — <c>25·(new archetype first encountered)</c> — is deliberately absent, because it is
-/// a <em>lifetime</em> fact needing a set of <see cref="ContentId"/>s on <c>PlayerProfile</c>. The
-/// row asserts <b>10 rather than 35</b> at stage 1 so that nobody can add the term without first
-/// reading why it was left out.
+/// <b><see cref="Descent"/> authors no archetypes, so the third term is zero in every row written
+/// before M6-09a</b> and those rows still assert the two-term figures they always did.
+/// <see cref="Shipped"/> is the mode with its roster, for the rows about the third term.
 /// </para>
 /// <para>
 /// <b>And <see cref="Payout_ReadsTheAuthoredIntervalNotAFive"/> drives an interval no shipped asset
@@ -138,24 +135,70 @@ public sealed class ShardPayoutTests
         }
     }
 
-    // ---- Rule 6: the term that does not ship ------------------------------------------------------
+    // ---- M6-09a rule 5: the third term ------------------------------------------------------------
 
     [Test]
-    public void Payout_HasNoArchetypeTerm()
+    public void Payout_HasTheArchetypeTerm()
     {
-        // GD §14.1 reads 10·(deepest stage) + 50·(bosses killed) + 25·(new archetype first
-        // encountered). A run that died on stage 1 of the shipped Descent met its first Husk there,
-        // so all three terms would pay: 10 + 0 + 25 = 35. **This asserts 10.**
-        //
-        // The third term is a *lifetime* fact — first encountered, across every run this install has
-        // ever played — so it is a set of ContentIds on PlayerProfile rather than anything a run
-        // knows, and it would drag a collection into M4-05b's format bump. Deferring it over-pays a
-        // returning player rather than under-paying them, which is the opposite of the Shard total,
-        // where not writing the number destroys it.
-        //
-        // This row exists so nobody adds the term without reading that paragraph.
-        Assert.That(ShardPayout.For(1, Descent()), Is.EqualTo(10));
-        Assert.That(ShardPayout.For(1, Descent()), Is.Not.EqualTo(35));
+        // Replaces Payout_HasNoArchetypeTerm, which asserted 10 here so that nobody could add the
+        // term without reading why it was missing. M6-09a is the task that note named: a run that
+        // died on stage 1 of the shipped Descent met its first Husk there, so all three terms pay.
+        Assert.That(ShardPayout.For(1, Shipped(), Array.Empty<ContentId>()), Is.EqualTo(10 + 0 + 25));
+    }
+
+    [Test]
+    public void Payout_PaysNothingForAnArchetypeAlreadyMet()
+    {
+        Assert.That(ShardPayout.For(1, Shipped(), new[] { Husk }), Is.EqualTo(10));
+    }
+
+    [Test]
+    public void Payout_IsInclusiveOfTheDepthReached()
+    {
+        // The Bloater is introduced at 4, and in this mode so is a boss. Dying on stage 4 met the
+        // Bloater — a body spawns on arrival — and killed no boss, which only leaving proves.
+        ModeSpec mode = Mode(ShippedRoster(), (ArchonId, 4));
+        var destination = new ContentId[3];
+
+        int written = ShardPayout.NewArchetypes(4, mode, new[] { Husk, Spitter }, destination);
+
+        Assert.That(written, Is.EqualTo(1));
+        Assert.That(destination[0], Is.EqualTo(Bloater), "met on the stage died on: inclusive.");
+        Assert.That(ShardPayout.BossesKilled(4, mode), Is.Zero, "not killed on the stage died on: exclusive.");
+    }
+
+    [Test]
+    public void Payout_ANullSetPaysForEverything()
+    {
+        // Twenty stages, the Wardens at 5, 10 and 15, and all three of Descent's archetypes — the
+        // generous direction GD §14.1's deferral note already chose.
+        Assert.That(ShardPayout.For(20, Shipped(), alreadyMet: null), Is.EqualTo(200 + 150 + 75));
+    }
+
+    [Test]
+    public void Payout_NewArchetypesWritesTheIds()
+    {
+        var destination = new ContentId[3];
+
+        int written = ShardPayout.NewArchetypes(12, Shipped(), new[] { Husk }, destination);
+
+        Assert.That(written, Is.EqualTo(2));
+        Assert.That(destination[0], Is.EqualTo(Spitter), "introduction order: stage 2 first.");
+        Assert.That(destination[1], Is.EqualTo(Bloater));
+    }
+
+    [Test]
+    public void Payout_ThirtySpecTermIsTwentyFive()
+    {
+        Assert.That(ShardPayout.PerNewArchetype, Is.EqualTo(25), "GD §14.1's third coefficient.");
+    }
+
+    [Test]
+    public void Payout_NewArchetypesRefusesAShortBuffer()
+    {
+        // A dropped id is a Shard nobody is paid and a meeting nobody records, so it throws.
+        Assert.Throws<ArgumentException>(
+            () => ShardPayout.NewArchetypes(12, Shipped(), null, new ContentId[2]));
     }
 
     // ---- Rule 8: the door -------------------------------------------------------------------------
@@ -168,6 +211,8 @@ public sealed class ShardPayoutTests
         // refuses it — which is exactly why the guard here is cheap: a run cannot reach this with one.
         Assert.Throws<ArgumentOutOfRangeException>(() => ShardPayout.For(stage, Descent()));
         Assert.Throws<ArgumentOutOfRangeException>(() => ShardPayout.BossesKilled(stage, Descent()));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ShardPayout.NewArchetypes(stage, Descent(), null, new ContentId[3]));
     }
 
     [Test]
@@ -224,9 +269,26 @@ public sealed class ShardPayoutTests
     /// one. <see cref="ShippedInterval"/> is the number to change if <c>Descent.asset</c> ever
     /// re-authors it.
     /// </remarks>
-    private static ModeSpec Descent() => Mode((WardenId, ShippedInterval));
+    private static ModeSpec Descent() => Mode(Array.Empty<RosterEntry>(), (WardenId, ShippedInterval));
 
-    private static ModeSpec Mode(params (string Id, int Every)[] bosses)
+    private static readonly ContentId Husk = new ContentId("enemy.husk");
+    private static readonly ContentId Spitter = new ContentId("enemy.spitter");
+    private static readonly ContentId Bloater = new ContentId("enemy.bloater");
+
+    /// <summary><c>Descent.asset</c> with its archetype roster: the Husk at 1, the Spitter at 2, the Bloater at 4.</summary>
+    private static ModeSpec Shipped() => Mode(ShippedRoster(), (WardenId, ShippedInterval));
+
+    private static RosterEntry[] ShippedRoster() => new[]
+    {
+        new RosterEntry(Husk, 1),
+        new RosterEntry(Spitter, 2),
+        new RosterEntry(Bloater, 4),
+    };
+
+    private static ModeSpec Mode(params (string Id, int Every)[] bosses) =>
+        Mode(Array.Empty<RosterEntry>(), bosses);
+
+    private static ModeSpec Mode(RosterEntry[] archetypes, params (string Id, int Every)[] bosses)
     {
         var roster = new BossRosterEntry[bosses.Length];
 
@@ -243,7 +305,7 @@ public sealed class ShardPayoutTests
             finalStage: 0,
             Scalings.Design(),
             Scalings.Xp(),
-            Array.Empty<RosterEntry>(),
+            archetypes,
             arenas: null,
             bossRoster: roster);
     }

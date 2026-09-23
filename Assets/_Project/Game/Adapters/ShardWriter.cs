@@ -1,15 +1,26 @@
 using System;
+using System.Collections.Generic;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Save;
 
 namespace Soulvail.Game.Adapters;
 
 /// <summary>
-/// The one thing in the app that banks a payout. It hears core say what a dead run was worth, adds
-/// it to the lifetime total on the live <see cref="PlayerProfile"/>, and hands the profile back to
-/// <see cref="ProfileStore"/> to persist. GD §14.1, AR §10.3, §11.6.
+/// The one thing in the app that banks what a death produced: the Shards, the archetypes met for the
+/// first time, and any class the run proved. It hears core say what a dead run was worth, moves
+/// those three fields on the live <see cref="PlayerProfile"/>, and hands the profile back to
+/// <see cref="ProfileStore"/> to persist — once. GD §14.1, §14.2, AR §10.3, §11.6.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>One run's outcome, three fields, one subscriber</b> (M6-09a rule 8). Splitting it would be
+/// three subscribers to one event racing to write one struct, each reading the profile before the
+/// others had written it. <b>The order is stated:</b> Shards, then the archetypes, then the deeds —
+/// so a run that met a new archetype and reached stage 20 is paid for both and the save is written
+/// once.
+/// </para>
 /// <para>
 /// <b>It moves one field with <see cref="PlayerProfile.WithShards"/> and never calls the
 /// constructor</b> (M3-09c rule 3, M4-05b rule 2). That is the whole reason <see cref="ProfileStore"/>
@@ -55,6 +66,8 @@ public sealed class ShardWriter : IDisposable
 {
     private readonly ProfileStore _profiles;
 
+    private readonly ContentCatalog _catalog;
+
     private readonly IDisposable _awardSubscription;
 
     private bool _disposed;
@@ -68,10 +81,16 @@ public sealed class ShardWriter : IDisposable
     /// subscribes: core publishes through the port, the Unity side listens through the hub — the
     /// split <c>RunInstaller</c> registers both names for.
     /// </param>
-    /// <exception cref="ArgumentNullException">Either dependency is null.</exception>
-    public ShardWriter(ProfileStore profiles, DomainEventHub hub)
+    /// <param name="catalog">
+    /// Every class and what proves it, for <c>ClassUnlocks.Earned</c>, and the run's mode. Required
+    /// rather than defaulted: a writer without one would bank the Shards and silently drop an
+    /// Emberwright a player had just earned at stage 20, which is the destructive direction.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+    public ShardWriter(ProfileStore profiles, DomainEventHub hub, ContentCatalog catalog)
     {
         _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
+        _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
 
         if (hub is null)
         {
@@ -80,6 +99,13 @@ public sealed class ShardWriter : IDisposable
 
         _awardSubscription = hub.Subscribe<ShardsAwarded>(OnShardsAwarded);
     }
+
+    /// <summary>
+    /// Every archetype the install had met before this run — what <c>RunTicker</c> hands the
+    /// starting run as <c>RunConfig.ArchetypesAlreadyMet</c>, so the payout's third term and the set
+    /// this writer grows are read from one place.
+    /// </summary>
+    public IReadOnlyList<ContentId> ArchetypesAlreadyMet => _profiles.Current.MetArchetypeIds;
 
     /// <summary>Drops the subscription. A disposed writer banks nothing.</summary>
     public void Dispose()
@@ -101,6 +127,50 @@ public sealed class ShardWriter : IDisposable
         // Read, add, hand back. Never `WithShards(evt.Total)` — that is the assignment rule 5
         // refuses, and it would silently cap every player's lifetime total at whatever their last
         // run happened to be worth.
-        _profiles.Save(current.WithShards(current.Shards + evt.Total));
+        PlayerProfile next = current.WithShards(current.Shards + evt.Total);
+
+        // The archetypes before the deeds (M6-09a rule 8). A union rather than an append: the event
+        // names what was new *to the set the run started with*, and a second writer path — none
+        // today — must not be able to double an entry.
+        IReadOnlyList<ContentId> met = next.MetArchetypeIds;
+
+        for (int i = 0; i < evt.NewArchetypes.Count; i++)
+        {
+            if (!Contains(met, evt.NewArchetypes[i]))
+            {
+                met = ProfileStore.Appended(met, evt.NewArchetypes[i]);
+            }
+        }
+
+        next = next.WithMetArchetypes(met);
+
+        // The deeds. A mode the catalog cannot resolve — only a publisher that is not a run leaves
+        // it unstated — proves nothing rather than throwing out of an event callback on the frame
+        // the player died.
+        if (_catalog.TryGetMode(evt.ModeId, out ModeSpec mode) && evt.DeepestStage >= 1)
+        {
+            var earned = new ContentId[_catalog.Characters.Count];
+            int count = ClassUnlocks.Earned(evt.DeepestStage, mode, next, _catalog, earned);
+
+            for (int i = 0; i < count; i++)
+            {
+                next = next.WithUnlocked(ProfileStore.Appended(next.UnlockedCharacterIds, earned[i]));
+            }
+        }
+
+        _profiles.Save(next);
+    }
+
+    private static bool Contains(IReadOnlyList<ContentId> ids, ContentId id)
+    {
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (ids[i] == id)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

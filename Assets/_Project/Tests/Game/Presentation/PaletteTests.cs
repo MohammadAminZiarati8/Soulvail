@@ -59,6 +59,7 @@ public sealed class PaletteTests
 
     private const string PlayerPrefabPath = "Assets/_Project/Prefabs/Player/Player.prefab";
     private const string ReticlePrefabPath = "Assets/_Project/Prefabs/UI/Reticle.prefab";
+    private const string PalettePath = "Assets/_Project/Game/Presentation/Palette.cs";
 
     /// <summary>
     /// The nine files ledger row 6 collected: every type that held a colour of the palette's before
@@ -574,30 +575,67 @@ public sealed class PaletteTests
     }
 
     [Test]
-    public void Palette_HasTheColoursNobodyReadsYet()
+    public void Palette_HasTheColourNobodyReadsYet()
     {
-        // **Rule 7 stated as an asserted fact rather than as a promise.** Two reserved colours ship
-        // with no reader at all, which is the cheapest possible way of saying that the tenth colour
-        // is a field here — M3-13b's damage tint, M4-04's boss segments, M6-04's Veilrot meter and
-        // M6-05's Pact frames each add a member and a row instead of a placeholder.
-        Assert.That(Palette.Veilrot, Is.Not.EqualTo(Palette.Essence));
+        // **Rule 7 stated as an asserted fact, narrowed at M6-03a to the one colour it is still true
+        // of.** The row used to claim Veilrot *and* Essence, and asked only the nine Readers — which
+        // is how it stayed green for two milestones after RunEndPresenter started reading Essence.
+        // It now sweeps every type in Soulvail.Game, so it is about the build rather than a list,
+        // and M6-03b retires it by giving the meter a reader.
+        FieldInfo member = typeof(Palette).GetField(nameof(Palette.Veilrot));
 
-        foreach (string name in new[] { nameof(Palette.Veilrot), nameof(Palette.Essence) })
-        {
-            FieldInfo member = typeof(Palette).GetField(name);
+        Assert.That(member, Is.Not.Null, "Palette.Veilrot was tidied away for having no reader.");
 
-            Assert.That(member, Is.Not.Null, $"Palette.{name} was tidied away for having no reader.");
+        Assert.That(
+            Sweep(member).Select(type => type.Name),
+            Is.Empty,
+            "Palette.Veilrot has a reader. If it is M6-03b's meter, this row is that task's to retire; "
+                + "if not, the milestone's colour language arrived before the mechanic did.");
+    }
 
-            foreach (Type reader in Readers)
-            {
-                Assert.That(
-                    Reads(reader, member),
-                    Is.False,
-                    $"{reader.Name} reads Palette.{name}. Both are M6's — if one has found a reader "
-                        + "early, this row is what says the milestone's colour language arrived "
-                        + "before the mechanic did.");
-            }
-        }
+    [Test]
+    public void Palette_EssenceHasTwoReadersAndItsSummarySaysSo()
+    {
+        FieldInfo member = typeof(Palette).GetField(nameof(Palette.Essence));
+
+        Type[] readers = Sweep(member);
+
+        // GD §16.4's reward gold on the run-end payout (M4-06) and on the Sanctum's balance (M6-03a).
+        // ServiceRow reads it too, for the prices, and is the Sanctum's own control.
+        Assert.That(readers, Does.Contain(typeof(RunEndPresenter)));
+        Assert.That(readers, Does.Contain(typeof(SanctumPresenter)));
+        Assert.That(
+            readers,
+            Is.EquivalentTo(new[] { typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow) }));
+
+        // And the summary says so. XML docs do not exist at run time, so the source is read: the
+        // three lines above the field are its summary.
+        string[] source = System.IO.File.ReadAllLines(PalettePath);
+        int field = Array.FindIndex(source, line => line.Contains("public static readonly Color Essence"));
+
+        Assert.That(field, Is.GreaterThan(3), $"Palette.Essence is not declared in {PalettePath}.");
+
+        string summary = string.Join(" ", source.Skip(field - 4).Take(4));
+
+        Assert.That(summary, Does.Not.Contain("No reader yet"), "rule 10: the summary was wrong since M4-06.");
+        Assert.That(summary, Does.Contain("run-end payout").And.Contain("Sanctum"));
+    }
+
+    /// <summary>
+    /// The parking-lot line's own diagnosis, asserted: the nine-type list could not see M4-06's
+    /// reader, and the sweep can.
+    /// </summary>
+    [Test]
+    public void Palette_TheSweepWouldHaveCaughtM4_06()
+    {
+        FieldInfo member = typeof(Palette).GetField(nameof(Palette.Essence));
+
+        Type[] withoutTheSanctum = Sweep(member)
+            .Where(type => type != typeof(SanctumPresenter) && type != typeof(ServiceRow))
+            .ToArray();
+
+        Assert.That(withoutTheSanctum, Does.Contain(typeof(RunEndPresenter)), "the sweep finds M4-06's reader.");
+        Assert.That(Readers, Has.No.Member(typeof(RunEndPresenter)), "and the hand-kept list never did.");
     }
 
     /// <summary>
@@ -787,6 +825,20 @@ public sealed class PaletteTests
                 .Concat(candidate.GetConstructors(Everything))
                 .Any(method => Reads(method, field)));
     }
+
+    /// <summary>
+    /// Every top-level type in <c>Soulvail.Game</c> that loads <paramref name="field"/>, the palette
+    /// itself excepted (M6-03a rule 11).
+    /// </summary>
+    /// <remarks>
+    /// Top-level only, because <see cref="Reads(Type, FieldInfo)"/> already walks a type's nested
+    /// ones — a closure's <c>ldsfld</c> is credited to the class that wrote the lambda.
+    /// </remarks>
+    private static Type[] Sweep(FieldInfo field) =>
+        typeof(Palette).Assembly.GetTypes()
+            .Where(type => type.DeclaringType is null && type != typeof(Palette))
+            .Where(type => Reads(type, field))
+            .ToArray();
 
     /// <inheritdoc cref="Reads(Type, FieldInfo)" />
     private static bool Reads(MethodBase method, FieldInfo field)

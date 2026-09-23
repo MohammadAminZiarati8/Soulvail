@@ -239,3 +239,37 @@ MonoBehaviour:
     _text: Needs a power your class cannot use
   - _key: ui.splash.refused.minions
     _text: Commands minions — your class raises none
+  - _key: ui.sanctum.title
+    _text: Sanctum
+  - _key: ui.sanctum.balance
+    _text: '{0} Essence'
+  - _key: ui.sanctum.leave
+    _text: Descend
+  - _key: ui.sanctum.reroll
+    _text: Reroll
+  - _key: ui.sanctum.reroll.detail
+    _text: Your next level-up draws a fresh offer.
+  - _key: ui.sanctum.banish
+    _text: Banish
+  - _key: ui.sanctum.banish.detail
+    _text: Remove a node from this run for good.
+  - _key: ui.sanctum.heal
+    _text: Heal
+  - _key: ui.sanctum.heal.detail
+    _text: Restore some of your health.
+  - _key: ui.sanctum.cleanse
+    _text: Cleanse
+  - _key: ui.sanctum.cleanse.detail
+    _text: Burn away some of your Veilrot.
+  - _key: ui.sanctum.refused.short
+    _text: Not enough Essence
+  - _key: ui.sanctum.refused.full
+    _text: Already at full health
+  - _key: ui.sanctum.refused.clean
+    _text: No Veilrot to cleanse
+  - _key: ui.sanctum.refused.nothing
+    _text: Nothing left to banish
+  - _key: ui.sanctum.banish.prompt
+    _text: Choose a node to banish
+  - _key: ui.sanctum.banish.cancel
+    _text: Back

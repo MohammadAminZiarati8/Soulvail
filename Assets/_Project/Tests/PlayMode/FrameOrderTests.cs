@@ -921,6 +921,153 @@ public sealed class FrameOrderTests
         LogAssert.NoUnexpectedReceived();
     }
 
+    // ---- GD §13.3's Sanctum and the fourth pause reason (M6-03a rules 4 and 5) -------------------
+
+    /// <summary>The shop holds the pause under its own reason, with both of GD §11.4's globals.</summary>
+    [UnityTest]
+    public IEnumerator Pause_TheSanctumHoldsIt()
+    {
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum));
+        Assert.That(Time.timeScale, Is.EqualTo(0f));
+        Assert.That(Application.targetFrameRate, Is.EqualTo(RunPause.PausedFrameRate));
+
+        // Gated above CommandPhase, so nothing — no tick, no command — reached core (rule 6's premise).
+        Assert.That(_core.Touched, Is.Empty);
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>Leaving gives the pause back on the next frame, and both globals with it.</summary>
+    [UnityTest]
+    public IEnumerator Pause_ItIsGivenBackOnLeaving()
+    {
+        float timeScale = Time.timeScale;
+        int frameRate = Application.targetFrameRate;
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum), "the fixture's premise.");
+
+        // What LeaveSanctum does to the read, on the tap.
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.Null);
+        Assert.That(Time.timeScale, Is.EqualTo(timeScale));
+        Assert.That(Application.targetFrameRate, Is.EqualTo(frameRate));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// A level-up holding the pause is not stamped on by a shop open on the same frame — and nothing
+    /// throws, which a second <c>RunPause.Pause</c> would.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Pause_ALevelUpIsNeverStampedOn()
+    {
+        _core.HasOffer = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp), "the fixture's premise.");
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp), "GD §13: they never overlap, and progression wins.");
+
+        // Answered: the level-up gives the pause back and the shop takes it on the same frame —
+        // release before acquire, one phase apart.
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum));
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// <c>SanctumPhase</c> runs below <c>LevelUpPhase</c>, observed rather than read: the shop is
+    /// asked after the level-up has been opened.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Pause_TheOrderIsLevelUpThenSanctum()
+    {
+        _core.IsLevelUpPending = true;
+        _core.OnOpenLevelUp = () => { _core.IsLevelUpPending = false; _core.HasOffer = true; };
+        _core.RecordSanctumReads = true;
+
+        yield return Frame();
+
+        _core.RecordSanctumReads = false;
+
+        int opened = IndexIn(_core.Touched, "level-up:open");
+        int asked = IndexIn(_core.Touched, "sanctum:read");
+
+        Assert.That(opened, Is.GreaterThanOrEqualTo(0));
+        Assert.That(asked, Is.GreaterThan(opened), "the shop was asked before the level-up was opened.");
+
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// Rule 4's stated cost, asserted rather than left implied: two seconds in the shop cost zero
+    /// simulated seconds and no tick, so no cooldown recovers while the player reads the prices.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Ticker_TheSanctumIsGatedNotClocked()
+    {
+        yield return Frame();
+
+        float before = _core.SimulatedTime;
+
+        Assert.That(before, Is.GreaterThan(0f), "the fixture never ticked, so it proves nothing.");
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        int touchedBefore = _core.Touched.Count;
+
+        for (int i = 0; i < 120; i++)
+        {
+            yield return Frame();
+        }
+
+        Assert.That(_core.SimulatedTime, Is.EqualTo(before), "RunState.Time moved in the Sanctum.");
+        Assert.That(_core.Touched.Count, Is.EqualTo(touchedBefore), "core was ticked — cooldowns recovered.");
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
     /// <summary>A paused run is <em>idled</em>, not clocked at zero.</summary>
     [UnityTest]
     public IEnumerator Frame_PausedFrameDoesNotTickCore()
@@ -1692,9 +1839,32 @@ public sealed class FrameOrderTests
         public void ChooseSplash(ContentId characterId, int branch) =>
             _touched.Add("splash:choose");
 
-        // M6-02a's pair. Nothing in RunTicker asks either until M6-03a puts a Sanctum phase in the
-        // frame, so the read answers false and the command is recorded like every other.
-        public bool IsSanctumOpen => false;
+        // M6-02a's pair. Since M6-03a RunTicker.SanctumPhase reads IsSanctumOpen every frame, so it
+        // is settable like the level-up's pair — and every row that does not set it leaves it false,
+        // which keeps the new phase inert everywhere it is not the subject. A read is recorded only
+        // when a row asks, so the rows that pin Touched exactly are unmoved by a read on every frame.
+        private bool _isSanctumOpen;
+
+        public bool IsSanctumOpen
+        {
+            get
+            {
+                if (RecordSanctumReads)
+                {
+                    _touched.Add("sanctum:read");
+                }
+
+                return _isSanctumOpen;
+            }
+
+            set => _isSanctumOpen = value;
+        }
+
+        /// <summary>
+        /// Whether a read of <see cref="IsSanctumOpen"/> is written into <see cref="Touched"/> —
+        /// <see cref="Pause_TheOrderIsLevelUpThenSanctum"/>'s instrument, off for every other row.
+        /// </summary>
+        public bool RecordSanctumReads { get; set; }
 
         public void LeaveSanctum() => _touched.Add("sanctum:leave");
 

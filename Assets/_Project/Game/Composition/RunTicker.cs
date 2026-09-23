@@ -369,6 +369,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         LevelUpPhase();
 
+        // Below the level-up phase, so a level-up wins a collision (M6-03a rule 5) — and above the
+        // gate, so the shop is paused on the frame after the tick that opened it.
+        SanctumPhase();
+
         // **Above CommandPhase, so a tap that lands on the level-up screen cannot also focus an
         // enemy or spend the Charge** (M3-08a rule 14). The Input System stays enabled and the stick
         // keeps reading; with the tick gated it moves nobody, and M3-08b's full-screen canvas takes
@@ -726,6 +730,47 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         else if (offer && !_pause.IsPaused)
         {
             _pause.Pause(PauseReason.LevelUp);
+        }
+    }
+
+    /// <summary>
+    /// Holds the pause while GD §13.3's Sanctum is open, and gives it back when it closes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>M6-03a's ruling, and core deliberately declined it</b> (M6-02a rule 3). An untimed room that
+    /// keeps ticking is a room that pays you to wait: every cooldown recovers for free and
+    /// <c>RunState.Time</c> runs on. Gated instead, a Sanctum costs zero simulated seconds, drops a
+    /// phone that is set down to <see cref="RunPause.PausedFrameRate"/>, and stops the arena's
+    /// Animators with the simulation. The cost is M6-02a's parenthetical <em>"cooldowns recover"</em>,
+    /// which is false in the shipped game — the correct direction.
+    /// </para>
+    /// <para>
+    /// <b>Here and not in the screen</b>, <see cref="LevelUpPhase"/>'s reason (M3-08b): the gate is a
+    /// once-a-frame pure function of <c>IsSanctumOpen</c>, so a presenter that is absent or undressed
+    /// costs a missing screen loudly rather than a run that ticks on with a shop nobody can close.
+    /// </para>
+    /// <para>
+    /// <b>Released before acquired, and acquired only when nothing holds the pause</b> — the body of
+    /// <see cref="LevelUpPhase"/>, which runs first. A level-up therefore wins a collision, which is
+    /// GD §13's own sentence (<em>"they never overlap"</em>) — and the collision is unreachable
+    /// anyway, since a pending level-up gates the ticks <c>Clear</c> counts down on. The guard exists
+    /// because <c>RunPause.Pause</c> throws for a second holder, and a throw inside the frame loop is
+    /// a dead run.
+    /// </para>
+    /// </remarks>
+    private void SanctumPhase()
+    {
+        bool open = _progression.IsSanctumOpen;
+
+        if (_pause.Holder == PauseReason.Sanctum && !open)
+        {
+            _pause.Resume(PauseReason.Sanctum);
+        }
+
+        if (open && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.Sanctum);
         }
     }
 

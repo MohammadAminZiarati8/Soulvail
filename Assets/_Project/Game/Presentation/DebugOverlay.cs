@@ -2,12 +2,9 @@ using System;
 using System.Globalization;
 using System.Text;
 using Soulvail.Core.Combat;
-using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
-using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
-using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Views;
@@ -108,18 +105,6 @@ namespace Soulvail.Game.Presentation
         private IRunSession _session;
 
         /// <summary>
-        /// The run's progression port, for the one command this overlay sends: leaving the Sanctum.
-        /// </summary>
-        /// <remarks>
-        /// <b>A stand-in, and the only write this component makes</b> (M6-02a). Core's Sanctum is
-        /// left by a command and never by a clock, and no screen sends that command until M6-03a —
-        /// so without this, every run would stop at the first stage it cleared. It is sent when the
-        /// player walks into the door, which is what the door has always meant; see
-        /// <see cref="LeaveSanctumAtTheDoor"/>. It goes when M6-03a's Leave button arrives.
-        /// </remarks>
-        private IProgressionCommands _progression;
-
-        /// <summary>
         /// The run's path cache, for <c>StalePathCount</c>. An adapter rather than core state, like
         /// the snapshot and the intent buffer either side of it — and the number it reports is one
         /// nothing else in the game can see (M2-05 rule 19).
@@ -177,10 +162,6 @@ namespace Soulvail.Game.Presentation
         private IDisposable _clearedSubscription;
         private IDisposable _sanctumSubscription;
         private IDisposable _transitionSubscription;
-        private IDisposable _offerSubscription;
-
-        /// <summary>The first card of the last offer shown — what F6 banishes. See <see cref="BuyFromTheKeyboard"/>.</summary>
-        private ContentId _lastOffered;
 
         private float _untilRefresh;
         private float _fps;
@@ -203,8 +184,8 @@ namespace Soulvail.Game.Presentation
         /// same bargain the target line makes: a phase read out of core would agree with core by
         /// construction and so could never show the boundary disagreeing with itself. The one thing
         /// the events cannot see is the Sanctum being left for <c>Gate</c> — nothing is published for
-        /// it, because the command that leaves came from outside core — so the stand-in that sends
-        /// it writes <c>gate</c> here itself.
+        /// it, because the command that leaves came from the Sanctum screen rather than from inside
+        /// core — so <see cref="Refresh"/> reads <c>RunState.IsSanctumOpen</c> for that one edge.
         /// </remarks>
         private string _phase = "—";
 
@@ -223,7 +204,6 @@ namespace Soulvail.Game.Presentation
         /// <param name="snapshot">The run's one snapshot — what core was told this frame.</param>
         /// <param name="intents">The run's intent buffer — what core decided this frame.</param>
         /// <param name="session">The run, for the one number that has no other way out. See the class remarks.</param>
-        /// <param name="progression">The run's progression port, for the Sanctum's stand-in exit.</param>
         /// <param name="hub">The run's event hub, for the target and wave lines. Subscribed for this component's life.</param>
         /// <param name="paths">The run's path cache, for the stale count.</param>
         /// <param name="projectileViews">The run's bolt census, for rented against pooled.</param>
@@ -241,7 +221,6 @@ namespace Soulvail.Game.Presentation
             WorldSnapshot snapshot,
             IntentBuffer intents,
             IRunSession session,
-            IProgressionCommands progression,
             DomainEventHub hub,
             NavPathSense paths,
             ProjectileViews projectileViews,
@@ -252,7 +231,6 @@ namespace Soulvail.Game.Presentation
             _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
             _intents = intents ?? throw new ArgumentNullException(nameof(intents));
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             _paths = paths ?? throw new ArgumentNullException(nameof(paths));
             _projectileViews = projectileViews ?? throw new ArgumentNullException(nameof(projectileViews));
             _sight = sight ?? throw new ArgumentNullException(nameof(sight));
@@ -280,9 +258,6 @@ namespace Soulvail.Game.Presentation
             _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
             _sanctumSubscription = hub.Subscribe<SanctumOpened>(OnSanctumOpened);
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
-
-            // M6-02b: which node F6 banishes.
-            _offerSubscription = hub.Subscribe<OfferPresented>(OnOfferPresented);
         }
 
         private void Awake()
@@ -354,9 +329,6 @@ namespace Soulvail.Game.Presentation
 
             _transitionSubscription?.Dispose();
             _transitionSubscription = null;
-
-            _offerSubscription?.Dispose();
-            _offerSubscription = null;
         }
 
         private void OnTargetChanged(TargetChanged evt)
@@ -415,10 +387,6 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void LateUpdate()
         {
-            LeaveSanctumAtTheDoor();
-
-            BuyFromTheKeyboard();
-
             // Sampled every frame even though it is drawn ten times a second — an average that only
             // saw every sixth frame would miss exactly the stutter it exists to catch.
             float dt = Time.unscaledDeltaTime;
@@ -442,147 +410,6 @@ namespace Soulvail.Game.Presentation
             _untilRefresh = RefreshInterval;
 
             Refresh();
-        }
-
-        /// <summary>
-        /// The Sanctum's stand-in exit: walking into the door while the shop is open. See
-        /// <see cref="_progression"/>.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// <b>The door, and not a key, because the door is what the player can see.</b> It is drawn
-        /// on <c>StageCleared</c>, a <c>ClearTime</c> before the shop even opens, so a player who has
-        /// killed everything walks straight to it — and a door that does nothing reads as a broken
-        /// game. The first build of this used Enter, and the owner's playtest found exactly that. A
-        /// door also works on a phone, where no key exists.
-        /// </para>
-        /// <para>
-        /// Core's rule is unchanged: the Sanctum is left by a command and nothing else (M6-02a rule
-        /// 3). This is a view sending that command, measured on XZ against
-        /// <see cref="StageFlow.GateReachRadius"/> — core's own reach, so the leave and the crossing
-        /// agree on where the door is, and the flow trips <c>Gate</c> into <c>Transition</c> on the
-        /// next frame. Asked of the port first, because the command throws outside the shop.
-        /// </para>
-        /// </remarks>
-        private void LeaveSanctumAtTheDoor()
-        {
-            if (_progression is null || !_progression.IsSanctumOpen || !_snapshot.HasGate)
-            {
-                return;
-            }
-
-            // XZ, and no square root: AR §18.4, and StageFlow.IsInsideTheDoor's arithmetic exactly.
-            float dx = _snapshot.PlayerPosition.X - _snapshot.GatePosition.X;
-            float dz = _snapshot.PlayerPosition.Z - _snapshot.GatePosition.Z;
-
-            if ((dx * dx) + (dz * dz) > StageFlow.GateReachRadius * StageFlow.GateReachRadius)
-            {
-                return;
-            }
-
-            _progression.LeaveSanctum();
-
-            _phase = "gate";
-        }
-
-        /// <summary>
-        /// The Sanctum's four services on F5–F8, while the shop is open — M6-02b's manual steps.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// <b>A stand-in for M6-03a's screen, Editor-only in practice, and the second write this
-        /// component makes</b> — <see cref="LeaveSanctumAtTheDoor"/>'s bargain. F5 Reroll, F6 Banish,
-        /// F7 Heal, F8 Cleanse. Each asks <c>CanBuy</c> first and logs a refusal rather than letting
-        /// the command throw, which is exactly what the screen will do with a dead button.
-        /// </para>
-        /// <para>
-        /// F6 banishes the first card of the most recent offer — the node manual step 2 has "been
-        /// offered twice" — or, when that one is gone, the first banishable node in tree order.
-        /// </para>
-        /// </remarks>
-        private void BuyFromTheKeyboard()
-        {
-            UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
-
-            if (keyboard is null || _progression is null || !_progression.IsSanctumOpen)
-            {
-                return;
-            }
-
-            if (keyboard.f5Key.wasPressedThisFrame)
-            {
-                BuyOrSay(SanctumService.Reroll);
-            }
-            else if (keyboard.f6Key.wasPressedThisFrame)
-            {
-                BanishOrSay();
-            }
-            else if (keyboard.f7Key.wasPressedThisFrame)
-            {
-                BuyOrSay(SanctumService.Heal);
-            }
-            else if (keyboard.f8Key.wasPressedThisFrame)
-            {
-                BuyOrSay(SanctumService.Cleanse);
-            }
-        }
-
-        private void BuyOrSay(SanctumService service)
-        {
-            int price = _progression.PriceOf(service);
-
-            if (!_progression.CanBuy(service))
-            {
-                Debug.Log($"[Sanctum] {service} refused: {price} Essence, or nothing for it to do.");
-
-                return;
-            }
-
-            _progression.Buy(service);
-
-            Debug.Log($"[Sanctum] {service} bought for {price}.");
-        }
-
-        private void BanishOrSay()
-        {
-            if (!_progression.CanBuy(SanctumService.Banish))
-            {
-                Debug.Log(
-                    $"[Sanctum] Banish refused: {_progression.PriceOf(SanctumService.Banish)} "
-                        + "Essence, or nothing left to banish.");
-
-                return;
-            }
-
-            RunState state = _session.State;
-            var banishable = new ContentId[state.TreeNodeCount];
-            int count = _progression.BanishableInto(banishable);
-
-            ContentId target = count > 0 ? banishable[0] : default;
-
-            for (int i = 0; i < count; i++)
-            {
-                if (banishable[i] == _lastOffered)
-                {
-                    target = banishable[i];
-
-                    break;
-                }
-            }
-
-            _progression.Banish(target);
-
-            Debug.Log($"[Sanctum] Banished '{target}'.");
-        }
-
-        private void OnOfferPresented(OfferPresented evt)
-        {
-            RunState state = _session.State;
-
-            if (state is not null && state.Offer.Count > 0)
-            {
-                _lastOffered = state.Offer[0];
-            }
         }
 
         private void Refresh()
@@ -686,8 +513,8 @@ namespace Soulvail.Game.Presentation
 
             // GD §15's Essence, in points, read from core for the level line's reason: nothing
             // publishes a balance a run *starts* at, and a readout has to draw one on its first
-            // frame. It is the whole of M6-01a's manual step 1 — there is no view for the wallet
-            // until M6-03a draws the Sanctum and M6-03b puts GD §16.1's counter in the corner.
+            // frame. It is the whole of M6-01a's manual step 1 — the Sanctum screen draws the wallet
+            // only while the shop is open, until M6-03b puts GD §16.1's counter in the corner.
             //
             // What the step actually watches is the *step changing*: 0, 24, 52, 84 through stages
             // 1 to 3, because a flat payment and GD §15's depth term are indistinguishable from any
@@ -806,6 +633,13 @@ namespace Soulvail.Game.Presentation
         private void AppendStage()
         {
             RunState state = _session.State;
+
+            // The one edge no event marks: the Sanctum screen's Leave went straight down the port
+            // (M6-03a rule 6), so the shop being left for Gate is read rather than heard.
+            if (state is not null && !state.IsSanctumOpen && _phase == "sanctum")
+            {
+                _phase = "gate";
+            }
 
             _line.Append("  depth ").Append(
                 (state is null ? 0 : state.StageIndex).ToString(CultureInfo.InvariantCulture));

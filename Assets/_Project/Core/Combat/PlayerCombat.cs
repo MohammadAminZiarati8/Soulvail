@@ -350,6 +350,12 @@ public sealed class PlayerCombat
         // modifier, and the shape every later source of "+attack speed" copies.
         Focus = new FocusTracker(spec.Focus, Weapon.FireRate, _events);
 
+        // CH §3.3's Kindling, for the one class that authors it (M6-07a). Built here beside the
+        // other ramp rather than by the run, for Focus's reason: it moves one Stat this class owns and
+        // is fed by two edges this class sees — a swing resolving and damage arriving. Null for every
+        // class without one, which is an Oathbound and a Gravecaller byte for byte as they were.
+        Kindling = spec.Kindling is null ? null : new Kindling(spec.Kindling, Weapon.Damage, _events);
+
         // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
         // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
         // M6-07's Blink are the same clock with a different payload — see MovementSkillKind.
@@ -400,6 +406,27 @@ public sealed class PlayerCombat
     /// property is a fire rate, <see cref="FocusAt"/> is a target.
     /// </remarks>
     public FocusTracker Focus { get; }
+
+    /// <summary>
+    /// CH §3.3's Kindling — consecutive weapon hits with nothing touching the player, as a modifier on
+    /// <see cref="Weapon"/>'s damage — or <see langword="null"/> for a class without it, which is
+    /// every class but the Emberwright.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two doors feed it and both are this class's</b> (M6-07a rules 5 and 7).
+    /// <see cref="ResolveConeHits"/> adds one stack for a swing that reached anybody, however many it
+    /// reached; <see cref="ProjectileSystem"/> adds one for an orb that landed on anybody, through this
+    /// property, because the landing is resolved there. <see cref="ApplyDamage"/> drops the lot when
+    /// something was applied, and not when the i-frames turned it away.
+    /// </para>
+    /// <para>
+    /// <b>A dash and a zone never feed it</b> (rule 6). <see cref="ResolveChargeHits"/> does not call
+    /// it, and a zone has no door here at all — so the signature stays about aim rather than about the
+    /// movement button.
+    /// </para>
+    /// </remarks>
+    public Kindling Kindling { get; }
 
     /// <summary>
     /// CC §5's dodge: when it may fire, which way it goes, how long it protects, and how much of
@@ -617,6 +644,17 @@ public sealed class PlayerCombat
         // event sees a baseline that already includes this hit.
         _lastReportedShieldFraction = Health.ShieldFraction;
 
+        // **Kindling breaks on damage that landed, and on nothing else** (M6-07a rule 7). A blocked
+        // hit reaches this line — it is published below — but applied nothing, so the ramp stands:
+        // CC §5's i-frames exist to make a dodge worth something, and a signature that broke on the
+        // frame after a clean one would punish the player for dodging. Damage that went entirely to
+        // a shield *does* break it; no class in V1 has both, and M7's fourth might. Before the
+        // publish, for the baseline's reason above.
+        if (result.Applied > 0f)
+        {
+            Kindling?.OnPlayerDamaged();
+        }
+
         _events.Publish(new PlayerDamaged(
             result.ToShield,
             result.ToHp,
@@ -832,6 +870,15 @@ public sealed class PlayerCombat
             {
                 _intents.EnemyKnockback(new EnemyKnockbackIntent(id, shove, knockback));
             }
+        }
+
+        // **One swing is one stack however many it caught** (M6-07a rule 5). CH §3.3 counts *hits*,
+        // and a swing that reached four would otherwise fill the ramp in eight. After the loop, so the
+        // damage every enemy took above was read before the swing raised it; and a swing that reached
+        // nobody is a miss, which neither adds nor resets.
+        if (_hitCount > 0)
+        {
+            Kindling?.OnWeaponHitLanded();
         }
     }
 
@@ -1142,6 +1189,10 @@ public sealed class PlayerCombat
         // decide it should go. A ramp left on the stat would be +30 % fire rate earned by standing
         // still once, before a stage that has not started yet.
         Focus.Reset();
+
+        // The other ramp on a weapon stat, back to cold for the same reason and just as silently: a
+        // ×1.60 carried over would be a perfect stretch paid for by a run that has not started.
+        Kindling?.Reset();
 
         // The dash goes back to rest with everything else, and the three fields that track it here
         // go with it. Health.Reset above has already lowered the external flag — a dash interrupted

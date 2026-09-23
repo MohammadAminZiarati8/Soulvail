@@ -117,7 +117,7 @@ Minions are also pure class identity at zero input cost, which is why this is th
 
 | | |
 |---|---|
-| **Weapon** | **Cinder Orb** — 30 dmg, 1.5/s, slow (25 m/s), 3m AoE detonation |
+| **Weapon** | **Cinder Orb** — 30 dmg, 1.5/s, slow (25 m/s), 3m AoE detonation. **The asset ships 17** — see below. |
 | **Movement** | **Blink** — instant 10m teleport, 2.0s cooldown, leaves a fire pool |
 | **Signature** | **Kindling** — consecutive hits without taking damage stack +2% damage to +60%. Resets on any hit. |
 | **Veilrot** | **Spends** it — any ability may be cast instantly off-cooldown for **5 Veilrot** |
@@ -130,6 +130,10 @@ Minions are also pure class identity at zero input cost, which is why this is th
 | ★ **Scorched Vail** *(Ash)* | Your fire pools spread to any enemy that burns in them |
 
 Pleasing synergy worth noting: slow projectiles are normally the hardest thing to aim, and our auto-targeter leads shots for you. A weapon that would be miserable to thumb-aim becomes the class's whole appeal.
+
+**30 damage breaks GD §6.2 and `Emberwright.asset` ships 17.** A Husk has 36 HP, so `ceil(36 / 30)` is two hits at stage 1 with no tree, no Overflow and no Kindling — under the *"3–5 hits from any class"* GD §6.2 calls the primary balance invariant, and it stays at two until stage 13 on the shipped curve. Lowering the fire rate instead would move DPS without moving hits, which is the argument M5-02 already refused for the Bone Bolt. At 17 it is three hits and 25.5 DPS against one body — the slowest single-target killer in the game and the widest blast in it, which is *"enormous, slow, unforgiving"* as two numbers. Against four bodies inside the 3 m it is 102. The 30 stays in the table because it is what the design published and [M6-07a](plan/tasks/M6-07a-the-emberwright-and-the-cinder-orb.md)'s control test measures it; the number the game plays is the asset's, and the owner overrides it by typing a different one.
+
+**Kindling at full ramp goes under the band on purpose.** +60 % is ×1.6 and GD §6.2's band is 5 / 3 wide, so any weapon at three hits cold is at two hits hot: `ceil(36 / 27.2) = 2`. Thirty consecutive hits without taking a point of damage is the price, and `KindlingTests.Kindling_AtFullRampGoesUnderTheBand` makes a retune of either number a decision rather than a drift.
 
 ---
 

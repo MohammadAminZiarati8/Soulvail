@@ -7,7 +7,7 @@ namespace Soulvail.Core.Events;
 // one place is worth more than one type per file. See AR §5, §8 and
 // <../../../../Docs/adr/0004-scoped-domain-events.md>.
 //
-// These twelve are what happens *to* or *by* the player — a corpse decoy is the player's, because
+// These thirteen are what happens *to* or *by* the player — a corpse decoy is the player's, because
 // nothing but a movement skill can leave one (M5-03). What happens to an enemy is EnemyEvents'
 // (M1-11's `EnemyDamaged` and `EnemyDied` join the census pair there), and the split is the same
 // one `Health` makes by publishing nothing at all: one component serves both sides of every fight,
@@ -452,5 +452,41 @@ public readonly struct DecoyExpired
     public DecoyExpired(int id)
     {
         Id = id;
+    }
+}
+
+/// <summary>
+/// CH §3.3's Kindling has moved: a weapon hit added a stack, or damage reaching the player dropped
+/// them all. Published by <c>Kindling</c>, and by nothing else.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Both numbers, so a readout never has to divide</b> — and the bonus as well, so it never has to
+/// multiply. The cap rides with the count because it is a <c>Stat</c> a node will move (M6-08), and a
+/// readout holding the authored 30 would be wrong the moment one is taken.
+/// </para>
+/// <para>
+/// <b>Not published by a saturated hit or by a reset.</b> A thirty-first hit changes nothing, and the
+/// end of a run is not news — <see cref="FocusRampChanged"/>'s bargain for the same kind of ramp.
+/// Nothing in this build subscribes: there is no HUD element for the ramp (M6-07a, <i>Out of
+/// scope</i>).
+/// </para>
+/// </remarks>
+public readonly struct KindlingChanged
+{
+    /// <summary>How many stacks stand, in <c>[0, <see cref="MaxStacks"/>]</c>.</summary>
+    public readonly int Stacks;
+
+    /// <summary>The live cap, as a count.</summary>
+    public readonly int MaxStacks;
+
+    /// <summary>What the stacks are worth as a fraction of weapon damage — 0.60 at a full ramp.</summary>
+    public readonly float Bonus;
+
+    public KindlingChanged(int stacks, int maxStacks, float bonus)
+    {
+        Stacks = stacks;
+        MaxStacks = maxStacks;
+        Bonus = bonus;
     }
 }

@@ -148,6 +148,16 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.01f)] private float _minionAttackInterval = 1f;
         [SerializeField, Min(0.01f)] private float _minionReach = 1.5f;
 
+        [Tooltip("The class's Kindling (CH §3.3): consecutive weapon hits without taking damage " +
+                 "stack weapon damage. Max stacks 0 means this class has none — only the " +
+                 "Emberwright does in V1, and the per-stack below is ignored at 0. The count is " +
+                 "the switch for the minion cap's reason.")]
+        [SerializeField, Min(0)] private int _kindlingMaxStacks;
+
+        [Tooltip("Weapon damage one stack is worth, as a fraction — 0.02 is CH §3.3's +2 %. " +
+                 "Never a percentage: 2 here would be +200 % a hit.")]
+        [SerializeField, Min(0f)] private float _kindlingPerStack = 0.02f;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -185,6 +195,13 @@ namespace Soulvail.Game.Authoring
         /// read against the id to be understood (M5-02 rule 6). The cap is the switch rather than
         /// the hit points because it is the one field a <see cref="MinionSpec"/> cannot represent
         /// at zero — a cap of nothing is a class whose minions can never be alive.
+        /// </para>
+        /// <para>
+        /// A <see cref="_kindlingMaxStacks"/> of zero is the same switch a third time (M6-07a rule 1):
+        /// CH §3.3's Kindling is one class's signature, so every other class produces a
+        /// <see langword="null"/> <see cref="CharacterSpec.Kindling"/>. The count rather than the
+        /// per-stack, for the minion cap's reason — it is the field a <see cref="KindlingSpec"/>
+        /// cannot represent at zero.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -247,6 +264,9 @@ namespace Soulvail.Game.Authoring
                             _minionDamage,
                             _minionAttackInterval,
                             _minionReach)
+                        : null,
+                    _kindlingMaxStacks > 0
+                        ? new KindlingSpec(_kindlingPerStack, _kindlingMaxStacks)
                         : null);
             }
             catch (ArgumentException inner)
@@ -288,6 +308,18 @@ namespace Soulvail.Game.Authoring
                     $"CharacterDefinition '{name}': '{_minionSpecId}' is not a valid content id " +
                     "for its minion. Expected lowercase dot-separated segments, at least two, " +
                     "e.g. 'minion.wight'.",
+                    this);
+            }
+
+            // Asked only when the count says the class has Kindling, for the minion id's reason: the
+            // per-stack keeps its authoring default on every class without one. `!(x > 0f)` so NaN
+            // is caught with zero, which [Min(0f)] lets through.
+            if (_kindlingMaxStacks > 0 && !(_kindlingPerStack > 0f))
+            {
+                Debug.LogWarning(
+                    $"CharacterDefinition '{name}': Kindling has {_kindlingMaxStacks} stack(s) worth " +
+                    $"{_kindlingPerStack} each, so the ramp would do nothing. Set a per-stack above " +
+                    "0, or set max stacks to 0 for a class without Kindling.",
                     this);
             }
         }

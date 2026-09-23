@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b819aeab08838a4c901790d46282d7e, type: 3}
+  m_Name: Emberwright
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.CharacterDefinition
+  _id: character.emberwright
+  _nameKey: character.emberwright.name
+  _descriptionKey: character.emberwright.description
+  _maxHp: 70
+  _speed: 3.4
+  _accelTime: 0.06
+  _decelTime: 0.08
+  _turnSpeedDeg: 720
+  _shieldMax: 0
+  _shieldRechargeDelay: 4
+  _shieldRefillPerSecond: 15
+  _hitIFrames: 0.5
+  _acquireRange: 12
+  _distanceWeight: 3
+  _eliteBonus: 2
+  _finisherBonus: 1
+  _targetHysteresis: 1.5
+  _targetCadence: 0.1
+  _weaponKind: 1
+  _weaponDamage: 17
+  _weaponSwingsPerSecond: 1.5
+  _weaponRange: 12
+  _weaponConeAngleDeg: 360
+  _weaponDamageFrame: 0.15
+  _weaponShotSpeed: 25
+  _weaponShotRadius: 3
+  _weaponShotSpread: 0
+  _focusDelay: 0.4
+  _focusRampTime: 1
+  _focusMaxMultiplier: 1.3
+  _movementSkillKind: 2
+  _movementSkillDistance: 10
+  _movementSkillDuration: 0.05
+  _movementSkillCooldown: 2
+  _movementSkillInputBuffer: 0.15
+  _movementSkillDamage: 0
+  _movementSkillKnockback: 0
+  _movementSkillIFrameTrail: 0.05
+  _movementSkillDecoyDuration: 0
+  _minionCap: 0
+  _minionSpecId: minion.new
+  _minionNameKey: minion.new.name
+  _minionLifespan: 20
+  _minionRiseChance: 0.25
+  _minionMaxHp: 20
+  _minionMoveSpeed: 3
+  _minionDamage: 8
+  _minionAttackInterval: 1
+  _minionReach: 1.5
+  _kindlingMaxStacks: 30
+  _kindlingPerStack: 0.02

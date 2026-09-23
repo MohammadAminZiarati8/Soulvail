@@ -227,6 +227,11 @@ MonoBehaviour:
   - _key: character.gravecaller.description
     _text: "A necromancer. The bolt is weak on purpose \u2014 you are not the damage.
       A quarter of what you kill gets back up and fights for you."
+  - _key: character.emberwright.name
+    _text: Emberwright
+  - _key: character.emberwright.description
+    _text: A wizard. Enormous, slow, unforgiving. The orb is the widest blast in the
+      game, and every hit you land without being touched makes the next one hotter.
   - _key: ui.splash.title
     _text: Borrow a discipline
   - _key: ui.splash.class

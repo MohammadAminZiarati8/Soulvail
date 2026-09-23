@@ -55,8 +55,8 @@ public sealed class GravecallerTests
     /// <remarks>
     /// 3.0 is what <c>Oathbound.asset</c> has carried since the owner's M2-03 retune and 3.4 is
     /// 6.2 × (3 / 5.4) rounded to a decimal — the same factor, applied to the row GD §6.1 still
-    /// published. The Emberwright has no asset, so the ceiling is a number this fixture asserts
-    /// the Gravecaller sits under rather than one it can read off a file.
+    /// published. <c>Emberwright.asset</c> carries it as of M6-07a, and
+    /// <c>EmberwrightTests.Emberwright_SpeedIsTheTopOfTheRuledBand</c> reads it off the file.
     /// </remarks>
     private const float BandFloor = 3.0f;
 
@@ -84,9 +84,8 @@ public sealed class GravecallerTests
         // the scope converts perfectly and is not in the game (M3-12c's Boot_ rows, same shape).
         ContentCatalog catalog = BootCatalog();
 
-        Assert.That(catalog.Characters.Count, Is.EqualTo(2),
-            "Two classes are authored; the Oathbound is still the only one a menu can start "
-                + "(rule 9).");
+        // Three since M6-07a, which authored the Emberwright onto the same list.
+        Assert.That(catalog.Characters.Count, Is.EqualTo(3), "CH §3's roster of three boots.");
 
         Assert.That(catalog.Character(new ContentId(GravecallerId)).Id.Value, Is.EqualTo(GravecallerId));
         Assert.That(catalog.Character(new ContentId(OathboundId)).Id.Value, Is.EqualTo(OathboundId));

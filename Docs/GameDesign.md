@@ -220,6 +220,8 @@ Weapons differ per class, but all obey the same laws:
 
 > A basic enemy dies in **3–5 hits from any class, at any depth.**
 
+The band is the *weapon's*. A signature that spends a run's worth of not being hit is allowed to beat it: the Emberwright at full Kindling kills a stage-1 Husk in two ([CH §3.3](Characters.md#33-emberwright--wizard), [M6-07a](plan/tasks/M6-07a-the-emberwright-and-the-cinder-orb.md)).
+
 At stage 1 an unlevelled class kills a Husk in ~3 hits. At stage 30 a well-built one should still kill a Husk in ~3–5 hits, because tree power and enemy HP scale together by design. If basic enemies start taking 10 hits, the curve has failed and no amount of content fixes it.
 
 **This holds up to the death horizon and not past it** — see §12.4's TTK row and §12.5. **And it is not holding today, measured rather than assumed:** at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md) the Oathbound killed a Husk in 4 hits at every stage from 4 to 16, while the Gravecaller went 4 → 8 by stage 16 with **its entire tree taken**. The cause is the tree rather than the player: the Gravecaller's twelve nodes carry **one** weapon-damage node, so its damage grew 15 % over nineteen stages against a Husk's 108 %. **"Tree power and enemy HP scale together by design" is the design; it is not yet the game.** M8-05 owns closing that gap.

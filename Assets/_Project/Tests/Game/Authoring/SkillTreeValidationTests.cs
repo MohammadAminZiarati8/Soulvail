@@ -77,6 +77,18 @@ public sealed class SkillTreeValidationTests
     /// </summary>
     private const int Seed = 20260918;
 
+    /// <summary>
+    /// The one class <see cref="EveryShippedCharacter_HasATree"/> skips, and the only one it ever
+    /// may: M6-07a authored the Emberwright's numbers and M6-08 authors its tree, so for the tasks
+    /// between them the project ships a class with no tree on purpose.
+    /// </summary>
+    /// <remarks>
+    /// M5-02's named skip, back exactly as it was one class on (M6-07a rule 9). Named here rather
+    /// than expressed as a rule, so that the skip covers this omission and not the next one — and
+    /// <see cref="Tree_TheTreelessClassIsStillTreeless"/> is what makes it temporary.
+    /// </remarks>
+    private const string TreelessUntilM608 = "character.emberwright";
+
     // ---- Rule 5: CH §5's shape --------------------------------------------------------------------
 
     [Test]
@@ -398,6 +410,9 @@ public sealed class SkillTreeValidationTests
         // quietly cover the next omission — under `TheTreelessClass_IsStillTreeless`, whose whole
         // job was to go red the day the tree landed. It did, and both halves were deleted rather
         // than moved: the sweep is the stronger check and it is doing the work again.
+        //
+        // **And it is back for the Emberwright, M6-07a to M6-08** (M6-07a rule 9) — the same skip,
+        // by name, with the same row beside it to expire it.
         ContentCatalog catalog = ShippedCatalog();
         var problems = new List<string>();
 
@@ -412,6 +427,11 @@ public sealed class SkillTreeValidationTests
 
             CharacterSpec spec = definition.ToSpec();
 
+            if (spec.Id.Value == TreelessUntilM608)
+            {
+                continue;
+            }
+
             if (!catalog.TryGetTreeFor(spec.Id, out SkillTreeSpec _))
             {
                 problems.Add(
@@ -421,6 +441,38 @@ public sealed class SkillTreeValidationTests
         }
 
         ContentValidationTests.AssertNoProblems(problems, "Every character has a tree");
+    }
+
+    [Test]
+    public void Tree_TheTreelessClassIsStillTreeless()
+    {
+        // **The exemption above, asserted rather than tolerated, so it cannot outlive its reason.**
+        // M6-07a ships the Emberwright's numbers and M6-08 ships its tree, so between the two there
+        // is one authored class with no tree — which is the state the sweep above exists to refuse,
+        // and it is refusing something true. Skipped by name rather than by a rule, because a rule
+        // would quietly cover the next omission too.
+        //
+        // **This row goes red the day M6-08 merges, and the fix is to delete both it and the
+        // `continue` above.** That is the point: a green suite is what says the exemption is gone.
+        //
+        // Unlike M5-02's, this class *is* reachable from a menu — the class-select screen binds a
+        // card per catalog entry — and that is safe for a reason already tested: a run with no tree
+        // builds no LevelUpFlow and banks its levels (NoTree_CanStarve_*, M3-08a rule 5).
+        ContentCatalog catalog = ShippedCatalog();
+
+        Assert.That(
+            catalog.TryGetTreeFor(new ContentId(TreelessUntilM608), out SkillTreeSpec _),
+            Is.False,
+            $"'{TreelessUntilM608}' now has a tree, so EveryShippedCharacter_HasATree no longer "
+                + "needs to skip it. M6-08 is merged: delete this row and the skip beside it — the "
+                + "sweep is the stronger check and it should be doing the work.");
+
+        // And the skip is present in the sweep, not merely declared: the class is on disk and the
+        // sweep would otherwise report it.
+        Assert.That(
+            ContentValidationTests.PathsOf<CharacterDefinition>(),
+            Has.Some.EndsWith("Emberwright.asset"),
+            "the exemption names a class that is not authored, so it is covering nothing.");
     }
 
     [Test]

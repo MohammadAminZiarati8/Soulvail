@@ -222,6 +222,43 @@ public sealed class CharacterDefinitionTests
     }
 
     [Test]
+    public void ToSpec_ZeroKindlingMaxStacks_MeansNoKindling()
+    {
+        // M6-07a rule 1: the count is the switch, the minion cap's arrangement a third time. A fresh
+        // definition authors none, which is what the Oathbound and the Gravecaller inherit without
+        // a line in either file.
+        CharacterDefinition definition = NewDefinition("Unkindled");
+
+        Assert.That(definition.ToSpec().Kindling, Is.Null);
+
+        SetInt(definition, "_kindlingMaxStacks", 30);
+
+        KindlingSpec kindling = definition.ToSpec().Kindling;
+
+        Assert.That(kindling, Is.Not.Null);
+        Assert.That(kindling.MaxStacks, Is.EqualTo(30));
+        Assert.That(kindling.PerStack, Is.EqualTo(0.02f).Within(Tolerance), "the field's default is CH §3.3's.");
+    }
+
+    [Test]
+    public void ToSpec_InvalidKindling_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenKindling");
+
+        SetInt(definition, "_kindlingMaxStacks", 30);
+
+        // OnValidate's warning is expected rather than ignored here, because it is the other half
+        // of the same guard: the Inspector says so on the edit, and ToSpec refuses at boot.
+        LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("BrokenKindling")));
+        SetFloat(definition, "_kindlingPerStack", 0f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenKindling"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
     public void ToSpec_ReturnsNewInstanceEachCall()
     {
         var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
@@ -357,6 +394,13 @@ public sealed class CharacterDefinitionTests
     {
         var serialized = new SerializedObject(definition);
         serialized.FindProperty(field).floatValue = value;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetInt(CharacterDefinition definition, string field, int value)
+    {
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty(field).intValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 }

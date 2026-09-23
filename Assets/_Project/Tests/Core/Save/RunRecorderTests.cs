@@ -326,6 +326,31 @@ public sealed class RunRecorderTests
     }
 
     [Test]
+    public void Recorder_WritesThePactedIds()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // Restored rather than taken, for `Recorder_CapturesTakenNodesInOrder`'s reason. Not
+        // circular: `SkillTreeTests.Restore_BringsBackTheCorruptedVersion` says the replay works.
+        var taken = new[] { new ContentId(NodeOne), new ContentId(NodeTwo) };
+        var pacted = new[] { new ContentId(NodeTwo) };
+
+        StartAt(1, restore: Saved(
+            1, level: 3, xp: 0f, pendingLevelUps: 0, takenNodeIds: taken, pactedNodeIds: pacted));
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // M6-01b rule 7's third placeholder, replaced: the list is the run's own, copied.
+        Assert.That(snapshot.PactedNodeIds, Is.EqualTo(pacted));
+        Assert.That(snapshot.PactedNodeIds, Is.Not.SameAs(_session.State.PactedNodeIds));
+        Assert.That(snapshot.Version, Is.EqualTo(RunSnapshot.CurrentVersion), "And no bump.");
+    }
+
+    [Test]
     public void Recorder_NoTreeWritesAnEmptyList()
     {
         Build(OneHuskStage());
@@ -997,7 +1022,8 @@ public sealed class RunRecorderTests
         int pendingLevelUps,
         IReadOnlyList<ContentId> takenNodeIds = null,
         IReadOnlyList<ContentId> manualSkillIds = null,
-        RunEconomy economy = default) => new RunSnapshot(
+        RunEconomy economy = default,
+        IReadOnlyList<ContentId> pactedNodeIds = null) => new RunSnapshot(
         RunSnapshot.CurrentVersion,
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -1015,7 +1041,7 @@ public sealed class RunRecorderTests
         manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
         economy,
         Array.Empty<ContentId>(),
-        Array.Empty<ContentId>(),
+        pactedNodeIds ?? Array.Empty<ContentId>(),
         Array.Empty<ContentId>());
 
     /// <summary>
@@ -1046,7 +1072,10 @@ public sealed class RunRecorderTests
     private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
     {
         Passive(NodeOne),
-        Passive(NodeTwo),
+
+        // **The one node with a Pact** (M6-05a), for `Recorder_WritesThePactedIds`. Untaken or
+        // taken clean it is an ordinary Passive, so every other row here reads it as one.
+        Passive(NodeTwo, withPact: true),
         Passive(NodeThree),
         Passive(NodeB),
         Passive(NodeC),
@@ -1097,7 +1126,7 @@ public sealed class RunRecorderTests
                 new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
             }));
 
-    private static SkillSpec Passive(string id) => new SkillSpec(
+    private static SkillSpec Passive(string id, bool withPact = false) => new SkillSpec(
         new ContentId(id),
         new LocKey($"{id}.name"),
         new LocKey($"{id}.desc"),
@@ -1105,7 +1134,13 @@ public sealed class RunRecorderTests
         new IEffect[]
         {
             new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
-        });
+        },
+        pact: withPact
+            ? new PactSpec(
+                new IEffect[] { new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.15f) },
+                15f,
+                new LocKey($"{id}.pact.desc"))
+            : null);
 
     private void TickFor(int ticks)
     {

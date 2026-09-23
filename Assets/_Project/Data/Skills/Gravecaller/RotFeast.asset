@@ -22,3 +22,9 @@ MonoBehaviour:
   _trigger: []
   _onCast: []
   _parent: {fileID: 0}
+  _hasPact: 1
+  _pactEffects:
+  - {fileID: 11400000, guid: 63259e0370864facbdf5e0c3b7d41f95, type: 2}
+  - {fileID: 11400000, guid: 75d4cf54e10f4d7ebeb2384a8b3d3715, type: 2}
+  _pactVeilrot: 12
+  _pactDescriptionKey: skill.gravecaller.rot-feast.pact.description

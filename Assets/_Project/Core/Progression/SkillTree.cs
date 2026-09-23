@@ -117,6 +117,18 @@ public sealed class SkillTree
     /// <summary>Wrapped once, for <see cref="_takenIdsView"/>'s reason.</summary>
     private readonly ReadOnlyCollection<ContentId> _banishedIdsView;
 
+    /// <summary>
+    /// One flag per node, indexed as <see cref="_nodes"/> is — set when the node was taken in GD
+    /// §13.2's corrupted form (M6-05a). Only ever true where <see cref="_taken"/> is.
+    /// </summary>
+    private bool[] _pacted;
+
+    /// <summary>The pacted ids in take order — a subset of <see cref="_takenIds"/>.</summary>
+    private readonly List<ContentId> _pactedIds;
+
+    /// <summary>Wrapped once, for <see cref="_takenIdsView"/>'s reason.</summary>
+    private readonly ReadOnlyCollection<ContentId> _pactedIdsView;
+
     private readonly EffectRegistry _effects;
     private readonly IDomainEvents _events;
 
@@ -147,6 +159,9 @@ public sealed class SkillTree
         _banished = new bool[_nodes.Length];
         _banishedIds = new List<ContentId>();
         _banishedIdsView = new ReadOnlyCollection<ContentId>(_banishedIds);
+        _pacted = new bool[_nodes.Length];
+        _pactedIds = new List<ContentId>();
+        _pactedIdsView = new ReadOnlyCollection<ContentId>(_pactedIds);
 
         Reindex();
 
@@ -229,6 +244,22 @@ public sealed class SkillTree
     /// <summary>The banished ids, in banish order — a read-only view, never a copy.</summary>
     /// <remarks>What <c>RunRecorder</c> writes and <see cref="RestoreBanished"/> replays.</remarks>
     public IReadOnlyList<ContentId> BanishedIds => _banishedIdsView;
+
+    /// <summary>Whether this run took <paramref name="id"/> in its corrupted form (GD §13.2).</summary>
+    /// <remarks>
+    /// False for a stranger, as <see cref="IsTaken"/> is and for its reason. A dictionary probe and
+    /// an array read (M6-05a rule 8).
+    /// </remarks>
+    public bool IsPact(ContentId id) => _index.TryGetValue(id, out int ordinal) && _pacted[ordinal];
+
+    /// <summary>The ids taken as Pacts, in take order — a subset of <see cref="TakenIds"/>.</summary>
+    /// <remarks>
+    /// A read-only view, never a copy. What <c>RunRecorder</c> writes and
+    /// <see cref="Restore(IReadOnlyList{ContentId}, IReadOnlyList{ContentId})"/> replays: without it
+    /// a resumed run would come back with the clean node's power and the Veilrot it already paid
+    /// (M6-05a rule 5).
+    /// </remarks>
+    public IReadOnlyList<ContentId> PactedIds => _pactedIdsView;
 
     /// <summary>
     /// Whether <paramref name="id"/> may be banished: a node of this tree, not taken, not already
@@ -452,13 +483,24 @@ public sealed class SkillTree
     /// Public, and the seal is one layer out at <c>RunState.Tree</c>, which is <c>internal</c>: a
     /// public handle on this object would let a view grant the player a node (AR §18.2, rule 8).
     /// </para>
+    /// <para>
+    /// <b>A Pact is the same take through the same gates</b> (M6-05a): <paramref name="asPact"/>
+    /// swaps which effect list goes on and nothing else — the gates are asked first, so a Pact is
+    /// never a way past CH §5, and <see cref="NodeTaken"/> is published exactly as for a clean take.
+    /// The Veilrot it costs is the caller's to charge (M6-05b).
+    /// </para>
     /// </remarks>
+    /// <param name="id">The node to take.</param>
+    /// <param name="asPact">
+    /// Whether to apply <see cref="SkillSpec.Pact"/>'s effects instead of the node's own.
+    /// </param>
     /// <exception cref="KeyNotFoundException"><paramref name="id"/> is not in this tree.</exception>
     /// <exception cref="InvalidOperationException">
     /// <paramref name="id"/> is not available — already taken, not enough of its branch taken, a
-    /// keystone short of its branch, or an upgrade whose parent is not owned.
+    /// keystone short of its branch, or an upgrade whose parent is not owned — or
+    /// <paramref name="asPact"/> is true and the node has no Pact.
     /// </exception>
-    public void Take(ContentId id)
+    public void Take(ContentId id, bool asPact = false)
     {
         int ordinal = Locate(id);
         Gate gate = Check(ordinal);
@@ -468,7 +510,13 @@ public sealed class SkillTree
             throw new InvalidOperationException(Refusal(ordinal, gate));
         }
 
-        Record(ordinal, publish: true);
+        if (asPact && !_nodes[ordinal].Spec.HasPact)
+        {
+            throw new InvalidOperationException(
+                $"'{id}' has no Pact, so it cannot be taken in a corrupted form. Nothing was taken.");
+        }
+
+        Record(ordinal, publish: true, asPact);
     }
 
     /// <summary>
@@ -524,11 +572,73 @@ public sealed class SkillTree
     /// <exception cref="KeyNotFoundException">
     /// An entry is not a node of this tree — content this build no longer ships.
     /// </exception>
-    public void Restore(IReadOnlyList<ContentId> takenInOrder)
+    public void Restore(IReadOnlyList<ContentId> takenInOrder) =>
+        Restore(takenInOrder, Array.Empty<ContentId>());
+
+    /// <summary>
+    /// Replays a save's picks, corrupting the ones <paramref name="pacted"/> names (M6-05a rule 5).
+    /// </summary>
+    /// <param name="takenInOrder">As the one-list overload.</param>
+    /// <param name="pacted">
+    /// Which of <paramref name="takenInOrder"/> were taken as Pacts. Empty is ordinary.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Everything the one-list overload says, and one more refusal. <b>Both refusals on
+    /// <paramref name="pacted"/> are asked before anything is replayed</b>, so a save that fails
+    /// either leaves this tree exactly as it was.
+    /// </para>
+    /// <para>
+    /// <b>A pacted id that was not taken</b> is a save that disagrees with itself — corrupt rather
+    /// than stale. <b>A pacted id whose node this build ships no Pact for</b> is content that
+    /// changed under the save, and replaying the clean node would silently hand the run a different
+    /// power from the one it paid Veilrot for. Both throw rather than drop, unlike
+    /// <see cref="RestoreBanished"/>: a banish grants nothing, and a Pact is power.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Either list is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// A take breaks a gate, or an entry of <paramref name="pacted"/> is not in
+    /// <paramref name="takenInOrder"/> or names a node with no Pact.
+    /// </exception>
+    /// <exception cref="KeyNotFoundException">
+    /// An entry of <paramref name="takenInOrder"/> is not a node of this tree.
+    /// </exception>
+    public void Restore(IReadOnlyList<ContentId> takenInOrder, IReadOnlyList<ContentId> pacted)
     {
         if (takenInOrder is null)
         {
             throw new ArgumentNullException(nameof(takenInOrder));
+        }
+
+        if (pacted is null)
+        {
+            throw new ArgumentNullException(nameof(pacted));
+        }
+
+        // Once per resumed run, over lists a level-up long: a linear scan is the honest cost, and
+        // it runs before anything is recorded so a refusal leaves the tree untouched.
+        for (int p = 0; p < pacted.Count; p++)
+        {
+            ContentId id = pacted[p];
+
+            if (!Contains(takenInOrder, id))
+            {
+                throw new ArgumentException(
+                    $"The save pacts '{id}' and never took it. A Pact is a way of taking a node, so "
+                        + "a save that disagrees with itself here is corrupt rather than stale.",
+                    nameof(pacted));
+            }
+
+            // A stranger is left for the replay's KeyNotFoundException, which names content
+            // validation — the one refusal that already exists for an unknown node.
+            if (_index.TryGetValue(id, out int ordinal) && !_nodes[ordinal].Spec.HasPact)
+            {
+                throw new ArgumentException(
+                    $"The save pacts '{id}', and this build ships no Pact for it. Replaying the clean "
+                        + "node would silently hand the run a power it did not pay Veilrot for.",
+                    nameof(pacted));
+            }
         }
 
         for (int i = 0; i < takenInOrder.Count; i++)
@@ -546,7 +656,7 @@ public sealed class SkillTree
                     nameof(takenInOrder));
             }
 
-            Record(ordinal, publish: false);
+            Record(ordinal, publish: false, asPact: Contains(pacted, id));
         }
     }
 
@@ -608,15 +718,18 @@ public sealed class SkillTree
 
         var taken = new bool[widened.Length];
         var banished = new bool[widened.Length];
+        var pacted = new bool[widened.Length];
         var takenInBranch = new int[Rules.BranchCount];
 
         Array.Copy(_taken, taken, _taken.Length);
         Array.Copy(_banished, banished, _banished.Length);
+        Array.Copy(_pacted, pacted, _pacted.Length);
         Array.Copy(_takenInBranch, takenInBranch, _takenInBranch.Length);
 
         _nodes = widened;
         _taken = taken;
         _banished = banished;
+        _pacted = pacted;
         _takenInBranch = takenInBranch;
 
         Reindex();
@@ -630,7 +743,7 @@ public sealed class SkillTree
     /// from a take would be a resumed run that is not the run that was saved. The only difference
     /// the two are allowed is the event, which is the parameter.
     /// </remarks>
-    private void Record(int ordinal, bool publish)
+    private void Record(int ordinal, bool publish, bool asPact)
     {
         Node node = _nodes[ordinal];
         SkillSpec spec = node.Spec;
@@ -642,12 +755,22 @@ public sealed class SkillTree
         _takenInBranch[node.Branch]++;
         _takenIds.Add(spec.Id);
 
+        if (asPact)
+        {
+            _pacted[ordinal] = true;
+            _pactedIds.Add(spec.Id);
+        }
+
         // **With the SkillSpec as the source** (M3-05 rule 7): it is shared, immutable and taken
         // once per run, so it is a reference stable for the run's life and never confused with
-        // another node's. It is also what a future removal would take back by.
-        for (int i = 0; i < spec.Effects.Count; i++)
+        // another node's. It is also what a future removal would take back by. **The same source for
+        // a Pact** (M6-05a rule 1): the corrupted effects go on *instead of* the clean ones, and
+        // nothing downstream has to know which version is in force.
+        IReadOnlyList<IEffect> effects = asPact ? spec.Pact.Effects : spec.Effects;
+
+        for (int i = 0; i < effects.Count; i++)
         {
-            _effects.Apply(spec.Effects[i], spec);
+            _effects.Apply(effects[i], spec);
         }
 
         if (spec.Kind == SkillKind.Active)
@@ -816,7 +939,28 @@ public sealed class SkillTree
             {
                 RequireHandlers(spec, spec.Active.OnCast, "casts");
             }
+
+            // A Pact's effects are applied by Record exactly as the clean ones are, so they are
+            // swept for the same reason (M6-05a rule 7).
+            if (spec.HasPact)
+            {
+                RequireHandlers(spec, spec.Pact.Effects, "pacts");
+            }
         }
+    }
+
+    /// <summary>Whether <paramref name="ids"/> holds <paramref name="id"/> — a restore-only scan.</summary>
+    private static bool Contains(IReadOnlyList<ContentId> ids, ContentId id)
+    {
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (ids[i] == id)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void RequireHandlers(SkillSpec spec, IReadOnlyList<IEffect> effects, string when)

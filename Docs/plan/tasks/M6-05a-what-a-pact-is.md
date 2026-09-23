@@ -284,4 +284,66 @@ every existing `SkillSpec` and `SkillTree` guard firing unchanged.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the table's shape.** `PactSpec` (effects, a Rot in [10, 20], a description key, no
+name) sits in `SkillSpec.cs` and attaches as `SkillSpec`'s optional last argument, refused on an
+Active. `SkillTree` gains a third flag array beside `_taken` and `_banished`, `Take(id, asPact)`,
+`IsPact`, `PactedIds` and a two-list `Restore`; `Record` applies the Pact's effects **instead of** the
+clean ones, with the `SkillSpec` as source. `RunState.PactedNodeIds` forwards to the tree,
+`RunRecorder` writes it (the v4 placeholder replaced, no bump), and `RunSession` hands it to the
+replay. EditMode 2 736 → **2 766, +30**; PlayMode **26**, unchanged.
+
+**The four Pacts**, two effect assets each (the power and its price, GD §13.2's shape):
+
+| Node | Pact | Rot |
+|---|---|---|
+| Keen Censer (Oathbound, Censure) | +45 % damage, −25 max HP (GD §13.2's own example) | 15 |
+| Zealotry (Oathbound, Judgment) | +30 % fire rate, Aegis recharges 50 % slower | 12 |
+| Sharpened Bone (Gravecaller, Grave-work) | +40 % damage, −15 % move speed | 15 |
+| Rot Feast (Gravecaller, Rot) | +40 % XP, −15 % max HP | 12 |
+
+These numbers are authored to the budget, not balanced. M7-04 and M8-05 own balance.
+`Content_ReportsItsPactCoverage` logs **4 of 24**.
+
+### Deviations
+
+1. **"Four ship, one per branch pair, so every branch of both classes can produce one" is not
+   possible with four.** Six branches, four Pacts: **Oath and Legion carry none**. The Files table,
+   the four `English.asset` rows and ledger row 7's count all say four, so four shipped.
+2. **`Restore(takenInOrder)` is kept** as a one-line overload that passes an empty `pacted`. It is
+   called from dozens of existing rows, and the resume path now uses the two-list form.
+3. **Both `pacted` refusals run before any take is replayed**, so a save that fails either leaves
+   the tree untouched. A pacted id that is not in this tree is left to the replay's existing
+   `KeyNotFoundException`.
+4. **`RequireHandlers` sweeps a Pact's effects too** (`"pacts"`). Rule 7 applied at the
+   constructor, for the reason the cast list is swept there.
+5. **No `SkillDefinitionTests` exists.** The authoring rows are in `SkillAuthoringTests`:
+   `Definition_RewrapsTheCoreFailure`, plus three rows beyond the table (`Skill_Pact_ToSpec`,
+   `Skill_NoPactByDefault` and `Skill_PactWithNoEffects_NamesTheAsset`, which is manual step 1
+   as a test). The `Pact_*` and `Skill_*` rows are all in `PactSpecTests`, and `SkillSpecTests`
+   is untouched.
+6. **The Inspector block is a `[Header]` with an `_hasPact` toggle, not a foldout.** On an Active
+   the toggle is refused by `SkillSpec`, not ignored like the kind-gated blocks: a designer who
+   switched it on made a claim. `OnValidate` warns about a Pact on an Active and about a Pact with
+   no effects.
+7. **Test files outside the table.** `RunRecorderTests` holds `Recorder_WritesThePactedIds`, and
+   its `NodeTwo` now carries a Pact. `RunSessionResumeTests`' max-HP node carries one too (+45
+   against +20). `OathboundTreeTests.Modify_ShippedAssetsAllTargetThePlayer` pins **9 → 13**
+   ModifyStats and caught the four new assets on its first run.
+8. **`Resume_APactSurvivesAKill` compares max HP rather than damage.** `RunState` has a read for
+   one and not the other, which is `Start_RestoresTakenNodes`' precedent. It writes through the
+   real recorder and restores into a fresh session, so the row covers the save format as well as
+   the replay.
+9. **`ContentValidationTests` changes beyond its two new rows.** `ShippedEffects` 25 → 33, the Pact's
+   key joins the `EveryLocKey_*` sweeps, and `skill.new.pact.description` is a known placeholder.
+   `Content_EveryPactAsksWithinTheBand` reads the serialized fields, so its message names
+   `_pactVeilrot`.
+
+### Findings
+
+- **Manual step 2 cannot be run in this build.** No debug command takes a node as a Pact, and
+  M6-03a removed the F-keys. Rule 5 is covered by `Resume_APactSurvivesAKill` and nothing else
+  until M6-05b's card.
+- **`FrameOrderTests.Ticker_RunsTheStepsInOrder` failed once in four PlayMode runs** with the
+  wedge-behind-the-apex message, which is known issue 1. Runs 3 and 4 were clean.
+- **Ledger row 7** gets its four Pact descriptions (M6-05b owes the other two). It is touched but
+  not moved.

@@ -6,8 +6,9 @@ using Soulvail.Core.Effects;
 namespace Soulvail.Core.Content;
 
 // One tree node, as authored data: what taking it does, and — if it is an Active — what firing it
-// does. Three types in one file for `ModeSpec.cs`' precedent: a kind, the optional block that kind
-// requires, and the record that carries both.
+// does. Four types in one file for `ModeSpec.cs`' precedent: a kind, the optional block that kind
+// requires, the optional corrupted form any other kind may carry (M6-05a), and the record that
+// carries all three.
 
 /// <summary>
 /// CH §4's four kinds of node.
@@ -128,6 +129,106 @@ public sealed class ActiveSpec
 }
 
 /// <summary>
+/// GD §13.2's corrupted form of one node: what it does instead, what it says, and what it costs in
+/// Veilrot. Authored beside the clean node rather than derived from it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Authored, because GD §13.2's "~1.8×" is a budget rather than an operation</b> (M6-05a).
+/// <see cref="IEffect"/> is a marker with no members, and multiplying is backwards for half the
+/// shipped primitives — a heal zone pulsing 1.8× as often is a longer interval, a minion count is an
+/// <see cref="int"/>, a cooldown reduction is authored negative. GD §13.2's own worked examples
+/// carry downsides no multiplication produces, so a designer writes the corrupted node whole.
+/// </para>
+/// <para>
+/// <b>No name of its own.</b> The corrupted node keeps the clean node's name so the player
+/// recognises it (M6-05a rule 4); its effects differ, so its description does not.
+/// </para>
+/// <para>
+/// Immutable and shared, like every spec: the effect list is copied on construction through
+/// <see cref="SkillSpec.CopyEffects"/>, the one copy-and-null-check in this file (rule 7).
+/// </para>
+/// </remarks>
+public sealed class PactSpec
+{
+    /// <summary>The least Veilrot a Pact may ask. GD §13.2 and CH §4.4's band.</summary>
+    public const float MinVeilrot = 10f;
+
+    /// <summary>The most. A band rather than a number, because GD §13.2 writes one.</summary>
+    public const float MaxVeilrot = 20f;
+
+    private readonly ReadOnlyCollection<IEffect> _effects;
+
+    /// <param name="effects">
+    /// What taking the corrupted node puts into force — <b>instead of</b> the clean node's, never as
+    /// well as (rule 1). At least one, no nulls. Copied.
+    /// </param>
+    /// <param name="veilrot">What it adds to GD §10's meter. In [10, 20].</param>
+    /// <param name="descriptionKey">
+    /// What it says. Its own, because its effects differ; the name stays the clean node's.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="effects"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="effects"/> is empty or holds a null; <paramref name="descriptionKey"/> is a
+    /// default.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="veilrot"/> is not a finite number inside the band.
+    /// </exception>
+    public PactSpec(IReadOnlyList<IEffect> effects, float veilrot, LocKey descriptionKey)
+    {
+        if (effects is null)
+        {
+            throw new ArgumentNullException(nameof(effects));
+        }
+
+        // A Pact that does nothing is a price for nothing. ActiveSpec's empty-onCast refusal, one
+        // block over.
+        if (effects.Count == 0)
+        {
+            throw new ArgumentException(
+                "A Pact must do something. An empty effect list is a Veilrot price for a node that "
+                    + "changes nothing.",
+                nameof(effects));
+        }
+
+        // Asked as "inside the band" rather than "outside it", so NaN — which fails every
+        // comparison — is refused rather than waved through (AR §18.3). Infinity is outside by
+        // arithmetic.
+        if (!(veilrot >= MinVeilrot && veilrot <= MaxVeilrot))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(veilrot),
+                veilrot,
+                $"A Pact asks between {MinVeilrot} and {MaxVeilrot} Veilrot (GD §13.2, CH §4.4).");
+        }
+
+        // SkillSpec's forgotten-field rule: default(LocKey) carries a null past the struct's own
+        // constructor, and ADR-0012 says the key exists from the first node.
+        if (descriptionKey.Key is null)
+        {
+            throw new ArgumentException(
+                "A Pact has no descriptionKey. Its effects differ from the clean node's, so what "
+                    + "it says must too — and a default(LocKey) is a forgotten field.",
+                nameof(descriptionKey));
+        }
+
+        _effects = SkillSpec.CopyEffects(effects, nameof(effects));
+        Veilrot = veilrot;
+        DescriptionKey = descriptionKey;
+    }
+
+    /// <summary>What taking the corrupted node puts into force, in the order they were authored.</summary>
+    public IReadOnlyList<IEffect> Effects => _effects;
+
+    /// <summary>What it adds to GD §10's meter, in [<see cref="MinVeilrot"/>, <see cref="MaxVeilrot"/>].</summary>
+    public float Veilrot { get; }
+
+    /// <summary>Localisation key for what the corrupted node says.</summary>
+    public LocKey DescriptionKey { get; }
+}
+
+/// <summary>
 /// One tree node, as authored data: its identity, its text, its kind, and the effects taking it
 /// puts into force. Converted once at boot from a <c>SkillDefinition</c> ScriptableObject (M3-02b)
 /// and registered in the <see cref="ContentCatalog"/>. See AR §10.1 and ADR-0006.
@@ -151,9 +252,14 @@ public sealed class ActiveSpec
 /// instead.
 /// </para>
 /// <para>
-/// <b>What this type deliberately does not carry.</b> No Pact field: a Pact is a <em>variant the
-/// offer produces</em> (CH §4.4), roughly 1.8× the clean node plus Veilrot, and its shape is
-/// M6-05's to decide against a generator that will exist by then. No tier and no branch: where a
+/// <b>A Pact is authored beside the node, optional and last</b> (M6-05a rules 2 and 3): a
+/// <see cref="PactSpec"/> is the node's corrupted form, refused on an
+/// <see cref="SkillKind.Active"/> because an Active's power is on cast and a corrupted one would be
+/// a second <see cref="ActiveSpec"/> the runner has no door for. <see cref="HasPact"/> is the read
+/// every caller uses.
+/// </para>
+/// <para>
+/// <b>What this type deliberately does not carry.</b> No tier and no branch: where a
 /// node sits is the <see cref="SkillTreeSpec"/>'s, so one node cannot disagree with the tree that
 /// holds it. No <c>TagSet</c>, for <see cref="EnemySpec"/>'s reason — until affixes need one.
 /// </para>
@@ -188,12 +294,18 @@ public sealed class SkillSpec
     /// every other kind. That the parent <em>exists</em> is M3-03's check, for
     /// <see cref="SkillTreeSpec"/>'s reason: a spec constructor has no catalog.
     /// </param>
+    /// <param name="pact">
+    /// GD §13.2's corrupted form of this node, or <see langword="null"/> for a node nobody wrote one
+    /// for. Refused on an <see cref="SkillKind.Active"/> (M6-05a rule 3). Optional and last because
+    /// seventy call sites build a <see cref="SkillSpec"/> (rule 2).
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="effects"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/>, <paramref name="nameKey"/> or <paramref name="descriptionKey"/> is a
     /// default value; <paramref name="kind"/> and <paramref name="active"/> disagree;
     /// <paramref name="kind"/> and <paramref name="parentId"/> disagree; <paramref name="effects"/>
-    /// holds a null entry; or a non-Active was given no effects.
+    /// holds a null entry; a non-Active was given no effects; or an Active was given a
+    /// <paramref name="pact"/>.
     /// </exception>
     public SkillSpec(
         ContentId id,
@@ -202,7 +314,8 @@ public sealed class SkillSpec
         SkillKind kind,
         IReadOnlyList<IEffect> effects,
         ActiveSpec active = null,
-        ContentId parentId = default)
+        ContentId parentId = default,
+        PactSpec pact = null)
     {
         if (id.Value is null)
         {
@@ -278,12 +391,25 @@ public sealed class SkillSpec
                 nameof(effects));
         }
 
+        // M6-05a rule 3. A corrupted Active is a second ActiveSpec — a second cooldown Stat, a
+        // second trigger, a second auto-cast slot — and SkillRunner.Add takes a SkillSpec, which a
+        // PactSpec is not. Refused in writing rather than half-built.
+        if (kind == SkillKind.Active && pact is not null)
+        {
+            throw new ArgumentException(
+                $"'{id}' is an Active carrying a Pact. An Active's power is on cast, so its "
+                    + "corrupted form would be a second ActiveSpec the runner has no door for; "
+                    + "Exhume, Bulwark and Consecrate wait for M7-04, which builds that door.",
+                nameof(pact));
+        }
+
         Id = id;
         NameKey = nameKey;
         DescriptionKey = descriptionKey;
         Kind = kind;
         Active = active;
         ParentId = parentId;
+        Pact = pact;
         _effects = CopyEffects(effects, nameof(effects));
     }
 
@@ -324,11 +450,20 @@ public sealed class SkillSpec
     public ContentId ParentId { get; }
 
     /// <summary>
+    /// The corrupted form of this node, or <see langword="null"/> for a node nobody wrote one for.
+    /// </summary>
+    public PactSpec Pact { get; }
+
+    /// <summary>Whether this node can ever be offered as a Pact — M6-05a rule 2.</summary>
+    public bool HasPact => Pact is not null;
+
+    /// <summary>
     /// Copies an effect list, refusing a null entry, and wraps it so the copy cannot be written
     /// through.
     /// </summary>
     /// <remarks>
-    /// Shared with <see cref="ActiveSpec"/> rather than written twice: the two lists are the same
+    /// Shared with <see cref="ActiveSpec"/> and <see cref="PactSpec"/> rather than written three
+    /// times: the lists are the same
     /// kind of thing — effects a node carries — and a second copy of the loop would be a second
     /// place for the null rule to drift. <c>internal</c> because nothing outside this file has a
     /// list of effects to copy.

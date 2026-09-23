@@ -609,6 +609,89 @@ public sealed class SkillAuthoringTests
             "missing' is not something a person can act on.");
     }
 
+    // ---- M6-05a: the Pact block --------------------------------------------------------------------
+
+    [Test]
+    public void Skill_Pact_ToSpec()
+    {
+        ModifyStatDefinition clean = NewEffect(
+            "CleanDamage", PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.15f);
+        ModifyStatDefinition power = NewEffect(
+            "PactDamage", PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.45f);
+        ModifyStatDefinition price = NewEffect("PactHp", PlayerStat.MaxHp, ModifierKind.Flat, -25f);
+
+        SkillDefinition definition = NewSkill(
+            "KeenEdge", "skill.test.keen-edge", SkillKind.Passive, clean);
+
+        // 12 rather than the field's 15 initialiser, so a key that failed to bind could not pass
+        // this row by holding its default (Traps §7).
+        SetPact(definition, 12f, "skill.test.keen-edge.pact.description", power, price);
+
+        SkillSpec spec = definition.ToSpec();
+
+        Assert.That(spec.HasPact, Is.True);
+        Assert.That(spec.Pact.Veilrot, Is.EqualTo(12f).Within(Tolerance));
+        Assert.That(spec.Pact.DescriptionKey.Key, Is.EqualTo("skill.test.keen-edge.pact.description"));
+        Assert.That(spec.Pact.Effects, Has.Count.EqualTo(2));
+        Assert.That(((ModifyStat)spec.Pact.Effects[1]).Value, Is.EqualTo(-25f).Within(Tolerance));
+
+        // The clean list is untouched by the block beside it.
+        Assert.That(spec.Effects, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Skill_NoPactByDefault()
+    {
+        SkillDefinition definition = NewSkill(
+            "Plain",
+            "skill.test.plain",
+            SkillKind.Passive,
+            NewEffect("PlainHp", PlayerStat.MaxHp, ModifierKind.Flat, 15f));
+
+        // Every asset authored before M6-05a deserialises the toggle as off.
+        Assert.That(definition.ToSpec().HasPact, Is.False);
+    }
+
+    [Test]
+    public void Definition_RewrapsTheCoreFailure()
+    {
+        SkillDefinition definition = NewSkill(
+            "GreedyPact",
+            "skill.test.greedy",
+            SkillKind.Passive,
+            NewEffect("GreedyHp", PlayerStat.MaxHp, ModifierKind.Flat, 15f));
+
+        SetPact(
+            definition,
+            25f,
+            "skill.test.greedy.pact.description",
+            NewEffect("GreedyDamage", PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.5f));
+
+        // PactSpec's band refusal, arriving with the file name in front of it — EffectDefinition's
+        // bargain, one block over.
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.StartWith("SkillDefinition 'GreedyPact'"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void Skill_PactWithNoEffects_NamesTheAsset()
+    {
+        SkillDefinition definition = NewSkill(
+            "EmptyPact",
+            "skill.test.empty-pact",
+            SkillKind.Passive,
+            NewEffect("EmptyPactHp", PlayerStat.MaxHp, ModifierKind.Flat, 15f));
+
+        SetPact(definition, 15f, "skill.test.empty-pact.pact.description");
+
+        // Manual step 1's Console line: clearing the list names the asset on the next load.
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.StartWith("SkillDefinition 'EmptyPact'"));
+    }
+
     [Test]
     public void Skill_Invalid_NamesTheAsset()
     {
@@ -1125,6 +1208,22 @@ public sealed class SkillAuthoringTests
         }
 
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>Switches the Pact block on and fills it, through the serialized fields.</summary>
+    private static void SetPact(
+        SkillDefinition definition,
+        float veilrot,
+        string descriptionKey,
+        params EffectDefinition[] effects)
+    {
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_hasPact").boolValue = true;
+        serialized.FindProperty("_pactVeilrot").floatValue = veilrot;
+        serialized.FindProperty("_pactDescriptionKey").stringValue = descriptionKey;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        SetEffects(definition, "_pactEffects", effects);
     }
 
     private static void SetArraySize(ScriptableObject definition, string field, int size)

@@ -131,6 +131,15 @@ public sealed class RunSessionResumeTests
     private const float MaxHpNodeBonus = 20f;
 
     /// <summary>
+    /// What the same node adds taken as a Pact (M6-05a). Forty-five, so 140 becomes 185 — a number
+    /// the clean node cannot produce, which is what lets the resume row tell the two apart.
+    /// </summary>
+    private const float MaxHpPactBonus = 45f;
+
+    /// <summary>The Pact's price, and the meter a run that paid it was saved at.</summary>
+    private const float MaxHpPactRot = 15f;
+
+    /// <summary>
     /// Hit points a run was saved with that only a modified maximum can hold. Above
     /// <see cref="TreeMaxHp"/> on purpose — that is the whole of the ordering row.
     /// </summary>
@@ -870,6 +879,50 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
     }
 
+    // ---- M6-05a: a Pact comes back as the Pact it was (rule 5) ------------------------------------
+
+    [Test]
+    public void Resume_APactSurvivesAKill()
+    {
+        BuildWithTree(seed: 7);
+
+        var pacted = new ContentId(NodeMaxHp);
+        var clean = new ContentId(NodeDamage);
+
+        // The run before the kill: two taken, the first as a Pact, and the Veilrot it paid. Entered
+        // through a resume because nothing public takes a Pact until M6-05b's offer.
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                takenNodeIds: new[] { pacted, clean },
+                economy: new RunEconomy(SavedEssence, MaxHpPactRot, 0, 0),
+                pactedNodeIds: new[] { pacted }));
+
+        float maxHpBefore = _session.State.PlayerMaxHp;
+
+        Assert.That(maxHpBefore, Is.EqualTo(TreeMaxHp + MaxHpPactBonus).Within(0.01f), "The Pact's +45, not the clean +20.");
+
+        // Written at the boundary, exactly as a real run is; then the process dies.
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        // A fresh session over the same content reads the file back.
+        var events = new RecordingEvents();
+        RunSession resumed = SessionOver(events);
+
+        resumed.Start(ResumedConfig(5, written));
+
+        // **The same number as before the kill, and the Veilrot it paid.** Without the second list
+        // the replay applies the clean node and this reads 160 against a meter at 15 — the run's
+        // power silently not the power it paid for.
+        Assert.That(resumed.State.PlayerMaxHp, Is.EqualTo(maxHpBefore).Within(0.01f));
+        Assert.That(resumed.State.Veilrot, Is.EqualTo(MaxHpPactRot));
+        Assert.That(resumed.State.PactedNodeIds, Is.EqualTo(new[] { pacted }));
+    }
+
     // ---- M6-02b: the shop's counters and banishes come back (rule 9) -------------------------------
 
     [Test]
@@ -1574,7 +1627,8 @@ public sealed class RunSessionResumeTests
         float playerHp = SavedHp,
         IReadOnlyList<ContentId> manualSkillIds = null,
         RunEconomy economy = default,
-        IReadOnlyList<ContentId> banishedNodeIds = null) =>
+        IReadOnlyList<ContentId> banishedNodeIds = null,
+        IReadOnlyList<ContentId> pactedNodeIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -1593,7 +1647,7 @@ public sealed class RunSessionResumeTests
             manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
             economy,
             banishedNodeIds ?? Array.Empty<ContentId>(),
-            Array.Empty<ContentId>(),
+            pactedNodeIds ?? Array.Empty<ContentId>(),
             Array.Empty<ContentId>());
 
     private void TickFor(int ticks)
@@ -1871,12 +1925,25 @@ public sealed class RunSessionResumeTests
 
     /// <summary>A flat <c>+20 max HP</c> node — the one the ordering row is about.</summary>
     /// <remarks>
+    /// <para>
     /// <c>Flat</c> rather than a percentage, so the expected maximum is 160 exactly and the row
     /// reads as arithmetic rather than as a tolerance.
+    /// </para>
+    /// <para>
+    /// <b>It carries a Pact</b> (M6-05a), for <c>Resume_APactSurvivesAKill</c>: +45 rather than +20.
+    /// Untaken or taken clean it is the node every other row reads.
+    /// </para>
     /// </remarks>
-    private static SkillSpec MaxHpNode(string id) => Node(
-        id,
-        new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus));
+    private static SkillSpec MaxHpNode(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new IEffect[] { new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus) },
+        pact: new PactSpec(
+            new IEffect[] { new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpPactBonus) },
+            MaxHpPactRot,
+            new LocKey($"{id}.pact.desc")));
 
     private static SkillSpec Passive(string id, float damagePercent) => Node(
         id,

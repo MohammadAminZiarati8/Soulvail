@@ -335,4 +335,57 @@ non-finite `at`, and a non-finite or non-positive pool number refused at `Moveme
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the Public API.** `ZoneSide`, `ZoneSystem`'s optional pair, `Spawn`'s `side` and `at`,
+`SideAt`, `ZoneBurned`, three pool numbers on `MovementSkillSpec` with `PoolPulseInterval`, three
+`Stat`s on `ChargeSkill`, and a drop on `PlayerCombat`'s start edge. `RunSession` wires both halves of
+the pair and hands `State.Zones` to the combat step. `Emberwright.asset` carries 3 / 3 / 4. The other
+two class assets, `ZoneSystemTests` and `SpawnHealZoneTests` are unedited. **EditMode 2 900 → 2 927
+(+27), twice; PlayMode 26 / 0 / 0, twice.**
+
+### Deviations
+
+1. **`ZoneSide` lives in `ZoneSystem.cs` and `ZoneBurned` in `Core/Events/SkillEvents.cs`.** Neither
+   file is in the table. `ShotSide` lives in `ProjectileSystem.cs`, and `ZoneHealed` lives in
+   `SkillEvents.cs`.
+2. **The ripple was zero, not ten.** The Public API makes the pair optional, so no existing
+   `new ZoneSystem(...)` needed an argument. The Files table was counting a required pair. One
+   site changed on purpose (deviation 5).
+3. **Two `Blink` sites needed pool numbers, which the spec never counted.** Rule 4 makes a Blink
+   without a pool throw. `KindlingTests`' fixture and `EmberwrightTests.Spec_ABlinkStillRefusesADecoyDuration`
+   both built one. The 67 counted sites are all Charges and Shroudsteps, and none moved.
+4. **`PlayerCombat.Tick` gained an optional last `zones` parameter**, which is how the lures arrive.
+   Rule 3 names one branch, but something has to carry the zone system down to `TickCharge`.
+5. **Three rows sit in `EmberwrightTests`, not `BurningGroundTests`.** They are
+   `Emberwright_CarriesThePoolNumbers`, `Pool_IsWorthAboutOneOrb` and `View_IsNotEdited`.
+   `Soulvail.Tests.Core` can open neither the asset nor `Soulvail.Game`. Three of M6-07a's rows
+   described a state this task ends, so they were rewritten rather than left to pass while
+   describing it:
+   - `Emberwright_MovementIsABlinkThatIsNotYetOne` is now `Emberwright_MovementIsABlink`.
+   - `Blink_LeavesNothingYet` is now `Blink_TheShippedOneLeavesFireAndNothingElse`, the shipped
+     asset blinked through a wired zone system.
+   - `Kindling_AZonePulseIsNotAStack` now burns four Husks with a real pool and asserts 24
+     `ZoneBurned` as its premise.
+6. **`DropPool` refuses more than rule 11 names.** A full table, or a stat-driven duration past
+   `ZoneSystem.MaxPulses`, also leaves no pool. Either would otherwise throw out of a dash, and
+   this is `LureSystem.Drop`'s *NoLure* reading.
+7. **`Spawn`'s third parameter is `amountPerPulse`**, the Public API's name. No caller names it.
+8. **`ZoneBurned` goes out exactly when `EnemyDamaged` does**, which includes a hit a shield
+   blocked, with `Amount` 0. That is `EnemySystem.ApplyDamage`'s own reading of *"nothing
+   arrived"*, so the two events cannot disagree about who was damaged.
+
+### Findings
+
+- **Rule 11 says a pool number is named on `PlayerStat`'s *"deliberately not here"* list. None is.**
+  `PlayerStat.cs` was not in the table, so it was left alone.
+  [M6-08](M6-08-emberwright-tree-v1.md) decides which two numbers get an address, so it should name
+  the third there with M7-04.
+- **A burning pool does not flash.** `ZoneViews` flashes on `ZoneHealed`, and a burn publishes
+  none, so the pool is a steady cyan circle. Rule 9's limit goes further than the colour. It is
+  still M7's decal.
+- **`Burn_AllocatesNothing` is 100 000 pulses over 28 bodies**, which is 2.8 M `ApplyDamage` calls.
+  Every body's HP is checked after it, so the probe cannot be measuring a no-op.
+- **Known issue 1 did not fire.** Both PlayMode passes were 26 / 0.
+- **Ledger rows.** Row 1 gains the cyan-on-cyan question (manual step 5) beside M5's cyan Wight.
+  Row 3 is untouched: it is about the tree screen, and a pool draws on the arena.
+- **M6-06a/b and M6-07a are not on `origin/dev`.** This branch was cut from M6-07a's head, so its
+  PR carries those commits until they merge.

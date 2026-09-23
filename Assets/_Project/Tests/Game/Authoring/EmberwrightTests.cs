@@ -324,14 +324,14 @@ public sealed class EmberwrightTests
         Assert.That(ledCaught, Is.GreaterThan(unledCaught), "the lead is not pointless at 3 m.");
     }
 
-    // ---- Rule 8: a Blink that is not yet one --------------------------------------------------------
+    // ---- Rule 8, and M6-07b: the Blink and its fire ---------------------------------------------------
 
     [Test]
-    public void Emberwright_MovementIsABlinkThatIsNotYetOne()
+    public void Emberwright_MovementIsABlink()
     {
         MovementSkillSpec blink = Emberwright().MovementSkill;
 
-        Assert.That(blink.Kind, Is.EqualTo(MovementSkillKind.Blink), "CH §3.3; what it does is M6-07b's.");
+        Assert.That(blink.Kind, Is.EqualTo(MovementSkillKind.Blink), "CH §3.3.");
         Assert.That(blink.Distance, Is.EqualTo(10f).Within(Tolerance), "CH §3.3: 10 m.");
         Assert.That(blink.Duration, Is.EqualTo(0.05f).Within(Tolerance), "CH §3.3's instant, the Shroudstep's 0.05.");
         Assert.That(blink.Cooldown, Is.EqualTo(2f).Within(Tolerance), "CH §3.3: 2.0 s.");
@@ -343,8 +343,10 @@ public sealed class EmberwrightTests
     }
 
     [Test]
-    public void Blink_LeavesNothingYet()
+    public void Blink_TheShippedOneLeavesFireAndNothingElse()
     {
+        // M6-07a's Blink_LeavesNothingYet, rewritten the day the fire arrived: the shipped asset,
+        // blinked through a zone system wired the way RunSession wires one.
         CharacterSpec spec = Emberwright();
         var events = new RecordingEvents();
         var intents = new RecordingIntents();
@@ -352,6 +354,7 @@ public sealed class EmberwrightTests
         EnemySystem enemies = Enemies(events);
         var player = new PlayerCombat(spec, events, intents, EnemyCapacity);
         var lures = new LureSystem(events);
+        var zones = new ZoneSystem(player.Health, player.Blackboard, events, enemies, player);
 
         EnemyAgent husk = enemies.Spawn(new ContentId("enemy.husk"), new Vector3(0f, 0f, 3f));
         float hp = husk.Health.Current;
@@ -359,7 +362,7 @@ public sealed class EmberwrightTests
         var snapshot = new WorldSnapshot(EnemyCapacity) { Dt = 1f / 60f };
 
         player.Charge.Request(0f);
-        player.Tick(snapshot.Dt, snapshot.Dt, snapshot, enemies.Registry.Alive, Vector3.UnitZ, lures);
+        player.Tick(snapshot.Dt, snapshot.Dt, snapshot, enemies.Registry.Alive, Vector3.UnitZ, lures, null, zones);
 
         // The Charge's clock, unchanged: one start, one intent carrying the Blink's own 10 m and
         // 0.05 s, and the i-frames raised on Health.
@@ -370,17 +373,102 @@ public sealed class EmberwrightTests
 
         player.ResolveChargeHits(new[] { husk.Id }, snapshot.Dt, enemies);
 
-        Assert.That(husk.Health.Current, Is.EqualTo(hp), "no damage on the way.");
+        Assert.That(husk.Health.Current, Is.EqualTo(hp), "no damage on the way — the fire is what burns.");
         Assert.That(lures.Count, Is.Zero, "no decoy — that is the Shroudstep's payload.");
         Assert.That(events.Count<DecoySpawned>(), Is.Zero);
-        Assert.That(events.Count<ZoneSpawned>(), Is.Zero, "no fire yet — M6-07b's.");
+
+        ZoneSpawned pool = events.Single<ZoneSpawned>();
+
+        Assert.That(pool.Position, Is.EqualTo(Vector3.Zero), "where the blink left.");
+        Assert.That(pool.Radius, Is.EqualTo(3f).Within(Tolerance));
+        Assert.That(pool.Duration, Is.EqualTo(3f).Within(Tolerance));
+        Assert.That(zones.SideAt(0), Is.EqualTo(ZoneSide.BurnsEnemies));
+    }
+
+    [Test]
+    public void Emberwright_CarriesThePoolNumbers()
+    {
+        MovementSkillSpec blink = Emberwright().MovementSkill;
+
+        // M6-07b rule 5. CH §3.3 gives the pool no numbers, so all three are ours.
+        Assert.That(blink.PoolRadius, Is.EqualTo(3f).Within(Tolerance), "Ours: the orb's blast, one distance the class reads by.");
+        Assert.That(blink.PoolDuration, Is.EqualTo(3f).Within(Tolerance), "Ours: against a 2.0 s cooldown, so two overlap for a second.");
+        Assert.That(blink.PoolDamagePerPulse, Is.EqualTo(4f).Within(Tolerance), "Ours: six pulses of 4 is about one orb.");
+        Assert.That(MovementSkillSpec.PoolPulseInterval, Is.EqualTo(0.5f), "Consecrate's beat, and a const.");
+
+        Assert.That(blink.PoolRadius, Is.EqualTo(Emberwright().Weapon.ShotRadius).Within(Tolerance),
+            "The pool and the orb's blast are one distance — a retune of one is a retune of both.");
+    }
+
+    [Test]
+    public void Pool_IsWorthAboutOneOrb()
+    {
+        CharacterSpec spec = Emberwright();
+        MovementSkillSpec blink = spec.MovementSkill;
+
+        float pulses = blink.PoolDuration / MovementSkillSpec.PoolPulseInterval;
+        float pool = pulses * blink.PoolDamagePerPulse;
+        float orb = spec.Weapon.Damage;
+
+        string both = $"Emberwright.asset's pool is {pool} over its life ({pulses} pulses of "
+            + $"{blink.PoolDamagePerPulse}) and Emberwright.asset's orb is {orb}. M6-07b rule 5: a "
+            + "blink is worth a shot, not a second weapon — retune one, and decide the other.";
+
+        Assert.That(pool, Is.EqualTo(24f).Within(Tolerance), both);
+        Assert.That(orb, Is.EqualTo(17f).Within(Tolerance), both);
+        Assert.That(pool, Is.GreaterThan(orb), both);
+        Assert.That(pool, Is.LessThan(2f * orb), both);
+    }
+
+    [Test]
+    public void View_IsNotEdited()
+    {
+        // M6-07b rule 9: the pool is drawn by the decal that already exists, in the colour it already
+        // uses. Pinned so the limit is a decision — a healing circle and a burning one are the same
+        // cyan until M7's art pass gives the fire a texture.
+        string[] fields = Array.ConvertAll(
+            typeof(ZoneSpawned).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public),
+            f => f.Name);
+
+        Assert.That(fields, Is.EquivalentTo(new[] { "Id", "Position", "Radius", "Duration" }),
+            "ZoneSpawned gained a field. Rule 9 refused one until something reads it.");
+
+        foreach (Type view in new[] { typeof(Soulvail.Game.Views.ZoneView), typeof(Soulvail.Game.Views.ZoneViews) })
+        {
+            const System.Reflection.BindingFlags all = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.DeclaredOnly;
+
+            foreach (System.Reflection.FieldInfo field in view.GetFields(all))
+            {
+                Assert.That(field.FieldType, Is.Not.EqualTo(typeof(ZoneSide)), $"{view.Name}.{field.Name}");
+            }
+
+            foreach (System.Reflection.MethodInfo method in view.GetMethods(all))
+            {
+                foreach (System.Reflection.ParameterInfo parameter in method.GetParameters())
+                {
+                    Assert.That(parameter.ParameterType, Is.Not.EqualTo(typeof(ZoneSide)), $"{view.Name}.{method.Name}");
+                    Assert.That(parameter.ParameterType, Is.Not.EqualTo(typeof(ZoneBurned)), $"{view.Name}.{method.Name}");
+                }
+            }
+        }
+
+        var go = new GameObject("ZoneView");
+        _spawned.Add(go);
+
+        var decal = go.AddComponent<Soulvail.Game.Views.ZoneView>();
+
+        Assert.That(decal.Colour, Is.EqualTo(Palette.Heal), "one colour, GD §16.4's cyan — no second one.");
     }
 
     [Test]
     public void Spec_ABlinkStillRefusesADecoyDuration()
     {
         var thrown = Assert.Throws<ArgumentOutOfRangeException>(
-            () => _ = new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f, 3f));
+            () => _ = new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f, 3f, 3f, 3f, 4f));
 
         Assert.That(thrown.ParamName, Is.EqualTo("decoyDuration"),
             "MovementSkillSpec.Decoy's line, unchanged by a third member: only a Shroudstep leaves one.");

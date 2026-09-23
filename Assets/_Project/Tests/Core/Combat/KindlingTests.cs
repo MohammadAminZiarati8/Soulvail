@@ -401,19 +401,27 @@ public sealed class KindlingTests
     public void Kindling_AZonePulseIsNotAStack()
     {
         PlayerCombat player = Player(Orb());
-        var zones = new ZoneSystem(player.Health, player.Blackboard, _events);
+        var zones = new ZoneSystem(player.Health, player.Blackboard, _events, _enemies, player);
 
+        FourHusks(z: 0f);
         Hits(player.Kindling, 10);
 
-        zones.Spawn(3f, 3f, 5f, 0.5f, 0f, new object());
+        // Pinned at M6-07a before a burning zone was reachable, and widened at M6-07b to the pool
+        // that made it so: a Blink's fire, four bodies in it, six pulses.
+        zones.Spawn(3f, 3f, 4f, 0.5f, 0f, new object(), ZoneSide.BurnsEnemies, Vector3.Zero);
 
         for (float t = 0f; t <= 3f; t += 0.1f)
         {
             zones.Tick(t);
         }
 
-        // Pinned before M6-07b can make a burning zone reachable: nothing a zone does has a door
-        // into the ramp, and six pulses a blink would otherwise fill it off the movement button.
+        // A float stepped by 0.1 need not land on 3.0 exactly; the last pulse is due there.
+        zones.Tick(3f);
+
+        Assert.That(_events.Count<ZoneBurned>(), Is.EqualTo(24), "the premise: six pulses on four bodies.");
+
+        // Nothing a zone does has a door into the ramp, and six pulses a blink would otherwise fill
+        // it off the movement button.
         Assert.That(player.Kindling.Stacks, Is.EqualTo(10));
     }
 
@@ -597,7 +605,7 @@ public sealed class KindlingTests
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
         weapon,
         new FocusSpec(0.4f, 1f, 1f),
-        movementSkill ?? new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f),
+        movementSkill ?? new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f, 0f, 3f, 3f, 4f),
         null,
         HitIFrames,
         null,

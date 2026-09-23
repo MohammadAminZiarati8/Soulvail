@@ -579,7 +579,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Here rather than on this class like _timed because something *does* read it: an overlay and
         // M3-11c's decal ask how many zones are standing and where, so it hangs off RunState behind
         // two narrow reads (AR §18.2).
-        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events);
+        //
+        // **And it burns with this run's enemies and this run's player** (M6-07b rule 2): a Blink's
+        // fire pool reaches the registry, and a pool that kills a Bloater sets off a blast that has
+        // to know whom to catch. Wired for every class, because the pair is what a burn needs and
+        // not what a class has — a run without a Blink simply never places one.
+        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events, enemies, combat);
 
         // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
         // file and one Register line, with nothing in the clock, the registry or Tick changing to
@@ -1160,6 +1165,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // blackboard's MinionCount is filled here so a CC §6.4 trigger can compare against it
         // (M5-06a rule 6). Null for every class but the Gravecaller, which reads as zero standing —
         // the honest count for a run that holds no army at all.
+        // The zones go down beside the lures, and for the lures' reason: a Blink drops its fire pool
+        // on the start edge, from this snapshot's position (M6-07b rule 3). The step writes one, and
+        // State.Zones.Tick below is still the only thing that pulses it.
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
@@ -1167,7 +1175,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Enemies.Registry.Alive,
             State.Motor.Facing,
             State.Lures,
-            State.Minions);
+            State.Minions,
+            State.Zones);
 
         // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
         //

@@ -24,8 +24,8 @@ namespace Soulvail.Core.Content;
 /// also why the Gravecaller's numbers author 0 damage and 0 knockback rather than leaving CC §5's
 /// defaults to be dealt by a blink (M5-02 rule 7). <b>Still no second skill class:</b>
 /// <c>PlayerCombat</c> builds a <c>ChargeSkill</c> from the spec whatever the kind says, and the
-/// kind selects a <em>payload</em> on the start edge (M5-03 rule 1). <see cref="Blink"/> is the
-/// second member to land before its behaviour, and M6-07b is where it gets one.
+/// kind selects a <em>payload</em> on the start edge (M5-03 rule 1). <see cref="Blink"/> was the
+/// second member to land before its behaviour, at M6-07a, and its payload arrived at M6-07b.
 /// </para>
 /// </remarks>
 public enum MovementSkillKind
@@ -44,15 +44,11 @@ public enum MovementSkillKind
     Shroudstep,
 
     /// <summary>
-    /// The Emberwright's Blink (CH §3.3): an instant 10 m teleport leaving a fire pool. The kind is
-    /// content identity and lands here; what it <em>does</em> is M6-07b's — M6-07a rule 8, and M5-02
-    /// rule 7's arrangement for <see cref="Shroudstep"/> one class earlier.
+    /// The Emberwright's Blink (CH §3.3): an instant 10 m teleport leaving a fire pool. The clock, the
+    /// buffer and the i-frame window are the Charge's; the pool is the difference (M6-07b), dropped
+    /// where the blink left and sized by <see cref="MovementSkillSpec.PoolRadius"/> and its two
+    /// siblings.
     /// </summary>
-    /// <remarks>
-    /// <b>Until M6-07b it is a Charge with nothing on the way</b>: <c>PlayerCombat</c> builds a
-    /// <c>ChargeSkill</c> whatever the kind says, and the Emberwright authors 0 damage and 0 knockback,
-    /// so a Blink moves 10 m in 0.05 s, hurts nothing and leaves no fire.
-    /// </remarks>
     Blink,
 }
 
@@ -138,12 +134,21 @@ public sealed class MovementSkillSpec
     /// what it meant and no shipped asset is rewritten (M4-01a rule 4's trade).
     /// </para>
     /// </param>
+    /// <param name="poolRadius">
+    /// How far a <see cref="MovementSkillKind.Blink"/>'s fire pool reaches, in metres — 3 (M6-07b
+    /// rule 5). <b>Validated against <paramref name="kind"/></b>, <paramref name="decoyDuration"/>'s
+    /// treatment one field over (rule 4): on a Blink all three pool numbers must be finite and
+    /// greater than zero, and on every other kind all three must be exactly zero. Defaulted and last
+    /// for the reason <paramref name="decoyDuration"/> is.
+    /// </param>
+    /// <param name="poolDuration">How long the pool burns, in simulated seconds — 3.</param>
+    /// <param name="poolDamagePerPulse">What one pulse of it takes off — 4.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="distance"/>, <paramref name="duration"/> or <paramref name="cooldown"/> is
     /// not a finite number greater than zero; <paramref name="inputBuffer"/>,
     /// <paramref name="damage"/>, <paramref name="knockback"/> or <paramref name="iFrameTrail"/> is
-    /// negative, NaN or infinite; or <paramref name="decoyDuration"/> disagrees with
-    /// <paramref name="kind"/>.
+    /// negative, NaN or infinite; or <paramref name="decoyDuration"/> or one of the three pool
+    /// numbers disagrees with <paramref name="kind"/>.
     /// </exception>
     public MovementSkillSpec(
         MovementSkillKind kind,
@@ -154,7 +159,10 @@ public sealed class MovementSkillSpec
         float damage,
         float knockback,
         float iFrameTrail,
-        float decoyDuration = 0f)
+        float decoyDuration = 0f,
+        float poolRadius = 0f,
+        float poolDuration = 0f,
+        float poolDamagePerPulse = 0f)
     {
         Kind = kind;
         Distance = Positive(distance, nameof(distance));
@@ -165,7 +173,19 @@ public sealed class MovementSkillSpec
         Knockback = NonNegative(knockback, nameof(knockback));
         IFrameTrail = NonNegative(iFrameTrail, nameof(iFrameTrail));
         DecoyDuration = Decoy(kind, decoyDuration);
+        PoolRadius = Pool(kind, poolRadius, nameof(poolRadius));
+        PoolDuration = Pool(kind, poolDuration, nameof(poolDuration));
+        PoolDamagePerPulse = Pool(kind, poolDamagePerPulse, nameof(poolDamagePerPulse));
     }
+
+    /// <summary>Simulated seconds between a pool's pulses. Half a second, and a constant.</summary>
+    /// <remarks>
+    /// <b>Not authored, and that is a decision about events rather than about feel</b> (M6-07b rule
+    /// 5). It is the one number that decides how many <c>ZoneBurned</c>s a second reach the hub, and a
+    /// pool authored at a millisecond is <c>ZoneSystem.MaxPulses</c>' hang, caught only after somebody
+    /// typed it. It is Consecrate's interval, so the game's two zones pulse on one beat.
+    /// </remarks>
+    public const float PoolPulseInterval = 0.5f;
 
     /// <summary>Which movement skill this is.</summary>
     public MovementSkillKind Kind { get; }
@@ -201,6 +221,24 @@ public sealed class MovementSkillSpec
     /// caller — the decoy is dropped where the blink left, not where it arrived (M5-03 rule 6).
     /// </remarks>
     public float DecoyDuration { get; }
+
+    /// <summary>How far a <see cref="MovementSkillKind.Blink"/>'s fire pool reaches. 0 otherwise.</summary>
+    /// <remarks>
+    /// Like the other two pool numbers, the live value is a <c>Stat</c> on <c>ChargeSkill</c> seeded
+    /// from this one (M6-07b rule 11), and the pool is dropped where the blink left.
+    /// </remarks>
+    public float PoolRadius { get; }
+
+    /// <summary>How long it burns, in simulated seconds. 0 otherwise.</summary>
+    public float PoolDuration { get; }
+
+    /// <summary>What one pulse of it takes off. 0 otherwise.</summary>
+    /// <remarks>
+    /// The interval is <see cref="PoolPulseInterval"/> and is not authored. Three fields rather than
+    /// four, because the one number a designer never has an opinion about is the one that decides
+    /// how many events a second the pool publishes.
+    /// </remarks>
+    public float PoolDamagePerPulse { get; }
 
     /// <remarks>
     /// `!(x &gt; 0f)` rather than `x &lt;= 0f`, so NaN is refused with everything else — the
@@ -249,9 +287,10 @@ public sealed class MovementSkillSpec
     /// <remarks>
     /// Written as "the kind that leaves something behind, and everything else", rather than as a
     /// <c>switch</c> over every member: the third kind is <see cref="MovementSkillKind.Blink"/>
-    /// (M6-07a), which leaves a fire pool and not a decoy, so it belongs on the zero side of this
-    /// line until something says otherwise. A kind added without a thought about this field therefore refuses a duration
-    /// rather than silently accepting one nothing reads.
+    /// (M6-07a), which leaves a fire pool and not a decoy, so it stays on the zero side of this line
+    /// — M6-07b kept it there, and gave the pool its own three numbers in <see cref="Pool"/>. A kind
+    /// added without a thought about this field therefore refuses a duration rather than silently
+    /// accepting one nothing reads.
     /// </remarks>
     private static float Decoy(MovementSkillKind kind, float decoyDuration)
     {
@@ -281,6 +320,46 @@ public sealed class MovementSkillSpec
                 $"A {kind} leaves no decoy, so its decoyDuration must be exactly zero. A non-zero "
                     + "one is a forgotten field rather than a design statement — nothing would "
                     + "ever read it.");
+        }
+
+        return 0f;
+    }
+
+    /// <summary>
+    /// One of the three pool numbers, validated against <see cref="Kind"/> — M6-07b rule 4, and
+    /// <see cref="Decoy"/>'s line with <see cref="MovementSkillKind.Blink"/> on the other side of it.
+    /// </summary>
+    /// <remarks>
+    /// A Charge with a pool radius is a forgotten field, and a Blink without one is a teleport, which
+    /// CH §3.3 says it is not. All three are asked the same question, so the one that is wrong is
+    /// named by the exception rather than inferred.
+    /// </remarks>
+    private static float Pool(MovementSkillKind kind, float value, string paramName)
+    {
+        if (kind == MovementSkillKind.Blink)
+        {
+            // The same spelling as Decoy's: NaN fails `> 0`, infinity is asked separately — an
+            // infinite radius burns the arena, an infinite duration never retires.
+            if (!(value > 0f) || float.IsInfinity(value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    paramName,
+                    value,
+                    $"A Blink's {paramName} must be a finite number greater than zero. The fire pool "
+                        + "is the skill (CH §3.3); a blink that leaves nothing is a teleport.");
+            }
+
+            return value;
+        }
+
+        if (value != 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                value,
+                $"A {kind} leaves no fire pool, so its {paramName} must be exactly zero. A non-zero "
+                    + "one is a forgotten field rather than a design statement — nothing would ever "
+                    + "read it.");
         }
 
         return 0f;

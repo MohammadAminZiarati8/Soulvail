@@ -51,6 +51,9 @@ MonoBehaviour:
   _movementSkillKnockback: 0
   _movementSkillIFrameTrail: 0.05
   _movementSkillDecoyDuration: 0
+  _movementSkillPoolRadius: 3
+  _movementSkillPoolDuration: 3
+  _movementSkillPoolDamagePerPulse: 4
   _minionCap: 0
   _minionSpecId: minion.new
   _minionNameKey: minion.new.name

@@ -1105,6 +1105,11 @@ public sealed class PlayerCombat
     /// through every fixture that builds one. Null reads as <b>zero standing</b>, which is the
     /// honest count for a run that holds no <c>MinionSystem</c> at all (M5-06a rules 6 and 7).
     /// </param>
+    /// <param name="zones">
+    /// Where a Blink's fire pool goes, or null for a run that has nowhere to put one — M6-07b rule 3,
+    /// and <paramref name="lures"/>' treatment exactly: passed rather than held, and null means the
+    /// blink still happens and leaves nothing.
+    /// </param>
     public void Tick(
         float dt,
         float now,
@@ -1112,12 +1117,13 @@ public sealed class PlayerCombat
         ReadOnlySpan<EnemyAgent> enemies,
         Vector3 bodyFacing,
         LureSystem lures = null,
-        MinionSystem minions = null)
+        MinionSystem minions = null,
+        ZoneSystem zones = null)
     {
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures);
+        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1260,7 +1266,8 @@ public sealed class PlayerCombat
     /// <see cref="MovementSkillKind"/> changed anywhere</b> (rule 1). A Shroudstep is a
     /// <see cref="ChargeSkill"/> with a corpse behind it: the cooldown, the buffer, the i-frames
     /// and the <see cref="ChargeIntent"/> are the Charge's, unmodified, and the one branch below is
-    /// the difference. No <c>IMovementSkill</c> and no second skill class — that would be an
+    /// the difference. M6-07b's Blink is a second branch beside it on the same edge — a fire pool
+    /// rather than a corpse. No <c>IMovementSkill</c> and no second skill class — that would be an
     /// abstraction with one implementation and a second payload, which is the trade
     /// <see cref="Charge"/>'s own remarks refuse.
     /// </para>
@@ -1271,7 +1278,8 @@ public sealed class PlayerCombat
         Vector2 stickXZ,
         Vector3 bodyFacing,
         Vector3 playerPosition,
-        LureSystem lures)
+        LureSystem lures,
+        ZoneSystem zones)
     {
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
@@ -1321,6 +1329,16 @@ public sealed class PlayerCombat
                 // capacity (rule 4).
                 lures.Drop(playerPosition, now, _movementSkill.DecoyDuration);
             }
+
+            // **And the fire, where the blink *left*** (M6-07b rule 3) — the corpse's argument word
+            // for word: CH §3.3's teleport "leaves a fire pool", and dropped at the destination it
+            // would burn nothing the player blinked away from. The position is the one this method
+            // was handed, and deliberately not the blackboard's: UpdateBlackboard runs near the
+            // bottom of Tick and this runs near the top, so the blackboard here is last frame's.
+            if (_movementSkill.Kind == MovementSkillKind.Blink && zones is not null)
+            {
+                DropPool(zones, playerPosition, now);
+            }
         }
         else if (_wasChargeInvulnerable && !invulnerable)
         {
@@ -1331,6 +1349,53 @@ public sealed class PlayerCombat
 
         _wasChargeInvulnerable = invulnerable;
     }
+
+    /// <summary>
+    /// A Blink's fire pool, read off <see cref="Charge"/>'s three live stats at this moment — M6-07b
+    /// rules 3 and 11.
+    /// </summary>
+    /// <remarks>
+    /// <b>Read at the drop rather than cached</b>, so a modifier that lands between two blinks shapes
+    /// the second pool and leaves the first alone. <b>Floored here</b>, because a <see cref="Stat"/>
+    /// clamps nothing: a radius, a duration or a damage a node drove to zero or below — or past
+    /// finite — means no pool, never a <see cref="ZoneSystem.Spawn"/> that throws out of a dash.
+    /// A full table, or a duration so long it would schedule more than
+    /// <see cref="ZoneSystem.MaxPulses"/>, is the same: the blink happens and leaves nothing, which
+    /// is <see cref="LureSystem.Drop"/>'s answer at capacity. The dash is the thing the player
+    /// pressed; the pool is what it leaves if it can.
+    /// </remarks>
+    private void DropPool(ZoneSystem zones, Vector3 at, float now)
+    {
+        float radius = Charge.PoolRadius.Value;
+        float duration = Charge.PoolDuration.Value;
+        float damage = Charge.PoolDamagePerPulse.Value;
+
+        if (!IsPoolNumber(radius) || !IsPoolNumber(duration) || !IsPoolNumber(damage))
+        {
+            return;
+        }
+
+        if (zones.Count == ZoneSystem.Capacity
+            || duration / MovementSkillSpec.PoolPulseInterval > ZoneSystem.MaxPulses)
+        {
+            return;
+        }
+
+        // The spec is the source: nothing takes a pool back (a zone owns its own life), and what
+        // placed it is the class's authored movement skill.
+        zones.Spawn(
+            radius,
+            duration,
+            damage,
+            MovementSkillSpec.PoolPulseInterval,
+            now,
+            _movementSkill,
+            ZoneSide.BurnsEnemies,
+            at);
+    }
+
+    /// <summary>Finite and greater than zero — the one shape a pool number may take at the drop.</summary>
+    private static bool IsPoolNumber(float value) => value > 0f && !float.IsInfinity(value);
 
     /// <summary>Rules 1–7 of M1-10: swing, announce, and ask the body what the swing touched.</summary>
     /// <remarks>

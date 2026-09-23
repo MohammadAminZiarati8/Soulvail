@@ -80,6 +80,13 @@ public sealed class ChargeSkill
         // a node moves it; Knockback deliberately stays authored — 4 m is a positioning number,
         // and a node that moved it would need a playtest of its own.
         Damage = new Stat(spec.Damage);
+
+        // And a Blink's pool, three more the day they are authored (M6-07b rule 11): an authored
+        // number a node will move is a Stat from the start (ADR-0008), or it is the one movement
+        // number no node could ever reach. Zero on every kind that leaves no pool.
+        PoolRadius = new Stat(spec.PoolRadius);
+        PoolDuration = new Stat(spec.PoolDuration);
+        PoolDamagePerPulse = new Stat(spec.PoolDamagePerPulse);
     }
 
     /// <summary>
@@ -98,6 +105,23 @@ public sealed class ChargeSkill
     /// the number lives with the skill, the arithmetic lives with the caller.
     /// </remarks>
     public Stat Damage { get; }
+
+    /// <summary>How far a Blink's fire pool reaches, live. 0 on a movement skill that leaves none.</summary>
+    /// <remarks>
+    /// <b>This class never reads any of the three</b>, for <see cref="Damage"/>'s reason: the pool
+    /// is dropped a layer out, by <c>PlayerCombat</c>'s start edge, which reads all three at the
+    /// moment of the drop and floors them there — a <see cref="Stat"/> clamps nothing, and a number
+    /// driven to zero or below means no pool rather than a <c>ZoneSystem.Spawn</c> that throws out
+    /// of a dash. <b>No <c>PlayerStat</c> addresses any of them yet</b>, which is M3-12a's sequence:
+    /// M6-08's Ash branch is where the first address arrives.
+    /// </remarks>
+    public Stat PoolRadius { get; }
+
+    /// <summary>How long a Blink's fire pool burns, live, in simulated seconds.</summary>
+    public Stat PoolDuration { get; }
+
+    /// <summary>What one pulse of a Blink's fire pool takes off, live.</summary>
+    public Stat PoolDamagePerPulse { get; }
 
     /// <summary>
     /// The direction of the current dash, or of the last one — a unit vector on the ground plane,

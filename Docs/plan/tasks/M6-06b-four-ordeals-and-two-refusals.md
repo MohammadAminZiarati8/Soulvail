@@ -273,4 +273,53 @@ unchanged, and a non-finite multiplier refused at `OrdealSpec`'s door rather tha
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the Public API.** `StageFlow.UnderOrdeals` wraps the award: it rounds, and it floors at 1
+when the award was positive. `LevelUpFlow.CardsToOffer` passes Vigil's count to both `Draw`s. It is
+held to the three-array. `WaveComposer.Compose` adds the bonus and re-clamps to `DeviceCap`.
+`CostUnder` multiplies, rounds and floors at 1, and returns the cost untouched at a multiplier of
+exactly 1. `Veilrot.Gain` multiplies below its guard and above the clamp. `Cleanse` is untouched.
+The flow and the meter take `Ordeals` optional and last. No constructor moved and `ThreatBudget` is
+untouched. **EditMode 2 830 → 2 858 (+28), twice; PlayMode 26, twice.**
+
+### Deviations
+
+1. **`RunSession` builds and restores the set above the opening composition**, not beside the
+   wallet. M6-06a put it there when nothing read a dial. Left there, a resumed stage-35 run holding
+   Swarm would compose its first stage without it and every later one with it. The restore is
+   silent and reads only the mode, so it moved as one piece. Pinned by
+   `Run_AResumedStageIsComposedUnderItsOrdeals`, a row the table does not list. AR §18.1's
+   restore-order row is amended to say so.
+2. **The composer holds no set, so `Run_TheSetReachesAllThree` checks the flow, the meter and the
+   `StageFlow` that calls `Compose`.** The Public API makes `Ordeals` a `Compose` argument, so there
+   is no composer field for reflection to find. The resume row above covers the call `RunSession`
+   makes itself.
+3. **Four files outside the table, each forced by an assembly boundary.**
+   `Vigil_TheScreenDrawsTwoCards` is in `LevelUpPresenterTests`, because `Tests.Core` cannot see a
+   presenter. The fixture's mode gains a Vigil in its pool, and `StartRun` gains an optional
+   `ordeals` list. The two refusal rows and `Arena_HasFewerThanFourPillarsToSpare` are a new
+   `Tests/Game/Authoring/OrdealRefusalTests.cs`, because they read assets. `OrdealsTests`'
+   `Ordeals_NothingReadsTheDialsYet` is inverted to `Ordeals_EachDialHasItsOneReader`, which names
+   the five readers exactly. Its `ClearOneStage` now kills body by body: under Swarm a budget of 4
+   buys two Husks at 2, and `Recorder_WritesWhatWasDealt` went red on the second one.
+4. **The four ripple test files are untouched.** Every row lives in `OrdealEffectsTests`, grouped by
+   Ordeal, and no constructor moved, so none of them needed an edit.
+5. **`Data/Ordeals/*.asset` and `English.asset` were not edited.** M6-06a authored all four with
+   GD §13.4's numbers, and the eight rows are already there.
+6. **No debug stage-jump was written.** The overlay is a readout with no controls, and a jump inside
+   a live run would need a debug command on core. **`Descent.asset`'s *Starting Stage* already is
+   the jump**, because a fresh run begins at the mode's `StartingStage`. Manual step 1 sets it to 24
+   and reverts it after.
+7. **The composer rows introduce the Spitter at stage 2 and compose from there.** `ModeSpec` refuses
+   two archetypes introduced on one stage (GD §8.2).
+
+### Findings
+
+- **Swarm changes a fixture premise as well as a composition.** Any fixture that clears "the" body
+  of a one-Husk stage clears one of two once Swarm is dealt. `OrdealsTests` was the only one, and
+  `OrdealEffectsTests` shares its fixed helper.
+- **Rounding is `MathF.Round`'s default, to even.** No shipped number sits on a half: 0.6 of a whole
+  clear is never x.5 for any GD §15 award, and Swarm halves an even cost. An odd-cost archetype under
+  a 0.5 Swarm would round to even. That is recorded here, not fixed.
+- **Known issue 1 did not fire.** Both PlayMode passes were 26 / 0.
+- **Ledger row 1** already carried Swarm's clause, so nothing was added. **Row 2** gains one
+  clause: M6-11's session takes the Ordeals past stage 25.

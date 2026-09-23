@@ -69,6 +69,7 @@ public sealed class LevelUpPresenterTests
     private const string HuskId = "enemy.husk";
     private const string TreeId = "tree.oathbound";
     private const string ArenaId = "arena.pillars";
+    private const string VigilId = "ordeal.vigil";
 
     private const int Capacity = 64;
     private const int DeviceCap = 28;
@@ -192,6 +193,31 @@ public sealed class LevelUpPresenterTests
         // number of things on it. Drawn empty, the third card is a button that spends a pick on
         // whatever ChooseOffer decides index 2 means — which is an ArgumentOutOfRangeException.
         Assert.That(_cards[2].IsShown, Is.False, "the third card was drawn for an offer of two.");
+    }
+
+    [Test]
+    public void Vigil_TheScreenDrawsTwoCards()
+    {
+        // M6-06b rule 2: GD §13.4's Vigil is a count passed to the draw, and the screen needs
+        // nothing — it hides every card past OfferPresented.Count (M3-08b rule 6). The tree is the
+        // untouched five that offers three; the only difference from Offer_ShowsThreeCards is the
+        // Ordeal the run was resumed holding.
+        StartRun(level: 2, pending: 1, ordeals: new[] { VigilId });
+        BuildScreen();
+
+        _session.OpenLevelUp();
+
+        IReadOnlyList<ContentId> offer = _session.State.Offer;
+
+        Assert.That(offer.Count, Is.EqualTo(2), "Vigil offered something other than two.");
+
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.That(_cards[i].IsShown, Is.True, $"card {i} was not drawn.");
+            Assert.That(NameOn(_cards[i]), Is.EqualTo(_catalog.Skill(offer[i]).NameKey.Key));
+        }
+
+        Assert.That(_cards[2].IsShown, Is.False, "the third card was drawn empty rather than hidden.");
     }
 
     [Test]
@@ -1111,7 +1137,12 @@ public sealed class LevelUpPresenterTests
     /// what is owed: M3-08a rule 9's identity refuses a saved run whose level cannot explain its
     /// own nodes, and it caught seven pre-existing fixtures on its first day.
     /// </remarks>
-    private void StartRun(int level, int pending, string[] taken = null, bool withTree = true)
+    private void StartRun(
+        int level,
+        int pending,
+        string[] taken = null,
+        bool withTree = true,
+        string[] ordeals = null)
     {
         // No Keystone and no Upgrade in the *tree*, and that is a constraint rather than a
         // simplification: TreeRules refuses a Keystone that shares a tier with anything (CH §5),
@@ -1171,7 +1202,7 @@ public sealed class LevelUpPresenterTests
             default,
             Array.Empty<ContentId>(),
             Array.Empty<ContentId>(),
-            Array.Empty<ContentId>());
+            (ordeals ?? Array.Empty<string>()).Select(id => new ContentId(id)).ToArray());
 
         _session.Start(new RunConfig(
             new ContentId(ModeId),
@@ -1501,7 +1532,18 @@ public sealed class LevelUpPresenterTests
             // is in another assembly.
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId(ArenaId) });
+            new[] { new ContentId(ArenaId) },
+
+            // GD §13.4's Vigil in the pool and never scheduled: a run holds it only when StartRun
+            // restores it, which is Vigil_TheScreenDrawsTwoCards and nothing else.
+            ordeals: new[]
+            {
+                new OrdealSpec(
+                    new ContentId(VigilId),
+                    new LocKey("ordeal.vigil.name"),
+                    new LocKey("ordeal.vigil.description"),
+                    offerCount: 2),
+            });
     }
 
     private static float[] Alternating(int count)

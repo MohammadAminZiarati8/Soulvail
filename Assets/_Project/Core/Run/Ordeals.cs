@@ -12,10 +12,12 @@ namespace Soulvail.Core.Run;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Dealt at a boundary, kept for the run, and read by nothing yet</b> (M6-06a rule 6). The five
-/// accumulated answers are the whole of what M6-06b's four consumers will ask, and after this task
-/// none of them does — <c>OrdealsTests.Ordeals_NothingReadsTheDialsYet</c> says so, so the day one
-/// appears it is a diff rather than a surprise.
+/// <b>Dealt at a boundary, kept for the run, and each dial read in exactly one place</b> (M6-06b).
+/// <see cref="EssenceMultiplier"/> by <c>StageFlow</c>'s award, <see cref="OfferCount"/> by
+/// <c>LevelUpFlow.Open</c>, <see cref="ConcurrencyBonus"/> and <see cref="ThreatCostMultiplier"/>
+/// by <c>WaveComposer.Compose</c>, <see cref="VeilrotMultiplier"/> by <c>Veilrot.Gain</c> —
+/// <c>OrdealsTests.Ordeals_EachDialHasItsOneReader</c> says so, so a second reader is a diff rather
+/// than a surprise.
 /// </para>
 /// <para>
 /// <b>Drawn on <see cref="IRandom.Affixes"/> and no other stream</b>, which is the ruling M6-01b

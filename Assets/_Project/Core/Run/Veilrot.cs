@@ -123,6 +123,9 @@ public sealed class Veilrot
     private readonly CombatBlackboard _blackboard;
     private readonly IDomainEvents _events;
 
+    /// <summary>The run's Ordeals, for Hunger's multiplier. Null for a meter built without one.</summary>
+    private readonly Ordeals _ordeals;
+
     /// <summary>Who the Claiming's three buffs are applied by — see the class remarks.</summary>
     private readonly object _claiming = new();
 
@@ -155,12 +158,18 @@ public sealed class Veilrot
     /// eight, and that method's last line has been saying so since M3-06.
     /// </param>
     /// <param name="events">Where the three events of this module go.</param>
-    /// <exception cref="ArgumentNullException">Any argument is null.</exception>
+    /// <param name="ordeals">
+    /// What this run has been dealt, for GD §13.4's Hunger — or <see langword="null"/> for none,
+    /// which is a true statement below the mode's first Ordeal stage rather than a mis-wiring
+    /// (M6-06b rule 5). Optional and last; <c>RunSession</c> always passes the run's set.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any argument but <paramref name="ordeals"/> is null.</exception>
     public Veilrot(
         PlayerStats stats,
         PlayerCombat combat,
         CombatBlackboard blackboard,
-        IDomainEvents events)
+        IDomainEvents events,
+        Ordeals ordeals = null)
     {
         if (stats is null)
         {
@@ -170,6 +179,7 @@ public sealed class Veilrot
         _combat = combat ?? throw new ArgumentNullException(nameof(combat));
         _blackboard = blackboard ?? throw new ArgumentNullException(nameof(blackboard));
         _events = events ?? throw new ArgumentNullException(nameof(events));
+        _ordeals = ordeals;
 
         // Resolved once, because the four addresses cannot change for the life of a run: a Stat is
         // the very instance the player's numbers live in, and RunSession builds both in one breath.
@@ -266,6 +276,16 @@ public sealed class Veilrot
         if (!(amount > 0f))
         {
             return;
+        }
+
+        // **GD §13.4's Hunger, above the clamp** (M6-06b rule 6): a 15-Rot Pact is 22.5, and a run at
+        // 85 still arrives at exactly 100 and Claims. Below the guard, so a gain of nothing is still
+        // nothing — the multiplier is finite and above zero (OrdealSpec's door) and cannot make one.
+        // Cleanse does not read it: a cleanse is not a gain, and multiplying it would make Hunger a
+        // discount at the Sanctum.
+        if (_ordeals is not null)
+        {
+            amount *= _ordeals.VeilrotMultiplier;
         }
 
         MoveTo(MathF.Min(Max, _value + amount));

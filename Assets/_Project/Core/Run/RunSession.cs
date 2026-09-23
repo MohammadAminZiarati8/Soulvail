@@ -400,6 +400,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // gap between the two is exactly the composition the snapshot must not include.
         RandomState opening = _random.Capture();
 
+        // **GD §13.4's Ordeals, one set per run, unconditionally** (M6-06a rule 5) — the wallet's
+        // bargain: a mode that schedules none holds a set that is always empty rather than no set,
+        // so StageFlow takes it as a required argument and a mis-wired run cannot reach stage 25 and
+        // be dealt nothing in silence.
+        //
+        // **Built and restored above the opening composition, and that is M6-06b's one ordering**
+        // (rule 3). Swarm changes what a stage is made of and the line below composes the stage a
+        // run opens on — so a set restored after it, as M6-06a placed it when nothing read a dial,
+        // would give a resumed stage-35 run its first stage without Swarm and every later one with
+        // it. Silent, for the wallet's reason: an OrdealApplied raised here would reach a HUD that
+        // has not subscribed yet, and a resume is not news. It reads the mode and nothing the run
+        // builds, so nothing below has to exist first; an id the pool no longer holds is dropped
+        // rather than refused, and a v4 save written before M6-06a carries none (M6-06a rule 7).
+        var ordeals = new Ordeals(mode, _events);
+
+        if (config.Restore is RunSnapshot dealt)
+        {
+            ordeals.Restore(dealt.OrdealIds);
+        }
+
         WavePlan plan = null;
         WaveComposer composer = null;
 
@@ -417,7 +437,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
             // The first thing in a run to consume the Spawn stream, and it draws from that one and
             // no other (ADR-0011).
-            composer.Compose(config.StageIndex, mode, plan, _random.Spawn);
+            composer.Compose(config.StageIndex, mode, plan, _random.Spawn, ordeals);
         }
 
         int seed = config.Seed;
@@ -475,7 +495,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // It takes the blackboard as well as the combat object, which is `SkillRunner`'s and
         // `ZoneSystem`'s shape: borrowed, not owned, one writer and many readers (ADR-0005). This is
         // the writer of the ninth field, and the last one that had none.
-        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events);
+        //
+        // **And the run's Ordeals, for Hunger** (M6-06b rule 5): optional on the constructor and
+        // never absent here, which `OrdealEffectsTests.Run_TheSetReachesAllThree` asserts.
+        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events, ordeals);
 
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
@@ -711,10 +734,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // **What a spare level is worth comes off the mode** (M5-06b rules 8 and 9), like the curve
         // that decides when one is earned: LevelTracker above reads mode.Xp, and this reads
         // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
-        // CH §5.2 an Inspector edit and the other half a rebuild.
+        // CH §5.2 an Inspector edit and the other half a rebuild. The run's Ordeals ride last, for
+        // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow, veilrot);
+            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -751,12 +775,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         SanctumShop shop = tree is null
             ? null
             : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events);
-
-        // **GD §13.4's Ordeals, one set per run, unconditionally** (M6-06a rule 5) — the wallet's
-        // bargain: a mode that schedules none holds a set that is always empty rather than no set,
-        // so StageFlow takes it as a required argument and a mis-wired run cannot reach stage 25 and
-        // be dealt nothing in silence. Restored below the tree, in the block that follows.
-        var ordeals = new Ordeals(mode, _events);
 
         State = new RunState(
             config.ModeId,
@@ -935,14 +953,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // now states.
             essence.Restore(resumed.Economy.Essence);
 
-            // **The Ordeals, beside the wallet and below the tree** (M6-06a rule 7). Silent, for
-            // the wallet's reason: an OrdealApplied raised here would reach a HUD that has not
-            // subscribed yet, and a resume is not news. An id the mode's pool no longer holds is
-            // dropped rather than refused, and a v4 save written before M6-06a carries none, so its
-            // next scheduled boundary deals one — the stated cost. Nothing reads a dial yet (rule 6),
-            // so its place against Health.Restore is uniformity; M6-06b's four readers move no
-            // maximum either.
-            ordeals.Restore(resumed.OrdealIds);
+            // The Ordeals are not restored here: they were, at M6-06a, and M6-06b moved them above
+            // the opening composition, which Swarm reads. None of the four moves a maximum, so
+            // leaving this block costs Health.Restore's ordering nothing.
 
             // **M6-02b rule 9: the banishes below the tree's own restore, and the counters beside
             // them.** Below, because an id both taken and banished is dropped from the banishes —

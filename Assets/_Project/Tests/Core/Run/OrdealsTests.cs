@@ -515,14 +515,24 @@ public sealed class OrdealsTests
         Assert.That(ordeals.ThreatCostMultiplier(default), Is.EqualTo(1f));
     }
 
-    // ---- Nothing reads them (rule 6) -------------------------------------------------------------
+    // ---- Who reads them (M6-06a rule 6, inverted by M6-06b) ---------------------------------------
 
     [Test]
-    public void Ordeals_NothingReadsTheDialsYet()
+    public void Ordeals_EachDialHasItsOneReader()
     {
-        // **After M6-06a, nothing in Soulvail.Core asks for a number** (rule 6). A sweep of every
-        // method body in the assembly for a call to one of the five, PaletteTests' device — so the
-        // day M6-06b wires the first reader, this row goes red in its diff rather than nowhere.
+        // **M6-06a pinned that nothing read a dial; M6-06b pins exactly who does** — one reader per
+        // dial, two for Swarm's pair in one class. A sweep of every method body in the assembly for a
+        // call to one of the five, PaletteTests' device, so a second reader is a red row in its own
+        // diff rather than a number quietly read twice.
+        var expected = new[]
+        {
+            "Soulvail.Core.Stage.StageFlow.UnderOrdeals → get_EssenceMultiplier",
+            "Soulvail.Core.Progression.LevelUpFlow.CardsToOffer → get_OfferCount",
+            "Soulvail.Core.Director.WaveComposer.Compose → get_ConcurrencyBonus",
+            "Soulvail.Core.Run.Veilrot.Gain → get_VeilrotMultiplier",
+            "Soulvail.Core.Director.WaveComposer.PrepareEligible → ThreatCostMultiplier",
+        };
+
         var dials = new List<MethodBase>
         {
             typeof(Ordeals).GetProperty(nameof(Ordeals.EssenceMultiplier))!.GetMethod,
@@ -559,8 +569,8 @@ public sealed class OrdealsTests
             }
         }
 
-        Assert.That(callers, Is.Empty,
-            "Something reads an Ordeal dial, which is M6-06b's diff: " + string.Join("; ", callers));
+        Assert.That(callers, Is.EquivalentTo(expected),
+            "The Ordeal dials' readers moved: " + string.Join("; ", callers));
     }
 
     // ---- Restore (rule 7) ------------------------------------------------------------------------
@@ -1042,29 +1052,66 @@ public sealed class OrdealsTests
             SpawnPoints = Points(8),
         };
 
-    /// <summary>EssenceWalletTests' route: walk onto the body and answer the Censer's swing.</summary>
-    private void ClearOneStage(RunSession session)
-    {
-        int spawnedBefore = _events.Count<EnemySpawned>();
-        int clearedBefore = _events.Count<StageCleared>();
+    /// <summary>
+    /// EssenceWalletTests' route: walk onto a body and answer the Censer's swing, one body at a time
+    /// until the stage clears.
+    /// </summary>
+    /// <remarks>
+    /// One body at a time rather than "the" body since M6-06b: a stage here is one Husk only until
+    /// Swarm is dealt, which halves its cost and buys two.
+    /// </remarks>
+    private void ClearOneStage(RunSession session) => ClearOneStage(session, _events);
 
-        for (int i = 0; i < 600 && _events.Count<EnemySpawned>() == spawnedBefore; i++)
+    /// <summary>Shared with <c>OrdealEffectsTests</c>, which drives the same shape of run.</summary>
+    internal static void ClearOneStage(RunSession session, RecordingEvents events)
+    {
+        int spawnedBefore = events.Count<EnemySpawned>();
+        int clearedBefore = events.Count<StageCleared>();
+
+        for (int i = 0; i < 600 && events.Count<EnemySpawned>() == spawnedBefore; i++)
         {
             session.Tick(SessionSnapshot(Frame, Vector3.Zero));
         }
 
-        Assert.That(_events.Count<EnemySpawned>(), Is.GreaterThan(spawnedBefore), "The fixture failed to land the wave.");
+        Assert.That(events.Count<EnemySpawned>(), Is.GreaterThan(spawnedBefore), "The fixture failed to land the wave.");
 
-        EnemySpawned spawned = _events.Of<EnemySpawned>()[spawnedBefore];
-        int[] report = { spawned.Id };
+        var report = new int[1];
 
-        for (int i = 0; i < 600 && _events.Count<StageCleared>() == clearedBefore; i++)
+        for (int i = 0; i < 1_800 && events.Count<StageCleared>() == clearedBefore; i++)
         {
-            session.Tick(SessionSnapshot(Frame, spawned.Position));
+            EnemySpawned target = FirstStanding(events, spawnedBefore);
+
+            report[0] = target.Id;
+
+            session.Tick(SessionSnapshot(Frame, target.Position));
             session.ReportConeHits(report);
         }
 
-        Assert.That(_events.Count<StageCleared>(), Is.EqualTo(clearedBefore + 1), "The fixture failed to clear the stage.");
+        Assert.That(events.Count<StageCleared>(), Is.EqualTo(clearedBefore + 1), "The fixture failed to clear the stage.");
+    }
+
+    /// <summary>The earliest body spawned since <paramref name="from"/> that has not died, or the last one.</summary>
+    private static EnemySpawned FirstStanding(RecordingEvents events, int from)
+    {
+        IReadOnlyList<EnemySpawned> spawned = events.Of<EnemySpawned>();
+        IReadOnlyList<EnemyDied> died = events.Of<EnemyDied>();
+
+        for (int i = from; i < spawned.Count; i++)
+        {
+            bool dead = false;
+
+            for (int j = 0; j < died.Count && !dead; j++)
+            {
+                dead = died[j].Id == spawned[i].Id;
+            }
+
+            if (!dead)
+            {
+                return spawned[i];
+            }
+        }
+
+        return spawned[spawned.Count - 1];
     }
 
     private void CrossTheBoundary(RunSession session)

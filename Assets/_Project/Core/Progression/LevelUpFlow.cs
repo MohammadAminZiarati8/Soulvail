@@ -70,6 +70,9 @@ public sealed class LevelUpFlow
     private readonly Veilrot _veilrot;
     private readonly OfferGenerator _generator;
 
+    /// <summary>The run's Ordeals, for Vigil's card count. Null for a flow built without one.</summary>
+    private readonly Ordeals _ordeals;
+
     /// <summary>
     /// The offer's ids. One buffer for the life of the run, rewritten by every draw — which is safe
     /// because it is read on a frame that is not ticking (M3-08a rule 15), and is named here for the
@@ -119,10 +122,15 @@ public sealed class LevelUpFlow
     /// GD §10's meter, which a corrupted take pays into (M6-05b rule 6). Required — every run has
     /// one, and a null would be a run that took Pacts for free (M6-01a rule 5's argument).
     /// </param>
-    /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
+    /// <param name="ordeals">
+    /// What this run has been dealt, for GD §13.4's Vigil — or <see langword="null"/> for none, which
+    /// is a true statement below the mode's first Ordeal stage rather than a mis-wiring (M6-06b
+    /// rule 5, and the stated reason it differs from <paramref name="veilrot"/>'s ruling).
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any reference argument but <paramref name="ordeals"/> is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
                        EffectRegistry effects, IDomainEvents events, OverflowSpec overflow,
-                       Veilrot veilrot)
+                       Veilrot veilrot, Ordeals ordeals = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -130,6 +138,7 @@ public sealed class LevelUpFlow
         _effects = effects ?? throw new ArgumentNullException(nameof(effects));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _veilrot = veilrot ?? throw new ArgumentNullException(nameof(veilrot));
+        _ordeals = ordeals;
 
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
@@ -224,9 +233,11 @@ public sealed class LevelUpFlow
             return;
         }
 
+        int cards = CardsToOffer();
+
         while (_progression.PendingLevelUps > 0)
         {
-            int drawn = _generator.Draw(_tree, offers, _offer.Length, _offer, out int pactIndex);
+            int drawn = _generator.Draw(_tree, offers, cards, _offer, out int pactIndex);
 
             if (drawn > 0)
             {
@@ -245,7 +256,7 @@ public sealed class LevelUpFlow
                     RerollCharges--;
                     RerollsSpent++;
 
-                    drawn = _generator.Draw(_tree, offers, _offer.Length, _offer, out pactIndex);
+                    drawn = _generator.Draw(_tree, offers, cards, _offer, out pactIndex);
                 }
 
                 _count = drawn;
@@ -260,6 +271,23 @@ public sealed class LevelUpFlow
             // `Draw` answers rather than against that assumption (rule 2).
             GrantOne();
         }
+    }
+
+    /// <summary>
+    /// How many cards a level-up draws: GD §13.4's Vigil's count when one is dealt, and the buffer's
+    /// three otherwise (M6-06b rule 2).
+    /// </summary>
+    /// <remarks>
+    /// <b>A number passed to <c>Draw</c> and nothing else</b> — <c>OfferGenerator.DefaultOfferCount</c>'s
+    /// own remarks called it. The buffer stays a three-array, so a count authored above three is held
+    /// to it, and <c>Draw</c> already clamps to what is available. The screen needs nothing: it hides
+    /// every card past <c>OfferPresented.Count</c> (M3-08b rule 6).
+    /// </remarks>
+    private int CardsToOffer()
+    {
+        int vigil = _ordeals is null ? 0 : _ordeals.OfferCount;
+
+        return vigil > 0 && vigil < _offer.Length ? vigil : _offer.Length;
     }
 
     /// <summary>

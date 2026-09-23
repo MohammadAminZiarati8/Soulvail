@@ -526,11 +526,36 @@ public sealed class StageFlow
         // own statement (GD §4.5), and the boss term is asked of the director rather than computed:
         // `IsBossStage` is the existing read and no `stage % 5` exists anywhere in the game
         // (M4-01b rule 1). A mode that authors no Essence pays zero, and Earn is silent for it.
-        _essence.Earn(_mode.Essence.ForStageClear(Stage, _director.IsBossStage));
+        //
+        // **GD §13.4's Famine wraps the award and never the formula** (M6-06b rule 1): the wallet
+        // and the spec stay ignorant of Ordeals, which is what M6-01a's Out of scope reserved.
+        _essence.Earn(UnderOrdeals(_mode.Essence.ForStageClear(Stage, _director.IsBossStage)));
 
         Vector3 gate = snapshot.HasGate ? snapshot.GatePosition : Vector3.Zero;
 
         _events.Publish(new StageCleared(Stage, gate, hasNext ? ArenaFor(Stage + 1) : default));
+    }
+
+    /// <summary>
+    /// A stage clear's <paramref name="award"/> under the run's Essence multiplier — Famine's 0.6.
+    /// </summary>
+    /// <remarks>
+    /// <b>Rounded to the nearest whole Essence and floored at 1 whenever the award was positive</b>
+    /// (M6-06b rule 1). A stacked Famine can make a clear nearly worthless and never literally
+    /// nothing: <c>EssenceWallet.Earn</c> is silent for zero, so a zero award would be a stage clear
+    /// that published no <c>EssenceChanged</c> and read on the HUD as a stage never cleared. A run
+    /// dealt nothing multiplies by 1, which is the identity for every whole award (rule 7).
+    /// </remarks>
+    private int UnderOrdeals(int award)
+    {
+        if (award <= 0)
+        {
+            return award;
+        }
+
+        int paid = (int)MathF.Round(award * _ordeals.EssenceMultiplier);
+
+        return paid < 1 ? 1 : paid;
     }
 
     /// <summary>
@@ -670,8 +695,9 @@ public sealed class StageFlow
         _ordeals.OnStageEntered(next, _affixes);
 
         // Into the same plan object the run has held since Start. A boundary is the worst moment in
-        // a run to allocate, and WavePlan.Begin is written to be refilled (M2-04).
-        _composer.Compose(next, _mode, _plan, spawn);
+        // a run to allocate, and WavePlan.Begin is written to be refilled (M2-04). With the run's
+        // Ordeals, so a Swarm dealt on the line above is in force for this stage (M6-06b rule 3).
+        _composer.Compose(next, _mode, _plan, spawn, _ordeals);
 
         EnterArrival(now);
     }

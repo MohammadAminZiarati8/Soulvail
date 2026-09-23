@@ -120,6 +120,27 @@ public sealed class StageFlow
     /// </remarks>
     private readonly EssenceWallet _essence;
 
+    /// <summary>
+    /// GD §13.4's Ordeals, dealt in <see cref="Advance"/> above the composition (M6-06a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// Required, for <see cref="_essence"/>'s reason and at its price: every run has a set, and an
+    /// optional one defaulting to null would let a mis-wired run reach stage 25 and be dealt nothing.
+    /// </remarks>
+    private readonly Ordeals _ordeals;
+
+    /// <summary>
+    /// The <c>Affixes</c> stream, for <see cref="_ordeals"/>' draw and nothing else (the M6-06a ruling).
+    /// </summary>
+    /// <remarks>
+    /// Held rather than passed to <see cref="Tick"/> the way <c>Spawn</c> is, which is a deviation
+    /// worth stating: a <see cref="Tick"/> parameter would move thirty call sites for a stream that is
+    /// drawn once every ten stages, and the constructor is already moving for the set above. A run's
+    /// streams are fixed objects for its whole life, so holding one reads the same position a
+    /// parameter would.
+    /// </remarks>
+    private readonly IRandomStream _affixes;
+
     private readonly IDomainEvents _events;
     private readonly WavePlan _plan;
 
@@ -176,6 +197,8 @@ public sealed class StageFlow
     /// <param name="essence">
     /// The run's wallet, paid once per stage at <see cref="EnterClear"/>. Required — see the field.
     /// </param>
+    /// <param name="ordeals">The run's Ordeals, dealt at each boundary. Required — see the field.</param>
+    /// <param name="affixes">The run's <c>Affixes</c> stream, which the deal draws on and nothing else.</param>
     /// <param name="events">Where the three stage events go.</param>
     /// <param name="plan">
     /// The run's single <c>WavePlan</c>, built once by <c>RunSession.Start</c> at the wave curve's
@@ -199,6 +222,8 @@ public sealed class StageFlow
         ProjectileSystem projectiles,
         PlayerCombat player,
         EssenceWallet essence,
+        Ordeals ordeals,
+        IRandomStream affixes,
         IDomainEvents events,
         WavePlan plan,
         int seed,
@@ -212,6 +237,8 @@ public sealed class StageFlow
         _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         _player = player ?? throw new ArgumentNullException(nameof(player));
         _essence = essence ?? throw new ArgumentNullException(nameof(essence));
+        _ordeals = ordeals ?? throw new ArgumentNullException(nameof(ordeals));
+        _affixes = affixes ?? throw new ArgumentNullException(nameof(affixes));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _plan = plan ?? throw new ArgumentNullException(nameof(plan));
 
@@ -580,7 +607,8 @@ public sealed class StageFlow
     /// <para>
     /// <b>The order is the contract.</b> Depth first, so that anything reacting to the clears cannot
     /// spawn a body priced at the stage that has just ended (M2-03 rule 12). Then the enemies, then
-    /// the shots, then the target, then the composition, and only then the next arrival.
+    /// the shots, then the target, then the Ordeal deal, then the composition, and only then the next
+    /// arrival.
     /// </para>
     /// <para>
     /// <b><c>Targeter.Reset</c>, and deliberately not <c>PlayerCombat.Reset</c>.</b> The wide one
@@ -632,6 +660,14 @@ public sealed class StageFlow
         // of Arrival and its Tick is a no-op, which is also what makes rule 1 true by construction
         // rather than by this object happening not to have begun it yet.
         _director.Clear();
+
+        // **GD §13.4's deal, above the composition, and that ordering is the whole reason it is here
+        // rather than somewhere tidier** (M6-06a rule 5). M6-06b's Swarm changes what a stage is made
+        // of, and the line below composes this stage — so an Ordeal dealt after it would be invisible
+        // for the stage it arrived on, and the player would meet it a stage late with nothing to say
+        // why. A run's first stage is composed in RunSession.Start instead and needs no deal:
+        // Descent's first boundary is 25, and a resumed run restores rather than deals (rule 7).
+        _ordeals.OnStageEntered(next, _affixes);
 
         // Into the same plan object the run has held since Start. A boundary is the worst moment in
         // a run to allocate, and WavePlan.Begin is written to be refilled (M2-04).

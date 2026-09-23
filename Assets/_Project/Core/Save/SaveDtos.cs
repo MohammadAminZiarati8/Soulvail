@@ -315,7 +315,7 @@ public readonly struct RunSnapshot
     /// The subset relation is deliberately not checked here — see <see cref="PactedNodeIds"/>.
     /// </param>
     /// <param name="ordealIds">
-    /// GD §13.4's Ordeals, in the order they were drawn. Copied; empty until M6-06a.
+    /// GD §13.4's Ordeals, in the order they were drawn. Copied; written since M6-06a.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="version"/> is below 1, <paramref name="stageIndex"/> is below 1,
@@ -681,7 +681,7 @@ public readonly struct RunSnapshot
     public IReadOnlyList<ContentId> PactedNodeIds => _pactedNodeIds ?? Array.Empty<ContentId>();
 
     /// <summary>
-    /// GD §13.4's Ordeals, in the order they were drawn. Never null; empty until M6-06a. v4.
+    /// GD §13.4's Ordeals, in the order they were drawn. Never null; written since M6-06a. v4.
     /// </summary>
     public IReadOnlyList<ContentId> OrdealIds => _ordealIds ?? Array.Empty<ContentId>();
 

@@ -437,8 +437,8 @@ public sealed class SaveDtoTests
         RunSnapshot zeroed = default;
 
         // Three more fields a zeroed struct could hand out as nulls. They answer an empty list
-        // instead, so no reader has to ask — including the readers that do not exist until M6-02b,
-        // M6-05a and M6-06a (AR §18.3).
+        // instead, so no reader has to ask — M6-02b's banish restore, M6-05a's Pact replay and
+        // M6-06a's Ordeal restore all read them straight (AR §18.3).
         Assert.That(zeroed.BanishedNodeIds, Is.Not.Null);
         Assert.That(zeroed.BanishedNodeIds, Is.Empty);
         Assert.That(zeroed.PactedNodeIds, Is.Not.Null);

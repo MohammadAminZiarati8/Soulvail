@@ -348,4 +348,56 @@ public readonly struct OrdealApplied
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Built to the table's shape.** `OrdealSpec` is five dials and three keys. It refuses a neutral
+Ordeal (naming the id), a half-named threat pair, and a multiplier that is not finite and above zero.
+`OrdealScheduleSpec` sits beside the other mode blocks in `ModeSpec.cs`. Its zeroed form deals never
+because `DealsAt` checks `IsAuthored` before it takes the modulo. `ModeSpec` takes the schedule and
+the pool optional and last, and refuses a null or repeated Ordeal. `Ordeals` draws one `NextInt` on
+`Affixes` over what is left, and makes no draw when the pool is empty or the stage is not a boundary.
+`StageFlow.Advance` calls it after `_director.Clear()` and above `Compose`. `RunSession` builds one set
+per run, restores it silently beside the wallet, and `RunRecorder` writes it. `Descent.asset`
+carries 25 / 10 and Famine, Vigil, Swarm and Hunger with GD §13.4's numbers. No dial has a reader.
+EditMode 2 793 → **2 830, +37**; PlayMode **26**, unchanged.
+
+### Deviations
+
+1. **`StageFlow` holds the `Affixes` stream from its constructor** rather than taking it on `Tick` the
+   way it takes `Spawn`. A `Tick` parameter would have moved 30 call sites for a draw made once every
+   ten stages, and the constructor was moving anyway. A run's streams are fixed objects, so the
+   position read is the same. The ripple is 13 sites, not 11: `StageFlowTests`' guard row gained two
+   refusals, for the set and for the stream.
+2. **Two files outside the table.** `English.asset` gains the eight rows ledger row 7 counts for this
+   task; `EveryLocKey_ResolvesInEnglish` would refuse the assets without them. `DebugOverlay` gains
+   `ord —` / `ord famine,swarm`, because manual steps 1–3 read *"the overlay names them"* and nothing
+   did. `SaveDtos.cs` had two doc comments corrected (*"empty until M6-06a"*).
+3. **`Mode_WithoutOneIsUnchanged` is in `OrdealsTests`, not `ModeSpecTests`.** `Mode_CarriesItsPoolAndSchedule`
+   is in `ModeDefinitionTests`, because it converts an asset and `Tests.Core` cannot load one.
+4. **`Spec_HasNoKindAndNothingDispatchesOnOne` checks signatures, not IL.** No field, property or
+   parameter of either type is an enum. A switch needs something to switch on; scanning for opcode
+   `0x45` would match operand bytes.
+5. **`Restore_AnOlderSaveComesBackEmpty` resumes at 34, not 30**, so it crosses one boundary rather
+   than five at a depth where the Husk hits for 17. **`Recorder_WritesWhatWasDealt` uses a schedule of
+   every stage from 2**: three deals in three boundaries instead of twenty. The `Deal_` rows cover
+   Descent's 25 / 10 against the set directly, and `Deal_DrawsOnAffixesAndNothingElse` drives a real
+   flow from 24 to 45.
+6. **Five rows the table implies but does not list:** `Mode_RefusesAnOrdealListedTwice`,
+   `Deal_RefusesANullStreamAndAStageBelowOne`, `Restore_ANameTwiceIsDealtOnce`,
+   `AllOrdeals_LoadConvertAndAreUnique`, and `Content_EveryShippedModeSchedulesWhatItStocks` extended
+   to check that each pool id is `ordeal.*`. `ContentValidationTests` now sweeps `OrdealDefinition` for
+   ids, file names and both keys, with a floor of 4 and two new authoring placeholders.
+7. **The pool is asset references, not ids.** `ModeDefinition._ordeals._pool` lists
+   `OrdealDefinition`s (`SkillTreeDefinition`'s nodes' shape), and an empty slot is refused by row.
+   Unlike the blocks above it, `OrdealsBlock` initialises to 0 / 0 / empty, so a new mode deals none.
+   That also means Traps §7's vacuous-assert hole does not open for this block.
+8. **`Deal_HappensBeforeTheComposition` uses logging streams, not a spy composer.** `WaveComposer` is
+   sealed. The frame that enters 25 must draw `affixes` first and `spawn` after it; the director draws
+   nothing during `Transition`.
+
+### Findings
+
+- **The Editor ran at 0.3 GB free RAM and 12 GB of disk.** Two `AssetImportWorker` processes crashed
+  on the first refresh, one of them out of memory. Compilation finished, and every later refresh and
+  all four suite runs were clean. This belongs with Known issue 6.
+- **Known issue 1 did not fire.** PlayMode was 26 / 0 twice.
+- **Ledger row 7** gets its eight strings. It is touched and not moved.
+- **The parking-lot stage-editor line** already says this task answered its Ordeal half.

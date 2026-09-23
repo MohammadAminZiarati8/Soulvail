@@ -78,6 +78,7 @@ public sealed class ContentValidationTests
     private const string SkillNamespace = "skill.";
     private const string TreeNamespace = "tree.";
     private const string ArenaNamespace = "arena.";
+    private const string OrdealNamespace = "ordeal.";
 
     /// <summary>
     /// The keys the authoring types initialise themselves to. A shipped asset carrying one of these
@@ -133,6 +134,8 @@ public sealed class ContentValidationTests
         "character.new.description",
         "enemy.new.name",
         "mode.new.name",
+        "ordeal.new.name",
+        "ordeal.new.description",
         "skill.new.name",
         "skill.new.description",
         "skill.new.pact.description",
@@ -157,6 +160,9 @@ public sealed class ContentValidationTests
     private const int ShippedTrees = 2;
     private const int ShippedEffects = 33;
     private const int ShippedTables = 1;
+
+    /// <summary>GD §13.4's four that M6-06b makes work (M6-06a) — Fracture and Echo are refused.</summary>
+    private const int ShippedOrdeals = 4;
 
     /// <summary>
     /// The bosses the project ships — GD §9.2's Warden, with the other three at M7 (M4-02).
@@ -357,6 +363,7 @@ public sealed class ContentValidationTests
         Assert.That(PathsOf<EffectDefinition>(), Has.Count.AtLeast(ShippedEffects));
         Assert.That(PathsOf<LocalizationTable>(), Has.Count.AtLeast(ShippedTables));
         Assert.That(PathsOf<BossDefinition>(), Has.Count.AtLeast(ShippedBosses));
+        Assert.That(PathsOf<OrdealDefinition>(), Has.Count.AtLeast(ShippedOrdeals));
     }
 
     // ---- GD §9.1 rule 1, over the assets that ship (M4-02) ---------------------------------------
@@ -490,6 +497,88 @@ public sealed class ContentValidationTests
         }
 
         AssertNoProblems(problems, "Mode Sanctum prices (GD §13.3)");
+    }
+
+    // ---- GD §13.4, over the modes that ship (M6-06a rule 1) --------------------------------------
+
+    [Test]
+    public void Content_EveryShippedModeSchedulesWhatItStocks()
+    {
+        // **The two halves of the Ordeal block must agree on a shipped mode.** Both are optional and
+        // last on ModeSpec, which keeps every fixture compiling, and each is harmless alone in a
+        // fixture — but on an asset a schedule with an empty pool deals nothing for ever, and a pool
+        // with no schedule is content nobody can reach. Neither throws anywhere at run time.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            ModeSpec spec = definition.ToSpec();
+            bool scheduled = spec.OrdealSchedule.IsAuthored;
+            bool stocked = spec.Ordeals.Count > 0;
+
+            if (scheduled && !stocked)
+            {
+                problems.Add(
+                    $"{path}: schedules Ordeals from stage {spec.OrdealSchedule.FirstStage} and "
+                        + "stocks none, so every boundary it schedules is silent.");
+            }
+
+            if (stocked && !scheduled)
+            {
+                problems.Add(
+                    $"{path}: stocks {spec.Ordeals.Count} Ordeal(s) and schedules none, so no run "
+                        + "can ever be dealt one.");
+            }
+
+            foreach (OrdealSpec ordeal in spec.Ordeals)
+            {
+                if (!ordeal.Id.Value.StartsWith(OrdealNamespace, StringComparison.Ordinal))
+                {
+                    problems.Add($"{path}: pool reference '{ordeal.Id}' is not '{OrdealNamespace}*'.");
+                }
+            }
+        }
+
+        AssertNoProblems(problems, "Mode Ordeal blocks (GD §13.4)");
+    }
+
+    [Test]
+    public void AllOrdeals_LoadConvertAndAreUnique()
+    {
+        var problems = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (definition == null)
+            {
+                problems.Add($"{path}: did not load as an OrdealDefinition.");
+                continue;
+            }
+
+            try
+            {
+                if (!seen.Add(definition.ToSpec().Id.Value))
+                {
+                    problems.Add($"{path}: repeats the id '{definition.Id}'.");
+                }
+            }
+            catch (Exception exception)
+            {
+                problems.Add($"{path}: is not valid content — {exception.Message}");
+            }
+        }
+
+        AssertNoProblems(problems, "Ordeal assets");
     }
 
     // ---- Rule 2: an id's namespace matches its kind ---------------------------------------------
@@ -1194,6 +1283,16 @@ public sealed class ContentValidationTests
                 yield return new AuthoredId(path, asset.Id, "tree", TreeNamespace);
             }
         }
+
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (asset != null)
+            {
+                yield return new AuthoredId(path, asset.Id, "ordeal", OrdealNamespace);
+            }
+        }
     }
 
     /// <summary>Every <see cref="LocKey"/> an asset in the project carries.</summary>
@@ -1275,6 +1374,22 @@ public sealed class ContentValidationTests
                     $"branch {b}'s name key",
                     spec.Branches[b].NameKey);
             }
+        }
+
+        // GD §13.4's four (M6-06a): a name the deal announces and a line saying what it does.
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (asset == null)
+            {
+                continue;
+            }
+
+            OrdealSpec spec = asset.ToSpec();
+
+            yield return new AuthoredKey(path, "the name key", spec.NameKey);
+            yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
         }
     }
 

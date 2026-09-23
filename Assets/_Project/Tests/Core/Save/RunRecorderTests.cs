@@ -473,11 +473,12 @@ public sealed class RunRecorderTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        // **Two real values and four placeholders** (rule 7, and M6-04 taking the first of the four
-        // it reserved). The wallet and the meter are read off the run — 42.5 rather than a round
-        // threshold, so a recorder still passing a literal could not match it by accident; the rest
-        // are the shape v4 reserves for M6-02b, M6-05a and M6-06a, each of which replaces exactly
-        // one argument here without bumping the version.
+        // **Every v4 field is now read off the run** (rule 7; M6-04, M6-02b, M6-05a and M6-06a
+        // each replaced one placeholder without bumping the version). The wallet and the meter are
+        // 42.5 rather than a round threshold, so a recorder still passing a literal could not match
+        // it by accident; the counters and the three lists are zero and empty because this run
+        // bought, banished, pacted and was dealt nothing — OrdealsTests.Recorder_WritesWhatWasDealt
+        // is the row with an Ordeal in it.
         Assert.That(snapshot.Economy.Essence, Is.EqualTo(84));
         Assert.That(snapshot.Economy.Veilrot, Is.EqualTo(42.5f));
         Assert.That(snapshot.Economy.RerollsBought, Is.Zero);

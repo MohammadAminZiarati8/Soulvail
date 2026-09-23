@@ -432,6 +432,75 @@ public readonly struct SanctumSpec
 }
 
 /// <summary>
+/// When a mode starts dealing GD §13.4's Ordeals, and how often. GD §13.4 against GD §3.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Two authored numbers, because there is no biome in the build</b> (M6-06a). GD §13.4 says
+/// <em>"from stage 25, each new biome loop"</em> and GD §3 says <em>"biome changes every 10
+/// stages"</em>; <see cref="ModeSpec"/> knows nothing about layers, so the arithmetic is written down
+/// as 25 and 10 in <c>Descent.asset</c> rather than inferred. That deals at 25, 35, 45, 55…
+/// </para>
+/// <para>
+/// <b><c>default(OrdealScheduleSpec)</c> is legal and deals never</b> — rule 1, and what keeps
+/// <c>new ModeSpec(...)</c>'s call sites compiling. <see cref="DealsAt"/> reads a zeroed schedule as
+/// "no schedule" rather than dividing by its zero period, so AR §18.3's both-ends rule is kept by the
+/// reader instead of by a second check in <see cref="ModeSpec"/>'s constructor. What stops a shipped
+/// mode stocking a pool it never deals is
+/// <c>ContentValidationTests.Content_EveryShippedModeSchedulesWhatItStocks</c>.
+/// </para>
+/// </remarks>
+public readonly struct OrdealScheduleSpec
+{
+    /// <param name="firstStage">The first stage an Ordeal is dealt on. 25 in Descent.</param>
+    /// <param name="everyNStages">How many stages apart the rest come. 10 in Descent.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="firstStage"/> is below 1, or <paramref name="everyNStages"/> is below 1 — a
+    /// period of zero deals on every stage and none, depending on who does the dividing.
+    /// </exception>
+    public OrdealScheduleSpec(int firstStage, int everyNStages)
+    {
+        if (firstStage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(firstStage),
+                firstStage,
+                "An Ordeal schedule's first stage must be at least 1. Stages are numbered from 1 "
+                    + "(GD §8.2).");
+        }
+
+        if (everyNStages < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(everyNStages),
+                everyNStages,
+                "An Ordeal schedule's period must be at least 1. A zero would deal on every stage "
+                    + "or on none, and a mode that means none authors no schedule.");
+        }
+
+        FirstStage = firstStage;
+        EveryNStages = everyNStages;
+    }
+
+    /// <summary>The first stage an Ordeal is dealt on. 25 in Descent; 0 for no schedule.</summary>
+    public int FirstStage { get; }
+
+    /// <summary>How many stages apart the rest come. 10 in Descent; 0 for no schedule.</summary>
+    public int EveryNStages { get; }
+
+    /// <summary>Whether this is an authored schedule rather than the zeroed one.</summary>
+    public bool IsAuthored => EveryNStages > 0;
+
+    /// <summary>Whether <paramref name="stage"/> is one this schedule deals on.</summary>
+    /// <remarks>
+    /// False for every stage on the zeroed schedule, and no throw — a mode that authors none deals
+    /// none (rule 1). A stage below 1 is the caller's to refuse; here it is simply not a boundary.
+    /// </remarks>
+    public bool DealsAt(int stage) =>
+        IsAuthored && stage >= FirstStage && (stage - FirstStage) % EveryNStages == 0;
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -496,6 +565,11 @@ public sealed class ModeSpec
 
     private readonly ReadOnlyCollection<BossRosterEntry> _bossRosterView;
 
+    /// <summary>The Ordeal pool, wrapped by <see cref="Ordeals"/> for <see cref="_roster"/>'s reason.</summary>
+    private readonly OrdealSpec[] _ordeals;
+
+    private readonly ReadOnlyCollection<OrdealSpec> _ordealsView;
+
     /// <param name="id">The mode's stable content id, e.g. <c>mode.descent</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="startingStage">The depth a fresh run of this mode begins at. Usually 1.</param>
@@ -559,6 +633,16 @@ public sealed class ModeSpec
     /// <c>default(SanctumSpec)</c> — every service free and worthless, which a fixture that never
     /// opens the shop cannot tell apart and a shipped mode is refused by content validation.
     /// </param>
+    /// <param name="ordealSchedule">
+    /// When GD §13.4's Ordeals are dealt (M6-06a rule 1). Optional and last, for
+    /// <paramref name="essence"/>'s reason two arguments over. Omitted, it is
+    /// <c>default(OrdealScheduleSpec)</c>, which deals never.
+    /// </param>
+    /// <param name="ordeals">
+    /// The pool they are dealt from, in authored order. Copied. Null and empty mean the same thing and
+    /// are both legal. <b>The mode's rather than the catalog's</b>, <c>WaveComposer</c>'s rule: the
+    /// vocabulary is the mode's, which is what makes a Trial with no Ordeals a data change.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -572,6 +656,8 @@ public sealed class ModeSpec
     /// <paramref name="xp"/> is <c>default(XpCurve)</c> — refused exactly as a defaulted
     /// <see cref="ScalingSpec"/> curve is, and for a sharper version of the same reason: a zeroed
     /// curve costs nothing per level, so a tracker fed one levels on every grant without end.
+    /// Also when an Ordeal in <paramref name="ordeals"/> is null or two of them share an id — the
+    /// draw is without replacement by id, so a duplicate would be dealt twice (rule 4).
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="startingStage"/> is not positive, or a finite mode's
@@ -593,7 +679,9 @@ public sealed class ModeSpec
         IReadOnlyList<BossRosterEntry> bossRoster = null,
         OverflowSpec overflow = default,
         EssenceSpec essence = default,
-        SanctumSpec sanctum = default)
+        SanctumSpec sanctum = default,
+        OrdealScheduleSpec ordealSchedule = default,
+        IReadOnlyList<OrdealSpec> ordeals = null)
     {
         if (id.Value is null)
         {
@@ -669,6 +757,16 @@ public sealed class ModeSpec
         // No second look, for Essence's reason: SanctumSpec's constructor is the one account of a
         // legal shop, and the zeroed form is ContentValidationTests' to refuse on a shipped asset.
         Sanctum = sanctum;
+
+        // No second look at the schedule either: its zeroed form deals never, and DealsAt is the
+        // reader that makes that true (see OrdealScheduleSpec). A schedule with no pool and a pool
+        // with no schedule are both legal here and both refused on a shipped asset by
+        // ContentValidationTests — a fixture that stocks one half is not a fault (M6-06a rule 1).
+        OrdealSchedule = ordealSchedule;
+
+        _ordeals = CopyOrdeals(ordeals, id);
+
+        _ordealsView = Array.AsReadOnly(_ordeals);
 
         _roster = CopyRoster(roster, id);
 
@@ -756,6 +854,16 @@ public sealed class ModeSpec
     /// </summary>
     /// <remarks>Read by <c>RunSession.Start</c>, which hands it to the run's one <c>SanctumShop</c>.</remarks>
     public SanctumSpec Sanctum { get; }
+
+    /// <summary>
+    /// When GD §13.4's Ordeals are dealt — 25 / 10 in Descent. All zeroes for a mode that deals none
+    /// (M6-06a rule 1).
+    /// </summary>
+    /// <remarks>Read by <c>Ordeals.OnStageEntered</c>, once per stage entered.</remarks>
+    public OrdealScheduleSpec OrdealSchedule { get; }
+
+    /// <summary>The Ordeal pool, in authored order. Empty is ordinary.</summary>
+    public IReadOnlyList<OrdealSpec> Ordeals => _ordealsView;
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;
@@ -1032,6 +1140,45 @@ public sealed class ModeSpec
             }
 
             copy[i] = arena;
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Copies the Ordeal pool, refusing a null entry and an id listed twice.
+    /// </summary>
+    /// <remarks>
+    /// A duplicate is refused because <c>Ordeals</c> draws without replacement by position and
+    /// restores by id: two rows for one Ordeal would let it be dealt twice, which GD §13.4's six
+    /// distinct rows rule out (M6-06a rule 4).
+    /// </remarks>
+    private static OrdealSpec[] CopyOrdeals(IReadOnlyList<OrdealSpec> ordeals, ContentId id)
+    {
+        if (ordeals is null || ordeals.Count == 0)
+        {
+            return Array.Empty<OrdealSpec>();
+        }
+
+        var copy = new OrdealSpec[ordeals.Count];
+        var ids = new HashSet<ContentId>();
+
+        for (int i = 0; i < ordeals.Count; i++)
+        {
+            OrdealSpec ordeal = ordeals[i]
+                ?? throw new ArgumentException(
+                    $"ordeals[{i}] of '{id}' is null. An empty pool is spelled with no entries.",
+                    nameof(ordeals));
+
+            if (!ids.Add(ordeal.Id))
+            {
+                throw new ArgumentException(
+                    $"'{id}' lists Ordeal '{ordeal.Id}' twice. The draw is without replacement, so "
+                        + "a second row would deal the same Ordeal twice.",
+                    nameof(ordeals));
+            }
+
+            copy[i] = ordeal;
         }
 
         return copy;

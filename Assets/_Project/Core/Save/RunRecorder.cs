@@ -1,5 +1,4 @@
 using System;
-using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -181,19 +180,19 @@ public sealed class RunRecorder
             // snapshot of an M3-era run without content correctly says.
             state.ManualSkillIds,
 
-            // **Four real values, two real lists and one placeholder** (M6-01b rule 7; M6-04 took
-            // the meter, M6-02b the two counters and the banishes, M6-05a the Pacts). All read off
-            // `RunState` for the reason the two lists above are — the handles are internal and a
-            // recorder has no business holding one (AR §18.2). The Ordeals are M6-06a's, and
-            // **replace exactly one argument here without touching CurrentVersion** —
+            // **Four real values and three real lists, and no placeholder left** (M6-01b rule 7;
+            // M6-04 took the meter, M6-02b the two counters and the banishes, M6-05a the Pacts,
+            // M6-06a the Ordeals). All read off `RunState` for the reason the two lists above are —
+            // the handles are internal and a recorder has no business holding one (AR §18.2). The
+            // last one replaced exactly one argument here **without touching CurrentVersion** —
             // `Fixture_V4Run_IsWhatThisBuildWrites` is the row that objects if it bumps it.
             //
             // `RunSnapshot`'s own constructor is what refuses a meter outside `[0, 100]` and a
             // spent count above the bought one; neither can leave its range here, so both guards are
             // boundary checks on a hand-edited file rather than second opinions about this line.
             //
-            // The banished and pacted lists are live views over the tree's, so the snapshot's copy
-            // is what stops a banish or a Pact after the write rewriting a save still queued (the
+            // The banished, pacted and Ordeal lists are live views, so the snapshot's copy is what
+            // stops a banish, a Pact or a deal after the write rewriting a save still queued (the
             // node list's reason). An empty one copies to the shared zero-length array, which keeps
             // `Take_AllocatesNothing` measuring a real zero for a run that took neither.
             new RunEconomy(
@@ -203,7 +202,7 @@ public sealed class RunRecorder
                 rerollsSpent: state.RerollsSpent),
             state.BanishedNodeIds,
             state.PactedNodeIds,
-            Array.Empty<ContentId>());
+            state.OrdealIds);
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

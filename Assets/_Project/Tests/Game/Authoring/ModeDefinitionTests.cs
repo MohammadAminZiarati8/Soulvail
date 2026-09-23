@@ -216,6 +216,41 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Mode_CarriesItsPoolAndSchedule()
+    {
+        // **GD §13.4 read against GD §3, as two authored numbers** (M6-06a rule 1): from stage 25,
+        // every 10. Unlike the blocks above, OrdealsBlock initialises to zero and empty, so a
+        // dropped YAML key here reads as "deals none" and this row *can* tell — the Traps §7 hole
+        // does not open for it. The pool is asserted in authored order, because the seed's draw
+        // walks it in that order.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        ModeSpec spec = definition.ToSpec();
+
+        Assert.That(spec.OrdealSchedule.FirstStage, Is.EqualTo(25), "GD §13.4: from stage 25.");
+        Assert.That(spec.OrdealSchedule.EveryNStages, Is.EqualTo(10), "GD §3: a biome is 10 stages.");
+
+        string[] expected = { "ordeal.famine", "ordeal.vigil", "ordeal.swarm", "ordeal.hunger" };
+
+        Assert.That(spec.Ordeals, Has.Count.EqualTo(expected.Length),
+            "Four of GD §13.4's six; M6-06b refuses Fracture and Echo.");
+
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Assert.That(spec.Ordeals[i].Id.Value, Is.EqualTo(expected[i]), $"pool row {i}");
+        }
+
+        // GD §13.4's own numbers, one dial each.
+        Assert.That(spec.Ordeals[0].EssenceMultiplier, Is.EqualTo(0.6f).Within(1e-6f), "Famine: −40 %.");
+        Assert.That(spec.Ordeals[1].OfferCount, Is.EqualTo(2), "Vigil: 2 instead of 3.");
+        Assert.That(spec.Ordeals[2].ConcurrencyBonus, Is.EqualTo(8), "Swarm: +8.");
+        Assert.That(spec.Ordeals[2].ThreatCostTarget.Value, Is.EqualTo("enemy.husk"));
+        Assert.That(spec.Ordeals[2].ThreatCostMultiplier, Is.EqualTo(0.5f).Within(1e-6f), "Husk cost halved.");
+        Assert.That(spec.Ordeals[3].VeilrotMultiplier, Is.EqualTo(1.5f).Within(1e-6f), "Hunger: +50 %.");
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

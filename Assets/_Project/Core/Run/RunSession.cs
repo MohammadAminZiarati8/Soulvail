@@ -752,6 +752,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events);
 
+        // **GD §13.4's Ordeals, one set per run, unconditionally** (M6-06a rule 5) — the wallet's
+        // bargain: a mode that schedules none holds a set that is always empty rather than no set,
+        // so StageFlow takes it as a required argument and a mis-wired run cannot reach stage 25 and
+        // be dealt nothing in silence. Restored below the tree, in the block that follows.
+        var ordeals = new Ordeals(mode, _events);
+
         State = new RunState(
             config.ModeId,
             config.CharacterId,
@@ -774,7 +780,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             splash,
             essence,
             veilrot,
-            shop);
+            shop,
+            ordeals);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -928,6 +935,15 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // now states.
             essence.Restore(resumed.Economy.Essence);
 
+            // **The Ordeals, beside the wallet and below the tree** (M6-06a rule 7). Silent, for
+            // the wallet's reason: an OrdealApplied raised here would reach a HUD that has not
+            // subscribed yet, and a resume is not news. An id the mode's pool no longer holds is
+            // dropped rather than refused, and a v4 save written before M6-06a carries none, so its
+            // next scheduled boundary deals one — the stated cost. Nothing reads a dial yet (rule 6),
+            // so its place against Health.Restore is uniformity; M6-06b's four readers move no
+            // maximum either.
+            ordeals.Restore(resumed.OrdealIds);
+
             // **M6-02b rule 9: the banishes below the tree's own restore, and the counters beside
             // them.** Below, because an id both taken and banished is dropped from the banishes —
             // the take is the stronger fact — and that is only knowable once the takes are in. Both
@@ -1026,6 +1042,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             projectiles,
             combat,
             essence,
+            ordeals,
+            _random.Affixes,
             _events,
             plan,
             seed,

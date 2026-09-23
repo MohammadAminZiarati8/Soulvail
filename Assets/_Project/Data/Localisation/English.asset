@@ -291,3 +291,19 @@ MonoBehaviour:
     _text: Pact
   - _key: ui.offer.rot
     _text: Rot
+  - _key: ordeal.famine.name
+    _text: Famine
+  - _key: ordeal.famine.description
+    _text: Stages pay -40% Essence.
+  - _key: ordeal.vigil.name
+    _text: Vigil
+  - _key: ordeal.vigil.description
+    _text: Level-ups offer 2 nodes instead of 3.
+  - _key: ordeal.swarm.name
+    _text: Swarm
+  - _key: ordeal.swarm.description
+    _text: +8 enemies at once, and Husks cost half as much.
+  - _key: ordeal.hunger.name
+    _text: Hunger
+  - _key: ordeal.hunger.description
+    _text: +50% Veilrot from every source.

@@ -135,6 +135,7 @@ public sealed class ContentValidationTests
         "mode.new.name",
         "skill.new.name",
         "skill.new.description",
+        "skill.new.pact.description",
         "tree.new.branch",
     };
 
@@ -154,7 +155,7 @@ public sealed class ContentValidationTests
     private const int ShippedModes = 1;
     private const int ShippedSkills = 24;
     private const int ShippedTrees = 2;
-    private const int ShippedEffects = 25;
+    private const int ShippedEffects = 33;
     private const int ShippedTables = 1;
 
     /// <summary>
@@ -756,6 +757,93 @@ public sealed class ContentValidationTests
         }
     }
 
+    // ---- M6-05a rule 6: a Pact inside its band, and the ones nobody wrote -------------------------
+
+    /// <remarks>
+    /// Read off the serialized fields rather than through <c>ToSpec</c>, so the message names the
+    /// field a designer opens — <c>AllSkills_LoadConvertAndAreUnique</c> already reports the
+    /// conversion failure, and this is the row that says which number to change (M3-02b's
+    /// placement).
+    /// </remarks>
+    [Test]
+    public void Content_EveryPactAsksWithinTheBand()
+    {
+        var problems = new List<string>();
+        int pacts = 0;
+
+        foreach (string path in PathsOf<SkillDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<SkillDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            var serialized = new SerializedObject(definition);
+
+            if (!serialized.FindProperty("_hasPact").boolValue)
+            {
+                continue;
+            }
+
+            pacts++;
+
+            float veilrot = serialized.FindProperty("_pactVeilrot").floatValue;
+
+            if (!(veilrot >= PactSpec.MinVeilrot && veilrot <= PactSpec.MaxVeilrot))
+            {
+                problems.Add(
+                    $"{path}: _pactVeilrot is {veilrot}. GD §13.2 and CH §4.4 price a Pact at "
+                        + $"{PactSpec.MinVeilrot} to {PactSpec.MaxVeilrot} Rot.");
+            }
+
+            if ((SkillKind)serialized.FindProperty("_kind").intValue == SkillKind.Active)
+            {
+                problems.Add(
+                    $"{path}: _hasPact is on an Active. An Active's corrupted form has no runner "
+                        + "door until M7-04 (M6-05a rule 3).");
+            }
+        }
+
+        Assert.That(pacts, Is.GreaterThan(0), "Sanity: the sweep found no Pact at all.");
+
+        AssertNoProblems(problems, "Pacts within GD §13.2's band");
+    }
+
+    /// <remarks>
+    /// Logged, never asserted as a ratio: a ratio would be a balance claim, and M7-04's eighty-one
+    /// nodes are where the number becomes one. GD §13.2 says <em>any</em> node can appear corrupted;
+    /// this is how far short of <em>any</em> the build is, stated rather than inferred.
+    /// </remarks>
+    [Test]
+    public void Content_ReportsItsPactCoverage()
+    {
+        int nodes = 0;
+        int pacts = 0;
+
+        foreach (string path in PathsOf<SkillDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<SkillDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            nodes++;
+
+            if (definition.ToSpec().HasPact)
+            {
+                pacts++;
+            }
+        }
+
+        TestContext.WriteLine($"{pacts} of {nodes} nodes carry a Pact.");
+
+        Assert.That(pacts, Is.GreaterThan(0), "No shipped node carries a Pact, so none can be offered.");
+    }
+
     // ---- Rule 10: a message names the asset path, always -----------------------------------------
 
     [Test]
@@ -1158,6 +1246,15 @@ public sealed class ContentValidationTests
 
             yield return new AuthoredKey(path, "the name key", spec.NameKey);
             yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
+
+            // A Pact's own description (M6-05a rule 4) — the one line M6-05b's card reads.
+            if (spec.HasPact)
+            {
+                yield return new AuthoredKey(
+                    path,
+                    "the Pact's description key",
+                    spec.Pact.DescriptionKey);
+            }
         }
 
         foreach (string path in PathsOf<SkillTreeDefinition>())

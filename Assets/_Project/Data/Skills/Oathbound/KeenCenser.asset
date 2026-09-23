@@ -22,3 +22,9 @@ MonoBehaviour:
   _trigger: []
   _onCast: []
   _parent: {fileID: 0}
+  _hasPact: 1
+  _pactEffects:
+  - {fileID: 11400000, guid: 25b44a3fc417456db4f4ccc262767a2b, type: 2}
+  - {fileID: 11400000, guid: c59e926ccb96403290621cc6dafc8222, type: 2}
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.oathbound.keen-censer.pact.description

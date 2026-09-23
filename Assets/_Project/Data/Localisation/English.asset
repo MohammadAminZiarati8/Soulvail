@@ -279,3 +279,11 @@ MonoBehaviour:
     _text: Veilrot
   - _key: ui.hud.claimed
     _text: Claimed
+  - _key: skill.oathbound.keen-censer.pact.description
+    _text: +45% censer damage, but -25 maximum health.
+  - _key: skill.oathbound.zealotry.pact.description
+    _text: +30% fire rate, but your Aegis recharges half again slower.
+  - _key: skill.gravecaller.sharpened-bone.pact.description
+    _text: +40% bolt damage, but -15% movement speed.
+  - _key: skill.gravecaller.rot-feast.pact.description
+    _text: +40% experience from kills, but -15% maximum health.

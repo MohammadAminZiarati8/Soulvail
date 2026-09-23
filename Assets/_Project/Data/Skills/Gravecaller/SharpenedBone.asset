@@ -22,3 +22,9 @@ MonoBehaviour:
   _trigger: []
   _onCast: []
   _parent: {fileID: 0}
+  _hasPact: 1
+  _pactEffects:
+  - {fileID: 11400000, guid: e30d27563cec4e6ebe1b814ccf17de7f, type: 2}
+  - {fileID: 11400000, guid: 0603ffef23a344db83d287420d530bc4, type: 2}
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.gravecaller.sharpened-bone.pact.description

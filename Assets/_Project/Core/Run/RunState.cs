@@ -899,8 +899,13 @@ public sealed class RunState
     /// Which of <see cref="TakenNodeIds"/> were taken in GD §13.2's corrupted form — a subset of
     /// that list, and the only thing a resumed run can learn which effects it paid Veilrot for from.
     /// </summary>
-    /// <remarks><see cref="BanishedNodeIds"/>' rule exactly. Empty until M6-05a.</remarks>
-    public IReadOnlyList<ContentId> PactedNodeIds => Array.Empty<ContentId>();
+    /// <remarks>
+    /// <see cref="BanishedNodeIds"/>' rule exactly: empty, never null, and a live view over the
+    /// tree's own list, so <c>RunSnapshot</c>'s copy is what keeps a queued save from being
+    /// rewritten by the next Pact. The tree itself stays <c>internal</c> (AR §18.2).
+    /// </remarks>
+    public IReadOnlyList<ContentId> PactedNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.PactedIds;
 
     /// <summary>
     /// GD §13.4's Ordeals, in the order they were drawn.

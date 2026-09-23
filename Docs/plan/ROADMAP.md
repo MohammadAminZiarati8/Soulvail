@@ -148,7 +148,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-02b | [Four things Essence buys, and the one that sculpts](tasks/M6-02b-four-things-essence-buys.md) | M | M6-02a, M6-04 | ☑ |
 | M6-03a | [The Sanctum screen, and a price that cannot be paid](tasks/M6-03a-the-sanctum-screen.md) | M | M6-02b | ☑ |
 | M6-03b | [The meter on the right edge, the counter in the corner, and the node that is gone](tasks/M6-03b-the-meter-on-the-right-edge.md) | S | M6-03a | ☑ |
-| M6-05a | [What a Pact is, and why 1.8× is a budget rather than an operation](tasks/M6-05a-what-a-pact-is.md) | M | M6-04 | ☐ |
+| M6-05a | [What a Pact is, and why 1.8× is a budget rather than an operation](tasks/M6-05a-what-a-pact-is.md) | M | M6-04 | ☑ |
 | M6-05b | [The offer that rolls one, and the two draws it always spends](tasks/M6-05b-the-offer-that-rolls-one.md) | M | M6-05a | ☐ |
 | M6-06a | [What an Ordeal is, and the loop that deals one](tasks/M6-06a-what-an-ordeal-is.md) | M | M6-02b, M6-04 | ☐ |
 | M6-06b | [Four Ordeals that work, and two this build cannot ship](tasks/M6-06b-four-ordeals-and-two-refusals.md) | S | M6-06a | ☐ |

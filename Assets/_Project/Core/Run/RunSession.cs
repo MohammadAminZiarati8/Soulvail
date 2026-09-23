@@ -831,8 +831,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
             // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
             // for a class with no tree, which ignores the ids the same way this method did between
-            // M3-01b and here (rule 10).
-            tree?.Restore(resumed.TakenNodeIds);
+            // M3-01b and here (rule 10). **The Pacts ride the same replay** (M6-05a rule 5): a
+            // corrupted node's effects go on in its take-order slot, so a `−25 max HP` Pact is on
+            // the stat before Health.Restore's clamp for the reason every other take is.
+            tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds);
 
             // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
             // pushes a skill into the runner; the runner subscribes to nothing, so a resumed run's

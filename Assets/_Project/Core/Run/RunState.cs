@@ -852,8 +852,9 @@ public sealed class RunState
     /// <b>Separate from <see cref="Veilrot"/> because it cannot be derived from it</b> (M6-04
     /// rule 6). The Claiming is a latch and the meter is not, so a run cleansed from 100 to 40 reads
     /// 40 here with the buffs still on — the one state combination that looks like a bug and is not.
-    /// Nothing on disk carries it either: a resumed run comes back Claimed because its saved meter
-    /// reads 100, which is why v4 needed no field for it.
+    /// <b>That is also why it is saved beside the meter</b> (M6-11b): v4 first carried the meter
+    /// alone, on the reasoning that a Claimed run's meter reads 100, and a run cleansed or spent
+    /// below 100 came back from a <c>Continue</c> unclaimed.
     /// </remarks>
     public bool IsClaimed => Rot.IsClaimed;
 

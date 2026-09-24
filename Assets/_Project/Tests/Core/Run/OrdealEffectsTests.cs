@@ -764,7 +764,7 @@ public sealed class OrdealEffectsTests
 
         Assert.That(restore, Is.Not.Null, "Veilrot.Restore has gone.");
 
-        restore.Invoke(meter, new object[] { value });
+        restore.Invoke(meter, new object[] { value, false });
     }
 
     /// <summary>Three branches of one tier, <paramref name="perBranch"/> Passives each — PactOfferTests' tree.</summary>

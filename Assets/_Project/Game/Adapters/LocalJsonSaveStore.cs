@@ -134,13 +134,14 @@ public sealed class LocalJsonSaveStore : ISaveStore
             takenNodeIds = ToStrings(run.TakenNodeIds),
             manualSkillIds = ToStrings(run.ManualSkillIds),
 
-            // v4's seven, flattened rather than nested — `randomSpawn`'s treatment exactly, and for
+            // v4's eight, flattened rather than nested — `randomSpawn`'s treatment exactly, and for
             // its reason: JsonUtility serialises a nested [Serializable] class, and this mirror's
             // whole job is to be a flat document a human can read in a bug report (M6-01b rule 6).
             essence = run.Economy.Essence,
             veilrot = run.Economy.Veilrot,
             rerollsBought = run.Economy.RerollsBought,
             rerollsSpent = run.Economy.RerollsSpent,
+            claimed = run.Economy.Claimed,
             banishedNodeIds = ToStrings(run.BanishedNodeIds),
             pactedNodeIds = ToStrings(run.PactedNodeIds),
             ordealIds = ToStrings(run.OrdealIds),
@@ -344,7 +345,11 @@ public sealed class LocalJsonSaveStore : ISaveStore
             ToContentIds(mirror.takenNodeIds),
             ToSlots(mirror.manualSkillIds),
             new RunEconomy(
-                mirror.essence, mirror.veilrot, mirror.rerollsBought, mirror.rerollsSpent),
+                mirror.essence,
+                mirror.veilrot,
+                mirror.rerollsBought,
+                mirror.rerollsSpent,
+                mirror.claimed),
             ToContentIds(mirror.banishedNodeIds),
             ToContentIds(mirror.pactedNodeIds),
             ToContentIds(mirror.ordealIds));
@@ -645,12 +650,12 @@ public sealed class LocalJsonSaveStore : ISaveStore
         public string[] manualSkillIds = new string[SkillRunner.MaxManualSlots];
 
         /// <summary>
-        /// v4's seven, appended after <see cref="manualSkillIds"/>: field order is key order on
+        /// v4's eight, appended after <see cref="manualSkillIds"/>: field order is key order on
         /// disk, and the four run fixture rows pin it.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// <b>The economy is four flat fields rather than a nested <c>[Serializable]</c> class</b>
+        /// <b>The economy is five flat fields rather than a nested <c>[Serializable]</c> class</b>
         /// (M6-01b rule 6). <c>JsonUtility</c> would happily serialise a nested one, and the reason
         /// not to is the same one the five stream positions above are flattened for: this mirror's
         /// whole job is to be a flat document a human can read in a bug report.
@@ -659,14 +664,23 @@ public sealed class LocalJsonSaveStore : ISaveStore
         /// <b>Left at their zeroes rather than initialised</b>, unlike <see cref="level"/> and
         /// <see cref="manualSkillIds"/>. A pre-v4 document has none of these keys, so each field
         /// keeps the default constructor's zero — which is also exactly what the v3 → v4 step writes
-        /// unconditionally, and <c>RunEconomy</c> accepts all four zeroes as the legal fresh run
+        /// unconditionally, and <c>RunEconomy</c> accepts all five zeroes as the legal fresh run
         /// they describe. There is no value here a wrong initialiser could hide.
+        /// </para>
+        /// <para>
+        /// <b><see cref="claimed"/> is v4 re-cut, not v5</b> (M6-11b), and it sits with the economy
+        /// rather than after the lists because it is <c>RunEconomy</c>'s fifth field and a reader
+        /// of a bug report wants it beside <see cref="veilrot"/>. JsonUtility reads by key, not by
+        /// position, so a v4 file written before the re-cut has no <c>claimed</c> key, keeps the
+        /// default constructor's <see langword="false"/>, and restores exactly as it did — a meter
+        /// at 100 still latches on its own.
         /// </para>
         /// </remarks>
         public int essence;
         public float veilrot;
         public int rerollsBought;
         public int rerollsSpent;
+        public bool claimed;
 
         /// <summary>
         /// v4's three lists, after the four scalars above.

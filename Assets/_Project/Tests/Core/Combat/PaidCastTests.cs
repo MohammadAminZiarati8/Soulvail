@@ -381,7 +381,7 @@ public sealed class PaidCastTests
 
         Assert.That(restore, Is.Not.Null, "Veilrot.Restore has gone.");
 
-        restore.Invoke(_meter, new object[] { value });
+        restore.Invoke(_meter, new object[] { value, false });
     }
 
     /// <summary><c>ClassVeilrotTests</c>' body: no Aegis, Focus off, the relationship on the meter rather than here.</summary>

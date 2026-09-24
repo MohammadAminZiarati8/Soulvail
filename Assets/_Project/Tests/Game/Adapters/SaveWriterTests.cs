@@ -10,6 +10,7 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Composition;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -42,10 +43,14 @@ public sealed class SaveWriterTests
 
     private DomainEventHub _hub;
 
+    /// <summary>The boot scope's copy, which every writer here mirrors into (M6-11a).</summary>
+    private SavedRun _saved;
+
     [SetUp]
     public void SetUp()
     {
         _hub = new DomainEventHub();
+        _saved = new SavedRun();
     }
 
     [TearDown]
@@ -59,7 +64,7 @@ public sealed class SaveWriterTests
     {
         var store = new RecordingStore();
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         RunSnapshot snapshot = Snapshot(stage: 4, hp: 84f);
 
@@ -89,7 +94,7 @@ public sealed class SaveWriterTests
 
         store.Preload(Snapshot(stage: 12, hp: 40f));
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 1, hp: 100f)));
 
@@ -109,7 +114,7 @@ public sealed class SaveWriterTests
 
         store.Preload(Snapshot(stage: 5, hp: 10f));
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         _hub.Publish(new PlayerDied(120f));
 
@@ -129,7 +134,7 @@ public sealed class SaveWriterTests
 
         store.Preload(Snapshot(stage: 5, hp: 10f));
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         _hub.Publish(new RunEnded(120f));
 
@@ -146,7 +151,7 @@ public sealed class SaveWriterTests
 
         store.FailNextWrite();
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         // A full disk, a revoked permission, a volume that vanished. None of them may end a run
         // that is otherwise perfectly playable (rule 8).
@@ -168,7 +173,7 @@ public sealed class SaveWriterTests
 
         store.FailNextWrite();
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         Assert.That(() => _hub.Publish(new PlayerDied(30f)), Throws.Nothing);
     }
@@ -181,7 +186,7 @@ public sealed class SaveWriterTests
         // that one straight into the frame.
         LogAssert.Expect(LogType.Error, new Regex("Could not save the run"));
 
-        using var writer = new SaveWriter(new ThrowingStore(), _hub);
+        using var writer = new SaveWriter(new ThrowingStore(), _hub, _saved);
 
         Assert.That(() => _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 2, hp: 50f))), Throws.Nothing);
     }
@@ -206,7 +211,7 @@ public sealed class SaveWriterTests
             var store = new RecordingStore();
             store.FailNextWrite();
 
-            using (var writer = new SaveWriter(store, _hub))
+            using (var writer = new SaveWriter(store, _hub, _saved))
             {
                 _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 2, hp: 50f)));
             }
@@ -234,7 +239,7 @@ public sealed class SaveWriterTests
     {
         var store = new HangingStore();
 
-        using var writer = new SaveWriter(store, _hub);
+        using var writer = new SaveWriter(store, _hub, _saved);
 
         _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 2, hp: 90f)));
         _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 3, hp: 80f)));
@@ -256,7 +261,7 @@ public sealed class SaveWriterTests
 
         store.Preload(Snapshot(stage: 5, hp: 10f));
 
-        var writer = new SaveWriter(store, _hub);
+        var writer = new SaveWriter(store, _hub, _saved);
 
         writer.Dispose();
 
@@ -275,7 +280,7 @@ public sealed class SaveWriterTests
     {
         var store = new HangingStore();
 
-        var writer = new SaveWriter(store, _hub);
+        var writer = new SaveWriter(store, _hub, _saved);
 
         _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 2, hp: 90f)));
 
@@ -292,8 +297,74 @@ public sealed class SaveWriterTests
     [Test]
     public void Ctor_NullDependency_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new SaveWriter(null, _hub));
-        Assert.Throws<ArgumentNullException>(() => new SaveWriter(new RecordingStore(), null));
+        Assert.Throws<ArgumentNullException>(() => new SaveWriter(null, _hub, _saved));
+        Assert.Throws<ArgumentNullException>(() => new SaveWriter(new RecordingStore(), null, _saved));
+        Assert.Throws<ArgumentNullException>(() => new SaveWriter(new RecordingStore(), _hub, null));
+    }
+
+    // ---- The Menu's copy leads the disk (M6-11a) ------------------------------------------------
+
+    [Test]
+    public void Writer_MirrorsEachSnapshotIntoTheSavedRun()
+    {
+        // Rule 1. Until M6-11a nothing but BootFlow wrote this object, so the Menu's Continue offered
+        // the run on disk at launch for the whole app session — and an owner lost a stage-30 run to
+        // the stage-10 one it restored, whose opening write then overwrote the real save.
+        using var writer = new SaveWriter(new RecordingStore(), _hub, _saved);
+
+        _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 3, hp: 90f)));
+        _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 4, hp: 80f)));
+
+        Assert.That(_saved.IsPresent, Is.True);
+        Assert.That(_saved.Value.StageIndex, Is.EqualTo(4), "The newest snapshot, not the first.");
+        Assert.That(_saved.Value.PlayerHp, Is.EqualTo(80f));
+    }
+
+    [Test]
+    public void Writer_MirrorsBeforeTheWriteLands()
+    {
+        // Rules 1 and 3: memory leads disk. The rejected shape set the mirror in the write's
+        // continuation — which would run on a thread-pool thread for any store that is not already
+        // done, and would leave a Continue tapped mid-write resuming the run before this one.
+        var store = new HangingStore { Watched = _saved };
+
+        using var writer = new SaveWriter(store, _hub, _saved);
+
+        _hub.Publish(new RunSnapshotTaken(Snapshot(stage: 2, hp: 90f)));
+
+        Assert.That(writer.IsWriting, Is.True, "The fixture failed to leave a write in flight.");
+        Assert.That(_saved.IsPresent, Is.True, "The Menu must see the run while its write is pending.");
+        Assert.That(_saved.Value.StageIndex, Is.EqualTo(2));
+
+        Assert.That(
+            store.MirroredWhenStarted,
+            Is.EqualTo(new[] { true }),
+            "The store was asked to write before the mirror held the run it was writing.");
+
+        store.CompleteFirst();
+    }
+
+    [Test]
+    public void Writer_ClearsTheSavedRunOnDeath()
+    {
+        // Rule 2. A dead run is never offered: the Menu the death screen returns to must not show a
+        // Continue for it, whether or not the delete has reached the disk yet.
+        _saved.Set(Snapshot(stage: 5, hp: 10f));
+
+        var store = new RecordingStore { Watched = _saved };
+
+        store.Preload(Snapshot(stage: 5, hp: 10f));
+
+        using var writer = new SaveWriter(store, _hub, _saved);
+
+        _hub.Publish(new PlayerDied(120f));
+
+        Assert.That(_saved.IsPresent, Is.False);
+        Assert.That(store.Cleared, Is.EqualTo(1), "The mirror is not instead of the delete.");
+        Assert.That(
+            store.PresentWhenCleared,
+            Is.False,
+            "The delete was queued before the mirror was cleared.");
     }
 
     private static RunSnapshot Snapshot(int stage, float hp) => new RunSnapshot(
@@ -329,6 +400,15 @@ public sealed class SaveWriterTests
 
         public int Cleared { get; private set; }
 
+        /// <summary>A <c>SavedRun</c> to look at when a clear begins. Null watches nothing.</summary>
+        public SavedRun Watched { get; set; }
+
+        /// <summary>
+        /// Whether <see cref="Watched"/> still held a run when the last clear began; null if
+        /// nothing was cleared or nothing was watched.
+        /// </summary>
+        public bool? PresentWhenCleared { get; private set; }
+
         /// <summary>
         /// Faults the next write's <em>task</em>, the way real I/O fails — never throwing from the
         /// call, which a caller could pass with a <c>try</c> and still crash on a device.
@@ -359,6 +439,8 @@ public sealed class SaveWriterTests
 
         public Task ClearRun()
         {
+            PresentWhenCleared = Watched?.IsPresent;
+
             if (TakeArmedFailure(out Task faulted))
             {
                 return faulted;
@@ -389,10 +471,20 @@ public sealed class SaveWriterTests
     private sealed class HangingStore : ISaveStore
     {
         private readonly List<int> _started = new();
+        private readonly List<bool> _mirrored = new();
         private readonly TaskCompletionSource<bool> _first = new();
 
         /// <summary>The stage index of every write that has actually begun, in order.</summary>
         public IReadOnlyList<int> Started => _started;
+
+        /// <summary>A <c>SavedRun</c> to look at when a write begins. Null watches nothing.</summary>
+        public SavedRun Watched { get; set; }
+
+        /// <summary>
+        /// For every write that has begun, in order: whether <see cref="Watched"/> already held the
+        /// run being written at that moment.
+        /// </summary>
+        public IReadOnlyList<bool> MirroredWhenStarted => _mirrored;
 
         public void CompleteFirst() => _first.SetResult(true);
 
@@ -405,6 +497,7 @@ public sealed class SaveWriterTests
         public Task SaveRun(RunSnapshot run)
         {
             _started.Add(run.StageIndex);
+            _mirrored.Add(Watched is { IsPresent: true } && Watched.Value.StageIndex == run.StageIndex);
 
             return _started.Count == 1 ? _first.Task : Task.CompletedTask;
         }

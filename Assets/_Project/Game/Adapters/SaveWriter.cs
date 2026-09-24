@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Save;
+using Soulvail.Game.Composition;
 using UnityEngine;
 
 namespace Soulvail.Game.Adapters;
@@ -14,6 +15,18 @@ namespace Soulvail.Game.Adapters;
 /// that fails never reaches the frame that caused it. AR §10.3, GD §7.3.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>Every write and every clear is mirrored into <see cref="SavedRun"/> first</b> (M6-11a rules
+/// 1–2), so the Menu's <c>Continue</c> offers the run most recently written rather than the one
+/// <c>BootFlow</c> read at launch. Until M6-11a nothing wrote that object after boot: a quit and a
+/// Continue in one app session restored whichever run had been on disk when the session began — or
+/// one that had since died — and that run's opening write then overwrote the real save. <b>Memory
+/// leads disk, never trails it.</b> A write that fails leaves memory newer than the file, which is
+/// the stated cost (rule 3): Continue in the same session resumes the run just played, and a
+/// relaunch resumes the older file. Mirroring only once the write had landed would put a
+/// thread-pool continuation on a main-thread object, and make Continue wrong in the ordinary case
+/// to be right in the failing one.
+/// </para>
 /// <para>
 /// <b>A failed write is logged and swallowed, deliberately.</b> A full disk, a revoked permission
 /// or a storage volume that vanished mid-write must not end the player's run — the run is still
@@ -39,6 +52,7 @@ namespace Soulvail.Game.Adapters;
 public sealed class SaveWriter : IDisposable
 {
     private readonly ISaveStore _store;
+    private readonly SavedRun _saved;
 
     private readonly IDisposable _snapshotSubscription;
     private readonly IDisposable _diedSubscription;
@@ -63,8 +77,13 @@ public sealed class SaveWriter : IDisposable
     /// subscribes: core publishes through the port, the Unity side listens through the hub — the
     /// split <c>RunInstaller</c> registers both names for.
     /// </param>
-    /// <exception cref="ArgumentNullException">Either dependency is null.</exception>
-    public SaveWriter(ISaveStore store, DomainEventHub hub)
+    /// <param name="saved">
+    /// The boot scope's <see cref="SavedRun"/> — what the Menu offers and resumes. Resolved from the
+    /// parent scope, never registered per run (M6-11a rule 5): a run-scoped one would be written
+    /// here, read by nobody, and leave the Menu offering the run it read at launch.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+    public SaveWriter(ISaveStore store, DomainEventHub hub, SavedRun saved)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
 
@@ -72,6 +91,8 @@ public sealed class SaveWriter : IDisposable
         {
             throw new ArgumentNullException(nameof(hub));
         }
+
+        _saved = saved ?? throw new ArgumentNullException(nameof(saved));
 
         _snapshotSubscription = hub.Subscribe<RunSnapshotTaken>(OnSnapshotTaken);
 
@@ -112,19 +133,28 @@ public sealed class SaveWriter : IDisposable
         _diedSubscription?.Dispose();
     }
 
+    /// <remarks>
+    /// The mirror is set here, on the main thread that published the event, and before the write is
+    /// queued — so no store, however slow, can leave the Menu offering a run older than this one.
+    /// </remarks>
     private void OnSnapshotTaken(RunSnapshotTaken evt)
     {
         RunSnapshot snapshot = evt.Snapshot;
+
+        _saved.Set(snapshot);
 
         Enqueue(() => _store.SaveRun(snapshot), $"save the run at stage {snapshot.StageIndex}");
     }
 
     /// <remarks>
     /// AR §10.3's <em>"deleted on death"</em>. A dead run is not resumable, and a file that
-    /// outlived it would offer the player a run they have already lost.
+    /// outlived it would offer the player a run they have already lost — and so would a
+    /// <see cref="SavedRun"/> that outlived it, which is why it is forgotten first.
     /// </remarks>
     private void OnPlayerDied(PlayerDied evt)
     {
+        _saved.Clear();
+
         Enqueue(() => _store.ClearRun(), "clear the run after a death");
     }
 

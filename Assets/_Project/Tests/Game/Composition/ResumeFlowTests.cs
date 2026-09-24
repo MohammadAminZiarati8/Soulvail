@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
@@ -44,7 +45,9 @@ namespace Soulvail.Tests.Game.Composition;
 /// <c>LoadAsync</c> is <c>virtual</c>, so <c>PausePresenterTests</c> hands its presenter a loader
 /// that records instead of loading. These rows were deliberately left as they are — they are about
 /// what the Menu decides, not about the load — but a task that wants to tap these two buttons now
-/// can.
+/// can. <b>M6-11a did</b>: <c>Continue_AfterAQuitResumesTheRunJustPlayed</c> taps Continue through
+/// a recording loader, because the bug it pins lives between the Menu's two reads — the button's
+/// visibility and the snapshot the tap hands over.
 /// </para>
 /// </para>
 /// </remarks>
@@ -460,6 +463,66 @@ public sealed class ResumeFlowTests
         Assert.That(second.Restore.Value.PlayerHp, Is.EqualTo(saved.Value.PlayerHp));
     }
 
+    // ---- Continue offers the run last written, not the one read at boot (M6-11a) ----------------
+
+    [Test]
+    public void Continue_AfterAQuitResumesTheRunJustPlayed()
+    {
+        // M6-11's instrument B lost a stage-30 run exactly this way: boot read an abandoned run,
+        // nothing after boot wrote SavedRun, so Continue restored the abandoned run — and its
+        // opening write overwrote the real save. Rule 4: BootFlow still seeds, and only at boot.
+        IObjectResolver boot = BuildBoot();
+        var saved = boot.Resolve<SavedRun>();
+
+        RunBootFlow(new StubStore { Run = Snapshot(stage: 10, seed: 1) }, saved);
+
+        Assert.That(saved.Value.Seed, Is.EqualTo(1), "the fixture's premise: boot read run A.");
+
+        PlayARun(boot, hub => hub.Publish(new RunSnapshotTaken(Snapshot(stage: 31, seed: 2))));
+
+        var pending = new PendingRun();
+        var loader = new RecordingLoader();
+
+        MenuPresenter menu = Menu(saved, out _, out Button @continue, pending, loader);
+
+        // The Menu's two reads: IsPresent on enable, Value on the tap.
+        Enable(menu);
+
+        Assert.That(@continue.gameObject.activeSelf, Is.True);
+
+        @continue.onClick.Invoke();
+
+        Assert.That(loader.Asked, Is.EqualTo(new[] { SceneLoader.Run }), "the tap never reached the load.");
+        Assert.That(pending.Snapshot.HasValue, Is.True, "Continue did not hand over a snapshot.");
+        Assert.That(
+            pending.Seed,
+            Is.EqualTo(2),
+            "Continue resumed the run boot read, not the one just played.");
+        Assert.That(pending.Snapshot.Value.StageIndex, Is.EqualTo(31));
+    }
+
+    [Test]
+    public void Continue_IsHiddenAfterADeath()
+    {
+        // Rule 2, through the Menu: the death screen returns here, and a Continue left on screen
+        // would resume a run the player has already lost — boot's copy of the file, which the
+        // writer deleted a moment ago.
+        IObjectResolver boot = BuildBoot();
+        var saved = boot.Resolve<SavedRun>();
+
+        RunBootFlow(new StubStore { Run = Snapshot(stage: 10, seed: 1) }, saved);
+
+        Assert.That(saved.IsPresent, Is.True, "the fixture's premise: boot read run A.");
+
+        PlayARun(boot, hub => hub.Publish(new PlayerDied(95f)));
+
+        MenuPresenter menu = Menu(saved, out _, out Button @continue);
+
+        Enable(menu);
+
+        Assert.That(@continue.gameObject.activeSelf, Is.False);
+    }
+
     // ---- Wiring ----------------------------------------------------------------------------------
 
     [Test]
@@ -597,9 +660,15 @@ public sealed class ResumeFlowTests
     /// before the fields it guards have been assigned — which would make the fixture fail on the
     /// guard doing its job. <c>OnEnable</c> is then invoked explicitly, at the moment a row wants
     /// the menu to go on screen. The children keep their own <c>activeSelf</c> flags, which is what
-    /// the visibility rows read.
+    /// the visibility rows read. A row that taps <c>Continue</c> passes a recording loader, so the
+    /// tap records the Run scene instead of loading it.
     /// </remarks>
-    private MenuPresenter Menu(SavedRun saved, out Button descend, out Button @continue)
+    private MenuPresenter Menu(
+        SavedRun saved,
+        out Button descend,
+        out Button @continue,
+        PendingRun pending = null,
+        SceneLoader loader = null)
     {
         var root = new GameObject("Menu");
 
@@ -625,9 +694,41 @@ public sealed class ResumeFlowTests
 
         // The ContentCatalog left this signature at M5-07 with the two methods that read it — the
         // class-select screen resolves its own.
-        presenter.Construct(new PendingRun(), saved, new SceneLoader(), Passthrough());
+        presenter.Construct(pending ?? new PendingRun(), saved, loader ?? new SceneLoader(), Passthrough());
 
         return presenter;
+    }
+
+    /// <summary>
+    /// One run through a real run scope, then a quit: the writer and the hub come from
+    /// <c>RunInstaller</c> and <see cref="SavedRun"/> from the boot container above it — so a
+    /// <c>SavedRun</c> registered per run would leave the Menu reading boot's copy, and the Continue
+    /// rows would fail (M6-11a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// The store is shadowed in the run scope because boot's is a <c>LocalJsonSaveStore</c> over
+    /// <c>persistentDataPath</c>: the owner's own <c>run.json</c>. Disposing the scope is the quit.
+    /// </remarks>
+    private static void PlayARun(IObjectResolver boot, Action<DomainEventHub> play)
+    {
+        var disk = new StubStore();
+
+        using IScopedObjectResolver run = boot.CreateScope(builder =>
+        {
+            RunInstaller.Install(builder);
+            builder.RegisterInstance<ISaveStore>(disk);
+        });
+
+        Assert.That(
+            run.Resolve<ISaveStore>(),
+            Is.SameAs(disk),
+            "The run scope reached boot's store, and this row would have written the real run.json.");
+
+        // Resolved to be constructed, which is when it subscribes — RunTicker's constructor is what
+        // does this in the real scope.
+        run.Resolve<SaveWriter>();
+
+        play(run.Resolve<DomainEventHub>());
     }
 
     private Button NewButton(string name, GameObject parent)
@@ -757,7 +858,7 @@ public sealed class ResumeFlowTests
             zones,
             boss,
             decoys,
-            Track(new SaveWriter(new StubStore(), hub)),
+            Track(new SaveWriter(new StubStore(), hub, new SavedRun())),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
             // so it banks nothing — but a Scoped registration nobody resolves is never constructed,
@@ -931,6 +1032,19 @@ public sealed class ResumeFlowTests
         public Task SaveRun(RunSnapshot run) => Task.CompletedTask;
 
         public Task ClearRun() => Task.CompletedTask;
+    }
+
+    /// <summary>A loader that records rather than loading — <c>PausePresenterTests</c>' shape.</summary>
+    private sealed class RecordingLoader : SceneLoader
+    {
+        public List<string> Asked { get; } = new List<string>();
+
+        public override Task LoadAsync(string sceneName)
+        {
+            Asked.Add(sceneName);
+
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>

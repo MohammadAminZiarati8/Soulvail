@@ -14,7 +14,8 @@ namespace Soulvail.Game.Presentation
 {
     /// <summary>
     /// The menu, which is two buttons — one of them usually hidden. Tapping <c>Descend</c> opens
-    /// the class-select screen; tapping <c>Continue</c> records the run that was on disk at launch
+    /// the class-select screen; tapping <c>Continue</c> records the run most recently written — the
+    /// one <c>SavedRun</c> holds, which boot seeds and every run's writer keeps current (M6-11a) —
     /// and loads the Run scene. See AR §3 — this is presentation: it decides nothing about the run
     /// beyond which mode, which class and which seed, and all three are choices a player makes, not
     /// outcomes a simulation computes.

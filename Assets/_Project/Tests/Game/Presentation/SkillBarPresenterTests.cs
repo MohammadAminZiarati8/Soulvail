@@ -1425,7 +1425,7 @@ public sealed class SkillBarPresenterTests
             zones,
             boss,
             decoys,
-            Track(new SaveWriter(new InertSaveStore(), _hub)),
+            Track(new SaveWriter(new InertSaveStore(), _hub, new SavedRun())),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
             // so it banks nothing — the parameter is what guarantees it exists at all.

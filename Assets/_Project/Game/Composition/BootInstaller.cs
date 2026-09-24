@@ -247,10 +247,10 @@ public static class BootInstaller
         // scope reads it in the next, so it has to outlive both.
         builder.Register<PendingRun>(Lifetime.Singleton);
 
-        // Its sibling, and a different question (M2-14b rule 8): what the disk said at launch,
-        // rather than what the player chose. Singleton for a stronger reason than PendingRun's —
-        // it is written exactly once per app launch, by BootFlow, and every later reader is asking
-        // about that one read.
+        // Its sibling, and a different question (M2-14b rule 8): the run on disk, rather than what
+        // the player chose. Singleton for a stronger reason than PendingRun's — BootFlow seeds it
+        // at launch and every run's SaveWriter mirrors into it (M6-11a), and the Menu has to read
+        // the object they wrote. One registered per run would be written there and read by nobody.
         builder.Register<SavedRun>(Lifetime.Singleton);
 
         // Haptics live at the root rather than in the run, both of them. The vibrator is one

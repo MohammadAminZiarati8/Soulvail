@@ -1006,11 +1006,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // points on every resume, and a block read as an order is kept as one.
             //
             // Silent, like everything else in this block: no VeilrotChanged, no crossings and no
-            // ClaimingBegan, for the reason the wallet's line is silent. A run restored at exactly
-            // 100 therefore comes back Claimed with ClaimedFor at zero — Veilrot.ClaimedFor states
-            // what that costs, and it is smaller than the free cooldown reset the same Continue
-            // already grants.
-            veilrot.Restore(resumed.Economy.Veilrot);
+            // ClaimingBegan, for the reason the wallet's line is silent. A run saved Claimed — or,
+            // from a file older than the flag, at 100 — therefore comes back Claimed with
+            // ClaimedFor at zero (M6-11b). Veilrot.ClaimedFor states what that costs, and it is
+            // smaller than the free cooldown reset the same Continue already grants.
+            veilrot.Restore(resumed.Economy.Veilrot, resumed.Economy.Claimed);
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 

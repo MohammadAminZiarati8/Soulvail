@@ -37,6 +37,11 @@ namespace Soulvail.Tests.Game.Adapters;
 /// prove anything: a fixture regenerated alongside the format it is meant to pin stops being
 /// evidence. <c>V1Run</c> now walks through <em>three</em> steps in one decode.
 /// </para>
+/// <para>
+/// <b>A fifth since M6-11b, and it is the one this build writes</b>: <c>V4RunClaimed</c>, v4 re-cut
+/// with a <c>claimed</c> key. <c>V4Run</c> kept every character and became what the re-cut must still
+/// read — a v4 file from before it, on the one machine that ever wrote one.
+/// </para>
 /// </remarks>
 [TestFixture]
 public sealed class LocalJsonSaveStoreTests
@@ -107,12 +112,17 @@ public sealed class LocalJsonSaveStoreTests
         "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
         "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]}";
 
-    /// <summary>A v4 run, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v4 run, as it is spelled on disk — and as of M6-11b, a v4 file written before the re-cut
+    /// rather than what this build writes, which is <see cref="V4RunClaimed"/>.
+    /// </summary>
     /// <remarks>
     /// <para>
     /// <b>Seven new keys, following <c>manualSkillIds</c></b>, for the key-order reason every bump
     /// before it had: field order in <c>RunMirror</c> is key order on disk and v4 only appends.
-    /// Typed by hand like all three of its predecessors.
+    /// Typed by hand like all three of its predecessors. <b>Not one character of it changed at the
+    /// re-cut</b>, for <see cref="V1Run"/>'s reason: it has no <c>claimed</c> key, which is exactly
+    /// the document on the one machine a pre-re-cut v4 was ever written on.
     /// </para>
     /// <para>
     /// <b>The economy is four flat keys rather than a nested object</b> (M6-01b rule 6), which is
@@ -135,6 +145,29 @@ public sealed class LocalJsonSaveStoreTests
         "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
         "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]," +
         "\"essence\":317,\"veilrot\":42.5,\"rerollsBought\":2,\"rerollsSpent\":1," +
+        "\"banishedNodeIds\":[\"skill.oathbound.reprisal\"]," +
+        "\"pactedNodeIds\":[\"skill.oathbound.consecrate\"]," +
+        "\"ordealIds\":[\"ordeal.thinblood\"]}";
+
+    /// <summary>A v4 run as re-cut at M6-11b, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b><see cref="V4Run"/> with one key, <c>claimed</c>, after <c>rerollsSpent</c></b> — with the
+    /// economy it belongs to rather than after the lists, because it is <c>RunEconomy</c>'s fifth
+    /// field and JsonUtility reads by key, so no older file cares where it sits. <b><c>true</c>
+    /// beside a meter of 42.5</b>, for the reason every v4 value is a non-default: a mirror that
+    /// dropped the key would write <c>false</c> and read it back, and 42.5 is the state the key exists
+    /// for — a Claimed run whose meter has fallen.
+    /// </remarks>
+    private const string V4RunClaimed =
+        "{\"version\":4,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
+        "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
+        "\"randomAffixes\":3,\"randomDrops\":4,\"randomMisc\":18446744073709551615," +
+        "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
+        "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
+        "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
+        "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
+        "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]," +
+        "\"essence\":317,\"veilrot\":42.5,\"rerollsBought\":2,\"rerollsSpent\":1,\"claimed\":true," +
         "\"banishedNodeIds\":[\"skill.oathbound.reprisal\"]," +
         "\"pactedNodeIds\":[\"skill.oathbound.consecrate\"]," +
         "\"ordealIds\":[\"ordeal.thinblood\"]}";
@@ -824,20 +857,21 @@ public sealed class LocalJsonSaveStoreTests
     [Test]
     public void Fixture_V4Run_DecodesToTheExpectedSnapshot()
     {
-        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V4Run);
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V4RunClaimed);
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
         // No migration ran: this is what the build writes, read back.
         Assert.That(run.Version, Is.EqualTo(4));
 
-        // **The four scalars and the three lists, each a value no step could have produced.** The
+        // **The five scalars and the three lists, each a value no step could have produced.** The
         // step writes zeroes and empties, so every one of these assertions fails the day the mirror
         // stops carrying a key and the migration quietly answers for it instead.
         Assert.That(run.Economy.Essence, Is.EqualTo(317));
         Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f));
         Assert.That(run.Economy.RerollsBought, Is.EqualTo(2));
         Assert.That(run.Economy.RerollsSpent, Is.EqualTo(1));
+        Assert.That(run.Economy.Claimed, Is.True);
         Assert.That(run.BanishedNodeIds, Is.EqualTo(new[] { Reprisal }));
         Assert.That(run.PactedNodeIds, Is.EqualTo(new[] { Consecrate }));
         Assert.That(run.OrdealIds, Is.EqualTo(new[] { Thinblood }));
@@ -906,7 +940,7 @@ public sealed class LocalJsonSaveStoreTests
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
             manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
-            economy: new RunEconomy(317, 42.5f, 2, 1),
+            economy: new RunEconomy(317, 42.5f, 2, 1, claimed: true),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },
             ordealIds: new[] { Thinblood })));
@@ -923,7 +957,46 @@ public sealed class LocalJsonSaveStoreTests
         // M6-04, M6-05a and M6-06a each fill exactly one argument at `RunRecorder.Take`, and filling
         // a field does not change the shape of the document, so the text here stays true and only
         // its contents move.
-        Assert.That(written, Is.EqualTo(V4Run));
+        //
+        // **Re-pointed once, at M6-11b's re-cut**, from V4Run to V4RunClaimed: the shape did change
+        // — one key — and the version did not, which M6-01b licensed until `m6` was tagged. V4Run
+        // was not edited to match; it is now the pre-re-cut document the next row reads.
+        Assert.That(written, Is.EqualTo(V4RunClaimed));
+    }
+
+    [Test]
+    public void Store_AV4FileWithoutTheFieldReadsFalse()
+    {
+        // **M6-11b rule 4: the re-cut is free for a file written before it.** V4Run has no
+        // `claimed` key — it is byte for byte what this adapter wrote until M6-11b — so the mirror's
+        // bool keeps its default and the economy reads unclaimed. A meter at 100 in such a file
+        // still latches on its own, in Veilrot.Restore; this row is the half the adapter owns.
+        Assert.That(V4Run, Does.Not.Contain("claimed"), "The fixture really predates the key.");
+
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V4Run);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.Economy.Claimed, Is.False);
+        Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f), "the meter as written.");
+
+        // No migration ran, and no step was needed: the version is the same four.
+        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Economy.Essence, Is.EqualTo(317));
+    }
+
+    [Test]
+    public void Store_RoundTripsClaimed()
+    {
+        // **Both values, because either alone could pass a broken mirror** (M6-11b rule 1): one that
+        // dropped the key reads back false, and one that wrote a constant true reads back true.
+        Await(_store.SaveRun(Snapshot(economy: new RunEconomy(317, 42.5f, 2, 1, claimed: true))));
+
+        Assert.That(Result(_store.LoadRun()).Value.Economy.Claimed, Is.True);
+
+        Await(_store.SaveRun(Snapshot(economy: new RunEconomy(317, 42.5f, 2, 1, claimed: false))));
+
+        Assert.That(Result(_store.LoadRun()).Value.Economy.Claimed, Is.False);
     }
 
     /// <summary>
@@ -963,7 +1036,8 @@ public sealed class LocalJsonSaveStoreTests
     private static RunSnapshot Snapshot(
         int stageIndex = 4,
         RandomState? random = null,
-        DateTimeOffset? writtenAt = null)
+        DateTimeOffset? writtenAt = null,
+        RunEconomy? economy = null)
     {
         return new RunSnapshot(
             RunSnapshot.CurrentVersion,
@@ -981,7 +1055,7 @@ public sealed class LocalJsonSaveStoreTests
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
             manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
-            economy: new RunEconomy(317, 42.5f, 2, 1),
+            economy: economy ?? new RunEconomy(317, 42.5f, 2, 1),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },
             ordealIds: new[] { Thinblood });

@@ -195,11 +195,16 @@ public sealed class RunRecorder
             // stops a banish, a Pact or a deal after the write rewriting a save still queued (the
             // node list's reason). An empty one copies to the shared zero-length array, which keeps
             // `Take_AllocatesNothing` measuring a real zero for a run that took neither.
+            //
+            // **And the latch beside the meter, because neither says the other** (M6-11b rule 1).
+            // A Claimed run's meter falls with a paid cast or a Cleanse; written alone, a boundary
+            // at 75 was a resume at 75 and no Claiming.
             new RunEconomy(
                 state.Essence,
                 state.Veilrot,
                 rerollsBought: state.RerollsBought,
-                rerollsSpent: state.RerollsSpent),
+                rerollsSpent: state.RerollsSpent,
+                claimed: state.IsClaimed),
             state.BanishedNodeIds,
             state.PactedNodeIds,
             state.OrdealIds);

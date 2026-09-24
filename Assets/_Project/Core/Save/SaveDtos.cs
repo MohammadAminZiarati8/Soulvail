@@ -48,6 +48,13 @@ namespace Soulvail.Core.Save;
 /// <em>without</em> touching <see cref="RunSnapshot.CurrentVersion"/>. The format pays the ripple
 /// once rather than three times.
 /// </para>
+/// <para>
+/// <b>And a fifth, <see cref="Claimed"/>, which is v4 re-cut rather than v5</b> (M6-11b). The meter
+/// was saved and the latch was not, so a Claimed run whose meter had fallen below 100 — a paid cast,
+/// a Cleanse — came back unclaimed from a <c>Continue</c>. M6-01b licensed the re-cut until
+/// <c>m6</c> was tagged, and it was used before the tag: optional and last, defaulted false, so a v4
+/// file written before it reads exactly as it always did.
+/// </para>
 /// </remarks>
 public readonly struct RunEconomy
 {
@@ -61,12 +68,18 @@ public readonly struct RunEconomy
     /// <param name="veilrot">GD §10's meter, in [0, <see cref="MaxVeilrot"/>].</param>
     /// <param name="rerollsBought">How many rerolls this run has bought. Never negative.</param>
     /// <param name="rerollsSpent">How many of them have been used. Never more than were bought.</param>
+    /// <param name="claimed">
+    /// Whether GD §10.2's Claiming had closed at the write — M6-11b. Unguarded against
+    /// <paramref name="veilrot"/>, because every pairing is a run the game can produce: a Claimed run
+    /// cleansed to 0 is one, and so is an unclaimed one at 100 in a file written before this field
+    /// existed.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="essence"/>, <paramref name="rerollsBought"/> or
     /// <paramref name="rerollsSpent"/> is negative; <paramref name="veilrot"/> is non-finite or
     /// outside [0, 100]; or more rerolls are spent than were bought.
     /// </exception>
-    public RunEconomy(int essence, float veilrot, int rerollsBought, int rerollsSpent)
+    public RunEconomy(int essence, float veilrot, int rerollsBought, int rerollsSpent, bool claimed = false)
     {
         if (essence < 0)
         {
@@ -127,6 +140,7 @@ public readonly struct RunEconomy
         Veilrot = veilrot;
         RerollsBought = rerollsBought;
         RerollsSpent = rerollsSpent;
+        Claimed = claimed;
     }
 
     /// <summary>What the wallet held at the write (M6-01a).</summary>
@@ -140,6 +154,15 @@ public readonly struct RunEconomy
 
     /// <summary>How many of them have been used. Never more than were bought. M6-02's.</summary>
     public int RerollsSpent { get; }
+
+    /// <summary>Whether the run was Claimed at the write. False by default. M6-11b's.</summary>
+    /// <remarks>
+    /// <b>Not derivable from <see cref="Veilrot"/></b>, which is the whole defect it closes: the
+    /// Claiming is a latch and the meter is not, so a Claimed run can be saved at any reading. A
+    /// restore latches on this <em>or</em> on a meter at 100, so a file that predates the field
+    /// comes back exactly as M6-04 rule 9 said it would.
+    /// </remarks>
+    public bool Claimed { get; }
 }
 
 /// <summary>
@@ -192,6 +215,8 @@ public readonly struct RunEconomy
 /// than waved at: if one of those specs wants a different shape, v4 is re-cut before <c>m6</c> is
 /// tagged, because it has never left the machine it was written on — and the opposite mistake,
 /// a field omitted, is a run's Veilrot silently destroyed by the first <c>Continue</c>.
+/// <b>That mistake was made once and the re-cut was spent on it</b>: M6-11b added
+/// <see cref="RunEconomy.Claimed"/>, because the meter alone cannot say whether a run is Claimed.
 /// </para>
 /// <para>
 /// <b>What v4 still does not carry is cooldowns</b>, and the reason is not the one M3-00b wrote

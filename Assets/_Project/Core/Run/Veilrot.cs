@@ -276,9 +276,10 @@ public sealed class Veilrot
     /// <summary>Seconds since the Claiming began, or zero. What the drain is a function of.</summary>
     /// <remarks>
     /// <b>Zero on a resumed run, whatever it was saved at</b> (rule 9). Nothing on disk carries it —
-    /// v4 cut the field — so a <c>Continue</c> taken at 100 Veilrot is worth up to a hundred seconds.
+    /// v4 cut the field — so a <c>Continue</c> taken while Claimed is worth up to a hundred seconds.
     /// It is recorded here rather than discovered, and it is smaller than the free cooldown reset the
-    /// same <c>Continue</c> already grants.
+    /// same <c>Continue</c> already grants. <b>The latch itself is on disk</b> (M6-11b): what a
+    /// resume restarts is the clock, never whether the clock is running.
     /// </remarks>
     public float ClaimedFor => _claimedFor;
 
@@ -512,13 +513,20 @@ public sealed class Veilrot
     /// boundary it arrived through — which is the real door, because it came out of a file. A second
     /// copy of that guard here is the first place the two could disagree.
     /// </param>
+    /// <param name="claimed">
+    /// Whether the saved run was Claimed — <c>RunEconomy.Claimed</c> (M6-11b). <b>Required, with no
+    /// one-argument form beside it</b>: a restore that does not say is the defect this parameter
+    /// closes, and an overload that defaulted it would leave that defect one call away.
+    /// </param>
     /// <remarks>
     /// <b>Silent, which is <c>EssenceWallet.Restore</c>'s rule</b> (M6-01a rule 8): a resume is not
     /// news, and a <see cref="ClaimingBegan"/> published inside <c>RunSession.Start</c> would reach a
-    /// HUD that has not subscribed yet. A run restored at exactly 100 comes back Claimed with
-    /// <see cref="ClaimedFor"/> at zero — see that property.
+    /// HUD that has not subscribed yet. <b>It latches on <paramref name="claimed"/> or on a meter at
+    /// 100</b> (M6-11b rule 2) — the flag for a Claimed run whose meter a paid cast or a Cleanse has
+    /// since lowered, the meter for a file written before the flag existed — and either way with
+    /// <see cref="ClaimedFor"/> at zero; see that property.
     /// </remarks>
-    internal void Restore(float value)
+    internal void Restore(float value, bool claimed)
     {
         float before = _value;
 
@@ -528,6 +536,17 @@ public sealed class Veilrot
         _value = value;
 
         ApplyStates(before, publish: false);
+
+        // **After the thresholds, and only for a meter below 100** — at 100 ApplyStates has just
+        // closed the latch itself, and the flag is what stops a second BeginClaiming stacking three
+        // more modifiers on the first three. Below 100 no crossing can close it: a meter restored
+        // at 85 never passes the top row on its way there, which is exactly how M6-11's stage-36
+        // Emberwright came back mortal.
+        if (claimed && !_isClaimed)
+        {
+            BeginClaiming();
+        }
+
         RewriteFeeding();
     }
 

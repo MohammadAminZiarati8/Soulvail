@@ -85,4 +85,64 @@ public sealed class Veilrot
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Rules 1–5 as written, as a v4 re-cut.** `m6` was untagged, so `RunSnapshot.CurrentVersion` stays
+**4** with no migration step (rule 5), and M6-11's *"each was bumped exactly once"* row stays true
+unannotated. `RunEconomy` gained `bool Claimed`, optional and last; `RunRecorder.Take` writes
+`state.IsClaimed`; `RunSession.Start` passes it on. `Veilrot.Restore(value, claimed)` settles the
+thresholds first, then calls `BeginClaiming` for a flag below 100 — at 100 `ApplyStates` has already
+closed the latch, and `!_isClaimed` stops a second set of three modifiers. Silent, `ClaimedFor` zero.
+
+**Five deviations.**
+
+*1. No one-argument `Restore` beside the new one.* The Public API kept it, forwarding `false`. It
+would have had no production caller, and it is exactly the call that brings the defect back — a
+restore that forgets the latch. Either way, four reflective helpers had to change:
+`GetMethod("Restore")` over two overloads throws `AmbiguousMatchException`. So one method with
+`claimed` required, and the helpers pass `false` — `VeilrotTests`, and outside the table
+`PaidCastTests`, `OrdealEffectsTests` and `ClassVeilrotTests`, one token each.
+
+*2. The key sits after `rerollsSpent`, not after the lists.* It is `RunEconomy`'s fifth field, a
+bug report wants it beside `veilrot`, and JsonUtility reads by key, so position costs no older file
+anything. `V4Run` kept every character and is now the pre-re-cut document
+`Store_AV4FileWithoutTheFieldReadsFalse` reads. A new literal, `V4RunClaimed` — `"claimed":true`
+beside a meter of 42.5 — is what the build writes; `Fixture_V4Run_IsWhatThisBuildWrites` and
+`…_DecodesToTheExpectedSnapshot` were re-pointed to it.
+
+*3. Two statements of the bug as design were corrected outside the table.* `RunState.IsClaimed`'s
+remarks said a resumed run *"comes back Claimed because its saved meter reads 100, which is why v4
+needed no field for it"*; AR §18.1's restore row named only *"a meter restored at exactly 100"*.
+One comment and one doc clause; no code outside the table moved.
+
+*4. The paid-cast row takes four frames, not two.* The spec's two paid casts to 90 hold. The first
+draft ticked twice and saw one, because `SkillRunner` casts at most one skill a frame, bought or
+free (M3-06 rule 6). The class is the fixture's own id wearing CH §3.3's `VeilrotSpec` — the
+relationship is all a paid cast needs — through a `veilrot` parameter on `Oathbound` and
+`BuildWithActiveTree`.
+
+*5. The Cleanse row's boundary is the run's own.* A Sanctum opens after the clear-edge write, so a
+Cleanse reaches disk at the *next* clear: the row clears stage 4 Claimed, buys the Cleanse, crosses,
+clears stage 5, and resumes what stage 5's edge wrote — stage 6, 85, Claimed — two clears inside
+the hundred-second drain. The spent row calls `RunRecorder.Take` directly, `Resume_APactSurvivesAKill`'s
+route, so both write paths are covered.
+
+**Rules ↔ rows.** 1: both `Resume_AClaimed…` rows assert `written.Economy.Claimed`, and
+`Resume_AnUnclaimedRunAtNinetyIsNotClaimed` the false case. 2: `Restore_LatchesOnTheFlagOrOnAHundred`
+— (40, true), (100, false), (99, false), and (100, true) for the stacking the guard prevents.
+3: `Resume_AClaimedRunSpentBelowAHundredStaysClaimed`, the maximum 112 → 110.88 after sixty frames.
+4: `Economy_ClaimedDefaultsFalse`, `Store_AV4FileWithoutTheFieldReadsFalse`, and
+`Store_RoundTripsClaimed` both ways — a dropped key reads false, a constant one true.
+5: `Resume_DerivesOverflow` already pins 4.
+
+**Red checks, on the Editor.** With `Restore` ignoring the flag: **3 149 / 3**, exactly the three
+latch rows, the spent one failing with *"A quit is not a way out of GD §10.3's hundred seconds."*
+With the recorder writing `false` and the mirror neither writing nor reading the key: **3 147 / 5** —
+both session rows at `written.Economy.Claimed`, and the three store rows, the byte fixture reading
+`"claimed":false`.
+
+**Verified:** **3 152 EditMode / 0 / 0** (+7 on 3 145), then **PlayMode 26 / 0 / 0** on one pass. A
+second EditMode pass *after* PlayMode ran **3 151 / 1** on
+`Animator_AttackSpeedIsUnreachableFromAnEditorClock`, which reads the Editor clock PlayMode had
+advanced — [M7 row 8](../ROADMAP.md#carry-forward-into-m7)'s, M6-11e's; nothing here touches it.
+Console clean after the compile; after that pass, 16 errors and 30 warnings, M6-11a's count, each
+from a passing negative-path row. Zero new analyzer warnings; `dotnet format` *Formatted 0 of 13*;
+`TimeManager.asset` re-serialised and was reverted.

@@ -656,7 +656,7 @@ public sealed class ClassVeilrotTests
 
         Assert.That(restore, Is.Not.Null, "Veilrot.Restore has gone.");
 
-        restore.Invoke(meter, new object[] { value });
+        restore.Invoke(meter, new object[] { value, false });
 
         _events.Clear();
     }

@@ -344,6 +344,25 @@ public sealed class SaveDtoTests
     }
 
     [Test]
+    public void Economy_ClaimedDefaultsFalse()
+    {
+        // **M6-11b's re-cut costs every existing call site nothing** (rule 4): the fifth argument is
+        // optional and last, so the four-argument form — which is every constructor call written
+        // before it, and what LocalJsonSaveStore decodes a pre-re-cut file into — reads unclaimed.
+        Assert.That(new RunEconomy(317, 42.5f, 2, 1).Claimed, Is.False);
+        Assert.That(default(RunEconomy).Claimed, Is.False, "and a fresh run is not Claimed either.");
+
+        // Set, it is carried — at a meter below 100, which is the state the field exists to save.
+        var claimed = new RunEconomy(317, 42.5f, 2, 1, claimed: true);
+
+        Assert.That(claimed.Claimed, Is.True);
+        Assert.That(claimed.Veilrot, Is.EqualTo(42.5f), "the flag does not move the meter.");
+
+        // And no pairing is refused: a Claimed run cleansed to nothing is a run the game can make.
+        Assert.DoesNotThrow(() => new RunEconomy(0, 0f, 0, 0, claimed: true));
+    }
+
+    [Test]
     public void Economy_RefusesNegatives()
     {
         // Each int in turn, and each exception names its own field — a single row that only ever

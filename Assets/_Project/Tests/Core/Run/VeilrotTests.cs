@@ -764,6 +764,51 @@ public sealed class VeilrotTests
         Assert.That(_events.All, Is.Empty);
     }
 
+    [Test]
+    public void Restore_LatchesOnTheFlagOrOnAHundred()
+    {
+        // **M6-11b rule 2: the flag or the meter, either one.** The flag is a Claimed run a paid cast
+        // or a Cleanse has since lowered — M6-11's stage-36 Emberwright, saved at 75. The meter is
+        // a v4 file written before the flag existed, which must come back as M6-04 rule 9 said.
+        Restore(_meter, 40f, claimed: true);
+
+        Assert.That(_meter.IsClaimed, Is.True, "(40, true): the flag alone latches.");
+        Assert.That(_meter.Value, Is.EqualTo(40f).Within(1e-4f), "…and the meter is not pinned at 100.");
+
+        // The three buffs, and not the 75 row: Claiming_SurvivesCleansing's state, arrived at by a
+        // resume rather than by a Cleanse.
+        Assert.That(_combat.Weapon.Damage.Value, Is.EqualTo(2f * BaseWeaponDamage).Within(1e-3f));
+        Assert.That(_motor.Speed.Value, Is.EqualTo(1.3f * BaseMoveSpeed).Within(1e-3f));
+        Assert.That(_combat.Charge.Cooldown.Value, Is.EqualTo(0.5f * BaseDashCooldown).Within(1e-3f));
+        Assert.That(_combat.Health.MaxHp.Value, Is.EqualTo(BaseMaxHp).Within(1e-3f), "40 is below the 75 row.");
+
+        // Rule 2's stated cost, unchanged, and silently.
+        Assert.That(_meter.ClaimedFor, Is.Zero);
+        Assert.That(_events.All, Is.Empty);
+
+        Build();
+        Restore(_meter, Veilrot.Max, claimed: false);
+
+        Assert.That(_meter.IsClaimed, Is.True, "(100, false): a file older than the flag.");
+        Assert.That(_combat.Weapon.Damage.ModifierCount, Is.EqualTo(1), "…with one Claiming, not two.");
+
+        Build();
+        Restore(_meter, 99f, claimed: false);
+
+        Assert.That(_meter.IsClaimed, Is.False, "(99, false): neither.");
+        Assert.That(_combat.Weapon.Damage.ModifierCount, Is.Zero);
+
+        // And the pair that could stack: at 100 ApplyStates closes the latch itself, so a restore
+        // that also honoured the flag unguarded would put six modifiers where three belong.
+        Build();
+        Restore(_meter, Veilrot.Max, claimed: true);
+
+        Assert.That(_meter.IsClaimed, Is.True, "(100, true).");
+        Assert.That(_combat.Weapon.Damage.ModifierCount, Is.EqualTo(1));
+        Assert.That(_motor.Speed.ModifierCount, Is.EqualTo(1));
+        Assert.That(_combat.Charge.Cooldown.ModifierCount, Is.EqualTo(1));
+    }
+
     // ---- The whole run (rules 8, 9) ---------------------------------------------------------------
 
     [Test]
@@ -940,7 +985,7 @@ public sealed class VeilrotTests
     /// <c>Soulvail.Tests.Core</c> does not have and never will — <c>EssenceWalletTests</c>' route to
     /// <c>EssenceWallet.Restore</c>, written the same way.
     /// </remarks>
-    private static void Restore(Veilrot meter, float value)
+    private static void Restore(Veilrot meter, float value, bool claimed = false)
     {
         MethodInfo method = typeof(Veilrot).GetMethod(
             "Restore",
@@ -950,7 +995,7 @@ public sealed class VeilrotTests
 
         try
         {
-            method.Invoke(meter, new object[] { value });
+            method.Invoke(meter, new object[] { value, claimed });
         }
         catch (TargetInvocationException e)
         {

@@ -275,6 +275,14 @@ MonoBehaviour:
     _text: Choose your class
   - _key: ui.classselect.back
     _text: Back
+  - _key: ui.classselect.balance
+    _text: '{0} Soul Shards'
+  - _key: ui.classselect.locked.price
+    _text: '{0} Soul Shards'
+  - _key: ui.classselect.locked.buy
+    _text: 'Unlock: {0} Soul Shards'
+  - _key: ui.classselect.locked.deed
+    _text: or reach stage {0}
   - _key: character.oathbound.description
     _text: A paladin who stands in it. The only regenerating shield in the game,
       and a swing that hits everything in front of you.

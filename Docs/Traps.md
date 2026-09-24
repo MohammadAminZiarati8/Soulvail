@@ -141,6 +141,15 @@ Editor has the code — which is a stronger statement than any timestamp, and it
 `typeof`-not-reflection trick the MCP forces on you anyway (§4). Keep the timestamps as a hint about
 *when*, never as the answer to *whether* (M3-09c).
 
+**The edit-mode clock is the Editor's state, and an unfocused Editor's reads 0.** Outside Play
+`Time.time` read **0** after launch, after ten PlayMode passes, and on leaving a Play that had
+reached 35.5 s. It moved only once the Editor had been the application in front (1.83 s after a few
+seconds), and a test run can see a different value from a `RunCommand` a moment before: 0 against
+1.94, 0.62 against 1.88. **So no row may assert it, in either direction.** `Assume` it and write the
+sibling row, and to *witness* the moved half, ask the owner to focus the window and queue the run
+straight after. M5-07 read the same clock as *"accrues while focused"*; M6-11e ran into it on both
+halves ([M6-11e](plan/tasks/M6-11e-two-rows-that-assert-a-premise.md#as-built)).
+
 ---
 
 ## 4. The Unity MCP

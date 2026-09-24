@@ -127,7 +127,7 @@ public sealed class EnemySystem
 4. **GD §8.3's cap is the modifier's shape, and it needs no clamp.** *"Elite HP caps at 2.2× and
    never scales past it"* is true because the upgrade is one `PercentMult` applied once at the door:
    depth's `h(n)` multiplies with it (AR §18.3), and nothing an Elite is or does adds a second.
-   [M7-02c](../ROADMAP.md#m7--content-pass)'s affixes are written against this rule, not around it.
+   [M7-02c](M7-02c-the-affix-roll.md)'s affixes are written against this rule, not around it.
 5. **An Elite is worth its price in experience.** The kill branch banks `XpValue × CostMultiplier`
    for an Elite — 30 for a Husk's 12 — so `EnemySpec.XpValue`'s convention, that a stage's experience
    follows the threat it spent, still holds when part of that threat bought Elites. **The Essence term
@@ -179,9 +179,9 @@ spent.
 
 - **Buying one.** [M7-02b](M7-02b-who-buys-an-elite.md).
 - **The 15 Essence.** M7-02b, at the clear (rule 5).
-- **Affixes.** [M7-02c/d](../ROADMAP.md#m7--content-pass), specced in M7-00b; the `Affixes` stream is
+- **Affixes.** [M7-02c](M7-02c-the-affix-roll.md) and [M7-02d](M7-02d-the-two-that-fire-on-death.md), specced in M7-00b; the `Affixes` stream is
   not drawn here.
-- **The outline.** GD §8.3's *"distinct emissive outline"* is [M7-02e](../ROADMAP.md#m7--content-pass)'s;
+- **The outline.** GD §8.3's *"distinct emissive outline"* is [M7-02e](M7-02e-an-elite-you-can-see.md)'s;
   the bar that never fades already ships.
 - **A `TagSet`.** ADR-0010's `Elite` tag waits for a query that needs it; `IsElite` is the one
   question anything asks today.

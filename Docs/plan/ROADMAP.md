@@ -24,7 +24,7 @@
 | **M4** | **First boss and run end** ✅ | Boss phases, Warden of Ash, death → Shard payout, profile persisted, a run-end screen. The UI work M3-15's acceptance surfaced was ruled out after the tag and stays [ledger row 1](#carry-forward-into-m5) — **now with a number under it** — **complete, accepted on Editor evidence, tagged `m4`** | 11 |
 | **M5** | **Second class** ✅ | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select — **complete, accepted on Editor evidence, tagged `m5`** | 15 |
 | **M6** | **Systems complete** ✅ | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables — **complete, accepted on Editor evidence; `m6` the owner's to tag** — [both bugs ruled to go first](#m6--systems-complete) are merged | 22 + 5 |
-| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio — **specs being written, one group of five done** | 20 (5 counted) |
+| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio — **specs being written, two groups of five done** | 21 (10 counted) |
 | **M8** | **Feel, perf, ship** | Game-feel checklist, options/accessibility, device tiering, thermal, per-class balance, store build | 6 |
 
 ---
@@ -83,10 +83,10 @@
 with affixes, a second boss, three 27-node trees, two biomes of 8–12 arenas with art, and sound.
 **Done when:** M7-08's checklist passes and `m7` is tagged.
 
-**M7 opens with five spec groups, and only the first is counted.** M6's three groups turned eleven
+**M7 opens with five spec groups, and the first two are counted.** M6's three groups turned eleven
 titles into twenty-two tasks, each group moving the count by three; M7's nine titles are content
 rather than systems, so the groups are cut by *kind of work* and the table below carries predicted
-titles for the four that are not written yet. **All five are written before M7-01a is built** — the
+titles for the three that are not written yet. **All five are written before M7-01a is built** — the
 rule this section has held since M5 — and the fifth waits on the owner (below).
 
 - **M7-00a — the roster, in core.** [M7-01a](tasks/M7-01a-the-lunger.md),
@@ -103,13 +103,21 @@ rule this section has held since M5 — and the fifth waits on the owner (below)
   and the buyer here, and the affixes go to 00b. **[Ledger row 11](#carry-forward-into-m7) was
   diagnosed while counting** — it is `WaveComposer.Upgrade`, not the roster — and it moved the build
   order (below).
-- **M7-00b — the affixes, and what a player sees** *(predicted)*: M7-02c the affix roll and the three
-  that act while alive, M7-02d the two that fire on death, M7-01d the three archetypes drawn to be
-  read (the Lunger's lane, the Weaver's split, the Warden's shield and blocked flash), M7-02e an Elite
-  you can see. **Found while counting 00a and handed to it:** no attack-rate `Stat` exists for
-  Hasted, invulnerability is one un-counted bool that Warded would share with a boss beat, no zone
-  can hurt the player and a ninth zone throws, and `EnemySystem` holds no projectile reference for
-  Splintered.
+- **M7-00b — the affixes, and what a player sees.** [M7-01d](tasks/M7-01d-three-archetypes-a-player-can-read.md),
+  [M7-02c](tasks/M7-02c-the-affix-roll.md), [M7-02d](tasks/M7-02d-the-two-that-fire-on-death.md),
+  [M7-02f](tasks/M7-02f-a-second-affix-bought.md), [M7-02e](tasks/M7-02e-an-elite-you-can-see.md). **The
+  seam is 00a's, crossed twice on purpose**: M7-02c redraws the HUD's bar on a drain and M7-02d draws a
+  hazard in danger, because each is the one thing a player would misread from that task's first manual
+  step. **One title was found while counting** — the second affix, which M7-02b handed on and GD §11.2
+  prices: M7-02f *buys* it with what the cap leaves rather than dealing it from stage 30, or difficulty
+  would depend on the phone. **And one gap no one had named**: every way core hurts the player is a
+  blow, so a Siphon pulsing through `ApplyDamage` would keep the Oathbound in i-frames for as long as he
+  stood near it — M7-02c's `Drain` is the door, and M7-02d's pool walks through it. **The four gaps 00a
+  handed on are answered**: an `AttackRate` stat that shortens the recovery and never the tell (02c rule
+  6), a ward that is its own flag (02c rule 7), a hazard side with a table of its own that refuses
+  silently (02d rules 4–5), and a drain reader that holds the projectiles (02d rules 2, 7). Two unbuilt
+  00a specs were amended to fit: M7-01a's lane event carries its half-width, and M7-02b's second-affix
+  hand-off names M7-02f.
 - **M7-00c — the second boss** *(predicted)*: M7-03, the Choirmother, core and view — GD §9.2's
   rotating Weaver shields and a sonic cone line of sight breaks — and the boss roster that puts her at
   stage 10.
@@ -124,12 +132,15 @@ rule this section has held since M5 — and the fifth waits on the owner (below)
 **Build order is not ID order, again, and row 11 is why.** The Warden costs 14, the dearest
 archetype; rostered before [M7-02b](tasks/M7-02b-who-buys-an-elite.md), a capped wave would become
 twenty Wardens instead of twenty Bloaters. So the Elite's two tasks go between the Weaver and the
-Warden, and the `Depends on` column enforces it.
+Warden, and the `Depends on` column enforces it. **M7-00b moved one more**: M7-01d draws only the three
+archetypes, so it follows M7-01c straight away rather than the affixes — and its shrug for a turned-away
+hit is on screen before M7-02c's ward makes those common. M7-02f goes between the death affixes and the
+Elite's look, which names both of a body's affixes.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | M7-00a | Specs for the roster in core — three archetypes, the Elite, and the capped wave | S | — | ☑ |
-| M7-00b | Specs for the affixes and what a player sees *(predicted)* | S | M7-00a | ☐ |
+| M7-00b | Specs for the affixes and what a player sees — five specs, one found while counting | S | M7-00a | ☑ |
 | M7-00c | Specs for the Choirmother *(predicted)* | S | M7-00b | ☐ |
 | M7-00d | Specs for the eighty-one nodes *(predicted)* | S | M7-00c | ☐ |
 | M7-00e | Specs for the biomes, the sound and the close — **waits on the owner's art and audio rulings** | S | M7-00d | ☐ |
@@ -138,10 +149,11 @@ Warden, and the `Depends on` column enforces it.
 | M7-02a | [What an Elite is: a body upgraded at the door](tasks/M7-02a-what-an-elite-is.md) | S | M7-01b | ☐ |
 | M7-02b | [Who buys an Elite, and a full arena that keeps its mix](tasks/M7-02b-who-buys-an-elite.md) — [row 11](#carry-forward-into-m7) | M | M7-02a | ☐ |
 | M7-01c | [The Warden, and a hit that knows where it came from](tasks/M7-01c-the-warden.md) | M | M7-02b | ☐ |
-| M7-02c | The affix roll, and the three that act while alive *(00b)* | — | M7-01c | ☐ |
-| M7-02d | The two affixes that fire on death *(00b)* | — | M7-02c | ☐ |
-| M7-01d | Three archetypes a player can read *(00b)* | — | M7-02d | ☐ |
-| M7-02e | An Elite you can see *(00b)* | — | M7-01d | ☐ |
+| M7-01d | [Three archetypes a player can read](tasks/M7-01d-three-archetypes-a-player-can-read.md) | M | M7-01c | ☐ |
+| M7-02c | [The affix roll, and the three that act while alive](tasks/M7-02c-the-affix-roll.md) | M | M7-01d | ☐ |
+| M7-02d | [The two affixes that fire on death](tasks/M7-02d-the-two-that-fire-on-death.md) | M | M7-02c | ☐ |
+| M7-02f | [A second affix, bought with what the cap leaves](tasks/M7-02f-a-second-affix-bought.md) | M | M7-02d | ☐ |
+| M7-02e | [An Elite you can see](tasks/M7-02e-an-elite-you-can-see.md) — [row 12](#carry-forward-into-m7) | M | M7-02f | ☐ |
 | M7-03 | Choirmother *(00c)* | — | M7-02e | ☐ |
 | M7-04 | All 81 nodes *(00d)* | — | M7-03 | ☐ |
 | M7-05 | Ashen Reach: 8–12 arenas + art *(00e)* | — | M7-04 | ☐ |
@@ -158,7 +170,10 @@ group — M6-00a's practice, one milestone on.** **Row 11 changed owner and gain
 `WaveComposer.Upgrade` swapping a capped wave's every body for the dearest archetype, so M7-01's
 archetypes do not answer it and [M7-02b](tasks/M7-02b-who-buys-an-elite.md) alone does. **Row 2 gained
 a finding** a grep produced: the one-shot rule has only ever been checked against the Oathbound's 140
-HP. Rows 1, 3 and 9 are unchanged and say why; row 10 is M7-00d's to spec.
+HP. Rows 1, 3 and 9 are unchanged and say why; row 10 is M7-00d's to spec. **Re-read again at
+[M7-00b](tasks/M7-02c-the-affix-roll.md)'s group**: no row changed owner, and **row 12 is new** —
+M7-02b's promotion makes every body of a capped wave an Elite, which puts GD §16.2's never-fading bar and
+M7-02e's outline on all of them.
 
 | # | Finding | Owner | Cost of leaving it |
 |---|---|---|---|
@@ -173,6 +188,7 @@ HP. Rows 1, 3 and 9 are unchanged and say why; row 10 is M7-00d's to spec.
 | 9 | **The Sanctum is not a decision in play.** GD §10 is the section the design says not to cut, and in two natural runs the owner spent **0 of 448 Essence**, declining Heal at 7 / 85 HP **by choice**. From about stage 13 a full tree leaves three of four rows refused, and Essence reaches **2 400 unspent by stage 30**. The shop has nothing worth buying early and nothing to sell late. | **The owner's ruling first** — what a finished tree's Essence buys is a question about the game — **then M8-05** for prices against income; the **instrument** is Essence earned and spent per run, by service | **Medium**: GD §13.3 is one of M6's pillars and it plays as zero. |
 | 10 | **A Pact is taken when it is seen, and it is almost never seen.** One Pact card in **62 offers** across five runs, taken the one time. **4 of 36 nodes carry a Pact and the Emberwright's twelve carry none**, and a finished tree rolls no offer at all — so GD §13.2's *"continuous temptation"* is about 2 % of level-ups, and zero after stage ~13. CH §3.1's new ¾ budget also asks for Keen Censer and Zealotry to be re-read. | **[M7-04](#m7--content-pass)**, which authors all 81 nodes — coverage is authoring, and **M7-00d** specs it; the **instrument** is offers rolled against Pacts shown | **Medium**: the signature system is invisible. |
 | 11 | **At depth the waves collapse into Bloaters.** From stage ~21 waves 4–5, and from ~26 waves 3–5, are **Bloaters only**, 20–28 each, with Husks and Spitters confined to waves 1–2. Echo-as-*replace* therefore changes nothing from stage 26 (waves 3, 4 and 5 are identical), and Swarm barely moves the count because the cap already binds. ~~The cause is not diagnosed here.~~ **Diagnosed at M7-00a, by arithmetic that reproduces the log to the wave:** it is `WaveComposer.Upgrade`, working as written. A capped wave with allowance left swaps its cheapest body for the dearest affordable archetype until nothing is affordable — at stage 21, wave 5's 213 against a cap of 20 leaves ~87 after the draw, which buys twenty swaps to the Bloater. **So new archetypes do not answer it; they move it** — with M7-01c's Warden rostered, a capped wave is twenty Wardens. The fix is the rule: surplus **promotes** drawn bodies to Elites and never replaces the mix, GD §11.2's *"expensive archetypes"* refused on this evidence. | **[M7-02b](tasks/M7-02b-who-buys-an-elite.md)** alone, which is why M7-01c depends on it; the **instrument** is `Compose_ACappedDeepWaveKeepsItsMix` over stages 20–35 in the suite, and per-wave composition in Play at **M7-08** | **Medium at M7**: GD §8's variety of pressure is gone past stage 25. |
+| 12 | **At depth every body is an Elite, and every Elite is loud.** Opened at M7-00b. By about stage 40 on the mid tier — 31 on the low, 60 on the high — [M7-02b](tasks/M7-02b-who-buys-an-elite.md)'s promotion makes every body of a capped wave an Elite, so GD §16.2's never-fading Elite bar and [M7-02e](tasks/M7-02e-an-elite-you-can-see.md)'s gold outline are on all 18–40 of them: the density §16.2 refuses bars for. M7-02e names affixes on the target alone and ships the rest as §16.2 and §8.3 wrote it. **The number is not known**, and no one has played a stage-40 run to judge it by eye. | **M7-08**, whose **instrument** counts outlined bodies and persistent bars per frame at stage 40 on the mid tier; the remedy, if one is wanted, is GD §16.2's own toggle — **M8-02** | **Medium**: P1, at the depths §12.5's skilled player reaches. |
 
 ## M8 — Feel, perf, ship *(titles only)*
 

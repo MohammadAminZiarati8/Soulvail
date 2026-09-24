@@ -32,7 +32,7 @@ GD §11.2 lists three ways surplus becomes quality — *"Elites, expensive arche
 **The middle one is refused, and row 11 is the evidence**: it is the only one of the three that
 replaces the mix the draw chose rather than upgrading it. Surplus is spent by **promoting** drawn
 bodies to Elites (rule 5); what is left after every body is one waits for
-[M7-02c](../ROADMAP.md#m7--content-pass)'s second affix, and until then is `UnspentThreat`. The
+[M7-02f](M7-02f-a-second-affix-bought.md)'s second affix, and until then is `UnspentThreat`. The
 arithmetic says there is room: at stage 40 wave 5 is **626** threat over 28 bodies whose drawn mix
 averages about 9, and promoting all of them costs 1.5 × 9 × 28 ≈ **378** on top of the 252 drawn —
 **630**. Elites absorb the budget almost exactly to stage 40, and GD §12.1's table asks for
@@ -98,7 +98,7 @@ public readonly struct EssenceSpec
    composes exactly as it did before this task.
 3. **The draw is `Spawn`'s, not `Affixes`'.** Whether a body *is* an Elite is *what arrives* — the
    `Spawn` stream's whole remit (ADR-0011) and the only stream `WaveComposer` has ever drawn. The
-   affix rolls on the `Affixes` stream are [M7-02c](../ROADMAP.md#m7--content-pass)'s and happen at the
+   affix rolls on the `Affixes` stream are [M7-02c](M7-02c-the-affix-roll.md)'s and happen at the
    door, not here.
 4. **A mode that authors no Elites composes byte-for-byte as before**, draws included. Every composer,
    plan, director and flow fixture authors none, so every row that predates this task runs unedited —
@@ -132,7 +132,7 @@ public readonly struct EssenceSpec
    Elites arrive after its plain bodies of the same archetype, which is the order a player can learn
    from. The flag rides the queue and the pending arrays beside the id, and `FireDueTelegraphs` calls
    `Spawn(spec, position, elite)`. **`SpawnTelegraphed` is unchanged**: whether a ring can say
-   *"Elite"* is [M7-02e](../ROADMAP.md#m7--content-pass)'s question, and the event can grow then.
+   *"Elite"* is [M7-02e](M7-02e-an-elite-you-can-see.md)'s question, and the event can grow then.
 10. **Echo's figure moves, and the parking-lot line says so.** M6-11 recorded that from stage 26
     *"waves 3, 4 and 5 are the same composition"*, which made Echo-as-*replace* a no-op. With the mix
     kept, the three waves differ again — so replacing wave 4 with wave 3 removes 6.7 % of the budget
@@ -191,7 +191,7 @@ public readonly struct EssenceSpec
 
 ## Out of scope
 
-- **Affixes, and the second one that spends what is left past stage 40.** [M7-02c](../ROADMAP.md#m7--content-pass).
+- **Affixes, and the second one that spends what is left past stage 40.** [M7-02c](M7-02c-the-affix-roll.md) and [M7-02d](M7-02d-the-two-that-fire-on-death.md); the second, [M7-02f](M7-02f-a-second-affix-bought.md) — re-aimed at M7-00b, which split it out.
 - **Building Echo.** Rule 10; the parking-lot line is re-aimed, not discharged.
 - **An Elite telegraph ring.** Rule 9; M7-02e.
 - **Retuning `Chance`.** 0.1 is ours, and M7-08's instrument counts Elites per stage against GD §12.1's

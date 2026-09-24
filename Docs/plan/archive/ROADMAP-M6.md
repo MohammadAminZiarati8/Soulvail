@@ -102,7 +102,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-11b | [A resume keeps the Claiming](../tasks/M6-11b-a-resume-keeps-the-claiming.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☑ |
 | M6-11c | [Stage 1 without the eight M1 dummies](../tasks/M6-11c-stage-one-without-the-m1-dummies.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☑ |
 | M6-11d | [The Sanctum does not sell a reroll a finished tree can never spend](../tasks/M6-11d-no-reroll-for-a-finished-tree.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☑ |
-| M6-11e | [Two rows that assert a premise rather than a behaviour](../tasks/M6-11e-two-rows-that-assert-a-premise.md) — [row 4](#carry-forward-into-m6)'s verdict, built; created by M6-11's acceptance (rule 8) | S | M6-11 | ☐ |
+| M6-11e | [Two rows that assert a premise rather than a behaviour](../tasks/M6-11e-two-rows-that-assert-a-premise.md) — [row 4](#carry-forward-into-m6)'s verdict, built; created by M6-11's acceptance (rule 8) | S | M6-11 | ☑ |
 
 ### Carry-forward into M6
 

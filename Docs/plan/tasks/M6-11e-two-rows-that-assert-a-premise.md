@@ -55,4 +55,63 @@ already names the replacement: prime `_lastAttackTime` below `Time.time` and ass
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Rules 1, 2 and 4 as written; rule 3's premise was wrong, and its rows are right anyway.** Step 5
+hooks `OnFactTime` on frame two and probes `ProbeRadius` for the body's trigger capsule at
+`_body.Position` (found) and at the snapshot position (nothing). `TheSweepFinds` takes a `Collider`,
+so the minion row and step 5 share it. Steps 1–4 and 6 and every other row are unchanged.
+`DiagnoseTheEmptyReport`, `Ticker_AnEmptyConeReportIsDiagnosed`, `LateSync` and `WrongWedge` are
+gone. The animator zero row `Assume`s its clock, and
+`Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns` primes the previous swing at half the
+clock (exact in binary). It asserts the clamped ratio, then clears the parameter and asserts the
+ceiling on a swing twelve times too quick.
+
+**Before building: M6-11d had never been opened as a PR** (M6-11d's own *As built* records the same of
+a to c). On the owner's go it was opened and merged as #161, and this branch was cut from the result.
+
+**Four deviations.** None changes a decision.
+
+*1. The Editor clock does not move on entering Play.* The spec says 0.73 s *"in one that has"*. Here
+it read **0 after ten PlayMode passes** and 0 on leaving a hand-entered Play at 35.5 s. It moved only
+after the owner put the Editor in front: **1.83 s**. What else resets it was not pinned: one test
+run saw 0 where a command had read 1.94 s a moment before, another 0.62 after 1.88. The remarks
+state only what was measured. Rule 3 stands, since exactly one of the two rows runs whatever the
+clock reads, but witnessing the sibling took **two focus requests** → [Traps §3](../../Traps.md).
+
+*2. The instrument's other half retired with it.* `RecordingCore.ConeOffset`, `LastCone` and
+`WroteCone` existed only for the diagnosis, and `_cone` goes back to a local. One comment in
+`Frame_TheLevellingTickCompletes` named step 5's cone as the project's known flake and was
+corrected.
+
+*3. Step 5 writes its walk with `TestContext.WriteLine`*, the idiom `ContentValidationTests` uses, so
+each pass's `TestResults.xml` carries the margin rule 4 is evidence of.
+
+*4. The counts change shape.* PlayMode goes 26 → 25 (the control row). EditMode goes 3 159 → 3 160
+with **one row inconclusive on every pass, by construction**, so the chain now reads *passed / failed /
+inconclusive*.
+
+**Stated cost: the negative half is a frame-time margin.** A body at 60 m/s clears its 0.5 m capsule
+plus the 0.1 m probe only on a frame longer than 10 ms. Across eleven passes and a red check it
+walked **0.949–1.031 m**, frames of 16–17 ms. `Ticker_ReportsFactsAfterBodiesMoved` already needed
+8.3 ms. An Editor running at 100 fps would fail it with a message naming the walk, which is a
+different failure from the wedge's, and a readable one. The cone on frame two is no longer asserted
+(the spec's cost), and that claim stays on frame one.
+
+**Rules ↔ rows.** 1, 2: `Ticker_RunsTheStepsInOrder`. 3: `Animator_AttackSpeedIsUnreachableFromAnEditorClock`
+on a zero clock, `Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns` on a moved one. 4: ten
+PlayMode passes, below.
+
+**Red checks, both restored from git and recompiled before the final passes.** *A*, with
+`Physics.SyncTransforms()` removed from `RunTicker`: `FrameOrderTests` ran **15 / 3**, exactly the
+three rows that ask physics at fact time. Step 5 failed with *"At fact time the physics scene did not
+hold the body where this frame's move put it"*. *B*, with `PlayerAnimatorView`'s ceiling removed, on
+a moved clock: **14 / 1 / 1 inconclusive**. The sibling failed alone at the ceiling, *"Expected: 6.0f
+But was: 11.9999971f"*, while its ratio half passed at 0.62 s. B's first attempt ran on a clock the
+test saw as 0 and came back inconclusive, not red. It was repeated after the owner focused the Editor.
+
+**Verified:** **EditMode 3 160: 3 159 passed / 0 failed / 1 inconclusive**, on the final code on both
+clocks. At zero (after leaving Play) the sibling is the inconclusive one; moved (6.76 s, 4.60 s), the
+zero row is. **PlayMode 25 / 0 / 0 on ten passes of ten**, then an eleventh on the final tree after
+the red checks. Console: 48 entries, the 46 negative-path rows M6-11d counted plus two AI Assistant
+token warnings. Zero new analyzer warnings; `dotnet format` *Formatted 0 of 2*; `TimeManager.asset`
+re-serialised and was reverted. The PlayMode passes overwrote `run.json` (parking lot); it was backed
+up first and restored.

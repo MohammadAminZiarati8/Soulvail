@@ -78,7 +78,7 @@ The Oathbound starts unlocked because tanky and forgiving is the right teaching 
 | **Weapon** | **Censer** — 8m forward cone, 18 dmg, 3.0/s, hits everything in the arc |
 | **Movement** | **Charge** — 10m, damages and knocks back everything hit, full i-frames |
 | **Signature** | **Aegis** — a 30-point shield regenerating after 4s without damage. The only regeneration in the game. |
-| **Veilrot** | Gains **−40%** from Pact nodes, Cleanses at half price — but Pact *effects* are 25% weaker for him |
+| **Veilrot** | Gains **−40%** from Pact nodes, Cleanses at half price — but his Pacts are weaker: **his own Pact forms are authored to about ¾ of GD §13.2's 1.8× budget** *(ruled at M6-11 — a Pact is authored, so "25 % weaker" is a budget and not a multiplier, which would have turned a Pact's downside into a discount; the two shipped, Keen Censer and Zealotry, predate the rule and M7-04 re-reads them against it)* |
 | **Branches** | **Oath** (shield, endurance) · **Censure** (the cone) · **Judgment** (auras, holy actives) |
 
 | Keystone | Effect |

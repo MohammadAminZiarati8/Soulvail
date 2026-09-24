@@ -122,7 +122,7 @@ Ticked at two grains, and the entry says which is which: **[play]** rows are cov
 ## Out of scope
 
 - **The UI redesign.** The owner ruled it out of M4 immediately after `m3` was tagged. This task **judges** the HUD and hands the fix forward; it does not do it, and a tuning session on `_cellHeightDp` is the only edit rule 1 licenses.
-- **GD §14.1's third term**, the archetype first-encounter set, and anything that spends a Shard — M4-05a rule 6, and M6-02 / M6-09.
+- **GD §14.1's third term**, the archetype first-encounter set, and anything that spends a Shard — M4-05a rule 6, and M6-02b / M6-09b.
 - **A second boss.** The Choirmother is M7's; GD §9 lists two and M4 always owned one.
 - **Elites and affixes** — M7-02. `EnemySpawned.IsElite` is still `0` on every shipped archetype.
 - **Fixing what the feel verdict finds**, unless it is a number (rule 8).

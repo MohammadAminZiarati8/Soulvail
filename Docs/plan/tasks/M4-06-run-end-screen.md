@@ -103,7 +103,7 @@ namespace Soulvail.Game.Presentation
    both hang off the same event, the hub guarantees no order between a scoped service and an injected
    component, and a screen that showed the total *before* the write would be wrong every second run and right
    every other. **A lifetime total belongs beside the thing that spends it** — M5-07's class select or
-   M6-02's Sanctum — and it is out of scope here rather than deferred by accident.
+   M6-02b's Sanctum — and it is out of scope here rather than deferred by accident.
 9. **The exit is a `Button`, not a full-screen tap.** `MenuPresenter`, `PausePresenter` and `SkillsPresenter`
    are all buttons, and this is the first screen in the game the player is meant to *read*: a stray thumb
    still travelling from the last dodge would dismiss a full-screen tap before a word of it landed. The button

@@ -55,7 +55,7 @@ public sealed class ShardWriter : IDisposable
 ## Behaviour
 
 1. **v3 is one `int` and deliberately not two fields.** GD §14.1's third term needs a *set* of `ContentId`s and
-   [M4-05a](M4-05a-shard-payout.md) rule 6 ruled it out of this milestone; GD §14.2's unlocks are M6-09's and
+   [M4-05a](M4-05a-shard-payout.md) rule 6 ruled it out of this milestone; GD §14.2's unlocks are M6-09a's and
    are a second set. **`SaveDtos.cs`' own standing rule is honoured rather than waived:** *"no field ships
    before a consumer"* — and this one has two the day it lands, the writer below and
    [M4-06](M4-06-run-end-screen.md)'s screen. The remark in that file naming *"M4-07 and M6-09"* as the
@@ -90,7 +90,7 @@ public sealed class ShardWriter : IDisposable
    adds no second policy. The worst consequence available is a player losing one run's Shards to a full disk,
    which must not be allowed to throw out of an event callback on the frame the player died.
 8. **Shards are persisted with nothing to spend them on, and that is ruled rather than defaulted.** GD §14.2's
-   unlocks (Gravecaller 2 000, Emberwright 3 500) are M6-09's and the Sanctum is M6-02's, so this build banks
+   unlocks (Gravecaller 2 000, Emberwright 3 500) are M6-09a's and the Sanctum is M6-02b's, so this build banks
    a number no player can spend — which is `Palette.Veilrot`'s and `Palette.Essence`'s shape, *"ship the
    member, no reader"*. **The difference is that this one is on a save format, and the difference cuts the
    other way from the obvious reading.** An unread colour costs nothing to add later. **A Shard total not
@@ -151,11 +151,11 @@ public sealed class ShardWriter : IDisposable
 - **The arithmetic.** [M4-05a](M4-05a-shard-payout.md). This task adds nothing to the formula and must not
   quietly acquire the third term on the way past.
 - **A lifetime-total readout anywhere.** It belongs beside the thing that spends it — M5-07's class select or
-  M6-02's Sanctum — and putting one on the run-end screen buys a subscription-order race for a number nobody
+  M6-02b's Sanctum — and putting one on the run-end screen buys a subscription-order race for a number nobody
   can use (M4-06 rule 8).
 - **`RunSnapshot`.** It stays v3. A run's shape did not change, and a boss counter that would have changed it
   was refused at [M4-05a](M4-05a-shard-payout.md) rule 3.
-- **Unlocks, costs, the Sanctum, cosmetics** — GD §14.2, M6-02 and M6-09.
+- **Unlocks, costs, the Sanctum, cosmetics** — GD §14.2, M6-02b and M6-09a.
 - **Cloud save.** GD §19's open question, decided before M5.
 
 ## As built

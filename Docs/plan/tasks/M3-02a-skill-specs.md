@@ -195,7 +195,7 @@ None. Pure C#, nothing registered, nothing authored; six assemblies compiling is
 - **Gating, availability, the live tree** — M3-03. This task says what a tree *is*; that one says what may be taken.
 - **Offers** — M3-04.
 - **Evaluating a trigger on a cadence, the 40 % floor, Auto/Manual** — M3-06 and M3-07. `IsMet` is a predicate; when it is asked is the runner's.
-- **Pact variants** (GD §13.2, M6-05). A `SkillSpec` has no Pact field: a Pact is a *variant the offer produces*, roughly 1.8× the clean node plus Veilrot, and its shape is M6-05's to decide against a generator that exists by then.
+- **Pact variants** (GD §13.2, M6-05a). A `SkillSpec` has no Pact field: a Pact is a *variant the offer produces*, roughly 1.8× the clean node plus Veilrot, and its shape is M6-05a's to decide against a generator that exists by then.
 - **Content** — the Oathbound's nodes are M3-12's. Nothing here is a node anyone can take.
 
 ## As built

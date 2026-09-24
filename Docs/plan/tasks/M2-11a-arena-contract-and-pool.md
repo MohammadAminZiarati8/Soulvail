@@ -164,7 +164,7 @@ public ContentId ArenaFor(int stage, int seed);
 - **`RunTicker`'s frame-order coverage** — ledger row 8's other half, also M2-11b, where the sense adds the step worth pinning.
 - **8–12 arenas per biome, and their art** — M7-05/06 (rule 11). Two is the contract's proof, not the content.
 - **Procedural arenas.** GD §7.2: *"a V3 conversation at the earliest."*
-- **The Sanctum as a place** — M6-03. It is a screen, not an arena, and it does not enter this pool.
+- **The Sanctum as a place** — M6-03a. It is a screen, not an arena, and it does not enter this pool.
 - **Hazards, tiers that block movement, or destructible cover.** GD §7.2's *no dead ends* and the cover guarantee are validated in rule 2; anything that can change them mid-stage is a system nothing has asked for.
 - **Per-arena spawn *rules*** — which archetype may use which point. The director picks by clearance (M2-05 rule 9), and an arena that wants a flyer-only ledge is a conversation M7 can have.
 

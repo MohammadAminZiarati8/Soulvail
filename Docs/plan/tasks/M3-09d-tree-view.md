@@ -112,8 +112,8 @@ namespace Soulvail.Game.Controls
 - **Taking a node from here** — rule 1. Not a V1 feature and not a V2 one either; CH §5.1 chose against it.
 - **Pinch-zoom, scrolling, or a minimap** — rule 9. M7-04's eighty-one nodes are when a tree needs navigating.
 - **Showing what a node *costs*.** One level is one node (CH §5) and there is no point economy to display.
-- **Pact variants** (GD §13.2, M6-05) — a corrupted node has no appearance yet, and a tree cell is a fifth place that would need one.
-- **Banished nodes** (M6-02) — `Available` will gain a second `bool[]` and this screen will want a fourth `NodeState`. One line, later, by the task that adds the mechanic.
+- **Pact variants** (GD §13.2, M6-05b) — a corrupted node has no appearance yet, and a tree cell is a fifth place that would need one.
+- **Banished nodes** (M6-02b; the fourth `NodeState` is M6-03b's) — `Available` will gain a second `bool[]` and this screen will want a fourth `NodeState`. One line, later, by the task that adds the mechanic.
 - **The Android back gesture** — rule 11.
 - **A `Palette` file** — M3-13, ledger row 6. Rule 8 adds the fifth reader and no more.
 

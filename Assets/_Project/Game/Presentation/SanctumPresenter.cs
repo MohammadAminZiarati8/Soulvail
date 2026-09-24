@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -373,8 +372,7 @@ namespace Soulvail.Game.Presentation
         {
             if (_balance != null)
             {
-                _balance.text = string.Format(
-                    CultureInfo.InvariantCulture, _localizer.Get(BalanceKey), balance);
+                _balance.text = _localizer.Format(BalanceKey, balance);
                 _balance.color = Palette.Essence;
             }
 

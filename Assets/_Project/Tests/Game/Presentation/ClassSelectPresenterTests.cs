@@ -770,11 +770,15 @@ public sealed class ClassSelectPresenterTests
         ClassCard card = Cards()[2];
         CharacterSpec spec = Character(EmberwrightPath).ToSpec();
 
-        card.BindLocked(spec, 3_500, false, default, Passthrough(), _ => { });
+        // Through the shipped table since M6-10 made the three figures rows: over a pass-through
+        // table both states would draw the same three keys, and this row would compare nothing.
+        card.BindLocked(spec, 3_500, false, default, Shipped(), _ => { });
 
         string[] locked = { Text(card, "_hp"), Text(card, "_speed"), Text(card, "_weapon") };
 
-        card.Bind(spec, Passthrough(), _ => { });
+        Assert.That(locked, Is.EqualTo(new[] { "70 HP", "3.4 m/s", "26 DPS" }), "the fixture's premise.");
+
+        card.Bind(spec, Shipped(), _ => { });
 
         Assert.That(
             new[] { Text(card, "_hp"), Text(card, "_speed"), Text(card, "_weapon") },

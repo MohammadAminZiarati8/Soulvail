@@ -70,17 +70,28 @@ namespace Soulvail.Game.Composition
         [SerializeField] private BossDefinition[] _bosses;
 
         /// <remarks>
-        /// <c>Data/Localisation/English.asset</c> — the one language (M3-14a rule 2). Unlike the
-        /// six arrays above this is a single asset and it is <b>required</b>: an empty slot here is
-        /// a game in which every screen draws its own <c>LocKey</c>, so the installer refuses it by
-        /// name rather than letting it become a null reference on a card.
+        /// <c>Data/Localisation/English.asset</c> — the fallback every other language drops to
+        /// (M3-14a rule 2, M6-10 rule 1). Unlike the arrays around it this is a single asset and it
+        /// is <b>required</b>: an empty slot here is a game in which every screen draws its own
+        /// <c>LocKey</c>, so the installer refuses it by name rather than letting it become a null
+        /// reference on a card.
         /// </remarks>
         [SerializeField] private LocalizationTable _localization;
+
+        /// <remarks>
+        /// Every other language — <c>Data/Localisation/Pseudo.asset</c>, which is the only one in V1
+        /// (M6-10 rule 3). Each carries a locale; <see cref="_localization"/> is the one that does
+        /// not. <b>Separate from it rather than one array holding both</b>, so English stays a
+        /// required single slot the installer can refuse by name, and an empty list here is a legal
+        /// English-only build.
+        /// </remarks>
+        [SerializeField] private LocalizationTable[] _languages;
 
         protected override void Configure(IContainerBuilder builder)
         {
             BootInstaller.Install(
-                builder, _characters, _enemies, _modes, _skills, _trees, _localization, _bosses);
+                builder, _characters, _enemies, _modes, _skills, _trees, _localization, _bosses,
+                _languages);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

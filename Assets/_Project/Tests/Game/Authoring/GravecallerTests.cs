@@ -332,7 +332,7 @@ public sealed class GravecallerTests
     }
 
     [Test]
-    public void Keys_AreAuthoredAndUnresolved()
+    public void Keys_AreAuthoredAndResolve()
     {
         CharacterSpec spec = Gravecaller();
         TableLocalizer english = ContentValidationTests.English();
@@ -352,12 +352,13 @@ public sealed class GravecallerTests
         Assert.That(english.Has(name), Is.True,
             "character.gravecaller.name has an English row, because the content sweep demands one.");
 
-        // The minion key is reached by nothing that sweeps — EveryAuthoredKey walks a character's
-        // own name key and stops there — so it ships unresolved as rule 10 intends, and the
-        // absence is asserted rather than tolerated: M6-10's table has to add it deliberately.
-        Assert.That(english.Has(wight), Is.False,
-            "minion.wight.name is unresolved until M6-10 authors the table. If this row is red, "
-                + "the key was added early — which is fine, and this assertion is what says so.");
+        // **M6-10 added it deliberately, which is what this row asked for.** Until then the minion
+        // key was reached by nothing that sweeps and shipped unresolved as rule 10 intended, with the
+        // absence asserted here. M6-10's LocalisationSweepTests found the walk stopping short, so
+        // EveryAuthoredKey now takes a character's description and its minion's name too, and
+        // English carries "Wight" — for a word no screen draws yet.
+        Assert.That(english.Has(wight), Is.True,
+            "minion.wight.name has an English row as of M6-10, and EveryAuthoredKey sweeps it.");
     }
 
     // ---- Fixtures -------------------------------------------------------------------------------------

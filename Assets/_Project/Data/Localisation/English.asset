@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aba53057ee7f828418c0472ade3e38ae, type: 3}
   m_Name: English
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.LocalizationTable
+  _locale:
   _rows:
   - _key: skill.oathbound.long-reach.name
     _text: Long Reach
@@ -147,6 +148,10 @@ MonoBehaviour:
     _text: All four slots are full. Which goes back to Auto?
   - _key: ui.levelup.tree
     _text: View Tree
+  - _key: ui.levelup.level
+    _text: Level {0:0}
+  - _key: ui.levelup.pick
+    _text: Pick {0:0} of {1:0}
   - _key: ui.tree.close
     _text: Close
   - _key: character.oathbound.name
@@ -163,6 +168,8 @@ MonoBehaviour:
     _text: Descent
   - _key: character.gravecaller.name
     _text: Gravecaller
+  - _key: minion.wight.name
+    _text: Wight
   - _key: skill.gravecaller.exhume.name
     _text: Exhume
   - _key: skill.gravecaller.exhume.description
@@ -283,6 +290,12 @@ MonoBehaviour:
     _text: 'Unlock: {0} Soul Shards'
   - _key: ui.classselect.locked.deed
     _text: or reach stage {0}
+  - _key: ui.classselect.hp
+    _text: '{0:0} HP'
+  - _key: ui.classselect.speed
+    _text: '{0:0.0} m/s'
+  - _key: ui.classselect.dps
+    _text: '{0:0} DPS'
   - _key: character.oathbound.description
     _text: A paladin who stands in it. The only regenerating shield in the game,
       and a swing that hits everything in front of you.
@@ -357,9 +370,7 @@ MonoBehaviour:
   - _key: skill.gravecaller.rot-feast.pact.description
     _text: +40% experience from kills, but -15% maximum health.
   - _key: ui.offer.pact
-    _text: Pact
-  - _key: ui.offer.rot
-    _text: Rot
+    _text: "Pact \xB7 +{0:0} Rot"
   - _key: ordeal.famine.name
     _text: Famine
   - _key: ordeal.famine.description

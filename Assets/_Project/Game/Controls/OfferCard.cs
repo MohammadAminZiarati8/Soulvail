@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Presentation;
@@ -79,18 +78,16 @@ namespace Soulvail.Game.Controls
         [SerializeField] private TMP_Text _rot;
 
         /// <summary>
-        /// What the frame label says — the word, so a corrupted card does not rest on colour alone.
+        /// What the frame label says: <em>"Pact · +{0:0} Rot"</em> in English, so a corrupted card
+        /// does not rest on colour alone.
         /// </summary>
+        /// <remarks>
+        /// <b>One row since M6-10, where it was two words and a <c>const</c> format joining them</b>
+        /// (<c>"{0} · +{1:0} {2}"</c>). That format was waiting for <c>ILocalizer.Format</c>, and
+        /// it fixed the word order: a language that puts the number before the word <em>Pact</em>
+        /// could not. The retired <c>ui.offer.rot</c> row went with it.
+        /// </remarks>
         private static readonly LocKey PactKey = new LocKey("ui.offer.pact");
-
-        /// <summary>The unit after the price: <em>"Rot"</em>, in English.</summary>
-        private static readonly LocKey RotKey = new LocKey("ui.offer.rot");
-
-        /// <summary>
-        /// The label, one string per draw. Built here rather than through the localizer's missing
-        /// <c>Format</c> member, which is M6-10's; the two words are rows, the arithmetic is not.
-        /// </summary>
-        private const string RotFormat = "{0} · +{1:0} {2}";
 
         /// <summary>Which of the three this is. Reported on a tap, and nothing else reads it.</summary>
         private int _index;
@@ -209,14 +206,7 @@ namespace Soulvail.Game.Controls
             if (_rot != null)
             {
                 // A string per draw, and a draw is a tap: nothing here runs per frame.
-                _rot.text = isPact
-                    ? string.Format(
-                        CultureInfo.InvariantCulture,
-                        RotFormat,
-                        localizer.Get(PactKey),
-                        spec.Pact.Veilrot,
-                        localizer.Get(RotKey))
-                    : string.Empty;
+                _rot.text = isPact ? localizer.Format(PactKey, spec.Pact.Veilrot) : string.Empty;
                 _rot.color = Palette.Veilrot;
             }
 

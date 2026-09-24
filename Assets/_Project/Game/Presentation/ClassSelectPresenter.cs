@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Progression;
@@ -344,8 +343,7 @@ namespace Soulvail.Game.Presentation
 
             if (_balance != null)
             {
-                _balance.text = string.Format(
-                    CultureInfo.InvariantCulture, _localizer.Get(BalanceKey), profile.Shards);
+                _balance.text = _localizer.Format(BalanceKey, profile.Shards);
 
                 // GD §16.4's gold, which RunEndPresenter already pays Shards in: the number that
                 // screen showed and the number this one spends look like one currency because

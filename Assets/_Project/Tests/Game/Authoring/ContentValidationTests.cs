@@ -1306,9 +1306,24 @@ public sealed class ContentValidationTests
         {
             var asset = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
 
-            if (asset != null)
+            if (asset == null)
             {
-                yield return new AuthoredKey(path, "the name key", asset.ToSpec().NameKey);
+                continue;
+            }
+
+            CharacterSpec spec = asset.ToSpec();
+
+            yield return new AuthoredKey(path, "the name key", spec.NameKey);
+
+            // M6-10: the class card has drawn this since M5-07, and this walk never asked for it —
+            // LocalisationSweepTests found the three rows named by nothing it could see.
+            yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
+
+            // The same gap, one field over, and nothing draws a minion's name yet. Swept anyway,
+            // so the first screen that does gets a word rather than 'minion.wight.name'.
+            if (spec.Minions is not null)
+            {
+                yield return new AuthoredKey(path, "the minion's name key", spec.Minions.NameKey);
             }
         }
 

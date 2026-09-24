@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 
@@ -63,4 +64,27 @@ public sealed class DictionaryLocalizer : ILocalizer
     /// <inheritdoc />
     public string Get(LocKey key) =>
         _rows.TryGetValue(key, out string text) ? text : key.ToString();
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <c>TableLocalizer.Format</c>'s answers, in the invariant culture, which is what that adapter
+    /// uses over a table with an empty locale: the row substituted, the row whole on a
+    /// placeholder its arguments cannot fill, and the key's own text on a miss (M6-10).
+    /// </remarks>
+    public string Format(LocKey key, params object[] args)
+    {
+        if (!_rows.TryGetValue(key, out string row))
+        {
+            return key.ToString();
+        }
+
+        try
+        {
+            return string.Format(CultureInfo.InvariantCulture, row, args ?? Array.Empty<object>());
+        }
+        catch (FormatException)
+        {
+            return row;
+        }
+    }
 }

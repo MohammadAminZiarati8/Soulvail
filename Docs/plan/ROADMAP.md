@@ -24,7 +24,7 @@
 | **M4** | **First boss and run end** ✅ | Boss phases, Warden of Ash, death → Shard payout, profile persisted, a run-end screen. The UI work M3-15's acceptance surfaced was ruled out after the tag and stays [ledger row 1](#carry-forward-into-m5) — **now with a number under it** — **complete, accepted on Editor evidence, tagged `m4`** | 11 |
 | **M5** | **Second class** ✅ | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select — **complete, accepted on Editor evidence, tagged `m5`** | 15 |
 | **M6** | **Systems complete** ✅ | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables — **complete, accepted on Editor evidence; `m6` the owner's to tag** — [both bugs ruled to go first](#m6--systems-complete) are merged | 22 + 5 |
-| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio | 9 |
+| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio — **specs being written, one group of five done** | 20 (5 counted) |
 | **M8** | **Feel, perf, ship** | Game-feel checklist, options/accessibility, device tiering, thermal, per-class balance, store build | 6 |
 
 ---
@@ -77,28 +77,93 @@
 
 **Closed at M6-11: eight rows — four discharged by their owners, one measurement discharged with its tuning carried, one ruled and handed to M6-11e, two carried whole — none dropped.** What carries is [M7 rows 1–3 and 8](#carry-forward-into-m7). The rows and M6-11's closing table are in [the archive](archive/ROADMAP-M6.md#carry-forward-into-m6). This heading stays so links into it keep resolving.
 
-## M7 — Content pass *(titles only)*
+## M7 — Content pass
 
-| ID | Task |
-|---|---|
-| M7-00a | Specs for M7's first group, written against [its ledger](#carry-forward-into-m7) — M6's rule, one milestone on |
-| M7-01 | Lunger, Weaver, Warden (core + views) |
-| M7-02 | Elites + affixes |
-| M7-03 | Choirmother |
-| M7-04 | All 81 nodes |
-| M7-05 | Ashen Reach: 8–12 arenas + art |
-| M7-06 | Drowned Choir: 8–12 arenas + art |
-| M7-07 | Audio layers, telegraph cues, boss music |
-| M7-08 | M7 acceptance, tag `m7` |
+**Goal:** GD §19's V1 content, in the loop M6 finished — six archetypes through the Warden, Elites
+with affixes, a second boss, three 27-node trees, two biomes of 8–12 arenas with art, and sound.
+**Done when:** M7-08's checklist passes and `m7` is tagged.
+
+**M7 opens with five spec groups, and only the first is counted.** M6's three groups turned eleven
+titles into twenty-two tasks, each group moving the count by three; M7's nine titles are content
+rather than systems, so the groups are cut by *kind of work* and the table below carries predicted
+titles for the four that are not written yet. **All five are written before M7-01a is built** — the
+rule this section has held since M5 — and the fifth waits on the owner (below).
+
+- **M7-00a — the roster, in core.** [M7-01a](tasks/M7-01a-the-lunger.md),
+  [M7-01b](tasks/M7-01b-the-weaver.md), [M7-01c](tasks/M7-01c-the-warden.md),
+  [M7-02a](tasks/M7-02a-what-an-elite-is.md), [M7-02b](tasks/M7-02b-who-buys-an-elite.md). **The seam is
+  M6-00a's — the assembly**: all five are `Soulvail.Core` and authored data, and no view is edited.
+  **Both titles split, and neither the way the table predicted.** *"Lunger, Weaver, Warden (core +
+  views)"* is three core tasks and a view task for 00b, because each archetype is its own mechanism
+  — a committed line, a death that becomes two bodies, and a hit that must know its direction. The
+  **Weaver needs no behaviour** (it is a Chaser carrying a split block, the Bloater's explosion one
+  block over), and the **Warden is the costly one**: `ApplyDamage` has never known where a hit came
+  from, so it grows a required source through six production doors and 37 test sites, and
+  `enemy.warden` has to be taken back from the boss's body. *"Elites + affixes"* splits into the body
+  and the buyer here, and the affixes go to 00b. **[Ledger row 11](#carry-forward-into-m7) was
+  diagnosed while counting** — it is `WaveComposer.Upgrade`, not the roster — and it moved the build
+  order (below).
+- **M7-00b — the affixes, and what a player sees** *(predicted)*: M7-02c the affix roll and the three
+  that act while alive, M7-02d the two that fire on death, M7-01d the three archetypes drawn to be
+  read (the Lunger's lane, the Weaver's split, the Warden's shield and blocked flash), M7-02e an Elite
+  you can see. **Found while counting 00a and handed to it:** no attack-rate `Stat` exists for
+  Hasted, invulnerability is one un-counted bool that Warded would share with a boss beat, no zone
+  can hurt the player and a ninth zone throws, and `EnemySystem` holds no projectile reference for
+  Splintered.
+- **M7-00c — the second boss** *(predicted)*: M7-03, the Choirmother, core and view — GD §9.2's
+  rotating Weaver shields and a sonic cone line of sight breaks — and the boss roster that puts her at
+  stage 10.
+- **M7-00d — the eighty-one nodes** *(predicted)*: M7-04, against [row 10](#carry-forward-into-m7)'s
+  Pact coverage and [row 2](#carry-forward-into-m7)'s curves, and the three parking-lot lines M7-04
+  promotes.
+- **M7-00e — the biomes, the sound and the close** *(predicted)*: M7-05, M7-06, M7-07 and M7-08.
+  **It cannot be written until the owner rules on two things only the owner can:** where the art
+  comes from — GD §21.4's asset kits, generated meshes or hand-modelled, which is money and look — and
+  where the audio comes from. Neither blocks 00b–00d.
+
+**Build order is not ID order, again, and row 11 is why.** The Warden costs 14, the dearest
+archetype; rostered before [M7-02b](tasks/M7-02b-who-buys-an-elite.md), a capped wave would become
+twenty Wardens instead of twenty Bloaters. So the Elite's two tasks go between the Weaver and the
+Warden, and the `Depends on` column enforces it.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| M7-00a | Specs for the roster in core — three archetypes, the Elite, and the capped wave | S | — | ☑ |
+| M7-00b | Specs for the affixes and what a player sees *(predicted)* | S | M7-00a | ☐ |
+| M7-00c | Specs for the Choirmother *(predicted)* | S | M7-00b | ☐ |
+| M7-00d | Specs for the eighty-one nodes *(predicted)* | S | M7-00c | ☐ |
+| M7-00e | Specs for the biomes, the sound and the close — **waits on the owner's art and audio rulings** | S | M7-00d | ☐ |
+| M7-01a | [The Lunger, and a dash you can step out of](tasks/M7-01a-the-lunger.md) | S | M7-00e | ☐ |
+| M7-01b | [The Weaver, and a stage that waits for its children](tasks/M7-01b-the-weaver.md) | S | M7-01a | ☐ |
+| M7-02a | [What an Elite is: a body upgraded at the door](tasks/M7-02a-what-an-elite-is.md) | S | M7-01b | ☐ |
+| M7-02b | [Who buys an Elite, and a full arena that keeps its mix](tasks/M7-02b-who-buys-an-elite.md) — [row 11](#carry-forward-into-m7) | M | M7-02a | ☐ |
+| M7-01c | [The Warden, and a hit that knows where it came from](tasks/M7-01c-the-warden.md) | M | M7-02b | ☐ |
+| M7-02c | The affix roll, and the three that act while alive *(00b)* | — | M7-01c | ☐ |
+| M7-02d | The two affixes that fire on death *(00b)* | — | M7-02c | ☐ |
+| M7-01d | Three archetypes a player can read *(00b)* | — | M7-02d | ☐ |
+| M7-02e | An Elite you can see *(00b)* | — | M7-01d | ☐ |
+| M7-03 | Choirmother *(00c)* | — | M7-02e | ☐ |
+| M7-04 | All 81 nodes *(00d)* | — | M7-03 | ☐ |
+| M7-05 | Ashen Reach: 8–12 arenas + art *(00e)* | — | M7-04 | ☐ |
+| M7-06 | Drowned Choir: 8–12 arenas + art *(00e)* | — | M7-05 | ☐ |
+| M7-07 | Audio layers, telegraph cues, boss music *(00e)* | — | M7-06 | ☐ |
+| M7-08 | M7 acceptance, tag `m7` *(00e)* | — | everything | ☐ |
 
 ### Carry-forward into M7
 
 **What M7's specs must absorb.** Opened at [M6-11](tasks/M6-11-acceptance-and-tag.md) on [M2's terms](#carry-forward-into-m2), unchanged through six milestones: every row names the task that must deal with it, and **a row leaves only when its owner's *As built* says it is answered.** Three rows carry from [M6's table](#carry-forward-into-m6), five are the tasks M6-11 created under its rule 8, and three are what its instruments found. **M4-07 rule 11 holds** — every row names an unmerged owner or says it has none and why — **and M5-08's rule applies at the opening**: a row that wants a number names the instrument that will take it. M6-11's instrument is described in [its *As built*](tasks/M6-11-acceptance-and-tag.md#as-built); it was reverted, so a row naming it means *build that probe again*.
 
+**Every open row was re-read against an unmerged owner at [M7-00a](tasks/M7-01a-the-lunger.md)'s spec
+group — M6-00a's practice, one milestone on.** **Row 11 changed owner and gained a diagnosis**: it is
+`WaveComposer.Upgrade` swapping a capped wave's every body for the dearest archetype, so M7-01's
+archetypes do not answer it and [M7-02b](tasks/M7-02b-who-buys-an-elite.md) alone does. **Row 2 gained
+a finding** a grep produced: the one-shot rule has only ever been checked against the Oathbound's 140
+HP. Rows 1, 3 and 9 are unchanged and say why; row 10 is M7-00d's to spec.
+
 | # | Finding | Owner | Cost of leaving it |
 |---|---|---|---|
 | 1 | **The device debt, carried whole from [M6 row 1](archive/ROADMAP-M6.md#carry-forward-into-m6), six tags deep.** Nothing has run outside the Editor, and `Screen.dpi` reads 120 here against a phone's 400 ([Traps §9](../Traps.md)). Multi-touch is still the one row that risks a *feature*, kill-from-recents the one *correctness* row. **M6-11 adds four Editor numbers a phone must re-take:** bodies peaked at **25** under Swarm at stage 37 against GD §11.3's 28; frame time held **p95 ≤ 17.8 ms at 60 fps** to stage 39 on this PC; every screen that opens costs **one ~50 ms frame**; and the pseudo-locale walk found **no plain English and nothing clipped** — at 120 dpi. The rest of the list is M6 row 1's, in the archive. | **No owner, by ruling**: the instrument is a phone. The first hardware session; **M8-xx** if none arrives sooner | **High and compounding.** Every milestone adds rows and none retire. |
-| 2 | **Per-class balance against GD §12.4 and §12.5 — the measurement is discharged, the tuning is owed.** M6-11's instrument A took all three curves ([table](tasks/M6-11-acceptance-and-tag.md#as-built)): the Oathbound **4 flat** over 4–16 (M5-08); the Gravecaller **4 → 8** by 16, out of band from 9, with M6-07c's ×1.15 start now holding stages 1–4 at 4; the Emberwright **under the band at 2 hits from stage 1 to 9**, then **3–4 from 10 to 39** with a full tree — its *"3 cold"* is arithmetic nobody lives, because the blast warms Kindling within three orbs. **Kindling at full ran 2 %, 36 % and 0 % of combat** over three runs: it tracks being hit. **The Warden's fight lengthens with depth** — 89, 99, 102, 105, 113 and ~126 s at stages 5–35 — and leaves GD §9.1's 75–120 near stage 33. **A stage-5 Warden hit took 36 % of an Emberwright's maximum**, one point over §12.4's one-shot rule. **No natural run has passed stage 19**, so §12.5's 35–50 horizon is still unmeasured, and every early-levelling number carries [row 6](#carry-forward-into-m7)'s eight extra Husks. | **[M8-05](#m8--feel-perf-ship-titles-only)**, *"balance pass per class against the death horizon"*; the **instrument** is M6-11's probe, rebuilt | **Medium now, high at M7-04**, which authors 81 nodes against these curves. |
+| 2 | **Per-class balance against GD §12.4 and §12.5 — the measurement is discharged, the tuning is owed.** M6-11's instrument A took all three curves ([table](tasks/M6-11-acceptance-and-tag.md#as-built)): the Oathbound **4 flat** over 4–16 (M5-08); the Gravecaller **4 → 8** by 16, out of band from 9, with M6-07c's ×1.15 start now holding stages 1–4 at 4; the Emberwright **under the band at 2 hits from stage 1 to 9**, then **3–4 from 10 to 39** with a full tree — its *"3 cold"* is arithmetic nobody lives, because the blast warms Kindling within three orbs. **Kindling at full ran 2 %, 36 % and 0 % of combat** over three runs: it tracks being hit. **The Warden's fight lengthens with depth** — 89, 99, 102, 105, 113 and ~126 s at stages 5–35 — and leaves GD §9.1's 75–120 near stage 33. **A stage-5 Warden hit took 36 % of an Emberwright's maximum**, one point over §12.4's one-shot rule. **No natural run has passed stage 19**, so §12.5's 35–50 horizon is still unmeasured, and every early-levelling number carries [row 6](#carry-forward-into-m7)'s eight extra Husks. **Added at M7-00a — the one-shot rule has only ever been checked against the Oathbound.** `EnemyLookTests.Assets_ObeyTheOneShotRule` measures 35 % of **140**; the Emberwright has **70** and the Gravecaller **80**, so against the frailest class §12.4's ceiling is 24.5 and `contact × d(n)` passes it for the **Bloater from stage 20**, the **Warden (M7-01c) from 27**, and the **Spitter and Lunger (M7-01a) from 31** — all inside §12.5's horizon. M7's archetypes are authored inside the envelope the roster already had rather than below it, because lowering the new ones alone closes nothing; the rule's test should walk the frailest class, and that is a tuning decision. | **[M8-05](#m8--feel-perf-ship-titles-only)**, *"balance pass per class against the death horizon"*; the **instrument** is M6-11's probe, rebuilt | **Medium now, high at M7-04**, which authors 81 nodes against these curves. |
 | 3 | **The UI redesign — every taken node shown, Active or Passive marked, Auto marked by something orbiting it — carried unchanged from [M6 row 3](archive/ROADMAP-M6.md#carry-forward-into-m6).** Sequencing is still **icons → readout → rotation**. M6 added to what it will have to draw rather than moving it: four priced Sanctum rows that can refuse, a violet meter with a Claiming mark, a Pact card, three class cards with a lock, a fourth `NodeState`, and a borrowed branch the tree screen still cannot show. | **None, by the owner's standing ruling.** M7-04 brings the nodes and M7-05/06 the art; **M8-01** is the earliest honest owner | **Medium and static** until M7-04 authors 81 nodes the screen cannot draw. |
 | 4 | **Continue resumes the run the Menu read at boot, and its opening write destroys the real save.** `SavedRun` is set once by `BootFlow` and by nothing else, so within one app session a quit-and-Continue restores a stale run — or a dead one. Found by losing a stage-30 run to it. **DISCHARGED at [M6-11a](tasks/M6-11a-continue-resumes-the-run-on-disk.md#as-built)**, before `m6`: `SaveWriter` mirrors every snapshot into `SavedRun` and clears it on every death, each before the disk operation is queued, so Continue offers the run last written — in one session as across a relaunch. Red-checked: without the mirror, exactly the five new rows fail, one of them with *"Continue resumed the run boot read, not the one just played."* A failed write leaves memory newer than disk, which is rule 3's stated cost. | **[M6-11a](tasks/M6-11a-continue-resumes-the-run-on-disk.md)**, before `m6` | **High**: silent data loss on the ordinary in-app path. |
 | 5 | **A resume keeps the meter and drops the Claiming.** A Claimed run whose meter fell below 100 — a paid cast, a Cleanse — comes back unclaimed, so quitting is a way out of GD §10.3's death sentence. Witnessed at stage 36. **DISCHARGED at [M6-11b](tasks/M6-11b-a-resume-keeps-the-claiming.md#as-built)**, before `m6`, as a v4 re-cut rather than a v5: `RunEconomy.Claimed` is saved beside the meter, and `Veilrot.Restore` latches on the flag *or* on 100, so a file written before the flag still restores as M6-04 rule 9 said. Red-checked: with the restore ignoring the flag exactly the three latch rows fail, one with *"A quit is not a way out of GD §10.3's hundred seconds"*; with the recorder and the mirror dropping it, exactly five. `ClaimedFor` still restarts at zero, which is rule 9's stated cost. | **[M6-11b](tasks/M6-11b-a-resume-keeps-the-claiming.md)**, before `m6`: M6-01b's re-cut licence expires at the tag, after which the same fix is a v5 | Medium, and cheaper this week than next. |
@@ -106,8 +171,8 @@
 | 7 | **The Sanctum sells a Reroll a finished tree can never spend** — five bought for 775 Essence at stage 37. **DISCHARGED at [M6-11d](tasks/M6-11d-no-reroll-for-a-finished-tree.md#as-built)**: `CanBuy(Reroll)` asks Banish's question — anything left in the pool — after the price, and the dead row says *"Nothing left to offer"*; a charge already banked stays banked. Red-checked: with `Reroll => true` back, exactly the four refusal rows fail. An orphaned Upgrade still counts as left — the [parking lot](#parking-lot)'s line. | **[M6-11d](tasks/M6-11d-no-reroll-for-a-finished-tree.md)** | Low. |
 | 8 | **Two rows assert a premise rather than a behaviour**: [M6 row 4](archive/ROADMAP-M6.md#carry-forward-into-m6)'s wedge, ruled at M6-11 to mean *"the seam is synchronous"*, and known issue 7's Editor clock. **DISCHARGED at [M6-11e](tasks/M6-11e-two-rows-that-assert-a-premise.md#as-built)**: step 5 probes the body's trigger capsule at fact time — found where the move put it, absent where the snapshot saw it — and the wedge's diagnosis and its control row are gone; **PlayMode 25 / 0 / 0 on ten passes of ten**, the body walking 0.949–1.031 m against a 0.6 m floor. The animator row `Assume`s a zero clock, and a sibling asserts the ratio and its ceiling of 6 on a moved one, so exactly one runs. Red-checked: without the flush, exactly the three fact-time rows fail; without the ceiling, the sibling alone, *"Expected: 6.0f But was: 11.9999971f"*. | **[M6-11e](tasks/M6-11e-two-rows-that-assert-a-premise.md)** | Low but corrosive: a flaking suite trains everyone to re-run rather than read. |
 | 9 | **The Sanctum is not a decision in play.** GD §10 is the section the design says not to cut, and in two natural runs the owner spent **0 of 448 Essence**, declining Heal at 7 / 85 HP **by choice**. From about stage 13 a full tree leaves three of four rows refused, and Essence reaches **2 400 unspent by stage 30**. The shop has nothing worth buying early and nothing to sell late. | **The owner's ruling first** — what a finished tree's Essence buys is a question about the game — **then M8-05** for prices against income; the **instrument** is Essence earned and spent per run, by service | **Medium**: GD §13.3 is one of M6's pillars and it plays as zero. |
-| 10 | **A Pact is taken when it is seen, and it is almost never seen.** One Pact card in **62 offers** across five runs, taken the one time. **4 of 36 nodes carry a Pact and the Emberwright's twelve carry none**, and a finished tree rolls no offer at all — so GD §13.2's *"continuous temptation"* is about 2 % of level-ups, and zero after stage ~13. CH §3.1's new ¾ budget also asks for Keen Censer and Zealotry to be re-read. | **[M7-04](#m7--content-pass-titles-only)**, which authors all 81 nodes — coverage is authoring; the **instrument** is offers rolled against Pacts shown | **Medium**: the signature system is invisible. |
-| 11 | **At depth the waves collapse into Bloaters.** From stage ~21 waves 4–5, and from ~26 waves 3–5, are **Bloaters only**, 20–28 each, with Husks and Spitters confined to waves 1–2. Echo-as-*replace* therefore changes nothing from stage 26 (waves 3, 4 and 5 are identical), and Swarm barely moves the count because the cap already binds. The cause is not diagnosed here. | **[M7-01](#m7--content-pass-titles-only)**, which adds three archetypes the composer can buy, and **[M7-02](#m7--content-pass-titles-only)**, which spends `WavePlan.UnspentThreat`; the **instrument** is per-wave composition at stages 20–35 | **Medium at M7**: GD §8's variety of pressure is gone past stage 25. |
+| 10 | **A Pact is taken when it is seen, and it is almost never seen.** One Pact card in **62 offers** across five runs, taken the one time. **4 of 36 nodes carry a Pact and the Emberwright's twelve carry none**, and a finished tree rolls no offer at all — so GD §13.2's *"continuous temptation"* is about 2 % of level-ups, and zero after stage ~13. CH §3.1's new ¾ budget also asks for Keen Censer and Zealotry to be re-read. | **[M7-04](#m7--content-pass)**, which authors all 81 nodes — coverage is authoring, and **M7-00d** specs it; the **instrument** is offers rolled against Pacts shown | **Medium**: the signature system is invisible. |
+| 11 | **At depth the waves collapse into Bloaters.** From stage ~21 waves 4–5, and from ~26 waves 3–5, are **Bloaters only**, 20–28 each, with Husks and Spitters confined to waves 1–2. Echo-as-*replace* therefore changes nothing from stage 26 (waves 3, 4 and 5 are identical), and Swarm barely moves the count because the cap already binds. ~~The cause is not diagnosed here.~~ **Diagnosed at M7-00a, by arithmetic that reproduces the log to the wave:** it is `WaveComposer.Upgrade`, working as written. A capped wave with allowance left swaps its cheapest body for the dearest affordable archetype until nothing is affordable — at stage 21, wave 5's 213 against a cap of 20 leaves ~87 after the draw, which buys twenty swaps to the Bloater. **So new archetypes do not answer it; they move it** — with M7-01c's Warden rostered, a capped wave is twenty Wardens. The fix is the rule: surplus **promotes** drawn bodies to Elites and never replaces the mix, GD §11.2's *"expensive archetypes"* refused on this evidence. | **[M7-02b](tasks/M7-02b-who-buys-an-elite.md)** alone, which is why M7-01c depends on it; the **instrument** is `Compose_ACappedDeepWaveKeepsItsMix` over stages 20–35 in the suite, and per-wave composition in Play at **M7-08** | **Medium at M7**: GD §8's variety of pressure is gone past stage 25. |
 
 ## M8 — Feel, perf, ship *(titles only)*
 
@@ -241,7 +306,11 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   because a melee strike is the only way an enemy hurts the player that does *not* already resolve
   against the real `RunState.PlayerPosition`. **That reader is what the rename would delete**: with a
   target id, "am I in reach of my quarry" and "did I hit the player" stop being the same question.
-  Promoted by M7-01, or by the second mechanic that redirects an enemy.
+  ~~Promoted by M7-01~~ — **re-aimed at M7-00a**: M7-01 builds the Lunger, the Weaver and the Warden
+  and no Choir, which GD §19 puts in V2, and the one M7 archetype that needed the real player —
+  the Lunger's dash — reads `EnemySystem.PlayerPosition` rather than taking a target
+  ([M7-01a](tasks/M7-01a-the-lunger.md) rule 6). Promoted by V2's Choir, or by the second mechanic
+  that redirects an enemy.
 - **`handslot.l` / `handslot.r` are empty**, so the Knight swings a fist. The 31 props in
   `ThirdParty/KayKit/Adventurers/Props` are built to parent there. Promoted when the weapon-ownership
   question (class property vs swappable) is settled, because the answer decides who owns the socket.
@@ -289,9 +358,10 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   threshold **crossed, published and otherwise silent**, and substituting a shipped archetype is
   refused on GD §8.1's own rule that two enemies pressuring the player identically means one is
   redundant: a Husk at 4 threat following a 50-Veilrot player is a free kill, which would make the
-  threshold a **reward**. The ambient half is M7-07's audio pass. Promoted by **M7-01**, the task
-  that builds archetypes — which also inherits the second half of this, that §10.2's *"regardless of
-  depth"* is a deliberate override of §8.2's schedule and needs to be read as one.
+  threshold a **reward**. The ambient half is M7-07's audio pass. ~~Promoted by **M7-01**~~ —
+  **re-aimed at M7-00a**, because M7-01 builds three archetypes and the Revenant is not one of them:
+  promoted by **V2's Revenant** (GD §19), which also inherits the second half of this, that §10.2's
+  *"regardless of depth"* is a deliberate override of §8.2's schedule and needs to be read as one.
 - ~~**`PaletteTests.Palette_HasTheColoursNobodyReadsYet` has been false since M4-06, and it is
   green.**~~ **Promoted at M6-00b to [ledger row 8](#carry-forward-into-m6), because it acquired two
   owners** — M6-03a narrows it into a sweep and M6-03b retires it — which is this section's own
@@ -347,7 +417,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   rule 10 does not wait on it either, and it is the first task that can put a number under it:**
   instrument B plays past stage 25 for the first time, so *what one wave in five is actually worth at
   stage 35* is measured for free rather than derived from the triangular split on paper. The entry
-  records the figure so M7-02 opens with one instead of with 6.7 %. **The figure, from M6-11's log:** from stage ~26 waves 3, 4 and 5 are the **same composition — Bloaters only, 26–28 each** — so *replace* removes nothing at all at the depths Echo would be dealt, and *add* doubles a full-cap Bloater wave. The collapse itself is [M7 row 11](#carry-forward-into-m7).
+  records the figure so M7-02 opens with one instead of with 6.7 %. **The figure, from M6-11's log:** from stage ~26 waves 3, 4 and 5 are the **same composition — Bloaters only, 26–28 each** — so *replace* removes nothing at all at the depths Echo would be dealt, and *add* doubles a full-cap Bloater wave. The collapse itself is [M7 row 11](#carry-forward-into-m7). **Re-aimed at M7-00a:** [M7-02b](tasks/M7-02b-who-buys-an-elite.md) keeps a capped wave's mix, so waves 3–5 differ again and M6-11's figure stops being true the day it merges — M7-02b builds no Echo (its rule 10). Promoted by **M7-08's instrument**, which re-measures per-wave composition after M7-02b and is the first figure the choice can be made against.
 - **CI: EditMode tests on every PR** (GitHub Actions + `game-ci/unity-test-runner`). Worth it since M1-21 — 455 tests, and M2 adds migration tests, which rot silently. Blocker: a Unity licence activation secret, not the value.
 - **PR template** mirroring a spec's Acceptance section. Not adopted yet.
 - **A real Android device.** Every **[device]** row is deferred until one exists and the first hardware session runs them all. BlueStacks cannot run the APK (M0-20a), so there is no fallback outside the Editor.

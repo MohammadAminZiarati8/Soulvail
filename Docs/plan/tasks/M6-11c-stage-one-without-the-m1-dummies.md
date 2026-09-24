@@ -56,4 +56,57 @@ mechanism fixtures use, and `FrameOrderTests` and `PlayerProjectileTests` dress 
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**Rules 1–3 as written.** `Run.unity`'s `_dummyPositions` is `[]` and `_dummySpec` is still the Husk;
+`RunScope`, `SpawnPlan` and `SpawnAll` did not move. `RunSceneTests` opens the scene additively once
+for the fixture and closes it again — unless it was already open, in which case it is read as it
+stands and left alone, so a test pass never closes the owner's scene or drops an unsaved edit.
+
+**Three deviations.**
+
+*1. Each row asserts the answer as well as the field.* The spec's *Then* column read the serialized
+field alone, and a field is a premise — [M7 row 8](../ROADMAP.md#carry-forward-into-m7)'s whole
+lesson. So `RunScene_DressesNoEnemy` also invokes `BuildSpawnPlan` and asserts it **is**
+`SpawnPlan.Empty`, and `RunScene_StillPrewarmsTheEnemyPool` invokes `PrewarmCount` and asserts
+`DeviceEnemyCap + 1`, the 29 bodies rule 2 is about. Both are private and reached by name; neither has
+an overload, so M6-11b's `AmbiguousMatchException` tax does not apply today, and a rename fails with
+*"RunScope has no …, so this row tests nothing."*
+
+*2. Two statements in `RunScope` were corrected outside the table, text only.* `_dummySpec`'s tooltip
+said *"Leave empty for an arena that starts bare"* — the exact edit rule 2's row now goes red on, so
+the Inspector was instructing the regression. `PrewarmCount`'s remarks said a scene without an
+archetype is one where *"core will never ask for a body"*, false since M2-05 made the director the
+spawner. Both now say the archetype is what the prewarm keys on, and why `Run.unity` keeps it. No
+member moved.
+
+*3. Rule 3 has no row, and it was witnessed in Play instead.* It is rule 1 composed with
+`StageFlowTests.Arrival_SpawnsNothing`, which already holds the director's half. A sampler counting
+active `EnemyView`s every frame, Boot → Menu → Oathbound: **0 from the Run scene's first frame to
+t + 2.83 s** — two seconds of arrival and wave 1's telegraph — then 1, 2 and 3 by t + 3.55 s. The
+same sampler before this change would have opened on 8. The probe was a `Unity_RunCommand` and left
+nothing in the tree; `run.json` and `profile.json` were backed up before it and restored after.
+
+**Found on the way: the PlayMode suite writes the owner's real `run.json`.**
+`BootSmokeTests.Descend_StartsARun_AndRefusesASecondTap` reaches a run through boot's
+`LocalJsonSaveStore` over `persistentDataPath` — the file was rewritten in the minute the suite ran.
+EditMode's resume rows shadow the store for exactly this reason (`ResumeFlowTests.PlayARun`); the
+smoke row does not. So every handover's PlayMode pass has replaced whatever run an Editor playtest
+left. Not this task's → [parking lot](../ROADMAP.md#parking-lot).
+
+**Rules ↔ rows.** 1: `RunScene_DressesNoEnemy`. 2: `RunScene_StillPrewarmsTheEnemyPool`. 3: the
+witness above, and `Arrival_SpawnsNothing`.
+
+**Red checks, on the Editor.** Against the unchanged scene, the fixture ran **1 / 1**:
+`RunScene_DressesNoEnemy` failed with *"Expected: 0 But was: 8"* while the prewarm row passed, since
+cap + 1 already outranked eight. With `_dummySpec` cleared in the file and the positions empty, **1 / 1**
+the other way, the prewarm row failing with *"_dummySpec was cleared with the dummies."* The scene was
+restored byte for byte and re-imported.
+
+**Verified:** **3 154 EditMode / 0 / 0** (+2 on M6-11b's 3 152), then **PlayMode 26 / 0 / 0** on the
+first pass. Console clean after each compile; after the EditMode pass, 16 errors and 30 warnings,
+M6-11b's count, each from a passing negative-path row — opening `Run.unity` added none. Zero new
+analyzer warnings; `dotnet format` green over both C# files; `TimeManager.asset` re-serialised and
+was reverted.
+
+**Stage 1 is ten Husks now, not eighteen.** Early levels come slower, and every early-XP figure in
+[M7 row 2](../ROADMAP.md#carry-forward-into-m7)'s table was taken with eight extra kills in stage 1.
+Retuning is M8-05's, as *Out of scope* says.

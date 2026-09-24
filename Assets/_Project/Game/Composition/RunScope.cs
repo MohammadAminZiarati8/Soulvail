@@ -223,8 +223,9 @@ namespace Soulvail.Game.Composition
                  "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
         [SerializeField] private LayerMask _coverLayer;
 
-        [Tooltip("The archetype the dummies below are spawned as. Leave empty for an arena that " +
-                 "starts bare.")]
+        [Tooltip("The archetype the dummies below are spawned as — and what the enemy pool's " +
+                 "prewarm keys on, so empty means no bodies built up front. An arena that starts " +
+                 "bare empties the list below and keeps this, as Run.unity does (M6-11c).")]
         [SerializeField] private EnemyDefinition _dummySpec;
 
         [Tooltip("Where the dummies dressed into this scene stand when the player walks in, in " +
@@ -1082,10 +1083,10 @@ namespace Soulvail.Game.Composition
         /// hitches at exactly the moment the first telegraph rings have to be read.
         /// </para>
         /// <para>
-        /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
-        /// <see cref="SpawnPlan.Empty"/>, so core will never ask for a body — and building twelve
-        /// of them anyway would make an undressed Run scene, the fastest iteration loop in the
-        /// project, the slowest one to enter.
+        /// Nothing at all when no archetype is assigned, whatever the position list says. The
+        /// director still spawns into such a scene, so its pool instantiates on demand — which is
+        /// why the shipped <c>Run.unity</c> dresses no dummy and keeps the archetype (M6-11c), and
+        /// <c>RunSceneTests</c> holds it there.
         /// </para>
         /// </remarks>
         private int PrewarmCount()

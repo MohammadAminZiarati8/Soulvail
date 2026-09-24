@@ -982,15 +982,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
-  _dummyPositions:
-  - {x: 8, y: 0, z: 0}
-  - {x: 5.66, y: 0, z: 5.66}
-  - {x: 0, y: 0, z: 8}
-  - {x: -5.66, y: 0, z: 5.66}
-  - {x: -11, y: 0, z: 0}
-  - {x: -7.78, y: 0, z: -7.78}
-  - {x: 0, y: 0, z: -11}
-  - {x: 7.78, y: 0, z: -7.78}
+  _dummyPositions: []
   _threatArrowPrefab: {fileID: 3318980382163284144, guid: 0981ac6eefc5b634ea7eeda8652c008a, type: 3}
   _threatArrowRoot: {fileID: 2052539127}
   _telegraphRingPrefab: {fileID: 6128909648785952691, guid: 31a893a7d849acf4cb6a1b2fabda5955, type: 3}

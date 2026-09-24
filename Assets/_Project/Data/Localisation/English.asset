@@ -351,6 +351,8 @@ MonoBehaviour:
     _text: No Veilrot to cleanse
   - _key: ui.sanctum.refused.nothing
     _text: Nothing left to banish
+  - _key: ui.sanctum.refused.complete
+    _text: Nothing left to offer
   - _key: ui.sanctum.banish.prompt
     _text: Choose a node to banish
   - _key: ui.sanctum.banish.cancel

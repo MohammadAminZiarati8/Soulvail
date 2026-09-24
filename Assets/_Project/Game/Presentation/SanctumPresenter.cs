@@ -64,11 +64,15 @@ namespace Soulvail.Game.Presentation
         private static readonly LocKey HealDetailKey = new LocKey("ui.sanctum.heal.detail");
         private static readonly LocKey CleanseDetailKey = new LocKey("ui.sanctum.cleanse.detail");
 
-        /// <summary>Rule 3's four refusals. <em>Short</em> is the balance's; the other three are each a service's own.</summary>
+        /// <summary>
+        /// Rule 3's five refusals. <em>Short</em> is the balance's; the other four are each a service's
+        /// own — <em>complete</em> the Reroll's, since M6-11d.
+        /// </summary>
         private static readonly LocKey RefusedShortKey = new LocKey("ui.sanctum.refused.short");
         private static readonly LocKey RefusedFullKey = new LocKey("ui.sanctum.refused.full");
         private static readonly LocKey RefusedCleanKey = new LocKey("ui.sanctum.refused.clean");
         private static readonly LocKey RefusedNothingKey = new LocKey("ui.sanctum.refused.nothing");
+        private static readonly LocKey RefusedCompleteKey = new LocKey("ui.sanctum.refused.complete");
 
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — timeScale is 0 while " +
                  "this is up, so a scaled tween would freeze (rule 9).")]
@@ -401,7 +405,7 @@ namespace Soulvail.Game.Presentation
         /// <remarks>
         /// <c>CanBuy</c> false plus one read. The balance decides <em>short</em>; otherwise the
         /// service names its own refusal, because <c>SanctumShop.CanBuy</c> refuses exactly one
-        /// worthless case per service and Reroll has none.
+        /// worthless case per service — the Reroll's, a tree with nothing left to offer, since M6-11d.
         /// </remarks>
         private static LocKey Detail(SanctumService service, int price, bool canBuy, int balance)
         {
@@ -423,6 +427,7 @@ namespace Soulvail.Game.Presentation
 
             return service switch
             {
+                SanctumService.Reroll => RefusedCompleteKey,
                 SanctumService.Banish => RefusedNothingKey,
                 SanctumService.Heal => RefusedFullKey,
                 SanctumService.Cleanse => RefusedCleanKey,

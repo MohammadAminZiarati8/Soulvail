@@ -176,11 +176,11 @@ deferred (rule 7).
 - **The UI redesign.** Blocked on M7's icons; the owner's standing ruling since the `m3` tag puts it
   in neither M4 nor M5. This task judges and hands forward.
 - **Fixing what the feel verdict finds**, unless it is a number (rule 8).
-- **Class unlocks, the Sanctum, and anything that spends a Shard.** M6-02 and M6-09.
+- **Class unlocks, the Sanctum, and anything that spends a Shard.** M6-02b and M6-09b.
 - **Veilrot**, and the Rot branch becoming what its name says. M6-04.
 - **Tether, Rot Nova, the three Keystones and the remaining fifteen nodes.** M5-06b rules 2 and 3;
   M7-04.
-- **The Emberwright.** M6-07. Two classes is what M5 promised.
+- **The Emberwright.** M6-07a. Two classes is what M5 promised.
 
 ## As built
 

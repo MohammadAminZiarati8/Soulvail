@@ -62,7 +62,7 @@ public readonly struct EnemyDied    { public readonly int Id; public readonly Co
 ## Out of scope
 
 - The physics query and any visuals — M1-12.
-- XP on kill — M3-01. Essence — M6-01.
+- XP on kill — M3-01. Essence — M6-01a.
 
 ## As built
 

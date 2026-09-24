@@ -107,8 +107,8 @@ namespace Soulvail.Game.Controls
 - **An Overflow toast** — M3-10 or M3-13, from `OverflowGranted`.
 - **A `Palette` file** — M3-13, ledger row 6. Rule 8 adds a reader to it and no more.
 - **Localised text** — M6-10, ledger row 9. Rule 7 draws the key.
-- **Reroll and Banish buttons** — M6-02; the commands do not exist (M3-08a's Out of scope).
-- **Pact cards** (GD §13.2, M6-05) — a drawn offer is never corrupted yet, so a card has one appearance.
+- **Reroll and Banish buttons** — M6-03a; the commands do not exist (M3-08a's Out of scope).
+- **Pact cards** (GD §13.2, M6-05b) — a drawn offer is never corrupted yet, so a card has one appearance.
 
 ## As built
 

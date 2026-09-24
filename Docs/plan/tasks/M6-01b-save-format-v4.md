@@ -84,10 +84,10 @@ public readonly struct RunEconomy
     /// <summary>GD §10's meter, in [0, 100]. Zero until M6-04 writes it.</summary>
     public float Veilrot { get; }
 
-    /// <summary>How many rerolls this run has bought — GD §13.3's doubling price. M6-02's.</summary>
+    /// <summary>How many rerolls this run has bought — GD §13.3's doubling price. M6-02b's.</summary>
     public int RerollsBought { get; }
 
-    /// <summary>How many of them have been used. Never more than were bought. M6-02's.</summary>
+    /// <summary>How many of them have been used. Never more than were bought. M6-02b's.</summary>
     public int RerollsSpent { get; }
 }
 

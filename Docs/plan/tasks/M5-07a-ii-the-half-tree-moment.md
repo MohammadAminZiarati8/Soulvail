@@ -113,7 +113,7 @@ void ChooseSplash(ContentId characterId, int branch);
    named, not invented.** CH §5.4: *"If you have unlocked nothing, the moment does not happen. A
    player holding only the Oathbound never sees this screen."* `PlayerProfile` **v3 carries no unlock
    set** — `Version`, `HapticsEnabled`, `SeenFirstActiveHint`, `Shards` — and nothing awards one
-   until M6-09, so `Candidates` is *every class in the catalog with a tree, except this run's own*.
+   until M6-09a, so `Candidates` is *every class in the catalog with a tree, except this run's own*.
    **With the shipped two that is exactly one**, so the screen's first page has one card and the
    choice CH §5.4 calls mandatory is a formality until a third class exists. **That is stated rather
    than smoothed over**: skipping the class page when there is one candidate would be a special case
@@ -253,12 +253,12 @@ branch index; `Restore` called twice.
 
 - **The index space, the Keystone drop and the walk order.** [M5-07a-i](M5-07a-i-the-runs-tree-widens.md).
 - **A fourth column on the tree screen.** Rule 12, and M5-08 observes.
-- **Class unlocks gating who may be borrowed from.** Rule 3. M6-09, and a `PlayerProfile` v4.
+- **Class unlocks gating who may be borrowed from.** Rule 3. M6-09a, and a `PlayerProfile` v4.
 - **Saving the choice.** Rule 6, with the one case it costs written down.
 - **Borrowing twice, or from two classes.** M5-07a-i rule 4.
 - **A compensating bonus for a run with no candidate.** CH §5.4 offers none and inventing one would
   pay a player for a build state.
-- **Pact variants of borrowed nodes.** GD §13.2, M6-05.
+- **Pact variants of borrowed nodes.** GD §13.2, M6-05a/b.
 
 ## As built
 

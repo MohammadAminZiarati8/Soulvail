@@ -67,71 +67,71 @@ deferred (rule 7).
 
 **The systems a run is made of, complete** — the ROADMAP's *ends when* for M6, read literally
 
-- [ ] **[play]** A stage clear pays Essence, the number climbs, and it survives a `Continue` ([M6-01a](M6-01a-essence-wallet-and-drops.md), [M6-01b](M6-01b-save-format-v4.md))
-- [ ] **[play]** A cleared stage ends in an **untimed room** rather than a door, and **a boss stage is not over while an add is still swinging** — [ledger row 5](../ROADMAP.md#carry-forward-into-m6) closed by looking at it ([M6-02a](M6-02a-the-sixth-phase.md))
-- [ ] **[play]** Four priced rows; three of them can be refused and each says **why** ([M6-02b](M6-02b-four-things-essence-buys.md), [M6-03a](M6-03a-the-sanctum-screen.md))
-- [ ] **[play]** A meter down the right edge, four marks, a counter in the corner, and a banished node drawn as gone ([M6-03b](M6-03b-the-meter-on-the-right-edge.md))
-- [ ] **[play]** Veilrot only goes up, 75 takes a fifth of the maximum, and **100 buys a hundred seconds and then kills you** ([M6-04](M6-04-veilrot-thresholds-and-the-claiming.md))
-- [ ] **[play]** A violet card with its own sentence and its own Rot price, and taking it moves the meter ([M6-05a](M6-05a-what-a-pact-is.md), [M6-05b](M6-05b-the-offer-that-rolls-one.md))
-- [ ] **[play]** An Ordeal is dealt at 25 and every ten stages after, four of them accumulate, and each moves exactly the one dial it owns ([M6-06a](M6-06a-what-an-ordeal-is.md), [M6-06b](M6-06b-four-ordeals-and-two-refusals.md))
-- [ ] **[play]** A third class: a slow orb with a 3 m blast, a ramp that pays for not being touched, a teleport that leaves fire, and a tree of its own ([M6-07a](M6-07a-the-emberwright-and-the-cinder-orb.md), [M6-07b](M6-07b-blink-and-the-ground-that-burns.md), [M6-08](M6-08-emberwright-tree-v1.md))
-- [ ] **[play]** The Oathbound cleanses at half price, the Gravecaller opens at 15 Rot and gets stronger as it rots, and the Emberwright casts through a cooldown for 5 ([M6-07c](M6-07c-what-each-class-does-with-the-veil.md))
-- [ ] **[play]** A locked class shows its price and **a Shard is spent for the first time in this project** ([M6-09a](M6-09a-profile-v4-and-what-a-shard-buys.md), [M6-09b](M6-09b-a-class-you-cannot-pick-yet.md))
-- [ ] `RunSnapshot.CurrentVersion` is **4** and `PlayerProfile.CurrentVersion` is **4**, and **each was bumped exactly once** — M6-01b's and M6-09a's whole argument, checkable by reading two constants
-- [ ] The whole game runs in the pseudo-locale with nothing clipped and **no plain English left on any screen** ([M6-10](M6-10-the-rest-of-localisation.md))
+- [x] **[play]** A stage clear pays Essence, the number climbs, and it survives a `Continue` ([M6-01a](M6-01a-essence-wallet-and-drops.md), [M6-01b](M6-01b-save-format-v4.md))
+- [x] **[play]** A cleared stage ends in an **untimed room** rather than a door, and **a boss stage is not over while an add is still swinging** — [ledger row 5](../ROADMAP.md#carry-forward-into-m6) closed by looking at it ([M6-02a](M6-02a-the-sixth-phase.md))
+- [x] **[play]** Four priced rows; three of them can be refused and each says **why** ([M6-02b](M6-02b-four-things-essence-buys.md), [M6-03a](M6-03a-the-sanctum-screen.md))
+- [x] **[play]** A meter down the right edge, four marks, a counter in the corner, and a banished node drawn as gone ([M6-03b](M6-03b-the-meter-on-the-right-edge.md))
+- [x] **[play]** Veilrot only goes up, 75 takes a fifth of the maximum, and **100 buys a hundred seconds and then kills you** ([M6-04](M6-04-veilrot-thresholds-and-the-claiming.md))
+- [x] **[play]** A violet card with its own sentence and its own Rot price, and taking it moves the meter ([M6-05a](M6-05a-what-a-pact-is.md), [M6-05b](M6-05b-the-offer-that-rolls-one.md))
+- [x] **[play]** An Ordeal is dealt at 25 and every ten stages after, four of them accumulate, and each moves exactly the one dial it owns ([M6-06a](M6-06a-what-an-ordeal-is.md), [M6-06b](M6-06b-four-ordeals-and-two-refusals.md))
+- [x] **[play]** A third class: a slow orb with a 3 m blast, a ramp that pays for not being touched, a teleport that leaves fire, and a tree of its own ([M6-07a](M6-07a-the-emberwright-and-the-cinder-orb.md), [M6-07b](M6-07b-blink-and-the-ground-that-burns.md), [M6-08](M6-08-emberwright-tree-v1.md))
+- [x] **[play]** The Oathbound cleanses at half price, the Gravecaller opens at 15 Rot and gets stronger as it rots, and the Emberwright casts through a cooldown for 5 ([M6-07c](M6-07c-what-each-class-does-with-the-veil.md))
+- [x] **[play]** A locked class shows its price and **a Shard is spent for the first time in this project** ([M6-09a](M6-09a-profile-v4-and-what-a-shard-buys.md), [M6-09b](M6-09b-a-class-you-cannot-pick-yet.md))
+- [x] `RunSnapshot.CurrentVersion` is **4** and `PlayerProfile.CurrentVersion` is **4**, and **each was bumped exactly once** — M6-01b's and M6-09a's whole argument, checkable by reading two constants
+- [x] The whole game runs in the pseudo-locale with nothing clipped and **no plain English left on any screen** ([M6-10](M6-10-the-rest-of-localisation.md))
 
 **Instrument A — hits-to-kill, three classes, [ledger row 2](../ROADMAP.md#carry-forward-into-m6)**
 
-- [ ] **[play]** Hits to kill a Husk at stages **1, 5, 10, 15, 20, 25, 30**, per class, against GD §12.4's 3–5 band, with the tree taken recorded beside each number
-- [ ] **[play]** **The Emberwright's two predicted numbers**: 3 cold and 2 at full Kindling at stage 1 ([M6-07a](M6-07a-the-emberwright-and-the-cinder-orb.md)'s ruling), and whether the curve holds inside the band where the Gravecaller's does not ([M6-08](M6-08-emberwright-tree-v1.md) rule 11's ×2.9)
-- [ ] **[play]** **How often Kindling is actually at full.** The ramp needs thirty consecutive weapon hits on 70 HP; if a played run never sees +60 %, the signature is decorative and that is a finding rather than a number
-- [ ] **This is the fourth acceptance row 2 has been owed to** (M3-15, M4-07, M5-08, here). M5-08 discharged the *measurement* for two classes; **M6 owes the third and nothing else**, and if it carries again the reason is written here rather than implied
+- [x] **[play]** Hits to kill a Husk at stages **1, 5, 10, 15, 20, 25, 30**, per class, against GD §12.4's 3–5 band, with the tree taken recorded beside each number
+- [x] **[play]** **The Emberwright's two predicted numbers**: 3 cold and 2 at full Kindling at stage 1 ([M6-07a](M6-07a-the-emberwright-and-the-cinder-orb.md)'s ruling), and whether the curve holds inside the band where the Gravecaller's does not ([M6-08](M6-08-emberwright-tree-v1.md) rule 11's ×2.9)
+- [x] **[play]** **How often Kindling is actually at full.** The ramp needs thirty consecutive weapon hits on 70 HP; if a played run never sees +60 %, the signature is decorative and that is a finding rather than a number
+- [x] **This is the fourth acceptance row 2 has been owed to** (M3-15, M4-07, M5-08, here). M5-08 discharged the *measurement* for two classes; **M6 owes the third and nothing else**, and if it carries again the reason is written here rather than implied
 
 **Instrument B — past stage 25, for the first time**
 
-- [ ] **[play]** Reach **stage 35 at minimum** with the debug stage-jump, on at least one class, with the overlay up
-- [ ] **[play]** **Which Ordeals were dealt, at which stages, and what each visibly did** — Famine's thinner income, Vigil's two cards, Swarm's fuller arena, Hunger's faster meter ([M6-06b](M6-06b-four-ordeals-and-two-refusals.md) manual step 2's list, played rather than reasoned)
-- [ ] **[play]** **Body count at stage 35 under Swarm**, against GD §11.3's 28 and the 37 M5-08 measured. **And whether the arena is readable**, which is what GD §12.2's cap is half for
-- [ ] **[play]** **Frame time past stage 30.** M5-08 found 36 hitches of 50–300 ms across ~30 minutes and correlated none with a mechanic; this is the same measurement at twice the depth and a raised cap
-- [ ] **[play]** **The Claiming, end to end**: reach 100, and record whether a hundred seconds of +100 % damage bought two more stages or one — GD §10.3's own claim, measured
-- [ ] **[play]** **What the Sanctum costs at depth.** Essence is `20 + 4n` (GD §15) and the Reroll doubles; at stage 35 income is 160 a stage and a fifth reroll is 400. Whether the shop is still a decision or has become free money is a number this is the first run able to take
+- [x] **[play]** Reach **stage 35 at minimum** with the debug stage-jump, on at least one class, with the overlay up
+- [x] **[play]** **Which Ordeals were dealt, at which stages, and what each visibly did** — Famine's thinner income, Vigil's two cards, Swarm's fuller arena, Hunger's faster meter ([M6-06b](M6-06b-four-ordeals-and-two-refusals.md) manual step 2's list, played rather than reasoned)
+- [x] **[play]** **Body count at stage 35 under Swarm**, against GD §11.3's 28 and the 37 M5-08 measured. **And whether the arena is readable**, which is what GD §12.2's cap is half for
+- [x] **[play]** **Frame time past stage 30.** M5-08 found 36 hitches of 50–300 ms across ~30 minutes and correlated none with a mechanic; this is the same measurement at twice the depth and a raised cap
+- [x] **[play]** **The Claiming, end to end**: reach 100, and record whether a hundred seconds of +100 % damage bought two more stages or one — GD §10.3's own claim, measured
+- [x] **[play]** **What the Sanctum costs at depth.** Essence is `20 + 4n` (GD §15) and the Reroll doubles; at stage 35 income is 160 a stage and a fifth reroll is 400. Whether the shop is still a decision or has become free money is a number this is the first run able to take
 
 **Ledger row 4 — what the project's one frame-order assertion means (a verdict, not a fix)**
 
-- [ ] **The row is M6-11's *as a verdict*** and M4-07 rule 11 admits that only because it is a judgement rather than a repair. The standing ruling is unchanged: **no task may "fix" it without deciding what the assertion means first**
-- [ ] The instrument has now answered **twice** and both times said ***wrong wedge*** rather than *late sync* — M5-06a's failure put the body **0.0001 m behind the apex**. So the seam's synchronisation is not late and the fault is the fixture's own **zero-margin apex**
-- [ ] **Decide, and write the decision down rather than the outcome:** either `Ticker_RunsTheStepsInOrder` asserts *"the body was inside the wedge"* (and the apex needs a margin, which weakens the claim by a measurable amount that has to be stated), or it asserts *"the seam is synchronous"* (and the wedge test is the wrong probe for it and should be replaced by one that reads the sync directly)
-- [ ] **What changed since the row was written, and it changes the reasoning rather than the verdict:** the row says *"M6 opens `Tests/PlayMode` for nothing"*, which was true of [M6-00a](M6-01a-essence-wallet-and-drops.md)'s five Core specs and **false as of M6-00b** — [M6-03a](M6-03a-the-sanctum-screen.md) adds a sixth phase to `RunTicker`, and `Frame_LevelUpPhaseRunsAboveCommands` lives in that fixture. So a task **did** have a reason to be in the file, and whether it disturbed the flake is evidence this acceptance has and the row's author did not
-- [ ] **Known issue 7 is beside it and is not the same kind.** `Animator_AttackSpeedIsUnreachableFromAnEditorClock` asserts `Time.time` is 0 outside Play and an Editor that has ticked reads 0.73 — a **false premise**, where row 4 is a **margin**. Rule both or say which is carried
+- [x] **The row is M6-11's *as a verdict*** and M4-07 rule 11 admits that only because it is a judgement rather than a repair. The standing ruling is unchanged: **no task may "fix" it without deciding what the assertion means first**
+- [x] The instrument has now answered **twice** and both times said ***wrong wedge*** rather than *late sync* — M5-06a's failure put the body **0.0001 m behind the apex**. So the seam's synchronisation is not late and the fault is the fixture's own **zero-margin apex**
+- [x] **Decide, and write the decision down rather than the outcome:** either `Ticker_RunsTheStepsInOrder` asserts *"the body was inside the wedge"* (and the apex needs a margin, which weakens the claim by a measurable amount that has to be stated), or it asserts *"the seam is synchronous"* (and the wedge test is the wrong probe for it and should be replaced by one that reads the sync directly)
+- [x] **What changed since the row was written, and it changes the reasoning rather than the verdict:** the row says *"M6 opens `Tests/PlayMode` for nothing"*, which was true of [M6-00a](M6-01a-essence-wallet-and-drops.md)'s five Core specs and **false as of M6-00b** — [M6-03a](M6-03a-the-sanctum-screen.md) adds a sixth phase to `RunTicker`, and `Frame_LevelUpPhaseRunsAboveCommands` lives in that fixture. So a task **did** have a reason to be in the file, and whether it disturbed the flake is evidence this acceptance has and the row's author did not
+- [x] **Known issue 7 is beside it and is not the same kind.** `Animator_AttackSpeedIsUnreachableFromAnEditorClock` asserts `Time.time` is 0 outside Play and an Editor that has ticked reads 0.73 — a **false premise**, where row 4 is a **margin**. Rule both or say which is carried
 
 **Ledger rows closed by their owners — verified, not assumed** (rule 2)
 
-- [ ] **Row 5** — `SpawnDirector.IsStageComplete` requires the adds cleared, `Boss_AnAddCannotHitThePlayerThroughTheSanctum` green, and the depth the payout reads is unmoved ([M6-02a](M6-02a-the-sixth-phase.md))
-- [ ] **Row 7** — [M6-10](M6-10-the-rest-of-localisation.md) shipped, and **it discharges as something other than what the row asked for**: the mechanism, two sweeps and a pseudo-locale, with *"the other languages' tables"* refused because no document names a language. Confirm the refusal is on the [parking lot](../ROADMAP.md#parking-lot) with the decision it waits on, and that the row's count moved **31 → 65**
-- [ ] **Row 8** — `Palette_HasTheColoursNobodyReadsYet` narrowed to a sweep at [M6-03a](M6-03a-the-sanctum-screen.md) and retired at [M6-03b](M6-03b-the-meter-on-the-right-edge.md); both `Palette.Essence`'s and `Palette.Veilrot`'s summaries corrected. **Neither did the other's half**, which the row required in writing
-- [ ] **Rows 1 and 3 do not close and have never claimed they would** — each says *no M6 owner* with the reason. Re-state what M6 **added** to row 1 (the Sanctum's four rows, the meter's violet, the Claiming's falling bar, the Pact card, Swarm's raised cap, three class cards with two refusals, and [M6-10](M6-10-the-rest-of-localisation.md)'s 35 % expansion check) rather than re-listing the whole row
+- [x] **Row 5** — `SpawnDirector.IsStageComplete` requires the adds cleared, `Boss_AnAddCannotHitThePlayerThroughTheSanctum` green, and the depth the payout reads is unmoved ([M6-02a](M6-02a-the-sixth-phase.md))
+- [x] **Row 7** — [M6-10](M6-10-the-rest-of-localisation.md) shipped, and **it discharges as something other than what the row asked for**: the mechanism, two sweeps and a pseudo-locale, with *"the other languages' tables"* refused because no document names a language. Confirm the refusal is on the [parking lot](../ROADMAP.md#parking-lot) with the decision it waits on, and that the row's count moved **31 → 65**
+- [x] **Row 8** — `Palette_HasTheColoursNobodyReadsYet` narrowed to a sweep at [M6-03a](M6-03a-the-sanctum-screen.md) and retired at [M6-03b](M6-03b-the-meter-on-the-right-edge.md); both `Palette.Essence`'s and `Palette.Veilrot`'s summaries corrected. **Neither did the other's half**, which the row required in writing
+- [x] **Rows 1 and 3 do not close and have never claimed they would** — each says *no M6 owner* with the reason. Re-state what M6 **added** to row 1 (the Sanctum's four rows, the meter's violet, the Claiming's falling bar, the Pact card, Swarm's raised cap, three class cards with two refusals, and [M6-10](M6-10-the-rest-of-localisation.md)'s 35 % expansion check) rather than re-listing the whole row
 
 **The M6 question, and it is the milestone's** (record the answer and *why*)
 
-- [ ] **[play]** **Is the economy a decision or an inventory?** GD §13.3's shop has four services and GD §10 is the game's *"if we cut one thing, it should not be this"* section. The honest failure mode is that the player buys Heal every time and never touches the other three, or that Essence accumulates faster than there is anything to spend it on
-- [ ] **[play]** **Is a Pact ever taken?** GD §13.2's whole design is a continuous temptation. If the answer is *never* the price is too high or the power is too low; if it is *always* the corruption is not a cost. **Count them** — offers rolled, offers taken — the way M5-08 counted casts
-- [ ] **[play]** **Is the Emberwright a third class or a third reskin?** M5-08 deferred the same question about the Gravecaller to **M8-01** on the owner's ruling, *"because second class or reskin cannot be judged on capsules"*. That ruling covers this one too, and the honest thing is to ask it and defer it in the same sentence rather than to leave the row off
+- [x] **[play]** **Is the economy a decision or an inventory?** GD §13.3's shop has four services and GD §10 is the game's *"if we cut one thing, it should not be this"* section. The honest failure mode is that the player buys Heal every time and never touches the other three, or that Essence accumulates faster than there is anything to spend it on
+- [x] **[play]** **Is a Pact ever taken?** GD §13.2's whole design is a continuous temptation. If the answer is *never* the price is too high or the power is too low; if it is *always* the corruption is not a cost. **Count them** — offers rolled, offers taken — the way M5-08 counted casts
+- [x] **[play]** **Is the Emberwright a third class or a third reskin?** M5-08 deferred the same question about the Gravecaller to **M8-01** on the owner's ruling, *"because second class or reskin cannot be judged on capsules"*. That ruling covers this one too, and the honest thing is to ask it and defer it in the same sentence rather than to leave the row off
 
 **Findings this milestone's specs predicted and the playtest must confirm or refuse**
 
-- [ ] **A healing circle and a burning circle are the same cyan** — [M6-07b](M6-07b-blink-and-the-ground-that-burns.md) rule 9. Reachable only by an Emberwright that borrows *Judgment* at CH §5.4's half-tree moment. Record whether it reads as a bug
+- [x] **A healing circle and a burning circle are the same cyan** — [M6-07b](M6-07b-blink-and-the-ground-that-burns.md) rule 9. Reachable only by an Emberwright that borrows *Judgment* at CH §5.4's half-tree moment. Record whether it reads as a bug
 - [ ] **An Oathbound is offered *Ash* and *Arcana* and refused *Ember*** — [M6-08](M6-08-emberwright-tree-v1.md) rule 8's third sweep, which is M5-08a's defect caught by counting rather than by playing. Either the refusal is drawn (rule 8 working) or it is not (a finding, and `M6-11a`)
-- [ ] **A Claimed Gravecaller at 100 Rot does four times its base weapon damage** — [M6-07c](M6-07c-what-each-class-does-with-the-veil.md) rule 9, pinned rather than discovered. Record whether that is a build or a bug
-- [ ] **The owner's own profile finds the Emberwright locked at 3 500** — [M6-09a](M6-09a-profile-v4-and-what-a-shard-buys.md) rule 10's stated cost, and the only place the gate is visible on an install that has been playing since `m5`
+- [x] **A Claimed Gravecaller at 100 Rot does four times its base weapon damage** — [M6-07c](M6-07c-what-each-class-does-with-the-veil.md) rule 9, pinned rather than discovered. Record whether that is a build or a bug
+- [x] **The owner's own profile finds the Emberwright locked at 3 500** — [M6-09a](M6-09a-profile-v4-and-what-a-shard-buys.md) rule 10's stated cost, and the only place the gate is visible on an install that has been playing since `m5`
 - [ ] **A run restored at exactly 100 Veilrot comes back Claimed with the clock reset** — M6-04 rule 9's stated cost, *"a `Continue` being worth up to a hundred seconds"*. Seen once on purpose so it is never filed as a bug
 
 **Performance and hygiene** (GD §11.1, AR §14)
 
-- [ ] `AllocationAssert` rows green across every new `Tick` path — `Veilrot`, `EssenceWallet`, `Ordeals`, `SanctumShop`, `Kindling`, `ZoneSystem`'s burn, and `SkillRunner`'s paid cast
+- [x] `AllocationAssert` rows green across every new `Tick` path — `Veilrot`, `EssenceWallet`, `Ordeals`, `SanctumShop`, `Kindling`, `ZoneSystem`'s burn, and `SkillRunner`'s paid cast
 - [ ] **[play]** No hitch when the Sanctum opens, when an Ordeal is dealt, when the Claiming starts, or when a pool burns twenty-eight bodies
-- [ ] Six assemblies, zero compile errors, zero analyzer warnings, the full suite green through `TestRunnerApi` — **EditMode and PlayMode both, and PlayMode run more than once**
-- [ ] `dotnet format whitespace --folder --verify-no-changes` green over `Assets/_Project`
-- [ ] `git diff m5 HEAD -- ProjectSettings/` shows **nothing**, or one line committed on purpose with `ALLOW_PROJECT_SETTINGS=1` and named here. **`TimeManager.asset` is expected**
+- [x] Six assemblies, zero compile errors, zero analyzer warnings, the full suite green through `TestRunnerApi` — **EditMode and PlayMode both, and PlayMode run more than once**
+- [x] `dotnet format whitespace --folder --verify-no-changes` green over `Assets/_Project`
+- [x] `git diff m5 HEAD -- ProjectSettings/` shows **nothing**, or one line committed on purpose with `ALLOW_PROJECT_SETTINGS=1` and named here. **`TimeManager.asset` is expected**
 
 ## Behaviour
 
@@ -204,19 +204,19 @@ deferred (rule 7).
 
 ## Acceptance
 
-- [ ] Checklist ticked; the M6 question answered, with the Editor-versus-device grain stated
-- [ ] **Instrument A carries a table, not a shrug** — hits to kill at seven depths for three classes,
+- [x] Checklist ticked; the M6 question answered, with the Editor-versus-device grain stated
+- [x] **Instrument A carries a table, not a shrug** — hits to kill at seven depths for three classes,
   with the tree taken beside each number, and the Emberwright's two predicted figures confirmed or
   refused
-- [ ] **Instrument B carries a log** — a run past stage 35, the Ordeals it was dealt, the body count
+- [x] **Instrument B carries a log** — a run past stage 35, the Ordeals it was dealt, the body count
   under Swarm, the frame times, and what the Claiming bought
-- [ ] **Row 4 carries a decision about what the assertion means**, not a tally of how often it failed
-- [ ] Every ledger row struck or carried, with the *As built* that closed it named, and **every
+- [x] **Row 4 carries a decision about what the assertion means**, not a tally of how often it failed
+- [x] Every ledger row struck or carried, with the *As built* that closed it named, and **every
   carried row naming an unmerged owner** (rule 2)
-- [ ] **Rule 10's three lines each have a sentence**: one ruled, two refused with owners
-- [ ] `PROGRESS.md` updated, M6 entries archived, Current State pointing at **M7-00a**, and rule 5's
+- [x] **Rule 10's three lines each have a sentence**: one ruled, two refused with owners
+- [x] `PROGRESS.md` updated, M6 entries archived, Current State pointing at **M7-00a**, and rule 5's
   rolling treatment applied under the measured 10 000-byte cap
-- [ ] Rule 11's two passes done, and the parking-lot line updated with the sixth milestone
+- [x] Rule 11's two passes done, and the parking-lot line updated with the sixth milestone
 - [ ] `m6` exists on `main` — **the owner's to make**, with rule 7's message
 
 ## Out of scope
@@ -236,4 +236,45 @@ deferred (rule 7).
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+**No production code: five played runs, a reverted probe, five bug specs.** A temporary `AcceptanceProbe` on `DebugOverlay` wrote `Logs/m6-11-probe.log`: hits per Husk with Kindling at the first hit, bodies, frame times, the economy, Pacts, Veilrot, Ordeals and waves, plus keys for levels, Veilrot and sturdy. The five runs were a Gravecaller in `qps-ploc`, two natural Emberwrights (dead at 4 and 9), and two sturdy Emberwrights, 10 → 30 and 30 → 39. The probe and the temporary *Starting Stage* were reverted.
+
+### Instrument A — hits to kill a Husk
+
+| Stage | Oathbound | Gravecaller | Emberwright |
+|---|---|---|---|
+| 1 | 3 (M5-08) | **4** | **2** warm, 2 hot |
+| 5 | 4 (M5-08) | 3 † | **2** hot |
+| 10 | 4 (M5-08) | 2 † Claimed | 3 warm |
+| 15 | 4 (M5-08) | 7 (M5-08) | 4 cold, 3 warm (14/16) |
+| 20 | — | — | 4 cold (19/21) |
+| 25 | — | — | 4 cold, 3–4 warm (24/26) |
+| 30 | — | — | 4 cold (29/31) |
+| 35 | — | — | 4 cold (33/37) |
+
+† debug-assisted. Boss stages leave no Husk killed by the weapon alone, so the stages either side are shown; stages 10–39 carry a granted full tree. **The Emberwright's *3 cold* is true arithmetic (17 × 2 < 36) that nobody lives**, because the blast warms Kindling within three orbs. *2 at full* is confirmed. **The curve holds the band from 10 to 39 by starting under it**, not by the ×2.9: cold damage grew only ×1.8. **Kindling was at full 2 %, 36 % and 0 %** of combat: it tracks being hit. **The Gravecaller's ×1.15 start** holds stages 1–4 at 4. **Row 2's measurement is discharged**; its tuning is M8-05's.
+
+### Instrument B — past stage 25
+
+- **Depth:** reached **39**. **Hunger** was dealt at 25, and F6 read +15 rather than +10. **Swarm** was dealt at 35. Four accumulate only in the suite.
+- **Bodies:** peak **23** before Swarm and **25** under it, against GD §11.3's 28. M5-08's 37 was its probe double-counting.
+- **Waves:** from stage ~26, waves 3–5 are Bloaters only.
+- **Frames:** p95 ≤ 17.8 ms to stage 39. Hitches were screen opens (one ~50 ms frame) and Editor focus loss.
+- **Claiming:** 100 s bought 4 shallow stages; at stage 36 it buys ~1.3. It never finished deep (M6-11b).
+- **Sanctum at depth:** 200 Essence a stage at 30, a fifth reroll at 400, and 2 400 unspent once the tree filled.
+- **The Warden:** 89 → ~126 s over stages 5–35.
+
+### Row 4 — the verdict
+
+**The assertion means *the seam is synchronous*.** The wedge made a zero-margin claim the row never meant to make, and its instrument said *wrong wedge* every time — including once here, in 11 passes, with the body 0.0001 m behind the apex. M6-03a's sixth phase moved nothing: 3 failures in about 41 passes since it merged, this task's one included. Known issue 7 is a false premise, not a margin. Both repairs are [M6-11e](M6-11e-two-rows-that-assert-a-premise.md).
+
+### Rule 10 and the M6 question
+
+GD §13.2 is ruled for the build: *"~1.8× the budget, authored — may carry a downside"*. CH §3.1's clause becomes a ¾ budget. Fracture stays refused (M7-05/06); Echo stays refused (M7-02) and now has its figure. **The economy is ignored**: 0 of 448 Essence spent in natural runs, and Heal declined at 7 / 85 HP by choice. **A Pact is taken when seen and almost never seen**: 1 in 62 offers. **Third class or reskin** is deferred to M8-01 by M5-08's ruling. All three are M7 rows 9–10.
+
+### Deviations
+
+1. **Rule 6: `m4` was tagged and pushed on 2026-09-20**, which Current State denied for two milestones.
+2. **The *"quit from the Sanctum"* step cannot be done.** The pause icon is dead while the shop holds the pause, and the boundary save precedes the shop.
+3. **Instrument B used sturdy mode and starting stages 10 and 30**, since no natural run reached 20.
+4. **The Oathbound was not played**; its column is M5-08's. Its Ember refusal rests on M6-08's sweep, and the heal circle was seen and not reported as confusing.
+5. **Five bugs, where rule 8 named one** — [a](M6-11a-continue-resumes-the-run-on-disk.md) to [e](M6-11e-two-rows-that-assert-a-premise.md). **a and b should go before the tag**: a is data loss, and b's cheap fix expires at the tag.

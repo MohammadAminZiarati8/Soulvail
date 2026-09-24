@@ -188,7 +188,7 @@ seconds?* — goes on [ledger row 3](../ROADMAP.md#carry-forward-into-m5) at thi
   NavMesh path to a moving destination is `NavPathSense`'s and it only ever targets the player.
 - **Saving a decoy.** Rule 9.
 - **Enemies retargeting onto Wights.** M5-04a rule 9 refuses it for the whole milestone.
-- **The Emberwright's Blink.** M6-07, and it leaves a fire pool, which is a `ZoneSystem` question.
+- **The Emberwright's Blink.** M6-07b, and it leaves a fire pool, which is a `ZoneSystem` question.
 
 ## As built
 

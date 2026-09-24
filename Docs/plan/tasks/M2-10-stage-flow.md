@@ -183,8 +183,8 @@ public bool HasGate;
 ## Out of scope
 
 - **The arena itself** — M2-11a. This task reads one gate position off the snapshot and knows nothing else about the world it is in; `RunScope` carries a serialized gate marker until an `ArenaView` supplies one.
-- **The Sanctum**, which GD §7.1 puts between Clear and Gate. It is M6-02/03, and there is no economy, no shop and no heal to put in it. When it lands it becomes a sixth phase between `Clear` and `Gate`, which is why `Clear` is a state rather than an instant.
-- **Essence auto-collecting on clear** (GD §7.1 step 3) — M6-01, nothing drops yet.
+- **The Sanctum**, which GD §7.1 puts between Clear and Gate. It is M6-02a/M6-03a, and there is no economy, no shop and no heal to put in it. When it lands it becomes a sixth phase between `Clear` and `Gate`, which is why `Clear` is a state rather than an instant.
+- **Essence auto-collecting on clear** (GD §7.1 step 3) — M6-01a, nothing drops yet.
 - **Persisting the boundary.** GD §7.3 wants run state written to disk at every stage boundary and that is exactly this moment, but the DTO does not exist until M2-13a and the write is M2-14a's. Nothing is stubbed for it; `StageCleared` is the event it will hang on.
 - **A stage timer or a par time.** GD §7.3's 40–75 s is a design target for the budget curve, not a clock the game runs.
 - **Off-screen arrows for the last survivors** — M2-12a, which owns GD §7.3's 8-second stall rule. No wave timeout is introduced here to paper over it.

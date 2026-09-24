@@ -109,7 +109,7 @@ public LocKey DescriptionKey { get; }
    (M3-10b rule 7, M3-08b), for AR §14's reason at a moment the player is about to enter a run:
    a screen that instantiates is a screen that hitches. **The prefab carries three cards** — CH §3's
    whole roster — and `Open` binds as many as the catalog holds and calls `Clear` on the rest, so the
-   Emberwright's arrival at M6-07 is a card being filled rather than a prefab being edited. **More
+   Emberwright's arrival at M6-07a is a card being filled rather than a prefab being edited. **More
    authored classes than cards is a warning, once, not a throw**: `EnemyViews.WarnAboutCapacityOnce`'s
    rule — a menu that refused to open would be a build nobody could play.
 4. **A card draws five things and none of them is a number the code invented.** The name and the
@@ -133,8 +133,8 @@ public LocKey DescriptionKey { get; }
    makes classes the one thing meta-progression buys — *"Shard cost or achievement"* — and
    `PlayerProfile` **v3 carries no unlock set**: four fields, `Version`, `HapticsEnabled`,
    `SeenFirstActiveHint`, `Shards`. Adding one here would be a **v4** and a migration for a gate
-   nothing can open, since nothing spends a Shard until M6-02 and nothing awards an achievement at
-   all. So the screen offers what the catalog holds, **M6-09 is where a card learns to be locked**,
+   nothing can open, since nothing spends a Shard until M6-09b and nothing awards an achievement at
+   all. So the screen offers what the catalog holds, **M6-09b is where a card learns to be locked**,
    and the card's `Bind` takes no `bool interactable` — a parameter with one legal value is a
    promise the next task has to keep rather than a feature.
 7. **`Back` closes without writing, and `Continue` is untouched.** A player who opens the screen and
@@ -170,7 +170,7 @@ public LocKey DescriptionKey { get; }
 | `Select_ATapIsTakenOnce` | a card / tapped twice before the load returns / one `Set`, one load — `MenuPresenter.Descend`'s double-tap guard, moved rather than copied |
 | `Select_AFailedLoadGivesTheButtonsBack` | a loader that throws / tapped / the cards are interactable again and the exception is logged — `MenuPresenter`'s rule |
 | `Select_BackWritesNothing` | the screen open / `Back` / it closes, the menu is up, and `PendingRun.IsSet` is false — rule 7 |
-| `Select_EveryCardIsSelectable` | both shipped classes / `Open` / both buttons interactable, and `Bind` has no lock parameter — **rule 6**, so M6-09 has to add one deliberately |
+| `Select_EveryCardIsSelectable` | both shipped classes / `Open` / both buttons interactable, and `Bind` has no lock parameter — **rule 6**, so M6-09b has to add one deliberately |
 | `Select_ProfileIsStillVersionThree` | `PlayerProfile.CurrentVersion` / — / **3**, and no field was added — rule 6 |
 | `Continue_DoesNotOpenTheScreen` | a save present / `Continue` / the Run scene loads directly and the screen was never up — rule 7 |
 | `Continue_ResumesTheSavedClass` | a snapshot naming `character.gravecaller` / `Continue` / `PendingRun` carries that id, from the snapshot and not from a card |
@@ -216,7 +216,7 @@ anybody has seen the thing it names.**
 
 ## Out of scope
 
-- **Class unlocks.** Rule 6. CH §6, `PlayerProfile` v4 and M6-09.
+- **Class unlocks.** Rule 6. CH §6, `PlayerProfile` v4 and M6-09a/b.
 - **A mode-select screen.** Rule 2. V1 ships one mode (GD §4.5).
 - **The second-class splash at half tree.** CH §5.4 is [M5-07a-i](M5-07a-i-the-runs-tree-widens.md)
   and [M5-07a-ii](M5-07a-ii-the-half-tree-moment.md); this screen is chosen *before* a run and that

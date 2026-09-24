@@ -98,7 +98,7 @@ Only these files change. Anything else is a deviation: say so in *As built*.
    spare. **Rule 3 of M5-06a's stated cost applies to all three**: a Wight already standing keeps its
    old numbers, and the arena is replaced within CH §3.2's twenty seconds.
 6. **Rot carries no Veilrot and no Pact, exactly as the Oathbound's Judgment carried none.** GD
-   §13.2's corrupted nodes are M6-05's and have no shape yet; GD §10's meter is M6-04's. The branch
+   §13.2's corrupted nodes are M6-05a's and have no shape yet; GD §10's meter is M6-04's. The branch
    is authored as *the shroud and what decay feeds* — a faster Shroudstep, more experience per kill,
    a faster player and faster Wights — and is renamed by nobody: the branch **key** is
    `tree.gravecaller.rot`, so M6-04 fills it in rather than replacing it. M3-12c rule 6's ruling, one
@@ -204,10 +204,10 @@ row for the new argument, and `ModeDefinition.OnValidate` on the two new fields.
   fires on.** [M5-06a](M5-06a-what-a-legion-node-may-reach.md).
 - **Tether and Rot Nova.** Rule 3. M7-04, with the Keystones.
 - **The Host, Second Death, Rot Bloom, and the remaining fifteen nodes.** Rule 2. M7-04.
-- **Veilrot, Pacts and Ordeals.** Rule 6. M6-04 and M6-05.
+- **Veilrot, Pacts and Ordeals.** Rule 6. M6-04 and M6-05a/b.
 - **Making the class playable.** [M5-07](M5-07-class-select-screen.md).
 - **`ShardPayout.PerStage` / `PerBoss`**, the other two `const`s ADR-0006 does not cover. Struck at
-  M4-07 and a [parking-lot](../ROADMAP.md#parking-lot) line promoted by M6-02; they are not part of
+  M4-07 and a [parking-lot](../ROADMAP.md#parking-lot) line promoted by M6-01a, where it fired; they are not part of
   row 5(i).
 - **Retuning Overflow.** Rule 11 ships the shipped value; what it *should* be is M8-05's, now that it
   can be typed rather than compiled.

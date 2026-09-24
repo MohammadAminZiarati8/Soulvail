@@ -526,13 +526,13 @@ Rules that belong here because they're global:
 
 ### 13.2 Pact nodes — Veilrot inside the tree
 
-One of the three offered nodes may appear as a **Pact** — visually corrupted, roughly **1.8× stronger** than the clean equivalent, granting **+10 to +20 Veilrot**.
+One of the three offered nodes may appear as a **Pact** — visually corrupted, **authored** to roughly **1.8× the power budget** of the clean equivalent, granting **+10 to +20 Veilrot**. A Pact is written, not derived: it is usually a bigger version of the clean effect with a **downside** attached, which is what the examples below are and what no multiplication of the clean node could produce. *(Ruled at M6-11: the table's "~1.8×" had read as an operation while its own examples carried downsides; M6-05a shipped the examples' reading, so the table now says budget.)*
 
 Pacts are not a branch or a class. *Any* node can appear in its corrupted form, so the temptation is continuous rather than a decision made once at the start. This is what keeps §10 load-bearing at every single level-up rather than a system you interact with twice a run.
 
 | | Clean node | Pact node |
 |---|---|---|
-| Power | Baseline | ~1.8× |
+| Power | Baseline | ~1.8× the budget, authored — may carry a downside |
 | Veilrot | 0 | +10 to +20 |
 | Flavour | Something you earned | Something you borrowed |
 

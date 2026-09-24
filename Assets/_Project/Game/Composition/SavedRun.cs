@@ -4,19 +4,30 @@ using Soulvail.Core.Save;
 namespace Soulvail.Game.Composition;
 
 /// <summary>
-/// What the disk said at launch: the run there is to continue, or nothing. Read once by
-/// <see cref="BootFlow"/> before the Menu appears, and asked by the Menu whether to offer a
-/// <c>Continue</c>. A <c>BootScope</c> singleton beside <see cref="PendingRun"/>. See AR §7, §10.3.
+/// The run there is to continue, or nothing: what the disk said at launch, kept current by every
+/// write and every clear since. Seeded once by <see cref="BootFlow"/> before the Menu appears,
+/// mirrored by <c>SaveWriter</c> ahead of each disk operation, and asked by the Menu whether to
+/// offer a <c>Continue</c>. A <c>BootScope</c> singleton beside <see cref="PendingRun"/>. See AR §7,
+/// §10.3.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>Not <see cref="PendingRun"/> with an extra field</b> (M2-14b rule 8). They answer different
-/// questions at different times: this one is a <em>fact about the disk</em>, established once at
-/// launch and never written again by the app; that one is a <em>choice</em>, made in the Menu,
-/// consumed in the Run scene and cleared the moment the run starts. Folding them together would
-/// make "is there a saved run" and "did the player pick one" the same boolean, and the first
+/// questions at different times: this one is a <em>fact about the disk</em>, read at launch and
+/// kept a step ahead of it after; that one is a <em>choice</em>, made in the Menu, consumed in the
+/// Run scene and cleared the moment the run starts. Folding them together would make "is there a
+/// saved run" and "did the player pick one" the same boolean, and the first
 /// <c>Continue</c>-then-back-out would find them disagreeing — a Menu that offers nothing to
 /// resume because the player looked at the offer once.
+/// </para>
+/// <para>
+/// <b>Two writers, at two moments</b> (M6-11a). <see cref="BootFlow"/> seeds it once, before any
+/// run exists in this session to lag; <c>SaveWriter</c> then sets it on every snapshot and clears
+/// it on every death, <em>before</em> queuing the disk operation, so it is never older than the
+/// file. Until M6-11a boot was the only writer, and a quit and a <c>Continue</c> in one app session
+/// resumed the run read at launch — M6-11 lost a stage-30 run to it. A write that fails leaves this
+/// newer than the file, which is the stated cost: the same session resumes the run just played,
+/// and a relaunch the older one.
 /// </para>
 /// <para>
 /// A mutable singleton in a project that bans global mutable state, for the reason
@@ -41,7 +52,7 @@ public sealed class SavedRun
     /// </summary>
     public bool IsPresent { get; private set; }
 
-    /// <summary>The run on disk.</summary>
+    /// <summary>The run most recently read or written — the one on disk, unless its write failed.</summary>
     /// <exception cref="InvalidOperationException">
     /// Nothing is present. <see cref="PendingRun"/>'s bargain and for its reason: a
     /// <c>default(RunSnapshot)</c> handed back instead would carry version 0 and stage 0, and the
@@ -62,7 +73,10 @@ public sealed class SavedRun
         }
     }
 
-    /// <summary>Records what the disk holds, replacing anything already recorded.</summary>
+    /// <summary>
+    /// Records a run read from disk or about to be written to it, replacing anything already
+    /// recorded.
+    /// </summary>
     /// <remarks>
     /// Nothing is validated. A snapshot only exists if <c>RunSnapshot</c>'s constructor let it,
     /// and whether the content it names is still shipped by this build is <c>RunSession.Start</c>'s
@@ -75,7 +89,7 @@ public sealed class SavedRun
         IsPresent = true;
     }
 
-    /// <summary>Forgets the loaded run, so the Menu offers nothing to continue.</summary>
+    /// <summary>Forgets the run, so the Menu offers nothing to continue.</summary>
     public void Clear()
     {
         _value = default;

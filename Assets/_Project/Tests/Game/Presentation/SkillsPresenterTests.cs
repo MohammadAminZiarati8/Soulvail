@@ -692,7 +692,7 @@ public sealed class SkillsPresenterTests
 
         // Built before the run starts, because the opening snapshot is published from inside
         // RunSession.Start — SaveWriter's own reason for subscribing in its constructor.
-        Track(new SaveWriter(store, _hub));
+        Track(new SaveWriter(store, _hub, new SavedRun()));
 
         StartRun(actives: 3);
         BuildScreen();

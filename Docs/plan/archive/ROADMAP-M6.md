@@ -98,7 +98,7 @@ taken, and the `Depends on` column is what enforces it.
 | M6-09b | [A class you cannot pick yet, and the first Shard anyone has ever spent](../tasks/M6-09b-a-class-you-cannot-pick-yet.md) | S | M6-09a | ☑ |
 | M6-10 | [The rest of localisation: a second table, a sweep that finds raw strings, and the language nobody has written](../tasks/M6-10-the-rest-of-localisation.md) — `ILocalizer`, `TableLocalizer` and one English table land early at [M3-14a](../tasks/M3-14a-localizer-and-english-table.md), by the owner's M3-00d ruling | M | M6-09a | ☑ |
 | M6-11 | [M6 acceptance: two instruments, a frame-order verdict, and tag `m6`](../tasks/M6-11-acceptance-and-tag.md) — [row 4](#carry-forward-into-m6) | S | everything | ☑ |
-| M6-11a | [Continue resumes the run on disk, not the one the Menu read at boot](../tasks/M6-11a-continue-resumes-the-run-on-disk.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☐ |
+| M6-11a | [Continue resumes the run on disk, not the one the Menu read at boot](../tasks/M6-11a-continue-resumes-the-run-on-disk.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☑ |
 | M6-11b | [A resume keeps the Claiming](../tasks/M6-11b-a-resume-keeps-the-claiming.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☐ |
 | M6-11c | [Stage 1 without the eight M1 dummies](../tasks/M6-11c-stage-one-without-the-m1-dummies.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☐ |
 | M6-11d | [The Sanctum does not sell a reroll a finished tree can never spend](../tasks/M6-11d-no-reroll-for-a-finished-tree.md) — created by M6-11's acceptance (rule 8) | S | M6-11 | ☐ |

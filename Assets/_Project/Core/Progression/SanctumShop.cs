@@ -38,7 +38,8 @@ public enum SanctumService
 /// <c>EssenceWallet</c>'s pairing, one object up, and M5-08a's lesson: <em>a screen may not offer
 /// what the model refuses.</em> <see cref="CanBuy"/> refuses the unaffordable <b>and</b> the
 /// worthless (M6-02b rule 7) — a heal at full health, a cleanse at zero, a banish with nothing left
-/// to banish — so M6-03a draws a dead button with a reason rather than taking the player's money.
+/// to banish, a reroll with nothing left to offer — so M6-03a draws a dead button with a reason
+/// rather than taking the player's money.
 /// </para>
 /// <para>
 /// <b>It knows nothing about the Sanctum's phase.</b> Whether the shop is open is
@@ -130,8 +131,15 @@ public sealed class SanctumShop
 
     /// <summary>
     /// Whether <paramref name="service"/> can be bought right now: affordable <b>and</b> worth
-    /// something (rule 7). Reroll has no usefulness test — a charge is never wasted.
+    /// something (rule 7).
     /// </summary>
+    /// <remarks>
+    /// <b>Reroll's worth test is Banish's</b> (M6-11d rule 1). M6-02b exempted it because <em>"a
+    /// charge is spent by whatever offer comes next"</em> — but a charge is spent only by a draw
+    /// that finds something (<c>LevelUpFlow.Open</c>), and a pool with nothing left in it never
+    /// draws again, so every level after is Overflow and the charge sits unspent for the rest of
+    /// the run. A charge already banked is not refunded (rule 2).
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="service"/> is not a member.</exception>
     public bool CanBuy(SanctumService service)
     {
@@ -146,8 +154,7 @@ public sealed class SanctumShop
 
         return service switch
         {
-            SanctumService.Reroll => true,
-            SanctumService.Banish => AnythingBanishable(),
+            SanctumService.Reroll or SanctumService.Banish => AnythingInThePool(),
             SanctumService.Heal => !_health.IsDead && _health.Fraction < 1f,
             _ => _veilrot is not null && _veilrot.Value > 0f,
         };
@@ -340,11 +347,22 @@ public sealed class SanctumShop
         return scaled < 1f ? 1 : (int)scaled;
     }
 
-    /// <summary>Whether any node is left to banish — asked without a buffer, so without allocating.</summary>
-    private bool AnythingBanishable()
+    /// <summary>
+    /// Whether any node of the run's tree is neither taken nor banished — GD §13.3's offer pool, and
+    /// both what a banish takes from and what a reroll's offer is drawn from. Asked without a
+    /// buffer, so without allocating.
+    /// </summary>
+    /// <remarks>
+    /// <b>A node left is not a node reachable</b>, and the gap is M6-11d's stated cost: an Upgrade
+    /// whose parent was banished is in the pool and can never be offered, so a run whose last
+    /// untaken nodes are all orphaned is still sold a reroll. Closing it needs the tree's gating
+    /// asked forward in time, which no caller has needed yet.
+    /// </remarks>
+    private bool AnythingInThePool()
     {
-        // TakenCount + BanishedIds.Count is every node that cannot be banished; a tree with room
-        // for one more has a banishable node, because the two sets never overlap.
+        // TakenCount + BanishedIds.Count is every node out of the pool; a tree with room for one
+        // more has one in it, because the two sets never overlap. The count includes a borrowed
+        // branch once one is installed (TreeRules.Count).
         return _tree.TakenCount + _tree.BanishedIds.Count < _tree.Rules.Count;
     }
 

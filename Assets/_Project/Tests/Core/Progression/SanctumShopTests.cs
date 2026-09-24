@@ -108,6 +108,57 @@ public sealed class SanctumShopTests
         Assert.That(_shop.PriceOf(SanctumService.Reroll), Is.EqualTo(50), "and the next one costs double.");
     }
 
+    // ---- M6-11d rules 1, 2: no reroll for a finished tree ----------------------------------------
+
+    [Test]
+    public void Reroll_RefusedWhenTheTreeIsExhausted()
+    {
+        TakeInTreeOrder(12);
+        _wallet.Earn(500);
+
+        Assert.That(_shop.CanBuy(SanctumService.Reroll), Is.False, "every level from here is Overflow, which spends no charge.");
+        Assert.Throws<InvalidOperationException>(() => _shop.Buy(SanctumService.Reroll));
+        Assert.That(_wallet.Balance, Is.EqualTo(500), "nothing is spent.");
+        Assert.That(_shop.RerollsBought, Is.Zero);
+    }
+
+    [Test]
+    public void Reroll_RefusedWhenTheRestIsBanished()
+    {
+        TakeInTreeOrder(10);
+        _tree.Banish(new ContentId(TreeRulesTests.Node('c', 2, 'a')));
+        _tree.Banish(new ContentId(TreeRulesTests.Node('c', 2, 'b')));
+        _wallet.Earn(500);
+
+        Assert.That(_shop.CanBuy(SanctumService.Reroll), Is.False, "banished is out of the pool as surely as taken.");
+    }
+
+    [Test]
+    public void Reroll_StillSoldWithOneNodeLeft()
+    {
+        TakeInTreeOrder(11);
+        _wallet.Earn(500);
+
+        Assert.That(_shop.CanBuy(SanctumService.Reroll), Is.True, "one node can still be offered, so a charge can still be spent.");
+    }
+
+    [Test]
+    public void Reroll_ABankedChargeOutlivesTheTree()
+    {
+        TakeInTreeOrder(11);
+        _wallet.Earn(500);
+        _shop.Buy(SanctumService.Reroll);
+
+        TakeInTreeOrder(12, from: 11);
+
+        // 475 left against a price of 50, so the refusal below is the tree's and not the wallet's —
+        // with 25 banked and spent, this row was green against the bug it exists for.
+        Assert.That(_shop.CanBuy(SanctumService.Reroll), Is.False, "the next purchase is refused.");
+        Assert.That(_levelUp.RerollCharges, Is.EqualTo(1), "and the last one is still banked — only a draw spends it.");
+        Assert.That(_shop.RerollsBought, Is.EqualTo(1));
+        Assert.That(_wallet.Balance, Is.EqualTo(475), "not refunded.");
+    }
+
     // ---- Rules 4, 5: Banish ----------------------------------------------------------------------
 
     [Test]
@@ -511,6 +562,31 @@ public sealed class SanctumShopTests
         TreeRulesTests.ShallowSkills('a'),
         TreeRulesTests.ShallowSkills('b'),
         TreeRulesTests.ShallowSkills('c'));
+
+    /// <summary>
+    /// Takes the twelve-node tree's nodes <paramref name="from"/> up to <paramref name="count"/>, in
+    /// an order the gating allows — branch by branch, tier 1 first — so the last taken is c2b.
+    /// </summary>
+    private void TakeInTreeOrder(int count, int from = 0)
+    {
+        var order = new List<ContentId>();
+
+        foreach (char branch in new[] { 'a', 'b', 'c' })
+        {
+            foreach (int tier in new[] { 1, 2 })
+            {
+                foreach (char slot in new[] { 'a', 'b' })
+                {
+                    order.Add(new ContentId(TreeRulesTests.Node(branch, tier, slot)));
+                }
+            }
+        }
+
+        for (int i = from; i < count; i++)
+        {
+            _tree.Take(order[i]);
+        }
+    }
 
     private List<ContentId> AvailableIds()
     {

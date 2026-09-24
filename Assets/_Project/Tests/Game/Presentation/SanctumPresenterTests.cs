@@ -74,7 +74,7 @@ public sealed class SanctumPresenterTests
     private static readonly DateTimeOffset Instant = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000L);
     private static readonly CoreVector3 Door = new CoreVector3(0f, 0f, 18f);
 
-    /// <summary>The seventeen keys this screen draws — rule 3's four among them (ledger row 7).</summary>
+    /// <summary>The eighteen keys this screen draws — rule 3's four among them (ledger row 7), and M6-11d's fifth.</summary>
     private static readonly string[] ScreenKeys =
     {
         "ui.sanctum.title", "ui.sanctum.balance", "ui.sanctum.leave",
@@ -84,6 +84,7 @@ public sealed class SanctumPresenterTests
         "ui.sanctum.cleanse", "ui.sanctum.cleanse.detail",
         "ui.sanctum.refused.short", "ui.sanctum.refused.full",
         "ui.sanctum.refused.clean", "ui.sanctum.refused.nothing",
+        "ui.sanctum.refused.complete",
         "ui.sanctum.banish.prompt", "ui.sanctum.banish.cancel",
     };
 
@@ -246,6 +247,24 @@ public sealed class SanctumPresenterTests
 
         Assert.That(Row("_banish").IsAffordable, Is.False);
         Assert.That(Detail(Row("_banish")), Is.EqualTo("ui.sanctum.refused.nothing"));
+    }
+
+    /// <summary>M6-11d rule 3: the stage-37 Sanctum that sold five rerolls a full tree could never spend.</summary>
+    [Test]
+    public void Sanctum_AFinishedTreeSaysWhy()
+    {
+        EnterSanctum(essence: 500, hp: Hurt, taken: 12);
+
+        ServiceRow reroll = Row("_reroll");
+
+        Assert.That(reroll.IsShown, Is.True, "refused, not hidden.");
+        Assert.That(reroll.IsAffordable, Is.False, "500 Essence, and nothing left for a charge to be spent on.");
+        Assert.That(Detail(reroll), Is.EqualTo("ui.sanctum.refused.complete"));
+        Assert.That(Price(reroll), Is.EqualTo("25"), "M5-08a rule 5: the price stays.");
+
+        Assert.That(
+            new TableLocalizer(EnglishTable()).Get(new LocKey("ui.sanctum.refused.complete")),
+            Is.EqualTo("Nothing left to offer"));
     }
 
     [Test]

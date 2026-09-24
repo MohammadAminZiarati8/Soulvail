@@ -496,7 +496,8 @@ public sealed class EmberwrightTests
             new PendingRun(),
             BootCatalog(),
             new SceneLoader(),
-            new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>()));
+            new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>()),
+            new ProfileStore(new InMemorySaveStore()));
 
         presenter.Open();
 

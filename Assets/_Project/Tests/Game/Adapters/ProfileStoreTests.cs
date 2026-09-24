@@ -155,11 +155,11 @@ public sealed class ProfileStoreTests
         Assert.That(_profiles.Current.SeenFirstActiveHint, Is.True);
     }
 
-    /// <summary>An <see cref="ISaveStore"/> that counts the profile calls its inner one does not.</summary>
     // ---- M6-09a: buying a class --------------------------------------------------------------------
 
+    /// <summary>M6-09b's name for M6-09a's row: one save, and both fields moved in it.</summary>
     [Test]
-    public void Store_UnlockSpendsAndGrantsInOneSave()
+    public void Store_UnlockSpendsAndOwnsInOneWrite()
     {
         _profiles.Adopt(PlayerProfile.Default.WithShards(4000).WithHaptics(false));
 
@@ -192,6 +192,58 @@ public sealed class ProfileStoreTests
         Assert.Throws<ArgumentNullException>(() => _profiles.Unlock(Emberwright, null));
     }
 
+    // ---- M6-09b: the purchase the class-select screen makes ------------------------------------------
+
+    [Test]
+    public void Store_UnlockRefusesWhatCannotBeBought()
+    {
+        _profiles.Save(PlayerProfile.Default.WithShards(3_499));
+
+        Assert.Throws<InvalidOperationException>(() => _profiles.Unlock(Emberwright, ShippedCatalog()));
+
+        // The disk, not only Current: a refusal wrote nothing, so the file still reads 3 499.
+        PlayerProfile written = _inner.LoadProfile().GetAwaiter().GetResult().Value;
+
+        Assert.That(written.Shards, Is.EqualTo(3_499));
+        Assert.That(written.UnlockedCharacterIds, Is.Empty);
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(1), "the refusal wrote.");
+    }
+
+    [Test]
+    public void Store_UnlockRefusesWhatIsOwned()
+    {
+        _profiles.Adopt(PlayerProfile.Default.WithShards(9_000).WithUnlocked(new[] { Emberwright }));
+
+        Assert.Throws<InvalidOperationException>(() => _profiles.Unlock(Emberwright, ShippedCatalog()));
+
+        Assert.That(_profiles.Current.Shards, Is.EqualTo(9_000), "an owned class was charged for twice.");
+        Assert.That(_store.ProfileWriteCount, Is.Zero);
+    }
+
+    [Test]
+    public void Store_UnlockTouchesNothingElse()
+    {
+        var met = new[] { new ContentId("enemy.husk"), new ContentId("enemy.spitter") };
+
+        _profiles.Adopt(new PlayerProfile(
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true,
+            shards: 4_000, new[] { new ContentId("character.gravecaller") }, met, locale: "en"));
+
+        _profiles.Unlock(Emberwright, ShippedCatalog());
+
+        PlayerProfile after = _profiles.Current;
+
+        Assert.That(after.HapticsEnabled, Is.False);
+        Assert.That(after.SeenFirstActiveHint, Is.True);
+        Assert.That(after.MetArchetypeIds, Is.EqualTo(met));
+        Assert.That(after.Locale, Is.EqualTo("en"));
+
+        // Appended, not replaced: the Gravecaller a v3 profile kept is still owned.
+        Assert.That(
+            after.UnlockedCharacterIds,
+            Is.EqualTo(new[] { new ContentId("character.gravecaller"), Emberwright }));
+    }
+
     private static readonly ContentId Emberwright = new ContentId("character.emberwright");
 
     /// <summary>The three shipped classes, converted as boot converts them.</summary>
@@ -210,6 +262,7 @@ public sealed class ProfileStoreTests
         return new ContentCatalog(characters);
     }
 
+    /// <summary>An <see cref="ISaveStore"/> that counts the profile calls its inner one does not.</summary>
     private sealed class CountingStore : ISaveStore
     {
         private readonly InMemorySaveStore _inner;

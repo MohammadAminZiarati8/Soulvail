@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Game.Presentation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,11 +46,13 @@ namespace Soulvail.Game.Controls
     /// <see cref="Bind"/>, which already takes a <see cref="CharacterSpec"/>.
     /// </para>
     /// <para>
-    /// <b><see cref="Bind"/> takes no <c>bool interactable</c>, deliberately</b> (rule 6). CH §6
-    /// makes classes the one thing meta-progression buys, and <c>PlayerProfile</c> v3 carries no
-    /// unlock set — so every authored class is selectable, M6-09 is where a card learns to be
-    /// locked, and a parameter with one legal value would be a promise that task has to keep rather
-    /// than a feature this one shipped.
+    /// <b>Two overloads rather than a <c>bool</c> on <see cref="Bind"/></b> (M6-09b). An owned card
+    /// plays and a locked one buys, so the two differ in what a tap <em>means</em>, not only in
+    /// whether it is live — and <see cref="Bind"/>'s signature is unchanged, so the starter's path
+    /// through this file is the one M5-07 shipped. <see cref="BindLocked"/> keeps the name and the
+    /// three numbers and adds a price and, where a deed can be done, one line saying so (M6-09b
+    /// rules 2 and 4). It decides none of it: the price, whether it can be paid, and whether the
+    /// deed line exists are all the presenter's arguments.
     /// </para>
     /// <para>
     /// Every piece is written through a Unity-null check rather than assumed:
@@ -73,6 +76,15 @@ namespace Soulvail.Game.Controls
         /// <summary>Damage a second, rounded. See the class remarks on where the product comes from.</summary>
         private const string DpsFormat = "{0:0} DPS";
 
+        /// <summary>The price on a card whose balance is short: a figure, and nothing to tap.</summary>
+        private static readonly LocKey PriceKey = new LocKey("ui.classselect.locked.price");
+
+        /// <summary>
+        /// The price on a card that can be bought — the same figure, said as an offer, so a live
+        /// locked card reads as a purchase rather than as a class to play (M6-09b rule 3).
+        /// </summary>
+        private static readonly LocKey BuyKey = new LocKey("ui.classselect.locked.buy");
+
         [Tooltip("The class's name, resolved through ILocalizer — see the class remarks.")]
         [SerializeField] private TMP_Text _name;
 
@@ -94,11 +106,27 @@ namespace Soulvail.Game.Controls
                  "the card rather than a word on it — OfferCard's rule.")]
         [SerializeField] private Button _button;
 
+        [Tooltip("What a locked class costs, in Soul Shards. Switched off on an owned card.")]
+        [SerializeField] private TMP_Text _price;
+
+        [Tooltip("What else would earn a locked class — drawn only for a deed this build can do " +
+                 "(M6-09b rule 4). Switched off otherwise.")]
+        [SerializeField] private TMP_Text _deed;
+
         /// <summary>
         /// Where a tap goes. Held rather than wired through the Inspector so that the presenter can
         /// hand over a method it owns, and so a cleared card reports to nobody.
         /// </summary>
         private Action<ContentId> _onChosen;
+
+        /// <summary>
+        /// Where a tap on a locked card goes. Exactly one of this and <see cref="_onChosen"/> is set
+        /// while the card is drawn, so a card cannot both buy and play.
+        /// </summary>
+        private Action<ContentId> _onUnlockTapped;
+
+        /// <summary>Which of the three states this card was last drawn in.</summary>
+        public ClassCardState State { get; private set; }
 
         /// <summary>
         /// The id this card is standing for, or <c>default</c> when it is not in use.
@@ -148,8 +176,115 @@ namespace Soulvail.Game.Controls
                         + "starts, which is the one failure here that looks like a frozen game.");
             }
 
-            CharacterId = spec.Id;
             _onChosen = onChosen;
+            _onUnlockTapped = null;
+
+            DrawClass(spec, localizer);
+
+            // An owned card has no price and nothing to prove: both lines go, so a card bought a
+            // moment ago stops reading as a shop the frame it is redrawn.
+            Hide(_price);
+            Hide(_deed);
+
+            State = ClassCardState.Owned;
+
+            Arm(true);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="spec"/> as a class the player does not own: its numbers, its
+        /// price, what proves it, and a button that buys rather than one that plays — M6-09b rule 2.
+        /// </summary>
+        /// <param name="spec">The class to draw.</param>
+        /// <param name="price">What it costs, in Soul Shards. Above zero — a free class is owned.</param>
+        /// <param name="affordable">
+        /// Whether the price can be paid right now — <c>ClassUnlocks.CanBuy</c> and nothing else.
+        /// It is the button's <c>interactable</c>, and the price line's wording.
+        /// </param>
+        /// <param name="deed">
+        /// The one line that says what else would earn it, or <c>default</c> for a class no deed can
+        /// reach — rule 4. Formatted with the spec's <c>UnlockSpec.DeedStage</c>.
+        /// </param>
+        /// <param name="localizer">What turns every key on the card into words.</param>
+        /// <param name="onUnlockTapped">
+        /// Called with <see cref="CharacterId"/> when the card is tapped. The presenter's method; it
+        /// re-asks <c>CanBuy</c> before it spends anything.
+        /// </param>
+        /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="price"/> is not above zero.</exception>
+        public void BindLocked(
+            CharacterSpec spec, int price, bool affordable, LocKey deed,
+            ILocalizer localizer, Action<ContentId> onUnlockTapped)
+        {
+            if (spec is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(spec), "A locked card with no class to draw sells nothing.");
+            }
+
+            if (localizer is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(localizer),
+                    "A locked card with no localizer would draw its price as a key.");
+            }
+
+            if (onUnlockTapped is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(onUnlockTapped),
+                    "A priced card with nobody to report to takes a tap and spends nothing, which "
+                        + "reads as a broken shop.");
+            }
+
+            if (price <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(price),
+                    price,
+                    "A locked class has a price above zero; a free class is owned and is drawn by "
+                        + "Bind (M6-09a rule 3).");
+            }
+
+            _onChosen = null;
+            _onUnlockTapped = onUnlockTapped;
+
+            DrawClass(spec, localizer);
+
+            if (_price != null)
+            {
+                _price.text = string.Format(
+                    CultureInfo.InvariantCulture, localizer.Get(affordable ? BuyKey : PriceKey), price);
+
+                // GD §16.4's reward gold when it can be had — RunEndPresenter's and the Sanctum's
+                // colour for the same currency — and the neutral grey of a fact when it cannot.
+                _price.color = affordable ? Palette.Essence : Palette.Neutral;
+                _price.gameObject.SetActive(true);
+            }
+
+            if (_deed != null)
+            {
+                if (deed.Key is null)
+                {
+                    Hide(_deed);
+                }
+                else
+                {
+                    _deed.text = string.Format(
+                        CultureInfo.InvariantCulture, localizer.Get(deed), spec.Unlock?.DeedStage ?? 0);
+                    _deed.gameObject.SetActive(true);
+                }
+            }
+
+            State = ClassCardState.Locked;
+
+            Arm(affordable);
+        }
+
+        /// <summary>The name, the sentence and the three numbers — the same in every state (rule 2).</summary>
+        private void DrawClass(CharacterSpec spec, ILocalizer localizer)
+        {
+            CharacterId = spec.Id;
 
             if (_name != null)
             {
@@ -179,7 +314,11 @@ namespace Soulvail.Game.Controls
                 _weapon.text = string.Format(
                     CultureInfo.InvariantCulture, DpsFormat, DpsOf(spec));
             }
+        }
 
+        /// <summary>Wires the one listener, sets the button, and shows the card.</summary>
+        private void Arm(bool interactable)
+        {
             // Re-armed every draw, and cleared first: a card bound twice — which a screen reopened
             // does — would otherwise carry the previous binding's listener as well and report the
             // tap twice, starting two runs.
@@ -189,9 +328,18 @@ namespace Soulvail.Game.Controls
                 _button.onClick.AddListener(Raise);
             }
 
-            SetInteractable(true);
+            SetInteractable(interactable);
 
             gameObject.SetActive(true);
+        }
+
+        private static void Hide(TMP_Text label)
+        {
+            if (label != null)
+            {
+                label.text = string.Empty;
+                label.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>
@@ -207,7 +355,9 @@ namespace Soulvail.Game.Controls
             // Dropped rather than left dangling, so a cleared card cannot report into a presenter
             // that has stopped listening.
             _onChosen = null;
+            _onUnlockTapped = null;
             CharacterId = default;
+            State = ClassCardState.Hidden;
 
             if (_button != null)
             {
@@ -259,6 +409,12 @@ namespace Soulvail.Game.Controls
         /// </remarks>
         private void Raise()
         {
+            if (State == ClassCardState.Locked)
+            {
+                _onUnlockTapped?.Invoke(CharacterId);
+                return;
+            }
+
             _onChosen?.Invoke(CharacterId);
         }
     }

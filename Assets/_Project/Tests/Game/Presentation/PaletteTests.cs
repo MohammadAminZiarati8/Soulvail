@@ -652,7 +652,8 @@ public sealed class PaletteTests
 
         // GD §16.4's reward gold on the run-end payout (M4-06) and on the Sanctum's balance (M6-03a).
         // ServiceRow reads it too, for the prices, and is the Sanctum's own control; HudPresenter
-        // joined at M6-03b for GD §16.1's corner counter.
+        // joined at M6-03b for GD §16.1's corner counter; ClassSelectPresenter and ClassCard at
+        // M6-09b, for the Shard balance and a price that can be paid.
         Assert.That(readers, Does.Contain(typeof(RunEndPresenter)));
         Assert.That(readers, Does.Contain(typeof(SanctumPresenter)));
         Assert.That(
@@ -660,6 +661,7 @@ public sealed class PaletteTests
             Is.EquivalentTo(new[]
             {
                 typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow), typeof(HudPresenter),
+                typeof(ClassSelectPresenter), typeof(ClassCard),
             }));
 
         // And the summary says so. XML docs do not exist at run time, so the source is read: the

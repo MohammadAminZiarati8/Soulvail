@@ -95,8 +95,8 @@ public static class Palette
     public static readonly Color Veilrot = Rgb(0xA8, 0x55, 0xF7);
 
     /// <summary>
-    /// <c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. Read by the run-end payout and the
-    /// Sanctum's prices.
+    /// <c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. Read by the run-end payout, the
+    /// Sanctum's prices, and the class-select screen's Shard balance and prices (M6-09b).
     /// </summary>
     public static readonly Color Essence = Rgb(0xFB, 0xBF, 0x24);
 

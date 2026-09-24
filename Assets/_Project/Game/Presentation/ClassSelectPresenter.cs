@@ -1,6 +1,10 @@
 using System;
+using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
+using Soulvail.Core.Save;
+using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using TMPro;
@@ -50,13 +54,17 @@ namespace Soulvail.Game.Presentation
     /// refused to open would be a build nobody could play.
     /// </para>
     /// <para>
-    /// <b>Every authored class is selectable, and the unlock gate is named rather than invented</b>
-    /// (rule 6). CH §6 makes classes the one thing meta-progression buys and <c>PlayerProfile</c>
-    /// <b>v3 carries no unlock set</b> — four fields, <c>Version</c>, <c>HapticsEnabled</c>,
-    /// <c>SeenFirstActiveHint</c>, <c>Shards</c>. Adding one here would be a v4 and a migration for
-    /// a gate nothing can open, since nothing spends a Shard until M6-02 and nothing awards an
-    /// achievement at all. So this screen offers what the catalog holds and M6-09 is where a card
-    /// learns to be locked.
+    /// <b>It draws the unlock gate and owns none of it</b> (M6-09b rule 1). <c>ClassUnlocks</c>
+    /// decides which cards are owned and whether a price can be paid, the spec carries the price,
+    /// and <see cref="ProfileStore"/> holds the balance and makes the one write. A locked class is
+    /// drawn with its numbers and its price rather than hidden (rule 2), and a price that cannot be
+    /// paid is drawn dead — M5-08a's finding, one screen over: <b>a screen may not offer what the
+    /// model refuses</b>.
+    /// </para>
+    /// <para>
+    /// <b>Buying is not picking</b> (rule 8). The tap that spends Shards redraws every card and
+    /// starts nothing; a second tap plays. <see cref="_buying"/> is what stops a double tap from
+    /// being both in one <c>EventSystem</c> pass.
     /// </para>
     /// <para>
     /// <b>It is a <see cref="CanvasGroup"/> in the Menu scene, not a scene of its own</b> (rule 9).
@@ -88,6 +96,14 @@ namespace Soulvail.Game.Presentation
         /// <summary>The way out without choosing (rule 7).</summary>
         private static readonly LocKey BackKey = new LocKey("ui.classselect.back");
 
+        /// <summary>The balance, <c>"{0} Soul Shards"</c> — <c>ui.sanctum.balance</c>'s shape.</summary>
+        private static readonly LocKey BalanceKey = new LocKey("ui.classselect.balance");
+
+        /// <summary>
+        /// The deed line for a depth deed. There is no key for a boss deed, and that is rule 4.
+        /// </summary>
+        private static readonly LocKey DeedStageKey = new LocKey("ui.classselect.locked.deed");
+
         [Tooltip("The screen, switched between alpha 0 and 1. No fade — a menu is not a fight, and " +
                  "a tween here would be the first one in the project's UI.")]
         [SerializeField] private CanvasGroup _root;
@@ -106,10 +122,26 @@ namespace Soulvail.Game.Presentation
         [Tooltip("\"Back\". Written from ui.classselect.back in Start.")]
         [SerializeField] private TMP_Text _backLabel;
 
+        [Tooltip("What the player has to spend, in Palette.Essence. Drawn on open and after a " +
+                 "purchase, and on nothing else (M6-09b rule 5).")]
+        [SerializeField] private TMP_Text _balance;
+
         private PendingRun _pending;
         private ContentCatalog _catalog;
         private SceneLoader _loader;
         private ILocalizer _localizer;
+        private ProfileStore _profile;
+
+        /// <summary>
+        /// A purchase was made in this frame. Cleared by <see cref="Update"/>, and by nothing else.
+        /// </summary>
+        /// <remarks>
+        /// M6-09b rule 8's second latch. A purchase redraws the bought card as owned and live, and
+        /// uGUI dispatches both taps of a double tap from one <c>EventSystem</c> pass — so without it
+        /// the second tap of a double tap on a price would be a descent the player never asked
+        /// for. It refuses a second purchase in the same pass for the same reason.
+        /// </remarks>
+        private bool _buying;
 
         /// <summary>
         /// A class has been chosen and the scene load has not answered yet.
@@ -130,6 +162,12 @@ namespace Soulvail.Game.Presentation
         /// <summary>Whether the screen is up. Read by <see cref="MenuPresenter"/> and by the tests.</summary>
         public bool IsOpen { get; private set; }
 
+        /// <summary>
+        /// What the player has to spend, as last drawn. Read from the profile at every draw and at
+        /// no other time — rule 5.
+        /// </summary>
+        public int Shards { get; private set; }
+
         /// <param name="pending">
         /// What the next run should be. Written on a card's tap and nowhere else in this file.
         /// </param>
@@ -142,6 +180,10 @@ namespace Soulvail.Game.Presentation
         /// <c>BootScope</c> through <c>MenuScope</c>'s parent container — the Menu needs a localizer
         /// and has no run, which is why the port is registered at boot (M3-14a rule 4).
         /// </param>
+        /// <param name="profile">
+        /// The balance, what is owned, and the one writer a purchase goes through (M6-09b rule 6).
+        /// Resolved from <c>BootScope</c> the same way.
+        /// </param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// The Back button is wired here rather than in <c>OnEnable</c>, <c>PausePresenter</c>'s
@@ -153,12 +195,14 @@ namespace Soulvail.Game.Presentation
             PendingRun pending,
             ContentCatalog catalog,
             SceneLoader loader,
-            ILocalizer localizer)
+            ILocalizer localizer,
+            ProfileStore profile)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
+            _profile = profile ?? throw new ArgumentNullException(nameof(profile));
 
             Wire(_back, Close);
         }
@@ -203,6 +247,19 @@ namespace Soulvail.Game.Presentation
             HideScreen();
         }
 
+        /// <summary>
+        /// Lowers the purchase latch, and does nothing else — no draw and no profile read (M6-09b
+        /// rules 5 and 10). <c>LevelUpPresenter._choosing</c>'s rule.
+        /// </summary>
+        /// <remarks>
+        /// <b><see cref="_descending"/> is not cleared here</b>: it spans an awaited scene load, which
+        /// is many frames, and comes down only when that load fails.
+        /// </remarks>
+        private void Update()
+        {
+            _buying = false;
+        }
+
         /// <remarks>
         /// Explicit rather than left to the scene's teardown: the handler is wired in
         /// <see cref="Construct"/>, so a component injected and then destroyed — which a test does —
@@ -240,6 +297,7 @@ namespace Soulvail.Game.Presentation
             }
 
             _descending = false;
+            _buying = false;
 
             Draw();
 
@@ -269,10 +327,32 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Binds as many cards as the catalog has classes and clears the rest (rule 3).
+        /// Draws the balance, binds as many cards as the catalog has classes, and clears the rest
+        /// (rule 3). Called on open and after a purchase, and on nothing else (M6-09b rule 5).
         /// </summary>
+        /// <remarks>
+        /// <b>Every card, every time</b> (M6-09b rule 7): buying the Emberwright at 3 500 can take
+        /// the balance below the Gravecaller's 2 000, and a redraw of one card would leave the other
+        /// reading as affordable. The profile is read once, here, and every card is drawn off that
+        /// one value.
+        /// </remarks>
         private void Draw()
         {
+            PlayerProfile profile = _profile.Current;
+
+            Shards = profile.Shards;
+
+            if (_balance != null)
+            {
+                _balance.text = string.Format(
+                    CultureInfo.InvariantCulture, _localizer.Get(BalanceKey), profile.Shards);
+
+                // GD §16.4's gold, which RunEndPresenter already pays Shards in: the number that
+                // screen showed and the number this one spends look like one currency because
+                // they are.
+                _balance.color = Palette.Essence;
+            }
+
             if (_cards is null)
             {
                 return;
@@ -294,15 +374,79 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                if (i < classes)
-                {
-                    card.Bind(_catalog.Characters[i], _localizer, OnCardChosen);
-                }
-                else
+                if (i >= classes)
                 {
                     card.Clear();
+                    continue;
                 }
+
+                CharacterSpec spec = _catalog.Characters[i];
+
+                // Rule 9: a class the player may pick is drawn exactly as M5-07 drew it.
+                if (ClassUnlocks.IsUnlocked(spec.Id, profile, _catalog))
+                {
+                    card.Bind(spec, _localizer, OnCardChosen);
+                    continue;
+                }
+
+                card.BindLocked(
+                    spec,
+                    spec.Unlock.ShardPrice,
+                    ClassUnlocks.CanBuy(spec.Id, profile, _catalog),
+                    DeedOf(spec.Unlock),
+                    _localizer,
+                    OnUnlockTapped);
             }
+        }
+
+        /// <summary>
+        /// The deed line for <paramref name="unlock"/>, or <c>default</c> for none (M6-09b rule 4).
+        /// </summary>
+        /// <remarks>
+        /// <b>A depth deed draws; a boss deed does not, and that is a ruling.</b> The Gravecaller's
+        /// deed is the Choirmother, which no mode in this build authors until <b>M7-03</b>
+        /// (M6-09a rule 4), so a line promising it would be the one thing on any screen that offers
+        /// what the model cannot deliver — and prose is not a predicate any guard can catch. The
+        /// line arrives with the boss.
+        /// </remarks>
+        private static LocKey DeedOf(UnlockSpec unlock) =>
+            unlock.DeedStage > 0 ? DeedStageKey : default;
+
+        /// <summary>
+        /// A locked card was tapped: buy it if it can be bought, and redraw every card (rules 3, 6,
+        /// 7, 8).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b><c>CanBuy</c> is re-asked before anything is sent</b> — M5-08a rule 4's second door. A
+        /// dead card's button refuses a tap, but a handler invoked directly never consults
+        /// <c>interactable</c>, and the alternative is an <see cref="InvalidOperationException"/>
+        /// out of a <see cref="Button"/>'s <c>onClick</c>. <see cref="ProfileStore.Unlock"/> still
+        /// throws: the predicate is the gate, the exception stays the invariant.
+        /// </para>
+        /// <para>
+        /// <b>It does not descend</b> (rule 8). The card comes back owned and live, and the next
+        /// tap — in a later frame — plays it.
+        /// </para>
+        /// </remarks>
+        private void OnUnlockTapped(ContentId characterId)
+        {
+            if (_descending || _buying)
+            {
+                return;
+            }
+
+            if (!ClassUnlocks.CanBuy(characterId, _profile.Current, _catalog))
+            {
+                return;
+            }
+
+            _buying = true;
+
+            // The one writer, moving both fields in one save (rule 6).
+            _profile.Unlock(characterId, _catalog);
+
+            Draw();
         }
 
         /// <summary>
@@ -330,7 +474,9 @@ namespace Soulvail.Game.Presentation
         /// <param name="characterId">The class the tapped card was standing for.</param>
         private async void OnCardChosen(ContentId characterId)
         {
-            if (_descending)
+            // _buying as well: a card bought this frame is live again, and the second half of the
+            // double tap that bought it must not start a run (M6-09b rule 8).
+            if (_descending || _buying)
             {
                 return;
             }

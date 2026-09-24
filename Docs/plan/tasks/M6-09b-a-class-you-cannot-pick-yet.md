@@ -265,3 +265,56 @@ catalog still opening a screen the Back button can leave (`Open`'s existing rule
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+
+**Built to the Public API, except where a deviation says otherwise.** `ClassCard.BindLocked` and
+`State`, with `Bind`'s signature unchanged. `ClassSelectPresenter` takes `ProfileStore`, draws the
+balance in `Palette.Essence`, asks `ClassUnlocks` which overload each card gets, and buys through
+`ProfileStore.Unlock` behind `CanBuy` and a per-frame latch. The prefab gains a balance label and a
+price and a deed label per card, and `English.asset` gains four rows. **EditMode 3 080 → 3 107
+(+27), twice; PlayMode 26 / 0 / 0 twice.**
+
+### Deviations
+
+1. **`ProfileStore.cs` is not edited.** M6-09a already shipped `Unlock` as
+   `void Unlock(ContentId, ContentCatalog)`. It is synchronous and reads the price off the catalog
+   itself. The spec's `Task Unlock(id, int price)` would let a caller name its own price, so the
+   shipped signature stays.
+2. **`ClassCardState` is its own file**, `Game/Controls/ClassCardState.cs`, because the project puts
+   one type in each file. That makes it a new file outside the table.
+3. **There is no `ClassCardTests`.** The `Card_*` rows are in `ClassSelectPresenterTests`, where the
+   fixture already loads the shipped prefab.
+4. **The four strings are `balance`, `locked.price`, `locked.buy` and `locked.deed`.** A price that
+   can be paid reads *"Unlock: 3500 Soul Shards"* in gold. One that cannot reads *"3500 Soul
+   Shards"* in `Palette.Neutral`. So a live locked card reads as a purchase, not as a class to play,
+   and the figure is drawn either way (rule 3).
+5. **`Update` clears `_buying` only.** `_descending` spans an awaited scene load, and clearing it
+   every frame would let a second descent through. `_buying` also blocks `OnCardChosen` in the same
+   pass. That stops a double tap from buying a class and then starting a run with it (rule 8).
+6. **`ClassSelect_TheBalanceIsNotPolled` measures the screen, not a read count.** `ProfileStore` is
+   sealed and `Current` is a property. So the row moves the store under an open screen, runs 120
+   `Update`s, and checks that the label, `Shards` and the cards have not moved.
+7. **The Emberwright's DPS is drawn as 26, not 25.5.** The card's whole-number format is M5-07's.
+   The row asserts that format applied to 17 × 1.5 rather than a typed figure.
+8. **Ripple past the table:** `PaletteTests.Palette_EssenceHasTwoReadersAndItsSummarySaysSo` pins
+   the Essence readers, so it gains `ClassSelectPresenter` and `ClassCard`, and `Palette.cs`'s
+   summary names them. `EmberwrightTests.Class_TheThirdCardIsBoundWithNoPrefabEdit` passes a
+   `ProfileStore`.
+9. **`Select_EveryCardIsSelectable` is retired**, because this is the task it named.
+   `ClassSelect_TheStarterIsUnchanged` keeps its `Bind`-signature half. `Select_ATapWritesThePendingRun`
+   and `Select_ATapIsTakenOnce` now use a profile that owns the Gravecaller, as a migrated v3
+   profile does.
+10. **Rows beyond the table:** the three implied guard rows (`BindLocked_RefusesANullArgument`,
+    `Card_AMissingPriceOrDeedLabelIsSilent`, `Select_AnEmptyCatalogStillOpens`). M6-09a's
+    `Store_UnlockSpendsAndGrantsInOneSave` is renamed to this table's
+    `Store_UnlockSpendsAndOwnsInOneWrite`.
+
+### Findings
+
+- **The prefab was dressed through `PrefabUtility.LoadPrefabContents`, and the change only adds.**
+  The file went from 99 YAML documents to 127: seven labels of four components each. The price and
+  deed labels sit under the DPS line, and the balance sits top-right. Whether a four-digit price
+  reads as a price at thumb distance is manual step 6, on the device.
+- **A purchase that fails to save still owns the class for this session.** `ProfileStore.Save`
+  moves `Current` before the write and logs a fault (M3-09c rule 5). So a full disk means a class
+  that is owned now and locked again after a restart, with the Shards back. That is the safe
+  direction.

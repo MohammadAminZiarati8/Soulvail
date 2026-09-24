@@ -103,3 +103,5 @@ MonoBehaviour:
   _bosses:
   - {fileID: 11400000, guid: 74a6fdaa03d6e184fbff110ee9000655, type: 2}
   _localization: {fileID: 11400000, guid: e8534041bde963a4185ebefd2397811d, type: 2}
+  _languages:
+  - {fileID: 11400000, guid: 374abb67f0edbe943a938eae3a7232d9, type: 2}

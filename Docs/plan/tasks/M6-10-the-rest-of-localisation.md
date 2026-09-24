@@ -317,3 +317,59 @@ unchanged.
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+
+**Built to the Public API, except where a deviation says otherwise.** `ILocalizer.Format`;
+`TableLocalizer` over many tables with a two-deep fallback, `SetLocale`, `Culture`; a table's
+`_locale`; `BootFlow` applying the profile's locale once; `Pseudo.asset` generated (185 rows) and on
+`BootScope`. **EditMode 3 107 → 3 140 (+33), twice; PlayMode 26 / 0 / 0 twice.**
+
+### Deviations
+
+1. **The one-table constructor stays** beside the list form, which it calls. Forty-six test sites
+   across twenty files build a localizer over one table.
+2. **`BootScope` keeps `_localization`** as the required English slot and gains **`_languages`**,
+   not `_localizationTables`, for the others. `BootScope.cs` is edited outside the table.
+   `Install` gains an optional trailing `languages`, `bosses`' shape. The adapter is registered as
+   itself too, for `BootFlow`.
+3. **Rule 5's line: a word or a sentence moves, digits and symbols stay.** Moved to `Format`: the
+   class card's price, deed, HP, speed and DPS, both balances, the splash count, the level-up
+   header's *Level* and *Pick i of n*, and the Pact line. Four of those were English typed into
+   code, and the Pact line's two rows became one (`ui.offer.rot` retired). Staying invariant:
+   `SkillRow`'s thresholds and cooldown (a missing trigger row must keep its number,
+   `Row_MissingTriggerRowKeepsTheNumber`), `S1`, the toast's `×n`, the HUD and run-end digits, and
+   a Sanctum price. `Sweep_InvariantCultureStaysOutOfSentences` names the four types left. Callers
+   edited outside the table: `OfferCard`, `LevelUpPresenter`, `SanctumPresenter`,
+   `ClassSelectPresenter`, plus the remarks in `SkillRow` and `SplashPresenter`.
+4. **There is no `BootInstallerTests` or `BootFlowTests`.** The installer rows are in
+   `TableLocalizerTests` and the profile rows in `ResumeFlowTests`, which owns `BootFlow`'s fixture.
+5. **The code sweep reads `Soulvail.Core` as well as `Soulvail.Game`**, because `SplashFlow` names
+   the three splash refusal keys.
+6. **The generator is a menu item in `LocalisationSweepTests`** (*Soulvail ▸ Localisation ▸
+   Regenerate Pseudo-locale*), beside the rows that check it. It accents Latin-1 only, because the
+   default font's static atlas has nothing past it.
+7. **`ui.menu.title` does not exist**; `Localizer_ReadsThePickedTable` reads `ui.menu.descend`.
+8. **English is 185 rows, not 177**: 180 on the branch, +5 format rows, +1 `minion.wight.name`,
+   −1 `ui.offer.rot`.
+9. **`ContentValidationTests.EveryAuthoredKey` now walks a character's description and minion
+   name**, and `GravecallerTests.Keys_AreAuthoredAndUnresolved` became `…AndResolve`: M5-02
+   rule 10 named M6-10 as the task that adds the Wight's row.
+10. **Rows beyond the table:** `Localizer_RefusesTwoTablesForOneLocale`,
+    `Localizer_SetLocaleSwitchesAndRefusesNull`, `Format_DefaultKeyAndNullArgumentsAnswerQuietly`,
+    `Sweep_InvariantCultureStaysOutOfSentences`, `Pseudo_IsTheGeneratorsOutput`,
+    `Pseudo_KeepsEveryPlaceholderAndTag`, `Pseudo_TheFontDrawsEveryCharacterItAdds`,
+    `Boot_AnUnshippedProfileLocaleReadsEnglishAndKeepsTheProfile`.
+
+### Findings
+
+- **The new sweep found a hole in the old one on its first run.**
+  `Sweep_EveryAuthoredAssetKeyIsAlreadyCovered` flagged the three `character.*.description` rows
+  as named by nothing. The class card has drawn them since M5-07, but M3-14b's asset walk stopped
+  at a character's name, so nothing checked them. Deviation 9 closes it.
+- **`→` in English's first-active hint is outside the static atlas.** Whatever draws it in the
+  Editor is the dynamic fallback, which is a device question: added to
+  [ledger row 1](../ROADMAP.md#carry-forward-into-m6) with step 5.
+- **The prefab pre-read found one plain-English label**: `Boot.unity`'s `"Soulvail"`, which
+  M3-14a ruled out of scope. Every other authored `m_text` is a key, a digit, `II` or the overlay.
+  Step 1 is still the instrument for anything drawn at runtime.
+- **PlayMode's two red passes were Unity's AI Assistant**, *NoSubscription* and *"Error after 4
+  attempt(s)"*, in two different `FrameOrderTests` rows (Known issue 6). Two clean passes followed.

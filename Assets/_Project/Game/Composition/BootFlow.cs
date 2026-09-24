@@ -51,6 +51,7 @@ public sealed class BootFlow : IStartable, IDisposable
     private readonly ISaveStore _store;
     private readonly ProfileStore _profiles;
     private readonly SavedRun _savedRun;
+    private readonly TableLocalizer _localizer;
 
     /// <param name="loader">Which scene the app is in, and how it leaves Boot.</param>
     /// <param name="store">The disk. Read twice here, and written nowhere.</param>
@@ -60,13 +61,21 @@ public sealed class BootFlow : IStartable, IDisposable
     /// is how the others get lost (rule 3).
     /// </param>
     /// <param name="savedRun">What the disk said about a run in progress, at launch.</param>
+    /// <param name="localizer">
+    /// The adapter rather than the port, because this is the one caller of
+    /// <see cref="TableLocalizer.SetLocale"/> (M6-10 rule 6). It starts on the device's language and
+    /// is moved to the profile's here, before the Menu exists.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-    public BootFlow(SceneLoader loader, ISaveStore store, ProfileStore profiles, SavedRun savedRun)
+    public BootFlow(
+        SceneLoader loader, ISaveStore store, ProfileStore profiles, SavedRun savedRun,
+        TableLocalizer localizer)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         _savedRun = savedRun ?? throw new ArgumentNullException(nameof(savedRun));
+        _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
     }
 
     /// <summary>
@@ -144,6 +153,15 @@ public sealed class BootFlow : IStartable, IDisposable
     /// back on the spot — the first file appears when the player first changes something, and
     /// until then a fresh install has no profile, which is the truth.
     /// </para>
+    /// <para>
+    /// <b>The profile's language is read here, once, and nothing changes it after</b> (M6-10
+    /// rule 6). The localizer was built on the device's language because the container exists
+    /// before this read does. An empty locale leaves it there; any other tag moves it, and a tag
+    /// this build ships no table for reads English silently, with the profile left as written so
+    /// the language comes back if the table does (rule 7). Every label is written in <c>Start</c>
+    /// (M3-14c rule 3), so this has to land before the Menu loads. With today's synchronous store it
+    /// does.
+    /// </para>
     /// </remarks>
     private void LoadProfile()
     {
@@ -161,7 +179,14 @@ public sealed class BootFlow : IStartable, IDisposable
                     return;
                 }
 
-                _profiles.Adopt(task.Result ?? PlayerProfile.Default);
+                PlayerProfile profile = task.Result ?? PlayerProfile.Default;
+
+                _profiles.Adopt(profile);
+
+                if (!string.IsNullOrEmpty(profile.Locale))
+                {
+                    _localizer.SetLocale(profile.Locale);
+                }
             },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,

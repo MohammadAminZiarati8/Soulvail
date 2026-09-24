@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Presentation;
@@ -63,18 +62,25 @@ namespace Soulvail.Game.Controls
     public sealed class ClassCard : MonoBehaviour
     {
         /// <summary>
-        /// Hit points, as the card says them. A number format rather than a sentence, so it is a
-        /// <c>const</c> here rather than a row in <c>English.asset</c> — <c>SkillRow</c>'s
-        /// <c>"{0:0.0} s"</c> and <c>HudPresenter</c>'s <c>"{0:0}/{1:0}"</c>, and the distinction
-        /// <c>TableLocalizerTests</c> draws when it keeps the HP readout out of AR §11.5's sweep.
+        /// Hit points, as the card says them: <c>"{0:0} HP"</c> in English.
         /// </summary>
-        private const string HpFormat = "{0:0} HP";
+        /// <remarks>
+        /// <b>A row since M6-10, where it was a <c>const</c></b>. It was kept out of the table as a
+        /// number format rather than a sentence, beside <c>HudPresenter</c>'s <c>"{0:0}/{1:0}"</c>.
+        /// But <c>HP</c> and <c>DPS</c> are English words, and under the pseudo-locale they are
+        /// exactly what M6-10 rule 3 exists to find. The HUD's readout is digits and a slash, and it
+        /// stays a <c>const</c>.
+        /// </remarks>
+        private static readonly LocKey HpKey = new LocKey("ui.classselect.hp");
 
-        /// <summary>Metres a second, to one place: 3.0 and 3.1 are a real difference here.</summary>
-        private const string SpeedFormat = "{0:0.0} m/s";
+        /// <summary>
+        /// Metres a second, to one place: 3.0 and 3.1 are a real difference here. M6-10 rule 5's own
+        /// example — <c>3.4 m/s</c> is <c>3,4 m/s</c> to a German reader.
+        /// </summary>
+        private static readonly LocKey SpeedKey = new LocKey("ui.classselect.speed");
 
         /// <summary>Damage a second, rounded. See the class remarks on where the product comes from.</summary>
-        private const string DpsFormat = "{0:0} DPS";
+        private static readonly LocKey DpsKey = new LocKey("ui.classselect.dps");
 
         /// <summary>The price on a card whose balance is short: a figure, and nothing to tap.</summary>
         private static readonly LocKey PriceKey = new LocKey("ui.classselect.locked.price");
@@ -253,8 +259,7 @@ namespace Soulvail.Game.Controls
 
             if (_price != null)
             {
-                _price.text = string.Format(
-                    CultureInfo.InvariantCulture, localizer.Get(affordable ? BuyKey : PriceKey), price);
+                _price.text = localizer.Format(affordable ? BuyKey : PriceKey, price);
 
                 // GD §16.4's reward gold when it can be had — RunEndPresenter's and the Sanctum's
                 // colour for the same currency — and the neutral grey of a fact when it cannot.
@@ -270,8 +275,9 @@ namespace Soulvail.Game.Controls
                 }
                 else
                 {
-                    _deed.text = string.Format(
-                        CultureInfo.InvariantCulture, localizer.Get(deed), spec.Unlock?.DeedStage ?? 0);
+                    // Through the row, so a language that says "reach stage 20" with the number
+                    // elsewhere can put it there (M6-10 rule 5).
+                    _deed.text = localizer.Format(deed, spec.Unlock?.DeedStage ?? 0);
                     _deed.gameObject.SetActive(true);
                 }
             }
@@ -300,19 +306,17 @@ namespace Soulvail.Game.Controls
 
             if (_hp != null)
             {
-                _hp.text = string.Format(CultureInfo.InvariantCulture, HpFormat, spec.MaxHp);
+                _hp.text = localizer.Format(HpKey, spec.MaxHp);
             }
 
             if (_speed != null)
             {
-                _speed.text = string.Format(
-                    CultureInfo.InvariantCulture, SpeedFormat, spec.Movement.Speed);
+                _speed.text = localizer.Format(SpeedKey, spec.Movement.Speed);
             }
 
             if (_weapon != null)
             {
-                _weapon.text = string.Format(
-                    CultureInfo.InvariantCulture, DpsFormat, DpsOf(spec));
+                _weapon.text = localizer.Format(DpsKey, DpsOf(spec));
             }
         }
 

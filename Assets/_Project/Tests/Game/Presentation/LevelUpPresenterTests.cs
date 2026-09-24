@@ -695,7 +695,10 @@ public sealed class LevelUpPresenterTests
     public void Header_ShowsLevelAndPickCount()
     {
         StartRun(level: 7, pending: 2);
-        BuildScreen();
+
+        // The shipped table since M6-10 made both headers rows (ui.levelup.level, ui.levelup.pick):
+        // a pass-through table would draw the two keys and this row would read nothing.
+        BuildScreen(Shipped());
 
         _session.OpenLevelUp();
 

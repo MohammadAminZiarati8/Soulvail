@@ -336,10 +336,15 @@ namespace Soulvail.Game.Controls
         /// One clause's threshold, written the way its <see cref="TriggerUnit"/> says (rule 2).
         /// </summary>
         /// <remarks>
-        /// <b>The culture is invariant and deliberately so.</b> A run's numbers are not localised
-        /// until M6-10 gives the project a localiser and a culture to ask; formatting against the
-        /// device's culture in the meantime would make a test that reads <em>"60 %"</em> pass in
-        /// Ireland and fail in France, which is a failure about the machine rather than the game.
+        /// <b>The culture is invariant, and M6-10 left it so on purpose.</b> This number is written
+        /// <em>beside</em> the phrase rather than inside a row, because M3-09b rule 1 wants a missing
+        /// phrase to cost the phrase and not the reading. <c>Row_MissingTriggerRowKeepsTheNumber</c>
+        /// pins that, and a number moved into <c>ILocalizer.Format</c> would vanish with its row. The
+        /// units are symbols, not words. What it costs is the decimal separator in a seconds
+        /// threshold, <em>"0.5 s"</em> where a German reader expects <em>"0,5 s"</em>. That is
+        /// recorded on the ROADMAP's parking-lot line for the languages, because it only costs
+        /// anything once a real second language ships. The device's own culture is still never used,
+        /// because a row reading <em>"60 %"</em> would pass in Ireland and fail in France.
         /// </remarks>
         private static string Threshold(TriggerClause clause)
         {

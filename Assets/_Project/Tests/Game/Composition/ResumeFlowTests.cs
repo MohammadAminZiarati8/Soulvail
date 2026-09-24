@@ -490,11 +490,67 @@ public sealed class ResumeFlowTests
         // the one object that holds a whole one, not to one field's holder.
         var profiles = new ProfileStore(store);
         var saved = new SavedRun();
+        TableLocalizer localizer = Localizer();
 
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, saved, null));
+    }
+
+    // ---- Boot reads the profile's language, once (M6-10 rules 6, 7) ----------------------------
+
+    [Test]
+    public void Boot_TheProfilesLocaleWins()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default.WithLocale("qps-ploc") };
+        TableLocalizer localizer = Localizer();
+
+        Assert.That(localizer.Locale, Is.Empty, "the fixture's premise: the device's language is English.");
+
+        RunBootFlow(store, new SavedRun(), localizer);
+
+        // Inside Start, and LeaveBoot is Start's last statement — so a locale that is set here was
+        // set before the Menu scene was asked for, which is before any label was written.
+        Assert.That(localizer.Locale, Is.EqualTo("qps-ploc"));
+        Assert.That(localizer.Get(new LocKey("a.b")), Is.EqualTo("[á.ƀ]"), "the pseudo table is being read.");
+    }
+
+    [Test]
+    public void Boot_AnEmptyProfileLocaleLeavesTheDevices()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default };
+        TableLocalizer localizer = Localizer(start: "qps-ploc");
+
+        Assert.That(PlayerProfile.Default.Locale, Is.Empty, "the fixture's premise.");
+
+        RunBootFlow(store, new SavedRun(), localizer);
+
+        // Empty means "the device's", and the device's is whatever the installer started on — here
+        // standing in as the pseudo-locale, so an accidental SetLocale("") would be visible.
+        Assert.That(localizer.Locale, Is.EqualTo("qps-ploc"));
+    }
+
+    /// <summary>
+    /// Rule 7 at the boot: a language this build does not ship reads English, and the profile is
+    /// left as the player wrote it.
+    /// </summary>
+    [Test]
+    public void Boot_AnUnshippedProfileLocaleReadsEnglishAndKeepsTheProfile()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default.WithLocale("de") };
+        var profiles = new ProfileStore(store);
+        TableLocalizer localizer = Localizer();
+
+        Assert.DoesNotThrow(() => RunBootFlow(store, new SavedRun(), localizer, profiles));
+
+        Assert.That(localizer.Locale, Is.Empty, "no German table ships, so English is read.");
+        Assert.That(localizer.Get(new LocKey("a.b")), Is.EqualTo("words"));
+
+        // Not rewritten, so the language comes back the day the table does.
+        Assert.That(profiles.Current.Locale, Is.EqualTo("de"));
+        Assert.That(store.ProfileSaves, Is.Zero, "boot wrote the profile back.");
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------
@@ -510,7 +566,8 @@ public sealed class ResumeFlowTests
     /// during a test run is whichever one the owner has open, so this is checked rather than
     /// assumed.
     /// </remarks>
-    private void RunBootFlow(ISaveStore store, SavedRun saved)
+    private void RunBootFlow(
+        ISaveStore store, SavedRun saved, TableLocalizer localizer = null, ProfileStore profiles = null)
     {
         if (SceneManager.GetActiveScene().name == SceneLoader.Boot)
         {
@@ -519,7 +576,8 @@ public sealed class ResumeFlowTests
                     + "Menu over it. Open any other scene and re-run.");
         }
 
-        var flow = new BootFlow(new SceneLoader(), store, new ProfileStore(store), saved);
+        var flow = new BootFlow(
+            new SceneLoader(), store, profiles ?? new ProfileStore(store), saved, localizer ?? Localizer());
 
         try
         {
@@ -841,13 +899,23 @@ public sealed class ResumeFlowTests
     {
         public RunSnapshot? Run { get; set; }
 
+        /// <summary>What the disk says about the profile. Null is a fresh install.</summary>
+        public PlayerProfile? Profile { get; set; }
+
         public bool FaultRunLoad { get; set; }
 
         public int RunLoads { get; private set; }
 
-        public Task<PlayerProfile?> LoadProfile() => Task.FromResult<PlayerProfile?>(null);
+        public int ProfileSaves { get; private set; }
 
-        public Task SaveProfile(PlayerProfile profile) => Task.CompletedTask;
+        public Task<PlayerProfile?> LoadProfile() => Task.FromResult(Profile);
+
+        public Task SaveProfile(PlayerProfile profile)
+        {
+            ProfileSaves++;
+
+            return Task.CompletedTask;
+        }
 
         public Task<RunSnapshot?> LoadRun()
         {
@@ -1002,4 +1070,37 @@ public sealed class ResumeFlowTests
     /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
     private static ILocalizer Passthrough() => new TableLocalizer(EmptyTable());
 
+    /// <summary>
+    /// English and a pseudo-locale, one row each, started on <paramref name="start"/> — what the
+    /// installer builds, small enough to read.
+    /// </summary>
+    private TableLocalizer Localizer(string start = "")
+    {
+        var english = Keep(ScriptableObject.CreateInstance<LocalizationTable>());
+        var pseudo = Keep(ScriptableObject.CreateInstance<LocalizationTable>());
+
+        english.name = "English";
+        pseudo.name = "Pseudo";
+
+        Author(english, string.Empty, "a.b", "words");
+        Author(pseudo, "qps-ploc", "a.b", "[á.ƀ]");
+
+        return new TableLocalizer(new[] { english, pseudo }, start);
+    }
+
+    /// <summary>One row and a locale, through the Inspector's own route.</summary>
+    private static void Author(LocalizationTable table, string locale, string key, string text)
+    {
+        var serialized = new SerializedObject(table);
+
+        serialized.FindProperty("_locale").stringValue = locale;
+
+        SerializedProperty rows = serialized.FindProperty("_rows");
+
+        rows.arraySize = 1;
+        rows.GetArrayElementAtIndex(0).FindPropertyRelative("_key").stringValue = key;
+        rows.GetArrayElementAtIndex(0).FindPropertyRelative("_text").stringValue = text;
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
 }

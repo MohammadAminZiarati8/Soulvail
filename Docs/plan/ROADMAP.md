@@ -209,8 +209,9 @@ M7-02e's outline on all of them.
 a showcase scene, beginning with the model. The Ranger fits the parts already imported: KayKit's
 `Ranger.fbx`, the `Ranged_Bow_*` clips, and a bow, a quiver and an arrow among the props.
 
-- **It is not V1's roster.** GD §19 puts a fourth class in V2. Nothing here changes the three classes.
-  Whether the Ranger joins class select is the owner's, asked at RS-03 with its kit.
+- **It is not V1's roster yet.** GD §19 puts a fourth class in V2. The Ranger joins class select for
+  free while it is built (RS-03c). Its price, and whether it ships in V1, are the owner's before
+  release (parking lot).
 - **It is the art ruling's pilot.** The 2026-09-25 ruling named the Oathbound. The pipeline these tasks
   prove is the one M7-05/06 and the Oathbound will use: a Gemini sheet drawn over a KayKit template,
   image-to-3D, then scripted Blender to fit and skin it onto `Rig_Medium`.
@@ -232,17 +233,37 @@ Three findings shaped the model's tasks:
 RS-04's scene forward. The new mesh keeps `Rig_Medium`, so `AC_Ranger` plays on it unchanged when
 RS-01c swaps the body.
 
+**The owner's kit, ruled on 2026-09-25**, and specced by RS-00b:
+
+- **It shoots standing still, and shooting on the move is to be a skill.** Core holds fire through a
+  `FireWhileMoving` stat, so that skill is later one `ModifyStat` node (RS-03a).
+- **Three passives, each taken three times:** attack speed; a volley every *n* shots, with
+  *n* = 5, 4, 3; movement speed. Each is a branch of three one-node tiers (RS-03c).
+- **The volley is a fan at the target** (RS-03b).
+- **The movement skill is a dodge roll that can be switched off**, through `MovementSkillKind.None`
+  (RS-03a).
+- **The name is "Ranger", and it is free while it is built.**
+- **What the planning found:** class select holds exactly three cards; `ProjectileViews` flies every
+  shot as the same bolt; the player can offer only one shot per damage frame; and nothing checks a
+  class's own tree against the stats it may name, until a node is taken (RS-03b rule 7).
+
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | RS-00 | Plan the Ranger's model: this section and the three specs below | S | — | ☑ |
 | RS-01a | [A template Gemini can draw over, and the prompts](tasks/RS-01a-a-template-gemini-can-draw-over.md) | S | RS-00 | ☐ |
 | — | *The owner's: Gemini sheets and image-to-3D, handed back as RS-01a rule 6 lists* | — | RS-01a | ☐ |
 | RS-01b | [The mesh on Rig_Medium](tasks/RS-01b-the-mesh-on-rig-medium.md) | S | RS-01a, the handback | ☐ |
-| RS-01c | [The Ranger in Unity](tasks/RS-01c-the-ranger-in-unity.md) — **the class's name is asked first** | S | RS-01b | ☐ |
+| RS-01c | [The Ranger in Unity](tasks/RS-01c-the-ranger-in-unity.md) — the class is *Ranger* (owner, 2026-09-25); the new model's files still need a name distinct from KayKit's `Ranger.prefab` | S | RS-01b | ☐ |
 | RS-02a | [A playable Ranger, in a sandbox](tasks/RS-02a-a-playable-ranger.md): KayKit's body, `AC_Ranger`, the game's stick and camera | M | RS-00 | ☑ |
-| RS-02 | A body per class: a run's player wears the Ranger *(title; its animator is RS-02a's)* | — | RS-01c, RS-02a | ☐ |
-| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's**; ruled so far: it shoots standing still, and **shooting on the move is a skill** (RS-02a's switch until then) *(title)* | — | RS-02 | ☐ |
-| RS-04 | The showcase scene *(title)* | — | RS-03 | ☐ |
+| RS-00b | Specs for the Ranger's class and its three passives: RS-02b to RS-03d | S | RS-02a | ☑ |
+| RS-02b | [A body per class](tasks/RS-02b-a-body-per-class.md) — `CharacterLookBook`; the Knight moves to `Bodies/Knight` | M | RS-02a | ☐ |
+| RS-02c | [An arrow per shooter](tasks/RS-02c-an-arrow-per-shooter.md) — one pool per prefab, chosen by `SpecId` | S | RS-02b | ☐ |
+| RS-03a | [Holding fire on the move, and a class with no movement skill](tasks/RS-03a-holding-fire-on-the-move.md) (core) | M | RS-00 | ☐ |
+| RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☐ |
+| RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☐ |
+| RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☐ |
+| RS-03e | The Ranger's acceptance: hits to kill at stages 1–16 on M6-11's instrument, and the owner's play — the roll kept or switched off, the numbers moved *(title)* | — | RS-03d | ☐ |
+| RS-04 | The showcase scene *(title; `RangerShowcase.unity` exists since RS-02a, and a practice mode is the owner's to ask for)* | — | RS-03e | ☐ |
 
 ---
 
@@ -250,6 +271,7 @@ RS-01c swaps the body.
 
 Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
+- **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
 - **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
   `ThreatArrows`, `VFX_ConsecrateZone` and `VFX_Bulwark` are `#22D3EE` — now `Palette.Player` — while

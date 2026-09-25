@@ -12,7 +12,7 @@ namespace Soulvail.Tests.Game.Views;
 
 /// <summary>
 /// RS-02a rules V1–V7: the Ranger's legs, its shot speed, its bowstring, and the three facts it
-/// draws a bow from.
+/// draws a bow from. RS-03d rules 1–3: the hold, the volley's glow, and the roll.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -47,6 +47,9 @@ public sealed class RangerAnimatorViewTests
     private static readonly int ShootId = Animator.StringToHash("Shoot");
     private static readonly int ReleaseId = Animator.StringToHash("Release");
     private static readonly int ShotSpeedId = Animator.StringToHash("ShotSpeed");
+    private static readonly int DodgingId = Animator.StringToHash("Dodging");
+    private static readonly int DodgeXId = Animator.StringToHash("DodgeX");
+    private static readonly int DodgeZId = Animator.StringToHash("DodgeZ");
 
     private GameObject _body;
     private RangerAnimatorView _view;
@@ -400,6 +403,126 @@ public sealed class RangerAnimatorViewTests
         Assert.That(_hub.SubscriberCount<ProjectileFired>(), Is.EqualTo(1));
     }
 
+    // ---------------------------------------------------------------- RS-03d rule 1: the hold
+
+    [Test]
+    public void Hold_LowersTheBowAndRaisesItAgain()
+    {
+        _view.Construct(_hub);
+        _hub.Publish(new TargetChanged(3, false, false, -1));
+
+        _hub.Publish(new HoldFireChanged(true));
+
+        Assert.That(_animator.GetBool(AimingId), Is.False, "Held: the bow comes down with the target still named.");
+
+        _hub.Publish(new HoldFireChanged(false));
+
+        Assert.That(_animator.GetBool(AimingId), Is.True, "Let go: raised at the target it kept.");
+    }
+
+    /// <summary>Raised by hand first, so the row sees the view write false rather than read a default.</summary>
+    [Test]
+    public void Hold_WithNoTargetStaysDown()
+    {
+        _view.Construct(_hub);
+        _animator.SetBool(AimingId, true);
+
+        _hub.Publish(new HoldFireChanged(false));
+
+        Assert.That(_animator.GetBool(AimingId), Is.False);
+    }
+
+    // ---------------------------------------------------------------- RS-03d rule 2: the volley
+
+    [Test]
+    public void Volley_LightsTheBowAndPutsItOut()
+    {
+        GameObject glow = DressGlow();
+
+        _view.Construct(_hub);
+
+        _hub.Publish(new VolleyReady(true));
+
+        Assert.That(glow.activeSelf, Is.True);
+
+        _hub.Publish(new VolleyReady(false));
+
+        Assert.That(glow.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void Volley_NoGlowIsNotAnError()
+    {
+        _view.Construct(_hub);
+
+        Assert.That(() => _hub.Publish(new VolleyReady(true)), Throws.Nothing);
+    }
+
+    [Test]
+    public void Volley_DeathPutsTheGlowOut()
+    {
+        GameObject glow = DressGlow();
+
+        _view.Construct(_hub);
+        _hub.Publish(new TargetChanged(3, false, false, -1));
+        _hub.Publish(new VolleyReady(true));
+
+        Assert.That(glow.activeSelf, Is.True, "Lit before the death, or the row proves nothing.");
+
+        _hub.Publish(new PlayerDied(12f));
+
+        Assert.That(glow.activeSelf, Is.False);
+        Assert.That(_animator.GetBool(AimingId), Is.False, "A corpse lowers its bow.");
+    }
+
+    // ---------------------------------------------------------------- RS-03d rule 3: the roll
+
+    /// <summary>
+    /// A roll to +X with the body facing +Z is a roll to its right. Turned to face +X, the same roll
+    /// is straight ahead: the direction is the body's, not the world's.
+    /// </summary>
+    [Test]
+    public void Roll_SetsDodgingAndItsDirection()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(new ChargeStarted(new System.Numerics.Vector2(1f, 0f)));
+
+        Assert.That(_animator.GetBool(DodgingId), Is.True);
+        Assert.That(_animator.GetFloat(DodgeXId), Is.EqualTo(1f).Within(1e-5f));
+        Assert.That(_animator.GetFloat(DodgeZId), Is.Zero.Within(1e-5f));
+
+        _body.transform.rotation = Quaternion.LookRotation(Vector3.right);
+
+        _hub.Publish(new ChargeStarted(new System.Numerics.Vector2(1f, 0f)));
+
+        Assert.That(_animator.GetFloat(DodgeXId), Is.Zero.Within(1e-5f));
+        Assert.That(_animator.GetFloat(DodgeZId), Is.EqualTo(1f).Within(1e-5f));
+    }
+
+    [Test]
+    public void Roll_EndsOnChargeEnded()
+    {
+        _view.Construct(_hub);
+        _animator.SetBool(DodgingId, true);
+
+        _hub.Publish(new ChargeEnded());
+
+        Assert.That(_animator.GetBool(DodgingId), Is.False);
+    }
+
+    /// <summary>A glow under the body, dark, dressed on the view as the prefab dresses it.</summary>
+    private GameObject DressGlow()
+    {
+        var glow = new GameObject("VolleyGlow");
+
+        glow.transform.SetParent(_body.transform, false);
+        glow.SetActive(false);
+        typeof(RangerAnimatorView).GetField("_volleyGlow", Private).SetValue(_view, glow);
+
+        return glow;
+    }
+
     private static ProjectileFired Shot(int sourceId) =>
         new ProjectileFired(
             1,
@@ -428,6 +551,9 @@ public sealed class RangerAnimatorViewTests
         controller.AddParameter("Shoot", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("Release", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("ShotSpeed", AnimatorControllerParameterType.Float);
+        controller.AddParameter("Dodging", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("DodgeX", AnimatorControllerParameterType.Float);
+        controller.AddParameter("DodgeZ", AnimatorControllerParameterType.Float);
 
         return controller;
     }

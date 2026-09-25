@@ -289,7 +289,7 @@ RS-01c swaps the body.
 | RS-03a | [Holding fire on the move, and a class with no movement skill](tasks/RS-03a-holding-fire-on-the-move.md) (core) | M | RS-00 | ☑ |
 | RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☑ |
 | RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☑ |
-| RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☐ |
+| RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☑ |
 | RS-03e | The Ranger's acceptance: hits to kill at stages 1–16 on M6-11's instrument, and the owner's play — the roll kept or switched off, the numbers moved *(title)* | — | RS-03d | ☐ |
 | RS-04 | The showcase scene *(title; `RangerShowcase.unity` exists since RS-02a, and a practice mode is the owner's to ask for)* | — | RS-03e | ☐ |
 
@@ -301,6 +301,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 
 - **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
 - **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
+- **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
 - **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
   `ThreatArrows`, `VFX_ConsecrateZone` and `VFX_Bulwark` are `#22D3EE` — now `Palette.Player` — while

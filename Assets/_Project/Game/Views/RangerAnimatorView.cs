@@ -11,18 +11,20 @@ namespace Soulvail.Game.Views
 {
     /// <summary>
     /// Puts a bow on the fight core has already decided. Reads the body's velocity against its
-    /// facing, listens for the three combat facts a bow has a pose for, and drives
-    /// <c>AC_Ranger</c>. It decides nothing. RS-02a.
+    /// facing, listens for the combat facts a bow has a pose for, and drives <c>AC_Ranger</c>. It
+    /// decides nothing. RS-02a, RS-03d.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>A run's events, with a bow's body.</b> <see cref="TargetChanged"/> raises or lowers the
-    /// bow, <see cref="PlayerAttacked"/> — the start of the tell, CC §4.2 — draws, and the player's
-    /// own <see cref="ProjectileFired"/> releases, so the string snaps on the frame the arrow
-    /// leaves rather than on a guess at when it will. These are the facts core publishes for the
-    /// Gravecaller today, so the view drops onto a run's player unchanged the day a class wears
-    /// this body. In the sandbox the same facts come from <c>RangerSandboxLoop</c>, which is what
-    /// makes the sandbox a test of this contract rather than of a second one.
+    /// <b>A run's events, with a bow's body.</b> <see cref="TargetChanged"/> and
+    /// <see cref="HoldFireChanged"/> raise or lower the bow, <see cref="PlayerAttacked"/> — the
+    /// start of the tell, CC §4.2 — draws, and the player's own <see cref="ProjectileFired"/>
+    /// releases, so the string snaps on the frame the arrow leaves rather than on a guess at when
+    /// it will. <see cref="VolleyReady"/> lights the bow, <see cref="ChargeStarted"/> and
+    /// <see cref="ChargeEnded"/> bracket the roll, and <see cref="PlayerDied"/> puts it all down.
+    /// These are the facts core publishes for the Ranger. In the sandbox the same facts come from
+    /// <c>RangerSandboxLoop</c>, which is what makes the sandbox a test of this contract rather than
+    /// of a second one.
     /// </para>
     /// <para>
     /// <b>The legs read the velocity in the body's own frame, not its speed.</b> Core turns the
@@ -116,6 +118,10 @@ namespace Soulvail.Game.Views
                  "simply never draws.")]
         [SerializeField] private SkinnedMeshRenderer _bow;
 
+        [Tooltip("Shown while the next shot is a volley, in the player's cyan (GD §16.4). " +
+                 "Optional: without it a volley is told by its fan alone.")]
+        [SerializeField] private GameObject _volleyGlow;
+
         // Hashed once. Instance fields rather than statics, because nothing in this project holds
         // static state (AR §7).
         private readonly int _moveXId = Animator.StringToHash("MoveX");
@@ -125,6 +131,9 @@ namespace Soulvail.Game.Views
         private readonly int _shootId = Animator.StringToHash("Shoot");
         private readonly int _releaseId = Animator.StringToHash("Release");
         private readonly int _shotSpeedId = Animator.StringToHash("ShotSpeed");
+        private readonly int _dodgingId = Animator.StringToHash("Dodging");
+        private readonly int _dodgeXId = Animator.StringToHash("DodgeX");
+        private readonly int _dodgeZId = Animator.StringToHash("DodgeZ");
         private readonly int _drawStateId = Animator.StringToHash("Draw");
         private readonly int _aimStateId = Animator.StringToHash("Aim");
 
@@ -133,12 +142,20 @@ namespace Soulvail.Game.Views
         private IDisposable _attackSubscription;
         private IDisposable _targetSubscription;
         private IDisposable _firedSubscription;
+        private IDisposable _holdSubscription;
+        private IDisposable _volleySubscription;
+        private IDisposable _rollSubscription;
+        private IDisposable _rollEndedSubscription;
+        private IDisposable _diedSubscription;
 
         private Vector3 _shownVelocity;
         private float _clock;
         private float _lastShotAt = -1f;
         private int _upperLayer = -2;
         private int _drawShape = -2;
+        private int _targetId = -1;
+        private bool _holding;
+        private bool _dead;
         private bool _injected;
 
         /// <param name="hub">The scope's event hub. Subscribed for this component's life.</param>
@@ -156,6 +173,11 @@ namespace Soulvail.Game.Views
             _attackSubscription = hub.Subscribe<PlayerAttacked>(OnAttacked);
             _targetSubscription = hub.Subscribe<TargetChanged>(OnTargetChanged);
             _firedSubscription = hub.Subscribe<ProjectileFired>(OnFired);
+            _holdSubscription = hub.Subscribe<HoldFireChanged>(OnHoldFireChanged);
+            _volleySubscription = hub.Subscribe<VolleyReady>(OnVolleyReady);
+            _rollSubscription = hub.Subscribe<ChargeStarted>(OnRollStarted);
+            _rollEndedSubscription = hub.Subscribe<ChargeEnded>(OnRollEnded);
+            _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
         }
 
         /// <summary>
@@ -347,6 +369,13 @@ namespace Soulvail.Game.Views
                     "ever reach it. RunScope injects the body it raises, and the sandbox's scope the " +
                     "view on its Animator View field.");
             }
+
+            // Dark until core says a volley is ready. The prefab stores it inactive too; this is
+            // for a scene that saved it lit.
+            if (_volleyGlow != null)
+            {
+                _volleyGlow.SetActive(false);
+            }
         }
 
         private void OnDestroy()
@@ -356,10 +385,20 @@ namespace Soulvail.Game.Views
             _attackSubscription?.Dispose();
             _targetSubscription?.Dispose();
             _firedSubscription?.Dispose();
+            _holdSubscription?.Dispose();
+            _volleySubscription?.Dispose();
+            _rollSubscription?.Dispose();
+            _rollEndedSubscription?.Dispose();
+            _diedSubscription?.Dispose();
 
             _attackSubscription = null;
             _targetSubscription = null;
             _firedSubscription = null;
+            _holdSubscription = null;
+            _volleySubscription = null;
+            _rollSubscription = null;
+            _rollEndedSubscription = null;
+            _diedSubscription = null;
         }
 
         private void Update()
@@ -420,28 +459,120 @@ namespace Soulvail.Game.Views
         }
 
         /// <remarks>
-        /// <para>
         /// A blocked target still raises the bow. CC §3.6 holds the facing on something the
         /// character cannot hurt, and a Ranger looking down a drawn arrow at it is the right pose
         /// for "go around". The weapon, not this view, is what declines to shoot.
-        /// </para>
-        /// <para>
-        /// <b>Lowering the bow ends a volley.</b> The next shot's speed is not measured across the
-        /// time the bow was down, which is not a fire rate. It keeps the speed the last volley
-        /// measured, so a Ranger that stops after a run draws its first arrow at the bow's pace
-        /// rather than at authored speed, which would release before full draw.
-        /// </para>
         /// </remarks>
         private void OnTargetChanged(TargetChanged evt)
+        {
+            _targetId = evt.Id;
+            Aim();
+        }
+
+        /// <remarks>
+        /// A hold lowers the bow and leaves the target alone: <see cref="TargetChanged"/> still
+        /// names what the Ranger will shoot when it stops, so letting go raises the bow at it with
+        /// no second fact needed (RS-03d rule 1).
+        /// </remarks>
+        private void OnHoldFireChanged(HoldFireChanged evt)
+        {
+            _holding = evt.IsHolding;
+            Aim();
+        }
+
+        private void OnVolleyReady(VolleyReady evt)
+        {
+            if (_volleyGlow == null)
+            {
+                return;
+            }
+
+            _volleyGlow.SetActive(evt.IsReady && !_dead);
+        }
+
+        /// <remarks>
+        /// <para>
+        /// <b>The direction is read in the body's frame, once.</b> Core holds the facing for the
+        /// length of a dash (<c>RunSession.TickBody</c>), so the clip chosen on the first frame is
+        /// right for the last. A roll to the side while the Ranger faces its target is
+        /// <c>Dodge_Left</c> or <c>_Right</c>, not a forward roll sliding sideways.
+        /// </para>
+        /// <para>
+        /// <c>InverseTransformDirection</c> ignores scale, as <see cref="Step"/>'s does. A direction
+        /// with no length, or none that is finite, rolls forward rather than writing a NaN into the
+        /// blend (AR §18.3).
+        /// </para>
+        /// </remarks>
+        private void OnRollStarted(ChargeStarted evt)
+        {
+            if (_animator == null || _dead)
+            {
+                return;
+            }
+
+            Vector3 local = transform.InverseTransformDirection(new Vector3(evt.DirectionXZ.X, 0f, evt.DirectionXZ.Y));
+
+            local.y = 0f;
+
+            float length = local.magnitude;
+
+            local = length > 0f && !float.IsInfinity(length) ? local / length : Vector3.forward;
+
+            _animator.SetFloat(_dodgeXId, local.x);
+            _animator.SetFloat(_dodgeZId, local.z);
+            _animator.SetBool(_dodgingId, true);
+        }
+
+        private void OnRollEnded(ChargeEnded evt)
         {
             if (_animator == null)
             {
                 return;
             }
 
-            _animator.SetBool(_aimingId, evt.Id >= 0);
+            _animator.SetBool(_dodgingId, false);
+        }
 
-            if (evt.Id < 0)
+        /// <remarks>
+        /// Latched, for <see cref="PlayerAnimatorView"/>'s reason: a fact arriving on the tick after
+        /// the killing blow must not raise the bow or light it again.
+        /// </remarks>
+        private void OnDied(PlayerDied evt)
+        {
+            _dead = true;
+
+            if (_volleyGlow != null)
+            {
+                _volleyGlow.SetActive(false);
+            }
+
+            Aim();
+        }
+
+        /// <summary>
+        /// Raises the bow when there is a target and fire is not held, and lowers it otherwise
+        /// (RS-03d rule 1).
+        /// </summary>
+        /// <remarks>
+        /// <b>Lowering the bow ends the string of shots the draw speed is measured over</b>,
+        /// whichever fact lowered it (RS-02a's V3, which called it a volley before RS-03b gave that
+        /// word to the fan). The next shot's speed is not measured across the time the bow was
+        /// down, which is not a fire rate. It keeps the speed the last string measured, so a Ranger
+        /// that stops after a run draws its first arrow at the bow's pace rather than at authored
+        /// speed, which would release before full draw.
+        /// </remarks>
+        private void Aim()
+        {
+            if (_animator == null)
+            {
+                return;
+            }
+
+            bool aiming = _targetId >= 0 && !_holding && !_dead;
+
+            _animator.SetBool(_aimingId, aiming);
+
+            if (!aiming)
             {
                 _lastShotAt = -1f;
             }

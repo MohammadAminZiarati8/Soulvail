@@ -6,6 +6,7 @@
         "Soulvail.Game",
         "VContainer",
         "UnityEngine.UI",
+        "Unity.InputSystem",
         "UnityEngine.TestRunner"
     ],
     "includePlatforms": [],

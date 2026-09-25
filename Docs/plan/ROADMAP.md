@@ -227,6 +227,11 @@ Three findings shaped the model's tasks:
   [RS-01b](tasks/RS-01b-the-mesh-on-rig-medium.md), and the owner overrides it by naming another
   number.
 
+**The owner asked for a playable Ranger before the new model**, so
+[RS-02a](tasks/RS-02a-a-playable-ranger.md) puts one on KayKit's body. It pulls RS-02's animator and
+RS-04's scene forward. The new mesh keeps `Rig_Medium`, so `AC_Ranger` plays on it unchanged when
+RS-01c swaps the body.
+
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | RS-00 | Plan the Ranger's model: this section and the three specs below | S | — | ☑ |
@@ -234,8 +239,9 @@ Three findings shaped the model's tasks:
 | — | *The owner's: Gemini sheets and image-to-3D, handed back as RS-01a rule 6 lists* | — | RS-01a | ☐ |
 | RS-01b | [The mesh on Rig_Medium](tasks/RS-01b-the-mesh-on-rig-medium.md) | S | RS-01a, the handback | ☐ |
 | RS-01c | [The Ranger in Unity](tasks/RS-01c-the-ranger-in-unity.md) — **the class's name is asked first** | S | RS-01b | ☐ |
-| RS-02 | A body per class, and the Ranger's animator: bow locomotion, draw, release *(title)* | — | RS-01c | ☐ |
-| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's** *(title)* | — | RS-02 | ☐ |
+| RS-02a | [A playable Ranger, in a sandbox](tasks/RS-02a-a-playable-ranger.md): KayKit's body, `AC_Ranger`, the game's stick and camera | M | RS-00 | ☑ |
+| RS-02 | A body per class: a run's player wears the Ranger *(title; its animator is RS-02a's)* | — | RS-01c, RS-02a | ☐ |
+| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's**; ruled so far: it shoots standing still, and **shooting on the move is a skill** (RS-02a's switch until then) *(title)* | — | RS-02 | ☐ |
 | RS-04 | The showcase scene *(title)* | — | RS-03 | ☐ |
 
 ---

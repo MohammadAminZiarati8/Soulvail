@@ -355,7 +355,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(13), "The other thirteen of sixteen are player numbers — M6-08 added four.");
+        Assert.That(refused, Is.EqualTo(14), "The other fourteen of seventeen are player numbers — M6-08 added four, RS-03a one.");
     }
 
     [Test]
@@ -432,8 +432,11 @@ public sealed class StatBlockTests
             nameof(PlayerStat.KindlingMaxStacks),
             nameof(PlayerStat.PoolDamage),
             nameof(PlayerStat.PoolDuration),
-        }), "M4-01a's twelve in the same order, then M6-08's four. A new member goes *after* "
-            + "PoolDuration and updates this row saying which task added it.");
+
+            // RS-03a, appended: every player has it, and no Wight does.
+            nameof(PlayerStat.FireWhileMoving),
+        }), "M4-01a's twelve in the same order, then M6-08's four, then RS-03a's FireWhileMoving. A "
+            + "new member goes *after* FireWhileMoving and updates this row saying which task added it.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

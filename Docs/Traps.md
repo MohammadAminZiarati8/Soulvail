@@ -86,6 +86,7 @@ one-shot `RunCommand` calls keep working the whole time, which makes the Editor 
 | Play mode | freezes after a burst of ~40 frames when *you* drive it — enough to read a census, ids, layers and TMP text (M1-07). **A PlayMode run started by `TestRunnerApi` is a different case and completes normally**: M3-15 took three full PlayMode runs and five isolated ones, all unfocused, all 8–9 s (see below) |
 | `SceneView.Repaint` | never lands. Two captures a minute apart came back byte-identical (M1-07) |
 | `EditorApplication.delayCall` | never fires (M0-14) |
+| The Unity CLI's `run_tests` (`com.unity.pipeline`) | **can hang and take the CLI with it.** At RS-03a it logged `Running 3216 tests`, ran none, and timed out at its 15-minute limit. The pipeline server then refused every command, `editor_focus` and `console_status` included, with the Editor focused and idle; it answered again only after a later recompile. `recompile` itself had worked unfocused minutes before. **`TestRunnerApi.Execute` from `Unity_RunCommand` ran the same 3 216 in 29 s**, so reach for that first and poll a results file (RS-03a) |
 | `EditorApplication.Step()`, with or without `isPaused` | **does not advance an unfocused Play session.** At RS-02a a session entered through the CLI froze at frame 27, and five `Step()` calls from `eval` left `Time.frameCount` at 27. Drive the scene from a PlayMode test instead: the runner pumps its own loop (RS-02a) |
 
 **The Editor is not the only compiler on this machine, and you do not have to wait for focus to
@@ -705,6 +706,13 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   holds:** `IgnoreFocus`, the Game view's routing left at its default, and every `Keyboard` and
   `Pointer` disabled for the row and re-enabled in `TearDown`. That kept 53 / 53 across three
   passes (`RangerSandboxTests.LoadTheSandbox`).
+  **It is not fully closed.** At RS-03a, `Loop_ShootsOnlyStandingStill` read a pushed stick as
+  zero and loosed an arrow "on the run" in three full passes in a row. It passed alone in a fresh
+  domain, then passed the next four full passes: `dev`'s code, two bisect steps, and finally the
+  identical tree that had failed, which rules out the code. No mechanism was found. **A red
+  sandbox row that passes alone after a recompile is this, not a regression**: re-run it before
+  bisecting, and bisect with a recompile between steps, since the failing passes also failed it
+  alone in the domain they left behind.
 
 ---
 

@@ -29,7 +29,11 @@ public sealed class PlayerMotor
     /// facing holds instead of following it. Without it a character coasting to a stop would
     /// twitch as the last few millimetres per second changed sign.
     /// </summary>
-    private const float FacingVelocityThreshold = 0.05f;
+    /// <remarks>
+    /// <c>internal</c> since RS-03a, because it is also where <c>PlayerCombat</c> says a player has
+    /// stopped: a class that holds fire while it moves shoots once its speed is at or below this.
+    /// </remarks>
+    internal const float FacingVelocityThreshold = 0.05f;
 
     private const float DegreesPerRadian = 180f / MathF.PI;
     private const float RadiansPerDegree = MathF.PI / 180f;

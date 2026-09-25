@@ -112,4 +112,49 @@ public bool IsHoldingFire { get; }
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+_6 000 bytes or fewer, measured._
+
+**Deviation 1, rule 3: a hold drops a draw, not a swing whose arrow has left.** `Weapon.Reset` also
+clears the cadence, so resetting every swing in progress let a tap of the stick after each arrow
+start the next draw at once. With the Ranger's 0.08 s stop, stepping would out-shoot standing
+still. `PlayerCombat` marks a swing once its damage frame fires (`_swingLanded`); a hold resets only
+a swing still drawing, and a loosed one runs out its interval with no new swing started.
+`Hold_AStepAfterTheShotKeepsTheCadence` pins it. Rule 3's other promise still holds: after a
+dropped draw, or a hold longer than the interval, the next swing starts on the first still tick.
+RS-02a's sandbox keeps the old reset until RS-03d moves it onto `HoldFireChanged`.
+
+**Deviation 2, rule 8: each half is guarded on its own.** `ResolveChargeHits` calls no damage when
+the damage `Value` is not above zero and sends no shove when the knockback is not; with neither it
+returns before recording anyone. The spec asked only for the both-zero case. A dash with damage and
+no knockback also stops sending zero-metre shoves. No shipped dash has that shape, and
+`EnemyView.Knockback` already ignored them. The Shroudstep and the Blink, both authored 0 and 0,
+now return early; before, they called `ApplyDamage(0)`, which publishes nothing, and sent shoves
+the view ignored. Nothing visible changes. `EmptyDash_AnyDamageStillHits` asserts both halves.
+
+**Deviation 3: two rows live in `Tests.Game`.** The Files table puts rules 1–9 in `Tests.Core`,
+but that assembly cannot see a `CharacterDefinition` or a `SkillButton`. The Tests table wins:
+`Shipped_EveryClassFiresWhileMoving` joined `CharacterDefinitionTests`, with a second half that
+converts a definition set to hold. `SkillButton_HiddenOnANoneClass` is in a new
+`Tests/Game/Controls/SkillButtonTests.cs`, over the shipped `Hud.prefab`, with
+`SkillButton_ShownOnAClassWithADash` as its control. That is four counted files, still M.
+
+**Rule 2's "the same number" is one constant.** `PlayerMotor.FacingVelocityThreshold` went from
+`private` to `internal`, and `PlayerCombat` squares it. It is a one-word edit outside the table.
+
+**`IsHoldingFire` survives `Reset`.** It reads how the body moves and is re-read the next tick.
+Clearing it without an event would leave a view drawing a hold that had ended.
+
+**Rows beyond the table:** `Hold_ADashIsNotStill` (rule 2's third clause), the cadence row above,
+and the button's control. **Existing rows moved for a seventeenth `PlayerStat`:**
+`ModifyStatTests.Stats_ResolveEveryMember`, `PlayerStatCoverageTests.Stats_EveryMemberIsDistinctlyNamed`,
+and two in `StatBlockTests` (the refused count and `PlayerStat_GainedNothing`'s ordinal list).
+
+**How it was checked.** The CLI's `run_tests` listed the suite, ran nothing and timed out after
+15 minutes. Its pipeline server then answered nothing until a later recompile, focused or not
+(Traps §3). Every count here came from `TestRunnerApi` submitted through `Unity_RunCommand`. Two
+earlier PlayMode passes were not clean, and neither was this code. `RangerShowcase.unity` had been
+saved with the sandbox's running shot on and a 0.14 release; the owner discarded those edits.
+`RangerSandboxTests.Loop_ShootsOnlyStandingStill` then failed three full passes running and has
+passed every pass since, on the same tree (Traps §8).
+
+**Not done here:** the spec's two Editor walkthroughs are the owner's to play.

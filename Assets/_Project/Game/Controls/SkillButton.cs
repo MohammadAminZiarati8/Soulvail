@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using UnityEngine;
@@ -42,6 +43,12 @@ namespace Soulvail.Game.Controls
     /// stays in core; this cannot make the button lie about it, because it owns no clock to be
     /// wrong with.
     /// </para>
+    /// <para>
+    /// <b>A class with no movement skill has no button</b> (RS-03a rule 9). On a
+    /// <see cref="MovementSkillKind.None"/> class the group goes to alpha 0 and stops blocking
+    /// raycasts, so the thumb reaches whatever is under it. The keyboard's Space still sends the
+    /// press, and core ignores it.
+    /// </para>
     /// </remarks>
     public sealed class SkillButton : MonoBehaviour
     {
@@ -53,7 +60,8 @@ namespace Soulvail.Game.Controls
         [SerializeField] private Image _radialFill;
 
         [Tooltip("The whole button's opacity: 100 % when the Charge is live, 40 % while it is " +
-                 "cooling. Raycasts are deliberately left on either way — see the class remarks.")]
+                 "cooling. Raycasts are deliberately left on either way — see the class remarks. " +
+                 "A class with no movement skill hides the button: 0 % and raycasts off.")]
         [SerializeField] private CanvasGroup _group;
 
         [Tooltip("The button's diameter in dp. 72 is CC §6.2's movement-skill size; the four skill " +
@@ -72,6 +80,9 @@ namespace Soulvail.Game.Controls
         /// Seeded outside <c>[0, 1]</c> so the first frame always draws.
         /// </summary>
         private float _shownFraction = -1f;
+
+        /// <summary>The button is hidden because the run's class has no movement skill.</summary>
+        private bool _hidden;
 
         /// <param name="session">
         /// The run, read for one number a frame. Not <c>IPlayerCommands</c>: this button sends
@@ -114,7 +125,7 @@ namespace Soulvail.Game.Controls
 
             // Drawn once immediately, so a button that shows nothing is unambiguous evidence that
             // the run never started rather than a first frame that has not come round yet.
-            Draw(Fraction());
+            Refresh();
         }
 
         /// <summary>
@@ -169,23 +180,54 @@ namespace Soulvail.Game.Controls
         /// </remarks>
         private void Update()
         {
-            Draw(Fraction());
+            Refresh();
         }
 
-        /// <summary>
-        /// How much cooldown is left, or zero when there is no run to ask.
-        /// </summary>
+        /// <summary>One frame of the button: hidden on a class with no movement skill, drawn otherwise.</summary>
         /// <remarks>
-        /// A button drawn before the first <c>Start</c> — the frame the Run scene loads, or a HUD
-        /// left in a scene with no run in it — reads as live rather than as permanently cooling.
-        /// That is the honest of the two: there is no cooldown running, because there is nothing to
-        /// dash with.
+        /// <para>
+        /// Asked every frame rather than once in <c>Start</c>, because the run may not have started by
+        /// then: <c>State</c> is null until it has, and a class read too early would be no class at all.
+        /// </para>
+        /// <para>
+        /// With no run to ask, the button reads as live rather than as permanently cooling — the frame
+        /// the Run scene loads, or a HUD left in a scene with no run in it. That is the honest of the
+        /// two: there is no cooldown running, because there is nothing to dash with.
+        /// </para>
         /// </remarks>
-        private float Fraction()
+        private void Refresh()
         {
             RunState state = _session.State;
+            bool hide = state is not null && state.Character.MovementSkill.Kind == MovementSkillKind.None;
 
-            return state is null ? 0f : state.MovementSkillCooldownFraction;
+            if (hide)
+            {
+                Hide();
+                return;
+            }
+
+            if (_hidden)
+            {
+                // Shown again: raycasts back on, and the next Draw forced to write.
+                _hidden = false;
+                _group.blocksRaycasts = true;
+                _shownFraction = -1f;
+            }
+
+            Draw(state is null ? 0f : state.MovementSkillCooldownFraction);
+        }
+
+        /// <summary>Rule 9: invisible, and no longer in the way of a thumb.</summary>
+        private void Hide()
+        {
+            if (_hidden)
+            {
+                return;
+            }
+
+            _hidden = true;
+            _group.alpha = 0f;
+            _group.blocksRaycasts = false;
         }
 
         /// <summary>

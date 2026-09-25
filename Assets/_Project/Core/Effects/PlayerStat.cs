@@ -163,6 +163,17 @@ public enum PlayerStat
 
     /// <summary>How long a Blink's fire pool burns — <c>ChargeSkill.PoolDuration</c>.</summary>
     PoolDuration,
+
+    /// <summary>
+    /// Whether the class may attack while it moves — <c>PlayerCombat.FireWhileMoving</c>. Base 1
+    /// for a class that fires on the move, 0 for one that holds fire; above 0.5 means it may.
+    /// </summary>
+    /// <remarks>
+    /// <b>A switch spelled as a number, deliberately</b> (RS-03a rule 1). The Ranger's running shot
+    /// is to be a skill, and a skill that is one <c>ModifyStat(FireWhileMoving, Flat, +1)</c> needs
+    /// no new code. Every class has it, so <see cref="PlayerStats.Has"/> is true for every run.
+    /// </remarks>
+    FireWhileMoving,
 }
 
 /// <summary>
@@ -258,6 +269,7 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.KindlingMaxStacks => RequireKindling(stat).MaxStacks,
             PlayerStat.PoolDamage => RequirePool(stat).PoolDamagePerPulse,
             PlayerStat.PoolDuration => RequirePool(stat).PoolDuration,
+            PlayerStat.FireWhileMoving => _combat.FireWhileMoving,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(stat),
                 stat,
@@ -271,8 +283,9 @@ public sealed class PlayerStats : IStatBlock
     /// <inheritdoc/>
     /// <remarks>
     /// <para>
-    /// <b>A question about this run, not about the enum</b> (M6-08 rule 8). Eleven members every
-    /// player has; <see cref="PlayerStat.ContactDamage"/>, which none has; and four that depend on
+    /// <b>A question about this run, not about the enum</b> (M6-08 rule 8). Twelve members every
+    /// player has, RS-03a's <see cref="PlayerStat.FireWhileMoving"/> the twelfth;
+    /// <see cref="PlayerStat.ContactDamage"/>, which none has; and four that depend on
     /// the class — the two Kindling numbers on whether <c>PlayerCombat.Kindling</c> exists, the two
     /// pool numbers on whether the movement skill is a Blink.
     /// </para>
@@ -301,6 +314,7 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.KindlingMaxStacks => _combat.Kindling is not null,
             PlayerStat.PoolDamage => _leavesPool,
             PlayerStat.PoolDuration => _leavesPool,
+            PlayerStat.FireWhileMoving => true,
             _ => false,
         };
     }

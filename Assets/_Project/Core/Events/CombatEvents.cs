@@ -230,6 +230,34 @@ public readonly struct PlayerAttacked
 }
 
 /// <summary>
+/// The character has started or stopped holding its fire because it is moving. Published by
+/// <c>PlayerCombat.Tick</c> on the tick <c>PlayerCombat.IsHoldingFire</c> changes, and by nothing
+/// else. RS-03a rule 5.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Only a class that may not fire while it moves ever publishes it</b> — the Ranger, which shoots
+/// standing still. A class whose <c>FireWhileMoving</c> stays above 0.5 never holds, so it never
+/// changes, so it never says anything: the three classes that ship are silent.
+/// </para>
+/// <para>
+/// What a view does with it is lower the bow on <see langword="true"/> and raise it on
+/// <see langword="false"/>. <see cref="TargetChanged"/> is unaffected by a hold: the reticle keeps
+/// showing what the player will shoot when it stops.
+/// </para>
+/// </remarks>
+public readonly struct HoldFireChanged
+{
+    /// <summary>The character is moving and holding its fire. False: it is still, and may shoot.</summary>
+    public readonly bool IsHolding;
+
+    public HoldFireChanged(bool isHolding)
+    {
+        IsHolding = isHolding;
+    }
+}
+
+/// <summary>
 /// CC §4.3's Focus ramp has moved: the character has been standing still long enough for the swing
 /// to be speeding up, or has just moved and lost it. Published by <c>FocusTracker.Tick</c>, and by
 /// nothing else.

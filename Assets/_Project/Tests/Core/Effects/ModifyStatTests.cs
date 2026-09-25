@@ -66,7 +66,7 @@ public sealed class ModifyStatTests
     public void Stats_ResolveEveryMember()
     {
         // **Against an Emberwright since M6-08** (rule 8): it is the one class with a Kindling and a
-        // Blink, so it is the one run that answers all sixteen but ContactDamage. The Oathbound's
+        // Blink, so it is the one run that answers all seventeen but ContactDamage. The Oathbound's
         // four refusals are Stats_HasIsFalseForAClassWithoutTheObject's.
         PlayerCombat combat = Ember();
         PlayerMotor motor = Motor();
@@ -120,6 +120,9 @@ public sealed class ModifyStatTests
                 PlayerStat.KindlingMaxStacks => combat.Kindling.MaxStacks,
                 PlayerStat.PoolDamage => combat.Charge.PoolDamagePerPulse,
                 PlayerStat.PoolDuration => combat.Charge.PoolDuration,
+
+                // RS-03a's, which every class has.
+                PlayerStat.FireWhileMoving => combat.FireWhileMoving,
                 _ => null,
             };
 
@@ -147,7 +150,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(15), "Sixteen members, one named exception.");
+        Assert.That(answered, Is.EqualTo(16), "Seventeen members, one named exception.");
     }
 
     // ---- M6-08 rule 8: four addresses a run may not have -----------------------------------------

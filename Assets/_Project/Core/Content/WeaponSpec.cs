@@ -99,6 +99,11 @@ public sealed class WeaponSpec
     /// <see cref="WeaponKind.Projectile"/> and refused on a <see cref="WeaponKind.Cone"/>.
     /// </param>
     /// <param name="shotSpread">Reserved and required to be zero, whatever the kind — see <see cref="ShotSpread"/>.</param>
+    /// <param name="firesWhileMoving">
+    /// Whether the class may attack while it moves — true for every class that ships. False is the
+    /// Ranger's rule (RS-03a): it holds fire until it stops. Defaulted and last, so every
+    /// <c>new WeaponSpec(...)</c> written before RS-03a keeps meaning what it meant.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="damage"/>, <paramref name="swingsPerSecond"/> or <paramref name="range"/> is
     /// not a finite number greater than zero; <paramref name="coneAngleDeg"/> is outside
@@ -116,7 +121,8 @@ public sealed class WeaponSpec
         float damageFrame,
         float shotSpeed = 0f,
         float shotRadius = 0f,
-        float shotSpread = 0f)
+        float shotSpread = 0f,
+        bool firesWhileMoving = true)
     {
         // `!(x > 0f)` throughout rather than `x <= 0f`, so NaN is refused with everything else —
         // the spelling every spec in this folder uses, for the reason TargetingSpec.Positive gives.
@@ -167,6 +173,7 @@ public sealed class WeaponSpec
         ShotSpeed = shotSpeed;
         ShotRadius = shotRadius;
         ShotSpread = shotSpread;
+        FiresWhileMoving = firesWhileMoving;
     }
 
     /// <summary>What shape the attack takes.</summary>
@@ -215,6 +222,15 @@ public sealed class WeaponSpec
     /// callers; it is refused today so that it cannot first become a number nobody draws for.
     /// </remarks>
     public float ShotSpread { get; }
+
+    /// <summary>Whether the class may attack while it moves. True for every class that ships.</summary>
+    /// <remarks>
+    /// <b>The seed of a <c>Stat</c>, not the rule itself</b> (RS-03a rule 1).
+    /// <c>PlayerCombat.FireWhileMoving</c> starts at 1 when this is true and 0 when it is false, so a
+    /// node can lift the hold with one <c>ModifyStat</c> of +1 — the running shot the Ranger is to
+    /// earn as a skill, with no new code.
+    /// </remarks>
+    public bool FiresWhileMoving { get; }
 
     /// <summary>
     /// Rule 2: which of the three shot numbers this kind requires, and which it refuses.

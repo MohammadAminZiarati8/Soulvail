@@ -200,13 +200,26 @@ public sealed class ChargeSkill
     /// that tick is within <see cref="MovementSkillSpec.InputBuffer"/> of this moment.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The latest press wins, and there is no queue. Two taps inside the buffer are a player asking
     /// for one dash impatiently, not for two — and a queue would spend the second one the instant
     /// the first dash ended, sending them somewhere they asked to go a cooldown ago.
+    /// </para>
+    /// <para>
+    /// <b>A <see cref="MovementSkillKind.None"/> class ignores the press</b> (RS-03a rule 7). Refused
+    /// here, at the one door a press comes through, so <see cref="Tick"/> never has one to spend:
+    /// no dash starts, no cooldown runs and <see cref="IsActive"/> is never true. The keyboard's
+    /// Space still reaches this method on such a class, and this is what makes it do nothing.
+    /// </para>
     /// </remarks>
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>
     public void Request(float now)
     {
+        if (_spec.Kind == MovementSkillKind.None)
+        {
+            return;
+        }
+
         _pressAt = now;
         _hasPress = true;
     }

@@ -61,8 +61,10 @@ public sealed class RangerAnimatorViewTests
 
         _body = new GameObject("Ranger");
 
-        // RequireComponent brings PlayerView and its CharacterController. Its Velocity is zero,
-        // since nothing applies an intent outside play mode.
+        // The body's PlayerView, on the same object: the view looks in its parents, which include
+        // itself (RS-02b rule 5). It brings its CharacterController, and its Velocity is zero, since
+        // nothing applies an intent outside play mode.
+        _body.AddComponent<PlayerView>();
         _view = _body.AddComponent<RangerAnimatorView>();
 
         _animator = _body.AddComponent<Animator>();

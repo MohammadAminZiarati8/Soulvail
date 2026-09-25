@@ -111,4 +111,59 @@ public static class RunCharacter
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+_6 000 bytes or fewer, measured._
+
+**Deviation 1, the Tests table over the Public API: `PlayerAnimatorView.Step(float dt)`.** The
+`View_FindsPlayerViewInItsParent` row steps both views, and only `RangerAnimatorView` had a `Step`.
+`Update` now calls `Step(Time.deltaTime)`. A zero, negative or non-finite step does nothing, where
+`Update` used to write the unchanged speed. The legs play the same.
+
+**Deviation 2, rule 4's "at identity" is position and rotation.** A body's scale is the model's:
+0.6615 on the prefab root, where the Knight carried it as `Player.prefab`'s `Body`. `RaiseBody`
+leaves it as authored. The instance is named after its prefab (`Knight`, not a clone), which the
+PlayMode rows read.
+
+**Deviation 3, `RunTicker.FallbackCharacterId` is gone rather than a call to `RunCharacter`.** Its
+call site is `RunCharacter.Choose(_pending, _catalog)`. A wrapper would repeat the `IsSet` test.
+Its remarks moved to `Choose`.
+
+**The two bodies.** `Bodies/Knight` is `Player.prefab`'s `Body` saved as it stood: unpacked since
+M2-art, 78 objects out plus the view in. `Player.prefab` changed nowhere else. `Bodies/Ranger` is a
+variant of KayKit's `Characters/Ranger.prefab` carrying RS-02a's overrides (scale, `AC_Ranger`,
+culling, the bow in `handslot.l`) and the view. `Player_Ranger` nests it as `Ranger`.
+
+**Rule 5's messages.** Both `Start` guards name the body (*"on 'Knight'"*). The not-injected
+message told the reader to drag the object onto `RunScope`'s Player View field. It now says
+`RunScope` injects the body it raises.
+
+**A row beyond the table:** `View_WithNoPlayerViewAboveThrowsInStart`, rule 5's second half.
+
+**Edits outside the table:**
+- `Run.unity`: `_defaultBody` dressed, `_playerAnimator` gone.
+- `RangerShowcase.unity`: the scope's Animator View points at the nested view. Manual step 2
+  needs it. Saving also added URP light data to two lights and dead AABB overrides on a bow fileID
+  `Player_Ranger` no longer has. Both were dropped, so the diff is the reference plus
+  `_shootWhileMoving`'s first serialisation.
+- `RunEndPresenterTests.RunScope_RefusesToComposeWithoutTheScreen` dresses `_defaultBody`. The new
+  guard sits above rule 7's, the third time that list has grown (M5-05a, M5-05b). It was the one red
+  row of the first full pass.
+- `RangerSandboxTests.Ranger_HoldsItsBowInTheLeftHandslot` finds the view in children.
+  `RangerAnimatorViewTests` adds the `PlayerView` the dropped `RequireComponent` used to add.
+  `PlayerAnimatorViewTests`' setup comment is corrected.
+- `RangerSandboxScope`'s tooltip and guard message name the nested body.
+- The three class assets were re-serialised when `_body` was written. Fields added since they were
+  last saved, such as `_weaponFiresWhileMoving` and the minion and pool blocks, are now written at
+  the values Unity already loaded. No number a class plays with moved.
+
+**The Gravecaller row sets `PendingRun` where `ClassSelectPresenter.OnCardChosen` would.** On a
+profile without the Gravecaller its card buys rather than descends. The direct-Play row expects
+`RunInstaller`'s seed warning, which is also the evidence that nothing was pending.
+`RunBodyTests.AssertTheRunWearsTheKnight` asserts the Knight's name, `AC_Player` and
+`PlayerAnimatorView`. RS-03c's Ranger case generalises it.
+
+**How it was checked.** Red check A, the views back on `GetComponent`: 46 / 1, the view row alone,
+*"Expected: 2 But was: 0"*. C, the ticker on the catalog's first class: the Gravecaller row alone,
+*"Expected: character.gravecaller But was: character.oathbound"*. B, no `InjectGameObject`: both
+PlayMode rows, on the view's own guard naming `'Knight'`. `RangerSandboxTests` passed every pass.
+
+**Not done here:** the spec's two Editor walkthroughs are the owner's to play.

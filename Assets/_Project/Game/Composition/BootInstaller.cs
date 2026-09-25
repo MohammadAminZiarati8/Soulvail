@@ -11,8 +11,8 @@ namespace Soulvail.Game.Composition;
 
 /// <summary>
 /// Everything the app owns for its whole life: the content catalog — characters and enemy
-/// archetypes — the look book that says how those archetypes are drawn, and the slot the menu
-/// writes the next run into. Scene-free and static so a test
+/// archetypes — the two look books that say how those archetypes are drawn and which body each
+/// class wears, and the slot the menu writes the next run into. Scene-free and static so a test
 /// can build the real container and resolve from it: a wiring mistake fails in the Test Runner
 /// rather than on a phone. See AR §7 and ADR-0002.
 /// </summary>
@@ -216,11 +216,14 @@ public static class BootInstaller
                     + "Data/Localisation/English.asset onto it.");
         }
 
+        CharacterSpec[] characterSpecs = Convert(
+            characters, definition => definition.ToSpec(), "character", nameof(characters));
+
         EnemySpec[] enemySpecs = Convert(
             enemies, definition => definition.ToSpec(), "enemy", nameof(enemies));
 
         builder.RegisterInstance(new ContentCatalog(
-            Convert(characters, definition => definition.ToSpec(), "character", nameof(characters)),
+            characterSpecs,
             enemySpecs,
             Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
             Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills)),
@@ -236,6 +239,11 @@ public static class BootInstaller
         // read. The look book refuses the same duplicate a line later, and would otherwise get
         // there first with a message about colours.
         builder.RegisterInstance(BuildLookBook(enemies, enemySpecs));
+
+        // The classes' bodies (RS-02b), after the catalog for the enemy book's reason. At the root
+        // rather than per run for that book's reason too: it is built from the boot list, which a
+        // run scope never sees, and RunScope resolves it by type from here.
+        builder.RegisterInstance(BuildCharacterLookBook(characters, characterSpecs));
 
         // The wall clock, at the root: it is a device the whole app shares, not something a run
         // owns — the same argument as the vibrator below, and the opposite of IRandom, which is
@@ -409,6 +417,27 @@ public static class BootInstaller
         }
 
         return new EnemyLookBook(looks);
+    }
+
+    /// <summary>
+    /// Builds the class → body index a run raises its player from (RS-02b).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BuildLookBook"/>'s shape exactly, and for its reasons: keyed by the spec's id, and
+    /// the two arrays index-parallel because <see cref="Convert"/> never skips a definition.
+    /// </remarks>
+    private static CharacterLookBook BuildCharacterLookBook(
+        IReadOnlyList<CharacterDefinition> definitions,
+        CharacterSpec[] specs)
+    {
+        var looks = new Dictionary<ContentId, CharacterLook>(specs.Length);
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            looks[specs[i].Id] = definitions[i].ToLook();
+        }
+
+        return new CharacterLookBook(looks);
     }
 
     /// <summary>

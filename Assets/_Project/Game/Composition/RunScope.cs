@@ -75,6 +75,11 @@ namespace Soulvail.Game.Composition
 
         [SerializeField] private PlayerView _playerView;
 
+        [Tooltip("The body a run wears when its class names none: Prefabs/Player/Bodies/Knight. " +
+                 "Required, like the Player View — the body is raised under it at the start of " +
+                 "every run, and without one the player would be an invisible capsule.")]
+        [SerializeField] private GameObject _defaultBody;
+
         [Tooltip("The dash, on the Player object. Not optional, unlike the reticle and the glow: " +
                  "without it a Charge moves nothing and sweeps nobody, and it would fail silently.")]
         [SerializeField] private ChargeMotion _chargeMotion;
@@ -170,11 +175,6 @@ namespace Soulvail.Game.Composition
                  "optional on the same terms as the reticle: without it the Focus ramp still " +
                  "runs, it is just invisible.")]
         [SerializeField] private FocusGlowView _focusGlow;
-
-        [Tooltip("Drives the character model's Animator from the fight core has already decided. " +
-                 "On the Player object, and optional on the same terms as the glow: without it " +
-                 "the run plays identically, the body just never changes pose.")]
-        [SerializeField] private PlayerAnimatorView _playerAnimator;
 
         [Tooltip("The shell drawn while a granted shield is up (CC §6.4). On the Player object, " +
                  "and optional on the same terms as the glow: without it Bulwark still absorbs " +
@@ -288,6 +288,16 @@ namespace Soulvail.Game.Composition
                     "body to move and no position to report.");
             }
 
+            // Guarded like the Player View and for its sentence, one layer out: the view moves the
+            // capsule and the body is what the player sees of it (RS-02b rule 4).
+            if (_defaultBody == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} has no default body assigned. Drag " +
+                    "Prefabs/Player/Bodies/Knight.prefab onto its Default Body field — without it " +
+                    "a class that names no body of its own is played by an invisible capsule.");
+            }
+
             if (_chargeMotion == null)
             {
                 throw new MissingReferenceException(
@@ -346,6 +356,12 @@ namespace Soulvail.Game.Composition
             // not construct, so registering the live component is exactly right: the container
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
+
+            // The body (RS-02b rule 4). A build callback, because which body is a question about
+            // the class, and the class is known only once the container exists: PendingRun and the
+            // look book live at the root. It runs before any entry point starts, so the body is
+            // standing and injected before RunTicker.Start publishes a thing.
+            builder.RegisterBuildCallback(RaiseBody);
 
             // Guarded like the player view rather than treated as optional, because the tap-to-focus
             // adapter cannot be built without it and the whole run scope would fail to compose. The
@@ -558,17 +574,9 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_focusGlow);
             }
 
-            // Optional on the same terms again. Animation is a pure consequence here — it reads
-            // combat events and the body's speed, and publishes nothing back — so an arena with a
-            // grey capsule instead of a character plays exactly the same fight.
-            if (_playerAnimator != null)
-            {
-                builder.RegisterComponent(_playerAnimator);
-            }
-
-            // Optional on the same terms as the two above, and for the animator's exact reason: the
-            // grant is core's and absorbs the same damage whether or not anything draws it, so a
-            // scene without a shell plays the identical fight — the player just cannot see why they
+            // Optional on the same terms as the two above, and for the glow's reason: the grant is
+            // core's and absorbs the same damage whether or not anything draws it, so a scene
+            // without a shell plays the identical fight — the player just cannot see why they
             // survived the bolt.
             if (_bulwark != null)
             {
@@ -965,6 +973,50 @@ namespace Soulvail.Game.Composition
             // — so the only thing the label can do is tell the truth about the lifetime, and this
             // object's lifetime is one run.
             builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped);
+        }
+
+        /// <summary>
+        /// Raises the body the run's class names under the player, and injects it (RS-02b rule 4).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The class is <see cref="RunCharacter.Choose"/>'s</b>, the call <c>RunTicker.Start</c>
+        /// makes a moment later, so the body worn and the class started are one answer (rule 3). A
+        /// class whose look names no body wears <see cref="_defaultBody"/>.
+        /// </para>
+        /// <para>
+        /// <b>At identity under the <see cref="PlayerView"/>: its position and rotation, not its
+        /// scale.</b> A body's scale is the model's own — 0.66 for KayKit's Rig_Medium at the
+        /// capsule's height — and rides on the prefab's root, which is where the Knight carried it
+        /// when it was built into <c>Player.prefab</c>. Named after its prefab rather than left as a
+        /// clone, so the hierarchy says which body stands there.
+        /// </para>
+        /// <para>
+        /// <b>Injected with <c>InjectGameObject</c></b>, which is what reaches the animator view's
+        /// <c>Construct</c>: a body is not a registration, so nothing else in the container would.
+        /// </para>
+        /// </remarks>
+        private void RaiseBody(IObjectResolver container)
+        {
+            ContentId characterId = RunCharacter.Choose(
+                container.Resolve<PendingRun>(),
+                container.Resolve<ContentCatalog>());
+
+            GameObject prefab = container.Resolve<CharacterLookBook>().For(characterId).Body;
+
+            // Unity's ==: a body prefab deleted from the project is a live reference only the
+            // engine's operator calls null.
+            if (prefab == null)
+            {
+                prefab = _defaultBody;
+            }
+
+            GameObject body = Instantiate(prefab, _playerView.transform, false);
+
+            body.name = prefab.name;
+            body.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+            container.InjectGameObject(body);
         }
 
         /// <summary>

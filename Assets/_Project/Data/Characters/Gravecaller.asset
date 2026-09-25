@@ -39,6 +39,7 @@ MonoBehaviour:
   _weaponShotSpeed: 40
   _weaponShotRadius: 0.8
   _weaponShotSpread: 0
+  _weaponFiresWhileMoving: 1
   _focusDelay: 0.4
   _focusRampTime: 1
   _focusMaxMultiplier: 1.3
@@ -51,6 +52,9 @@ MonoBehaviour:
   _movementSkillKnockback: 0
   _movementSkillIFrameTrail: 0.05
   _movementSkillDecoyDuration: 3
+  _movementSkillPoolRadius: 0
+  _movementSkillPoolDuration: 0
+  _movementSkillPoolDamagePerPulse: 0
   _minionCap: 3
   _minionSpecId: minion.wight
   _minionNameKey: minion.wight.name
@@ -61,6 +65,8 @@ MonoBehaviour:
   _minionDamage: 8
   _minionAttackInterval: 1
   _minionReach: 1.5
+  _kindlingMaxStacks: 0
+  _kindlingPerStack: 0.02
   _veilrotStart: 15
   _veilrotGainMultiplier: 1.5
   _veilrotCleansePriceMultiplier: 1
@@ -69,3 +75,4 @@ MonoBehaviour:
   _unlockShardPrice: 2000
   _unlockDeedStage: 0
   _unlockDeedBossId: boss.choirmother
+  _body: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}

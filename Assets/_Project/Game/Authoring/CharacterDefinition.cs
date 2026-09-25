@@ -208,6 +208,12 @@ namespace Soulvail.Game.Authoring
                  "done yet and the id is deliberately not validated against the catalog.")]
         [SerializeField] private string _unlockDeedBossId = "";
 
+        [Header("Look (RS-02b) — the body a run of this class wears")]
+        [Tooltip("The body prefab raised under the player when a run of this class starts, from " +
+                 "Prefabs/Player/Bodies/. It carries its own Animator and animator view. Empty is " +
+                 "not an error: the run wears RunScope's default body, the Knight.")]
+        [SerializeField] private GameObject _body;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -357,6 +363,17 @@ namespace Soulvail.Game.Authoring
                     inner);
             }
         }
+
+        /// <summary>
+        /// What this class looks like: its body, as authored (RS-02b rule 2). Converted beside
+        /// <see cref="ToSpec"/> and never through it, for <c>EnemyDefinition.ToLook</c>'s reason — a
+        /// <see cref="GameObject"/> cannot cross into core (AR §2).
+        /// </summary>
+        /// <remarks>
+        /// Unvalidated: an empty body is the default one, not an error, and a body that is the wrong
+        /// model is wrong on screen, where no rule reads it.
+        /// </remarks>
+        public CharacterLook ToLook() => new CharacterLook(_body);
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

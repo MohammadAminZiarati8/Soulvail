@@ -276,9 +276,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // The plan is the scene's, built by RunScope from the dummies dressed into it (M1-07). It
         // is SpawnPlan.Empty when nothing is dressed, never null, so this line always says out
         // loud what the arena starts with — see RunConfig. M2-05's director takes it over.
+        //
+        // The class is RunCharacter's, the one choice RunScope raised the body from (RS-02b rule
+        // 3): the pending run's class, or the catalog's first on a direct Play.
         _session.Start(new RunConfig(
             modeId,
-            _pending.IsSet ? _pending.CharacterId : FallbackCharacterId(),
+            RunCharacter.Choose(_pending, _catalog),
             _random.Seed,
             restore?.StageIndex ?? mode.StartingStage,
             _spawnPlan,
@@ -854,34 +857,11 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
-    /// The class to play when no menu chose one: the first the catalog holds.
-    /// </summary>
-    /// <remarks>
-    /// The same bargain <c>RunInstaller</c> makes with the seed (M0-12 rule 6), for the same
-    /// workflow — pressing Play with the Run scene already open is how this game is iterated on,
-    /// and throwing there would break the fastest loop in development. Silent rather than warning,
-    /// unlike the seed: an unseeded run looks identical to a broken one and has to say so, while
-    /// "you got the first class" is visible on screen the moment the run starts.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The catalog holds no characters.</exception>
-    private ContentId FallbackCharacterId()
-    {
-        if (_catalog.Characters.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "No run is pending and the content catalog is empty, so there is no class to " +
-                "play. Add a CharacterDefinition to BootScope's character list.");
-        }
-
-        return _catalog.Characters[0].Id;
-    }
-
-    /// <summary>
     /// The mode to play when nobody chose one: the first the catalog holds.
     /// </summary>
     /// <remarks>
-    /// The matching half of <see cref="FallbackCharacterId"/>, for the same workflow — pressing
-    /// Play with the Run scene already open, which no menu ran before. The first rather than
+    /// The matching half of <see cref="RunCharacter.Choose"/>'s fallback, for the same workflow —
+    /// pressing Play with the Run scene already open, which no menu ran before. The first rather than
     /// <c>mode.descent</c> written here, for the reason <c>MenuPresenter</c> gives: GD §4.5 says
     /// no code may assume Descent, and an id literal on the direct-Play path would be the copy
     /// nobody remembered to change.

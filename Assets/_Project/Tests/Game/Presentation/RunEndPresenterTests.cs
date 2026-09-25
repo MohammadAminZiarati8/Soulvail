@@ -706,6 +706,13 @@ public sealed class RunEndPresenterTests
         var serialized = new SerializedObject(scope);
 
         Set(serialized, "_playerView", Component<PlayerView>("Player"));
+
+        // RS-02b's default body, guarded beside the Player View and so above rule 7's — the third
+        // time this list has grown for a guard, as the two comments below predicted.
+        var knight = new GameObject("Knight");
+        _spawned.Add(knight);
+        Set(serialized, "_defaultBody", knight);
+
         Set(serialized, "_chargeMotion", Component<ChargeMotion>("Player"));
         Set(serialized, "_enemyPrefab", Component<EnemyView>("Enemy"));
 

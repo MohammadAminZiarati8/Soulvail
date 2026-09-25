@@ -429,7 +429,8 @@ public sealed class RangerSandboxTests
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPath);
         Transform bow = prefab.GetComponentsInChildren<Transform>(true).First(t => t.name == "Bow");
         Animator animator = prefab.GetComponentInChildren<Animator>();
-        var view = new SerializedObject(prefab.GetComponent<RangerAnimatorView>());
+        // On the nested body since RS-02b, not on the prefab's root.
+        var view = new SerializedObject(prefab.GetComponentInChildren<RangerAnimatorView>());
 
         Assert.That(bow.parent.name, Is.EqualTo("handslot.l"), "Ranged_Bow_Draw pulls with the right hand.");
         Assert.That(bow.localPosition, Is.EqualTo(Vector3.zero));

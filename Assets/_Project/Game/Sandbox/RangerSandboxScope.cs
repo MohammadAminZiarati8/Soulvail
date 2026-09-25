@@ -38,7 +38,8 @@ namespace Soulvail.Game.Sandbox
         [Tooltip("The Ranger's body: the root with the CharacterController. Required.")]
         [SerializeField] private PlayerView _player;
 
-        [Tooltip("The Ranger's animator view, on the same object. Required: it is injected here.")]
+        [Tooltip("The Ranger's animator view, on its body: the Bodies/Ranger nested under the " +
+                 "Ranger object (RS-02b). Required: it is injected here.")]
         [SerializeField] private RangerAnimatorView _animatorView;
 
         [Tooltip("Where an arrow leaves from: the bow in the Ranger's hand. Required.")]
@@ -132,7 +133,7 @@ namespace Soulvail.Game.Sandbox
         protected override void Configure(IContainerBuilder builder)
         {
             Require(_player, nameof(PlayerView), "the Ranger object — without it nothing moves");
-            Require(_animatorView, nameof(RangerAnimatorView), "the Ranger object — without it the body never changes pose");
+            Require(_animatorView, nameof(RangerAnimatorView), "the Ranger body nested under the Ranger object — without it the body never changes pose");
             Require(_muzzle, "Muzzle", "the bow under the Ranger's left handslot — without it no arrow has anywhere to leave from");
             Require(_arrowPrefab, "Arrow Prefab", "Prefabs/Projectiles/Arrow.prefab — without it every shot is invisible");
 

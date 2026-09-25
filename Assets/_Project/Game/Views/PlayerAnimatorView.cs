@@ -5,7 +5,7 @@ using UnityEngine;
 using VContainer;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
-// cannot find the type in a file-scoped namespace, and Player.prefab's reference to this
+// cannot find the type in a file-scoped namespace, and Bodies/Knight.prefab's reference to this
 // component would silently deserialise as null with nothing reported anywhere (M0-11).
 namespace Soulvail.Game.Views
 {
@@ -34,8 +34,13 @@ namespace Soulvail.Game.Views
     /// and every clip is authored in place, so the only thing that can move the body is the
     /// <c>PlayerMoveIntent</c> <see cref="PlayerView"/> applies.
     /// </para>
+    /// <para>
+    /// <b>It lives on its body, not on the player</b> (RS-02b rule 5). A run raises the body its class
+    /// names under the <see cref="PlayerView"/>, so this view reads the velocity of the
+    /// <see cref="PlayerView"/> above it, and a body with none above it is refused in
+    /// <c>Start</c>.
+    /// </para>
     /// </remarks>
-    [RequireComponent(typeof(PlayerView))]
     public sealed class PlayerAnimatorView : MonoBehaviour
     {
         /// <summary>
@@ -122,13 +127,49 @@ namespace Soulvail.Game.Views
             _castSubscription = hub.Subscribe<SkillCast>(OnCast);
         }
 
-        private void Awake()
+        /// <summary>
+        /// Advances the legs by <paramref name="dt"/> seconds. Called from <c>Update</c> with
+        /// <c>Time.deltaTime</c>.
+        /// </summary>
+        /// <remarks>
+        /// Public so an EditMode fixture can drive the legs, which <c>Update</c> never does there —
+        /// <see cref="RangerAnimatorView.Step"/>'s shape (RS-02b). A zero, negative or non-finite
+        /// step does nothing.
+        /// </remarks>
+        public void Step(float dt)
         {
-            // Cached once. Rule: never GetComponent in a per-frame path.
-            _body = GetComponent<PlayerView>();
+            if (_animator == null || !(dt > 0f) || float.IsInfinity(dt))
+            {
+                return;
+            }
+
+            // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake. Only
+            // while there is none, so a body that has one never looks again.
+            if (_body == null)
+            {
+                _body = GetComponentInParent<PlayerView>();
+            }
+
+            // PlayerView.Velocity is what core *asked* for, not what the controller achieved —
+            // the same distinction that view documents. A player leaning on a wall is still
+            // running, and their legs should say so.
+            float target = _dead || _body == null ? 0f : _body.Velocity.magnitude;
+
+            _shownSpeed = Mathf.MoveTowards(_shownSpeed, target, SpeedFollowRate * dt);
+            _animator.SetFloat(_speedId, _shownSpeed);
         }
 
-        /// <exception cref="InvalidOperationException">No Animator is dressed, or nothing injected this component.</exception>
+        private void Awake()
+        {
+            // Cached once. Rule: never GetComponent in a per-frame path. In the parents, because
+            // the body this view lives on is raised under the player (RS-02b rule 5).
+            _body = GetComponentInParent<PlayerView>();
+        }
+
+        /// <exception cref="InvalidOperationException">
+        /// No Animator is dressed, no <see cref="PlayerView"/> stands above this body, or nothing
+        /// injected this component.
+        /// </exception>
         /// <remarks>
         /// Checked in <c>Start</c> rather than <c>Awake</c> for the reason <c>ReticleView</c>
         /// gives — injection happens during <c>RunScope</c>'s own <c>Awake</c>, and Unity gives no
@@ -144,12 +185,25 @@ namespace Soulvail.Game.Views
                     "Animator onto this component.");
             }
 
+            if (_body == null)
+            {
+                _body = GetComponentInParent<PlayerView>();
+            }
+
+            if (_body == null)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(PlayerAnimatorView)} on '{name}' has no {nameof(PlayerView)} above " +
+                    "it, so its legs have no velocity to read. A body is raised under the player " +
+                    "by RunScope, or nested under a PlayerView in a prefab like Player_Ranger.");
+            }
+
             if (!_injected)
             {
                 throw new InvalidOperationException(
-                    $"{nameof(PlayerAnimatorView)} was never injected, so no combat event will " +
-                    "ever reach it. The body is registered by RunScope — drag this object onto " +
-                    "its Player View field.");
+                    $"{nameof(PlayerAnimatorView)} on '{name}' was never injected, so no combat " +
+                    "event will ever reach it. RunScope injects the body it raises; a body placed " +
+                    "under the player by hand is never injected.");
             }
         }
 
@@ -173,18 +227,7 @@ namespace Soulvail.Game.Views
 
         private void Update()
         {
-            if (_animator == null)
-            {
-                return;
-            }
-
-            // PlayerView.Velocity is what core *asked* for, not what the controller achieved —
-            // the same distinction that view documents. A player leaning on a wall is still
-            // running, and their legs should say so.
-            float target = _dead ? 0f : _body.Velocity.magnitude;
-
-            _shownSpeed = Mathf.MoveTowards(_shownSpeed, target, SpeedFollowRate * Time.deltaTime);
-            _animator.SetFloat(_speedId, _shownSpeed);
+            Step(Time.deltaTime);
         }
 
         /// <remarks>

@@ -39,6 +39,7 @@ MonoBehaviour:
   _weaponShotSpeed: 25
   _weaponShotRadius: 3
   _weaponShotSpread: 0
+  _weaponFiresWhileMoving: 1
   _focusDelay: 0.4
   _focusRampTime: 1
   _focusMaxMultiplier: 1.3
@@ -74,3 +75,4 @@ MonoBehaviour:
   _unlockShardPrice: 3500
   _unlockDeedStage: 20
   _unlockDeedBossId: 
+  _body: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}

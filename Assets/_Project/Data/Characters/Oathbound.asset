@@ -36,6 +36,10 @@ MonoBehaviour:
   _weaponRange: 8
   _weaponConeAngleDeg: 60
   _weaponDamageFrame: 0.4
+  _weaponShotSpeed: 0
+  _weaponShotRadius: 0
+  _weaponShotSpread: 0
+  _weaponFiresWhileMoving: 1
   _focusDelay: 0.4
   _focusRampTime: 1
   _focusMaxMultiplier: 1.3
@@ -47,6 +51,22 @@ MonoBehaviour:
   _movementSkillDamage: 20
   _movementSkillKnockback: 4
   _movementSkillIFrameTrail: 0.05
+  _movementSkillDecoyDuration: 0
+  _movementSkillPoolRadius: 0
+  _movementSkillPoolDuration: 0
+  _movementSkillPoolDamagePerPulse: 0
+  _minionCap: 0
+  _minionSpecId: minion.new
+  _minionNameKey: minion.new.name
+  _minionLifespan: 20
+  _minionRiseChance: 0.25
+  _minionMaxHp: 20
+  _minionMoveSpeed: 3
+  _minionDamage: 8
+  _minionAttackInterval: 1
+  _minionReach: 1.5
+  _kindlingMaxStacks: 0
+  _kindlingPerStack: 0.02
   _veilrotStart: 0
   _veilrotGainMultiplier: 0.6
   _veilrotCleansePriceMultiplier: 0.5
@@ -55,3 +75,4 @@ MonoBehaviour:
   _unlockShardPrice: 0
   _unlockDeedStage: 0
   _unlockDeedBossId: 
+  _body: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}

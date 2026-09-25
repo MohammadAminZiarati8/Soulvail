@@ -53,7 +53,7 @@ namespace Soulvail.Tests.Game.Views;
 /// </para>
 /// <para>
 /// <c>Awake</c> never runs in EditMode (Traps §5), so <c>_body</c> is null throughout and nothing
-/// here calls <c>Update</c> — which is the only method that would touch it.
+/// here calls <c>Step</c> — which is the only method that would touch it.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -97,8 +97,9 @@ public sealed class PlayerAnimatorViewTests
 
         _body = new GameObject("Player");
 
-        // RequireComponent(typeof(PlayerView)) adds the body view with it. Nothing here reads it —
-        // only Update does, and Update is never called, because Awake never ran to cache it.
+        // No PlayerView: since RS-02b the view finds one in its parents rather than requiring one
+        // beside it, and nothing here reads it — only Step does, and no row in this file calls it.
+        // CharacterLookTests.View_FindsPlayerViewInItsParent is the row that does.
         _view = _body.AddComponent<PlayerAnimatorView>();
 
         _animator = _body.AddComponent<Animator>();

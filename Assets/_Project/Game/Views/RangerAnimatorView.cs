@@ -5,7 +5,7 @@ using UnityEngine;
 using VContainer;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
-// cannot find the type in a file-scoped namespace, and Ranger.prefab's reference to this
+// cannot find the type in a file-scoped namespace, and Bodies/Ranger.prefab's reference to this
 // component would silently deserialise as null with nothing reported anywhere (M0-11).
 namespace Soulvail.Game.Views
 {
@@ -42,8 +42,13 @@ namespace Soulvail.Game.Views
     /// front (the M6-11e rows of <c>PlayerAnimatorViewTests</c>), so a shot cadence measured on it
     /// cannot be tested.
     /// </para>
+    /// <para>
+    /// <b>It lives on its body, <c>Bodies/Ranger</c>, and reads the <see cref="PlayerView"/> above
+    /// it</b> (RS-02b rule 5) — nested in <c>Player_Ranger</c> for the sandbox, and raised under the
+    /// player by a run once a class names it. A body with none above it is refused in
+    /// <c>Start</c>.
+    /// </para>
     /// </remarks>
-    [RequireComponent(typeof(PlayerView))]
     public sealed class RangerAnimatorView : MonoBehaviour
     {
         /// <summary>
@@ -270,16 +275,17 @@ namespace Soulvail.Game.Views
 
             _clock += dt;
 
-            // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake.
+            // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake. Only
+            // while there is none, so a body that has one never looks again.
             if (_body == null)
             {
-                _body = GetComponent<PlayerView>();
+                _body = GetComponentInParent<PlayerView>();
             }
 
             // PlayerView.Velocity is what core asked for, not what the controller achieved — the
             // distinction PlayerAnimatorView draws. A Ranger leaning on a wall is still running.
             // InverseTransformDirection ignores scale, so this is metres per second in the body's
-            // frame.
+            // frame — this transform's, which stands at identity under the player's.
             Vector3 target = _body == null ? Vector3.zero : transform.InverseTransformDirection(_body.Velocity);
 
             target.y = 0f;
@@ -297,11 +303,15 @@ namespace Soulvail.Game.Views
 
         private void Awake()
         {
-            // Cached once. Rule: never GetComponent in a per-frame path.
-            _body = GetComponent<PlayerView>();
+            // Cached once. Rule: never GetComponent in a per-frame path. In the parents, because
+            // this view lives on the body, under the player (RS-02b rule 5).
+            _body = GetComponentInParent<PlayerView>();
         }
 
-        /// <exception cref="InvalidOperationException">No Animator is dressed, or nothing injected this component.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// No Animator is dressed, no <see cref="PlayerView"/> stands above this body, or nothing
+        /// injected this component.
+        /// </exception>
         /// <remarks>
         /// Checked in <c>Start</c> rather than <c>Awake</c> for <see cref="PlayerAnimatorView"/>'s
         /// reason: injection happens during the scope's own <c>Awake</c>, and Unity gives no order
@@ -317,11 +327,25 @@ namespace Soulvail.Game.Views
                     "this component.");
             }
 
+            if (_body == null)
+            {
+                _body = GetComponentInParent<PlayerView>();
+            }
+
+            if (_body == null)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(RangerAnimatorView)} on '{name}' has no {nameof(PlayerView)} above " +
+                    "it, so its legs have no velocity to read. A body is raised under the player " +
+                    "by RunScope, or nested under a PlayerView in a prefab like Player_Ranger.");
+            }
+
             if (!_injected)
             {
                 throw new InvalidOperationException(
-                    $"{nameof(RangerAnimatorView)} was never injected, so no shot will ever reach " +
-                    "it. Drag this object onto the scope's Animator View field.");
+                    $"{nameof(RangerAnimatorView)} on '{name}' was never injected, so no shot will " +
+                    "ever reach it. RunScope injects the body it raises, and the sandbox's scope the " +
+                    "view on its Animator View field.");
             }
         }
 

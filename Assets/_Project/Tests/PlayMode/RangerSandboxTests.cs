@@ -1,0 +1,687 @@
+#if UNITY_EDITOR
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Soulvail.Core.Content;
+using Soulvail.Core.Events;
+using Soulvail.Game.Adapters;
+using Soulvail.Game.Controls;
+using Soulvail.Game.Sandbox;
+using Soulvail.Game.Views;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+using VContainer;
+using Object = UnityEngine.Object;
+
+namespace Soulvail.Tests.PlayMode;
+
+/// <summary>
+/// RS-02a: the Ranger sandbox played. Loads <c>RangerSandbox.unity</c> and drives it — the loop's
+/// rules L1–L9, the draw guard of rule V4 against the real <c>AC_Ranger</c>, and the scene and
+/// asset rules S1–S3.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Editor-only, like the scene.</b> <c>RangerSandbox.unity</c> is out of
+/// <c>EditorBuildSettings</c> (rule S1), so it is loaded by path through
+/// <see cref="EditorSceneManager.LoadSceneAsyncInPlayMode"/>, which only the Editor has.
+/// </para>
+/// <para>
+/// <b>Rows wait in simulated seconds, not wall seconds.</b> The loop clamps each step at
+/// <see cref="SnapshotBuilder.MaxDt"/>, so on an Editor running slowly the simulation runs slower
+/// than the clock. <see cref="Simulate"/> sums the same clamped step the loop does, so a row that
+/// counts shots counts them on the loop's own clock.
+/// </para>
+/// </remarks>
+public sealed class RangerSandboxTests
+{
+    private const string ScenePath = "Assets/_Project/Scenes/RangerSandbox.unity";
+    private const string PlayerPath = "Assets/_Project/Prefabs/Player/Player_Ranger.prefab";
+    private const string ControllerPath = "Assets/_Project/Animation/Controllers/AC_Ranger.controller";
+    private const string DummyControllerPath = "Assets/_Project/Animation/Controllers/AC_TrainingDummy.controller";
+
+    /// <summary>The upper-body layer's index in <c>AC_Ranger</c>.</summary>
+    private const int UpperLayer = 1;
+
+    /// <summary>The sandbox's bow: one shot a second, 10 m, 12 m to acquire, 30 m/s, aimed 0.9 m up.</summary>
+    private const float Range = 10f;
+
+    private const float ArrowSpeed = 30f;
+    private const float AimHeight = 0.9f;
+
+    /// <summary>Dummy_1 stands at (0, 0, 14). These are the spots the rows put the Ranger on.</summary>
+    private static readonly Vector3 Dummy1 = new Vector3(0f, 0f, 14f);
+
+    /// <summary>11 m from Dummy_1: inside the 12 m acquire range, outside the 10 m bow.</summary>
+    private static readonly Vector3 Acquiring = new Vector3(0f, 0f, 3f);
+
+    /// <summary>8 m from Dummy_1: inside the bow's range, and more than 12 m from every other dummy.</summary>
+    private static readonly Vector3 Shooting = new Vector3(0f, 0f, 6f);
+
+    private readonly List<IDisposable> _subscriptions = new List<IDisposable>();
+    private readonly List<TargetChanged> _targets = new List<TargetChanged>();
+    private readonly List<ProjectileFired> _fired = new List<ProjectileFired>();
+    private readonly List<ProjectileImpacted> _impacted = new List<ProjectileImpacted>();
+
+    private readonly int _shootId = Animator.StringToHash("Shoot");
+    private readonly int _aimingId = Animator.StringToHash("Aiming");
+    private readonly int _moveXId = Animator.StringToHash("MoveX");
+    private readonly int _moveZId = Animator.StringToHash("MoveZ");
+    private readonly int _moveSpeedId = Animator.StringToHash("MoveSpeed");
+
+    private RangerSandboxScope _scope;
+    private GameObject _player;
+    private PlayerView _body;
+    private Animator _ranger;
+    private Animator _dummy1;
+    private Transform _bow;
+    private int _attacked;
+    private Gamepad _pad;
+
+    private readonly List<GameObject> _created = new List<GameObject>();
+
+    [UnitySetUp]
+    public IEnumerator LoadTheSandbox()
+    {
+        AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
+            ScenePath,
+            new LoadSceneParameters(LoadSceneMode.Single));
+
+        while (!load.isDone)
+        {
+            yield return null;
+        }
+
+        // One frame for every Start, including the loop's.
+        yield return null;
+
+        _scope = Object.FindFirstObjectByType<RangerSandboxScope>();
+        _player = GameObject.Find("Player_Ranger");
+        _body = _player.GetComponent<PlayerView>();
+        _ranger = _player.GetComponentInChildren<Animator>();
+        _dummy1 = GameObject.Find("Dummy_1").GetComponent<Animator>();
+        _bow = _player.GetComponentsInChildren<Transform>(true).First(t => t.name == "Bow");
+
+        DomainEventHub hub = _scope.Container.Resolve<DomainEventHub>();
+
+        _attacked = 0;
+        _subscriptions.Add(hub.Subscribe<TargetChanged>(evt => _targets.Add(evt)));
+        _subscriptions.Add(hub.Subscribe<PlayerAttacked>(_ => _attacked++));
+        _subscriptions.Add(hub.Subscribe<ProjectileFired>(evt => _fired.Add(evt)));
+        _subscriptions.Add(hub.Subscribe<ProjectileImpacted>(evt => _impacted.Add(evt)));
+    }
+
+    [TearDown]
+    public void ReleaseTheSandbox()
+    {
+        foreach (IDisposable subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+
+        _subscriptions.Clear();
+        _targets.Clear();
+        _fired.Clear();
+        _impacted.Clear();
+
+        if (_pad != null)
+        {
+            InputSystem.RemoveDevice(_pad);
+            _pad = null;
+        }
+
+        foreach (GameObject created in _created)
+        {
+            if (created != null)
+            {
+                Object.Destroy(created);
+            }
+        }
+
+        _created.Clear();
+    }
+
+    // ---------------------------------------------------------------- L1, L2, L6: the target
+
+    /// <summary>L1: every dummy stands 14 m or more from the start, so nothing is faced and nothing fires.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_StartsIdleWithNothingInRange()
+    {
+        yield return Simulate(0.5f);
+
+        Assert.That(_targets.Where(t => t.Id >= 0), Is.Empty, "No dummy is inside 12 m, so none is faced.");
+        Assert.That(_ranger.GetBool(_aimingId), Is.False);
+        Assert.That(_attacked, Is.Zero);
+        Assert.That(UpperState(), Is.EqualTo("Empty"));
+    }
+
+    /// <summary>L2: inside the acquire range and outside the bow's, the dummy is faced and the bow raised, and nothing is loosed.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_FacesADummyInReachAndRaisesTheBow()
+    {
+        _body.Teleport(Acquiring);
+
+        yield return Simulate(0.6f);
+
+        Assert.That(_targets.Last().Id, Is.EqualTo(1), "Dummy_1 is candidate 1.");
+        Assert.That(_ranger.GetBool(_aimingId), Is.True);
+        Assert.That(Vector3.Dot(_player.transform.forward, Toward(Dummy1)), Is.GreaterThan(0.99f));
+        Assert.That(UpperState(), Is.EqualTo("Draw").Or.EqualTo("Aim"));
+        Assert.That(_attacked, Is.Zero, "11 m is outside the 10 m bow.");
+    }
+
+    /// <summary>L6: out of reach again, the target is dropped and the bow comes down.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_LowersTheBowWhenNothingIsInReach()
+    {
+        _body.Teleport(Acquiring);
+
+        yield return Simulate(0.6f);
+
+        _body.Teleport(Vector3.zero);
+
+        yield return Simulate(1f);
+
+        Assert.That(_targets.Last().Id, Is.EqualTo(-1));
+        Assert.That(_ranger.GetBool(_aimingId), Is.False);
+        Assert.That(UpperState(), Is.EqualTo("Empty"));
+    }
+
+    // ---------------------------------------------------------------- L3, L4: the bow
+
+    /// <summary>
+    /// L3: inside the bow's range it draws at the weapon's cadence, one shot a second, and each
+    /// arrow leaves from the bow, at the dummy's chest, timed as XZ distance over 30 m/s.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Sandbox_ShootsAtTheWeaponsCadence()
+    {
+        _body.Teleport(Shooting);
+
+        yield return Simulate(3.4f);
+
+        // Draws at ~0, 1, 2 and 3 s and releases 0.72 s into each. Each swing may start up to a
+        // frame late, so the window leaves room for three frames of drift and no fifth draw.
+        Assert.That(_attacked, Is.EqualTo(4));
+        Assert.That(_fired.Count, Is.EqualTo(3));
+
+        foreach (ProjectileFired shot in _fired)
+        {
+            Assert.That(shot.SourceId, Is.Zero, "The player's shot names no enemy.");
+
+            Vector3 target = shot.Target.ToUnity();
+            Vector3 origin = shot.Origin.ToUnity();
+
+            Assert.That(Vector3.Distance(target, Dummy1 + (Vector3.up * AimHeight)), Is.LessThan(1e-3f));
+            Assert.That(
+                shot.FlightTime,
+                Is.EqualTo(new Vector2(target.x - origin.x, target.z - origin.z).magnitude / ArrowSpeed).Within(1e-4f));
+        }
+
+        Assert.That(Vector3.Distance(_fired.Last().Origin.ToUnity(), _bow.position), Is.LessThan(0.6f), "An arrow leaves from the bow.");
+    }
+
+    /// <summary>L4: an arrow lands when its flight is up — the census gives the body back and the dummy flinches.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_AnArrowLandsAndTheDummyFlinches()
+    {
+        ProjectileViews census = _scope.Container.Resolve<ProjectileViews>();
+        bool flinched = false;
+        bool inTheAir = false;
+
+        _body.Teleport(Shooting);
+
+        float simulated = 0f;
+
+        while (simulated < 1.6f)
+        {
+            yield return null;
+
+            simulated += Mathf.Min(Time.deltaTime, SnapshotBuilder.MaxDt);
+            inTheAir |= census.Count > 0;
+            flinched |= _dummy1.GetCurrentAnimatorStateInfo(0).IsName("Hit");
+        }
+
+        Assert.That(inTheAir, Is.True, "The census drew the arrow.");
+        Assert.That(_impacted, Is.Not.Empty);
+        Assert.That(_impacted[0].Id, Is.EqualTo(_fired[0].Id));
+        Assert.That(_impacted[0].Hit, Is.True);
+        Assert.That(flinched, Is.True);
+    }
+
+    /// <summary>
+    /// V4's guard, on the real controller: a bow raised at a dummy out of range is at full draw
+    /// when the dummy comes into range, so the first shot's release follows without a second draw.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Sandbox_ABowAlreadyDrawnReleasesWithoutDrawingAgain()
+    {
+        _body.Teleport(Acquiring);
+
+        yield return Simulate(1.8f);
+
+        Assert.That(UpperState(), Is.EqualTo("Aim"), "The bow is held at full draw.");
+
+        _body.Teleport(Shooting);
+
+        var seen = new List<string>();
+        float simulated = 0f;
+
+        while (simulated < 1f && _fired.Count == 0)
+        {
+            yield return null;
+
+            simulated += Mathf.Min(Time.deltaTime, SnapshotBuilder.MaxDt);
+            seen.Add(UpperState());
+            Assert.That(_ranger.GetBool(_shootId), Is.False, "No draw is left pending on a drawn bow.");
+        }
+
+        Assert.That(_fired, Is.Not.Empty);
+        Assert.That(seen, Has.No.Member("Draw"), "Released from Aim, not drawn again first.");
+    }
+
+    // ---------------------------------------------------------------- L5: moving while aiming
+
+    /// <summary>L5: the stick moves the body sideways while core keeps it facing its target, and the legs strafe.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_StrafesWhileItFacesItsTarget()
+    {
+        _body.Teleport(Shooting);
+
+        yield return Simulate(0.3f);
+
+        _pad = InputSystem.AddDevice<Gamepad>();
+        InputSystem.QueueStateEvent(_pad, new GamepadState { leftStick = new Vector2(1f, 0f) });
+
+        yield return Simulate(0.6f);
+
+        Assert.That(_player.transform.position.x, Is.GreaterThan(Shooting.x + 1f), "The stick moved the body to the right.");
+        Assert.That(Vector3.Dot(_player.transform.forward, Toward(Dummy1)), Is.GreaterThan(0.95f), "Still facing the dummy.");
+        Assert.That(_ranger.GetFloat(_moveXId), Is.GreaterThan(0.9f), "The strafe to the right.");
+        Assert.That(Mathf.Abs(_ranger.GetFloat(_moveZId)), Is.LessThan(0.4f));
+        Assert.That(_ranger.GetFloat(_moveSpeedId), Is.GreaterThan(1f), "3 m/s is faster than the strafe's feet at this scale.");
+        Assert.That(_attacked, Is.GreaterThan(0), "Moving never stops the bow (CC §4.2).");
+    }
+
+    // ---------------------------------------------------------------- S1–S3: the scene and the assets
+
+    /// <summary>S1: the game's camera, at the Run scene's numbers, following the Ranger.</summary>
+    [UnityTest]
+    public IEnumerator Scene_FollowsTheRangerWithTheRunCamera()
+    {
+        FollowCamera follow = Camera.main.GetComponent<FollowCamera>();
+        var so = new SerializedObject(follow);
+
+        Assert.That(so.FindProperty("_target").objectReferenceValue, Is.EqualTo(_player.transform));
+        Assert.That(so.FindProperty("_pitchDeg").floatValue, Is.EqualTo(57f));
+        Assert.That(so.FindProperty("_yawDeg").floatValue, Is.Zero, "Yaw 0 is what makes the stick camera-relative.");
+        Assert.That(so.FindProperty("_distance").floatValue, Is.EqualTo(16f));
+        Assert.That(so.FindProperty("_smoothTime").floatValue, Is.EqualTo(0.12f));
+
+        yield break;
+    }
+
+    /// <summary>S1: the game's floating stick on the left 45 %, fed through the Input System's UI module.</summary>
+    [UnityTest]
+    public IEnumerator Scene_HasTheGamesFloatingStick()
+    {
+        FloatingStick stick = Object.FindFirstObjectByType<FloatingStick>();
+        var rect = (RectTransform)stick.transform;
+
+        Assert.That(rect.anchorMin.x, Is.Zero);
+        Assert.That(rect.anchorMax.x, Is.EqualTo(0.45f));
+        Assert.That(new SerializedObject(stick).FindProperty("_controlPath").stringValue, Is.EqualTo("<Gamepad>/leftStick"));
+        Assert.That(Object.FindFirstObjectByType<InputSystemUIInputModule>(), Is.Not.Null);
+
+        yield break;
+    }
+
+    /// <summary>S1: a sandbox, out of the build.</summary>
+    [Test]
+    public void Scene_IsOutOfTheBuild()
+    {
+        Assert.That(EditorBuildSettings.scenes.Select(s => s.path), Has.No.Member(ScenePath));
+    }
+
+    /// <summary>S2: the bow in the left handslot at identity, and AC_Ranger with no root motion (AR §18).</summary>
+    [Test]
+    public void Ranger_HoldsItsBowInTheLeftHandslot()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPath);
+        Transform bow = prefab.GetComponentsInChildren<Transform>(true).First(t => t.name == "Bow");
+        Animator animator = prefab.GetComponentInChildren<Animator>();
+        var view = new SerializedObject(prefab.GetComponent<RangerAnimatorView>());
+
+        Assert.That(bow.parent.name, Is.EqualTo("handslot.l"), "Ranged_Bow_Draw pulls with the right hand.");
+        Assert.That(bow.localPosition, Is.EqualTo(Vector3.zero));
+        Assert.That(bow.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(animator.runtimeAnimatorController.name, Is.EqualTo("AC_Ranger"));
+        Assert.That(animator.applyRootMotion, Is.False);
+        Assert.That(view.FindProperty("_animator").objectReferenceValue, Is.EqualTo(animator));
+        Assert.That(view.FindProperty("_bow").objectReferenceValue, Is.EqualTo(bow.GetComponentInChildren<SkinnedMeshRenderer>()));
+    }
+
+    /// <summary>S3: the arms override the legs from the spine up, and never the hips or the legs.</summary>
+    [Test]
+    public void Ranger_TheArmsAreALayerMaskedToTheSpineAndUp()
+    {
+        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+        AnimatorControllerLayer upper = controller.layers[UpperLayer];
+
+        Assert.That(upper.name, Is.EqualTo(RangerAnimatorView.UpperBodyLayer));
+        Assert.That(upper.blendingMode, Is.EqualTo(AnimatorLayerBlendingMode.Override));
+        Assert.That(upper.defaultWeight, Is.EqualTo(1f));
+
+        AvatarMask mask = upper.avatarMask;
+
+        Assert.That(mask, Is.Not.Null);
+
+        for (int i = 0; i < mask.transformCount; i++)
+        {
+            string path = mask.GetTransformPath(i);
+
+            Assert.That(mask.GetTransformActive(i), Is.EqualTo(path.Contains("/spine")), path);
+        }
+
+        Assert.That(
+            Enumerable.Range(0, mask.transformCount).Count(i => mask.GetTransformActive(i)),
+            Is.EqualTo(13),
+            "spine, chest, head, and five bones down each arm.");
+    }
+
+    /// <summary>S3: the legs are a directional blend — idle, forward run, reversed run, both strafes — on MoveX and MoveZ.</summary>
+    [Test]
+    public void Ranger_TheLegsAreADirectionalBlend()
+    {
+        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+        ChildAnimatorState locomotion = controller.layers[0].stateMachine.states.Single();
+        var tree = (BlendTree)locomotion.state.motion;
+
+        Assert.That(tree.blendType, Is.EqualTo(BlendTreeType.FreeformDirectional2D));
+        Assert.That(tree.blendParameter, Is.EqualTo("MoveX"));
+        Assert.That(tree.blendParameterY, Is.EqualTo("MoveZ"));
+        Assert.That(locomotion.state.speedParameterActive, Is.True);
+        Assert.That(locomotion.state.speedParameter, Is.EqualTo("MoveSpeed"));
+
+        var byPosition = tree.children.ToDictionary(c => c.position);
+
+        Assert.That(byPosition[Vector2.zero].motion.name, Is.EqualTo("Ranged_Bow_Idle"));
+        Assert.That(byPosition[new Vector2(0f, 1f)].motion.name, Is.EqualTo("Running_HoldingBow"));
+        Assert.That(byPosition[new Vector2(0f, -1f)].motion.name, Is.EqualTo("Running_HoldingBow"));
+        Assert.That(byPosition[new Vector2(0f, -1f)].timeScale, Is.EqualTo(-1f), "Walking_Backwards' feet travel at 0.46 m/s here.");
+        Assert.That(byPosition[new Vector2(-1f, 0f)].motion.name, Is.EqualTo("Running_Strafe_Left"));
+        Assert.That(byPosition[new Vector2(1f, 0f)].motion.name, Is.EqualTo("Running_Strafe_Right"));
+    }
+
+    // ---------------------------------------------------------------- L7–L9: the loop on its own
+
+    [Test]
+    public void Loop_NullArgumentsAreRefused()
+    {
+        LoopParts parts = Parts();
+
+        Assert.That(() => parts.Build(input: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(hub: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(player: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(arrows: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(movement: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(targeting: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(weapon: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(muzzle: null), Throws.ArgumentNullException);
+        Assert.That(() => parts.Build(dummies: null), Throws.ArgumentNullException);
+    }
+
+    [Test]
+    public void Loop_ABowThatIsNotAProjectileWeaponIsRefused()
+    {
+        LoopParts parts = Parts();
+        var censer = new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f);
+
+        Assert.That(() => parts.Build(weapon: censer), Throws.ArgumentException);
+    }
+
+    [TestCase(-0.1f)]
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    public void Loop_ANegativeOrNonFiniteAimHeightIsRefused(float aimHeight)
+    {
+        LoopParts parts = Parts();
+
+        Assert.That(() => parts.Build(aimHeight: aimHeight), Throws.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void Loop_StartReadsTheStickAndDisposeStops()
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build();
+
+        loop.Start();
+
+        Assert.That(parts.Input.IsEnabled, Is.True);
+
+        loop.Dispose();
+
+        Assert.That(parts.Input.IsEnabled, Is.False);
+    }
+
+    [TestCase(0f)]
+    [TestCase(-1f)]
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    public void Loop_ADegenerateStepDoesNothing(float dt)
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build();
+        int changes = 0;
+
+        using IDisposable subscription = parts.Hub.Subscribe<TargetChanged>(_ => changes++);
+
+        loop.Step(dt);
+
+        Assert.That(changes, Is.Zero, "A dummy 5 m away would have been faced on any real step.");
+        Assert.That(loop.CurrentTargetId, Is.EqualTo(-1));
+    }
+
+    /// <summary>L7: a hitch is a 50 ms step, so two ten-second frames are a tenth of a second of bow.</summary>
+    [Test]
+    public void Loop_AHitchIsClampedToTheSnapshotStep()
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build();
+        int fired = 0;
+
+        using IDisposable subscription = parts.Hub.Subscribe<ProjectileFired>(_ => fired++);
+
+        loop.Step(10f);
+        loop.Step(10f);
+
+        Assert.That(loop.CurrentTargetId, Is.EqualTo(1));
+        Assert.That(fired, Is.Zero, "0.1 s in, the arrow is 0.62 s from leaving.");
+
+        for (int i = 0; i < 14; i++)
+        {
+            loop.Step(SnapshotBuilder.MaxDt);
+        }
+
+        Assert.That(fired, Is.EqualTo(1));
+    }
+
+    /// <summary>L9: disposed with an arrow in the air, the arrow is landed as a miss so its body goes back to the pool.</summary>
+    [Test]
+    public void Loop_DisposeLandsEveryArrowInTheAir()
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build();
+        var landed = new List<ProjectileImpacted>();
+
+        using IDisposable subscription = parts.Hub.Subscribe<ProjectileImpacted>(evt => landed.Add(evt));
+
+        for (int i = 0; i < 40 && loop.ArrowsInFlight == 0; i++)
+        {
+            loop.Step(SnapshotBuilder.MaxDt);
+        }
+
+        Assert.That(loop.ArrowsInFlight, Is.EqualTo(1), "One arrow loosed within two seconds.");
+
+        loop.Dispose();
+
+        Assert.That(landed, Has.Count.EqualTo(1));
+        Assert.That(landed[0].Hit, Is.False);
+        Assert.That(loop.ArrowsInFlight, Is.Zero);
+        Assert.That(parts.Arrows.Count, Is.Zero);
+    }
+
+    // ---------------------------------------------------------------- helpers
+
+    /// <summary>Yields frames until <paramref name="seconds"/> of clamped simulation have passed.</summary>
+    private static IEnumerator Simulate(float seconds)
+    {
+        float simulated = 0f;
+
+        while (simulated < seconds)
+        {
+            yield return null;
+
+            simulated += Mathf.Min(Time.deltaTime, SnapshotBuilder.MaxDt);
+        }
+    }
+
+    private string UpperState()
+    {
+        AnimatorStateInfo state = _ranger.GetCurrentAnimatorStateInfo(UpperLayer);
+
+        foreach (string name in new[] { "Empty", "Draw", "Aim", "Release" })
+        {
+            if (state.IsName(name))
+            {
+                return name;
+            }
+        }
+
+        return "?";
+    }
+
+    private Vector3 Toward(Vector3 point)
+    {
+        Vector3 toward = point - _player.transform.position;
+
+        toward.y = 0f;
+
+        return toward.normalized;
+    }
+
+    /// <summary>A loop's parts, built fresh in the loaded scene: a body at the origin and one dummy 5 m ahead.</summary>
+    private LoopParts Parts()
+    {
+        var body = new GameObject("TestRanger");
+        var dummy = new GameObject("TestDummy");
+        var arrowTemplate = new GameObject("TestArrow");
+
+        _created.Add(body);
+        _created.Add(dummy);
+        _created.Add(arrowTemplate);
+
+        body.transform.position = new Vector3(100f, 0f, 100f);
+        dummy.transform.position = new Vector3(100f, 0f, 105f);
+
+        Animator dummyAnimator = dummy.AddComponent<Animator>();
+        dummyAnimator.runtimeAnimatorController =
+            AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(DummyControllerPath);
+
+        var hub = new DomainEventHub();
+        var input = new InputAdapter();
+
+        var parts = new LoopParts
+        {
+            Hub = hub,
+            Input = input,
+            Player = body.AddComponent<PlayerView>(),
+            Arrows = new ProjectileViews(
+                new ContainerBuilder().Build(),
+                arrowTemplate.AddComponent<ProjectileView>(),
+                null,
+                hub),
+            Movement = new MovementSpec(3f, 0.06f, 0.08f, 720f),
+            Targeting = new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+            Weapon = new WeaponSpec(WeaponKind.Projectile, 1f, 1f, Range, 360f, 0.72f, ArrowSpeed, 0.3f),
+            Muzzle = body.transform,
+            Dummies = new[] { dummyAnimator },
+        };
+
+        _subscriptions.Add(parts.Arrows);
+        _subscriptions.Add(input);
+        _subscriptions.Add(hub);
+
+        return parts;
+    }
+
+    private sealed class LoopParts
+    {
+        public DomainEventHub Hub;
+        public InputAdapter Input;
+        public PlayerView Player;
+        public ProjectileViews Arrows;
+        public MovementSpec Movement;
+        public TargetingSpec Targeting;
+        public WeaponSpec Weapon;
+        public Transform Muzzle;
+        public Animator[] Dummies;
+
+        public RangerSandboxLoop Build(
+            Optional<InputAdapter> input = default,
+            Optional<DomainEventHub> hub = default,
+            Optional<PlayerView> player = default,
+            Optional<ProjectileViews> arrows = default,
+            Optional<MovementSpec> movement = default,
+            Optional<TargetingSpec> targeting = default,
+            Optional<WeaponSpec> weapon = default,
+            Optional<Transform> muzzle = default,
+            Optional<Animator[]> dummies = default,
+            float aimHeight = AimHeight)
+        {
+            return new RangerSandboxLoop(
+                input.Or(Input),
+                hub.Or(Hub),
+                player.Or(Player),
+                arrows.Or(Arrows),
+                movement.Or(Movement),
+                targeting.Or(Targeting),
+                weapon.Or(Weapon),
+                muzzle.Or(Muzzle),
+                dummies.Or(Dummies),
+                aimHeight);
+        }
+    }
+
+    /// <summary>
+    /// A parameter that can be left out or passed as null, which a plain optional parameter cannot
+    /// tell apart. The implicit conversion is what lets a row write <c>Build(hub: null)</c>.
+    /// </summary>
+    private readonly struct Optional<T>
+        where T : class
+    {
+        private readonly T _value;
+        private readonly bool _given;
+
+        private Optional(T value)
+        {
+            _value = value;
+            _given = true;
+        }
+
+        public static implicit operator Optional<T>(T value) => new Optional<T>(value);
+
+        public T Or(T fallback) => _given ? _value : fallback;
+    }
+}
+#endif

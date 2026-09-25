@@ -86,6 +86,7 @@ one-shot `RunCommand` calls keep working the whole time, which makes the Editor 
 | Play mode | freezes after a burst of ~40 frames when *you* drive it — enough to read a census, ids, layers and TMP text (M1-07). **A PlayMode run started by `TestRunnerApi` is a different case and completes normally**: M3-15 took three full PlayMode runs and five isolated ones, all unfocused, all 8–9 s (see below) |
 | `SceneView.Repaint` | never lands. Two captures a minute apart came back byte-identical (M1-07) |
 | `EditorApplication.delayCall` | never fires (M0-14) |
+| `EditorApplication.Step()`, with or without `isPaused` | **does not advance an unfocused Play session.** At RS-02a a session entered through the CLI froze at frame 27, and five `Step()` calls from `eval` left `Time.frameCount` at 27. Drive the scene from a PlayMode test instead: the runner pumps its own loop (RS-02a) |
 
 **The Editor is not the only compiler on this machine, and you do not have to wait for focus to
 find a compile error.** Unity writes the exact `csc` argument list it used for every assembly to
@@ -347,6 +348,13 @@ The scene view draws its own skybox whatever the camera's clear flags say, and a
 Overlay canvas renders in the scene view but *not* into `Camera.Render` — so one capture can verify
 a UI layout or a camera background, never both (M0-17). `Unity_Camera_Capture` on a play-mode
 camera fails with "No GameObject found with Instance ID" (M1-07).
+
+**The CLI's `capture_game_view --save_path` resolves a relative path under `Assets/`, not the
+project root.** `Temp/x.png` is written to `Assets/Temp/x.png`, which Unity then imports, with a
+`.meta` file to delete afterwards. An absolute path outside the project is refused. For a series of
+frames, render from a PlayMode test with `Camera.Render` into a `RenderTexture` and write the
+PNGs under `<project>/Temp/` yourself. That also answers the unfocused-Editor freeze (§3), which
+a capture from a CLI-entered Play session cannot (RS-02a).
 
 ---
 

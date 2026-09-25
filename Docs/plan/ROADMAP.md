@@ -24,7 +24,7 @@
 | **M4** | **First boss and run end** ✅ | Boss phases, Warden of Ash, death → Shard payout, profile persisted, a run-end screen. The UI work M3-15's acceptance surfaced was ruled out after the tag and stays [ledger row 1](#carry-forward-into-m5) — **now with a number under it** — **complete, accepted on Editor evidence, tagged `m4`** | 11 |
 | **M5** | **Second class** ✅ | Gravecaller: projectile weapon + leading, Shroudstep, Wights, its tree, class select — **complete, accepted on Editor evidence, tagged `m5`** | 15 |
 | **M6** | **Systems complete** ✅ | Sanctum shop, Veilrot + Pacts + Claiming, Ordeals, Emberwright, unlocks, localisation tables — **complete, accepted on Editor evidence; `m6` the owner's to tag** — [both bugs ruled to go first](#m6--systems-complete) are merged | 22 + 5 |
-| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio — **specs being written, two groups of five done** | 21 (10 counted) |
+| **M7** | **Content pass** | Full V1 roster, Elites/affixes, Choirmother, all 81 nodes, both biomes' art, audio — **specs being written, three groups of five done** | 24 (14 counted) |
 | **M8** | **Feel, perf, ship** | Game-feel checklist, options/accessibility, device tiering, thermal, per-class balance, store build | 6 |
 
 ---
@@ -83,10 +83,10 @@
 with affixes, a second boss, three 27-node trees, two biomes of 8–12 arenas with art, and sound.
 **Done when:** M7-08's checklist passes and `m7` is tagged.
 
-**M7 opens with five spec groups, and the first two are counted.** M6's three groups turned eleven
+**M7 opens with five spec groups, and the first three are counted.** M6's three groups turned eleven
 titles into twenty-two tasks, each group moving the count by three; M7's nine titles are content
 rather than systems, so the groups are cut by *kind of work* and the table below carries predicted
-titles for the three that are not written yet. **All five are written before M7-01a is built** — the
+titles for the two that are not written yet. **All five are written before M7-01a is built** — the
 rule this section has held since M5 — and the fifth waits on the owner (below).
 
 - **M7-00a — the roster, in core.** [M7-01a](tasks/M7-01a-the-lunger.md),
@@ -118,16 +118,34 @@ rule this section has held since M5 — and the fifth waits on the owner (below)
   silently (02d rules 4–5), and a drain reader that holds the projectiles (02d rules 2, 7). Two unbuilt
   00a specs were amended to fit: M7-01a's lane event carries its half-width, and M7-02b's second-affix
   hand-off names M7-02f.
-- **M7-00c — the second boss** *(predicted)*: M7-03, the Choirmother, core and view — GD §9.2's
-  rotating Weaver shields and a sonic cone line of sight breaks — and the boss roster that puts her at
-  stage 10.
+- **M7-00c — the Choirmother.** [M7-03a](tasks/M7-03a-the-ring.md),
+  [M7-03b](tasks/M7-03b-the-choirmother.md), [M7-03c](tasks/M7-03c-a-song-you-can-see.md),
+  [M7-03d](tasks/M7-03d-the-choirmother-at-stage-ten.md). **One title became four, split by
+  mechanism**:
+  - **the ring**: bodies any boss can summon, which hold a slot, turn, and turn a hit away across
+    their arc;
+  - **the singer**: an immobile fight whose one attack a pillar breaks, and the run's first choice
+    between two fights;
+  - **what both look like**: the wedge is drawn from the line-of-sight sense's own rays, so the ground
+    behind a pillar is cut out of it;
+  - **the roster, last on purpose**: M4-02 rostered the Warden a task before anything drew it, and
+    M4-03's *As built* records the hit points that cost.
+
+  **Three gaps in M4-01b's boss were found while counting, and all three are M7-03a's.** A beat clears
+  only the ids it summoned, so a shield's two Weaverlings would outlive their phase. The opening phase
+  never summons. `RequireAuthored` walks a boss's body but not its summons. **One fact about the
+  arenas was found too**: a boss that never walks cannot stand on a drawn spawn point (on
+  `Arena_Pillars` one sits 4.5 m from a pillar), so M7-03d gives every arena a mark and stands every
+  boss on it. **Nothing was asked of the owner**: GD §9.2's hook is this project's own draft, and its
+  reading is ruled in M7-03a and M7-03b.
 - **M7-00d — the eighty-one nodes** *(predicted)*: M7-04, against [row 10](#carry-forward-into-m7)'s
   Pact coverage and [row 2](#carry-forward-into-m7)'s curves, and the three parking-lot lines M7-04
   promotes.
 - **M7-00e — the biomes, the sound and the close** *(predicted)*: M7-05, M7-06, M7-07 and M7-08.
-  **It cannot be written until the owner rules on two things only the owner can:** where the art
-  comes from — GD §21.4's asset kits, generated meshes or hand-modelled, which is money and look — and
-  where the audio comes from. Neither blocks 00b–00d.
+  **Art is ruled.** The owner's ruling of 2026-09-25 is the KayKit packs already in the project, plus
+  models made with Gemini and skinned onto KayKit's `Rig_Medium` (not Mixamo), with weapons as
+  separate props. **It still cannot be written until the owner rules where the audio comes from.** That
+  blocks 00e alone; 00d does not wait on it.
 
 **Build order is not ID order, again, and row 11 is why.** The Warden costs 14, the dearest
 archetype; rostered before [M7-02b](tasks/M7-02b-who-buys-an-elite.md), a capped wave would become
@@ -135,15 +153,16 @@ twenty Wardens instead of twenty Bloaters. So the Elite's two tasks go between t
 Warden, and the `Depends on` column enforces it. **M7-00b moved one more**: M7-01d draws only the three
 archetypes, so it follows M7-01c straight away rather than the affixes — and its shrug for a turned-away
 hit is on screen before M7-02c's ward makes those common. M7-02f goes between the death affixes and the
-Elite's look, which names both of a body's affixes.
+Elite's look, which names both of a body's affixes. **M7-00c's four follow M7-02e in ID order**, and the
+roster is the last of them, so no merged build rosters a song that nothing draws.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | M7-00a | Specs for the roster in core — three archetypes, the Elite, and the capped wave | S | — | ☑ |
 | M7-00b | Specs for the affixes and what a player sees — five specs, one found while counting | S | M7-00a | ☑ |
-| M7-00c | Specs for the Choirmother *(predicted)* | S | M7-00b | ☐ |
+| M7-00c | Specs for the Choirmother — four specs where the table predicted one title | S | M7-00b | ☑ |
 | M7-00d | Specs for the eighty-one nodes *(predicted)* | S | M7-00c | ☐ |
-| M7-00e | Specs for the biomes, the sound and the close — **waits on the owner's art and audio rulings** | S | M7-00d | ☐ |
+| M7-00e | Specs for the biomes, the sound and the close — **waits on the owner's audio ruling**; art was ruled 2026-09-25 | S | M7-00d | ☐ |
 | M7-01a | [The Lunger, and a dash you can step out of](tasks/M7-01a-the-lunger.md) | S | M7-00e | ☐ |
 | M7-01b | [The Weaver, and a stage that waits for its children](tasks/M7-01b-the-weaver.md) | S | M7-01a | ☐ |
 | M7-02a | [What an Elite is: a body upgraded at the door](tasks/M7-02a-what-an-elite-is.md) | S | M7-01b | ☐ |
@@ -154,8 +173,11 @@ Elite's look, which names both of a body's affixes.
 | M7-02d | [The two affixes that fire on death](tasks/M7-02d-the-two-that-fire-on-death.md) | M | M7-02c | ☐ |
 | M7-02f | [A second affix, bought with what the cap leaves](tasks/M7-02f-a-second-affix-bought.md) | M | M7-02d | ☐ |
 | M7-02e | [An Elite you can see](tasks/M7-02e-an-elite-you-can-see.md) — [row 12](#carry-forward-into-m7) | M | M7-02f | ☐ |
-| M7-03 | Choirmother *(00c)* | — | M7-02e | ☐ |
-| M7-04 | All 81 nodes *(00d)* | — | M7-03 | ☐ |
+| M7-03a | [The ring: bodies that orbit a boss and turn its hits away](tasks/M7-03a-the-ring.md) | M | M7-02e | ☐ |
+| M7-03b | [The Choirmother, and a song a pillar breaks](tasks/M7-03b-the-choirmother.md) — [row 2](#carry-forward-into-m7) | S | M7-03a | ☐ |
+| M7-03c | [A song you can see, and a ring with its gaps drawn](tasks/M7-03c-a-song-you-can-see.md) | M | M7-03b | ☐ |
+| M7-03d | [The Choirmother at stage 10, standing where the room was built for her](tasks/M7-03d-the-choirmother-at-stage-ten.md) | M | M7-03c | ☐ |
+| M7-04 | All 81 nodes *(00d)* | — | M7-03d | ☐ |
 | M7-05 | Ashen Reach: 8–12 arenas + art *(00e)* | — | M7-04 | ☐ |
 | M7-06 | Drowned Choir: 8–12 arenas + art *(00e)* | — | M7-05 | ☐ |
 | M7-07 | Audio layers, telegraph cues, boss music *(00e)* | — | M7-06 | ☐ |
@@ -173,12 +195,16 @@ a finding** a grep produced: the one-shot rule has only ever been checked agains
 HP. Rows 1, 3 and 9 are unchanged and say why; row 10 is M7-00d's to spec. **Re-read again at
 [M7-00b](tasks/M7-02c-the-affix-roll.md)'s group**: no row changed owner, and **row 12 is new** —
 M7-02b's promotion makes every body of a capped wave an Elite, which puts GD §16.2's never-fading bar and
-M7-02e's outline on all of them.
+M7-02e's outline on all of them. **Re-read again at [M7-00c](tasks/M7-03a-the-ring.md)'s group**: no row
+changed owner, and rows 1 and 2 each gain her. Row 1 gains her wedge and her ring on the device list;
+row 2 gains her fight at 10, 20, 30 and 40, and her song against the Emberwright. Rows 3 and 9 to 12
+are unchanged. None of them is about a boss stage, which composes no waves, rolls no Elites and opens
+the same Sanctum as any other.
 
 | # | Finding | Owner | Cost of leaving it |
 |---|---|---|---|
-| 1 | **The device debt, carried whole from [M6 row 1](archive/ROADMAP-M6.md#carry-forward-into-m6), six tags deep.** Nothing has run outside the Editor, and `Screen.dpi` reads 120 here against a phone's 400 ([Traps §9](../Traps.md)). Multi-touch is still the one row that risks a *feature*, kill-from-recents the one *correctness* row. **M6-11 adds four Editor numbers a phone must re-take:** bodies peaked at **25** under Swarm at stage 37 against GD §11.3's 28; frame time held **p95 ≤ 17.8 ms at 60 fps** to stage 39 on this PC; every screen that opens costs **one ~50 ms frame**; and the pseudo-locale walk found **no plain English and nothing clipped** — at 120 dpi. The rest of the list is M6 row 1's, in the archive. | **No owner, by ruling**: the instrument is a phone. The first hardware session; **M8-xx** if none arrives sooner | **High and compounding.** Every milestone adds rows and none retire. |
-| 2 | **Per-class balance against GD §12.4 and §12.5 — the measurement is discharged, the tuning is owed.** M6-11's instrument A took all three curves ([table](tasks/M6-11-acceptance-and-tag.md#as-built)): the Oathbound **4 flat** over 4–16 (M5-08); the Gravecaller **4 → 8** by 16, out of band from 9, with M6-07c's ×1.15 start now holding stages 1–4 at 4; the Emberwright **under the band at 2 hits from stage 1 to 9**, then **3–4 from 10 to 39** with a full tree — its *"3 cold"* is arithmetic nobody lives, because the blast warms Kindling within three orbs. **Kindling at full ran 2 %, 36 % and 0 % of combat** over three runs: it tracks being hit. **The Warden's fight lengthens with depth** — 89, 99, 102, 105, 113 and ~126 s at stages 5–35 — and leaves GD §9.1's 75–120 near stage 33. **A stage-5 Warden hit took 36 % of an Emberwright's maximum**, one point over §12.4's one-shot rule. **No natural run has passed stage 19**, so §12.5's 35–50 horizon is still unmeasured, and every early-levelling number carries [row 6](#carry-forward-into-m7)'s eight extra Husks. **Added at M7-00a — the one-shot rule has only ever been checked against the Oathbound.** `EnemyLookTests.Assets_ObeyTheOneShotRule` measures 35 % of **140**; the Emberwright has **70** and the Gravecaller **80**, so against the frailest class §12.4's ceiling is 24.5 and `contact × d(n)` passes it for the **Bloater from stage 20**, the **Warden (M7-01c) from 27**, and the **Spitter and Lunger (M7-01a) from 31** — all inside §12.5's horizon. M7's archetypes are authored inside the envelope the roster already had rather than below it, because lowering the new ones alone closes nothing; the rule's test should walk the frailest class, and that is a tuning decision. | **[M8-05](#m8--feel-perf-ship-titles-only)**, *"balance pass per class against the death horizon"*; the **instrument** is M6-11's probe, rebuilt | **Medium now, high at M7-04**, which authors 81 nodes against these curves. |
+| 1 | **The device debt, carried whole from [M6 row 1](archive/ROADMAP-M6.md#carry-forward-into-m6), six tags deep.** Nothing has run outside the Editor, and `Screen.dpi` reads 120 here against a phone's 400 ([Traps §9](../Traps.md)). Multi-touch is still the one row that risks a *feature*, kill-from-recents the one *correctness* row. **M6-11 adds four Editor numbers a phone must re-take:** bodies peaked at **25** under Swarm at stage 37 against GD §11.3's 28; frame time held **p95 ≤ 17.8 ms at 60 fps** to stage 39 on this PC; every screen that opens costs **one ~50 ms frame**; and the pseudo-locale walk found **no plain English and nothing clipped** — at 120 dpi. The rest of the list is M6 row 1's, in the archive. **Added at M7-00c — GD §9.1 rule 7 for the Choirmother**: her wedge, its pillar notches and a 30° gap in a steel ring at 400 dpi, and the frame time with a ring of eight, sixteen Weaverlings and a wedge up at once ([M7-03c](tasks/M7-03c-a-song-you-can-see.md), [M7-03d](tasks/M7-03d-the-choirmother-at-stage-ten.md)). | **No owner, by ruling**: the instrument is a phone. The first hardware session; **M8-xx** if none arrives sooner | **High and compounding.** Every milestone adds rows and none retire. |
+| 2 | **Per-class balance against GD §12.4 and §12.5 — the measurement is discharged, the tuning is owed.** M6-11's instrument A took all three curves ([table](tasks/M6-11-acceptance-and-tag.md#as-built)): the Oathbound **4 flat** over 4–16 (M5-08); the Gravecaller **4 → 8** by 16, out of band from 9, with M6-07c's ×1.15 start now holding stages 1–4 at 4; the Emberwright **under the band at 2 hits from stage 1 to 9**, then **3–4 from 10 to 39** with a full tree — its *"3 cold"* is arithmetic nobody lives, because the blast warms Kindling within three orbs. **Kindling at full ran 2 %, 36 % and 0 % of combat** over three runs: it tracks being hit. **The Warden's fight lengthens with depth** — 89, 99, 102, 105, 113 and ~126 s at stages 5–35 — and leaves GD §9.1's 75–120 near stage 33. **A stage-5 Warden hit took 36 % of an Emberwright's maximum**, one point over §12.4's one-shot rule. **No natural run has passed stage 19**, so §12.5's 35–50 horizon is still unmeasured, and every early-levelling number carries [row 6](#carry-forward-into-m7)'s eight extra Husks. **Added at M7-00a — the one-shot rule has only ever been checked against the Oathbound.** `EnemyLookTests.Assets_ObeyTheOneShotRule` measures 35 % of **140**; the Emberwright has **70** and the Gravecaller **80**, so against the frailest class §12.4's ceiling is 24.5 and `contact × d(n)` passes it for the **Bloater from stage 20**, the **Warden (M7-01c) from 27**, and the **Spitter and Lunger (M7-01a) from 31** — all inside §12.5's horizon. M7's archetypes are authored inside the envelope the roster already had rather than below it, because lowering the new ones alone closes nothing; the rule's test should walk the frailest class, and that is a tuning decision. **Added at M7-00c — the Choirmother at 10, 20, 30 and 40.** Her 1 400 HP is an estimate, not a measurement: the Warden's first fight (3 968 HP in 89 s at stage 5) puts stage 10 near 50 effective DPS, and her ring's windows are guessed at half the fight ([M7-03b](tasks/M7-03b-the-choirmother.md) rule 10). Her song's `16 × d(n)` passes half the Emberwright's 70 from stage 35, so her fourth appearance is the first over GD §12.4's boss cap. From [M7-03d](tasks/M7-03d-the-choirmother-at-stage-ten.md) the Warden's fight-length series has no stage 10, 20 or 30, and the instrument reads both bosses. | **[M8-05](#m8--feel-perf-ship-titles-only)**, *"balance pass per class against the death horizon"*; the **instrument** is M6-11's probe, rebuilt | **Medium now, high at M7-04**, which authors 81 nodes against these curves. |
 | 3 | **The UI redesign — every taken node shown, Active or Passive marked, Auto marked by something orbiting it — carried unchanged from [M6 row 3](archive/ROADMAP-M6.md#carry-forward-into-m6).** Sequencing is still **icons → readout → rotation**. M6 added to what it will have to draw rather than moving it: four priced Sanctum rows that can refuse, a violet meter with a Claiming mark, a Pact card, three class cards with a lock, a fourth `NodeState`, and a borrowed branch the tree screen still cannot show. | **None, by the owner's standing ruling.** M7-04 brings the nodes and M7-05/06 the art; **M8-01** is the earliest honest owner | **Medium and static** until M7-04 authors 81 nodes the screen cannot draw. |
 | 4 | **Continue resumes the run the Menu read at boot, and its opening write destroys the real save.** `SavedRun` is set once by `BootFlow` and by nothing else, so within one app session a quit-and-Continue restores a stale run — or a dead one. Found by losing a stage-30 run to it. **DISCHARGED at [M6-11a](tasks/M6-11a-continue-resumes-the-run-on-disk.md#as-built)**, before `m6`: `SaveWriter` mirrors every snapshot into `SavedRun` and clears it on every death, each before the disk operation is queued, so Continue offers the run last written — in one session as across a relaunch. Red-checked: without the mirror, exactly the five new rows fail, one of them with *"Continue resumed the run boot read, not the one just played."* A failed write leaves memory newer than disk, which is rule 3's stated cost. | **[M6-11a](tasks/M6-11a-continue-resumes-the-run-on-disk.md)**, before `m6` | **High**: silent data loss on the ordinary in-app path. |
 | 5 | **A resume keeps the meter and drops the Claiming.** A Claimed run whose meter fell below 100 — a paid cast, a Cleanse — comes back unclaimed, so quitting is a way out of GD §10.3's death sentence. Witnessed at stage 36. **DISCHARGED at [M6-11b](tasks/M6-11b-a-resume-keeps-the-claiming.md#as-built)**, before `m6`, as a v4 re-cut rather than a v5: `RunEconomy.Claimed` is saved beside the meter, and `Veilrot.Restore` latches on the flag *or* on 100, so a file written before the flag still restores as M6-04 rule 9 said. Red-checked: with the restore ignoring the flag exactly the three latch rows fail, one with *"A quit is not a way out of GD §10.3's hundred seconds"*; with the recorder and the mirror dropping it, exactly five. `ClaimedFor` still restarts at zero, which is rule 9's stated cost. | **[M6-11b](tasks/M6-11b-a-resume-keeps-the-claiming.md)**, before `m6`: M6-01b's re-cut licence expires at the tag, after which the same fix is a v5 | Medium, and cheaper this week than next. |
@@ -338,7 +364,17 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
   scale on the one shared body instead, which is what GD §11.3 asks for anyway. Promoted when the
   owner brings enemy art in, the way M2-art was brought in. `Rig_Medium_Special`'s
   `Skeletons_Awaken_Floor` is a diegetic spawn telegraph that would replace
-  [M2-12b](tasks/M2-12b-telegraph-rings.md)'s ring decal.
+  [M2-12b](tasks/M2-12b-telegraph-rings.md)'s ring decal. **Re-aimed at M7-00c: the promoter has
+  fired.** The owner's art ruling of 2026-09-25 is the KayKit packs already in the project, plus
+  Gemini-made models skinned onto `Rig_Medium` (not Mixamo), with weapons as separate props. So these
+  skeletons are M7-00e's to spec, and this line leaves when that group names their task.
+- **A Warden slam in its windup when a beat opens is frozen and released after it.** `BossBehaviour`
+  stops ticking its inner behaviour for the beat's 1.5 s, and `WardenBehaviour` resumes its `Slam` with
+  the timer where it stopped. The ring leaves on the first tick after the beat, with its telegraph
+  1.5 s behind it. Found at M7-00c. [M7-03b](tasks/M7-03b-the-choirmother.md) rule 5 builds
+  `IBeatListener` for the Choirmother's song and leaves the Warden out on purpose: the M4 fight changes
+  by nobody's ruling. Promoted by a playtest that reports a ring leaving as a beat ends, or by any task
+  already in `WardenBehaviour`.
 - **Arenas 3 through 12.** [M2-11a](tasks/M2-11a-arena-contract-and-pool.md) rule 11 ships two —
   the contract's proof, not its content — against GD §7.2's target of 8–12 per biome. Promoted by
   M7-05/06's art pass, or the day a playtest says two rooms is where a run starts feeling repetitive.

@@ -270,8 +270,9 @@ RS-01c swaps the body.
 - **The movement skill is a dodge roll that can be switched off**, through `MovementSkillKind.None`
   (RS-03a).
 - **The name is "Ranger", and it is free while it is built.**
-- **What the planning found:** class select holds exactly three cards; `ProjectileViews` flies every
-  shot as the same bolt; the player can offer only one shot per damage frame; and nothing checks a
+- **What the planning found:** class select holds exactly three cards; `ProjectileViews` flew every
+  shot as the same bolt, until RS-02c let a class name its own; the player can offer only one shot
+  per damage frame; and nothing checks a
   class's own tree against the stats it may name, until a node is taken (RS-03b rule 7).
 
 | ID | Task | Size | Depends on | Status |
@@ -284,7 +285,7 @@ RS-01c swaps the body.
 | RS-02a | [A playable Ranger, in a sandbox](tasks/RS-02a-a-playable-ranger.md): KayKit's body, `AC_Ranger`, the game's stick and camera | M | RS-00 | ☑ |
 | RS-00b | Specs for the Ranger's class and its three passives: RS-02b to RS-03d | S | RS-02a | ☑ |
 | RS-02b | [A body per class](tasks/RS-02b-a-body-per-class.md) — `CharacterLookBook`; the Knight moves to `Bodies/Knight` | M | RS-02a | ☑ |
-| RS-02c | [An arrow per shooter](tasks/RS-02c-an-arrow-per-shooter.md) — one pool per prefab, chosen by `SpecId` | S | RS-02b | ☐ |
+| RS-02c | [An arrow per shooter](tasks/RS-02c-an-arrow-per-shooter.md) — one pool per prefab, chosen by `SpecId` | S | RS-02b | ☑ |
 | RS-03a | [Holding fire on the move, and a class with no movement skill](tasks/RS-03a-holding-fire-on-the-move.md) (core) | M | RS-00 | ☑ |
 | RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☐ |
 | RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☐ |

@@ -205,8 +205,8 @@ namespace Soulvail.Game.Composition
                  "colour is reserved.")]
         [SerializeField] private DecoyView _decoyPrefab;
 
-        [Tooltip("The one bolt prefab. Every archetype's shot shares it, the same argument the " +
-                 "enemy prefab makes — a body per kind of shot arrives with the art.")]
+        [Tooltip("The default bolt: every enemy's shot, and every class's that names no Projectile " +
+                 "on its CharacterDefinition (RS-02c). A class that names one flies that instead.")]
         [SerializeField] private ProjectileView _projectilePrefab;
 
         [Tooltip("Where bolts in flight are parented. Optional on the same terms as the enemy " +
@@ -698,6 +698,10 @@ namespace Soulvail.Game.Composition
             // conditional on the arena being dressed, unlike PrewarmCount below: thirty-two small
             // bodies with no controller and no collider cost a fraction of one enemy, and a run
             // that starts firing is exactly the moment a hitch cannot be afforded.
+            //
+            // The class look book has no WithParameter, EnemyViews' look book's bargain: it resolves
+            // by type from BootScope, and it is what picks a class's own shot (RS-02c). Only the
+            // default is prewarmed; a class's pool is built on its first shot.
             builder.Register<ProjectileViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _projectilePrefab)
                 .WithParameter("parent", _projectileParent)

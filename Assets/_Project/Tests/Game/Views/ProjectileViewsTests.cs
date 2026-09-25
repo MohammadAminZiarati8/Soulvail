@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
+using UnityEditor;
 using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
@@ -29,6 +32,11 @@ namespace Soulvail.Tests.Game.Views;
 /// rest pose at the origin, which is what the real prefab is authored at anyway.
 /// </para>
 /// <para>
+/// <b>RS-02c's rows fly a second scene prefab, the class's</b>, and tell a body's prefab by the child
+/// it was cloned with — <c>BoltMesh</c> or <c>ArrowMesh</c> — because the census renames every
+/// rented body in the Editor, and a real shot differs from another by its mesh anyway.
+/// </para>
+/// <para>
 /// Every object the fixture or the pool creates is destroyed in the teardown. An EditMode test that
 /// leaks a GameObject leaks it into every test that runs after it.
 /// </para>
@@ -38,14 +46,29 @@ public sealed class ProjectileViewsTests
 {
     private static readonly ContentId Spitter = new ContentId("enemy.spitter");
 
+    /// <summary>A class whose look names the arrow.</summary>
+    private static readonly ContentId Archer = new ContentId("character.x");
+
+    /// <summary>A class whose look names no shot.</summary>
+    private static readonly ContentId Plain = new ContentId("character.y");
+
     /// <summary>
     /// The prefab's own <c>_arcHeight</c>, in metres. Duplicated here rather than read back,
     /// because the row that matters is that the hump is <em>there</em> and is what the field says.
     /// </summary>
     private const float ArcHeight = 1.2f;
 
+    private const string BoltMesh = "BoltMesh";
+    private const string ArrowMesh = "ArrowMesh";
+
+    private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
+    private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
+    private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
+
     private GameObject _prefabObject;
     private ProjectileView _prefab;
+    private GameObject _arrowObject;
+    private ProjectileView _arrow;
     private IObjectResolver _container;
     private DomainEventHub _hub;
     private ProjectileViews _views;
@@ -55,6 +78,11 @@ public sealed class ProjectileViewsTests
     {
         _prefabObject = new GameObject("ProjectilePrefab");
         _prefab = _prefabObject.AddComponent<ProjectileView>();
+        new GameObject(BoltMesh).transform.SetParent(_prefabObject.transform, false);
+
+        _arrowObject = new GameObject("ArrowPrefab");
+        _arrow = _arrowObject.AddComponent<ProjectileView>();
+        new GameObject(ArrowMesh).transform.SetParent(_arrowObject.transform, false);
 
         _container = new ContainerBuilder().Build();
         _hub = new DomainEventHub();
@@ -75,6 +103,11 @@ public sealed class ProjectileViewsTests
         if (_prefabObject != null)
         {
             Object.DestroyImmediate(_prefabObject);
+        }
+
+        if (_arrowObject != null)
+        {
+            Object.DestroyImmediate(_arrowObject);
         }
     }
 
@@ -450,9 +483,200 @@ public sealed class ProjectileViewsTests
         Assert.That(view.transform.position, Is.EqualTo(held));
     }
 
+    [Test]
+    public void Fired_AClassWithAProjectileLookFliesIt()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        Shoot(id: 1, Archer);
+
+        Assert.That(_views.TryGet(1, out ProjectileView view), Is.True);
+
+        AssertFlies(view, ArrowMesh, "character.x's look names the arrow, so its shot is the arrow's body.");
+
+        Assert.That(_views.PooledCountOf(_prefab), Is.EqualTo(1),
+            "The prewarmed bolt is still waiting: the class's shot was not rented from the default pool.");
+    }
+
+    [Test]
+    public void Fired_AnEnemyShotFliesTheDefault()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        // An enemy's SpecId is its archetype, which no class look answers.
+        Fire(id: 1, origin: Vector3.Zero, target: new Vector3(6f, 0f, 0f), flightTime: 1f);
+
+        Assert.That(_views.TryGet(1, out ProjectileView view), Is.True);
+
+        AssertFlies(view, BoltMesh, "A Spitter's shot is the default bolt, whatever the classes name.");
+
+        Assert.That(_views.PooledCount, Is.Zero, "It took the prewarmed bolt.");
+        Assert.That(_views.Count + _views.PooledCount, Is.EqualTo(1), "And no other body was built for it.");
+    }
+
+    [Test]
+    public void Fired_AClassWithNoLookFliesTheDefault()
+    {
+        _views = Census(prewarm: 2, Book());
+
+        // Two ways to name no shot: a look with none, and no look at all.
+        Shoot(id: 1, Plain);
+        Shoot(id: 2, new ContentId("character.z"));
+
+        Assert.That(_views.TryGet(1, out ProjectileView authored), Is.True);
+        Assert.That(_views.TryGet(2, out ProjectileView unknown), Is.True);
+
+        AssertFlies(authored, BoltMesh, "character.y's look names no shot, so it flies the default.");
+        AssertFlies(unknown, BoltMesh, "A class with no look at all flies the default.");
+
+        Assert.That(_views.PooledCount, Is.Zero, "Both came out of the default's prewarm.");
+    }
+
+    [Test]
+    public void Fired_AClassPoolIsBuiltOnceAndReused()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        Shoot(id: 1, Archer);
+
+        Assert.That(_views.TryGet(1, out ProjectileView first), Is.True);
+
+        Impact(id: 1, position: new Vector3(6f, 0f, 0f));
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(1), "The class's pool exists after its first shot.");
+
+        Shoot(id: 2, Archer);
+
+        Assert.That(_views.TryGet(2, out ProjectileView second), Is.True);
+
+        Assert.That(second, Is.SameAs(first),
+            "The class's second shot rents the body its first returned rather than building another.");
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.Zero);
+
+        // Every body that exists is either in the air or waiting: one arrow and the one prewarmed
+        // bolt, so no second arrow was ever built.
+        Assert.That(_views.Count + _views.PooledCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Impacted_ReturnsABodyToItsOwnPool()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        Shoot(id: 1, Archer);
+        Fire(id: 2, origin: Vector3.Zero, target: new Vector3(0f, 0f, 6f), flightTime: 1f);
+
+        Assert.That(_views.TryGet(1, out ProjectileView arrow), Is.True);
+        Assert.That(_views.TryGet(2, out ProjectileView bolt), Is.True);
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.Zero);
+        Assert.That(_views.PooledCountOf(_prefab), Is.Zero);
+
+        Impact(id: 1, position: new Vector3(6f, 0f, 0f));
+        Impact(id: 2, position: new Vector3(0f, 0f, 6f));
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(1), "The arrow went back to the arrow's pool.");
+        Assert.That(_views.PooledCountOf(_prefab), Is.EqualTo(1), "The bolt went back to the default's.");
+
+        // A swap would leave both counts at one, so each pool is asked for its body back: the next
+        // Spitter shot must not fly the arrow.
+        Fire(id: 3, origin: Vector3.Zero, target: new Vector3(6f, 0f, 0f), flightTime: 1f);
+        Shoot(id: 4, Archer);
+
+        Assert.That(_views.TryGet(3, out ProjectileView nextBolt), Is.True);
+        Assert.That(_views.TryGet(4, out ProjectileView nextArrow), Is.True);
+
+        Assert.That(nextBolt, Is.SameAs(bolt));
+        Assert.That(nextArrow, Is.SameAs(arrow));
+    }
+
+    [Test]
+    public void Dispose_ReturnsEveryBodyToItsPool()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        Shoot(id: 1, Archer);
+        Fire(id: 2, origin: Vector3.Zero, target: new Vector3(0f, 0f, 6f), flightTime: 1f);
+
+        Assert.That(_views.TryGet(1, out ProjectileView arrow), Is.True);
+        Assert.That(_views.TryGet(2, out ProjectileView bolt), Is.True);
+
+        _views.Dispose();
+
+        // Unbound is what OnDespawn leaves, and a pool's Release is the one caller of it: a body
+        // destroyed in flight would still answer its shot's id. The field outlives the object.
+        Assert.That(arrow.IsBound, Is.False, "The arrow was released before it was destroyed.");
+        Assert.That(bolt.IsBound, Is.False, "The bolt was released before it was destroyed.");
+
+        Assert.That(arrow == null, Is.True, "And destroyed with its pool: nothing outlives the run.");
+        Assert.That(bolt == null, Is.True);
+
+        Assert.That(_views.Count, Is.Zero);
+        Assert.That(_views.PooledCount, Is.Zero);
+    }
+
+    [Test]
+    public void NoBook_FliesEverythingAsTheDefault()
+    {
+        _views = Census(prewarm: 1);
+
+        Shoot(id: 1, Archer);
+
+        Assert.That(_views.TryGet(1, out ProjectileView view), Is.True);
+
+        AssertFlies(view, BoltMesh, "With no look book a class's shot is the default, as before RS-02c.");
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.Zero);
+    }
+
+    [Test]
+    public void Shipped_NoClassNamesAProjectile()
+    {
+        foreach (string path in new[] { OathboundPath, GravecallerPath, EmberwrightPath })
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
+
+            Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {path}.");
+
+            using var serialized = new SerializedObject(definition);
+            SerializedProperty projectile = serialized.FindProperty("_projectile");
+
+            Assert.That(projectile, Is.Not.Null, "CharacterDefinition has no _projectile field.");
+            Assert.That(projectile.objectReferenceValue, Is.Null,
+                $"{path} names a shot. Every shipped class flies the default bolt until RS-03c names " +
+                "Arrow.prefab on the Ranger.");
+
+            Assert.That(definition.ToLook().Projectile == null, Is.True);
+        }
+    }
+
     /// <summary>A census over the fixture's prefab, hub and container.</summary>
-    private ProjectileViews Census(int prewarm) =>
-        new ProjectileViews(_container, _prefab, null, _hub, prewarm);
+    private ProjectileViews Census(int prewarm, CharacterLookBook looks = null) =>
+        new ProjectileViews(_container, _prefab, null, _hub, prewarm, looks);
+
+    /// <summary>
+    /// <see cref="Archer"/> flies the fixture's arrow; <see cref="Plain"/> has a look and names no
+    /// shot; every other id has no look at all.
+    /// </summary>
+    private CharacterLookBook Book() =>
+        new CharacterLookBook(new Dictionary<ContentId, CharacterLook>
+        {
+            [Archer] = new CharacterLook(body: null, _arrow),
+            [Plain] = new CharacterLook(body: null),
+        });
+
+    /// <summary>
+    /// <paramref name="view"/> was cloned from the prefab carrying <paramref name="mesh"/>, and not
+    /// from the other.
+    /// </summary>
+    private static void AssertFlies(ProjectileView view, string mesh, string message)
+    {
+        string other = mesh == BoltMesh ? ArrowMesh : BoltMesh;
+
+        Assert.That(view.transform.Find(mesh), Is.Not.Null, message);
+        Assert.That(view.transform.Find(other), Is.Null, message);
+    }
 
     /// <summary>
     /// One body, bound by hand rather than through the census — the arc rows are about the flight
@@ -469,6 +693,13 @@ public sealed class ProjectileViewsTests
 
     private void Fire(int id, Vector3 origin, Vector3 target, float flightTime) =>
         _hub.Publish(new ProjectileFired(id, Spitter, sourceId: 7, origin, target, flightTime));
+
+    /// <summary>
+    /// A player's shot: its <c>SpecId</c> is the class, and its source nobody, as
+    /// <c>PlayerCombat</c> fires one.
+    /// </summary>
+    private void Shoot(int id, ContentId characterId) =>
+        _hub.Publish(new ProjectileFired(id, characterId, sourceId: 0, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f));
 
     private void Impact(int id, Vector3 position) =>
         _hub.Publish(new ProjectileImpacted(id, position, hit: false));

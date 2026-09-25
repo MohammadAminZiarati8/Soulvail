@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Game.Views;
 using UnityEngine;
 
 // Block namespace, deliberately, against the project's file-scoped convention: Unity 6.3's
@@ -208,11 +209,16 @@ namespace Soulvail.Game.Authoring
                  "done yet and the id is deliberately not validated against the catalog.")]
         [SerializeField] private string _unlockDeedBossId = "";
 
-        [Header("Look (RS-02b) — the body a run of this class wears")]
+        [Header("Look (RS-02b, RS-02c) — the body a run of this class wears, and its shot")]
         [Tooltip("The body prefab raised under the player when a run of this class starts, from " +
                  "Prefabs/Player/Bodies/. It carries its own Animator and animator view. Empty is " +
                  "not an error: the run wears RunScope's default body, the Knight.")]
         [SerializeField] private GameObject _body;
+
+        [Tooltip("The shot a run of this class fires, from Prefabs/Projectiles/ (RS-02c). Read only " +
+                 "for a Projectile weapon. Empty is not an error: the class fires RunScope's default " +
+                 "bolt, which is what every shipped class does.")]
+        [SerializeField] private ProjectileView _projectile;
 
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
@@ -365,15 +371,17 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>
-        /// What this class looks like: its body, as authored (RS-02b rule 2). Converted beside
-        /// <see cref="ToSpec"/> and never through it, for <c>EnemyDefinition.ToLook</c>'s reason — a
-        /// <see cref="GameObject"/> cannot cross into core (AR §2).
+        /// What this class looks like: its body and its shot, as authored (RS-02b rule 2, RS-02c).
+        /// Converted beside <see cref="ToSpec"/> and never through it, for
+        /// <c>EnemyDefinition.ToLook</c>'s reason — a <see cref="GameObject"/> cannot cross into core
+        /// (AR §2).
         /// </summary>
         /// <remarks>
-        /// Unvalidated: an empty body is the default one, not an error, and a body that is the wrong
-        /// model is wrong on screen, where no rule reads it.
+        /// Unvalidated: an empty body or shot is the default one, not an error, and a body that is
+        /// the wrong model is wrong on screen, where no rule reads it. A shot named on a Cone class
+        /// is never flown, because a Cone fires nothing.
         /// </remarks>
-        public CharacterLook ToLook() => new CharacterLook(_body);
+        public CharacterLook ToLook() => new CharacterLook(_body, _projectile);
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

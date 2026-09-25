@@ -163,13 +163,16 @@ namespace Soulvail.Game.Sandbox
                 _arrowSpeed,
                 ArrowRadius));
 
+            // The arrow as the default and no class look book (RS-02c rule 4): the sandbox has no
+            // class, so every shot it fires flies Arrow.prefab directly.
             builder.Register(
                 resolver => new ProjectileViews(
                     resolver,
                     _arrowPrefab,
                     transform,
                     resolver.Resolve<DomainEventHub>(),
-                    ArrowPrewarm),
+                    ArrowPrewarm,
+                    looks: null),
                 Lifetime.Scoped);
 
             builder.RegisterEntryPoint<RangerSandboxLoop>(Lifetime.Scoped)

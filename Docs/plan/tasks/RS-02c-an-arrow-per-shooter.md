@@ -70,4 +70,52 @@ public ProjectileViews(IObjectResolver resolver, ProjectileView prefab, Transfor
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+_6 000 bytes or fewer, measured._
+
+**Deviation 1, the Tests table over the Public API: `ProjectileViews.PooledCountOf(ProjectileView
+prefab)`.** `Impacted_ReturnsABodyToItsOwnPool` reads each pool's inactive count, and the block
+had no per-pool reading. Game has no `InternalsVisibleTo`, so the reading is public. It answers 0
+for a prefab no shot has flown, since its pool does not exist yet. `PooledCount` is now the sum
+over every pool, so `DebugOverlay`'s *bolts n/m* reads as before.
+
+**Deviation 2, `CharacterLook(GameObject body, ProjectileView projectile = null)`.** The block
+writes the argument as required. With a default, RS-02b's three one-argument sites in
+`CharacterLookTests` compile unchanged, and that file is outside the table.
+
+**Rule 2, resolved: pools are keyed by prefab, and the default pool is one of them.** Two classes
+that name one prefab share its pool. A class that names `Projectile.prefab` flies the prewarmed
+bodies. `SpecId` → prefab is a lookup in the book, then prefab → pool, on `ContentId`'s
+`IEquatable`. Nothing allocates once the pool exists. Rule 2's allocation clause has no
+`AllocationAssert` row, because `OnFired`'s Editor-only `view.name` string allocates on every
+shot, as it did before this task. The reuse row covers it.
+
+**Rule 3 on `Dispose` reverses `EnemyViews`' bargain.** Before, bodies in flight were destroyed
+with the pool as they stood. Now each one goes back through its own pool's `Release` first, and
+then every pool is disposed. The row observes the release through `IsBound`: `OnDespawn` unbinds,
+and the managed field outlives the destroyed object.
+
+**"`RunScope` passes the look book" is a resolution by type.** The registration takes no
+`WithParameter`, which is `EnemyViews`' look-book precedent. VContainer never falls back to a C#
+default, so the root's `CharacterLookBook` is what binds. `RunScope`'s edit is the tooltip and the
+comment. `RangerSandboxScope` passes `looks: null` by name, so rule 4 is visible where the sandbox
+relies on it.
+
+**The three class assets are untouched.** The new field loads empty, and nothing re-serialised
+them. `Shipped_NoClassNamesAProjectile` reads `_projectile` through `SerializedObject` and
+`ToLook()`.
+
+**The rows tell prefabs apart by a child.** The Editor renames every rented body, so the fixture's
+two scene prefabs carry `BoltMesh` or `ArrowMesh`. `Impacted_ReturnsABodyToItsOwnPool` also fires
+one more shot of each kind and asserts that each gets its own returned body back, because a swap
+would leave both counts at one.
+
+**How it was checked.** Red check A: impacts released into the default pool, and `Dispose` stopped
+releasing. The fixture ran 24 / 3: `Impacted_ReturnsABodyToItsOwnPool`,
+`Dispose_ReturnsEveryBodyToItsPool` and `Fired_AClassPoolIsBuiltOnceAndReused`. Red check B:
+`PoolFor` ignored the book. It ran 24 / 3 again: `Fired_AClassWithAProjectileLookFliesIt`, plus
+the reuse and impact rows, which need a class pool. The four default-path rows stayed green under
+both, as they should. The first full PlayMode pass failed `Loop_ShootsOnlyStandingStill`. That
+row failed alone, and so did `dev`'s code without this task, so it is not this task
+([Traps §8](../../Traps.md), amended).
+
+**Not done here:** manual step 1 is the owner's to play.

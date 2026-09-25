@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Soulvail.Core.Content;
+using Soulvail.Game.Views;
 using UnityEngine;
 
 // File-scoped, unlike CharacterDefinition beside it: neither type here derives from
@@ -9,8 +10,8 @@ using UnityEngine;
 namespace Soulvail.Game.Authoring;
 
 /// <summary>
-/// What one class looks like in a run: the body it wears. Game side only — a model is not core's
-/// business (AR §3), and a <c>CharacterSpec</c> names none. RS-02b.
+/// What one class looks like in a run: the body it wears (RS-02b) and the shot it fires (RS-02c).
+/// Game side only — a model is not core's business (AR §3), and a <c>CharacterSpec</c> names none.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,8 +24,8 @@ namespace Soulvail.Game.Authoring;
 /// <b><c>default(CharacterLook)</c> is the default look, and that is the difference from
 /// <see cref="EnemyLook"/> worth knowing.</b> An enemy's struct default is an invisible body, which
 /// is why its book returns a named default on a miss. Here a null body already means "the run's
-/// default body" — <c>RunScope</c>'s <c>_defaultBody</c> — so a miss can return the struct default
-/// and mean exactly that.
+/// default body" — <c>RunScope</c>'s <c>_defaultBody</c> — and a null projectile "the run's default
+/// shot", so a miss can return the struct default and mean exactly that.
 /// </para>
 /// </remarks>
 public readonly struct CharacterLook
@@ -33,9 +34,15 @@ public readonly struct CharacterLook
     /// The body prefab a run of this class wears, raised under the player at the start of the run.
     /// Null is not an error: it is the run's default body.
     /// </param>
-    public CharacterLook(GameObject body)
+    /// <param name="projectile">
+    /// The prefab this class's shots fly, if its weapon shoots. Null is not an error: its shots fly
+    /// the run's default bolt, as an enemy's do. Optional, so a look that names only a body is
+    /// written as it was before RS-02c.
+    /// </param>
+    public CharacterLook(GameObject body, ProjectileView projectile = null)
     {
         Body = body;
+        Projectile = projectile;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -44,6 +51,14 @@ public readonly struct CharacterLook
     /// reference that only the engine's operator calls null.
     /// </remarks>
     public GameObject Body { get; }
+
+    /// <summary>The shot prefab, or null for the run's default shot.</summary>
+    /// <remarks>
+    /// Read with Unity's <c>==</c> for <see cref="Body"/>'s reason. Read by <c>ProjectileViews</c>
+    /// on every shot the player fires, which is why it is the component the pool hands out rather
+    /// than a <see cref="GameObject"/> to look it up on.
+    /// </remarks>
+    public ProjectileView Projectile { get; }
 }
 
 /// <summary>
@@ -57,8 +72,9 @@ public readonly struct CharacterLook
 /// core and what it <em>looks like</em> stays here.
 /// </para>
 /// <para>
-/// Registered as a root singleton by <c>BootInstaller</c> and resolved by <c>RunScope</c>, which is
-/// the only reader: a look is read once, when a run raises its body.
+/// Registered as a root singleton by <c>BootInstaller</c> and resolved by <c>RunScope</c>, which
+/// reads a body once, when a run raises it, and hands the book to <c>ProjectileViews</c>, which
+/// reads a projectile on every shot.
 /// </para>
 /// </remarks>
 public sealed class CharacterLookBook

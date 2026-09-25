@@ -713,6 +713,17 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   sandbox row that passes alone after a recompile is this, not a regression**: re-run it before
   bisecting, and bisect with a recompile between steps, since the failing passes also failed it
   alone in the domain they left behind.
+  **At RS-02c it also failed alone, in a fresh domain**, with the same message (*No arrow on the
+  run*, 1 for 0): once after `RequestScriptReload`, twice after a compile, one of those on `dev`'s
+  code without the task. So passing alone does not tell this apart from a regression; **the bisect
+  against `dev` does.** Then the row passed alone, and a full pass went 55 / 55, on the same tree.
+  **One unconfirmed lead, from the Input System's source:** in the Editor an update counts as the
+  Editor's, not the player's, when `gameHasFocus` is false (`InputManager.cs`, `defaultUpdateType`).
+  `gameHasFocus` is `applicationHasFocus`, or `IgnoreFocus` *with* `AllDeviceInputAlwaysGoesToGameView`,
+  which this fixture leaves off. That would drop a pushed stick while Unity is not the foreground app.
+  **It does not explain the passes, though:** `InternalEditorUtility.isApplicationActive` read
+  `False` before, between and after both. `editor_focus` does not change it, because it focuses a
+  dock area, not the application.
 
 ---
 

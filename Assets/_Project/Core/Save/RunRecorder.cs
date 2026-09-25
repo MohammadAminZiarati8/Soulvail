@@ -178,7 +178,36 @@ public sealed class RunRecorder
             // and a run with no Manual skills still costs nothing because four empties are shared.
             // A run with no tree has no actives and therefore four empty slots, which is what a
             // snapshot of an M3-era run without content correctly says.
-            state.ManualSkillIds);
+            state.ManualSkillIds,
+
+            // **Four real values and three real lists, and no placeholder left** (M6-01b rule 7;
+            // M6-04 took the meter, M6-02b the two counters and the banishes, M6-05a the Pacts,
+            // M6-06a the Ordeals). All read off `RunState` for the reason the two lists above are —
+            // the handles are internal and a recorder has no business holding one (AR §18.2). The
+            // last one replaced exactly one argument here **without touching CurrentVersion** —
+            // `Fixture_V4Run_IsWhatThisBuildWrites` is the row that objects if it bumps it.
+            //
+            // `RunSnapshot`'s own constructor is what refuses a meter outside `[0, 100]` and a
+            // spent count above the bought one; neither can leave its range here, so both guards are
+            // boundary checks on a hand-edited file rather than second opinions about this line.
+            //
+            // The banished, pacted and Ordeal lists are live views, so the snapshot's copy is what
+            // stops a banish, a Pact or a deal after the write rewriting a save still queued (the
+            // node list's reason). An empty one copies to the shared zero-length array, which keeps
+            // `Take_AllocatesNothing` measuring a real zero for a run that took neither.
+            //
+            // **And the latch beside the meter, because neither says the other** (M6-11b rule 1).
+            // A Claimed run's meter falls with a paid cast or a Cleanse; written alone, a boundary
+            // at 75 was a resume at 75 and no Claiming.
+            new RunEconomy(
+                state.Essence,
+                state.Veilrot,
+                rerollsBought: state.RerollsBought,
+                rerollsSpent: state.RerollsSpent,
+                claimed: state.IsClaimed),
+            state.BanishedNodeIds,
+            state.PactedNodeIds,
+            state.OrdealIds);
 
         _events.Publish(new RunSnapshotTaken(snapshot));
     }

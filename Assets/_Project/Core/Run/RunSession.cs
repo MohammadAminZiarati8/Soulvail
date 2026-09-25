@@ -67,6 +67,19 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private readonly EnemyDeath[] _deaths;
 
     /// <summary>
+    /// What the install had met before this run (<c>RunConfig.ArchetypesAlreadyMet</c>), or null for
+    /// nothing. Read once, on the death tick, by GD §14.1's third term (M6-09a rule 6).
+    /// </summary>
+    private IReadOnlyCollection<ContentId> _archetypesAlreadyMet;
+
+    /// <summary>
+    /// Where the death tick writes the archetypes this run met first, sized to the mode's roster at
+    /// <c>Start</c> — so a returning player's death, which meets nothing new, allocates nothing, and
+    /// any other allocates exactly the list the event carries.
+    /// </summary>
+    private ContentId[] _newArchetypeScratch = Array.Empty<ContentId>();
+
+    /// <summary>
     /// What turns the plan into enemies in an arena. Never null while a run is running: an arena
     /// with nowhere to put anything gets an inert one rather than none (M2-05 rule 12), so nothing
     /// downstream has to ask whether this run has a director.
@@ -400,6 +413,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // gap between the two is exactly the composition the snapshot must not include.
         RandomState opening = _random.Capture();
 
+        // **GD §13.4's Ordeals, one set per run, unconditionally** (M6-06a rule 5) — the wallet's
+        // bargain: a mode that schedules none holds a set that is always empty rather than no set,
+        // so StageFlow takes it as a required argument and a mis-wired run cannot reach stage 25 and
+        // be dealt nothing in silence.
+        //
+        // **Built and restored above the opening composition, and that is M6-06b's one ordering**
+        // (rule 3). Swarm changes what a stage is made of and the line below composes the stage a
+        // run opens on — so a set restored after it, as M6-06a placed it when nothing read a dial,
+        // would give a resumed stage-35 run its first stage without Swarm and every later one with
+        // it. Silent, for the wallet's reason: an OrdealApplied raised here would reach a HUD that
+        // has not subscribed yet, and a resume is not news. It reads the mode and nothing the run
+        // builds, so nothing below has to exist first; an id the pool no longer holds is dropped
+        // rather than refused, and a v4 save written before M6-06a carries none (M6-06a rule 7).
+        var ordeals = new Ordeals(mode, _events);
+
+        if (config.Restore is RunSnapshot dealt)
+        {
+            ordeals.Restore(dealt.OrdealIds);
+        }
+
         WavePlan plan = null;
         WaveComposer composer = null;
 
@@ -417,7 +450,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
             // The first thing in a run to consume the Spawn stream, and it draws from that one and
             // no other (ADR-0011).
-            composer.Compose(config.StageIndex, mode, plan, _random.Spawn);
+            composer.Compose(config.StageIndex, mode, plan, _random.Spawn, ordeals);
         }
 
         int seed = config.Seed;
@@ -432,6 +465,59 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // question has to leave on the tick that produced it rather than be relayed through here.
         var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity);
 
+        // Built before the census below, because the factory it is closed over runs the moment a
+        // boss stands up on the director's first tick of a boss stage. One pair per run, like every
+        // live object here: a second Start must not inherit the first run's rings.
+        _shockwaves = new ShockwaveSystem(_events);
+        _fissures = new FissureSystem(_events);
+
+        // One per run, like the two above: a second Start must not inherit the first run's shots or
+        // its ids. It takes no generator, because a shot goes exactly where it was aimed and spread
+        // would be a change to what a seed means (ADR-0011).
+        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
+
+        // One per run, like the two above: a second Start must not inherit the first run's level.
+        // The curve comes off the mode rather than off the character or a constant here, because
+        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
+        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
+        // back where it was in the restore block below, before RunStarted.
+        var progression = new LevelTracker(mode.Xp, _events);
+
+        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
+        // rule: the address table holds this run's live stats, so it cannot be built before them,
+        // and the tree that will read the registry (M3-03) validates every effect it holds at
+        // Start — so an unregistered primitive has to be reportable before the run is announced.
+        //
+        // One Register line per primitive, and that is the entire cost of adding the eleventh
+        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
+        // existed this was a table that was built, filled and never read.
+        var playerStats = new PlayerStats(combat, motor, progression);
+        var effects = new EffectRegistry();
+
+        // **GD §10's meter, one per run and never null** (M6-04). A second Start must not inherit
+        // the first run's corruption — it is the one number in the game that only goes up, so a
+        // stale one would open a new run at somebody else's Claiming.
+        //
+        // **It is built here rather than beside the wallet three blocks down, because the census
+        // needs it and the address table is what it needs first** (rule 4). The meter puts modifiers
+        // on four of `playerStats`' addresses, so it cannot exist before that table; `EnemySystem`
+        // reads `EnemySpeedBonus` at every spawn, so it cannot exist before this. That is the whole
+        // of why the census moved below this line and nothing else about the order changed — nothing
+        // between the old position and the new one touches `enemies`.
+        //
+        // It takes the blackboard as well as the combat object, which is `SkillRunner`'s and
+        // `ZoneSystem`'s shape: borrowed, not owned, one writer and many readers (ADR-0005). This is
+        // the writer of the ninth field, and the last one that had none.
+        //
+        // **And the run's Ordeals, for Hunger** (M6-06b rule 5): optional on the constructor and
+        // never absent here, which `OrdealEffectsTests.Run_TheSetReachesAllThree` asserts.
+        //
+        // **And the class's relationship with the Veil** (M6-07c rule 6), which the meter, the shop
+        // and — through the meter — the runner all read; `ClassVeilrotTests.Run_TheBlockReachesAllThree`
+        // asserts the three. A Gravecaller's 15 is applied inside this constructor, silently, which is
+        // why RunStarted is what the HUD's meter seeds from.
+        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events, ordeals, character.Veilrot);
+
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's
         // generator because respawning draws a position (M1-19) — from the Spawn stream and no
@@ -442,12 +528,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
         // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
         // it at each boundary.
-        // Built before the census, because the factory below closes over both of them and a boss
-        // can stand up on the director's first tick of a boss stage. One pair per run, like every
-        // live object here: a second Start must not inherit the first run's rings.
-        _shockwaves = new ShockwaveSystem(_events);
-        _fissures = new FissureSystem(_events);
-
         var enemies = new EnemySystem(
             _catalog,
             _events,
@@ -469,33 +549,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // would be content identity in code or an abstraction guessed ahead of its second
             // caller (AR §6). Nothing can reach it today: RunSession.Start refuses a run whose
             // roster names a boss the catalog does not hold, and the catalog holds one.
-            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc))
+            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+            // **GD §10.2's 25 row, read at every spawn rather than pushed at the crossing**
+            // (M6-04 rule 4). Optional on the constructor and never absent here: a run without a
+            // meter is a fixture, and every run this class starts has one.
+            veilrot)
         {
             Depth = config.StageIndex,
         };
-
-        // One per run, like the registry above and for the same reason: a second Start must not
-        // inherit the first run's shots or its ids. It takes no generator, because a shot goes
-        // exactly where it was aimed and spread would be a change to what a seed means (ADR-0011).
-        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
-
-        // One per run, like the two above: a second Start must not inherit the first run's level.
-        // The curve comes off the mode rather than off the character or a constant here, because
-        // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
-        // put the difficulty curves there in M2-03. It is built at level 1 and a resumed run is put
-        // back where it was in the restore block below, before RunStarted.
-        var progression = new LevelTracker(mode.Xp, _events);
-
-        // After the objects exist and before RunStarted, which is the whole of M3-05's placement
-        // rule: the address table holds this run's live stats, so it cannot be built before them,
-        // and the tree that will read the registry (M3-03) validates every effect it holds at
-        // Start — so an unregistered primitive has to be reportable before the run is announced.
-        //
-        // One Register line per primitive, and that is the entire cost of adding the eleventh
-        // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
-        // existed this was a table that was built, filled and never read.
-        var playerStats = new PlayerStats(combat, motor, progression);
-        var effects = new EffectRegistry();
 
         // **What a Wight is born with, this run** (M5-06a rules 1 and 4). Built here rather than
         // inside MinionSystem because two things need the same instance: the army, which re-bases
@@ -536,12 +597,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Here rather than on this class like _timed because something *does* read it: an overlay and
         // M3-11c's decal ask how many zones are standing and where, so it hangs off RunState behind
         // two narrow reads (AR §18.2).
-        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events);
+        //
+        // **And it burns with this run's enemies and this run's player** (M6-07b rule 2): a Blink's
+        // fire pool reaches the registry, and a pool that kills a Bloater sets off a blast that has
+        // to know whom to catch. Wired for every class, because the pair is what a burn needs and
+        // not what a class has — a run without a Blink simply never places one.
+        var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events, enemies, combat);
 
         // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
         // file and one Register line, with nothing in the clock, the registry or Tick changing to
         // admit it — and this one needs *less* than a grant, because a zone is never held (rule 9).
         effects.Register<SpawnHealZone>(new SpawnHealZoneHandler(zones, _clock));
+
+        // **Its mirror, and unconditional for the same reason the system above burns for every
+        // run** (M6-08 rule 5): a burn needs the zones and nothing class-specific, so CH §5.4 can
+        // lend the Emberwright's Ash and Arcana to any class. RaiseMinions below is the opposite call.
+        effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
@@ -609,7 +680,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // cooldowns, and a runner that outlived a run would be casting a dead player's skills. The
         // blackboard is PlayerCombat's and is borrowed rather than owned — one writer, many readers
         // (ADR-0005), and this is the first reader that decides something with it.
-        var skills = new SkillRunner(effects, combat.Blackboard, _events);
+        //
+        // The meter goes in too, for CH §3.3's cast bought through a cooldown (M6-07c rule 7). Every
+        // runner gets it; InstantCastCost is 0 for a class that cannot buy one.
+        var skills = new SkillRunner(effects, combat.Blackboard, _events, veilrot);
 
         // The two primitives a PlayerStat cannot express, registered beside ModifyStatHandler and
         // before RunStarted like every one before them (M3-12b rule 10) — so SkillTree's CanApply
@@ -691,10 +765,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // **What a spare level is worth comes off the mode** (M5-06b rules 8 and 9), like the curve
         // that decides when one is earned: LevelTracker above reads mode.Xp, and this reads
         // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
-        // CH §5.2 an Inspector edit and the other half a rebuild.
+        // CH §5.2 an Inspector edit and the other half a rebuild. The run's Ordeals ride last, for
+        // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow);
+            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -710,7 +785,27 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sweeps the *primary* tree at Start and a branch borrowed mid-run never meets it.
         SplashFlow splash = tree is null
             ? null
-            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events);
+            : new SplashFlow(tree, _catalog, effects, config.CharacterId, _events, playerStats);
+
+        // **One per run, unconditionally, and that is M6-01a rule 5 from the other end.** Every run
+        // has a wallet whatever its class and whatever its mode pays — a mode with no Essence block
+        // pays zero into a wallet that exists, rather than having none — so the flow below takes it
+        // as a required argument and a mis-wired run cannot clear stages in silence. A second Start
+        // must not inherit the first run's balance, which is why it is built here beside everything
+        // else rather than held by the session.
+        //
+        // It is built before RunState and handed to both: the state reads it (AR §18.2's narrow
+        // read) and StageFlow pays it. **M6-01b is what restores it** — the line below, inside the
+        // restore block, reading the balance out of RunSnapshot.Economy.
+        var essence = new EssenceWallet(_events);
+
+        // **GD §13.3's shop, null in exactly the runs the tree is** (M6-02b). Reroll charges the
+        // flow and Banish narrows the tree, so a class with neither has no shop — the flow's own
+        // bargain. Built after the wallet it spends and the meter it cleanses; the prices are the
+        // mode's (rule 1), like the income the wallet is paid from.
+        SanctumShop shop = tree is null
+            ? null
+            : new SanctumShop(mode.Sanctum, essence, combat, veilrot, tree, levelUp, _events, character.Veilrot);
 
         State = new RunState(
             config.ModeId,
@@ -731,7 +826,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             minions,
             rise,
             levelUp,
-            splash);
+            splash,
+            essence,
+            veilrot,
+            shop,
+            ordeals);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -776,8 +875,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // second choice rather than a broken tree. A saved id that resolves to no class at all
             // is left for SkillTree.Restore's existing refusal, which is the one that names it.
             //
-            // This is what makes a **v4** and a migration unnecessary for a single enum-sized fact,
-            // which is LevelUpFlow.GrantOverflow's bargain exactly.
+            // This is what keeps a single enum-sized fact off the save format altogether, which is
+            // LevelUpFlow.GrantOverflow's bargain exactly — and v4 shipping at M6-01b did not change
+            // it: the branch is still derived, because the reason was never that a bump was dear.
             if (splash is not null &&
                 splash.TryDerive(resumed.TakenNodeIds, out ContentId lender, out int lentBranch))
             {
@@ -787,8 +887,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // Silent and gated: nothing publishes before RunStarted, and a saved order that breaks
             // the tree's own gating is refused rather than absorbed — see SkillTree.Restore. Null
             // for a class with no tree, which ignores the ids the same way this method did between
-            // M3-01b and here (rule 10).
-            tree?.Restore(resumed.TakenNodeIds);
+            // M3-01b and here (rule 10). **The Pacts ride the same replay** (M6-05a rule 5): a
+            // corrupted node's effects go on in its take-order slot, so a `−25 max HP` Pact is on
+            // the stat before Health.Restore's clamp for the reason every other take is.
+            tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds);
 
             // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
             // pushes a skill into the runner; the runner subscribes to nothing, so a resumed run's
@@ -835,7 +937,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // clamp, a run saved at 170 of 179 comes back at 140: the same loss SkillTree.Restore is
             // ordered against, from a second writer.
             //
-            // **Derived, because no field carries it and RunSnapshot.CurrentVersion stays 3.** Every
+            // **Derived, because no field carries it, and v4 deliberately did not add one.** Every
             // pick a run has earned is spent on a node, spent on Overflow, or unspent — the exact
             // mirror of M3-03 rule 6, which says the *pending* count is the one that cannot be
             // derived. Anything that later spends a pick without taking a node owes this identity or
@@ -867,6 +969,49 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 levelUp.GrantOverflow(overflow);
             }
 
+            // **Below the tree's restore and above Health.Restore, and that is an AR §18.1 row
+            // rather than a preference** (M6-01b rule 9). Below the tree because M6-02b's banished
+            // nodes have to be refused against a tree that already exists, and the four v4 restores
+            // belong in one place rather than wherever each task happens to put them. Above
+            // Health.Restore because M6-04's meter puts a −20 % max HP modifier on at 75, and a
+            // maximum restored before the modifier that shrinks it would refill the player to a
+            // number they never had — SkillTree.Restore's ordering, from a third writer.
+            //
+            // Silent, like everything else in this block: nothing may publish before RunStarted, and
+            // an EssenceChanged raised here would reach a HUD that has not subscribed yet
+            // (EssenceWallet.Restore, M6-01a rule 8). The banishes, the Pacts and the Ordeals are
+            // the lines their own tasks add, on this line's other side or beside it as AR §18.1
+            // now states.
+            essence.Restore(resumed.Economy.Essence);
+
+            // The Ordeals are not restored here: they were, at M6-06a, and M6-06b moved them above
+            // the opening composition, which Swarm reads. None of the four moves a maximum, so
+            // leaving this block costs Health.Restore's ordering nothing.
+
+            // **M6-02b rule 9: the banishes below the tree's own restore, and the counters beside
+            // them.** Below, because an id both taken and banished is dropped from the banishes —
+            // the take is the stronger fact — and that is only knowable once the takes are in. Both
+            // silent, and neither moves a stat, so their place against Health.Restore is uniformity.
+            // A class with no tree has no shop, and ignores both the way it ignores the taken ids.
+            tree?.RestoreBanished(resumed.BanishedNodeIds);
+            shop?.Restore(resumed.Economy.RerollsBought, resumed.Economy.RerollsSpent);
+
+            // **Beside the wallet and above Health.Restore, which is an AR §18.1 row rather than a
+            // preference** (M6-04 rule 9). The meter puts a −20 % PercentMult on MaxHp at 75 and the
+            // saved hit points are absolute, so the clamp should meet the maximum the run was saved
+            // under. **Stated honestly, the order is uniformity rather than arithmetic for this
+            // writer alone**: a modifier that only *shrinks* the maximum lands the same on either
+            // side, because Health.OnMaxHpChanged pulls Current down with a falling maximum. It is
+            // the *raising* writers above — the tree, Overflow — for which the other side costs hit
+            // points on every resume, and a block read as an order is kept as one.
+            //
+            // Silent, like everything else in this block: no VeilrotChanged, no crossings and no
+            // ClaimingBegan, for the reason the wallet's line is silent. A run saved Claimed — or,
+            // from a file older than the flag, at 100 — therefore comes back Claimed with
+            // ClaimedFor at zero (M6-11b). Veilrot.ClaimedFor states what that costs, and it is
+            // smaller than the free cooldown reset the same Continue already grants.
+            veilrot.Restore(resumed.Economy.Veilrot, resumed.Economy.Claimed);
+
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
 
             // Silent and settling, for the reason the whole block is here: a presenter reading
@@ -882,6 +1027,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // publish — would let a listener tick or end a run whose composition is still mid-flight.
         // The same order holds in End: during a lifecycle event the session still reports the
         // state it is leaving.
+        _archetypesAlreadyMet = config.ArchetypesAlreadyMet;
+        _newArchetypeScratch = new ContentId[mode.Roster.Count];
+
         _events.Publish(new RunStarted(config.CharacterId, seed));
 
         IsRunning = true;
@@ -940,6 +1088,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             enemies,
             projectiles,
             combat,
+            essence,
+            ordeals,
+            _random.Affixes,
             _events,
             plan,
             seed,
@@ -1007,6 +1158,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
         State.Minions?.Ingest(snapshot);
 
+        // **Immediately above the combat step, and both halves of that are the mechanic's**
+        // (M6-04 rule 9, AR §18.1).
+        //
+        // *Above combat*, because this is the one writer of CombatBlackboard.Veilrot and
+        // State.Skills.Tick two steps down reads a trigger over it: written below, CH §4.2's Rot
+        // Nova would compare against last tick's meter for ever. It is the arrangement
+        // ProjectileSystem has with IncomingProjectiles rather than the one
+        // PlayerCombat.UpdateBlackboard has with the other eight — the system that owns the number
+        // writes it — and the difference from that field is that this one is deliberately *not*
+        // stale.
+        //
+        // *Above the death check*, which is the half that matters: the Claiming's drain takes 1 % of
+        // the maximum a second and a step that reaches zero kills, so the run has to end on the tick
+        // it happened rather than on the next one. PlayerCombat.AnnounceDeath is what makes that
+        // death audible (rule 8), and State.Combat.IsDead is what reads it further down.
+        //
+        // Unconditional, and the common path is a field write and a comparison: a run gains Veilrot
+        // only by taking a Pact at a level-up (M6-05b), so most ticks of most runs sit below 25.
+        State.Rot.Tick(snapshot.Dt, State.Time);
+
         // Combat between the two enemy passes, which is the order the rest of the frame hangs off.
         // Before the behaviours, so the target is chosen from the same positions the enemies were
         // just seen at rather than from wherever this tick's AI moved them; and before the motor,
@@ -1023,6 +1194,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // blackboard's MinionCount is filled here so a CC §6.4 trigger can compare against it
         // (M5-06a rule 6). Null for every class but the Gravecaller, which reads as zero standing —
         // the honest count for a run that holds no army at all.
+        // The zones go down beside the lures, and for the lures' reason: a Blink drops its fire pool
+        // on the start edge, from this snapshot's position (M6-07b rule 3). The step writes one, and
+        // State.Zones.Tick below is still the only thing that pulses it.
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
@@ -1030,7 +1204,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Enemies.Registry.Alive,
             State.Motor.Facing,
             State.Lures,
-            State.Minions);
+            State.Minions,
+            State.Zones);
 
         // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
         //
@@ -1214,10 +1389,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // GD §14.1's arithmetic at the call site.
             ModeSpec mode = _catalog.Mode(State.ModeId);
 
+            // GD §14.1's third term (M6-09a rule 6): the ids rather than a count, because
+            // ShardWriter has to add them to the profile's set. The copy is the run's one
+            // allocation on a death tick, sized to what was actually met — and none at all on the
+            // usual death of a returning player, who meets nothing new.
+            int met = ShardPayout.NewArchetypes(
+                State.StageIndex, mode, _archetypesAlreadyMet, _newArchetypeScratch);
+
+            ContentId[] newArchetypes = met == 0
+                ? Array.Empty<ContentId>()
+                : _newArchetypeScratch.AsSpan(0, met).ToArray();
+
             _events.Publish(new ShardsAwarded(
-                ShardPayout.For(State.StageIndex, mode),
+                ShardPayout.For(State.StageIndex, mode, _archetypesAlreadyMet),
                 State.StageIndex,
-                ShardPayout.BossesKilled(State.StageIndex, mode)));
+                ShardPayout.BossesKilled(State.StageIndex, mode),
+                newArchetypes,
+                State.ModeId));
 
             End();
             return;
@@ -1290,6 +1478,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // flow's is what the stage machine is running, and this is what the run reports and
             // saves (M2-13). They agree because this is the one line that moves the second one.
             State.StageIndex = _flow.Stage;
+
+            // The same copy for the same reason, one line down (M6-02a rule 4). Written every tick
+            // rather than on the edge, because a flow parked in the Sanctum for ten minutes must
+            // still read true on the ten-minute frame and nothing publishes on that one.
+            State.IsSanctumOpen = _flow.Phase == StagePhase.Sanctum;
 
             // A finite mode that has run out of stages. The flow sets the flag and stays in Clear;
             // ending the run is this class's word and nobody else's (rule 14). Inert for Descent,
@@ -1574,6 +1767,102 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         }
 
         State.Splash.Choose(characterId, branch);
+    }
+
+    /// <inheritdoc />
+    /// <remarks><see cref="IsSplashOpen"/>'s reasoning — a read, false outside a run.</remarks>
+    public bool IsSanctumOpen => IsRunning && State.IsSanctumOpen;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Stamped with <see cref="RunState.Time"/>, the clock the flow's phases are measured on — a tap
+    /// between ticks is at most a frame older than it says, the lag every command already has.
+    /// </para>
+    /// <para>
+    /// <b>The flag is cleared here and not left to the next tick</b>, so a frame loop asking
+    /// <see cref="IsSanctumOpen"/> straight after the tap is told the truth rather than the last
+    /// frame's (M6-02a rule 4). A run with no flow — a mode with nothing to compose — can never be in
+    /// the shop, so it refuses the call for the same reason the flow would.
+    /// </para>
+    /// </remarks>
+    public void LeaveSanctum()
+    {
+        RequireRunning(nameof(LeaveSanctum));
+
+        if (_flow is null)
+        {
+            throw new InvalidOperationException(
+                "This run's mode composes no stages, so it has no Sanctum to leave. A view sent "
+                    + "LeaveSanctum without a screen to send it for.");
+        }
+
+        _flow.LeaveSanctum(State.Time);
+
+        State.IsSanctumOpen = false;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>A read: zero outside a run and for a class with no shop.</remarks>
+    public int PriceOf(SanctumService service) => IsRunning ? State.SanctumPriceOf(service) : 0;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A read: false outside a run, for a class with no shop, and whenever the Sanctum is not open —
+    /// see <see cref="RequireShopOpen"/> for why that last term is here.
+    /// </remarks>
+    public bool CanBuy(SanctumService service) => IsRunning && State.CanBuySanctum(service);
+
+    /// <inheritdoc />
+    public void Buy(SanctumService service)
+    {
+        RequireRunning(nameof(Buy));
+        RequireShopOpen(nameof(Buy));
+
+        State.Shop.Buy(service);
+    }
+
+    /// <inheritdoc />
+    public void Banish(ContentId skillId)
+    {
+        RequireRunning(nameof(Banish));
+        RequireShopOpen(nameof(Banish));
+
+        State.Shop.Banish(skillId);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>A read: zero outside a run and for a class with no shop, whatever the buffer.</remarks>
+    public int BanishableInto(Span<ContentId> destination) =>
+        IsRunning && State.Shop is not null ? State.Shop.BanishableInto(destination) : 0;
+
+    /// <summary>
+    /// Refuses a purchase outside the Sanctum, or in a run with no shop.
+    /// </summary>
+    /// <remarks>
+    /// <b>AR §18.1's boundary row is what makes this a rule rather than a courtesy.</b> The snapshot
+    /// is taken on entering <c>Clear</c>, before the Sanctum opens, so everything bought in the
+    /// Sanctum is rolled back by a kill before the next clear — the row says so and means it. A
+    /// purchase made mid-stage would instead be written by the next clear's snapshot like any other
+    /// change, and the two would disagree about what an app kill undoes. Refused here, the shop is
+    /// the only place Essence is spent and the row's reasoning covers every purchase.
+    /// </remarks>
+    private void RequireShopOpen(string member)
+    {
+        if (State.Shop is null)
+        {
+            throw new InvalidOperationException(
+                $"This run's class has no tree, so it has no Sanctum shop. A view sent {member} "
+                    + "without a screen to send it for.");
+        }
+
+        if (!State.IsSanctumOpen)
+        {
+            throw new InvalidOperationException(
+                $"The Sanctum is not open, so nothing can be bought. {member} is a tap on the "
+                    + "Sanctum's screen, which exists only between a stage's clear and its door "
+                    + "(M6-02a).");
+        }
     }
 
     /// <inheritdoc />

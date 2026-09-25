@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -35,16 +37,19 @@ namespace Soulvail.Tests.Game.Views;
 /// does not move.
 /// </para>
 /// <para>
-/// <b>The attack-speed multiplier is the one thing here that could not be reached at all, and the
-/// reason is the Editor's clock.</b> <c>OnAttacked</c> writes it only when the previous swing was at
-/// a positive <c>Time.time</c> and this one is later; inside an EditMode run <c>Time.time</c> is
-/// <b>0</b>, so no assignment of <c>_lastAttackTime</c> satisfies both and the write is unreachable
-/// — the division, the ceiling of <c>MaxAttackSpeed</c>, and every value the parameter can take.
-/// <see cref="Animator_AttackSpeedIsUnreachableFromAnEditorClock"/> asserts the clock rather than
-/// leaving that in a comment, so the day it stops being true a row goes red and says so. What is
-/// reachable — that the guards hold and the swing trigger fires regardless — is the other row.
-/// Reaching the rest would have cost a PlayMode fixture, which is a sixth counted file this task
-/// does not have.
+/// <b>The attack-speed multiplier is reachable only on some Editors, and which is the Editor's
+/// state, not the code's.</b> <c>OnAttacked</c> writes it only when the previous swing was at a
+/// positive <c>Time.time</c> and this one is later. Outside play mode <c>Time.time</c> read <b>0</b>
+/// at M6-11e after launch, after ten PlayMode passes and on leaving Play, and moved only once the
+/// Editor had been the application in front — 1.83 s after a few seconds there. What else resets it
+/// was not pinned down: a test run once saw 0 on an Editor that had read 1.94 s the moment before.
+/// So the two multiplier rows split on the clock, each <c>Assume</c>s its half, and exactly one of
+/// them runs:
+/// <see cref="Animator_AttackSpeedIsUnreachableFromAnEditorClock"/> on a clock at zero,
+/// <see cref="Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns"/> on one that has moved.
+/// Until M6-11e the first <em>asserted</em> the zero, which is a premise rather than a behaviour:
+/// an EditMode pass on an Editor that had been in front went red with no code changed (M7 ledger
+/// row 8).
 /// </para>
 /// <para>
 /// <c>Awake</c> never runs in EditMode (Traps §5), so <c>_body</c> is null throughout and nothing
@@ -149,36 +154,32 @@ public sealed class PlayerAnimatorViewTests
     }
 
     /// <summary>
-    /// <b>The limit of this suite, asserted rather than left in a comment.</b> The multiplier is
-    /// unreachable from an EditMode fixture, and the reason is the Editor's clock standing at zero.
+    /// On a clock at zero no swing writes the multiplier, however the previous one is primed — and
+    /// the swing still fires.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <c>OnAttacked</c> writes <c>AttackSpeed</c> only when the previous swing was at a
-    /// <em>positive</em> <c>Time.time</c> and this one is later than it. Outside play mode
-    /// <c>Time.time</c> is <b>0</b> — measured, not assumed: an earlier draft of the row below primed
-    /// the previous swing from <c>Time.time − 0.001</c> and came back <em>inconclusive</em> on its
-    /// own guard. With the clock at zero there is no value of <c>_lastAttackTime</c> that satisfies
-    /// both conditions, so no EditMode row can observe the division, the ceiling, or any value the
-    /// parameter ever takes.
+    /// <em>positive</em> <c>Time.time</c> and this one is later than it. With the clock at zero there
+    /// is no value of <c>_lastAttackTime</c> that satisfies both, so the guards are what this row can
+    /// see: a primed previous swing ahead of the clock is refused by the second.
     /// </para>
     /// <para>
-    /// <b>So this row pins the reason instead of the behaviour</b>, and it is not decoration: if a
-    /// later Unity advances the Editor clock, this row goes red and tells whoever reads it that
-    /// <c>AuthoredSwingSeconds / interval</c> and its ceiling of <see cref="MaxAttackSpeed"/> have
-    /// become testable here — which is the one thing about this component the suite does not cover,
-    /// and the one thing a reader would otherwise have to rediscover.
+    /// <b>The zero is assumed, not asserted, since M6-11e.</b> Asserting it pinned the Editor's state
+    /// rather than the component's — the row went red on EditMode passes whose Editor had been in
+    /// front. On a clock that has moved this row is inconclusive and
+    /// <see cref="Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns"/> is the one that runs.
     /// </para>
     /// </remarks>
     [Test]
     public void Animator_AttackSpeedIsUnreachableFromAnEditorClock()
     {
-        Assert.That(
+        Assume.That(
             Time.time,
             Is.Zero,
-            "The Editor's play clock has started advancing. The multiplier is now observable from "
-                + $"EditMode: prime _lastAttackTime below Time.time and assert the ratio, and the "
-                + $"ceiling of {MaxAttackSpeed} on {AuthoredSwingSeconds:F4} s of authored swing.");
+            "The Editor's clock has moved, as it does once the Editor has been in front, so the "
+                + "multiplier is reachable: Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns "
+                + "is the row that runs.");
 
         _view.Construct(_hub);
 
@@ -188,9 +189,7 @@ public sealed class PlayerAnimatorViewTests
         // component depend on a clock that does not move.
         _hub.Publish(new PlayerAttacked(Facing));
 
-        typeof(PlayerAnimatorView)
-            .GetField("_lastAttackTime", Private)
-            .SetValue(_view, 5f);
+        PrimeThePreviousSwing(5f);
 
         _hub.Publish(new PlayerAttacked(Facing));
 
@@ -199,6 +198,67 @@ public sealed class PlayerAnimatorViewTests
         // And the swing trigger fired anyway, every time, which is the part of OnAttacked that is
         // not behind the clock at all.
         Assert.That(_animator.GetBool(AttackId), Is.True);
+    }
+
+    /// <summary>
+    /// On a clock that has moved, a swing plays the clip at its authored length over the interval
+    /// since the last one — and never faster than <see cref="MaxAttackSpeed"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The row the one above used to name in its failure message</b>, and the half of
+    /// <c>OnAttacked</c> no fixture reached until M6-11e: the division and its ceiling. It runs
+    /// whenever the Editor's clock has moved, and is inconclusive on a clock at zero.
+    /// </para>
+    /// <para>
+    /// The first swing's interval is half the clock, which puts the previous swing at a positive time
+    /// on any clock, and which is exact in binary — so the interval the component measures is this
+    /// one to the bit. Above a clock of 0.46 s that swing's ratio is under the ceiling, and the
+    /// division is what is asserted; below it only the ceiling can be seen. The second swing is always
+    /// quicker than the ceiling allows, so the clamp is asserted on every clock.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns()
+    {
+        Assume.That(
+            Time.time,
+            Is.GreaterThan(0f),
+            "The Editor's clock stands at zero, as it does after launch and on leaving Play, so the "
+                + "multiplier cannot be reached: Animator_AttackSpeedIsUnreachableFromAnEditorClock is "
+                + "the row that runs.");
+
+        _view.Construct(_hub);
+
+        float now = Time.time;
+
+        float interval = now / 2f;
+
+        PrimeThePreviousSwing(now - interval);
+
+        _hub.Publish(new PlayerAttacked(Facing));
+
+        Assert.That(
+            _animator.GetFloat(AttackSpeedId),
+            Is.EqualTo(Mathf.Min(AuthoredSwingSeconds / interval, MaxAttackSpeed)).Within(1e-4f),
+            $"A swing {interval:F4} s after the last one plays {AuthoredSwingSeconds:F4} s of clip "
+                + "in that interval.");
+
+        // Half the shortest interval the ceiling allows, so a clip asked to play at twelve times its
+        // speed or more. Cleared first, so the value read below is this swing's write and not the
+        // first one's, which on a clock under 0.46 s is the ceiling too.
+        float quick = Mathf.Min(now / 2f, AuthoredSwingSeconds / MaxAttackSpeed / 2f);
+
+        _animator.SetFloat(AttackSpeedId, 0f);
+
+        PrimeThePreviousSwing(now - quick);
+
+        _hub.Publish(new PlayerAttacked(Facing));
+
+        Assert.That(
+            _animator.GetFloat(AttackSpeedId),
+            Is.EqualTo(MaxAttackSpeed),
+            "Swings quicker than the clip can be sped up to play at the ceiling, not beyond it.");
     }
 
     /// <summary>A hit that reached hit points is a hit the body reacts to.</summary>
@@ -458,6 +518,65 @@ public sealed class PlayerAnimatorViewTests
     }
 
     /// <summary>
+    /// Every parameter this component sets exists on the controller the game ships — not on the
+    /// double <see cref="BuildController"/> builds.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The double is why this row exists.</b> It has named <c>Cast</c> since M3-06 and
+    /// <c>AC_Player.controller</c> never did, so every row above passed while every cast in Play
+    /// logged <em>"Parameter 'Hash -1299573048' does not exist"</em> — found only when
+    /// <c>BootSmokeTests</c> resumed a saved run with an Active and failed on the warning (M6-02a,
+    /// Findings). A missing parameter is now a red row naming it rather than a smoke test.
+    /// </para>
+    /// <para>
+    /// <b>The component's own hashes are read, by reflection, rather than a list typed here.</b> A
+    /// list in this file is a third place the names live and would miss the next field exactly as
+    /// the double missed this one. Every private <see cref="int"/> field named <c>_…Id</c> is a
+    /// parameter hash by this component's convention; the count is asserted so the sweep cannot
+    /// pass by finding nothing.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Animator_EveryParameterItSetsExistsOnTheShippedController()
+    {
+        const string path = "Assets/_Project/Animation/Controllers/AC_Player.controller";
+
+        var shipped = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+        Assert.That(shipped, Is.Not.Null, $"No AnimatorController at {path}.");
+
+        var authored = new HashSet<int>();
+
+        foreach (AnimatorControllerParameter parameter in shipped.parameters)
+        {
+            authored.Add(parameter.nameHash);
+        }
+
+        var missing = new List<string>();
+        int swept = 0;
+
+        foreach (FieldInfo field in typeof(PlayerAnimatorView).GetFields(Private))
+        {
+            if (field.FieldType != typeof(int) || !field.Name.EndsWith("Id", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            swept++;
+
+            var hash = (int)field.GetValue(_view);
+
+            if (!authored.Contains(hash))
+            {
+                missing.Add($"{field.Name} (hash {hash})");
+            }
+        }
+
+        Assert.That(swept, Is.EqualTo(7), "Speed, AttackSpeed, Attack, Charge, Hit, Dead and Cast.");
+        Assert.That(missing, Is.Empty, $"{path} lacks a parameter PlayerAnimatorView sets.");
+    }
+
+    /// <summary>
     /// A controller with the six parameters this component names, and nothing else — no states, no
     /// transitions, no clips.
     /// </summary>
@@ -494,6 +613,10 @@ public sealed class PlayerAnimatorViewTests
     /// <summary>Puts the animator on the component's private serialized field.</summary>
     private void Dress(Animator animator) =>
         typeof(PlayerAnimatorView).GetField("_animator", Private).SetValue(_view, animator);
+
+    /// <summary>Says the previous swing happened at <paramref name="time"/> on the play clock.</summary>
+    private void PrimeThePreviousSwing(float time) =>
+        typeof(PlayerAnimatorView).GetField("_lastAttackTime", Private).SetValue(_view, time);
 
     /// <summary>
     /// Clears every trigger, so a row can say "and then this one fired" rather than "one of these

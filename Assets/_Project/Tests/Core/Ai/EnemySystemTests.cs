@@ -144,6 +144,26 @@ public sealed class EnemySystemTests
     }
 
     [Test]
+    public void Spawn_WithoutAMeterCarriesNoVeilrotModifier()
+    {
+        // **The optional half of M6-04 rule 4, from the side that has no meter.** GD §10.2's 25 row
+        // is read at every spawn, and `veilrot` is the one constructor argument here that defaults
+        // to null — every fixture in the suite is a run without a meter, and a body that came out of
+        // one wears exactly the three modifiers `DepthScaling.Apply` puts on it and no fourth. What
+        // the meter does when there *is* one is `VeilrotTests.Twenty5_SpeedsWhatSpawnsNext`'s.
+        _system.Depth = 10;
+
+        EnemyAgent agent = _system.Spawn(new ContentId(HuskId), Vector3.Zero);
+
+        Assert.That(
+            agent.MoveSpeed.ModifierCount,
+            Is.EqualTo(1),
+            "A run with no meter spawns a body at exactly its depth-scaled speed.");
+
+        Assert.That(agent.MoveSpeed.Value, Is.EqualTo(3.5f * 1.04f).Within(1e-3f));
+    }
+
+    [Test]
     public void Spawn_ScaledBeforeAnnounced()
     {
         // The order inside Spawn, and it is observable: a health bar built on EnemySpawned would

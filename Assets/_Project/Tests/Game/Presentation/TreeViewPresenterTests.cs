@@ -418,6 +418,120 @@ public sealed class TreeViewPresenterTests
         Assert.That(taken, Is.EqualTo(Palette.NodeTaken));
     }
 
+    // ---- The fourth state: a node Banish took (M6-03b rules 7, 8, 9) -----------------------------
+
+    [Test]
+    public void Tree_DrawsABanishedNodeAsBanished()
+    {
+        // One taken, one banished — and the banished one is tier 1 of branch b, which would otherwise
+        // be Available. That is the failure this row exists for: until M6-03b it drew as Locked at
+        // best, and as a node the player could still be offered at worst.
+        StartRun(level: 2, taken: new[] { ConsecrateKey }, banished: new[] { Node('b', 1, 'a') });
+        BuildScreen();
+
+        _presenter.Open(null);
+
+        Assert.That(CellFor(Node('b', 1, 'a')).State, Is.EqualTo(NodeState.Banished));
+        Assert.That(CellFor(ConsecrateKey).State, Is.EqualTo(NodeState.Taken));
+
+        TreeNodeView[] cells = ShownCells();
+
+        Assert.That(cells.Count(c => c.State == NodeState.Banished), Is.EqualTo(1));
+        Assert.That(cells.Count(c => c.State == NodeState.Taken), Is.EqualTo(1));
+
+        // The rest are Locked or Available, and each agrees with core.
+        foreach (TreeNodeView cell in cells)
+        {
+            Assert.That(cell.State, Is.EqualTo(Expected(cell.SkillId)), $"'{cell.SkillId}'.");
+        }
+
+        Assert.That(FrameOf(Node('b', 1, 'a')), Is.EqualTo(Palette.NodeBanished));
+    }
+
+    [Test]
+    public void Tree_TheFourStatesAreDisjoint()
+    {
+        // A run mid-banish, with a save that tries to be two things at once: Consecrate is both taken
+        // and banished, which SkillTree.RestoreBanished drops (M6-02b) — so the take wins and no id is
+        // ever two states. A stranger id is dropped the same way.
+        StartRun(
+            level: 3,
+            taken: new[] { ConsecrateKey, Node('a', 1, 'b') },
+            banished: new[] { ConsecrateKey, Node('b', 1, 'a'), Node('c', 1, 'b'), "skill.test.stranger" });
+        BuildScreen();
+
+        _presenter.Open(null);
+
+        RunState state = _session.State;
+
+        foreach (SkillBranchSpec branch in _tree.Branches)
+        {
+            for (int t = 1; t <= branch.TierCount; t++)
+            {
+                foreach (ContentId id in branch.Tier(t))
+                {
+                    int memberships = (state.TakenNodeIds.Contains(id) ? 1 : 0)
+                        + (state.BanishedNodeIds.Contains(id) ? 1 : 0)
+                        + (state.IsNodeAvailable(id) ? 1 : 0);
+
+                    Assert.That(memberships, Is.LessThanOrEqualTo(1), $"'{id}' is in two of taken, banished, available.");
+                }
+            }
+        }
+
+        Assert.That(state.BanishedNodeIds, Has.No.Member(new ContentId(ConsecrateKey)), "a taken node was banished.");
+        Assert.That(ShownCells().Count(c => c.State == NodeState.Banished), Is.EqualTo(2));
+        Assert.That(CellFor(ConsecrateKey).State, Is.EqualTo(NodeState.Taken));
+    }
+
+    [Test]
+    public void Node_BanishedDrawsItsOwnFrame()
+    {
+        StartRun();
+        BuildScreen();
+
+        TreeNodeView cell = _cellTemplateOf();
+
+        cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Banished, Passthrough());
+
+        Assert.That(cell.State, Is.EqualTo(NodeState.Banished));
+        Assert.That(Field<Image>(cell, "_frame").color, Is.EqualTo(Palette.NodeBanished));
+
+        // Its own, and not Locked's: a banished node drawn locked is M6-02b's gap, still open.
+        Assert.That(Palette.NodeBanished, Is.Not.EqualTo(Palette.NodeLocked));
+    }
+
+    [Test]
+    public void Node_BanishedIsDimmerThanLocked()
+    {
+        Color.RGBToHSV(Palette.NodeBanished, out float banishedHue, out _, out float banished);
+        Color.RGBToHSV(Palette.NodeLocked, out float lockedHue, out _, out float locked);
+
+        // Rule 8: gone reads dimmer than out of reach.
+        Assert.That(banished, Is.LessThan(locked), "a banished node is no dimmer than a locked one.");
+
+        // Darkened and nothing else — no hue shift toward the Veil's violet.
+        Assert.That(banishedHue, Is.EqualTo(lockedHue).Within(0.05f), "NodeBanished shifted hue.");
+
+        Assert.That(Palette.IsDanger(Palette.NodeBanished), Is.False);
+        Assert.That(Palette.IsDanger(Palette.NodeLocked), Is.False);
+    }
+
+    [Test]
+    public void Node_AStateWithNoColourStillThrows()
+    {
+        StartRun();
+        BuildScreen();
+
+        // A fifth member, one past Banished — TreeNodeView's rule survives the fourth.
+        var fifth = (NodeState)(Enum.GetValues(typeof(NodeState)).Cast<int>().Max() + 1);
+
+        Assert.That(Enum.IsDefined(typeof(NodeState), fifth), Is.False, "the fixture's premise.");
+        Assert.That(
+            () => _cellTemplateOf().Show(_catalog.Skill(new ContentId(ConsecrateKey)), fifth, Passthrough()),
+            Throws.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
     [Test]
     public void Tree_DrawsEnglish()
     {
@@ -1148,7 +1262,8 @@ public sealed class TreeViewPresenterTests
         int pending = 0,
         string[] taken = null,
         bool withTree = true,
-        bool full = true)
+        bool full = true,
+        string[] banished = null)
     {
         _tree = full ? FullTree() : PartialTree();
 
@@ -1194,7 +1309,11 @@ public sealed class TreeViewPresenterTests
             0f,
             pending,
             takenIds,
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            (banished ?? Array.Empty<string>()).Select(id => new ContentId(id)).ToArray(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         _session.Start(new RunConfig(
             new ContentId(ModeId),
@@ -1381,12 +1500,17 @@ public sealed class TreeViewPresenterTests
 
     private Color FrameOf(string id) => Field<Image>(CellFor(id), "_frame").color;
 
-    /// <summary>What the run says this node is — rule 3's three answers, from core.</summary>
+    /// <summary>What the run says this node is — the four answers, from core.</summary>
     private NodeState Expected(ContentId id)
     {
         if (_session.State.TakenNodeIds.Contains(id))
         {
             return NodeState.Taken;
+        }
+
+        if (_session.State.BanishedNodeIds.Contains(id))
+        {
+            return NodeState.Banished;
         }
 
         return _session.State.IsNodeAvailable(id) ? NodeState.Available : NodeState.Locked;

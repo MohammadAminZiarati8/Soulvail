@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
@@ -44,7 +45,9 @@ namespace Soulvail.Tests.Game.Composition;
 /// <c>LoadAsync</c> is <c>virtual</c>, so <c>PausePresenterTests</c> hands its presenter a loader
 /// that records instead of loading. These rows were deliberately left as they are — they are about
 /// what the Menu decides, not about the load — but a task that wants to tap these two buttons now
-/// can.
+/// can. <b>M6-11a did</b>: <c>Continue_AfterAQuitResumesTheRunJustPlayed</c> taps Continue through
+/// a recording loader, because the bug it pins lives between the Menu's two reads — the button's
+/// visibility and the snapshot the tap hands over.
 /// </para>
 /// </para>
 /// </remarks>
@@ -460,6 +463,66 @@ public sealed class ResumeFlowTests
         Assert.That(second.Restore.Value.PlayerHp, Is.EqualTo(saved.Value.PlayerHp));
     }
 
+    // ---- Continue offers the run last written, not the one read at boot (M6-11a) ----------------
+
+    [Test]
+    public void Continue_AfterAQuitResumesTheRunJustPlayed()
+    {
+        // M6-11's instrument B lost a stage-30 run exactly this way: boot read an abandoned run,
+        // nothing after boot wrote SavedRun, so Continue restored the abandoned run — and its
+        // opening write overwrote the real save. Rule 4: BootFlow still seeds, and only at boot.
+        IObjectResolver boot = BuildBoot();
+        var saved = boot.Resolve<SavedRun>();
+
+        RunBootFlow(new StubStore { Run = Snapshot(stage: 10, seed: 1) }, saved);
+
+        Assert.That(saved.Value.Seed, Is.EqualTo(1), "the fixture's premise: boot read run A.");
+
+        PlayARun(boot, hub => hub.Publish(new RunSnapshotTaken(Snapshot(stage: 31, seed: 2))));
+
+        var pending = new PendingRun();
+        var loader = new RecordingLoader();
+
+        MenuPresenter menu = Menu(saved, out _, out Button @continue, pending, loader);
+
+        // The Menu's two reads: IsPresent on enable, Value on the tap.
+        Enable(menu);
+
+        Assert.That(@continue.gameObject.activeSelf, Is.True);
+
+        @continue.onClick.Invoke();
+
+        Assert.That(loader.Asked, Is.EqualTo(new[] { SceneLoader.Run }), "the tap never reached the load.");
+        Assert.That(pending.Snapshot.HasValue, Is.True, "Continue did not hand over a snapshot.");
+        Assert.That(
+            pending.Seed,
+            Is.EqualTo(2),
+            "Continue resumed the run boot read, not the one just played.");
+        Assert.That(pending.Snapshot.Value.StageIndex, Is.EqualTo(31));
+    }
+
+    [Test]
+    public void Continue_IsHiddenAfterADeath()
+    {
+        // Rule 2, through the Menu: the death screen returns here, and a Continue left on screen
+        // would resume a run the player has already lost — boot's copy of the file, which the
+        // writer deleted a moment ago.
+        IObjectResolver boot = BuildBoot();
+        var saved = boot.Resolve<SavedRun>();
+
+        RunBootFlow(new StubStore { Run = Snapshot(stage: 10, seed: 1) }, saved);
+
+        Assert.That(saved.IsPresent, Is.True, "the fixture's premise: boot read run A.");
+
+        PlayARun(boot, hub => hub.Publish(new PlayerDied(95f)));
+
+        MenuPresenter menu = Menu(saved, out _, out Button @continue);
+
+        Enable(menu);
+
+        Assert.That(@continue.gameObject.activeSelf, Is.False);
+    }
+
     // ---- Wiring ----------------------------------------------------------------------------------
 
     [Test]
@@ -490,11 +553,67 @@ public sealed class ResumeFlowTests
         // the one object that holds a whole one, not to one field's holder.
         var profiles = new ProfileStore(store);
         var saved = new SavedRun();
+        TableLocalizer localizer = Localizer();
 
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved));
-        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(null, store, profiles, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, null, profiles, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, null, saved, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, null, localizer));
+        Assert.Throws<ArgumentNullException>(() => new BootFlow(loader, store, profiles, saved, null));
+    }
+
+    // ---- Boot reads the profile's language, once (M6-10 rules 6, 7) ----------------------------
+
+    [Test]
+    public void Boot_TheProfilesLocaleWins()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default.WithLocale("qps-ploc") };
+        TableLocalizer localizer = Localizer();
+
+        Assert.That(localizer.Locale, Is.Empty, "the fixture's premise: the device's language is English.");
+
+        RunBootFlow(store, new SavedRun(), localizer);
+
+        // Inside Start, and LeaveBoot is Start's last statement — so a locale that is set here was
+        // set before the Menu scene was asked for, which is before any label was written.
+        Assert.That(localizer.Locale, Is.EqualTo("qps-ploc"));
+        Assert.That(localizer.Get(new LocKey("a.b")), Is.EqualTo("[á.ƀ]"), "the pseudo table is being read.");
+    }
+
+    [Test]
+    public void Boot_AnEmptyProfileLocaleLeavesTheDevices()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default };
+        TableLocalizer localizer = Localizer(start: "qps-ploc");
+
+        Assert.That(PlayerProfile.Default.Locale, Is.Empty, "the fixture's premise.");
+
+        RunBootFlow(store, new SavedRun(), localizer);
+
+        // Empty means "the device's", and the device's is whatever the installer started on — here
+        // standing in as the pseudo-locale, so an accidental SetLocale("") would be visible.
+        Assert.That(localizer.Locale, Is.EqualTo("qps-ploc"));
+    }
+
+    /// <summary>
+    /// Rule 7 at the boot: a language this build does not ship reads English, and the profile is
+    /// left as the player wrote it.
+    /// </summary>
+    [Test]
+    public void Boot_AnUnshippedProfileLocaleReadsEnglishAndKeepsTheProfile()
+    {
+        var store = new StubStore { Profile = PlayerProfile.Default.WithLocale("de") };
+        var profiles = new ProfileStore(store);
+        TableLocalizer localizer = Localizer();
+
+        Assert.DoesNotThrow(() => RunBootFlow(store, new SavedRun(), localizer, profiles));
+
+        Assert.That(localizer.Locale, Is.Empty, "no German table ships, so English is read.");
+        Assert.That(localizer.Get(new LocKey("a.b")), Is.EqualTo("words"));
+
+        // Not rewritten, so the language comes back the day the table does.
+        Assert.That(profiles.Current.Locale, Is.EqualTo("de"));
+        Assert.That(store.ProfileSaves, Is.Zero, "boot wrote the profile back.");
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------
@@ -510,7 +629,8 @@ public sealed class ResumeFlowTests
     /// during a test run is whichever one the owner has open, so this is checked rather than
     /// assumed.
     /// </remarks>
-    private void RunBootFlow(ISaveStore store, SavedRun saved)
+    private void RunBootFlow(
+        ISaveStore store, SavedRun saved, TableLocalizer localizer = null, ProfileStore profiles = null)
     {
         if (SceneManager.GetActiveScene().name == SceneLoader.Boot)
         {
@@ -519,7 +639,8 @@ public sealed class ResumeFlowTests
                     + "Menu over it. Open any other scene and re-run.");
         }
 
-        var flow = new BootFlow(new SceneLoader(), store, new ProfileStore(store), saved);
+        var flow = new BootFlow(
+            new SceneLoader(), store, profiles ?? new ProfileStore(store), saved, localizer ?? Localizer());
 
         try
         {
@@ -539,9 +660,15 @@ public sealed class ResumeFlowTests
     /// before the fields it guards have been assigned — which would make the fixture fail on the
     /// guard doing its job. <c>OnEnable</c> is then invoked explicitly, at the moment a row wants
     /// the menu to go on screen. The children keep their own <c>activeSelf</c> flags, which is what
-    /// the visibility rows read.
+    /// the visibility rows read. A row that taps <c>Continue</c> passes a recording loader, so the
+    /// tap records the Run scene instead of loading it.
     /// </remarks>
-    private MenuPresenter Menu(SavedRun saved, out Button descend, out Button @continue)
+    private MenuPresenter Menu(
+        SavedRun saved,
+        out Button descend,
+        out Button @continue,
+        PendingRun pending = null,
+        SceneLoader loader = null)
     {
         var root = new GameObject("Menu");
 
@@ -567,9 +694,41 @@ public sealed class ResumeFlowTests
 
         // The ContentCatalog left this signature at M5-07 with the two methods that read it — the
         // class-select screen resolves its own.
-        presenter.Construct(new PendingRun(), saved, new SceneLoader(), Passthrough());
+        presenter.Construct(pending ?? new PendingRun(), saved, loader ?? new SceneLoader(), Passthrough());
 
         return presenter;
+    }
+
+    /// <summary>
+    /// One run through a real run scope, then a quit: the writer and the hub come from
+    /// <c>RunInstaller</c> and <see cref="SavedRun"/> from the boot container above it — so a
+    /// <c>SavedRun</c> registered per run would leave the Menu reading boot's copy, and the Continue
+    /// rows would fail (M6-11a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// The store is shadowed in the run scope because boot's is a <c>LocalJsonSaveStore</c> over
+    /// <c>persistentDataPath</c>: the owner's own <c>run.json</c>. Disposing the scope is the quit.
+    /// </remarks>
+    private static void PlayARun(IObjectResolver boot, Action<DomainEventHub> play)
+    {
+        var disk = new StubStore();
+
+        using IScopedObjectResolver run = boot.CreateScope(builder =>
+        {
+            RunInstaller.Install(builder);
+            builder.RegisterInstance<ISaveStore>(disk);
+        });
+
+        Assert.That(
+            run.Resolve<ISaveStore>(),
+            Is.SameAs(disk),
+            "The run scope reached boot's store, and this row would have written the real run.json.");
+
+        // Resolved to be constructed, which is when it subscribes — RunTicker's constructor is what
+        // does this in the real scope.
+        run.Resolve<SaveWriter>();
+
+        play(run.Resolve<DomainEventHub>());
     }
 
     private Button NewButton(string name, GameObject parent)
@@ -699,12 +858,12 @@ public sealed class ResumeFlowTests
             zones,
             boss,
             decoys,
-            Track(new SaveWriter(new StubStore(), hub)),
+            Track(new SaveWriter(new StubStore(), hub, new SavedRun())),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
             // so it banks nothing — but a Scoped registration nobody resolves is never constructed,
             // which is exactly what this parameter exists to prevent in the real scope.
-            Track(new ShardWriter(new ProfileStore(new StubStore()), hub)),
+            Track(new ShardWriter(new ProfileStore(new StubStore()), hub, Catalog())),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, session, cameraObject.AddComponent<Camera>()),
@@ -796,7 +955,11 @@ public sealed class ResumeFlowTests
             xp: 0f,
             pendingLevelUps: 0,
             takenNodeIds: Array.Empty<ContentId>(),
-            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
     private static void Set(MenuPresenter presenter, string field, Object value) =>
         typeof(MenuPresenter).GetField(field, Private).SetValue(presenter, value);
@@ -837,13 +1000,23 @@ public sealed class ResumeFlowTests
     {
         public RunSnapshot? Run { get; set; }
 
+        /// <summary>What the disk says about the profile. Null is a fresh install.</summary>
+        public PlayerProfile? Profile { get; set; }
+
         public bool FaultRunLoad { get; set; }
 
         public int RunLoads { get; private set; }
 
-        public Task<PlayerProfile?> LoadProfile() => Task.FromResult<PlayerProfile?>(null);
+        public int ProfileSaves { get; private set; }
 
-        public Task SaveProfile(PlayerProfile profile) => Task.CompletedTask;
+        public Task<PlayerProfile?> LoadProfile() => Task.FromResult(Profile);
+
+        public Task SaveProfile(PlayerProfile profile)
+        {
+            ProfileSaves++;
+
+            return Task.CompletedTask;
+        }
 
         public Task<RunSnapshot?> LoadRun()
         {
@@ -859,6 +1032,19 @@ public sealed class ResumeFlowTests
         public Task SaveRun(RunSnapshot run) => Task.CompletedTask;
 
         public Task ClearRun() => Task.CompletedTask;
+    }
+
+    /// <summary>A loader that records rather than loading — <c>PausePresenterTests</c>' shape.</summary>
+    private sealed class RecordingLoader : SceneLoader
+    {
+        public List<string> Asked { get; } = new List<string>();
+
+        public override Task LoadAsync(string sceneName)
+        {
+            Asked.Add(sceneName);
+
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>
@@ -964,6 +1150,28 @@ public sealed class ResumeFlowTests
         public void ChooseSplash(ContentId characterId, int branch)
         {
         }
+
+        // M6-02a's pair, inert for the same reason: nothing here reaches a stage's end.
+        public bool IsSanctumOpen => false;
+
+        public void LeaveSanctum()
+        {
+        }
+
+        // M6-02b's five, inert for the same reason: nothing here opens a shop.
+        public int PriceOf(Soulvail.Core.Progression.SanctumService service) => 0;
+
+        public bool CanBuy(Soulvail.Core.Progression.SanctumService service) => false;
+
+        public void Buy(Soulvail.Core.Progression.SanctumService service)
+        {
+        }
+
+        public void Banish(ContentId skillId)
+        {
+        }
+
+        public int BanishableInto(Span<ContentId> destination) => 0;
     }
 
     /// <summary>
@@ -976,4 +1184,37 @@ public sealed class ResumeFlowTests
     /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
     private static ILocalizer Passthrough() => new TableLocalizer(EmptyTable());
 
+    /// <summary>
+    /// English and a pseudo-locale, one row each, started on <paramref name="start"/> — what the
+    /// installer builds, small enough to read.
+    /// </summary>
+    private TableLocalizer Localizer(string start = "")
+    {
+        var english = Keep(ScriptableObject.CreateInstance<LocalizationTable>());
+        var pseudo = Keep(ScriptableObject.CreateInstance<LocalizationTable>());
+
+        english.name = "English";
+        pseudo.name = "Pseudo";
+
+        Author(english, string.Empty, "a.b", "words");
+        Author(pseudo, "qps-ploc", "a.b", "[á.ƀ]");
+
+        return new TableLocalizer(new[] { english, pseudo }, start);
+    }
+
+    /// <summary>One row and a locale, through the Inspector's own route.</summary>
+    private static void Author(LocalizationTable table, string locale, string key, string text)
+    {
+        var serialized = new SerializedObject(table);
+
+        serialized.FindProperty("_locale").stringValue = locale;
+
+        SerializedProperty rows = serialized.FindProperty("_rows");
+
+        rows.arraySize = 1;
+        rows.GetArrayElementAtIndex(0).FindPropertyRelative("_key").stringValue = key;
+        rows.GetArrayElementAtIndex(0).FindPropertyRelative("_text").stringValue = text;
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
 }

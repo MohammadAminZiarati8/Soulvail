@@ -347,6 +347,96 @@ public sealed class ModeSpecTests
         Assert.DoesNotThrow(() => new OverflowSpec(0f, 0f));
     }
 
+    // ---- GD §15's income, the mode's as of M6-01a -------------------------------------------------
+
+    [Test]
+    public void Essence_IsWhatItWasGiven()
+    {
+        // Beside the Overflow block and last after it, for that block's reason: what a mode *pays*
+        // is as much a statement about itself as how fast it levels you (GD §4.5, M6-01a rule 2).
+        ModeSpec mode = new ModeSpec(
+            Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+            essence: new EssenceSpec(11, 3, 7, 41));
+
+        Assert.That(mode.Essence.PerStageBase, Is.EqualTo(11));
+        Assert.That(mode.Essence.PerStageDepth, Is.EqualTo(3));
+        Assert.That(mode.Essence.PerElite, Is.EqualTo(7), "authored with no payer — rule 2.");
+        Assert.That(mode.Essence.PerBoss, Is.EqualTo(41));
+    }
+
+    // ---- GD §13.3's shop, the mode's as of M6-02b ------------------------------------------------
+
+    [Test]
+    public void Sanctum_RefusesANegativePriceOrAZeroMagnitude()
+    {
+        // Each field in turn, and each refusal names it — a designer reads the parameter name, not
+        // the position. Negative for the four prices; zero, negative, NaN and infinity for the two
+        // magnitudes, because a heal worth NaN is found by a player paying for it.
+        AssertRefuses("rerollPrice", () => new SanctumSpec(-1, 40, 40, 30f, 60, 15f));
+        AssertRefuses("banishPrice", () => new SanctumSpec(25, -1, 40, 30f, 60, 15f));
+        AssertRefuses("healPrice", () => new SanctumSpec(25, 40, -1, 30f, 60, 15f));
+        AssertRefuses("cleansePrice", () => new SanctumSpec(25, 40, 40, 30f, -1, 15f));
+
+        foreach (float bad in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+        {
+            AssertRefuses("healAmount", () => new SanctumSpec(25, 40, 40, bad, 60, 15f));
+            AssertRefuses("cleanseAmount", () => new SanctumSpec(25, 40, 40, 30f, 60, bad));
+        }
+
+        // A free service is a legal statement, like a mode that pays nothing: prices may be zero.
+        Assert.DoesNotThrow(() => new SanctumSpec(0, 0, 0, 30f, 0, 15f));
+
+        // And the block rides on the mode, optional and last, exactly as given.
+        ModeSpec mode = new ModeSpec(
+            Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster,
+            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
+
+        Assert.That(mode.Sanctum.RerollPrice, Is.EqualTo(25));
+        Assert.That(mode.Sanctum.CleanseAmount, Is.EqualTo(15f));
+        Assert.That(Mode(DesignRoster).Sanctum.HealPrice, Is.Zero, "omitted, it is default — rule 1.");
+    }
+
+    private static void AssertRefuses(string field, TestDelegate construct)
+    {
+        var thrown = Assert.Throws<ArgumentOutOfRangeException>(construct, field);
+
+        Assert.That(thrown.ParamName, Is.EqualTo(field));
+    }
+
+    [Test]
+    public void Mode_WithoutABlockIsUnchanged()
+    {
+        // **Optional and last, which is placement rather than importance** (M6-01a rule 2):
+        // `new ModeSpec(...)` has sixty-three call sites across forty-four files, so placing
+        // `essence` anywhere but last would have moved every one of them for a block only the
+        // shipped asset fills. Omitted it is `default(EssenceSpec)` — a mode that pays nothing,
+        // which is the honest reading of a mode that never mentioned an economy, and legal content
+        // rather than a hole (so the constructor makes no second check of it).
+        ModeSpec mode = Mode(DesignRoster);
+
+        Assert.That(mode.Essence.PerStageBase, Is.Zero);
+        Assert.That(mode.Essence.PerStageDepth, Is.Zero);
+        Assert.That(mode.Essence.PerElite, Is.Zero);
+        Assert.That(mode.Essence.PerBoss, Is.Zero);
+
+        // And the other half of the claim, which is the half a defaulted argument can break: every
+        // property this mode had before the widening still says what it said. A row that only
+        // checked the four zeroes would pass against a constructor that had quietly dropped the
+        // overflow block into the essence slot.
+        Assert.That(mode.Id, Is.EqualTo(Id()));
+        Assert.That(mode.NameKey, Is.EqualTo(Name()));
+        Assert.That(mode.StartingStage, Is.EqualTo(1));
+        Assert.That(mode.IsEndless, Is.True);
+        Assert.That(mode.FinalStage, Is.EqualTo(int.MaxValue));
+        Assert.That(mode.Scaling, Is.Not.Null);
+        Assert.That(mode.Xp.IsAuthored, Is.True);
+        Assert.That(mode.Roster.Count, Is.EqualTo(3));
+        Assert.That(mode.Arenas, Is.Empty);
+        Assert.That(mode.BossRoster, Is.Empty);
+        Assert.That(mode.Overflow.Damage, Is.Zero);
+        Assert.That(mode.Overflow.MaxHp, Is.Zero);
+    }
+
     [Test]
     public void Ctor_CopiesRoster()
     {

@@ -128,6 +128,12 @@ namespace Soulvail.Game.Composition
                  "stops for good.")]
         [SerializeField] private SplashPresenter _splashPresenter;
 
+        [Tooltip("GD §13.3's Sanctum: four priced services and a Leave button, on its own canvas " +
+                 "between the pause's and the level-up's. Optional on the splash screen's terms — " +
+                 "and read its registration below, because a run without it stops at the first " +
+                 "stage it clears.")]
+        [SerializeField] private SanctumPresenter _sanctumPresenter;
+
         [Tooltip("The pause screen: the top-right icon and the panel behind it, on its own canvas " +
                  "between the HUD's and the level-up's. Optional on the HUD's terms — a scene " +
                  "without one plays exactly the same fight, it just cannot be stopped from inside.")]
@@ -217,8 +223,9 @@ namespace Soulvail.Game.Composition
                  "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
         [SerializeField] private LayerMask _coverLayer;
 
-        [Tooltip("The archetype the dummies below are spawned as. Leave empty for an arena that " +
-                 "starts bare.")]
+        [Tooltip("The archetype the dummies below are spawned as — and what the enemy pool's " +
+                 "prewarm keys on, so empty means no bodies built up front. An arena that starts " +
+                 "bare empties the list below and keeps this, as Run.unity does (M6-11c).")]
         [SerializeField] private EnemyDefinition _dummySpec;
 
         [Tooltip("Where the dummies dressed into this scene stand when the player walks in, in " +
@@ -461,6 +468,17 @@ namespace Soulvail.Game.Composition
             if (_splashPresenter != null)
             {
                 builder.RegisterComponent(_splashPresenter);
+            }
+
+            // GD §13.3's shop (M6-03a). The splash's registration exactly, and its cost is sharper:
+            // RunTicker.SanctumPhase pauses the run whenever core has the shop open, and the Leave
+            // button on this screen is the only thing in the build that sends LeaveSanctum — the
+            // debug overlay's door stand-in went with this task. So a scene dressed without it stops
+            // dead at the first stage it clears. Optional anyway, for the undressed-Run-scene
+            // workflow every optional field here protects.
+            if (_sanctumPresenter != null)
+            {
+                builder.RegisterComponent(_sanctumPresenter);
             }
 
             // Optional, and — unlike the level-up screen directly above — its absence really does
@@ -1065,10 +1083,10 @@ namespace Soulvail.Game.Composition
         /// hitches at exactly the moment the first telegraph rings have to be read.
         /// </para>
         /// <para>
-        /// Nothing at all for an arena with no archetype dressed into it. That scene's plan is
-        /// <see cref="SpawnPlan.Empty"/>, so core will never ask for a body — and building twelve
-        /// of them anyway would make an undressed Run scene, the fastest iteration loop in the
-        /// project, the slowest one to enter.
+        /// Nothing at all when no archetype is assigned, whatever the position list says. The
+        /// director still spawns into such a scene, so its pool instantiates on demand — which is
+        /// why the shipped <c>Run.unity</c> dresses no dummy and keeps the archetype (M6-11c), and
+        /// <c>RunSceneTests</c> holds it there.
         /// </para>
         /// </remarks>
         private int PrewarmCount()

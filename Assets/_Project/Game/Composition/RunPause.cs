@@ -21,6 +21,11 @@ namespace Soulvail.Game.Composition;
 /// (M5-07a-ii rules 1 and 5): <c>RunTicker.LevelUpPhase</c> raises whichever of the two is wanted
 /// and never both, so a refusal there can name which screen is holding the run.
 /// </para>
+/// <para>
+/// <see cref="Sanctum"/> is the fourth, and M6-03a's ruling rather than core's: M6-02a declined to
+/// stop the run in the shop, and <c>RunTicker.SanctumPhase</c> stops it anyway, so cooldowns do not
+/// recover for free and a phone set down in the shop drops to 30 fps.
+/// </para>
 /// </remarks>
 public enum PauseReason
 {
@@ -35,6 +40,12 @@ public enum PauseReason
     /// a branch from, and the choice is mandatory (M5-07a-ii).
     /// </summary>
     Splash,
+
+    /// <summary>
+    /// GD §13.3's shop is up. Untimed, so the run is gated rather than clocked slowly — M6-03a rule
+    /// 4: an untimed room that keeps ticking is a room that pays you to wait.
+    /// </summary>
+    Sanctum,
 }
 
 /// <summary>

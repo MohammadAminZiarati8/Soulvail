@@ -228,6 +228,21 @@ public sealed class PlayerCombat
     private bool _wasChargeInvulnerable;
 
     /// <summary>
+    /// <see cref="PlayerDied"/> has gone out for the life the player is currently on.
+    /// </summary>
+    /// <remarks>
+    /// <b>One flag in one place, and it exists because death stopped arriving only through damage</b>
+    /// (M6-04 rule 8). Until the Claiming, <see cref="ApplyDamage"/> needed none:
+    /// <see cref="DamageResult.Killed"/> is true only on the call that took hit points to zero, and
+    /// every later call finds a dead target and reports <see cref="DamageResult.None"/>. A maximum
+    /// driven to zero is the other way in — <c>Health.OnMaxHpChanged</c> pulls <c>Current</c> down
+    /// and no <see cref="DamageResult"/> exists to carry <c>Killed</c> — so the two doors have to
+    /// agree about what <em>"exactly once per life"</em> means, and a flag on each of them would make
+    /// that a property of two objects agreeing rather than of one field.
+    /// </remarks>
+    private bool _deathAnnounced;
+
+    /// <summary>
     /// The shield fraction as last announced, by either a <see cref="PlayerShieldChanged"/> or the
     /// <see cref="PlayerDamaged"/> that carried one.
     /// </summary>
@@ -335,6 +350,12 @@ public sealed class PlayerCombat
         // modifier, and the shape every later source of "+attack speed" copies.
         Focus = new FocusTracker(spec.Focus, Weapon.FireRate, _events);
 
+        // CH §3.3's Kindling, for the one class that authors it (M6-07a). Built here beside the
+        // other ramp rather than by the run, for Focus's reason: it moves one Stat this class owns and
+        // is fed by two edges this class sees — a swing resolving and damage arriving. Null for every
+        // class without one, which is an Oathbound and a Gravecaller byte for byte as they were.
+        Kindling = spec.Kindling is null ? null : new Kindling(spec.Kindling, Weapon.Damage, _events);
+
         // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
         // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
         // M6-07's Blink are the same clock with a different payload — see MovementSkillKind.
@@ -385,6 +406,27 @@ public sealed class PlayerCombat
     /// property is a fire rate, <see cref="FocusAt"/> is a target.
     /// </remarks>
     public FocusTracker Focus { get; }
+
+    /// <summary>
+    /// CH §3.3's Kindling — consecutive weapon hits with nothing touching the player, as a modifier on
+    /// <see cref="Weapon"/>'s damage — or <see langword="null"/> for a class without it, which is
+    /// every class but the Emberwright.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two doors feed it and both are this class's</b> (M6-07a rules 5 and 7).
+    /// <see cref="ResolveConeHits"/> adds one stack for a swing that reached anybody, however many it
+    /// reached; <see cref="ProjectileSystem"/> adds one for an orb that landed on anybody, through this
+    /// property, because the landing is resolved there. <see cref="ApplyDamage"/> drops the lot when
+    /// something was applied, and not when the i-frames turned it away.
+    /// </para>
+    /// <para>
+    /// <b>A dash and a zone never feed it</b> (rule 6). <see cref="ResolveChargeHits"/> does not call
+    /// it, and a zone has no door here at all — so the signature stays about aim rather than about the
+    /// movement button.
+    /// </para>
+    /// </remarks>
+    public Kindling Kindling { get; }
 
     /// <summary>
     /// CC §5's dodge: when it may fire, which way it goes, how long it protects, and how much of
@@ -602,6 +644,17 @@ public sealed class PlayerCombat
         // event sees a baseline that already includes this hit.
         _lastReportedShieldFraction = Health.ShieldFraction;
 
+        // **Kindling breaks on damage that landed, and on nothing else** (M6-07a rule 7). A blocked
+        // hit reaches this line — it is published below — but applied nothing, so the ramp stands:
+        // CC §5's i-frames exist to make a dodge worth something, and a signature that broke on the
+        // frame after a clean one would punish the player for dodging. Damage that went entirely to
+        // a shield *does* break it; no class in V1 has both, and M7's fourth might. Before the
+        // publish, for the baseline's reason above.
+        if (result.Applied > 0f)
+        {
+            Kindling?.OnPlayerDamaged();
+        }
+
         _events.Publish(new PlayerDamaged(
             result.ToShield,
             result.ToHp,
@@ -609,14 +662,53 @@ public sealed class PlayerCombat
             Health.ShieldFraction,
             result.Blocked));
 
-        // Exactly once per life without a flag to remember it: Killed is true only on the call that
-        // took HP to zero, and every later call finds a dead target and returns None above.
+        // **Routed through the one publisher rather than publishing here** (M6-04 rule 8). Killed is
+        // true only on the call that took HP to zero and every later call finds a dead target and
+        // returns None above, so this branch was already exactly-once on its own — but it is no
+        // longer the only way a player can die, and the second way has no DamageResult to be
+        // exactly-once about. One publisher, one flag, one place.
         if (result.Killed)
         {
-            _events.Publish(new PlayerDied(now));
+            AnnounceDeath(now);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Publishes <see cref="PlayerDied"/> if the player is dead and it has not been said yet.
+    /// </summary>
+    /// <param name="now">
+    /// Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock. The same clock
+    /// <see cref="ApplyDamage"/> stamps a death with.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>The one publisher of <see cref="PlayerDied"/> in the project, now reachable by a death that
+    /// arrives without a <see cref="DamageResult"/></b> (M6-04 rule 8). <c>Health.OnMaxHpChanged</c>
+    /// asked for this in writing: <em>"no <c>DamageResult</c> exists to carry <c>Killed</c> … that is
+    /// a content mistake rather than a mechanic (nothing in V1 removes max HP), and the first thing
+    /// that does needs the owner to check <c>IsDead</c> after the change."</em> GD §10.2's Claiming
+    /// is the first thing in V1 that removes maximum hit points and its 75 row is the second, so this
+    /// is that owner. Without it a run drained to nothing would end — <c>RunSession.Tick</c> reads
+    /// <see cref="IsDead"/> — with the HUD, the haptics and every other subscriber never told.
+    /// </para>
+    /// <para>
+    /// <b>Silent for the living and silent twice</b>, so a caller can announce unconditionally after
+    /// anything that might have killed the player. The flag is cleared by <see cref="Reset"/> and
+    /// nowhere else, which is what makes <em>"once per life"</em> mean a life rather than a run.
+    /// </para>
+    /// </remarks>
+    public void AnnounceDeath(float now)
+    {
+        if (_deathAnnounced || !Health.IsDead)
+        {
+            return;
+        }
+
+        _deathAnnounced = true;
+
+        _events.Publish(new PlayerDied(now));
     }
 
     /// <summary>
@@ -778,6 +870,15 @@ public sealed class PlayerCombat
             {
                 _intents.EnemyKnockback(new EnemyKnockbackIntent(id, shove, knockback));
             }
+        }
+
+        // **One swing is one stack however many it caught** (M6-07a rule 5). CH §3.3 counts *hits*,
+        // and a swing that reached four would otherwise fill the ramp in eight. After the loop, so the
+        // damage every enemy took above was read before the swing raised it; and a swing that reached
+        // nobody is a miss, which neither adds nor resets.
+        if (_hitCount > 0)
+        {
+            Kindling?.OnWeaponHitLanded();
         }
     }
 
@@ -1004,6 +1105,11 @@ public sealed class PlayerCombat
     /// through every fixture that builds one. Null reads as <b>zero standing</b>, which is the
     /// honest count for a run that holds no <c>MinionSystem</c> at all (M5-06a rules 6 and 7).
     /// </param>
+    /// <param name="zones">
+    /// Where a Blink's fire pool goes, or null for a run that has nowhere to put one — M6-07b rule 3,
+    /// and <paramref name="lures"/>' treatment exactly: passed rather than held, and null means the
+    /// blink still happens and leaves nothing.
+    /// </param>
     public void Tick(
         float dt,
         float now,
@@ -1011,12 +1117,13 @@ public sealed class PlayerCombat
         ReadOnlySpan<EnemyAgent> enemies,
         Vector3 bodyFacing,
         LureSystem lures = null,
-        MinionSystem minions = null)
+        MinionSystem minions = null,
+        ZoneSystem zones = null)
     {
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures);
+        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1089,6 +1196,10 @@ public sealed class PlayerCombat
         // still once, before a stage that has not started yet.
         Focus.Reset();
 
+        // The other ramp on a weapon stat, back to cold for the same reason and just as silently: a
+        // ×1.60 carried over would be a perfect stretch paid for by a run that has not started.
+        Kindling?.Reset();
+
         // The dash goes back to rest with everything else, and the three fields that track it here
         // go with it. Health.Reset above has already lowered the external flag — a dash interrupted
         // by a reset would otherwise leave the next life invulnerable with nothing holding the flag
@@ -1102,6 +1213,11 @@ public sealed class PlayerCombat
         _chargeHitCount = 0;
 
         Blackboard.Reset();
+
+        // With Health.Reset above, which is what makes this a *life* rather than a run: the player
+        // is back at full, so the next death is a new one and is owed its own PlayerDied (M6-04
+        // rule 8). Cleared here and nowhere else.
+        _deathAnnounced = false;
 
         FaceDirection = null;
         DpsOneSecond = 0f;
@@ -1150,7 +1266,8 @@ public sealed class PlayerCombat
     /// <see cref="MovementSkillKind"/> changed anywhere</b> (rule 1). A Shroudstep is a
     /// <see cref="ChargeSkill"/> with a corpse behind it: the cooldown, the buffer, the i-frames
     /// and the <see cref="ChargeIntent"/> are the Charge's, unmodified, and the one branch below is
-    /// the difference. No <c>IMovementSkill</c> and no second skill class — that would be an
+    /// the difference. M6-07b's Blink is a second branch beside it on the same edge — a fire pool
+    /// rather than a corpse. No <c>IMovementSkill</c> and no second skill class — that would be an
     /// abstraction with one implementation and a second payload, which is the trade
     /// <see cref="Charge"/>'s own remarks refuse.
     /// </para>
@@ -1161,7 +1278,8 @@ public sealed class PlayerCombat
         Vector2 stickXZ,
         Vector3 bodyFacing,
         Vector3 playerPosition,
-        LureSystem lures)
+        LureSystem lures,
+        ZoneSystem zones)
     {
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
@@ -1211,6 +1329,16 @@ public sealed class PlayerCombat
                 // capacity (rule 4).
                 lures.Drop(playerPosition, now, _movementSkill.DecoyDuration);
             }
+
+            // **And the fire, where the blink *left*** (M6-07b rule 3) — the corpse's argument word
+            // for word: CH §3.3's teleport "leaves a fire pool", and dropped at the destination it
+            // would burn nothing the player blinked away from. The position is the one this method
+            // was handed, and deliberately not the blackboard's: UpdateBlackboard runs near the
+            // bottom of Tick and this runs near the top, so the blackboard here is last frame's.
+            if (_movementSkill.Kind == MovementSkillKind.Blink && zones is not null)
+            {
+                DropPool(zones, playerPosition, now);
+            }
         }
         else if (_wasChargeInvulnerable && !invulnerable)
         {
@@ -1221,6 +1349,53 @@ public sealed class PlayerCombat
 
         _wasChargeInvulnerable = invulnerable;
     }
+
+    /// <summary>
+    /// A Blink's fire pool, read off <see cref="Charge"/>'s three live stats at this moment — M6-07b
+    /// rules 3 and 11.
+    /// </summary>
+    /// <remarks>
+    /// <b>Read at the drop rather than cached</b>, so a modifier that lands between two blinks shapes
+    /// the second pool and leaves the first alone. <b>Floored here</b>, because a <see cref="Stat"/>
+    /// clamps nothing: a radius, a duration or a damage a node drove to zero or below — or past
+    /// finite — means no pool, never a <see cref="ZoneSystem.Spawn"/> that throws out of a dash.
+    /// A full table, or a duration so long it would schedule more than
+    /// <see cref="ZoneSystem.MaxPulses"/>, is the same: the blink happens and leaves nothing, which
+    /// is <see cref="LureSystem.Drop"/>'s answer at capacity. The dash is the thing the player
+    /// pressed; the pool is what it leaves if it can.
+    /// </remarks>
+    private void DropPool(ZoneSystem zones, Vector3 at, float now)
+    {
+        float radius = Charge.PoolRadius.Value;
+        float duration = Charge.PoolDuration.Value;
+        float damage = Charge.PoolDamagePerPulse.Value;
+
+        if (!IsPoolNumber(radius) || !IsPoolNumber(duration) || !IsPoolNumber(damage))
+        {
+            return;
+        }
+
+        if (zones.Count == ZoneSystem.Capacity
+            || duration / MovementSkillSpec.PoolPulseInterval > ZoneSystem.MaxPulses)
+        {
+            return;
+        }
+
+        // The spec is the source: nothing takes a pool back (a zone owns its own life), and what
+        // placed it is the class's authored movement skill.
+        zones.Spawn(
+            radius,
+            duration,
+            damage,
+            MovementSkillSpec.PoolPulseInterval,
+            now,
+            _movementSkill,
+            ZoneSide.BurnsEnemies,
+            at);
+    }
+
+    /// <summary>Finite and greater than zero — the one shape a pool number may take at the drop.</summary>
+    private static bool IsPoolNumber(float value) => value > 0f && !float.IsInfinity(value);
 
     /// <summary>Rules 1–7 of M1-10: swing, announce, and ask the body what the swing touched.</summary>
     /// <remarks>

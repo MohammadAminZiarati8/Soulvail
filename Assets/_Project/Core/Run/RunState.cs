@@ -66,7 +66,11 @@ public sealed class RunState
         MinionSystem minions,
         RisePassive rise,
         LevelUpFlow levelUp,
-        SplashFlow splash)
+        SplashFlow splash,
+        EssenceWallet wallet,
+        Veilrot rot,
+        SanctumShop shop,
+        Ordeals ordeals)
     {
         ModeId = modeId;
         CharacterId = characterId;
@@ -87,6 +91,10 @@ public sealed class RunState
         Rise = rise;
         LevelUp = levelUp;
         Splash = splash;
+        Wallet = wallet;
+        Rot = rot;
+        Shop = shop;
+        Ordeals = ordeals;
     }
 
     /// <summary>The mode being played, e.g. <c>mode.descent</c>.</summary>
@@ -264,6 +272,12 @@ public sealed class RunState
     /// nothing else it could usefully say, and <see cref="TakenNodeIds"/> is empty in both cases.
     /// </remarks>
     public int TakenNodeCount => Tree is null ? 0 : Tree.TakenCount;
+
+    /// <summary>
+    /// How many nodes this run's tree has, a borrowed branch included — the size a buffer handed to
+    /// <c>IProgressionCommands.BanishableInto</c> must be. Zero with no tree.
+    /// </summary>
+    public int TreeNodeCount => Tree is null ? 0 : Tree.Rules.Count;
 
     /// <summary>
     /// Whether every node of the class's tree is taken — what M3-08 reads to know a pick has
@@ -657,6 +671,12 @@ public sealed class RunState
         LevelUp is null ? Array.Empty<ContentId>() : LevelUp.Offer;
 
     /// <summary>
+    /// Which of <see cref="Offer"/> is GD §13.2's Pact, or <c>-1</c> — for no offer, for no Pact,
+    /// and for a run with no tree. <see cref="Offer"/>'s bargain, one field over (M6-05b rule 5).
+    /// </summary>
+    public int PactIndex => LevelUp is null ? -1 : LevelUp.PactIndex;
+
+    /// <summary>
     /// Whether this frame should open a level-up: a pick is owed, no offer is open, and the class
     /// has a tree to spend it on.
     /// </summary>
@@ -715,6 +735,16 @@ public sealed class RunState
     /// <summary>Whether the splash screen is up — what the pause is held against.</summary>
     public bool IsSplashOpen => Splash is not null && Splash.IsOpen;
 
+    /// <summary>Whether GD §13.3's shop is up — the stage is in <c>StagePhase.Sanctum</c>.</summary>
+    /// <remarks>
+    /// <b>Copied rather than derived</b>, <see cref="StageIndex"/>'s bargain and for its reason: the
+    /// stage flow is built after this object and is null for a mode with nothing to compose, so the
+    /// session writes this beside the depth after every flow tick and again when the shop is left
+    /// (M6-02a rule 4). <c>internal set</c> because a view that could open the shop would be deciding
+    /// something core owns.
+    /// </remarks>
+    public bool IsSanctumOpen { get; internal set; }
+
     /// <summary>
     /// Whether this run has already borrowed a branch. True for the rest of the run once it has.
     /// </summary>
@@ -764,6 +794,148 @@ public sealed class RunState
 
         return Splash.BranchesOf(characterId);
     }
+
+    /// <summary>
+    /// GD §15's second currency, this run — what the player has been paid and has not spent.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-01a rule 6). <c>Earn</c> and
+    /// <c>Spend</c> are both public on the wallet, so a public handle here would let a view pay
+    /// itself for a stage it did not clear — the same argument that keeps <see cref="Progression"/>
+    /// and <see cref="LevelUp"/> behind scalar reads, with the shortest route to abuse of any of
+    /// them. <b>Never null</b>, like <see cref="Skills"/>: every run has a wallet, whatever its
+    /// class and whatever its mode pays.
+    /// </remarks>
+    internal EssenceWallet Wallet { get; }
+
+    /// <summary>
+    /// What the wallet holds, in Essence — the one thing outside core that may ask about the
+    /// economy.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Wallet"/> gives. One read,
+    /// for the HUD M6-03b draws and the debug overlay before it — <see cref="PlayerHp"/>'s bargain,
+    /// a dozen reads on. Zero for the whole of this task: nothing spends it until M6-02b and
+    /// nothing draws it until M6-03a.
+    /// </remarks>
+    public int Essence => Wallet.Balance;
+
+    /// <summary>
+    /// GD §10's corruption meter, its four thresholds and the Claiming. The run owns it; nothing
+    /// else may.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-04 rule 6).
+    /// <c>Gain</c>, <c>Cleanse</c> and <c>Tick</c> are all public on the meter, so a public handle
+    /// would let a view corrupt the player, absolve them, or advance the drain that is killing them
+    /// — the argument that keeps <see cref="Wallet"/> and <see cref="Progression"/> behind scalar
+    /// reads, with two of the shortest routes to abuse in the project. <b>Never null</b>, like
+    /// <see cref="Skills"/>: every run has a meter, whatever its class, and a run that gains nothing
+    /// holds one that reads zero.
+    /// </remarks>
+    internal Veilrot Rot { get; }
+
+    /// <summary>
+    /// GD §10's meter, in <c>[0, 100]</c> — what a save writes down and what the Claiming fires on.
+    /// </summary>
+    /// <remarks>
+    /// A narrow read rather than the handle, for the reason <see cref="Rot"/> gives, and the read
+    /// <c>RunRecorder.Take</c> has been writing to disk as a literal zero since M6-01b. **The seal
+    /// did not move to let it out** (AR §18.2): what a HUD and a recorder need is a number.
+    /// </remarks>
+    public float Veilrot => Rot.Value;
+
+    /// <summary>
+    /// Whether GD §10.2's last row has closed. True for the rest of the run once it has.
+    /// </summary>
+    /// <remarks>
+    /// <b>Separate from <see cref="Veilrot"/> because it cannot be derived from it</b> (M6-04
+    /// rule 6). The Claiming is a latch and the meter is not, so a run cleansed from 100 to 40 reads
+    /// 40 here with the buffs still on — the one state combination that looks like a bug and is not.
+    /// <b>That is also why it is saved beside the meter</b> (M6-11b): v4 first carried the meter
+    /// alone, on the reasoning that a Claimed run's meter reads 100, and a run cleansed or spent
+    /// below 100 came back from a <c>Continue</c> unclaimed.
+    /// </remarks>
+    public bool IsClaimed => Rot.IsClaimed;
+
+    /// <summary>
+    /// GD §13.3's shop — its prices, its refusals and the verbs that buy. Null exactly when
+    /// <see cref="Tree"/> is: a class with no tree has nothing to reroll or banish (M6-02b).
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2): <c>Buy</c> and
+    /// <c>Banish</c> are public on the shop, so a public handle would let a view spend the player's
+    /// Essence. Screens read <see cref="SanctumPriceOf"/> and <see cref="CanBuySanctum"/>.
+    /// </remarks>
+    internal SanctumShop Shop { get; }
+
+    /// <summary>What a Sanctum service costs right now. Zero for a run with no shop.</summary>
+    public int SanctumPriceOf(SanctumService service) => Shop is null ? 0 : Shop.PriceOf(service);
+
+    /// <summary>
+    /// Whether a Sanctum service can be bought right now — affordable, worth something, and the
+    /// Sanctum open. False for a run with no shop.
+    /// </summary>
+    /// <remarks>
+    /// The open-shop term is here rather than on <c>SanctumShop</c>, which knows nothing about
+    /// phases: AR §18.1's boundary row rests on purchases happening only in the Sanctum.
+    /// </remarks>
+    public bool CanBuySanctum(SanctumService service) =>
+        Shop is not null && IsSanctumOpen && Shop.CanBuy(service);
+
+    /// <summary>Rerolls bought this run — what the save's counter carries. Zero with no shop.</summary>
+    public int RerollsBought => Shop is null ? 0 : Shop.RerollsBought;
+
+    /// <summary>Rerolls a draw has spent this run. Zero with no shop.</summary>
+    public int RerollsSpent => Shop is null ? 0 : Shop.RerollsSpent;
+
+    /// <summary>
+    /// The nodes GD §13.3's Banish has taken out of this run's pool, in banish order — what a save
+    /// writes down.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty, never null</b>, for <see cref="TakenNodeIds"/>' own rule: no reader ever has to ask.
+    /// A live view over the tree's list, so <c>RunSnapshot</c>'s copy is what keeps a queued save
+    /// from being rewritten by the next banish; a run that banished nothing copies nothing.
+    /// </remarks>
+    public IReadOnlyList<ContentId> BanishedNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.BanishedIds;
+
+    /// <summary>Whether <paramref name="skillId"/> has been banished this run. False with no tree.</summary>
+    public bool IsNodeBanished(ContentId skillId) => Tree is not null && Tree.IsBanished(skillId);
+
+    /// <summary>
+    /// Which of <see cref="TakenNodeIds"/> were taken in GD §13.2's corrupted form — a subset of
+    /// that list, and the only thing a resumed run can learn which effects it paid Veilrot for from.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BanishedNodeIds"/>' rule exactly: empty, never null, and a live view over the
+    /// tree's own list, so <c>RunSnapshot</c>'s copy is what keeps a queued save from being
+    /// rewritten by the next Pact. The tree itself stays <c>internal</c> (AR §18.2).
+    /// </remarks>
+    public IReadOnlyList<ContentId> PactedNodeIds =>
+        Tree is null ? Array.Empty<ContentId>() : Tree.PactedIds;
+
+    /// <summary>
+    /// GD §13.4's Ordeals as the run holds them — what has been dealt and what it adds up to.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>internal</c>, like every other live object here</b> (AR §18.2, M6-06a). <c>OnStageEntered</c>
+    /// is public on the set, so a public handle would let a view deal the player an Ordeal. <b>Never
+    /// null</b>, like <see cref="Wallet"/>: every run has one, and a mode that schedules none holds a
+    /// set that is always empty.
+    /// </remarks>
+    internal Ordeals Ordeals { get; }
+
+    /// <summary>
+    /// GD §13.4's Ordeals, in the order they were drawn — what a save writes down.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BanishedNodeIds"/>' rule exactly: empty, never null, and a live view over the set's
+    /// own list, so <c>RunSnapshot</c>'s copy is what keeps a queued save from being rewritten by the
+    /// next deal.
+    /// </remarks>
+    public IReadOnlyList<ContentId> OrdealIds => Ordeals.Applied;
 
     /// <summary>The player's level, from 1 — the number beside M3-10b's XP strip.</summary>
     public int Level => Progression.Level;

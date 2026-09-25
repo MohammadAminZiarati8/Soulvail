@@ -36,11 +36,21 @@ namespace Soulvail.Core.Effects;
 /// <see cref="HealPerKill"/> was added outright.
 /// </para>
 /// <para>
+/// <b>Four more arrived at M6-08, the same sentence a second time</b>: <c>Kindling.PerStack</c>,
+/// <c>Kindling.MaxStacks</c>, <c>ChargeSkill.PoolDamagePerPulse</c> and
+/// <c>ChargeSkill.PoolDuration</c>, deferred by M6-07a rule 4 and M6-07b rule 11 until the
+/// Emberwright's tree named them. <b>They are the first members a run may not have</b> — an
+/// Oathbound has no Kindling and a Charge leaves no pool — so <see cref="PlayerStats.Has"/> answers
+/// for the run rather than for the enum (M6-08 rule 8).
+/// </para>
+/// <para>
 /// <b>What is still deliberately not here</b>, each with the task that would claim it and the
 /// reason it waits: <c>MovementSkillSpec.Knockback</c>, a positioning number that would need its
 /// own playtest; <c>ShieldSpec.Max</c>, because raising a maximum without filling it is the trap
-/// <c>Handler_MaxHpMovesHealthLive</c> pins; and <c>ShieldSpec.RefillPerSecond</c>, which is
-/// Unbroken's keystone and should arrive whole rather than half-reachable.
+/// <c>Handler_MaxHpMovesHealthLive</c> pins; <c>ShieldSpec.RefillPerSecond</c>, which is
+/// Unbroken's keystone and should arrive whole rather than half-reachable; and
+/// <c>ChargeSkill.PoolRadius</c>, which no v1 node widens — an address with no node is
+/// <see cref="ContactDamage"/>'s mistake made on purpose, so it waits for <b>M7-04</b>.
 /// </para>
 /// <para>
 /// <b>It stopped being only the player's at M4-01a, and the name is now the one thing about it
@@ -123,8 +133,8 @@ public enum PlayerStat
     /// <remarks>
     /// <para>
     /// <b>The member that makes this enum's name wrong</b>, and the price of one shared address
-    /// space rather than two — see the remarks on the enum. It is last, and a new member goes after
-    /// it, because the ordinal is what every authored asset stores.
+    /// space rather than two — see the remarks on the enum. It was last until M6-08 appended four
+    /// after it, and it stays where it is, because the ordinal is what every authored asset stores.
     /// </para>
     /// <para>
     /// <b>A node that authors this does nothing and then throws</b>, at the moment a player picks
@@ -135,6 +145,24 @@ public enum PlayerStat
     /// </para>
     /// </remarks>
     ContactDamage,
+
+    /// <summary>
+    /// What one Kindling stack is worth — <c>Kindling.PerStack</c>. Base 0.02. <b>Only a class with
+    /// Kindling has one</b>; see <see cref="PlayerStats.Has"/>.
+    /// </summary>
+    KindlingPerStack,
+
+    /// <summary>How many Kindling stacks count — <c>Kindling.MaxStacks</c>. Base 30.</summary>
+    KindlingMaxStacks,
+
+    /// <summary>
+    /// What one pulse of a Blink's fire pool takes — <c>ChargeSkill.PoolDamagePerPulse</c>. <b>Only a
+    /// Blink has one</b>; a Charge and a Shroudstep leave no pool.
+    /// </summary>
+    PoolDamage,
+
+    /// <summary>How long a Blink's fire pool burns — <c>ChargeSkill.PoolDuration</c>.</summary>
+    PoolDuration,
 }
 
 /// <summary>
@@ -173,6 +201,16 @@ public sealed class PlayerStats : IStatBlock
     private readonly PlayerMotor _motor;
     private readonly LevelTracker _progression;
 
+    /// <summary>Whether this run's movement skill leaves a fire pool — a Blink, and nothing else.</summary>
+    /// <remarks>
+    /// Read off the pool's <em>base</em> once, here, rather than off a kind nothing exposes:
+    /// <c>MovementSkillSpec</c> refuses a pool number that is not above zero on a Blink and one that
+    /// is not exactly zero on anything else, so the seeded base is the kind. Once, because a run
+    /// plays one movement skill and a modifier driving the live value to zero is a pool that
+    /// burns nobody, not an address that stops existing mid-run.
+    /// </remarks>
+    private readonly bool _leavesPool;
+
     /// <param name="combat">
     /// The player's health, weapon and dash — nine of the eleven addresses, because
     /// <c>PlayerCombat</c> is what owns the objects that own them, and as of M3-12a it owns one of
@@ -186,6 +224,7 @@ public sealed class PlayerStats : IStatBlock
         _combat = combat ?? throw new ArgumentNullException(nameof(combat));
         _motor = motor ?? throw new ArgumentNullException(nameof(motor));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        _leavesPool = combat.Charge.PoolDuration.Base > 0f;
     }
 
     /// <summary>
@@ -215,6 +254,10 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.ChargeDamage => _combat.Charge.Damage,
             PlayerStat.ShieldRechargeDelay => _combat.Health.ShieldRechargeDelay,
             PlayerStat.HealPerKill => _combat.HealPerKill,
+            PlayerStat.KindlingPerStack => RequireKindling(stat).PerStack,
+            PlayerStat.KindlingMaxStacks => RequireKindling(stat).MaxStacks,
+            PlayerStat.PoolDamage => RequirePool(stat).PoolDamagePerPulse,
+            PlayerStat.PoolDuration => RequirePool(stat).PoolDuration,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(stat),
                 stat,
@@ -227,10 +270,17 @@ public sealed class PlayerStats : IStatBlock
 
     /// <inheritdoc/>
     /// <remarks>
-    /// The eleven the switch above answers, written out rather than derived from
-    /// <c>Enum.IsDefined</c>: the enum holds one member this table deliberately does not have, so
-    /// "is it a member" and "does the player have one" stopped being the same question at M4-01a.
-    /// A row walks every member and asserts this agrees with <see cref="Resolve"/> exactly.
+    /// <para>
+    /// <b>A question about this run, not about the enum</b> (M6-08 rule 8). Eleven members every
+    /// player has; <see cref="PlayerStat.ContactDamage"/>, which none has; and four that depend on
+    /// the class — the two Kindling numbers on whether <c>PlayerCombat.Kindling</c> exists, the two
+    /// pool numbers on whether the movement skill is a Blink.
+    /// </para>
+    /// <para>
+    /// <c>SplashFlow</c> asks it of a borrowed branch before the player may take one, which is what
+    /// keeps an Oathbound from being offered the Emberwright's Ember branch live. A row walks every
+    /// member and asserts this agrees with <see cref="Resolve"/> exactly, for both kinds of run.
+    /// </para>
     /// </remarks>
     public bool Has(PlayerStat stat)
     {
@@ -247,7 +297,38 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.ChargeDamage => true,
             PlayerStat.ShieldRechargeDelay => true,
             PlayerStat.HealPerKill => true,
+            PlayerStat.KindlingPerStack => _combat.Kindling is not null,
+            PlayerStat.KindlingMaxStacks => _combat.Kindling is not null,
+            PlayerStat.PoolDamage => _leavesPool,
+            PlayerStat.PoolDuration => _leavesPool,
             _ => false,
         };
+    }
+
+    /// <summary>This run's Kindling, or the refusal that says the class has none.</summary>
+    private Kindling RequireKindling(PlayerStat stat)
+    {
+        return _combat.Kindling ?? throw new ArgumentOutOfRangeException(
+            nameof(stat),
+            stat,
+            "This run's class has no Kindling, so it has no stat at this address. Only the "
+                + "Emberwright authors a KindlingSpec (CH §3.3); SplashFlow refuses a borrowed "
+                + "branch that names one.");
+    }
+
+    /// <summary>This run's movement skill if it leaves a pool, or the refusal that says it does not.</summary>
+    private ChargeSkill RequirePool(PlayerStat stat)
+    {
+        if (!_leavesPool)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(stat),
+                stat,
+                "This run's movement skill leaves no fire pool, so it has no stat at this address. "
+                    + "Only a Blink drops one (M6-07b); SplashFlow refuses a borrowed branch that "
+                    + "names one.");
+        }
+
+        return _combat.Charge;
     }
 }

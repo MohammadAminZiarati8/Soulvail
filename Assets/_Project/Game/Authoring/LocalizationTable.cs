@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Soulvail.Core.Content;
 using UnityEngine;
 
@@ -15,8 +16,9 @@ namespace Soulvail.Game.Authoring
     /// <remarks>
     /// <para>
     /// <b>An Inspector array, and that is enough for one language</b> (rule 2). A translator's
-    /// workflow, a CSV importer and <c>.po</c> files are all M6-10's, the day there are three
-    /// languages; fifty rows are edited perfectly well in a list. What this shape buys now is that
+    /// workflow, a CSV importer and <c>.po</c> files belong to the first real second language, and
+    /// M6-10 shipped none: its only other table is the pseudo-locale, which is generated rather
+    /// than typed. A couple of hundred rows are edited perfectly well in a list. What this shape buys now is that
     /// rewriting a description costs a keystroke rather than a recompile — which is exactly what
     /// GD §13.1's two-second rule needs, because the first draft of twelve descriptions will be
     /// wrong and the fix is a text edit.
@@ -40,15 +42,73 @@ namespace Soulvail.Game.Authoring
     /// a broken asset is a loud failure at boot naming the file rather than a missing word on a
     /// screen three scenes later.
     /// </para>
+    /// <para>
+    /// <b>A table says which language it is</b> (M6-10). <see cref="Locale"/> is a BCP-47 tag, and
+    /// <b>English's is empty</b>, because English is the fallback every other table drops to rather
+    /// than one language among several (rule 1). <c>TableLocalizer</c> refuses a set with no empty
+    /// tag or with two of them.
+    /// </para>
     /// </remarks>
     [CreateAssetMenu(
         menuName = "Soulvail/Localization Table",
         fileName = "English")]
     public sealed class LocalizationTable : ScriptableObject
     {
+        [Tooltip("Which language this is, as a BCP-47 tag — 'de', 'pt-BR', 'qps-ploc'. Empty for " +
+                 "English, which is the fallback every other table drops to (M6-10 rule 1).")]
+        [SerializeField] private string _locale = string.Empty;
+
         [Tooltip("Every string in the game, one row each. The key is a LocKey — no whitespace, " +
                  "and unique within this asset. An empty text is a legal untranslated row.")]
         [SerializeField] private LocalizationRow[] _rows = Array.Empty<LocalizationRow>();
+
+        /// <summary>A BCP-47 tag — <c>"de"</c>, <c>"qps-ploc"</c> — or empty for the fallback.</summary>
+        /// <remarks>
+        /// Never null: an asset authored before this field existed deserialises it as null, and
+        /// null and empty mean the same thing here.
+        /// </remarks>
+        public string Locale => _locale ?? string.Empty;
+
+        /// <summary>
+        /// What this language formats numbers with, resolved from <see cref="Locale"/>, and
+        /// <see cref="CultureInfo.InvariantCulture"/> when the tag names no culture this runtime
+        /// knows.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>Unknown is invariant rather than a throw</b>, and the case is real rather than
+        /// hypothetical: Unity's Mono has no culture for <c>qps-ploc</c>, the pseudo-locale this
+        /// project ships, and a translator's table for a tag the runtime lacks should still draw its
+        /// words. The fallback's empty tag resolves to the invariant culture too, which writes
+        /// <c>3.4</c> — what every screen has drawn since M3.
+        /// </para>
+        /// <para>
+        /// Resolved on each read rather than cached here. <c>TableLocalizer</c> reads it once at
+        /// construction and keeps what it got, and a cache on the asset would go stale when somebody
+        /// edited the tag in the Inspector.
+        /// </para>
+        /// </remarks>
+        public CultureInfo Culture
+        {
+            get
+            {
+                string locale = Locale;
+
+                if (locale.Length == 0)
+                {
+                    return CultureInfo.InvariantCulture;
+                }
+
+                try
+                {
+                    return CultureInfo.GetCultureInfo(locale);
+                }
+                catch (CultureNotFoundException)
+                {
+                    return CultureInfo.InvariantCulture;
+                }
+            }
+        }
 
         /// <summary>How many rows the asset holds, before any of them is validated.</summary>
         /// <remarks>

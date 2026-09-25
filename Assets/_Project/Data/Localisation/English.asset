@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aba53057ee7f828418c0472ade3e38ae, type: 3}
   m_Name: English
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.LocalizationTable
+  _locale:
   _rows:
   - _key: skill.oathbound.long-reach.name
     _text: Long Reach
@@ -147,6 +148,10 @@ MonoBehaviour:
     _text: All four slots are full. Which goes back to Auto?
   - _key: ui.levelup.tree
     _text: View Tree
+  - _key: ui.levelup.level
+    _text: Level {0:0}
+  - _key: ui.levelup.pick
+    _text: Pick {0:0} of {1:0}
   - _key: ui.tree.close
     _text: Close
   - _key: character.oathbound.name
@@ -163,6 +168,8 @@ MonoBehaviour:
     _text: Descent
   - _key: character.gravecaller.name
     _text: Gravecaller
+  - _key: minion.wight.name
+    _text: Wight
   - _key: skill.gravecaller.exhume.name
     _text: Exhume
   - _key: skill.gravecaller.exhume.description
@@ -217,16 +224,89 @@ MonoBehaviour:
     _text: Grave-Work
   - _key: tree.gravecaller.rot
     _text: Rot
+  - _key: skill.emberwright.ember-touch.name
+    _text: Ember Touch
+  - _key: skill.emberwright.ember-touch.description
+    _text: +15% orb damage.
+  - _key: skill.emberwright.stoked-coals.name
+    _text: Stoked Coals
+  - _key: skill.emberwright.stoked-coals.description
+    _text: Each Kindling stack is worth 3%, not 2%.
+  - _key: skill.emberwright.quickened-flame.name
+    _text: Quickened Flame
+  - _key: skill.emberwright.quickened-flame.description
+    _text: +12% fire rate.
+  - _key: skill.emberwright.long-burn.name
+    _text: Long Burn
+  - _key: skill.emberwright.long-burn.description
+    _text: Kindling holds 40 stacks, not 30.
+  - _key: skill.emberwright.emberfall.name
+    _text: Emberfall
+  - _key: skill.emberwright.emberfall.description
+    _text: A 4 m fire at your feet for 4 seconds.
+  - _key: skill.emberwright.arcane-haste.name
+    _text: Arcane Haste
+  - _key: skill.emberwright.arcane-haste.description
+    _text: Blink recharges a fifth sooner.
+  - _key: skill.emberwright.deep-well.name
+    _text: Deep Well
+  - _key: skill.emberwright.deep-well.description
+    _text: Emberfall recharges a quarter sooner.
+  - _key: skill.emberwright.ashen-lore.name
+    _text: Ashen Lore
+  - _key: skill.emberwright.ashen-lore.description
+    _text: +15% experience from kills.
+  - _key: skill.emberwright.cinder-nova.name
+    _text: Cinder Nova
+  - _key: skill.emberwright.cinder-nova.description
+    _text: A 6 m blaze around you for 1.5 seconds.
+  - _key: skill.emberwright.scorching-ground.name
+    _text: Scorching Ground
+  - _key: skill.emberwright.scorching-ground.description
+    _text: Blink's fire burns 50% hotter.
+  - _key: skill.emberwright.lingering-ash.name
+    _text: Lingering Ash
+  - _key: skill.emberwright.lingering-ash.description
+    _text: Blink's fire lasts 50% longer.
+  - _key: skill.emberwright.emberheart.name
+    _text: Emberheart
+  - _key: skill.emberwright.emberheart.description
+    _text: +15 maximum health.
+  - _key: tree.emberwright.ember
+    _text: Ember
+  - _key: tree.emberwright.arcana
+    _text: Arcana
+  - _key: tree.emberwright.ash
+    _text: Ash
   - _key: ui.classselect.title
     _text: Choose your class
   - _key: ui.classselect.back
     _text: Back
+  - _key: ui.classselect.balance
+    _text: '{0} Soul Shards'
+  - _key: ui.classselect.locked.price
+    _text: '{0} Soul Shards'
+  - _key: ui.classselect.locked.buy
+    _text: 'Unlock: {0} Soul Shards'
+  - _key: ui.classselect.locked.deed
+    _text: or reach stage {0}
+  - _key: ui.classselect.hp
+    _text: '{0:0} HP'
+  - _key: ui.classselect.speed
+    _text: '{0:0.0} m/s'
+  - _key: ui.classselect.dps
+    _text: '{0:0} DPS'
   - _key: character.oathbound.description
     _text: A paladin who stands in it. The only regenerating shield in the game,
       and a swing that hits everything in front of you.
   - _key: character.gravecaller.description
     _text: "A necromancer. The bolt is weak on purpose \u2014 you are not the damage.
       A quarter of what you kill gets back up and fights for you."
+  - _key: character.emberwright.name
+    _text: Emberwright
+  - _key: character.emberwright.description
+    _text: A wizard. Enormous, slow, unforgiving. The orb is the widest blast in the
+      game, and every hit you land without being touched makes the next one hotter.
   - _key: ui.splash.title
     _text: Borrow a discipline
   - _key: ui.splash.class
@@ -239,3 +319,73 @@ MonoBehaviour:
     _text: Needs a power your class cannot use
   - _key: ui.splash.refused.minions
     _text: Commands minions — your class raises none
+  - _key: ui.splash.refused.address
+    _text: Needs a number your class does not have
+  - _key: ui.sanctum.title
+    _text: Sanctum
+  - _key: ui.sanctum.balance
+    _text: '{0} Essence'
+  - _key: ui.sanctum.leave
+    _text: Descend
+  - _key: ui.sanctum.reroll
+    _text: Reroll
+  - _key: ui.sanctum.reroll.detail
+    _text: Your next level-up draws a fresh offer.
+  - _key: ui.sanctum.banish
+    _text: Banish
+  - _key: ui.sanctum.banish.detail
+    _text: Remove a node from this run for good.
+  - _key: ui.sanctum.heal
+    _text: Heal
+  - _key: ui.sanctum.heal.detail
+    _text: Restore some of your health.
+  - _key: ui.sanctum.cleanse
+    _text: Cleanse
+  - _key: ui.sanctum.cleanse.detail
+    _text: Burn away some of your Veilrot.
+  - _key: ui.sanctum.refused.short
+    _text: Not enough Essence
+  - _key: ui.sanctum.refused.full
+    _text: Already at full health
+  - _key: ui.sanctum.refused.clean
+    _text: No Veilrot to cleanse
+  - _key: ui.sanctum.refused.nothing
+    _text: Nothing left to banish
+  - _key: ui.sanctum.refused.complete
+    _text: Nothing left to offer
+  - _key: ui.sanctum.banish.prompt
+    _text: Choose a node to banish
+  - _key: ui.sanctum.banish.cancel
+    _text: Back
+  - _key: ui.hud.essence
+    _text: Essence
+  - _key: ui.hud.veilrot
+    _text: Veilrot
+  - _key: ui.hud.claimed
+    _text: Claimed
+  - _key: skill.oathbound.keen-censer.pact.description
+    _text: +45% censer damage, but -25 maximum health.
+  - _key: skill.oathbound.zealotry.pact.description
+    _text: +30% fire rate, but your Aegis recharges half again slower.
+  - _key: skill.gravecaller.sharpened-bone.pact.description
+    _text: +40% bolt damage, but -15% movement speed.
+  - _key: skill.gravecaller.rot-feast.pact.description
+    _text: +40% experience from kills, but -15% maximum health.
+  - _key: ui.offer.pact
+    _text: "Pact \xB7 +{0:0} Rot"
+  - _key: ordeal.famine.name
+    _text: Famine
+  - _key: ordeal.famine.description
+    _text: Stages pay -40% Essence.
+  - _key: ordeal.vigil.name
+    _text: Vigil
+  - _key: ordeal.vigil.description
+    _text: Level-ups offer 2 nodes instead of 3.
+  - _key: ordeal.swarm.name
+    _text: Swarm
+  - _key: ordeal.swarm.description
+    _text: +8 enemies at once, and Husks cost half as much.
+  - _key: ordeal.hunger.name
+    _text: Hunger
+  - _key: ordeal.hunger.description
+    _text: +50% Veilrot from every source.

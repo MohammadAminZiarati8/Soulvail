@@ -131,24 +131,6 @@ public sealed class FrameOrderTests
     /// </summary>
     private static readonly Vector3 MinionOffset = new Vector3(0f, 0f, 12f);
 
-    /// <summary>
-    /// What <see cref="DiagnoseTheEmptyReport"/> says when the re-issued query <em>found</em> the
-    /// body. [Ledger row 4]
-    /// </summary>
-    private const string LateSync =
-        "The cone found nothing where the body had just walked to — and the same query, re-issued "
-            + "in the same frame, found it. The body was in the right place and the physics scene "
-            + "did not know yet, so the transform sync at the seam was late.";
-
-    /// <summary>
-    /// What <see cref="DiagnoseTheEmptyReport"/> says when the re-issued query found nothing
-    /// either. [Ledger row 4]
-    /// </summary>
-    private const string WrongWedge =
-        "The cone found nothing where the body had just walked to — and the same query, re-issued "
-            + "in the same frame, found nothing either. The physics scene is settled and the body "
-            + "is not in it, so the wedge was in the wrong place.";
-
     private readonly List<UnityEngine.Object> _created = new List<UnityEngine.Object>();
 
     /// <summary>
@@ -186,17 +168,6 @@ public sealed class FrameOrderTests
     /// put back.
     /// </summary>
     private RunPause _pause;
-
-    /// <summary>
-    /// The swing's sweep, and <b>a field rather than a local as of M5-05a</b> — [ledger row 4].
-    /// The ticker has always taken one; keeping the reference is what lets
-    /// <see cref="DiagnoseTheEmptyReport"/> re-issue the very query that came back empty, in the
-    /// same frame, against the same physics scene.
-    /// </summary>
-    private ConeOverlapQuery _cone;
-
-    /// <summary>Where the re-issued query's answer goes. Sized like the ticker's own buffer.</summary>
-    private int[] _diagnosisIds;
 
     [SetUp]
     public void BuildTheFrame()
@@ -272,12 +243,10 @@ public sealed class FrameOrderTests
         var cameraObject = new GameObject("Camera");
         Track(cameraObject);
 
-        _cone = new ConeOverlapQuery(
+        var cone = new ConeOverlapQuery(
             ConeOverlapQuery.DefaultCapacity,
             1 << enemyLayer,
             _enemyViews);
-
-        _diagnosisIds = new int[_cone.Capacity];
 
         charge.Construct(_enemyViews, 1 << enemyLayer);
 
@@ -311,16 +280,19 @@ public sealed class FrameOrderTests
             // Nothing here takes a snapshot, so this writes nothing — it is on the constructor for
             // the reason the rings above are (M2-14a rule 8): being on that constructor is what
             // guarantees the writer is subscribed before a run can announce its opening snapshot.
-            new SaveWriter(new InertSaveStore(), _hub),
+            new SaveWriter(new InertSaveStore(), _hub, new SavedRun()),
 
             // And M4-05b's writer, on the constructor for the same reason: a Scoped registration
             // nobody resolves is never constructed, so the parameter is what makes the object exist.
-            new ShardWriter(new ProfileStore(new InertSaveStore()), _hub),
+            new ShardWriter(
+                new ProfileStore(new InertSaveStore()),
+                _hub,
+                new ContentCatalog(Array.Empty<CharacterSpec>())),
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
             _skillSlots,
-            _cone);
+            cone);
 
         // Announced the way core announces it, so the body arrives through the subscription M1-07
         // wired rather than by this fixture reaching into the census.
@@ -377,8 +349,6 @@ public sealed class FrameOrderTests
         _core = null;
         _body = null;
         _skillSlots = null;
-        _cone = null;
-        _diagnosisIds = null;
 
         for (int i = 0; i < _created.Count; i++)
         {
@@ -411,7 +381,28 @@ public sealed class FrameOrderTests
 
         Vector3 afterFirst = _body.Position;
 
+        // Step 5's probe, asked from inside the second frame's fact phase — the one moment the
+        // physics scene can be questioned at the point in the frame core is being answered.
+        var reachedFactTime = false;
+        var foundWhereMoved = false;
+        var foundWhereSensed = false;
+        var walked = 0f;
+
+        _core.OnFactTime = () =>
+        {
+            reachedFactTime = true;
+
+            Vector3 moved = _body.Position;
+            Vector3 sensed = _core.SnapshotEnemyPosition.ToUnity();
+
+            walked = Vector3.Distance(moved, sensed);
+            foundWhereMoved = TheSweepFinds(_body.Body, moved);
+            foundWhereSensed = TheSweepFinds(_body.Body, sensed);
+        };
+
         yield return Frame();
+
+        _core.OnFactTime = null;
 
         // 1. The snapshot precedes the tick: what core was told on the second frame is where the
         //    body stood after the first, not where the first frame's snapshot said it was.
@@ -436,25 +427,34 @@ public sealed class FrameOrderTests
             Is.EqualTo(_core.SnapshotEnemyPosition.X + (WalkSpeed * _core.Dt)).Within(1e-2f),
             "The sweep was answered against the arena as it stood before the bodies moved.");
 
-        // 5. And the sweep itself agrees, through real physics: the wedge was placed where the body
-        //    would be *after* this frame's move, so a body still standing where the snapshot found
-        //    it is a metre outside it.
+        // 5. And the physics scene agrees, which is AR §18.1's flush: when the facts are answered, a
+        //    probe finds the body's trigger capsule where this frame's move put it, and nothing where
+        //    the snapshot found it. The capsule is the collider the flush governs —
+        //    CharacterController.Move carries the controller's own shape as it sweeps.
         //
-        //    **This is the row that fails about one run in ten** (PROGRESS → Known issues, ledger
-        //    row 4), and since M5-05a it says which of two things happened rather than restating
-        //    what was expected. Thirteen tasks of tallies diagnosed nothing; this converts every
-        //    future failure into one of two named answers. **It is not a fix** — nothing in
-        //    RunTicker changed and no re-run was added — so a milestone in which this stays green
-        //    is luck rather than evidence.
-        if (_core.ConeReport.Count == 0)
-        {
-            Assert.Fail(DiagnoseTheEmptyReport());
-        }
+        //    **The claim is that the seam is synchronous, and this reads it directly** (M6-11e,
+        //    M7 ledger row 8). Until then the step asked the cone, whose apex sits exactly where the
+        //    body should arrive: a zero-margin geometric claim the row never meant to make, and one
+        //    run in ten the body stopped 0.0001 m short of it, behind the apex — the M5-05a
+        //    instrument's answer every time it fired. That the cone resolves against moved bodies
+        //    stays Ticker_ReportsFactsAfterBodiesMoved's claim, on frame one.
+        TestContext.WriteLine($"Step 5: the body walked {walked:F3} m between the snapshot and the facts.");
+
+        Assert.That(reachedFactTime, Is.True, "Sanity: the second frame never reached its fact phase.");
 
         Assert.That(
-            _core.ConeReport,
-            Is.EqualTo(new[] { EnemyId }),
-            "The cone found nothing where the body had just walked to.");
+            foundWhereMoved,
+            Is.True,
+            "At fact time the physics scene did not hold the body where this frame's move put it, so "
+                + "Physics.SyncTransforms() is not between the bodies and the facts.");
+
+        // The half that makes the other one mean something: a body that walked less than its own
+        // radius plus the probe's is found at both points, and a stale scene would pass above.
+        Assert.That(
+            foundWhereSensed,
+            Is.False,
+            $"The body walked only {walked:F3} m this frame, inside its capsule's radius plus the "
+                + "probe's, so the physics scene cannot be told apart from last frame's.");
 
         // 6. The knockbacks are last of all. The shove is written from inside the cone answer —
         //    later in the frame than every other intent in the buffer — so a reader placed above
@@ -656,7 +656,7 @@ public sealed class FrameOrderTests
         {
             reachedFactTime = true;
             whereAtFactTime = wight.Position;
-            sweptAtFactTime = TheSweepFinds(wight, whereAtFactTime);
+            sweptAtFactTime = TheSweepFinds(wight.Body, whereAtFactTime);
         };
 
         yield return Frame();
@@ -675,41 +675,6 @@ public sealed class FrameOrderTests
             "A sweep taken below the flush did not find the Wight where the frame had just put "
                 + "it, so the minion step is running after Physics.SyncTransforms() — the body "
                 + "would be the one exception on the day something starts sweeping for one.");
-
-        LogAssert.NoUnexpectedReceived();
-    }
-
-    /// <summary>
-    /// The control for [ledger row 4]'s instrument: a wedge deliberately placed where no body is,
-    /// and a diagnosis that says so by name.
-    /// </summary>
-    /// <remarks>
-    /// <b>Without it the instrument is untested in one direction.</b>
-    /// <see cref="Ticker_RunsTheStepsInOrder"/> only reaches
-    /// <see cref="DiagnoseTheEmptyReport"/> on the one run in ten that fails, so nothing would
-    /// ever exercise the re-issued query on a build where the row happened to pass — and an
-    /// instrument nobody has watched read both ways is a message rather than a measurement.
-    /// </remarks>
-    [UnityTest]
-    public IEnumerator Ticker_AnEmptyConeReportIsDiagnosed()
-    {
-        _core.Walk = new Vector3(WalkSpeed, 0f, 0f);
-        _core.EmitCone = true;
-
-        // Forty metres off the body, on the axis it is walking down. Nothing is there, this frame
-        // or any other.
-        _core.ConeOffset = new CoreVector3(40f, 0f, 0f);
-
-        yield return Frame();
-
-        Assert.That(
-            _core.ConeReport,
-            Is.Empty,
-            "The fixture's premise: a wedge 40 m from the only body in the arena found something.");
-
-        // StartWith rather than EqualTo: the diagnosis carries the measurement after the verdict,
-        // and the verdict is what this row is about.
-        Assert.That(DiagnoseTheEmptyReport(), Does.StartWith(WrongWedge));
 
         LogAssert.NoUnexpectedReceived();
     }
@@ -790,11 +755,12 @@ public sealed class FrameOrderTests
         // between the two happened as well.
         //
         // It asserts that the fact phase was **reached**, not what the sweep found. The two are
-        // different claims and only one of them is this row's: `Ticker_RunsTheStepsInOrder` owns
-        // "the cone found the body", and that assertion is the project's one known intermittent
-        // failure (PROGRESS → Known issues). Hanging a second row on it measured at 14 % flaky over
-        // 50 isolated runs and took the fixture from 10 % to 30 % — a row that would have failed
-        // one morning in seven for a reason that has nothing to do with level-ups.
+        // different claims and only one of them is this row's: `Ticker_ReportsFactsAfterBodiesMoved`
+        // owns "the cone found the body". When this row was written the claim was also
+        // `Ticker_RunsTheStepsInOrder`'s, on its second frame, and it flaked one run in ten until
+        // M6-11e; hanging a second row on it measured at 14 % flaky over 50 isolated runs and took
+        // the fixture from 10 % to 30 % — a row that would have failed one morning in seven for a
+        // reason that has nothing to do with level-ups.
         Assert.That(_core.Touched, Does.Contain("tick"));
         Assert.That(_core.Touched, Does.Contain("facts"), "the levelling frame stopped before its fact phase.");
 
@@ -917,6 +883,153 @@ public sealed class FrameOrderTests
 
         Assert.That(_pause.IsPaused, Is.False);
         Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    // ---- GD §13.3's Sanctum and the fourth pause reason (M6-03a rules 4 and 5) -------------------
+
+    /// <summary>The shop holds the pause under its own reason, with both of GD §11.4's globals.</summary>
+    [UnityTest]
+    public IEnumerator Pause_TheSanctumHoldsIt()
+    {
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum));
+        Assert.That(Time.timeScale, Is.EqualTo(0f));
+        Assert.That(Application.targetFrameRate, Is.EqualTo(RunPause.PausedFrameRate));
+
+        // Gated above CommandPhase, so nothing — no tick, no command — reached core (rule 6's premise).
+        Assert.That(_core.Touched, Is.Empty);
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>Leaving gives the pause back on the next frame, and both globals with it.</summary>
+    [UnityTest]
+    public IEnumerator Pause_ItIsGivenBackOnLeaving()
+    {
+        float timeScale = Time.timeScale;
+        int frameRate = Application.targetFrameRate;
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum), "the fixture's premise.");
+
+        // What LeaveSanctum does to the read, on the tap.
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.Null);
+        Assert.That(Time.timeScale, Is.EqualTo(timeScale));
+        Assert.That(Application.targetFrameRate, Is.EqualTo(frameRate));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// A level-up holding the pause is not stamped on by a shop open on the same frame — and nothing
+    /// throws, which a second <c>RunPause.Pause</c> would.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Pause_ALevelUpIsNeverStampedOn()
+    {
+        _core.HasOffer = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp), "the fixture's premise.");
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.LevelUp), "GD §13: they never overlap, and progression wins.");
+
+        // Answered: the level-up gives the pause back and the shop takes it on the same frame —
+        // release before acquire, one phase apart.
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.Holder, Is.EqualTo(PauseReason.Sanctum));
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
+
+        Assert.That(_pause.IsPaused, Is.False);
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// <c>SanctumPhase</c> runs below <c>LevelUpPhase</c>, observed rather than read: the shop is
+    /// asked after the level-up has been opened.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Pause_TheOrderIsLevelUpThenSanctum()
+    {
+        _core.IsLevelUpPending = true;
+        _core.OnOpenLevelUp = () => { _core.IsLevelUpPending = false; _core.HasOffer = true; };
+        _core.RecordSanctumReads = true;
+
+        yield return Frame();
+
+        _core.RecordSanctumReads = false;
+
+        int opened = IndexIn(_core.Touched, "level-up:open");
+        int asked = IndexIn(_core.Touched, "sanctum:read");
+
+        Assert.That(opened, Is.GreaterThanOrEqualTo(0));
+        Assert.That(asked, Is.GreaterThan(opened), "the shop was asked before the level-up was opened.");
+
+        _core.HasOffer = false;
+
+        yield return Frame();
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// Rule 4's stated cost, asserted rather than left implied: two seconds in the shop cost zero
+    /// simulated seconds and no tick, so no cooldown recovers while the player reads the prices.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Ticker_TheSanctumIsGatedNotClocked()
+    {
+        yield return Frame();
+
+        float before = _core.SimulatedTime;
+
+        Assert.That(before, Is.GreaterThan(0f), "the fixture never ticked, so it proves nothing.");
+
+        _core.IsSanctumOpen = true;
+
+        yield return Frame();
+
+        int touchedBefore = _core.Touched.Count;
+
+        for (int i = 0; i < 120; i++)
+        {
+            yield return Frame();
+        }
+
+        Assert.That(_core.SimulatedTime, Is.EqualTo(before), "RunState.Time moved in the Sanctum.");
+        Assert.That(_core.Touched.Count, Is.EqualTo(touchedBefore), "core was ticked — cooldowns recovered.");
+
+        _core.IsSanctumOpen = false;
+
+        yield return Frame();
 
         LogAssert.NoUnexpectedReceived();
     }
@@ -1133,65 +1246,17 @@ public sealed class FrameOrderTests
     }
 
     /// <summary>
-    /// [Ledger row 4] Re-issues the cone that came back empty, in the same frame, and names which
-    /// of two things happened.
-    /// </summary>
-    /// <remarks>
-    /// <b>The whole of the instrument, and deliberately not a fix.</b> M4-07's experiment retired
-    /// the last standing hypothesis about <c>Ticker_RunsTheStepsInOrder</c>'s intermittent failure
-    /// and produced no new one, so what this row owed was a way to tell the two remaining
-    /// explanations apart rather than a fourteenth tally. The query is the same object, the intent
-    /// is the one <c>RecordingCore</c> actually wrote, and the physics scene is whatever the frame
-    /// left behind — so a second answer that differs from the first can only be the sync, and one
-    /// that agrees can only be the geometry.
-    /// </remarks>
-    private string DiagnoseTheEmptyReport()
-    {
-        if (!_core.WroteCone)
-        {
-            return "The cone report was empty because core never wrote a cone this frame, which is "
-                + "a different failure: the tick did not reach the line that emits one.";
-        }
-
-        int count = _cone.Query(_core.LastCone, _diagnosisIds);
-
-        if (count > 0)
-        {
-            return LateSync;
-        }
-
-        // The wedge and the body, measured against each other. "Wrong place" is two words and a
-        // shrug without them: what a reader needs is *how* wrong, and in which direction — a body
-        // outside the range is a different fault from one a millimetre behind the apex, and only
-        // one of those is about the game.
-        Vector3 apex = _core.LastCone.Origin.ToUnity();
-        Vector2 facing = _core.LastCone.FacingXZ.ToUnity();
-        Vector3 body = _body.Position;
-
-        float dx = body.x - apex.x;
-        float dz = body.z - apex.z;
-
-        float along = (dx * facing.x) + (dz * facing.y);
-        float across = (dx * -facing.y) + (dz * facing.x);
-        float distance = Mathf.Sqrt((dx * dx) + (dz * dz));
-
-        return WrongWedge
-            + $" The body stood {distance:F4} m from the apex — {along:F4} m along the facing and "
-            + $"{across:F4} m across it — against a range of {_core.LastCone.Range:F2} m and a "
-            + $"{_core.LastCone.AngleDeg:F0}° wedge. A negative figure along the facing is a body "
-            + "*behind* the apex, which no wedge of any width contains.";
-    }
-
-    /// <summary>
-    /// Does the physics scene hold <paramref name="view"/>'s trigger capsule at
+    /// Does the physics scene hold <paramref name="body"/> — a trigger capsule — at
     /// <paramref name="point"/> right now?
     /// </summary>
     /// <remarks>
     /// The capsule by reference rather than "any collider on that object", which is the whole
     /// point: a <see cref="CharacterController"/> moves its own shape as it sweeps, so it is the
-    /// one collider on the body that the flush does not govern.
+    /// one collider on the body that the flush does not govern. An enemy's or a Wight's, since
+    /// M6-11e: <see cref="Ticker_RunsTheStepsInOrder"/>'s step 5 asks it the question
+    /// <see cref="Ticker_MinionsMoveBeforeTheFlush"/> asked first.
     /// </remarks>
-    private bool TheSweepFinds(MinionView view, Vector3 point)
+    private bool TheSweepFinds(Collider body, Vector3 point)
     {
         int found = Physics.OverlapSphereNonAlloc(
             point,
@@ -1202,7 +1267,7 @@ public sealed class FrameOrderTests
 
         for (int i = 0; i < found; i++)
         {
-            if (ReferenceEquals(_probeHits[i], view.Body))
+            if (ReferenceEquals(_probeHits[i], body))
             {
                 return true;
             }
@@ -1472,23 +1537,6 @@ public sealed class FrameOrderTests
         public bool EmitCone { get; set; }
 
         /// <summary>
-        /// How far the wedge is displaced from where the body will be. Zero for every row but
-        /// <see cref="Ticker_AnEmptyConeReportIsDiagnosed"/>, which is the control that proves the
-        /// instrument reads both ways [ledger row 4].
-        /// </summary>
-        public CoreVector3 ConeOffset { get; set; }
-
-        /// <summary>
-        /// The last wedge this fake wrote, kept so the fixture can re-issue it against the same
-        /// physics scene in the same frame [ledger row 4]. One field, and the whole cost of the
-        /// instrument on this side.
-        /// </summary>
-        public ConeHitIntent LastCone { get; private set; }
-
-        /// <summary>Whether a cone was written at all, so an empty report can rule that out first.</summary>
-        public bool WroteCone { get; private set; }
-
-        /// <summary>
         /// Run from inside <see cref="ReportConeHits"/>, which is the one moment a row can ask
         /// physics a question at the same point in the frame core is being answered.
         /// <see cref="OnCastSkill"/>'s shape, at the other end of the tick.
@@ -1566,23 +1614,16 @@ public sealed class FrameOrderTests
             // the velocity and it was handed the step — so the expectation needs no arithmetic from
             // the test.
             var expected = new CoreVector3(
-                SnapshotEnemyPosition.X + (Walk.x * Dt) + ConeOffset.X,
-                SnapshotEnemyPosition.Y + ConeOffset.Y,
-                SnapshotEnemyPosition.Z + (Walk.z * Dt) + ConeOffset.Z);
+                SnapshotEnemyPosition.X + (Walk.x * Dt),
+                SnapshotEnemyPosition.Y,
+                SnapshotEnemyPosition.Z + (Walk.z * Dt));
 
-            var cone = new ConeHitIntent(
+            _sink.ConeHit(new ConeHitIntent(
                 _touched.Count,
                 expected,
                 new CoreVector2(1f, 0f),
                 range: 0.5f,
-                angleDeg: 60f);
-
-            // Kept before it is sent, so the fixture is holding exactly the wedge that was asked
-            // about rather than one it reconstructed [ledger row 4].
-            LastCone = cone;
-            WroteCone = true;
-
-            _sink.ConeHit(cone);
+                angleDeg: 60f));
         }
 
         public void ReportConeHits(ReadOnlySpan<int> enemyIds)
@@ -1691,6 +1732,47 @@ public sealed class FrameOrderTests
 
         public void ChooseSplash(ContentId characterId, int branch) =>
             _touched.Add("splash:choose");
+
+        // M6-02a's pair. Since M6-03a RunTicker.SanctumPhase reads IsSanctumOpen every frame, so it
+        // is settable like the level-up's pair — and every row that does not set it leaves it false,
+        // which keeps the new phase inert everywhere it is not the subject. A read is recorded only
+        // when a row asks, so the rows that pin Touched exactly are unmoved by a read on every frame.
+        private bool _isSanctumOpen;
+
+        public bool IsSanctumOpen
+        {
+            get
+            {
+                if (RecordSanctumReads)
+                {
+                    _touched.Add("sanctum:read");
+                }
+
+                return _isSanctumOpen;
+            }
+
+            set => _isSanctumOpen = value;
+        }
+
+        /// <summary>
+        /// Whether a read of <see cref="IsSanctumOpen"/> is written into <see cref="Touched"/> —
+        /// <see cref="Pause_TheOrderIsLevelUpThenSanctum"/>'s instrument, off for every other row.
+        /// </summary>
+        public bool RecordSanctumReads { get; set; }
+
+        public void LeaveSanctum() => _touched.Add("sanctum:leave");
+
+        // M6-02b's five. RunTicker asks none of them; the commands are recorded like every other.
+        public int PriceOf(Soulvail.Core.Progression.SanctumService service) => 0;
+
+        public bool CanBuy(Soulvail.Core.Progression.SanctumService service) => false;
+
+        public void Buy(Soulvail.Core.Progression.SanctumService service) =>
+            _touched.Add("sanctum:buy");
+
+        public void Banish(ContentId skillId) => _touched.Add("sanctum:banish");
+
+        public int BanishableInto(Span<ContentId> destination) => 0;
 
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {

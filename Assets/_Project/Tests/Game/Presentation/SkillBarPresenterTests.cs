@@ -1029,7 +1029,22 @@ public sealed class SkillBarPresenterTests
             { "HpText", 36f },
             { "Level", 40f },
             { "Label", 34f },   // the Overflow toast's, the one other object called Label
+
+            // M6-03b's four: the Essence counter at the level's size, and three captions at the
+            // slot labels' 28, which is the smallest size on this prefab that clears the floor.
+            { "EssenceCounter", 40f },
+            { "EssenceLabel", SlotFontPoints },
+            { "VeilrotLabel", SlotFontPoints },
+            { "ClaimedLabel", SlotFontPoints },
         };
+
+        foreach (float points in expected.Values)
+        {
+            Assert.That(
+                DeviceDp(points),
+                Is.GreaterThan(AndroidBodyTextFloorSp),
+                $"{points} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
+        }
 
         var slotLabels = new HashSet<TMP_Text>(SlotLabels());
         var seen = new List<string>();
@@ -1253,7 +1268,11 @@ public sealed class SkillBarPresenterTests
                 0f,
                 0,
                 taken.ToArray(),
-                slots));
+                slots,
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>()));
     }
 
     /// <summary><see cref="CreateRun"/>, started.</summary>
@@ -1406,11 +1425,11 @@ public sealed class SkillBarPresenterTests
             zones,
             boss,
             decoys,
-            Track(new SaveWriter(new InertSaveStore(), _hub)),
+            Track(new SaveWriter(new InertSaveStore(), _hub, new SavedRun())),
 
             // M4-05b's writer, on the constructor for the line above's reason. Nothing here dies,
             // so it banks nothing — the parameter is what guarantees it exists at all.
-            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub)),
+            Track(new ShardWriter(new ProfileStore(new InertSaveStore()), _hub, _catalog)),
             input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(input, _session, cameraObject.AddComponent<Camera>()),

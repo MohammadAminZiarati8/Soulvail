@@ -256,7 +256,7 @@ the first thing that will draw one is `TreeViewPresenter`, which rule 12 of that
 - **Splashing more than one branch, or from more than one class.** CH §5.4 is one branch of one
   class; rule 4 refuses the second and `BranchCount` is 3 or 4 and never 5.
 - **Class unlocks deciding which classes may be splashed from.** CH §5.4's *"a second **unlocked**
-  class"* against a `PlayerProfile` with no unlock set — M5-07a-ii rule 3, and M6-09.
+  class"* against a `PlayerProfile` with no unlock set — M5-07a-ii rule 3, and M6-09a.
 - **`SkillTreeSpec`, `SkillDefinition` or any authored asset.** Rule 2: the content side is already
   correct and M3-02a rule 11's one-tree-per-class refusal stands.
 

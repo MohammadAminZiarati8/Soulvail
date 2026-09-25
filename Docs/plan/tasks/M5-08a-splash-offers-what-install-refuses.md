@@ -56,7 +56,7 @@ public sealed partial class SplashFlow
 3. **The two refusals keep the reasons they already have**, and they are distinct keys: `ui.splash.refused.primitive` for an effect whose handler this run never registered, `ui.splash.refused.minions` for a `ModifyStat` aimed at `StatTarget.Minions` on a class with no `MinionSpec`. A Keystone is skipped before either test, exactly as today.
 4. **`Choose` and `Install` are unchanged and still throw.** Rule 1's predicate is the gate; the exception is the invariant. A future caller that reaches `Install` without consulting `BranchesOf` must still fail loudly rather than install half a branch.
 5. **A non-borrowable row is `interactable = false` and draws `RefusedKey` where its node count would go.** The row keeps its name, so the player reads *what they cannot have and why*, which is the half CH §5.4 is actually about.
-6. **At least one branch of at least one candidate is always borrowable, and nothing asserts it.** With two classes the Oathbound has exactly one, and if a future roster leaves a class with none the screen is a dead end — **out of scope, named in Out of scope, and the reason is that M6-07's third class changes the arithmetic before it can bite.**
+6. **At least one branch of at least one candidate is always borrowable, and nothing asserts it.** With two classes the Oathbound has exactly one, and if a future roster leaves a class with none the screen is a dead end — **out of scope, named in Out of scope, and the reason is that M6-07a's third class changes the arithmetic before it can bite.**
 7. **`SplashOption`'s constructor stays public and gains two parameters.** Every existing construction site is inside `SplashFlow`; fixtures that build one by hand are ripple and are listed as deviations if any exist.
 
 **When the spec disagrees with itself, the Tests table wins, then Behaviour, then Public API, then Files.** When it disagrees with code an earlier task built, the code wins. Either way, name the rule you resolved in *As built* — never fix it quietly.
@@ -90,7 +90,7 @@ public sealed partial class SplashFlow
 ## Out of scope
 
 - **Re-authoring the trees so a minionless class can borrow more than one branch.** Restless Dead is a `Minions` node filed in *Rot* rather than *Legion*, which is why the Oathbound loses two branches instead of one — an authoring observation for **M7-04**, which authors all 81 nodes, not a change to make under an acceptance.
-- **A class with no borrowable branch at all** (rule 6). M6-07's third class changes the arithmetic first.
+- **A class with no borrowable branch at all** (rule 6). M6-07a's third class changes the arithmetic first.
 - **The Gravecaller's TTK drift.** Same playtest, different cause — [M6 row 2](../ROADMAP.md#carry-forward-into-m6), owned by M8-05.
 - **Anything about the splash's layout or its two-page shape.** M5-07a-ii shipped it and it works.
 
@@ -141,4 +141,4 @@ re-serialised itself and was reverted ([Traps §5](../../Traps.md)).
 **Out of scope held.** Restless Dead stays in *Rot* — moving it makes Legion five nodes and Rot three,
 which is authoring, and M7-04 places all 81 nodes anyway ([parking lot](../ROADMAP.md#parking-lot)).
 Rule 6's *a class with no borrowable branch at all* is still unasserted and still cannot happen with
-two classes; M6-07's third class changes the arithmetic before it could.
+two classes; M6-07a's third class changes the arithmetic before it could.

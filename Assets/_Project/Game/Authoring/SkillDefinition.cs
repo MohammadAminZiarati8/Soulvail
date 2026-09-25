@@ -79,6 +79,22 @@ namespace Soulvail.Game.Authoring
                  "below this one.")]
         [SerializeField] private SkillDefinition _parent;
 
+        [Header("Pact — GD §13.2's corrupted form. Optional on any kind but Active")]
+        [Tooltip("Whether this node has a corrupted form at all. Off means it can never be " +
+                 "offered as a Pact. On an Active it is refused at boot (M6-05a rule 3).")]
+        [SerializeField] private bool _hasPact;
+
+        [Tooltip("What taking the corrupted node puts into force — instead of the effects above, " +
+                 "never as well as. Author GD §13.2's ~1.8× as a budget, downside included.")]
+        [SerializeField] private EffectDefinition[] _pactEffects = Array.Empty<EffectDefinition>();
+
+        [Tooltip("What taking it adds to the Veilrot meter. GD §13.2's band: 10 to 20.")]
+        [SerializeField] private float _pactVeilrot = 15f;
+
+        [Tooltip("What the corrupted node says. The name stays the clean node's, so the player " +
+                 "recognises it (M6-05a rule 4).")]
+        [SerializeField] private string _pactDescriptionKey = "skill.new.pact.description";
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion, and for a child node reading its parent's. It is <em>not</em> known
@@ -109,7 +125,8 @@ namespace Soulvail.Game.Authoring
                     _kind,
                     BuildEffects(_effects, nameof(_effects)),
                     _kind == SkillKind.Active ? BuildActive() : null,
-                    _kind == SkillKind.Upgrade ? ParentId() : default);
+                    _kind == SkillKind.Upgrade ? ParentId() : default,
+                    _hasPact ? BuildPact() : null);
             }
             catch (ArgumentException inner)
             {
@@ -179,6 +196,21 @@ namespace Soulvail.Game.Authoring
         /// </summary>
         private ActiveSpec BuildActive() =>
             new ActiveSpec(_cooldown, BuildTrigger(), BuildEffects(_onCast, nameof(_onCast)));
+
+        /// <summary>
+        /// Builds GD §13.2's corrupted form, when the toggle says there is one.
+        /// </summary>
+        /// <remarks>
+        /// <b>Not gated on the kind, unlike the two blocks above.</b> A Pact on an Active is refused
+        /// by <see cref="SkillSpec"/> rather than ignored here, because a toggle a designer switched
+        /// on is a claim that the node has a corrupted form — silently dropping it would ship a
+        /// node that is never offered as the Pact its asset says it is.
+        /// </remarks>
+        private PactSpec BuildPact() =>
+            new PactSpec(
+                BuildEffects(_pactEffects, nameof(_pactEffects)),
+                _pactVeilrot,
+                new LocKey(_pactDescriptionKey));
 
         /// <summary>
         /// Turns the authored clauses into the <see cref="TriggerSpec"/> M3-06's runner asks.
@@ -261,6 +293,22 @@ namespace Soulvail.Game.Authoring
                     $"SkillDefinition '{name}' is an Upgrade with no Parent. An Upgrade improves a " +
                     "skill you already own (CH §4), and one naming nothing could never be gated " +
                     "on anything.",
+                    this);
+            }
+
+            if (_hasPact && _kind == SkillKind.Active)
+            {
+                Debug.LogWarning(
+                    $"SkillDefinition '{name}' is an Active with a Pact. An Active's corrupted form " +
+                    "has no runner door until M7-04, and ToSpec refuses it at boot.",
+                    this);
+            }
+
+            if (_hasPact && (_pactEffects is null || _pactEffects.Length == 0))
+            {
+                Debug.LogWarning(
+                    $"SkillDefinition '{name}' has a Pact with no effects — a Veilrot price for " +
+                    "nothing, and ToSpec refuses it at boot.",
                     this);
             }
         }

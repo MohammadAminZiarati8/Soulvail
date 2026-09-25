@@ -398,6 +398,10 @@ public sealed class SkillTreeValidationTests
         // quietly cover the next omission — under `TheTreelessClass_IsStillTreeless`, whose whole
         // job was to go red the day the tree landed. It did, and both halves were deleted rather
         // than moved: the sweep is the stronger check and it is doing the work again.
+        //
+        // **And the Emberwright's, M6-07a to M6-08, went the same way** (M6-07a rule 9): the skip
+        // came back by name with a row beside it to expire it, M6-08's tree turned that row red, and
+        // both were deleted. EmberwrightTreeTests.Tree_TheTreelessSkipIsGone keeps them gone.
         ContentCatalog catalog = ShippedCatalog();
         var problems = new List<string>();
 
@@ -424,16 +428,16 @@ public sealed class SkillTreeValidationTests
     }
 
     [Test]
-    public void BothShippedClasses_ResolveTheirOwnTree()
+    public void EveryShippedClass_ResolvesItsOwnTree()
     {
-        // **What `TheTreelessClass_IsStillTreeless` turned into when it expired.** That row said
-        // "the Gravecaller has no tree, and this exemption is temporary"; it went red at M5-06b as
-        // designed. What is worth keeping from it is the other half it also asserted — that a class
-        // resolves *its own* tree rather than merely some tree — which is now a claim about two
-        // classes instead of a claim about one plus an excuse.
+        // **What `TheTreelessClass_IsStillTreeless` turned into when it expired — twice.** That row
+        // said "this class has no tree, and this exemption is temporary"; it went red at M5-06b for
+        // the Gravecaller and at M6-08 for the Emberwright, as designed. What is worth keeping is
+        // the other half it also asserted — that a class resolves *its own* tree rather than merely
+        // some tree — which is now a claim about three classes instead of two plus an excuse.
         ContentCatalog catalog = ShippedCatalog();
 
-        foreach (string id in new[] { "character.oathbound", "character.gravecaller" })
+        foreach (string id in new[] { "character.oathbound", "character.gravecaller", "character.emberwright" })
         {
             var characterId = new ContentId(id);
 
@@ -722,6 +726,10 @@ public sealed class SkillTreeValidationTests
         // RunSession owns and RunSessionTests asserts; a walk that skipped the Gravecaller's tree
         // for it would stop proving the one thing it exists to prove.
         registry.Register<RaiseMinions>(new Ignoring<RaiseMinions>());
+
+        // **The seventh, predicted by M5-06b's As built 6 and arriving the same way** (M6-08 rule
+        // 5): Emberfall and Cinder Nova cast a SpawnBurnZone, and the starve walks went red on it.
+        registry.Register<SpawnBurnZone>(new Ignoring<SpawnBurnZone>());
 
         return registry;
     }

@@ -44,10 +44,14 @@ namespace Soulvail.Game.Presentation;
 /// </para>
 /// <para>
 /// <b>The tenth colour is a field here, which is how ledger row 6 closes rather than pauses.</b>
-/// M3-13b's damage tint, M4-04's boss segments, M6-04's Veilrot meter and M6-05's Pact frames each
-/// add a member and a test row instead of a placeholder. <see cref="Veilrot"/> and
-/// <see cref="Essence"/> ship with no reader at all, which is the cheapest possible statement of that
-/// rule, and <see cref="IsDanger"/> is the door every new member has to pass.
+/// M3-13b's damage tint, M4-04's boss segments and M6-04's Veilrot meter each add a member and a
+/// test row instead of a placeholder. <b>M6-05b's Pact frame adds no member</b>, and that is the
+/// rule working rather than an exception to it: GD §16.4 makes one violet mean Veilrot, Pacts and
+/// corruption, so the frame reads <see cref="Veilrot"/>, and a second violet would be the drift
+/// ledger row 6 exists to catch arriving from inside this file. <see cref="Veilrot"/> and
+/// <see cref="Essence"/> both shipped with no reader at all, which is the cheapest possible statement
+/// of that rule; Essence has had readers since M4-06 and Veilrot since M6-03b's meter, and
+/// <see cref="IsDanger"/> is the door every new member has to pass.
 /// </para>
 /// <para>
 /// <b>It is <c>Soulvail.Game</c> and it could not be anything else.</b> A colour is presentation:
@@ -84,10 +88,16 @@ public static class Palette
     /// </remarks>
     public static readonly Color Danger = Rgb(0xFF, 0x4A, 0x1F);
 
-    /// <summary><c>#A855F7</c> — corruption, Veilrot, Pacts. GD §16.4. No reader yet (M6).</summary>
+    /// <summary>
+    /// <c>#A855F7</c> — corruption, Veilrot, Pacts. GD §16.4. Read by the HUD's Veilrot meter, the
+    /// Claiming's name beside it, and a Pact offer card's frame and price.
+    /// </summary>
     public static readonly Color Veilrot = Rgb(0xA8, 0x55, 0xF7);
 
-    /// <summary><c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. No reader yet (M6).</summary>
+    /// <summary>
+    /// <c>#FBBF24</c> — rewards, Essence, Gates. GD §16.4. Read by the run-end payout, the
+    /// Sanctum's prices, and the class-select screen's Shard balance and prices (M6-09b).
+    /// </summary>
     public static readonly Color Essence = Rgb(0xFB, 0xBF, 0x24);
 
     /// <summary>
@@ -127,7 +137,7 @@ public static class Palette
     /// <inheritdoc cref="KindPassive" />
     public static readonly Color KindKeystone = new Color(0.85f, 0.72f, 0.32f, 1f);
 
-    // ---- Derived: M3-09d's three node states. ---------------------------------------------------
+    // ---- Derived: M3-09d's three node states, and M6-03b's fourth. -----------------------------
 
     /// <summary>
     /// Neither owned nor takeable: dim, because M3-09d rule 9's honest failure mode is small and
@@ -143,6 +153,23 @@ public static class Palette
     /// <summary>Already owned. CH §5.1's <em>"the player's path highlighted"</em> is this and nothing else.</summary>
     /// <inheritdoc cref="NodeLocked" />
     public static readonly Color NodeTaken = new Color(0.36f, 0.82f, 0.62f, 1f);
+
+    /// <summary>
+    /// Taken out of this run's offer pool by a Sanctum Banish (M6-02b). <see cref="NodeLocked"/>
+    /// darkened and nothing else: a banished node is <em>gone</em> where a locked one is merely out of
+    /// reach, so it reads dimmer than the dimmest thing on the screen.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>No hue shift toward violet</b> (M6-03b rule 8). Banish is bought with Essence and has
+    /// nothing to do with the Veil, and GD §16.4's violet means corruption.
+    /// </para>
+    /// <para>
+    /// <b>The honest limit, stated:</b> colour alone is a weak signal on a 24 dp cell that holds
+    /// neither an icon nor a word. That is ledger row 3's redesign, which this member does not move.
+    /// </para>
+    /// </remarks>
+    public static readonly Color NodeBanished = new Color(0.15f, 0.16f, 0.19f, 1f);
 
     // ---- Derived: the player's own readouts and feedback. ----------------------------------------
 

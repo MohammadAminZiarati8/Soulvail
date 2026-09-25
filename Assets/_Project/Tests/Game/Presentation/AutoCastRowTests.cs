@@ -742,7 +742,11 @@ public sealed class AutoCastRowTests
                 0f,
                 0,
                 taken.ToArray(),
-                slots));
+                slots,
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>()));
     }
 
     /// <summary><see cref="CreateRun"/>, started.</summary>

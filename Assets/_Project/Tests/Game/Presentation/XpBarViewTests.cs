@@ -885,7 +885,11 @@ public sealed class XpBarViewTests
                 xp,
                 pending,
                 takenIds,
-                new ContentId[SkillRunner.MaxManualSlots]));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>()));
     }
 
     /// <summary><see cref="CreateRun"/>, started.</summary>
@@ -935,7 +939,7 @@ public sealed class XpBarViewTests
         // instantiated prefab in EditMode: the placement and the first draw both live there.
         _strip.Construct(_session, _hub);
         _toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
-        _presenter.Construct(_hub, _session);
+        _presenter.Construct(_hub, _session, Passthrough());
 
         Invoke(_strip, "Start");
         Invoke(_toast, "Start");

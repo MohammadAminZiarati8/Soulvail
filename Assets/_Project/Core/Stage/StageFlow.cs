@@ -14,9 +14,10 @@ namespace Soulvail.Core.Stage;
 /// Which part of a stage's life is running. GD §7.1's anatomy, one state per beat.
 /// </summary>
 /// <remarks>
-/// <c>Clear</c> is a state rather than an instant because the Sanctum (GD §7.1, M6-02) lands between
-/// it and <c>Gate</c>: when there is an economy to spend, a sixth phase goes in that gap without
-/// moving anything either side of it.
+/// <c>Clear</c> is a state rather than an instant because the Sanctum (GD §7.1) lands between it and
+/// <c>Gate</c> — and as of M6-02a it has: the sixth phase went into that gap without moving anything
+/// either side of it. <b>No ordinal here is identity</b>: nothing saves or serialises a phase, which
+/// is why a member could be inserted mid-list.
 /// </remarks>
 public enum StagePhase
 {
@@ -26,8 +27,14 @@ public enum StagePhase
     /// <summary>The director runs, until every body of every wave is down.</summary>
     Waves,
 
-    /// <summary>The last body is down; the barrier drops, the door opens, the next arena is named.</summary>
+    /// <summary>The last body is down; the barrier drops and the next arena is named.</summary>
     Clear,
+
+    /// <summary>
+    /// GD §13.3's economy moment: the arena is empty, the shop is open, and nothing is counting
+    /// down. Left by a command and by nothing else (M6-02a rule 3).
+    /// </summary>
+    Sanctum,
 
     /// <summary>Waiting for the player to walk into the door. No timeout (rule 8).</summary>
     Gate,
@@ -99,6 +106,41 @@ public sealed class StageFlow
     private readonly EnemySystem _enemies;
     private readonly ProjectileSystem _projectiles;
     private readonly PlayerCombat _player;
+
+    /// <summary>
+    /// The run's Essence, paid on the edge into <see cref="StagePhase.Clear"/> (M6-01a rule 4).
+    /// </summary>
+    /// <remarks>
+    /// <b>Required, unlike <see cref="_lures"/> and <see cref="_minions"/>, and that is rule 5
+    /// rather than a preference.</b> Every run has a wallet — there is no class and no mode that
+    /// does without one — so an optional argument defaulting to null would make a mis-wired run
+    /// clear stages and be paid nothing, with no throw and no log. That is the exact failure
+    /// M5-06a's <em>As built</em> deviation 2 refused for <c>MinionRecipe</c>, and refusing it here
+    /// costs eleven call sites across two files.
+    /// </remarks>
+    private readonly EssenceWallet _essence;
+
+    /// <summary>
+    /// GD §13.4's Ordeals, dealt in <see cref="Advance"/> above the composition (M6-06a rule 5).
+    /// </summary>
+    /// <remarks>
+    /// Required, for <see cref="_essence"/>'s reason and at its price: every run has a set, and an
+    /// optional one defaulting to null would let a mis-wired run reach stage 25 and be dealt nothing.
+    /// </remarks>
+    private readonly Ordeals _ordeals;
+
+    /// <summary>
+    /// The <c>Affixes</c> stream, for <see cref="_ordeals"/>' draw and nothing else (the M6-06a ruling).
+    /// </summary>
+    /// <remarks>
+    /// Held rather than passed to <see cref="Tick"/> the way <c>Spawn</c> is, which is a deviation
+    /// worth stating: a <see cref="Tick"/> parameter would move thirty call sites for a stream that is
+    /// drawn once every ten stages, and the constructor is already moving for the set above. A run's
+    /// streams are fixed objects for its whole life, so holding one reads the same position a
+    /// parameter would.
+    /// </remarks>
+    private readonly IRandomStream _affixes;
+
     private readonly IDomainEvents _events;
     private readonly WavePlan _plan;
 
@@ -152,6 +194,11 @@ public sealed class StageFlow
     /// the narrowness of what is reset is visible at the call site rather than hidden in a
     /// constructor argument — see <see cref="Advance"/>, rule 12.
     /// </param>
+    /// <param name="essence">
+    /// The run's wallet, paid once per stage at <see cref="EnterClear"/>. Required — see the field.
+    /// </param>
+    /// <param name="ordeals">The run's Ordeals, dealt at each boundary. Required — see the field.</param>
+    /// <param name="affixes">The run's <c>Affixes</c> stream, which the deal draws on and nothing else.</param>
     /// <param name="events">Where the three stage events go.</param>
     /// <param name="plan">
     /// The run's single <c>WavePlan</c>, built once by <c>RunSession.Start</c> at the wave curve's
@@ -174,6 +221,9 @@ public sealed class StageFlow
         EnemySystem enemies,
         ProjectileSystem projectiles,
         PlayerCombat player,
+        EssenceWallet essence,
+        Ordeals ordeals,
+        IRandomStream affixes,
         IDomainEvents events,
         WavePlan plan,
         int seed,
@@ -186,6 +236,9 @@ public sealed class StageFlow
         _enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
         _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         _player = player ?? throw new ArgumentNullException(nameof(player));
+        _essence = essence ?? throw new ArgumentNullException(nameof(essence));
+        _ordeals = ordeals ?? throw new ArgumentNullException(nameof(ordeals));
+        _affixes = affixes ?? throw new ArgumentNullException(nameof(affixes));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _plan = plan ?? throw new ArgumentNullException(nameof(plan));
 
@@ -352,9 +405,16 @@ public sealed class StageFlow
                 // stage the mode says does not exist, and the session ends the run on the flag.
                 if (!IsModeComplete && PhaseElapsed >= ClearTime)
                 {
-                    EnterGate(now);
+                    EnterSanctum(now);
                 }
 
+                break;
+
+            case StagePhase.Sanctum:
+                // Untimed, and this empty case is the whole of that (M6-02a rule 3): GD §13.3's
+                // room is left by LeaveSanctum and never by a clock — Gate's rule, one phase early.
+                // Written out rather than left to the default, which throws for a phase this switch
+                // has forgotten.
                 break;
 
             case StagePhase.Gate:
@@ -435,8 +495,16 @@ public sealed class StageFlow
     /// The arena is empty. The barrier drops, the door opens, and the next arena is named.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The gate position is read off this frame's snapshot rather than held, and it is carried on the
     /// event so that whatever draws a door does not have to ask core where one is.
+    /// </para>
+    /// <para>
+    /// <b>It is also where the run is paid, and it fires exactly once a stage</b> (M6-01a rule 4).
+    /// <c>Enter</c> is an edge: the flow parks in <see cref="StagePhase.Clear"/> for
+    /// <see cref="ClearTime"/> and this method is called once — the same property M2-14a rule 1's
+    /// boundary write already depends on.
+    /// </para>
     /// </remarks>
     private void EnterClear(float now, WorldSnapshot snapshot)
     {
@@ -450,9 +518,95 @@ public sealed class StageFlow
 
         IsModeComplete = !hasNext;
 
+        // **GD §15's income, and it is paid above the publish below** (M6-01a rule 4). A reader
+        // handling StageCleared therefore sees a wallet that has already been paid, which is what
+        // lets a float-up and a readout react to one tick rather than to two.
+        //
+        // The formula is the mode's — EssenceSpec.ForStageClear — because what a mode pays is its
+        // own statement (GD §4.5), and the boss term is asked of the director rather than computed:
+        // `IsBossStage` is the existing read and no `stage % 5` exists anywhere in the game
+        // (M4-01b rule 1). A mode that authors no Essence pays zero, and Earn is silent for it.
+        //
+        // **GD §13.4's Famine wraps the award and never the formula** (M6-06b rule 1): the wallet
+        // and the spec stay ignorant of Ordeals, which is what M6-01a's Out of scope reserved.
+        _essence.Earn(UnderOrdeals(_mode.Essence.ForStageClear(Stage, _director.IsBossStage)));
+
         Vector3 gate = snapshot.HasGate ? snapshot.GatePosition : Vector3.Zero;
 
         _events.Publish(new StageCleared(Stage, gate, hasNext ? ArenaFor(Stage + 1) : default));
+    }
+
+    /// <summary>
+    /// A stage clear's <paramref name="award"/> under the run's Essence multiplier — Famine's 0.6.
+    /// </summary>
+    /// <remarks>
+    /// <b>Rounded to the nearest whole Essence and floored at 1 whenever the award was positive</b>
+    /// (M6-06b rule 1). A stacked Famine can make a clear nearly worthless and never literally
+    /// nothing: <c>EssenceWallet.Earn</c> is silent for zero, so a zero award would be a stage clear
+    /// that published no <c>EssenceChanged</c> and read on the HUD as a stage never cleared. A run
+    /// dealt nothing multiplies by 1, which is the identity for every whole award (rule 7).
+    /// </remarks>
+    private int UnderOrdeals(int award)
+    {
+        if (award <= 0)
+        {
+            return award;
+        }
+
+        int paid = (int)MathF.Round(award * _ordeals.EssenceMultiplier);
+
+        return paid < 1 ? 1 : paid;
+    }
+
+    /// <summary>
+    /// Leaves the Sanctum and opens the door. The one way out of <see cref="StagePhase.Sanctum"/>.
+    /// </summary>
+    /// <param name="now">Simulated run seconds — <c>RunState.Time</c>, as <see cref="Tick"/> takes it.</param>
+    /// <remarks>
+    /// <b>It throws rather than no-ops outside the Sanctum</b> (M6-02a rule 4): the only caller is a
+    /// tap on a screen, and a tap arriving for a screen that is not up is a wiring mistake a silent
+    /// return would hide. The phase is checked before the clock, <see cref="Begin"/>'s order — the
+    /// state that makes the call meaningless is the more useful thing to be told about.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The flow is not in the Sanctum — a view reporting a tap on a screen that is not up.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is not finite.</exception>
+    public void LeaveSanctum(float now)
+    {
+        if (Phase != StagePhase.Sanctum)
+        {
+            throw new InvalidOperationException(
+                $"The Sanctum is not open — the stage is in {Phase}. LeaveSanctum is a tap on the "
+                    + "Sanctum's own screen, so a call arriving now is a control nobody is drawing.");
+        }
+
+        RequireFinite(now, nameof(now));
+
+        EnterGate(now);
+    }
+
+    /// <summary>
+    /// The shop opens: GD §13.3's room, between the barrier dropping and the door opening.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Its event goes out here and the boundary snapshot does not</b> (M6-02a rule 1). The save
+    /// is taken on the edge into <see cref="StagePhase.Clear"/>, <see cref="ClearTime"/> earlier, so
+    /// a run killed in the shop resumes with the Essence it walked in with rather than whatever it
+    /// was halfway through spending.
+    /// </para>
+    /// <para>
+    /// The balance rides on the event so a screen opening on it can draw its first frame without
+    /// reading the run (AR §8). It is the wallet as of this instant, which already includes this
+    /// stage's pay: <see cref="EnterClear"/> earned it a phase ago.
+    /// </para>
+    /// </remarks>
+    private void EnterSanctum(float now)
+    {
+        Enter(StagePhase.Sanctum, now);
+
+        _events.Publish(new SanctumOpened(Stage, _essence.Balance));
     }
 
     /// <summary>Waiting for the player, for as long as they like (rule 8).</summary>
@@ -478,7 +632,8 @@ public sealed class StageFlow
     /// <para>
     /// <b>The order is the contract.</b> Depth first, so that anything reacting to the clears cannot
     /// spawn a body priced at the stage that has just ended (M2-03 rule 12). Then the enemies, then
-    /// the shots, then the target, then the composition, and only then the next arrival.
+    /// the shots, then the target, then the Ordeal deal, then the composition, and only then the next
+    /// arrival.
     /// </para>
     /// <para>
     /// <b><c>Targeter.Reset</c>, and deliberately not <c>PlayerCombat.Reset</c>.</b> The wide one
@@ -531,9 +686,18 @@ public sealed class StageFlow
         // rather than by this object happening not to have begun it yet.
         _director.Clear();
 
+        // **GD §13.4's deal, above the composition, and that ordering is the whole reason it is here
+        // rather than somewhere tidier** (M6-06a rule 5). M6-06b's Swarm changes what a stage is made
+        // of, and the line below composes this stage — so an Ordeal dealt after it would be invisible
+        // for the stage it arrived on, and the player would meet it a stage late with nothing to say
+        // why. A run's first stage is composed in RunSession.Start instead and needs no deal:
+        // Descent's first boundary is 25, and a resumed run restores rather than deals (rule 7).
+        _ordeals.OnStageEntered(next, _affixes);
+
         // Into the same plan object the run has held since Start. A boundary is the worst moment in
-        // a run to allocate, and WavePlan.Begin is written to be refilled (M2-04).
-        _composer.Compose(next, _mode, _plan, spawn);
+        // a run to allocate, and WavePlan.Begin is written to be refilled (M2-04). With the run's
+        // Ordeals, so a Swarm dealt on the line above is in force for this stage (M6-06b rule 3).
+        _composer.Compose(next, _mode, _plan, spawn, _ordeals);
 
         EnterArrival(now);
     }

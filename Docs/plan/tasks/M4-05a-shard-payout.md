@@ -153,7 +153,7 @@ _None. Nothing in `Soulvail.Game` changes and nothing is drawn_ — the number e
 - **GD §14.1's third term**, and the profile-wide first-encounter set it needs — rule 6.
 - **A `RunSnapshot` bump so a resumed run keeps its boss count** — rule 4. A second format bump in this
   milestone is a task, not a line.
-- **Anything a Shard buys.** GD §14.2's unlocks are M6-09's and the Sanctum is M6-02's.
+- **Anything a Shard buys.** GD §14.2's unlocks are M6-09a's and the Sanctum is M6-02b's.
 - **Difficulty-modifier payout multipliers** (GD §18's ×0.7 / ×1.0 / ×1.4) — M8-03's, with the modifiers.
 
 ## As built

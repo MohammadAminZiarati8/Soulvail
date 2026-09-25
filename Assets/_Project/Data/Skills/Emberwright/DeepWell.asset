@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: DeepWell
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.emberwright.deep-well
+  _nameKey: skill.emberwright.deep-well.name
+  _descriptionKey: skill.emberwright.deep-well.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: af52a7b18131f2a1a91e56a9a8565cbc, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: 96755ce099a6f02649d1bb36d5d0dec6, type: 2}

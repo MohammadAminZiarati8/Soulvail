@@ -56,6 +56,7 @@ public sealed class LevelUpFlowTests
     private PlayerStats _stats;
     private EffectRegistry _registry;
     private SkillRunner _runner;
+    private Veilrot _veilrot;
 
     [SetUp]
     public void SetUp()
@@ -76,6 +77,7 @@ public sealed class LevelUpFlowTests
         _registry.Register<ModifyStat>(new ModifyStatHandler(_stats));
 
         _runner = new SkillRunner(_registry, _combat.Blackboard, _events);
+        _veilrot = new Veilrot(_stats, _combat, _combat.Blackboard, _events);
     }
 
     // ---- The offer (rules 1, 2, 3) ---------------------------------------------------------------
@@ -152,7 +154,8 @@ public sealed class LevelUpFlowTests
 
         flow.Open(random.Offers);
 
-        Assert.That(random.OffersDraws, Is.EqualTo(3), "one draw per pick, whatever the walk found.");
+        // One per pick and M6-05b's two for the Pact roll, whatever the walk found.
+        Assert.That(random.OffersDraws, Is.EqualTo(3 + 2), "one draw per pick and two for the roll.");
 
         // ADR-0011: a level-up must never shift what the next wave is made of.
         Assert.That(random.OtherDraws, Is.EqualTo(0));
@@ -680,22 +683,22 @@ public sealed class LevelUpFlowTests
         SkillTree tree = FullTree();
 
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow()));
+            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow()));
+            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow()));
+            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow()));
+            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow(), _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow()));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow(), _veilrot));
 
         // And the sixth argument has no null row, because it cannot be one: an OverflowSpec is a
         // struct, its zeroed form is legal content (a mode whose spare levels are worth nothing),
         // and every value that is not passes its own constructor. Overflow_AZeroedModeGrantsNothing
         // is what the missing row would have been.
         Assert.DoesNotThrow(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default, _veilrot));
     }
 
     [Test]
@@ -784,7 +787,8 @@ public sealed class LevelUpFlowTests
         var runner = new SkillRunner(registry, combat.Blackboard, events);
 
         SkillTree tree = WideTree(10);
-        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow());
+        var veilrot = new Veilrot(stats, combat, combat.Blackboard, events);
+        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow(), veilrot);
 
         IRandomStream offers = new FixedRandom(99).Offers;
 
@@ -799,12 +803,140 @@ public sealed class LevelUpFlowTests
         AllocationAssert.None(() => flow.Open(offers));
     }
 
+    // ---- M6-02b: a banked reroll is spent by the next draw (rule 3) --------------------------------
+
+    [Test]
+    public void Reroll_TheNextOfferIsTheSecondDraw()
+    {
+        // Three flows over three trees of the same shape and one shared tracker, so each sees the
+        // one pick banked below. The first two say what the stream's first and second three values
+        // would each draw on their own; the third is the rerolled one.
+        BankPicks(1);
+
+        LevelUpFlow first = Flow(WideTree(10));
+        first.Open(new FixedRandom(0.05f, 0.05f, 0.05f).Offers);
+        ContentId[] firstThree = first.Offer.ToArray();
+
+        LevelUpFlow second = Flow(WideTree(10));
+        second.Open(new FixedRandom(0.95f, 0.95f, 0.95f).Offers);
+        ContentId[] secondThree = second.Offer.ToArray();
+
+        Assert.That(secondThree, Is.Not.EqualTo(firstThree), "the script must tell the two draws apart.");
+
+        _events.Clear();
+
+        LevelUpFlow rerolled = Flow(WideTree(10));
+        GrantReroll(rerolled);
+
+        // Each draw is its three picks and M6-05b's two Pact draws, so the second three start at
+        // the sixth value rather than the fourth (M6-05b rule 9).
+        var random = new CountingRandom(
+            new FixedRandom(0.05f, 0.05f, 0.05f, 0.5f, 0.5f, 0.95f, 0.95f, 0.95f, 0.5f, 0.5f));
+
+        rerolled.Open(random.Offers);
+
+        Assert.That(rerolled.Offer.ToArray(), Is.EqualTo(secondThree), "the player sees the second three.");
+        Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(1), "and is told about one offer, not two.");
+        Assert.That(rerolled.RerollsSpent, Is.EqualTo(1));
+        Assert.That(rerolled.RerollCharges, Is.Zero);
+        Assert.That(random.OffersDraws, Is.EqualTo(10), "two draws of three and two from the same stream.");
+    }
+
+    [Test]
+    public void Reroll_IsSpentOnceOnly()
+    {
+        LevelUpFlow flow = Flow(WideTree(10));
+        GrantReroll(flow);
+        BankPicks(2);
+
+        var random = new CountingRandom(new FixedRandom(3));
+
+        flow.Open(random.Offers);
+        int afterFirst = random.OffersDraws;
+
+        flow.Choose(0, random.Offers);
+        int second = random.OffersDraws - afterFirst;
+
+        Assert.That(afterFirst, Is.EqualTo(2 * second), "the first offer was drawn twice, the second once.");
+        Assert.That(flow.RerollsSpent, Is.EqualTo(1));
+        Assert.That(flow.RerollCharges, Is.Zero);
+    }
+
+    [Test]
+    public void Reroll_TwoChargesRerollTwoOffers()
+    {
+        LevelUpFlow flow = Flow(WideTree(10));
+        GrantReroll(flow);
+        GrantReroll(flow);
+        BankPicks(2);
+
+        var random = new CountingRandom(new FixedRandom(5));
+
+        flow.Open(random.Offers);
+        int afterFirst = random.OffersDraws;
+
+        flow.Choose(0, random.Offers);
+
+        Assert.That(flow.RerollsSpent, Is.EqualTo(2));
+        Assert.That(flow.RerollCharges, Is.Zero);
+        Assert.That(random.OffersDraws, Is.EqualTo(2 * afterFirst), "four draws, each offer's pair alike.");
+        Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(2), "one announcement per offer.");
+    }
+
+    [Test]
+    public void Reroll_ChangesNothingButOffers()
+    {
+        LevelUpFlow flow = Flow(WideTree(10));
+        GrantReroll(flow);
+        BankPicks(1);
+
+        var random = new CountingRandom(new FixedRandom(7));
+
+        flow.Open(random.Offers);
+
+        // ADR-0011: the extra draw is a real seed consequence and it is confined to Offers — a
+        // rerolled run's later offers differ, and nothing it fights does.
+        Assert.That(random.OffersDraws, Is.GreaterThan(0));
+        Assert.That(random.OtherDraws, Is.Zero);
+    }
+
+    [Test]
+    public void Reroll_OnAnOverflowLevelSpendsNothing()
+    {
+        SkillTree tree = FullTree();
+        TakeEverything(tree);
+
+        LevelUpFlow flow = Flow(tree);
+        GrantReroll(flow);
+        BankPicks(1);
+
+        flow.Open(Offers());
+
+        // Open spends a charge only on a draw that found something; a full tree draws nothing, so
+        // the pick becomes Overflow and the charge waits for a tree that can offer again.
+        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(1));
+        Assert.That(flow.RerollsSpent, Is.Zero);
+        Assert.That(flow.RerollCharges, Is.EqualTo(1));
+    }
+
     // ---- Fixture ---------------------------------------------------------------------------------
+
+    /// <summary><c>GrantReroll</c> is internal; reached by reflection, for <see cref="Grant"/>'s reason.</summary>
+    private static void GrantReroll(LevelUpFlow flow)
+    {
+        MethodInfo method = typeof(LevelUpFlow).GetMethod(
+            "GrantReroll",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.That(method, Is.Not.Null, "LevelUpFlow.GrantReroll has gone.");
+
+        method.Invoke(flow, null);
+    }
 
     private LevelUpFlow Flow(SkillTree tree) => Flow(tree, Overflow());
 
     private LevelUpFlow Flow(SkillTree tree, OverflowSpec overflow) =>
-        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow);
+        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow, _veilrot);
 
     /// <summary><c>Descent.asset</c>'s pair, as a spec — see <see cref="OverflowPerLevel"/>.</summary>
     private static OverflowSpec Overflow() =>

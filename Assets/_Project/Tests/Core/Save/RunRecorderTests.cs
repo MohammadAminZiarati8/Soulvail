@@ -326,6 +326,31 @@ public sealed class RunRecorderTests
     }
 
     [Test]
+    public void Recorder_WritesThePactedIds()
+    {
+        Build(OneHuskStage(), withTree: true);
+
+        // Restored rather than taken, for `Recorder_CapturesTakenNodesInOrder`'s reason. Not
+        // circular: `SkillTreeTests.Restore_BringsBackTheCorruptedVersion` says the replay works.
+        var taken = new[] { new ContentId(NodeOne), new ContentId(NodeTwo) };
+        var pacted = new[] { new ContentId(NodeTwo) };
+
+        StartAt(1, restore: Saved(
+            1, level: 3, xp: 0f, pendingLevelUps: 0, takenNodeIds: taken, pactedNodeIds: pacted));
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // M6-01b rule 7's third placeholder, replaced: the list is the run's own, copied.
+        Assert.That(snapshot.PactedNodeIds, Is.EqualTo(pacted));
+        Assert.That(snapshot.PactedNodeIds, Is.Not.SameAs(_session.State.PactedNodeIds));
+        Assert.That(snapshot.Version, Is.EqualTo(RunSnapshot.CurrentVersion), "And no bump.");
+    }
+
+    [Test]
     public void Recorder_NoTreeWritesAnEmptyList()
     {
         Build(OneHuskStage());
@@ -422,6 +447,53 @@ public sealed class RunRecorderTests
         Assert.That(snapshot.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
     }
 
+    // ---- v4: the economy, and the five fields nothing writes (M6-01b rule 7) --------------------
+
+    [Test]
+    public void Recorder_CapturesTheWallet()
+    {
+        Build(OneHuskStage());
+
+        // 84 rather than a number GD §15's income table could produce by accident, and resumed
+        // rather than earned for `Saved`'s stated reason: `RunState.Wallet` is internal and this
+        // assembly has no InternalsVisibleTo, so playing until the balance happens to land is the
+        // only alternative. Not circular — `RunSessionResumeTests.Resume_TheWalletComesBack` is
+        // what says the restore works, and it fails there rather than here if it does not.
+        StartAt(1, restore: Saved(
+            1, level: 1, xp: 0f, pendingLevelUps: 0, economy: new RunEconomy(84, 42.5f, 0, 0)));
+
+        Assert.That(
+            _session.State.Essence,
+            Is.EqualTo(84),
+            "The fixture failed to put the run where it wanted it.");
+
+        _events.Clear();
+
+        _recorder.Take(_session.State, 2);
+
+        RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
+
+        // **Every v4 field is now read off the run** (rule 7; M6-04, M6-02b, M6-05a and M6-06a
+        // each replaced one placeholder without bumping the version). The wallet and the meter are
+        // 42.5 rather than a round threshold, so a recorder still passing a literal could not match
+        // it by accident; the counters and the three lists are zero and empty because this run
+        // bought, banished, pacted and was dealt nothing — OrdealsTests.Recorder_WritesWhatWasDealt
+        // is the row with an Ordeal in it.
+        Assert.That(snapshot.Economy.Essence, Is.EqualTo(84));
+        Assert.That(snapshot.Economy.Veilrot, Is.EqualTo(42.5f));
+        Assert.That(snapshot.Economy.RerollsBought, Is.Zero);
+        Assert.That(snapshot.Economy.RerollsSpent, Is.Zero);
+
+        // Empty, never null, so no reader has to ask — RunSnapshot.TakenNodeIds' rule, three lists
+        // on (M3-03 rule 10).
+        Assert.That(snapshot.BanishedNodeIds, Is.Not.Null);
+        Assert.That(snapshot.BanishedNodeIds, Is.Empty);
+        Assert.That(snapshot.PactedNodeIds, Is.Not.Null);
+        Assert.That(snapshot.PactedNodeIds, Is.Empty);
+        Assert.That(snapshot.OrdealIds, Is.Not.Null);
+        Assert.That(snapshot.OrdealIds, Is.Empty);
+    }
+
     [Test]
     public void Recorder_BoundaryCarriesTheClearingKillsLevel()
     {
@@ -481,6 +553,14 @@ public sealed class RunRecorderTests
     /// first boundary write to allocate</b>, and the trade was named in advance rather than
     /// discovered by this row going red. If a future row measures a run that owns nodes, it is
     /// measuring the copy and should say so.
+    /// <para>
+    /// <b>It survives M6-01b for the same reason, three lists further on.</b> v4's economy is a
+    /// <c>readonly struct</c> published by value, and its three id lists are
+    /// <c>Array.Empty&lt;ContentId&gt;()</c> — so the copy of each is the shared zero-length array
+    /// and no heap is asked for. That holds for every run until M6-02b sells a Banish, and
+    /// <c>AllocationAssert.None</c>'s default is 10 000 iterations, so this is already the ten
+    /// thousand takes M6-01b's Tests table asks for.
+    /// </para>
     /// </remarks>
     [Test]
     public void Take_AllocatesNothing()
@@ -683,15 +763,20 @@ public sealed class RunRecorderTests
 
         Assert.That(_random.Capture().Spawn, Is.EqualTo(atClear.Spawn));
 
-        // Every tick of Clear, Gate and Transition, up to and including the one that crosses.
-        // Nothing in any of them may draw, or the position the snapshot carries is not the position
-        // the resumed run will compose from.
+        // Every tick of Clear, Sanctum, Gate and Transition, up to and including the one that
+        // crosses. Nothing in any of them may draw, or the position the snapshot carries is not the
+        // position the resumed run will compose from — and leaving the Sanctum is inside that span.
         for (int i = 0; i < 600 && _events.Count<StageArrived>() < 2; i++)
         {
             Assert.That(
                 _random.Capture().Spawn,
                 Is.EqualTo(atClear.Spawn),
                 "Something drew between the capture and the recompose.");
+
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
 
             _session.Tick(Snapshot(Frame, Door));
         }
@@ -937,7 +1022,9 @@ public sealed class RunRecorderTests
         float xp,
         int pendingLevelUps,
         IReadOnlyList<ContentId> takenNodeIds = null,
-        IReadOnlyList<ContentId> manualSkillIds = null) => new RunSnapshot(
+        IReadOnlyList<ContentId> manualSkillIds = null,
+        RunEconomy economy = default,
+        IReadOnlyList<ContentId> pactedNodeIds = null) => new RunSnapshot(
         RunSnapshot.CurrentVersion,
         new ContentId(ModeId),
         new ContentId(OathboundId),
@@ -952,7 +1039,11 @@ public sealed class RunRecorderTests
         xp,
         pendingLevelUps,
         takenNodeIds ?? Array.Empty<ContentId>(),
-        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+        manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
+        economy,
+        Array.Empty<ContentId>(),
+        pactedNodeIds ?? Array.Empty<ContentId>(),
+        Array.Empty<ContentId>());
 
     /// <summary>
     /// A tree of three branches, with three nodes sharing branch 0's only tier so that any order of
@@ -982,7 +1073,10 @@ public sealed class RunRecorderTests
     private static IReadOnlyList<SkillSpec> TreeSkills() => new[]
     {
         Passive(NodeOne),
-        Passive(NodeTwo),
+
+        // **The one node with a Pact** (M6-05a), for `Recorder_WritesThePactedIds`. Untaken or
+        // taken clean it is an ordinary Passive, so every other row here reads it as one.
+        Passive(NodeTwo, withPact: true),
         Passive(NodeThree),
         Passive(NodeB),
         Passive(NodeC),
@@ -1033,7 +1127,7 @@ public sealed class RunRecorderTests
                 new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
             }));
 
-    private static SkillSpec Passive(string id) => new SkillSpec(
+    private static SkillSpec Passive(string id, bool withPact = false) => new SkillSpec(
         new ContentId(id),
         new LocKey($"{id}.name"),
         new LocKey($"{id}.desc"),
@@ -1041,7 +1135,13 @@ public sealed class RunRecorderTests
         new IEffect[]
         {
             new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
-        });
+        },
+        pact: withPact
+            ? new PactSpec(
+                new IEffect[] { new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.15f) },
+                15f,
+                new LocKey($"{id}.pact.desc"))
+            : null);
 
     private void TickFor(int ticks)
     {
@@ -1129,13 +1229,21 @@ public sealed class RunRecorderTests
                 + "fixture rather than about the run.");
     }
 
-    /// <summary>Waits out the clear beat, walks into the door and lets the fade run out.</summary>
+    /// <summary>
+    /// Waits out the clear beat, leaves the Sanctum, walks into the door and lets the fade run out.
+    /// </summary>
     private void CrossTheBoundary()
     {
         int arrivals = _events.Count<StageArrived>();
 
         for (int i = 0; i < 900 && _events.Count<StageArrived>() == arrivals; i++)
         {
+            // The way a screen will (M6-02a rule 4): ask, then send.
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
+
             _session.Tick(Snapshot(Frame, Door));
         }
 

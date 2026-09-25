@@ -69,6 +69,9 @@ public sealed class SkillTreeTests
     private RecordingEvents _events;
     private RecordingIntents _intents;
 
+    /// <summary>Kept out of the allocation row's measured body — see <c>EnemyRegistryTests</c>.</summary>
+    private bool _sink;
+
     [SetUp]
     public void SetUp()
     {
@@ -797,6 +800,275 @@ public sealed class SkillTreeTests
         Assert.That(session.State.IsNodeAvailable(default), Is.False);
     }
 
+    // ---- M6-02b: the third flag survives the one rebuild the tree ever does ------------------------
+
+    [Test]
+    public void Banish_SurvivesASplash()
+    {
+        SkillTree tree = FullTree();
+        var banished = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        tree.Banish(banished);
+
+        // OnSplashInstalled rebuilds the flag arrays by ordinal; a copy that forgot the third
+        // would hand the banished node back the moment CH §5.4's branch arrived.
+        TreeRulesTests.Install(tree.Rules);
+        tree.OnSplashInstalled();
+
+        Assert.That(tree.IsBanished(banished), Is.True);
+        Assert.That(tree.IsAvailable(banished), Is.False);
+        Assert.That(tree.BanishedIds, Is.EqualTo(new[] { banished }));
+
+        // And the borrowed nodes arrive banishable, which is what a Sanctum after the splash sells.
+        Assert.That(tree.CanBanish(Id(TreeRulesTests.Node('x', 1, 'a'))), Is.True);
+    }
+
+    [Test]
+    public void Banish_RefusesToBeTaken()
+    {
+        SkillTree tree = FullTree();
+        var banished = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        tree.Banish(banished);
+
+        var refused = Assert.Throws<InvalidOperationException>(() => tree.Take(banished));
+
+        Assert.That(refused.Message, Does.Contain("banished"), "Take's refusal names the gate that closed.");
+    }
+
+    // ---- M6-05a: a node taken in its corrupted form ------------------------------------------------
+
+    [Test]
+    public void Tree_TakingAPactAppliesTheOtherEffects()
+    {
+        PlayerCombat combat = Combat();
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(node), Registry(combat));
+
+        tree.Take(node, asPact: true);
+
+        // Rule 1: **instead of**, never as well as. 13 × 1.45, not 13 × 1.60 — GD §13.2's table is
+        // two columns, and a clean node with a bonus stapled on would be neither of them.
+        Assert.That(combat.Weapon.Damage.Value, Is.EqualTo(18.85f).Within(Tolerance));
+        Assert.That(combat.Weapon.Damage.ModifierCount, Is.EqualTo(1));
+
+        // The same source as a clean take, so Stat.RemoveAll(spec) keeps working unchanged.
+        var modifiers = new List<Modifier>();
+
+        combat.Weapon.Damage.CopyModifiersTo(modifiers);
+
+        Assert.That(modifiers[0].Source, Is.SameAs(tree.Rules.Skill(node)));
+
+        Assert.That(tree.IsPact(node), Is.True);
+        Assert.That(tree.IsTaken(node), Is.True);
+    }
+
+    [Test]
+    public void Tree_TakingAPactStillPublishesNodeTaken()
+    {
+        PlayerCombat combat = Combat();
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+        var watching = new WatchingEvents();
+
+        SkillTree tree = TreeOver(
+            TreeRulesTests.FullTree(),
+            WithPactOn(node),
+            Registry(combat),
+            watching);
+
+        float damageFromTheHandler = float.NaN;
+
+        watching.On<NodeTaken>(_ => damageFromTheHandler = combat.Weapon.Damage.Value);
+
+        tree.Take(node, asPact: true);
+
+        // Take's existing ordering: the event is last, so the Pact's effects are already on.
+        Assert.That(damageFromTheHandler, Is.EqualTo(18.85f).Within(Tolerance));
+        Assert.That(watching.Log.Single<NodeTaken>().SkillId, Is.EqualTo(node));
+    }
+
+    [Test]
+    public void Tree_ACleanTakeIsUnchanged()
+    {
+        PlayerCombat combat = Combat();
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(node), Registry(combat));
+
+        tree.Take(node);
+
+        // A node carrying a Pact, taken clean: 13 × 1.15, and nothing about it is corrupted.
+        Assert.That(combat.Weapon.Damage.Value, Is.EqualTo(14.95f).Within(Tolerance));
+        Assert.That(tree.IsPact(node), Is.False);
+        Assert.That(tree.PactedIds, Is.Empty);
+    }
+
+    [Test]
+    public void Tree_TakingAPactOnANodeWithoutOneThrows()
+    {
+        PlayerCombat combat = Combat();
+        SkillTree tree = TreeOver(
+            TreeRulesTests.FullTree(),
+            TreeRulesTests.FullSkills(),
+            Registry(combat));
+
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        var thrown = Assert.Throws<InvalidOperationException>(() => tree.Take(node, asPact: true));
+
+        Assert.That(thrown.Message, Does.Contain(node.Value));
+
+        // Nothing taken, nothing applied, nothing said.
+        Assert.That(tree.IsTaken(node), Is.False);
+        Assert.That(tree.TakenCount, Is.Zero);
+        Assert.That(combat.Weapon.Damage.Value, Is.EqualTo(WeaponDamage).Within(Tolerance));
+        Assert.That(_events.Count<NodeTaken>(), Is.Zero);
+    }
+
+    [Test]
+    public void Tree_PactedIdsIsASubsetOfTaken()
+    {
+        var first = Id(TreeRulesTests.Node('a', 1, 'a'));
+        var second = Id(TreeRulesTests.Node('a', 1, 'b'));
+        var third = Id(TreeRulesTests.Node('b', 1, 'a'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(second));
+
+        tree.Take(first);
+        tree.Take(second, asPact: true);
+        tree.Take(third);
+
+        Assert.That(tree.PactedIds, Is.EqualTo(new[] { second }));
+        Assert.That(tree.TakenIds, Is.EqualTo(new[] { first, second, third }));
+    }
+
+    [Test]
+    public void Tree_IsPactAnswersFalseForAStranger()
+    {
+        SkillTree tree = FullTree();
+
+        // IsTaken's rule: a caller filtering candidates wants an answer, and a stranger is not one.
+        Assert.That(() => tree.IsPact(Id("skill.oathbound.zealotry")), Throws.Nothing);
+        Assert.That(tree.IsPact(Id("skill.oathbound.zealotry")), Is.False);
+        Assert.That(tree.IsPact(default), Is.False);
+    }
+
+    [Test]
+    public void Tree_TheGatesAreUnchangedByCorruption()
+    {
+        var tierTwo = Id(TreeRulesTests.Node('a', 2, 'a'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(tierTwo));
+
+        // A Pact is not a way past CH §5: refused for the tier, exactly as the clean take is.
+        var thrown = Assert.Throws<InvalidOperationException>(() => tree.Take(tierTwo, asPact: true));
+
+        Assert.That(thrown.Message, Does.Contain("tier 2"));
+        Assert.That(tree.IsTaken(tierTwo), Is.False);
+        Assert.That(tree.IsPact(tierTwo), Is.False);
+    }
+
+    [Test]
+    public void Restore_BringsBackTheCorruptedVersion()
+    {
+        PlayerCombat combat = Combat();
+        var first = Id(TreeRulesTests.Node('a', 1, 'a'));
+        var second = Id(TreeRulesTests.Node('a', 1, 'b'));
+
+        List<SkillSpec> skills = WithPactOn(second);
+
+        Replace(skills, first, Node(first, SkillKind.Passive, TreeRulesTests.Damage(0.15f)));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), skills, Registry(combat));
+
+        tree.Restore(new[] { first, second }, new[] { second });
+
+        // The clean +15 % on the first and the Pact's +45 % on the second: 13 × 1.60. Had the
+        // second come back clean it would be 13 × 1.30 — the run's power silently not the power it
+        // paid Veilrot for (rule 5).
+        Assert.That(combat.Weapon.Damage.Value, Is.EqualTo(20.8f).Within(Tolerance));
+        Assert.That(tree.IsPact(first), Is.False);
+        Assert.That(tree.IsPact(second), Is.True);
+        Assert.That(tree.PactedIds, Is.EqualTo(new[] { second }));
+
+        // Silent, for Restore's rule: nothing may publish before RunStarted.
+        Assert.That(_events.Count<NodeTaken>(), Is.Zero);
+    }
+
+    [Test]
+    public void Restore_RefusesAPactedIdThatWasNotTaken()
+    {
+        var taken = Id(TreeRulesTests.Node('a', 1, 'a'));
+        var notTaken = Id(TreeRulesTests.Node('a', 1, 'b'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(notTaken));
+
+        // A save that disagrees with itself is corrupt rather than stale.
+        var thrown = Assert.Throws<ArgumentException>(
+            () => tree.Restore(new[] { taken }, new[] { notTaken }));
+
+        Assert.That(thrown.Message, Does.Contain(notTaken.Value));
+
+        // Asked before anything was replayed, so the tree is as it was.
+        Assert.That(tree.TakenCount, Is.Zero);
+    }
+
+    [Test]
+    public void Restore_RefusesAPactedIdWithNoPact()
+    {
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        // The content changed under the save: the run's power would silently differ.
+        SkillTree tree = FullTree();
+
+        var thrown = Assert.Throws<ArgumentException>(
+            () => tree.Restore(new[] { node }, new[] { node }));
+
+        Assert.That(thrown.Message, Does.Contain(node.Value));
+        Assert.That(tree.TakenCount, Is.Zero);
+
+        Assert.Throws<ArgumentNullException>(() => tree.Restore(new[] { node }, null));
+    }
+
+    [Test]
+    public void Tree_AllocatesNothingWhenAsked()
+    {
+        var node = Id(TreeRulesTests.Node('a', 1, 'a'));
+
+        SkillTree tree = TreeOver(TreeRulesTests.FullTree(), WithPactOn(node));
+
+        tree.Take(node, asPact: true);
+
+        // Rule 8: a dictionary probe and an array read.
+        AllocationAssert.None(() => _sink = tree.IsPact(node), iterations: 100_000);
+
+        Assert.That(_sink, Is.True, "The probe measured a real answer.");
+    }
+
+    [Test]
+    public void State_PactedNodeIdsForwardsToTheTree()
+    {
+        var first = Id(TreeRulesTests.Node('a', 1, 'a'));
+        var second = Id(TreeRulesTests.Node('a', 1, 'b'));
+
+        RunSession session = StartRun(
+            level: 3,
+            taken: new[] { first.Value, second.Value },
+            pacted: new[] { second.Value },
+            skills: WithPactOn(second));
+
+        // The tree's own list, carried through a resume and read off RunState.
+        Assert.That(session.State.PactedNodeIds, Is.EqualTo(new[] { second }));
+
+        // AR §18.2: the read stands in for the handle, which stays internal.
+        Assert.That(typeof(RunState).GetProperty("Tree"), Is.Null);
+
+        RunSession clean = StartRun();
+
+        Assert.That(clean.State.PactedNodeIds, Is.Empty);
+    }
+
     // ---- Fixture --------------------------------------------------------------------------------
 
     private static ContentId Id(string value) => new ContentId(value);
@@ -811,7 +1083,12 @@ public sealed class SkillTreeTests
     /// one. <paramref name="level"/> has to account for what is taken, or M3-08a rule 9's identity
     /// refuses the snapshot.
     /// </remarks>
-    private RunSession StartRun(int level = 1, string[] taken = null, bool withTree = true)
+    private RunSession StartRun(
+        int level = 1,
+        string[] taken = null,
+        bool withTree = true,
+        string[] pacted = null,
+        IReadOnlyList<SkillSpec> skills = null)
     {
         SkillTreeSpec tree = TreeRulesTests.FullTree();
 
@@ -819,7 +1096,7 @@ public sealed class SkillTreeTests
             new[] { Character() },
             new[] { Husk() },
             new[] { Mode() },
-            withTree ? TreeRulesTests.FullSkills() : Array.Empty<SkillSpec>(),
+            withTree ? skills ?? TreeRulesTests.FullSkills() : Array.Empty<SkillSpec>(),
             withTree ? new[] { tree } : Array.Empty<SkillTreeSpec>());
 
         var random = new FixedRandom(7, new[] { 0.1f, 0.9f, 0.3f, 0.7f, 0.5f });
@@ -842,6 +1119,13 @@ public sealed class SkillTreeTests
             takenIds[i] = Id(taken[i]);
         }
 
+        var pactedIds = new ContentId[pacted?.Length ?? 0];
+
+        for (int i = 0; i < pactedIds.Length; i++)
+        {
+            pactedIds[i] = Id(pacted[i]);
+        }
+
         var snapshot = new RunSnapshot(
             RunSnapshot.CurrentVersion,
             Id(ModeId),
@@ -857,7 +1141,11 @@ public sealed class SkillTreeTests
             0f,
             0,
             takenIds,
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            pactedIds,
+            Array.Empty<ContentId>());
 
         session.Start(new RunConfig(
             Id(ModeId),
@@ -951,6 +1239,28 @@ public sealed class SkillTreeTests
             new LocKey($"{id.Value}.desc"),
             kind,
             effects);
+
+    /// <summary>
+    /// The 27-node tree with <paramref name="node"/> swapped for a Passive whose clean effect is
+    /// +15 % damage and whose Pact is +45 % — M6-05a's Tests table's own numbers.
+    /// </summary>
+    private static List<SkillSpec> WithPactOn(ContentId node)
+    {
+        var skills = new List<SkillSpec>(TreeRulesTests.FullSkills());
+
+        Replace(skills, node, new SkillSpec(
+            node,
+            new LocKey($"{node.Value}.name"),
+            new LocKey($"{node.Value}.desc"),
+            SkillKind.Passive,
+            new IEffect[] { TreeRulesTests.Damage(0.15f) },
+            pact: new PactSpec(
+                new IEffect[] { TreeRulesTests.Damage(0.45f) },
+                15f,
+                new LocKey($"{node.Value}.pact.desc"))));
+
+        return skills;
+    }
 
     /// <summary>An Active whose cast does something the registry knows about.</summary>
     private static SkillSpec Active(ContentId id) => new SkillSpec(

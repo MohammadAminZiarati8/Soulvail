@@ -546,7 +546,11 @@ public sealed class SplashPresenterTests
                 0f,
                 0,
                 SixTaken(),
-                new ContentId[SkillRunner.MaxManualSlots])));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>())));
     }
 
     /// <summary>The catalog and the session, with no run started — see the row that needs one.</summary>

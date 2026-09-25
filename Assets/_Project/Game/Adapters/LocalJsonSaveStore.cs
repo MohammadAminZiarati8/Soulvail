@@ -90,6 +90,9 @@ public sealed class LocalJsonSaveStore : ISaveStore
             hapticsEnabled = profile.HapticsEnabled,
             seenFirstActiveHint = profile.SeenFirstActiveHint,
             shards = profile.Shards,
+            unlockedCharacterIds = ToStrings(profile.UnlockedCharacterIds),
+            metArchetypeIds = ToStrings(profile.MetArchetypeIds),
+            locale = profile.Locale,
         };
 
         return Write(_profilePath, JsonUtility.ToJson(mirror));
@@ -130,6 +133,18 @@ public sealed class LocalJsonSaveStore : ISaveStore
             pendingLevelUps = run.PendingLevelUps,
             takenNodeIds = ToStrings(run.TakenNodeIds),
             manualSkillIds = ToStrings(run.ManualSkillIds),
+
+            // v4's eight, flattened rather than nested — `randomSpawn`'s treatment exactly, and for
+            // its reason: JsonUtility serialises a nested [Serializable] class, and this mirror's
+            // whole job is to be a flat document a human can read in a bug report (M6-01b rule 6).
+            essence = run.Economy.Essence,
+            veilrot = run.Economy.Veilrot,
+            rerollsBought = run.Economy.RerollsBought,
+            rerollsSpent = run.Economy.RerollsSpent,
+            claimed = run.Economy.Claimed,
+            banishedNodeIds = ToStrings(run.BanishedNodeIds),
+            pactedNodeIds = ToStrings(run.PactedNodeIds),
+            ordealIds = ToStrings(run.OrdealIds),
         };
 
         return Write(_runPath, JsonUtility.ToJson(mirror));
@@ -328,7 +343,16 @@ public sealed class LocalJsonSaveStore : ISaveStore
             mirror.xp,
             mirror.pendingLevelUps,
             ToContentIds(mirror.takenNodeIds),
-            ToSlots(mirror.manualSkillIds));
+            ToSlots(mirror.manualSkillIds),
+            new RunEconomy(
+                mirror.essence,
+                mirror.veilrot,
+                mirror.rerollsBought,
+                mirror.rerollsSpent,
+                mirror.claimed),
+            ToContentIds(mirror.banishedNodeIds),
+            ToContentIds(mirror.pactedNodeIds),
+            ToContentIds(mirror.ordealIds));
 
         return SaveMigrations.MigrateRun(mirror.version, decoded);
     }
@@ -354,9 +378,45 @@ public sealed class LocalJsonSaveStore : ISaveStore
         }
 
         var decoded = new PlayerProfile(
-            mirror.version, mirror.hapticsEnabled, mirror.seenFirstActiveHint, mirror.shards);
+            mirror.version,
+            mirror.hapticsEnabled,
+            mirror.seenFirstActiveHint,
+            mirror.shards,
+            ToProfileIds(mirror.unlockedCharacterIds),
+            ToProfileIds(mirror.metArchetypeIds),
+            mirror.locale ?? string.Empty);
 
         return SaveMigrations.MigrateProfile(mirror.version, decoded);
+    }
+
+    /// <summary>The ids a profile names, as core spells them — dropping any that are not ids.</summary>
+    /// <remarks>
+    /// <b>Dropped, where <see cref="ToContentIds"/> passes a default through to be refused, and the
+    /// difference is what a refusal costs.</b> A run that cannot be read is discarded and the player
+    /// loses one run. A profile that cannot be read is replaced by <c>PlayerProfile.Default</c> at
+    /// boot, and the next write puts that on disk — every Shard the install ever banked, gone,
+    /// because one hand-edited entry in a list did not parse. Dropping the entry loses one unlock or
+    /// one meeting, and a meeting lost over-pays 25 Shards on the next one (M6-09a rule 5). Null
+    /// becomes empty, for <see cref="ToContentIds"/>' reason.
+    /// </remarks>
+    private static ContentId[] ToProfileIds(string[] values)
+    {
+        if (values is null || values.Length == 0)
+        {
+            return Array.Empty<ContentId>();
+        }
+
+        var ids = new List<ContentId>(values.Length);
+
+        foreach (string value in values)
+        {
+            if (ContentId.TryParse(value, out ContentId id))
+            {
+                ids.Add(id);
+            }
+        }
+
+        return ids.ToArray();
     }
 
     /// <summary>
@@ -588,6 +648,54 @@ public sealed class LocalJsonSaveStore : ISaveStore
         /// carried slots is still a v2 document (M3-01b rule 3's reason).
         /// </remarks>
         public string[] manualSkillIds = new string[SkillRunner.MaxManualSlots];
+
+        /// <summary>
+        /// v4's eight, appended after <see cref="manualSkillIds"/>: field order is key order on
+        /// disk, and the four run fixture rows pin it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The economy is five flat fields rather than a nested <c>[Serializable]</c> class</b>
+        /// (M6-01b rule 6). <c>JsonUtility</c> would happily serialise a nested one, and the reason
+        /// not to is the same one the five stream positions above are flattened for: this mirror's
+        /// whole job is to be a flat document a human can read in a bug report.
+        /// </para>
+        /// <para>
+        /// <b>Left at their zeroes rather than initialised</b>, unlike <see cref="level"/> and
+        /// <see cref="manualSkillIds"/>. A pre-v4 document has none of these keys, so each field
+        /// keeps the default constructor's zero — which is also exactly what the v3 → v4 step writes
+        /// unconditionally, and <c>RunEconomy</c> accepts all five zeroes as the legal fresh run
+        /// they describe. There is no value here a wrong initialiser could hide.
+        /// </para>
+        /// <para>
+        /// <b><see cref="claimed"/> is v4 re-cut, not v5</b> (M6-11b), and it sits with the economy
+        /// rather than after the lists because it is <c>RunEconomy</c>'s fifth field and a reader
+        /// of a bug report wants it beside <see cref="veilrot"/>. JsonUtility reads by key, not by
+        /// position, so a v4 file written before the re-cut has no <c>claimed</c> key, keeps the
+        /// default constructor's <see langword="false"/>, and restores exactly as it did — a meter
+        /// at 100 still latches on its own.
+        /// </para>
+        /// </remarks>
+        public int essence;
+        public float veilrot;
+        public int rerollsBought;
+        public int rerollsSpent;
+        public bool claimed;
+
+        /// <summary>
+        /// v4's three lists, after the four scalars above.
+        /// </summary>
+        /// <remarks>
+        /// <b>Initialised to the empty array and that is load-bearing</b>, exactly as
+        /// <see cref="takenNodeIds"/> is: a pre-v4 document has none of these keys, and a null would
+        /// reach <c>RunSnapshot</c>'s null guard and turn every save on every device into
+        /// "Discarding the save" <em>before</em> the step that fills them ever ran. The step is
+        /// still the authority and overwrites all three regardless — a v3 document that somehow
+        /// carried a Pact is still a v3 document (M3-01b rule 3's reason).
+        /// </remarks>
+        public string[] banishedNodeIds = Array.Empty<string>();
+        public string[] pactedNodeIds = Array.Empty<string>();
+        public string[] ordealIds = Array.Empty<string>();
     }
 
     /// <summary><see cref="PlayerProfile"/> as it is spelled on disk. See <see cref="RunMirror"/>.</summary>
@@ -622,5 +730,22 @@ public sealed class LocalJsonSaveStore : ISaveStore
         /// ever the authority for a v3 document, which is the one case where the key is really there.
         /// </remarks>
         public int shards;
+
+        /// <summary>
+        /// v4's three, appended after <see cref="shards"/>: field order is key order on disk, and the
+        /// profile fixture rows pin it. Flat rather than nested, for <c>RunMirror</c>'s economy's
+        /// reason (M6-09a rule 7): this is a document a human reads in a bug report.
+        /// </summary>
+        /// <remarks>
+        /// <b>Initialised to empty and not left null, and that is load-bearing</b>, for
+        /// <c>RunMirror.takenNodeIds</c>' reason: a pre-v4 document has none of these keys, and a
+        /// null would reach <c>PlayerProfile</c>'s null guard and turn every v3 profile on every
+        /// device into "Discarding the save" <em>before</em> the step that grandfathers it ever ran
+        /// — which is the Shard total destroyed. The step is still the authority for a v3 document
+        /// and overwrites all three regardless.
+        /// </remarks>
+        public string[] unlockedCharacterIds = Array.Empty<string>();
+        public string[] metArchetypeIds = Array.Empty<string>();
+        public string locale = string.Empty;
     }
 }

@@ -60,7 +60,7 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 3. **Both Actives sit where the player can reach them early.** Consecrate is a tier-1 node — the first pick in Judgment can be a skill — and Bulwark is tier 2 in Oath. CH §4's *"an early pick reshapes the whole rest of the run"* wants an Active reachable in the first two levels, and M3-04's `ActiveBoost` (×2 while the player owns fewer than two) is weighting a draw that has something to weight.
 4. **Twenty-four `LocKey`s, none of which resolve** (ledger row 9). `skill.oathbound.<name>` and `skill.oathbound.<name>.desc` for each node, plus `tree.oathbound.oath` / `.censure` / `.judgment` for the branches. **This is the task that makes row 9 concrete**: the level-up card, the Skills row, the tree view and the auto-cast row now all have real content to fail to display, and M3-15 rules on the whole of it.
 5. **Names avoid the three keystones on purpose.** CH §3.1 reserves Unbroken, Wide Censure and Martyr, and each is a build-defining node with a drawback that v1 does not ship. *Broad* Censure is deliberately not *Wide* Censure — a 90° cone is a flank-cover node and a 360° ring at 60 % damage is a different thing entirely. Taking a keystone's name for a lesser node would make the keystone feel like a repeat when M7-04 finally authors it.
-6. **Nothing in this tree touches Veilrot or ships a Pact variant.** GD §13.2's corrupted nodes are M6-05's and have no shape yet (M3-02a's Out of scope); a tree with one Pact in it would be content for a mechanic that cannot yet be authored.
+6. **Nothing in this tree touches Veilrot or ships a Pact variant.** GD §13.2's corrupted nodes are M6-05a's and have no shape yet (M3-02a's Out of scope); a tree with one Pact in it would be content for a mechanic that cannot yet be authored.
 7. **`BootScope`'s two arrays stop being empty, and that is the moment the milestone becomes playable.** M3-02b rule 7 shipped them empty with `Boot_EmptyListsAreLegal` saying that was a boot before M3-12, not a broken one. Filling them makes `TryGetTreeFor(character.oathbound)` answer true for the first time, which retires M3-03 rule 10's null-tree branch from every real build — the branch stays, tested, because the Editor's direct-Play path can still compose a catalog without it.
 
 **The arithmetic**
@@ -129,7 +129,7 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 - **General content validation** — M3-14: unique ids across every catalog, every `LocKey` present, every tree well-formed. This task pins *these* assets; that one pins the rules for all of them.
 - **Retuning against the playtest.** Rule 1 says the owner retunes in the Inspector; M3-15 is where a measured run either accepts the table or sends it back.
 - **The other two classes' trees** — M5-06b and M6-08.
-- **Pacts, Veilrot, Ordeals** — rule 6, and M6-05.
+- **Pacts, Veilrot, Ordeals** — rule 6, and M6-05a/b.
 - **CH §5.2's exponent.** M3-01a rule 9 flagged that the curve fills the tree early and ruled *ship as authored*; rule 8's table is computed against 1.4 as shipped, and M3-15 owns the retune.
 
 ## As built

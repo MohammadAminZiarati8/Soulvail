@@ -78,6 +78,7 @@ public sealed class ContentValidationTests
     private const string SkillNamespace = "skill.";
     private const string TreeNamespace = "tree.";
     private const string ArenaNamespace = "arena.";
+    private const string OrdealNamespace = "ordeal.";
 
     /// <summary>
     /// The keys the authoring types initialise themselves to. A shipped asset carrying one of these
@@ -96,9 +97,12 @@ public sealed class ContentValidationTests
     /// remarks are why this is a list rather than reflection.
     /// </summary>
     /// <remarks>
-    /// <b><see cref="TriggerField.Veilrot"/> is deliberately absent</b>: GD §13's meter is a field
-    /// AR §9 names and M6-04 fills, and until then a clause over it would be read every tick and
-    /// always be zero. Its absence here is the whole value of the row.
+    /// <b><see cref="TriggerField.Veilrot"/> was deliberately absent from M5-06a to M6-04, and its
+    /// absence was the whole value of the row</b>: GD §10's meter was a field AR §9 named and
+    /// nothing wrote, so a clause over it would have been read every tick and always been zero.
+    /// M6-04 built the meter and <c>Veilrot.Tick</c> writes the field, so the list is now every
+    /// member of the enum — which <see cref="EveryTriggerField_HasAWriter"/>'s companion row says
+    /// out loud, so that a <em>new</em> member arrives absent and reddens it.
     /// </remarks>
     private static readonly TriggerField[] Written =
     {
@@ -117,6 +121,11 @@ public sealed class ContentValidationTests
         // ProjectileSystem.Tick, at the end of its own step, so a trigger reads the sky as it was
         // before this tick's arrivals were resolved (M3-06 rule 7).
         TriggerField.IncomingProjectiles,
+
+        // Veilrot.Tick, immediately above the combat step — ProjectileSystem's arrangement rather
+        // than UpdateBlackboard's, and deliberately *not* one step stale, because the runner reads
+        // a trigger over it two steps later on the same frame (M6-04 rule 10).
+        TriggerField.Veilrot,
     };
 
     private static readonly string[] AuthoringPlaceholders =
@@ -125,8 +134,11 @@ public sealed class ContentValidationTests
         "character.new.description",
         "enemy.new.name",
         "mode.new.name",
+        "ordeal.new.name",
+        "ordeal.new.description",
         "skill.new.name",
         "skill.new.description",
+        "skill.new.pact.description",
         "tree.new.branch",
     };
 
@@ -140,14 +152,17 @@ public sealed class ContentValidationTests
     /// having: left at twelve after a second tree landed, the skill filter could stop matching half
     /// the project and the row would say nothing.
     /// </remarks>
-    private const int ShippedCharacters = 2;
+    private const int ShippedCharacters = 3;
 
     private const int ShippedEnemies = 3;
     private const int ShippedModes = 1;
-    private const int ShippedSkills = 24;
-    private const int ShippedTrees = 2;
-    private const int ShippedEffects = 25;
+    private const int ShippedSkills = 36;
+    private const int ShippedTrees = 3;
+    private const int ShippedEffects = 45;
     private const int ShippedTables = 1;
+
+    /// <summary>GD §13.4's four that M6-06b makes work (M6-06a) — Fracture and Echo are refused.</summary>
+    private const int ShippedOrdeals = 4;
 
     /// <summary>
     /// The bosses the project ships — GD §9.2's Warden, with the other three at M7 (M4-02).
@@ -348,6 +363,7 @@ public sealed class ContentValidationTests
         Assert.That(PathsOf<EffectDefinition>(), Has.Count.AtLeast(ShippedEffects));
         Assert.That(PathsOf<LocalizationTable>(), Has.Count.AtLeast(ShippedTables));
         Assert.That(PathsOf<BossDefinition>(), Has.Count.AtLeast(ShippedBosses));
+        Assert.That(PathsOf<OrdealDefinition>(), Has.Count.AtLeast(ShippedOrdeals));
     }
 
     // ---- GD §9.1 rule 1, over the assets that ship (M4-02) ---------------------------------------
@@ -391,6 +407,178 @@ public sealed class ContentValidationTests
         }
 
         AssertNoProblems(problems, "Boss telegraph lengths (GD §9.1 rule 1)");
+    }
+
+    // ---- GD §15, over the modes that ship (M6-01a rule 3) ----------------------------------------
+
+    [Test]
+    public void EveryShippedMode_PricesItsEssence()
+    {
+        // **A shipped mode that prices nothing is a content failure, not a quiet zero.**
+        // `EssenceSpec` is an optional, last `ModeSpec` argument defaulting to all zeroes, which is
+        // what keeps sixty-three fixtures compiling (M6-01a rule 2) — and the cost of that default
+        // is that a mode which never authored an economy is indistinguishable, to every constructor
+        // in the game, from one that authored zeroes on purpose. A run on it would clear stage after
+        // stage, be paid nothing, and say nothing about it.
+        //
+        // The two terms checked are the two something in this build actually pays: `PerElite` is
+        // authored with no payer until M7-02 (rule 2) and asserting on it here would be asserting
+        // about a number nothing reads. It is the same bargain M5-06b made for Overflow one
+        // milestone ago.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            EssenceSpec essence = definition.ToSpec().Essence;
+
+            if (essence.PerStageBase <= 0)
+            {
+                problems.Add(
+                    $"{path}: pays {essence.PerStageBase} Essence for a stage clear. GD §15 prices "
+                        + "one at 20 + 4·n, and a mode that pays nothing per stage has no economy "
+                        + "at all — every price in GD §13.3 is out of reach for the whole run.");
+            }
+
+            if (essence.PerBoss <= 0)
+            {
+                problems.Add(
+                    $"{path}: pays {essence.PerBoss} Essence for a boss. GD §15 prices one at 60, "
+                        + "on top of the stage clear itself.");
+            }
+        }
+
+        AssertNoProblems(problems, "Mode Essence income (GD §15)");
+    }
+
+    [Test]
+    public void Content_EveryShippedModePricesItsSanctum()
+    {
+        // **M6-01a rule 3's guard with one more column** (M6-02b rule 1). `SanctumSpec` is an
+        // optional, last `ModeSpec` argument whose default is worse than Essence's: every price zero
+        // is a shop that gives everything away, and both magnitudes zero are two services that
+        // deliver nothing for their price. All six are asserted, because unlike Essence's Elite
+        // term every one of them has a reader in this build.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            SanctumSpec sanctum = definition.ToSpec().Sanctum;
+
+            void Require(bool positive, string what, object value)
+            {
+                if (!positive)
+                {
+                    problems.Add(
+                        $"{path}: its Sanctum {what} is {value}. GD §13.3 prices every service "
+                            + "above zero, and a zero here is a shop that gives it away.");
+                }
+            }
+
+            Require(sanctum.RerollPrice > 0, "reroll price", sanctum.RerollPrice);
+            Require(sanctum.BanishPrice > 0, "banish price", sanctum.BanishPrice);
+            Require(sanctum.HealPrice > 0, "heal price", sanctum.HealPrice);
+            Require(sanctum.HealAmount > 0f, "heal amount", sanctum.HealAmount);
+            Require(sanctum.CleansePrice > 0, "cleanse price", sanctum.CleansePrice);
+            Require(sanctum.CleanseAmount > 0f, "cleanse amount", sanctum.CleanseAmount);
+        }
+
+        AssertNoProblems(problems, "Mode Sanctum prices (GD §13.3)");
+    }
+
+    // ---- GD §13.4, over the modes that ship (M6-06a rule 1) --------------------------------------
+
+    [Test]
+    public void Content_EveryShippedModeSchedulesWhatItStocks()
+    {
+        // **The two halves of the Ordeal block must agree on a shipped mode.** Both are optional and
+        // last on ModeSpec, which keeps every fixture compiling, and each is harmless alone in a
+        // fixture — but on an asset a schedule with an empty pool deals nothing for ever, and a pool
+        // with no schedule is content nobody can reach. Neither throws anywhere at run time.
+        var problems = new List<string>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            ModeSpec spec = definition.ToSpec();
+            bool scheduled = spec.OrdealSchedule.IsAuthored;
+            bool stocked = spec.Ordeals.Count > 0;
+
+            if (scheduled && !stocked)
+            {
+                problems.Add(
+                    $"{path}: schedules Ordeals from stage {spec.OrdealSchedule.FirstStage} and "
+                        + "stocks none, so every boundary it schedules is silent.");
+            }
+
+            if (stocked && !scheduled)
+            {
+                problems.Add(
+                    $"{path}: stocks {spec.Ordeals.Count} Ordeal(s) and schedules none, so no run "
+                        + "can ever be dealt one.");
+            }
+
+            foreach (OrdealSpec ordeal in spec.Ordeals)
+            {
+                if (!ordeal.Id.Value.StartsWith(OrdealNamespace, StringComparison.Ordinal))
+                {
+                    problems.Add($"{path}: pool reference '{ordeal.Id}' is not '{OrdealNamespace}*'.");
+                }
+            }
+        }
+
+        AssertNoProblems(problems, "Mode Ordeal blocks (GD §13.4)");
+    }
+
+    [Test]
+    public void AllOrdeals_LoadConvertAndAreUnique()
+    {
+        var problems = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (definition == null)
+            {
+                problems.Add($"{path}: did not load as an OrdealDefinition.");
+                continue;
+            }
+
+            try
+            {
+                if (!seen.Add(definition.ToSpec().Id.Value))
+                {
+                    problems.Add($"{path}: repeats the id '{definition.Id}'.");
+                }
+            }
+            catch (Exception exception)
+            {
+                problems.Add($"{path}: is not valid content — {exception.Message}");
+            }
+        }
+
+        AssertNoProblems(problems, "Ordeal assets");
     }
 
     // ---- Rule 2: an id's namespace matches its kind ---------------------------------------------
@@ -539,14 +727,16 @@ public sealed class ContentValidationTests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Over the <em>authored</em> fields rather than over the enum, and the difference is
-    /// <see cref="TriggerField.Veilrot"/>.</b> That member must stay — M6-04 is what writes it, and
-    /// AR §9 names it — so a check phrased over <c>Enum.GetValues</c> would be red today with the
-    /// only available fix being to delete a field the design needs. Phrased over what assets
-    /// actually author, it is green until somebody authors the clause that would silently never
-    /// fire, which is exactly the day it should go red. It is why
+    /// <b>Over the <em>authored</em> fields rather than over the enum, and the difference used to be
+    /// <see cref="TriggerField.Veilrot"/>.</b> From M5-06a to M6-04 that member had no writer and had
+    /// to stay — AR §9 names it — so a check phrased over <c>Enum.GetValues</c> would have been red
+    /// with the only available fix being to delete a field the design needs. Phrased over what assets
+    /// actually author, it was green until somebody authored the clause that would silently never
+    /// fire, which is exactly the day it should have gone red. It is why
     /// <see href="../../../../Docs/plan/tasks/M5-06b-gravecaller-tree-v1.md">M5-06b</see> rule 6
-    /// authors Rot Nova without its Veilrot clause.
+    /// authored Rot Nova without its Veilrot clause. <b>M6-04 closed that gap and this row keeps its
+    /// shape</b>: the next field AR §9 names before anything fills it will be in exactly the same
+    /// position, and <see cref="Content_VeilrotHasAWriter"/> is what says the gap is shut today.
     /// </para>
     /// <para>
     /// <b><see cref="Written"/> is a hand-kept list and that is deliberate</b>, against the
@@ -612,6 +802,135 @@ public sealed class ContentValidationTests
                 + "nothing. Consecrate and Bulwark each author one.");
 
         AssertNoProblems(problems, "Trigger fields with a writer");
+    }
+
+    /// <summary>
+    /// M6-04 rule 10: <see cref="TriggerField.Veilrot"/> has a writer, and so now does every other
+    /// member — the five-milestone deliberate absence is over.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The row above is a floor and this is the ceiling.</b> That one goes red when an asset
+    /// authors a clause nothing fills; this one goes red when a member of the enum has no writer at
+    /// all, whether or not anybody has authored against it yet. Both were needed because neither can
+    /// be derived: a write is a statement in a method rather than a member, so <see cref="Written"/>
+    /// is hand-kept, and the only thing that can be checked mechanically is that it covers the enum.
+    /// </para>
+    /// <para>
+    /// <b>It is legitimate for this row to go red, and the fix is not to edit the list.</b> A new
+    /// <see cref="TriggerField"/> member arrives absent from <see cref="Written"/> and reddens here
+    /// on the day it is added rather than on the day content is authored against it — which is the
+    /// order those two things should be noticed in. What the day's decision is, is whether the field
+    /// gets a writer now or the member waits; adding a line here without adding the write is a
+    /// two-line diff a reviewer is looking straight at.
+    /// </para>
+    /// </remarks>
+    [Test]
+    public void Content_VeilrotHasAWriter()
+    {
+        Assert.That(
+            Written,
+            Contains.Item(TriggerField.Veilrot),
+            "GD §10's meter is written by Veilrot.Tick as of M6-04, and CH §4.2's Rot Nova is "
+                + "authorable because of it (M7-04).");
+
+        foreach (TriggerField field in Enum.GetValues(typeof(TriggerField)))
+        {
+            Assert.That(
+                Written,
+                Contains.Item(field),
+                $"{nameof(TriggerField)}.{field} is a blackboard field nothing in the build writes, "
+                    + "so a skill authored against it would be read every tick, always be its "
+                    + "default, and silently never auto-cast. Give it a writer and name the writer "
+                    + "beside its entry in Written — do not add the entry alone.");
+        }
+    }
+
+    // ---- M6-05a rule 6: a Pact inside its band, and the ones nobody wrote -------------------------
+
+    /// <remarks>
+    /// Read off the serialized fields rather than through <c>ToSpec</c>, so the message names the
+    /// field a designer opens — <c>AllSkills_LoadConvertAndAreUnique</c> already reports the
+    /// conversion failure, and this is the row that says which number to change (M3-02b's
+    /// placement).
+    /// </remarks>
+    [Test]
+    public void Content_EveryPactAsksWithinTheBand()
+    {
+        var problems = new List<string>();
+        int pacts = 0;
+
+        foreach (string path in PathsOf<SkillDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<SkillDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            var serialized = new SerializedObject(definition);
+
+            if (!serialized.FindProperty("_hasPact").boolValue)
+            {
+                continue;
+            }
+
+            pacts++;
+
+            float veilrot = serialized.FindProperty("_pactVeilrot").floatValue;
+
+            if (!(veilrot >= PactSpec.MinVeilrot && veilrot <= PactSpec.MaxVeilrot))
+            {
+                problems.Add(
+                    $"{path}: _pactVeilrot is {veilrot}. GD §13.2 and CH §4.4 price a Pact at "
+                        + $"{PactSpec.MinVeilrot} to {PactSpec.MaxVeilrot} Rot.");
+            }
+
+            if ((SkillKind)serialized.FindProperty("_kind").intValue == SkillKind.Active)
+            {
+                problems.Add(
+                    $"{path}: _hasPact is on an Active. An Active's corrupted form has no runner "
+                        + "door until M7-04 (M6-05a rule 3).");
+            }
+        }
+
+        Assert.That(pacts, Is.GreaterThan(0), "Sanity: the sweep found no Pact at all.");
+
+        AssertNoProblems(problems, "Pacts within GD §13.2's band");
+    }
+
+    /// <remarks>
+    /// Logged, never asserted as a ratio: a ratio would be a balance claim, and M7-04's eighty-one
+    /// nodes are where the number becomes one. GD §13.2 says <em>any</em> node can appear corrupted;
+    /// this is how far short of <em>any</em> the build is, stated rather than inferred.
+    /// </remarks>
+    [Test]
+    public void Content_ReportsItsPactCoverage()
+    {
+        int nodes = 0;
+        int pacts = 0;
+
+        foreach (string path in PathsOf<SkillDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<SkillDefinition>(path);
+
+            if (definition == null)
+            {
+                continue;
+            }
+
+            nodes++;
+
+            if (definition.ToSpec().HasPact)
+            {
+                pacts++;
+            }
+        }
+
+        TestContext.WriteLine($"{pacts} of {nodes} nodes carry a Pact.");
+
+        Assert.That(pacts, Is.GreaterThan(0), "No shipped node carries a Pact, so none can be offered.");
     }
 
     // ---- Rule 10: a message names the asset path, always -----------------------------------------
@@ -964,6 +1283,16 @@ public sealed class ContentValidationTests
                 yield return new AuthoredId(path, asset.Id, "tree", TreeNamespace);
             }
         }
+
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (asset != null)
+            {
+                yield return new AuthoredId(path, asset.Id, "ordeal", OrdealNamespace);
+            }
+        }
     }
 
     /// <summary>Every <see cref="LocKey"/> an asset in the project carries.</summary>
@@ -977,9 +1306,24 @@ public sealed class ContentValidationTests
         {
             var asset = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
 
-            if (asset != null)
+            if (asset == null)
             {
-                yield return new AuthoredKey(path, "the name key", asset.ToSpec().NameKey);
+                continue;
+            }
+
+            CharacterSpec spec = asset.ToSpec();
+
+            yield return new AuthoredKey(path, "the name key", spec.NameKey);
+
+            // M6-10: the class card has drawn this since M5-07, and this walk never asked for it —
+            // LocalisationSweepTests found the three rows named by nothing it could see.
+            yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
+
+            // The same gap, one field over, and nothing draws a minion's name yet. Swept anyway,
+            // so the first screen that does gets a word rather than 'minion.wight.name'.
+            if (spec.Minions is not null)
+            {
+                yield return new AuthoredKey(path, "the minion's name key", spec.Minions.NameKey);
             }
         }
 
@@ -1016,6 +1360,15 @@ public sealed class ContentValidationTests
 
             yield return new AuthoredKey(path, "the name key", spec.NameKey);
             yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
+
+            // A Pact's own description (M6-05a rule 4) — the one line M6-05b's card reads.
+            if (spec.HasPact)
+            {
+                yield return new AuthoredKey(
+                    path,
+                    "the Pact's description key",
+                    spec.Pact.DescriptionKey);
+            }
         }
 
         foreach (string path in PathsOf<SkillTreeDefinition>())
@@ -1036,6 +1389,22 @@ public sealed class ContentValidationTests
                     $"branch {b}'s name key",
                     spec.Branches[b].NameKey);
             }
+        }
+
+        // GD §13.4's four (M6-06a): a name the deal announces and a line saying what it does.
+        foreach (string path in PathsOf<OrdealDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<OrdealDefinition>(path);
+
+            if (asset == null)
+            {
+                continue;
+            }
+
+            OrdealSpec spec = asset.ToSpec();
+
+            yield return new AuthoredKey(path, "the name key", spec.NameKey);
+            yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
         }
     }
 

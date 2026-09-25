@@ -22,3 +22,9 @@ MonoBehaviour:
   _trigger: []
   _onCast: []
   _parent: {fileID: 0}
+  _hasPact: 1
+  _pactEffects:
+  - {fileID: 11400000, guid: f561c109a39e40e4af167115cfb193fd, type: 2}
+  - {fileID: 11400000, guid: 0b508d16ba0b482ea53ea29d5ade0918, type: 2}
+  _pactVeilrot: 12
+  _pactDescriptionKey: skill.oathbound.zealotry.pact.description

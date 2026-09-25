@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
+using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -51,11 +54,13 @@ public sealed class ClassSelectPresenterTests
     private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
+    private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
 
     private const string OathboundId = "character.oathbound";
     private const string GravecallerId = "character.gravecaller";
+    private const string EmberwrightId = "character.emberwright";
     private const string DescentId = "mode.descent";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -74,12 +79,16 @@ public sealed class ClassSelectPresenterTests
     private ClassSelectPresenter _presenter;
     private PendingRun _pending;
     private RecordingLoader _loader;
+    private InMemorySaveStore _store;
+    private ProfileStore _profiles;
 
     [SetUp]
     public void Reset()
     {
         _pending = new PendingRun();
         _loader = new RecordingLoader();
+        _store = new InMemorySaveStore();
+        _profiles = new ProfileStore(_store);
     }
 
     [TearDown]
@@ -329,7 +338,8 @@ public sealed class ClassSelectPresenterTests
     [Test]
     public void Select_ATapWritesThePendingRun()
     {
-        BuildScreen();
+        // Owned, as a v3 profile migrated to v4 owns it: a fresh profile's Gravecaller is priced.
+        BuildScreen(profile: Owning(GravecallerId));
 
         _presenter.Open();
 
@@ -362,7 +372,7 @@ public sealed class ClassSelectPresenterTests
         var pending = new PendingRun();
         var slow = new SlowLoader();
 
-        BuildScreen(pending: pending, loader: slow);
+        BuildScreen(pending: pending, loader: slow, profile: Owning(GravecallerId));
 
         _presenter.Open();
 
@@ -447,57 +457,496 @@ public sealed class ClassSelectPresenterTests
 
     // ---- Rule 6: every authored class is selectable, and v3 is untouched -------------------------
 
+    // ---- M6-09b rule 9: the starter is drawn exactly as M5-07 drew it ------------------------------
+
+    /// <summary>
+    /// Replaces M5-07's <c>Select_EveryCardIsSelectable</c>, retired by the task it named: every
+    /// card is no longer selectable, and this row keeps the half of it that is still true.
+    /// </summary>
     [Test]
-    public void Select_EveryCardIsSelectable()
+    public void ClassSelect_TheStarterIsUnchanged()
     {
-        BuildScreen();
+        BuildScreen(catalog: ShippedCatalog(), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard oathbound = Cards()[0];
+
+        Assert.That(oathbound.State, Is.EqualTo(ClassCardState.Owned));
+        Assert.That(oathbound.IsInteractable, Is.True, "a fresh profile cannot play the starter.");
+        Assert.That(Text(oathbound, "_hp"), Is.EqualTo("140 HP"));
+        Assert.That(Text(oathbound, "_speed"), Is.EqualTo("3.0 m/s"));
+        Assert.That(Text(oathbound, "_weapon"), Is.EqualTo("39 DPS"));
+        Assert.That(IsDrawn(oathbound, "_price"), Is.False);
+        Assert.That(IsDrawn(oathbound, "_deed"), Is.False);
+
+        // Bind's signature did not move: the locked card is a second overload, not a bool on this
+        // one, so the starter's path through ClassCard is the one M5-07 shipped.
+        MethodInfo bind = typeof(ClassCard).GetMethod(
+            "Bind", new[] { typeof(CharacterSpec), typeof(ILocalizer), typeof(Action<ContentId>) });
+
+        Assert.That(bind, Is.Not.Null, "ClassCard.Bind's M5-07 signature is gone.");
+    }
+
+    // ---- M6-09b rules 2, 3: a locked class is drawn, priced, and not played ------------------------
+
+    [Test]
+    public void ClassSelect_ALockedClassIsDrawnWithItsNumbers()
+    {
+        BuildScreen(catalog: ShippedCatalog(), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard emberwright = Cards()[2];
+
+        Assert.That(emberwright.CharacterId.Value, Is.EqualTo(EmberwrightId));
+        Assert.That(emberwright.State, Is.EqualTo(ClassCardState.Locked));
+        Assert.That(emberwright.IsShown, Is.True, "a locked class was hidden rather than drawn.");
+        Assert.That(Text(emberwright, "_name"), Is.EqualTo("Emberwright"));
+        Assert.That(Text(emberwright, "_hp"), Is.EqualTo("70 HP"));
+        Assert.That(Text(emberwright, "_speed"), Is.EqualTo("3.4 m/s"));
+
+        // 17 × 1.5 = 25.5, drawn to the card's whole-number format rather than retyped here.
+        Assert.That(
+            Text(emberwright, "_weapon"),
+            Is.EqualTo((17f * 1.5f).ToString("0", CultureInfo.InvariantCulture) + " DPS"));
+
+        Assert.That(IsDrawn(emberwright, "_price"), Is.True);
+        Assert.That(Text(emberwright, "_price"), Does.Contain("3500"));
+    }
+
+    [Test]
+    public void ClassSelect_ALockedClassIsNotTappableToPlay()
+    {
+        BuildScreen(catalog: ShippedCatalog());
+
+        _presenter.Open();
+
+        Tap(Cards()[2]);
+
+        Assert.That(_pending.IsSet, Is.False, "a locked class started a run.");
+        Assert.That(_loader.Asked, Is.Empty);
+        Assert.That(_store.ProfileWriteCount, Is.Zero, "a tap at 0 Shards spent something.");
+    }
+
+    [Test]
+    public void ClassSelect_APriceThatCannotBePaidIsDead()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_499), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard emberwright = Cards()[2];
+
+        Assert.That(emberwright.IsInteractable, Is.False, "a price that cannot be paid is live.");
+        Assert.That(IsDrawn(emberwright, "_price"), Is.True, "a dead price was hidden rather than drawn.");
+        Assert.That(Text(emberwright, "_price"), Does.Contain("3500"));
+        Assert.That(PriceColour(emberwright), Is.EqualTo(Palette.Neutral));
+    }
+
+    /// <summary>M5-08a rule 4's second door: a handler invoked by hand still asks <c>CanBuy</c>.</summary>
+    [Test]
+    public void ClassSelect_ATapOnADeadCardSendsNothing()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_499));
+
+        _presenter.Open();
+
+        MethodInfo handler = typeof(ClassSelectPresenter).GetMethod("OnUnlockTapped", Private);
+
+        Assert.DoesNotThrow(
+            () => handler.Invoke(_presenter, new object[] { new ContentId(EmberwrightId) }),
+            "an unaffordable purchase reached ProfileStore.Unlock and threw out of a click.");
+
+        Assert.That(_store.ProfileWriteCount, Is.Zero);
+        Assert.That(_profiles.Current.Shards, Is.EqualTo(3_499));
+    }
+
+    [Test]
+    public void ClassSelect_APriceThatCanBePaidIsLive()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_500), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard emberwright = Cards()[2];
+
+        Assert.That(emberwright.State, Is.EqualTo(ClassCardState.Locked));
+        Assert.That(emberwright.IsInteractable, Is.True);
+        Assert.That(Text(emberwright, "_price"), Is.EqualTo("Unlock: 3500 Soul Shards"));
+        Assert.That(PriceColour(emberwright), Is.EqualTo(Palette.Essence));
+    }
+
+    // ---- M6-09b rules 6, 7, 8: the purchase -----------------------------------------------------------
+
+    [Test]
+    public void ClassSelect_BuyingSpendsAndOwns()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_500));
+
+        _presenter.Open();
+
+        Tap(Cards()[2]);
+
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(1), "a purchase is one write.");
+        Assert.That(_profiles.Current.Shards, Is.Zero);
+        Assert.That(_profiles.Current.UnlockedCharacterIds, Is.EqualTo(new[] { new ContentId(EmberwrightId) }));
+        Assert.That(_presenter.Shards, Is.Zero, "the balance was not redrawn after the purchase.");
+
+        ClassCard emberwright = Cards()[2];
+
+        Assert.That(emberwright.State, Is.EqualTo(ClassCardState.Owned));
+        Assert.That(emberwright.IsInteractable, Is.True);
+        Assert.That(IsDrawn(emberwright, "_price"), Is.False);
+    }
+
+    [Test]
+    public void ClassSelect_BuyingDoesNotDescend()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_500));
+
+        _presenter.Open();
+
+        Tap(Cards()[2]);
+
+        Assert.That(_pending.IsSet, Is.False, "the tap that bought the class also started a run.");
+        Assert.That(_loader.Asked, Is.Empty);
+
+        // A later frame, and a second tap: now it plays.
+        Update();
+        Tap(Cards()[2]);
+
+        Assert.That(_pending.CharacterId.Value, Is.EqualTo(EmberwrightId));
+        Assert.That(_loader.Asked, Is.EqualTo(new[] { SceneLoader.Run }));
+    }
+
+    /// <summary>
+    /// Two taps from one <c>EventSystem</c> pass: one purchase, and neither a second purchase nor a
+    /// descent — rule 8's second latch.
+    /// </summary>
+    [Test]
+    public void ClassSelect_OnePurchasePerFrame()
+    {
+        // Enough for both, so the refusal below is the latch and not the balance.
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(5_500));
+
+        _presenter.Open();
+
+        Tap(Cards()[2]);
+        Tap(Cards()[2]);
+        Tap(Cards()[1]);
+
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(1), "one pass bought twice.");
+        Assert.That(_pending.IsSet, Is.False, "the second half of a double tap on a price started a run.");
+        Assert.That(_loader.Asked, Is.Empty);
+
+        // And the latch is a frame, not the screen: the next frame's tap buys.
+        Update();
+        Tap(Cards()[1]);
+
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(2));
+        Assert.That(_profiles.Current.Shards, Is.Zero);
+    }
+
+    [Test]
+    public void ClassSelect_BuyingOneKillsTheOther()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(3_600));
+
+        _presenter.Open();
+
+        Assert.That(Cards()[1].IsInteractable, Is.True, "the Gravecaller should be affordable at 3 600.");
+
+        Tap(Cards()[2]);
+
+        ClassCard gravecaller = Cards()[1];
+
+        Assert.That(gravecaller.State, Is.EqualTo(ClassCardState.Locked));
+        Assert.That(
+            gravecaller.IsInteractable,
+            Is.False,
+            "100 Shards left and the Gravecaller's 2 000 still reads as affordable — one card was "
+                + "redrawn rather than every card (rule 7).");
+    }
+
+    // ---- M6-09b rule 5: the balance ------------------------------------------------------------------
+
+    [Test]
+    public void ClassSelect_DrawsTheBalance()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(650), localizer: Shipped());
+
+        _presenter.Open();
+
+        TMP_Text balance = BalanceLabel();
+
+        Assert.That(balance.text, Is.EqualTo("650 Soul Shards"));
+        Assert.That(balance.color, Is.EqualTo(Palette.Essence), "GD §16.4's reward gold.");
+        Assert.That(_presenter.Shards, Is.EqualTo(650));
+    }
+
+    /// <summary>
+    /// Rule 5, measured from the outside: the store moves under an open screen and 120 frames later
+    /// the screen has not noticed.
+    /// </summary>
+    /// <remarks>
+    /// <c>ProfileStore.Current</c> is a property on a sealed class, so a read cannot be counted
+    /// without a seam this task has no other use for. A screen that polled would pick the new
+    /// balance up on its first <c>Update</c>; this one must not.
+    /// </remarks>
+    [Test]
+    public void ClassSelect_TheBalanceIsNotPolled()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(650), localizer: Shipped());
+
+        _presenter.Open();
+
+        _profiles.Adopt(PlayerProfile.Default.WithShards(9_000));
+
+        for (int i = 0; i < 120; i++)
+        {
+            Update();
+        }
+
+        Assert.That(_presenter.Shards, Is.EqualTo(650), "the screen re-read the profile on a frame.");
+        Assert.That(BalanceLabel().text, Is.EqualTo("650 Soul Shards"));
+        Assert.That(Cards()[2].IsInteractable, Is.False, "a card was redrawn on a frame.");
+    }
+
+    // ---- M6-09b rule 4, and the card's three states ----------------------------------------------
+
+    [Test]
+    public void Card_ADepthDeedDrawsItsLine()
+    {
+        BuildScreen(catalog: ShippedCatalog(), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard emberwright = Cards()[2];
+
+        Assert.That(IsDrawn(emberwright, "_deed"), Is.True);
+        Assert.That(Text(emberwright, "_deed"), Is.EqualTo("or reach stage 20"));
+    }
+
+    [Test]
+    public void Card_ABossDeedDrawsNoLine()
+    {
+        BuildScreen(catalog: ShippedCatalog(), localizer: Shipped());
+
+        _presenter.Open();
+
+        ClassCard gravecaller = Cards()[1];
+
+        Assert.That(gravecaller.State, Is.EqualTo(ClassCardState.Locked));
+        Assert.That(IsDrawn(gravecaller, "_price"), Is.True);
+        Assert.That(
+            IsDrawn(gravecaller, "_deed"),
+            Is.False,
+            "the Gravecaller's card promises the Choirmother, which no mode authors until M7-03 — "
+                + "the line arrives with the boss, not before it (M6-09b rule 4).");
+    }
+
+    [Test]
+    public void Card_AnOwnedCardHasNoPriceOrDeed()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Owning(GravecallerId, EmberwrightId));
 
         _presenter.Open();
 
         foreach (ClassCard card in Cards())
         {
-            if (card.IsShown)
-            {
-                Assert.That(
-                    card.IsInteractable,
-                    Is.True,
-                    "an authored class cannot be chosen, and nothing in the build can unlock it.");
-            }
-        }
-
-        // Rule 6 as an API claim: Bind takes no lock parameter, so M6-09 has to add one deliberately
-        // rather than finding a bool with one legal value already sitting there.
-        MethodInfo bind = typeof(ClassCard).GetMethod("Bind", BindingFlags.Instance | BindingFlags.Public);
-
-        Assert.That(bind, Is.Not.Null, "ClassCard has no public Bind — this row tests nothing.");
-
-        foreach (ParameterInfo parameter in bind.GetParameters())
-        {
-            Assert.That(
-                parameter.ParameterType,
-                Is.Not.EqualTo(typeof(bool)),
-                $"Bind takes a bool ('{parameter.Name}'). CH §6's gate is M6-09's, and a parameter "
-                    + "with one legal value is a promise the next task has to keep.");
+            Assert.That(card.State, Is.EqualTo(ClassCardState.Owned), card.CharacterId.ToString());
+            Assert.That(IsDrawn(card, "_price"), Is.False, $"{card.CharacterId} is owned and priced.");
+            Assert.That(IsDrawn(card, "_deed"), Is.False, $"{card.CharacterId} is owned and has a deed line.");
         }
     }
 
-    /// <summary>
-    /// The profile did not gain a version or a field for a gate nothing can open (rule 6).
-    /// </summary>
+    /// <summary>GD §14.3 working: a locked card's numbers are the numbers.</summary>
     [Test]
-    public void Select_ProfileIsStillVersionThree()
+    public void Card_LockedAndOwnedAreTheSameNumbers()
     {
-        Assert.That(
-            PlayerProfile.CurrentVersion,
-            Is.EqualTo(3),
-            "the profile moved version. CH §6's unlock set is M6-09's, and nothing spends a Shard "
-                + "until M6-02 — a v4 here would be a migration for a gate with nothing behind it.");
+        BuildScreen();
+
+        ClassCard card = Cards()[2];
+        CharacterSpec spec = Character(EmberwrightPath).ToSpec();
+
+        // Through the shipped table since M6-10 made the three figures rows: over a pass-through
+        // table both states would draw the same three keys, and this row would compare nothing.
+        card.BindLocked(spec, 3_500, false, default, Shipped(), _ => { });
+
+        string[] locked = { Text(card, "_hp"), Text(card, "_speed"), Text(card, "_weapon") };
+
+        Assert.That(locked, Is.EqualTo(new[] { "70 HP", "3.4 m/s", "26 DPS" }), "the fixture's premise.");
+
+        card.Bind(spec, Shipped(), _ => { });
 
         Assert.That(
-            typeof(PlayerProfile).GetProperties(BindingFlags.Instance | BindingFlags.Public),
-            Has.Length.EqualTo(4),
-            "PlayerProfile gained a field. Its four are Version, HapticsEnabled, "
-                + "SeenFirstActiveHint and Shards.");
+            new[] { Text(card, "_hp"), Text(card, "_speed"), Text(card, "_weapon") },
+            Is.EqualTo(locked));
+    }
+
+    [Test]
+    public void Card_RepaintsBackToOwned()
+    {
+        BuildScreen();
+
+        ClassCard card = Cards()[2];
+        CharacterSpec spec = Character(EmberwrightPath).ToSpec();
+
+        int chosen = 0;
+        int unlocks = 0;
+
+        card.BindLocked(spec, 3_500, true, new LocKey("ui.classselect.locked.deed"), Passthrough(), _ => unlocks++);
+
+        Assert.That(IsDrawn(card, "_price"), Is.True);
+        Assert.That(IsDrawn(card, "_deed"), Is.True);
+
+        card.Bind(spec, Passthrough(), _ => chosen++);
+
+        Assert.That(card.State, Is.EqualTo(ClassCardState.Owned));
+        Assert.That(IsDrawn(card, "_price"), Is.False);
+        Assert.That(IsDrawn(card, "_deed"), Is.False);
+
+        Tap(card);
+
+        Assert.That(chosen, Is.EqualTo(1), "onChosen is not armed after the repaint.");
+        Assert.That(unlocks, Is.Zero, "onUnlockTapped was not dropped by the repaint.");
+    }
+
+    [Test]
+    public void Card_ClearIsStillThird()
+    {
+        BuildScreen();
+
+        _presenter.Open();
+
+        Assert.That(Cards()[2].State, Is.EqualTo(ClassCardState.Hidden));
+        Assert.That(Cards()[2].IsShown, Is.False);
+    }
+
+    // ---- M6-09b: the prefab and the strings ------------------------------------------------------
+
+    [Test]
+    public void Prefab_IsDressed()
+    {
+        LoadScreen();
+
+        Assert.That(BalanceLabel(), Is.Not.Null, "the root has no balance label.");
+
+        IReadOnlyList<ClassCard> cards = Cards();
+
+        Assert.That(cards.Count, Is.EqualTo(AuthoredCards));
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            Assert.That(Label(cards[i], "_price"), Is.Not.Null, $"card {i} has no price label.");
+            Assert.That(Label(cards[i], "_deed"), Is.Not.Null, $"card {i} has no deed label.");
+        }
+    }
+
+    /// <summary><c>Views_CarryNoSerializedColour</c>'s rule: every colour is <c>Palette</c>.</summary>
+    [Test]
+    public void Prefab_CarriesNoSerializedColour()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+
+        foreach (MonoBehaviour behaviour in prefab.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            Type type = behaviour.GetType();
+
+            if (type.Namespace is null || !type.Namespace.StartsWith("Soulvail", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (FieldInfo field in type.GetFields(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                Assert.That(
+                    field.FieldType == typeof(Color) || field.FieldType == typeof(Color32),
+                    Is.False,
+                    $"{type.Name}.{field.Name} is a serialized colour. Read Palette instead.");
+            }
+        }
+    }
+
+    [Test]
+    public void Strings_EveryKeyThisScreenDrawsHasARow()
+    {
+        var shipped = new TableLocalizer(EnglishTable());
+
+        foreach (string key in new[]
+        {
+            "ui.classselect.balance", "ui.classselect.locked.price",
+            "ui.classselect.locked.buy", "ui.classselect.locked.deed",
+        })
+        {
+            Assert.That(shipped.Has(new LocKey(key)), Is.True, $"English.asset has no row for {key}.");
+            Assert.That(shipped.Get(new LocKey(key)), Does.Contain("{0}"), $"{key} does not draw its number.");
+        }
+    }
+
+    [Test]
+    public void ClassSelect_AllocatesNothingPerFrame()
+    {
+        BuildScreen(catalog: ShippedCatalog(), profile: Holding(650));
+
+        _presenter.Open();
+
+        var update = (Action)Delegate.CreateDelegate(
+            typeof(Action), _presenter, typeof(ClassSelectPresenter).GetMethod("Update", Private));
+
+        AllocationAssert.None(update);
+    }
+
+    // ---- M6-09b guard rows ----------------------------------------------------------------------------
+
+    [Test]
+    public void BindLocked_RefusesANullArgument()
+    {
+        BuildScreen();
+
+        ClassCard card = Cards()[2];
+        CharacterSpec spec = Character(EmberwrightPath).ToSpec();
+
+        Assert.Throws<ArgumentNullException>(() => card.BindLocked(null, 1, true, default, Passthrough(), _ => { }));
+        Assert.Throws<ArgumentNullException>(() => card.BindLocked(spec, 1, true, default, null, _ => { }));
+        Assert.Throws<ArgumentNullException>(() => card.BindLocked(spec, 1, true, default, Passthrough(), null));
+        Assert.Throws<ArgumentOutOfRangeException>(() => card.BindLocked(spec, 0, true, default, Passthrough(), _ => { }));
+    }
+
+    [Test]
+    public void Card_AMissingPriceOrDeedLabelIsSilent()
+    {
+        BuildScreen();
+
+        ClassCard card = Cards()[2];
+
+        typeof(ClassCard).GetField("_price", Private).SetValue(card, null);
+        typeof(ClassCard).GetField("_deed", Private).SetValue(card, null);
+
+        Assert.DoesNotThrow(() => card.BindLocked(
+            Character(EmberwrightPath).ToSpec(), 3_500, true,
+            new LocKey("ui.classselect.locked.deed"), Passthrough(), _ => { }));
+
+        Assert.DoesNotThrow(() => card.Bind(Character(EmberwrightPath).ToSpec(), Passthrough(), _ => { }));
+    }
+
+    [Test]
+    public void Select_AnEmptyCatalogStillOpens()
+    {
+        BuildScreen(catalog: new ContentCatalog(
+            Array.Empty<CharacterSpec>(),
+            Array.Empty<EnemySpec>(),
+            new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() }));
+
+        _presenter.Open();
+
+        Assert.That(_presenter.IsOpen, Is.True);
+
+        Back().onClick.Invoke();
+
+        Assert.That(_presenter.IsOpen, Is.False, "Back could not leave an empty screen.");
     }
 
     // ---- Rule 7: a Continue takes none of this ---------------------------------------------------
@@ -731,13 +1180,15 @@ public sealed class ClassSelectPresenterTests
         ContentCatalog catalog = Catalog();
 
         Assert.Throws<ArgumentNullException>(
-            () => _presenter.Construct(null, catalog, _loader, Passthrough()));
+            () => _presenter.Construct(null, catalog, _loader, Passthrough(), _profiles));
         Assert.Throws<ArgumentNullException>(
-            () => _presenter.Construct(_pending, null, _loader, Passthrough()));
+            () => _presenter.Construct(_pending, null, _loader, Passthrough(), _profiles));
         Assert.Throws<ArgumentNullException>(
-            () => _presenter.Construct(_pending, catalog, null, Passthrough()));
+            () => _presenter.Construct(_pending, catalog, null, Passthrough(), _profiles));
         Assert.Throws<ArgumentNullException>(
-            () => _presenter.Construct(_pending, catalog, _loader, null));
+            () => _presenter.Construct(_pending, catalog, _loader, null, _profiles));
+        Assert.Throws<ArgumentNullException>(
+            () => _presenter.Construct(_pending, catalog, _loader, Passthrough(), null));
     }
 
     /// <summary>
@@ -751,7 +1202,7 @@ public sealed class ClassSelectPresenterTests
         _spawned.Add(bare);
 
         ClassSelectPresenter presenter = bare.AddComponent<ClassSelectPresenter>();
-        presenter.Construct(_pending, Catalog(), _loader, Passthrough());
+        presenter.Construct(_pending, Catalog(), _loader, Passthrough(), _profiles);
 
         TargetInvocationException thrown = Assert.Throws<TargetInvocationException>(
             () => typeof(ClassSelectPresenter).GetMethod("Start", Private).Invoke(presenter, null));
@@ -802,7 +1253,8 @@ public sealed class ClassSelectPresenterTests
         ContentCatalog catalog = null,
         ILocalizer localizer = null,
         PendingRun pending = null,
-        SceneLoader loader = null)
+        SceneLoader loader = null,
+        PlayerProfile? profile = null)
     {
         LoadScreen();
 
@@ -811,13 +1263,17 @@ public sealed class ClassSelectPresenterTests
             _pending = pending;
         }
 
+        // Adopted rather than saved, so a row's write count starts at zero.
+        _profiles.Adopt(profile ?? PlayerProfile.Default);
+
         // What MenuScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
         _presenter.Construct(
             _pending,
             catalog ?? Catalog(),
             loader ?? _loader,
-            localizer ?? Passthrough());
+            localizer ?? Passthrough(),
+            _profiles);
     }
 
     private void LoadScreen()
@@ -880,7 +1336,43 @@ public sealed class ClassSelectPresenterTests
     private void Start() =>
         typeof(ClassSelectPresenter).GetMethod("Start", Private).Invoke(_presenter, null);
 
+    /// <summary>Runs the presenter's <c>Update</c> — one frame, as far as the latch is concerned.</summary>
+    private void Update() =>
+        typeof(ClassSelectPresenter).GetMethod("Update", Private).Invoke(_presenter, null);
+
     private static void Tap(ClassCard card) => Button(card).onClick.Invoke();
+
+    private static TMP_Text Label(ClassCard card, string field) =>
+        (TMP_Text)typeof(ClassCard).GetField(field, Private).GetValue(card);
+
+    /// <summary>Whether a card's line is on screen: its object is active and it says something.</summary>
+    private static bool IsDrawn(ClassCard card, string field)
+    {
+        TMP_Text label = Label(card, field);
+
+        return label != null && label.gameObject.activeSelf && !string.IsNullOrEmpty(label.text);
+    }
+
+    private static Color PriceColour(ClassCard card) => Label(card, "_price").color;
+
+    private TMP_Text BalanceLabel() =>
+        (TMP_Text)typeof(ClassSelectPresenter).GetField("_balance", Private).GetValue(_presenter);
+
+    /// <summary>A fresh v4 profile with <paramref name="shards"/> banked and nothing owned.</summary>
+    private static PlayerProfile Holding(int shards) => PlayerProfile.Default.WithShards(shards);
+
+    /// <summary>A fresh v4 profile that owns <paramref name="ids"/>.</summary>
+    private static PlayerProfile Owning(params string[] ids)
+    {
+        var owned = new ContentId[ids.Length];
+
+        for (int i = 0; i < ids.Length; i++)
+        {
+            owned[i] = new ContentId(ids[i]);
+        }
+
+        return PlayerProfile.Default.WithUnlocked(owned);
+    }
 
     private static Button Button(ClassCard card) =>
         (Button)typeof(ClassCard).GetField("_button", Private).GetValue(card);
@@ -922,6 +1414,17 @@ public sealed class ClassSelectPresenterTests
     /// <summary>The shipped catalog: two classes, in the order BootScope lists them.</summary>
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Character(OathboundPath).ToSpec(), Character(GravecallerPath).ToSpec() },
+        new[] { AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath).ToSpec() },
+        new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() });
+
+    /// <summary>The shipped catalog as of M6-07: all three classes, in BootScope's order.</summary>
+    private static ContentCatalog ShippedCatalog() => new ContentCatalog(
+        new[]
+        {
+            Character(OathboundPath).ToSpec(),
+            Character(GravecallerPath).ToSpec(),
+            Character(EmberwrightPath).ToSpec(),
+        },
         new[] { AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath).ToSpec() },
         new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() });
 
@@ -1001,7 +1504,11 @@ public sealed class ClassSelectPresenterTests
         xp: 0f,
         pendingLevelUps: 0,
         takenNodeIds: Array.Empty<ContentId>(),
-        manualSkillIds: new ContentId[Soulvail.Core.Combat.SkillRunner.MaxManualSlots]);
+        manualSkillIds: new ContentId[Soulvail.Core.Combat.SkillRunner.MaxManualSlots],
+        default,
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>(),
+        Array.Empty<ContentId>());
 
     /// <summary>A loader that records rather than loading — <c>PausePresenterTests</c>' shape.</summary>
     private sealed class RecordingLoader : SceneLoader

@@ -65,11 +65,17 @@ namespace Soulvail.Game.Presentation
     public sealed class LevelUpPresenter : MonoBehaviour
     {
         /// <summary>
-        /// CH §5.1's header. <c>{0:0}</c> rather than <c>{0}</c> for <c>HudPresenter</c>'s reason:
-        /// TMP treats an unformatted placeholder as "up to nine decimal places", so the natural
-        /// spelling renders level 7 as <c>7</c> only by luck of the float overload.
+        /// CH §5.1's header, <em>"Level {0:0}"</em> in English.
         /// </summary>
-        private const string LevelFormat = "Level {0:0}";
+        /// <remarks>
+        /// <b>A row since M6-10, where it was a <c>const</c> handed to <c>TMP_Text.SetText</c></b>.
+        /// <em>Level</em> is an English word typed into a view, which is the one thing ADR-0012
+        /// forbids, and nothing could see it until the pseudo-locale existed to be read. The header is
+        /// written on open and on a pick, never on a frame, so <c>ILocalizer.Format</c>'s allocation
+        /// is a string per tap. <c>{0:0}</c> stays in the row for <c>HudPresenter</c>'s reason: the
+        /// level arrives as a number and the row says it is a whole one.
+        /// </remarks>
+        private static readonly LocKey LevelKey = new LocKey("ui.levelup.level");
 
         /// <summary>
         /// The toggle up to CH §5.1's tree view (M3-14c).
@@ -86,9 +92,10 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>
         /// <em>"Pick i of n"</em> — what makes a double level-up legible (M3-08a rule 3) rather than
-        /// a card that surprises the player by reappearing.
+        /// a card that surprises the player by reappearing. A row since M6-10, <see cref="LevelKey"/>'s
+        /// reason, and two placeholders a translation may reorder.
         /// </summary>
-        private const string PickFormat = "Pick {0:0} of {1:0}";
+        private static readonly LocKey PickKey = new LocKey("ui.levelup.pick");
 
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — see the class " +
                  "remarks: timeScale is 0 while this is up, so a scaled tween would freeze.")]
@@ -260,8 +267,8 @@ namespace Soulvail.Game.Presentation
             // likely inactive** — RefreshTreeButton switches it off for a class with no tree and
             // has not run yet — and TMP honours a write to an inactive component on activation.
             // That is Traps §1's family, so LevelUpPresenterTests asserts it after the button is
-            // offered rather than here. The two labels above it are numbers rather than words and
-            // stay Draw's (LevelFormat).
+            // offered rather than here. The two header labels carry numbers, so they are written
+            // on open rather than here (WriteHeader, through LevelKey and PickKey).
             Write(_viewTreeLabel, ViewTreeKey);
 
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot
@@ -346,7 +353,7 @@ namespace Soulvail.Game.Presentation
                 _episodeTotal = evt.PicksOwed;
             }
 
-            Draw(state, evt.Count);
+            Draw(state, evt.Count, evt.PactIndex);
             WriteHeader(state.Level, evt.PicksOwed);
 
             ShowScreen();
@@ -371,9 +378,10 @@ namespace Soulvail.Game.Presentation
         /// the same frame for a reason: <c>RunState.Offer</c> is a live view over one buffer the
         /// next draw rewrites, safe only because it is read on a frame that is not ticking. Nothing
         /// here holds it across a <c>ChooseOffer</c> — it is indexed and the specs are resolved
-        /// immediately.
+        /// immediately. <paramref name="pactIndex"/> comes off the event for the same reason: which
+        /// card is corrupted is the model's fact, and a card cannot ask (M6-05b rule 5).
         /// </remarks>
-        private void Draw(RunState state, int count)
+        private void Draw(RunState state, int count, int pactIndex)
         {
             IReadOnlyList<ContentId> offer = state.Offer;
 
@@ -397,7 +405,7 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                card.Show(i, _catalog.Skill(offer[i]), _localizer, OnCardChosen);
+                card.Show(i, _catalog.Skill(offer[i]), _localizer, OnCardChosen, i == pactIndex);
             }
         }
 
@@ -433,7 +441,7 @@ namespace Soulvail.Game.Presentation
         {
             if (_levelLabel != null)
             {
-                _levelLabel.SetText(LevelFormat, level);
+                _levelLabel.text = Format(LevelKey, level);
             }
 
             if (_pickLabel == null)
@@ -445,7 +453,7 @@ namespace Soulvail.Game.Presentation
             // is on pick 1 and then pick 2 of the same 2.
             int index = (_episodeTotal - picksOwed) + 1;
 
-            _pickLabel.SetText(PickFormat, index, _episodeTotal);
+            _pickLabel.text = Format(PickKey, index, _episodeTotal);
         }
 
         /// <summary>Whether the screen is currently up. The one read a test needs and rule 1 allows.</summary>
@@ -528,6 +536,10 @@ namespace Soulvail.Game.Presentation
 
             label.text = _localizer is null ? key.ToString() : _localizer.Get(key);
         }
+
+        /// <summary><see cref="Write"/>'s fallback for a sentence with numbers in it.</summary>
+        private string Format(LocKey key, params object[] args) =>
+            _localizer is null ? key.ToString() : _localizer.Format(key, args);
 
         /// <summary>Rule 2 from this side: a class with no tree is offered no toggle.</summary>
         private void RefreshTreeButton()

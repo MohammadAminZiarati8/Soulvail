@@ -15,13 +15,14 @@ using UnityEngine.UI;
 namespace Soulvail.Game.Controls
 {
     /// <summary>
-    /// What one node of the tree is to <em>this</em> run: owned, takeable now, or neither (CH §5).
+    /// What one node of the tree is to <em>this</em> run: owned, takeable now, gone, or none of those
+    /// (CH §5).
     /// </summary>
     /// <remarks>
-    /// Three rather than four, and the fourth is named so its absence is a decision: M6-02's Banish
-    /// gives <c>SkillTree.IsAvailable</c> a second <see cref="bool"/><c>[]</c> behind it and this
-    /// enum a <c>Banished</c> member, added by the task that adds the mechanic (M3-09d's
-    /// <em>Out of scope</em>).
+    /// Three until M6-03b. M6-02b's Banish gave <c>SkillTree</c> the mechanic and handed the state on;
+    /// M6-03b added <see cref="Banished"/> with its frame colour in one edit, because
+    /// <c>TreeNodeView.Frame</c> refuses a member with no line (rule 7). Appended rather than inserted,
+    /// so no existing member's value moves.
     /// </remarks>
     public enum NodeState
     {
@@ -33,6 +34,12 @@ namespace Soulvail.Game.Controls
 
         /// <summary>Already owned this run — one entry of <c>RunState.TakenNodeIds</c>.</summary>
         Taken,
+
+        /// <summary>
+        /// Taken out of this run's offer pool by a Sanctum Banish — one entry of
+        /// <c>RunState.BanishedNodeIds</c>. Never taken and never available (M6-02b rules 4, 5).
+        /// </summary>
+        Banished,
     }
 
     /// <summary>
@@ -82,7 +89,7 @@ namespace Soulvail.Game.Controls
                  "once, which is what makes cell width the tree's question rather than dwell.")]
         [SerializeField] private TMP_Text _description;
 
-        [Tooltip("The cell's border, tinted by the three state colours below. This is the thing a " +
+        [Tooltip("The cell's border, tinted by the four node-state colours. This is the thing a " +
                  "player reads their own path off, so it is the one piece that has to differ at a " +
                  "glance.")]
         [SerializeField] private Image _frame;
@@ -110,13 +117,13 @@ namespace Soulvail.Game.Controls
         /// Draws <paramref name="spec"/> as one cell, framed by <paramref name="state"/>.
         /// </summary>
         /// <param name="spec">The node to draw. Any of CH §4's four kinds.</param>
-        /// <param name="state">What it is to this run — rule 3's three answers.</param>
+        /// <param name="state">What it is to this run — one of the four states.</param>
         /// <param name="localizer">What turns the spec's two <c>LocKey</c>s into words.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="spec"/> or <paramref name="localizer"/> is null.
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="state"/> is not one of the three. Loud rather than silent, for
+        /// <paramref name="state"/> is not one of the four. Loud rather than silent, for
         /// <c>PlayerStats.Resolve</c>'s reason — see <see cref="Frame"/>.
         /// </exception>
         public void Show(SkillSpec spec, NodeState state, ILocalizer localizer)
@@ -186,24 +193,24 @@ namespace Soulvail.Game.Controls
             gameObject.SetActive(false);
         }
 
-        /// <summary>Rule 3's three states, in <see cref="Palette"/>'s three.</summary>
+        /// <summary>The four node states, in <see cref="Palette"/>'s four.</summary>
         /// <remarks>
         /// <b>A member with no colour throws, where <see cref="Tint"/>'s falls back</b>, and the two
         /// answers differ because the enums do. <see cref="SkillKind"/> is CH §4's closed four,
         /// validated at authoring time and shared with <c>OfferCard</c>, so a fallback there is one
         /// answer to a question already settled elsewhere. <see cref="NodeState"/> is this file's
-        /// own, and M6-02 is already named as the task that adds a member to it — a new state
-        /// without a colour would draw as <em>locked</em>, which is a node the player owns reading
-        /// as one they cannot reach, silently. <c>PlayerStats.Resolve</c>'s rule. <b>Moving the
-        /// three colours into the palette does not move that rule</b>: the throw is about this
-        /// enum's members, not about where their colours are kept, and M6-02's <c>Banished</c> still
-        /// has to add a line here as well as a member there.
+        /// own, and a new state without a colour would draw as <em>locked</em>, which is a node the
+        /// player owns reading as one they cannot reach, silently. <c>PlayerStats.Resolve</c>'s rule.
+        /// <b>M6-03b's <c>Banished</c> is the member this was written for</b>, and it added its line
+        /// here in the same edit as its member there; a fifth — M6-05b refuses one for a Pact — owes
+        /// the same.
         /// </remarks>
         private static Color Frame(NodeState state) => state switch
         {
             NodeState.Locked => Palette.NodeLocked,
             NodeState.Available => Palette.NodeAvailable,
             NodeState.Taken => Palette.NodeTaken,
+            NodeState.Banished => Palette.NodeBanished,
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(state),

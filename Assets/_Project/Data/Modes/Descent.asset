@@ -49,6 +49,18 @@ MonoBehaviour:
   _overflow:
     _damage: 0.02
     _maxHp: 0.02
+  _essence:
+    _perStageBase: 20
+    _perStageDepth: 4
+    _perElite: 15
+    _perBoss: 60
+  _sanctum:
+    _rerollPrice: 25
+    _banishPrice: 40
+    _healPrice: 40
+    _healAmount: 30
+    _cleansePrice: 60
+    _cleanseAmount: 15
   _roster:
   - _specId: enemy.husk
     _introducedAtStage: 1
@@ -62,3 +74,11 @@ MonoBehaviour:
   _bossRoster:
   - _bossId: boss.warden
     _everyNStages: 5
+  _ordeals:
+    _firstStage: 25
+    _everyNStages: 10
+    _pool:
+    - {fileID: 11400000, guid: 27df36146f2cc2a4497518a7429ea44a, type: 2}
+    - {fileID: 11400000, guid: 90e7cd4d2b6328045ab7db04fc9238c4, type: 2}
+    - {fileID: 11400000, guid: a77653db0e6bb5a48a9d50437d840f2c, type: 2}
+    - {fileID: 11400000, guid: 57ed2632d8c128d47a7a184aba8b3295, type: 2}

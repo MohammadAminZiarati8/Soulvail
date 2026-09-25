@@ -138,7 +138,7 @@ namespace Soulvail.Game.Presentation
 
 - **A tutorial, or any second hint.** CC §6.3 asks for one, once. A hint framework is M8's if it is ever anything's; a second flag in this profile is how one starts by accident.
 - **Settings in the profile** — GD §18's sliders and toggles are M8-03's, and each is a field and a bump by rule 2's own rule.
-- **Meta-progression** (GD §14's Shards and unlocks) — M4-07 and M6-09. Those are profile fields too, and rule 3 is the reason this task builds the store now rather than leaving four writers to discover each other.
+- **Meta-progression** (GD §14's Shards and unlocks) — M4-07 and M6-09a. Those are profile fields too, and rule 3 is the reason this task builds the store now rather than leaving four writers to discover each other.
 - **Resolving the hint's `LocKey`** — M6-10, ledger row 9.
 - **Showing the hint outside a level-up.** A player who takes their first Active from some future source (an Ordeal, a Sanctum) gets nothing; rule 6's condition is `NodeTaken`, and widening it is the job of whoever adds the second source.
 

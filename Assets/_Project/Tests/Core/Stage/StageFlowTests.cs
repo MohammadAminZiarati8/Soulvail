@@ -47,6 +47,8 @@ public sealed class StageFlowTests
     private const string ExecutionerId = "enemy.executioner";
     private const string OathboundId = "character.oathbound";
     private const string ModeId = "mode.test";
+    private const string BossId = "boss.warden";
+    private const string WardenEnemyId = "enemy.warden";
 
     /// <summary>GD §8.1's threat cost for the one archetype these rows compose from.</summary>
     private const int HuskCost = 4;
@@ -87,6 +89,23 @@ public sealed class StageFlowTests
     /// nothing here — and a second <c>Build</c> would be a second place the fixture's world is made.
     /// </summary>
     private MinionSystem _minions;
+
+    /// <summary>
+    /// The wallet every stage clear pays (M6-01a rule 5). Built for every row rather than for the
+    /// rows that assert on it — which are none, and live in <c>EssenceWalletTests</c> — because it
+    /// is a required constructor argument: there is no shape of this fixture that does without one.
+    /// The modes here author no Essence, so every payment it takes is zero.
+    /// </summary>
+    private EssenceWallet _essence;
+
+    /// <summary>
+    /// The run's Ordeals and the stream they draw on, for <see cref="_essence"/>'s reason: required
+    /// arguments with no rows here. The modes here schedule none, so nothing is ever dealt; the rows
+    /// that deal live in <c>OrdealsTests</c>.
+    /// </summary>
+    private Ordeals _ordeals;
+
+    private IRandomStream _affixes;
 
     [SetUp]
     public void SetUp()
@@ -320,9 +339,10 @@ public sealed class StageFlowTests
 
         Step(0.1f + (1f / 1000f));
 
-        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate),
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum),
             "1.5 s is the one number in this class that no design document gives — a pacing knob "
-                + "for the phone, flagged as invented rather than derived (rule 7).");
+                + "for the phone, flagged as invented rather than derived (rule 7). What it ends in "
+                + "has been the Sanctum since M6-02a.");
     }
 
     // ---- Gate and transition (rules 8, 9, 15) --------------------------------------------------
@@ -333,7 +353,7 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
         BeginAt(1);
         ClearTheStage();
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate));
 
@@ -358,7 +378,7 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
         BeginAt(1);
         ClearTheStage();
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         // 1.4 m short of the door, inside the 1.5 m reach.
         _snapshot.PlayerPosition = new Vector3(0f, 0f, Door.Z - 1.4f);
@@ -379,7 +399,7 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
         BeginAt(1);
         ClearTheStage();
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         // One metre away on the floor and four metres up in the air. AR §18.4: the height between a
         // player capsule's centre and a door's anchor is a rendering detail, and counting it would
@@ -427,7 +447,7 @@ public sealed class StageFlowTests
             "There is no door, so there is no position — and zero is what a listener with nothing "
                 + "to draw reads.");
 
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         _events.Clear();
 
@@ -443,6 +463,454 @@ public sealed class StageFlowTests
             "M2-05 rule 12's bargain, for its reason: the M0 grey box and every core fixture that "
                 + "never intends to leave stage 1 are legal arenas, and neither should throw.");
         Assert.That(_events.Count<StageArrived>(), Is.Zero);
+    }
+
+    // ---- The Sanctum (M6-02a rules 1–4) --------------------------------------------------------
+
+    [Test]
+    public void Stage_ClearLeadsToTheSanctum()
+    {
+        Build(OneHuskStage());
+        BeginAt(3);
+        ClearTheStage();
+
+        // The modes here author no Essence, so the wallet is paid by hand to make the balance a
+        // number worth asserting — what the event carries is the wallet, whoever filled it.
+        _essence.Earn(84);
+
+        Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum));
+
+        SanctumOpened opened = _events.Single<SanctumOpened>();
+
+        Assert.That(opened.Stage, Is.EqualTo(3), "The stage just cleared — the shop sits at its end.");
+        Assert.That(opened.Essence, Is.EqualTo(84),
+            "What the player has to spend, so the screen draws its first frame without reading the run.");
+    }
+
+    [Test]
+    public void Stage_TheSanctumHasNoTimeout()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+        ClearTheStage();
+        Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum));
+
+        _events.Clear();
+
+        // Ten minutes, a tenth of a second at a time.
+        for (int i = 0; i < 6_000; i++)
+        {
+            Step(0.1f);
+        }
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum),
+            "GD §13.3 says untimed, and the honest reading is that Tick has no case for this phase "
+                + "at all (rule 3).");
+        Assert.That(_events.All, Is.Empty, "Nothing published, nothing telegraphed, nothing spawned.");
+        Assert.That(_director.PendingCount, Is.Zero);
+    }
+
+    [Test]
+    public void Stage_LeavingOpensTheDoor()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+        ClearTheStage();
+        Step(ClearTimeAndABit());
+
+        _events.Clear();
+
+        _flow.LeaveSanctum(_now);
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate));
+        Assert.That(_events.All, Is.Empty,
+            "Nothing is published for leaving: the door is what StageCleared already told the view "
+                + "to draw, and the command came from the view.");
+
+        _snapshot.PlayerPosition = Door;
+
+        Step(1f / 60f);
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Transition), "And the door still takes the player.");
+
+        Step(StageFlow.FadeTime + (1f / 60f));
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Arrival));
+        Assert.That(_flow.Stage, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Stage_LeavingTwiceThrows()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+        ClearTheStage();
+        OpenTheDoor();
+
+        Assert.Throws<InvalidOperationException>(() => _flow.LeaveSanctum(_now),
+            "A second tap on a screen that has already gone is a wiring mistake, and a silent no-op "
+                + "would hide it (rule 4).");
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate));
+    }
+
+    [Test]
+    public void Stage_LeavingFromAnotherPhaseThrows()
+    {
+        Build(OneHuskStage());
+
+        Assert.Throws<InvalidOperationException>(() => _flow.LeaveSanctum(0f), "Before Begin.");
+
+        BeginAt(1);
+        SpawnTheWave();
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Waves));
+        Assert.Throws<InvalidOperationException>(() => _flow.LeaveSanctum(_now));
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Waves), "And the phase is unmoved.");
+    }
+
+    [Test]
+    public void LeaveSanctum_Guards()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+        ClearTheStage();
+        Step(ClearTimeAndABit());
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _flow.LeaveSanctum(float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => _flow.LeaveSanctum(float.NegativeInfinity));
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum),
+            "A refused clock leaves the shop open rather than half-left.");
+    }
+
+    [Test]
+    public void Stage_AFinishedModeNeverEntersIt()
+    {
+        Build(Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap, endless: false, finalStage: 3));
+        BeginAt(3);
+        ClearTheStage();
+
+        for (int i = 0; i < 600; i++)
+        {
+            Step(1f / 60f);
+        }
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Clear),
+            "A run that has finished its mode has nothing to buy and nowhere to go (rule 2).");
+        Assert.That(_events.Count<SanctumOpened>(), Is.Zero);
+    }
+
+    [Test]
+    public void Stage_TheOrderIsArrivalWavesClearSanctumGateTransition()
+    {
+        Build(OneHuskStage());
+        BeginAt(1);
+
+        var seen = new List<StagePhase> { _flow.Phase };
+
+        // A whole stage played by a fixture that does whatever the phase asks of it: kill what
+        // stands, leave the shop, walk into the door — and nothing else.
+        for (int i = 0; i < 2_000 && !(seen.Count > 1 && _flow.Phase == StagePhase.Arrival); i++)
+        {
+            ReadOnlySpan<EnemyAgent> registered = _enemies.Registry.Alive;
+
+            for (int a = 0; a < registered.Length; a++)
+            {
+                if (registered[a].IsAlive)
+                {
+                    Kill(registered[a].Id);
+                }
+            }
+
+            if (_flow.Phase == StagePhase.Sanctum)
+            {
+                _flow.LeaveSanctum(_now);
+                Note(seen);
+            }
+
+            if (_flow.Phase == StagePhase.Gate)
+            {
+                _snapshot.PlayerPosition = Door;
+            }
+
+            Step(1f / 60f);
+            Note(seen);
+        }
+
+        Assert.That(seen, Is.EqualTo(new[]
+        {
+            StagePhase.Arrival,
+            StagePhase.Waves,
+            StagePhase.Clear,
+            StagePhase.Sanctum,
+            StagePhase.Gate,
+            StagePhase.Transition,
+            StagePhase.Arrival,
+        }), "Six phases in that order, each once, and then the next stage's arrival.");
+    }
+
+    // ---- A boss stage is not over while an add breathes (M6-02a rule 5, ledger row 5) -----------
+
+    [Test]
+    public void Boss_IsNotCompleteWhileAnAddBreathes()
+    {
+        int boss = StandTheBoss();
+        int first = DressAnAdd(4f);
+        int second = DressAnAdd(-4f);
+
+        Kill(boss);
+        Step(1f / 60f);
+
+        Assert.That(_director.IsStageComplete, Is.False,
+            "The boss is down and two adds are standing — the M5-08 stage that completed anyway.");
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Waves));
+
+        Kill(first);
+        Step(1f / 60f);
+
+        Assert.That(_director.IsStageComplete, Is.False, "One still breathing.");
+
+        Kill(second);
+        Step(1f / 60f);
+
+        Assert.That(_director.IsStageComplete, Is.True);
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Clear));
+    }
+
+    [Test]
+    public void Boss_IsCompleteOnTheKillWhenNothingElseStands()
+    {
+        int boss = StandTheBoss();
+
+        Kill(boss);
+        Step(1f / 60f);
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Clear),
+            "On the tick of the kill, not EnemySystem.CorpseTime later.");
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(1),
+            "Sanity: the boss's corpse is still registered, so the row above is about IsAlive.");
+    }
+
+    [Test]
+    public void Boss_ACorpseDoesNotHoldTheStageOpen()
+    {
+        int boss = StandTheBoss();
+        int add = DressAnAdd(4f);
+
+        Kill(boss);
+        Step(1f / 60f);
+        Kill(add);
+        Step(1f / 60f);
+
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(2),
+            "Both corpses still registered, waiting out their dissolve (AR §18.4).");
+        Assert.That(_director.IsStageComplete, Is.True,
+            "The walk asks IsAlive rather than AliveCount, which is registered rather than breathing.");
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Clear));
+    }
+
+    [Test]
+    public void Boss_AnAddCannotHitThePlayerThroughTheSanctum()
+    {
+        int boss = StandTheBoss();
+        int add = DressAnAdd(4f);
+
+        Kill(boss);
+
+        // Ten seconds — longer than the six M5-08 watched two Husks survive the stage by.
+        for (int i = 0; i < 600; i++)
+        {
+            Step(1f / 60f);
+        }
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Waves),
+            "The fight is not over, so there is no shop to stand in beside it.");
+        Assert.That(_events.Count<StageCleared>(), Is.Zero);
+        Assert.That(_events.Count<SanctumOpened>(), Is.Zero);
+        Assert.That(_enemies.Registry.TryGet(add, out EnemyAgent agent) && agent.IsAlive, Is.True,
+            "And the add is still standing — neither despawned nor forgotten, so its kill still pays.");
+    }
+
+    [Test]
+    public void Boss_TheDepthIsUnchanged()
+    {
+        int boss = StandTheBoss();
+        int add = DressAnAdd(4f);
+
+        Kill(boss);
+        Step(1f / 60f);
+
+        // What a death right now would be paid: stage 5, and the boss on it not counted — exactly
+        // what it was before M6-02a, when this same instant was Clear or Gate at the same depth.
+        Assert.That(_flow.Stage, Is.EqualTo(5));
+        //
+        // The mode's whole roster is passed as already met (M6-09a), so GD §14.1's third term is
+        // zero and this row goes on asserting what it is about — the depth and the boss.
+        var everyArchetype = new List<ContentId>();
+
+        foreach (RosterEntry entry in _mode.Roster)
+        {
+            everyArchetype.Add(entry.SpecId);
+        }
+
+        Assert.That(ShardPayout.For(_flow.Stage, _mode, everyArchetype), Is.EqualTo(50));
+        Assert.That(ShardPayout.BossesKilled(_flow.Stage, _mode), Is.Zero);
+
+        Kill(add);
+        Step(1f / 60f);
+        WalkThroughTheDoor();
+
+        Assert.That(_flow.Stage, Is.EqualTo(6), "The depth moves at the door, as it always did.");
+        Assert.That(ShardPayout.BossesKilled(_flow.Stage, _mode), Is.EqualTo(1));
+        Assert.That(ShardPayout.For(_flow.Stage, _mode, everyArchetype), Is.EqualTo(110), "10·6 + 50·1.");
+    }
+
+    [Test]
+    public void Stage_AnOrdinaryStageIsUnchanged()
+    {
+        Build(BossEveryFifth());
+        BeginAt(1);
+
+        for (int stage = 1; stage <= 4; stage++)
+        {
+            // A body the director never issued, standing for the whole stage. An ordinary stage has
+            // never counted one — M2-05's walk is over the waves' own ids — and still does not.
+            DressAnAdd(4f);
+
+            int body = SpawnTheWave();
+
+            Assert.That(_director.IsBossStage, Is.False, $"Stage {stage}.");
+            Assert.That(_director.IsStageComplete, Is.False, $"Stage {stage}, its body standing.");
+
+            Kill(body);
+            Step(1f / 60f);
+
+            Assert.That(_director.IsStageComplete, Is.True,
+                $"Stage {stage}: complete with a dressed body still breathing, exactly as at M2-05 "
+                    + "(rule 6).");
+            Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Clear));
+
+            WalkThroughTheDoor();
+        }
+    }
+
+    [Test]
+    public void Director_CompletionAllocatesNothing()
+    {
+        int boss = StandTheBoss();
+
+        // 28 bodies: the boss and 27 adds, every one dead but the last, so each read walks the
+        // whole registry before it finds the breath — the worst case, at the device cap.
+        int last = 0;
+
+        for (int i = 0; i < DeviceCap - 1; i++)
+        {
+            last = DressAnAdd(-8f + (0.5f * i));
+        }
+
+        Kill(boss);
+
+        ReadOnlySpan<EnemyAgent> registered = _enemies.Registry.Alive;
+
+        for (int a = 0; a < registered.Length; a++)
+        {
+            if (registered[a].Id != last && registered[a].IsAlive)
+            {
+                Kill(registered[a].Id);
+            }
+        }
+
+        Step(1f / 60f);
+
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(DeviceCap));
+        Assert.That(_director.IsStageComplete, Is.False, "Sanity: the last add still holds it open.");
+
+        AllocationAssert.None(() => _ = _director.IsStageComplete, 100_000);
+    }
+
+    // ---- The session's read and command (M6-02a rule 4) -----------------------------------------
+
+    [Test]
+    public void Run_IsSanctumOpenTracksThePhase()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        Assert.That(session.IsSanctumOpen, Is.False, "No run.");
+
+        session.Start(SessionConfig(1));
+
+        Assert.That(session.IsSanctumOpen, Is.False, "Arrival.");
+
+        Vector3 body = KillTheWave(session);
+
+        for (int i = 0; i < 600 && _events.Count<SanctumOpened>() == 0; i++)
+        {
+            Assert.That(session.IsSanctumOpen, Is.False, "Waves and Clear.");
+
+            session.Tick(SessionSnapshot(1f / 60f, body));
+        }
+
+        Assert.That(_events.Count<SanctumOpened>(), Is.EqualTo(1), "The fixture failed to reach the Sanctum.");
+        Assert.That(session.IsSanctumOpen, Is.True);
+        Assert.That(session.State.IsSanctumOpen, Is.True, "And the state a screen reads agrees.");
+
+        session.LeaveSanctum();
+
+        Assert.That(session.IsSanctumOpen, Is.False,
+            "On the tap, not on the next tick — a frame loop asking straight after is told the truth.");
+
+        session.Tick(SessionSnapshot(1f / 60f, body));
+
+        Assert.That(session.IsSanctumOpen, Is.False, "Gate.");
+
+        session.End();
+
+        Assert.That(session.IsSanctumOpen, Is.False, "And no run again.");
+    }
+
+    [Test]
+    public void Run_LeaveSanctumWithoutARunThrows()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        Assert.Throws<InvalidOperationException>(() => session.LeaveSanctum(), "No run.");
+
+        session.Start(SessionConfig(1));
+
+        Assert.Throws<InvalidOperationException>(() => session.LeaveSanctum(),
+            "A run, and no shop open — the flow's refusal, reaching the port unchanged.");
+    }
+
+    [Test]
+    public void Stage_TheBoundarySnapshotIsStillTakenOnTheClearEdge()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        session.Start(SessionConfig(1));
+
+        Vector3 body = KillTheWave(session);
+
+        _events.Clear();
+
+        for (int i = 0; i < 600 && _events.Count<SanctumOpened>() == 0; i++)
+        {
+            session.Tick(SessionSnapshot(1f / 60f, body));
+        }
+
+        Assert.That(_events.Count<RunSnapshotTaken>(), Is.EqualTo(1),
+            "One boundary write, and the Sanctum did not add a second.");
+
+        int cleared = IndexOf<StageCleared>();
+        int taken = IndexOf<RunSnapshotTaken>();
+        int opened = IndexOf<SanctumOpened>();
+
+        Assert.That(cleared, Is.LessThan(taken), "Taken on the Clear edge, after the stage is announced over...");
+        Assert.That(taken, Is.LessThan(opened),
+            "...and before the shop opens, so a run killed mid-purchase resumes with the Essence it "
+                + "walked in with (rule 1).");
     }
 
     // ---- Crossing the boundary (rules 10, 11, 12, 17) ------------------------------------------
@@ -763,7 +1231,7 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
         BeginAt(1);
 
-        // Arrival, Gate and Transition run against a stream that throws on any draw. Waves is not
+        // Arrival, Sanctum, Gate and Transition run against a stream that throws on any draw. Waves is not
         // in the list and cannot be: the director draws a position per spawn attempt, which is what
         // it is for.
         var forbidden = new ThrowingStream();
@@ -775,6 +1243,11 @@ public sealed class StageFlowTests
 
         ClearTheStage();
         Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum));
+        Assert.DoesNotThrow(() => _flow.Tick(_now, _snapshot, forbidden), "Sanctum.");
+
+        _flow.LeaveSanctum(_now);
 
         Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate));
         Assert.DoesNotThrow(() => _flow.Tick(_now, _snapshot, forbidden), "Gate.");
@@ -798,27 +1271,40 @@ public sealed class StageFlowTests
         Build(OneHuskStage());
 
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(null, _composer, _director, _enemies, _projectiles, _player, _events, _plan, 0));
+            () => new StageFlow(null, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, null, _director, _enemies, _projectiles, _player, _events, _plan, 0));
+            () => new StageFlow(_mode, null, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, null, _enemies, _projectiles, _player, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, null, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, null, _projectiles, _player, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, null, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, null, _player, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, null, _player, _essence, _ordeals, _affixes, _events, _plan, 0));
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, null, _events, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, null, _essence, _ordeals, _affixes, _events, _plan, 0));
+
+        // The wallet is a *required* argument, unlike the lures and the army below it (M6-01a rule
+        // 5). The row that says why rather than merely that is
+        // `EssenceWalletTests.Stage_RefusesANullWallet`.
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, null, _plan, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, null, _ordeals, _affixes, _events, _plan, 0));
+
+        // The Ordeals and their stream, required for the wallet's reason (M6-06a rule 5); the row
+        // that says why is `OrdealsTests.Stage_RefusesANullSet`.
         Assert.Throws<ArgumentNullException>(
-            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _events, null, 0));
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, null, _affixes, _events, _plan, 0));
+        Assert.Throws<ArgumentNullException>(
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, null, _events, _plan, 0));
+        Assert.Throws<ArgumentNullException>(
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, null, _plan, 0));
+        Assert.Throws<ArgumentNullException>(
+            () => new StageFlow(_mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, null, 0));
 
         // Every int is a legal seed — it is a bit pattern, not a quantity — so there is nothing
         // there for a guard to reject and this row does not pretend otherwise.
         Assert.DoesNotThrow(
             () => new StageFlow(
-                _mode, _composer, _director, _enemies, _projectiles, _player, _events, _plan, int.MinValue));
+                _mode, _composer, _director, _enemies, _projectiles, _player, _essence, _ordeals, _affixes, _events, _plan, int.MinValue));
     }
 
     [Test]
@@ -961,11 +1447,8 @@ public sealed class StageFlowTests
 
         KillTheWave(session);
 
-        // Through Clear, into the doorway, and out through the fade.
-        for (int i = 0; i < 600 && _events.Count<StageArrived>() < 2; i++)
-        {
-            session.Tick(SessionSnapshot(1f / 60f, Door));
-        }
+        // Through Clear, out of the Sanctum, into the doorway, and out through the fade.
+        CrossWithTheSession(session);
 
         Assert.That(_events.Count<StageArrived>(), Is.EqualTo(2), "The fixture failed to cross.");
         Assert.That(session.State.StageIndex, Is.EqualTo(4));
@@ -1060,7 +1543,7 @@ public sealed class StageFlowTests
     {
         ClearTheStage();
 
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         _snapshot.PlayerPosition = Door;
 
@@ -1073,7 +1556,7 @@ public sealed class StageFlowTests
     /// <summary>From <c>Clear</c> all the way to the next stage's <c>Arrival</c>.</summary>
     private void WalkThroughTheDoor()
     {
-        Step(ClearTimeAndABit());
+        OpenTheDoor();
 
         _snapshot.PlayerPosition = Door;
 
@@ -1104,6 +1587,94 @@ public sealed class StageFlowTests
     /// <em>when</em> a phase ends say so by checking the tick before it as well.
     /// </remarks>
     private static float ClearTimeAndABit() => StageFlow.ClearTime + (1f / 60f);
+
+    /// <summary>
+    /// From <c>Clear</c> to <c>Gate</c>: waits out <see cref="StageFlow.ClearTime"/> into the
+    /// Sanctum, and leaves it the only way there is (M6-02a rule 3).
+    /// </summary>
+    private void OpenTheDoor()
+    {
+        Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum), "The fixture failed to reach the Sanctum.");
+
+        _flow.LeaveSanctum(_now);
+    }
+
+    /// <summary>
+    /// Builds a boss-every-fifth mode, opens stage 5 and ticks until the boss is standing. Answers
+    /// its id.
+    /// </summary>
+    /// <remarks>
+    /// <c>EssenceWalletTests.ClearTheBossStage</c>'s opening: the director is ticked before the flow,
+    /// so the body it was handed a boss id for stands up on the frame after the one that handed it
+    /// over.
+    /// </remarks>
+    private int StandTheBoss()
+    {
+        Build(BossEveryFifth());
+        BeginAt(5);
+
+        Step(StageFlow.ArrivalTime);
+        Step(1f / 60f);
+
+        Assert.That(_director.IsBossStage, Is.True, "The mode did not name a boss for stage 5.");
+        Assert.That(_director.BossEnemyId, Is.Not.Zero, "The fixture failed to stand the boss up.");
+
+        return _director.BossEnemyId;
+    }
+
+    /// <summary>
+    /// A Husk the director did not issue, standing at <paramref name="x"/> — an add, as far as a
+    /// boss stage is concerned. Answers its id.
+    /// </summary>
+    private int DressAnAdd(float x) =>
+        _enemies.Spawn(new ContentId(HuskId), new Vector3(x, 0f, -6f)).Id;
+
+    /// <summary>Appends the flow's phase to <paramref name="seen"/> when it has changed.</summary>
+    private void Note(List<StagePhase> seen)
+    {
+        if (seen[seen.Count - 1] != _flow.Phase)
+        {
+            seen.Add(_flow.Phase);
+        }
+    }
+
+    /// <summary>Where the first <typeparamref name="T"/> sits in everything published, or −1.</summary>
+    private int IndexOf<T>() where T : struct
+    {
+        for (int i = 0; i < _events.All.Count; i++)
+        {
+            if (_events.All[i] is T)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Walks a session's run out of the Sanctum, into the door and out the other side of the fade.
+    /// </summary>
+    /// <remarks>
+    /// Leaves the shop the way a screen will: by asking the port whether it is open and sending
+    /// the command when it is (M6-02a rule 4).
+    /// </remarks>
+    private void CrossWithTheSession(RunSession session)
+    {
+        int before = _events.Count<StageArrived>();
+
+        for (int i = 0; i < 600 && _events.Count<StageArrived>() == before; i++)
+        {
+            if (session.IsSanctumOpen)
+            {
+                session.LeaveSanctum();
+            }
+
+            session.Tick(SessionSnapshot(1f / 60f, Door));
+        }
+    }
 
     private void Kill(int id)
     {
@@ -1173,6 +1744,9 @@ public sealed class StageFlowTests
         MinionSpec wight = Wight();
 
         _minions = new MinionSystem(wight, new MinionRecipe(wight), _events, new RecordingIntents());
+        _essence = new EssenceWallet(_events);
+        _ordeals = new Ordeals(_mode, _events);
+        _affixes = new FixedRandom(seed).Affixes;
 
         _flow = Flow();
     }
@@ -1204,6 +1778,9 @@ public sealed class StageFlowTests
         _enemies,
         _projectiles,
         _player,
+        _essence,
+        _ordeals,
+        _affixes,
         _events,
         _plan,
         seed: 0,
@@ -1336,7 +1913,8 @@ public sealed class StageFlowTests
         int concurrency,
         bool endless = true,
         int finalStage = 0,
-        BudgetCurve? curve = null)
+        BudgetCurve? curve = null,
+        int bossEvery = 0)
     {
         var scaling = new ScalingSpec(
             curve ?? new BudgetCurve(budget, 0f, 0f),
@@ -1354,13 +1932,54 @@ public sealed class StageFlowTests
             finalStage: finalStage,
             scaling,
             Scalings.Xp(),
-            new[] { new RosterEntry(new ContentId(HuskId), 1) });
+            new[] { new RosterEntry(new ContentId(HuskId), 1) },
+            bossRoster: bossEvery == 0
+                ? null
+                : new[] { new BossRosterEntry(new ContentId(BossId), bossEvery) });
     }
+
+    /// <summary>
+    /// A mode whose every fifth stage is the boss — Descent's cadence — for the <c>Boss_</c> rows
+    /// (M6-02a rule 5).
+    /// </summary>
+    private static ModeSpec BossEveryFifth() =>
+        Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap, bossEvery: 5);
 
     private static ContentCatalog Catalog(ModeSpec mode) => new ContentCatalog(
         new[] { Oathbound() },
-        new[] { Husk(), TheExecutioner() },
-        new[] { mode });
+        new[] { Husk(), TheExecutioner(), WardenBody() },
+        new[] { mode },
+        skills: null,
+        trees: null,
+        bosses: new[] { Warden() });
+
+    /// <summary>
+    /// The body a boss stage stands up — <c>EssenceWalletTests</c>' Warden. Never ticked here, so
+    /// there is no <c>BossBehaviour</c> summoning anything: the <c>Boss_</c> rows dress their adds
+    /// with <c>EnemySystem.Spawn</c>, which is the registry a summoned add lands in either way.
+    /// </summary>
+    private static EnemySpec WardenBody() => new EnemySpec(
+        new ContentId(WardenEnemyId),
+        new LocKey("enemy.warden.name"),
+        maxHp: 1_000f,
+        moveSpeed: 2f,
+        targetPriority: 8,
+        threatCost: 40,
+        xpValue: 120f,
+        isElite: false,
+        contactDamage: 20f,
+        reach: 2.5f,
+        windupTime: 0.8f,
+        recoverTime: 0.8f,
+        aggroRange: 40f,
+        behaviour: EnemyBehaviourKind.Boss);
+
+    /// <summary>One phase and no summons — the adds are the rows' own, stated where they stand.</summary>
+    private static BossSpec Warden() => new BossSpec(
+        new ContentId(BossId),
+        new ContentId(WardenEnemyId),
+        new[] { new BossPhaseSpec(1f) },
+        1.5f);
 
     /// <summary>
     /// The Husk, and it is authored <c>Static</c> on purpose: this fixture is about pacing, and a

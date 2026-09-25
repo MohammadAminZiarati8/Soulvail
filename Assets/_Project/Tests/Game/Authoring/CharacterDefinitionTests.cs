@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Soulvail.Core.Content;
+using Soulvail.Core.Progression;
+using Soulvail.Core.Save;
 using Soulvail.Game.Authoring;
+using Soulvail.Tests.Core.Run;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -222,6 +226,43 @@ public sealed class CharacterDefinitionTests
     }
 
     [Test]
+    public void ToSpec_ZeroKindlingMaxStacks_MeansNoKindling()
+    {
+        // M6-07a rule 1: the count is the switch, the minion cap's arrangement a third time. A fresh
+        // definition authors none, which is what the Oathbound and the Gravecaller inherit without
+        // a line in either file.
+        CharacterDefinition definition = NewDefinition("Unkindled");
+
+        Assert.That(definition.ToSpec().Kindling, Is.Null);
+
+        SetInt(definition, "_kindlingMaxStacks", 30);
+
+        KindlingSpec kindling = definition.ToSpec().Kindling;
+
+        Assert.That(kindling, Is.Not.Null);
+        Assert.That(kindling.MaxStacks, Is.EqualTo(30));
+        Assert.That(kindling.PerStack, Is.EqualTo(0.02f).Within(Tolerance), "the field's default is CH §3.3's.");
+    }
+
+    [Test]
+    public void ToSpec_InvalidKindling_ThrowsNamingAsset()
+    {
+        CharacterDefinition definition = NewDefinition("BrokenKindling");
+
+        SetInt(definition, "_kindlingMaxStacks", 30);
+
+        // OnValidate's warning is expected rather than ignored here, because it is the other half
+        // of the same guard: the Inspector says so on the edit, and ToSpec refuses at boot.
+        LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("BrokenKindling")));
+        SetFloat(definition, "_kindlingPerStack", 0f);
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("BrokenKindling"));
+        Assert.That(thrown.InnerException, Is.InstanceOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
     public void ToSpec_ReturnsNewInstanceEachCall()
     {
         var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(OathboundPath);
@@ -298,6 +339,122 @@ public sealed class CharacterDefinitionTests
         SetString(definition, "_id", "Character.Oathbound");
     }
 
+    // ---- M6-07c: CH §3's Veilrot column, off the shipped assets ------------------------------------
+
+    [Test]
+    public void Oathbound_ResistsTheVeil()
+    {
+        AssertVeilrot(Shipped(OathboundPath), start: 0f, gain: 0.6f, cleanse: 0.5f, damage: 0f, cast: 0f);
+    }
+
+    [Test]
+    public void Gravecaller_ThrivesOnIt()
+    {
+        AssertVeilrot(Shipped(GravecallerPath), start: 15f, gain: 1.5f, cleanse: 1f, damage: 0.01f, cast: 0f);
+    }
+
+    [Test]
+    public void Emberwright_SpendsIt()
+    {
+        AssertVeilrot(Shipped(EmberwrightPath), start: 0f, gain: 1f, cleanse: 1f, damage: 0f, cast: 5f);
+    }
+
+    [Test]
+    public void Price_TheOathboundCleansesAtHalf()
+    {
+        var descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+
+        Assert.That(descent, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        SanctumSpec prices = descent.ToSpec().Sanctum;
+
+        Assert.That(prices.CleansePrice, Is.EqualTo(60), "the shipped mode's own price, the premise.");
+
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(OathboundPath).Veilrot), Is.EqualTo(30), "CH §3.1.");
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(GravecallerPath).Veilrot), Is.EqualTo(60));
+        Assert.That(ClassVeilrotTests.CleansePrice(prices, Shipped(EmberwrightPath).Veilrot), Is.EqualTo(60));
+    }
+
+    [Test]
+    public void Veilrot_AllFiveNeutralConvertsToNull()
+    {
+        // The authoring switch (M6-07c rule 1): a fresh definition carries the neutral defaults and
+        // produces no block, and moving any one dial produces one.
+        CharacterDefinition definition = NewDefinition("NeutralVeil");
+
+        Assert.That(definition.ToSpec().Veilrot, Is.Null);
+
+        SetFloat(definition, "_veilrotInstantCastCost", 5f);
+
+        Assert.That(definition.ToSpec().Veilrot, Is.Not.Null);
+        Assert.That(definition.ToSpec().Veilrot.InstantCastCost, Is.EqualTo(5f));
+    }
+
+    // ---- M6-09a: GD §14.2's table, off the shipped assets -------------------------------------------
+
+    [Test]
+    public void Unlock_ThePricesAreTheDocumentsNumbers()
+    {
+        // Rule 4's table: the starter authors nothing, and the other two carry GD §14.2's prices.
+        Assert.That(Shipped(OathboundPath).Unlock, Is.Null, "CH §3: Free — the starter.");
+
+        UnlockSpec gravecaller = Shipped(GravecallerPath).Unlock;
+        UnlockSpec emberwright = Shipped(EmberwrightPath).Unlock;
+
+        Assert.That(gravecaller.ShardPrice, Is.EqualTo(2000));
+        Assert.That(gravecaller.DeedBossId, Is.EqualTo(new ContentId("boss.choirmother")));
+        Assert.That(gravecaller.DeedStage, Is.Zero);
+
+        Assert.That(emberwright.ShardPrice, Is.EqualTo(3500));
+        Assert.That(emberwright.DeedStage, Is.EqualTo(20));
+        Assert.That(emberwright.DeedBossId, Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Unlock_TheGravecallersDeedCannotBeDoneYet()
+    {
+        var descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        ModeSpec mode = descent.ToSpec();
+
+        var catalog = new ContentCatalog(
+            new[] { Shipped(OathboundPath), Shipped(GravecallerPath), Shipped(EmberwrightPath) },
+            modes: new[] { mode });
+
+        // A run deep enough to have killed every boss Descent.asset authors many times over.
+        var earned = new ContentId[3];
+        int count = ClassUnlocks.Earned(100, mode, PlayerProfile.Default, catalog, earned);
+
+        Assert.That(
+            earned.Take(count),
+            Has.No.Member(new ContentId("character.gravecaller")),
+            "The Gravecaller's deed names 'boss.choirmother', which no mode in this build authors — "
+                + "GD §9.2's Choirmother is M7-03's. Until M7-03 merges it has exactly one route, the "
+                + "price. If this row went red, M7-03 has landed: retire it (M6-09a rule 4).");
+
+        // The absence, pinned rather than inferred: the shipped roster really is the Warden alone.
+        foreach (BossRosterEntry entry in mode.BossRoster)
+        {
+            Assert.That(entry.BossId, Is.Not.EqualTo(new ContentId("boss.choirmother")));
+        }
+
+        Assert.That(catalog.TryGetBoss(new ContentId("boss.choirmother"), out _), Is.False, "unresolvable.");
+    }
+
+    [Test]
+    public void Unlock_APriceOfZeroConvertsToNull()
+    {
+        // The authoring switch: a fresh definition authors no price and produces no block, and a
+        // price produces one.
+        CharacterDefinition definition = NewDefinition("FreeClass");
+
+        Assert.That(definition.ToSpec().Unlock, Is.Null);
+
+        SetInt(definition, "_unlockShardPrice", 2000);
+
+        Assert.That(definition.ToSpec().Unlock.ShardPrice, Is.EqualTo(2000));
+        Assert.That(definition.ToSpec().Unlock.HasDeed, Is.False, "an empty boss id is no deed.");
+    }
+
     [Test]
     public void AllCharacterDefinitions_HaveValidUniqueIds()
     {
@@ -329,6 +486,32 @@ public sealed class CharacterDefinitionTests
     /// </summary>
     private const float Tolerance = 1e-6f;
 
+    private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
+    private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
+    private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
+
+    private static CharacterSpec Shipped(string path)
+    {
+        var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
+
+        Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {path}.");
+
+        return definition.ToSpec();
+    }
+
+    /// <summary>All five dials, each against its own property — M0-07's transposition lesson.</summary>
+    private static void AssertVeilrot(CharacterSpec spec, float start, float gain, float cleanse, float damage, float cast)
+    {
+        VeilrotSpec veilrot = spec.Veilrot;
+
+        Assert.That(veilrot, Is.Not.Null, $"{spec.Id} authors no Veilrot relationship; CH §3 gives every class one.");
+        Assert.That(veilrot.StartingVeilrot, Is.EqualTo(start).Within(Tolerance), "start.");
+        Assert.That(veilrot.GainMultiplier, Is.EqualTo(gain).Within(Tolerance), "gain.");
+        Assert.That(veilrot.CleansePriceMultiplier, Is.EqualTo(cleanse).Within(Tolerance), "cleanse price.");
+        Assert.That(veilrot.DamagePerPoint, Is.EqualTo(damage).Within(Tolerance), "damage per point.");
+        Assert.That(veilrot.InstantCastCost, Is.EqualTo(cast).Within(Tolerance), "instant cast.");
+    }
+
     private CharacterDefinition NewDefinition(string assetName)
     {
         var definition = ScriptableObject.CreateInstance<CharacterDefinition>();
@@ -357,6 +540,13 @@ public sealed class CharacterDefinitionTests
     {
         var serialized = new SerializedObject(definition);
         serialized.FindProperty(field).floatValue = value;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetInt(CharacterDefinition definition, string field, int value)
+    {
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty(field).intValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 }

@@ -854,7 +854,11 @@ public sealed class GrantShieldTests
                 0f,
                 0,
                 new[] { node.Id },
-                new ContentId[SkillRunner.MaxManualSlots])));
+                new ContentId[SkillRunner.MaxManualSlots],
+                default,
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>(),
+                Array.Empty<ContentId>())));
 
         Assert.That(_session.State.OwnedActiveCount, Is.EqualTo(1), "The fixture owns its Bulwark.");
 

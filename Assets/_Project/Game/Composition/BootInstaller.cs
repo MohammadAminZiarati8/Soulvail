@@ -145,6 +145,15 @@ public static class BootInstaller
     /// <b>Required rather than optional, and registered at the root rather than per run:</b> the
     /// Menu needs it as much as a run does (rule 8), and a localizer that existed only during a run
     /// is exactly how <em>"Descend"</em> would have stayed English for another three milestones.
+    /// <b>It is the fallback</b> (M6-10 rule 1): its locale is empty, and every other table drops to
+    /// it on a miss.
+    /// </param>
+    /// <param name="languages">
+    /// Every other shipped table — <c>Data/Localisation/Pseudo.asset</c>, which is the only one in
+    /// V1 (M6-10 rule 3). <b>Optional and trailing, for <paramref name="bosses"/>' reason</b>:
+    /// omitting it has no silent form, because every screen still reads English, and a dozen
+    /// fixtures that build a container to resolve something else would carry a parameter that could
+    /// only ever be empty.
     /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
@@ -160,7 +169,8 @@ public static class BootInstaller
         IReadOnlyList<SkillDefinition> skills,
         IReadOnlyList<SkillTreeDefinition> trees,
         LocalizationTable localization,
-        IReadOnlyList<BossDefinition> bosses = null)
+        IReadOnlyList<BossDefinition> bosses = null,
+        IReadOnlyList<LocalizationTable> languages = null)
     {
         if (builder is null)
         {
@@ -237,10 +247,10 @@ public static class BootInstaller
         // scope reads it in the next, so it has to outlive both.
         builder.Register<PendingRun>(Lifetime.Singleton);
 
-        // Its sibling, and a different question (M2-14b rule 8): what the disk said at launch,
-        // rather than what the player chose. Singleton for a stronger reason than PendingRun's —
-        // it is written exactly once per app launch, by BootFlow, and every later reader is asking
-        // about that one read.
+        // Its sibling, and a different question (M2-14b rule 8): the run on disk, rather than what
+        // the player chose. Singleton for a stronger reason than PendingRun's — BootFlow seeds it
+        // at launch and every run's SaveWriter mirrors into it (M6-11a), and the Menu has to read
+        // the object they wrote. One registered per run would be written there and read by nobody.
         builder.Register<SavedRun>(Lifetime.Singleton);
 
         // Haptics live at the root rather than in the run, both of them. The vibrator is one
@@ -281,15 +291,94 @@ public static class BootInstaller
             resolver => HapticsSettings.FromStore(resolver.Resolve<ProfileStore>()),
             Lifetime.Singleton);
 
-        // The language, at the root and registered only as the port, so nothing can depend on the
-        // concrete adapter — the ISaveStore precedent above. **Built here and not deferred to the
-        // first resolve**, which is the catalog's bargain rather than the save store's: a duplicate
-        // key is then a loud failure at boot naming the asset, where a factory would surface it on
-        // whichever screen happened to ask for a word first. An instance registration is a singleton
-        // by construction. It is content read at boot like every other Data/ asset, so it bumps no
-        // save format and PlayerProfile stays at M3-09c's v2 (rule 4).
-        builder.RegisterInstance<ILocalizer>(new TableLocalizer(localization));
+        // The language, at the root. **Built here and not deferred to the first resolve**, which is
+        // the catalog's bargain rather than the save store's: a duplicate key is then a loud failure
+        // at boot naming the asset, where a factory would surface it on whichever screen happened to
+        // ask for a word first. An instance registration is a singleton by construction.
+        //
+        // **On the device's language, because the profile has not answered yet** (M6-10 rule 6).
+        // The container is built before ISaveStore.LoadProfile's Task exists, so the stored choice
+        // cannot be read here; BootFlow applies it before the Menu loads. A device language this
+        // build has no table for reads English, which in V1 is every device.
+        //
+        // Registered as the port for every screen, and as itself for BootFlow alone, which is the
+        // one caller of SetLocale — Boot_OnlyBootFlowSetsTheLocale keeps it that way.
+        var tables = new List<LocalizationTable>(1 + (languages?.Count ?? 0)) { localization };
+
+        if (languages is not null)
+        {
+            tables.AddRange(languages);
+        }
+
+        builder.RegisterInstance(new TableLocalizer(tables, LocaleOf(Application.systemLanguage)))
+            .As<ILocalizer>()
+            .AsSelf();
     }
+
+    /// <summary>
+    /// The BCP-47 tag for a language Unity reports, or empty when it cannot say.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A table rather than <c>CultureInfo.CurrentUICulture</c></b>, because Unity does not set
+    /// the managed culture from the device on Android: <see cref="Application.systemLanguage"/> is
+    /// the one reading the engine promises on every platform. The tags are ISO 639-1, plus the two
+    /// scripts Chinese is written in, which is what a translator's file would be named.
+    /// </para>
+    /// <para>
+    /// <b>Every member is mapped, and a member that is not reads as empty</b> — the fallback. So
+    /// a device whose language Unity adds next year reads English rather than failing at boot.
+    /// <c>Hugarian</c> is not spelled out: it is Unity's obsolete alias with <c>Hungarian</c>'s
+    /// value, so one arm answers both.
+    /// </para>
+    /// </remarks>
+    public static string LocaleOf(SystemLanguage language) => language switch
+    {
+        SystemLanguage.Afrikaans => "af",
+        SystemLanguage.Arabic => "ar",
+        SystemLanguage.Basque => "eu",
+        SystemLanguage.Belarusian => "be",
+        SystemLanguage.Bulgarian => "bg",
+        SystemLanguage.Catalan => "ca",
+        SystemLanguage.Chinese => "zh",
+        SystemLanguage.Czech => "cs",
+        SystemLanguage.Danish => "da",
+        SystemLanguage.Dutch => "nl",
+        SystemLanguage.English => "en",
+        SystemLanguage.Estonian => "et",
+        SystemLanguage.Faroese => "fo",
+        SystemLanguage.Finnish => "fi",
+        SystemLanguage.French => "fr",
+        SystemLanguage.German => "de",
+        SystemLanguage.Greek => "el",
+        SystemLanguage.Hebrew => "he",
+        SystemLanguage.Hungarian => "hu",
+        SystemLanguage.Icelandic => "is",
+        SystemLanguage.Indonesian => "id",
+        SystemLanguage.Italian => "it",
+        SystemLanguage.Japanese => "ja",
+        SystemLanguage.Korean => "ko",
+        SystemLanguage.Latvian => "lv",
+        SystemLanguage.Lithuanian => "lt",
+        SystemLanguage.Norwegian => "no",
+        SystemLanguage.Polish => "pl",
+        SystemLanguage.Portuguese => "pt",
+        SystemLanguage.Romanian => "ro",
+        SystemLanguage.Russian => "ru",
+        SystemLanguage.SerboCroatian => "sh",
+        SystemLanguage.Slovak => "sk",
+        SystemLanguage.Slovenian => "sl",
+        SystemLanguage.Spanish => "es",
+        SystemLanguage.Swedish => "sv",
+        SystemLanguage.Thai => "th",
+        SystemLanguage.Turkish => "tr",
+        SystemLanguage.Ukrainian => "uk",
+        SystemLanguage.Vietnamese => "vi",
+        SystemLanguage.ChineseSimplified => "zh-Hans",
+        SystemLanguage.ChineseTraditional => "zh-Hant",
+        SystemLanguage.Hindi => "hi",
+        _ => string.Empty,
+    };
 
     /// <summary>
     /// Builds the archetype → tint-and-scale index the arena draws with (M2-06).

@@ -113,6 +113,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// </summary>
     private readonly BossViews _bossViews;
 
+    /// <summary>
+    /// The writer that banks a death, held for <see cref="Start"/>: it states what the install had
+    /// already met, which the run's payout is measured against (M6-09a rule 6).
+    /// </summary>
+    private readonly ShardWriter _shardWriter;
+
     private readonly InputAdapter _input;
     private readonly SpawnPlan _spawnPlan;
     private readonly TapToFocusAdapter _tapToFocus;
@@ -206,11 +212,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // field would be assigned and never read, which the compiler is right to object to.
         _ = saveWriter ?? throw new ArgumentNullException(nameof(saveWriter));
 
-        // Taken and deliberately not kept, for the line above's reason and with a sharper version
-        // of it: nothing here ever calls ShardWriter, and a Scoped registration VContainer is never
-        // asked to resolve is never constructed at all — so without this parameter the writer would
-        // simply not exist, and a run would end, pay nothing, and report nothing (M4-05b rule 6).
-        _ = shardWriter ?? throw new ArgumentNullException(nameof(shardWriter));
+        // Kept, as of M6-09a, and still taken for the line above's reason first: a Scoped
+        // registration VContainer is never asked to resolve is never constructed at all — so without
+        // this parameter the writer would simply not exist, and a run would end, pay nothing, and
+        // report nothing (M4-05b rule 6). The field is for Start, which reads the lifetime archetype
+        // set off it — the set this writer grows is the set the payout is measured against.
+        _shardWriter = shardWriter ?? throw new ArgumentNullException(nameof(shardWriter));
 
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
@@ -275,7 +282,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
             _random.Seed,
             restore?.StageIndex ?? mode.StartingStage,
             _spawnPlan,
-            restore));
+            restore,
+            _shardWriter.ArchetypesAlreadyMet));
 
         // **`PendingRun.Clear()`'s first caller, and it has been owed one since M0-12** — the
         // method's own doc says "called once the run has started, so a second trip through the Run
@@ -368,6 +376,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         LevelUpPhase();
+
+        // Below the level-up phase, so a level-up wins a collision (M6-03a rule 5) — and above the
+        // gate, so the shop is paused on the frame after the tick that opened it.
+        SanctumPhase();
 
         // **Above CommandPhase, so a tap that lands on the level-up screen cannot also focus an
         // enemy or spend the Charge** (M3-08a rule 14). The Input System stays enabled and the stick
@@ -726,6 +738,47 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         else if (offer && !_pause.IsPaused)
         {
             _pause.Pause(PauseReason.LevelUp);
+        }
+    }
+
+    /// <summary>
+    /// Holds the pause while GD §13.3's Sanctum is open, and gives it back when it closes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>M6-03a's ruling, and core deliberately declined it</b> (M6-02a rule 3). An untimed room that
+    /// keeps ticking is a room that pays you to wait: every cooldown recovers for free and
+    /// <c>RunState.Time</c> runs on. Gated instead, a Sanctum costs zero simulated seconds, drops a
+    /// phone that is set down to <see cref="RunPause.PausedFrameRate"/>, and stops the arena's
+    /// Animators with the simulation. The cost is M6-02a's parenthetical <em>"cooldowns recover"</em>,
+    /// which is false in the shipped game — the correct direction.
+    /// </para>
+    /// <para>
+    /// <b>Here and not in the screen</b>, <see cref="LevelUpPhase"/>'s reason (M3-08b): the gate is a
+    /// once-a-frame pure function of <c>IsSanctumOpen</c>, so a presenter that is absent or undressed
+    /// costs a missing screen loudly rather than a run that ticks on with a shop nobody can close.
+    /// </para>
+    /// <para>
+    /// <b>Released before acquired, and acquired only when nothing holds the pause</b> — the body of
+    /// <see cref="LevelUpPhase"/>, which runs first. A level-up therefore wins a collision, which is
+    /// GD §13's own sentence (<em>"they never overlap"</em>) — and the collision is unreachable
+    /// anyway, since a pending level-up gates the ticks <c>Clear</c> counts down on. The guard exists
+    /// because <c>RunPause.Pause</c> throws for a second holder, and a throw inside the frame loop is
+    /// a dead run.
+    /// </para>
+    /// </remarks>
+    private void SanctumPhase()
+    {
+        bool open = _progression.IsSanctumOpen;
+
+        if (_pause.Holder == PauseReason.Sanctum && !open)
+        {
+            _pause.Resume(PauseReason.Sanctum);
+        }
+
+        if (open && !_pause.IsPaused)
+        {
+            _pause.Pause(PauseReason.Sanctum);
         }
     }
 

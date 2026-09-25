@@ -513,9 +513,9 @@ public sealed class OathboundTreeTests
 
         Assert.That(
             guids.Length,
-            Is.EqualTo(9),
-            "Nine of the thirteen shipped effect assets are ModifyStats. Update the number and say "
-                + "which task added one.");
+            Is.EqualTo(13),
+            "Thirteen of the seventeen shipped effect assets are ModifyStats — M6-05a added four, "
+                + "the two Pacts' power and price. Update the number and say which task added one.");
 
         foreach (string guid in guids)
         {
@@ -843,7 +843,11 @@ public sealed class OathboundTreeTests
             0f,
             pending,
             Array.Empty<ContentId>(),
-            new ContentId[SkillRunner.MaxManualSlots]);
+            new ContentId[SkillRunner.MaxManualSlots],
+            default,
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
         session.Start(new RunConfig(
             new ContentId(DescentId),

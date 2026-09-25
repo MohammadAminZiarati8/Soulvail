@@ -170,6 +170,87 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Descent_CarriesItsEssence()
+    {
+        // **GD §15's income table, on the asset from the first task that needs it** (M6-01a rule
+        // 2). Traps §7 applies exactly as it does to the Overflow row above: EssenceBlock's C#
+        // initialisers *are* 20 / 4 / 15 / 60, so Descent_EveryYamlKeyBindsToAField is the row that
+        // can tell a bound key from a dropped one and this one cannot.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        EssenceSpec essence = definition.ToSpec().Essence;
+
+        Assert.That(essence.PerStageBase, Is.EqualTo(20), "GD §15: 20 + 4·n a stage.");
+        Assert.That(essence.PerStageDepth, Is.EqualTo(4));
+        Assert.That(essence.PerElite, Is.EqualTo(15),
+            "GD §15's Elite term, authored with no payer until M7-02 — rule 2.");
+        Assert.That(essence.PerBoss, Is.EqualTo(60), "GD §15: +60 a boss, on top of the stage.");
+
+        // Asserted through the formula as well as the fields, because the formula is what the game
+        // reads and these four numbers are the ones GD §13.3's prices were set against: a stage-1
+        // clear pays 24, and a run that reaches stage 10 has been paid 540 — Σ(20 + 4n) for n = 1…10
+        // is 420, plus two bosses at 60. EssenceWalletTests owns the arithmetic; this row owns "the
+        // asset really carries GD §15's numbers and not some others".
+        Assert.That(essence.ForStageClear(1, false), Is.EqualTo(24));
+        Assert.That(essence.ForStageClear(5, true), Is.EqualTo(100));
+    }
+
+    [Test]
+    public void Sanctum_PricesComeFromTheMode()
+    {
+        // **GD §13.3's shop, on the asset** (M6-02b rule 1). Traps §7 applies as it does to the two
+        // rows above: SanctumBlock's C# initialisers are these same six numbers, so
+        // Descent_EveryYamlKeyBindsToAField is the row that can tell a bound key from a dropped one.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        SanctumSpec sanctum = definition.ToSpec().Sanctum;
+
+        Assert.That(sanctum.RerollPrice, Is.EqualTo(25), "GD §13.3: 25, doubling per use.");
+        Assert.That(sanctum.BanishPrice, Is.EqualTo(40));
+        Assert.That(sanctum.HealPrice, Is.EqualTo(40));
+        Assert.That(sanctum.HealAmount, Is.EqualTo(30f), "+30 HP.");
+        Assert.That(sanctum.CleansePrice, Is.EqualTo(60));
+        Assert.That(sanctum.CleanseAmount, Is.EqualTo(15f), "−15 Veilrot.");
+    }
+
+    [Test]
+    public void Mode_CarriesItsPoolAndSchedule()
+    {
+        // **GD §13.4 read against GD §3, as two authored numbers** (M6-06a rule 1): from stage 25,
+        // every 10. Unlike the blocks above, OrdealsBlock initialises to zero and empty, so a
+        // dropped YAML key here reads as "deals none" and this row *can* tell — the Traps §7 hole
+        // does not open for it. The pool is asserted in authored order, because the seed's draw
+        // walks it in that order.
+        var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath);
+        Assert.That(definition, Is.Not.Null, $"No ModeDefinition at {DescentPath}.");
+
+        ModeSpec spec = definition.ToSpec();
+
+        Assert.That(spec.OrdealSchedule.FirstStage, Is.EqualTo(25), "GD §13.4: from stage 25.");
+        Assert.That(spec.OrdealSchedule.EveryNStages, Is.EqualTo(10), "GD §3: a biome is 10 stages.");
+
+        string[] expected = { "ordeal.famine", "ordeal.vigil", "ordeal.swarm", "ordeal.hunger" };
+
+        Assert.That(spec.Ordeals, Has.Count.EqualTo(expected.Length),
+            "Four of GD §13.4's six; M6-06b refuses Fracture and Echo.");
+
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Assert.That(spec.Ordeals[i].Id.Value, Is.EqualTo(expected[i]), $"pool row {i}");
+        }
+
+        // GD §13.4's own numbers, one dial each.
+        Assert.That(spec.Ordeals[0].EssenceMultiplier, Is.EqualTo(0.6f).Within(1e-6f), "Famine: −40 %.");
+        Assert.That(spec.Ordeals[1].OfferCount, Is.EqualTo(2), "Vigil: 2 instead of 3.");
+        Assert.That(spec.Ordeals[2].ConcurrencyBonus, Is.EqualTo(8), "Swarm: +8.");
+        Assert.That(spec.Ordeals[2].ThreatCostTarget.Value, Is.EqualTo("enemy.husk"));
+        Assert.That(spec.Ordeals[2].ThreatCostMultiplier, Is.EqualTo(0.5f).Within(1e-6f), "Husk cost halved.");
+        Assert.That(spec.Ordeals[3].VeilrotMultiplier, Is.EqualTo(1.5f).Within(1e-6f), "Hunger: +50 %.");
+    }
+
+    [Test]
     public void ToSpec_CapBelowOne_ThrowsNamingAsset()
     {
         // The mis-authoring with no symptom: a cap of 0.5 halves every deep enemy's hit points and

@@ -215,6 +215,292 @@ public readonly struct OverflowSpec
 }
 
 /// <summary>
+/// What a run is paid, in Essence, for getting through things. GD §15's income table as authored
+/// data (ADR-0006).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It belongs to the mode for the reason <see cref="OverflowSpec"/> does</b> (M5-06b rule 9, and
+/// GD §4.5 before it): what a mode <em>pays</em> is as much a statement about itself as how fast it
+/// levels you or how hard it pushes. A Boss Rush pays per boss and nothing per stage; Descent pays
+/// for depth.
+/// </para>
+/// <para>
+/// A <see langword="readonly"/> struct beside <see cref="OverflowSpec"/> rather than in a file of
+/// its own, for that type's stated reason: a mode's authored blocks are read together. Unlike it,
+/// this one carries arithmetic — <see cref="ForStageClear"/> — because GD §15's formula has to live
+/// somewhere and the two alternatives are worse. Not on the wallet, which knows nothing about
+/// depth; and not at the call site, which is where a second copy would start.
+/// </para>
+/// <para>
+/// <b><c>default(EssenceSpec)</c> is legal and means <em>this mode pays nothing</em></b>, which is
+/// why <see cref="ModeSpec"/> makes no second check of it — <see cref="OverflowSpec"/>'s bargain
+/// exactly, and AR §18.3's <em>"a struct with an invariant needs the check at both ends"</em> does
+/// not bite for its reason: the invariant is that the four numbers are not negative, and zero is
+/// not. It is also what keeps <c>new ModeSpec(...)</c>'s sixty-three call sites compiling;
+/// <c>ContentValidationTests.EveryShippedMode_PricesItsEssence</c> is what stops a silent zero
+/// reaching a build.
+/// </para>
+/// </remarks>
+public readonly struct EssenceSpec
+{
+    /// <param name="perStageBase">The flat half of a stage clear. 20 in Descent.</param>
+    /// <param name="perStageDepth">What each stage of depth adds to it. 4 in Descent.</param>
+    /// <param name="perElite">What one Elite is worth. 15, and nothing pays it until M7-02.</param>
+    /// <param name="perBoss">What clearing a boss stage adds on top of the stage itself. 60.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Any value is negative — a mode that charges the player for clearing a stage. Refused where
+    /// the table is <em>authored</em> rather than where it is paid, for <see cref="OverflowSpec"/>'s
+    /// reason: the symptom is a balance nobody can explain, half an hour into a run and a long way
+    /// from the asset that caused it.
+    /// </exception>
+    public EssenceSpec(int perStageBase, int perStageDepth, int perElite, int perBoss)
+    {
+        PerStageBase = Require(perStageBase, nameof(perStageBase));
+        PerStageDepth = Require(perStageDepth, nameof(perStageDepth));
+        PerElite = Require(perElite, nameof(perElite));
+        PerBoss = Require(perBoss, nameof(perBoss));
+    }
+
+    /// <summary>The flat half of a stage clear. 20 in Descent.</summary>
+    public int PerStageBase { get; }
+
+    /// <summary>What each stage of depth adds to it. 4 in Descent.</summary>
+    public int PerStageDepth { get; }
+
+    /// <summary>What one Elite is worth. 15, and nothing pays it until M7-02.</summary>
+    /// <remarks>
+    /// <b>Authored with no payer, deliberately.</b> The asset is what a designer reads, and a blank
+    /// here would read as <em>"Elites pay nothing"</em> rather than as <em>"nothing is an Elite
+    /// yet"</em>. The day one dies it is a call site, not a content change.
+    /// </remarks>
+    public int PerElite { get; }
+
+    /// <summary>What clearing a boss stage adds on top of the stage itself. 60.</summary>
+    public int PerBoss { get; }
+
+    /// <summary>
+    /// What clearing <paramref name="stage"/> pays — GD §15's formula, in the one place it is
+    /// written.
+    /// </summary>
+    /// <param name="stage">The depth cleared. Numbered from 1 (GD §8.2).</param>
+    /// <param name="bossStage">
+    /// Whether that stage held a boss. A boss stage <em>is</em> a stage clear and pays both terms,
+    /// which is why this is one method rather than two.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="stage"/> is below 1. A stage-zero payment is a hand-edited save reaching the
+    /// economy, and the honest answer to it is a throw rather than the base rate.
+    /// </exception>
+    /// <remarks>
+    /// Cumulative rather than flat, so the prices in GD §13.3 can be read against something: a
+    /// stage-1 clear pays 24, and a run that reaches stage 10 has been paid 540 — <c>Σ(20 + 4n)</c>
+    /// for <em>n</em> = 1…10 is 420, plus two bosses at 60. <b>Nothing is tuned here</b>; the
+    /// numbers are the asset's, and GD §13.4's Famine multiplies at the award site (M6-06b) rather
+    /// than in this expression.
+    /// </remarks>
+    public int ForStageClear(int stage, bool bossStage)
+    {
+        if (stage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(stage),
+                stage,
+                "Stages are numbered from 1 (GD §8.2), so there is no stage 0 to be paid for "
+                    + "clearing.");
+        }
+
+        int paid = PerStageBase + (PerStageDepth * stage);
+
+        return bossStage ? paid + PerBoss : paid;
+    }
+
+    /// <summary>
+    /// The one door, written once rather than four times: the four numbers are the same kind of
+    /// thing and owe the same sentence — <c>OverflowSpec.Require</c>'s shape.
+    /// </summary>
+    private static int Require(int value, string field)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Essence {field} must be zero or more. A negative one is a mode that "
+                    + "charges the player for getting through it, which the wallet would refuse at "
+                    + "the award site with nothing to point at but the asset.");
+        }
+
+        return value;
+    }
+}
+
+/// <summary>
+/// GD §13.3's shop, as authored data: what each of the four Sanctum services costs, and what Heal
+/// and Cleanse are worth. Prices and magnitudes both (ADR-0006).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>It belongs to the mode for <see cref="EssenceSpec"/>'s reason, and finishes its
+/// sentence</b> (M6-02b rule 1): one says what a run is paid, this says what it can buy with it.
+/// </para>
+/// <para>
+/// <b>The reroll's doubling is not here</b> (rule 2). GD §13.3's <em>"doubles per use"</em> is the
+/// shape of the economy rather than a number in it, so it is <c>SanctumShop.RerollDoubling</c>; the
+/// base price is content and lives here.
+/// </para>
+/// <para>
+/// <b><c>default(SanctumSpec)</c> is legal and worse than <see cref="EssenceSpec"/>'s</b>: every
+/// price at zero is a shop that gives everything away, and both magnitudes at zero are two services
+/// that do nothing. It is what keeps <c>new ModeSpec(...)</c>'s call sites compiling, so the
+/// constructor makes no second check of it; what stops a shipped mode carrying it is
+/// <c>ContentValidationTests.Content_EveryShippedModePricesItsSanctum</c>.
+/// </para>
+/// </remarks>
+public readonly struct SanctumSpec
+{
+    /// <param name="rerollPrice">The first reroll's price, before doubling. 25 in Descent.</param>
+    /// <param name="banishPrice">What taking one node out of the run costs. 40.</param>
+    /// <param name="healPrice">What a heal costs. 40.</param>
+    /// <param name="healAmount">Hit points a heal restores. 30.</param>
+    /// <param name="cleansePrice">What a cleanse costs. 60.</param>
+    /// <param name="cleanseAmount">Veilrot a cleanse removes. 15.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// A price is negative, or a magnitude is not a finite number greater than zero. Refused where
+    /// the shop is <em>authored</em>, for <see cref="EssenceSpec"/>'s reason: a heal worth NaN would
+    /// be found by a player paying for it.
+    /// </exception>
+    public SanctumSpec(
+        int rerollPrice, int banishPrice, int healPrice, float healAmount,
+        int cleansePrice, float cleanseAmount)
+    {
+        RerollPrice = RequirePrice(rerollPrice, nameof(rerollPrice));
+        BanishPrice = RequirePrice(banishPrice, nameof(banishPrice));
+        HealPrice = RequirePrice(healPrice, nameof(healPrice));
+        HealAmount = RequireAmount(healAmount, nameof(healAmount));
+        CleansePrice = RequirePrice(cleansePrice, nameof(cleansePrice));
+        CleanseAmount = RequireAmount(cleanseAmount, nameof(cleanseAmount));
+    }
+
+    /// <summary>The first reroll's price, before GD §13.3's doubling. 25 in Descent.</summary>
+    public int RerollPrice { get; }
+
+    /// <summary>What taking one node out of the run's pool costs. 40.</summary>
+    public int BanishPrice { get; }
+
+    /// <summary>What a heal costs. 40.</summary>
+    public int HealPrice { get; }
+
+    /// <summary>Hit points a heal restores. 30.</summary>
+    public float HealAmount { get; }
+
+    /// <summary>What a cleanse costs. 60.</summary>
+    public int CleansePrice { get; }
+
+    /// <summary>Veilrot a cleanse removes. 15.</summary>
+    public float CleanseAmount { get; }
+
+    private static int RequirePrice(int value, string field)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Sanctum {field} must be zero or more. A negative price is a shop that "
+                    + "pays the player to shop in it, which EssenceWallet.Spend would refuse at the "
+                    + "counter with nothing to point at but the asset.");
+        }
+
+        return value;
+    }
+
+    private static float RequireAmount(float value, string field)
+    {
+        // `!(v > 0f)` so NaN is refused with zero and the negatives — every guard in core's spelling.
+        if (!(value > 0f) || float.IsInfinity(value))
+        {
+            throw new ArgumentOutOfRangeException(
+                field,
+                value,
+                $"A mode's Sanctum {field} must be a finite number greater than zero. A service "
+                    + "worth nothing is one the shop would sell for a price and deliver nothing for.");
+        }
+
+        return value;
+    }
+}
+
+/// <summary>
+/// When a mode starts dealing GD §13.4's Ordeals, and how often. GD §13.4 against GD §3.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Two authored numbers, because there is no biome in the build</b> (M6-06a). GD §13.4 says
+/// <em>"from stage 25, each new biome loop"</em> and GD §3 says <em>"biome changes every 10
+/// stages"</em>; <see cref="ModeSpec"/> knows nothing about layers, so the arithmetic is written down
+/// as 25 and 10 in <c>Descent.asset</c> rather than inferred. That deals at 25, 35, 45, 55…
+/// </para>
+/// <para>
+/// <b><c>default(OrdealScheduleSpec)</c> is legal and deals never</b> — rule 1, and what keeps
+/// <c>new ModeSpec(...)</c>'s call sites compiling. <see cref="DealsAt"/> reads a zeroed schedule as
+/// "no schedule" rather than dividing by its zero period, so AR §18.3's both-ends rule is kept by the
+/// reader instead of by a second check in <see cref="ModeSpec"/>'s constructor. What stops a shipped
+/// mode stocking a pool it never deals is
+/// <c>ContentValidationTests.Content_EveryShippedModeSchedulesWhatItStocks</c>.
+/// </para>
+/// </remarks>
+public readonly struct OrdealScheduleSpec
+{
+    /// <param name="firstStage">The first stage an Ordeal is dealt on. 25 in Descent.</param>
+    /// <param name="everyNStages">How many stages apart the rest come. 10 in Descent.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="firstStage"/> is below 1, or <paramref name="everyNStages"/> is below 1 — a
+    /// period of zero deals on every stage and none, depending on who does the dividing.
+    /// </exception>
+    public OrdealScheduleSpec(int firstStage, int everyNStages)
+    {
+        if (firstStage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(firstStage),
+                firstStage,
+                "An Ordeal schedule's first stage must be at least 1. Stages are numbered from 1 "
+                    + "(GD §8.2).");
+        }
+
+        if (everyNStages < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(everyNStages),
+                everyNStages,
+                "An Ordeal schedule's period must be at least 1. A zero would deal on every stage "
+                    + "or on none, and a mode that means none authors no schedule.");
+        }
+
+        FirstStage = firstStage;
+        EveryNStages = everyNStages;
+    }
+
+    /// <summary>The first stage an Ordeal is dealt on. 25 in Descent; 0 for no schedule.</summary>
+    public int FirstStage { get; }
+
+    /// <summary>How many stages apart the rest come. 10 in Descent; 0 for no schedule.</summary>
+    public int EveryNStages { get; }
+
+    /// <summary>Whether this is an authored schedule rather than the zeroed one.</summary>
+    public bool IsAuthored => EveryNStages > 0;
+
+    /// <summary>Whether <paramref name="stage"/> is one this schedule deals on.</summary>
+    /// <remarks>
+    /// False for every stage on the zeroed schedule, and no throw — a mode that authors none deals
+    /// none (rule 1). A stage below 1 is the caller's to refuse; here it is simply not a boundary.
+    /// </remarks>
+    public bool DealsAt(int stage) =>
+        IsAuthored && stage >= FirstStage && (stage - FirstStage) % EveryNStages == 0;
+}
+
+/// <summary>
 /// A mode, as authored data: which stages it has, whether it ever ends, and the enemies it is
 /// willing to spawn at each depth. Descent is the only instance in V1 (GD §4.5). Converted once
 /// at boot from a <c>ModeDefinition</c> ScriptableObject and registered in the
@@ -279,6 +565,11 @@ public sealed class ModeSpec
 
     private readonly ReadOnlyCollection<BossRosterEntry> _bossRosterView;
 
+    /// <summary>The Ordeal pool, wrapped by <see cref="Ordeals"/> for <see cref="_roster"/>'s reason.</summary>
+    private readonly OrdealSpec[] _ordeals;
+
+    private readonly ReadOnlyCollection<OrdealSpec> _ordealsView;
+
     /// <param name="id">The mode's stable content id, e.g. <c>mode.descent</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="startingStage">The depth a fresh run of this mode begins at. Usually 1.</param>
@@ -328,6 +619,30 @@ public sealed class ModeSpec
     /// <c>default(OverflowSpec)</c> — a mode whose spare levels are worth nothing, which is the
     /// honest reading of a mode that never mentioned them.
     /// </param>
+    /// <param name="essence">
+    /// GD §15's income table for this mode — what a stage clear, an Elite and a boss are worth
+    /// (M6-01a rule 2). <b>Optional, and last, which is <paramref name="overflow"/>'s placement and
+    /// its argument:</b> it belongs beside that block, and putting it there would have moved
+    /// sixty-three call sites across forty-four files for a widening that changes nothing any of
+    /// them says. Omitted, it is <c>default(EssenceSpec)</c> — a mode that pays nothing, which is
+    /// the honest reading of a mode that never mentioned an economy.
+    /// </param>
+    /// <param name="sanctum">
+    /// GD §13.3's four prices and two magnitudes (M6-02b rule 1). Optional and last, for
+    /// <paramref name="essence"/>'s reason one argument over. Omitted, it is
+    /// <c>default(SanctumSpec)</c> — every service free and worthless, which a fixture that never
+    /// opens the shop cannot tell apart and a shipped mode is refused by content validation.
+    /// </param>
+    /// <param name="ordealSchedule">
+    /// When GD §13.4's Ordeals are dealt (M6-06a rule 1). Optional and last, for
+    /// <paramref name="essence"/>'s reason two arguments over. Omitted, it is
+    /// <c>default(OrdealScheduleSpec)</c>, which deals never.
+    /// </param>
+    /// <param name="ordeals">
+    /// The pool they are dealt from, in authored order. Copied. Null and empty mean the same thing and
+    /// are both legal. <b>The mode's rather than the catalog's</b>, <c>WaveComposer</c>'s rule: the
+    /// vocabulary is the mode's, which is what makes a Trial with no Ordeals a data change.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -341,6 +656,8 @@ public sealed class ModeSpec
     /// <paramref name="xp"/> is <c>default(XpCurve)</c> — refused exactly as a defaulted
     /// <see cref="ScalingSpec"/> curve is, and for a sharper version of the same reason: a zeroed
     /// curve costs nothing per level, so a tracker fed one levels on every grant without end.
+    /// Also when an Ordeal in <paramref name="ordeals"/> is null or two of them share an id — the
+    /// draw is without replacement by id, so a duplicate would be dealt twice (rule 4).
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="startingStage"/> is not positive, or a finite mode's
@@ -360,7 +677,11 @@ public sealed class ModeSpec
         IReadOnlyList<RosterEntry> roster,
         IReadOnlyList<ContentId> arenas = null,
         IReadOnlyList<BossRosterEntry> bossRoster = null,
-        OverflowSpec overflow = default)
+        OverflowSpec overflow = default,
+        EssenceSpec essence = default,
+        SanctumSpec sanctum = default,
+        OrdealScheduleSpec ordealSchedule = default,
+        IReadOnlyList<OrdealSpec> ordeals = null)
     {
         if (id.Value is null)
         {
@@ -425,6 +746,27 @@ public sealed class ModeSpec
         // account of what a legal one is, and its zeroed form satisfies that account — see the
         // remarks on that type for why AR §18.3's both-ends rule does not reach it.
         Overflow = overflow;
+
+        // No second look either, for the line above's reason: EssenceSpec's own constructor is the
+        // single account of what a legal income table is, and its zeroed form satisfies that
+        // account. What stops a *shipped* mode quietly pricing nothing is
+        // ContentValidationTests.EveryShippedMode_PricesItsEssence, which is an author-time sweep
+        // over assets rather than a run-time check over specs (M3-14b rule 11's split).
+        Essence = essence;
+
+        // No second look, for Essence's reason: SanctumSpec's constructor is the one account of a
+        // legal shop, and the zeroed form is ContentValidationTests' to refuse on a shipped asset.
+        Sanctum = sanctum;
+
+        // No second look at the schedule either: its zeroed form deals never, and DealsAt is the
+        // reader that makes that true (see OrdealScheduleSpec). A schedule with no pool and a pool
+        // with no schedule are both legal here and both refused on a shipped asset by
+        // ContentValidationTests — a fixture that stocks one half is not a fault (M6-06a rule 1).
+        OrdealSchedule = ordealSchedule;
+
+        _ordeals = CopyOrdeals(ordeals, id);
+
+        _ordealsView = Array.AsReadOnly(_ordeals);
 
         _roster = CopyRoster(roster, id);
 
@@ -495,6 +837,33 @@ public sealed class ModeSpec
     /// sentence: one says what a level costs, the other what a level is worth once the tree is full.
     /// </remarks>
     public OverflowSpec Overflow { get; }
+
+    /// <summary>
+    /// GD §15's income for this mode — 20 + 4·n a stage, 15 an Elite and 60 a boss in Descent.
+    /// </summary>
+    /// <remarks>
+    /// Read by <c>StageFlow.EnterClear</c>, which pays the run's <c>EssenceWallet</c> on the edge
+    /// into <c>Clear</c>, and by nothing else. All zeroes for a mode that authors none — a mode with
+    /// no economy at all, which is every fixture that does not mention one.
+    /// </remarks>
+    public EssenceSpec Essence { get; }
+
+    /// <summary>
+    /// What this mode charges in the Sanctum — 25 / 40 / 40 / 60 in Descent, for 30 hit points and
+    /// 15 Veilrot. All zeroes for a mode that authors none (M6-02b rule 1).
+    /// </summary>
+    /// <remarks>Read by <c>RunSession.Start</c>, which hands it to the run's one <c>SanctumShop</c>.</remarks>
+    public SanctumSpec Sanctum { get; }
+
+    /// <summary>
+    /// When GD §13.4's Ordeals are dealt — 25 / 10 in Descent. All zeroes for a mode that deals none
+    /// (M6-06a rule 1).
+    /// </summary>
+    /// <remarks>Read by <c>Ordeals.OnStageEntered</c>, once per stage entered.</remarks>
+    public OrdealScheduleSpec OrdealSchedule { get; }
+
+    /// <summary>The Ordeal pool, in authored order. Empty is ordinary.</summary>
+    public IReadOnlyList<OrdealSpec> Ordeals => _ordealsView;
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;
@@ -771,6 +1140,45 @@ public sealed class ModeSpec
             }
 
             copy[i] = arena;
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// Copies the Ordeal pool, refusing a null entry and an id listed twice.
+    /// </summary>
+    /// <remarks>
+    /// A duplicate is refused because <c>Ordeals</c> draws without replacement by position and
+    /// restores by id: two rows for one Ordeal would let it be dealt twice, which GD §13.4's six
+    /// distinct rows rule out (M6-06a rule 4).
+    /// </remarks>
+    private static OrdealSpec[] CopyOrdeals(IReadOnlyList<OrdealSpec> ordeals, ContentId id)
+    {
+        if (ordeals is null || ordeals.Count == 0)
+        {
+            return Array.Empty<OrdealSpec>();
+        }
+
+        var copy = new OrdealSpec[ordeals.Count];
+        var ids = new HashSet<ContentId>();
+
+        for (int i = 0; i < ordeals.Count; i++)
+        {
+            OrdealSpec ordeal = ordeals[i]
+                ?? throw new ArgumentException(
+                    $"ordeals[{i}] of '{id}' is null. An empty pool is spelled with no entries.",
+                    nameof(ordeals));
+
+            if (!ids.Add(ordeal.Id))
+            {
+                throw new ArgumentException(
+                    $"'{id}' lists Ordeal '{ordeal.Id}' twice. The draw is without replacement, so "
+                        + "a second row would deal the same Ordeal twice.",
+                    nameof(ordeals));
+            }
+
+            copy[i] = ordeal;
         }
 
         return copy;

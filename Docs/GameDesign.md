@@ -220,6 +220,8 @@ Weapons differ per class, but all obey the same laws:
 
 > A basic enemy dies in **3–5 hits from any class, at any depth.**
 
+The band is the *weapon's*. A signature that spends a run's worth of not being hit is allowed to beat it: the Emberwright at full Kindling kills a stage-1 Husk in two ([CH §3.3](Characters.md#33-emberwright--wizard), [M6-07a](plan/tasks/M6-07a-the-emberwright-and-the-cinder-orb.md)).
+
 At stage 1 an unlevelled class kills a Husk in ~3 hits. At stage 30 a well-built one should still kill a Husk in ~3–5 hits, because tree power and enemy HP scale together by design. If basic enemies start taking 10 hits, the curve has failed and no amount of content fixes it.
 
 **This holds up to the death horizon and not past it** — see §12.4's TTK row and §12.5. **And it is not holding today, measured rather than assumed:** at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md) the Oathbound killed a Husk in 4 hits at every stage from 4 to 16, while the Gravecaller went 4 → 8 by stage 16 with **its entire tree taken**. The cause is the tree rather than the player: the Gravecaller's twelve nodes carry **one** weapon-damage node, so its damage grew 15 % over nineteen stages against a Husk's 108 %. **"Tree power and enemy HP scale together by design" is the design; it is not yet the game.** M8-05 owns closing that gap.
@@ -524,13 +526,13 @@ Rules that belong here because they're global:
 
 ### 13.2 Pact nodes — Veilrot inside the tree
 
-One of the three offered nodes may appear as a **Pact** — visually corrupted, roughly **1.8× stronger** than the clean equivalent, granting **+10 to +20 Veilrot**.
+One of the three offered nodes may appear as a **Pact** — visually corrupted, **authored** to roughly **1.8× the power budget** of the clean equivalent, granting **+10 to +20 Veilrot**. A Pact is written, not derived: it is usually a bigger version of the clean effect with a **downside** attached, which is what the examples below are and what no multiplication of the clean node could produce. *(Ruled at M6-11: the table's "~1.8×" had read as an operation while its own examples carried downsides; M6-05a shipped the examples' reading, so the table now says budget.)*
 
 Pacts are not a branch or a class. *Any* node can appear in its corrupted form, so the temptation is continuous rather than a decision made once at the start. This is what keeps §10 load-bearing at every single level-up rather than a system you interact with twice a run.
 
 | | Clean node | Pact node |
 |---|---|---|
-| Power | Baseline | ~1.8× |
+| Power | Baseline | ~1.8× the budget, authored — may carry a downside |
 | Veilrot | 0 | +10 to +20 |
 | Flavour | Something you earned | Something you borrowed |
 
@@ -579,25 +581,12 @@ Earned on death regardless of outcome. Dying must always pay something, or the l
 Shards = 10·(deepest stage) + 50·(bosses killed) + 25·(new archetype first encountered)
 ```
 
-> **Two of these three terms ship. The third does not, and this note is here so a later milestone does not
-> re-discover the decision.** As of `m4` the game pays `10·(deepest stage) + 50·(bosses killed)` and nothing
-> else — `ShardPayout`, computed on the death tick.
->
-> **The missing term is `25·(new archetype first encountered)`,** and what it needs is not arithmetic: *first*
-> is a **lifetime** fact, so it wants a `PlayerProfile` field holding a **set** of `ContentId`s, where the two
-> shipped terms are a pure function of the run's depth and its mode. That is a save-format bump, and it was
-> ruled out of M4 rather than smuggled into `PlayerProfile` v3, which is one `int`.
->
-> **Why deferring it is safe, stated rather than assumed:** an empty set pays 25 on the next Husk a returning
-> player ever sees, so shipping the term late **over**-pays them. That is the opposite of the Shard *total*,
-> where a number not written is data destroyed — which is why the total was persisted at M4-05b with nothing
-> to spend it on and this term was not.
->
-> **It is guarded rather than merely absent:** `ShardPayoutTests.Payout_HasNoArchetypeTerm` asserts 10 at
-> stage 1 and `Is.Not.EqualTo(35)`, so nobody can add the term without reading why it was left out. When it
-> ships it needs no new run tracking — `ModeSpec.TryGetIntroduction` already authors which archetype arrives
-> at which stage. **It belongs to M6-09**, the next task that bumps the profile format; M6-02's Sanctum is
-> where a Shard first buys anything at all.
+> **All three terms ship as of M6-09a.** The third was deferred from M4 to M6-09a because *first* is a
+> **lifetime** fact: it lives on `PlayerProfile` v4 as `MetArchetypeIds`, and a run is paid for every
+> archetype `ModeSpec.TryGetIntroduction` names in `[1, deepest stage]` that the set does not hold —
+> **inclusive** of the stage died on, where bosses killed is exclusive (a body is met on arrival; a boss is
+> only known dead once its stage is left). An empty set pays for everything, which over-pays rather than
+> robs. The deferral's guard row, `Payout_HasNoArchetypeTerm`, was retired by the task it named.
 
 ### 14.2 What Shards buy
 

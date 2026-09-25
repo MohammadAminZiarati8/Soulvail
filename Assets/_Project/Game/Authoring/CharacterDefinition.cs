@@ -129,6 +129,14 @@ namespace Soulvail.Game.Authoring
                  "field, and nothing would ever read it.")]
         [SerializeField, Min(0f)] private float _movementSkillDecoyDuration;
 
+        [Tooltip("A Blink's fire pool (CH §3.3): how far it reaches, how long it burns, and what " +
+                 "one pulse takes off — 3 m, 3 s and 4 for the Emberwright. It pulses every " +
+                 "0.5 s, which is not authored. Validated against the kind above: a Blink must " +
+                 "have all three above 0, and every other kind must have all three at exactly 0.")]
+        [SerializeField, Min(0f)] private float _movementSkillPoolRadius;
+        [SerializeField, Min(0f)] private float _movementSkillPoolDuration;
+        [SerializeField, Min(0f)] private float _movementSkillPoolDamagePerPulse;
+
         [Tooltip("The class's minions (CH §3.2's Rise). Cap 0 means this class has none — only " +
                  "the Gravecaller's Wights do in V1, and every field below is ignored at 0. The " +
                  "cap is the switch for the reason the shield max above is: a zeroed block would " +
@@ -147,6 +155,50 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.01f)] private float _minionDamage = 8f;
         [SerializeField, Min(0.01f)] private float _minionAttackInterval = 1f;
         [SerializeField, Min(0.01f)] private float _minionReach = 1.5f;
+
+        [Tooltip("The class's Kindling (CH §3.3): consecutive weapon hits without taking damage " +
+                 "stack weapon damage. Max stacks 0 means this class has none — only the " +
+                 "Emberwright does in V1, and the per-stack below is ignored at 0. The count is " +
+                 "the switch for the minion cap's reason.")]
+        [SerializeField, Min(0)] private int _kindlingMaxStacks;
+
+        [Tooltip("Weapon damage one stack is worth, as a fraction — 0.02 is CH §3.3's +2 %. " +
+                 "Never a percentage: 2 here would be +200 % a hit.")]
+        [SerializeField, Min(0f)] private float _kindlingPerStack = 0.02f;
+
+        [Header("Veilrot (CH §3) — all five neutral means the Veil treats this class ordinarily")]
+        [Tooltip("Where a fresh run opens on the meter, below 100. The Gravecaller's 15.")]
+        [SerializeField, Min(0f)] private float _veilrotStart;
+
+        [Tooltip("Every Veilrot gain is multiplied by this. 1 is neutral; the Oathbound's 0.6, " +
+                 "the Gravecaller's 1.5. Above 0.")]
+        [SerializeField, Min(0.01f)] private float _veilrotGainMultiplier = 1f;
+
+        [Tooltip("The Sanctum's Cleanse price is multiplied by this, rounded, and never below 1. " +
+                 "1 is neutral; the Oathbound's 0.5.")]
+        [SerializeField, Min(0.01f)] private float _veilrotCleansePriceMultiplier = 1f;
+
+        [Tooltip("Weapon damage per point on the meter, as a fraction — 0.01 is CH §3.2's +1 %. " +
+                 "0 is neutral.")]
+        [SerializeField, Min(0f)] private float _veilrotDamagePerPoint;
+
+        [Tooltip("Veilrot one cast through a cooldown costs, once per cooldown. 0 means this " +
+                 "class cannot buy one; the Emberwright's 5.")]
+        [SerializeField, Min(0f)] private float _veilrotInstantCastCost;
+
+        [Header("Unlock (GD §14.2) — a price of 0 means free, which is the starter")]
+        [Tooltip("Soul Shards this class costs. 0 means it is always playable and every field " +
+                 "below is ignored — the Oathbound's. The Gravecaller's 2000, the Emberwright's 3500.")]
+        [SerializeField, Min(0)] private int _unlockShardPrice;
+
+        [Tooltip("The depth whose reaching unlocks it for free, or 0 for none. The Emberwright's " +
+                 "20. At most one deed: set this or the boss below, never both.")]
+        [SerializeField, Min(0)] private int _unlockDeedStage;
+
+        [Tooltip("The boss whose death unlocks it for free, or empty for none. The Gravecaller's " +
+                 "'boss.choirmother' — which no mode authors until M7-03, so the deed cannot be " +
+                 "done yet and the id is deliberately not validated against the catalog.")]
+        [SerializeField] private string _unlockDeedBossId = "";
 
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
@@ -185,6 +237,20 @@ namespace Soulvail.Game.Authoring
         /// read against the id to be understood (M5-02 rule 6). The cap is the switch rather than
         /// the hit points because it is the one field a <see cref="MinionSpec"/> cannot represent
         /// at zero — a cap of nothing is a class whose minions can never be alive.
+        /// </para>
+        /// <para>
+        /// A <see cref="_kindlingMaxStacks"/> of zero is the same switch a third time (M6-07a rule 1):
+        /// CH §3.3's Kindling is one class's signature, so every other class produces a
+        /// <see langword="null"/> <see cref="CharacterSpec.Kindling"/>. The count rather than the
+        /// per-stack, for the minion cap's reason — it is the field a <see cref="KindlingSpec"/>
+        /// cannot represent at zero.
+        /// </para>
+        /// <para>
+        /// The Veilrot block has no single switch, because none of its five dials is the one a
+        /// <see cref="VeilrotSpec"/> cannot represent: <b>all five neutral is the switch</b>
+        /// (M6-07c rule 1), and it produces a <see langword="null"/>
+        /// <see cref="CharacterSpec.Veilrot"/> — which is also what the spec's own constructor
+        /// refuses to be built as.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -230,7 +296,10 @@ namespace Soulvail.Game.Authoring
                         _movementSkillDamage,
                         _movementSkillKnockback,
                         _movementSkillIFrameTrail,
-                        _movementSkillDecoyDuration),
+                        _movementSkillDecoyDuration,
+                        _movementSkillPoolRadius,
+                        _movementSkillPoolDuration,
+                        _movementSkillPoolDamagePerPulse),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,
@@ -247,6 +316,25 @@ namespace Soulvail.Game.Authoring
                             _minionDamage,
                             _minionAttackInterval,
                             _minionReach)
+                        : null,
+                    _kindlingMaxStacks > 0
+                        ? new KindlingSpec(_kindlingPerStack, _kindlingMaxStacks)
+                        : null,
+                    VeilrotIsNeutral()
+                        ? null
+                        : new VeilrotSpec(
+                            _veilrotStart,
+                            _veilrotGainMultiplier,
+                            _veilrotCleansePriceMultiplier,
+                            _veilrotDamagePerPoint,
+                            _veilrotInstantCastCost),
+                    _unlockShardPrice > 0
+                        ? new UnlockSpec(
+                            _unlockShardPrice,
+                            _unlockDeedStage,
+                            string.IsNullOrEmpty(_unlockDeedBossId)
+                                ? default
+                                : new ContentId(_unlockDeedBossId))
                         : null);
             }
             catch (ArgumentException inner)
@@ -260,6 +348,19 @@ namespace Soulvail.Game.Authoring
                     inner);
             }
         }
+
+        /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
+        /// <remarks>
+        /// The Unlock block beside it has a single switch, the price, for the minion cap's reason: it
+        /// is the one field an <see cref="UnlockSpec"/> cannot represent at zero, and a free class is
+        /// one that authors none (M6-09a rule 3).
+        /// </remarks>
+        private bool VeilrotIsNeutral() =>
+            _veilrotStart == 0f
+            && _veilrotGainMultiplier == 1f
+            && _veilrotCleansePriceMultiplier == 1f
+            && _veilrotDamagePerPoint == 0f
+            && _veilrotInstantCastCost == 0f;
 
         /// <remarks>
         /// Only the ids, and only their shape. A malformed id is the one authoring mistake that
@@ -288,6 +389,18 @@ namespace Soulvail.Game.Authoring
                     $"CharacterDefinition '{name}': '{_minionSpecId}' is not a valid content id " +
                     "for its minion. Expected lowercase dot-separated segments, at least two, " +
                     "e.g. 'minion.wight'.",
+                    this);
+            }
+
+            // Asked only when the count says the class has Kindling, for the minion id's reason: the
+            // per-stack keeps its authoring default on every class without one. `!(x > 0f)` so NaN
+            // is caught with zero, which [Min(0f)] lets through.
+            if (_kindlingMaxStacks > 0 && !(_kindlingPerStack > 0f))
+            {
+                Debug.LogWarning(
+                    $"CharacterDefinition '{name}': Kindling has {_kindlingMaxStacks} stack(s) worth " +
+                    $"{_kindlingPerStack} each, so the ramp would do nothing. Set a per-stack above " +
+                    "0, or set max stacks to 0 for a class without Kindling.",
                     this);
             }
         }

@@ -68,6 +68,27 @@ namespace Soulvail.Game.Controls
                  "word on it.")]
         [SerializeField] private Button _button;
 
+        [Tooltip("GD §13.2's corrupted frame: an Outline on the card's own Image, switched on and " +
+                 "tinted Palette.Veilrot for a Pact and off for a clean node. Its colour is written " +
+                 "on every draw, so whatever the prefab holds is never what a player sees.")]
+        [SerializeField] private Outline _pactFrame;
+
+        [Tooltip("\"Pact · +15 Rot\" on a corrupted card, empty on a clean one — the one number " +
+                 "GD §13.2 puts after every example it gives.")]
+        [SerializeField] private TMP_Text _rot;
+
+        /// <summary>
+        /// What the frame label says: <em>"Pact · +{0:0} Rot"</em> in English, so a corrupted card
+        /// does not rest on colour alone.
+        /// </summary>
+        /// <remarks>
+        /// <b>One row since M6-10, where it was two words and a <c>const</c> format joining them</b>
+        /// (<c>"{0} · +{1:0} {2}"</c>). That format was waiting for <c>ILocalizer.Format</c>, and
+        /// it fixed the word order: a language that puts the number before the word <em>Pact</em>
+        /// could not. The retired <c>ui.offer.rot</c> row went with it.
+        /// </remarks>
+        private static readonly LocKey PactKey = new LocKey("ui.offer.pact");
+
         /// <summary>Which of the three this is. Reported on a tap, and nothing else reads it.</summary>
         private int _index;
 
@@ -79,6 +100,9 @@ namespace Soulvail.Game.Controls
 
         /// <summary>Whether the card is currently drawn. <c>Prefab_IsDressed</c>'s reachable read.</summary>
         public bool IsShown => gameObject.activeSelf;
+
+        /// <summary>How it was last drawn. The read every Pact row asserts against.</summary>
+        public bool IsPact { get; private set; }
 
         /// <summary>
         /// Draws <paramref name="spec"/> as card number <paramref name="index"/> and reports a tap
@@ -93,12 +117,21 @@ namespace Soulvail.Game.Controls
         /// <param name="spec">The node to draw.</param>
         /// <param name="localizer">What turns the spec's two <c>LocKey</c>s into words.</param>
         /// <param name="onChosen">Called with <paramref name="index"/> when the card is tapped.</param>
+        /// <param name="isPact">
+        /// Whether to draw <paramref name="spec"/>'s corrupted form: the Pact's description, its Rot
+        /// price, and <see cref="Palette.Veilrot"/> on the frame (M6-05b rule 7). The name and the
+        /// kind stripe stay the clean node's — a corrupted Keystone is still a Keystone, and the
+        /// player is meant to recognise the node they were offered clean before.
+        /// </param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="spec"/>, <paramref name="localizer"/> or <paramref name="onChosen"/> is
         /// null.
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
-        public void Show(int index, SkillSpec spec, ILocalizer localizer, Action<int> onChosen)
+        /// <exception cref="ArgumentException">
+        /// <paramref name="isPact"/> is true and <paramref name="spec"/> has no Pact.
+        /// </exception>
+        public void Show(int index, SkillSpec spec, ILocalizer localizer, Action<int> onChosen, bool isPact)
         {
             if (spec is null)
             {
@@ -131,24 +164,50 @@ namespace Soulvail.Game.Controls
                     nameof(index), index, "A card's index is its position in the offer, from 0.");
             }
 
+            if (isPact && !spec.HasPact)
+            {
+                throw new ArgumentException(
+                    $"'{spec.Id}' was handed to a card as a Pact and carries none. The model rolls a "
+                        + "Pact only onto a node with a block (M6-05b rule 3), so this is a presenter "
+                        + "reading past the model — drawing it clean would hide that.",
+                    nameof(isPact));
+            }
+
             _index = index;
             _onChosen = onChosen;
+            IsPact = isPact;
 
             if (_name != null)
             {
                 // English, as of M3-14a. A key with no row resolves to its own text rather than to
-                // nothing, so a missing row is a card that diagnoses itself (M3-14a rule 1).
+                // nothing, so a missing row is a card that diagnoses itself (M3-14a rule 1). The
+                // clean node's name either way (M6-05a rule 4).
                 _name.text = localizer.Get(spec.NameKey);
             }
 
             if (_description != null)
             {
-                _description.text = localizer.Get(spec.DescriptionKey);
+                _description.text = localizer.Get(isPact ? spec.Pact.DescriptionKey : spec.DescriptionKey);
             }
 
             if (_kindStrip != null)
             {
                 _kindStrip.color = Tint(spec.Kind);
+            }
+
+            // Every piece below is written on a clean draw too — switched off, emptied — because a
+            // card is repainted in place for a second pick and the second may be clean.
+            if (_pactFrame != null)
+            {
+                _pactFrame.effectColor = Palette.Veilrot;
+                _pactFrame.enabled = isPact;
+            }
+
+            if (_rot != null)
+            {
+                // A string per draw, and a draw is a tap: nothing here runs per frame.
+                _rot.text = isPact ? localizer.Format(PactKey, spec.Pact.Veilrot) : string.Empty;
+                _rot.color = Palette.Veilrot;
             }
 
             // Re-armed every draw, and cleared first: a card repainted for a second pick would

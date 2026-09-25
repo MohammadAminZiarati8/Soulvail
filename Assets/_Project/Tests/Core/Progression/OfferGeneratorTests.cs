@@ -75,7 +75,7 @@ public sealed class OfferGeneratorTests
 
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        int written = generator.Draw(tree, Offers(0.05f, 0.5f, 0.95f), OfferGenerator.DefaultOfferCount, destination);
+        int written = generator.Draw(tree, Offers(0.05f, 0.5f, 0.95f), OfferGenerator.DefaultOfferCount, destination, out _);
 
         Assert.That(written, Is.EqualTo(3));
 
@@ -103,7 +103,7 @@ public sealed class OfferGeneratorTests
         var random = new CountingRandom(new FixedRandom());
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        int written = generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination);
+        int written = generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination, out _);
 
         Assert.That(written, Is.EqualTo(0));
 
@@ -126,7 +126,7 @@ public sealed class OfferGeneratorTests
 
         for (int seed = 1; seed <= 1_000; seed++)
         {
-            int written = generator.Draw(tree, new Lcg(seed), OfferGenerator.DefaultOfferCount, destination);
+            int written = generator.Draw(tree, new Lcg(seed), OfferGenerator.DefaultOfferCount, destination, out _);
 
             Assert.That(written, Is.EqualTo(3), $"seed {seed} offered {written}.");
 
@@ -149,14 +149,14 @@ public sealed class OfferGeneratorTests
         var random = new CountingRandom(new FixedRandom());
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        int written = generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination);
+        int written = generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination, out _);
 
         Assert.That(written, Is.EqualTo(2));
 
-        // Exactly two, not "at most three": the third pick does not happen, so it cannot spend a
-        // draw on finding that out. This is rule 2 from the scarce end, and `Draw_OneDrawPerPick`
-        // is the same rule from the other.
-        Assert.That(random.OffersDraws, Is.EqualTo(2), "the pick that was never made still drew.");
+        // Two picks and M6-05b's two, not "at most three" and two: the third pick does not happen,
+        // so it cannot spend a draw on finding that out. This is rule 2 from the scarce end, and
+        // `Draw_OneDrawPerPick` is the same rule from the other.
+        Assert.That(random.OffersDraws, Is.EqualTo(2 + 2), "the pick that was never made still drew.");
     }
 
     [Test]
@@ -168,9 +168,10 @@ public sealed class OfferGeneratorTests
         var random = new CountingRandom(new FixedRandom(0.1f, 0.4f, 0.8f));
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination);
+        generator.Draw(tree, random.Offers, OfferGenerator.DefaultOfferCount, destination, out _);
 
-        Assert.That(random.OffersDraws, Is.EqualTo(3), "three offers cost three draws, whatever the walk found.");
+        // Three for the picks and two for M6-05b's Pact roll, which is spent whatever the tree holds.
+        Assert.That(random.OffersDraws, Is.EqualTo(3 + 2), "three offers cost five draws, whatever the walk found.");
 
         // ADR-0011: a reroll or a Pact must never shift what the next stage is made of, and a wave
         // must never change what the next screen shows.
@@ -188,8 +189,8 @@ public sealed class OfferGeneratorTests
         var first = new ContentId[OfferGenerator.DefaultOfferCount];
         var second = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        int a = generator.Draw(tree, Offers(script), OfferGenerator.DefaultOfferCount, first);
-        int b = generator.Draw(tree, Offers(script), OfferGenerator.DefaultOfferCount, second);
+        int a = generator.Draw(tree, Offers(script), OfferGenerator.DefaultOfferCount, first, out _);
+        int b = generator.Draw(tree, Offers(script), OfferGenerator.DefaultOfferCount, second, out _);
 
         Assert.That(a, Is.EqualTo(3));
         Assert.That(b, Is.EqualTo(3));
@@ -222,7 +223,7 @@ public sealed class OfferGeneratorTests
         // generator that ignored the table completely — corrected here, intent unchanged.
         var destination = new ContentId[2];
 
-        int written = generator.Draw(tree, Offers(0.05f, 0.7f), 2, destination);
+        int written = generator.Draw(tree, Offers(0.05f, 0.7f), 2, destination, out _);
 
         Assert.That(written, Is.EqualTo(2));
         Assert.That(destination[0], Is.EqualTo(new ContentId(N('a', 1))), "the first pick did not land where the arithmetic says.");
@@ -253,7 +254,7 @@ public sealed class OfferGeneratorTests
         // alone. Two copies of one rule is how they come to disagree (M3-03's precedent).
         var destination = new ContentId[1];
 
-        int written = generator.Draw(tree, Offers(0.6f), 1, destination);
+        int written = generator.Draw(tree, Offers(0.6f), 1, destination, out _);
 
         Assert.That(written, Is.EqualTo(1));
         Assert.That(
@@ -275,7 +276,7 @@ public sealed class OfferGeneratorTests
 
         for (int seed = 1; seed <= Seeds; seed++)
         {
-            int written = generator.Draw(tree, new Lcg(seed), OfferGenerator.DefaultOfferCount, destination);
+            int written = generator.Draw(tree, new Lcg(seed), OfferGenerator.DefaultOfferCount, destination, out _);
 
             Assert.That(written, Is.EqualTo(3));
 
@@ -315,7 +316,7 @@ public sealed class OfferGeneratorTests
         // GD §13.4's Vigil offers two, and that is M6-06 passing 2 rather than a flag on this class.
         var destination = new ContentId[2];
 
-        int written = generator.Draw(tree, Offers(0.2f, 0.8f), 2, destination);
+        int written = generator.Draw(tree, Offers(0.2f, 0.8f), 2, destination, out _);
 
         Assert.That(written, Is.EqualTo(2));
         Assert.That(destination[0], Is.Not.EqualTo(destination[1]));
@@ -334,7 +335,7 @@ public sealed class OfferGeneratorTests
         IRandomStream offers = new FixedRandom().Offers;
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
-        AllocationAssert.None(() => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination));
+        AllocationAssert.None(() => generator.Draw(tree, offers, OfferGenerator.DefaultOfferCount, destination, out _));
     }
 
     // ---- Guards -------------------------------------------------------------------------------
@@ -348,22 +349,22 @@ public sealed class OfferGeneratorTests
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
         Assert.Throws<ArgumentNullException>(
-            () => generator.Draw(null, Offers(0.5f), 3, destination));
+            () => generator.Draw(null, Offers(0.5f), 3, destination, out _));
 
         Assert.Throws<ArgumentNullException>(
-            () => generator.Draw(tree, null, 3, destination));
+            () => generator.Draw(tree, null, 3, destination, out _));
 
         // An offer of nothing is not an offer: M3-08 does not call this for a level with no pick.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => generator.Draw(tree, Offers(0.5f), 0, destination));
+            () => generator.Draw(tree, Offers(0.5f), 0, destination, out _));
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => generator.Draw(tree, Offers(0.5f), -1, destination));
+            () => generator.Draw(tree, Offers(0.5f), -1, destination, out _));
 
         // Refused rather than truncated, `SkillTree.Available`'s rule one layer up: a buffer that
         // could not hold the offer would narrow it with nothing to say so.
         Assert.Throws<ArgumentException>(
-            () => generator.Draw(tree, Offers(0.5f), 3, new ContentId[2]));
+            () => generator.Draw(tree, Offers(0.5f), 3, new ContentId[2], out _));
     }
 
     [Test]
@@ -379,7 +380,7 @@ public sealed class OfferGeneratorTests
         var destination = new ContentId[OfferGenerator.DefaultOfferCount];
 
         ArgumentException named = Assert.Throws<ArgumentException>(
-            () => generator.Draw(other, Offers(0.5f), 3, destination));
+            () => generator.Draw(other, Offers(0.5f), 3, destination, out _));
 
         Assert.That(named.Message, Does.Contain(SpreadId));
         Assert.That(named.Message, Does.Contain(TrioId), "the refusal does not name the tree it was handed.");
@@ -389,7 +390,7 @@ public sealed class OfferGeneratorTests
         var twin = new OfferGenerator(TrioTree().Rules);
 
         ArgumentException same = Assert.Throws<ArgumentException>(
-            () => twin.Draw(other, Offers(0.5f), 3, destination));
+            () => twin.Draw(other, Offers(0.5f), 3, destination, out _));
 
         Assert.That(same.Message, Does.Contain("a second TreeRules"));
     }
@@ -506,6 +507,48 @@ public sealed class OfferGeneratorTests
         // offered, and nothing anywhere would say so (`PlayerStats.Resolve`'s reason).
         Assert.Throws<ArgumentOutOfRangeException>(
             () => OfferGenerator.Weight((SkillKind)99, 0, new[] { 0, 0, 0 }, 0));
+    }
+
+    // ---- M6-02b: a banished node, through the generator that was not edited (rule 4) -------------
+
+    [Test]
+    public void Banish_IsNeverOffered()
+    {
+        // A tree of four with one banished: three candidates left and an offer of three, so every
+        // draw has to reach past the banished node to fill itself if the exclusion were missing.
+        SkillTreeSpec spec = Tree(
+            TrioId,
+            OneTier('a', N('a', 1), N('a', 2)),
+            OneTier('b', N('b', 1)),
+            OneTier('c', N('c', 1)));
+
+        SkillTree tree = TreeOver(spec, Passives(N('a', 1), N('a', 2), N('b', 1), N('c', 1)));
+
+        var banished = new ContentId(N('a', 2));
+        tree.Banish(banished);
+
+        OfferGenerator generator = GeneratorFor(tree);
+        var stream = new Lcg(20260923);
+        var offer = new ContentId[3];
+        int seen = 0;
+        int drawn = 0;
+
+        for (int i = 0; i < 10_000; i++)
+        {
+            int count = generator.Draw(tree, stream, offer.Length, offer, out _);
+            drawn += count;
+
+            for (int j = 0; j < count; j++)
+            {
+                if (offer[j] == banished)
+                {
+                    seen++;
+                }
+            }
+        }
+
+        Assert.That(drawn, Is.EqualTo(30_000), "every draw filled all three from what was left.");
+        Assert.That(seen, Is.Zero);
     }
 
     // ---- Fixture --------------------------------------------------------------------------------

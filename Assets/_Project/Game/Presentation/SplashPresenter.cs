@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -94,11 +93,12 @@ namespace Soulvail.Game.Presentation
         /// (rules 7, 8).
         /// </summary>
         /// <remarks>
-        /// <b>A table row rather than a <c>const</c> format, which is where this differs from
-        /// <c>ClassCard.HpFormat</c>.</b> <em>"140 HP"</em>, <em>"3.0 m/s"</em> and <em>"39 DPS"</em>
-        /// are a number and a unit; <em>"nodes"</em> is an English word, and AR §11.5 does not have
-        /// an exception for a word that happens to sit next to a number. The row carries the
-        /// placeholder, so a translation may put it wherever its language wants it.
+        /// <b>A table row rather than a <c>const</c> format</b>: <em>"nodes"</em> is an English word,
+        /// and AR §11.5 does not have an exception for a word that happens to sit next to a number.
+        /// The row carries the placeholder, so a translation may put it wherever its language wants
+        /// it — and since M6-10 <c>ILocalizer.Format</c> writes the number in the reader's culture.
+        /// <c>ClassCard</c>'s three figures were <c>const</c> formats on the opposite argument until
+        /// M6-10 made them rows too.
         /// </remarks>
         private static readonly LocKey NodesKey = new LocKey("ui.splash.nodes");
 
@@ -463,8 +463,7 @@ namespace Soulvail.Game.Presentation
                     // it should say why instead. The branch keeps its name either way, because
                     // reading what you cannot have is half of what CH §5.4's screen is for.
                     count.text = option.Borrowable
-                        ? string.Format(
-                            CultureInfo.InvariantCulture, _localizer.Get(NodesKey), option.NodeCount)
+                        ? _localizer.Format(NodesKey, option.NodeCount)
                         : _localizer.Get(option.RefusedKey);
                 }
             }

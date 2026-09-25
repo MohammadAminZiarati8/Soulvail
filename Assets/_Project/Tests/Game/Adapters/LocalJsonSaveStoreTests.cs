@@ -29,14 +29,18 @@ namespace Soulvail.Tests.Game.Adapters;
 /// the format drifts without the fixture moving with it (AR §11.6).
 /// </para>
 /// <para>
-/// <b>Three run literals as of M3-07b, and they play three different parts.</b> <c>V3Run</c> is
-/// what this build writes and reads. <c>V2Run</c> and <c>V1Run</c> are both <em>migration
-/// inputs</em> — documents a player already has on their device — decoded through the real adapter,
-/// which is the only place a step and the code that calls it are tested together. <b>Neither older
-/// literal changed by one character at this bump</b>, and that is what earns them the right to
+/// <b>Four run literals as of M6-01b, and they play two parts.</b> <c>V4Run</c> is what this build
+/// writes and reads. <c>V3Run</c>, <c>V2Run</c> and <c>V1Run</c> are all <em>migration inputs</em> —
+/// documents a player already has on their device — decoded through the real adapter, which is the
+/// only place a step and the code that calls it are tested together. <b>Not one of the three older
+/// literals changed by one character at this bump</b>, and that is what earns them the right to
 /// prove anything: a fixture regenerated alongside the format it is meant to pin stops being
-/// evidence. <c>V1Run</c> now walks through <em>both</em> steps in one decode, which is the row
-/// this task exists to earn.
+/// evidence. <c>V1Run</c> now walks through <em>three</em> steps in one decode.
+/// </para>
+/// <para>
+/// <b>A fifth since M6-11b, and it is the one this build writes</b>: <c>V4RunClaimed</c>, v4 re-cut
+/// with a <c>claimed</c> key. <c>V4Run</c> kept every character and became what the re-cut must still
+/// read — a v4 file from before it, on the one machine that ever wrote one.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -83,14 +87,20 @@ public sealed class LocalJsonSaveStoreTests
         "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
         "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]}";
 
-    /// <summary>A v3 run, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v3 run, as it is spelled on disk — and as of M6-01b, the v3 → v4 step's input rather than
+    /// anything this build writes.
+    /// </summary>
     /// <remarks>
-    /// <b>One new key, <c>manualSkillIds</c>, following <c>takenNodeIds</c></b>, because field order
-    /// in <c>RunMirror</c> is key order on disk and v3 only appends (rule 9). Typed by hand like
-    /// both of its predecessors. <b>It has S1 and S3 filled and S2 and S4 empty</b>, which is the
-    /// whole reason the field is four slots rather than a set of ids: an empty slot is <c>""</c> in
-    /// place, the hole survives the round trip, and a format that compacted it would write two
-    /// entries here and hand the player back two adjacent buttons.
+    /// <b>One new key at v3, <c>manualSkillIds</c>, following <c>takenNodeIds</c></b>, because field
+    /// order in <c>RunMirror</c> is key order on disk and each bump only appends (rule 9). Typed by
+    /// hand like both of its predecessors. <b>It has S1 and S3 filled and S2 and S4 empty</b>, which
+    /// is the whole reason the field is four slots rather than a set of ids: an empty slot is
+    /// <c>""</c> in place, the hole survives the round trip, and a format that compacted it would
+    /// write two entries here and hand the player back two adjacent buttons. <b>Not one character of
+    /// it changed at the v4 bump</b>, for <see cref="V1Run"/>'s reason — it is a real v3 document
+    /// with no economy keys at all, which is precisely what a player who stopped playing after
+    /// M3-07b has.
     /// </remarks>
     private const string V3Run =
         "{\"version\":3,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
@@ -101,6 +111,66 @@ public sealed class LocalJsonSaveStoreTests
         "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
         "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
         "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]}";
+
+    /// <summary>
+    /// A v4 run, as it is spelled on disk — and as of M6-11b, a v4 file written before the re-cut
+    /// rather than what this build writes, which is <see cref="V4RunClaimed"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Seven new keys, following <c>manualSkillIds</c></b>, for the key-order reason every bump
+    /// before it had: field order in <c>RunMirror</c> is key order on disk and v4 only appends.
+    /// Typed by hand like all three of its predecessors. <b>Not one character of it changed at the
+    /// re-cut</b>, for <see cref="V1Run"/>'s reason: it has no <c>claimed</c> key, which is exactly
+    /// the document on the one machine a pre-re-cut v4 was ever written on.
+    /// </para>
+    /// <para>
+    /// <b>The economy is four flat keys rather than a nested object</b> (M6-01b rule 6), which is
+    /// what <c>randomSpawn</c>…<c>randomMisc</c> already are and for the same reason: this file is
+    /// read by a human in a bug report. <b>Every one of the seven carries a value no default could
+    /// produce</b> — 317, 42.5, 2, 1 and three one-entry arrays, each naming a different id — so a
+    /// mirror that dropped a key, wrote one field into two, or nested the economy cannot round-trip
+    /// green. <b>Only <c>essence</c> has a writer</b>; the other six are the shape M6-02b, M6-04,
+    /// M6-05a and M6-06a fill without touching the version, and this row is what objects if one of
+    /// them bumps it.
+    /// </para>
+    /// </remarks>
+    private const string V4Run =
+        "{\"version\":4,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
+        "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
+        "\"randomAffixes\":3,\"randomDrops\":4,\"randomMisc\":18446744073709551615," +
+        "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
+        "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
+        "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
+        "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
+        "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]," +
+        "\"essence\":317,\"veilrot\":42.5,\"rerollsBought\":2,\"rerollsSpent\":1," +
+        "\"banishedNodeIds\":[\"skill.oathbound.reprisal\"]," +
+        "\"pactedNodeIds\":[\"skill.oathbound.consecrate\"]," +
+        "\"ordealIds\":[\"ordeal.thinblood\"]}";
+
+    /// <summary>A v4 run as re-cut at M6-11b, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b><see cref="V4Run"/> with one key, <c>claimed</c>, after <c>rerollsSpent</c></b> — with the
+    /// economy it belongs to rather than after the lists, because it is <c>RunEconomy</c>'s fifth
+    /// field and JsonUtility reads by key, so no older file cares where it sits. <b><c>true</c>
+    /// beside a meter of 42.5</b>, for the reason every v4 value is a non-default: a mirror that
+    /// dropped the key would write <c>false</c> and read it back, and 42.5 is the state the key exists
+    /// for — a Claimed run whose meter has fallen.
+    /// </remarks>
+    private const string V4RunClaimed =
+        "{\"version\":4,\"modeId\":\"mode.descent\",\"characterId\":\"character.oathbound\"," +
+        "\"seed\":-20260912,\"stageIndex\":4,\"randomSpawn\":1,\"randomOffers\":2," +
+        "\"randomAffixes\":3,\"randomDrops\":4,\"randomMisc\":18446744073709551615," +
+        "\"playerHp\":72.5,\"playerShield\":12.25,\"runTime\":137.75," +
+        "\"writtenAt\":\"2026-09-12T08:30:00.0000000+00:00\"," +
+        "\"level\":7,\"xp\":33.5,\"pendingLevelUps\":1," +
+        "\"takenNodeIds\":[\"skill.oathbound.bulwark\",\"skill.oathbound.consecrate\"]," +
+        "\"manualSkillIds\":[\"skill.oathbound.bulwark\",\"\",\"skill.oathbound.consecrate\",\"\"]," +
+        "\"essence\":317,\"veilrot\":42.5,\"rerollsBought\":2,\"rerollsSpent\":1,\"claimed\":true," +
+        "\"banishedNodeIds\":[\"skill.oathbound.reprisal\"]," +
+        "\"pactedNodeIds\":[\"skill.oathbound.consecrate\"]," +
+        "\"ordealIds\":[\"ordeal.thinblood\"]}";
 
     /// <summary>
     /// A v1 profile, as it is spelled on disk — and as of M3-09c, the profile migration's input
@@ -130,15 +200,28 @@ public sealed class LocalJsonSaveStoreTests
     private const string V2Profile =
         "{\"version\":2,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true}";
 
-    /// <summary>A v3 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>
+    /// A v3 profile, as it is spelled on disk — and as of M6-09a, the v3 → v4 step's input rather
+    /// than anything this build writes.
+    /// </summary>
     /// <remarks>
-    /// <b>One new key, <c>shards</c>, following <c>seenFirstActiveHint</c></b>, for the key order
-    /// reason above. This is the third profile literal and they play the three parts the run
-    /// literals do: <see cref="V1Profile"/> and <see cref="V2Profile"/> are migration inputs, and
-    /// this one is both what the build writes and the shape a migrated document has to arrive at.
+    /// <b>One new key at v3, <c>shards</c>, following <c>seenFirstActiveHint</c></b>, for the key
+    /// order reason above. <b>Not one character of it changed at the v4 bump</b>, for
+    /// <see cref="V1Profile"/>'s reason: it is the document every install since the <c>m4</c> tag
+    /// holds, and the one the grandfathering exists for.
     /// </remarks>
     private const string V3Profile =
         "{\"version\":3,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220}";
+
+    /// <summary>A v4 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b>Three new keys, flat, following <c>shards</c></b> (M6-09a rule 7): two string arrays and a
+    /// string, so the document stays one a human can read in a bug report.
+    /// </remarks>
+    private const string V4Profile =
+        "{\"version\":4,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220," +
+        "\"unlockedCharacterIds\":[\"character.emberwright\"],\"metArchetypeIds\":[\"enemy.husk\"]," +
+        "\"locale\":\"fr\"}";
 
     private static readonly ContentId Mode = new ContentId("mode.descent");
     private static readonly ContentId Character = new ContentId("character.oathbound");
@@ -146,6 +229,10 @@ public sealed class LocalJsonSaveStoreTests
     /// <summary>The two nodes <see cref="V2Run"/> names.</summary>
     private static readonly ContentId Bulwark = new ContentId("skill.oathbound.bulwark");
     private static readonly ContentId Consecrate = new ContentId("skill.oathbound.consecrate");
+
+    /// <summary>The banished node and the Ordeal <see cref="V4Run"/> names.</summary>
+    private static readonly ContentId Reprisal = new ContentId("skill.oathbound.reprisal");
+    private static readonly ContentId Thinblood = new ContentId("ordeal.thinblood");
 
     /// <summary>The instant <see cref="V1Run"/> records.</summary>
     private static readonly DateTimeOffset FixtureWritten =
@@ -215,10 +302,21 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.Xp, Is.EqualTo(original.Xp));
         Assert.That(run.PendingLevelUps, Is.EqualTo(original.PendingLevelUps));
 
-        // The two fields that are not scalars, so the two a mirror could plausibly lose:
-        // JsonUtility sees fields, and ContentId's Value is a property.
+        // The fields that are not scalars, so the ones a mirror could plausibly lose: JsonUtility
+        // sees fields, and ContentId's Value is a property.
         Assert.That(run.TakenNodeIds, Is.EqualTo(original.TakenNodeIds));
         Assert.That(run.ManualSkillIds, Is.EqualTo(original.ManualSkillIds));
+
+        // v4's seven, flattened on the way out and rebuilt on the way in. The economy is the one a
+        // nested [Serializable] class would also have round-tripped, which is why rule 6 is about
+        // the file a human reads rather than about correctness.
+        Assert.That(run.Economy.Essence, Is.EqualTo(original.Economy.Essence));
+        Assert.That(run.Economy.Veilrot, Is.EqualTo(original.Economy.Veilrot));
+        Assert.That(run.Economy.RerollsBought, Is.EqualTo(original.Economy.RerollsBought));
+        Assert.That(run.Economy.RerollsSpent, Is.EqualTo(original.Economy.RerollsSpent));
+        Assert.That(run.BanishedNodeIds, Is.EqualTo(original.BanishedNodeIds));
+        Assert.That(run.PactedNodeIds, Is.EqualTo(original.PactedNodeIds));
+        Assert.That(run.OrdealIds, Is.EqualTo(original.OrdealIds));
     }
 
     [Test]
@@ -308,7 +406,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 220)));
+            shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
 
         PlayerProfile? loaded = Result(_store.LoadProfile());
 
@@ -357,7 +455,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: false,
-            shards: 0)));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
 
         Await(_store.ClearRun());
 
@@ -492,13 +590,12 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        // **v3, not v1 — and this row is now the whole chain running through the real adapter.** A
-        // v1 document on a device goes through LoadRun and comes back having walked *two* steps in
-        // order, which is the first time that shape has been exercised rather than asserted.
-        // Asserting it here rather than only on SaveMigrations is the difference between "the steps
-        // are correct" and "the steps are wired up", and ledger row 2's trap is precisely that the
-        // second can be false while the first is true.
-        Assert.That(run.Version, Is.EqualTo(3));
+        // **v4, not v1 — and this row is the whole chain running through the real adapter.** A v1
+        // document on a device goes through LoadRun and comes back having walked *three* steps in
+        // order. Asserting it here rather than only on SaveMigrations is the difference between "the
+        // steps are correct" and "the steps are wired up", and ledger row 2's trap is precisely that
+        // the second can be false while the first is true.
+        Assert.That(run.Version, Is.EqualTo(4));
 
         // A v1 run was unlevelled by construction (rule 3). The mirror's `level = 1` initialiser is
         // what lets the document reach the constructor at all — a v1 file has no `level` key, and
@@ -514,6 +611,13 @@ public sealed class LocalJsonSaveStoreTests
         // meaning: every skill on Auto, which is also CC §6.1's default.
         Assert.That(run.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
         Assert.That(run.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
+
+        // And no economy (M6-01b rule 5). A v1 build had no Essence, no Veilrot, no rerolls and
+        // none of the three lists in it at all, so `default(RunEconomy)` and three empty lists are
+        // the truth about that run rather than defaults standing in for an unknown — and the
+        // mirror's `Array.Empty<string>()` initialisers are what let a document with none of the
+        // keys reach the constructor's null guards at all.
+        AssertNoEconomy(run);
 
         Assert.That(run.ModeId, Is.EqualTo(Mode));
         Assert.That(run.CharacterId, Is.EqualTo(Character));
@@ -537,11 +641,12 @@ public sealed class LocalJsonSaveStoreTests
 
         PlayerProfile profile = Result(_store.LoadProfile()).Value;
 
-        // **v3, because this literal is now the input to a two-step chain.** The document is
+        // **v4, because this literal is now the input to a three-step chain.** The document is
         // unchanged from M2-13b; what changed is first that loading it became a migration rather
-        // than a read (M3-09c), and now that the migration is two steps deep — and this is the only
-        // place the steps and the code that calls them are tested together.
-        Assert.That(profile.Version, Is.EqualTo(3));
+        // than a read (M3-09c), and now that the migration is three steps deep — and this is the
+        // only place the steps and the code that calls them are tested together.
+        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "grandfathered.");
 
         // Haptics as before: the one v1 field is something the player chose and survives both steps.
         Assert.That(profile.HapticsEnabled, Is.False);
@@ -567,7 +672,7 @@ public sealed class LocalJsonSaveStoreTests
         // every bump, and what used to be this row's subject is now a migration input — which is
         // exactly the transition a bump makes. `Fixture_V2Run_DecodesToTheExpectedSnapshot` made
         // the same move on the other format at M3-07b.
-        Assert.That(profile.Version, Is.EqualTo(3));
+        Assert.That(profile.Version, Is.EqualTo(4));
 
         // The document has no `shards` key at all, so this is the v2 → v3 step's answer read
         // through the real adapter rather than through the mirror's field initialiser: JsonUtility
@@ -581,21 +686,80 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Fixture_V3Profile_IsWhatThisBuildWrites()
+    public void Store_ReadsTheV3ProfileLiteral()
+    {
+        // Was Fixture_V3Profile_IsWhatThisBuildWrites: "what this build writes" moved up with the
+        // bump, and the literal became the v3 → v4 step's input through the real adapter (rule 10).
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName), V3Profile);
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Shards, Is.EqualTo(220), "the banked total survives the step.");
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "and the Gravecaller is unlocked.");
+        Assert.That(profile.MetArchetypeIds, Is.Empty);
+        Assert.That(profile.Locale, Is.EqualTo(string.Empty));
+        Assert.That(profile.HapticsEnabled, Is.False);
+        Assert.That(profile.SeenFirstActiveHint, Is.True);
+    }
+
+    [Test]
+    public void Store_WritesAV4ProfileLiteral()
     {
         Await(_store.SaveProfile(new PlayerProfile(
-            version: 3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220)));
+            version: 4, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
+            new[] { new ContentId("character.emberwright") }, new[] { new ContentId("enemy.husk") }, locale: "fr")));
 
         string written = File.ReadAllText(
             Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName));
 
-        // Byte for byte. A field renamed, reordered or added changes this text, and a save format
-        // that drifts without its fixture moving with it is one that stops loading after a release.
-        // `Fixture_V3Run_IsWhatThisBuildWrites`' job, for the other format — and the row that says
-        // the `shards` key is really on disk rather than merely on the struct in memory, which is
-        // the difference between a payout banked and a payout shown and forgotten.
-        Assert.That(written, Is.EqualTo(V3Profile));
+        // Byte for byte, and the three new keys flat on the end (rule 7). A field renamed,
+        // reordered or added changes this text.
+        Assert.That(written, Is.EqualTo(V4Profile));
+
+        // And it reads back as written: the round trip of every one of the seven.
+        PlayerProfile loaded = Result(_store.LoadProfile()).Value;
+
+        Assert.That(loaded.UnlockedCharacterIds, Is.EqualTo(new[] { new ContentId("character.emberwright") }));
+        Assert.That(loaded.MetArchetypeIds, Is.EqualTo(new[] { new ContentId("enemy.husk") }));
+        Assert.That(loaded.Locale, Is.EqualTo("fr"));
     }
+
+    [Test]
+    public void Store_ADocumentWithoutTheNewFieldsDecodes()
+    {
+        // A v4 document with all three keys absent: the mirror's initialisers are what stand
+        // between that and PlayerProfile's null guards (rule 7).
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName),
+            "{\"version\":4,\"hapticsEnabled\":true,\"seenFirstActiveHint\":false,\"shards\":5}");
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.UnlockedCharacterIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.MetArchetypeIds, Is.Not.Null.And.Empty);
+        Assert.That(profile.Locale, Is.EqualTo(string.Empty));
+        Assert.That(profile.Shards, Is.EqualTo(5));
+    }
+
+    [Test]
+    public void Store_AnUnparseableIdIsDroppedNotFatal()
+    {
+        // A refused profile is replaced by the default at boot and the next write destroys every
+        // Shard the install banked. So an entry that is not an id costs that entry, not the file.
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName),
+            "{\"version\":4,\"hapticsEnabled\":true,\"seenFirstActiveHint\":false,\"shards\":900," +
+            "\"unlockedCharacterIds\":[\"Not An Id\",\"character.gravecaller\"],\"metArchetypeIds\":[\"\"],\"locale\":\"\"}");
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Shards, Is.EqualTo(900));
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }));
+        Assert.That(profile.MetArchetypeIds, Is.Empty);
+    }
+
+    private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
 
     [Test]
     public void Fixture_V2Run_DecodesToTheExpectedSnapshot()
@@ -604,9 +768,10 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        // **v3, because this literal is now the v2 → v3 step's input.** The document is unchanged
-        // from M3-01b; what changed is that loading it is a migration rather than a read.
-        Assert.That(run.Version, Is.EqualTo(3));
+        // **v4, because this literal is the input to a two-step walk as of M6-01b.** The document is
+        // unchanged from M3-01b; what changed is first that loading it became a migration rather
+        // than a read, and now that the migration runs a second step over the top.
+        Assert.That(run.Version, Is.EqualTo(4));
         Assert.That(run.Level, Is.EqualTo(7));
         Assert.That(run.Xp, Is.EqualTo(33.5f));
         Assert.That(run.PendingLevelUps, Is.EqualTo(1));
@@ -620,6 +785,9 @@ public sealed class LocalJsonSaveStoreTests
         // above the DTO. This is the new step through the real adapter rather than in isolation.
         Assert.That(run.ManualSkillIds, Has.Count.EqualTo(SkillRunner.MaxManualSlots));
         Assert.That(run.ManualSkillIds, Is.All.EqualTo(default(ContentId)));
+
+        // And no economy, which is the third step's answer over the top of the second.
+        AssertNoEconomy(run);
 
         // And the v1 half of the document is still read the same way, which is the half a bump is
         // most likely to break by shifting a field.
@@ -638,8 +806,15 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        // No migration ran: this is what the build writes, read back.
-        Assert.That(run.Version, Is.EqualTo(3));
+        // **v4, because this literal is now the v3 → v4 step's input.** The document is unchanged
+        // from M3-07b; what changed is that loading it is a migration rather than a read.
+        Assert.That(run.Version, Is.EqualTo(4));
+
+        // A v3 run had no economy by construction — none of GD §15's or §13's mechanics existed —
+        // so its v4 form is a fresh economy and three empty lists. The document has none of the
+        // seven keys, so this is the step's answer read through the real adapter rather than through
+        // the mirror's field initialisers.
+        AssertNoEconomy(run);
 
         // **The hole survives, in place.** S1 and S3 are filled and S2 and S4 are empty, which is
         // the state a set of ids could not express — it would come back as S1 and S2 and silently
@@ -659,10 +834,98 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Fixture_V3Run_IsWhatThisBuildWrites()
+    public void Fixture_V3Run_CarryingAnEconomy_StillGetsV3sMeaning()
+    {
+        // A v3 document with an `essence` key, which no real v3 document can have — the mirror had
+        // no such field. Written this way on purpose (M6-01b rule 5): **the step is written from the
+        // shape rather than from what was decoded**, so a v3 document is a v3 document whatever it
+        // carries, and a fixture whose input was already empty could not tell that apart from a step
+        // that passed the field through. `V3Run` has one `}` and it is the last character.
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.RunFileName),
+            V3Run.Replace("}", ",\"essence\":500}"));
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(
+            run.Economy.Essence,
+            Is.Zero,
+            "The v3 → v4 step is the authority: 500 was decoded and then overwritten by v3's meaning.");
+    }
+
+    [Test]
+    public void Fixture_V4Run_DecodesToTheExpectedSnapshot()
+    {
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V4RunClaimed);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        // No migration ran: this is what the build writes, read back.
+        Assert.That(run.Version, Is.EqualTo(4));
+
+        // **The five scalars and the three lists, each a value no step could have produced.** The
+        // step writes zeroes and empties, so every one of these assertions fails the day the mirror
+        // stops carrying a key and the migration quietly answers for it instead.
+        Assert.That(run.Economy.Essence, Is.EqualTo(317));
+        Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f));
+        Assert.That(run.Economy.RerollsBought, Is.EqualTo(2));
+        Assert.That(run.Economy.RerollsSpent, Is.EqualTo(1));
+        Assert.That(run.Economy.Claimed, Is.True);
+        Assert.That(run.BanishedNodeIds, Is.EqualTo(new[] { Reprisal }));
+        Assert.That(run.PactedNodeIds, Is.EqualTo(new[] { Consecrate }));
+        Assert.That(run.OrdealIds, Is.EqualTo(new[] { Thinblood }));
+
+        // And the v3 half of the document is still read the same way, hole included — the part a
+        // bump is most likely to break by shifting a field.
+        Assert.That(
+            run.ManualSkillIds,
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
+
+        Assert.That(run.Level, Is.EqualTo(7));
+        Assert.That(run.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
+        Assert.That(run.Seed, Is.EqualTo(-20260912));
+        Assert.That(run.Random.Misc, Is.EqualTo(ulong.MaxValue));
+        Assert.That(run.PlayerHp, Is.EqualTo(72.5f));
+        Assert.That(run.WrittenAt, Is.EqualTo(FixtureWritten));
+    }
+
+    [Test]
+    public void Fixture_V4Run_WithoutTheNewArrays_Decodes()
+    {
+        // A v4 document with all three arrays missing — which is what a hand-edited file looks like,
+        // and what the mirror's `Array.Empty<string>()` initialisers exist for (rule 6). A null
+        // would reach RunSnapshot's null guard and turn the save into "Discarding the save", so this
+        // is the row that says the initialisers are load-bearing rather than tidy.
+        string stripped = V4Run
+            .Replace(",\"banishedNodeIds\":[\"skill.oathbound.reprisal\"]", string.Empty)
+            .Replace(",\"pactedNodeIds\":[\"skill.oathbound.consecrate\"]", string.Empty)
+            .Replace(",\"ordealIds\":[\"ordeal.thinblood\"]", string.Empty);
+
+        Assert.That(stripped, Does.Not.Contain("ordealIds"), "The fixture really removed them.");
+
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), stripped);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.BanishedNodeIds, Is.Not.Null);
+        Assert.That(run.BanishedNodeIds, Is.Empty);
+        Assert.That(run.PactedNodeIds, Is.Not.Null);
+        Assert.That(run.PactedNodeIds, Is.Empty);
+        Assert.That(run.OrdealIds, Is.Not.Null);
+        Assert.That(run.OrdealIds, Is.Empty);
+
+        // No migration ran, so the four scalars are still the document's own — which is what makes
+        // this a row about the arrays rather than about the step.
+        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Economy.Essence, Is.EqualTo(317));
+    }
+
+    [Test]
+    public void Fixture_V4Run_IsWhatThisBuildWrites()
     {
         Await(_store.SaveRun(new RunSnapshot(
-            version: 3,
+            version: 4,
             Mode,
             Character,
             seed: -20260912,
@@ -676,20 +939,88 @@ public sealed class LocalJsonSaveStoreTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) })));
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            economy: new RunEconomy(317, 42.5f, 2, 1, claimed: true),
+            banishedNodeIds: new[] { Reprisal },
+            pactedNodeIds: new[] { Consecrate },
+            ordealIds: new[] { Thinblood })));
 
         string written = File.ReadAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName));
 
         // Byte for byte. A field renamed, reordered or added changes this text, and a save format
         // that drifts without its fixture moving with it is one that stops loading after a release.
         //
-        // **Renamed from the v2 row, whose literal is now the v2 → v3 step's input.** That
-        // literal was not regenerated, which is what earns it the right to prove anything: a
-        // fixture rewritten alongside the format it pins stops being evidence. This is also the row
-        // that objects if a later task bumps the version to write a field the format already
-        // reserves — filling a list does not change the shape of the document, so the text here
-        // stays true and only its contents move.
-        Assert.That(written, Is.EqualTo(V3Run));
+        // **Renamed from the v3 row, whose literal is now the v3 → v4 step's input.** That literal
+        // was not regenerated, which is what earns it the right to prove anything: a fixture
+        // rewritten alongside the format it pins stops being evidence. **This is also the row that
+        // objects if a later task bumps the version to write a field v4 already reserves** — M6-02b,
+        // M6-04, M6-05a and M6-06a each fill exactly one argument at `RunRecorder.Take`, and filling
+        // a field does not change the shape of the document, so the text here stays true and only
+        // its contents move.
+        //
+        // **Re-pointed once, at M6-11b's re-cut**, from V4Run to V4RunClaimed: the shape did change
+        // — one key — and the version did not, which M6-01b licensed until `m6` was tagged. V4Run
+        // was not edited to match; it is now the pre-re-cut document the next row reads.
+        Assert.That(written, Is.EqualTo(V4RunClaimed));
+    }
+
+    [Test]
+    public void Store_AV4FileWithoutTheFieldReadsFalse()
+    {
+        // **M6-11b rule 4: the re-cut is free for a file written before it.** V4Run has no
+        // `claimed` key — it is byte for byte what this adapter wrote until M6-11b — so the mirror's
+        // bool keeps its default and the economy reads unclaimed. A meter at 100 in such a file
+        // still latches on its own, in Veilrot.Restore; this row is the half the adapter owns.
+        Assert.That(V4Run, Does.Not.Contain("claimed"), "The fixture really predates the key.");
+
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.RunFileName), V4Run);
+
+        RunSnapshot run = Result(_store.LoadRun()).Value;
+
+        Assert.That(run.Economy.Claimed, Is.False);
+        Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f), "the meter as written.");
+
+        // No migration ran, and no step was needed: the version is the same four.
+        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Economy.Essence, Is.EqualTo(317));
+    }
+
+    [Test]
+    public void Store_RoundTripsClaimed()
+    {
+        // **Both values, because either alone could pass a broken mirror** (M6-11b rule 1): one that
+        // dropped the key reads back false, and one that wrote a constant true reads back true.
+        Await(_store.SaveRun(Snapshot(economy: new RunEconomy(317, 42.5f, 2, 1, claimed: true))));
+
+        Assert.That(Result(_store.LoadRun()).Value.Economy.Claimed, Is.True);
+
+        Await(_store.SaveRun(Snapshot(economy: new RunEconomy(317, 42.5f, 2, 1, claimed: false))));
+
+        Assert.That(Result(_store.LoadRun()).Value.Economy.Claimed, Is.False);
+    }
+
+    /// <summary>
+    /// A run that came back with no economy at all: <c>default(RunEconomy)</c> and three empty
+    /// lists, which is every migration step's answer and every pre-v4 document's truth.
+    /// </summary>
+    /// <remarks>
+    /// One helper rather than seven assertions in each of three rows. All four scalars, because one
+    /// of them reading zero says nothing about the other three, and <c>Is.Not.Null</c> beside each
+    /// list because empty and null are different answers and only one of them is legal.
+    /// </remarks>
+    private static void AssertNoEconomy(RunSnapshot run)
+    {
+        Assert.That(run.Economy.Essence, Is.Zero);
+        Assert.That(run.Economy.Veilrot, Is.Zero);
+        Assert.That(run.Economy.RerollsBought, Is.Zero);
+        Assert.That(run.Economy.RerollsSpent, Is.Zero);
+
+        Assert.That(run.BanishedNodeIds, Is.Not.Null);
+        Assert.That(run.BanishedNodeIds, Is.Empty);
+        Assert.That(run.PactedNodeIds, Is.Not.Null);
+        Assert.That(run.PactedNodeIds, Is.Empty);
+        Assert.That(run.OrdealIds, Is.Not.Null);
+        Assert.That(run.OrdealIds, Is.Empty);
     }
 
     /// <summary>A snapshot with every field distinct, overridable where a row cares.</summary>
@@ -698,12 +1029,15 @@ public sealed class LocalJsonSaveStoreTests
     /// round-trip rows are the ones that would otherwise pass against a mirror that dropped them:
     /// zero, one and an empty array all survive being lost. <b>v3's field carries a hole for the
     /// same reason and one more</b>: four empties would round-trip through a mirror that dropped
-    /// the key entirely, because the step would put four empties back.
+    /// the key entirely, because the step would put four empties back. <b>v4's seven carry
+    /// non-defaults for exactly that second reason</b> — the v3 → v4 step writes zeroes and empties,
+    /// so a mirror that dropped any of them would round-trip green against a fresh economy.
     /// </remarks>
     private static RunSnapshot Snapshot(
         int stageIndex = 4,
         RandomState? random = null,
-        DateTimeOffset? writtenAt = null)
+        DateTimeOffset? writtenAt = null,
+        RunEconomy? economy = null)
     {
         return new RunSnapshot(
             RunSnapshot.CurrentVersion,
@@ -720,7 +1054,11 @@ public sealed class LocalJsonSaveStoreTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) });
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            economy: economy ?? new RunEconomy(317, 42.5f, 2, 1),
+            banishedNodeIds: new[] { Reprisal },
+            pactedNodeIds: new[] { Consecrate },
+            ordealIds: new[] { Thinblood });
     }
 
     /// <summary>

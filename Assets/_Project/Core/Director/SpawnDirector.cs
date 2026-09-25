@@ -233,6 +233,12 @@ public sealed class SpawnDirector
     /// second publisher of the one fact the gate, the door and the depth all hang off (rule 6).
     /// False while any wave still holds a body, including a wave the overlap left behind three
     /// waves ago.
+    /// <para>
+    /// <b>On a boss stage: the boss is down <em>and</em> nothing else is breathing</b> (M6-02a rule
+    /// 5, ledger row 5). Until M6-02a it was the boss alone, and M5-08 watched two Husks still being
+    /// killed six seconds after a stage had completed — harmless in a two-second gate, and a live
+    /// add beside the player for as long as they shop once the Sanctum is untimed.
+    /// </para>
     /// </remarks>
     public bool IsStageComplete
     {
@@ -242,7 +248,7 @@ public sealed class SpawnDirector
             // all, so the walk below would report it complete before the boss had stood up.
             if (IsBossStage)
             {
-                return _bossCleared;
+                return _bossCleared && !AnythingBreathes();
             }
 
             if (_plan is null || Wave < _plan.WaveCount)
@@ -583,6 +589,39 @@ public sealed class SpawnDirector
         _bossCleared = true;
 
         _events.Publish(new WaveCleared(_stage, 1));
+    }
+
+    /// <summary>
+    /// Whether any registered enemy is still alive — the adds a boss stage must also have lost.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It walks for <see cref="EnemyAgent.IsAlive"/> rather than reading <c>AliveCount</c></b>, and
+    /// the difference is load-bearing: <c>AliveCount</c> is <em>registered</em>, not breathing (AR
+    /// §18.4), so a corpse waiting out <c>EnemySystem.CorpseTime</c> would hold the stage open 0.6 s
+    /// past the kill that ended it (M6-02a rule 5).
+    /// </para>
+    /// <para>
+    /// <b>The whole registry, not an id list</b>, because an add is not this object's: <c>BossBehaviour</c>
+    /// summons it on a phase beat and nothing here issued it — and a body dressed into the arena by
+    /// its spawn plan must hold the stage open for the same reason. At most the
+    /// concurrency cap, once a tick, on boss stages only — and the scan stops at the first breath,
+    /// so the frames it runs to the end on are the frames the stage is about to complete.
+    /// </para>
+    /// </remarks>
+    private bool AnythingBreathes()
+    {
+        ReadOnlySpan<EnemyAgent> registered = _enemies.Registry.Alive;
+
+        for (int i = 0; i < registered.Length; i++)
+        {
+            if (registered[i].IsAlive)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Spawns every body whose ring has finished, in the order they were announced.</summary>

@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
 using Soulvail.Core.Save;
 using Soulvail.Tests.Core.Fakes;
@@ -84,6 +87,13 @@ public sealed class RunSessionResumeTests
     private const int SavedPending = 1;
 
     /// <summary>
+    /// What the two economy rows put in the wallet. 84 rather than anything GD §15's income table
+    /// could produce by accident, and never zero — a fresh run's balance is zero, so a restore that
+    /// was quietly deleted shows up as a wrong number rather than as a plausible one.
+    /// </summary>
+    private const int SavedEssence = 84;
+
+    /// <summary>
     /// The tree the node rows turn on: five positions, three of them sharing branch 0's only tier
     /// so that any order of those three is one the gating allows.
     /// </summary>
@@ -119,6 +129,15 @@ public sealed class RunSessionResumeTests
 
     /// <summary>What the one max-HP node adds. Twenty, so 140 becomes 160.</summary>
     private const float MaxHpNodeBonus = 20f;
+
+    /// <summary>
+    /// What the same node adds taken as a Pact (M6-05a). Forty-five, so 140 becomes 185 — a number
+    /// the clean node cannot produce, which is what lets the resume row tell the two apart.
+    /// </summary>
+    private const float MaxHpPactBonus = 45f;
+
+    /// <summary>The Pact's price, and the meter a run that paid it was saved at.</summary>
+    private const float MaxHpPactRot = 15f;
 
     /// <summary>
     /// Hit points a run was saved with that only a modified maximum can hold. Above
@@ -596,7 +615,11 @@ public sealed class RunSessionResumeTests
             Is.EqualTo(0),
             "a resumed run's Overflow was earned in a previous session and is not news.");
 
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(3), "deriving it is what keeps the format at 3.");
+        Assert.That(
+            RunSnapshot.CurrentVersion,
+            Is.EqualTo(4),
+            "deriving it is what keeps Overflow off the format — v4 added six fields and "
+                + "still carries none for this one.");
     }
 
     [Test]
@@ -803,6 +826,438 @@ public sealed class RunSessionResumeTests
 
         Assert.That(_session.State.Level, Is.EqualTo(SavedLevel), "The rest of the restore still ran.");
         Assert.That(naming.TakenNodeIds, Has.Count.EqualTo(2), "The fixture named two, so the row is not vacuous.");
+    }
+
+    // ---- v4: the economy comes back (M6-01b rules 8, 9) ------------------------------------------
+
+    [Test]
+    public void Resume_TheWalletComesBack()
+    {
+        Build(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // **The line M6-01a shipped with no caller** (rule 9). Without it a run killed at 84
+        // Essence comes back at 0 and nothing anywhere says so — the failure mode
+        // `PlayerProfile.Shards` is the precedent for: a number not written is data destroyed,
+        // and a number not read back is the same loss one layer on.
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
+
+        // The fixture's own claim, checked out loud: a fresh run's wallet is empty, so if the
+        // restore were deleted this row would read zero rather than a plausible number.
+        Assert.That(SavedEssence, Is.Not.Zero);
+
+        // **Silently**, for the reason the whole restore block is silent: nothing may publish
+        // before RunStarted, and an EssenceChanged raised here would reach a HUD that has not
+        // subscribed yet (EssenceWallet.Restore, M6-01a rule 8).
+        Assert.That(_events.Count<EssenceChanged>(), Is.Zero);
+    }
+
+    [Test]
+    public void Resume_TheOtherFourComeBackEmpty()
+    {
+        Build(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // The same run as the row above, read through the other four v4 fields (rule 8). Veilrot
+        // has a meter since M6-04 and comes back at the saved zero; the three lists have no writer
+        // yet. No throw is half of what this row is about: one that reached for a null list would
+        // fail here.
+        Assert.That(_session.State.Veilrot, Is.Zero);
+        Assert.That(_session.State.BanishedNodeIds, Is.Empty);
+        Assert.That(_session.State.PactedNodeIds, Is.Empty);
+        Assert.That(_session.State.OrdealIds, Is.Empty);
+
+        // And the rest of the restore still ran, so this is not a row about a run that failed to
+        // start.
+        Assert.That(_session.State.Level, Is.EqualTo(SavedLevel));
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence));
+    }
+
+    // ---- M6-05a: a Pact comes back as the Pact it was (rule 5) ------------------------------------
+
+    [Test]
+    public void Resume_APactSurvivesAKill()
+    {
+        BuildWithTree(seed: 7);
+
+        var pacted = new ContentId(NodeMaxHp);
+        var clean = new ContentId(NodeDamage);
+
+        // The run before the kill: two taken, the first as a Pact, and the Veilrot it paid. Entered
+        // through a resume because nothing public takes a Pact until M6-05b's offer.
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                takenNodeIds: new[] { pacted, clean },
+                economy: new RunEconomy(SavedEssence, MaxHpPactRot, 0, 0),
+                pactedNodeIds: new[] { pacted }));
+
+        float maxHpBefore = _session.State.PlayerMaxHp;
+
+        Assert.That(maxHpBefore, Is.EqualTo(TreeMaxHp + MaxHpPactBonus).Within(0.01f), "The Pact's +45, not the clean +20.");
+
+        // Written at the boundary, exactly as a real run is; then the process dies.
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        // A fresh session over the same content reads the file back.
+        var events = new RecordingEvents();
+        RunSession resumed = SessionOver(events);
+
+        resumed.Start(ResumedConfig(5, written));
+
+        // **The same number as before the kill, and the Veilrot it paid.** Without the second list
+        // the replay applies the clean node and this reads 160 against a meter at 15 — the run's
+        // power silently not the power it paid for.
+        Assert.That(resumed.State.PlayerMaxHp, Is.EqualTo(maxHpBefore).Within(0.01f));
+        Assert.That(resumed.State.Veilrot, Is.EqualTo(MaxHpPactRot));
+        Assert.That(resumed.State.PactedNodeIds, Is.EqualTo(new[] { pacted }));
+    }
+
+    // ---- M6-02b: the shop's counters and banishes come back (rule 9) -------------------------------
+
+    [Test]
+    public void Restore_ComesBackWithItsCountersAndBanishes()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                economy: new RunEconomy(SavedEssence, 0f, rerollsBought: 2, rerollsSpent: 1),
+                banishedNodeIds: new[] { new ContentId(NodeSpare), new ContentId(NodeB) }));
+
+        RunState state = _session.State;
+
+        Assert.That(state.RerollsBought, Is.EqualTo(2));
+        Assert.That(state.RerollsSpent, Is.EqualTo(1));
+        Assert.That(state.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeSpare), new ContentId(NodeB) }));
+        Assert.That(state.IsNodeBanished(new ContentId(NodeSpare)), Is.True);
+        Assert.That(state.IsNodeAvailable(new ContentId(NodeSpare)), Is.False, "out of the pool, not merely listed.");
+        Assert.That(state.SanctumPriceOf(SanctumService.Reroll), Is.EqualTo(100), "the third costs 25 × 2².");
+
+        // **Nothing published** (rule 9): a resume is not news, and a NodeBanished raised inside
+        // Start would reach a tree screen that has not subscribed.
+        Assert.That(_events.Count<NodeBanished>(), Is.Zero);
+        Assert.That(_events.Count<SanctumServiceBought>(), Is.Zero);
+
+        // And the stock is live, not just readable: the one charge left is spent by the pick the
+        // save still owes (SavedPending is 1).
+        _session.OpenLevelUp();
+
+        Assert.That(_session.State.HasOffer, Is.True);
+        Assert.That(_session.State.RerollsSpent, Is.EqualTo(2), "bought − spent was one, and it went.");
+    }
+
+    [Test]
+    public void Restore_DropsABanishThatIsAlsoTaken()
+    {
+        BuildWithTree(seed: 7);
+
+        var both = new ContentId(NodeDamage);
+
+        Assert.DoesNotThrow(() => StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, takenNodeIds: new[] { both }, banishedNodeIds: new[] { both })));
+
+        // The take is the stronger fact; a save carrying both is corrupt rather than stale.
+        Assert.That(_session.State.TakenNodeIds, Is.EqualTo(new[] { both }));
+        Assert.That(_session.State.IsNodeBanished(both), Is.False);
+        Assert.That(_session.State.BanishedNodeIds, Is.Empty);
+    }
+
+    [Test]
+    public void Restore_DropsABanishThisBuildDoesNotShip()
+    {
+        BuildWithTree(seed: 7);
+
+        Assert.DoesNotThrow(() => StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                banishedNodeIds: new[] { new ContentId("skill.deleted"), new ContentId(NodeB) })));
+
+        Assert.That(_session.State.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeB) }), "dropped silently.");
+    }
+
+    [Test]
+    public void Recorder_WritesTheThree()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(
+                4,
+                _random.Seed,
+                economy: new RunEconomy(SavedEssence, 0f, rerollsBought: 3, rerollsSpent: 1),
+                banishedNodeIds: new[] { new ContentId(NodeC) }));
+
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        Assert.That(written.Economy.RerollsBought, Is.EqualTo(3));
+        Assert.That(written.Economy.RerollsSpent, Is.EqualTo(1));
+        Assert.That(written.BanishedNodeIds, Is.EqualTo(new[] { new ContentId(NodeC) }));
+    }
+
+    [Test]
+    public void Port_BuysOnlyInTheSanctum()
+    {
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 0f, 0, 0)));
+
+        // Mid-stage, with the money: refused, because AR §18.1's boundary row assumes every
+        // purchase happens between the Clear-edge snapshot and the door.
+        Assert.That(_session.IsSanctumOpen, Is.False);
+        Assert.That(_session.CanBuy(SanctumService.Reroll), Is.False);
+        Assert.Throws<InvalidOperationException>(() => _session.Buy(SanctumService.Reroll));
+        Assert.Throws<InvalidOperationException>(() => _session.Banish(new ContentId(NodeB)));
+        Assert.That(_session.State.Essence, Is.EqualTo(SavedEssence), "nothing was spent.");
+
+        ClearTheStage();
+
+        for (int i = 0; i < 600 && !_session.IsSanctumOpen; i++)
+        {
+            _session.Tick(Snapshot(Frame, Vector3.Zero));
+        }
+
+        Assert.That(_session.IsSanctumOpen, Is.True, "the fixture reached the Sanctum.");
+
+        int paid = _session.State.Essence;
+
+        Assert.That(_session.CanBuy(SanctumService.Reroll), Is.True);
+        Assert.That(_session.PriceOf(SanctumService.Reroll), Is.EqualTo(25));
+
+        _session.Buy(SanctumService.Reroll);
+        _session.Banish(new ContentId(NodeB));
+
+        Assert.That(_session.State.Essence, Is.EqualTo(paid - 25 - 40));
+        Assert.That(_session.State.RerollsBought, Is.EqualTo(1));
+        Assert.That(_session.State.IsNodeBanished(new ContentId(NodeB)), Is.True);
+
+        var buffer = new ContentId[_session.State.TreeNodeCount];
+        Assert.That(_session.BanishableInto(buffer), Is.EqualTo(_session.State.TreeNodeCount - _session.State.TakenNodeCount - 1));
+    }
+
+    [Test]
+    public void State_TheFourReadsAnswerWithoutASystem()
+    {
+        Build(seed: 7);
+
+        _session.Start(FreshConfig(stage: 4));
+
+        RunState state = _session.State;
+
+        // **Real answers rather than stubs** (rule 8). A fresh run's meter genuinely reads zero
+        // (M6-04), the way TakenNodeIds was genuinely empty for a class with no tree — and the
+        // lists are empty, never null, so no reader ever has to ask.
+        Assert.That(state.Veilrot, Is.Zero);
+        Assert.That(state.BanishedNodeIds, Is.Not.Null);
+        Assert.That(state.BanishedNodeIds, Is.Empty);
+        Assert.That(state.PactedNodeIds, Is.Not.Null);
+        Assert.That(state.PactedNodeIds, Is.Empty);
+        Assert.That(state.OrdealIds, Is.Not.Null);
+        Assert.That(state.OrdealIds, Is.Empty);
+
+        // **And the seal did not move to let them out** (AR §18.2). Every public member of
+        // RunState is a scalar, an id, a list of ids, or the authored CharacterSpec — never a live
+        // system — so there is no meter, no shop, no tree and no ordeal set for a view to reach.
+        // Veilrot became a forward at M6-04 (and IsClaimed beside it, a bool); the other three do at
+        // M6-02b, M6-05a and M6-06a, and this row is what says none of them may arrive as a handle.
+        string[] handles = typeof(RunState)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(property => !IsANarrowRead(property.PropertyType))
+            .Select(property => $"{property.Name}: {property.PropertyType.Name}")
+            .ToArray();
+
+        Assert.That(
+            handles,
+            Is.Empty,
+            "A live system escaped RunState. Narrow reads are the contract (AR §18.2).");
+
+        // Said the other way round for the two that exist today, because an allow-list is only as
+        // strong as what it is measured against.
+        Assert.That(
+            typeof(RunState).GetProperty("Wallet", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+
+        Assert.That(
+            typeof(RunState).GetProperty("Tree", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+
+        // M6-02b's shop has Buy and Banish on it; the reads are SanctumPriceOf and CanBuySanctum.
+        Assert.That(
+            typeof(RunState).GetProperty("Shop", BindingFlags.Public | BindingFlags.Instance),
+            Is.Null);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is something <c>RunState</c> may hand out: a value — scalar,
+    /// <c>ContentId</c> or <c>Vector3</c> — a read-only list of ids, or the authored
+    /// <c>CharacterSpec</c>, which is content rather than a system with verbs on it.
+    /// </summary>
+    private static bool IsANarrowRead(Type type)
+    {
+        return type.IsValueType
+            || type == typeof(CharacterSpec)
+            || type == typeof(IReadOnlyList<ContentId>);
+    }
+
+    // ---- M6-11b: a resume keeps the Claiming (rules 1–4) -------------------------------------------
+
+    [Test]
+    public void Resume_AClaimedRunSpentBelowAHundredStaysClaimed()
+    {
+        // **M6-11's stage-36 Emberwright, at the size of a test.** CH §3.3's relationship — 5 Rot to
+        // cast through a cooldown — on the fixture's class: the relationship is the whole of what makes
+        // a paid cast, so the id stays the one every other row resumes. Two Actives whose trigger
+        // always holds, because a cooldown is bought at most once (M6-07c rule 7) and 100 → 90 is two.
+        BuildWithActiveTree(seed: 7, actives: 2, veilrot: ClassVeilrotTests.Emberwright());
+
+        var actives = new[] { new ContentId(NodeActive), new ContentId(NodeActive + ".1") };
+
+        // Level 4, one pick owed and two nodes is 4 − 1 − 2 − 1 = 0 Overflow, so the maximum below is
+        // 140 × 0.8 exactly — the 75 row's fifth and nothing else.
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, takenNodeIds: actives, economy: new RunEconomy(SavedEssence, Veilrot.Max, 0, 0)));
+
+        Assert.That(_session.State.IsClaimed, Is.True, "Arranged: Claimed at 100.");
+
+        // A resume hands back ready cooldowns, and the runner casts at most one skill a frame, bought
+        // or free (M3-06 rule 6) — so four frames: the first free, the first bought through the wait
+        // it just started, then the second the same way.
+        TickFor(4);
+
+        Assert.That(_events.Count<CastBought>(), Is.EqualTo(2), "Arranged: two paid casts.");
+        Assert.That(_session.State.Veilrot, Is.EqualTo(90f));
+        Assert.That(_session.State.IsClaimed, Is.True, "Spending never opens the latch (M6-07c rule 5).");
+
+        // **The boundary** (rule 1): the recorder writes the latch beside the meter it cannot be
+        // derived from.
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        Assert.That(written.Economy.Veilrot, Is.EqualTo(90f));
+        Assert.That(written.Economy.Claimed, Is.True);
+
+        // The app is killed; a fresh session over the same content reads the file back.
+        var events = new RecordingEvents();
+        RunSession resumed = SessionOver(events);
+
+        resumed.Start(ResumedConfig(5, written));
+
+        // **Rule 3.** Without the flag this is a run at 90 with the 75 row on and nothing else — M6-11
+        // played on from there to stage 39 unable to die.
+        Assert.That(resumed.State.IsClaimed, Is.True, "A quit is not a way out of GD §10.3's hundred seconds.");
+        Assert.That(resumed.State.Veilrot, Is.EqualTo(90f), "…and the meter is not pinned back at 100.");
+        Assert.That(events.Count<ClaimingBegan>(), Is.Zero, "Silently (M6-04 rule 9).");
+
+        float maxHp = resumed.State.PlayerMaxHp;
+
+        Assert.That(maxHp, Is.EqualTo(0.8f * TreeMaxHp).Within(0.01f), "Arranged: no drain has run yet.");
+
+        // **And the drain runs from the first tick** — with ClaimedFor at zero, which is M6-04 rule 9's
+        // stated cost and not this defect: one second is one step.
+        for (int i = 0; i < 60; i++)
+        {
+            resumed.Tick(Snapshot(Frame, Vector3.Zero));
+        }
+
+        Assert.That(resumed.State.PlayerMaxHp, Is.EqualTo(0.99f * maxHp).Within(0.01f));
+    }
+
+    [Test]
+    public void Resume_AClaimedRunCleansedStaysClaimed()
+    {
+        // **The same escape for every class, a stage later** (M6-11b's *Why*): no relationship here,
+        // just GD §13.3's Cleanse bought in a Sanctum. And the boundary is the run's own — the
+        // clear-edge write RunSession makes — rather than a recorder the row calls, because a
+        // Sanctum sits *after* the clear edge that opened it: the Cleanse reaches disk at the next.
+        BuildWithTree(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, Veilrot.Max, 0, 0)));
+
+        Assert.That(_session.State.IsClaimed, Is.True, "Arranged: Claimed at 100.");
+
+        ClearTheStage();
+
+        for (int i = 0; i < 600 && !_session.IsSanctumOpen; i++)
+        {
+            _session.Tick(Snapshot(Frame, Vector3.Zero));
+        }
+
+        Assert.That(_session.IsSanctumOpen, Is.True, "Arranged: the fixture reached the Sanctum.");
+
+        _session.Buy(SanctumService.Cleanse);
+
+        Assert.That(_session.State.Veilrot, Is.EqualTo(85f), "Descent's Cleanse is 15.");
+        Assert.That(_session.State.IsClaimed, Is.True, "Claiming_SurvivesCleansing, in a live run.");
+
+        CrossTheBoundary();
+        ClearTheStage();
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        Assert.That(written.StageIndex, Is.EqualTo(6), "Arranged: stage 5's clear edge wrote it.");
+        Assert.That(written.Economy.Veilrot, Is.EqualTo(85f));
+        Assert.That(written.Economy.Claimed, Is.True);
+
+        var events = new RecordingEvents();
+        RunSession resumed = SessionOver(events);
+
+        resumed.Start(ResumedConfig(6, written));
+
+        Assert.That(resumed.State.IsClaimed, Is.True);
+        Assert.That(resumed.State.Veilrot, Is.EqualTo(85f));
+    }
+
+    [Test]
+    public void Resume_AnUnclaimedRunAtNinetyIsNotClaimed()
+    {
+        // **Rule 4, the other side of the latch.** Ninety is a reading a run can reach by Pacts alone,
+        // and the flag must not turn a meter below 100 into a Claiming it never had.
+        Build(seed: 7);
+
+        StartResumed(
+            stage: 4,
+            Snapshot(4, _random.Seed, economy: new RunEconomy(SavedEssence, 90f, 0, 0)));
+
+        Assert.That(_session.State.IsClaimed, Is.False);
+        Assert.That(_session.State.Veilrot, Is.EqualTo(90f));
+
+        float maxHp = _session.State.PlayerMaxHp;
+
+        TickFor(60);
+
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(maxHp), "No drain: a second passed and nothing was taken.");
+
+        // And its boundary writes it down unclaimed, so the next resume reads the same.
+        new RunRecorder(_random, _clock, _events).Take(_session.State, 5);
+
+        RunSnapshot written = _events.Of<RunSnapshotTaken>()[_events.Count<RunSnapshotTaken>() - 1].Snapshot;
+
+        Assert.That(written.Economy.Claimed, Is.False);
     }
 
     [Test]
@@ -1191,7 +1646,10 @@ public sealed class RunSessionResumeTests
     /// keeps the shape it was written against: a fourth node in branch 0 would move
     /// <c>Available</c>'s count under rows that are not about it.
     /// </remarks>
-    private void BuildWithActiveTree(int seed, int actives = 1)
+    /// <param name="veilrot">
+    /// The class's relationship with the Veil, or none — M6-11b's paid-cast row passes CH §3.3's.
+    /// </param>
+    private void BuildWithActiveTree(int seed, int actives = 1, VeilrotSpec veilrot = null)
     {
         _events = new RecordingEvents();
         _random = new FixedRandom(seed, Alternating(8_192));
@@ -1227,7 +1685,7 @@ public sealed class RunSessionResumeTests
         skills.Add(Passive(NodeC, 0.05f));
 
         _catalog = new ContentCatalog(
-            new[] { Oathbound(TreeMaxHp) },
+            new[] { Oathbound(TreeMaxHp, veilrot) },
             new[] { Husk() },
             new[] { _mode },
             skills,
@@ -1310,7 +1768,10 @@ public sealed class RunSessionResumeTests
         int pendingLevelUps = SavedPending,
         IReadOnlyList<ContentId> takenNodeIds = null,
         float playerHp = SavedHp,
-        IReadOnlyList<ContentId> manualSkillIds = null) =>
+        IReadOnlyList<ContentId> manualSkillIds = null,
+        RunEconomy economy = default,
+        IReadOnlyList<ContentId> banishedNodeIds = null,
+        IReadOnlyList<ContentId> pactedNodeIds = null) =>
         new RunSnapshot(
             RunSnapshot.CurrentVersion,
             new ContentId(modeId),
@@ -1326,7 +1787,11 @@ public sealed class RunSessionResumeTests
             xp,
             pendingLevelUps,
             takenNodeIds ?? Array.Empty<ContentId>(),
-            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots]);
+            manualSkillIds ?? new ContentId[SkillRunner.MaxManualSlots],
+            economy,
+            banishedNodeIds ?? Array.Empty<ContentId>(),
+            pactedNodeIds ?? Array.Empty<ContentId>(),
+            Array.Empty<ContentId>());
 
     private void TickFor(int ticks)
     {
@@ -1393,13 +1858,21 @@ public sealed class RunSessionResumeTests
                 + "fixture rather than about the run.");
     }
 
-    /// <summary>Waits out the clear beat, walks into the door and lets the fade run out.</summary>
+    /// <summary>
+    /// Waits out the clear beat, leaves the Sanctum, walks into the door and lets the fade run out.
+    /// </summary>
     private void CrossTheBoundary()
     {
         int arrivals = _events.Count<StageArrived>();
 
         for (int i = 0; i < 900 && _events.Count<StageArrived>() == arrivals; i++)
         {
+            // The way a screen will (M6-02a rule 4): ask, then send.
+            if (_session.IsSanctumOpen)
+            {
+                _session.LeaveSanctum();
+            }
+
             _session.Tick(Snapshot(Frame, Door));
         }
 
@@ -1508,7 +1981,11 @@ public sealed class RunSessionResumeTests
             // 8). Since Overflow moved off LevelUpFlow's two consts and onto the mode, a ModeSpec
             // built without one grants nothing per spare level — which is the honest default and
             // would make Resume_DerivesOverflow's ×1.28 a ×1.00. Descent's own shipped pair.
-            overflow: new OverflowSpec(0.02f, 0.02f));
+            overflow: new OverflowSpec(0.02f, 0.02f),
+
+            // GD §13.3's shop at Descent's prices, for the M6-02b rows: nothing else here buys, and
+            // the mode pays no Essence, so every other row is untouched by it.
+            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
     }
 
     /// <summary>
@@ -1537,7 +2014,8 @@ public sealed class RunSessionResumeTests
     /// every other row wants <see cref="MaxHp"/>, which is deliberately not a value any row
     /// restores to.
     /// </param>
-    private static CharacterSpec Oathbound(float maxHp = MaxHp) => new CharacterSpec(
+    /// <param name="veilrot">The class's relationship with the Veil; none unless a row says.</param>
+    private static CharacterSpec Oathbound(float maxHp = MaxHp, VeilrotSpec veilrot = null) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
         new LocKey("character.oathbound.description"),
@@ -1550,7 +2028,8 @@ public sealed class RunSessionResumeTests
         // would put a modifier and a stream of events into a fixture measuring neither.
         new FocusSpec(0.4f, 1f, 1f),
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
-        new ShieldSpec(ShieldMax, 3f, 1f));
+        new ShieldSpec(ShieldMax, 3f, 1f),
+        veilrot: veilrot);
 
     /// <summary>
     /// A tree of three branches, with three nodes sharing branch 0's only tier so that every one of
@@ -1591,12 +2070,25 @@ public sealed class RunSessionResumeTests
 
     /// <summary>A flat <c>+20 max HP</c> node — the one the ordering row is about.</summary>
     /// <remarks>
+    /// <para>
     /// <c>Flat</c> rather than a percentage, so the expected maximum is 160 exactly and the row
     /// reads as arithmetic rather than as a tolerance.
+    /// </para>
+    /// <para>
+    /// <b>It carries a Pact</b> (M6-05a), for <c>Resume_APactSurvivesAKill</c>: +45 rather than +20.
+    /// Untaken or taken clean it is the node every other row reads.
+    /// </para>
     /// </remarks>
-    private static SkillSpec MaxHpNode(string id) => Node(
-        id,
-        new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus));
+    private static SkillSpec MaxHpNode(string id) => new SkillSpec(
+        new ContentId(id),
+        new LocKey($"{id}.name"),
+        new LocKey($"{id}.desc"),
+        SkillKind.Passive,
+        new IEffect[] { new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpNodeBonus) },
+        pact: new PactSpec(
+            new IEffect[] { new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, MaxHpPactBonus) },
+            MaxHpPactRot,
+            new LocKey($"{id}.pact.desc")));
 
     private static SkillSpec Passive(string id, float damagePercent) => Node(
         id,

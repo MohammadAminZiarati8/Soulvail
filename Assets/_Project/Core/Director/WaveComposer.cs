@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Director;
 
@@ -92,6 +93,14 @@ public sealed class WaveComposer
     /// The <c>Spawn</c> stream, and only ever that one. Every draw here advances it, so the same
     /// stream position and the same stage always produce the same composition.
     /// </param>
+    /// <param name="ordeals">
+    /// What this run has been dealt, or <see langword="null"/> for none — which is the ordinary
+    /// state below the mode's first Ordeal stage and for every mode that schedules none (M6-06b
+    /// rule 5). GD §13.4's Swarm reads two of its dials: the concurrency bonus and the per-archetype
+    /// cost. Optional and last because this method has dozens of call sites and a null is a true
+    /// statement rather than a misconfiguration; the object that <em>deals</em> them,
+    /// <c>StageFlow</c>, takes a required one.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="mode"/>, <paramref name="destination"/> or <paramref name="spawn"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="stage"/> is below 1.</exception>
     /// <exception cref="ArgumentException">
@@ -105,7 +114,12 @@ public sealed class WaveComposer
     /// <c>RunSession.Start</c> resolves every roster entry before <c>RunStarted</c> (M2-02) — and
     /// left untranslated here on purpose, so the catalog's own message names the id.
     /// </exception>
-    public void Compose(int stage, ModeSpec mode, WavePlan destination, IRandomStream spawn)
+    public void Compose(
+        int stage,
+        ModeSpec mode,
+        WavePlan destination,
+        IRandomStream spawn,
+        Ordeals ordeals = null)
     {
         if (mode is null)
         {
@@ -130,10 +144,19 @@ public sealed class WaveComposer
                 "Stages are numbered from 1 (GD §8.2).");
         }
 
-        int eligible = PrepareEligible(stage, mode, destination);
+        int eligible = PrepareEligible(stage, mode, destination, ordeals);
         int waves = _budget.Waves(stage);
-        int concurrency = _budget.Concurrency(stage);
         float total = _budget.Budget(stage);
+
+        // **Swarm's bonus, re-clamped to the device — which is what GD §13.4's "device permitting"
+        // means** (M6-06b rule 3). The curve's answer is already capped at the device, so adding the
+        // bonus can only push it past the cap, and the cap wins: from stage 36 on the mid tier the
+        // curve alone is at 28 and Swarm's first half silently adds nothing. That is GD §11.2's rule
+        // working rather than the Ordeal failing. The clamp is here rather than in ThreatBudget
+        // because this is the one layer that knows the bonus; DeviceCap was already public. A run
+        // with no Ordeals adds zero, and min(C, cap) is C.
+        int bonus = ordeals is null ? 0 : ordeals.ConcurrencyBonus;
+        int concurrency = Math.Min(_budget.Concurrency(stage) + bonus, _budget.DeviceCap);
 
         destination.Begin(stage, waves, concurrency);
 
@@ -227,9 +250,10 @@ public sealed class WaveComposer
     /// <remarks>
     /// The costs are read once a stage rather than once a draw, and that is the only reason this
     /// is a separate step: <see cref="ContentCatalog.Enemy"/> is a dictionary probe, and an
-    /// archetype's cost cannot change while a stage is being composed.
+    /// archetype's cost cannot change while a stage is being composed. Swarm's discount is applied
+    /// here for the same reason — see <see cref="CostUnder"/>.
     /// </remarks>
-    private int PrepareEligible(int stage, ModeSpec mode, WavePlan destination)
+    private int PrepareEligible(int stage, ModeSpec mode, WavePlan destination, Ordeals ordeals)
     {
         int roster = mode.Roster.Count;
 
@@ -274,10 +298,46 @@ public sealed class WaveComposer
 
         for (int i = 0; i < eligible; i++)
         {
-            _costs[i] = _catalog.Enemy(_eligible[i].SpecId).ThreatCost;
+            ContentId id = _eligible[i].SpecId;
+            int cost = _catalog.Enemy(id).ThreatCost;
+
+            _costs[i] = ordeals is null ? cost : CostUnder(cost, ordeals.ThreatCostMultiplier(id));
         }
 
         return eligible;
+    }
+
+    /// <summary>
+    /// <paramref name="cost"/> under GD §13.4's Swarm: multiplied, rounded to the nearest whole
+    /// threat, and never below 1 (M6-06b rule 4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The floor is the load-bearing part.</b> A cost of zero would let the affordability walk
+    /// buy a body for nothing, so the budget would never fall and the only thing ending a wave would
+    /// be the concurrency cap Swarm has just raised — and <see cref="Upgrade"/>'s termination
+    /// argument, "each pass spends at least 1", would stop being true. <c>OrdealSpec</c> refuses a
+    /// multiplier of zero; a small one still rounds to zero, and this is the one door that sees the
+    /// product.
+    /// </para>
+    /// <para>
+    /// <b>A multiplier of exactly 1 returns the cost untouched</b>, so an archetype no Ordeal names
+    /// is priced exactly as it was before this task — floor and all (rule 7). <b>Which archetype
+    /// Swarm names is the Ordeal asset's business, never this class's</b>: the vocabulary is the
+    /// mode's, and an <c>OrdealSpec</c> naming a <see cref="ContentId"/> is authored data.
+    /// </para>
+    /// </remarks>
+    private static int CostUnder(int cost, float multiplier)
+    {
+        // Exact comparison on purpose: 1 is the product of no factors, not a computed neutral.
+        if (multiplier == 1f)
+        {
+            return cost;
+        }
+
+        int scaled = (int)MathF.Round(cost * multiplier);
+
+        return scaled < 1 ? 1 : scaled;
     }
 
     /// <summary>Adds one body of eligible archetype <paramref name="index"/>, and returns its cost.</summary>

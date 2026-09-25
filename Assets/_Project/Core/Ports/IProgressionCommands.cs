@@ -1,4 +1,6 @@
+using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Progression;
 
 namespace Soulvail.Core.Ports;
 
@@ -17,10 +19,11 @@ namespace Soulvail.Core.Ports;
 /// level-up screen being handed <c>MovementSkill</c> and the input adapter being handed the tree.
 /// </para>
 /// <para>
-/// <b>Four members in M3, four more at M5-07a-ii, and none of M6's.</b> AR §6 has listed
+/// <b>Four members in M3, four more at M5-07a-ii, two at M6-02a and five at M6-02b.</b> AR §6 listed
 /// <c>Reroll()</c>, <c>Banish(skillId)</c>, <c>BuyHeal()</c> and <c>BuyCleanse()</c> on this row
-/// since M0-09, and none of the four is written here: a port grows a member when the mechanic that
-/// needs it lands, not before (AR §6, §18.2). They arrive with M6-02, M6-05 and M6-06.
+/// since M0-09; M6-02b landed them as <see cref="Buy"/> over <c>SanctumService</c> plus
+/// <see cref="Banish"/>, with the two reads a screen needs before it draws a button
+/// (<see cref="PriceOf"/>, <see cref="CanBuy"/>) and the list Banish chooses from.
 /// </para>
 /// <para>
 /// <b>CH §5.4's half-tree moment is a second pair of reads and a second pair of commands, and it is
@@ -185,4 +188,63 @@ public interface IProgressionCommands
     /// <paramref name="branch"/> is not an index into that class's branches.
     /// </exception>
     void ChooseSplash(ContentId characterId, int branch);
+
+    /// <summary>Whether the shop is up — what a pause would be held against.</summary>
+    /// <remarks>
+    /// <see cref="IsSplashOpen"/>'s shape, one screen over: <see langword="false"/> when no run is
+    /// running, and <see langword="false"/> again the instant <see cref="LeaveSanctum"/> lands. True
+    /// exactly while the stage is in <c>StagePhase.Sanctum</c> (M6-02a rule 4).
+    /// </remarks>
+    bool IsSanctumOpen { get; }
+
+    /// <summary>Closes the shop and opens the door.</summary>
+    /// <remarks>
+    /// <b>Here rather than on <see cref="IRunSession"/></b>, for this port's own reason: it is a tap on
+    /// a screen that exists for ten seconds, not a verb an input adapter holds for the run.
+    /// </remarks>
+    /// <exception cref="System.InvalidOperationException">No run is running, or the shop is not open.</exception>
+    void LeaveSanctum();
+
+    /// <summary>What a Sanctum service costs right now — GD §13.3, the reroll doubled per purchase.</summary>
+    /// <remarks>A read: zero when no run is running or the class has no shop.</remarks>
+    /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="service"/> is not a member.</exception>
+    int PriceOf(SanctumService service);
+
+    /// <summary>
+    /// Whether a Sanctum service can be bought right now: the shop open, the price affordable, and
+    /// the service worth something — a heal at full health is refused (M6-02b rule 7).
+    /// </summary>
+    /// <remarks>
+    /// The predicate a screen reads before it draws a button, so it never offers what
+    /// <see cref="Buy"/> refuses (M5-08a). False when no run is running.
+    /// </remarks>
+    bool CanBuy(SanctumService service);
+
+    /// <summary>Buys a Reroll, a Heal or a Cleanse. Banish is <see cref="Banish"/>.</summary>
+    /// <exception cref="System.InvalidOperationException">
+    /// No run is running, the Sanctum is not open, the class has no shop, <see cref="CanBuy"/> is
+    /// false, or the service is Banish.
+    /// </exception>
+    void Buy(SanctumService service);
+
+    /// <summary>Pays for and takes <paramref name="skillId"/> out of this run's offers for good.</summary>
+    /// <remarks>
+    /// A <c>ContentId</c> rather than a card position, for <see cref="ChooseSplash"/>'s reason: the
+    /// list it is chosen from is <see cref="BanishableInto"/>'s, not a table repainted in place.
+    /// </remarks>
+    /// <exception cref="System.InvalidOperationException">
+    /// No run is running, the Sanctum is not open, the class has no shop, the balance is short, or
+    /// the node is not banishable.
+    /// </exception>
+    void Banish(ContentId skillId);
+
+    /// <summary>
+    /// Every node <see cref="Banish"/> would accept, in tree order: every untaken node, available or
+    /// not (M6-02b rule 5). Returns how many were written.
+    /// </summary>
+    /// <remarks>A read: zero when no run is running or the class has no shop.</remarks>
+    /// <exception cref="System.ArgumentException">
+    /// <paramref name="destination"/> cannot hold the whole tree — <c>SkillTree.Available</c>'s rule.
+    /// </exception>
+    int BanishableInto(Span<ContentId> destination);
 }

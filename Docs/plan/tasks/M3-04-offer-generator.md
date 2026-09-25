@@ -46,7 +46,7 @@ public sealed class OfferGenerator
 3. **The weights are CH §8 Q3's soft variety, ruled yes at M3-00a.** Base 1. **× 0.5 for each offer already drawn this call from the same branch**, so a third from one branch is possible and four times less likely than the first — GD §13.1 wants variety, not a rule that forbids a build. **× 2 for an Active while the player owns fewer than two** — a first active is what turns a stat sheet into a build (CH §4), and CH §8 Q3's own example. Upgrades weigh 1: their parent gate already makes them a considered offer. `Weight` is a pure static so the table is a test and not an inference from ten thousand draws.
 4. **`Offers` and no other stream** (ADR-0011): a reroll or a Pact must never shift what the next stage is made of, and a wave must never change what the next screen shows. Passed in, not held, `RunSession`'s shape for `Spawn`.
 5. **Allocates nothing after construction** — two arrays sized `rules.Count` and three per-branch counters, refilled per call. A level-up screen is a moment the frame is already spending on UI.
-6. **`count` is a parameter, three by default** — GD §13.4's Vigil offers two, and that is M6-06 passing 2 rather than a flag here. `count` below 1 and a destination shorter than `count` both throw.
+6. **`count` is a parameter, three by default** — GD §13.4's Vigil offers two, and that is M6-06b passing 2 rather than a flag here. `count` below 1 and a destination shorter than `count` both throw.
 7. **Which stat a node moves is not read here.** The generator sees kinds and branches; a weight on "the player has no damage yet" would be a second opinion about balance inside a draw, and M3-12's tree layout is where that opinion belongs.
 
 **Inherited by M3-08, not testable here:** *the draw is lazy.* `Draw` is called when the level-up screen opens, never on the tick the level was earned. The boundary snapshot is taken on entering `Clear` — the same tick as a stage's last kill, which is the kill most likely to level — and captures the `Offers` position *before* the draw, so a run killed with a pick owed rolls the **same** offer on resume rather than a fresh one. Ordering closes the free-reroll-by-killing-the-app hole; M3-08 owes `Offer_IsDrawnAfterTheBoundarySnapshot`.
@@ -85,9 +85,9 @@ None. Nothing draws until M3-08 opens a screen.
 
 - **When to draw** — M3-08, with the note above.
 - **The screen** — M3-08.
-- **Pact variants** (GD §13.2, M6-05) — a second pass over a drawn offer that corrupts one of them; the draw itself is unchanged.
-- **Reroll and Banish** (GD §13.3, M6-02) — reroll is a second `Draw` from the same stream, banish is a filter on `Available` (M3-03's).
-- **Vigil** (GD §13.4, M6-06) — passes `count` 2.
+- **Pact variants** (GD §13.2, M6-05b) — a second pass over a drawn offer that corrupts one of them; the draw itself is unchanged.
+- **Reroll and Banish** (GD §13.3, M6-02b) — reroll is a second `Draw` from the same stream, banish is a filter on `Available` (M3-03's).
+- **Vigil** (GD §13.4, M6-06b) — passes `count` 2.
 - **Promoting the counting stream to `Tests/Core/Fakes/`** — a third private copy would be the day; two is not (parking lot, one line).
 
 ## As built

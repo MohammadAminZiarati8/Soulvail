@@ -160,7 +160,9 @@ namespace Soulvail.Game.Presentation
         private IDisposable _waveSubscription;
         private IDisposable _arrivedSubscription;
         private IDisposable _clearedSubscription;
+        private IDisposable _sanctumSubscription;
         private IDisposable _transitionSubscription;
+
         private float _untilRefresh;
         private float _fps;
 
@@ -178,11 +180,12 @@ namespace Soulvail.Game.Presentation
         /// Which beat of the stage the last stage event pointed at.
         /// </summary>
         /// <remarks>
-        /// Derived from the three events rather than read from <c>StageFlow.Phase</c>, which is the
+        /// Derived from the four events rather than read from <c>StageFlow.Phase</c>, which is the
         /// same bargain the target line makes: a phase read out of core would agree with core by
         /// construction and so could never show the boundary disagreeing with itself. The one thing
-        /// the events cannot see is <c>Clear</c> turning into <c>Gate</c> after 1.5 s — nothing is
-        /// published for it, because nothing outside core has to know — so both read <c>clear</c>.
+        /// the events cannot see is the Sanctum being left for <c>Gate</c> — nothing is published for
+        /// it, because the command that leaves came from the Sanctum screen rather than from inside
+        /// core — so <see cref="Refresh"/> reads <c>RunState.IsSanctumOpen</c> for that one edge.
         /// </remarks>
         private string _phase = "—";
 
@@ -253,6 +256,7 @@ namespace Soulvail.Game.Presentation
             // which is indistinguishable from a director that has quietly stopped.
             _arrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
             _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
+            _sanctumSubscription = hub.Subscribe<SanctumOpened>(OnSanctumOpened);
             _transitionSubscription = hub.Subscribe<StageTransitionStarted>(OnTransitionStarted);
         }
 
@@ -320,6 +324,9 @@ namespace Soulvail.Game.Presentation
             _clearedSubscription?.Dispose();
             _clearedSubscription = null;
 
+            _sanctumSubscription?.Dispose();
+            _sanctumSubscription = null;
+
             _transitionSubscription?.Dispose();
             _transitionSubscription = null;
         }
@@ -359,6 +366,11 @@ namespace Soulvail.Game.Presentation
         private void OnStageCleared(StageCleared evt)
         {
             _phase = "clear";
+        }
+
+        private void OnSanctumOpened(SanctumOpened evt)
+        {
+            _phase = "sanctum";
         }
 
         private void OnTransitionStarted(StageTransitionStarted evt)
@@ -499,6 +511,51 @@ namespace Soulvail.Game.Presentation
             _line.Append(" owed ").Append(
                 (state is null ? 0 : state.PendingLevelUps).ToString(CultureInfo.InvariantCulture));
 
+            // GD §15's Essence, in points, read from core for the level line's reason: nothing
+            // publishes a balance a run *starts* at, and a readout has to draw one on its first
+            // frame. It is the whole of M6-01a's manual step 1 — the Sanctum screen draws the wallet
+            // only while the shop is open, until M6-03b puts GD §16.1's counter in the corner.
+            //
+            // What the step actually watches is the *step changing*: 0, 24, 52, 84 through stages
+            // 1 to 3, because a flat payment and GD §15's depth term are indistinguishable from any
+            // single number and tell each other apart the moment there are three.
+            _line.Append("  ess ").Append(
+                (state is null ? 0 : state.Essence).ToString(CultureInfo.InvariantCulture));
+
+            // M6-02b's two counters and the banish count, for the manual steps: `rr 1/0` is a
+            // charge banked and not yet spent, and it becomes `1/1` on the next offer.
+            _line.Append("  rr ").Append(
+                (state is null ? 0 : state.RerollsBought).ToString(CultureInfo.InvariantCulture));
+            _line.Append('/').Append(
+                (state is null ? 0 : state.RerollsSpent).ToString(CultureInfo.InvariantCulture));
+            _line.Append("  ban ").Append(
+                (state is null ? 0 : state.BanishedNodeIds.Count).ToString(CultureInfo.InvariantCulture));
+
+            // GD §13.4's Ordeals, by id, for M6-06a's three manual steps: `ord —` until stage 25,
+            // then one more last segment every ten stages. Ids rather than names, because a
+            // player-facing readout is M6-11's call; the segment strings are the ids' own, so the
+            // append copies characters and allocates nothing.
+            _line.Append("  ord ");
+
+            if (state is null || state.OrdealIds.Count == 0)
+            {
+                _line.Append('—');
+            }
+            else
+            {
+                for (int i = 0; i < state.OrdealIds.Count; i++)
+                {
+                    string id = state.OrdealIds[i].Value;
+
+                    if (i > 0)
+                    {
+                        _line.Append(',');
+                    }
+
+                    _line.Append(id, id.LastIndexOf('.') + 1, id.Length - id.LastIndexOf('.') - 1);
+                }
+            }
+
             // How many actives the player owns, and how far round the first one's cooldown is.
             //
             // It reads `actives 0` for the whole of this milestone until M3-12 authors a tree with
@@ -601,6 +658,13 @@ namespace Soulvail.Game.Presentation
         private void AppendStage()
         {
             RunState state = _session.State;
+
+            // The one edge no event marks: the Sanctum screen's Leave went straight down the port
+            // (M6-03a rule 6), so the shop being left for Gate is read rather than heard.
+            if (state is not null && !state.IsSanctumOpen && _phase == "sanctum")
+            {
+                _phase = "gate";
+            }
 
             _line.Append("  depth ").Append(
                 (state is null ? 0 : state.StageIndex).ToString(CultureInfo.InvariantCulture));

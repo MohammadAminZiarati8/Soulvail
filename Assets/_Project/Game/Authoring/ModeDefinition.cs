@@ -67,6 +67,16 @@ namespace Soulvail.Game.Authoring
                  "finished — so it lives beside it (GD §4.5).")]
         [SerializeField] private OverflowBlock _overflow = new OverflowBlock();
 
+        [Tooltip("GD §15's income for this mode: what a stage clear, an Elite and a boss pay in " +
+                 "Essence. What a mode pays is the mode's own statement (GD §4.5) — a Boss Rush " +
+                 "would pay per boss and nothing per stage.")]
+        [SerializeField] private EssenceBlock _essence = new EssenceBlock();
+
+        [Tooltip("GD §13.3's Sanctum for this mode: what its four services cost, and what Heal and " +
+                 "Cleanse are worth. The other half of the income block above — one says what a " +
+                 "run is paid, this what it can buy.")]
+        [SerializeField] private SanctumBlock _sanctum = new SanctumBlock();
+
         [Tooltip("Every archetype this mode may spawn, and the stage each is introduced at " +
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
@@ -82,6 +92,11 @@ namespace Soulvail.Game.Authoring
                  "so a rarer boss goes above a more frequent one. Empty means the mode never " +
                  "reaches a boss stage.")]
         [SerializeField] private BossRosterRow[] _bossRoster = Array.Empty<BossRosterRow>();
+
+        [Tooltip("When this mode deals GD §13.4's Ordeals, and the pool they are drawn from. " +
+                 "A schedule with an empty pool, or a pool with no schedule, is refused on a " +
+                 "shipped mode by content validation.")]
+        [SerializeField] private OrdealsBlock _ordeals = new OrdealsBlock();
 
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
@@ -115,7 +130,11 @@ namespace Soulvail.Game.Authoring
                     BuildRoster(),
                     BuildArenas(),
                     BuildBossRoster(),
-                    BuildOverflow());
+                    BuildOverflow(),
+                    BuildEssence(),
+                    BuildSanctum(),
+                    BuildOrdealSchedule(),
+                    BuildOrdeals());
             }
             catch (ArgumentException inner)
             {
@@ -196,6 +215,88 @@ namespace Soulvail.Game.Authoring
             }
 
             return _overflow.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored income block into the <see cref="EssenceSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// A missing block is refused rather than defaulted, for <see cref="BuildOverflow"/>'s
+        /// reason and with its consequence: a mode with no Essence block would clear stage after
+        /// stage and pay nothing, with no error and nothing on screen to say the economy had
+        /// stopped meaning anything. A block that is <em>present</em> and says zero is a different
+        /// statement and is legal (<see cref="EssenceSpec"/>) — what stops a <em>shipped</em> mode
+        /// making it is <c>ContentValidationTests.EveryShippedMode_PricesItsEssence</c>.
+        /// </remarks>
+        private EssenceSpec BuildEssence()
+        {
+            if (_essence is null)
+            {
+                throw new ArgumentException(
+                    "its essence block is missing. GD §15's income is not optional — a mode "
+                        + "without one clears every stage and pays nothing, and says nothing about "
+                        + "it.",
+                    nameof(_essence));
+            }
+
+            return _essence.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored shop block into the <see cref="SanctumSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// A missing block is refused rather than defaulted, for <see cref="BuildEssence"/>'s reason
+        /// and with a louder consequence: <c>default(SanctumSpec)</c> is a shop that gives
+        /// everything away, and heals and cleanses for nothing.
+        /// </remarks>
+        private SanctumSpec BuildSanctum()
+        {
+            if (_sanctum is null)
+            {
+                throw new ArgumentException(
+                    "its sanctum block is missing. GD §13.3's prices are not optional — a mode "
+                        + "without them sells every service for nothing.",
+                    nameof(_sanctum));
+            }
+
+            return _sanctum.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored Ordeal schedule into the <see cref="OrdealScheduleSpec"/> core consumes.
+        /// </summary>
+        /// <remarks>
+        /// <b>Unlike the four blocks above, a missing or zeroed block is legal and means "deals
+        /// none"</b> (M6-06a rule 1): every mode but Descent deals none, and a period of 0 is how the
+        /// Inspector spells that. A period above zero goes through the struct's constructor, which
+        /// refuses a first stage below 1.
+        /// </remarks>
+        private OrdealScheduleSpec BuildOrdealSchedule()
+        {
+            if (_ordeals is null)
+            {
+                return default;
+            }
+
+            return _ordeals.ToSchedule();
+        }
+
+        /// <summary>
+        /// Converts every listed <see cref="OrdealDefinition"/>, in the order authored.
+        /// </summary>
+        /// <remarks>
+        /// A null reference in the list is refused naming its row, because an empty slot in an
+        /// Inspector list is easy to leave behind and would otherwise surface as a null inside core.
+        /// </remarks>
+        private IReadOnlyList<OrdealSpec> BuildOrdeals()
+        {
+            if (_ordeals is null)
+            {
+                return Array.Empty<OrdealSpec>();
+            }
+
+            return _ordeals.ToPool();
         }
 
         /// <summary>
@@ -453,6 +554,166 @@ namespace Soulvail.Game.Authoring
 
             /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
             public OverflowSpec ToSpec() => new OverflowSpec(_damage, _maxHp);
+        }
+
+        /// <summary>
+        /// GD §15's income table as a designer tunes it — what a run is paid for getting through
+        /// things.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="OverflowBlock"/>'s reason, and it draws as
+        /// the foldout beside it: one says what a level is worth, the other what a stage is.
+        /// </para>
+        /// <para>
+        /// <b>The initialisers are GD §15's own numbers</b>, so a mode created from the Create menu
+        /// pays for its stages rather than being silently worth nothing —
+        /// <see cref="ScalingBlock"/>'s bargain, fourth of four. Traps §7 applies exactly as it does
+        /// there: <c>Descent.asset</c> ships the same 20 / 4 / 15 / 60, so
+        /// <c>ModeDefinitionTests.Descent_EveryYamlKeyBindsToAField</c> is the row that can tell a
+        /// bound key from a dropped one and <c>Descent_CarriesItsEssence</c> cannot.
+        /// </para>
+        /// <para>
+        /// <b>Per Elite is authored with no payer and that is deliberate</b> (M6-01a rule 2):
+        /// Elites are M7-02's, and a blank here would read as <em>"Elites pay nothing"</em> rather
+        /// than as <em>"nothing is an Elite yet"</em>.
+        /// </para>
+        /// <para>
+        /// It validates nothing <see cref="EssenceSpec"/> already validates; <c>[Min]</c> clamps
+        /// the Inspector GUI and nothing else (Traps §5), which is why a hand-edited negative still
+        /// meets a door at conversion.
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class EssenceBlock
+        {
+            [Header("Essence — GD §15: a stage clear pays base + depth·n, a boss pays more")]
+            [Tooltip("The flat half of a stage clear. 20 in GD §15.")]
+            [SerializeField, Min(0)] private int _perStageBase = 20;
+
+            [Tooltip("What each stage of depth adds to it. 4 in GD §15 — so stage 1 pays 24 and " +
+                     "stage 10 pays 60, and the step is meant to be visible as a run gets deeper.")]
+            [SerializeField, Min(0)] private int _perStageDepth = 4;
+
+            [Tooltip("What one Elite is worth. 15 in GD §15. Nothing pays it until M7-02 authors " +
+                     "an Elite — the number is here so the table is complete, not because it is " +
+                     "reachable.")]
+            [SerializeField, Min(0)] private int _perElite = 15;
+
+            [Tooltip("What clearing a boss stage adds on top of the stage itself. 60 in GD §15 — " +
+                     "on top, because a boss stage is a stage clear.")]
+            [SerializeField, Min(0)] private int _perBoss = 60;
+
+            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
+            public EssenceSpec ToSpec() =>
+                new EssenceSpec(_perStageBase, _perStageDepth, _perElite, _perBoss);
+        }
+
+        /// <summary>
+        /// GD §13.3's shop as a designer tunes it — four prices and two magnitudes.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="EssenceBlock"/>'s reason, drawn as the
+        /// foldout beside it. <b>The initialisers are GD §13.3's own numbers</b> — the same bargain
+        /// and the same Traps §7 caveat: <c>Descent.asset</c> ships 25 / 40 / 40 / 30 / 60 / 15 too,
+        /// so <c>Descent_EveryYamlKeyBindsToAField</c> is the row that can tell a bound key from a
+        /// dropped one.
+        /// </para>
+        /// <para>
+        /// The reroll's doubling is not a field (M6-02b rule 2): it is the shape of the economy, and
+        /// lives as <c>SanctumShop.RerollDoubling</c>. It validates nothing <see cref="SanctumSpec"/>
+        /// already validates; <c>[Min]</c> clamps the Inspector GUI and nothing else (Traps §5).
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class SanctumBlock
+        {
+            [Header("Sanctum — GD §13.3: four services between stages")]
+            [Tooltip("The first reroll's price. 25 in GD §13.3, and it doubles with every reroll " +
+                     "bought — the doubling is a rule, not a field.")]
+            [SerializeField, Min(0)] private int _rerollPrice = 25;
+
+            [Tooltip("What taking one untaken node out of this run's offers costs. 40 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _banishPrice = 40;
+
+            [Tooltip("What a heal costs. 40 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _healPrice = 40;
+
+            [Tooltip("Hit points a heal restores. 30 in GD §13.3. Never overfills the bar.")]
+            [SerializeField, Min(0f)] private float _healAmount = 30f;
+
+            [Tooltip("What a cleanse costs. 60 in GD §13.3.")]
+            [SerializeField, Min(0)] private int _cleansePrice = 60;
+
+            [Tooltip("Veilrot a cleanse removes. 15 in GD §13.3. Clamps at zero, and never ends " +
+                     "the Claiming.")]
+            [SerializeField, Min(0f)] private float _cleanseAmount = 15f;
+
+            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
+            public SanctumSpec ToSpec() => new SanctumSpec(
+                _rerollPrice, _banishPrice, _healPrice, _healAmount, _cleansePrice, _cleanseAmount);
+        }
+
+        /// <summary>
+        /// GD §13.4's Ordeals as a designer tunes them — a schedule and a pool, in one foldout.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <c>[Serializable]</c> class for <see cref="SanctumBlock"/>'s reason, drawn as the
+        /// foldout after the roster lists because it names assets as they do. <b>Its initialisers
+        /// are zero and empty, unlike the four blocks above</b>: a mode created from the Create menu
+        /// deals no Ordeals, which is the honest default for every mode but Descent (rule 1).
+        /// </para>
+        /// <para>
+        /// The pool holds asset references rather than ids, <c>SkillTreeDefinition</c>'s nodes'
+        /// shape: an Ordeal is content with its own strings, not a number on a mode.
+        /// </para>
+        /// </remarks>
+        [Serializable]
+        private sealed class OrdealsBlock
+        {
+            [Header("Ordeals — GD §13.4: from stage 25, one per biome loop (GD §3: 10 stages)")]
+            [Tooltip("The first stage an Ordeal is dealt on. 25 in Descent. Ignored while the " +
+                     "period is 0.")]
+            [SerializeField, Min(0)] private int _firstStage;
+
+            [Tooltip("How many stages apart the rest come. 10 in Descent. 0 means this mode deals " +
+                     "no Ordeals.")]
+            [SerializeField, Min(0)] private int _everyNStages;
+
+            [Tooltip("The pool, drawn from without replacement. Order matters only to the seed.")]
+            [SerializeField] private OrdealDefinition[] _pool = Array.Empty<OrdealDefinition>();
+
+            /// <summary>The schedule, or <c>default</c> for a period of 0 — "deals none".</summary>
+            public OrdealScheduleSpec ToSchedule() =>
+                _everyNStages == 0 ? default : new OrdealScheduleSpec(_firstStage, _everyNStages);
+
+            /// <summary>Converts the pool, refusing an empty slot by its row.</summary>
+            public IReadOnlyList<OrdealSpec> ToPool()
+            {
+                if (_pool is null || _pool.Length == 0)
+                {
+                    return Array.Empty<OrdealSpec>();
+                }
+
+                var specs = new OrdealSpec[_pool.Length];
+
+                for (int i = 0; i < _pool.Length; i++)
+                {
+                    if (_pool[i] == null)
+                    {
+                        throw new ArgumentException(
+                            $"its Ordeal pool's row {i} names no OrdealDefinition. An empty slot "
+                                + "is a missing Ordeal, not a smaller pool — remove the row.",
+                            nameof(_pool));
+                    }
+
+                    specs[i] = _pool[i].ToSpec();
+                }
+
+                return specs;
+            }
         }
 
         /// <summary>

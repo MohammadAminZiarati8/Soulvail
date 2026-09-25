@@ -14,6 +14,7 @@ namespace Soulvail.Core.Content;
 /// Three members as of M6-07a, which authors the class that carries the third. Each differs from a Charge in what happens along the path — a corpse decoy, a
 /// teleport — rather than in the cooldown, buffer and i-frame window every one of them has, which is
 /// why <see cref="MovementSkillSpec"/> holds the shared numbers and the kind selects the behaviour.
+/// RS-03a appended a fourth, <see cref="None"/>, which is the absence of all three.
 /// Deliberately unvalidated here: the loud place for an unrecognised kind is whatever has to build
 /// a skill from it, which is the one site that knows the full set.
 /// </para>
@@ -50,6 +51,19 @@ public enum MovementSkillKind
     /// siblings.
     /// </summary>
     Blink,
+
+    /// <summary>
+    /// No movement skill at all (RS-03a rule 7): a press is ignored, nothing is published, no
+    /// cooldown runs and the HUD hides the button. The owner's switch for playing the Ranger
+    /// without its roll. Appended, never inserted — an authored asset stores the ordinal.
+    /// </summary>
+    /// <remarks>
+    /// Its distance, duration and cooldown are still validated, because the authoring asset always
+    /// carries them, and nothing ever reads them. A decoy or a pool on it is refused like one on a
+    /// Charge: <see cref="MovementSkillSpec"/>'s two kind-conditional checks name the one kind each
+    /// number belongs to, so a fourth kind lands on the zero side of both without an edit.
+    /// </remarks>
+    None,
 }
 
 /// <summary>
@@ -71,6 +85,8 @@ public enum MovementSkillKind
 /// CC §5 opens with "every class has exactly one, on a permanent button" — so
 /// <see cref="CharacterSpec"/> takes it as a required argument. A missing one is a forgotten field,
 /// never a design statement, and it would produce a character with a dead button.
+/// <b>A class with no dash says so with <see cref="MovementSkillKind.None"/></b> (RS-03a), which
+/// hides the button rather than leaving it dead.
 /// </para>
 /// <para>
 /// <b>Two of these numbers exist only to absorb touch latency</b>, and they are the two most likely

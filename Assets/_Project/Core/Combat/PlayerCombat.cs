@@ -58,6 +58,12 @@ namespace Soulvail.Core.Combat;
 /// been hit.
 /// </para>
 /// <para>
+/// <b>A class may hold its fire while it moves</b> (RS-03a). The Ranger shoots standing still: while
+/// it moves, <see cref="IsHoldingFire"/> is true, no swing starts, a shot still being drawn is dropped
+/// and <see cref="FaceDirection"/> lets it face where it runs. <see cref="FireWhileMoving"/> is the
+/// switch, and every class that ships fires on the move exactly as it did.
+/// </para>
+/// <para>
 /// <b>Nothing here ends the run.</b> A death is published and then let go of (M1-17 wires the
 /// flow), which is also why the weapon keeps its cadence through it: until the death flow exists
 /// there is nothing to stop, and a rule here about not swinging while dead would be a second
@@ -121,6 +127,25 @@ public sealed class PlayerCombat
     /// too narrow for the next dash, which cannot arrive for another 2.5 s.
     /// </remarks>
     private const float ChargeReportGrace = 0.1f;
+
+    /// <summary>
+    /// The line <see cref="FireWhileMoving"/> is read against: above it the class may attack while it
+    /// moves (RS-03a rule 1).
+    /// </summary>
+    /// <remarks>
+    /// Halfway between the two bases the stat is seeded with, so a +1 node on a holding class and a
+    /// −1 Pact on a firing one each cross it, and nothing smaller does. A NaN stack fails the
+    /// <c>&gt;</c> and holds, which is the direction that shoots nothing rather than everything.
+    /// </remarks>
+    private const float FireWhileMovingThreshold = 0.5f;
+
+    /// <summary>
+    /// The speed at or below which the player has stopped, squared — <c>PlayerMotor</c>'s own
+    /// threshold for a velocity whose direction is noise, so "stopped" means one thing in both
+    /// (RS-03a rule 2).
+    /// </summary>
+    private const float StillSpeedSquared =
+        PlayerMotor.FacingVelocityThreshold * PlayerMotor.FacingVelocityThreshold;
 
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
@@ -285,6 +310,21 @@ public sealed class PlayerCombat
     /// </remarks>
     private Vector2 _pendingConeFacingXZ;
 
+    /// <summary>
+    /// The swing in progress has already had its damage frame: its shot has left, or its cone has been
+    /// asked. Set on a <see cref="WeaponTick.DamageFrame"/>, cleared on a
+    /// <see cref="WeaponTick.SwingStarted"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>What decides whether a hold drops the swing</b> (RS-03a rule 3). A swing still drawing is
+    /// dropped with <see cref="Weapon.Reset"/>, so no arrow leaves on the move and the next one starts
+    /// on the first still tick. A swing whose shot has left is <em>not</em> reset: the reset clears the
+    /// cadence too, and a tap of the stick straight after each arrow would then start the next draw
+    /// early — a faster fire rate bought by stepping. It runs out its interval instead, and no new swing
+    /// starts until the player is still.
+    /// </remarks>
+    private bool _swingLanded;
+
     /// <param name="spec">
     /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
     /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
@@ -368,6 +408,10 @@ public sealed class PlayerCombat
         // Zero too, and for the same reason and with the same trap in it: a swing shoves nobody
         // until a node says so. See the property's own remarks.
         SwingKnockback = new Stat(0f);
+
+        // One or zero, read off the weapon as authored (RS-03a rule 1). A Stat rather than the
+        // spec's bool, so the running shot the Ranger is to earn is one ModifyStat of +1.
+        FireWhileMoving = new Stat(spec.Weapon.FiresWhileMoving ? 1f : 0f);
 
         Blackboard = new CombatBlackboard();
 
@@ -512,6 +556,44 @@ public sealed class PlayerCombat
     /// </remarks>
     public Stat SwingKnockback { get; }
 
+    /// <summary>
+    /// Whether the class may attack while it moves, live: above 0.5 it may. Base 1 when
+    /// <see cref="WeaponSpec.FiresWhileMoving"/> is true — every class that ships — and 0 when it is
+    /// false, which is the Ranger.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A switch spelled as a number</b> (RS-03a rule 1). The owner ruled that shooting on the move
+    /// is to be a skill, and a <see cref="Stat"/> makes that skill one
+    /// <c>ModifyStat(FireWhileMoving, Flat, +1)</c> with no new code. Read once a tick, at the top of
+    /// <see cref="Tick"/>, so a node taken mid-stage lifts the hold on the next tick.
+    /// </para>
+    /// <para>
+    /// A percentage modifier cannot lift a hold: 0 × anything is 0, <see cref="HealPerKill"/>'s trap.
+    /// The skill must be authored <see cref="ModifierKind.Flat"/>.
+    /// </para>
+    /// </remarks>
+    public Stat FireWhileMoving { get; }
+
+    /// <summary>
+    /// The player is moving on a class that may not fire while it moves, so no swing starts. False on
+    /// every tick of a class whose <see cref="FireWhileMoving"/> is above 0.5.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Moving means anything but stopped</b> (RS-03a rule 2): the stick pushed, a dash in flight,
+    /// or the body still carrying more than <c>PlayerMotor</c>'s 0.05 m/s. So a player who lets go of
+    /// the stick holds until the body has actually stopped, and the first arrow leaves from a
+    /// standstill rather than from the slide.
+    /// </para>
+    /// <para>
+    /// Every change is published as a <see cref="HoldFireChanged"/> (rule 5). <see cref="Reset"/> does
+    /// not touch it: it is a reading of how the body moves, and the next tick reads it again, so a
+    /// reset that cleared it without an event would leave a view drawing a hold that had ended.
+    /// </para>
+    /// </remarks>
+    public bool IsHoldingFire { get; private set; }
+
     /// <summary>What the player perceives, refilled every tick. See <see cref="CombatBlackboard"/>.</summary>
     public CombatBlackboard Blackboard { get; }
 
@@ -533,6 +615,11 @@ public sealed class PlayerCombat
     /// "face the way you are moving". Also null when the target is standing exactly on the player:
     /// there is genuinely no direction there, and inventing one from float noise would make the
     /// character spin.
+    /// </para>
+    /// <para>
+    /// <b>And null while the stick is pushed on a class that holds fire</b> (RS-03a rule 4), so the
+    /// Ranger faces where it runs. With the stick centred it points at the target again, before the
+    /// body has stopped, so the turn is under way while the slide finishes.
     /// </para>
     /// </remarks>
     public Vector3? FaceDirection { get; private set; }
@@ -920,6 +1007,12 @@ public sealed class PlayerCombat
     /// is what that looks like, and a corpse sliding a metre while it dissolves is better than one
     /// that plants itself the instant it dies.
     /// </para>
+    /// <para>
+    /// <b>A dash that deals nothing touches nobody</b> (RS-03a rule 8). Each half is asked on its own:
+    /// no damage call when the damage is not above zero, and no shove when the knockback is not. A
+    /// dash with neither — the Shroudstep, the Blink, the Ranger's roll — returns before it records
+    /// anyone, so it passes through a pack without a zero-damage hit or a zero-metre shove.
+    /// </para>
     /// </remarks>
     /// <param name="enemyIds">
     /// Who the body has swept through so far. Duplicates, ids an earlier frame of this dash already
@@ -954,6 +1047,16 @@ public sealed class PlayerCombat
         float damage = Charge.Damage.Value;
         float knockback = _movementSkill.Knockback;
 
+        // Rule 8. `> 0f` is false for NaN too, so a stack nobody can read deals nothing, as it did
+        // when it reached ApplyDamage. The knockback is authored and validated finite.
+        bool deals = damage > 0f;
+        bool shoves = knockback > 0f;
+
+        if (!deals && !shoves)
+        {
+            return;
+        }
+
         // The dash's direction, not the direction to each enemy: everything a Charge passes through
         // is swept the same way. See EnemyKnockbackIntent.DirectionXZ.
         Vector2 direction = Charge.Direction;
@@ -979,9 +1082,15 @@ public sealed class PlayerCombat
             // `this` for the reason ResolveConeHits passes it: a Charge that kills a Bloater is a
             // Charge that set one off, and the dash's own i-frames are what decide whether the
             // blast reaches the player — PlayerCombat.ApplyDamage owns that question, not the blast.
-            enemies.ApplyDamage(id, damage, now, this);
+            if (deals)
+            {
+                enemies.ApplyDamage(id, damage, now, this);
+            }
 
-            _intents.EnemyKnockback(new EnemyKnockbackIntent(id, direction, knockback));
+            if (shoves)
+            {
+                _intents.EnemyKnockback(new EnemyKnockbackIntent(id, direction, knockback));
+            }
         }
     }
 
@@ -1138,7 +1247,16 @@ public sealed class PlayerCombat
         // direction the old inline clock took and matters for one input: a NaN stick fails the
         // equality and counts as movement, so a broken input resets the ramp instead of quietly
         // ramping forever. See FocusTracker.LevelAt for the other half of the same care.
-        Focus.Tick(dt, snapshot.MoveInput.LengthSquared() != 0f || Charge.IsActive);
+        bool stickPushed = snapshot.MoveInput.LengthSquared() != 0f;
+
+        Focus.Tick(dt, stickPushed || Charge.IsActive);
+
+        // RS-03a: whether this class may fire on the move, read once so the hold, the facing and the
+        // swing below all see the same answer. Beside the ramp, because it is the other question
+        // about moving, and after the dash, whose flight counts as moving here too.
+        bool firesWhileMoving = FireWhileMoving.Value > FireWhileMovingThreshold;
+
+        UpdateHoldFire(firesWhileMoving, stickPushed, snapshot.PlayerVelocity);
 
         DpsOneSecond = Weapon.DpsOneSecond;
 
@@ -1170,6 +1288,14 @@ public sealed class PlayerCombat
         UpdateBlackboard(count, snapshot.PlayerPosition, minions?.Count ?? 0);
         UpdateFaceDirection(snapshot.PlayerPosition, enemies);
 
+        // Rule 4: a class that holds fire faces where it runs while the stick is pushed. The stick,
+        // not the hold, so the turn back to the target starts the tick the stick is let go, while
+        // the body is still sliding to a stop.
+        if (stickPushed && !firesWhileMoving)
+        {
+            FaceDirection = null;
+        }
+
         TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
     }
 
@@ -1189,6 +1315,10 @@ public sealed class PlayerCombat
         Health.Reset();
         Targeter.Reset();
         Weapon.Reset();
+
+        // With the weapon: nothing is swinging, so nothing has landed. IsHoldingFire is left alone
+        // on purpose — see its remarks.
+        _swingLanded = false;
 
         // After the weapon, and it does take its modifier off where Weapon.Reset deliberately does
         // not: the tracker is the source of that modifier, so it is the one thing entitled to
@@ -1427,7 +1557,28 @@ public sealed class PlayerCombat
         int count,
         ReadOnlySpan<EnemyAgent> enemies)
     {
-        WeaponTick tick = Weapon.Tick(dt, now, IsTargetInWeaponRange(count));
+        // RS-03a rule 3: a draw the player moved out of is dropped before it can loose anything.
+        // Only a draw — see _swingLanded for why a swing whose shot has left keeps its cadence.
+        if (IsHoldingFire && Weapon.IsSwinging && !_swingLanded)
+        {
+            Weapon.Reset();
+            PendingShot = null;
+        }
+
+        // And no new swing starts while holding.
+        WeaponTick tick = Weapon.Tick(dt, now, !IsHoldingFire && IsTargetInWeaponRange(count));
+
+        // The damage frame belongs to the swing that was running, and a start on the same tick is
+        // the next swing — Weapon.Tick's own order, so the two lines go in that order too.
+        if (tick.DamageFrame)
+        {
+            _swingLanded = true;
+        }
+
+        if (tick.SwingStarted)
+        {
+            _swingLanded = false;
+        }
 
         // Read once and shared by both, so the arc a view draws and the wedge the body sweeps
         // cannot describe two different swings.
@@ -1892,6 +2043,32 @@ public sealed class PlayerCombat
         // Unreachable while the targeter is fed from this same span, and cheap to be right about:
         // an id with no agent behind it is nothing to look at.
         FaceDirection = null;
+    }
+
+    /// <summary>
+    /// RS-03a rules 2, 3 and 5: whether this tick holds fire, and the event when that changes.
+    /// </summary>
+    /// <param name="firesWhileMoving">This tick's reading of <see cref="FireWhileMoving"/>.</param>
+    /// <param name="stickPushed">The move stick is off centre, a NaN stick included.</param>
+    /// <param name="velocity">
+    /// The body's reported velocity, <c>WorldSnapshot.PlayerVelocity</c>: last frame's motor intent, so
+    /// a player who has let go of the stick is still moving until the slide has run out.
+    /// </param>
+    private void UpdateHoldFire(bool firesWhileMoving, bool stickPushed, Vector3 velocity)
+    {
+        // `<=` rather than a negated `>`, so a NaN velocity is not still and a broken sense holds
+        // fire rather than shooting on the move.
+        bool still = !stickPushed && !Charge.IsActive && velocity.LengthSquared() <= StillSpeedSquared;
+        bool holding = !firesWhileMoving && !still;
+
+        if (holding == IsHoldingFire)
+        {
+            return;
+        }
+
+        IsHoldingFire = holding;
+
+        _events.Publish(new HoldFireChanged(holding));
     }
 
     /// <summary>Whether this report has already spent its swing on <paramref name="id"/>.</summary>

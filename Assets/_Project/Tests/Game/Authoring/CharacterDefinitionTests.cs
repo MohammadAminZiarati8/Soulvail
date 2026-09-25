@@ -480,6 +480,33 @@ public sealed class CharacterDefinitionTests
         }
     }
 
+    [Test]
+    public void Shipped_EveryClassFiresWhileMoving()
+    {
+        // RS-03a rule 6: holding fire on the move is the Ranger's rule, and none of the three that
+        // ship has it. The field is read as authored, and then as converted.
+        foreach (string path in new[] { OathboundPath, GravecallerPath, EmberwrightPath })
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);
+
+            Assert.That(definition, Is.Not.Null, $"No CharacterDefinition at {path}.");
+
+            bool authored = new SerializedObject(definition).FindProperty("_weaponFiresWhileMoving").boolValue;
+
+            Assert.That(authored, Is.True, $"{path} holds fire on the move.");
+            Assert.That(definition.ToSpec().Weapon.FiresWhileMoving, Is.True, path);
+        }
+
+        // And the switch converts: a definition set to hold fire produces a weapon that does.
+        CharacterDefinition holding = NewDefinition("HoldingClass");
+
+        var serialized = new SerializedObject(holding);
+        serialized.FindProperty("_weaponFiresWhileMoving").boolValue = false;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(holding.ToSpec().Weapon.FiresWhileMoving, Is.False);
+    }
+
     /// <summary>
     /// Tight enough that no two of the Oathbound's numbers could satisfy each other's
     /// assertion, loose enough to survive Unity writing a float back as decimal text.

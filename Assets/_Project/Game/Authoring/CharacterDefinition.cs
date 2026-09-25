@@ -92,6 +92,12 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _weaponShotRadius;
         [SerializeField, Min(0f)] private float _weaponShotSpread;
 
+        [Tooltip("Whether the class attacks while it moves. On for every class that ships. Off is " +
+                 "the Ranger's rule: it holds fire and faces where it runs until it stops, then " +
+                 "turns to its target and shoots. A node lifts the hold with one ModifyStat of +1 " +
+                 "on FireWhileMoving.")]
+        [SerializeField] private bool _weaponFiresWhileMoving = true;
+
         [Tooltip("The Focus ramp (CC §4.3): standing still speeds the swing up. Nothing to do " +
                  "with tap-to-focus, which is the targeting block above. Every class has one — " +
                  "set the multiplier to 1 for a class that should not ramp at all.")]
@@ -104,7 +110,9 @@ namespace Soulvail.Game.Authoring
 
         [Tooltip("The movement skill (CC §5). Every class has exactly one, on a permanent " +
                  "button, and it never auto-casts. The Charge's numbers are the defaults: 10 m " +
-                 "in 0.22 s, 20 damage and 5 m of knockback to everything passed through.")]
+                 "in 0.22 s, 20 damage and 5 m of knockback to everything passed through. None " +
+                 "switches it off: the button is hidden and a press does nothing, and the numbers " +
+                 "below must still be valid.")]
         [SerializeField] private MovementSkillKind _movementSkillKind = MovementSkillKind.Charge;
         [SerializeField, Min(0.01f)] private float _movementSkillDistance = 10f;
         [SerializeField, Min(0.01f)] private float _movementSkillDuration = 0.22f;
@@ -285,7 +293,8 @@ namespace Soulvail.Game.Authoring
                         _weaponDamageFrame,
                         _weaponShotSpeed,
                         _weaponShotRadius,
-                        _weaponShotSpread),
+                        _weaponShotSpread,
+                        _weaponFiresWhileMoving),
                     new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
                     new MovementSkillSpec(
                         _movementSkillKind,

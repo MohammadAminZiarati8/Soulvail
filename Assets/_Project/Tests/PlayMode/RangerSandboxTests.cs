@@ -422,7 +422,13 @@ public sealed class RangerSandboxTests
         Assert.That(EditorBuildSettings.scenes.Select(s => s.path), Has.No.Member(ScenePath));
     }
 
-    /// <summary>S2: the bow in the left handslot at identity, and AC_Ranger with no root motion (AR §18).</summary>
+    /// <summary>
+    /// S2: the bow in the left handslot at the owner's angle, and AC_Ranger with no root motion (AR §18).
+    /// </summary>
+    /// <remarks>
+    /// The bow sat at identity from RS-02a until the owner's review of RS-03c on 2026-09-25 turned it
+    /// X 45 and Z 180, which is how it reads in the hand.
+    /// </remarks>
     [Test]
     public void Ranger_HoldsItsBowInTheLeftHandslot()
     {
@@ -434,7 +440,10 @@ public sealed class RangerSandboxTests
 
         Assert.That(bow.parent.name, Is.EqualTo("handslot.l"), "Ranged_Bow_Draw pulls with the right hand.");
         Assert.That(bow.localPosition, Is.EqualTo(Vector3.zero));
-        Assert.That(bow.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(
+            Quaternion.Angle(bow.localRotation, Quaternion.Euler(45f, 0f, 180f)),
+            Is.LessThan(0.01f),
+            "the owner's angle in the hand: X 45, Z 180.");
         Assert.That(animator.runtimeAnimatorController.name, Is.EqualTo("AC_Ranger"));
         Assert.That(animator.applyRootMotion, Is.False);
         Assert.That(view.FindProperty("_animator").objectReferenceValue, Is.EqualTo(animator));

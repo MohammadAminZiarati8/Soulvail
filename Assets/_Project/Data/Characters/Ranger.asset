@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b819aeab08838a4c901790d46282d7e, type: 3}
+  m_Name: Ranger
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.CharacterDefinition
+  _id: character.ranger
+  _nameKey: character.ranger.name
+  _descriptionKey: character.ranger.description
+  _maxHp: 90
+  _speed: 3.2
+  _accelTime: 0.06
+  _decelTime: 0.08
+  _turnSpeedDeg: 720
+  _shieldMax: 0
+  _shieldRechargeDelay: 4
+  _shieldRefillPerSecond: 15
+  _hitIFrames: 0.5
+  _acquireRange: 12
+  _distanceWeight: 3
+  _eliteBonus: 2
+  _finisherBonus: 1
+  _targetHysteresis: 1.5
+  _targetCadence: 0.1
+  _weaponKind: 1
+  _weaponDamage: 13
+  _weaponSwingsPerSecond: 2.2
+  _weaponRange: 10
+  _weaponConeAngleDeg: 360
+  _weaponDamageFrame: 0.72
+  _weaponShotSpeed: 30
+  _weaponShotRadius: 0.5
+  _weaponShotSpread: 0
+  _weaponFiresWhileMoving: 0
+  _focusDelay: 0.4
+  _focusRampTime: 1
+  _focusMaxMultiplier: 1.3
+  _movementSkillKind: 0
+  _movementSkillDistance: 5
+  _movementSkillDuration: 0.3
+  _movementSkillCooldown: 2.5
+  _movementSkillInputBuffer: 0.15
+  _movementSkillDamage: 0
+  _movementSkillKnockback: 0
+  _movementSkillIFrameTrail: 0.05
+  _movementSkillDecoyDuration: 0
+  _movementSkillPoolRadius: 0
+  _movementSkillPoolDuration: 0
+  _movementSkillPoolDamagePerPulse: 0
+  _minionCap: 0
+  _minionSpecId: minion.new
+  _minionNameKey: minion.new.name
+  _minionLifespan: 20
+  _minionRiseChance: 0.25
+  _minionMaxHp: 20
+  _minionMoveSpeed: 3
+  _minionDamage: 8
+  _minionAttackInterval: 1
+  _minionReach: 1.5
+  _kindlingMaxStacks: 0
+  _kindlingPerStack: 0.02
+  _volleyArrows: 3
+  _volleyFanAngleDeg: 30
+  _volleyDamageMultiplier: 1.5
+  _veilrotStart: 0
+  _veilrotGainMultiplier: 1
+  _veilrotCleansePriceMultiplier: 1
+  _veilrotDamagePerPoint: 0
+  _veilrotInstantCastCost: 0
+  _unlockShardPrice: 0
+  _unlockDeedStage: 0
+  _unlockDeedBossId: 
+  _body: {fileID: 3882066901720750302, guid: f450882342171af4581626cde45c5714, type: 3}
+  _projectile: {fileID: 4033840791202304795, guid: 0970ffa85d8c87d4885a77d52bfa88cd, type: 3}

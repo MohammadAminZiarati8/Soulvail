@@ -15,7 +15,7 @@ using VContainer.Unity;
 namespace Soulvail.Tests.PlayMode;
 
 /// <summary>
-/// RS-02b rules 3, 4 and 6 on the shipped <c>Run.unity</c>: a run raises the body its class names
+/// RS-02b rules 3, 4 and 6, and RS-03c rule 3, on the shipped <c>Run.unity</c>: a run raises the body its class names
 /// under the player, one of it, injected, and the class it raised it for is the class it started.
 /// </summary>
 /// <remarks>
@@ -24,10 +24,11 @@ namespace Soulvail.Tests.PlayMode;
 /// and the scene: <c>Configure</c> cannot run without a parent (<c>RunSceneTests</c>' remark).
 /// </para>
 /// <para>
-/// <b>The Gravecaller row sets <c>PendingRun</c> where the class-select screen would</b>, one call
+/// <b>The class row sets <c>PendingRun</c> where the class-select screen would</b>, one call
 /// before the load <c>ClassSelectPresenter.OnCardChosen</c> makes. Tapping the card is not the
 /// question here, and on a profile that has not bought the Gravecaller its card buys rather than
-/// descends. Like <c>BootSmokeTests</c>, both rows start a run, which writes the real
+/// descends. Its two cases are a class that wears the Knight and RS-03c's Ranger, which wears its
+/// own body. Like <c>BootSmokeTests</c>, every row starts a run, which writes the real
 /// <c>run.json</c> (ROADMAP parking lot).
 /// </para>
 /// </remarks>
@@ -36,11 +37,16 @@ public sealed class RunBodyTests
     /// <summary>How long a scene transition may take before it counts as never having happened.</summary>
     private const float TimeoutSeconds = 5f;
 
-    private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
+    private const string GravecallerId = "character.gravecaller";
+    private const string RangerId = "character.ranger";
+
     private static readonly ContentId Oathbound = new ContentId("character.oathbound");
 
+    /// <summary>
+    /// A class that wears the Knight, and RS-03c's Ranger, which wears its own body — one case each.
+    /// </summary>
     [UnityTest]
-    public IEnumerator Run_WearsTheBodyItsClassNames()
+    public IEnumerator Run_WearsTheBodyItsClassNames([Values(GravecallerId, RangerId)] string classId)
     {
         SceneManager.LoadScene(SceneLoader.Boot);
 
@@ -51,12 +57,20 @@ public sealed class RunBodyTests
 
         IObjectResolver root = LifetimeScope.Find<BootScope>().Container;
         ContentCatalog catalog = root.Resolve<ContentCatalog>();
+        var chosen = new ContentId(classId);
 
-        root.Resolve<PendingRun>().Set(catalog.Modes[0].Id, Gravecaller, seed: 7);
+        root.Resolve<PendingRun>().Set(catalog.Modes[0].Id, chosen, seed: 7);
 
         yield return LoadTheRun();
 
-        AssertTheRunWearsTheKnight(Gravecaller);
+        if (classId == RangerId)
+        {
+            AssertTheRunWears(chosen, "Ranger", "AC_Ranger", typeof(RangerAnimatorView));
+        }
+        else
+        {
+            AssertTheRunWearsTheKnight(chosen);
+        }
 
         LogAssert.NoUnexpectedReceived();
     }
@@ -92,7 +106,15 @@ public sealed class RunBodyTests
     /// One body under the player, at identity: the Knight, its <see cref="PlayerAnimatorView"/>
     /// injected — and a run started as <paramref name="expected"/>.
     /// </summary>
-    private static void AssertTheRunWearsTheKnight(ContentId expected)
+    private static void AssertTheRunWearsTheKnight(ContentId expected) =>
+        AssertTheRunWears(expected, "Knight", "AC_Player", typeof(PlayerAnimatorView));
+
+    /// <summary>
+    /// One body under the player, at identity: the prefab named <paramref name="bodyName"/>, playing
+    /// <paramref name="controller"/>, its <paramref name="view"/> injected — and a run started as
+    /// <paramref name="expected"/>.
+    /// </summary>
+    private static void AssertTheRunWears(ContentId expected, string bodyName, string controller, System.Type view)
     {
         var scope = Object.FindFirstObjectByType<RunScope>();
 
@@ -111,18 +133,18 @@ public sealed class RunBodyTests
         Transform body = bodies[0].transform;
 
         Assert.That(body.parent, Is.SameAs(player.transform), "Raised directly under the PlayerView.");
-        Assert.That(body.name, Is.EqualTo("Knight"), "Bodies/Knight, named after its prefab.");
+        Assert.That(body.name, Is.EqualTo(bodyName), $"Bodies/{bodyName}, named after its prefab.");
         Assert.That(body.localPosition, Is.EqualTo(Vector3.zero));
         Assert.That(body.localRotation, Is.EqualTo(Quaternion.identity));
-        Assert.That(bodies[0].runtimeAnimatorController.name, Is.EqualTo("AC_Player"));
+        Assert.That(bodies[0].runtimeAnimatorController.name, Is.EqualTo(controller));
 
-        var view = body.GetComponent<PlayerAnimatorView>();
+        Component animatorView = body.GetComponent(view);
 
-        Assert.That(view, Is.Not.Null, "The Knight carries its animator view.");
+        Assert.That(animatorView, Is.Not.Null, $"The {bodyName} carries its animator view.");
         Assert.That(
-            (bool)typeof(PlayerAnimatorView)
+            (bool)view
                 .GetField("_injected", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(view),
+                .GetValue(animatorView),
             Is.True,
             "RunScope injected the body it raised.");
     }

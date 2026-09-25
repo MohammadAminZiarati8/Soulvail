@@ -45,6 +45,7 @@ public sealed class EmberwrightTreeTests
 {
     private const string SkillDir = "Assets/_Project/Data/Skills/Emberwright";
     private const string EffectDir = "Assets/_Project/Data/Effects/Emberwright";
+    private const string RangerEffectDir = "Assets/_Project/Data/Effects/Ranger/";
 
     private const string TreePath = "Assets/_Project/Data/Trees/Emberwright.asset";
     private const string OathboundTreePath = "Assets/_Project/Data/Trees/Oathbound.asset";
@@ -602,7 +603,9 @@ public sealed class EmberwrightTreeTests
     public void Stats_TheEnumIsAppendedNotInserted()
     {
         // PlayerStat's own rule: every shipped asset stores `_stat` as a raw ordinal, so each one
-        // must still name the member it named before M6-08 appended four.
+        // must still name the member it named before M6-08 appended four. The Ranger's effects
+        // (RS-03c) were written after M6-08, and three name RS-03b's VolleyEvery, so they are skipped
+        // with the Emberwright's.
         for (int i = 0; i < OrdinalsBeforeM608.Length; i++)
         {
             Assert.That(((PlayerStat)i).ToString(), Is.EqualTo(OrdinalsBeforeM608[i]), $"ordinal {i} moved.");
@@ -612,7 +615,8 @@ public sealed class EmberwrightTreeTests
 
         foreach (string path in ContentValidationTests.PathsOf<EffectDefinition>())
         {
-            if (path.StartsWith(EffectDir, StringComparison.Ordinal))
+            if (path.StartsWith(EffectDir, StringComparison.Ordinal)
+                || path.StartsWith(RangerEffectDir, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -798,8 +802,8 @@ public sealed class EmberwrightTreeTests
         SerializedProperty skills = serialized.FindProperty("_skills");
         SerializedProperty trees = serialized.FindProperty("_trees");
 
-        Assert.That(skills.arraySize, Is.EqualTo(36));
-        Assert.That(trees.arraySize, Is.EqualTo(3));
+        Assert.That(skills.arraySize, Is.EqualTo(45), "Thirty-six since M6-08, and RS-03c's nine.");
+        Assert.That(trees.arraySize, Is.EqualTo(4));
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -1073,14 +1077,14 @@ public sealed class EmberwrightTreeTests
     /// <summary>The shipped catalog: all three classes, their trees and all thirty-six nodes.</summary>
     private static ContentCatalog Catalog()
     {
-        var skills = new List<SkillSpec>(36);
+        var skills = new List<SkillSpec>(45);
 
         foreach (string path in ContentValidationTests.PathsOf<SkillDefinition>())
         {
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(36), "Twelve nodes a class, three classes.");
+        Assert.That(skills, Has.Count.EqualTo(45), "Twelve nodes a class, three classes, and the Ranger's nine.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

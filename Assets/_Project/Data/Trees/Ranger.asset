@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af5b70d26e54754493bd72f817c8629, type: 3}
+  m_Name: Ranger
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillTreeDefinition
+  _id: tree.ranger
+  _character: {fileID: 11400000, guid: 99cf9a2515092c846bee505b3dbaaeeb, type: 2}
+  _branches:
+  - _nameKey: tree.ranger.draw
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: d26deaaef26077e4baa612f16f957505, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: df98d51adaa197045afb3eae67fcd918, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: d594c7e65e36c2f4ea5f3242f0ac6078, type: 2}
+  - _nameKey: tree.ranger.volley
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 64824180c572399488a5a3cd030382bf, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: a135c47cb2defce4eb1124938112f1cd, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 83837ff4f6387714bbfcdbca8cf115c7, type: 2}
+  - _nameKey: tree.ranger.stride
+    _tiers:
+    - _nodes:
+      - {fileID: 11400000, guid: 6a850892b44e3d54faf069e1768a8121, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: 7740fc83c26bd374391ab8b35e622b72, type: 2}
+    - _nodes:
+      - {fileID: 11400000, guid: a5063abc593b30047a7b9fd2b4b2f816, type: 2}

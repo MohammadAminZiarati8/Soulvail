@@ -534,6 +534,15 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void Queue_CapacityHoldsTheLargestVolley()
+    {
+        // RS-03b rule 6: a full sky refuses a shot in silence, so the run's capacity holds the largest
+        // volley twice over — one fan still in flight as the next leaves. Here rather than beside the
+        // volley's other rows because the number is the boot installer's, which Tests.Core cannot see.
+        Assert.That(BootInstaller.ProjectileCapacity, Is.GreaterThanOrEqualTo(VolleySpec.MaxArrows * 2));
+    }
+
+    [Test]
     public void Run_ScopeDispose_DisposesHub()
     {
         IScopedObjectResolver scope = BuildRunScope(seed: 1);

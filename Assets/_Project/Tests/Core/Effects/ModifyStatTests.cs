@@ -66,9 +66,10 @@ public sealed class ModifyStatTests
     public void Stats_ResolveEveryMember()
     {
         // **Against an Emberwright since M6-08** (rule 8): it is the one class with a Kindling and a
-        // Blink, so it is the one run that answers all seventeen but ContactDamage. The Oathbound's
-        // four refusals are Stats_HasIsFalseForAClassWithoutTheObject's.
-        PlayerCombat combat = Ember();
+        // Blink, and here it carries RS-03b's volley as well, so it is the one run that answers all
+        // twenty but ContactDamage. The Oathbound's four refusals are
+        // Stats_HasIsFalseForAClassWithoutTheObject's; the volley's three are asserted at the end.
+        PlayerCombat combat = Ember(withVolley: true);
         PlayerMotor motor = Motor();
         LevelTracker progression = Progression();
 
@@ -123,6 +124,11 @@ public sealed class ModifyStatTests
 
                 // RS-03a's, which every class has.
                 PlayerStat.FireWhileMoving => combat.FireWhileMoving,
+
+                // RS-03b's three, on the volley.
+                PlayerStat.VolleyEvery => combat.Volley.Every,
+                PlayerStat.VolleyArrows => combat.Volley.Arrows,
+                PlayerStat.VolleyDamage => combat.Volley.Damage,
                 _ => null,
             };
 
@@ -150,7 +156,16 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(16), "Seventeen members, one named exception.");
+        Assert.That(answered, Is.EqualTo(19), "Twenty members, one named exception.");
+
+        // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
+        var plain = new PlayerStats(Ember(), motor, progression);
+
+        foreach (PlayerStat member in new[] { PlayerStat.VolleyEvery, PlayerStat.VolleyArrows, PlayerStat.VolleyDamage })
+        {
+            Assert.That(plain.Has(member), Is.False, $"a class without a volley has no {member}.");
+            Assert.That(() => plain.Resolve(member), Throws.TypeOf<ArgumentOutOfRangeException>(), member.ToString());
+        }
     }
 
     // ---- M6-08 rule 8: four addresses a run may not have -----------------------------------------
@@ -498,8 +513,9 @@ public sealed class ModifyStatTests
     /// <summary>
     /// The Emberwright's shape for M6-08's rows: a Blink with M6-07b's pool and, unless told
     /// otherwise, M6-07a's Kindling. The numbers are the shipped ones; nothing here is about them.
+    /// A volley only when asked, for the one row that has to reach every address (RS-03b).
     /// </summary>
-    private PlayerCombat Ember(bool withKindling = true) =>
+    private PlayerCombat Ember(bool withKindling = true, bool withVolley = false) =>
         new PlayerCombat(
             new CharacterSpec(
                 new ContentId("character.emberwright"),
@@ -513,7 +529,8 @@ public sealed class ModifyStatTests
                 new MovementSkillSpec(MovementSkillKind.Blink, 10f, 0.05f, 2f, 0.15f, 0f, 0f, 0.05f, 0f, 3f, 3f, 4f),
                 null,
                 HitIFrames,
-                kindling: withKindling ? new KindlingSpec(0.02f, 30) : null),
+                kindling: withKindling ? new KindlingSpec(0.02f, 30) : null,
+                volley: withVolley ? new VolleySpec(3, 30f, 1.5f) : null),
             _events,
             _intents,
             EnemyCapacity);

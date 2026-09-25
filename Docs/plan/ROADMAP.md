@@ -271,9 +271,9 @@ RS-01c swaps the body.
   (RS-03a).
 - **The name is "Ranger", and it is free while it is built.**
 - **What the planning found:** class select holds exactly three cards; `ProjectileViews` flew every
-  shot as the same bolt, until RS-02c let a class name its own; the player can offer only one shot
-  per damage frame; and nothing checks a
-  class's own tree against the stats it may name, until a node is taken (RS-03b rule 7).
+  shot as the same bolt, until RS-02c let a class name its own; the player could offer only one shot
+  per damage frame, and nothing checked a class's own tree against the stats it may name, until
+  RS-03b queued the shots and swept the tree at `Start`.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
@@ -287,7 +287,7 @@ RS-01c swaps the body.
 | RS-02b | [A body per class](tasks/RS-02b-a-body-per-class.md) — `CharacterLookBook`; the Knight moves to `Bodies/Knight` | M | RS-02a | ☑ |
 | RS-02c | [An arrow per shooter](tasks/RS-02c-an-arrow-per-shooter.md) — one pool per prefab, chosen by `SpecId` | S | RS-02b | ☑ |
 | RS-03a | [Holding fire on the move, and a class with no movement skill](tasks/RS-03a-holding-fire-on-the-move.md) (core) | M | RS-00 | ☑ |
-| RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☐ |
+| RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☑ |
 | RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☐ |
 | RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☐ |
 | RS-03e | The Ranger's acceptance: hits to kill at stages 1–16 on M6-11's instrument, and the owner's play — the roll kept or switched off, the numbers moved *(title)* | — | RS-03d | ☐ |

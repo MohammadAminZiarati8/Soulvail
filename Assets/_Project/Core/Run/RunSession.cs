@@ -757,6 +757,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             RequireNoMinionTarget(tree.Rules, character.Id);
         }
 
+        // **And a tree that names a number this class does not have refuses the run too** (RS-03b
+        // rule 7). The same argument one field over: a ModifyStat aimed at the player passes the
+        // sweep above and SkillTree's, and until now only a *borrowed* branch was asked PlayerStats.Has
+        // (SplashFlow). An own node naming VolleyEvery on a class with no volley would throw from
+        // SkillTree.Take after the node was recorded.
+        if (tree is not null)
+        {
+            RequireOwnAddresses(tree.Rules, playerStats, character.Id);
+        }
+
         // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
         // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
         // authors one. Below the runner because it pushes a chosen Active into it, and below the
@@ -1218,10 +1228,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // shot fired here cannot land on the tick it left — the same one-frame grace M2-07a rule 10
         // gives every Spitter's bolt, now given to the player's. Nothing else about the order moved.
         //
-        // Unconditional, and the common path is one nullable read: every run this build ships is the
-        // Oathbound, whose Censer is a cone and offers nothing. TryTakeShot is the only way to look,
-        // so a shot cannot be seen without also being consumed and cannot be fired twice.
-        if (State.Combat.TryTakeShot(out Projectile shot))
+        // Unconditional, and the common path is one failed take: a cone offers nothing. TryTakeShot is
+        // the only way to look, so a shot cannot be seen without also being consumed and cannot be
+        // fired twice.
+        //
+        // **Every queued shot, on this tick** (RS-03b rule 6): a volley is a fan from one damage frame,
+        // taken in aim order, so Fire numbers its arrows consecutively in that order.
+        while (State.Combat.TryTakeShot(out Projectile shot))
         {
             // The return value is deliberately not read. Fire answers NoProjectile when the sky is
             // full and the player believes they fired, which is M2-07a rule 7's reading applied to
@@ -2127,6 +2140,68 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                     + "move. The run is refused here rather than at the moment the node is picked, "
                     + "because EffectRegistry.CanApply keys on an effect's type and a target is a "
                     + "field on one. Nothing about this run has been announced.",
+                nameof(characterId));
+        }
+    }
+
+    /// <summary>
+    /// Refuses a tree whose <see cref="ModifyStat"/> aims at a player number this run does not have,
+    /// naming the node and the stat (RS-03b rule 7).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RequireNoMinionTarget(TreeRules, ContentId)"/>'s walk — every node, take and cast —
+    /// asking <c>SplashFlow</c>'s third question of the class's own tree. Player-aimed only: a
+    /// <see cref="StatTarget.Minions"/> node is the walk above's, and a <see cref="StatTarget.Self"/>
+    /// node is aimed at whoever casts it.
+    /// </remarks>
+    private static void RequireOwnAddresses(TreeRules rules, PlayerStats player, ContentId characterId)
+    {
+        IReadOnlyList<SkillBranchSpec> branches = rules.Tree.Branches;
+
+        for (int b = 0; b < branches.Count; b++)
+        {
+            SkillBranchSpec branch = branches[b];
+
+            for (int t = 1; t <= branch.TierCount; t++)
+            {
+                IReadOnlyList<ContentId> tier = branch.Tier(t);
+
+                for (int n = 0; n < tier.Count; n++)
+                {
+                    SkillSpec spec = rules.Skill(tier[n]);
+
+                    RequireOwnAddresses(spec, spec.Effects, "takes", player, characterId);
+
+                    if (spec.Active is not null)
+                    {
+                        RequireOwnAddresses(spec, spec.Active.OnCast, "casts", player, characterId);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void RequireOwnAddresses(
+        SkillSpec spec,
+        IReadOnlyList<IEffect> effects,
+        string when,
+        PlayerStats player,
+        ContentId characterId)
+    {
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (effects[i] is not ModifyStat modify
+                || modify.Target != StatTarget.Player
+                || player.Has(modify.Stat))
+            {
+                continue;
+            }
+
+            throw new ArgumentException(
+                $"'{spec.Id}' {when} a ModifyStat aimed at {modify.Stat}, and '{characterId}' has no "
+                    + "such number — its PlayerStats answers Has false. The run is refused here rather "
+                    + "than at the moment the node is picked, where SkillTree.Take would throw after "
+                    + "recording it (RS-03b rule 7). Nothing about this run has been announced.",
                 nameof(characterId));
         }
     }

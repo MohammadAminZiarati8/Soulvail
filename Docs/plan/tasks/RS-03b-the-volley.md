@@ -123,4 +123,61 @@ _None here. The volley has no class to fire it until RS-03c, and it is first see
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`)._
+_6 000 bytes or fewer, measured._
+
+**Deviation 1, the Tests table over the Files table: two rows live in `Tests.Game`.**
+`Tests.Core` cannot see `BootInstaller.ProjectileCapacity` or the shipped assets.
+`Queue_CapacityHoldsTheLargestVolley` joined `InstallerTests`. `OwnTree_TheShippedTreesPass`
+joined `EmberwrightTreeTests`, whose catalog is the one that loads all three shipped trees. This
+is RS-03a's precedent, and both are small edits.
+
+**Deviation 2, the Tests table over the Public API: `Volley` gains five members.** `ArrowCount`
+and `DamageMultiplier` are rule 4's clamped readings, and `Fan_ArrowsAreClampedAndFloored` reads
+the first. `Loose()`, `Aim(arrow, arrows, origin, middle)` and `Reset()` are what `PlayerCombat`
+calls. Core has no `InternalsVisibleTo`, so all five are public. `PlayerCombat` gains `Volley`,
+null without a spec, which is `Kindling`'s shape.
+
+**Rule 3, resolved: ready is a reading of the count against `Every`, kept current both ways.**
+`Volley` subscribes to `Every.Changed`. A lower `Every` readies the volley at once, as the rule
+asks. A raised `Every`, or one driven under 1, stands a ready volley down with
+`VolleyReady(false)`. The spec names only the lowering direction; without the other, a view would
+keep a lit bow for a volley that no longer comes. A stat change never moves the count; only a shot
+does.
+
+**Rule 2's "the counter holds" means an ordinary shot counts nothing while `Every` is under 1.**
+So the count is 0 when a first node gives the class its volley, and the cycle starts clean.
+
+**Rule 6, resolved: `PendingShot` stays, as the queue's head.** Its readers in
+`PlayerProjectileTests` and `HoldFireTests` compile unchanged and mean what they meant. The queue
+is a fixed array of `VolleySpec.MaxArrows` with a head and a count, so a volley allocates nothing.
+A new damage frame still clears what was not taken, which is the old overwrite bargain.
+`RunSession` takes shots in a `while` loop.
+
+**Rule 7's sweep walks every node, take and cast, player-aimed only.** It is
+`RequireNoMinionTarget`'s walk, beside it in `Start` and before `RunStarted`. `Self` is left to
+whoever casts it, and `Minions` to the walk above it. The message names the node, the stat and
+the class.
+
+**Two things the spec does not say, left as they are.** A volley on a cone class never counts,
+because only `OfferShot` calls `Loose`. No class authors one, and no rule asks for a refusal.
+The count is not saved: a resumed run starts it at 0, which is `Kindling`'s bargain.
+
+**`CharacterDefinition`: `_volleyArrows` 0 is the switch**, Kindling's count a fourth time. The
+fan and the multiplier default to the Ranger's 30° and ×1.5. The three class assets are
+untouched: the new fields load at their defaults, and nothing re-serialised them. RS-03c authors
+the Ranger's.
+
+**Existing rows moved for twenty `PlayerStat` members.** In `Stats_ResolveEveryMember`, the Ember
+fixture carries a volley on request, the switch gains three rows, and the row now ends by asserting
+`Has` false and a refused `Resolve` without a volley. `PlayerStatCoverageTests` counts 20.
+`StatBlockTests` gains the three in `NotAnOathbounds`, its refused count and its ordinal list.
+
+**How it was checked.** A red check made three mutations at once: `while` back to `if` in
+`RunSession`, the sweep call removed, and `OnEveryChanged` made inert. The six fixtures went
+122 / 3, and the three red rows were exactly `Queue_EveryShotIsFiredOnItsTick`,
+`OwnTree_AMissingAddressIsRefusedAtStart` and `Counter_ALowerEveryReadiesAtOnce`. The first full
+EditMode pass failed one row, `LocalJsonSaveStoreTests.Store_RoundTripsClaimed`, on an
+`IOException` from `File.Replace`. That fixture passed 34 / 34 alone, and the next two full passes
+were green on the same tree ([Traps §7](../../Traps.md)).
+
+**Not done here:** nothing is visible until RS-03c gives a class the volley.

@@ -41,7 +41,9 @@ namespace Soulvail.Core.Effects;
 /// <c>ChargeSkill.PoolDuration</c>, deferred by M6-07a rule 4 and M6-07b rule 11 until the
 /// Emberwright's tree named them. <b>They are the first members a run may not have</b> — an
 /// Oathbound has no Kindling and a Charge leaves no pool — so <see cref="PlayerStats.Has"/> answers
-/// for the run rather than for the enum (M6-08 rule 8).
+/// for the run rather than for the enum (M6-08 rule 8). <b>RS-03b's three volley numbers are the
+/// same kind</b>: only a class that authors a volley has them, and since RS-03b
+/// <c>RunSession.Start</c> asks <see cref="PlayerStats.Has"/> of the class's own tree as well.
 /// </para>
 /// <para>
 /// <b>What is still deliberately not here</b>, each with the task that would claim it and the
@@ -174,6 +176,19 @@ public enum PlayerStat
     /// no new code. Every class has it, so <see cref="PlayerStats.Has"/> is true for every run.
     /// </remarks>
     FireWhileMoving,
+
+    /// <summary>
+    /// How many ordinary shots come before a volley — <c>Volley.Every</c>. Base <b>0</b>, so only
+    /// <see cref="ModifierKind.Flat"/> can give a class its first volley. <b>Only a class with a volley
+    /// has one</b> (RS-03b); see <see cref="PlayerStats.Has"/>.
+    /// </summary>
+    VolleyEvery,
+
+    /// <summary>How many arrows a volley looses — <c>Volley.Arrows</c>.</summary>
+    VolleyArrows,
+
+    /// <summary>Each volley arrow's damage, as a multiple of a shot's — <c>Volley.Damage</c>.</summary>
+    VolleyDamage,
 }
 
 /// <summary>
@@ -270,6 +285,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.PoolDamage => RequirePool(stat).PoolDamagePerPulse,
             PlayerStat.PoolDuration => RequirePool(stat).PoolDuration,
             PlayerStat.FireWhileMoving => _combat.FireWhileMoving,
+            PlayerStat.VolleyEvery => RequireVolley(stat).Every,
+            PlayerStat.VolleyArrows => RequireVolley(stat).Arrows,
+            PlayerStat.VolleyDamage => RequireVolley(stat).Damage,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(stat),
                 stat,
@@ -285,9 +303,10 @@ public sealed class PlayerStats : IStatBlock
     /// <para>
     /// <b>A question about this run, not about the enum</b> (M6-08 rule 8). Twelve members every
     /// player has, RS-03a's <see cref="PlayerStat.FireWhileMoving"/> the twelfth;
-    /// <see cref="PlayerStat.ContactDamage"/>, which none has; and four that depend on
+    /// <see cref="PlayerStat.ContactDamage"/>, which none has; and seven that depend on
     /// the class — the two Kindling numbers on whether <c>PlayerCombat.Kindling</c> exists, the two
-    /// pool numbers on whether the movement skill is a Blink.
+    /// pool numbers on whether the movement skill is a Blink, and RS-03b's three volley numbers on
+    /// whether <c>PlayerCombat.Volley</c> exists.
     /// </para>
     /// <para>
     /// <c>SplashFlow</c> asks it of a borrowed branch before the player may take one, which is what
@@ -315,6 +334,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.PoolDamage => _leavesPool,
             PlayerStat.PoolDuration => _leavesPool,
             PlayerStat.FireWhileMoving => true,
+            PlayerStat.VolleyEvery => _combat.Volley is not null,
+            PlayerStat.VolleyArrows => _combat.Volley is not null,
+            PlayerStat.VolleyDamage => _combat.Volley is not null,
             _ => false,
         };
     }
@@ -328,6 +350,17 @@ public sealed class PlayerStats : IStatBlock
             "This run's class has no Kindling, so it has no stat at this address. Only the "
                 + "Emberwright authors a KindlingSpec (CH §3.3); SplashFlow refuses a borrowed "
                 + "branch that names one.");
+    }
+
+    /// <summary>This run's volley, or the refusal that says the class has none.</summary>
+    private Volley RequireVolley(PlayerStat stat)
+    {
+        return _combat.Volley ?? throw new ArgumentOutOfRangeException(
+            nameof(stat),
+            stat,
+            "This run's class has no volley, so it has no stat at this address. Only a class that "
+                + "authors a VolleySpec has one (RS-03b); RunSession.Start refuses a tree of its own "
+                + "that names one, and SplashFlow refuses a borrowed branch that does.");
     }
 
     /// <summary>This run's movement skill if it leaves a pool, or the refusal that says it does not.</summary>

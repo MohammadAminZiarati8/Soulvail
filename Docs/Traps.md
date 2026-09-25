@@ -668,6 +668,12 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   all-clear for the suite that has 1 286. **Sweep the Console immediately after the run whose output
   you mean to describe**, or run EditMode last. The same clear is why the Console can be empty at
   the start of a session that ended with a PlayMode run (M3-04).
+- **A save-store row can fail a full pass on a Windows file lock.** At RS-03b
+  `LocalJsonSaveStoreTests.Store_RoundTripsClaimed` failed one full EditMode pass with
+  `IOException: Unable to remove the file to be replaced`, thrown by `File.Replace` in
+  `LocalJsonSaveStore.Rename`. The task touched no save code. The fixture then passed 34 / 34 alone,
+  and the next full pass was green on the same tree. Something outside Unity held the file for a
+  moment. **Re-run the fixture alone before reading it as a regression** (RS-03b).
 
 ---
 

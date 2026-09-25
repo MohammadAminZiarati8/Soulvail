@@ -115,17 +115,21 @@ namespace Soulvail.Core.Events;
 
 /// <summary>
 /// A Lunger has committed to a line and is telegraphing it: where it starts, which way it goes, how
-/// far, and for how long it will stand before it does. Published beside the ordinary
-/// <see cref="EnemyTelegraph"/>, never instead of it (rule 4).
+/// far, how wide the band it hurts in, and for how long it will stand before it does. Published beside
+/// the ordinary <see cref="EnemyTelegraph"/>, never instead of it (rule 4).
 /// </summary>
 public readonly struct LungeTelegraphed
 {
-    public LungeTelegraphed(int id, Vector3 origin, Vector2 directionXZ, float length, float duration);
+    public LungeTelegraphed(int id, Vector3 origin, Vector2 directionXZ, float length, float halfWidth, float duration);
 
     public readonly int Id;
     public readonly Vector3 Origin;
     public readonly Vector2 DirectionXZ;
     public readonly float Length;
+
+    /// <summary>Metres either side of the line a dash hurts in — <c>Spec.Reach</c> (rule 6). Added by M7-00b for M7-01d's lane.</summary>
+    public readonly float HalfWidth;
+
     public readonly float Duration;
 }
 ```
@@ -154,11 +158,13 @@ public readonly struct LungeTelegraphed
    in `Approach` for that tick rather than committing to nowhere.
 4. **The tell is two events on the committing tick, and the second is new.** `EnemyTelegraph(id,
    WindupTime)` goes out exactly as every other archetype's does, so `EnemyHitFeedback`'s swell
-   reaches the Lunger with no view change. `LungeTelegraphed(id, origin, direction, Distance,
-   WindupTime)` goes out beside it and carries what a *lane* needs and a swell does not. **Nothing
+   reaches the Lunger with no view change. `LungeTelegraphed(id, origin, direction, Distance, Reach,
+   WindupTime)` goes out beside it and carries what a *lane* needs and a swell does not — the
+   half-width included, added at M7-00b so the lane is drawn as wide as rule 6's band rather than to a
+   view-side constant. **Nothing
    subscribes to it in this task, and this is a stated exception to M6-06a rule 6**, which accepts a
    member nothing reads only when its reader is one task away. The reader is
-   [M7-01d](../ROADMAP.md#m7--content-pass)'s lane decal, **four tasks later** in the build order —
+   [M7-01d](M7-01d-three-archetypes-a-player-can-read.md)'s lane decal, **four tasks later** in the build order —
    after the Weaver, the Elite and the Warden it also draws. The alternative is worse: publishing it
    there would mean a view task editing a core behaviour, which is the seam the spec groups are cut
    along. Until then the swell and the body's facing are the tell, and manual step 1 says so.
@@ -233,7 +239,7 @@ public readonly struct LungeTelegraphed
 | `Lunger_CommitsToWhereThePlayerWas` | commit, then the player moves 4 m sideways during the windup / the dash / `LungeDirection` and the dash velocity are the committing tick's — rule 3 |
 | `Lunger_TheWindupNeverCancels` | commit, then the player leaves to 30 m / 0.9 s / `Dash` — rule 3 |
 | `Lunger_DoesNotCommitToNowhere` | `DirectionToPlayer` zero on the committing tick / one tick / still `Approach` — rule 3 |
-| `Lunger_TelegraphsTwiceOnTheCommittingTick` | commit / — / one `EnemyTelegraph(id, 0.9)` and one `LungeTelegraphed(id, origin, direction, 15, 0.9)`, and neither on any other tick — rule 4 |
+| `Lunger_TelegraphsTwiceOnTheCommittingTick` | commit / — / one `EnemyTelegraph(id, 0.9)` and one `LungeTelegraphed(id, origin, direction, 15, 0.9, 0.9)` — length, half-width, duration — and neither on any other tick — rule 4 |
 | `Lunger_DashesForItsDurationAtItsSpeed` | a dash / ticked 0.625 s / every intent's velocity is `direction × 24`, then `Recover` — rule 5 |
 | `Lunger_FacesTheLineThroughout` | windup and dash / — / every intent's facing is `LungeDirection` — rule 5 |
 | `Lunger_HitsAPlayerInTheLane` | player 7 m down the line / the dash / one `PlayerDamaged` of 12 — rule 6 |
@@ -270,7 +276,7 @@ the null agent.
 
 ## Out of scope
 
-- **Drawing the lane.** [M7-01d](../ROADMAP.md#m7--content-pass), rule 4's reader.
+- **Drawing the lane.** [M7-01d](M7-01d-three-archetypes-a-player-can-read.md), rule 4's reader.
 - **A Lunger that reads the player's velocity.** Committing to where the player *was* is the design;
   leading them would be `ProjectileLead`'s job and a different enemy.
 - **Knockback on the dash**, in either direction. A Charge that meets a dashing Lunger resolves

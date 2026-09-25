@@ -264,7 +264,7 @@ non-finite turn rate; a non-finite `source`.
 
 ## Out of scope
 
-- **Drawing the shield, the hollow reticle, or a blocked flash.** [M7-01d](../ROADMAP.md#m7--content-pass);
+- **Drawing the shield, the hollow reticle, or a blocked flash.** [M7-01d](M7-01d-three-archetypes-a-player-can-read.md);
   `EnemyDamaged` and `TargetChanged.IsBlocked` already carry what it needs.
 - **A guard on anything else.** An Elite affix or a boss that guards authors a `GuardSpec`; no second
   mechanism is needed, and none is written here.

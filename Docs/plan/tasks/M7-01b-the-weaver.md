@@ -188,6 +188,6 @@ public sealed class EnemySystem
 ## Out of scope
 
 - **A child that splits, or a third generation.** The ruling; one line in rule 4.
-- **The children's look beyond a scale.** [M7-01d](../ROADMAP.md#m7--content-pass).
+- **The children's look beyond a scale.** [M7-01d](M7-01d-three-archetypes-a-player-can-read.md).
 - **Any change to how the composer prices a Weaver.** Its cost is GD §8.1's 12 and the children are
   free; whether a family that fills the arena is worth more is ledger row 2's instrument, M8-05.

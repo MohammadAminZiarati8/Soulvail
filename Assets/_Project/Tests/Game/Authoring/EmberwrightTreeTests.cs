@@ -565,6 +565,21 @@ public sealed class EmberwrightTreeTests
         }
     }
 
+    [Test]
+    public void OwnTree_TheShippedTreesPass()
+    {
+        // RS-03b rule 7: Start now asks PlayerStats.Has of every player-aimed ModifyStat in a class's
+        // own tree. The three shipped trees name only numbers their own class has. Here because this
+        // file's catalog is the one holding all three shipped trees, and Tests.Core cannot open them.
+        foreach (string id in new[] { OathboundId, GravecallerId, EmberwrightId })
+        {
+            RunSession session = null;
+
+            Assert.DoesNotThrow(() => session = StartRun(id, level: 1, Array.Empty<ContentId>()), id);
+            Assert.That(session.IsRunning, Is.True, id);
+        }
+    }
+
     // ---- The four addresses, from the asset side ---------------------------------------------------
 
     [Test]

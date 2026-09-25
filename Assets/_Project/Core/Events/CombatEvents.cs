@@ -258,6 +258,32 @@ public readonly struct HoldFireChanged
 }
 
 /// <summary>
+/// The next shot has become a volley, or has stopped being one. Published by <c>Volley</c> on each
+/// change of <c>Volley.IsReady</c>, and by nothing else. RS-03b rule 3.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>True</b> on the shot that fills the count, or on a node that lowers <c>Every</c> under a count
+/// already standing. <b>False</b> on the volley itself, or on a node that takes the volley away. A
+/// class without a volley never publishes it.
+/// </para>
+/// <para>
+/// What a view does with it is light the bow while it is true (RS-03d). Not published by a reset: the
+/// end of a run is not news, <see cref="KindlingChanged"/>'s bargain.
+/// </para>
+/// </remarks>
+public readonly struct VolleyReady
+{
+    /// <summary>The next shot is a volley.</summary>
+    public readonly bool IsReady;
+
+    public VolleyReady(bool isReady)
+    {
+        IsReady = isReady;
+    }
+}
+
+/// <summary>
 /// CC §4.3's Focus ramp has moved: the character has been standing still long enough for the swing
 /// to be speeding up, or has just moved and lost it. Published by <c>FocusTracker.Tick</c>, and by
 /// nothing else.

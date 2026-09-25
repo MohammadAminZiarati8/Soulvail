@@ -73,7 +73,8 @@ public sealed class StatBlockTests
 
     /// <summary>
     /// What this file's Oathbound fixture has no stat for: <see cref="PlayerStat.ContactDamage"/>, which
-    /// no player has, and M6-08's four, which only a class with Kindling and a Blink has (rule 8).
+    /// no player has, M6-08's four, which only a class with Kindling and a Blink has (rule 8), and
+    /// RS-03b's three, which only a class with a volley has.
     /// </summary>
     /// <remarks>
     /// Named rather than read off <c>Has</c>, so a <c>Has</c> that wrongly said false for a member
@@ -86,6 +87,9 @@ public sealed class StatBlockTests
         PlayerStat.KindlingMaxStacks,
         PlayerStat.PoolDamage,
         PlayerStat.PoolDuration,
+        PlayerStat.VolleyEvery,
+        PlayerStat.VolleyArrows,
+        PlayerStat.VolleyDamage,
     };
 
     private SilentEvents _events;
@@ -355,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(14), "The other fourteen of seventeen are player numbers — M6-08 added four, RS-03a one.");
+        Assert.That(refused, Is.EqualTo(17), "The other seventeen of twenty are player numbers — M6-08 added four, RS-03a one, RS-03b three.");
     }
 
     [Test]
@@ -435,8 +439,14 @@ public sealed class StatBlockTests
 
             // RS-03a, appended: every player has it, and no Wight does.
             nameof(PlayerStat.FireWhileMoving),
-        }), "M4-01a's twelve in the same order, then M6-08's four, then RS-03a's FireWhileMoving. A "
-            + "new member goes *after* FireWhileMoving and updates this row saying which task added it.");
+
+            // RS-03b, appended: only a class with a volley has them, and no Wight does.
+            nameof(PlayerStat.VolleyEvery),
+            nameof(PlayerStat.VolleyArrows),
+            nameof(PlayerStat.VolleyDamage),
+        }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
+            + "RS-03b's three volley numbers. A new member goes *after* VolleyDamage and updates this "
+            + "row saying which task added it.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

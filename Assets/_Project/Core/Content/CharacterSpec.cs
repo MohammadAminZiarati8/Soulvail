@@ -106,6 +106,10 @@ public sealed class CharacterSpec
     /// price of CH §3's identity axes being real, and M7's fourth class is the day it wants
     /// restructuring.
     /// </param>
+    /// <param name="volley">
+    /// The class's volley, or <see langword="null"/> for a class with none — every class but the
+    /// Ranger (RS-03b). Optional and last, for the counted reason above.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. A spec with no id cannot be looked
     /// up, cannot be saved, and would sit in the catalog under a key that
@@ -138,7 +142,8 @@ public sealed class CharacterSpec
         MinionSpec minions = null,
         KindlingSpec kindling = null,
         VeilrotSpec veilrot = null,
-        UnlockSpec unlock = null)
+        UnlockSpec unlock = null,
+        VolleySpec volley = null)
     {
         if (id.Value is null)
         {
@@ -191,6 +196,7 @@ public sealed class CharacterSpec
         Kindling = kindling;
         Veilrot = veilrot;
         Unlock = unlock;
+        Volley = volley;
     }
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
@@ -288,4 +294,11 @@ public sealed class CharacterSpec
     /// fresh install</b>, not an entry in the profile (M6-09a rule 3).
     /// </remarks>
     public UnlockSpec Unlock { get; }
+
+    /// <summary>The class's volley, or <see langword="null"/> for a class with none.</summary>
+    /// <remarks>
+    /// <c>PlayerCombat</c> builds a <c>Volley</c> from this and nothing else reads it (RS-03b). Its
+    /// count is not here: <c>Volley.Every</c> starts at 0 and a node gives it one.
+    /// </remarks>
+    public VolleySpec Volley { get; }
 }

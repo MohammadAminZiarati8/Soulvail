@@ -175,6 +175,20 @@ namespace Soulvail.Game.Authoring
                  "Never a percentage: 2 here would be +200 % a hit.")]
         [SerializeField, Min(0f)] private float _kindlingPerStack = 0.02f;
 
+        [Tooltip("The class's volley (RS-03b): after every n shots the next is a fan of arrows, " +
+                 "each dealing more. Arrows 0 means this class has none — every shipped class — and " +
+                 "the two fields below are ignored at 0. Otherwise 2 to 7. The n is not here: it " +
+                 "starts at 0 and a node gives it, with ModifyStat on VolleyEvery.")]
+        [SerializeField, Min(0)] private int _volleyArrows;
+
+        [Tooltip("The whole fan, edge arrow to edge arrow, in degrees. Above 0 and below 180; the " +
+                 "Ranger's 30.")]
+        [SerializeField, Min(0f)] private float _volleyFanAngleDeg = 30f;
+
+        [Tooltip("Each volley arrow's damage as a multiple of an ordinary shot's. At least 1; the " +
+                 "Ranger's 1.5.")]
+        [SerializeField, Min(1f)] private float _volleyDamageMultiplier = 1.5f;
+
         [Header("Veilrot (CH §3) — all five neutral means the Veil treats this class ordinarily")]
         [Tooltip("Where a fresh run opens on the meter, below 100. The Gravecaller's 15.")]
         [SerializeField, Min(0f)] private float _veilrotStart;
@@ -264,6 +278,11 @@ namespace Soulvail.Game.Authoring
         /// <see langword="null"/> <see cref="CharacterSpec.Kindling"/>. The count rather than the
         /// per-stack, for the minion cap's reason — it is the field a <see cref="KindlingSpec"/>
         /// cannot represent at zero.
+        /// </para>
+        /// <para>
+        /// A <see cref="_volleyArrows"/> of zero is the switch a fourth time (RS-03b): a
+        /// <see cref="VolleySpec"/> cannot hold no arrows, so every class that authors none produces a
+        /// <see langword="null"/> <see cref="CharacterSpec.Volley"/>.
         /// </para>
         /// <para>
         /// The Veilrot block has no single switch, because none of its five dials is the one a
@@ -356,6 +375,9 @@ namespace Soulvail.Game.Authoring
                             string.IsNullOrEmpty(_unlockDeedBossId)
                                 ? default
                                 : new ContentId(_unlockDeedBossId))
+                        : null,
+                    _volleyArrows > 0
+                        ? new VolleySpec(_volleyArrows, _volleyFanAngleDeg, _volleyDamageMultiplier)
                         : null);
             }
             catch (ArgumentException inner)

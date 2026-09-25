@@ -325,6 +325,23 @@ public sealed class PlayerCombat
     /// </remarks>
     private bool _swingLanded;
 
+    /// <summary>
+    /// The shots this tick's damage frame produced, in aim order: <c>[_shotHead, _shotCount)</c> are
+    /// still to be taken. One for an ordinary shot, a whole fan for a volley (RS-03b rule 6).
+    /// </summary>
+    /// <remarks>
+    /// Sized once to <see cref="VolleySpec.MaxArrows"/>, the most one damage frame can loose, so a
+    /// volley allocates nothing. A head rather than a shift, and both go back to zero when the last
+    /// shot is taken.
+    /// </remarks>
+    private readonly Projectile[] _shots = new Projectile[VolleySpec.MaxArrows];
+
+    /// <summary>The next shot <see cref="TryTakeShot"/> hands out.</summary>
+    private int _shotHead;
+
+    /// <summary>How many of <see cref="_shots"/> the last damage frame wrote.</summary>
+    private int _shotCount;
+
     /// <param name="spec">
     /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
     /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
@@ -395,6 +412,11 @@ public sealed class PlayerCombat
         // is fed by two edges this class sees — a swing resolving and damage arriving. Null for every
         // class without one, which is an Oathbound and a Gravecaller byte for byte as they were.
         Kindling = spec.Kindling is null ? null : new Kindling(spec.Kindling, Weapon.Damage, _events);
+
+        // RS-03b's volley, for a class that authors one. Here rather than in the run for Kindling's
+        // reason: the one edge that moves it — a shot leaving — is this class's. Null for every class
+        // that ships.
+        Volley = spec.Volley is null ? null : new Volley(spec.Volley, _events);
 
         // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
         // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
@@ -471,6 +493,17 @@ public sealed class PlayerCombat
     /// </para>
     /// </remarks>
     public Kindling Kindling { get; }
+
+    /// <summary>
+    /// The volley — after every <em>n</em> shots, a fan of arrows each dealing more — or
+    /// <see langword="null"/> for a class without one, which is every class that ships (RS-03b).
+    /// </summary>
+    /// <remarks>
+    /// <b>One door feeds it</b>: <see cref="OfferShot"/> calls <see cref="Volley.Loose"/> once per
+    /// damage frame that looses anything, and that answer decides whether the frame is one shot or a
+    /// fan. A cone looses nothing, so a volley on a cone class never counts.
+    /// </remarks>
+    public Volley Volley { get; }
 
     /// <summary>
     /// CC §5's dodge: when it may fire, which way it goes, how long it protects, and how much of
@@ -650,46 +683,56 @@ public sealed class PlayerCombat
     public int PendingConeRequestId { get; private set; } = -1;
 
     /// <summary>
-    /// The shot this tick's damage frame produced, or <see langword="null"/>. Read and cleared by
-    /// the run.
+    /// The next shot this tick's damage frame produced, or <see langword="null"/>. Taken by the run
+    /// through <see cref="TryTakeShot"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>This class fires nothing; it offers a shot</b> (M5-01 rule 6). It deliberately owns no
+    /// <b>This class fires nothing; it offers shots</b> (M5-01 rule 6). It deliberately owns no
     /// <see cref="ProjectileSystem"/>, for the reason it owns no registry: it is handed the world each
     /// time it is asked to think about it, and a constructor argument here would ripple through every
-    /// fixture that builds one. <c>RunSession.Tick</c> takes the shot immediately after the combat
-    /// step and puts it in the air on the same tick.
+    /// fixture that builds one. <c>RunSession.Tick</c> takes every shot immediately after the combat
+    /// step and puts them in the air on the same tick.
     /// </para>
     /// <para>
-    /// <b>Overwritten rather than queued.</b> A <see cref="Projectile"/> in a nullable is a struct in
-    /// a struct — nothing allocates, and there is no buffer to size. A second damage frame before the
-    /// first shot was taken replaces it, which is <see cref="PendingConeRequestId"/>'s bargain
-    /// exactly: a shot decided two frames ago was aimed with two-frame-old positions and is worth
-    /// less than the newest one. It cannot happen while the run takes one every tick.
+    /// <b>A queue since RS-03b, and this is its head.</b> A volley is several shots from one damage
+    /// frame, so one slot overwrote all but the last. The queue holds up to
+    /// <see cref="VolleySpec.MaxArrows"/>, in aim order.
+    /// </para>
+    /// <para>
+    /// <b>A new damage frame still replaces what was not taken</b>, which is
+    /// <see cref="PendingConeRequestId"/>'s bargain exactly: a shot decided two frames ago was aimed
+    /// with two-frame-old positions and is worth less than the newest one. It cannot happen while the
+    /// run takes every shot every tick.
     /// </para>
     /// </remarks>
-    public Projectile? PendingShot { get; private set; }
+    public Projectile? PendingShot => _shotHead < _shotCount ? _shots[_shotHead] : null;
 
-    /// <summary>Takes the pending shot, leaving none behind.</summary>
+    /// <summary>Takes the next pending shot, in aim order.</summary>
     /// <remarks>
     /// The clearing half matters more than the taking half: a shot left here would be fired again on
     /// the next tick that read it, so "take" is the only operation offered and there is no way to
-    /// look without also consuming. Called unconditionally once a tick by <c>RunSession</c>, which is
-    /// why it answers <see langword="false"/> rather than throwing when there is nothing.
+    /// look without also consuming. <c>RunSession</c> calls it until it answers
+    /// <see langword="false"/>, every tick, which is why it answers rather than throwing when there is
+    /// nothing (RS-03b rule 6).
     /// </remarks>
     /// <param name="shot">The shot, or <see langword="default"/> when there was none.</param>
     /// <returns>Whether there was a shot to take.</returns>
     public bool TryTakeShot(out Projectile shot)
     {
-        if (PendingShot is null)
+        if (_shotHead >= _shotCount)
         {
             shot = default;
             return false;
         }
 
-        shot = PendingShot.Value;
-        PendingShot = null;
+        shot = _shots[_shotHead];
+        _shotHead++;
+
+        if (_shotHead == _shotCount)
+        {
+            ClearShots();
+        }
 
         return true;
     }
@@ -1330,6 +1373,9 @@ public sealed class PlayerCombat
         // ×1.60 carried over would be a perfect stretch paid for by a run that has not started.
         Kindling?.Reset();
 
+        // And the volley's count, as silently: shots toward a volley belong to the run that fired them.
+        Volley?.Reset();
+
         // The dash goes back to rest with everything else, and the three fields that track it here
         // go with it. Health.Reset above has already lowered the external flag — a dash interrupted
         // by a reset would otherwise leave the next life invulnerable with nothing holding the flag
@@ -1363,7 +1409,7 @@ public sealed class PlayerCombat
         // And the other kind of damage frame's leftover, for the same reason as the line above: a
         // shot offered on the last tick of a stage and never taken would be fired into the next one,
         // aimed at a point in an arena that no longer exists.
-        PendingShot = null;
+        ClearShots();
     }
 
     /// <summary>
@@ -1562,7 +1608,7 @@ public sealed class PlayerCombat
         if (IsHoldingFire && Weapon.IsSwinging && !_swingLanded)
         {
             Weapon.Reset();
-            PendingShot = null;
+            ClearShots();
         }
 
         // And no new swing starts while holding.
@@ -1642,7 +1688,8 @@ public sealed class PlayerCombat
 
     /// <summary>
     /// A <see cref="WeaponKind.Projectile"/> damage frame: a shot aimed at where the target will be,
-    /// left on <see cref="PendingShot"/> for the run to put in the air (M5-01 rules 6 and 8).
+    /// left on <see cref="PendingShot"/> for the run to put in the air (M5-01 rules 6 and 8) — or,
+    /// when the <see cref="Volley"/> is ready, a fan of them (RS-03b rules 4 and 5).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1705,22 +1752,64 @@ public sealed class PlayerCombat
                 return;
             }
 
-            PendingShot = new Projectile(
-                _characterId,
-                sourceId: 0,
-                playerPosition,
-                ProjectileLead.Solve(
-                    playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed),
-                _weaponSpec.ShotSpeed,
-                _weaponSpec.ShotRadius,
-                ShotDamage(Weapon.Damage.Value),
-                ShotSide.AtEnemies);
+            Vector3 aim = ProjectileLead.Solve(
+                playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
+
+            // The newest damage frame replaces anything not taken — see PendingShot.
+            ClearShots();
+
+            // RS-03b: asked here, where a shot is known to leave, so a dropped draw and a dead target
+            // count nothing (rule 3). The answer decides whether this frame is one shot or a fan.
+            if (Volley is null || !Volley.Loose())
+            {
+                QueueShot(playerPosition, aim, ShotDamage(Weapon.Damage.Value));
+
+                return;
+            }
+
+            // Rule 4: every arrow from the same origin at the weapon's speed and radius, the middle one
+            // where the ordinary shot would go. Rule 5: one swing, one PlayerAttacked, so the fan is
+            // only this — several shots from one damage frame.
+            int arrows = Volley.ArrowCount;
+            float damage = ShotDamage(Weapon.Damage.Value * Volley.DamageMultiplier);
+
+            for (int arrow = 0; arrow < arrows; arrow++)
+            {
+                QueueShot(playerPosition, Volley.Aim(arrow, arrows, playerPosition, aim), damage);
+            }
 
             return;
         }
 
         // Unreachable while the targeter is fed from this same span, and cheap to be right about: a
         // target with no agent behind it is nothing to shoot at.
+    }
+
+    /// <summary>One of this class's shots, onto the end of the queue.</summary>
+    /// <remarks>
+    /// Cannot overflow: <see cref="OfferShot"/> clears the queue first and writes at most
+    /// <see cref="Volley.ArrowCount"/>, which is clamped to the queue's length.
+    /// </remarks>
+    private void QueueShot(Vector3 origin, Vector3 target, float damage)
+    {
+        _shots[_shotCount] = new Projectile(
+            _characterId,
+            sourceId: 0,
+            origin,
+            target,
+            _weaponSpec.ShotSpeed,
+            _weaponSpec.ShotRadius,
+            damage,
+            ShotSide.AtEnemies);
+
+        _shotCount++;
+    }
+
+    /// <summary>Empties the shot queue, leaving nothing for <see cref="TryTakeShot"/>.</summary>
+    private void ClearShots()
+    {
+        _shotHead = 0;
+        _shotCount = 0;
     }
 
     /// <summary>

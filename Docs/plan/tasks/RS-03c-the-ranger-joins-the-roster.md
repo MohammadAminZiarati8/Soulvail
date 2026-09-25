@@ -135,6 +135,12 @@ Emberwright's folder: those effects postdate M6-08, and three store `VolleyEvery
 `Card_AnOwnedCardHasNoPriceOrDeed` walks every card and a fourth card was otherwise unbound. The
 over-capacity row asks for `AuthoredCards + 1`, which is five.
 
+**Deviation 2, the owner's ruling in review: the bow turned X 45, Z 180.** It sat at identity on
+`handslot.l` from RS-02a, and the owner saw it at the wrong angle. `Bodies/Ranger.prefab` carries the
+exact rotation and its Inspector hint. The run and the sandbox both wear this body, so both see it.
+`RangerSandboxTests.Ranger_HoldsItsBowInTheLeftHandslot` asserted identity, and now asserts the
+owner's angle. The arrow leaves from the bow's position, which a rotation in place does not move.
+
 **Rule 6, resolved: four cards, 420 wide, at x = ±230 and ±690.** Their gap stays 40, and the
 outer margin is 60, the inset the Back button and the balance already use. `Cards_FourFitTheMenu`
 reads the Menu scene's one `CanvasScaler` from the file (1920 × 1080, match 0.5). It does the
@@ -173,7 +179,10 @@ the placeholder sweep reads spec keys, so neither is a red row.
 fixtures went 8 / 3, and the three red rows were exactly `Cards_FourFitTheMenu`,
 `Tree_EffectsAreTheTables` and `Ranks_VolleyCountsFiveFourThree`. Both were restored and diffed
 back. The first targeted pass also failed the three rank rows on the redraw above, and the three
-ripple rows of deviation 1.
+ripple rows of deviation 1. After the bow turned, one full PlayMode pass failed
+`Loop_ShootsOnlyStandingStill` (*No arrow on the run*, 1 for 0), which is [Traps §8](../../Traps.md).
+After a domain reload it passed alone, and it passed alone again with the bow back at `dev`'s identity.
+A full pass on the final tree went 56 / 56.
 
 **Not done here:** the bow lowered, the volley lit and the roll animated (RS-03d); manual steps
 1–3, which are the owner's.

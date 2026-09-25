@@ -43,9 +43,10 @@ namespace Soulvail.Game.Presentation
     /// <b>Nothing is instantiated</b> (rule 3). The cards are authored on the prefab and bound, which
     /// is <c>AutoCastRow</c>'s twelve cells and <c>LevelUpPresenter</c>'s three <c>OfferCard</c>s
     /// (M3-10b rule 7, M3-08b) for AR §14's reason at a moment the player is about to enter a run: a
-    /// screen that instantiates is a screen that hitches. <b>The prefab carries three</b> — CH §3's
-    /// whole roster — and <see cref="Open"/> binds as many as the catalog holds and clears the rest,
-    /// so M6-07's Emberwright is a card being filled rather than a prefab being edited.
+    /// screen that instantiates is a screen that hitches. <b>The prefab carries four</b> — CH §3's
+    /// roster and RS-03c's Ranger — and <see cref="Open"/> binds as many as the catalog holds and
+    /// clears the rest, so M6-07's Emberwright was a card being filled rather than a prefab being
+    /// edited. A fifth class is a card added, laid out so four still fit the 1920 × 1080 reference.
     /// </para>
     /// <para>
     /// <b>More authored classes than cards is a warning, once, and not a throw</b> — the rule
@@ -107,9 +108,9 @@ namespace Soulvail.Game.Presentation
                  "a tween here would be the first one in the project's UI.")]
         [SerializeField] private CanvasGroup _root;
 
-        [Tooltip("CH §3's whole roster, authored and never instantiated (rule 3). Open binds as " +
-                 "many as the catalog holds and clears the rest.")]
-        [SerializeField] private ClassCard[] _cards = new ClassCard[3];
+        [Tooltip("The whole roster, CH §3's three and the Ranger, authored and never instantiated " +
+                 "(rule 3). Open binds as many as the catalog holds and clears the rest.")]
+        [SerializeField] private ClassCard[] _cards = new ClassCard[4];
 
         [Tooltip("Closes without writing anything. The menu comes back exactly as it was.")]
         [SerializeField] private Button _back;

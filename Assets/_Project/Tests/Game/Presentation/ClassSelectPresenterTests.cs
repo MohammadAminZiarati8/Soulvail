@@ -55,6 +55,7 @@ public sealed class ClassSelectPresenterTests
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
     private const string EmberwrightPath = "Assets/_Project/Data/Characters/Emberwright.asset";
+    private const string RangerPath = "Assets/_Project/Data/Characters/Ranger.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
 
@@ -66,9 +67,10 @@ public sealed class ClassSelectPresenterTests
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
     /// <summary>
-    /// CH §3's whole roster, which is what <c>ClassSelect.prefab</c> authors (rule 3).
+    /// CH §3's whole roster and RS-03c's Ranger, which is what <c>ClassSelect.prefab</c> authors
+    /// (rule 3).
     /// </summary>
-    private const int AuthoredCards = 3;
+    private const int AuthoredCards = 4;
 
     private static readonly DateTimeOffset Instant =
         new DateTimeOffset(2026, 9, 21, 10, 0, 0, TimeSpan.Zero);
@@ -177,9 +179,9 @@ public sealed class ClassSelectPresenterTests
     [Test]
     public void Select_MoreClassesThanCardsWarnsOnce()
     {
-        BuildScreen(catalog: CatalogOf(4));
+        BuildScreen(catalog: CatalogOf(AuthoredCards + 1));
 
-        LogAssert.Expect(LogType.Warning, new Regex("More authored classes \\(4\\)"));
+        LogAssert.Expect(LogType.Warning, new Regex("More authored classes \\(5\\)"));
 
         _presenter.Open();
 
@@ -1417,13 +1419,17 @@ public sealed class ClassSelectPresenterTests
         new[] { AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath).ToSpec() },
         new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() });
 
-    /// <summary>The shipped catalog as of M6-07: all three classes, in BootScope's order.</summary>
+    /// <summary>
+    /// The shipped catalog as of RS-03c: all four classes, in BootScope's order, so the prefab's four
+    /// cards are all bound.
+    /// </summary>
     private static ContentCatalog ShippedCatalog() => new ContentCatalog(
         new[]
         {
             Character(OathboundPath).ToSpec(),
             Character(GravecallerPath).ToSpec(),
             Character(EmberwrightPath).ToSpec(),
+            Character(RangerPath).ToSpec(),
         },
         new[] { AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath).ToSpec() },
         new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() });

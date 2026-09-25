@@ -270,10 +270,10 @@ RS-01c swaps the body.
 - **The movement skill is a dodge roll that can be switched off**, through `MovementSkillKind.None`
   (RS-03a).
 - **The name is "Ranger", and it is free while it is built.**
-- **What the planning found:** class select holds exactly three cards; `ProjectileViews` flew every
-  shot as the same bolt, until RS-02c let a class name its own; the player could offer only one shot
-  per damage frame, and nothing checked a class's own tree against the stats it may name, until
-  RS-03b queued the shots and swept the tree at `Start`.
+- **What the planning found:** class select held exactly three cards, until RS-03c laid out four;
+  `ProjectileViews` flew every shot as the same bolt, until RS-02c let a class name its own; the
+  player could offer only one shot per damage frame, and nothing checked a class's own tree against
+  the stats it may name, until RS-03b queued the shots and swept the tree at `Start`.
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
@@ -288,7 +288,7 @@ RS-01c swaps the body.
 | RS-02c | [An arrow per shooter](tasks/RS-02c-an-arrow-per-shooter.md) — one pool per prefab, chosen by `SpecId` | S | RS-02b | ☑ |
 | RS-03a | [Holding fire on the move, and a class with no movement skill](tasks/RS-03a-holding-fire-on-the-move.md) (core) | M | RS-00 | ☑ |
 | RS-03b | [The volley](tasks/RS-03b-the-volley.md) (core) — and the own-tree address sweep | M | RS-03a | ☑ |
-| RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☐ |
+| RS-03c | [The Ranger joins the roster](tasks/RS-03c-the-ranger-joins-the-roster.md) — the class, nine nodes, the tree, the text, a fourth card | M | RS-02c, RS-03b | ☑ |
 | RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☐ |
 | RS-03e | The Ranger's acceptance: hits to kill at stages 1–16 on M6-11's instrument, and the owner's play — the roll kept or switched off, the numbers moved *(title)* | — | RS-03d | ☐ |
 | RS-04 | The showcase scene *(title; `RangerShowcase.unity` exists since RS-02a, and a practice mode is the owner's to ask for)* | — | RS-03e | ☐ |
@@ -300,6 +300,7 @@ RS-01c swaps the body.
 Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
 - **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
+- **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
 - **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
   `ThreatArrows`, `VFX_ConsecrateZone` and `VFX_Bulwark` are `#22D3EE` — now `Palette.Player` — while

@@ -144,7 +144,7 @@ public sealed class EmberwrightTests
 
         ContentCatalog catalog = BootCatalog();
 
-        Assert.That(catalog.Characters.Count, Is.EqualTo(3), "CH §3's whole roster boots.");
+        Assert.That(catalog.Characters.Count, Is.EqualTo(4), "CH §3's whole roster boots, and RS-03c's Ranger.");
 
         foreach (string id in new[] { OathboundId, GravecallerId, EmberwrightId })
         {
@@ -505,11 +505,11 @@ public sealed class EmberwrightTests
             .GetField("_cards", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             .GetValue(presenter);
 
-        Assert.That(cards.Length, Is.EqualTo(3), "the prefab authors CH §3's roster of three.");
+        Assert.That(cards.Length, Is.EqualTo(4), "the prefab authors CH §3's roster of three and the Ranger.");
 
         foreach (ClassCard card in cards)
         {
-            Assert.That(card.IsShown, Is.True, "every card is bound: the catalog holds three classes.");
+            Assert.That(card.IsShown, Is.True, "every card is bound: the catalog holds four classes.");
         }
 
         Assert.That(cards[2].CharacterId.Value, Is.EqualTo(EmberwrightId),

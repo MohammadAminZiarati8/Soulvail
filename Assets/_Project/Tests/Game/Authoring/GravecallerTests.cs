@@ -84,8 +84,9 @@ public sealed class GravecallerTests
         // the scope converts perfectly and is not in the game (M3-12c's Boot_ rows, same shape).
         ContentCatalog catalog = BootCatalog();
 
-        // Three since M6-07a, which authored the Emberwright onto the same list.
-        Assert.That(catalog.Characters.Count, Is.EqualTo(3), "CH §3's roster of three boots.");
+        // Three since M6-07a, which authored the Emberwright onto the same list; four since RS-03c's
+        // Ranger.
+        Assert.That(catalog.Characters.Count, Is.EqualTo(4), "CH §3's roster of three and the Ranger boot.");
 
         Assert.That(catalog.Character(new ContentId(GravecallerId)).Id.Value, Is.EqualTo(GravecallerId));
         Assert.That(catalog.Character(new ContentId(OathboundId)).Id.Value, Is.EqualTo(OathboundId));

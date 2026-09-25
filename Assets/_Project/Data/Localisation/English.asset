@@ -389,3 +389,50 @@ MonoBehaviour:
     _text: Hunger
   - _key: ordeal.hunger.description
     _text: +50% Veilrot from every source.
+  - _key: skill.ranger.quick-draw.name
+    _text: Quick Draw
+  - _key: skill.ranger.quick-draw.description
+    _text: +12% fire rate.
+  - _key: skill.ranger.quick-draw-2.name
+    _text: Quick Draw II
+  - _key: skill.ranger.quick-draw-2.description
+    _text: +12% fire rate.
+  - _key: skill.ranger.quick-draw-3.name
+    _text: Quick Draw III
+  - _key: skill.ranger.quick-draw-3.description
+    _text: +12% fire rate.
+  - _key: skill.ranger.volley.name
+    _text: Volley
+  - _key: skill.ranger.volley.description
+    _text: After every 5 shots, the next is a fan of 3 arrows, each dealing 50% more.
+  - _key: skill.ranger.volley-2.name
+    _text: Volley II
+  - _key: skill.ranger.volley-2.description
+    _text: A volley comes after every 4 shots, not 5.
+  - _key: skill.ranger.volley-3.name
+    _text: Volley III
+  - _key: skill.ranger.volley-3.description
+    _text: A volley comes after every 3 shots, not 4.
+  - _key: skill.ranger.fleet-foot.name
+    _text: Fleet Foot
+  - _key: skill.ranger.fleet-foot.description
+    _text: +8% movement speed.
+  - _key: skill.ranger.fleet-foot-2.name
+    _text: Fleet Foot II
+  - _key: skill.ranger.fleet-foot-2.description
+    _text: +8% movement speed.
+  - _key: skill.ranger.fleet-foot-3.name
+    _text: Fleet Foot III
+  - _key: skill.ranger.fleet-foot-3.description
+    _text: +8% movement speed.
+  - _key: tree.ranger.draw
+    _text: Draw
+  - _key: tree.ranger.volley
+    _text: Volley
+  - _key: tree.ranger.stride
+    _text: Stride
+  - _key: character.ranger.name
+    _text: Ranger
+  - _key: character.ranger.description
+    _text: 'An archer. The bow stays down while you run and comes up the moment you
+      stop: pick your ground, plant your feet, and loose.'

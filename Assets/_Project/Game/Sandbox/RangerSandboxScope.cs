@@ -7,12 +7,12 @@ using VContainer;
 using VContainer.Unity;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
-// cannot find the type in a file-scoped namespace, and RangerSandbox.unity's reference to this
+// cannot find the type in a file-scoped namespace, and RangerShowcase.unity's reference to this
 // component would silently deserialise as null with nothing reported anywhere (M0-11).
 namespace Soulvail.Game.Sandbox
 {
     /// <summary>
-    /// The composition root of <c>RangerSandbox.unity</c>: the game's own input, camera, body and
+    /// The composition root of <c>RangerShowcase.unity</c>: the game's own input, camera, body and
     /// arrow census around one Ranger and a field of dummies, with no run. RS-02a.
     /// </summary>
     /// <remarks>
@@ -26,6 +26,10 @@ namespace Soulvail.Game.Sandbox
     /// <b>The bow's numbers are placeholders, not the Ranger's kit.</b> The kit — damage, fire
     /// rate, range, what it is for — is RS-03's and the owner's. One shot a second is the rate at
     /// which <c>AC_Ranger</c>'s draw and release play near their authored speed.
+    /// </para>
+    /// <para>
+    /// <b>The Ranger shoots standing still.</b> <c>Shoot While Moving</c> previews the running shot
+    /// the owner wants as a skill. It is a switch here because a skill needs the kit RS-03 builds.
     /// </para>
     /// </remarks>
     public sealed class RangerSandboxScope : LifetimeScope
@@ -84,6 +88,11 @@ namespace Soulvail.Game.Sandbox
         [Tooltip("How high above a dummy's feet an arrow is aimed, in metres.")]
         [Min(0f)]
         [SerializeField] private float _aimHeight = 0.9f;
+
+        [Tooltip("The running shot. Off: the Ranger shoots only standing still, and running lowers " +
+                 "the bow (the owner's ruling). On: it faces its target and shoots on the move, " +
+                 "strafing, the way the skill it is to become would. Read when Play starts.")]
+        [SerializeField] private bool _shootWhileMoving;
 
         /// <summary>
         /// Prewarmed arrow bodies. At one shot a second and a third of a second in the air, one is
@@ -165,7 +174,8 @@ namespace Soulvail.Game.Sandbox
             builder.RegisterEntryPoint<RangerSandboxLoop>(Lifetime.Scoped)
                 .WithParameter("muzzle", _muzzle)
                 .WithParameter("dummies", _dummies ?? Array.Empty<Animator>())
-                .WithParameter("aimHeight", _aimHeight);
+                .WithParameter("aimHeight", _aimHeight)
+                .WithParameter("shootWhileMoving", _shootWhileMoving);
         }
 
         private static void Require(UnityEngine.Object reference, string field, string where)

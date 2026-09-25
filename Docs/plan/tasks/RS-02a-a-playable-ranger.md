@@ -5,9 +5,9 @@
 
 ## Goal
 
-KayKit's Ranger, holding a bow, idles, runs, strafes and shoots arrows at training dummies in
-`RangerSandbox.unity`. The game's own stick moves it, the game's camera follows it, and core decides
-every number.
+KayKit's Ranger, holding a bow, idles, runs, and stops to shoot arrows at training dummies in
+`RangerShowcase.unity`. The game's own stick moves it, the game's camera follows it, and core decides
+every number. Shooting on the move, the skill the owner means it to be, is a switch.
 
 ## Why now, and on KayKit's body
 
@@ -17,6 +17,9 @@ every number.
 - **The animator does not wait for the new body.** RS-01b keeps `Rig_Medium`'s 23 bones and names
   unchanged, so `AC_Ranger` plays on the new mesh with no edit. RS-01c's prefab replaces the `Body`
   child.
+- **It shoots standing still, by the owner's ruling of the same day:** *"running and shooting
+  should be a skill"*. This is the Ranger's rule. CC §4.2's still holds, since attacking never slows
+  the Ranger; here it is moving that stops the attack.
 - **This takes RS-02's animator half and RS-04's scene half.** RS-02 keeps "a body per class", which
   is the player wearing the Ranger in a run.
 
@@ -30,7 +33,7 @@ every number.
 | `Tests/Game/Views/RangerAnimatorViewTests.cs` | Tests.Game | **New.** V1–V7, EditMode |
 | `Tests/PlayMode/RangerSandboxTests.cs` | Tests.PlayMode | **New.** L1–L9, V4's guard, S1–S3, on the scene |
 | *small edits* | | `Tests/PlayMode/Soulvail.Tests.PlayMode.asmdef` gains `Unity.InputSystem`, for a virtual gamepad |
-| *assets* | | `Animation/Controllers/AC_Ranger.controller` and `AC_TrainingDummy.controller`, `Animation/Masks/AM_Ranger_UpperBody.mask` (new folder), `Prefabs/Player/Player_Ranger.prefab`, `Prefabs/Projectiles/Arrow.prefab`, `Scenes/RangerSandbox.unity` |
+| *assets* | | `Animation/Controllers/AC_Ranger.controller` and `AC_TrainingDummy.controller`, `Animation/Masks/AM_Ranger_UpperBody.mask` (new folder), `Prefabs/Player/Player_Ranger.prefab`, `Prefabs/Projectiles/Arrow.prefab`, `Scenes/RangerShowcase.unity` |
 
 ## Public API
 
@@ -75,7 +78,9 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
   3 m/s body plays its clip faster instead of sliding. A degenerate scale or velocity reads as still.
 - **V2 — `Step` writes `MoveX`, `MoveZ` and `MoveSpeed`** from `PlayerView.Velocity`, smoothed at
   24 m/s², and advances the view's own clock. A zero, negative or non-finite step does nothing.
-- **V3 — `TargetChanged` raises the bow:** `Aiming` is true for any id ≥ 0, blocked included (CC §3.6).
+- **V3 — `TargetChanged` raises the bow:** `Aiming` is true for any id ≥ 0, blocked included
+  (CC §3.6). −1 lowers it and ends the volley, so the next shot's speed is not measured across the
+  time the bow was down.
 - **V4 — `PlayerAttacked` draws**, setting `Shoot`, unless the upper layer is in, or crossfading
   into, `Draw` or `Aim`. `ShotSpeed` becomes `ShotSpeed(gap)` on the view's clock, in `[1, 4]`, and
   the first shot leaves it.
@@ -97,8 +102,13 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
   dummy plus `aimHeight`, with a flight of XZ distance over the shot speed (AR §18.4).
 - **L4 — An arrow lands when its flight is up:** `ProjectileImpacted` (hit) is published, the
   census returns the body, and the dummy's `Hit` trigger fires.
-- **L5 — The stick moves the body** (yaw 0, straight through) while core keeps it facing its target.
-  Moving never stops the bow (CC §4.2).
+- **L5 — The Ranger shoots standing still.** The stick moves the body with yaw 0, straight through.
+  While the stick is pushed, or the body is still slowing, the Ranger faces where it runs, and
+  `TargetChanged(−1)` lowers the bow. A shot being drawn is dropped with `Weapon.Reset`, so no arrow
+  leaves on the move. The targeter keeps choosing underneath. Once stopped, the Ranger faces its
+  target and the first shot starts at once. **`shootWhileMoving`** (the scope's *Shoot While
+  Moving*, off by default) is the running shot: it faces the target and shoots on the move, and
+  the legs strafe (V1).
 - **L6 — Out of reach, `TargetChanged(−1)`** is published and the bow comes down.
 - **L7 — Each step is clamped to `SnapshotBuilder.MaxDt`.** A degenerate step does nothing.
 - **L8 — Guards:** null arguments, a weapon that is not `Projectile`, and a negative or non-finite
@@ -116,7 +126,9 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
   identity. Everything wears `M_Ranger`.
 - **S3 — `AC_Ranger`:** the legs are V1's blend on `MoveX` and `MoveZ` at `MoveSpeed`. `Upper Body`
   overrides at weight 1 through a mask active from the spine up, 13 of 32 paths.
-  `Empty → Draw → Aim`, `Any → Release`, and back to `Draw` or `Empty` on `Aiming`.
+  `Empty → Draw → Aim`, `Any → Release`, back to `Draw` or `Empty` on `Aiming`, and `Draw → Empty`
+  when `Aiming` drops. `ShotSpeed` defaults to 1.2, the sandbox bow's pace, for a first volley that
+  has nothing measured yet.
 
 **When the spec disagrees with itself, the Tests table wins, then Behaviour, then Public API, then Files.** When it disagrees with code an earlier task built, the code wins. Either way, name the rule you resolved in *As built* — never fix it quietly.
 
@@ -126,7 +138,7 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 |---|---|
 | `RangerAnimatorViewTests.Blend_*` (8 rows, 11 cases) | V1 |
 | `Step_WritesTheLegsFromTheBody`, `Step_IgnoresADegenerateStep` (4) | V2 |
-| `Target_RaisesTheBowAndLowersIt`, `Target_ABlockedTargetStillRaisesTheBow` | V3 |
+| `Target_RaisesTheBowAndLowersIt`, `Target_ABlockedTargetStillRaisesTheBow`, `Target_LoweringTheBowEndsTheVolley` | V3 |
 | `Attack_*` (3), `ShotSpeed_*` (3 rows, 7 cases) · `RangerSandboxTests.Sandbox_ABowAlreadyDrawnReleasesWithoutDrawingAgain` | V4 |
 | `Fired_ByThePlayerReleasesAndDropsAPendingDraw`, `Fired_ByAnEnemyIsNotTheBowsRelease` | V5 |
 | `StringPull_*` (3) | V6 |
@@ -135,7 +147,7 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 | `Sandbox_FacesADummyInReachAndRaisesTheBow` | L2 |
 | `Sandbox_ShootsAtTheWeaponsCadence` | L3 |
 | `Sandbox_AnArrowLandsAndTheDummyFlinches` | L4 |
-| `Sandbox_StrafesWhileItFacesItsTarget` | L5, V1 on the real controller |
+| `Sandbox_RunsWithTheBowDown`, `Sandbox_StopsAndShoots`, `Loop_ShootsOnlyStandingStill`, `Loop_TheRunningShotShootsOnTheMove` | L5, V1 on the real controller |
 | `Sandbox_LowersTheBowWhenNothingIsInReach` | L6 |
 | `Loop_AHitchIsClampedToTheSnapshotStep`, `Loop_ADegenerateStepDoesNothing` (4) | L7 |
 | `Loop_NullArgumentsAreRefused`, `Loop_ABowThatIsNotAProjectileWeaponIsRefused`, `Loop_ANegativeOrNonFiniteAimHeightIsRefused` (3) | L8 |
@@ -146,23 +158,26 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 
 ## Manual verification (Editor / device)
 
-1. **[Editor]** Open `Scenes/RangerSandbox.unity` and press Play **with the Editor in front**
+1. **[Editor]** Open `Scenes/RangerShowcase.unity` and press Play **with the Editor in front**
    (Traps §3). *Expected: the Ranger stands with its bow lowered, and the camera matches a run's.*
 2. **[Editor]** Move with WASD, a gamepad's left stick, or a drag on the Game view's left 45 %.
    *Expected: it runs holding the bow, and the feet do not slide.*
-3. **[Editor]** Walk toward a dummy. *Expected: at 12 m it turns and draws; at 10 m it shoots once a
-   second, the string snaps as the arrow leaves, the arrow arcs in and the dummy flinches.*
-4. **[Editor]** While it shoots, move sideways and backwards. *Expected: it keeps facing the dummy,
-   strafes or runs backwards, and never stops shooting. Walk away, and the bow comes down.*
-5. **[device]** Multi-touch and feel on a phone: deferred with every device row.
+3. **[Editor]** Walk to within 10 m of a dummy and let go. *Expected: it turns and draws, and shoots
+   once a second. The string snaps as the arrow leaves, the arrow arcs in, and the dummy flinches.*
+4. **[Editor]** Move again mid-draw. *Expected: the bow comes down, no arrow leaves, and it runs
+   facing where it goes. Stop, and it shoots again.*
+5. **[Editor]** Tick *Shoot While Moving* on `RangerSandbox` before Play. *Expected: it faces the
+   dummy while it moves, strafes or runs backwards, and never stops shooting.*
+6. **[device]** Multi-touch and feel on a phone: deferred with every device row.
 
 ## Out of scope
 
 - **A run's player wearing the Ranger:** RS-02, which puts a body field on `CharacterSpec`.
 - **An arrow in the hand; hit, death, dodge and cast poses; audio; a trail:** they arrive with the
   run's body and M7's art and audio.
-- **The Ranger's kit.** The bow's numbers are placeholders on the scope, and the kit is RS-03's and
-  the owner's.
+- **The Ranger's kit, and the running shot as a skill.** The bow's numbers are placeholders on the
+  scope. The kit, and the skill that turns *Shoot While Moving* on in a run, are RS-03's and the
+  owner's.
 - **Tap-to-focus and the skill button** in the sandbox. The stick is the only control a Ranger
   without a kit needs.
 
@@ -188,6 +203,14 @@ blocked, 14 m away. The first capture showed the Ranger drawing at nothing on Pl
 inside the acquire range, as CC §3.1 step 1 says, which is what `PlayerCombat` does.
 `Sandbox_StartsIdleWithNothingInRange` pins it.
 
+**The owner's ruling, applied after the first handover: it shoots standing still.** The loop gates
+the weapon on the stick and the body's speed, below 0.05 m/s. A shot being drawn is dropped with
+`Weapon.Reset`, and "faced" is published as −1 while it runs. The view needed no new input,
+because the bow comes down on the fact a run already uses for "nothing to face". Lowering the bow
+now ends a volley (V3), or the first arrow after a run would measure three seconds of running as a
+fire rate and release before full draw. The running shot stays behind a switch until RS-03 makes
+it a skill.
+
 **Finding 2: a draw needs a way down.** With no `Draw → Empty` edge, a target lost mid-draw was
 drawn to full and held before the bow came down, about 1.5 s of aiming at nothing.
 `Sandbox_LowersTheBowWhenNothingIsInReach` failed on it, and the edge was added in place, so the
@@ -202,8 +225,14 @@ therefore snaps on the frame the arrow leaves at any fire rate. `ShotSpeed` has 
 and `ProjectileViews` on the Game side, and `PlayerMotor`, `Targeter`, `TargetScorer` and `Weapon`
 in core. No core file changed.
 
-**Name.** `Prefabs/Player/Player_Ranger.prefab`, because KayKit's `Ranger.prefab` already sits in
-`Prefabs/Characters/` (RS-01c). The class's name is still the owner's to give.
+**Names.** `Prefabs/Player/Player_Ranger.prefab`, because KayKit's `Ranger.prefab` already sits in
+`Prefabs/Characters/` (RS-01c). The owner renamed the scene to `RangerShowcase.unity` in the first
+commit, and every reference follows. The class's name is still the owner's to give.
+
+**A held stick is fragile in a PlayMode pass** (Traps §8). A focus change reset the test's pad, so
+a row passed alone and failed in the full pass. `IgnoreFocus` fixed that, but let keys typed in
+another window through. The rows now also silence every keyboard and pointer, and three full passes
+came back 53 / 53.
 
 **How it was checked.** An unfocused Editor froze a CLI-entered Play session at frame 27, and
 `EditorApplication.Step` did not move it (Traps §3). A temporary `[Explicit]` PlayMode test rendered

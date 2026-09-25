@@ -241,7 +241,7 @@ RS-01c swaps the body.
 | RS-01c | [The Ranger in Unity](tasks/RS-01c-the-ranger-in-unity.md) — **the class's name is asked first** | S | RS-01b | ☐ |
 | RS-02a | [A playable Ranger, in a sandbox](tasks/RS-02a-a-playable-ranger.md): KayKit's body, `AC_Ranger`, the game's stick and camera | M | RS-00 | ☑ |
 | RS-02 | A body per class: a run's player wears the Ranger *(title; its animator is RS-02a's)* | — | RS-01c, RS-02a | ☐ |
-| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's** *(title)* | — | RS-02 | ☐ |
+| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's**; ruled so far: it shoots standing still, and **shooting on the move is a skill** (RS-02a's switch until then) *(title)* | — | RS-02 | ☐ |
 | RS-04 | The showcase scene *(title)* | — | RS-03 | ☐ |
 
 ---

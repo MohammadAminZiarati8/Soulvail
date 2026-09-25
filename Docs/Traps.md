@@ -695,6 +695,16 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   `EventSystem.RaycastAll` against the screen position you already hold (M1-09).
 - **`InputSystemUIInputModule` auto-assigns the package's `DefaultInputActions` when added with no
   asset**, so no UI action map is needed in `Soulvail.inputactions` (M0-16).
+- **A PlayMode row that holds a gamepad's stick loses it to a change of focus, and the obvious fix
+  lets in the owner's typing.** The project has no `InputSettings` asset, so `backgroundBehavior`
+  is `ResetAndDisableNonBackgroundDevices`. A gamepad a test adds cannot run in the background, and
+  a focus change during a full pass reset it. The stick the row had pushed read zero, and the row
+  failed in the full pass while passing alone (RS-02a). `IgnoreFocus` keeps the pad, but it also
+  lets keys typed in another window reach the game. Add `AllDeviceInputAlwaysGoesToGameView` and
+  a typed-over pass steered the Ranger along (−0.71, −0.71), which is **A** and **S** held. **What
+  holds:** `IgnoreFocus`, the Game view's routing left at its default, and every `Keyboard` and
+  `Pointer` disabled for the row and re-enabled in `TearDown`. That kept 53 / 53 across three
+  passes (`RangerSandboxTests.LoadTheSandbox`).
 
 ---
 

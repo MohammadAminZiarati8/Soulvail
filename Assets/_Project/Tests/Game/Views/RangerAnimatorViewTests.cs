@@ -278,6 +278,33 @@ public sealed class RangerAnimatorViewTests
         Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 0.5f).Within(1e-4f));
     }
 
+    /// <summary>
+    /// V3: three seconds with the bow down is a run, not a fire rate. The first shot after it keeps
+    /// the last volley's speed, and the next one measures again.
+    /// </summary>
+    [Test]
+    public void Target_LoweringTheBowEndsTheVolley()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(new TargetChanged(1, false, false, -1));
+        _hub.Publish(new PlayerAttacked(Facing));
+        _view.Step(0.5f);
+        _hub.Publish(new PlayerAttacked(Facing));
+
+        _hub.Publish(new TargetChanged(-1, false, false, -1));
+        _view.Step(3f);
+        _hub.Publish(new TargetChanged(1, false, false, -1));
+        _hub.Publish(new PlayerAttacked(Facing));
+
+        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 0.5f).Within(1e-4f));
+
+        _view.Step(1f);
+        _hub.Publish(new PlayerAttacked(Facing));
+
+        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 1f).Within(1e-4f));
+    }
+
     [Test]
     public void ShotSpeed_FitsTheShotToTheInterval()
     {

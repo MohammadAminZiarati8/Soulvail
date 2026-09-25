@@ -33,6 +33,14 @@ namespace Soulvail.Game.Sandbox;
 /// game's own <see cref="ProjectileViews"/> draw from them exactly as they would from core.
 /// </para>
 /// <para>
+/// <b>The Ranger shoots standing still</b>, by the owner's ruling of 2026-09-25. While it runs it
+/// faces where it is going, its bow is down, and a shot being drawn is dropped with no arrow.
+/// Stopped, it turns to its target and shoots. Shooting on the move is to be a skill, so the
+/// sandbox carries it as a switch, <c>shootWhileMoving</c>. This is the Ranger's rule and not
+/// CC §4.2's: attacking still never slows the Ranger, but moving stops it attacking. RS-03 moves
+/// the rule into core with the kit.
+/// </para>
+/// <para>
 /// <b>A dummy cannot die.</b> It stands at 1 HP, vulnerable, with priority 1, and an arrow that
 /// arrives plays its flinch. Damage, death and respawn are a run's.
 /// </para>
@@ -49,6 +57,12 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
     private const float DummyHp = 1f;
 
     /// <summary>
+    /// Below this speed the body counts as stopped, in m/s. <c>PlayerMotor</c> uses the same number
+    /// for the point below which a velocity's direction is noise rather than intent.
+    /// </summary>
+    private const float StillSpeed = 0.05f;
+
+    /// <summary>
     /// Who <see cref="ProjectileFired.SourceId"/> says fired: nobody, which is the player — the
     /// field names an enemy, and 0 is none.
     /// </summary>
@@ -63,6 +77,7 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
     private readonly float _aimHeight;
     private readonly float _arrowSpeed;
     private readonly float _acquireRange;
+    private readonly bool _shootWhileMoving;
 
     private readonly PlayerMotor _motor;
     private readonly Targeter _targeter;
@@ -94,6 +109,12 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
     /// <summary>Arrow ids, issued from 1 as <c>ProjectileSystem</c> issues them.</summary>
     private int _nextArrowId = 1;
 
+    /// <summary>What the last <see cref="TargetChanged"/> said was faced, or −1.</summary>
+    private int _facedId = -1;
+
+    /// <summary>Whether the last <see cref="TargetChanged"/> said it was blocked.</summary>
+    private bool _facedBlocked;
+
     /// <param name="input">The one reader of the Input System (M0-14).</param>
     /// <param name="hub">Where the frame's facts are published.</param>
     /// <param name="player">The body: moved and turned by the motor's intent.</param>
@@ -107,6 +128,10 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
     /// <param name="muzzle">Where an arrow leaves from: the bow in the Ranger's hand.</param>
     /// <param name="dummies">The targets. Each one's controller has a <see cref="HitTrigger"/>.</param>
     /// <param name="aimHeight">How far above a dummy's feet an arrow is aimed, in metres.</param>
+    /// <param name="shootWhileMoving">
+    /// The running shot: face the target and shoot while the stick moves the body. Off, the Ranger
+    /// shoots only standing still.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="weapon"/> is not a projectile weapon.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="aimHeight"/> is negative or not finite.</exception>
@@ -120,7 +145,8 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         WeaponSpec weapon,
         Transform muzzle,
         Animator[] dummies,
-        float aimHeight)
+        float aimHeight,
+        bool shootWhileMoving = false)
     {
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _hub = hub ?? throw new ArgumentNullException(nameof(hub));
@@ -167,6 +193,7 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         _aimHeight = aimHeight;
         _arrowSpeed = weapon.ShotSpeed;
         _acquireRange = targeting.AcquireRange;
+        _shootWhileMoving = shootWhileMoving;
 
         // +Z, as a run begins: the camera is behind the character and nothing is in reach yet.
         _motor = new PlayerMotor(movement, System.Numerics.Vector3.UnitZ);
@@ -177,7 +204,10 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         _flights = new List<Flight>(8);
     }
 
-    /// <summary>The dummy being faced, as a candidate id — its index in the list plus one — or −1.</summary>
+    /// <summary>
+    /// The dummy the targeter has chosen, as a candidate id — its index in the list plus one — or −1.
+    /// It is chosen while the Ranger runs as well, and faced only once it stops.
+    /// </summary>
     public int CurrentTargetId => _targeter.CurrentTargetId;
 
     /// <summary>Arrows in the air.</summary>
@@ -228,10 +258,10 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 
         _targeter.Tick(dt, new ReadOnlySpan<TargetCandidate>(_candidates, 0, count), _weapon.DpsOneSecond);
 
-        if (_targeter.ChangedThisTick)
-        {
-            _hub.Publish(new TargetChanged(_targeter.CurrentTargetId, false, _targeter.IsCurrentBlocked, -1));
-        }
+        // Straight through, as SnapshotBuilder maps it: the camera's yaw is 0, so stick X is world
+        // X and stick Y is world Z.
+        Vector2 stick = _input.Move;
+        bool steering = stick.sqrMagnitude > 0f;
 
         int target = _targeter.CurrentTargetId;
         float distance = float.PositiveInfinity;
@@ -243,15 +273,32 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 
             toward.y = 0f;
             distance = toward.magnitude;
-            face = toward.ToNum();
+
+            // A running Ranger faces where it runs. The turn to the target begins the moment the
+            // stick is let go, while the body is still slowing, so it is facing by the time it stops.
+            if (_shootWhileMoving || !steering)
+            {
+                face = toward.ToNum();
+            }
         }
 
-        // Straight through, as SnapshotBuilder maps it: the camera's yaw is 0, so stick X is world
-        // X and stick Y is world Z.
-        _motor.Tick(dt, _input.Move.ToNum(), face);
+        _motor.Tick(dt, stick.ToNum(), face);
         _player.Apply(new PlayerMoveIntent(_motor.Velocity, _motor.Facing), dt);
 
-        bool inRange = target >= 0 && !_targeter.IsCurrentBlocked && distance <= _weapon.Range.Value;
+        // Engaged: standing still, or allowed to shoot on the move. Read after the move, so the
+        // first frame of a push already counts as running.
+        bool engaged = _shootWhileMoving || (!steering && _motor.Velocity.Length() <= StillSpeed);
+
+        Face(engaged ? target : -1, engaged && _targeter.IsCurrentBlocked);
+
+        // A shot being drawn when the Ranger starts to run is dropped, so no arrow leaves on the
+        // move. Resetting also means the next shot starts the moment it stops, not a cadence later.
+        if (!engaged && _weapon.IsSwinging)
+        {
+            _weapon.Reset();
+        }
+
+        bool inRange = engaged && target >= 0 && !_targeter.IsCurrentBlocked && distance <= _weapon.Range.Value;
         WeaponTick shot = _weapon.Tick(dt, _now, inRange);
 
         if (shot.SwingStarted)
@@ -331,6 +378,27 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Publishes <see cref="TargetChanged"/> when what is faced changes: the targeter's choice while
+    /// engaged, and nothing while the Ranger runs with its bow down.
+    /// </summary>
+    /// <remarks>
+    /// −1 while running is the fact's own meaning, <em>nothing to face</em>: the view lowers the bow
+    /// on it, and a reticle would go away. The targeter keeps choosing underneath, so the target is
+    /// already known on the frame the Ranger stops.
+    /// </remarks>
+    private void Face(int id, bool blocked)
+    {
+        if (id == _facedId && blocked == _facedBlocked)
+        {
+            return;
+        }
+
+        _facedId = id;
+        _facedBlocked = blocked;
+        _hub.Publish(new TargetChanged(id, false, blocked, -1));
     }
 
     /// <summary>

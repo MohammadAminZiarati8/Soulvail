@@ -25,13 +25,13 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.PlayMode;
 
 /// <summary>
-/// RS-02a: the Ranger sandbox played. Loads <c>RangerSandbox.unity</c> and drives it — the loop's
-/// rules L1–L9, the draw guard of rule V4 against the real <c>AC_Ranger</c>, and the scene and
+/// RS-02a: the Ranger sandbox played. Loads <c>RangerShowcase.unity</c> and drives it — the loop's
+/// rules L1–L10, the draw guard of rule V4 against the real <c>AC_Ranger</c>, and the scene and
 /// asset rules S1–S3.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Editor-only, like the scene.</b> <c>RangerSandbox.unity</c> is out of
+/// <b>Editor-only, like the scene.</b> <c>RangerShowcase.unity</c> is out of
 /// <c>EditorBuildSettings</c> (rule S1), so it is loaded by path through
 /// <see cref="EditorSceneManager.LoadSceneAsyncInPlayMode"/>, which only the Editor has.
 /// </para>
@@ -44,7 +44,7 @@ namespace Soulvail.Tests.PlayMode;
 /// </remarks>
 public sealed class RangerSandboxTests
 {
-    private const string ScenePath = "Assets/_Project/Scenes/RangerSandbox.unity";
+    private const string ScenePath = "Assets/_Project/Scenes/RangerShowcase.unity";
     private const string PlayerPath = "Assets/_Project/Prefabs/Player/Player_Ranger.prefab";
     private const string ControllerPath = "Assets/_Project/Animation/Controllers/AC_Ranger.controller";
     private const string DummyControllerPath = "Assets/_Project/Animation/Controllers/AC_TrainingDummy.controller";
@@ -89,9 +89,41 @@ public sealed class RangerSandboxTests
 
     private readonly List<GameObject> _created = new List<GameObject>();
 
+    private readonly List<InputDevice> _silenced = new List<InputDevice>();
+
+    private InputSettings.BackgroundBehavior _backgroundBehavior;
+
+    /// <remarks>
+    /// <para>
+    /// <b>A row's stick has to survive focus, and nobody else's keys may reach it</b> (Traps §8).
+    /// By default a change of application focus resets and disables a device that cannot run in
+    /// the background, and a gamepad a test adds is one. A stick one row pushed was dropped
+    /// mid-pass, and the Ranger shot on a run that had never started. <c>IgnoreFocus</c> keeps
+    /// the pad, but it also lets keys typed in another window through. With the Game view's routing
+    /// opened as well, a pass typed over turned the Ranger to (−0.71, −0.71), which is <b>A</b> and
+    /// <b>S</b> held.
+    /// </para>
+    /// <para>
+    /// So the rows ignore focus and silence every keyboard and pointer, and
+    /// <see cref="ReleaseTheSandbox"/> gives both back. The scene's own floating stick is a virtual
+    /// gamepad added after this runs, so it is not silenced.
+    /// </para>
+    /// </remarks>
     [UnitySetUp]
     public IEnumerator LoadTheSandbox()
     {
+        _backgroundBehavior = InputSystem.settings.backgroundBehavior;
+        InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+
+        foreach (InputDevice device in InputSystem.devices.ToArray())
+        {
+            if ((device is Keyboard || device is Pointer) && device.enabled)
+            {
+                InputSystem.DisableDevice(device);
+                _silenced.Add(device);
+            }
+        }
+
         AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
             ScenePath,
             new LoadSceneParameters(LoadSceneMode.Single));
@@ -138,6 +170,18 @@ public sealed class RangerSandboxTests
             InputSystem.RemoveDevice(_pad);
             _pad = null;
         }
+
+        InputSystem.settings.backgroundBehavior = _backgroundBehavior;
+
+        foreach (InputDevice device in _silenced)
+        {
+            if (device.added)
+            {
+                InputSystem.EnableDevice(device);
+            }
+        }
+
+        _silenced.Clear();
 
         foreach (GameObject created in _created)
         {
@@ -289,27 +333,53 @@ public sealed class RangerSandboxTests
         Assert.That(seen, Has.No.Member("Draw"), "Released from Aim, not drawn again first.");
     }
 
-    // ---------------------------------------------------------------- L5: moving while aiming
+    // ---------------------------------------------------------------- L5: it shoots standing still
 
-    /// <summary>L5: the stick moves the body sideways while core keeps it facing its target, and the legs strafe.</summary>
+    /// <summary>
+    /// L5: running, the Ranger faces where it runs, the bow is down, and the shot it was drawing is
+    /// dropped. No arrow leaves on the move.
+    /// </summary>
     [UnityTest]
-    public IEnumerator Sandbox_StrafesWhileItFacesItsTarget()
+    public IEnumerator Sandbox_RunsWithTheBowDown()
     {
         _body.Teleport(Shooting);
 
         yield return Simulate(0.3f);
 
-        _pad = InputSystem.AddDevice<Gamepad>();
-        InputSystem.QueueStateEvent(_pad, new GamepadState { leftStick = new Vector2(1f, 0f) });
+        Assert.That(_attacked, Is.EqualTo(1), "A shot was being drawn when the run began.");
 
-        yield return Simulate(0.6f);
+        Push(new Vector2(1f, 0f));
 
-        Assert.That(_player.transform.position.x, Is.GreaterThan(Shooting.x + 1f), "The stick moved the body to the right.");
-        Assert.That(Vector3.Dot(_player.transform.forward, Toward(Dummy1)), Is.GreaterThan(0.95f), "Still facing the dummy.");
-        Assert.That(_ranger.GetFloat(_moveXId), Is.GreaterThan(0.9f), "The strafe to the right.");
-        Assert.That(Mathf.Abs(_ranger.GetFloat(_moveZId)), Is.LessThan(0.4f));
-        Assert.That(_ranger.GetFloat(_moveSpeedId), Is.GreaterThan(1f), "3 m/s is faster than the strafe's feet at this scale.");
-        Assert.That(_attacked, Is.GreaterThan(0), "Moving never stops the bow (CC §4.2).");
+        yield return Simulate(1.2f);
+
+        Assert.That(_fired, Is.Empty, "No arrow leaves on the run.");
+        Assert.That(_targets.Last().Id, Is.EqualTo(-1), "Nothing is faced while it runs.");
+        Assert.That(_ranger.GetBool(_aimingId), Is.False);
+        Assert.That(UpperState(), Is.EqualTo("Empty"));
+        Assert.That(Vector3.Dot(_player.transform.forward, Vector3.right), Is.GreaterThan(0.99f), "Facing where it runs.");
+        Assert.That(_ranger.GetFloat(_moveZId), Is.GreaterThan(0.9f), "The forward run, not a strafe.");
+        Assert.That(Mathf.Abs(_ranger.GetFloat(_moveXId)), Is.LessThan(0.2f));
+        Assert.That(_ranger.GetFloat(_moveSpeedId), Is.GreaterThan(1f), "3 m/s is faster than the run's feet at this scale.");
+    }
+
+    /// <summary>L5: let go of the stick, and the Ranger turns to its target and shoots.</summary>
+    [UnityTest]
+    public IEnumerator Sandbox_StopsAndShoots()
+    {
+        _body.Teleport(Shooting);
+        Push(new Vector2(1f, 0f));
+
+        yield return Simulate(0.5f);
+
+        Assert.That(_fired, Is.Empty);
+
+        Push(Vector2.zero);
+
+        yield return Simulate(1.2f);
+
+        Assert.That(_fired, Is.Not.Empty, "Stopped, it shoots.");
+        Assert.That(_targets.Last().Id, Is.EqualTo(1));
+        Assert.That(Vector3.Dot(_player.transform.forward, Toward(Dummy1)), Is.GreaterThan(0.99f));
     }
 
     // ---------------------------------------------------------------- S1–S3: the scene and the assets
@@ -516,6 +586,72 @@ public sealed class RangerSandboxTests
         Assert.That(fired, Is.EqualTo(1));
     }
 
+    /// <summary>L5 on the loop alone: pushed, the dummy is chosen but not faced and nothing fires; let go, and it shoots.</summary>
+    [Test]
+    public void Loop_ShootsOnlyStandingStill()
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build();
+        var faced = new List<int>();
+        int fired = 0;
+
+        using IDisposable facing = parts.Hub.Subscribe<TargetChanged>(evt => faced.Add(evt.Id));
+        using IDisposable firing = parts.Hub.Subscribe<ProjectileFired>(_ => fired++);
+
+        loop.Start();
+        InputSystem.Update();
+        PushNow(new Vector2(1f, 0f));
+
+        for (int i = 0; i < 30; i++)
+        {
+            loop.Step(SnapshotBuilder.MaxDt);
+        }
+
+        Assert.That(fired, Is.Zero, "No arrow on the run.");
+        Assert.That(faced, Has.No.Member(1), "Chosen, not faced.");
+        Assert.That(loop.CurrentTargetId, Is.EqualTo(1));
+
+        PushNow(Vector2.zero);
+
+        for (int i = 0; i < 30; i++)
+        {
+            loop.Step(SnapshotBuilder.MaxDt);
+        }
+
+        Assert.That(faced.Last(), Is.EqualTo(1));
+        Assert.That(fired, Is.EqualTo(1), "Stopped, the first arrow leaves a draw later.");
+    }
+
+    /// <summary>The running shot, switched on: the Ranger faces its target and shoots on the move.</summary>
+    [Test]
+    public void Loop_TheRunningShotShootsOnTheMove()
+    {
+        LoopParts parts = Parts();
+        RangerSandboxLoop loop = parts.Build(shootWhileMoving: true);
+        var faced = new List<int>();
+        int fired = 0;
+
+        using IDisposable facing = parts.Hub.Subscribe<TargetChanged>(evt => faced.Add(evt.Id));
+        using IDisposable firing = parts.Hub.Subscribe<ProjectileFired>(_ => fired++);
+
+        loop.Start();
+        InputSystem.Update();
+        PushNow(new Vector2(1f, 0f));
+
+        for (int i = 0; i < 30; i++)
+        {
+            loop.Step(SnapshotBuilder.MaxDt);
+        }
+
+        Vector3 toward = parts.Dummies[0].transform.position - parts.Player.transform.position;
+
+        toward.y = 0f;
+
+        Assert.That(faced.Last(), Is.EqualTo(1));
+        Assert.That(fired, Is.EqualTo(1));
+        Assert.That(Vector3.Dot(parts.Player.transform.forward, toward.normalized), Is.GreaterThan(0.99f), "It faces the dummy, not the way it runs.");
+    }
+
     /// <summary>L9: disposed with an arrow in the air, the arrow is landed as a miss so its body goes back to the pool.</summary>
     [Test]
     public void Loop_DisposeLandsEveryArrowInTheAir()
@@ -554,6 +690,21 @@ public sealed class RangerSandboxTests
 
             simulated += Mathf.Min(Time.deltaTime, SnapshotBuilder.MaxDt);
         }
+    }
+
+    /// <summary>Pushes the stick of a gamepad this row adds, from the next input update on.</summary>
+    private void Push(Vector2 stick)
+    {
+        _pad ??= InputSystem.AddDevice<Gamepad>();
+
+        InputSystem.QueueStateEvent(_pad, new GamepadState { leftStick = stick });
+    }
+
+    /// <summary><see cref="Push"/>, applied now, for a row that steps a loop by hand.</summary>
+    private void PushNow(Vector2 stick)
+    {
+        Push(stick);
+        InputSystem.Update();
     }
 
     private string UpperState()
@@ -647,7 +798,8 @@ public sealed class RangerSandboxTests
             Optional<WeaponSpec> weapon = default,
             Optional<Transform> muzzle = default,
             Optional<Animator[]> dummies = default,
-            float aimHeight = AimHeight)
+            float aimHeight = AimHeight,
+            bool shootWhileMoving = false)
         {
             return new RangerSandboxLoop(
                 input.Or(Input),
@@ -659,7 +811,8 @@ public sealed class RangerSandboxTests
                 weapon.Or(Weapon),
                 muzzle.Or(Muzzle),
                 dummies.Or(Dummies),
-                aimHeight);
+                aimHeight,
+                shootWhileMoving);
         }
     }
 

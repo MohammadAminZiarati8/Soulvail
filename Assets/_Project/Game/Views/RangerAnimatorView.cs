@@ -396,9 +396,17 @@ namespace Soulvail.Game.Views
         }
 
         /// <remarks>
+        /// <para>
         /// A blocked target still raises the bow. CC §3.6 holds the facing on something the
         /// character cannot hurt, and a Ranger looking down a drawn arrow at it is the right pose
         /// for "go around". The weapon, not this view, is what declines to shoot.
+        /// </para>
+        /// <para>
+        /// <b>Lowering the bow ends a volley.</b> The next shot's speed is not measured across the
+        /// time the bow was down, which is not a fire rate. It keeps the speed the last volley
+        /// measured, so a Ranger that stops after a run draws its first arrow at the bow's pace
+        /// rather than at authored speed, which would release before full draw.
+        /// </para>
         /// </remarks>
         private void OnTargetChanged(TargetChanged evt)
         {
@@ -408,6 +416,11 @@ namespace Soulvail.Game.Views
             }
 
             _animator.SetBool(_aimingId, evt.Id >= 0);
+
+            if (evt.Id < 0)
+            {
+                _lastShotAt = -1f;
+            }
         }
 
         private void PullString()

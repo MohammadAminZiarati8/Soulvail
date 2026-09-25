@@ -28,17 +28,18 @@ namespace Soulvail.Game.Sandbox;
 /// </para>
 /// <para>
 /// <b>It publishes the facts a run publishes.</b> <see cref="TargetChanged"/>,
-/// <see cref="PlayerAttacked"/>, <see cref="ProjectileFired"/> and
+/// <see cref="HoldFireChanged"/>, <see cref="PlayerAttacked"/>, <see cref="ProjectileFired"/> and
 /// <see cref="ProjectileImpacted"/> go into the scope's hub. <c>RangerAnimatorView</c> and the
 /// game's own <see cref="ProjectileViews"/> draw from them exactly as they would from core.
 /// </para>
 /// <para>
 /// <b>The Ranger shoots standing still</b>, by the owner's ruling of 2026-09-25. While it runs it
-/// faces where it is going, its bow is down, and a shot being drawn is dropped with no arrow.
-/// Stopped, it turns to its target and shoots. Shooting on the move is to be a skill, so the
-/// sandbox carries it as a switch, <c>shootWhileMoving</c>. This is the Ranger's rule and not
-/// CC §4.2's: attacking still never slows the Ranger, but moving stops it attacking. RS-03 moves
-/// the rule into core with the kit.
+/// faces where it is going, holds its fire, and drops a shot being drawn with no arrow. Stopped, it
+/// turns to its target and shoots. Shooting on the move is to be a skill, so the sandbox carries it
+/// as a switch, <c>shootWhileMoving</c>. This is the Ranger's rule and not CC §4.2's: attacking
+/// still never slows the Ranger, but moving stops it attacking. Core has had the rule since RS-03a
+/// (<c>PlayerCombat.IsHoldingFire</c>); this loop keeps a copy one character wide, and says so
+/// with the same fact.
 /// </para>
 /// <para>
 /// <b>A dummy cannot die.</b> It stands at 1 HP, vulnerable, with priority 1, and an arrow that
@@ -114,6 +115,9 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
 
     /// <summary>Whether the last <see cref="TargetChanged"/> said it was blocked.</summary>
     private bool _facedBlocked;
+
+    /// <summary>What the last <see cref="HoldFireChanged"/> said. A run starts not holding, as core's does.</summary>
+    private bool _holding;
 
     /// <param name="input">The one reader of the Input System (M0-14).</param>
     /// <param name="hub">Where the frame's facts are published.</param>
@@ -289,7 +293,8 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         // first frame of a push already counts as running.
         bool engaged = _shootWhileMoving || (!steering && _motor.Velocity.Length() <= StillSpeed);
 
-        Face(engaged ? target : -1, engaged && _targeter.IsCurrentBlocked);
+        Face(target, _targeter.IsCurrentBlocked);
+        Hold(!engaged);
 
         // A shot being drawn when the Ranger starts to run is dropped, so no arrow leaves on the
         // move. Resetting also means the next shot starts the moment it stops, not a cadence later.
@@ -381,13 +386,13 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
     }
 
     /// <summary>
-    /// Publishes <see cref="TargetChanged"/> when what is faced changes: the targeter's choice while
-    /// engaged, and nothing while the Ranger runs with its bow down.
+    /// Publishes <see cref="TargetChanged"/> when the targeter's choice changes, running or not.
     /// </summary>
     /// <remarks>
-    /// −1 while running is the fact's own meaning, <em>nothing to face</em>: the view lowers the bow
-    /// on it, and a reticle would go away. The targeter keeps choosing underneath, so the target is
-    /// already known on the frame the Ranger stops.
+    /// Until RS-03d this said −1 while the Ranger ran, which is the fact's meaning for <em>nothing
+    /// to face</em> and not for <em>not shooting</em>. A run keeps naming the target, and the
+    /// reticle keeps showing what the Ranger will shoot when it stops; the bow comes down on
+    /// <see cref="Hold"/> instead (RS-03d rule 5).
     /// </remarks>
     private void Face(int id, bool blocked)
     {
@@ -399,6 +404,21 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
         _facedId = id;
         _facedBlocked = blocked;
         _hub.Publish(new TargetChanged(id, false, blocked, -1));
+    }
+
+    /// <summary>
+    /// Publishes <see cref="HoldFireChanged"/> when the Ranger starts or stops holding its fire, as
+    /// <c>PlayerCombat.Tick</c> does. A loop with the running shot on never holds, so it never says so.
+    /// </summary>
+    private void Hold(bool holding)
+    {
+        if (holding == _holding)
+        {
+            return;
+        }
+
+        _holding = holding;
+        _hub.Publish(new HoldFireChanged(holding));
     }
 
     /// <summary>

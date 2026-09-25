@@ -423,6 +423,13 @@ a capture from a CLI-entered Play session cannot (RS-02a).
 - **A `UnityEngine.Object` handle fetched before an unrelated prefab is saved can be fake-null by
   the time it is used.** Load a reference immediately before assigning it, and **read the field
   back after saving** — the read-back is what caught it (M1-07).
+- **Its live relative: a prefab re-saved or reimported in a live domain leaves an asset's C# field
+  holding a second managed object.** It is `==` to what `LoadAssetAtPath` returns, and not
+  `ReferenceEquals` to it, so NUnit's `Is.SameAs` fails with *"Expected same as \<Ranger\> But was
+  \<Ranger\>"*. At RS-03d `RangerTests.Ranger_WearsItsBodyAndFliesArrows` failed this way twice:
+  after `PrefabUtility.SaveAsPrefabAsset`, and after a `git stash pop` whose refresh reimported the
+  prefab once the compile's reload had run. **`EditorUtility.RequestScriptReload()` clears it**;
+  re-run the row after one before reading it as a regression (RS-03d).
 - **Before deleting any template asset, `grep -rl <guid> Assets ProjectSettings`.**
   `SampleSceneProfile` read as scene-local dressing and was the `m_VolumeProfile` of both URP
   pipeline assets (M0-13).
@@ -723,6 +730,8 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   run*, 1 for 0): once after `RequestScriptReload`, twice after a compile, one of those on `dev`'s
   code without the task. So passing alone does not tell this apart from a regression; **the bisect
   against `dev` does.** Then the row passed alone, and a full pass went 55 / 55, on the same tree.
+  At RS-03d the bisect answered cleanly: with the whole change stashed and `dev`'s code compiled, a
+  full PlayMode pass failed this row with the same message, 55 / 1.
   **One unconfirmed lead, from the Input System's source:** in the Editor an update counts as the
   Editor's, not the player's, when `gameHasFocus` is false (`InputManager.cs`, `defaultUpdateType`).
   `gameHasFocus` is `applicationHasFocus`, or `IgnoreFocus` *with* `AllDeviceInputAlwaysGoesToGameView`,

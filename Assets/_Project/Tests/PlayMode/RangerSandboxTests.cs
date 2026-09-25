@@ -27,7 +27,8 @@ namespace Soulvail.Tests.PlayMode;
 /// <summary>
 /// RS-02a: the Ranger sandbox played. Loads <c>RangerShowcase.unity</c> and drives it — the loop's
 /// rules L1–L10, the draw guard of rule V4 against the real <c>AC_Ranger</c>, and the scene and
-/// asset rules S1–S3.
+/// asset rules S1–S3. RS-03d: the hold the loop publishes (rule 5), and the roll kept in its
+/// capsule (rule 4).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -69,6 +70,7 @@ public sealed class RangerSandboxTests
 
     private readonly List<IDisposable> _subscriptions = new List<IDisposable>();
     private readonly List<TargetChanged> _targets = new List<TargetChanged>();
+    private readonly List<bool> _holds = new List<bool>();
     private readonly List<ProjectileFired> _fired = new List<ProjectileFired>();
     private readonly List<ProjectileImpacted> _impacted = new List<ProjectileImpacted>();
 
@@ -147,6 +149,7 @@ public sealed class RangerSandboxTests
 
         _attacked = 0;
         _subscriptions.Add(hub.Subscribe<TargetChanged>(evt => _targets.Add(evt)));
+        _subscriptions.Add(hub.Subscribe<HoldFireChanged>(evt => _holds.Add(evt.IsHolding)));
         _subscriptions.Add(hub.Subscribe<PlayerAttacked>(_ => _attacked++));
         _subscriptions.Add(hub.Subscribe<ProjectileFired>(evt => _fired.Add(evt)));
         _subscriptions.Add(hub.Subscribe<ProjectileImpacted>(evt => _impacted.Add(evt)));
@@ -162,6 +165,7 @@ public sealed class RangerSandboxTests
 
         _subscriptions.Clear();
         _targets.Clear();
+        _holds.Clear();
         _fired.Clear();
         _impacted.Clear();
 
@@ -337,7 +341,8 @@ public sealed class RangerSandboxTests
 
     /// <summary>
     /// L5: running, the Ranger faces where it runs, the bow is down, and the shot it was drawing is
-    /// dropped. No arrow leaves on the move.
+    /// dropped. No arrow leaves on the move. RS-03d rule 5: the bow comes down on the hold a run
+    /// publishes, and the target stays named.
     /// </summary>
     [UnityTest]
     public IEnumerator Sandbox_RunsWithTheBowDown()
@@ -347,13 +352,15 @@ public sealed class RangerSandboxTests
         yield return Simulate(0.3f);
 
         Assert.That(_attacked, Is.EqualTo(1), "A shot was being drawn when the run began.");
+        Assert.That(_holds, Is.Empty, "Standing still, nothing is held.");
 
         Push(new Vector2(1f, 0f));
 
         yield return Simulate(1.2f);
 
         Assert.That(_fired, Is.Empty, "No arrow leaves on the run.");
-        Assert.That(_targets.Last().Id, Is.EqualTo(-1), "Nothing is faced while it runs.");
+        Assert.That(_holds, Is.EqualTo(new[] { true }), "HoldFireChanged(true), once, as core publishes it.");
+        Assert.That(_targets.Last().Id, Is.EqualTo(1), "TargetChanged still names the dummy it will shoot when it stops.");
         Assert.That(_ranger.GetBool(_aimingId), Is.False);
         Assert.That(UpperState(), Is.EqualTo("Empty"));
         Assert.That(Vector3.Dot(_player.transform.forward, Vector3.right), Is.GreaterThan(0.99f), "Facing where it runs.");
@@ -380,6 +387,69 @@ public sealed class RangerSandboxTests
         Assert.That(_fired, Is.Not.Empty, "Stopped, it shoots.");
         Assert.That(_targets.Last().Id, Is.EqualTo(1));
         Assert.That(Vector3.Dot(_player.transform.forward, Toward(Dummy1)), Is.GreaterThan(0.99f));
+    }
+
+    // ---------------------------------------------------------------- RS-03d rule 4: the roll
+
+    /// <summary>
+    /// RS-03d rule 4: a roll never moves the body. Each of the four directions is rolled on the
+    /// real <c>AC_Ranger</c>, its full length and the crossfade out, and on every frame the hips
+    /// stay within 0.3 m of the <see cref="PlayerView"/> on XZ.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The roll is published into the scope's hub</b>, as core would publish it: the sandbox has
+    /// no dash, and nothing moves the body, so any distance the hips put between themselves and the
+    /// player is the clip's own translation reaching the mesh. KayKit's four <c>Dodge_*</c> carry it
+    /// on <c>root</c>, 0.25 to 0.65 m in model units, and forward is the shortest, so a row that
+    /// rolled forward alone would pass on the imported clips.
+    /// </para>
+    /// <para>
+    /// Timed on <c>Time.deltaTime</c>, not the loop's clamped step, because the Animator is what is
+    /// being watched and it runs on the frame's own delta. A roll is 0.3 s of dash and 0.05 s of
+    /// i-frames before <see cref="ChargeEnded"/>, as the Ranger's roll is authored.
+    /// </para>
+    /// </remarks>
+    [UnityTest]
+    public IEnumerator Roll_TheBodyStaysInItsCapsule()
+    {
+        DomainEventHub hub = _scope.Container.Resolve<DomainEventHub>();
+        Transform hips = _player.GetComponentsInChildren<Transform>(true).First(t => t.name == "hips");
+        var directions = new[]
+        {
+            new System.Numerics.Vector2(0f, 1f),
+            new System.Numerics.Vector2(0f, -1f),
+            new System.Numerics.Vector2(-1f, 0f),
+            new System.Numerics.Vector2(1f, 0f),
+        };
+
+        foreach (System.Numerics.Vector2 direction in directions)
+        {
+            float farthest = 0f;
+            bool rolled = false;
+
+            hub.Publish(new ChargeStarted(direction));
+
+            for (float elapsed = 0f; elapsed < 0.35f; elapsed += Time.deltaTime)
+            {
+                yield return null;
+
+                farthest = Mathf.Max(farthest, FromThePlayer(hips));
+                rolled |= _ranger.GetCurrentAnimatorStateInfo(0).IsName("Dodge");
+            }
+
+            hub.Publish(new ChargeEnded());
+
+            for (float elapsed = 0f; elapsed < 0.4f; elapsed += Time.deltaTime)
+            {
+                yield return null;
+
+                farthest = Mathf.Max(farthest, FromThePlayer(hips));
+            }
+
+            Assert.That(rolled, Is.True, $"The roll ({direction.X}, {direction.Y}) played the Dodge state.");
+            Assert.That(farthest, Is.LessThan(0.3f), $"The hips left the capsule on the roll ({direction.X}, {direction.Y}).");
+        }
     }
 
     // ---------------------------------------------------------------- S1–S3: the scene and the assets
@@ -483,7 +553,8 @@ public sealed class RangerSandboxTests
     public void Ranger_TheLegsAreADirectionalBlend()
     {
         var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
-        ChildAnimatorState locomotion = controller.layers[0].stateMachine.states.Single();
+        // By name: the base layer holds the roll beside it since RS-03d.
+        ChildAnimatorState locomotion = controller.layers[0].stateMachine.states.Single(s => s.state.name == "Locomotion");
         var tree = (BlendTree)locomotion.state.motion;
 
         Assert.That(tree.blendType, Is.EqualTo(BlendTreeType.FreeformDirectional2D));
@@ -596,16 +667,21 @@ public sealed class RangerSandboxTests
         Assert.That(fired, Is.EqualTo(1));
     }
 
-    /// <summary>L5 on the loop alone: pushed, the dummy is chosen but not faced and nothing fires; let go, and it shoots.</summary>
+    /// <summary>
+    /// L5 on the loop alone: pushed, the dummy is chosen, fire is held and nothing fires; let go,
+    /// and it shoots. The target is named while it runs, since RS-03d rule 5.
+    /// </summary>
     [Test]
     public void Loop_ShootsOnlyStandingStill()
     {
         LoopParts parts = Parts();
         RangerSandboxLoop loop = parts.Build();
         var faced = new List<int>();
+        var holds = new List<bool>();
         int fired = 0;
 
         using IDisposable facing = parts.Hub.Subscribe<TargetChanged>(evt => faced.Add(evt.Id));
+        using IDisposable holding = parts.Hub.Subscribe<HoldFireChanged>(evt => holds.Add(evt.IsHolding));
         using IDisposable firing = parts.Hub.Subscribe<ProjectileFired>(_ => fired++);
 
         loop.Start();
@@ -618,7 +694,8 @@ public sealed class RangerSandboxTests
         }
 
         Assert.That(fired, Is.Zero, "No arrow on the run.");
-        Assert.That(faced, Has.No.Member(1), "Chosen, not faced.");
+        Assert.That(holds, Is.EqualTo(new[] { true }), "Fire held on the run.");
+        Assert.That(faced, Has.Member(1), "Chosen, and named while it runs.");
         Assert.That(loop.CurrentTargetId, Is.EqualTo(1));
 
         PushNow(Vector2.zero);
@@ -629,6 +706,7 @@ public sealed class RangerSandboxTests
         }
 
         Assert.That(faced.Last(), Is.EqualTo(1));
+        Assert.That(holds, Is.EqualTo(new[] { true, false }), "Stopped, the hold ends.");
         Assert.That(fired, Is.EqualTo(1), "Stopped, the first arrow leaves a draw later.");
     }
 
@@ -730,6 +808,16 @@ public sealed class RangerSandboxTests
         }
 
         return "?";
+    }
+
+    /// <summary>How far <paramref name="bone"/> stands from the <see cref="PlayerView"/>, on XZ.</summary>
+    private float FromThePlayer(Transform bone)
+    {
+        Vector3 offset = bone.position - _body.transform.position;
+
+        offset.y = 0f;
+
+        return offset.magnitude;
     }
 
     private Vector3 Toward(Vector3 point)

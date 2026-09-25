@@ -203,6 +203,43 @@ M7-02e's outline on all of them.
 
 ---
 
+## RS — The Ranger *(a side track, the model first)*
+
+**The owner's request of 2026-09-25:** a character with a proper model, animations and skills, shown in
+a showcase scene, beginning with the model. The Ranger fits the parts already imported: KayKit's
+`Ranger.fbx`, the `Ranged_Bow_*` clips, and a bow, a quiver and an arrow among the props.
+
+- **It is not V1's roster.** GD §19 puts a fourth class in V2. Nothing here changes the three classes.
+  Whether the Ranger joins class select is the owner's, asked at RS-03 with its kit.
+- **It is the art ruling's pilot.** The 2026-09-25 ruling named the Oathbound. The pipeline these tasks
+  prove is the one M7-05/06 and the Oathbound will use: a Gemini sheet drawn over a KayKit template,
+  image-to-3D, then scripted Blender to fit and skin it onto `Rig_Medium`.
+
+Three findings shaped the model's tasks:
+
+- **Every class plays as the KayKit Knight.** `Player.prefab` builds it in, and no `CharacterSpec`
+  names a body. So the model is a prefab of its own first, and a body per class is RS-02's.
+- **KayKit's clips key the positions of `hips`, `upperarm.l/r`, `upperleg.l/r` and `handslot.r`.** A
+  body has to be built to KayKit's proportions: the mesh is fitted to the rig, never the rig to the
+  mesh. Hence RS-01a's template.
+- **GD §17.1's 400–1,200 triangles is the crowd's budget,** written for 28 enemies on one shared
+  material. The player is one body. **The Ranger's budget is the KayKit Ranger's own 8 900**, ruled at
+  [RS-01b](tasks/RS-01b-the-mesh-on-rig-medium.md), and the owner overrides it by naming another
+  number.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| RS-00 | Plan the Ranger's model: this section and the three specs below | S | — | ☑ |
+| RS-01a | [A template Gemini can draw over, and the prompts](tasks/RS-01a-a-template-gemini-can-draw-over.md) | S | RS-00 | ☐ |
+| — | *The owner's: Gemini sheets and image-to-3D, handed back as RS-01a rule 6 lists* | — | RS-01a | ☐ |
+| RS-01b | [The mesh on Rig_Medium](tasks/RS-01b-the-mesh-on-rig-medium.md) | S | RS-01a, the handback | ☐ |
+| RS-01c | [The Ranger in Unity](tasks/RS-01c-the-ranger-in-unity.md) — **the class's name is asked first** | S | RS-01b | ☐ |
+| RS-02 | A body per class, and the Ranger's animator: bow locomotion, draw, release *(title)* | — | RS-01c | ☐ |
+| RS-03 | Its kit: weapon, movement, signature, skills — **its fantasy, and whether it joins class select, are the owner's** *(title)* | — | RS-02 | ☐ |
+| RS-04 | The showcase scene *(title)* | — | RS-03 | ☐ |
+
+---
+
 ## Parking lot
 
 Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.

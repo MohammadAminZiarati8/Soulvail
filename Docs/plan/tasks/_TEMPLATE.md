@@ -41,6 +41,8 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 "allocated-bytes delta == 0" in any spec means `AllocationAssert.None(body, iterations)` from M0-02 — never the raw `GC` API.
 
+**A row that opens an asset, a prefab or a `Soulvail.Game` type cannot live in Tests.Core**, which references `Soulvail.Core` alone. Name its Tests.Game file in *small edits*; M6-06a, M6-07c and M6-09a each moved such rows after the fact.
+
 **Guard rows are implied, not listed:** every new spec type gets a validation row, every public constructor a null row, every `float` door a non-finite row. They belong in the test file and are not deviations.
 
 ## Manual verification (Editor / device)

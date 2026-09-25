@@ -98,9 +98,10 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 - Unity MCP (`Unity_RunCommand`, `Unity_GetConsoleLogs`) works when the Editor is open and **focused** — an unfocused Editor does not tick, and looks alive ([Traps §3](Docs/Traps.md)).
 - Android module installed; IL2CPP; the APK is ARM64-only (Unity 6.3 cannot build x86-64 for Android).
 - **Verification workflow when implementing:** the Editor must be open. Compile state and Console come through the MCP; the EditMode suite runs through `TestRunnerApi` the same way. No PR is handed over unverified.
+- **Unity CLI** (`unity`, beta, in `%LOCALAPPDATA%\Unity\bin`) drives the open Editor through `com.unity.pipeline` (experimental). `unity status` must show `ready`. `unity command run_tests --mode EditMode --timeout 900 --result-only` runs the suite in the live Editor (~1 min); `recompile` works unfocused; `editor_focus` raises the window. `unity test` is untried: its options (editor path, kill timeout) read as a batch-mode Unity of its own, which the open Editor's project lock would refuse.
 
 ## Ask before
 
 - Creating files beyond what a request explicitly covers.
-- Deleting or moving assets, changing `ProjectSettings/`, adding or removing packages (VContainer 1.19.0 is in; nothing else is approved).
+- Deleting or moving assets, changing `ProjectSettings/`, adding or removing packages (VContainer 1.19.0 and `com.unity.pipeline` 0.7.0-exp.1 are in; nothing else is approved).
 - Anything touching the remote.

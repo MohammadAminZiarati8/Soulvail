@@ -47,7 +47,8 @@ namespace Soulvail.Tests.Game.Composition;
 /// what the Menu decides, not about the load — but a task that wants to tap these two buttons now
 /// can. <b>M6-11a did</b>: <c>Continue_AfterAQuitResumesTheRunJustPlayed</c> taps Continue through
 /// a recording loader, because the bug it pins lives between the Menu's two reads — the button's
-/// visibility and the snapshot the tap hands over.
+/// visibility and the snapshot the tap hands over. <b>So did RS-03f</b>:
+/// <c>Menu_ContinueRefusesASecondTap</c> taps it for the guard.
 /// </para>
 /// </para>
 /// </remarks>
@@ -283,6 +284,46 @@ public sealed class ResumeFlowTests
         // ISaveStore and a fire-and-forget delete out of a presenter.
         Assert.That(saved.IsPresent, Is.True);
         Assert.That(saved.Value.StageIndex, Is.EqualTo(9));
+    }
+
+    // ---- Continue refuses a second tap (RS-03f rule 4) ------------------------------------------
+
+    /// <summary>
+    /// A tap on Continue takes both buttons down until the load answers: a second Continue would
+    /// start a second load, and a Descend would open class select over it.
+    /// </summary>
+    /// <remarks>
+    /// Until RS-03f, <c>BootSmokeTests</c>' Descend row asserted this by accident, on a machine
+    /// with a save, where the first <c>Button</c> under the Menu is Continue. Here it is asserted on
+    /// purpose, over a recording loader, so no scene loads and no file on disk decides the answer.
+    /// </remarks>
+    [Test]
+    public void Menu_ContinueRefusesASecondTap()
+    {
+        var saved = new SavedRun();
+        saved.Set(Snapshot(stage: 9));
+
+        var loader = new RecordingLoader();
+
+        MenuPresenter menu = Menu(saved, out Button descend, out Button @continue, new PendingRun(), loader);
+
+        Enable(menu);
+
+        @continue.onClick.Invoke();
+
+        Assert.That(loader.Asked, Is.EqualTo(new[] { SceneLoader.Run }), "the tap never reached the load.");
+
+        Assert.That(
+            @continue.interactable,
+            Is.False,
+            "Continue stayed interactable while the run was loading, so a second touch would start "
+                + "a second load.");
+
+        Assert.That(
+            descend.interactable,
+            Is.False,
+            "Descend stayed interactable while a resumed run was loading, so a touch would open "
+                + "class select over the load.");
     }
 
     // ---- The installer puts the generator back (rule 3) -----------------------------------------

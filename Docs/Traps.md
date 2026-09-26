@@ -739,6 +739,15 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   **It does not explain the passes, though:** `InternalEditorUtility.isApplicationActive` read
   `False` before, between and after both. `editor_focus` does not change it, because it focuses a
   dock area, not the application.
+  **At RS-03f the trigger was narrowed, and the mechanism was not.** `FrameOrderTests` then
+  `RangerSandboxTests` failed the row 46 / 1. The sandbox fixture alone went 29 / 29, and with
+  `BootSmokeTests` before it 32 / 32. Seven full passes failed it, one of them on `dev`'s code, and
+  the three whose command logged `isApplicationActive` read it false. The one full pass in which the
+  row read it true went 57 / 57. A temporary log in the row read `Application.isFocused` true, a
+  `Dynamic` update and the stick at (1, 0) on both runs that passed, and no failing run was caught
+  with it in. **So queue the final pass with Unity the active application.** `SetForegroundWindow`
+  from the shell did not make it so: the next command still read false, and VS Code had the
+  foreground back within minutes.
 
 ---
 

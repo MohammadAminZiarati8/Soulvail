@@ -1,11 +1,14 @@
 using System.Collections;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using VContainer;
 using VContainer.Unity;
 
 namespace Soulvail.Tests.PlayMode;
@@ -13,7 +16,7 @@ namespace Soulvail.Tests.PlayMode;
 /// <summary>
 /// The few things about this game that cannot be asserted anywhere but in a running player: that a
 /// cold start arrives somewhere a player can act, that the root scope survives the scene load it
-/// crosses, and that the one button on that screen starts a run.
+/// crosses, and that Descend and a class card on that screen start a run.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -74,14 +77,28 @@ public sealed class BootSmokeTests
     }
 
     /// <summary>
-    /// The task's actual goal, end to end: one tap on a cold-started menu puts the player in a run.
+    /// The task's actual goal, end to end: on a cold-started menu, a tap on Descend and one on a
+    /// class card put the player in a run.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Not in M0-17's Tests table, which specs the two above. Added because those two prove the
     /// half of the journey that has no button in it, and this is the half the task exists for.
+    /// </para>
+    /// <para>
+    /// <b>Every control is the one its presenter wires, read from the field</b> (RS-03f rule 1).
+    /// Until RS-03f this row tapped the first <see cref="Button"/> under the Menu, which is Continue
+    /// whenever a run is on disk: green on a machine with a save, on Continue's guard and on
+    /// whatever run the machine held, and red on a fresh install, where Descend has opened class
+    /// select rather than starting a run since M5-07.
+    /// </para>
+    /// <para>
     /// The second-tap assertion is on <see cref="Selectable.interactable"/> rather than on a second
     /// invocation, because <c>onClick.Invoke</c> bypasses that flag — the flag <em>is</em> the
-    /// guard, since uGUI is what refuses to route the second touch.
+    /// guard, since uGUI is what refuses to route the second touch. Since M5-07 the guard is on
+    /// every card rather than on Descend, which has none by design (<c>MenuPresenter.Descend</c>'s
+    /// remarks). Continue's own guard is <c>ResumeFlowTests.Menu_ContinueRefusesASecondTap</c>.
+    /// </para>
     /// </remarks>
     [UnityTest]
     public IEnumerator Descend_StartsARun_AndRefusesASecondTap()
@@ -91,26 +108,92 @@ public sealed class BootSmokeTests
         var presenter = Object.FindAnyObjectByType<MenuPresenter>();
         Assert.That(presenter, Is.Not.Null, "The Menu scene has no MenuPresenter in it.");
 
-        Button descend = presenter.GetComponentInChildren<Button>();
-        Assert.That(descend, Is.Not.Null, "The Menu scene has no Descend button under the presenter.");
+        Button descend = Field<Button>(presenter, "_descend");
+        Assert.That(descend != null, Is.True, "The Menu's presenter has no Descend button wired.");
         Assert.That(descend.interactable, Is.True, "The Descend button starts out untappable.");
 
         descend.onClick.Invoke();
 
+        ClassSelectPresenter screen = Field<ClassSelectPresenter>(presenter, "_classSelect");
+        Assert.That(screen.IsOpen, Is.True, "Descend did not open the class-select screen.");
         Assert.That(
-            descend.interactable,
-            Is.False,
-            "Descend stayed interactable while the run was loading, so a second touch would start " +
-            "a second load.");
+            SceneManager.GetActiveScene().name,
+            Is.EqualTo(SceneLoader.Menu),
+            "Descend loaded a scene. Since M5-07 the class is chosen first, one screen along.");
+
+        ClassCard[] cards = Field<ClassCard[]>(screen, "_cards");
+        ClassCard card = FirstOwned(cards);
+        Assert.That(
+            card != null,
+            Is.True,
+            "No card on the class-select screen plays a run, and the starter is never priced.");
+
+        Field<Button>(card, "_button").onClick.Invoke();
+
+        // Read before the load answers: RunTicker clears the slot once the run has its config.
+        PendingRun pending = LifetimeScope.Find<BootScope>().Container.Resolve<PendingRun>();
+        Assert.That(pending.IsSet, Is.True, "The card's tap recorded no run.");
+        Assert.That(pending.CharacterId, Is.EqualTo(card.CharacterId), "The run is not the tapped class.");
+        Assert.That(
+            pending.Snapshot,
+            Is.Null,
+            "The tap resumed the run on disk rather than starting a fresh one.");
+
+        foreach (ClassCard each in cards)
+        {
+            if (each != null && each.IsShown)
+            {
+                Assert.That(
+                    each.IsInteractable,
+                    Is.False,
+                    "A card stayed interactable while the run was loading, so a second touch " +
+                    "would start a second load.");
+            }
+        }
 
         yield return WaitFor(SceneLoader.Run);
 
         Assert.That(
             SceneManager.GetActiveScene().name,
             Is.EqualTo(SceneLoader.Run),
-            $"Descend did not reach the Run scene within {TimeoutSeconds} seconds.");
+            $"The card's tap did not reach the Run scene within {TimeoutSeconds} seconds.");
 
         LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
+    /// The value of <paramref name="owner"/>'s private field <paramref name="name"/> — the control
+    /// it wires, which is what a tap on screen reaches (RS-03f rule 1).
+    /// </summary>
+    /// <remarks>
+    /// Reflection, as <c>ResumeFlowTests.Menu</c> dresses the same fields, because they are
+    /// <c>[SerializeField] private</c> and a read added to the presenter for a test would be a
+    /// claim about the type. A renamed field fails here by name rather than as a null further on.
+    /// </remarks>
+    private static T Field<T>(object owner, string name)
+    {
+        FieldInfo field = owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.That(field, Is.Not.Null, $"{owner.GetType().Name} has no field {name} any more.");
+
+        return (T)field.GetValue(owner);
+    }
+
+    /// <summary>
+    /// The first card that plays a run rather than buying a class, or null. The Oathbound on any
+    /// profile, since the starter is never priced.
+    /// </summary>
+    private static ClassCard FirstOwned(ClassCard[] cards)
+    {
+        foreach (ClassCard card in cards)
+        {
+            if (card != null && card.State == ClassCardState.Owned)
+            {
+                return card;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

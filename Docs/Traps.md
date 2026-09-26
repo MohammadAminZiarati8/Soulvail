@@ -681,6 +681,18 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   `LocalJsonSaveStore.Rename`. The task touched no save code. The fixture then passed 34 / 34 alone,
   and the next full pass was green on the same tree. Something outside Unity held the file for a
   moment. **Re-run the fixture alone before reading it as a regression** (RS-03b).
+- **An assembly-level `[PrebuildSetup]` or `[PostBuildCleanup]` compiles and does nothing unless the
+  assembly's compiled references include `UnityEditor.TestRunner`.** The framework's
+  `AttributeFinderBase` reads assembly attributes only from such assemblies, and
+  `Soulvail.Tests.PlayMode` references `UnityEngine.TestRunner` alone. Put them on each fixture, and
+  pin that with a row: `SaveShelterTests.EveryFixture_SheltersTheSaves` reads them through
+  `CustomAttributeData`, because the attributes keep their target type `internal`. Both run in the
+  Editor, before Play is entered and after it is left, the cleanup even when the run fails (RS-03g).
+- **The PlayMode suite never touches the machine's saves, and a killed pass leaves them in
+  `persistentDataPath/PlayModeShelter/`.** `SaveShelter` moves `run.json` and `profile.json` there
+  before Play and back after, so every PlayMode row meets a fresh install. If the Editor dies
+  mid-pass, the files wait in the shelter, and the game plays a fresh install until the next PlayMode
+  run restores them with a warning (RS-03g).
 
 ---
 
@@ -748,6 +760,15 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   with it in. **So queue the final pass with Unity the active application.** `SetForegroundWindow`
   from the shell did not make it so: the next command still read false, and VS Code had the
   foreground back within minutes.
+  **At RS-03g, BlueStacks App Player was taking the foreground back, and an active queue was not
+  enough.** `SetForegroundWindow` reported success, and a sampled foreground went to BlueStacks and a
+  second VS Code window within 2 s, so no command read `isApplicationActive` true. What worked: a
+  command that subscribes to `EditorApplication.update` and calls `Execute` once
+  `isApplicationActive` reads true, with a deadline and its readings in `SessionState`, while the
+  owner clicks into Unity. Both passes queued that way read active at the queue and at
+  `RunFinished`. The pass with a `run.json` went 67 / 67, and the pass without one went 66 / 1 on this
+  row. The shelter gives the suite the same empty folder either way. All six unfocused passes that
+  session failed the row, one of them on `dev`'s code.
 
 ---
 

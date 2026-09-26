@@ -6,6 +6,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Views;
+using Soulvail.Tests.PlayMode.Support;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -28,10 +29,13 @@ namespace Soulvail.Tests.PlayMode;
 /// before the load <c>ClassSelectPresenter.OnCardChosen</c> makes. Tapping the card is not the
 /// question here, and on a profile that has not bought the Gravecaller its card buys rather than
 /// descends. Its two cases are a class that wears the Knight and RS-03c's Ranger, which wears its
-/// own body. Like <c>BootSmokeTests</c>, every row starts a run, which writes the real
-/// <c>run.json</c> (ROADMAP parking lot).
+/// own body. Like <c>BootSmokeTests</c>, every row starts a run through boot's store over
+/// <c>persistentDataPath</c>, which <see cref="SaveShelter"/> empties before Play and restores after
+/// (RS-03g).
 /// </para>
 /// </remarks>
+[PrebuildSetup(typeof(SaveShelter))]
+[PostBuildCleanup(typeof(SaveShelter))]
 public sealed class RunBodyTests
 {
     /// <summary>How long a scene transition may take before it counts as never having happened.</summary>

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
+using Soulvail.Tests.PlayMode.Support;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -30,7 +31,14 @@ namespace Soulvail.Tests.PlayMode;
 /// Every test starts by loading Boot, so each one begins from the same place regardless of the
 /// order the runner picks and regardless of the scene the one before it left behind.
 /// </para>
+/// <para>
+/// <b>Boot's store writes to <c>persistentDataPath</c></b>, and the Descend row starts a run, which
+/// saves one. <see cref="SaveShelter"/> moves the machine's saves aside before Play and back after,
+/// so every row here meets a fresh install and the owner's files come back byte-identical (RS-03g).
+/// </para>
 /// </remarks>
+[PrebuildSetup(typeof(SaveShelter))]
+[PostBuildCleanup(typeof(SaveShelter))]
 public sealed class BootSmokeTests
 {
     /// <summary>

@@ -292,7 +292,7 @@ RS-01c swaps the body.
 | RS-03d | [The Ranger, seen](tasks/RS-03d-the-ranger-seen.md) — the bow held, the volley lit, the roll | S | RS-03c | ☑ |
 | RS-03e | [The Ranger's acceptance](tasks/RS-03e-the-rangers-acceptance.md): hits to kill at stages 1–16 on M6-11's instrument, and the owner's play — the roll kept or switched off, the numbers moved | S | RS-03d | ☑ |
 | RS-03f | [The Descend row taps Descend](tasks/RS-03f-the-descend-row.md): it tapped the Menu's first button, which is Continue when a run is on disk, so it was green only with a save ([RS-03e](tasks/RS-03e-the-rangers-acceptance.md#as-built)) | S | — | ☑ |
-| RS-03g | The PlayMode suite writes the owner's real `run.json`: `BootSmokeTests` and `RunBodyTests` start runs through boot's `LocalJsonSaveStore` over `persistentDataPath`. Promoted from the parking lot by RS-03f *(title)* | S | — | ☐ |
+| RS-03g | [The suite keeps the saves](tasks/RS-03g-the-suite-keeps-the-saves.md): the PlayMode suite wrote the owner's real `run.json`, because `BootSmokeTests` and `RunBodyTests` start runs through boot's store over `persistentDataPath`. Promoted from the parking lot by RS-03f | S | — | ☑ |
 | RS-04 | The showcase scene *(title; `RangerShowcase.unity` exists since RS-02a, and a practice mode is the owner's to ask for)* | — | RS-03e | ☐ |
 
 ---
@@ -303,6 +303,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 
 - **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
 - **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
+- **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
 - **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,

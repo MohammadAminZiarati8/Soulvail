@@ -12,6 +12,7 @@ using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Views;
+using Soulvail.Tests.PlayMode.Support;
 using UnityEngine;
 using UnityEngine.TestTools;
 using VContainer;
@@ -60,6 +61,8 @@ namespace Soulvail.Tests.PlayMode;
 /// by sitting in the same three lines.
 /// </para>
 /// </remarks>
+[PrebuildSetup(typeof(SaveShelter))]
+[PostBuildCleanup(typeof(SaveShelter))]
 public sealed class FrameOrderTests
 {
     private static readonly ContentId HuskId = new ContentId("enemy.husk");

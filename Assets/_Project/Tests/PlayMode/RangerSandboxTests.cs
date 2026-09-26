@@ -10,6 +10,7 @@ using Soulvail.Game.Adapters;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Sandbox;
 using Soulvail.Game.Views;
+using Soulvail.Tests.PlayMode.Support;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
@@ -43,6 +44,8 @@ namespace Soulvail.Tests.PlayMode;
 /// counts shots counts them on the loop's own clock.
 /// </para>
 /// </remarks>
+[PrebuildSetup(typeof(SaveShelter))]
+[PostBuildCleanup(typeof(SaveShelter))]
 public sealed class RangerSandboxTests
 {
     private const string ScenePath = "Assets/_Project/Scenes/RangerShowcase.unity";

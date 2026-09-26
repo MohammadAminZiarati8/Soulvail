@@ -8,6 +8,7 @@ using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Pooling;
 using Soulvail.Game.Views;
+using Soulvail.Tests.PlayMode.Support;
 using UnityEngine;
 using UnityEngine.TestTools;
 using VContainer;
@@ -43,6 +44,8 @@ namespace Soulvail.Tests.PlayMode;
 /// enemy body would throw, because nothing injected the template.
 /// </para>
 /// </remarks>
+[PrebuildSetup(typeof(SaveShelter))]
+[PostBuildCleanup(typeof(SaveShelter))]
 public sealed class PoolingLifecycleTests
 {
     private static readonly ContentId Husk = new ContentId("enemy.husk");

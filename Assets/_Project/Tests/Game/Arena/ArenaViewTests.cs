@@ -165,10 +165,11 @@ public sealed class ArenaViewTests
                 new ContentId("arena.pillars"),
                 new ContentId("arena.tiered"),
                 new ContentId("arena.ashen-reach.courtyard"),
+                new ContentId("arena.jungle.clearing"),
             }),
-            "Three, not eight, as a statement rather than a promise: GD §7.2 wants 8-12 per biome " +
-            "and that is M7-05's art pass. The two grey boxes stay rostered beside the first real " +
-            "one until a place has a mode of its own (M7-05a).");
+            "Four, not eight, as a statement rather than a promise: GD §7.2 wants 8-12 per place " +
+            "and that is M7-05's art pass. The two grey boxes stay rostered beside the real ones " +
+            "until a place has a mode of its own (M7-05a, M7-05c).");
     }
 
     [Test]

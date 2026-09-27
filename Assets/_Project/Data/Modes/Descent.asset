@@ -72,6 +72,7 @@ MonoBehaviour:
   - arena.pillars
   - arena.tiered
   - arena.ashen-reach.courtyard
+  - arena.jungle.clearing
   _bossRoster:
   - _bossId: boss.warden
     _everyNStages: 5

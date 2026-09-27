@@ -130,24 +130,45 @@ public sealed class ArenaViewTests
     public void Arena_IdMatchesTheAssetName(string path)
     {
         // Arena_Pillars.prefab <-> arena.pillars, per the asset-naming rule: a data asset's file
-        // name matches the last segment of its ContentId.
-        string file = System.IO.Path.GetFileNameWithoutExtension(path);
-        string expected = file.Replace("Arena_", string.Empty).ToLowerInvariant();
+        // name matches the last segment of its ContentId. A place's arenas sit in the place's
+        // folder and carry it as a middle segment — AshenReach/Arena_Courtyard.prefab <->
+        // arena.ashen-reach.courtyard — so two places can each have a courtyard (M7-05a).
+        string file = System.IO.Path.GetFileNameWithoutExtension(path).Replace("Arena_", string.Empty);
+        string folder = System.IO.Path.GetDirectoryName(path).Replace('\\', '/');
+        string[] segments = Arena(path).Id.Value.Split('.');
 
-        Assert.That(Arena(path).Id.Value, Is.EqualTo($"arena.{expected}"));
+        Assert.That(segments[0], Is.EqualTo("arena"));
+        Assert.That(Squash(segments[^1]), Is.EqualTo(file.ToLowerInvariant()));
+
+        if (folder == ArenaFolder)
+        {
+            Assert.That(segments, Has.Length.EqualTo(2), "An arena outside a place's folder names no place.");
+        }
+        else
+        {
+            Assert.That(segments, Has.Length.EqualTo(3), "An arena in a place's folder names that place.");
+            Assert.That(
+                Squash(segments[1]),
+                Is.EqualTo(System.IO.Path.GetFileName(folder).ToLowerInvariant()));
+        }
     }
 
     [Test]
-    public void Descent_RostersBothArenas()
+    public void Descent_RostersItsArenas()
     {
         ModeSpec descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec();
 
         Assert.That(
             descent.Arenas,
-            Is.EqualTo(new[] { new ContentId("arena.pillars"), new ContentId("arena.tiered") }),
-            "Two, not eight, as a statement rather than a promise: GD §7.2 wants 8-12 per biome " +
-            "and that is M7-05's art pass. What this milestone owes is the contract and the " +
-            "machinery (rule 11).");
+            Is.EqualTo(new[]
+            {
+                new ContentId("arena.pillars"),
+                new ContentId("arena.tiered"),
+                new ContentId("arena.ashen-reach.courtyard"),
+            }),
+            "Three, not eight, as a statement rather than a promise: GD §7.2 wants 8-12 per biome " +
+            "and that is M7-05's art pass. The two grey boxes stay rostered beside the first real " +
+            "one until a place has a mode of its own (M7-05a).");
     }
 
     [Test]
@@ -170,6 +191,9 @@ public sealed class ArenaViewTests
             Assert.That(shipped, Does.Contain(id));
         }
     }
+
+    /// <summary>A kebab-case id segment as a PascalCase name reads once lowercased: <c>ashen-reach</c> → <c>ashenreach</c>.</summary>
+    private static string Squash(string segment) => segment.Replace("-", string.Empty);
 
     private static ArenaView Arena(string path)
     {

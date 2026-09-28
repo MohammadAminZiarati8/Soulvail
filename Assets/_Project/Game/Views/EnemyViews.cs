@@ -33,6 +33,13 @@ namespace Soulvail.Game.Views;
 /// the dead for as long as the player survives.
 /// </para>
 /// <para>
+/// <b>One pool per body, as of M7-05g.</b> An archetype whose look names a body of its own — the
+/// Rootling is the first — rents from that body's pool; every other archetype rents from the shared
+/// body's. Each pool is prewarmed when this is built, and a rental remembers the pool it came from, so
+/// a body goes back where it was taken and a Rootling's never stands in for a Husk. The shape is
+/// <see cref="ProjectileViews"/>'s from RS-02c, which pools a class's shot beside the default bolt.
+/// </para>
+/// <para>
 /// Not a <see cref="MonoBehaviour"/>: it has no frame of its own and nothing in a scene should be
 /// able to find it. It is registered in <c>RunScope</c> and disposed with the run, which is what
 /// unsubscribes it — a listener that outlived its run would be handed the next run's ids.
@@ -40,7 +47,14 @@ namespace Soulvail.Game.Views;
 /// </remarks>
 public sealed class EnemyViews : IDisposable
 {
-    private readonly ViewPool<EnemyView> _pool;
+    /// <summary>The shared body's pool — every archetype that names no body of its own.</summary>
+    private readonly ViewPool<EnemyView> _sharedPool;
+
+    /// <summary>
+    /// Body prefab → its pool, the shared body's included, so a look naming the shared prefab lands
+    /// in the same pool as one naming none.
+    /// </summary>
+    private readonly Dictionary<EnemyView, ViewPool<EnemyView>> _pools;
 
     /// <summary>
     /// Archetype id → tint and scale, so a rental knows what it is standing in for. Read once per
@@ -48,8 +62,11 @@ public sealed class EnemyViews : IDisposable
     /// </summary>
     private readonly EnemyLookBook _looks;
 
-    /// <summary>Core's id → the body standing in for it. The only index anything outside resolves through.</summary>
-    private readonly Dictionary<int, EnemyView> _byId = new Dictionary<int, EnemyView>();
+    /// <summary>
+    /// Core's id → the body standing in for it and the pool it goes back to. The only index anything
+    /// outside resolves through.
+    /// </summary>
+    private readonly Dictionary<int, Rental> _byId = new Dictionary<int, Rental>();
 
     /// <summary>
     /// Collider instance id → core's enemy id, for M1-12's overlap query.
@@ -74,9 +91,10 @@ public sealed class EnemyViews : IDisposable
     /// that way — and a body created the plain way would silently never be injected.
     /// </param>
     /// <param name="prefab">
-    /// The one enemy body prefab. Every archetype shares it, tinted and scaled per spawn from
-    /// <paramref name="looks"/> — GD §11.3's own plan, and what M2-06 chose over a prefab and a pool
-    /// per archetype. A body each arrives with the enemy art, not before.
+    /// The shared enemy body. Every archetype whose look names no body of its own wears it, tinted
+    /// and scaled per spawn from <paramref name="looks"/> — GD §11.3's own plan, and what M2-06 chose
+    /// over a prefab and a pool per archetype. A body of its own arrived with the Rootling's art
+    /// (M7-05g) and is pooled beside this one.
     /// </param>
     /// <param name="parent">
     /// Where instances are parented, or null for the scene root. The pool's root, and a tidiness
@@ -89,9 +107,11 @@ public sealed class EnemyViews : IDisposable
     /// as the same grey capsule, which looks exactly like a look book that is simply wrong.
     /// </param>
     /// <param name="prewarm">
-    /// How many bodies to build before the run starts. The arena's steady-state population, so the
-    /// only <c>Instantiate</c> calls of a whole run happen while the scene is still loading rather
-    /// than on the frame a wave lands.
+    /// How many bodies to build before the run starts, <em>per pool</em>. The arena's steady-state
+    /// population, so the only <c>Instantiate</c> calls of a whole run happen while the scene is
+    /// still loading rather than on the frame a wave lands. A body of its own is prewarmed to the
+    /// same count, whether or not the mode rosters it: one more pool of this size per bodied
+    /// archetype, which is M7-05g's stated cost.
     /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="resolver"/>, <paramref name="prefab"/>, <paramref name="hub"/> or
@@ -117,7 +137,24 @@ public sealed class EnemyViews : IDisposable
         // The pool makes the same three checks this constructor used to, and in the same way — a
         // destroyed prefab is a live reference that only compares equal to null through Unity's
         // operator, and a destroyed parent is normalised to the scene root.
-        _pool = new ViewPool<EnemyView>(resolver, prefab, parent, prewarm);
+        _sharedPool = new ViewPool<EnemyView>(resolver, prefab, parent, prewarm);
+
+        _pools = new Dictionary<EnemyView, ViewPool<EnemyView>> { [prefab] = _sharedPool };
+
+        // Every body a look names, built now rather than on its first spawn: a pool created on the
+        // frame a wave of Rootlings lands would instantiate the whole wave on that frame (M7-05g
+        // rule 2). A body equal to the shared prefab is already here.
+        IReadOnlyList<EnemyView> bodies = looks.Bodies;
+
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            EnemyView body = bodies[i];
+
+            if (body != null && !_pools.ContainsKey(body))
+            {
+                _pools.Add(body, new ViewPool<EnemyView>(resolver, body, parent, prewarm));
+            }
+        }
 
         // Subscribed in the constructor, which is what makes the ordering safe: RunTicker takes
         // SnapshotBuilder, SnapshotBuilder takes this, so this object exists and is listening
@@ -131,7 +168,32 @@ public sealed class EnemyViews : IDisposable
     public int Count => _byId.Count;
 
     /// <summary>The body standing in for <paramref name="id"/>, if there is one.</summary>
-    public bool TryGet(int id, out EnemyView view) => _byId.TryGetValue(id, out view);
+    public bool TryGet(int id, out EnemyView view)
+    {
+        if (_byId.TryGetValue(id, out Rental rental))
+        {
+            view = rental.View;
+            return true;
+        }
+
+        view = null;
+        return false;
+    }
+
+    /// <summary>
+    /// How many bodies of <paramref name="body"/> are waiting in its pool; null means the shared
+    /// body. Zero for a body no look named, which has no pool.
+    /// </summary>
+    public int PooledCountOf(EnemyView body)
+    {
+        // Unity's == rather than `is null`, and the shared pool for either kind of null.
+        if (body == null)
+        {
+            return _sharedPool.CountInactive;
+        }
+
+        return _pools.TryGetValue(body, out ViewPool<EnemyView> pool) ? pool.CountInactive : 0;
+    }
 
     /// <summary>
     /// Which enemy <paramref name="collider"/> belongs to, if it belongs to one at all.
@@ -189,9 +251,11 @@ public sealed class EnemyViews : IDisposable
     public void CopyInto(WorldSnapshot snapshot)
     {
         // The concrete dictionary's value enumerator is a struct, so this foreach allocates
-        // nothing. Iterating through IEnumerable<EnemyView> would box it, every frame.
-        foreach (EnemyView view in _byId.Values)
+        // nothing. Iterating through IEnumerable<Rental> would box it, every frame.
+        foreach (Rental rental in _byId.Values)
         {
+            EnemyView view = rental.View;
+
             if (snapshot.EnemyCount >= snapshot.EnemyCapacity)
             {
                 WarnAboutCapacityOnce(snapshot.EnemyCapacity);
@@ -229,8 +293,12 @@ public sealed class EnemyViews : IDisposable
         _spawnedSubscription.Dispose();
         _despawnedSubscription.Dispose();
 
-        _pool.Dispose();
+        foreach (ViewPool<EnemyView> pool in _pools.Values)
+        {
+            pool.Dispose();
+        }
 
+        _pools.Clear();
         _byId.Clear();
         _idByColliderInstance.Clear();
     }
@@ -239,11 +307,14 @@ public sealed class EnemyViews : IDisposable
     {
         Vector3 position = evt.Position.ToUnity();
 
+        EnemyLook look = _looks.For(evt.SpecId);
+
         // Rented, then bound: the pool hands over a clean body and this is the line that tells it
         // who it is standing in for and where. Bind sets the position, so the body is never drawn
         // at wherever its previous life ended — the two calls are in the same frame, before
-        // anything renders.
-        EnemyView view = _pool.Get();
+        // anything renders. The pool is the archetype's body's, or the shared one (M7-05g rule 3).
+        ViewPool<EnemyView> pool = PoolFor(look);
+        EnemyView view = pool.Get();
 
         // Before Bind, so the body is never drawn for a frame in the colour and size of whoever
         // died in it last. Applied on every rental without exception — an archetype nobody authored
@@ -253,8 +324,6 @@ public sealed class EnemyViews : IDisposable
 
         if (feedback != null)
         {
-            EnemyLook look = _looks.For(evt.SpecId);
-
             feedback.SetArchetypeLook(look.Tint, look.BodyScale);
         }
 
@@ -272,7 +341,7 @@ public sealed class EnemyViews : IDisposable
 
         view.Bind(evt.Id, position);
 
-        _byId[evt.Id] = view;
+        _byId[evt.Id] = new Rental(view, pool);
 
         // Body resolves itself when Awake has not run, which outside play mode it never does
         // (M1-12), so this index is filled in an EditMode test as well as in a run. Still guarded:
@@ -293,7 +362,7 @@ public sealed class EnemyViews : IDisposable
 
     private void OnDespawned(EnemyDespawned evt)
     {
-        if (!_byId.TryGetValue(evt.Id, out EnemyView view))
+        if (!_byId.TryGetValue(evt.Id, out Rental rental))
         {
             // Not an error, for the reason EnemySystem.Despawn returns false rather than throwing:
             // an id may be retired without a body ever having been made for it.
@@ -301,6 +370,8 @@ public sealed class EnemyViews : IDisposable
         }
 
         _byId.Remove(evt.Id);
+
+        EnemyView view = rental.View;
 
         if (view != null && view.Body != null)
         {
@@ -311,7 +382,25 @@ public sealed class EnemyViews : IDisposable
         // under whatever id this body is given then. The instance id itself does not change — the
         // object is the same one — so leaving the entry behind would have a corpse in the pool
         // answering "which enemy is this collider?" with the name of the enemy that died in it.
-        _pool.Release(view);
+        // Back to the pool it came from, whatever archetype is spawned next (M7-05g rule 4).
+        rental.Pool.Release(view);
+    }
+
+    /// <summary>
+    /// The pool <paramref name="look"/>'s body is rented from: its own, or the shared body's when it
+    /// names none — or names one that was destroyed, which is drawn as the shared body rather than
+    /// taking the spawn down (M2-06 rule 9's bargain for a cosmetic gap).
+    /// </summary>
+    private ViewPool<EnemyView> PoolFor(EnemyLook look)
+    {
+        EnemyView body = look.Body;
+
+        if (body == null)
+        {
+            return _sharedPool;
+        }
+
+        return _pools.TryGetValue(body, out ViewPool<EnemyView> pool) ? pool : _sharedPool;
     }
 
     /// <remarks>
@@ -332,5 +421,23 @@ public sealed class EnemyViews : IDisposable
             $"More enemy views ({_byId.Count}) than the snapshot can carry ({capacity}). The " +
             "extras are invisible to core this frame — it cannot see their positions, so nothing " +
             "will target them. The spawner is what must respect the cap (GD §11).");
+    }
+
+    /// <summary>A body in service, and the pool it goes back to.</summary>
+    /// <remarks>
+    /// <see cref="ProjectileViews"/>' shape: the pool is remembered rather than looked up again on
+    /// the way out, because the look that chose it is not on <see cref="EnemyDespawned"/>.
+    /// </remarks>
+    private readonly struct Rental
+    {
+        public Rental(EnemyView view, ViewPool<EnemyView> pool)
+        {
+            View = view;
+            Pool = pool;
+        }
+
+        public EnemyView View { get; }
+
+        public ViewPool<EnemyView> Pool { get; }
     }
 }

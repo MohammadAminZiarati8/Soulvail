@@ -62,6 +62,15 @@ namespace Soulvail.Game.Views
     /// why absolute is the property AR §18.4 leans on.
     /// </para>
     /// <para>
+    /// <b>Emission carries the flash and the wind-up as well, as of M7-05h</b>, and only a material that
+    /// emits shows it. A textured body's colour is its texture times <c>_BaseColor</c>, so the white
+    /// base-colour flash leaves the texture as it was; <c>_EmissionColor</c> is added on top, so it
+    /// flashes any body white. A wind-up glows from black to danger red-orange (GD §16.4 gives
+    /// telegraphs that colour) and drops to black at the strike. <c>M_BoneGrey</c> has emission off,
+    /// so the capsules render exactly as they did; <c>M_Enemy</c> has it on (M7-05f). The emission is
+    /// one more thing a rental must forget, and every reset below writes it black.
+    /// </para>
+    /// <para>
     /// <b>The tint is composed from <c>EnemyDamaged.HpFraction</c>, so no health is held here.</b>
     /// That field has ridden the event since M1-11; this reads it, keeps one float, and decides
     /// nothing. At full health the lerp is identity, so a freshly spawned body looks exactly as M2-06
@@ -101,11 +110,20 @@ namespace Soulvail.Game.Views
         [Min(1f)]
         [SerializeField] private float _telegraphSwell = 1.15f;
 
+        [Tooltip("How bright the wind-up glows by the strike, as a multiple of danger red-orange " +
+                 "(GD §16.4). Only a material with emission on shows it — M_Enemy does, M_BoneGrey " +
+                 "does not, so the capsules keep the swell alone.")]
+        [Min(0f)]
+        [SerializeField] private float _telegraphGlow = 0.9f;
+
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because
         /// nothing in this project holds static state (AR §7) and the four bytes are free.
         /// </summary>
         private readonly int _baseColorId = Shader.PropertyToID("_BaseColor");
+
+        /// <summary>URP's emission colour, hashed once, for <see cref="_baseColorId"/>'s reason.</summary>
+        private readonly int _emissionColorId = Shader.PropertyToID("_EmissionColor");
 
         private EnemyView _view;
         private MaterialPropertyBlock _block;
@@ -301,6 +319,7 @@ namespace Soulvail.Game.Views
             _block ??= new MaterialPropertyBlock();
 
             SetColour(BodyColour());
+            SetEmission(Color.black);
         }
 
         /// <summary>
@@ -364,6 +383,7 @@ namespace Soulvail.Game.Views
             }
 
             SetColour(BodyColour());
+            SetEmission(Color.black);
         }
 
         private void OnDestroy()
@@ -415,6 +435,7 @@ namespace Soulvail.Game.Views
             {
                 _flashRemaining = 0f;
                 SetColour(BodyColour());
+                SetEmission(TelegraphGlow());
             }
         }
 
@@ -445,6 +466,10 @@ namespace Soulvail.Game.Views
             // ledger row had ever counted. The archetype tint it returns to is content and stays
             // authored; this is the one colour here that is the same for every body in the game.
             SetColour(Palette.HitFlash);
+
+            // The same white through emission, which is the only way a textured body flashes at all
+            // (M7-05h rule 6). A material with emission off ignores it.
+            SetEmission(Palette.HitFlash);
         }
 
         private void OnDied(EnemyDied evt)
@@ -477,6 +502,10 @@ namespace Soulvail.Game.Views
             // draws with the same transparent asset; what differs between them is the alpha, and
             // that is what the property block is for.
             _renderer.sharedMaterial = _dissolveMaterial;
+
+            // A corpse does not glow: a death mid-wind-up cancels the strike, and a flash is not
+            // drawn over a fade (the killing blow's own rule, above).
+            SetEmission(Color.black);
 
             TickDissolve(0f);
         }
@@ -527,12 +556,42 @@ namespace Soulvail.Game.Views
                 _telegraphRemaining = 0f;
                 transform.localScale = _liveScale;
 
+                // The glow drops with the swell, in the same frame: the release is the strike.
+                if (_flashRemaining <= 0f)
+                {
+                    SetEmission(Color.black);
+                }
+
                 return;
             }
 
             float t = 1f - (_telegraphRemaining / _telegraphDuration);
 
             transform.localScale = _liveScale * Mathf.Lerp(1f, _telegraphSwell, t);
+
+            // A flash in flight keeps the emission until it ends; then Tick hands it back to this.
+            if (_flashRemaining <= 0f)
+            {
+                SetEmission(TelegraphGlow());
+            }
+        }
+
+        /// <summary>
+        /// The emission a wind-up wants right now: danger red-orange rising with the wind-up to
+        /// <see cref="_telegraphGlow"/>, or black when there is none (M7-05h rule 6).
+        /// </summary>
+        private Color TelegraphGlow()
+        {
+            if (_telegraphRemaining <= 0f || !(_telegraphDuration > 0f))
+            {
+                return Color.black;
+            }
+
+            float t = 1f - (_telegraphRemaining / _telegraphDuration);
+            Color glow = Palette.Danger * (_telegraphGlow * t);
+            glow.a = 1f;
+
+            return glow;
         }
 
         private void TickDissolve(float dt)
@@ -605,6 +664,26 @@ namespace Soulvail.Game.Views
         {
             _renderer.GetPropertyBlock(_block);
             _block.SetColor(_baseColorId, colour);
+            _renderer.SetPropertyBlock(_block);
+        }
+
+        /// <summary>
+        /// Writes <paramref name="colour"/> as the body's emission, <see cref="SetColour"/>'s way. A
+        /// material with emission off ignores it, which is what keeps the capsules as they were.
+        /// </summary>
+        /// <remarks>
+        /// Guarded, unlike <see cref="SetColour"/>, because it is called from the paths that run before
+        /// <c>Awake</c> — a look and a reset — where there may be no renderer or no block yet.
+        /// </remarks>
+        private void SetEmission(Color colour)
+        {
+            if (_renderer == null || _block is null)
+            {
+                return;
+            }
+
+            _renderer.GetPropertyBlock(_block);
+            _block.SetColor(_emissionColorId, colour);
             _renderer.SetPropertyBlock(_block);
         }
     }

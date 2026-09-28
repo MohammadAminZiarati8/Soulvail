@@ -92,6 +92,8 @@ namespace Soulvail.Game.Views
         private bool _searchedForFeedback;
         private EnemyHealthBar _healthBar;
         private bool _searchedForHealthBar;
+        private EnemyAnimatorView _animatorView;
+        private bool _searchedForAnimatorView;
         private int _id = Unbound;
         private Vector3 _velocity;
         private float _fallSpeed;
@@ -248,6 +250,28 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
+        /// The animator view on this body's model, or null on a body that has none — every capsule.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="HealthBar"/>'s shape, searched in the children because the view lives on the
+        /// model rather than beside this (M7-05h). Searched once, on the first despawn, which is the
+        /// only reader.
+        /// </remarks>
+        private EnemyAnimatorView AnimatorView
+        {
+            get
+            {
+                if (!_searchedForAnimatorView)
+                {
+                    _searchedForAnimatorView = true;
+                    _animatorView = GetComponentInChildren<EnemyAnimatorView>(true);
+                }
+
+                return _animatorView;
+            }
+        }
+
+        /// <summary>
         /// Applies one tick's intent: walk at this velocity, look this way.
         /// </summary>
         /// <param name="intent">What core decided for this enemy this tick.</param>
@@ -388,6 +412,15 @@ namespace Soulvail.Game.Views
             if (healthBar != null)
             {
                 healthBar.Unbind();
+            }
+
+            // M7-05h joins the list: a body with an Animator goes back to its entry state, so the next
+            // enemy to be handed it does not rise from the last one's death into its first walk.
+            EnemyAnimatorView animatorView = AnimatorView;
+
+            if (animatorView != null)
+            {
+                animatorView.Forget();
             }
 
             // Back into the physics query. A death took it out (EnemyHitFeedback.OnDied) so that a

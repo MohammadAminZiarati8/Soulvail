@@ -35,10 +35,15 @@ re-download arrived as `KayKit_Adventurers_2 1.0_FREE` and was a whole duplicate
 | `Dungeon/Props` | 36 — barrels, boxes, crates, candles, torches, rubble, wall crests, and banners in white and brown |
 | `ForestNature/Rocks` | 43 rocks in three families |
 | `ForestNature/Trees` | 20 — 14 leafy, 6 bare |
+| `ForestNature/Bushes` | 22 bushes in four families |
+| `ForestNature/Grass` | 16 grass tufts, double- and single-sided |
 
-The two environment packs are kept for the biomes (GD §3): stone and rubble for the Ashen
-Reach, arches and stairs for the Drowned Choir's cathedral, rocks and trees for the Bone
-Orchard once they are recoloured to its white.
+The two environment packs are the kit every place is built from: stone and rubble for the
+Ashen Reach, ruins, trees, bushes and grass for the Jungle. **A place recolours a pack by
+swapping its atlas, not by editing the pack**: the Jungle's `M_Jungle` reads
+`T_Jungle_Albedo`, which is Forest Nature's atlas layout with its three strips repainted and
+its reserved space filled, and `M_JungleRuins` reads the Dungeon atlas turned moss-grey. Both
+are written by `Tools/Blender/jungle_kit.py` (M7-05b).
 
 ## The one fact that matters
 
@@ -92,7 +97,10 @@ Also deleted, by rule, so an update deletes them again:
 - **Dungeon — the reserved colours:** every `banner_*` in blue, green, red or yellow, and
   `sword_shield_gold`. GD §16.4 gives red-orange to danger, gold to rewards and cyan to the
   player, and keeps the environment desaturated; white and brown stay.
-- **Forest Nature — `Grass_*` and `Bush_*`.** No biome in GD §3 has ground vegetation.
+- **Forest Nature — the four `Grass_*_Mesh` files.** They are the grass meshes again with no
+  material at all, so nothing can render them as the pack intends. The bushes and grass
+  themselves were cut at M7-05a, when no place had undergrowth, and restored at M7-05b for the
+  Jungle.
 
 **Looked at on 2026-09-26 and declined, whole:** *Block Bits 1.0* (voxel blocks in saturated
 primaries, another visual language); *Medieval Hexagon 1.0* (a hex strategy-map kit —

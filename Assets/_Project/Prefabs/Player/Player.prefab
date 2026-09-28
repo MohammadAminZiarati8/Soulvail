@@ -454,6 +454,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3253bf80c77e5c4f8e2e00e3a35d169, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
+  _show: 0
   _glow: {fileID: 7401882501133620002}
   _colour: {r: 0.3, g: 0.9, b: 1, a: 1}
   _maxAlpha: 0.35

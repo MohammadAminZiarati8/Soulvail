@@ -996,6 +996,7 @@ MonoBehaviour:
   - {fileID: 8923084777819981739, guid: 4402cd11c6d37c14da74936cf8499fac, type: 3}
   - {fileID: 5257434550523879575, guid: ecdb297e0f1f3d548b80afe39fe70da8, type: 3}
   - {fileID: 6436044429399084354, guid: 20a682d30b04fc249800798e6d3fa02c, type: 3}
+  - {fileID: 7031435199989767276, guid: d4c69484fcb950f4d8e683c145c808f4, type: 3}
   _arenaRoot: {fileID: 1668478928}
 --- !u!4 &929802505
 Transform:

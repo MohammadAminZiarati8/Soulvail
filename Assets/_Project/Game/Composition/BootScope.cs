@@ -87,11 +87,17 @@ namespace Soulvail.Game.Composition
         /// </remarks>
         [SerializeField] private LocalizationTable[] _languages;
 
+        [Tooltip("The classes class select shows, in order — each must also be in Characters. " +
+                 "Empty shows every class. A class left off is hidden, not removed: a saved run of " +
+                 "it still resumes, and its branches can still be borrowed (RS-05c). The Ranger " +
+                 "alone since 2026-09-28.")]
+        [SerializeField] private CharacterDefinition[] _classSelect;
+
         protected override void Configure(IContainerBuilder builder)
         {
             BootInstaller.Install(
                 builder, _characters, _enemies, _modes, _skills, _trees, _localization, _bosses,
-                _languages);
+                _languages, _classSelect);
 
             // Singleton and not Scoped: one loader for the life of the app, resolved from the
             // root by whatever child scope asks for it.

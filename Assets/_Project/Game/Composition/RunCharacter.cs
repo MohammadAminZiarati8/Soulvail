@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Game.Composition;
@@ -30,11 +31,17 @@ public static class RunCharacter
     /// clear. After it, this would answer the catalog's first class for every run.
     /// </para>
     /// </remarks>
-    /// <exception cref="ArgumentNullException">Either argument is null.</exception>
+    /// <param name="pending">The run class select chose, if one is pending.</param>
+    /// <param name="catalog">Every class.</param>
+    /// <param name="roster">
+    /// Class select's roster (RS-05c rule 4), so the fallback is the first class a player could have
+    /// chosen rather than a hidden one. Optional: none falls back to the catalog's first.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="pending"/> or <paramref name="catalog"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
     /// No run is pending and the catalog holds no characters.
     /// </exception>
-    public static ContentId Choose(PendingRun pending, ContentCatalog catalog)
+    public static ContentId Choose(PendingRun pending, ContentCatalog catalog, ClassSelectRoster roster = null)
     {
         if (pending is null)
         {
@@ -58,6 +65,8 @@ public static class RunCharacter
                 "play. Add a CharacterDefinition to BootScope's character list.");
         }
 
-        return catalog.Characters[0].Id;
+        IReadOnlyList<CharacterSpec> shown = roster?.ShownFrom(catalog) ?? catalog.Characters;
+
+        return shown.Count > 0 ? shown[0].Id : catalog.Characters[0].Id;
     }
 }

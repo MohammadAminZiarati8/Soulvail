@@ -1004,7 +1004,8 @@ namespace Soulvail.Game.Composition
         {
             ContentId characterId = RunCharacter.Choose(
                 container.Resolve<PendingRun>(),
-                container.Resolve<ContentCatalog>());
+                container.Resolve<ContentCatalog>(),
+                container.Resolve<ClassSelectRoster>());
 
             GameObject prefab = container.Resolve<CharacterLookBook>().For(characterId).Body;
 

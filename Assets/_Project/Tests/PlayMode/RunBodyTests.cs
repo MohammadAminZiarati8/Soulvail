@@ -79,8 +79,12 @@ public sealed class RunBodyTests
         LogAssert.NoUnexpectedReceived();
     }
 
+    /// <summary>
+    /// A direct Play wears the first class class select shows — the Ranger since RS-05c rule 4, while
+    /// the catalog's first is still the Oathbound, hidden rather than removed.
+    /// </summary>
     [UnityTest]
-    public IEnumerator Run_ADirectPlayWearsTheFirstClassesBody()
+    public IEnumerator Run_ADirectPlayWearsTheFirstShownClassesBody()
     {
         // A root left by an earlier fixture is cleared of any run it was about to start, so this is
         // the Run scene opened with nothing pending — pressing Play with Run.unity open.
@@ -97,11 +101,16 @@ public sealed class RunBodyTests
 
         yield return LoadTheRun();
 
-        ContentCatalog catalog = LifetimeScope.Find<BootScope>().Container.Resolve<ContentCatalog>();
+        IObjectResolver boot = LifetimeScope.Find<BootScope>().Container;
+        ContentCatalog catalog = boot.Resolve<ContentCatalog>();
 
         Assert.That(catalog.Characters[0].Id, Is.EqualTo(Oathbound), "The catalog's first class is the Oathbound.");
+        Assert.That(
+            boot.Resolve<ClassSelectRoster>().ShownFrom(catalog)[0].Id.Value,
+            Is.EqualTo(RangerId),
+            "Class select's first class is the Ranger.");
 
-        AssertTheRunWearsTheKnight(Oathbound);
+        AssertTheRunWears(new ContentId(RangerId), "Ranger", "AC_Ranger", typeof(RangerAnimatorView));
 
         LogAssert.NoUnexpectedReceived();
     }

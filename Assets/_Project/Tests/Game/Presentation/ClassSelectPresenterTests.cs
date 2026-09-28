@@ -176,6 +176,63 @@ public sealed class ClassSelectPresenterTests
     /// <c>EnemyViews.WarnAboutCapacityOnce</c>'s rule, and the reason it is not a throw is blunter
     /// here than there: a menu that refused to open would be a build nobody could play.
     /// </remarks>
+    // ---- RS-05c: the roster, and a row centred on it ---------------------------------------------
+
+    [Test]
+    public void Select_ShowsTheRosterAloneAndCentresIt()
+    {
+        BuildScreen(
+            catalog: ShippedCatalog(),
+            roster: new ClassSelectRoster(new[] { new ContentId("character.ranger") }));
+
+        IReadOnlyList<ClassCard> cards = Cards();
+        float[] authored = AuthoredX(cards);
+
+        _presenter.Open();
+
+        Assert.That(cards[0].IsShown, Is.True);
+        Assert.That(cards[0].CharacterId.Value, Is.EqualTo("character.ranger"), "the roster's class is not the one drawn.");
+
+        for (int i = 1; i < cards.Count; i++)
+        {
+            Assert.That(cards[i].IsShown, Is.False, $"card {i} was drawn for a class the roster hides.");
+        }
+
+        // Rule 2: in the middle of the authored row, not alone at its left edge.
+        float centre = (authored[0] + authored[cards.Count - 1]) * 0.5f;
+
+        Assert.That(X(cards[0]), Is.EqualTo(centre).Within(1e-3f));
+    }
+
+    [Test]
+    public void Select_EveryCardShownSitsWhereAuthored()
+    {
+        // Rule 2's other end, and rule 1's default: no roster shows every class, and four classes
+        // on four cards put each exactly where the prefab has it — after a narrower draw too.
+        BuildScreen(
+            catalog: ShippedCatalog(),
+            roster: new ClassSelectRoster(new[] { new ContentId("character.ranger"), new ContentId("character.oathbound") }));
+
+        IReadOnlyList<ClassCard> cards = Cards();
+        float[] authored = AuthoredX(cards);
+
+        _presenter.Open();
+
+        Assert.That(cards[0].CharacterId.Value, Is.EqualTo("character.ranger"), "the roster's order was not kept.");
+        Assert.That(cards[1].CharacterId.Value, Is.EqualTo("character.oathbound"));
+        Assert.That(X(cards[0]), Is.Not.EqualTo(authored[0]).Within(1e-3f), "two cards were not centred.");
+
+        _presenter.Close();
+        _presenter.Construct(_pending, ShippedCatalog(), _loader, Passthrough(), _profiles);
+        _presenter.Open();
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            Assert.That(cards[i].IsShown, Is.True, $"card {i} was hidden with no roster.");
+            Assert.That(X(cards[i]), Is.EqualTo(authored[i]).Within(1e-3f), $"card {i} moved off its authored place.");
+        }
+    }
+
     [Test]
     public void Select_MoreClassesThanCardsWarnsOnce()
     {
@@ -1256,7 +1313,8 @@ public sealed class ClassSelectPresenterTests
         ILocalizer localizer = null,
         PendingRun pending = null,
         SceneLoader loader = null,
-        PlayerProfile? profile = null)
+        PlayerProfile? profile = null,
+        ClassSelectRoster roster = null)
     {
         LoadScreen();
 
@@ -1275,7 +1333,8 @@ public sealed class ClassSelectPresenterTests
             catalog ?? Catalog(),
             loader ?? _loader,
             localizer ?? Passthrough(),
-            _profiles);
+            _profiles,
+            roster);
     }
 
     private void LoadScreen()
@@ -1393,6 +1452,22 @@ public sealed class ClassSelectPresenterTests
 
     private IReadOnlyList<ClassCard> Cards() =>
         (ClassCard[])typeof(ClassSelectPresenter).GetField("_cards", Private).GetValue(_presenter);
+
+    /// <summary>A card's x in the row, which is what RS-05c's centring moves.</summary>
+    private static float X(ClassCard card) => ((RectTransform)card.transform).anchoredPosition.x;
+
+    /// <summary>Every card's x before anything is drawn — the prefab's own row.</summary>
+    private static float[] AuthoredX(IReadOnlyList<ClassCard> cards)
+    {
+        var x = new float[cards.Count];
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            x[i] = X(cards[i]);
+        }
+
+        return x;
+    }
 
     /// <summary>
     /// A copy of the live array, so a before-and-after comparison compares the cards rather than the

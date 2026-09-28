@@ -55,6 +55,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
     private readonly PendingRun _pending;
     private readonly ContentCatalog _catalog;
+    private readonly ClassSelectRoster _classSelect;
 
     /// <summary>
     /// The run's generator, held for one reason: <see cref="Start"/> has to state the seed in the
@@ -175,8 +176,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
         SkillSlotInput skillSlots,
-        ConeOverlapQuery cone)
+        ConeOverlapQuery cone,
+        ClassSelectRoster classSelect = null)
     {
+        // Optional and last, for the fixtures that build a ticker by hand: RunCharacter's fallback
+        // reads it, and none means the catalog's first class (RS-05c rule 4).
+        _classSelect = classSelect;
+
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -281,7 +287,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // 3): the pending run's class, or the catalog's first on a direct Play.
         _session.Start(new RunConfig(
             modeId,
-            RunCharacter.Choose(_pending, _catalog),
+            RunCharacter.Choose(_pending, _catalog, _classSelect),
             _random.Seed,
             restore?.StageIndex ?? mode.StartingStage,
             _spawnPlan,

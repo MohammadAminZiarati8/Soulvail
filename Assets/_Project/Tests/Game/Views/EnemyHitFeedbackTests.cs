@@ -42,6 +42,8 @@ public sealed class EnemyHitFeedbackTests
 
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
+    private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
     /// <summary>The Husk's shipped tint — <c>Husk.asset</c>, and <c>M_BoneGrey</c>'s own colour.</summary>
     private static readonly Color HuskTint = new Color(0.43137255f, 0.41568628f, 0.3882353f, 1f);
 
@@ -262,9 +264,9 @@ public sealed class EnemyHitFeedbackTests
 
         Tick(0.3f);
 
-        // The snap back, and the colour never moved: the telegraph is deliberately not a red one,
-        // because saturated red-orange is reserved for danger (GD §16.4) — the same ruling that put
-        // EnemyDying where it is.
+        // The snap back, and the base colour never moved: the telegraph's red-orange is emission's
+        // (M7-05h, the Glow rows below), and only a material with emission on shows it. The tint
+        // stays the archetype's — the same ruling that put EnemyDying where it is.
         Assert.That(_body.transform.localScale, Is.EqualTo(rest));
         AssertColour(tinted, Painted());
     }
@@ -426,6 +428,99 @@ public sealed class EnemyHitFeedbackTests
         AssertColour(HuskTint, Painted());
     }
 
+    // ---- The glow (M7-05h rule 6) ---------------------------------------------------------------
+
+    [Test]
+    public void Glow_RestsAtBlack()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        AssertColour(Glowing(), Color.black, "A body at rest emits nothing.");
+    }
+
+    [Test]
+    public void Glow_FlashIsWhite()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        Damage(0.8f);
+
+        AssertColour(Glowing(), Palette.HitFlash,
+            "White through emission, which is how a textured body flashes at all — its texture times " +
+            "a white base colour is only its texture.");
+
+        Tick(1f);
+
+        AssertColour(Glowing(), Color.black, "And back to black when the flash ends.");
+    }
+
+    [Test]
+    public void Glow_WindUpRisesToDangerAndDropsAtTheStrike()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+        float glow = (float)typeof(EnemyHitFeedback).GetField("_telegraphGlow", Private).GetValue(_feedback);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.2f);
+
+        Color halfway = Palette.Danger * (glow * 0.5f);
+        halfway.a = 1f;
+
+        AssertColour(Glowing(), halfway, "Halfway through the wind-up, half the glow, in danger's colour (GD §16.4).");
+
+        Tick(0.3f);
+
+        AssertColour(Glowing(), Color.black, "It drops with the swell: the release is the strike.");
+    }
+
+    [Test]
+    public void Glow_AFlashDuringAWindUpReturnsToTheGlow()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.1f);
+        Damage(0.8f);
+        Tick(0.02f);
+
+        AssertColour(Glowing(), Palette.HitFlash, "The flash wins while it lasts.");
+
+        Tick(0.1f);
+
+        Assert.That(Glowing().r, Is.GreaterThan(0f), "Then the wind-up's glow comes back, not black.");
+        Assert.That(Glowing().r, Is.GreaterThan(Glowing().b), "In danger's red-orange.");
+    }
+
+    [Test]
+    public void Glow_ResetAndDeathWriteBlack()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.2f);
+        _feedback.ResetVisuals();
+
+        AssertColour(Glowing(), Color.black, "A pooled body forgets its glow (AR §18.4).");
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.2f);
+        _hub.Publish(new EnemyDied(Id, Bloater, System.Numerics.Vector3.Zero));
+
+        AssertColour(Glowing(), Color.black, "A corpse does not glow.");
+    }
+
+    [Test]
+    public void Glow_TheBaseColourIsUntouched()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.2f);
+
+        AssertColour(Painted(), HuskTint,
+            "The glow is emission's alone, so a material with emission off — every capsule — looks as it did.");
+    }
+
     [Test]
     public void Construct_RejectsANullHub()
     {
@@ -446,6 +541,15 @@ public sealed class EnemyHitFeedbackTests
     }
 
     // ---- Fixture helpers ------------------------------------------------------------------------
+
+    private Color Glowing()
+    {
+        var block = new MaterialPropertyBlock();
+
+        _renderer.GetPropertyBlock(block);
+
+        return block.GetColor(EmissionColorId);
+    }
 
     private void Damage(float hpFraction) =>
         _hub.Publish(new EnemyDamaged(Id, 5f, hpFraction, killed: false));

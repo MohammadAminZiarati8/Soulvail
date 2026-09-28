@@ -436,3 +436,7 @@ MonoBehaviour:
   - _key: character.ranger.description
     _text: 'An archer. The bow stays down while you run and comes up the moment you
       stop: pick your ground, plant your feet, and loose.'
+  - _key: enemy.rootling.name
+    _text: Rootling
+  - _key: mode.jungle.name
+    _text: Jungle

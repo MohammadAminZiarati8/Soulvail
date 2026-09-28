@@ -388,6 +388,24 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void EveryShippedMode_HasTheVeilrotMeterOff()
+    {
+        // RS-05b rule 3: the owner's ruling of 2026-09-28. Switched off, not removed — this row is
+        // the one to change when it comes back on.
+        string[] guids = AssetDatabase.FindAssets($"t:{nameof(ModeDefinition)}");
+
+        Assert.That(guids, Is.Not.Empty, "The project ships at least Descent.");
+
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            ModeSpec spec = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path).ToSpec();
+
+            Assert.That(spec.HasVeilrot, Is.False, $"{path} has the Veilrot meter on.");
+        }
+    }
+
+    [Test]
     public void AllModeDefinitions_ValidUniqueIds()
     {
         string[] guids = AssetDatabase.FindAssets($"t:{nameof(ModeDefinition)}");

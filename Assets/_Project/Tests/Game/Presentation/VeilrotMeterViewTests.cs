@@ -71,11 +71,15 @@ public sealed class VeilrotMeterViewTests
     private HudPresenter _presenter;
     private VeilrotMeterView _meter;
 
+    /// <summary>Whether the fixture's mode has the meter. On, but for the RS-05b rows.</summary>
+    private bool _hasVeilrot;
+
     private readonly List<GameObject> _spawned = new List<GameObject>();
 
     [SetUp]
     public void CreateWorld()
     {
+        _hasVeilrot = true;
         _hub = new DomainEventHub();
         _random = new FixedRandom(11, Alternating(8_192));
         _clock = new FixedClock(Instant);
@@ -594,6 +598,31 @@ public sealed class VeilrotMeterViewTests
             Throws.Nothing);
     }
 
+    // ---- RS-05b rule 1: a run without the meter does not draw it ------------------------------------
+
+    [Test]
+    public void Hud_HidesTheMeterInARunWithoutIt()
+    {
+        _hasVeilrot = false;
+
+        BuildHud();
+
+        Assert.That(_meter.gameObject.activeSelf, Is.False, "the meter was drawn in a run without it.");
+        Assert.That(Label("_veilrotLabel").gameObject.activeSelf, Is.False, "its caption was drawn.");
+        Assert.That(ClaimedLabel().gameObject.activeSelf, Is.False);
+        Assert.That(EssenceText().gameObject.activeSelf, Is.True, "the Essence counter went with it.");
+    }
+
+    [Test]
+    public void Hud_ShowsTheMeterInARunWithIt()
+    {
+        BuildHud();
+
+        Assert.That(_meter.gameObject.activeSelf, Is.True);
+        Assert.That(Label("_veilrotLabel").gameObject.activeSelf, Is.True);
+        Assert.That(ClaimedLabel().gameObject.activeSelf, Is.False, "the Claiming's word before a Claiming.");
+    }
+
     [Test]
     public void Hud_DropsItsEconomySubscriptions()
     {
@@ -663,7 +692,7 @@ public sealed class VeilrotMeterViewTests
 
     private void CreateRun()
     {
-        var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Mode() });
+        var catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { Mode(_hasVeilrot) });
 
         _session = new RunSession(
             catalog,
@@ -805,7 +834,7 @@ public sealed class VeilrotMeterViewTests
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
-    private static ModeSpec Mode()
+    private static ModeSpec Mode(bool hasVeilrot = true)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -824,7 +853,8 @@ public sealed class VeilrotMeterViewTests
             scaling,
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ArenaEntry(new ContentId("arena.pillars")) });
+            new[] { new ArenaEntry(new ContentId("arena.pillars")) },
+            hasVeilrot: hasVeilrot);
     }
 
     private static float[] Alternating(int count)

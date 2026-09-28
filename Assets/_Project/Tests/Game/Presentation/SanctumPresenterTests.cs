@@ -100,9 +100,13 @@ public sealed class SanctumPresenterTests
     private GameObject _screen;
     private SanctumPresenter _presenter;
 
+    /// <summary>Whether the fixture's mode has the meter. On, but for the RS-05b rows.</summary>
+    private bool _hasVeilrot;
+
     [SetUp]
     public void CreateWorld()
     {
+        _hasVeilrot = true;
         _hub = new DomainEventHub();
         _spy = new RecordingEvents();
         _random = new FixedRandom(7, Enumerable.Range(0, 8_192).Select(i => i % 2 == 0 ? 0.25f : 0.75f).ToArray());
@@ -238,6 +242,29 @@ public sealed class SanctumPresenterTests
 
         Assert.That(Row("_cleanse").IsAffordable, Is.False);
         Assert.That(Detail(Row("_cleanse")), Is.EqualTo("ui.sanctum.refused.clean"));
+    }
+
+    [Test]
+    public void Sanctum_ARunWithoutTheMeterHasNoCleanseRow()
+    {
+        // RS-05b rule 2: hidden rather than refused — there is no Veilrot in this run to name.
+        _hasVeilrot = false;
+
+        EnterSanctum(essence: 500, hp: Hurt, veilrot: 0f);
+
+        Assert.That(Row("_cleanse").gameObject.activeSelf, Is.False, "a run without the meter was offered a Cleanse.");
+        Assert.That(Row("_reroll").gameObject.activeSelf, Is.True);
+        Assert.That(Row("_heal").gameObject.activeSelf, Is.True);
+        Assert.That(Row("_heal").IsAffordable, Is.True, "the other rows stopped working with it.");
+    }
+
+    [Test]
+    public void Sanctum_ARunWithTheMeterKeepsTheCleanseRow()
+    {
+        EnterSanctum(essence: 500, hp: Hurt);
+
+        Assert.That(Row("_cleanse").gameObject.activeSelf, Is.True);
+        Assert.That(Row("_cleanse").IsAffordable, Is.True);
     }
 
     [Test]
@@ -848,7 +875,7 @@ public sealed class SanctumPresenterTests
         _catalog = new ContentCatalog(
             new[] { Oathbound() },
             new[] { Husk() },
-            new[] { Mode() },
+            new[] { Mode(_hasVeilrot) },
             TreeSkills(),
             new[] { Tree() });
 
@@ -1031,7 +1058,7 @@ public sealed class SanctumPresenterTests
     /// A stage of exactly one Husk, Descent's shop, and no Essence paid on the clear — so the balance
     /// a row is priced against is exactly the one the snapshot restored.
     /// </summary>
-    private static ModeSpec Mode() => new ModeSpec(
+    private static ModeSpec Mode(bool hasVeilrot = true) => new ModeSpec(
         new ContentId(ModeId),
         new LocKey("mode.test.name"),
         1,
@@ -1047,7 +1074,8 @@ public sealed class SanctumPresenterTests
         new XpCurve(20f, 12f, 1.4f),
         new[] { new RosterEntry(new ContentId(HuskId), 1) },
         overflow: new OverflowSpec(0.02f, 0.02f),
-        sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
+        sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f),
+        hasVeilrot: hasVeilrot);
 
     /// <summary>Publishes into the run's hub and into a recorder — <c>SplashPresenterTests</c>' fake.</summary>
     private sealed class ForkedEvents : IDomainEvents

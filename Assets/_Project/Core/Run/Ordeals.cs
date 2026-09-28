@@ -48,7 +48,10 @@ public sealed class Ordeals
 
     private readonly ReadOnlyCollection<ContentId> _appliedView;
 
-    /// <summary>How many pool positions a mode without Veilrot set aside at construction (RS-05a rule 4).</summary>
+    /// <summary>
+    /// How many pool positions a mode without Veilrot or without the Sanctum set aside at construction
+    /// (RS-05a rule 4, RS-05d rule 4).
+    /// </summary>
     private readonly int _excluded;
 
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
@@ -63,18 +66,19 @@ public sealed class Ordeals
         _order = new List<int>(pool);
         _applied = new List<ContentId>(pool);
 
-        // **A mode without the meter never deals an Ordeal that multiplies it** (RS-05a rule 4):
-        // Hunger would be a card that changes nothing. Set aside as if already gone, so the deal,
-        // Remaining and Restore all skip it with no branch of their own, and nothing is applied.
-        if (!mode.HasVeilrot)
+        // **A mode without the meter never deals an Ordeal that multiplies it** (RS-05a rule 4), and
+        // **a mode without the Sanctum never deals one that changes Essence** (RS-05d rule 4): Hunger
+        // and Famine would be cards that change nothing a player can use. Set aside as if already
+        // gone, so the deal, Remaining and Restore all skip them with no branch of their own.
+        for (int i = 0; i < pool; i++)
         {
-            for (int i = 0; i < pool; i++)
+            OrdealSpec ordeal = mode.Ordeals[i];
+
+            if ((!mode.HasVeilrot && ordeal.VeilrotMultiplier != 1f)
+                || (!mode.HasSanctum && ordeal.EssenceMultiplier != 1f))
             {
-                if (mode.Ordeals[i].VeilrotMultiplier != 1f)
-                {
-                    _dealt[i] = true;
-                    _excluded++;
-                }
+                _dealt[i] = true;
+                _excluded++;
             }
         }
 

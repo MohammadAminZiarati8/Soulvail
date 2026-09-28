@@ -405,7 +405,17 @@ public sealed class StageFlow
                 // stage the mode says does not exist, and the session ends the run on the flag.
                 if (!IsModeComplete && PhaseElapsed >= ClearTime)
                 {
-                    EnterSanctum(now);
+                    // **A mode without the Sanctum opens the door straight after the clear beat**
+                    // (RS-05d rule 2): the phase is skipped, never entered, so nothing waits on a
+                    // LeaveSanctum no screen will send and no SanctumOpened is published.
+                    if (_mode.HasSanctum)
+                    {
+                        EnterSanctum(now);
+                    }
+                    else
+                    {
+                        EnterGate(now);
+                    }
                 }
 
                 break;

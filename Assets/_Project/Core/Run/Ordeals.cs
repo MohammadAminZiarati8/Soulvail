@@ -48,6 +48,9 @@ public sealed class Ordeals
 
     private readonly ReadOnlyCollection<ContentId> _appliedView;
 
+    /// <summary>How many pool positions a mode without Veilrot set aside at construction (RS-05a rule 4).</summary>
+    private readonly int _excluded;
+
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public Ordeals(ModeSpec mode, IDomainEvents events)
     {
@@ -60,6 +63,21 @@ public sealed class Ordeals
         _order = new List<int>(pool);
         _applied = new List<ContentId>(pool);
 
+        // **A mode without the meter never deals an Ordeal that multiplies it** (RS-05a rule 4):
+        // Hunger would be a card that changes nothing. Set aside as if already gone, so the deal,
+        // Remaining and Restore all skip it with no branch of their own, and nothing is applied.
+        if (!mode.HasVeilrot)
+        {
+            for (int i = 0; i < pool; i++)
+            {
+                if (mode.Ordeals[i].VeilrotMultiplier != 1f)
+                {
+                    _dealt[i] = true;
+                    _excluded++;
+                }
+            }
+        }
+
         // Wrapped once, here, so Applied allocates nothing and cannot be cast back and written to.
         _appliedView = _applied.AsReadOnly();
 
@@ -70,7 +88,7 @@ public sealed class Ordeals
     public IReadOnlyList<ContentId> Applied => _appliedView;
 
     /// <summary>How many are still in the pool. Zero is ordinary and means the run is done (rule 4).</summary>
-    public int Remaining => _dealt.Length - _order.Count;
+    public int Remaining => _dealt.Length - _order.Count - _excluded;
 
     /// <summary>Product of every dealt Ordeal's. 1 for a run with none — rule 3.</summary>
     public float EssenceMultiplier { get; private set; }

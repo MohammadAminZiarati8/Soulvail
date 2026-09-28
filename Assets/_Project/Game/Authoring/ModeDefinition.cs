@@ -100,6 +100,12 @@ namespace Soulvail.Game.Authoring
                  "shipped mode by content validation.")]
         [SerializeField] private OrdealsBlock _ordeals = new OrdealsBlock();
 
+        [Tooltip("Whether a run of this mode has GD §10's Veilrot meter. Off: no Pact is offered, " +
+                 "the meter never fills and is not drawn, the Sanctum sells no Cleanse, and no " +
+                 "Ordeal that multiplies Veilrot is dealt. Switched off in every shipped mode on " +
+                 "2026-09-28 (RS-05a).")]
+        [SerializeField] private bool _hasVeilrot = true;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -136,7 +142,8 @@ namespace Soulvail.Game.Authoring
                     BuildEssence(),
                     BuildSanctum(),
                     BuildOrdealSchedule(),
-                    BuildOrdeals());
+                    BuildOrdeals(),
+                    _hasVeilrot);
             }
             catch (ArgumentException inner)
             {

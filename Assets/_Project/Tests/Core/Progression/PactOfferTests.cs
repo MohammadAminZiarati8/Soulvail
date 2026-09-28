@@ -360,6 +360,35 @@ public sealed class PactOfferTests
     }
 
     [Test]
+    public void Flow_OffersNoPactWithTheMeterOff()
+    {
+        // RS-05a rule 3: the roll that puts a Pact on card 1 with the meter on (the row above)…
+        _veilrot = new Veilrot(_stats, _combat, _combat.Blackboard, _events, isOn: false);
+        SkillTree tree = Wide(4, pacted: true);
+        LevelUpFlow flow = Flow(tree);
+        BankPicks(1);
+
+        var random = new CountingRandom(new FixedRandom(RollsCardOne));
+        flow.Open(random.Offers);
+
+        Assert.That(flow.PactIndex, Is.EqualTo(-1), "a run with the meter off was offered a Pact.");
+        Assert.That(_recorded.Single<OfferPresented>().PactIndex, Is.EqualTo(-1));
+        Assert.That(
+            random.OffersDraws,
+            Is.EqualTo(5),
+            "…must still spend the roll's two draws, or a seed deals different cards with the meter off.");
+
+        // …and card 1 taken is the clean node, for nothing.
+        ContentId id = flow.Offer[1];
+        flow.Choose(1, new FixedRandom().Offers);
+
+        Assert.That(tree.IsPact(id), Is.False);
+        Assert.That(Damage, Is.EqualTo(WeaponDamage * (1f + CleanDamage)).Within(1e-4f));
+        Assert.That(_veilrot.Value, Is.Zero);
+        Assert.That(_recorded.Count<VeilrotChanged>(), Is.Zero);
+    }
+
+    [Test]
     public void Flow_TheMeterMovesAfterTheNodeIsOwned()
     {
         SkillTree tree = Wide(4, pacted: true);

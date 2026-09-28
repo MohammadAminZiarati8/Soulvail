@@ -697,6 +697,47 @@ public sealed class OrdealsTests
         }
     }
 
+    // ---- A mode without the meter (RS-05a rule 4) ------------------------------------------------
+
+    [Test]
+    public void NoVeil_NeverDealsAnOrdealThatMultipliesIt()
+    {
+        var ordeals = new Ordeals(Mode(Descent, FourOrdeals(), hasVeilrot: false), _events);
+
+        Assert.That(ordeals.Remaining, Is.EqualTo(3), "Hunger is still counted as dealable.");
+
+        EnterStages(ordeals, Counting(), 2, 75);
+
+        Assert.That(ordeals.Applied, Has.Count.EqualTo(3), "the three others were not all dealt.");
+        Assert.That(ordeals.Applied, Has.No.Member(new ContentId("ordeal.hunger")));
+        Assert.That(ordeals.Remaining, Is.Zero);
+        Assert.That(ordeals.VeilrotMultiplier, Is.EqualTo(1f));
+        Assert.That(_events.Count<OrdealApplied>(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void NoVeil_ARestoreSkipsItToo()
+    {
+        // A run saved holding Hunger while its mode had the meter, resumed after it was switched off.
+        OrdealSpec[] pool = FourOrdeals();
+        Ordeals ordeals = Restored(Mode(Descent, pool, hasVeilrot: false), pool[3].Id, pool[0].Id);
+
+        Assert.That(ordeals.Applied, Is.EqualTo(new[] { pool[0].Id }));
+        Assert.That(ordeals.VeilrotMultiplier, Is.EqualTo(1f));
+        Assert.That(ordeals.EssenceMultiplier, Is.EqualTo(0.6f));
+    }
+
+    [Test]
+    public void WithTheVeil_HungerIsStillDealt()
+    {
+        // The default: a mode that never mentions the meter has it, and deals all four.
+        var ordeals = new Ordeals(Mode(Descent, FourOrdeals()), _events);
+
+        EnterStages(ordeals, Counting(), 2, 55);
+
+        Assert.That(ordeals.Applied, Has.Member(new ContentId("ordeal.hunger")));
+    }
+
     // ---- Allocation (rule 8) ---------------------------------------------------------------------
 
     [Test]
@@ -758,7 +799,7 @@ public sealed class OrdealsTests
     };
 
     /// <summary>A mode of one Husk a stage, EssenceWalletTests' shape, with the Ordeal block given.</summary>
-    private static ModeSpec Mode(OrdealScheduleSpec schedule, IReadOnlyList<OrdealSpec> pool)
+    private static ModeSpec Mode(OrdealScheduleSpec schedule, IReadOnlyList<OrdealSpec> pool, bool hasVeilrot = true)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(HuskCost, 0f, 0f),
@@ -778,7 +819,8 @@ public sealed class OrdealsTests
             Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             ordealSchedule: schedule,
-            ordeals: pool);
+            ordeals: pool,
+            hasVeilrot: hasVeilrot);
     }
 
     private static ContentCatalog Catalog(ModeSpec mode) => new ContentCatalog(
@@ -838,9 +880,12 @@ public sealed class OrdealsTests
     }
 
     /// <summary>A set over <paramref name="pool"/>, restored holding <paramref name="ids"/>.</summary>
-    private Ordeals Restored(OrdealSpec[] pool, params ContentId[] ids)
+    private Ordeals Restored(OrdealSpec[] pool, params ContentId[] ids) => Restored(Mode(Descent, pool), ids);
+
+    /// <summary>A set over <paramref name="mode"/>'s pool, restored holding <paramref name="ids"/>.</summary>
+    private Ordeals Restored(ModeSpec mode, params ContentId[] ids)
     {
-        var ordeals = new Ordeals(Mode(Descent, pool), _events);
+        var ordeals = new Ordeals(mode, _events);
 
         MethodInfo restore = typeof(Ordeals).GetMethod("Restore", BindingFlags.Instance | BindingFlags.NonPublic);
 

@@ -846,6 +846,12 @@ public sealed class RunState
     public float Veilrot => Rot.Value;
 
     /// <summary>
+    /// Whether this run has the meter at all — its mode's <c>HasVeilrot</c>. A HUD and a Sanctum
+    /// hide what they would draw of it when it is off (RS-05b).
+    /// </summary>
+    public bool HasVeilrot => Rot.IsOn;
+
+    /// <summary>
     /// Whether GD §10.2's last row has closed. True for the rest of the run once it has.
     /// </summary>
     /// <remarks>

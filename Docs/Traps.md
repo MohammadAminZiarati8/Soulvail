@@ -493,6 +493,22 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   outside the obstacle, or with `CalculatePath` from the player start (`PathPartial`), never with a
   point sample.** And compute a prefab asset's collider bounds from `BoxCollider.center`/`size` and
   the transform: `Collider.bounds` is zero-size on an object outside a physics scene (M7-05a).
+- **URP switches `_EMISSION` off on a material whose GI flags carry no emissive bit, and says
+  nothing.** Its `BaseShaderGUI.SetMaterialKeywords` runs on every material import and whenever the
+  material is opened in the Inspector, and keeps the keyword only while
+  `globalIlluminationFlags & AnyEmissive` is set. A material meant to glow through a property block
+  rests at black emission, and at black **both `EmissiveIsBlack` and `None` lose the keyword** — the
+  first reimport of `M_Enemy` did exactly that to `EnableKeyword("_EMISSION")`, while the file on
+  disk still listed it. `IsKeywordEnabled` read true in the command that set it and false in the next.
+  **Use `RealtimeEmissive`**; with no realtime GI in the project it costs nothing, and
+  `MaterialEditor.FixupEmissiveFlag` leaves it alone at black (M7-05f).
+- **Blender's FBX exporter ids every node with Python's `hash()`, which is seeded afresh per
+  process.** A re-run of a generating script therefore rewrites a skinned FBX in about a thousand
+  bytes — every `Model`, `NodeAttribute` and `Geometry` id and each connection that names one —
+  with every vertex, weight and name the same, and `git status` shows it changed. **Start Blender
+  with `PYTHONHASHSEED=0`** and a re-run differs only in the header's timestamp. `rootling.py`
+  refuses to run without it. `jungle_kit.py`'s rigless pieces differed in 38–39 bytes at M7-05b,
+  and whether ids were among them was not checked (M7-05f).
 
 ---
 

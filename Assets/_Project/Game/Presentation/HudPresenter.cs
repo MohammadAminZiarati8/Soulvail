@@ -273,6 +273,12 @@ namespace Soulvail.Game.Presentation
         /// <summary>Whether the Claiming has begun — <c>RunState.IsClaimed</c>'s latch, mirrored.</summary>
         private bool _isClaimed;
 
+        /// <summary>
+        /// Whether the run has the meter at all — <c>RunState.HasVeilrot</c>, mirrored. Off, the meter
+        /// and its two words are not drawn (RS-05b rule 1).
+        /// </summary>
+        private bool _hasVeilrot = true;
+
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
 
@@ -759,17 +765,29 @@ namespace Soulvail.Game.Presentation
         {
             if (_meter != null)
             {
+                SetShown(_meter.gameObject, _hasVeilrot);
                 _meter.Set(_veilrot, _isClaimed);
+            }
+
+            if (_veilrotLabel != null)
+            {
+                SetShown(_veilrotLabel.gameObject, _hasVeilrot);
             }
 
             if (_claimedLabel != null)
             {
                 _claimedLabel.color = Palette.Veilrot;
 
-                if (_claimedLabel.gameObject.activeSelf != _isClaimed)
-                {
-                    _claimedLabel.gameObject.SetActive(_isClaimed);
-                }
+                SetShown(_claimedLabel.gameObject, _hasVeilrot && _isClaimed);
+            }
+        }
+
+        /// <summary>Shows or hides <paramref name="target"/>, touching it only when that changes.</summary>
+        private static void SetShown(GameObject target, bool shown)
+        {
+            if (target.activeSelf != shown)
+            {
+                target.SetActive(shown);
             }
         }
 
@@ -847,6 +865,7 @@ namespace Soulvail.Game.Presentation
             // the only way a resumed run's 317 Essence and 78 Veilrot ever reach the screen.
             _veilrot = state.Veilrot;
             _isClaimed = state.IsClaimed;
+            _hasVeilrot = state.HasVeilrot;
 
             WriteEssence(state.Essence);
             WriteMeter();

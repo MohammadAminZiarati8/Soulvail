@@ -383,7 +383,21 @@ namespace Soulvail.Game.Presentation
             DrawRow(_reroll, SanctumService.Reroll, balance);
             DrawRow(_banish, SanctumService.Banish, balance);
             DrawRow(_heal, SanctumService.Heal, balance);
-            DrawRow(_cleanse, SanctumService.Cleanse, balance);
+
+            // **A run without the meter has nothing to cleanse, so the row is not drawn** (RS-05b
+            // rule 2) — hidden rather than refused, because a refusal names a reason and there is
+            // no Veilrot in this run to name. It is the last row, so hiding it leaves no hole.
+            bool hasVeilrot = _session?.State?.HasVeilrot ?? true;
+
+            if (_cleanse != null && _cleanse.gameObject.activeSelf != hasVeilrot)
+            {
+                _cleanse.gameObject.SetActive(hasVeilrot);
+            }
+
+            if (hasVeilrot)
+            {
+                DrawRow(_cleanse, SanctumService.Cleanse, balance);
+            }
         }
 
         private void DrawRow(ServiceRow row, SanctumService service, int balance)

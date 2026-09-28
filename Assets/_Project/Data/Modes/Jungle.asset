@@ -86,4 +86,4 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 90e7cd4d2b6328045ab7db04fc9238c4, type: 2}
     - {fileID: 11400000, guid: a77653db0e6bb5a48a9d50437d840f2c, type: 2}
     - {fileID: 11400000, guid: 57ed2632d8c128d47a7a184aba8b3295, type: 2}
-  _hasVeilrot: 1
+  _hasVeilrot: 0

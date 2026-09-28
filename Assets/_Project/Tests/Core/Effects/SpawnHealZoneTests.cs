@@ -590,7 +590,7 @@ public sealed class SpawnHealZoneTests
         Scalings.Design(),
         Scalings.Xp(),
         Array.Empty<RosterEntry>(),
-        new[] { Id(ArenaOne), Id(ArenaTwo) });
+        new[] { new ArenaEntry(Id(ArenaOne)), new ArenaEntry(Id(ArenaTwo)) });
 
     /// <summary>
     /// A live run owning a Consecrate — and, for one row, a Bulwark beside it — resumed at

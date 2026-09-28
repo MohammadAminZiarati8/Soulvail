@@ -1751,7 +1751,7 @@ public sealed class SkillRunnerTests
         Scalings.Design(),
         Scalings.Xp(),
         roster,
-        new[] { Id(ArenaOne), Id(ArenaTwo) });
+        new[] { new ArenaEntry(Id(ArenaOne)), new ArenaEntry(Id(ArenaTwo)) });
 
     /// <summary>
     /// The Spitter, with no shield on the class and a bolt big enough to take the player under

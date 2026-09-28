@@ -821,7 +821,7 @@ public sealed class SplashPresenterTests
         // `Scalings` — that helper is `internal` and this fixture is in another assembly.
         new XpCurve(20f, 12f, 1.4f),
         Array.Empty<RosterEntry>(),
-        new[] { new ContentId(ArenaId) },
+        new[] { new ArenaEntry(new ContentId(ArenaId)) },
         null,
         new OverflowSpec(0.02f, 0.02f));
 

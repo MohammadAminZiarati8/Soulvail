@@ -81,11 +81,13 @@ namespace Soulvail.Game.Authoring
                  "(GD §8.2). At most one introduction per stage, and each archetype once.")]
         [SerializeField] private RosterRow[] _roster = Array.Empty<RosterRow>();
 
-        [Tooltip("The arenas this mode's stages are fought in (GD §7.2's pool of 8–12 per biome, " +
-                 "two in V1). Which one a stage uses is derived from the run's seed and the " +
-                 "depth — never drawn — so a resumed run lands in the room it left. Empty leaves " +
-                 "every stage in whatever the scene was dressed with.")]
-        [SerializeField] private string[] _arenas = Array.Empty<string>();
+        [Tooltip("The arenas this mode's stages are fought in (GD §7.2's pool of 8–12 per place), " +
+                 "each with the stages it may be used at — a small room for a place's first stages, " +
+                 "a large one after. Which open room a stage uses is derived from the run's seed and " +
+                 "the depth — never drawn — so a resumed run lands in the room it left. Every stage " +
+                 "must have a room open. Empty leaves every stage in whatever the scene was dressed " +
+                 "with.")]
+        [SerializeField] private ArenaRow[] _arenas = Array.Empty<ArenaRow>();
 
         [Tooltip("Which stages this mode holds a boss on, and which boss (GD §9). 'Every N " +
                  "Stages' = 5 means stages 5, 10, 15 and so on. The first row that matches wins, " +
@@ -327,29 +329,29 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>
-        /// Turns the authored arena ids into <see cref="ContentId"/>s, in the order authored.
+        /// Turns the authored arena rows into <see cref="ArenaEntry"/>s, in the order authored.
         /// </summary>
         /// <remarks>
         /// A null or empty array is a legal mode, for <see cref="BuildRoster"/>'s reason: a mode
         /// with no arena roster leaves every stage in whatever the scene was dressed with, which is
-        /// what every M0 and M1 grey box was. <see cref="ContentId"/>'s constructor refuses a
-        /// malformed id and <see cref="ModeSpec"/> refuses a duplicate — neither is repeated here.
+        /// what every M0 and M1 grey box was. <see cref="ArenaEntry"/>'s constructor refuses a bad
+        /// span and <see cref="ModeSpec"/> refuses a duplicate or a gap — neither is repeated here.
         /// </remarks>
-        private IReadOnlyList<ContentId> BuildArenas()
+        private IReadOnlyList<ArenaEntry> BuildArenas()
         {
             if (_arenas is null || _arenas.Length == 0)
             {
-                return Array.Empty<ContentId>();
+                return Array.Empty<ArenaEntry>();
             }
 
-            var ids = new ContentId[_arenas.Length];
+            var entries = new ArenaEntry[_arenas.Length];
 
             for (int i = 0; i < _arenas.Length; i++)
             {
-                ids[i] = new ContentId(_arenas[i]);
+                entries[i] = _arenas[i].ToEntry();
             }
 
-            return ids;
+            return entries;
         }
 
         /// <summary>
@@ -784,6 +786,35 @@ namespace Soulvail.Game.Authoring
             /// <summary>Converts this row, letting <see cref="RosterEntry"/> refuse a bad one.</summary>
             public RosterEntry ToEntry() =>
                 new RosterEntry(new ContentId(_specId), _introducedAtStage);
+        }
+
+        /// <summary>
+        /// One authored arena row: a room id and the stages it may be used at (M7-05d rule 7).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="RosterRow"/>'s shape and its reasons — a serializable struct so the id and its
+        /// span cannot get out of step, the id a <see cref="string"/> because
+        /// <see cref="ContentId"/> validates in a constructor Unity's serialiser never calls.
+        /// <b>A last stage of 0 means the room stays open to the end</b>, so a row added in the
+        /// Inspector is every stage until someone narrows it.
+        /// </remarks>
+        [Serializable]
+        private struct ArenaRow
+        {
+            [SerializeField] private string _arenaId;
+
+            [Tooltip("The first stage this room may be used at. 1 = from the first stage.")]
+            [SerializeField, Min(1)] private int _firstStage;
+
+            [Tooltip("The last stage this room may be used at. 0 = open to the end of the mode.")]
+            [SerializeField, Min(0)] private int _lastStage;
+
+            /// <summary>Converts this row, letting <see cref="ArenaEntry"/> refuse a bad one.</summary>
+            public ArenaEntry ToEntry() =>
+                new ArenaEntry(
+                    new ContentId(_arenaId),
+                    _firstStage,
+                    _lastStage == 0 ? ArenaEntry.NoLastStage : _lastStage);
         }
 
         /// <summary>

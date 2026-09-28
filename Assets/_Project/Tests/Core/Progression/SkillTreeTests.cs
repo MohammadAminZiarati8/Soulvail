@@ -1183,7 +1183,7 @@ public sealed class SkillTreeTests
         Scalings.Design(),
         Scalings.Xp(),
         new[] { new RosterEntry(Id(HuskId), 1) },
-        new[] { Id(ArenaId) });
+        new[] { new ArenaEntry(Id(ArenaId)) });
 
     /// <summary>The 27-node tree over a registry that can answer for <c>ModifyStat</c>.</summary>
     private SkillTree FullTree() => TreeOver(TreeRulesTests.FullTree(), TreeRulesTests.FullSkills());

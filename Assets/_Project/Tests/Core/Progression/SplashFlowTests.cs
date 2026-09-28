@@ -1299,7 +1299,7 @@ public sealed class SplashFlowTests
             new StatCurve(0.02f, 1.3f, 5, 0)),
         Scalings.Xp(),
         Array.Empty<RosterEntry>(),
-        new[] { new ContentId("arena.pillars") },
+        new[] { new ArenaEntry(new ContentId("arena.pillars")) },
         null,
         new OverflowSpec(0.02f, 0.02f));
 

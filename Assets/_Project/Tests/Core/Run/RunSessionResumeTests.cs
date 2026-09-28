@@ -1974,7 +1974,7 @@ public sealed class RunSessionResumeTests
             scaling,
             Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId(FirstArenaId), new ContentId(SecondArenaId) },
+            new[] { new ArenaEntry(new ContentId(FirstArenaId)), new ArenaEntry(new ContentId(SecondArenaId)) },
             bossRoster: null,
 
             // **Authored here, and it is the two Overflow rows below that need it** (M5-06b rule

@@ -824,7 +824,7 @@ public sealed class VeilrotMeterViewTests
             scaling,
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId("arena.pillars") });
+            new[] { new ArenaEntry(new ContentId("arena.pillars")) });
     }
 
     private static float[] Alternating(int count)

@@ -32,3 +32,4 @@ MonoBehaviour:
   _explosionRadius: 0
   _tint: {r: 0.43137255, g: 0.41568628, b: 0.3882353, a: 1}
   _bodyScale: 1
+  _body: {fileID: 0}

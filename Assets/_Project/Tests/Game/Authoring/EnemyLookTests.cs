@@ -206,6 +206,46 @@ public sealed class EnemyLookTests
     }
 
     [Test]
+    public void Definition_ToLook_CarriesItsBody()
+    {
+        // M7-05g rule 1: a body of its own is carried as authored, beside the tint and the scale.
+        EnemyDefinition definition = NewDefinition("Bodied");
+        var body = new GameObject("OwnBody").AddComponent<EnemyView>();
+        _created.Add(body.gameObject);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_body").objectReferenceValue = body;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(definition.ToLook().Body, Is.SameAs(body));
+    }
+
+    [Test]
+    public void Definition_ToLook_NoBodyIsTheShared()
+    {
+        // Empty is not an error: it is the shared body, which is what every archetype wore before.
+        Assert.That(NewDefinition("Unbodied").ToLook().Body == null, Is.True);
+    }
+
+    [Test]
+    public void Look_DefaultNamesNoBody()
+    {
+        // An archetype nobody authored a look for is drawn on the shared body (M2-06 rule 9).
+        Assert.That(EnemyLook.Default.Body == null, Is.True);
+    }
+
+    [Test]
+    public void Shipped_TheThreeArchetypesWearTheSharedBody()
+    {
+        // M7-05g rule 6: nothing that plays changes. The Husk, the Spitter and the Bloater stay the
+        // tinted capsule until their own bodies are made.
+        foreach (string path in new[] { HuskPath, SpitterPath, BloaterPath })
+        {
+            Assert.That(Load(path).ToLook().Body == null, Is.True, $"{path} names a body of its own.");
+        }
+    }
+
+    [Test]
     public void Husk_BlocksAreNull()
     {
         EnemySpec husk = Load(HuskPath).ToSpec();

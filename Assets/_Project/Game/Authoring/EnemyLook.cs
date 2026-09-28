@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Soulvail.Core.Content;
+using Soulvail.Game.Views;
 using UnityEngine;
 
 // File-scoped, unlike EnemyDefinition beside it: neither type here derives from
@@ -9,8 +10,9 @@ using UnityEngine;
 namespace Soulvail.Game.Authoring;
 
 /// <summary>
-/// How one archetype is told apart on screen: a tint and a scale on the one shared body. Game side
-/// only — core has no opinion about colour, and an <c>EnemySpec</c> carries neither of these.
+/// How one archetype is told apart on screen: a tint and a scale, on the shared body or on a body of
+/// its own. Game side only — core has no opinion about colour or models, and an <c>EnemySpec</c>
+/// carries none of these.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,7 +25,14 @@ namespace Soulvail.Game.Authoring;
 /// animator controllers and a pool each.
 /// </para>
 /// <para>
-/// A <c>readonly struct</c> because it is two numbers with no identity, looked up once per spawn —
+/// <b>A body of its own is the exception, and it arrived with the art (M7-05g).</b> The Rootling is
+/// the first archetype with a model of its own; it names that prefab here, and <c>EnemyViews</c>
+/// pools it apart from the shared body. The tint and the scale still apply to it, and it wears the
+/// one enemy material the atlas shares (GD §17.1), so it is still one draw.
+/// </para>
+/// <para>
+/// A <c>readonly struct</c> because it is two numbers and a reference with no identity, looked up
+/// once per spawn —
 /// the shape <c>EnemySense</c> and <c>Modifier</c> have, and for the same reason: a class would be
 /// one allocation per archetype at boot and a dereference per rental, both for nothing.
 /// </para>
@@ -59,10 +68,15 @@ public readonly struct EnemyLook
     /// reads them. The cost of a throw here is a run that ends on a cosmetic mistake, which rule 9
     /// already decided against for the missing-look case.
     /// </remarks>
-    public EnemyLook(Color tint, float bodyScale)
+    /// <param name="body">
+    /// The prefab this archetype wears, if it has one of its own. Null is not an error: it is the
+    /// shared body. Optional, so a look that names only a tint and a scale is written as it was.
+    /// </param>
+    public EnemyLook(Color tint, float bodyScale, EnemyView body = null)
     {
         Tint = tint;
         BodyScale = bodyScale;
+        Body = body;
     }
 
     /// <summary>Grey, scale 1 — what an id nobody authored a look for gets.</summary>
@@ -79,6 +93,14 @@ public readonly struct EnemyLook
 
     /// <summary>A multiple of the prefab's own scale; 1 leaves the body as authored.</summary>
     public float BodyScale { get; }
+
+    /// <summary>The body prefab this archetype wears, or null for the shared body.</summary>
+    /// <remarks>
+    /// Read with Unity's <c>==</c>, never <c>is null</c>: a prefab deleted from the project is a live
+    /// reference that only the engine's operator calls null — and such a body falls back to the
+    /// shared one rather than taking a spawn down.
+    /// </remarks>
+    public EnemyView Body { get; }
 }
 
 /// <summary>
@@ -101,6 +123,8 @@ public readonly struct EnemyLook
 public sealed class EnemyLookBook
 {
     private readonly Dictionary<ContentId, EnemyLook> _looks;
+
+    private readonly List<EnemyView> _bodies = new List<EnemyView>();
 
     /// <param name="looks">
     /// Every authored look, keyed by archetype id. Copied; the caller's dictionary is not retained,
@@ -141,8 +165,22 @@ public sealed class EnemyLookBook
             }
 
             _looks.Add(entry.Key, entry.Value);
+
+            // Once each, in the order met: two archetypes wearing one body share one pool.
+            EnemyView body = entry.Value.Body;
+
+            if (body != null && !_bodies.Contains(body))
+            {
+                _bodies.Add(body);
+            }
         }
     }
+
+    /// <summary>
+    /// Every body prefab an authored look names, each once. What <c>EnemyViews</c> builds a pool
+    /// for beside the shared body's (M7-05g rule 2).
+    /// </summary>
+    public IReadOnlyList<EnemyView> Bodies => _bodies;
 
     /// <summary>
     /// The look authored for <paramref name="specId"/>, or <see cref="EnemyLook.Default"/> for an id

@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Game.Views;
 using UnityEngine;
 
 // Block namespace, deliberately — see the note in CharacterDefinition.cs. Unity 6.3's script
@@ -107,7 +108,7 @@ namespace Soulvail.Game.Authoring
                  "Bloater (GD §8.1).")]
         [SerializeField, Min(0f)] private float _explosionRadius;
 
-        [Header("Look — one shared body, told apart by colour and size (GD §11.3)")]
+        [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
                  "system existed.")]
@@ -116,6 +117,11 @@ namespace Soulvail.Game.Authoring
         [Tooltip("A multiple of the prefab's own scale. 1 is the Husk; a Bloater is fat and a " +
                  "Spitter is slight.")]
         [SerializeField, Min(0.01f)] private float _bodyScale = 1f;
+
+        [Tooltip("The body this archetype wears, if it has one of its own — a whole enemy prefab, " +
+                 "colliders and hit feedback included, like Prefabs/Enemies/Enemy.prefab. Empty " +
+                 "wears the shared body, tinted and scaled by the two fields above (M7-05g).")]
+        [SerializeField] private EnemyView _body;
 
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
@@ -192,7 +198,8 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>
-        /// The half of this asset core never sees: what colour and size the body is drawn at.
+        /// The half of this asset core never sees: what colour and size the body is drawn at, and
+        /// which body it is.
         /// </summary>
         /// <remarks>
         /// A second conversion beside <see cref="ToSpec"/> rather than two more fields on
@@ -201,7 +208,7 @@ namespace Soulvail.Game.Authoring
         /// <see cref="EnemyLook"/>'s constructor gives: a wrong colour is wrong on screen, where a
         /// wrong number would be wrong in a rule.
         /// </remarks>
-        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale);
+        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body);
 
         /// <remarks>
         /// Only the id, and only its shape — the same bargain <c>CharacterDefinition</c> makes. A

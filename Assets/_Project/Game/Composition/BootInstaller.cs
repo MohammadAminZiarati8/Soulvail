@@ -155,6 +155,11 @@ public static class BootInstaller
     /// fixtures that build a container to resolve something else would carry a parameter that could
     /// only ever be empty.
     /// </param>
+    /// <param name="classSelect">
+    /// The classes class select shows, in order (RS-05c) — a subset of
+    /// <paramref name="characters"/>. <b>Optional and trailing, for <paramref name="bosses"/>'
+    /// reason</b>: omitted or empty shows every class, which is every build before 2026-09-28.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     /// <exception cref="ArgumentException">
     /// A definition is an empty slot, or is not valid content. Thrown from here rather than
@@ -170,7 +175,8 @@ public static class BootInstaller
         IReadOnlyList<SkillTreeDefinition> trees,
         LocalizationTable localization,
         IReadOnlyList<BossDefinition> bosses = null,
-        IReadOnlyList<LocalizationTable> languages = null)
+        IReadOnlyList<LocalizationTable> languages = null,
+        IReadOnlyList<CharacterDefinition> classSelect = null)
     {
         if (builder is null)
         {
@@ -244,6 +250,10 @@ public static class BootInstaller
         // rather than per run for that book's reason too: it is built from the boot list, which a
         // run scope never sees, and RunScope resolves it by type from here.
         builder.RegisterInstance(BuildCharacterLookBook(characters, characterSpecs));
+
+        // Which classes class select shows (RS-05c). Always registered, so everything that asks
+        // for it resolves; an omitted list is an empty roster, which shows every class.
+        builder.RegisterInstance(BuildClassSelectRoster(classSelect));
 
         // The wall clock, at the root: it is a device the whole app shares, not something a run
         // owns — the same argument as the vibrator below, and the opposite of IRandom, which is
@@ -438,6 +448,37 @@ public static class BootInstaller
         }
 
         return new CharacterLookBook(looks);
+    }
+
+    /// <summary>
+    /// BootScope's <i>Class Select</i> list as ids (RS-05c). Null or empty is an empty roster, which
+    /// shows every class.
+    /// </summary>
+    /// <exception cref="ArgumentException">A slot in the list is empty.</exception>
+    private static ClassSelectRoster BuildClassSelectRoster(IReadOnlyList<CharacterDefinition> definitions)
+    {
+        if (definitions is null)
+        {
+            return new ClassSelectRoster(Array.Empty<ContentId>());
+        }
+
+        var ids = new ContentId[definitions.Count];
+
+        for (int i = 0; i < definitions.Count; i++)
+        {
+            // Unity's operator, for Convert's reason: an empty Inspector slot is a live reference.
+            if (definitions[i] == null)
+            {
+                throw new ArgumentException(
+                    $"BootScope's Class Select list has an empty slot at {i}. Drag a class onto it "
+                        + "or remove the slot.",
+                    "classSelect");
+            }
+
+            ids[i] = new ContentId(definitions[i].Id);
+        }
+
+        return new ClassSelectRoster(ids);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Progression;
@@ -128,6 +129,13 @@ namespace Soulvail.Game.Presentation
 
         private PendingRun _pending;
         private ContentCatalog _catalog;
+        private ClassSelectRoster _roster;
+
+        /// <summary>
+        /// Each card's authored x, read once, so a screen showing fewer classes than cards can
+        /// centre them and a screen showing all of them puts each back exactly (RS-05c rule 2).
+        /// </summary>
+        private float[] _authoredX;
         private SceneLoader _loader;
         private ILocalizer _localizer;
         private ProfileStore _profile;
@@ -196,13 +204,18 @@ namespace Soulvail.Game.Presentation
             ContentCatalog catalog,
             SceneLoader loader,
             ILocalizer localizer,
-            ProfileStore profile)
+            ProfileStore profile,
+            ClassSelectRoster roster = null)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
             _profile = profile ?? throw new ArgumentNullException(nameof(profile));
+
+            // Optional, for the fixtures that build this screen by hand: none shows every class,
+            // which is what an empty roster says too (RS-05c rule 1).
+            _roster = roster;
 
             Wire(_back, Close);
         }
@@ -357,12 +370,17 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
-            int classes = _catalog.Characters.Count;
+            // **The roster's classes, not the catalog's** (RS-05c rule 1): a class left off it is
+            // hidden here and nowhere else.
+            IReadOnlyList<CharacterSpec> shown = _roster is null ? _catalog.Characters : _roster.ShownFrom(_catalog);
+            int classes = shown.Count;
 
             if (classes > _cards.Length)
             {
                 WarnAboutCapacityOnce(classes);
             }
+
+            Centre(Math.Min(classes, _cards.Length));
 
             for (int i = 0; i < _cards.Length; i++)
             {
@@ -379,7 +397,7 @@ namespace Soulvail.Game.Presentation
                     continue;
                 }
 
-                CharacterSpec spec = _catalog.Characters[i];
+                CharacterSpec spec = shown[i];
 
                 // Rule 9: a class the player may pick is drawn exactly as M5-07 drew it.
                 if (ClassUnlocks.IsUnlocked(spec.Id, profile, _catalog))
@@ -525,6 +543,52 @@ namespace Soulvail.Game.Presentation
             }
 
             return _catalog.Modes[0].Id;
+        }
+
+        /// <summary>
+        /// Lays the first <paramref name="count"/> cards out centred on the authored row, at the
+        /// authored spacing (RS-05c rule 2). With every card shown, each lands exactly where the
+        /// prefab puts it; with one, it stands in the middle rather than alone at the left edge.
+        /// </summary>
+        /// <remarks>
+        /// The spacing and the centre are read off the first and last cards, so the prefab stays
+        /// the one place the row is laid out. Only x moves.
+        /// </remarks>
+        private void Centre(int count)
+        {
+            if (_authoredX is null)
+            {
+                _authoredX = new float[_cards.Length];
+
+                for (int i = 0; i < _cards.Length; i++)
+                {
+                    _authoredX[i] = _cards[i] != null && _cards[i].transform is RectTransform authored
+                        ? authored.anchoredPosition.x
+                        : 0f;
+                }
+            }
+
+            if (count < 1 || _cards.Length < 2)
+            {
+                return;
+            }
+
+            float first = _authoredX[0];
+            float last = _authoredX[_cards.Length - 1];
+            float spacing = (last - first) / (_cards.Length - 1);
+            float centre = (first + last) * 0.5f;
+
+            for (int i = 0; i < count; i++)
+            {
+                if (_cards[i] == null || _cards[i].transform is not RectTransform rect)
+                {
+                    continue;
+                }
+
+                Vector2 at = rect.anchoredPosition;
+                at.x = centre + ((i - ((count - 1) * 0.5f)) * spacing);
+                rect.anchoredPosition = at;
+            }
         }
 
         /// <remarks>

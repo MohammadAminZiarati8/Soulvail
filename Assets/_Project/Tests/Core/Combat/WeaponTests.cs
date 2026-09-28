@@ -338,6 +338,25 @@ public sealed class WeaponTests
     }
 
     [Test]
+    public void PlayerAttacked_NamesAConeSwing()
+    {
+        var registry = new EnemyRegistry(EnemyCapacity);
+        PlayerCombat combat = Combat();
+
+        registry.Spawn(Enemy(), new Vector3(0f, 0f, 5f));
+
+        TickTo(combat, registry, Vector3.Zero, seconds: 1f);
+
+        Assert.That(_events.Count<PlayerAttacked>(), Is.GreaterThan(0), "Sanity: the Censer swung.");
+
+        // RS-06a rule 1: the wedge PlayerView draws belongs to a cone, so the swing says it is one.
+        foreach (PlayerAttacked attacked in _events.Of<PlayerAttacked>())
+        {
+            Assert.That(attacked.Kind, Is.EqualTo(WeaponKind.Cone));
+        }
+    }
+
+    [Test]
     public void PlayerCombat_NoSwing_WhenTargetBlocked()
     {
         var registry = new EnemyRegistry(EnemyCapacity);

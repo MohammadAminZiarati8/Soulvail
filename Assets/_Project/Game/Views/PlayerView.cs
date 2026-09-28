@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
@@ -309,14 +310,20 @@ namespace Soulvail.Game.Views
         }
 
         /// <remarks>
+        /// <para>
         /// The wedge is given the swing's own facing in world space rather than left to inherit the
         /// body's rotation, so what is drawn is the wedge core asked about rather than wherever the
         /// capsule has turned to since. It still rides along with the body for its tenth of a
         /// second, which at walking pace is under 5 cm.
+        /// </para>
+        /// <para>
+        /// <b>Only a cone draws it</b> (RS-06a). A projectile weapon's swing has no wedge for core to
+        /// resolve, so drawing one flashes an 8 m arc on every arrow that sweeps nothing.
+        /// </para>
         /// </remarks>
         private void OnAttacked(PlayerAttacked evt)
         {
-            if (_swingCone == null)
+            if (_swingCone == null || evt.Kind != WeaponKind.Cone)
             {
                 return;
             }

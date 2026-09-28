@@ -353,6 +353,22 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void ToSpec_CarriesWhetherTheModeHasVeilrot()
+    {
+        // RS-05a rule 1: on unless the asset says otherwise, and the asset's word reaches the spec.
+        ModeDefinition definition = NewDefinition("VeilMode");
+
+        SetString(definition, "_id", "mode.veil");
+        SetString(definition, "_nameKey", "mode.veil.name");
+
+        Assert.That(definition.ToSpec().HasVeilrot, Is.True, "a new mode has the meter.");
+
+        SetBool(definition, "_hasVeilrot", false);
+
+        Assert.That(definition.ToSpec().HasVeilrot, Is.False);
+    }
+
+    [Test]
     public void ToSpec_EndlessIgnoresFinalStage()
     {
         // The one place the conversion has an opinion of its own worth pinning: an endless mode

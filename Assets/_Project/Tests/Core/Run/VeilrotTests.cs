@@ -876,6 +876,79 @@ public sealed class VeilrotTests
         Assert.That(damage.Value, Is.EqualTo(BaseWeaponDamage * 2f).Within(1e-4f), "the Claiming's ×2 and nothing else.");
     }
 
+    // ---- RS-05a: a mode without the meter -----------------------------------------------------------
+
+    [Test]
+    public void Off_TheMeterIsOnUnlessTheModeSaysSo()
+    {
+        Assert.That(_meter.IsOn, Is.True, "a meter built without saying is a mode that has one.");
+    }
+
+    [Test]
+    public void Off_ReadsZeroAndIgnoresTheClassStart()
+    {
+        // The Gravecaller's relationship: it starts at 15 and gains ×1.5 (CH §3.2).
+        Build(relationship: new VeilrotSpec(startingVeilrot: 15f, gainMultiplier: 1.5f), isOn: false);
+
+        Assert.That(_meter.IsOn, Is.False);
+        Assert.That(_meter.Value, Is.Zero, "the class's start was applied with the meter off.");
+        Assert.That(_events.Count<VeilrotChanged>(), Is.Zero);
+    }
+
+    [Test]
+    public void Off_AGainDoesNotMoveIt()
+    {
+        Build(isOn: false);
+        Stat maxHp = _stats.Resolve(PlayerStat.MaxHp);
+
+        _meter.Gain(Veilrot.Max);
+
+        Assert.That(_meter.Value, Is.Zero);
+        Assert.That(_meter.IsClaimed, Is.False, "a gain Claimed a run with the meter off.");
+        Assert.That(maxHp.Value, Is.EqualTo(BaseMaxHp));
+        Assert.That(_events.Count<VeilrotChanged>(), Is.Zero);
+    }
+
+    [Test]
+    public void Off_ARestoreDoesNotMoveIt()
+    {
+        Build(isOn: false);
+
+        Restore(_meter, Veilrot.Max, claimed: true);
+        Tick(1f);
+
+        Assert.That(_meter.Value, Is.Zero, "a saved meter came back with the meter off.");
+        Assert.That(_meter.IsClaimed, Is.False);
+        Assert.That(_stats.Resolve(PlayerStat.MaxHp).Value, Is.EqualTo(BaseMaxHp), "the drain ran.");
+        Assert.That(_combat.Blackboard.Veilrot, Is.Zero);
+    }
+
+    [Test]
+    public void Off_ARunResumedIntoAModeWithoutItComesBackAtZero()
+    {
+        // The row above through a whole run: a save at 100 and Claimed, resumed into a mode whose
+        // meter is off — every save written before 2026-09-28, once the shipped modes are.
+        RunSession session = Session(hasVeilrot: false);
+
+        session.Start(ResumedConfig());
+
+        Assert.That(session.State.HasVeilrot, Is.False);
+        Assert.That(session.State.Veilrot, Is.Zero);
+        Assert.That(session.State.IsClaimed, Is.False);
+        Assert.That(session.State.PlayerMaxHp, Is.EqualTo(BaseMaxHp).Within(1e-3f));
+    }
+
+    [Test]
+    public void Off_ARunOfAModeWithTheMeterHasIt()
+    {
+        RunSession session = Session();
+
+        session.Start(ResumedConfig());
+
+        Assert.That(session.State.HasVeilrot, Is.True);
+        Assert.That(session.State.Veilrot, Is.EqualTo(Veilrot.Max));
+    }
+
     // ---- Guards ------------------------------------------------------------------------------------
 
     [Test]
@@ -935,7 +1008,11 @@ public sealed class VeilrotTests
     /// <summary>
     /// A player, its address table and a meter over them — everything the meter can reach.
     /// </summary>
-    private void Build(float maxHp = BaseMaxHp, IDomainEvents events = null)
+    private void Build(
+        float maxHp = BaseMaxHp,
+        IDomainEvents events = null,
+        VeilrotSpec relationship = null,
+        bool isOn = true)
     {
         IDomainEvents sink = events ?? _events;
 
@@ -944,7 +1021,7 @@ public sealed class VeilrotTests
         _combat = new PlayerCombat(character, sink, new RecordingIntents(), Capacity);
         _motor = new PlayerMotor(character.Movement, Vector3.UnitZ);
         _stats = new PlayerStats(_combat, _motor, new LevelTracker(Scalings.Xp(), sink));
-        _meter = new Veilrot(_stats, _combat, _combat.Blackboard, sink);
+        _meter = new Veilrot(_stats, _combat, _combat.Blackboard, sink, relationship: relationship, isOn: isOn);
         _now = 0f;
     }
 
@@ -1035,8 +1112,8 @@ public sealed class VeilrotTests
     // ---- Fixture: a run -----------------------------------------------------------------------------
 
     /// <summary>A whole run, for the one row that is about what a tick does.</summary>
-    private RunSession Session() => new RunSession(
-        Catalog(),
+    private RunSession Session(bool hasVeilrot = true) => new RunSession(
+        Catalog(hasVeilrot),
         new FixedRandom(0),
         _events,
         new RecordingIntents(),
@@ -1084,10 +1161,10 @@ public sealed class VeilrotTests
 
     // ---- Fixture: content ---------------------------------------------------------------------------
 
-    private static ContentCatalog Catalog() => new ContentCatalog(
+    private static ContentCatalog Catalog(bool hasVeilrot = true) => new ContentCatalog(
         new[] { Oathbound(BaseMaxHp) },
         new[] { Husk() },
-        new[] { Mode() });
+        new[] { Mode(hasVeilrot) });
 
     /// <summary>
     /// A mode with an empty roster, so the session row composes nothing and its stage never clears.
@@ -1096,7 +1173,7 @@ public sealed class VeilrotTests
     /// The row is about a hundred seconds of drain in an arena, and a schedule would fill that arena
     /// with bodies whose only contribution would be noise in the log.
     /// </remarks>
-    private static ModeSpec Mode() => new ModeSpec(
+    private static ModeSpec Mode(bool hasVeilrot = true) => new ModeSpec(
         new ContentId(ModeId),
         new LocKey("mode.test.name"),
         startingStage: 1,
@@ -1104,7 +1181,8 @@ public sealed class VeilrotTests
         finalStage: 0,
         Scalings.Design(),
         Scalings.Xp(),
-        Array.Empty<RosterEntry>());
+        Array.Empty<RosterEntry>(),
+        hasVeilrot: hasVeilrot);
 
     /// <summary>
     /// The class every row plays: CC §7's Oathbound with three numbers rounded, so that ×2, ×1.3 and

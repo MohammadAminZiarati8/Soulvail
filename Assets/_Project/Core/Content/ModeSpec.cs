@@ -728,6 +728,12 @@ public sealed class ModeSpec
     /// are both legal. <b>The mode's rather than the catalog's</b>, <c>WaveComposer</c>'s rule: the
     /// vocabulary is the mode's, which is what makes a Trial with no Ordeals a data change.
     /// </param>
+    /// <param name="hasVeilrot">
+    /// Whether a run of this mode has GD §10's meter at all (RS-05a rule 1). Optional and last, for
+    /// <paramref name="essence"/>'s reason. Omitted, it is <see langword="true"/>: every mode had the
+    /// meter until the owner switched it off on 2026-09-28, and a fixture that never mentions it is
+    /// a fixture written before that.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -767,7 +773,8 @@ public sealed class ModeSpec
         EssenceSpec essence = default,
         SanctumSpec sanctum = default,
         OrdealScheduleSpec ordealSchedule = default,
-        IReadOnlyList<OrdealSpec> ordeals = null)
+        IReadOnlyList<OrdealSpec> ordeals = null,
+        bool hasVeilrot = true)
     {
         if (id.Value is null)
         {
@@ -849,6 +856,8 @@ public sealed class ModeSpec
         // with no schedule are both legal here and both refused on a shipped asset by
         // ContentValidationTests — a fixture that stocks one half is not a fault (M6-06a rule 1).
         OrdealSchedule = ordealSchedule;
+
+        HasVeilrot = hasVeilrot;
 
         _ordeals = CopyOrdeals(ordeals, id);
 
@@ -950,6 +959,14 @@ public sealed class ModeSpec
 
     /// <summary>The Ordeal pool, in authored order. Empty is ordinary.</summary>
     public IReadOnlyList<OrdealSpec> Ordeals => _ordealsView;
+
+    /// <summary>
+    /// Whether a run of this mode has GD §10's meter. False means no Pact is offered, nothing fills
+    /// the meter, and no Ordeal that multiplies it is dealt (RS-05a).
+    /// </summary>
+    /// <remarks>Read once, by <c>RunSession.Start</c> building the run's <c>Veilrot</c>, and by
+    /// <c>Ordeals</c>.</remarks>
+    public bool HasVeilrot { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

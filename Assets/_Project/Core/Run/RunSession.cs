@@ -516,7 +516,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // and — through the meter — the runner all read; `ClassVeilrotTests.Run_TheBlockReachesAllThree`
         // asserts the three. A Gravecaller's 15 is applied inside this constructor, silently, which is
         // why RunStarted is what the HUD's meter seeds from.
-        var veilrot = new Veilrot(playerStats, combat, combat.Blackboard, _events, ordeals, character.Veilrot);
+        //
+        // **And whether the mode has the meter at all** (RS-05a rule 2): off, it reads zero for the
+        // whole run, and the restore below leaves it there.
+        var veilrot = new Veilrot(
+            playerStats, combat, combat.Blackboard, _events, ordeals, character.Veilrot, mode.HasVeilrot);
 
         // One per run, not one per session: End leaves the finished registry readable and a second
         // Start must not inherit the first run's enemies, ids or free list. It takes the run's

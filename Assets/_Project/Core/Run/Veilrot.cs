@@ -187,6 +187,12 @@ public sealed class Veilrot
     /// <c>RunStarted</c> is what seeds the HUD's meter, and a resumed run's <see cref="Restore"/>
     /// overwrites it rather than adding to it.
     /// </param>
+    /// <param name="isOn">
+    /// <see cref="ModeSpec.HasVeilrot"/> for the mode being played (RS-05a rule 2). Off, the meter
+    /// reads zero for the whole run: the class's start is not applied, and <see cref="Gain"/> and
+    /// <see cref="Restore"/> change nothing. Optional and last; <c>RunSession</c> always passes the
+    /// mode's.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// Any argument but <paramref name="ordeals"/> and <paramref name="relationship"/> is null.
     /// </exception>
@@ -196,7 +202,8 @@ public sealed class Veilrot
         CombatBlackboard blackboard,
         IDomainEvents events,
         Ordeals ordeals = null,
-        VeilrotSpec relationship = null)
+        VeilrotSpec relationship = null,
+        bool isOn = true)
     {
         if (stats is null)
         {
@@ -216,11 +223,12 @@ public sealed class Veilrot
         _dashCooldown = stats.Resolve(PlayerStat.MovementSkillCooldown);
 
         _relationship = relationship;
+        IsOn = isOn;
 
         // **CH §3.2's "starts at 15", silently** (M6-07c rule 3): M6-04 rule 9's "a resume is not
         // news" at the other end of the same run. Settled through the same two writers a restore
         // uses, so a class authored to open above 25 would open with the 25 row on and nothing said.
-        if (relationship is not null && relationship.StartingVeilrot > 0f)
+        if (isOn && relationship is not null && relationship.StartingVeilrot > 0f)
         {
             _value = relationship.StartingVeilrot;
 
@@ -261,6 +269,12 @@ public sealed class Veilrot
 
     /// <summary>The meter, in <c>[0, <see cref="Max"/>]</c>.</summary>
     public float Value => _value;
+
+    /// <summary>
+    /// Whether this run has the meter at all — the mode's <see cref="ModeSpec.HasVeilrot"/>. Off, it
+    /// reads zero for the whole run, and the screens that draw it hide it (RS-05a, RS-05b).
+    /// </summary>
+    public bool IsOn { get; }
 
     /// <summary>
     /// True from the moment <see cref="Value"/> first reaches <see cref="Max"/>. A latch — rule 6.
@@ -322,7 +336,10 @@ public sealed class Veilrot
     /// </remarks>
     public void Gain(float amount)
     {
-        if (!(amount > 0f))
+        // A meter that is off does not move (RS-05a rule 2). Nothing should reach here: with the
+        // meter off no Pact is offered, and a Pact is the only gain. A no-op rather than a throw,
+        // because a stray gain costs nothing when the meter reads zero for the whole run.
+        if (!IsOn || !(amount > 0f))
         {
             return;
         }
@@ -528,6 +545,13 @@ public sealed class Veilrot
     /// </remarks>
     internal void Restore(float value, bool claimed)
     {
+        // A run saved while its mode had the meter comes back at zero once the mode has it off
+        // (RS-05a rule 2): the meter reads zero for the whole run, a resumed one included.
+        if (!IsOn)
+        {
+            return;
+        }
+
         float before = _value;
 
         // **Overwrites a class's start rather than adding to it** (M6-07c rule 3): a Gravecaller

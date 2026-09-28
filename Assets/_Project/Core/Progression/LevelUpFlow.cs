@@ -259,6 +259,14 @@ public sealed class LevelUpFlow
                     drawn = _generator.Draw(_tree, offers, cards, _offer, out pactIndex);
                 }
 
+                // **A run with the meter off is offered no Pact** (RS-05a rule 3). Dropped after
+                // the draw rather than skipped inside it, so the roll still spends its two draws and
+                // a seed deals the same cards with the meter on or off (M6-05b rule 1).
+                if (!_veilrot.IsOn)
+                {
+                    pactIndex = -1;
+                }
+
                 _count = drawn;
                 _pactIndex = pactIndex;
                 _events.Publish(new OfferPresented(drawn, _progression.PendingLevelUps, pactIndex));

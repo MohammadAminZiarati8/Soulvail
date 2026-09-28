@@ -476,6 +476,23 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   refuses `System.Reflection.BindingFlags` outright** — *"unauthorized namespaces"* — so an MCP
   probe can only drive a component through its public API, which is a reason to keep a view's
   readouts public rather than reflected (M4-04).
+- **`NavMeshSurface.BuildNavMesh()` on an instance in a preview scene bakes but does not
+  register.** In `EditorSceneManager.NewPreviewScene()` or `PrefabUtility.LoadPrefabContents`
+  it returns a full `navMeshData`, while `NavMesh.CalculateTriangulation()` reads **0 triangles**
+  and every `NavMesh.SamplePosition` fails — which an "is this obstacle carved?" probe reads as
+  *yes, everywhere*. Two probes in a row reported every pillar carved while the saved data left
+  three of them walkable. **Bake in a temporary additive scene**
+  (`EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive)`, closed without
+  saving), where the bake registers, **or `NavMesh.RemoveAllNavMeshData()` and then
+  `AddNavMeshData` the result before probing it** (M7-05a).
+- **`NavMesh.SamplePosition` at an obstacle's centre finds a floor you cannot reach.** Under any
+  obstacle whose top is itself walkable — a top still about 1.6 m across after the agent radius
+  erodes it — the bake emits a floor-level polygon with the top's footprint, disconnected from the
+  arena. Every pillar in `Arena_Pillars` and `Arena_Tiered` has one, and sinking the collider below
+  the floor does not remove it. **Test carving with `NavMesh.Raycast` along the floor from a point
+  outside the obstacle, or with `CalculatePath` from the player start (`PathPartial`), never with a
+  point sample.** And compute a prefab asset's collider bounds from `BoxCollider.center`/`size` and
+  the transform: `Collider.bounds` is zero-size on an object outside a physics scene (M7-05a).
 
 ---
 

@@ -1,6 +1,6 @@
 # KayKit — third-party art
 
-Three packs by Kay Lousberg (<www.kaylousberg.com>), all **CC0**. Free for commercial use;
+Five packs by Kay Lousberg (<www.kaylousberg.com>), all **CC0**. Free for commercial use;
 credit optional. Each pack keeps its own `License.txt` because each names its own pack and
 release date, and that is what an attribution check would want to read.
 
@@ -15,6 +15,8 @@ re-download arrived as `KayKit_Adventurers_2 1.0_FREE` and was a whole duplicate
 | Adventurers | 2.0 | 2025-10-22 | `Adventurers/` |
 | Character Animations | 1.1 | 2025-12-10 | `Animations/` |
 | Skeletons | 1.1 | 2025-10-22 | `Skeletons/` |
+| Dungeon | 1.1 | 2026-07-16 | `Dungeon/` |
+| Forest Nature | 1.0 | 2025-04-29 | `ForestNature/` |
 
 ## What is here
 
@@ -27,6 +29,16 @@ re-download arrived as `KayKit_Adventurers_2 1.0_FREE` and was a whole duplicate
 | `Animations/Mannequin` | The two untextured reference bodies, Medium and Large |
 | `Skeletons/Characters` | 4 skeletons: Minion, Warrior, Mage, Rogue |
 | `Skeletons/Props` | 13 skeleton-specific props — blade, axe, crossbow, staff, shields, arrows, quiver |
+| `Dungeon/Floors` | 34 tiles — dirt, stone, foundation edges, grates, spikes, wood |
+| `Dungeon/Walls` | 40 pieces — walls (arched, windowed, gated, broken, cracked, scaffolded, sloped), pillars, columns, barriers |
+| `Dungeon/Stairs` | 15 — straight, long, wide, walled, modular left/centre/right, wood |
+| `Dungeon/Props` | 36 — barrels, boxes, crates, candles, torches, rubble, wall crests, and banners in white and brown |
+| `ForestNature/Rocks` | 43 rocks in three families |
+| `ForestNature/Trees` | 20 — 14 leafy, 6 bare |
+
+The two environment packs are kept for the biomes (GD §3): stone and rubble for the Ashen
+Reach, arches and stairs for the Drowned Choir's cathedral, rocks and trees for the Bone
+Orchard once they are recoloured to its white.
 
 ## The one fact that matters
 
@@ -52,8 +64,37 @@ needs its own avatar.
   swatches across the cell borders.
 - **`loopTime` is set on 38 idle and locomotion clips.** They import non-looping, which parks a
   blend tree on a clip's last frame and freezes the body mid-stride.
+- **The environment packs render through two project materials, remapped at the importer.**
+  Every model in `Dungeon/` maps its embedded `texture` material to
+  `_Project/Materials/Environment/M_Dungeon`, and every model in `ForestNature/` maps `forest` to
+  `M_ForestNature`. The embedded ones are URP Lit at smoothness 0.55 and 0.4, which shines like
+  plastic; the project's are copies of `M_Knight` at 0.05. Remapped on the importer rather than on
+  each renderer, so a piece dragged into any arena is already right, and every piece of one atlas
+  shares one material. **An update must re-add the remap to any new model.**
+
+The environment packs otherwise import at the model importer's defaults: a Generic rig,
+animation import on, no lightmap UVs. Whether static pieces want no rig, and whether
+GD §17.1's baked lighting wants lightmap UVs, is M7-05's to settle with the biome's atlas.
 
 Deleted on import, and safe to delete again on any update: the `gltf/` and `obj/` exports
 (they need a package this project has not approved), `samples/`, `contents.png`, and the
 duplicate animation FBXs the Adventurers and Skeletons packs both ship — those two files are
 byte-identical to the copies in `Animations/Rig_Medium`.
+
+**The environment packs keep only their `fbx(unity)` export**, the one `Skeletons/Props` was
+taken from (hash-identical); `fbx/` is a second export of the same models. Their texture is the
+copy that ships beside the models; the Dungeon pack's `textures/` copy differs in bytes only.
+Also deleted, by rule, so an update deletes them again:
+
+- **Dungeon — the household and the loot:** `bed_*`, `table_*`, `chair`, `stool`, `shelf*`,
+  `shelves`, `plate*`, `bottle_*`, `keg*`, `key*`, `chest*`, `trunk_*`, `coin*`, and
+  `ceiling_tile`, which a top-down camera never sees. Nothing in the game design uses them.
+- **Dungeon — the reserved colours:** every `banner_*` in blue, green, red or yellow, and
+  `sword_shield_gold`. GD §16.4 gives red-orange to danger, gold to rewards and cyan to the
+  player, and keeps the environment desaturated; white and brown stay.
+- **Forest Nature — `Grass_*` and `Bush_*`.** No biome in GD §3 has ground vegetation.
+
+**Looked at on 2026-09-26 and declined, whole:** *Block Bits 1.0* (voxel blocks in saturated
+primaries, another visual language); *Medieval Hexagon 1.0* (a hex strategy-map kit —
+team-coloured buildings and hex tiles no square arena can use); and a second download of
+*Skeletons 1.1*, byte-identical to `Skeletons/`.

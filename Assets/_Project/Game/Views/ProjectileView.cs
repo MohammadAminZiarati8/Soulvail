@@ -55,6 +55,10 @@ namespace Soulvail.Game.Views
         [Min(0f)]
         [SerializeField] private float _arcHeight = 1.2f;
 
+        [Tooltip("What a hit by this shot looks like where it lands (RS-06b), or none. The census " +
+                 "pools it beside this shot's own bodies and plays it on a hit, never on a miss.")]
+        [SerializeField] private ImpactView _impact;
+
         private int _id = Unbound;
         private Vector3 _origin;
         private Vector3 _target;
@@ -81,6 +85,15 @@ namespace Soulvail.Game.Views
 
         /// <summary>Whether this view is currently standing in for a shot in the air.</summary>
         public bool IsBound => _id != Unbound;
+
+        /// <summary>The impact a hit by this shot plays, or null for none (RS-06b).</summary>
+        public ImpactView Impact => _impact;
+
+        /// <summary>
+        /// The flight, origin to target, in world metres: which way the shot was going when it
+        /// landed. Zero for a body in the pool.
+        /// </summary>
+        public Vector3 Travel => _target - _origin;
 
         /// <summary>
         /// Puts this body into service flying <paramref name="origin"/> → <paramref name="target"/>

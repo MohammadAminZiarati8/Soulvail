@@ -8,6 +8,7 @@ using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
+using Soulvail.Tests.Core.Support;
 using UnityEditor;
 using UnityEngine;
 using VContainer;
@@ -35,6 +36,11 @@ namespace Soulvail.Tests.Game.Views;
 /// <b>RS-02c's rows fly a second scene prefab, the class's</b>, and tell a body's prefab by the child
 /// it was cloned with — <c>BoltMesh</c> or <c>ArrowMesh</c> — because the census renames every
 /// rented body in the Editor, and a real shot differs from another by its mesh anyway.
+/// </para>
+/// <para>
+/// <b>RS-06b's rows land the arrow on something.</b> The fixture's arrow names a scene impact, and a
+/// hit is published with <c>Hit</c> true. Each impact builds its mesh on its first play, because
+/// <c>Awake</c> never runs here, and the teardown destroys those meshes by hand.
 /// </para>
 /// <para>
 /// Every object the fixture or the pool creates is destroyed in the teardown. An EditMode test that
@@ -69,6 +75,8 @@ public sealed class ProjectileViewsTests
     private ProjectileView _prefab;
     private GameObject _arrowObject;
     private ProjectileView _arrow;
+    private GameObject _impactObject;
+    private ImpactView _impact;
     private IObjectResolver _container;
     private DomainEventHub _hub;
     private ProjectileViews _views;
@@ -84,6 +92,22 @@ public sealed class ProjectileViewsTests
         _arrow = _arrowObject.AddComponent<ProjectileView>();
         new GameObject(ArrowMesh).transform.SetParent(_arrowObject.transform, false);
 
+        _impactObject = new GameObject("ImpactPrefab");
+        _impactObject.AddComponent<MeshRenderer>();
+        _impact = _impactObject.AddComponent<ImpactView>();
+
+        using (var impact = new SerializedObject(_impact))
+        {
+            impact.FindProperty("_filter").objectReferenceValue = _impactObject.AddComponent<MeshFilter>();
+            impact.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        using (var arrow = new SerializedObject(_arrow))
+        {
+            arrow.FindProperty("_impact").objectReferenceValue = _impact;
+            arrow.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         _container = new ContainerBuilder().Build();
         _hub = new DomainEventHub();
     }
@@ -91,6 +115,17 @@ public sealed class ProjectileViewsTests
     [TearDown]
     public void DestroyCensus()
     {
+        // Before the pools destroy their bodies, while the meshes can still be reached.
+        foreach (ImpactView impact in Object.FindObjectsByType<ImpactView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            Mesh mesh = impact.GetComponent<MeshFilter>().sharedMesh;
+
+            if (mesh != null)
+            {
+                Object.DestroyImmediate(mesh);
+            }
+        }
+
         _views?.Dispose();
         _views = null;
 
@@ -108,6 +143,11 @@ public sealed class ProjectileViewsTests
         if (_arrowObject != null)
         {
             Object.DestroyImmediate(_arrowObject);
+        }
+
+        if (_impactObject != null)
+        {
+            Object.DestroyImmediate(_impactObject);
         }
     }
 
@@ -438,6 +478,9 @@ public sealed class ProjectileViewsTests
 
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new ProjectileViews(_container, _prefab, null, _hub, prewarm: -1));
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new ProjectileViews(_container, _prefab, null, _hub, classPrewarm: -1));
     }
 
     [Test]
@@ -651,9 +694,213 @@ public sealed class ProjectileViewsTests
         }
     }
 
+    // ---- RS-06b: an arrow hit you can see ---------------------------------------------------------
+
+    [Test]
+    public void Hit_PlaysTheShotsImpactWhereItLanded()
+    {
+        _views = Census(prewarm: 1, Book(), classPrewarm: 2);
+
+        Shoot(id: 1, Archer);
+        Hit(id: 1, position: new Vector3(6f, 0f, 0f));
+
+        // Rule 2: one impact, rented from the pool beside the arrow's.
+        Assert.That(_views.ImpactCount, Is.EqualTo(1));
+        Assert.That(_views.PooledImpactCountOf(_impact), Is.EqualTo(1));
+
+        ImpactView impact = _views.ImpactAt(0);
+
+        Assert.That(impact.IsLive, Is.True);
+
+        // Rule 8: with no viewer it is seen from overhead, so it stands straight above the landing
+        // point rather than leaning toward a camera that is not there.
+        Assert.That(impact.transform.position.x, Is.EqualTo(6f).Within(1e-4f));
+        Assert.That(impact.transform.position.z, Is.EqualTo(0f).Within(1e-4f));
+
+        // And the shards go the way the arrow was going: from the origin toward +X.
+        _views.Step(0.05f);
+
+        for (int i = 0; i < ImpactView.ShardCount; i++)
+        {
+            Assert.That(impact.ShardOffset(i).x, Is.GreaterThan(0f), $"Shard {i} flew back toward the Ranger.");
+        }
+
+        // The arrow's body went home as before.
+        Assert.That(_views.Count, Is.Zero);
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Hit_FacesAndLeansTowardTheViewer()
+    {
+        var camera = new GameObject("Viewer");
+
+        try
+        {
+            camera.transform.rotation = Quaternion.Euler(57f, 0f, 0f);
+
+            _views = Census(prewarm: 1, Book(), classPrewarm: 1, viewer: camera.transform);
+
+            Shoot(id: 1, Archer);
+            Hit(id: 1, position: new Vector3(6f, 0f, 0f));
+
+            // Rule 8: pulled toward a camera behind and above, so drawn in front of the body.
+            Assert.That(_views.ImpactAt(0).transform.position.z, Is.LessThan(-0.2f));
+            Assert.That(_views.ImpactAt(0).transform.position.x, Is.EqualTo(6f).Within(1e-4f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(camera);
+        }
+    }
+
+    [Test]
+    public void Miss_PlaysNothing()
+    {
+        _views = Census(prewarm: 1, Book(), classPrewarm: 1);
+
+        // Rule 2: a miss, a hit by a shot that names no impact, and a hit nobody fired.
+        Shoot(id: 1, Archer);
+        Impact(id: 1, position: new Vector3(6f, 0f, 0f));
+
+        Fire(id: 2, origin: Vector3.Zero, target: new Vector3(6f, 0f, 0f), flightTime: 1f);
+        Hit(id: 2, position: new Vector3(6f, 0f, 0f));
+
+        Hit(id: 99, position: new Vector3(6f, 0f, 0f));
+
+        Assert.That(_views.ImpactCount, Is.Zero);
+        Assert.That(_views.PooledImpactCountOf(_impact), Is.EqualTo(1), "Nothing was rented.");
+    }
+
+    [Test]
+    public void Prewarm_EveryClassShotAndItsImpactAreBuiltUpFront()
+    {
+        const int classPrewarm = 8;
+
+        _views = Census(prewarm: 1, Book(), classPrewarm);
+
+        // Rule 3: before any shot, the arrow's bodies and its impacts exist.
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(classPrewarm));
+        Assert.That(_views.PooledImpactCountOf(_impact), Is.EqualTo(classPrewarm));
+
+        int id = 1;
+
+        // Four volleys of three, 0.2 s apart: two volleys' impacts overlap at most.
+        for (int volley = 0; volley < 4; volley++)
+        {
+            for (int arrow = 0; arrow < 3; arrow++, id++)
+            {
+                Shoot(id, Archer);
+                Hit(id, new Vector3(6f, 0f, arrow));
+            }
+
+            _views.Step(0.2f);
+
+            // Nothing was built mid-wave: every body that exists is one the prewarm made.
+            Assert.That(_views.Count + _views.PooledCountOf(_arrow), Is.EqualTo(classPrewarm));
+            Assert.That(_views.ImpactCount + _views.PooledImpactCountOf(_impact), Is.EqualTo(classPrewarm));
+        }
+    }
+
+    [Test]
+    public void Impact_IsSteppedAndReturnedWhenItGoesOut()
+    {
+        _views = Census(prewarm: 1, Book(), classPrewarm: 1);
+
+        Shoot(id: 1, Archer);
+        Hit(id: 1, position: new Vector3(6f, 0f, 0f));
+
+        ImpactView impact = _views.ImpactAt(0);
+
+        _views.Step(0.1f);
+
+        // Rule 4: stepped on the census's clock, and still going out a tenth of a second in.
+        Assert.That(impact.Age, Is.EqualTo(0.1f).Within(1e-5f));
+        Assert.That(_views.ImpactCount, Is.EqualTo(1));
+
+        _views.Step(0.5f);
+
+        Assert.That(_views.ImpactCount, Is.Zero);
+        Assert.That(_views.PooledImpactCountOf(_impact), Is.EqualTo(1), "Returned to its own pool.");
+        Assert.That(impact.IsLive, Is.False);
+    }
+
+    [Test]
+    public void Hit_AllocatesNothing()
+    {
+        const int shots = 300;
+
+        _views = Census(prewarm: 1, Book(), classPrewarm: 16);
+
+        var landing = new Vector3(6f, 0f, 0f);
+
+        // Fired outside the measurement: in the Editor a rented body is renamed per shot. Every arrow
+        // comes home once first, so the arrow pool's stack has grown past the whole window before it
+        // is measured — a stack doubling is the fixture's, not the hit's (Traps §7).
+        for (int shot = 1; shot <= shots; shot++)
+        {
+            Shoot(shot, Archer);
+        }
+
+        for (int shot = 1; shot <= shots; shot++)
+        {
+            Impact(shot, landing);
+        }
+
+        for (int shot = shots + 1; shot <= 2 * shots; shot++)
+        {
+            Shoot(shot, Archer);
+        }
+
+        int next = shots + 1;
+
+        // Every impact the loop below will rent has played once, so each has built its mesh.
+        for (int i = 0; i < 60; i++)
+        {
+            Hit(next++, landing);
+            _views.Step(0.05f);
+        }
+
+        // Rule 5: a hit, its impact and its steps allocate nothing.
+        AllocationAssert.None(
+            () =>
+            {
+                Hit(next++, landing);
+                _views.Step(0.05f);
+            },
+            iterations: 200);
+    }
+
+    [Test]
+    public void Dispose_ReturnsAndDestroysEveryImpact()
+    {
+        _views = Census(prewarm: 1, Book(), classPrewarm: 1);
+
+        Shoot(id: 1, Archer);
+        Hit(id: 1, position: new Vector3(6f, 0f, 0f));
+
+        ImpactView impact = _views.ImpactAt(0);
+        Mesh mesh = impact.GetComponent<MeshFilter>().sharedMesh;
+
+        _views.Dispose();
+
+        // Rule 4: released before it was destroyed, and destroyed with its pool.
+        Assert.That(impact.IsLive, Is.False);
+        Assert.That(impact == null, Is.True);
+        Assert.That(_views.ImpactCount, Is.Zero);
+        Assert.That(_views.PooledImpactCountOf(_impact), Is.Zero);
+
+        // The teardown can no longer reach this one.
+        Object.DestroyImmediate(mesh);
+    }
+
     /// <summary>A census over the fixture's prefab, hub and container.</summary>
-    private ProjectileViews Census(int prewarm, CharacterLookBook looks = null) =>
-        new ProjectileViews(_container, _prefab, null, _hub, prewarm, looks);
+    private ProjectileViews Census(
+        int prewarm,
+        CharacterLookBook looks = null,
+        int classPrewarm = 0,
+        Transform viewer = null) =>
+        new ProjectileViews(_container, _prefab, null, _hub, prewarm, looks, classPrewarm, viewer);
 
     /// <summary>
     /// <see cref="Archer"/> flies the fixture's arrow; <see cref="Plain"/> has a look and names no
@@ -703,4 +950,8 @@ public sealed class ProjectileViewsTests
 
     private void Impact(int id, Vector3 position) =>
         _hub.Publish(new ProjectileImpacted(id, position, hit: false));
+
+    /// <summary>A shot that landed on something it may hurt.</summary>
+    private void Hit(int id, Vector3 position) =>
+        _hub.Publish(new ProjectileImpacted(id, position, hit: true));
 }

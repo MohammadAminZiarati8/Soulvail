@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ProjectileView
   _arcHeight: 0.25
+  _impact: {fileID: 5716996564123738491, guid: f8e65b70909c04249be795f855d5d819, type: 3}
 --- !u!1001 &1305266307195762549
 PrefabInstance:
   m_ObjectHideFlags: 0

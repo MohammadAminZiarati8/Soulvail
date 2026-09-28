@@ -106,6 +106,12 @@ namespace Soulvail.Game.Authoring
                  "2026-09-28 (RS-05a).")]
         [SerializeField] private bool _hasVeilrot = true;
 
+        [Tooltip("Whether a run of this mode stops in GD §13.3's Sanctum after each stage clear. " +
+                 "Off: the door opens straight after the clear, the HUD draws no Essence, and no " +
+                 "Ordeal that changes Essence is dealt. The run still earns Essence, so switching it " +
+                 "back on works mid-save. Switched off in every shipped mode on 2026-09-28 (RS-05d).")]
+        [SerializeField] private bool _hasSanctum = true;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -143,7 +149,8 @@ namespace Soulvail.Game.Authoring
                     BuildSanctum(),
                     BuildOrdealSchedule(),
                     BuildOrdeals(),
-                    _hasVeilrot);
+                    _hasVeilrot,
+                    _hasSanctum);
             }
             catch (ArgumentException inner)
             {

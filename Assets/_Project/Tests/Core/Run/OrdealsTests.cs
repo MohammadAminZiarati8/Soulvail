@@ -728,6 +728,32 @@ public sealed class OrdealsTests
     }
 
     [Test]
+    public void NoSanctum_NeverDealsAnOrdealThatChangesEssence()
+    {
+        // RS-05d rule 4: Famine cuts Essence, which only the Sanctum spends.
+        var ordeals = new Ordeals(Mode(Descent, FourOrdeals(), hasSanctum: false), _events);
+
+        Assert.That(ordeals.Remaining, Is.EqualTo(3));
+
+        EnterStages(ordeals, Counting(), 2, 75);
+
+        Assert.That(ordeals.Applied, Has.Count.EqualTo(3));
+        Assert.That(ordeals.Applied, Has.No.Member(new ContentId("ordeal.famine")));
+        Assert.That(ordeals.EssenceMultiplier, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void NoVeilNoSanctum_DealsOnlyTheTwoThatStillMeanSomething()
+    {
+        // The shipped modes as of RS-05d: Vigil and Swarm are left.
+        var ordeals = new Ordeals(Mode(Descent, FourOrdeals(), hasVeilrot: false, hasSanctum: false), _events);
+
+        EnterStages(ordeals, Counting(), 2, 75);
+
+        Assert.That(ordeals.Applied, Is.EquivalentTo(new[] { new ContentId("ordeal.vigil"), new ContentId("ordeal.swarm") }));
+    }
+
+    [Test]
     public void WithTheVeil_HungerIsStillDealt()
     {
         // The default: a mode that never mentions the meter has it, and deals all four.
@@ -799,7 +825,11 @@ public sealed class OrdealsTests
     };
 
     /// <summary>A mode of one Husk a stage, EssenceWalletTests' shape, with the Ordeal block given.</summary>
-    private static ModeSpec Mode(OrdealScheduleSpec schedule, IReadOnlyList<OrdealSpec> pool, bool hasVeilrot = true)
+    private static ModeSpec Mode(
+        OrdealScheduleSpec schedule,
+        IReadOnlyList<OrdealSpec> pool,
+        bool hasVeilrot = true,
+        bool hasSanctum = true)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(HuskCost, 0f, 0f),
@@ -820,7 +850,8 @@ public sealed class OrdealsTests
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             ordealSchedule: schedule,
             ordeals: pool,
-            hasVeilrot: hasVeilrot);
+            hasVeilrot: hasVeilrot,
+            hasSanctum: hasSanctum);
     }
 
     private static ContentCatalog Catalog(ModeSpec mode) => new ContentCatalog(

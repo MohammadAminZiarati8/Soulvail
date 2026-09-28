@@ -279,6 +279,12 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private bool _hasVeilrot = true;
 
+        /// <summary>
+        /// Whether the run stops in the Sanctum — <c>RunState.HasSanctum</c>, mirrored. Off, the
+        /// Essence counter and its word are not drawn (RS-05d rule 3).
+        /// </summary>
+        private bool _hasSanctum = true;
+
         /// <summary>Where the cover is heading: 1 while the screen is closing, 0 while it opens.</summary>
         private float _fadeTarget;
 
@@ -747,10 +753,18 @@ namespace Soulvail.Game.Presentation
         /// <remarks>TMP's float overload for <see cref="WriteHp"/>'s reason: it allocates nothing.</remarks>
         private void WriteEssence(int balance)
         {
+            // Only the Sanctum spends Essence, so a run without it draws no counter (RS-05d rule 3).
+            if (_essenceLabel != null)
+            {
+                SetShown(_essenceLabel.gameObject, _hasSanctum);
+            }
+
             if (_essenceText == null)
             {
                 return;
             }
+
+            SetShown(_essenceText.gameObject, _hasSanctum);
 
             _essenceText.color = Palette.Essence;
             _essenceText.SetText(EssenceFormat, balance);
@@ -866,6 +880,7 @@ namespace Soulvail.Game.Presentation
             _veilrot = state.Veilrot;
             _isClaimed = state.IsClaimed;
             _hasVeilrot = state.HasVeilrot;
+            _hasSanctum = state.HasSanctum;
 
             WriteEssence(state.Essence);
             WriteMeter();

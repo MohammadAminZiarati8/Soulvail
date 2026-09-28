@@ -844,7 +844,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             essence,
             veilrot,
             shop,
-            ordeals);
+            ordeals,
+            mode.HasSanctum);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.

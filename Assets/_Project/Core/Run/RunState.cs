@@ -70,8 +70,10 @@ public sealed class RunState
         EssenceWallet wallet,
         Veilrot rot,
         SanctumShop shop,
-        Ordeals ordeals)
+        Ordeals ordeals,
+        bool hasSanctum = true)
     {
+        HasSanctum = hasSanctum;
         ModeId = modeId;
         CharacterId = characterId;
         Seed = seed;
@@ -850,6 +852,12 @@ public sealed class RunState
     /// hide what they would draw of it when it is off (RS-05b).
     /// </summary>
     public bool HasVeilrot => Rot.IsOn;
+
+    /// <summary>
+    /// Whether this run stops in the Sanctum after each clear — its mode's <c>HasSanctum</c>. The HUD
+    /// draws no Essence when it does not, since only the Sanctum spends it (RS-05d).
+    /// </summary>
+    public bool HasSanctum { get; }
 
     /// <summary>
     /// Whether GD §10.2's last row has closed. True for the rest of the run once it has.

@@ -490,6 +490,38 @@ public sealed class StageFlowTests
     }
 
     [Test]
+    public void Stage_AModeWithoutTheSanctumOpensTheDoorAfterTheClear()
+    {
+        // RS-05d rule 2: the clear beat, then the door — the Sanctum phase is never entered.
+        Build(Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap, hasSanctum: false));
+        BeginAt(3);
+        ClearTheStage();
+
+        Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate), "the clear did not open the door.");
+        Assert.That(_events.Count<SanctumOpened>(), Is.Zero, "a Sanctum opened in a mode without one.");
+        Assert.Throws<InvalidOperationException>(() => _flow.LeaveSanctum(_now), "there is no Sanctum to leave.");
+
+        _snapshot.PlayerPosition = Door;
+        Step(1f / 60f);
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Transition), "the door did not take the player.");
+    }
+
+    [Test]
+    public void Stage_AModeWithTheSanctumStillStopsInIt()
+    {
+        Build(Mode(budget: HuskCost, waves: 1, concurrency: DeviceCap, hasSanctum: true));
+        BeginAt(3);
+        ClearTheStage();
+
+        Step(ClearTimeAndABit());
+
+        Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Sanctum));
+    }
+
+    [Test]
     public void Stage_TheSanctumHasNoTimeout()
     {
         Build(OneHuskStage());
@@ -1914,7 +1946,8 @@ public sealed class StageFlowTests
         bool endless = true,
         int finalStage = 0,
         BudgetCurve? curve = null,
-        int bossEvery = 0)
+        int bossEvery = 0,
+        bool hasSanctum = true)
     {
         var scaling = new ScalingSpec(
             curve ?? new BudgetCurve(budget, 0f, 0f),
@@ -1935,7 +1968,8 @@ public sealed class StageFlowTests
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             bossRoster: bossEvery == 0
                 ? null
-                : new[] { new BossRosterEntry(new ContentId(BossId), bossEvery) });
+                : new[] { new BossRosterEntry(new ContentId(BossId), bossEvery) },
+            hasSanctum: hasSanctum);
     }
 
     /// <summary>

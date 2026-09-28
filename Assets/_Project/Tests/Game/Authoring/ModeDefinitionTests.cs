@@ -369,6 +369,22 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void ToSpec_CarriesWhetherTheModeHasASanctum()
+    {
+        // RS-05d rule 1: on unless the asset says otherwise, and the asset's word reaches the spec.
+        ModeDefinition definition = NewDefinition("SanctumMode");
+
+        SetString(definition, "_id", "mode.sanctum");
+        SetString(definition, "_nameKey", "mode.sanctum.name");
+
+        Assert.That(definition.ToSpec().HasSanctum, Is.True, "a new mode has the Sanctum.");
+
+        SetBool(definition, "_hasSanctum", false);
+
+        Assert.That(definition.ToSpec().HasSanctum, Is.False);
+    }
+
+    [Test]
     public void ToSpec_EndlessIgnoresFinalStage()
     {
         // The one place the conversion has an opinion of its own worth pinning: an endless mode
@@ -402,6 +418,22 @@ public sealed class ModeDefinitionTests
             ModeSpec spec = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path).ToSpec();
 
             Assert.That(spec.HasVeilrot, Is.False, $"{path} has the Veilrot meter on.");
+        }
+    }
+
+    [Test]
+    public void EveryShippedMode_HasTheSanctumOff()
+    {
+        // RS-05d rule 5: the owner's ruling of 2026-09-28. Switched off, not removed — this row is
+        // the one to change when it comes back on.
+        foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(ModeDefinition)}"))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<ModeDefinition>(path).ToSpec().HasSanctum,
+                Is.False,
+                $"{path} has the Sanctum on.");
         }
     }
 

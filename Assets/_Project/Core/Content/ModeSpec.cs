@@ -734,6 +734,11 @@ public sealed class ModeSpec
     /// meter until the owner switched it off on 2026-09-28, and a fixture that never mentions it is
     /// a fixture written before that.
     /// </param>
+    /// <param name="hasSanctum">
+    /// Whether a run of this mode stops in GD §13.3's Sanctum after each clear (RS-05d rule 1).
+    /// Optional and last, for <paramref name="hasVeilrot"/>'s reason, and <see langword="true"/>
+    /// omitted for the same one.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -774,7 +779,8 @@ public sealed class ModeSpec
         SanctumSpec sanctum = default,
         OrdealScheduleSpec ordealSchedule = default,
         IReadOnlyList<OrdealSpec> ordeals = null,
-        bool hasVeilrot = true)
+        bool hasVeilrot = true,
+        bool hasSanctum = true)
     {
         if (id.Value is null)
         {
@@ -858,6 +864,7 @@ public sealed class ModeSpec
         OrdealSchedule = ordealSchedule;
 
         HasVeilrot = hasVeilrot;
+        HasSanctum = hasSanctum;
 
         _ordeals = CopyOrdeals(ordeals, id);
 
@@ -967,6 +974,14 @@ public sealed class ModeSpec
     /// <remarks>Read once, by <c>RunSession.Start</c> building the run's <c>Veilrot</c>, and by
     /// <c>Ordeals</c>.</remarks>
     public bool HasVeilrot { get; }
+
+    /// <summary>
+    /// Whether a run of this mode stops in GD §13.3's Sanctum after each clear. False means the door
+    /// opens straight after the clear beat, and no Ordeal that changes Essence is dealt (RS-05d).
+    /// </summary>
+    /// <remarks>Read by <c>StageFlow</c> at every clear, by <c>Ordeals</c>, and by the HUD through
+    /// <c>RunState.HasSanctum</c>.</remarks>
+    public bool HasSanctum { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

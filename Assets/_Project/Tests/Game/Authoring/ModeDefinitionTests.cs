@@ -506,6 +506,45 @@ public sealed class ModeDefinitionTests
         SetString(definition, "_id", "Mode.Descent");
     }
 
+    [Test]
+    public void Definition_ArenaRowsCarryTheirSpans()
+    {
+        // M7-05d rule 7: the asset's row is the entry's, and a last stage of 0 is a room left open
+        // to the end — the value a row added in the Inspector starts with.
+        ModeDefinition definition = NewDefinition("SpannedMode");
+
+        SetString(definition, "_id", "mode.spanned");
+        SetString(definition, "_nameKey", "mode.spanned.name");
+        SetArenas(definition, new[] { ("arena.a", 1, 4), ("arena.b", 3, 0) });
+
+        ModeSpec spec = definition.ToSpec();
+
+        Assert.That(spec.Arenas, Has.Count.EqualTo(2));
+        Assert.That(spec.Arenas[0].ArenaId.Value, Is.EqualTo("arena.a"));
+        Assert.That(spec.Arenas[0].FirstStage, Is.EqualTo(1));
+        Assert.That(spec.Arenas[0].LastStage, Is.EqualTo(4));
+        Assert.That(spec.Arenas[1].ArenaId.Value, Is.EqualTo("arena.b"));
+        Assert.That(spec.Arenas[1].FirstStage, Is.EqualTo(3));
+        Assert.That(spec.Arenas[1].LastStage, Is.EqualTo(ArenaEntry.NoLastStage));
+    }
+
+    [Test]
+    public void ToSpec_ArenaGap_ThrowsNamingAsset()
+    {
+        // A stage with no room open is refused at boot, naming the asset a designer has to open,
+        // rather than at the door of stage 5 forty minutes into a run (M7-05d rule 4).
+        ModeDefinition definition = NewDefinition("GappedArenas");
+
+        SetString(definition, "_id", "mode.gapped");
+        SetString(definition, "_nameKey", "mode.gapped.name");
+        SetArenas(definition, new[] { ("arena.a", 1, 4), ("arena.b", 6, 0) });
+
+        var thrown = Assert.Throws<ArgumentException>(() => definition.ToSpec());
+
+        Assert.That(thrown.Message, Does.Contain("GappedArenas"));
+        Assert.That(thrown.InnerException?.Message, Does.Contain("stage 5"));
+    }
+
     private ModeDefinition NewDefinition(string assetName)
     {
         var definition = ScriptableObject.CreateInstance<ModeDefinition>();
@@ -577,6 +616,27 @@ public sealed class ModeDefinitionTests
             SerializedProperty row = roster.GetArrayElementAtIndex(i);
             row.FindPropertyRelative("_specId").stringValue = rows[i].SpecId;
             row.FindPropertyRelative("_introducedAtStage").intValue = rows[i].Stage;
+        }
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Writes the arena rows through <see cref="SerializedObject"/>, for <see cref="SetRoster"/>'s
+    /// reason: <c>ArenaRow</c> is a private nested type.
+    /// </summary>
+    private static void SetArenas(ModeDefinition definition, (string ArenaId, int First, int Last)[] rows)
+    {
+        var serialized = new SerializedObject(definition);
+        SerializedProperty arenas = serialized.FindProperty("_arenas");
+        arenas.arraySize = rows.Length;
+
+        for (int i = 0; i < rows.Length; i++)
+        {
+            SerializedProperty row = arenas.GetArrayElementAtIndex(i);
+            row.FindPropertyRelative("_arenaId").stringValue = rows[i].ArenaId;
+            row.FindPropertyRelative("_firstStage").intValue = rows[i].First;
+            row.FindPropertyRelative("_lastStage").intValue = rows[i].Last;
         }
 
         serialized.ApplyModifiedPropertiesWithoutUndo();

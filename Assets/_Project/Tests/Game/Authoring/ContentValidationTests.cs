@@ -1046,11 +1046,11 @@ public sealed class ContentValidationTests
 
             ModeSpec spec = definition.ToSpec();
 
-            foreach (ContentId arena in spec.Arenas)
+            foreach (ArenaEntry arena in spec.Arenas)
             {
-                if (!arena.Value.StartsWith(ArenaNamespace, StringComparison.Ordinal))
+                if (!arena.ArenaId.Value.StartsWith(ArenaNamespace, StringComparison.Ordinal))
                 {
-                    problems.Add($"{path}: arena reference '{arena}' is not '{ArenaNamespace}*'.");
+                    problems.Add($"{path}: arena reference '{arena.ArenaId}' is not '{ArenaNamespace}*'.");
                 }
             }
 

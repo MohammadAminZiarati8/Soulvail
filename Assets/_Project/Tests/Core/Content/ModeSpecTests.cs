@@ -552,14 +552,18 @@ public sealed class ModeSpecTests
     [Test]
     public void Ctor_CopiesArenas()
     {
-        var list = new List<ContentId> { new ContentId("arena.a"), new ContentId("arena.b") };
+        var list = new List<ArenaEntry>
+        {
+            new ArenaEntry(new ContentId("arena.a")),
+            new ArenaEntry(new ContentId("arena.b")),
+        };
 
-        ModeSpec mode = new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, list);
+        ModeSpec mode = WithArenas(list);
 
         list.Clear();
 
         Assert.That(mode.Arenas.Count, Is.EqualTo(2));
-        Assert.That(mode.Arenas as ContentId[], Is.Null,
+        Assert.That(mode.Arenas as ArenaEntry[], Is.Null,
             "And handed out as a wrapper rather than as the array, like the roster beside it.");
     }
 
@@ -567,23 +571,206 @@ public sealed class ModeSpecTests
     public void Ctor_BadArena_Throws()
     {
         Assert.Throws<ArgumentException>(
-            () => new ModeSpec(
-                Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, new ContentId[1]),
+            () => WithArenas(new ArenaEntry[1]),
             "An entry that names no arena is a row somebody left blank.");
 
         Assert.Throws<ArgumentException>(
-            () => new ModeSpec(
-                Id(),
-                Name(),
-                1,
-                true,
-                0,
-                Scalings.Design(),
-                Scalings.Xp(),
-                DesignRoster,
-                new[] { new ContentId("arena.a"), new ContentId("arena.a") }),
+            () => WithArenas(new[] { new ArenaEntry(new ContentId("arena.a")), new ArenaEntry(new ContentId("arena.a")) }),
             "ArenaFor steps by index to avoid repeating a room, so a duplicate would let it step " +
             "onto itself.");
+    }
+
+    // ---- Spans (M7-05d) --------------------------------------------------------------------------
+
+    [Test]
+    public void ArenaEntry_OmittedSpanIsEveryStage()
+    {
+        var entry = new ArenaEntry(new ContentId("arena.a"));
+
+        Assert.That(entry.FirstStage, Is.EqualTo(1));
+        Assert.That(entry.LastStage, Is.EqualTo(ArenaEntry.NoLastStage));
+        Assert.That(entry.IsOpenAt(1), Is.True);
+        Assert.That(entry.IsOpenAt(10_000), Is.True,
+            "Omitted, a span is what every arena row meant before spans existed (rule 1).");
+    }
+
+    [Test]
+    public void ArenaEntry_RefusesABadSpan()
+    {
+        var id = new ContentId("arena.a");
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaEntry(id, 0),
+            "Stages are numbered from 1.");
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaEntry(id, 5, 4),
+            "A span that ends before it starts is a room nobody can be sent to.");
+        Assert.Throws<ArgumentException>(() => new ArenaEntry(default, 1, 4));
+    }
+
+    [Test]
+    public void Ctor_DefaultArenaEntry_Throws()
+    {
+        // default(ArenaEntry) never passed the constructor above, so the roster copy is the other
+        // end of AR §18.3's both-ends rule.
+        Assert.Throws<ArgumentException>(
+            () => WithArenas(new[] { new ArenaEntry(new ContentId("arena.a")), default }));
+    }
+
+    [Test]
+    public void ArenaFor_OnlyPicksRoomsOpenAtTheStage()
+    {
+        ModeSpec mode = WithArenas(SmallThenLarge());
+
+        for (int seed = 0; seed < 40; seed++)
+        {
+            for (int stage = 1; stage <= 12; stage++)
+            {
+                string arena = mode.ArenaFor(stage, seed).Value;
+
+                if (stage > 4)
+                {
+                    Assert.That(arena, Is.Not.EqualTo("arena.small"),
+                        $"Seed {seed} sent stage {stage} to a room that closes after stage 4.");
+                }
+
+                if (stage < 5)
+                {
+                    Assert.That(arena, Is.Not.EqualTo("arena.late"),
+                        $"Seed {seed} sent stage {stage} to a room that opens at stage 5.");
+                }
+            }
+        }
+    }
+
+    [Test]
+    public void ArenaFor_NeverRepeatsAcrossAWindowEdge()
+    {
+        // Two rooms are open at every stage of this roster, so the no-repeat rule applies at every
+        // stage — including 4 → 5, where the room the walk is stepping away from may have closed.
+        ModeSpec mode = WithArenas(SmallThenLarge());
+
+        for (int seed = 0; seed < 40; seed++)
+        {
+            ContentId previous = default;
+
+            for (int stage = 1; stage <= 30; stage++)
+            {
+                ContentId arena = mode.ArenaFor(stage, seed);
+
+                Assert.That(arena, Is.Not.EqualTo(previous),
+                    $"Seed {seed}: stage {stage} repeats the room stage {stage - 1} was fought in.");
+
+                previous = arena;
+            }
+        }
+    }
+
+    [Test]
+    public void ArenaFor_ALoneOpenRoomRepeats()
+    {
+        ModeSpec mode = WithArenas(new[]
+        {
+            new ArenaEntry(new ContentId("arena.first"), 1, 3),
+            new ArenaEntry(new ContentId("arena.rest"), 4),
+        });
+
+        for (int stage = 1; stage <= 3; stage++)
+        {
+            Assert.That(mode.ArenaFor(stage, 11).Value, Is.EqualTo("arena.first"),
+                "One room open, so it is the room — repeating, as a roster of one always has.");
+        }
+
+        Assert.That(mode.ArenaFor(4, 11).Value, Is.EqualTo("arena.rest"));
+    }
+
+    [TestCase(2, 1, "1010101010101010")]
+    [TestCase(2, 7, "0101010101010101")]
+    [TestCase(2, 99, "1010101010101010")]
+    [TestCase(2, -5, "0101010101010101")]
+    [TestCase(2, 123456, "1010101010101010")]
+    [TestCase(3, 1, "2020101212021202")]
+    [TestCase(3, 7, "1202121201012101")]
+    [TestCase(3, 99, "2021201202021020")]
+    [TestCase(3, -5, "2012101202020202")]
+    [TestCase(3, 123456, "2102010120212012")]
+    [TestCase(8, 1, "7013720543210272")]
+    [TestCase(8, 7, "4756375301210601")]
+    [TestCase(8, 99, "5126505231204527")]
+    [TestCase(8, -5, "6136173601567626")]
+    [TestCase(8, 123456, "7361012305076470")]
+    public void ArenaFor_AnOpenRosterPicksWhatItPickedBefore(int count, int seed, string before)
+    {
+        // Recorded from the pre-span walk on 2026-09-27, stages 1-16, one digit per stage: the row
+        // index of the room picked. Rule 3 — a roster that never mentions a span, which is Descent's,
+        // lands every seed where it always did, so no saved run resumes in a different room.
+        ModeSpec mode = WithArenas(count);
+
+        var picked = new System.Text.StringBuilder();
+
+        for (int stage = 1; stage <= 16; stage++)
+        {
+            string id = mode.ArenaFor(stage, seed).Value;
+            picked.Append(id[^1]);
+        }
+
+        Assert.That(picked.ToString(), Is.EqualTo(before));
+    }
+
+    [Test]
+    public void Ctor_AGapBetweenWindowsThrows()
+    {
+        var thrown = Assert.Throws<ArgumentException>(() => WithArenas(new[]
+        {
+            new ArenaEntry(new ContentId("arena.a"), 1, 4),
+            new ArenaEntry(new ContentId("arena.b"), 6),
+        }));
+
+        StringAssert.Contains("stage 5", thrown.Message,
+            "The message names the stage with no room, which is what a designer has to widen.");
+    }
+
+    [Test]
+    public void Ctor_AnEndlessModeWhoseRoomsCloseThrows()
+    {
+        var thrown = Assert.Throws<ArgumentException>(
+            () => WithArenas(new[] { new ArenaEntry(new ContentId("arena.a"), 1, 10) }));
+
+        StringAssert.Contains("stage 11", thrown.Message);
+    }
+
+    [Test]
+    public void Ctor_AFiniteModeNeedsOnlyItsOwnStages()
+    {
+        // A trial of ten stages whose one room closes after its tenth is complete, not short.
+        var arenas = new[] { new ArenaEntry(new ContentId("arena.a"), 1, 10) };
+
+        Assert.That(
+            () => new ModeSpec(Id(), Name(), 1, false, 10, Scalings.Design(), Scalings.Xp(), DesignRoster, arenas),
+            Throws.Nothing);
+    }
+
+    [Test]
+    public void Ctor_AModeStartingDeepNeedsNoRoomBeforeIt()
+    {
+        // The coverage check starts at the mode's first stage, so a mode entered at 5 is not refused
+        // for having nothing open at 1-4 — and the walk carries no room through those stages.
+        var arenas = new[]
+        {
+            new ArenaEntry(new ContentId("arena.a"), 5),
+            new ArenaEntry(new ContentId("arena.b"), 5),
+        };
+
+        var mode = new ModeSpec(Id(), Name(), 5, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, arenas);
+
+        Assert.That(mode.ArenaFor(5, 3).Value, Is.Not.Null);
+        Assert.That(mode.ArenaFor(2, 3).Value, Is.Null, "No room is open at a stage the mode does not have.");
+    }
+
+    [Test]
+    public void ArenaFor_WithWindows_AllocatesNothing()
+    {
+        ModeSpec mode = WithArenas(SmallThenLarge());
+
+        AllocationAssert.None(() => mode.ArenaFor(9, 7), 10_000);
     }
 
     private static ContentId Id() => new ContentId(DescentId);
@@ -593,16 +780,31 @@ public sealed class ModeSpecTests
     private static ModeSpec Mode(IReadOnlyList<RosterEntry> roster) =>
         new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), roster);
 
-    /// <summary>A mode with <paramref name="count"/> arenas named <c>arena.a0</c> onwards.</summary>
+    /// <summary>A mode with <paramref name="count"/> open arenas named <c>arena.a0</c> onwards.</summary>
     private static ModeSpec WithArenas(int count)
     {
-        var arenas = new ContentId[count];
+        var arenas = new ArenaEntry[count];
 
         for (int i = 0; i < count; i++)
         {
-            arenas[i] = new ContentId($"arena.a{i}");
+            arenas[i] = new ArenaEntry(new ContentId($"arena.a{i}"));
         }
 
-        return new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, arenas);
+        return WithArenas(arenas);
     }
+
+    /// <summary>An endless mode from stage 1 with exactly these arena rows.</summary>
+    private static ModeSpec WithArenas(IReadOnlyList<ArenaEntry> arenas) =>
+        new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(), Scalings.Xp(), DesignRoster, arenas);
+
+    /// <summary>
+    /// A small room for stages 1–4, one open throughout, and one from stage 5 — the Jungle's shape
+    /// with a room that never closes, so two are open at every stage.
+    /// </summary>
+    private static ArenaEntry[] SmallThenLarge() => new[]
+    {
+        new ArenaEntry(new ContentId("arena.small"), 1, 4),
+        new ArenaEntry(new ContentId("arena.open")),
+        new ArenaEntry(new ContentId("arena.late"), 5),
+    };
 }

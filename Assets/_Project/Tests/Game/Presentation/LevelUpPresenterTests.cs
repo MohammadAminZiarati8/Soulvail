@@ -1535,7 +1535,7 @@ public sealed class LevelUpPresenterTests
             // is in another assembly.
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId(ArenaId) },
+            new[] { new ArenaEntry(new ContentId(ArenaId)) },
 
             // GD §13.4's Vigil in the pool and never scheduled: a run holds it only when StartRun
             // restores it, which is Vigil_TheScreenDrawsTwoCards and nothing else.

@@ -1730,7 +1730,7 @@ public sealed class TreeViewPresenterTests
             // is in another assembly.
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ContentId(ArenaId) });
+            new[] { new ArenaEntry(new ContentId(ArenaId)) });
     }
 
     private static float[] Alternating(int count)

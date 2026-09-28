@@ -158,8 +158,20 @@ public sealed class ArenaViewTests
     {
         ModeSpec descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec();
 
+        var ids = new List<ContentId>();
+
+        foreach (ArenaEntry arena in descent.Arenas)
+        {
+            ids.Add(arena.ArenaId);
+
+            // Every Descent room is open at every stage, which is what keeps a Descent run landing
+            // in the rooms it landed in before arenas had spans (M7-05d rule 8).
+            Assert.That(arena.FirstStage, Is.EqualTo(1), $"{arena.ArenaId} opens late.");
+            Assert.That(arena.LastStage, Is.EqualTo(ArenaEntry.NoLastStage), $"{arena.ArenaId} closes.");
+        }
+
         Assert.That(
-            descent.Arenas,
+            ids,
             Is.EqualTo(new[]
             {
                 new ContentId("arena.pillars"),
@@ -187,9 +199,9 @@ public sealed class ArenaViewTests
             shipped.Add(Arena(path).Id);
         }
 
-        foreach (ContentId id in descent.Arenas)
+        foreach (ArenaEntry arena in descent.Arenas)
         {
-            Assert.That(shipped, Does.Contain(id));
+            Assert.That(shipped, Does.Contain(arena.ArenaId));
         }
     }
 

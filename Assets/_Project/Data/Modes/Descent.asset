@@ -69,10 +69,18 @@ MonoBehaviour:
   - _specId: enemy.bloater
     _introducedAtStage: 4
   _arenas:
-  - arena.pillars
-  - arena.tiered
-  - arena.ashen-reach.courtyard
-  - arena.jungle.clearing
+  - _arenaId: arena.pillars
+    _firstStage: 1
+    _lastStage: 0
+  - _arenaId: arena.tiered
+    _firstStage: 1
+    _lastStage: 0
+  - _arenaId: arena.ashen-reach.courtyard
+    _firstStage: 1
+    _lastStage: 0
+  - _arenaId: arena.jungle.clearing
+    _firstStage: 1
+    _lastStage: 0
   _bossRoster:
   - _bossId: boss.warden
     _everyNStages: 5

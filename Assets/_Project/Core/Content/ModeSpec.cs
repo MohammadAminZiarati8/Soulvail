@@ -130,6 +130,90 @@ public readonly struct BossRosterEntry
 }
 
 /// <summary>
+/// One room a mode may fight in, and the span of stages it may be used at (M7-05d).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>The span belongs to the mode, not to the arena</b>, for <see cref="RosterEntry"/>'s reason: a
+/// room is small or large, and <em>when</em> a place uses it is the place's statement. The owner's
+/// direction of 2026-09-27 is the first use — a place opens in small rooms — and a small room has to
+/// close as well as open, because GD §12.4's concurrency grows with depth.
+/// </para>
+/// <para>
+/// A <see langword="readonly"/> struct for <see cref="RosterEntry"/>'s reason. <b>Omitted, the span is
+/// every stage</b>, which is what every arena roster meant before the span existed — so a mode that
+/// never mentions one picks exactly the rooms it picked before (M7-05d rule 3).
+/// </para>
+/// </remarks>
+public readonly struct ArenaEntry
+{
+    /// <summary>The <see cref="LastStage"/> of a room open to the end of the mode.</summary>
+    /// <remarks>
+    /// <c>int.MaxValue</c>, which is also what <see cref="ModeSpec.FinalStage"/> holds for an endless
+    /// mode, so one comparison answers both and no caller branches on endlessness.
+    /// </remarks>
+    public const int NoLastStage = int.MaxValue;
+
+    /// <param name="arenaId">The room's id, e.g. <c>arena.jungle.hollow</c>.</param>
+    /// <param name="firstStage">The first stage it may be used at. 1 means "from the first stage".</param>
+    /// <param name="lastStage">
+    /// The last stage it may be used at, or <see cref="NoLastStage"/> when it stays open to the end.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="arenaId"/> is <c>default(ContentId)</c> — a row that names no room. Refused here
+    /// and again where the roster is copied, since a <c>default(ArenaEntry)</c> never passed this
+    /// constructor (AR §18.3: a struct with an invariant needs the check at both ends).
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="firstStage"/> is below 1, or <paramref name="lastStage"/> is before it — a
+    /// span with no stages in it, which reads as a room nobody can ever be sent to.
+    /// </exception>
+    public ArenaEntry(ContentId arenaId, int firstStage = 1, int lastStage = NoLastStage)
+    {
+        if (arenaId.Value is null)
+        {
+            throw new ArgumentException(
+                "arenaId must be a valid ContentId; default(ContentId) names no arena.",
+                nameof(arenaId));
+        }
+
+        if (firstStage < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(firstStage),
+                firstStage,
+                $"firstStage for '{arenaId}' must be at least 1. Stages are numbered from 1, and a "
+                    + "room open from the start is open from 1.");
+        }
+
+        if (lastStage < firstStage)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lastStage),
+                lastStage,
+                $"lastStage for '{arenaId}' is before its firstStage ({firstStage}), so the room is "
+                    + "open at no stage at all. A room open to the end passes NoLastStage.");
+        }
+
+        ArenaId = arenaId;
+        FirstStage = firstStage;
+        LastStage = lastStage;
+    }
+
+    /// <summary>The room, resolved against the arena prefabs the Run scene carries.</summary>
+    public ContentId ArenaId { get; }
+
+    /// <summary>The first stage it may be used at; 1 = from the first stage.</summary>
+    public int FirstStage { get; }
+
+    /// <summary>The last stage it may be used at; <see cref="NoLastStage"/> = to the end.</summary>
+    public int LastStage { get; }
+
+    /// <summary>Whether <paramref name="stage"/> is inside this room's span.</summary>
+    public bool IsOpenAt(int stage) => stage >= FirstStage && stage <= LastStage;
+}
+
+/// <summary>
 /// What one CH §5.2 Overflow level is worth in this mode: the fraction it adds to the player's
 /// weapon damage, and the fraction it adds to their maximum hit points.
 /// </summary>
@@ -550,12 +634,12 @@ public sealed class ModeSpec
     private readonly ReadOnlyCollection<RosterEntry> _rosterView;
 
     /// <summary>
-    /// The arena ids, as an array for <see cref="ArenaFor"/>'s walk. <see cref="Arenas"/> hands out
+    /// The arena rows, as an array for <see cref="ArenaFor"/>'s walk. <see cref="Arenas"/> hands out
     /// the wrapper, for <see cref="_roster"/>'s reason.
     /// </summary>
-    private readonly ContentId[] _arenas;
+    private readonly ArenaEntry[] _arenas;
 
-    private readonly ReadOnlyCollection<ContentId> _arenasView;
+    private readonly ReadOnlyCollection<ArenaEntry> _arenasView;
 
     /// <summary>
     /// The boss schedule, as an array for <see cref="TryGetBossFor"/>'s walk.
@@ -600,10 +684,11 @@ public sealed class ModeSpec
     /// caller's list is not retained. Order is meaningful: <see cref="RosterFor"/> answers in it.
     /// </param>
     /// <param name="arenas">
-    /// The arenas this mode draws its stages' rooms from — GD §7.2's pool of 8–12 per biome.
-    /// Copied, like the roster. Null and empty mean the same thing and are both legal: a mode with
-    /// no arena roster leaves every stage in whatever the scene was dressed with, which is what
-    /// every M0 and M1 grey box was.
+    /// The arenas this mode draws its stages' rooms from — GD §7.2's pool of 8–12 per biome — each
+    /// with the span of stages it may be used at (M7-05d). Copied, like the roster. Null and empty
+    /// mean the same thing and are both legal: a mode with no arena roster leaves every stage in
+    /// whatever the scene was dressed with, which is what every M0 and M1 grey box was. A roster
+    /// that is not empty must leave no stage of the mode without an open room.
     /// </param>
     /// <param name="bossRoster">
     /// Which stages hold a boss, and which boss (GD §9, M4-01b rule 1). Copied, like the roster.
@@ -649,7 +734,8 @@ public sealed class ModeSpec
     /// same stage. The last is GD §8.2's rule — <em>"new enemies arrive one at a time, in a wave
     /// where they're the only new thing"</em> — and it is what lets
     /// <see cref="TryGetIntroduction"/> answer with a single id rather than a list. Also when an
-    /// arena entry is <c>default(ContentId)</c> or two of them name the same arena; when a boss
+    /// arena entry is <c>default(ArenaEntry)</c>, two of them name the same arena, or their spans
+    /// leave a stage the mode has with no room open (M7-05d rule 4); when a boss
     /// roster entry is <c>default(BossRosterEntry)</c>, two of them name the same boss, or two of
     /// them come round on the same interval — the last because the first matching row wins, so the
     /// second could never be reached; and when
@@ -675,7 +761,7 @@ public sealed class ModeSpec
         ScalingSpec scaling,
         XpCurve xp,
         IReadOnlyList<RosterEntry> roster,
-        IReadOnlyList<ContentId> arenas = null,
+        IReadOnlyList<ArenaEntry> arenas = null,
         IReadOnlyList<BossRosterEntry> bossRoster = null,
         OverflowSpec overflow = default,
         EssenceSpec essence = default,
@@ -775,7 +861,7 @@ public sealed class ModeSpec
         // nothing. The same guard ContentCatalog and SpawnPlan make, for the same reason.
         _rosterView = Array.AsReadOnly(_roster);
 
-        _arenas = CopyArenas(arenas, id);
+        _arenas = CopyArenas(arenas, id, startingStage, effectiveFinal);
 
         _arenasView = Array.AsReadOnly(_arenas);
 
@@ -869,7 +955,8 @@ public sealed class ModeSpec
     public IReadOnlyList<RosterEntry> Roster => _rosterView;
 
     /// <summary>
-    /// The arenas this mode draws from — GD §7.2's pool of 8–12 per biome, two of them in V1.
+    /// The arenas this mode draws from — GD §7.2's pool of 8–12 per biome — each with the span of
+    /// stages it may be used at, in authored order.
     /// </summary>
     /// <remarks>
     /// May be empty, which makes <see cref="ArenaFor"/> answer <c>default</c> and leaves the run in
@@ -877,7 +964,7 @@ public sealed class ModeSpec
     /// an unauthored arena id refuses the run at its first frame rather than forty seconds in at a
     /// door (M2-11a rule 4).
     /// </remarks>
-    public IReadOnlyList<ContentId> Arenas => _arenasView;
+    public IReadOnlyList<ArenaEntry> Arenas => _arenasView;
 
     /// <summary>
     /// Which stages hold a boss, in the order they were authored (GD §9). May be empty.
@@ -1029,7 +1116,8 @@ public sealed class ModeSpec
     /// <param name="seed">The run's seed. Every <see langword="int"/> is legal — it is a bit
     /// pattern rather than a quantity — so there is nothing here for a guard to reject.</param>
     /// <returns>
-    /// The arena's id, or <c>default(ContentId)</c> for a mode with no arena roster.
+    /// The arena's id, or <c>default(ContentId)</c> for a mode with no arena roster — and for a stage
+    /// no row is open at, which the constructor's coverage check makes a stage the mode does not have.
     /// </returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="stage"/> is below 1.</exception>
     /// <remarks>
@@ -1044,18 +1132,25 @@ public sealed class ModeSpec
     /// </para>
     /// <para>
     /// <b>The same room never appears twice running</b>, and that rule is what makes this a walk
-    /// rather than one hash. A stage's raw index is a hash of the pair modulo the roster; it is
-    /// stepped forward by one when it lands on the arena the <em>previous</em> stage used — and
-    /// the previous stage's arena may itself have been stepped, so the chain has to be replayed
-    /// from stage 1. Comparing against the previous stage's <em>raw</em> index instead would be
-    /// O(1) and wrong: with a roster of two, raw indices 0, 0, 1 give 0, 1, 1 — a repeat, at the
-    /// one place the rule exists to prevent one.
+    /// rather than one hash. A stage's raw pick is a hash of the pair modulo the rooms open at that
+    /// stage; it is stepped forward to the next open room when it lands on the one the
+    /// <em>previous</em> stage used — and the previous stage's room may itself have been stepped, so
+    /// the chain has to be replayed from stage 1. Comparing against the previous stage's <em>raw</em>
+    /// pick instead would be O(1) and wrong: with a roster of two, raw picks 0, 0, 1 give 0, 1, 1 — a
+    /// repeat, at the one place the rule exists to prevent one.
     /// </para>
     /// <para>
-    /// So it costs one integer hash per stage below the one asked about, twice per stage boundary
-    /// (the arriving arena and the one named on the way out) and never per frame. At GD §7.3's
-    /// 40–75 s a stage, an eleven-hour run reaches stage 1,000 and pays two thousand integer
-    /// multiplies at its boundary. It allocates nothing at any depth.
+    /// <b>Only the rooms open at a stage are candidates for it</b> (M7-05d rule 2). The hash picks
+    /// the <em>n</em>th open row in authored order, so a roster whose rows are all open picks the
+    /// same room as before the spans existed — the <em>n</em>th open row is row <em>n</em> — and a
+    /// resumed Descent run lands where it always did (rule 3). A stage with one open room gets it,
+    /// repeating if it must, as a roster of one always has.
+    /// </para>
+    /// <para>
+    /// So it costs one integer hash and two passes over the roster per stage below the one asked
+    /// about, twice per stage boundary (the arriving arena and the one named on the way out) and
+    /// never per frame. At GD §7.3's 40–75 s a stage, an eleven-hour run reaches stage 1,000 and pays
+    /// a few tens of thousands of comparisons at its boundary. It allocates nothing at any depth.
     /// </para>
     /// </remarks>
     public ContentId ArenaFor(int stage, int seed)
@@ -1073,68 +1168,134 @@ public sealed class ModeSpec
             return default;
         }
 
-        // A roster of one repeats by necessity, and says so rather than throwing: the no-repeat
-        // rule cannot apply when there is nowhere else to go (M2-11a rule 3).
-        if (_arenas.Length == 1)
-        {
-            return _arenas[0];
-        }
-
         int previous = -1;
 
         for (int s = 1; s <= stage; s++)
         {
-            int index = (int)(Mix(s, seed) % (uint)_arenas.Length);
+            int open = CountOpenArenas(s);
 
-            if (index == previous)
+            // A stage below the mode's first, where a span-limited roster may have nothing open.
+            // The coverage check rules this out for every stage the mode has, so the walk simply
+            // carries no room through it.
+            if (open == 0)
             {
-                index++;
+                previous = -1;
+                continue;
+            }
 
-                if (index == _arenas.Length)
-                {
-                    index = 0;
-                }
+            int index = NthOpenArena(s, (int)(Mix(s, seed) % (uint)open));
+
+            // One open room repeats by necessity, and says so rather than throwing: the no-repeat
+            // rule cannot apply when there is nowhere else to go (M2-11a rule 3).
+            if (index == previous && open > 1)
+            {
+                index = NextOpenArena(s, index);
             }
 
             previous = index;
         }
 
-        return _arenas[previous];
+        return previous < 0 ? default : _arenas[previous].ArenaId;
+    }
+
+    /// <summary>How many arena rows are open at <paramref name="stage"/>.</summary>
+    private int CountOpenArenas(int stage)
+    {
+        int open = 0;
+
+        for (int i = 0; i < _arenas.Length; i++)
+        {
+            if (_arenas[i].IsOpenAt(stage))
+            {
+                open++;
+            }
+        }
+
+        return open;
     }
 
     /// <summary>
-    /// Copies the arena roster, refusing an entry that names nothing and a duplicated id.
+    /// The roster index of the <paramref name="n"/>th row open at <paramref name="stage"/>, counting
+    /// from 0.
+    /// </summary>
+    private int NthOpenArena(int stage, int n)
+    {
+        for (int i = 0; i < _arenas.Length; i++)
+        {
+            if (_arenas[i].IsOpenAt(stage) && n-- == 0)
+            {
+                return i;
+            }
+        }
+
+        // Unreachable while n is below CountOpenArenas(stage), which is the only way it is called.
+        throw new InvalidOperationException(
+            $"'{Id}' has fewer rooms open at stage {stage} than it counted.");
+    }
+
+    /// <summary>
+    /// The roster index of the first row after <paramref name="index"/>, wrapping, that is open at
+    /// <paramref name="stage"/> — the no-repeat step, taken among the open rooms only.
+    /// </summary>
+    private int NextOpenArena(int stage, int index)
+    {
+        for (int step = 1; step < _arenas.Length; step++)
+        {
+            int candidate = (index + step) % _arenas.Length;
+
+            if (_arenas[candidate].IsOpenAt(stage))
+            {
+                return candidate;
+            }
+        }
+
+        return index;
+    }
+
+    /// <summary>
+    /// Copies the arena roster, refusing an entry that names nothing, a duplicated id, and spans that
+    /// leave a stage of the mode with no room.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Duplicates are refused rather than tolerated because <see cref="ArenaFor"/>'s step is by
     /// <em>index</em>: two rows naming one arena would let the step land on the same room it was
     /// stepping away from, and the no-repeat rule would be quietly false for that pair alone.
+    /// </para>
+    /// <para>
+    /// <b>A gap is refused here, not at the stage that falls into it</b> (M7-05d rule 4). A stage no
+    /// row is open at is a run that reaches a door and has nothing to raise behind it, forty minutes
+    /// in; here it is a message naming the stage, at boot. Only the mode's own stages are asked
+    /// about: a finite mode's rooms may all close after its last stage, and an endless mode needs a
+    /// row open to the end.
+    /// </para>
     /// </remarks>
-    private static ContentId[] CopyArenas(IReadOnlyList<ContentId> arenas, ContentId id)
+    private static ArenaEntry[] CopyArenas(
+        IReadOnlyList<ArenaEntry> arenas, ContentId id, int startingStage, int finalStage)
     {
         if (arenas is null || arenas.Count == 0)
         {
-            return Array.Empty<ContentId>();
+            return Array.Empty<ArenaEntry>();
         }
 
-        var copy = new ContentId[arenas.Count];
+        var copy = new ArenaEntry[arenas.Count];
         var seen = new HashSet<ContentId>();
 
         for (int i = 0; i < arenas.Count; i++)
         {
-            ContentId arena = arenas[i];
+            ArenaEntry arena = arenas[i];
 
-            if (arena.Value is null)
+            if (arena.ArenaId.Value is null)
             {
                 throw new ArgumentException(
-                    $"arenas[{i}] of '{id}' names no arena. A default(ContentId) is not a room.",
+                    $"arenas[{i}] of '{id}' names no arena. A default(ArenaEntry) is not a room.",
                     nameof(arenas));
             }
 
-            if (!seen.Add(arena))
+            if (!seen.Add(arena.ArenaId))
             {
                 throw new ArgumentException(
-                    $"'{id}' lists arena '{arena}' twice. ArenaFor steps by index to avoid "
+                    $"'{id}' lists arena '{arena.ArenaId}' twice. ArenaFor steps by index to avoid "
                         + "repeating a room, so a duplicate would let it step onto itself.",
                     nameof(arenas));
             }
@@ -1142,7 +1303,61 @@ public sealed class ModeSpec
             copy[i] = arena;
         }
 
+        int uncovered = FirstStageWithNoArena(copy, startingStage, finalStage);
+
+        if (uncovered > 0)
+        {
+            throw new ArgumentException(
+                $"'{id}' has no arena open at stage {uncovered}. Every stage a mode has needs a room, "
+                    + "or the run reaches that stage's door with nothing to raise behind it; widen a "
+                    + "span, or leave one room open to the end.",
+                nameof(arenas));
+        }
+
         return copy;
+    }
+
+    /// <summary>
+    /// The first stage from <paramref name="startingStage"/> to <paramref name="finalStage"/> that no
+    /// row is open at, or 0 when every one is covered.
+    /// </summary>
+    /// <remarks>
+    /// A sweep rather than a stage-by-stage probe, because an endless mode's final stage is
+    /// <c>int.MaxValue</c>: from the stage being asked about, jump to one past the furthest last stage
+    /// of any row open there, until a row reaches the end or none is open. Quadratic in the roster
+    /// and run once, at construction.
+    /// </remarks>
+    private static int FirstStageWithNoArena(ArenaEntry[] arenas, int startingStage, int finalStage)
+    {
+        int stage = startingStage;
+
+        while (true)
+        {
+            int reach = 0;
+
+            for (int i = 0; i < arenas.Length; i++)
+            {
+                if (arenas[i].IsOpenAt(stage) && arenas[i].LastStage > reach)
+                {
+                    reach = arenas[i].LastStage;
+                }
+            }
+
+            // A row open at this stage reaches at least this stage, so every pass moves forward and
+            // the sweep ends. Checked rather than assumed, because a sweep that stops moving is a
+            // hang on the main thread at boot — which a broken IsOpenAt produced once (M7-05d).
+            if (reach < stage)
+            {
+                return stage;
+            }
+
+            if (reach >= finalStage)
+            {
+                return 0;
+            }
+
+            stage = reach + 1;
+        }
     }
 
     /// <summary>

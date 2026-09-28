@@ -744,7 +744,7 @@ public sealed class GrantShieldTests
         Scalings.Design(),
         Scalings.Xp(),
         roster,
-        new[] { Id(ArenaOne), Id(ArenaTwo) });
+        new[] { new ArenaEntry(Id(ArenaOne)), new ArenaEntry(Id(ArenaTwo)) });
 
     /// <summary>The Spitter, with a bolt big enough to outlast a 35-point grant.</summary>
     private static EnemySpec Spitter() => new EnemySpec(

@@ -366,7 +366,7 @@ What the planning found:
 |---|---|---|---|---|
 | UI-01a | [The HUD's art and its font, imported](tasks/UI-01a-the-huds-art-and-font.md) — this section and the six specs, 19 sprites, Lilita One | S | — | ☑ |
 | UI-01b | [The health bar, the XP strip and the level star](tasks/UI-01b-the-health-bar-xp-and-star.md) — and the band's layout in dp | M | UI-01a | ☑ |
-| UI-01c | [Enemies left, in core](tasks/UI-01c-enemies-left-in-core.md) — the living and the not-yet-spawned | S | — | ☐ |
+| UI-01c | [Enemies left, in core](tasks/UI-01c-enemies-left-in-core.md) — the living and the not-yet-spawned | S | — | ☑ |
 | UI-01d | [The stage chip, the enemies-left chip and the pause button](tasks/UI-01d-the-chips-and-the-pause-button.md) | S | UI-01b, UI-01c | ☐ |
 | UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☐ |
 | UI-01f | [The boss bar in the new art](tasks/UI-01f-the-boss-bar.md) | S | UI-01b | ☐ |

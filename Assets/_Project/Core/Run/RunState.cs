@@ -1001,6 +1001,25 @@ public sealed class RunState
     public int EnemyCount => Enemies.Registry.AliveCount;
 
     /// <summary>
+    /// The living enemies and the bodies still to come this stage (UI-01c): what the stage has left.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Living, not registered</b>, which is the difference from <see cref="EnemyCount"/>: a corpse
+    /// sits in the registry for <c>EnemySystem.CorpseTime</c> while it dissolves, and a chip that
+    /// counted it would say one was left after the last kill. <b>And the bodies to come</b>, because
+    /// waves overlap (GD §7.3): the living alone dip under five at every wave's start, and a chip that
+    /// read 3 and then 9 would be wrong twice. So this only falls, and it falls to 0 at the clear.
+    /// </para>
+    /// <para>
+    /// <c>internal set</c> and written once a tick by <c>RunSession.Tick</c>, after the flow —
+    /// <see cref="StageIndex"/>'s arrangement, because this state does not hold the director. Zero
+    /// through the arrival beat, which spawns nothing yet, and through the Sanctum.
+    /// </para>
+    /// </remarks>
+    public int EnemiesLeft { get; internal set; }
+
+    /// <summary>
     /// The player's current hit points, in <c>[0, <see cref="PlayerMaxHp"/>]</c>. The left-hand
     /// number of M1-17's <c>current/max</c> readout.
     /// </summary>

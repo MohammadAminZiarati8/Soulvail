@@ -100,4 +100,34 @@ _None: core only. UI-01d's chip is where it is seen._
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**As specified in behaviour, with three deviations in where the rows live.**
+
+**Deviation 1: the session rows are in `StageFlowTests`, not `RunSessionTests`.** The five
+`EnemiesLeft_*` rows need a run with a stage flow, one Husk to a stage, and a kill.
+`StageFlowTests` already has all three: `Session`, `OneHuskStage` and `KillTheWave`, which answers
+the Censer's swing through `ReportConeHits`, the only route a core test has to a kill. A second copy
+in `RunSessionTests` would be the fixture this project keeps refusing to duplicate.
+
+**Deviation 2: the boss row is in `BossPhasesTests`**, which builds a boss stage, where
+`SpawnDirectorTests` builds none.
+
+**Deviation 3: `Unspawned_FallsAsBodiesStand` asserts the invariant, not two bodies.** The first draft
+used `TickThrough(director, enemies, 2)`, and a 120-budget wave stands five before that helper
+returns, because several rings are in the air at once. The row now ticks by tenths until four stand,
+and asserts at every tick that `Unspawned + LivingCount` is the plan's total, so a body is always
+either to come or living, never both and never neither. `Unspawned_AllocatesNothing` is one row more
+than the table, for rule 5 at the director. `EnemiesLeft_AllocatesNothing` measures a whole session
+tick in a wave, after `RunSessionTests.Tick_AllocatesNothing`'s warm-up.
+
+**Rule 4, placed: after the flow's block, before `TickBody`.** Outside the block so a mode with nothing
+to compose still counts its living, and after it so a boundary that has just cleared the arena and
+the director reads 0 on that tick. A run ended by `IsModeComplete` returns before the write, which
+leaves the last count standing on a run that is over.
+
+**Rule 2, as built: `Unspawned` is 1 while `BossEnemyId` is 0 and the boss is not cleared.** The adds
+never enter it: they are summoned through `EnemySystem.Spawn` rather than a wave, so they are living
+from the frame they stand.
+
+**Rule 1 needed no counter of its own.** A started wave's `_waveOutstanding` already falls in
+`FireDueTelegraphs` as each body stands, and a wave not started is its plan's `BodyCount`, so the sum
+is exact at every tick and nothing else has to be kept in step.

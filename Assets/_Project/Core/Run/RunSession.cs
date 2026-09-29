@@ -1536,6 +1536,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             }
         }
 
+        // UI-01c rule 4: what the stage still holds, copied once a tick for StageIndex's reason — the
+        // state does not hold the director, and a HUD polling the number reads it as it polls the
+        // cooldowns. After the flow, so a boundary that has just cleared the arena and the director
+        // reads 0 on the tick it happened rather than a tick later; and outside the flow's block, so a
+        // mode with nothing to compose still counts its living.
+        State.EnemiesLeft = State.Enemies.LivingCount() + _director.Unspawned;
+
         TickBody(snapshot);
     }
 

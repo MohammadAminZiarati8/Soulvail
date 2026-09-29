@@ -633,6 +633,138 @@ public sealed class SpawnDirectorTests
         });
     }
 
+    // ---- What is still to come (UI-01c rules 1, 3, 5) --------------------------------------------
+
+    [Test]
+    public void Unspawned_IsTheWholePlanAtBegin()
+    {
+        ModeSpec mode = Mode(budget: 120f, waves: 3, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+        WavePlan plan = Composed(mode, 1);
+
+        Assert.That(plan.WaveCount, Is.EqualTo(3), "the fixture's premise: a stage of three waves.");
+
+        director.Begin(plan, _arena, 0f);
+
+        // Wave 1 has started and holds its whole queue; waves 2 and 3 are the plan's. Nothing stands.
+        Assert.That(director.Unspawned, Is.EqualTo(Total(plan)));
+        Assert.That(director.Unspawned, Is.GreaterThan(plan.BodyCount(1)), "the later waves were left out.");
+    }
+
+    [Test]
+    public void Unspawned_FallsAsBodiesStand()
+    {
+        ModeSpec mode = Mode(budget: 120f, waves: 3, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+        WavePlan plan = Composed(mode, 1);
+        int total = Total(plan);
+
+        director.Begin(plan, _arena, 0f);
+
+        // Tick by tick through the first bodies standing, several rings in the air at once: at every
+        // tick a body is either to come or living, never both and never neither.
+        float now = 0f;
+
+        for (int i = 0; i < 200 && enemies.LivingCount() < 4; i++)
+        {
+            director.Tick(now, Vector3.Zero, Stream());
+
+            Assert.That(director.Unspawned + enemies.LivingCount(), Is.EqualTo(total), $"at {now:F2} s");
+
+            now += 0.1f;
+        }
+
+        Assert.That(enemies.LivingCount(), Is.GreaterThanOrEqualTo(4), "the fixture failed to stand bodies up.");
+        Assert.That(director.Unspawned, Is.EqualTo(total - enemies.LivingCount()));
+    }
+
+    [Test]
+    public void Unspawned_ATelegraphedBodyIsStillToCome()
+    {
+        ModeSpec mode = Mode(budget: 32f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+        WavePlan plan = Composed(mode, 1);
+
+        director.Begin(plan, _arena, 0f);
+        director.Tick(0f, Vector3.Zero, Stream());
+
+        Assert.That(director.PendingCount, Is.GreaterThan(0), "the fixture's premise: a ring is up.");
+        Assert.That(enemies.LivingCount(), Is.Zero);
+        Assert.That(director.Unspawned, Is.EqualTo(Total(plan)), "a telegraphed body is not standing yet.");
+    }
+
+    [Test]
+    public void Unspawned_ANewWaveMovesNothing()
+    {
+        // Wave_OverlapsAtQuarterRemaining's stage: 96 over two waves, and wave 1 is eight Husks.
+        ModeSpec mode = Mode(budget: 96f, waves: 2, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+        WavePlan plan = Composed(mode, 1);
+
+        director.Begin(plan, _arena, 0f);
+
+        float now = TickThrough(director, enemies, 8);
+
+        Kill(enemies, SpawnedIds(), 6, now);
+
+        int before = director.Unspawned;
+
+        Assert.That(before, Is.EqualTo(plan.BodyCount(2)), "wave 1 has stood whole, and wave 2 is the plan's.");
+
+        director.Tick(now, Vector3.Zero, Stream());
+
+        Assert.That(director.Wave, Is.EqualTo(2), "the fixture's premise: wave 2 started on this tick.");
+        Assert.That(director.Unspawned, Is.EqualTo(before), "starting a wave moved its bodies from the plan to the queue and counted them again.");
+    }
+
+    [Test]
+    public void Unspawned_IsZeroOnceEveryBodyStands()
+    {
+        ModeSpec mode = Mode(budget: 8f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+
+        director.Begin(Composed(mode, 1), _arena, 0f);
+
+        TickThrough(director, enemies, 2);
+
+        Assert.That(director.Unspawned, Is.Zero);
+    }
+
+    [Test]
+    public void Unspawned_IsZeroBeforeBeginAndAfterClear()
+    {
+        ModeSpec mode = Mode(budget: 32f, waves: 1, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+
+        Assert.That(director.Unspawned, Is.Zero, "a director with no plan has nothing to come.");
+
+        director.Begin(Composed(mode, 1), _arena, 0f);
+
+        Assert.That(director.Unspawned, Is.GreaterThan(0));
+
+        director.Clear();
+
+        Assert.That(director.Unspawned, Is.Zero, "a cleared stage still reported bodies to come.");
+    }
+
+    [Test]
+    public void Unspawned_AllocatesNothing()
+    {
+        ModeSpec mode = Mode(budget: 120f, waves: 3, concurrency: DeviceCap, (HuskId, 1));
+        EnemySystem enemies = Enemies(mode);
+        SpawnDirector director = Director(enemies, Points(8));
+
+        director.Begin(Composed(mode, 1), _arena, 0f);
+
+        AllocationAssert.None(() => _ = director.Unspawned, 100_000);
+    }
+
     // ---- Clear (rule 16) -----------------------------------------------------------------------
 
     [Test]
@@ -964,6 +1096,19 @@ public sealed class SpawnDirectorTests
         }
 
         return timeline;
+    }
+
+    /// <summary>Every body the plan holds, over every wave.</summary>
+    private static int Total(WavePlan plan)
+    {
+        int total = 0;
+
+        for (int w = 1; w <= plan.WaveCount; w++)
+        {
+            total += plan.BodyCount(w);
+        }
+
+        return total;
     }
 
     /// <summary>The archetypes telegraphed so far, in order.</summary>

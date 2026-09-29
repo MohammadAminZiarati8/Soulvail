@@ -300,33 +300,94 @@ public sealed class BossBarViewTests
         _hub.Publish(new EnemyDamaged(BossEnemyId, 400f, 0.5f, false));
 
         Assert.That(_bar.Fraction, Is.EqualTo(0.5f).Within(1e-4f));
-        Assert.That(Fill().fillAmount, Is.EqualTo(0.5f).Within(1e-4f));
+
+        // UI-01f rule 2: a sliced fill does not draw fillAmount, so its width is its right-hand anchor,
+        // from the well's left edge — the band drains from the right, and a mark at 0.66 is two-thirds
+        // along from the full end.
+        var fillRect = (RectTransform)Fill().transform;
+
+        Assert.That(fillRect.anchorMin.x, Is.EqualTo(0f).Within(1e-4f));
+        Assert.That(fillRect.anchorMax.x, Is.EqualTo(0.5f).Within(1e-4f));
 
         // **And structurally there is one bar rather than three**, which is the half of rule 3 a
-        // fraction cannot show: exactly one Filled image in the whole band, stretched across all of it,
-        // and the seams are Simple images drawn over the top.
-        Image[] filled = BandGraphics().OfType<Image>()
-            .Where(image => image.type == Image.Type.Filled)
+        // fraction cannot show: exactly one fill in the whole band, in the well, and the seams are
+        // separate images drawn over it.
+        Image[] fills = BandGraphics().OfType<Image>()
+            .Where(image => image.sprite != null && image.sprite.name == "Fill_Bar")
             .ToArray();
 
         Assert.That(
-            filled.Length,
+            fills.Length,
             Is.EqualTo(1),
-            "the band holds more than one Filled image, so the segments are separate bars — which is "
-                + "the shape rule 3 exists to refuse.");
+            "the band holds more than one fill, so the segments are separate bars — which is the "
+                + "shape rule 3 exists to refuse.");
 
-        var fillRect = (RectTransform)filled[0].transform;
+        Assert.That(fills[0].transform.parent, Is.SameAs(Field<RectTransform>(_bar, "_well")), "the fill is not in the well.");
+    }
 
-        Assert.That(fillRect.anchorMin.x, Is.EqualTo(0f).Within(1e-4f));
-        Assert.That(fillRect.anchorMax.x, Is.EqualTo(1f).Within(1e-4f));
-        Assert.That(
-            filled[0].fillMethod,
-            Is.EqualTo(Image.FillMethod.Horizontal),
-            "the fill is not Horizontal, so fillAmount draws a ring rather than a bar.");
-        Assert.That(
-            filled[0].fillOrigin,
-            Is.EqualTo((int)Image.OriginHorizontal.Left),
-            "the fill drains from the wrong end, so a mark at 0.66 is two-thirds from the wrong side.");
+    [Test]
+    public void Bar_FillHidesAtZero()
+    {
+        BuildHud();
+
+        Announce(BossEnemyId, WardenPhases);
+
+        _hub.Publish(new EnemyDamaged(BossEnemyId, 4000f, 0f, false));
+
+        // Switched off rather than drawn at no width, for HpBarView.DrawWidth's reason: a sliced pill
+        // with none draws its two end caps as a dot.
+        Assert.That(Fill().enabled, Is.False);
+    }
+
+    [Test]
+    public void Bar_FillIsBone()
+    {
+        BuildHud();
+
+        Announce(BossEnemyId, WardenPhases);
+
+        Assert.That(SameColour(Fill().color, Palette.Boss), Is.True, "the fill is not Palette.Boss.");
+        Assert.That(Fill().sprite.name, Is.EqualTo("Fill_Bar"));
+        Assert.That(Fill().type, Is.EqualTo(Image.Type.Sliced));
+    }
+
+    [Test]
+    public void Bar_SeamsAreTheArtUntinted()
+    {
+        BuildHud();
+
+        Announce(BossEnemyId, WardenPhases);
+
+        List<Image> marks = LiveMarks();
+
+        Assert.That(marks, Has.Count.EqualTo(2), "a three-phase boss draws two seams.");
+
+        foreach (Image mark in marks)
+        {
+            Assert.That(mark.sprite.name, Is.EqualTo("BossBar_PhaseSeam"));
+            Assert.That(mark.color, Is.EqualTo(Color.white), "a seam is tinted; it is the art's own dark pill.");
+            Assert.That(mark.transform.parent, Is.SameAs(Field<RectTransform>(_bar, "_well")), "a seam is not in the well.");
+        }
+    }
+
+    [Test]
+    public void Bar_TheFrameHoldsTheWell()
+    {
+        BuildHud();
+
+        Announce(BossEnemyId, WardenPhases);
+
+        var band = (RectTransform)_bar.transform;
+        var well = Field<RectTransform>(_bar, "_well");
+        float height = band.rect.height;
+
+        // UI-01f rule 1: the well sits a third of the band's height in from each end, past the frame's
+        // round caps, and a quarter in from the top and bottom.
+        Assert.That(well.offsetMin.x, Is.EqualTo(height / 3f).Within(0.01f));
+        Assert.That(well.offsetMin.y, Is.EqualTo(height * 0.25f).Within(0.01f));
+        Assert.That(well.offsetMax.x, Is.EqualTo(-height / 3f).Within(0.01f));
+        Assert.That(well.offsetMax.y, Is.EqualTo(-height * 0.25f).Within(0.01f));
+        Assert.That(Track().sprite.name, Is.EqualTo("BossBar_Frame"));
     }
 
     [Test]
@@ -351,7 +412,7 @@ public sealed class BossBarViewTests
                 $"{bad} threw.");
 
             Assert.That(_bar.Fraction, Is.EqualTo(0.5f).Within(1e-4f), $"{bad} moved the fill.");
-            Assert.That(float.IsFinite(Fill().fillAmount), Is.True, $"{bad} reached fillAmount.");
+            Assert.That(float.IsFinite(((RectTransform)Fill().transform).anchorMax.x), Is.True, $"{bad} reached the fill's anchor.");
         }
 
         // And a fraction outside the range is clamped rather than written through: core cannot produce
@@ -402,13 +463,15 @@ public sealed class BossBarViewTests
                 + "reading the phases (rule 4).");
         Assert.That(_bar.MarkFraction(1), Is.Not.EqualTo(1f / 3f).Within(1e-2f));
 
-        // Each seam spans the band's full height, so it reads as a division rather than as a tick.
+        // Each seam spans at least the well's full height, so it reads as a division rather than as a
+        // tick — and since UI-01f rule 3 a little more, so the art's pill notches through the fill
+        // rather than sitting on it.
         foreach (Image mark in marks)
         {
             var rect = (RectTransform)mark.transform;
 
-            Assert.That(rect.anchorMin.y, Is.EqualTo(0f).Within(1e-4f));
-            Assert.That(rect.anchorMax.y, Is.EqualTo(1f).Within(1e-4f));
+            Assert.That(rect.anchorMin.y, Is.LessThanOrEqualTo(0f));
+            Assert.That(rect.anchorMax.y, Is.GreaterThanOrEqualTo(1f));
         }
     }
 
@@ -609,14 +672,14 @@ public sealed class BossBarViewTests
         Assert.That(
             colours.Select(f => f.Name),
             Is.Empty,
-            "BossBarView carries a serialized Color. Every colour it draws is Palette's: the fill is "
-                + "Palette.Boss, the track is that colour at its own alpha, and the seams are "
-                + "Palette.Neutral.");
+            "BossBarView carries a serialized Color. The one colour it draws is Palette's: the fill "
+                + "is Palette.Boss, and the frame and the seams are the art, untinted (UI-01f).");
 
-        // The two alphas *are* allowed, and saying so here is what stops the row above being read as
+        // The beat's alpha *is* allowed, and saying so here is what stops the row above being read as
         // "the view may hold no numbers about how it looks" — rule 8 is explicit that a view that wants
-        // transparency multiplies its own.
-        foreach (string kept in new[] { "_trackAlpha", "_beatAlpha" })
+        // transparency multiplies its own. The track's alpha went at UI-01f, with the faint track: the
+        // frame's dark well is the track now.
+        foreach (string kept in new[] { "_beatAlpha" })
         {
             Assert.That(
                 typeof(BossBarView).GetField(kept, Everything),
@@ -668,23 +731,16 @@ public sealed class BossBarViewTests
                 $"the band's {name} is GD §16.4's reserved #FF4A1F.");
         }
 
-        // And it is the palette's colours rather than merely not the forbidden one, which is the half
-        // of rule 6 an absence cannot show.
+        // And the fill is the palette's colour rather than merely not the forbidden one, which is the
+        // half of rule 6 an absence cannot show. The frame and the seams are the art, untinted, since
+        // UI-01f: the frame's dark well is the spent half, and a seam's dark pill is the contrast
+        // Palette.Neutral gave a flat line.
         Assert.That(SameColour(Fill().color, Palette.Boss), Is.True, "the fill is not Palette.Boss.");
-        Assert.That(SameColour(Track().color, Palette.Boss), Is.True, "the track is not Palette.Boss.");
-        Assert.That(
-            Track().color.a,
-            Is.LessThan(Fill().color.a),
-            "the track is as opaque as the fill, so the spent and unspent halves of the band cannot "
-                + "be told apart.");
+        Assert.That(Track().color, Is.EqualTo(Color.white), "the frame is tinted; it is the art.");
 
         foreach (Image mark in marks)
         {
-            Assert.That(
-                SameColour(mark.color, Palette.Neutral),
-                Is.True,
-                "a seam is not Palette.Neutral, which is the contrast that makes one legible on a "
-                    + "band drawn in a brightened bone.");
+            Assert.That(mark.color, Is.EqualTo(Color.white), "a seam is tinted; it is the art.");
         }
 
         // Palette.Boss is a *tenth member* rather than a second name for one that was taken:
@@ -930,12 +986,14 @@ public sealed class BossBarViewTests
         Assert.That(fill, Is.Not.Null, "the band has no fill.");
         Assert.That(mark, Is.Not.Null, "the band has no seam template.");
 
-        Assert.That(fill.type, Is.EqualTo(Image.Type.Filled));
-        Assert.That(
-            fill.fillMethod,
-            Is.EqualTo(Image.FillMethod.Horizontal),
-            "the band's fill is not Horizontal, so fillAmount draws a ring rather than a bar.");
-        Assert.That(fill.fillOrigin, Is.EqualTo((int)Image.OriginHorizontal.Left));
+        // UI-01f: the owner's art. A sliced frame whose well is the track, a sliced pill of a fill in
+        // the well, and the phase seam as the template.
+        Assert.That(track.sprite.name, Is.EqualTo("BossBar_Frame"));
+        Assert.That(track.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(fill.sprite.name, Is.EqualTo("Fill_Bar"));
+        Assert.That(fill.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(mark.sprite.name, Is.EqualTo("BossBar_PhaseSeam"));
+        Assert.That(bandSo.FindProperty("_well").objectReferenceValue, Is.Not.Null, "the band has no well.");
 
         // A sprite on all three, because an Image with none renders nothing and a band that drew
         // nothing would pass every behavioural row in this file.

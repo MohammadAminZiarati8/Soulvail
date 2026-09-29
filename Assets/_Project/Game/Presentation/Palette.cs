@@ -279,8 +279,8 @@ public static class Palette
     /// M3-13b's health-bar fill and M4-03's invulnerable-beat shell — and <see cref="EnemyDying"/> is
     /// the third thing on one. A boss's bar drawn in any of those would say <em>"an ordinary
     /// enemy"</em> in the one place GD §16.2 wants <em>"the fight you are in"</em>. <c>BossBarView</c>
-    /// reads this for the fill and <see cref="Neutral"/> for the seams between segments, which is the
-    /// contrast that makes a mark legible on a filled bar.
+    /// reads this for the fill. Its seams were <see cref="Neutral"/> until UI-01f, when they became the
+    /// art's own dark pills, drawn untinted — the same contrast, drawn in.
     /// </para>
     /// </remarks>
     public static readonly Color Boss = Rgb(0xCC, 0xC4, 0xB7);

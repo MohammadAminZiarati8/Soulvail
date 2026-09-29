@@ -53,10 +53,11 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>No colour is serialized and none of them is <see cref="Palette.Danger"/></b> (rule 6). The
-    /// fill is <see cref="Palette.Boss"/> — the tenth colour, argued in its own remarks — the track is
-    /// that colour at <see cref="_trackAlpha"/>, and the seams are <see cref="Palette.Neutral"/>. The
-    /// two alphas are feel numbers rather than colour, which is the split M3-13a rule 8 drew and
-    /// <c>Views_KeepTheirTimingFields</c> pins elsewhere.
+    /// fill is <see cref="Palette.Boss"/> — the tenth colour, argued in its own remarks. <b>Since
+    /// UI-01f the band is the owner's art</b>: <c>BossBar_Frame</c>'s dark well is the track, so the
+    /// faint bone track and its alpha went, and the seams are <c>BossBar_PhaseSeam</c> drawn untinted,
+    /// a dark pill across a bone fill, which is the contrast <see cref="Palette.Neutral"/> gave a flat
+    /// line. The beat's alpha is the one feel number left, which is the split M3-13a rule 8 drew.
     /// </para>
     /// <para>
     /// <b>It declares no <c>Update</c>.</b> A boss's health arrives as <c>EnemyDamaged</c> and its beat
@@ -99,25 +100,39 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         public const float TopDp = HudLayout.BossTopDp;
 
-        /// <summary>How tall the band is, in dp.</summary>
+        /// <summary>How tall the band is, in dp — the frame's, with the fill in its well (UI-01f).</summary>
         /// <inheritdoc cref="TopDp" />
-        public const float HeightDp = 10f;
+        public const float HeightDp = 18f;
+
+        /// <summary>How far the well sits in from each end of the frame, as a fraction of its height.</summary>
+        private const float WellEndInset = 1f / 3f;
+
+        /// <summary>How far the well sits in from the frame's top and bottom, as a fraction of its height.</summary>
+        private const float WellEdgeInset = 0.25f;
+
+        /// <summary>How far a seam reaches past the well, top and bottom, as a fraction of the well's height.</summary>
+        private const float SeamOverhang = 0.35f;
 
         [Tooltip("The band's root. Its alpha is the whole of \"is there a boss\" and \"is it in a " +
                  "beat\", and it is never in the raycast path — a readout takes no touches.")]
         [SerializeField] private CanvasGroup _root;
 
-        [Tooltip("The empty part of the band, behind the fill. Without it the marks ahead of the " +
-                 "fill would have nothing to sit on, which is the half of the bar that says a " +
-                 "transition is coming.")]
+        [Tooltip("The frame: a sliced BossBar_Frame across the band, whose dark well is the track. " +
+                 "Without it the marks ahead of the fill would have nothing to sit on, which is the " +
+                 "half of the bar that says a transition is coming.")]
         [SerializeField] private Image _track;
 
-        [Tooltip("The fill. Its Image must be Filled / Horizontal with the origin on the left — " +
-                 "fillAmount and color are the only things written to it.")]
+        [Tooltip("Where the fill and the seams live, inset in the frame past its end caps (UI-01f). " +
+                 "Optional — without it they span the whole band.")]
+        [SerializeField] private RectTransform _well;
+
+        [Tooltip("The fill: a sliced Fill_Bar in the well. Its right-hand anchor is the boss's " +
+                 "fraction, and its colour is the only other thing written to it.")]
         [SerializeField] private Image _fill;
 
-        [Tooltip("One seam, inactive, cloned once per segment the first time a fight needs that " +
-                 "many. Its rect is re-anchored per mark; nothing else about it is written.")]
+        [Tooltip("One seam, a BossBar_PhaseSeam, inactive, cloned into the well once per segment the " +
+                 "first time a fight needs that many. Its rect is re-anchored per mark; nothing else " +
+                 "about it is written.")]
         [SerializeField] private Image _mark;
 
         [Tooltip("How tall the band is, in dp. Applied at runtime for the reason SkillButton " +
@@ -133,15 +148,10 @@ namespace Soulvail.Game.Presentation
                  "safe area that cannot hold it inside the margins.")]
         [SerializeField] private float _maxWidthDp = HudLayout.BossMaxWidthDp;
 
-        [Tooltip("How wide one seam is, in dp. Two is thin enough to read as a division rather " +
-                 "than as a gap in the bar.")]
+        [Tooltip("How wide one seam is, in dp. Six is the art's pill at the well's height: wide " +
+                 "enough to read as a division, narrow enough not to hide the fill around it.")]
         [Min(0f)]
-        [SerializeField] private float _markWidthDp = 2f;
-
-        [Tooltip("How visible the empty part of the band is, 0 to 1. The view multiplies its own " +
-                 "alpha rather than asking the palette for a faded colour (M3-13a rule 8).")]
-        [Range(0f, 1f)]
-        [SerializeField] private float _trackAlpha = 0.22f;
+        [SerializeField] private float _markWidthDp = 6f;
 
         [Tooltip("How bright the whole band is while the boss is invulnerable, 0 to 1. Rule 5: a " +
                  "bar that looked identical through a beat would be telling the player their hits " +
@@ -275,7 +285,7 @@ namespace Soulvail.Game.Presentation
         /// <remarks>
         /// <b>A non-finite fraction keeps the last good fill.</b> <c>Mathf.Clamp01</c> is two
         /// comparisons and every comparison against NaN is false, so a NaN would pass straight
-        /// through both bounds into <c>fillAmount</c> — and unlike <c>EnemyHealthBar</c>, which reads
+        /// through both bounds into the fill's anchor — and unlike <c>EnemyHealthBar</c>, which reads
         /// one as full, the last good value is the right answer here: a boss bar is up for two minutes
         /// and snapping it back to full would read as the fight restarting (AR §18.3).
         /// </remarks>
@@ -490,7 +500,7 @@ namespace Soulvail.Game.Presentation
                 // every seam is a later sibling than the fill and therefore drawn over it — uGUI draws
                 // in hierarchy order and a seam behind the fill would vanish the moment the bar was
                 // full.
-                Image clone = Instantiate(_mark, transform);
+                Image clone = Instantiate(_mark, _well != null ? _well : transform);
 
                 clone.name = $"Mark{_marks.Count + 1}";
                 clone.gameObject.SetActive(false);
@@ -551,6 +561,30 @@ namespace Soulvail.Game.Presentation
             rect.pivot = new Vector2(0.5f, 1f);
             rect.sizeDelta = new Vector2(widthDp * pxPerDp, _heightDp * pxPerDp);
             rect.anchoredPosition = new Vector2(0f, -_topDp * pxPerDp);
+
+            Fit(_heightDp * pxPerDp);
+        }
+
+        /// <summary>
+        /// Insets the well in the frame and fits both slices to the band's height (UI-01f rule 1) —
+        /// <c>HpBarView.Fit</c>'s arithmetic, for the boss.
+        /// </summary>
+        private void Fit(float height)
+        {
+            HudLayout.FitSlices(_track);
+
+            if (_well != null)
+            {
+                var ends = new Vector2(WellEndInset * height, WellEdgeInset * height);
+
+                _well.anchorMin = Vector2.zero;
+                _well.anchorMax = Vector2.one;
+                _well.pivot = new Vector2(0.5f, 0.5f);
+                _well.offsetMin = ends;
+                _well.offsetMax = -ends;
+            }
+
+            HudLayout.FitSlices(_fill);
         }
 
         /// <summary>
@@ -566,8 +600,10 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void PlaceMark(RectTransform rect, float fraction, float pxPerDp)
         {
-            rect.anchorMin = new Vector2(fraction, 0f);
-            rect.anchorMax = new Vector2(fraction, 1f);
+            // A little taller than the well, so the seam reads as a notch through the fill rather than
+            // as a stripe painted on it (UI-01f rule 3).
+            rect.anchorMin = new Vector2(fraction, -SeamOverhang);
+            rect.anchorMax = new Vector2(fraction, 1f + SeamOverhang);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(_markWidthDp * pxPerDp, 0f);
             rect.anchoredPosition = Vector2.zero;
@@ -576,7 +612,7 @@ namespace Soulvail.Game.Presentation
         /// <summary>Everything the band currently says, written at once.</summary>
         /// <remarks>
         /// Every write is guarded by a comparison against what is already on screen, and that is not
-        /// merely an optimisation: assigning <c>fillAmount</c>, <c>color</c> or <c>alpha</c> marks the
+        /// merely an optimisation: assigning an anchor, a <c>color</c> or an <c>alpha</c> marks the
         /// graphic dirty and queues a canvas rebuild, and a boss taking a flurry of hits publishes
         /// several <c>EnemyDamaged</c> in one frame — <c>EnemyHealthBar.Draw</c>'s argument, on the
         /// screen rather than in the world.
@@ -595,38 +631,32 @@ namespace Soulvail.Game.Presentation
                 _root.alpha = alpha;
             }
 
-            if (!Mathf.Approximately(_fill.fillAmount, _fraction))
+            // UI-01f rule 2: a sliced pill as wide as the fraction of the well, switched off at zero —
+            // HpBarView.DrawWidth's shape and its reasons. The frame and the seams are the art,
+            // untinted, so nothing else here writes a colour.
+            bool any = _fraction > 0f;
+
+            if (_fill.enabled != any)
             {
-                _fill.fillAmount = _fraction;
+                _fill.enabled = any;
+            }
+
+            if (_fill.transform is RectTransform fill)
+            {
+                var max = new Vector2(_fraction, 1f);
+
+                if (fill.anchorMin != Vector2.zero || fill.anchorMax != max)
+                {
+                    fill.anchorMin = Vector2.zero;
+                    fill.anchorMax = max;
+                    fill.offsetMin = Vector2.zero;
+                    fill.offsetMax = Vector2.zero;
+                }
             }
 
             if (_fill.color != Palette.Boss)
             {
                 _fill.color = Palette.Boss;
-            }
-
-            // The palette is opaque and this view multiplies its own alpha — M3-13a rule 8. The track
-            // is the same bone as the fill so the band reads as one element with a part of it spent,
-            // rather than as two bars of different colours meeting at the fill's edge.
-            Color track = Palette.Boss;
-
-            track.a = Mathf.Clamp01(_trackAlpha);
-
-            if (_track.color != track)
-            {
-                _track.color = track;
-            }
-
-            // The seams are Palette.Neutral, GD §16.4's "everything else", and that is the contrast
-            // that makes one legible: Palette.Boss is the same bone brightened, so a seam is a darker
-            // line of the same family on the filled part and a darker line still against the faint
-            // track ahead of it.
-            for (int i = 0; i < _marks.Count; i++)
-            {
-                if (_marks[i] != null && _marks[i].color != Palette.Neutral)
-                {
-                    _marks[i].color = Palette.Neutral;
-                }
             }
         }
 

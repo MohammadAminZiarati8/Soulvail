@@ -14,7 +14,7 @@ namespace Soulvail.Tests.Game.Art;
 
 /// <summary>
 /// <c>EnemyShowcase.unity</c>: every enemy body looping each of its clips side by side, the Frog's
-/// six and the Rootling's five, on the Jungle's ground.
+/// six, the Rootling's five and the Pitcher's five (M7-05r), on the Jungle's ground.
 /// </summary>
 /// <remarks>
 /// The scene is a review tool, so what can rot is its wiring: a clip renamed in <c>frog.py</c>, a
@@ -27,6 +27,8 @@ public sealed class EnemyShowcaseTests
     private const string ScenePath = "Assets/_Project/Scenes/EnemyShowcase.unity";
     private const string FrogPath = "Assets/_Project/Art/Enemies/Frog.fbx";
     private const string FrogControllerPath = "Assets/_Project/Animation/Controllers/AC_Frog_Showcase.controller";
+    private const string PitcherPath = "Assets/_Project/Art/Enemies/Pitcher.fbx";
+    private const string PitcherControllerPath = "Assets/_Project/Animation/Controllers/AC_Pitcher_Showcase.controller";
 
     private Scene _scene;
     private bool _openedHere;
@@ -74,20 +76,13 @@ public sealed class EnemyShowcaseTests
     [Test]
     public void Showcase_ShowsEveryFrogClip()
     {
-        string[] clips = AssetDatabase.LoadAllAssetsAtPath(FrogPath).OfType<AnimationClip>()
-            .Where(c => !c.name.StartsWith("__preview")).Select(c => c.name).OrderBy(n => n).ToArray();
-        string[] shown = _bodies.Where(b => b.name.StartsWith("Frog_")).Select(b => b.State).OrderBy(n => n).ToArray();
+        ShowsEveryClip("Frog_", FrogPath, FrogControllerPath, new[] { "Attack", "Death", "Hit", "Hop", "Idle", "Leap" });
+    }
 
-        Assert.That(clips, Is.EquivalentTo(new[] { "Attack", "Death", "Hit", "Hop", "Idle", "Leap" }), "frog.py's clips changed.");
-        Assert.That(shown, Is.EqualTo(clips), "The frog row does not show each of Frog.fbx's clips once.");
-
-        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(FrogControllerPath);
-        foreach (AnimatorState state in StatesOf(controller))
-        {
-            Assert.That(state.motion, Is.InstanceOf<AnimationClip>(), $"State '{state.name}' plays nothing.");
-            Assert.That(state.motion.name, Is.EqualTo(state.name), $"State '{state.name}' plays '{state.motion.name}'.");
-            Assert.That(AssetDatabase.GetAssetPath(state.motion), Is.EqualTo(FrogPath), $"State '{state.name}' plays a clip from another model.");
-        }
+    [Test]
+    public void Showcase_ShowsEveryPitcherClip()
+    {
+        ShowsEveryClip("Pitcher_", PitcherPath, PitcherControllerPath, new[] { "Attack", "Death", "Hit", "Idle", "Shuffle" });
     }
 
     [Test]
@@ -137,6 +132,30 @@ public sealed class EnemyShowcaseTests
         finally
         {
             Object.DestroyImmediate(body);
+        }
+    }
+
+    /// <summary>
+    /// A row names each of its model's clips once, and each state of its controller plays the clip of
+    /// its own name from that model: a clip renamed in the model's script is a red row, not a body
+    /// standing in its default state.
+    /// </summary>
+    private void ShowsEveryClip(string row, string modelPath, string controllerPath, string[] expected)
+    {
+        string model = System.IO.Path.GetFileName(modelPath);
+        string[] clips = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<AnimationClip>()
+            .Where(c => !c.name.StartsWith("__preview")).Select(c => c.name).OrderBy(n => n).ToArray();
+        string[] shown = _bodies.Where(b => b.name.StartsWith(row)).Select(b => b.State).OrderBy(n => n).ToArray();
+
+        Assert.That(clips, Is.EquivalentTo(expected), $"{model}'s clips changed.");
+        Assert.That(shown, Is.EqualTo(clips), $"The {row} row does not show each of {model}'s clips once.");
+
+        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+        foreach (AnimatorState state in StatesOf(controller))
+        {
+            Assert.That(state.motion, Is.InstanceOf<AnimationClip>(), $"State '{state.name}' plays nothing.");
+            Assert.That(state.motion.name, Is.EqualTo(state.name), $"State '{state.name}' plays '{state.motion.name}'.");
+            Assert.That(AssetDatabase.GetAssetPath(state.motion), Is.EqualTo(modelPath), $"State '{state.name}' plays a clip from another model.");
         }
     }
 

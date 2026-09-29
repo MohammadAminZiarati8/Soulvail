@@ -442,3 +442,5 @@ MonoBehaviour:
     _text: Jungle
   - _key: enemy.frog.name
     _text: Frog
+  - _key: enemy.pitcher.name
+    _text: Pitcher

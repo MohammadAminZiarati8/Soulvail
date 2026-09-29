@@ -485,3 +485,5 @@ MonoBehaviour:
     _text: "[J\xFB\xF1gl\xE9 \xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
+  - _key: enemy.pitcher.name
+    _text: "[P\xEEt\xE7h\xE9r \xB7\xB7\xB7]"

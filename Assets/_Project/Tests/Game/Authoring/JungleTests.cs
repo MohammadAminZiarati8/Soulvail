@@ -12,7 +12,8 @@ namespace Soulvail.Tests.Game.Authoring;
 
 /// <summary>
 /// The Jungle as a place a run is played in (M7-05i): its own Husk, Descent's numbers, a small room
-/// for its first stages, and the first mode a new run starts. Its Husk is the Frog since M7-05m.
+/// for its first stages, and the first mode a new run starts. Its Husk is the Frog since M7-05m, and
+/// its Spitter the Pitcher since M7-05q.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,7 +22,9 @@ namespace Soulvail.Tests.Game.Authoring;
 /// roster, so the Jungle's Husk is one roster row naming a different id. <see cref="JunglesHusk_PlaysTheHusksRole"/>
 /// pins the numbers equal; they part when someone edits that row, which is the moment to decide they
 /// should. The Rootling, which the Frog replaced, keeps its row: it is authored and could be rostered
-/// again by one line.
+/// again by one line. The Jungle's Spitter is the same ruling a second time:
+/// <see cref="JunglesSpitter_PlaysTheSpittersRole"/> pins the Pitcher to the Spitter, which Descent
+/// still rosters as a capsule.
 /// </para>
 /// <para>
 /// <b>The Jungle is Descent with its own content.</b> <see cref="Jungle_IsDescentsNumbers"/> compares
@@ -37,8 +40,11 @@ public sealed class JungleTests
     private const string RootlingPath = "Assets/_Project/Data/Enemies/Rootling.asset";
     private const string FrogPath = "Assets/_Project/Data/Enemies/Frog.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
+    private const string PitcherPath = "Assets/_Project/Data/Enemies/Pitcher.asset";
+    private const string SpitterPath = "Assets/_Project/Data/Enemies/Spitter.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
+    private const string PitcherBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher.prefab";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string ArenaFolder = "Assets/_Project/Prefabs/Arenas";
 
@@ -81,9 +87,37 @@ public sealed class JungleTests
         Assert.That(ours.Explosion, Is.Null);
     }
 
+    [Test]
+    public void JunglesSpitter_PlaysTheSpittersRole()
+    {
+        EnemySpec ours = Load<EnemyDefinition>(PitcherPath).ToSpec();
+        EnemySpec spitter = Load<EnemyDefinition>(SpitterPath).ToSpec();
+
+        Assert.That(ours.Id.Value, Is.EqualTo("enemy.pitcher"));
+        Assert.That(ours.NameKey.Key, Is.EqualTo("enemy.pitcher.name"));
+        Assert.That(ours.Behaviour, Is.EqualTo(spitter.Behaviour), "It stops at range and throws (GD §8.1).");
+        Assert.That(ours.MaxHp, Is.EqualTo(spitter.MaxHp));
+        Assert.That(ours.MoveSpeed, Is.EqualTo(spitter.MoveSpeed));
+        Assert.That(ours.TargetPriority, Is.EqualTo(spitter.TargetPriority));
+        Assert.That(ours.ThreatCost, Is.EqualTo(spitter.ThreatCost));
+        Assert.That(ours.XpValue, Is.EqualTo(spitter.XpValue));
+        Assert.That(ours.IsElite, Is.EqualTo(spitter.IsElite));
+        Assert.That(ours.ContactDamage, Is.EqualTo(spitter.ContactDamage));
+        Assert.That(ours.Reach, Is.EqualTo(spitter.Reach));
+        Assert.That(ours.WindupTime, Is.EqualTo(spitter.WindupTime), "The wind-up the Pitcher's spit is timed to (M7-05p).");
+        Assert.That(ours.RecoverTime, Is.EqualTo(spitter.RecoverTime));
+        Assert.That(ours.AggroRange, Is.EqualTo(spitter.AggroRange));
+        Assert.That(ours.Projectile, Is.Not.Null);
+        Assert.That(ours.Projectile.StandoffRange, Is.EqualTo(spitter.Projectile.StandoffRange));
+        Assert.That(ours.Projectile.Speed, Is.EqualTo(spitter.Projectile.Speed));
+        Assert.That(ours.Projectile.Radius, Is.EqualTo(spitter.Projectile.Radius));
+        Assert.That(ours.Explosion, Is.Null);
+    }
+
     [TestCase(FrogPath, FrogBodyPath)]
     [TestCase(RootlingPath, RootlingBodyPath)]
-    public void JunglesHusk_WearsItsOwnBody(string path, string bodyPath)
+    [TestCase(PitcherPath, PitcherBodyPath)]
+    public void JunglesEnemy_WearsItsOwnBody(string path, string bodyPath)
     {
         EnemyLook look = Load<EnemyDefinition>(path).ToLook();
 
@@ -107,7 +141,7 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_RostersItsOwnHusk()
+    public void Jungle_RostersItsOwnEnemies()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
@@ -115,9 +149,9 @@ public sealed class JungleTests
         Assert.That(jungle.Roster.Select(r => (r.SpecId.Value, r.IntroducedAtStage)), Is.EqualTo(new[]
         {
             ("enemy.frog", 1),
-            ("enemy.spitter", 2),
+            ("enemy.pitcher", 2),
             ("enemy.bloater", 4),
-        }), "The Frog where Descent has the Husk (the owner, 2026-09-29, in the Rootling's place); the Spitter and the Bloater keep their capsules.");
+        }), "The Frog and the Pitcher where Descent has the Husk and the Spitter (the owner, 2026-09-29); the Bloater keeps its capsule.");
     }
 
     [Test]
@@ -171,6 +205,8 @@ public sealed class JungleTests
         SerializedProperty enemies = serialized.FindProperty("_enemies");
         var listed = Enumerable.Range(0, enemies.arraySize).Select(i => enemies.GetArrayElementAtIndex(i).objectReferenceValue).ToList();
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(FrogPath)));
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(PitcherPath)));
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(SpitterPath)), "Descent still rosters the Spitter's capsule.");
 
         // Every bodied archetype the catalog lists is prewarmed to a pool of DeviceEnemyCap + 1 at
         // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode.

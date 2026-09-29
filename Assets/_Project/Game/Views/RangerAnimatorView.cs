@@ -495,7 +495,8 @@ namespace Soulvail.Game.Views
         /// <b>The direction is read in the body's frame, once.</b> Core holds the facing for the
         /// length of a dash (<c>RunSession.TickBody</c>), so the clip chosen on the first frame is
         /// right for the last. A roll to the side while the Ranger faces its target is
-        /// <c>Dodge_Left</c> or <c>_Right</c>, not a forward roll sliding sideways.
+        /// <c>Roll_Left</c> or <c>_Right</c>, not a forward roll sliding sideways. The four rolls are
+        /// authored by <c>Tools/Blender/roll.py</c>, because KayKit has none (RS-06d).
         /// </para>
         /// <para>
         /// <c>InverseTransformDirection</c> ignores scale, as <see cref="Step"/>'s does. A direction

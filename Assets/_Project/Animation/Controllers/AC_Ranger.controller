@@ -167,7 +167,7 @@ BlendTree:
   m_Name: Dodge
   m_Childs:
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: ec752c53e309d274db617eef89700c39, type: 2}
+    m_Motion: {fileID: -5775661756697841546, guid: ee5ad430adce8404ca49f57758ddf18d, type: 3}
     m_Threshold: 0
     m_Position: {x: 0, y: 1}
     m_TimeScale: 1
@@ -175,7 +175,7 @@ BlendTree:
     m_DirectBlendParameter: Blend
     m_Mirror: 0
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 94a270a04e5912945983a3529f65813e, type: 2}
+    m_Motion: {fileID: -5996849522829563610, guid: ee5ad430adce8404ca49f57758ddf18d, type: 3}
     m_Threshold: 0.33333334
     m_Position: {x: 0, y: -1}
     m_TimeScale: 1
@@ -183,7 +183,7 @@ BlendTree:
     m_DirectBlendParameter: Blend
     m_Mirror: 0
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: bf5ef017fdad5304080db43fe69618b6, type: 2}
+    m_Motion: {fileID: 3547343553730980964, guid: ee5ad430adce8404ca49f57758ddf18d, type: 3}
     m_Threshold: 0.6666667
     m_Position: {x: -1, y: 0}
     m_TimeScale: 1
@@ -191,7 +191,7 @@ BlendTree:
     m_DirectBlendParameter: Blend
     m_Mirror: 0
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: 3d183656f554788438281c55256cae22, type: 2}
+    m_Motion: {fileID: -5589534711032622688, guid: ee5ad430adce8404ca49f57758ddf18d, type: 3}
     m_Threshold: 1
     m_Position: {x: 1, y: 0}
     m_TimeScale: 1

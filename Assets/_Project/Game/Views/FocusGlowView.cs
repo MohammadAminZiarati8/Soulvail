@@ -37,6 +37,12 @@ namespace Soulvail.Game.Views
     /// its ring here: a baked circle in the prefab would quietly disagree with the radius a designer
     /// changed. It is built at unit radius and scaled, so the radius is one transform write.
     /// </para>
+    /// <para>
+    /// <b>It can be switched off, and ships off</b> (RS-06c, the owner's ruling of 2026-09-28). With
+    /// <see cref="_show"/> clear the disc never appears, and the Focus ramp still runs in core at the
+    /// same speed — the Veilrot meter's bargain (RS-05a): switched off, never removed. The disc stays
+    /// dressed on <c>Player.prefab</c>, so one tick brings it back.
+    /// </para>
     /// </remarks>
     public sealed class FocusGlowView : MonoBehaviour
     {
@@ -45,6 +51,10 @@ namespace Soulvail.Game.Views
         /// triangles once per run.
         /// </summary>
         private const int Segments = 48;
+
+        [Tooltip("Draw the disc. Off: Focus still ramps the fire rate, and nothing on screen shows " +
+                 "it. Player.prefab ships it off (RS-06c); tick it to bring the disc back.")]
+        [SerializeField] private bool _show = true;
 
         [Tooltip("The disc itself, on a child of the body. Its mesh is built at runtime from the " +
                  "numbers below — the filter may ship empty.")]
@@ -184,7 +194,10 @@ namespace Soulvail.Game.Views
             Apply(evt.Level);
         }
 
-        /// <summary>Rule 6: alpha <c>0.35 × level</c>, radius <c>1 + 0.5 × level</c>, gone at zero.</summary>
+        /// <summary>
+        /// Rule 6: alpha <c>0.35 × level</c>, radius <c>1 + 0.5 × level</c>, gone at zero — and gone
+        /// at every level while <see cref="_show"/> is clear (RS-06c).
+        /// </summary>
         /// <remarks>
         /// The level is clamped rather than trusted. Core guarantees <c>[0, 1]</c> and there is no
         /// path by which it would not, but an alpha outside the range is the kind of thing a URP
@@ -199,7 +212,7 @@ namespace Soulvail.Game.Views
             }
 
             float clamped = Mathf.Clamp01(level);
-            bool visible = clamped > 0f;
+            bool visible = _show && clamped > 0f;
 
             if (_glow.gameObject.activeSelf != visible)
             {

@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Fireball
+  m_Shader: {fileID: 4800000, guid: 9588bc2c228f37e4d920fb6fd8b62ff9, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Alpha: 1
+    - _Cull: 2
+    - _DstBlend: 10
+    - _FresnelPower: 1
+    - _SrcBlend: 5
+    - _ZWrite: 1
+    m_Colors:
+    - _CoreColor: {r: 1, g: 0.953, b: 0.69, a: 1}
+    - _MidColor: {r: 1, g: 0.604, b: 0.235, a: 1}
+    - _RimColor: {r: 0.882, g: 0.294, b: 0.133, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

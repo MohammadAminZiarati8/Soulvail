@@ -66,11 +66,12 @@ namespace Soulvail.Game.Presentation
     /// <para>
     /// <b>How it reads is not claimed here.</b> This is the first readout added since M3-15 found the
     /// HUD too cramped to read, ledger row 1 is inherited rather than escaped, and rule 8 forbids this
-    /// task from ticking a readability row. What <em>is</em> settled is the arrangement: the band sits
-    /// between the 4 dp XP strip on the very top edge and the HP row 16 dp down, at
-    /// <see cref="_topDp"/> and <see cref="_heightDp"/>, and <c>Hud_StripAndBarDoNotOverlap</c> is the
-    /// half of the question the Editor can answer. Whether it is legible at phone size beside a
-    /// landscape notch is M4-07's.
+    /// task from ticking a readability row. What <em>is</em> settled is the arrangement, and UI-01b
+    /// moved it: the band hangs centred under the whole top band, at <see cref="_topDp"/>, at most
+    /// <see cref="_maxWidthDp"/> wide and inside the safe area's margins, where from M4-04 it ran the
+    /// full width between the XP strip and the HP row. The strip grew to 8 dp and the row gained a
+    /// 44 dp star, and there was no longer a gap to put it in. <c>Hud_TheBandHangsUnderTheTopBand</c>
+    /// is the half of the question the Editor can answer.
     /// </para>
     /// </remarks>
     public sealed class BossBarView : MonoBehaviour
@@ -88,16 +89,15 @@ namespace Soulvail.Game.Presentation
         public const int MaxSegments = 12;
 
         /// <summary>
-        /// How far down from the safe area's top edge the band starts, in dp — the default clears
-        /// <c>XpBarView.HeightDp</c> by one.
+        /// How far down from the safe area's top edge the band starts, in dp — one gap under the top
+        /// band, <see cref="HudLayout.BossTopDp"/>.
         /// </summary>
         /// <remarks>
         /// <b>A constant beside the field so the row that checks the arrangement quotes the intent
-        /// rather than a literal of its own</b> — <c>XpBarView.HeightDp</c>'s reason. The stack it
-        /// belongs to is 0–4 dp XP strip, 5–15 dp this band, 16 dp down the HP row; see
-        /// <see cref="_topDp"/>.
+        /// rather than a literal of its own</b> — <c>XpBarView.HeightDp</c>'s reason. It was
+        /// <c>XpBarView.HeightDp + 1</c> from M4-04 to UI-01b, between a 4 dp strip and the HP row.
         /// </remarks>
-        public const float TopDp = XpBarView.HeightDp + 1f;
+        public const float TopDp = HudLayout.BossTopDp;
 
         /// <summary>How tall the band is, in dp.</summary>
         /// <inheritdoc cref="TopDp" />
@@ -125,10 +125,13 @@ namespace Soulvail.Game.Presentation
                  "which are a different physical size on every phone.")]
         [SerializeField] private float _heightDp = HeightDp;
 
-        [Tooltip("How far below the safe area's top edge the band starts, in dp. It has to clear " +
-                 "the 4 dp XP strip above it and the HP row 16 dp below it — rule 8, and manual " +
-                 "step 4 is moving this number if they ever collide.")]
+        [Tooltip("How far below the safe area's top edge the band starts, in dp. It hangs under the " +
+                 "whole top band — the star, the bar, the skill row and the chips (UI-01b rule 11).")]
         [SerializeField] private float _topDp = TopDp;
+
+        [Tooltip("The widest the band is drawn, in dp. It is centred, and narrower than this on a " +
+                 "safe area that cannot hold it inside the margins.")]
+        [SerializeField] private float _maxWidthDp = HudLayout.BossMaxWidthDp;
 
         [Tooltip("How wide one seam is, in dp. Two is thin enough to read as a division rather " +
                  "than as a gap in the bar.")]
@@ -499,8 +502,9 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Rule 1's height and rule 8's offset: a full-width band <see cref="_heightDp"/> tall,
-        /// <see cref="_topDp"/> below the parent's top edge.
+        /// Rule 1's height and UI-01b rule 11's place: a band <see cref="_heightDp"/> tall,
+        /// <see cref="_topDp"/> below the parent's top edge, centred, and as wide as
+        /// <see cref="HudLayout.BossWidth"/> allows.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -510,11 +514,11 @@ namespace Soulvail.Game.Presentation
         /// clear a 4 dp strip above it and a 24 dp row below it is a number in dp or it is nothing.
         /// </para>
         /// <para>
-        /// The width is the anchors' rather than this file's arithmetic: <c>anchorMin.x</c> 0 against
-        /// <c>anchorMax.x</c> 1 with a zero <c>sizeDelta.x</c> is exactly the parent's width however
-        /// wide the safe area turns out to be — <c>XpBarView</c>'s words, and the band hangs under the
-        /// same <c>SafeAreaFitter</c>, so <em>"across the top of the screen"</em> means across the part
-        /// of it a landscape notch has not eaten.
+        /// <b>The width is measured, not anchored, since UI-01b.</b> A full-width band was the
+        /// anchors' arithmetic; a band at most 400 dp wide and inside the margins is
+        /// <see cref="HudLayout.BossWidth"/> of the parent's width, which is the safe area's —
+        /// <c>SafeAreaFitter</c> has set it in its <c>OnEnable</c> by the time this runs. The seams are
+        /// still anchored fractionally inside the band, so rule 4 does not depend on the number.
         /// </para>
         /// <para>
         /// <b>A nonsense height or offset leaves the authored layout alone</b>, which is
@@ -531,17 +535,21 @@ namespace Soulvail.Game.Presentation
             if (transform is not RectTransform rect
                 || !float.IsFinite(_heightDp)
                 || _heightDp <= 0f
-                || !float.IsFinite(_topDp))
+                || !float.IsFinite(_topDp)
+                || !float.IsFinite(_maxWidthDp)
+                || _maxWidthDp <= 0f)
             {
                 return;
             }
 
             float pxPerDp = PixelsPerDp();
+            float safeWidthDp = transform.parent is RectTransform parent ? parent.rect.width / pxPerDp : _maxWidthDp;
+            float widthDp = HudLayout.BossWidth(safeWidthDp, _maxWidthDp);
 
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(0f, _heightDp * pxPerDp);
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(widthDp * pxPerDp, _heightDp * pxPerDp);
             rect.anchoredPosition = new Vector2(0f, -_topDp * pxPerDp);
         }
 

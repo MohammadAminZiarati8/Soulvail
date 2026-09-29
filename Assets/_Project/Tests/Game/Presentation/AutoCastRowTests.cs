@@ -508,6 +508,7 @@ public sealed class AutoCastRowTests
         var rect = (RectTransform)Strips()[0].transform;
         Vector2 placed = rect.anchoredPosition;
         Vector2 sized = rect.sizeDelta;
+        Vector2 margin = Field<Vector2>(_row, "_marginDp");
 
         // **These twelve cells are authored on Hud.prefab, so leaving the layout alone is an answer**
         // (SkillBarPresenter.Place's, not TreeViewPresenter.Layout's) — a tree cell is a runtime
@@ -551,12 +552,14 @@ public sealed class AutoCastRowTests
         // only nonsense and a negative are refused.
         foreach (float bad in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity, -16f })
         {
-            SetPrivate(_row, "_marginDp", new Vector2(bad, 48f));
+            SetPrivate(_row, "_marginDp", new Vector2(bad, margin.y));
 
             Assert.That(() => Place(), Throws.Nothing, $"Place threw on a margin of {bad}.");
         }
 
-        SetPrivate(_row, "_marginDp", new Vector2(16f, 48f));
+        // The shipped margin back, read at the top rather than typed here: UI-01b moved it under the
+        // new bar, and a literal of the old one is what this row compared against until then.
+        SetPrivate(_row, "_marginDp", margin);
         Place();
 
         Assert.That(rect.anchoredPosition, Is.EqualTo(placed), "the authored layout did not come back.");
@@ -599,16 +602,19 @@ public sealed class AutoCastRowTests
             Assert.That(rect.anchoredPosition.y, Is.EqualTo(-margin.y * pxPerDp).Within(1e-2f));
         }
 
-        // Under the health bar rather than over it: HudPresenter's row is 16 dp down and 24 dp tall,
-        // so the first honest place for this one is 40 and it ships at 48.
+        // Under the health bar rather than over it (UI-01b rule 12): the bar is centred on the star's
+        // centre line, so its bottom is the star's top plus half the star plus half the bar — 46 dp —
+        // and the row ships 6 dp under it, left-aligned with it.
         HudPresenter hud = _hud.GetComponent<HudPresenter>();
         Vector2 barSize = Field<Vector2>(hud, "_barSizeDp");
-        Vector2 barMargin = Field<Vector2>(hud, "_marginDp");
+        Vector2 starMargin = Field<Vector2>(hud, "_marginDp");
+        float star = Field<float>(hud, "_starSizeDp");
+        float gap = Field<float>(hud, "_gapDp");
+        float barBottom = starMargin.y + ((star - barSize.y) * 0.5f) + barSize.y;
 
-        Assert.That(
-            margin.y,
-            Is.GreaterThanOrEqualTo(barMargin.y + barSize.y),
-            "the auto-cast row overlaps the health bar.");
+        Assert.That(margin.y, Is.GreaterThanOrEqualTo(barBottom), "the auto-cast row overlaps the health bar.");
+        Assert.That(margin.y - barBottom, Is.EqualTo(6f).Within(1e-3f), "the row is not 6 dp under the bar.");
+        Assert.That(margin.x, Is.EqualTo(starMargin.x + star + gap).Within(1e-3f), "the row is not under the bar's left edge.");
     }
 
     // ---- Guards ----------------------------------------------------------------------------------

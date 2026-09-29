@@ -365,7 +365,7 @@ What the planning found:
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
 | UI-01a | [The HUD's art and its font, imported](tasks/UI-01a-the-huds-art-and-font.md) — this section and the six specs, 19 sprites, Lilita One | S | — | ☑ |
-| UI-01b | [The health bar, the XP strip and the level star](tasks/UI-01b-the-health-bar-xp-and-star.md) — and the band's layout in dp | M | UI-01a | ☐ |
+| UI-01b | [The health bar, the XP strip and the level star](tasks/UI-01b-the-health-bar-xp-and-star.md) — and the band's layout in dp | M | UI-01a | ☑ |
 | UI-01c | [Enemies left, in core](tasks/UI-01c-enemies-left-in-core.md) — the living and the not-yet-spawned | S | — | ☐ |
 | UI-01d | [The stage chip, the enemies-left chip and the pause button](tasks/UI-01d-the-chips-and-the-pause-button.md) | S | UI-01b, UI-01c | ☐ |
 | UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☐ |
@@ -380,6 +380,8 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
 - **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
 - **The HUD's pieces are separate textures, so the top band is about fifteen draw calls.** A sprite atlas would batch them, and `EditorSettings`' sprite packer is off (a `ProjectSettings/` change). Promoted by the device's first frame-time capture, or by the next UI row that adds pieces.
+- **A class with no Aegis still draws the Aegis ring**: an empty ring whose dark backing shows behind the level star since UI-01b. The ring is kept working by the owner's brief. Promoted when the owner says whether a class without the Aegis should show one.
+- **The skill row runs under the pause corner past its eighth cell at 9:20** (UI-01b). It packs from the front, and no shipped class owns more than three Actives. Promoted by the first class or borrowed branch that owns eight.
 - **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).

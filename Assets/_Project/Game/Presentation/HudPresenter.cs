@@ -8,6 +8,7 @@ using Soulvail.Game.Adapters;
 using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using VContainer;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer cannot
@@ -87,24 +88,30 @@ namespace Soulvail.Game.Presentation
     /// zeroed (M4-01a), so the event is the only honest source.
     /// </para>
     /// <para>
-    /// <b>The level is a fourth rect in this row rather than a fourth component</b> (M3-10b rule 3).
+    /// <b>The level is a rect in this row rather than a component of its own</b> (M3-10b rule 3).
     /// GD §16.1 puts it <em>"top-left, beside HP"</em>, and <see cref="Place"/> is deliberately one
     /// method for the whole row — see its own remarks. A second class laying out the same row would
-    /// be a fourth chance for two rects to overlap, so the label lives here with the bar, the
+    /// be another chance for two rects to overlap, so the label lives here with the bar, the
     /// readout and the ring; the XP <em>strip</em> is <c>XpBarView</c>, because it is a full-width
     /// element on the opposite edge and shares no arithmetic with any of them.
+    /// </para>
+    /// <para>
+    /// <b>As of UI-01b the row is the owner's art</b>: the level sits inside a 44 dp star, the Aegis
+    /// ring rings the star from behind, and the readout sits inside the bar. The bar takes the width
+    /// the row leaves it, which is what lets one layout hold at 20:9 and at 9:20 —
+    /// <see cref="HudLayout"/>'s remarks, and <c>HudLayoutTests</c>' two sizes.
     /// </para>
     /// </remarks>
     public sealed class HudPresenter : MonoBehaviour
     {
         /// <summary>
-        /// The <c>current/max</c> readout. <c>{0:0}</c> rather than <c>{0}</c> is load-bearing:
-        /// TMP treats an unformatted placeholder as "up to nine decimal places", so the natural
-        /// spelling renders 139.5 HP as <c>139.5</c>, while the <c>0</c> asks for a padded integer
-        /// and rounds. Passed to the float overload, which formats straight into TMP's backing
-        /// array and allocates nothing.
+        /// The <c>current / max</c> readout, spaced as the owner's mockup draws it (UI-01b rule 9).
+        /// <c>{0:0}</c> rather than <c>{0}</c> is load-bearing: TMP treats an unformatted placeholder
+        /// as "up to nine decimal places", so the natural spelling renders 139.5 HP as <c>139.5</c>,
+        /// while the <c>0</c> asks for a padded integer and rounds. Passed to the float overload,
+        /// which formats straight into TMP's backing array and allocates nothing.
         /// </summary>
-        private const string HpFormat = "{0:0}/{1:0}";
+        private const string HpFormat = "{0:0} / {1:0}";
 
         /// <summary>
         /// The level, on its own. <c>{0:0}</c> for <see cref="HpFormat"/>'s reason, and passed to
@@ -118,8 +125,8 @@ namespace Soulvail.Game.Presentation
         private const string EssenceFormat = "{0:0}";
 
         /// <summary>
-        /// How tall the two captions and the Claiming's name are, in dp. A constant for
-        /// <see cref="LevelWidthDp"/>'s reason: no caller passes a value through it. Room for 28 pt,
+        /// How tall the two captions and the Claiming's name are, in dp. A constant because no caller
+        /// passes a value through it, so it owes no non-finite row. Room for 28 pt,
         /// which is 12.36 dp and the smallest size on this prefab that clears Android's floor.
         /// </summary>
         private const float CaptionHeightDp = 20f;
@@ -136,27 +143,24 @@ namespace Soulvail.Game.Presentation
         /// <summary>What the Claiming is called, beside the meter once it has begun — rule 5's word.</summary>
         private static readonly LocKey ClaimedKey = new LocKey("ui.hud.claimed");
 
-        /// <summary>
-        /// How wide the level label is, in dp.
-        /// </summary>
+        /// <summary>The readout's size, as a fraction of the bar's height (UI-01b rule 9).</summary>
         /// <remarks>
-        /// <para>
-        /// <b>A constant rather than a serialized field, and that is deliberate.</b> Every other
-        /// number in this row is an Inspector door the owner can tune on a device (ledger row 4) —
-        /// and each of those doors owes a non-finite row that <see cref="Place"/> has never had, this
-        /// method having laid the row out untested since M1-17. A width that no caller can pass a
-        /// value through owes none. Two digits at the readout's own point size fit inside 48 with
-        /// room to spare, and a level past 99 is stage 60-odd.
-        /// </para>
-        /// <para>
-        /// <b>This used to cite <c>LevelUpFlow.OverflowDamage</c> as the same argument, and that
-        /// citation died at M5-06b</b>: Overflow's two numbers were exactly the case ADR-0006 was
-        /// about — a number a designer wants to retune — and they are now
-        /// <c>ModeDefinition</c> fields. A layout width that nothing in the game reads twice is
-        /// still not one, which is why this constant stayed.
-        /// </para>
+        /// Sized from the bar rather than authored in points, because a point is a reference pixel on a
+        /// Scale-With-Screen-Size canvas and the bar is dp: the two scale by different rules, and a
+        /// number authored at 36 pt fits a 22 dp bar on one phone and overflows it on the next
+        /// (Traps §9). A constant, for <see cref="CaptionHeightDp"/>'s reason: no caller passes a value
+        /// through it, so it owes no non-finite row.
         /// </remarks>
-        private const float LevelWidthDp = 48f;
+        private const float NumberScale = 0.62f;
+
+        /// <summary>The level's size, as a fraction of the star's (UI-01b rule 2).</summary>
+        private const float LevelScale = 0.45f;
+
+        /// <summary>
+        /// How far below the star's middle the level sits, as a fraction of the star. A star's body is
+        /// below the middle of its box, because its top point is taller than its two feet.
+        /// </summary>
+        private const float LevelDrop = 0.06f;
 
         /// <summary>
         /// No boss is being followed. <c>EnemyRegistry</c> issues ids from 1, so 0 is an id nothing can
@@ -184,38 +188,45 @@ namespace Soulvail.Game.Presentation
                  "boss fight, the player just cannot see a phase transition coming.")]
         [SerializeField] private BossBarView _bossBar;
 
-        [Tooltip("The player's level, beside the Aegis ring — GD §16.1's \"top-left, beside HP\". " +
+        [Tooltip("The player's level, inside the star — GD §16.1's \"top-left, beside HP\". " +
                  "Optional on the same terms as the fade: a HUD without one plays exactly the same " +
                  "fight, it just cannot say which level the player is on. The strip that fills " +
                  "toward the next one is XpBarView, on the top edge.")]
         [SerializeField] private TMP_Text _levelText;
+
+        [Tooltip("The blue star the level sits in (UI-01b rule 2). Optional on the level's terms.")]
+        [SerializeField] private Image _levelStar;
 
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
                  "arena just swaps in plain sight.")]
         [SerializeField] private CanvasGroup _fade;
 
-        [Tooltip("The health bar's size in dp — GD §16.1's large top-left bar. Applied at runtime " +
-                 "for the reason SkillButton applies its own: a Scale-With-Screen-Size canvas " +
-                 "measures in reference pixels, which are a different physical size on every phone.")]
-        [SerializeField] private Vector2 _barSizeDp = new Vector2(320f, 24f);
+        [Tooltip("The health bar's widest size and its height in dp — GD §16.1's large top-left " +
+                 "bar. The width is a ceiling: the bar takes what the row leaves, up to it. Applied " +
+                 "at runtime for the reason SkillButton applies its own: a Scale-With-Screen-Size " +
+                 "canvas measures in reference pixels, which are a different physical size on every " +
+                 "phone.")]
+        [SerializeField] private Vector2 _barSizeDp = new Vector2(HudLayout.BarMaxWidthDp, HudLayout.BarHeightDp);
 
-        [Tooltip("How wide the current/max readout is, in dp. Tall as the bar, and beside it.")]
-        [Min(1f)]
-        [SerializeField] private float _textWidthDp = 96f;
+        [Tooltip("The level star's size in dp. The bar sits on its centre line.")]
+        [SerializeField] private float _starSizeDp = HudLayout.StarSizeDp;
 
-        [Tooltip("The Aegis ring's diameter in dp.")]
-        [Min(1f)]
-        [SerializeField] private float _ringSizeDp = 40f;
+        [Tooltip("The Aegis ring's diameter in dp. Concentric with the star and behind it, so a few " +
+                 "dp larger than the star is a ring round it.")]
+        [SerializeField] private float _ringSizeDp = HudLayout.StarSizeDp + 8f;
 
-        [Tooltip("Where the row's top-left corner sits, in dp from the safe area's left edge and " +
+        [Tooltip("Where the star's top-left corner sits, in dp from the safe area's left edge and " +
                  "from its top. The bottom corners belong to thumbs (GD §16.1) — nothing here may " +
                  "move into them.")]
-        [SerializeField] private Vector2 _marginDp = new Vector2(16f, 16f);
+        [SerializeField] private Vector2 _marginDp = new Vector2(HudLayout.MarginDp, HudLayout.RowTopDp);
 
-        [Tooltip("The gap between the bar, the readout and the ring, in dp.")]
-        [Min(0f)]
-        [SerializeField] private float _gapDp = 8f;
+        [Tooltip("The gap between the star and the bar, in dp.")]
+        [SerializeField] private float _gapDp = HudLayout.GapDp;
+
+        [Tooltip("What the right-hand end of the row keeps for the pause button and the stage chip, " +
+                 "in dp from the safe area's right edge. The bar stops short of it.")]
+        [SerializeField] private float _rightReserveDp = HudLayout.RightReserveDp;
 
         [Tooltip("GD §16.1's Veilrot meter, down the right edge. Optional on the boss band's terms: " +
                  "a HUD without one plays the same run, the player just cannot see the Veil.")]
@@ -918,13 +929,14 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Lays the row out left to right in dp: bar, readout, ring, level.
+        /// Lays the row out in dp: the star, the ring behind it, the level in it, and the bar with its
+        /// readout inside (UI-01b rules 2–4, 9).
         /// </summary>
         /// <remarks>
         /// <para>
         /// Here rather than in the prefab, and in one method rather than four, for two reasons. The
         /// first is <c>SkillButton</c>'s: a Scale-With-Screen-Size canvas measures in reference
-        /// pixels, so a bar authored at 320 of those is a different physical width on every phone —
+        /// pixels, so a bar authored at 240 of those is a different physical width on every phone —
         /// and a HUD whose two halves scaled by different rules would be visibly wrong on a tablet,
         /// where the Charge button is sized in real dp. The second is that the rects have to
         /// agree about where each other are, and four components each doing their own arithmetic
@@ -936,55 +948,119 @@ namespace Soulvail.Game.Presentation
         /// cutout eats into exactly this corner on one of the two rotations.
         /// </para>
         /// <para>
-        /// <b>The level went on the end rather than into the middle</b> (M3-10b rule 3), so that
-        /// adding it moved nothing that was already here: every existing rect lands where it landed
-        /// before, which matters on a method that has laid this row out untested since M1-17. It is
-        /// still <em>"beside HP"</em> in GD §16.1's sense — the whole row is the HP readout — and
-        /// <c>Level_IsPlacedInTheHudRow</c> is the first assertion ever made about any of it.
+        /// <b>The bar's width is the one number measured rather than authored.</b> It is
+        /// <see cref="HudLayout.BarWidth"/> of the safe area's width, which <c>SafeAreaFitter</c> has
+        /// set in its <c>OnEnable</c> by the time any <c>Start</c> runs. So it is 240 dp on today's
+        /// landscape phone and about 200 on a 9:20 portrait one, and the right-hand chips keep their
+        /// room in both.
+        /// </para>
+        /// <para>
+        /// <b>A nonsense dp field leaves its own pieces where the prefab put them</b> (UI-01b rule
+        /// 15), <c>XpBarView.Place</c>'s answer rather than a substitute constant. A piece is placed
+        /// when every number it depends on is usable: the star and the level need the margin and the
+        /// star; the ring those and its own size; the bar and its readout those, the gap, the bar and
+        /// the right-hand reserve.
         /// </para>
         /// </remarks>
         private void Place()
         {
             float pxPerDp = PixelsPerDp();
 
-            float left = _marginDp.x;
+            bool marginUsable = IsUsableInset(_marginDp);
+            bool starUsable = marginUsable && IsUsableLength(_starSizeDp);
 
-            left = PlaceRect(_hp.transform as RectTransform, left, _marginDp.y, _barSizeDp, pxPerDp);
-            left += _gapDp;
+            if (starUsable)
+            {
+                var star = new Vector2(_starSizeDp, _starSizeDp);
 
-            left = PlaceRect(
-                _hpText.transform as RectTransform,
-                left,
-                _marginDp.y,
-                new Vector2(_textWidthDp, _barSizeDp.y),
-                pxPerDp);
-            left += _gapDp;
+                PlaceRect(_levelStar == null ? null : _levelStar.transform as RectTransform, _marginDp.x, _marginDp.y, star, pxPerDp);
 
-            // Centred on the bar's centre line rather than on its top edge, so a ring taller than
-            // the bar sits beside it instead of hanging off it.
-            float ringTop = _marginDp.y + ((_barSizeDp.y - _ringSizeDp) * 0.5f);
+                PlaceRect(
+                    _levelText == null ? null : _levelText.transform as RectTransform,
+                    _marginDp.x,
+                    _marginDp.y + (LevelDrop * _starSizeDp),
+                    star,
+                    pxPerDp);
 
-            left = PlaceRect(
-                _shield.transform as RectTransform,
-                left,
-                ringTop,
-                new Vector2(_ringSizeDp, _ringSizeDp),
-                pxPerDp);
-            left += _gapDp;
+                SizeText(_levelText, _starSizeDp * LevelScale * pxPerDp);
 
-            // Tall as the bar and back on the bar's own top edge rather than the ring's centre
-            // line, so the number reads as part of the row rather than as a caption under the ring.
-            // A HUD dressed without a label places nothing and the row is unchanged — PlaceRect's
-            // own null answer, reached through a field that is allowed to be empty.
-            PlaceRect(
-                _levelText == null ? null : _levelText.transform as RectTransform,
-                left,
-                _marginDp.y,
-                new Vector2(LevelWidthDp, _barSizeDp.y),
-                pxPerDp);
+                // Concentric with the star, whatever its size: centred on the star's centre rather than
+                // hung from its corner, so a ring larger than the star rings it.
+                if (IsUsableLength(_ringSizeDp))
+                {
+                    float inset = (_starSizeDp - _ringSizeDp) * 0.5f;
+
+                    PlaceRect(
+                        _shield.transform as RectTransform,
+                        _marginDp.x + inset,
+                        _marginDp.y + inset,
+                        new Vector2(_ringSizeDp, _ringSizeDp),
+                        pxPerDp);
+                }
+            }
+
+            if (starUsable && IsUsableGap(_gapDp) && IsUsableSize(_barSizeDp) && float.IsFinite(_rightReserveDp))
+            {
+                float left = _marginDp.x + _starSizeDp + _gapDp;
+                float width = HudLayout.BarWidth(SafeWidthDp(pxPerDp), left, _barSizeDp.x, _rightReserveDp);
+
+                // On the star's centre line, so the two read as one badge-and-bar rather than as a bar
+                // hanging off the star's top.
+                float top = _marginDp.y + ((_starSizeDp - _barSizeDp.y) * 0.5f);
+                var bar = new Vector2(width, _barSizeDp.y);
+
+                PlaceRect(_hp.transform as RectTransform, left, top, bar, pxPerDp);
+                PlaceRect(_hpText.transform as RectTransform, left, top, bar, pxPerDp);
+
+                SizeText(_hpText, _barSizeDp.y * NumberScale * pxPerDp);
+
+                _hp.Fit();
+            }
+
+            Paint(_hpText);
+            Paint(_levelText);
 
             PlaceRightEdge(pxPerDp);
         }
+
+        /// <summary>A number's size, from dp rather than from the prefab's points (Traps §9).</summary>
+        private static void SizeText(TMP_Text text, float size)
+        {
+            if (text == null || !float.IsFinite(size) || size <= 0f)
+            {
+                return;
+            }
+
+            text.enableAutoSizing = false;
+            text.fontSize = size;
+        }
+
+        /// <summary>A number on the band is <see cref="Palette.HudText"/> (UI-01b rule 13).</summary>
+        private static void Paint(TMP_Text text)
+        {
+            if (text != null && text.color != Palette.HudText)
+            {
+                text.color = Palette.HudText;
+            }
+        }
+
+        /// <summary>
+        /// The safe area's width in dp — the bar's parent's, which is <c>SafeAreaFitter</c>'s rect.
+        /// </summary>
+        /// <remarks>NaN when the bar has no parent rect, which <see cref="HudLayout.BarWidth"/> answers with the bar's full width.</remarks>
+        private float SafeWidthDp(float pxPerDp)
+        {
+            if (_hp.transform.parent is not RectTransform parent || !(pxPerDp > 0f))
+            {
+                return float.NaN;
+            }
+
+            return parent.rect.width / pxPerDp;
+        }
+
+        private static bool IsUsableLength(float dp) => float.IsFinite(dp) && dp > 0f;
+
+        private static bool IsUsableGap(float dp) => float.IsFinite(dp) && dp >= 0f;
 
         /// <summary>
         /// M6-03b rule 10: the Essence counter and the Veilrot meter, in dp from the top-right corner.

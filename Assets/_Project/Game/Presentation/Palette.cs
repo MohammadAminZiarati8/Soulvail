@@ -184,6 +184,30 @@ public static class Palette
     public static readonly Color PlayerBlocked = new Color(0.78f, 0.98f, 1f, 1f);
 
     /// <summary>
+    /// <c>#A5F3FC</c> — the health bar's ghost: the health that was there a moment ago (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>Pale cyan, and not the gold it was dressed in from M1-17 to UI-01b</b>, because GD §16.4's
+    /// gold means rewards and a band of it across the player's own bar said <em>"you gained
+    /// something"</em> at the moment they lost it. Its own member rather than <see cref="PlayerBlocked"/>
+    /// again: the ghost and the blocked flash can be on the bar at once, and the flash has to be the
+    /// brighter of the two to be seen.
+    /// </remarks>
+    public static readonly Color PlayerGhost = Rgb(0xA5, 0xF3, 0xFC);
+
+    /// <summary>
+    /// <c>#0E7490</c> — the deep end of the health bar's low-health beat, below a quarter (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>A darker cyan, never a warmer one.</b> The owner's word for the low state is that it
+    /// <em>"must never turn red-orange"</em>, and GD §16.4 would say the same without being asked: a
+    /// health bar in <see cref="Danger"/> would read as a telegraph on the player's own row. So the
+    /// bar beats between <see cref="Player"/> and this, and a colour it passes through is a mix of two
+    /// cyans.
+    /// </remarks>
+    public static readonly Color PlayerLow = Rgb(0x0E, 0x74, 0x90);
+
+    /// <summary>
     /// M3-11b's healing ground. A safe thing, so <see cref="Player"/>'s family — and today its exact
     /// value, which is what <c>VFX_ConsecrateZone.prefab</c> was dressed with.
     /// </summary>
@@ -296,6 +320,16 @@ public static class Palette
     /// </para>
     /// </remarks>
     public static readonly Color Ink = Rgb(0x0F, 0x14, 0x19);
+
+    /// <summary>
+    /// <c>#FFFFFF</c> — every number on the top band: the health, the level, the wave (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>The same white as <see cref="HitFlash"/>, and a member of its own</b> — <see cref="Heal"/>'s
+    /// argument: a meaning, not a value. The day the owner wants the band's numbers a shade warmer,
+    /// the hit flash must not warm with them.
+    /// </remarks>
+    public static readonly Color HudText = Rgb(0xFF, 0xFF, 0xFF);
 
     /// <summary>
     /// True when <paramref name="colour"/> is GD §16.4's reserved danger colour. How the

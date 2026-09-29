@@ -751,7 +751,7 @@ public sealed class BossBarViewTests
     // ---- Rule 8: the arrangement, which is all the Editor can answer ------------------------------
 
     [Test]
-    public void Hud_StripAndBarDoNotOverlap()
+    public void Hud_TheBandHangsUnderTheTopBand()
     {
         BuildHud();
 
@@ -762,50 +762,38 @@ public sealed class BossBarViewTests
         (float Top, float Bottom) strip = VerticalSpan((RectTransform)_strip.transform);
         (float Top, float Bottom) band = VerticalSpan((RectTransform)_bar.transform);
 
-        // **Rule 8's collision, asserted in the Editor even though legibility cannot be.** The band is
-        // a full-width element on the same edge as GD §16.1's 4 dp XP strip, which M3-10b put on the
-        // very top of the safe area — and both are serialized dp, so if they ever met the fix is one
-        // number (manual step 4).
+        // **UI-01b rule 11, which replaced M4-04 rule 8's arrangement.** From M4-04 the band ran the
+        // full width at 5–15 dp, between a 4 dp strip and an HP row at 16. UI-01b made the strip 8 dp
+        // and put a 44 dp star at 13, so there was no gap left: the band hangs under the whole top band
+        // instead, centred, at most 400 dp wide. HudLayoutTests lays that out at two phone sizes; this
+        // row pins the shipped numbers on the shipped prefab.
+        Assert.That(band.Top, Is.GreaterThanOrEqualTo(strip.Bottom - 1e-2f), "the band covers the XP strip.");
         Assert.That(
             band.Top,
-            Is.GreaterThanOrEqualTo(strip.Bottom - 1e-2f),
-            "the boss band starts before the XP strip ends, so the band covers GD §16.1's one "
-                + "always-there element.");
+            Is.GreaterThanOrEqualTo((HudLayout.BandBottomDp * pxPerDp) - 1e-2f),
+            "the boss band starts inside the top band, where the star, the bar and the skill row are.");
 
-        // And the HP row below it, which the spec does not name and which shares the same top edge:
-        // HudPresenter.Place puts the bar, the readout, the ring and the level at _marginDp.y down.
-        float hpRowTop = Field<Vector2>(_presenter, "_marginDp").y * pxPerDp;
-
-        Assert.That(
-            band.Bottom,
-            Is.LessThanOrEqualTo(hpRowTop + 1e-2f),
-            "the boss band runs into the HP row, which is the collision rule 8 did not name and the "
-                + "one a full-width element was always going to reach first.");
-
-        // The arrangement this task shipped, stated as a number rather than as a description: 0–4 dp
-        // the XP strip, 5–15 dp the band, 16 dp down the HP row. Two 1 dp gaps, on a HUD M3-15 already
-        // found too cramped to read — **whether that is legible is M4-07's and this task may not tick
-        // it** (ledger row 1).
-        Assert.That(strip.Top, Is.EqualTo(0f).Within(1e-2f));
-        Assert.That(strip.Bottom, Is.EqualTo(XpBarView.HeightDp * pxPerDp).Within(1e-2f));
         Assert.That(band.Top, Is.EqualTo(BossBarView.TopDp * pxPerDp).Within(1e-2f));
         Assert.That(
             band.Bottom,
             Is.EqualTo((BossBarView.TopDp + BossBarView.HeightDp) * pxPerDp).Within(1e-2f));
 
-        // Full width, and the width is the anchors' rather than this class's arithmetic — XpBarView's
-        // words: 0 to 1 with a zero sizeDelta.x is exactly the safe area's width however wide it turns
-        // out to be, on both rotations.
+        // Centred, and never wider than 400 dp or the safe area less its margins.
         var bandRect = (RectTransform)_bar.transform;
+        float safeWidth = ((RectTransform)bandRect.parent).rect.width;
 
-        Assert.That(bandRect.anchorMin, Is.EqualTo(new Vector2(0f, 1f)));
-        Assert.That(bandRect.anchorMax, Is.EqualTo(new Vector2(1f, 1f)));
-        Assert.That(bandRect.sizeDelta.x, Is.EqualTo(0f).Within(1e-3f));
-        Assert.That(bandRect.pivot, Is.EqualTo(new Vector2(0f, 1f)));
+        Assert.That(bandRect.anchorMin, Is.EqualTo(new Vector2(0.5f, 1f)));
+        Assert.That(bandRect.anchorMax, Is.EqualTo(new Vector2(0.5f, 1f)));
+        Assert.That(bandRect.pivot, Is.EqualTo(new Vector2(0.5f, 1f)));
+        Assert.That(bandRect.anchoredPosition.x, Is.EqualTo(0f).Within(1e-3f));
+        Assert.That(
+            bandRect.sizeDelta.x,
+            Is.EqualTo(HudLayout.BossWidth(safeWidth / pxPerDp, HudLayout.BossMaxWidthDp) * pxPerDp).Within(1e-2f));
+        Assert.That(bandRect.sizeDelta.x, Is.LessThanOrEqualTo((HudLayout.BossMaxWidthDp * pxPerDp) + 1e-2f));
 
-        // Under the same SafeAreaFitter as everything else on this prefab, so "across the top of the
-        // screen" means across the part of it a landscape cutout has not eaten. `includeInactive` is
-        // mandatory rather than defensive — see XpBarViewTests.Prefab_IsDressed.
+        // Under the same SafeAreaFitter as everything else on this prefab, so the width it measures is
+        // the part of the screen a landscape cutout has not eaten. `includeInactive` is mandatory
+        // rather than defensive — see XpBarViewTests.Prefab_IsDressed.
         Assert.That(
             _bar.GetComponentInParent<SafeAreaFitter>(includeInactive: true),
             Is.Not.Null,

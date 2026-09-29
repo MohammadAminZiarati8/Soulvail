@@ -206,4 +206,52 @@ bottom (rule 12). The Palette count goes 20 → 23 (rule 13).
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**As specified in behaviour, with five deviations in where things live.**
+
+**Deviation 1: `Numbers_AreInsideTheBar` is in `GrantedShieldTests`, not `HpBarViewTests`.** The readout
+is a run's numbers, and `HpBarViewTests` drives a bare bar off the prefab with no run, which is the
+point of it. `GrantedShieldTests` already builds a run and a started presenter. The row asserts
+`140 / 140` on its Oathbound, where the table said `72 / 120`.
+
+**Deviation 2: one more changed expectation than the spec listed.** `Player_TextDoesNotMentionIt`
+pinned the readout as `140/140`; rule 9 spaces it, so it reads `140 / 140`. `Row_IgnoresANonFiniteDpField`
+restored the row's margin by typing the old `(16, 48)`; it now reads the shipped margin back first.
+
+**Deviation 3: `HudLayout` has two more constants than its Public API**: `BarLeftDp` (60) and
+`SkillRowTopDp` (52), the row's corner. `AutoCastRow._marginDp` defaults to them, because the
+formatter refuses a field initialiser split across lines and one named number reads better anyway.
+
+**Deviation 4: `HudLayoutTests` checks eight of the row's twelve cells.** At 24 dp, cells 10 to 12 of
+a full row run under the pause corner at 9:20. The row packs from the front and no shipped class owns
+more than three Actives, so the band's rows hold the first eight, and the tenth cell is a
+[parking-lot](../ROADMAP.md#parking-lot) line. UI-01e re-reads the number at its 34 dp.
+
+**Deviation 5: an extra row, `Band_TheBarTakesWhatTheRowLeaves`**, which pins rule 4's widths at both
+sizes: 240 dp landscape, 201 dp at 9:20.
+
+**Rule 15, resolved: a non-finite measurement answers the bar's full ceiling.** `BarWidth` reads a
+ceiling that is not a usable width as `BarMaxWidthDp`. A NaN safe width, left edge or reserve answers
+that ceiling outright. `HudPresenter.Place` places each piece only when every number it depends on is
+usable, so a NaN star leaves the star, the level, the ring and the bar where the prefab put them.
+
+**The prefab kept its objects.** `HpBar/Backing` became `Frame` and `XpStrip/Backing` became `Track`,
+each re-dressed. `Well` is new under each, and `Gloss` and `LevelStar` are new. The fill, the ghost
+and the segment moved into the bar's well, and the XP fill into the strip's. Every image a view tints
+is authored white. `HpText` and `Level` are in `LilitaOne_SDF`, centred, and autosize is off, because
+`Place` sizes both from dp: 0.62 of the bar and 0.45 of the star. The texts' authored point sizes are
+untouched, so `Hud_NothingElseMoved` holds.
+
+**The ghost's clock had never been driven by a row.** `Update` read `Time.deltaTime`, which does not
+advance in EditMode. The body is now a private `Tick(float)`, `OverflowToast`'s arrangement, and six
+rows drive it. The low beat is `Color.Lerp` between two palette members at `_lowPulseHz` (2). It
+redraws the fill every frame while below a quarter, which is the one state where that is the point.
+
+**The captures, and why they were taken two ways.** Landscape is the Device Simulator: a
+2658 × 960 phone at 480 dpi with a 92 px notch, so a dp there is a phone's dp. The simulator refuses
+portrait, because Player Settings allow landscape only, and changing that is a `ProjectSettings/`
+change the owner has not asked for. So portrait is the Game view at 308 × 686, which at the Editor's
+120 dpi is exactly a 9:20 phone's 411 × 914 dp, captured at 3× (softer, because overlay UI is
+upscaled). Both are in `Soulvail_GeminiSamples/UI_v2/captures/`. The star, the bar with `90 / 90` and
+the strip match `Hud_LevelUp.png`'s top band; the bar is 240 dp in landscape and 201 at 9:20. The
+empty Aegis ring shows as a faint dark disc behind the star, as it drew an empty ring before; a
+[parking-lot](../ROADMAP.md#parking-lot) line asks whether a class with no Aegis should draw one.

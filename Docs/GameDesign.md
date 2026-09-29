@@ -718,9 +718,9 @@ Environment art stays desaturated so gameplay-critical colors pop. This is why l
 
 ### 17.1 Art
 
-**Low-poly, flat-shaded, strong silhouettes, emissive accents.** Chosen deliberately: producible by a small team, cheap enough for 28 enemies on a mid-range phone, and it forces the silhouette clarity P1 demands.
+**KayKit's style: low-poly, smooth-shaded, chunky proportions, strong silhouettes, emissive accents.** Chosen deliberately: producible by a small team, cheap enough for 28 enemies on a mid-range phone, and it forces the silhouette clarity P1 demands. The KayKit packs are the reference, so a made body sits beside a KayKit one: rounded shells that intersect, each one colour with a soft light-to-dark gradient from a shared atlas, a big head, and short thick limbs. **Not faceted:** a flat-shaded body reads as polygon art beside them, which is why the Frog was rebuilt (M7-05n).
 
-- Characters: **400–1,200 tris** (half the PC budget), **one shared material and atlas across all enemies** for instancing
+- Characters: **400–2,500 tris** for the crowd, **one shared material and atlas across all enemies** for instancing. Smooth shells cost triangles but not vertices, and skinning is paid per vertex: M7-05n's Frog is 2,300 triangles on fewer vertices than the 1,200-triangle faceted one it replaced. A player body may match its KayKit counterpart (the Ranger's 8,900, RS-01b)
 - No normal maps, no per-enemy Animator where a simple skinned or vertex-animated loop will do
 - Environment: modular kit per biome, 6–10 pieces, all sharing one atlas
 - **Enemy silhouettes must be distinguishable as pure black shapes at phone scale.** Confusable in silhouette means one gets redesigned.

@@ -9,12 +9,13 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.Game.Art;
 
 /// <summary>
-/// The Frog's model, as <c>Tools/Blender/frog.py</c> writes it and the importer reads it (M7-05j).
+/// The Frog's model, as <c>Tools/Blender/frog.py</c> writes it and the importer reads it (M7-05j, rebuilt
+/// in KayKit's style at M7-05n).
 /// </summary>
 /// <remarks>
-/// The model is generated from a Tripo sculpt outside the repository, so these rows are what stops a
-/// changed script, a different sculpt or an import setting reset by an update from shipping a body
-/// that has blown the crowd's budget, lost a clip, moved its root, or turned floor-green. Unlike the
+/// The model is generated, from shells the script builds, so these rows are what stops a changed
+/// script or an import setting reset by an update from shipping a body that has blown the crowd's
+/// budget, lost a clip, moved its root, or turned floor-green. Unlike the
 /// Rootling it is not on <c>Rig_Medium</c>: its clips are its own, so what is checked is that each of
 /// them binds to this model. The shared atlas's reserved colours and filtering, and the material's
 /// glow, are <see cref="RootlingModelTests"/>' rows, which read every pixel the Frog samples too.
@@ -27,15 +28,15 @@ public sealed class FrogModelTests
     private const string FloorPath = "Assets/_Project/Art/Environment/Jungle/Textures/T_JungleGround_Albedo.png";
     private const string EnemyMaterialPath = "Assets/_Project/Materials/Enemies/M_Enemy.mat";
 
-    /// <summary>GD §17.1's crowd budget.</summary>
+    /// <summary>GD §17.1's crowd budget, raised from 1,200 for smooth shells at M7-05n.</summary>
     private const int MinTriangles = 400;
 
-    private const int MaxTriangles = 1200;
+    private const int MaxTriangles = 2500;
 
     /// <summary>
     /// How far the Frog's surface must stand off the Jungle's floor, averaged: lighter by this much in
-    /// Rec. 709 luma, and more saturated by the next. Built at 0.095 and 0.236 over the floor; a frog
-    /// painted the floor's own greens is under both.
+    /// Rec. 709 luma, and more saturated by the next. Rebuilt at 0.214 and 0.183 over the floor
+    /// (M7-05n); a frog painted the floor's own greens is under both.
     /// </summary>
     private const float LighterThanTheFloor = 0.05f;
 

@@ -14,8 +14,8 @@ It writes, overwriting what it wrote last time, so both files are an output of t
 changed here, never by hand:
 
 - Assets/_Project/Art/Enemies/Rootling.fbx               one skinned mesh on Rig_Medium, unchanged
-- Assets/_Project/Art/Enemies/Textures/T_Enemy_Albedo.png the shared enemy atlas; its first two
-                                                          columns are the Rootling's, the rest free
+- Assets/_Project/Art/Enemies/Textures/T_Enemy_Albedo.png the shared enemy atlas, whose swatches
+                                                          live in enemy_atlas.py beside this script
 
 The rig is read, never rebuilt: Skeleton_Minion.fbx is a KayKit enemy on Rig_Medium, and its
 armature is kept exactly as it loads while its meshes are thrown away. Unity binds a Generic clip
@@ -44,6 +44,9 @@ import numpy as np
 from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.dont_write_bytecode = True  # no __pycache__ beside the scripts
+from enemy_atlas import SWATCH_NAMES, build_atlas, save_png, uv_for  # noqa: E402
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 OUT = os.path.join(ROOT, "Assets", "_Project", "Art", "Enemies")
 TEX = os.path.join(OUT, "Textures")
@@ -51,72 +54,6 @@ RIG_SOURCE = os.path.join(ROOT, "Assets", "ThirdParty", "KayKit", "Skeletons", "
 CLIPS = os.path.join(ROOT, "Assets", "ThirdParty", "KayKit", "Animations", "Rig_Medium")
 
 TRIANGLE_BUDGET = (400, 1200)  # GD 17.1, the crowd's
-
-# ---------------------------------------------------------------------------------------------
-# The shared enemy atlas: 512 px square in 64 x 128 px strips, each a vertical gradient from light
-# (top) to dark, M7-05b's layout at half the size. Columns 0-1 are the Rootling's; 2-7 are free for
-# the Jungle's other bodies.
-# ---------------------------------------------------------------------------------------------
-
-ATLAS = 512
-COL_W, ROW_H = 64, 128
-
-SWATCHES = {
-    "bone": (0, 0, "E2DBC8", "A89F8A"),
-    "fungus": (0, 1, "ECE7D8", "B8B09D"),
-    "bark": (0, 2, "BCAE96", "7E705D"),
-    "lichen": (0, 3, "D2D2C0", "9A9B88"),
-    "bark_dark": (1, 0, "A39380", "675A4B"),
-    "socket": (1, 1, "3C352E", "221D19"),
-}
-SWATCH_NAMES = list(SWATCHES)
-
-# GD 16.4's reserved colours, which no pixel of the atlas may come near.
-RESERVED = ("22D3EE", "FF4A1F", "A855F7", "FBBF24")
-
-
-def rgb(hex_code):
-    return np.array([int(hex_code[i:i + 2], 16) / 255.0 for i in (0, 2, 4)], np.float32)
-
-
-def uv_for(swatch, t):
-    """Where on the atlas a surface of `swatch` samples, `t` from 0 (the light top) to 1."""
-    col, row = SWATCHES[swatch][0], SWATCHES[swatch][1]
-    t = min(1.0, max(0.0, t))
-    u = (col * COL_W + COL_W * 0.5) / ATLAS
-    y = row * ROW_H + 8 + t * (ROW_H - 16)  # a margin, so mip levels bleed less
-    return u, 1.0 - y / ATLAS
-
-
-def save_png(pixels, path):
-    """`pixels` is H x W x 3 in 0..1, row 0 at the top."""
-    h, w, _ = pixels.shape
-    image = bpy.data.images.new("out", w, h, alpha=False)
-    rgba = np.ones((h, w, 4), np.float32)
-    rgba[..., :3] = np.clip(pixels, 0.0, 1.0)
-    image.pixels.foreach_set(np.flipud(rgba).ravel())
-    image.filepath_raw = path
-    image.file_format = "PNG"
-    image.save()
-    bpy.data.images.remove(image)
-
-
-def build_atlas():
-    img = np.zeros((ATLAS, ATLAS, 3), np.float32)
-    ramp = np.linspace(0.0, 1.0, ROW_H, dtype=np.float32)[:, None]
-    unused = rgb("9A9A9A") * (1 - ramp) + rgb("4A4A4A") * ramp
-    for row in range(ATLAS // ROW_H):
-        img[row * ROW_H:(row + 1) * ROW_H, :, :] = unused[:, None, :]
-    for col, row, top, bottom in SWATCHES.values():
-        strip = rgb(top) * (1 - ramp) + rgb(bottom) * ramp
-        img[row * ROW_H:(row + 1) * ROW_H, col * COL_W:(col + 1) * COL_W, :] = strip[:, None, :]
-    flat = img.reshape(-1, 3)
-    for hex_code in RESERVED:
-        nearest = np.abs(flat - rgb(hex_code)).max(axis=1).min()
-        assert nearest > 0.12, f"the atlas comes within {nearest:.3f} of #{hex_code} (GD 16.4)"
-    save_png(img, os.path.join(TEX, "T_Enemy_Albedo.png"))
-    return img
-
 
 # ---------------------------------------------------------------------------------------------
 # The rig. Blender is Z-up and the Rootling faces -Y; the armature's own transform turns its
@@ -540,7 +477,7 @@ def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     os.makedirs(TEX, exist_ok=True)
     print("atlas")
-    build_atlas()
+    build_atlas(TEX)
     print("model")
     arm = load_rig()
     rig = Rig(arm)

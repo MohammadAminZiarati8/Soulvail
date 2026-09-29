@@ -331,12 +331,55 @@ RS-01c swaps the body.
 
 ---
 
+## UI — The HUD in the new art *(a side track, the top band first)*
+
+**The owner's request of 2026-09-29:** rebuild the top of the run HUD in the Clash of Clans–style
+pieces Gemini drew (`Soulvail_GeminiSamples/UI_v2/`, beside the repository): the XP strip, the level
+star, the health bar, the auto-cast skill row, the stage/wave chip, the pause button, the enemies-left
+chip and the boss bar. **Nothing below the top band changes in UI-01**: the stick, the Roll and manual
+buttons, the arrows, the reticle, the telegraphs and every overlay screen are later rows of this track.
+
+- **It is the owner's art direction, not a milestone's.** GD §16.4's colour law still governs it:
+  `Palette` is the only source of colour, every fill is a white sprite tinted from it, and red-orange
+  means danger alone. The ghost goes pale cyan, because gold means rewards.
+- **Landscape today, portrait next.** The owner ruled the game portrait on 2026-09-29, and nothing has
+  switched yet. So every piece is placed in dp from the safe area's top edge, and one row
+  (`HudLayoutTests`) lays the band out at 20:9 and at 9:20 and finds nothing overlapping.
+- **Switched off is not removed.** The Essence counter, the Veilrot meter and the Aegis ring stay
+  wired and move out of the new pieces' way. The new levelling flow and its "+1" bubble are not this
+  track's first row.
+
+What the planning found:
+
+- **The Volley is a Passive node, and it is the Ranger's only self-firing skill.** The Ranger owns no
+  Active, so today's auto-cast row draws nothing in the only class on sale. The row gains the volley
+  as a cell of its own, read from core, and no other Passive ever makes a cell (UI-01e).
+- **Nothing in core counts the enemies a stage has left.** `RunState.EnemyCount` counts corpses, and
+  the bodies still to come are the director's private arrays. So the chip needs a core read first
+  (UI-01c), which is the owner's rule for a number core does not publish.
+- **The stage and the wave are already published**: `StageArrived.Stage` and `WaveStarted`'s wave and
+  count. The chip needs no core change.
+- **The Editor draws a dp at 30 % of its phone size** (`Screen.dpi` 120, [Traps §9](../Traps.md)).
+  So the band's arithmetic is checked at a phone's size by `HudLayoutTests`, not by eye.
+
+| ID | Task | Size | Depends on | Status |
+|---|---|---|---|---|
+| UI-01a | [The HUD's art and its font, imported](tasks/UI-01a-the-huds-art-and-font.md) — this section and the six specs, 19 sprites, Lilita One | S | — | ☑ |
+| UI-01b | [The health bar, the XP strip and the level star](tasks/UI-01b-the-health-bar-xp-and-star.md) — and the band's layout in dp | M | UI-01a | ☐ |
+| UI-01c | [Enemies left, in core](tasks/UI-01c-enemies-left-in-core.md) — the living and the not-yet-spawned | S | — | ☐ |
+| UI-01d | [The stage chip, the enemies-left chip and the pause button](tasks/UI-01d-the-chips-and-the-pause-button.md) | S | UI-01b, UI-01c | ☐ |
+| UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☐ |
+| UI-01f | [The boss bar in the new art](tasks/UI-01f-the-boss-bar.md) | S | UI-01b | ☐ |
+
+---
+
 ## Parking lot
 
 Unscheduled. **One item, one line: what it is and what promotes it.** History lives in the archive; an item that acquires an owning task becomes a ledger row.
 
 - **The Ranger's price, and whether it ships in V1.** It is free in class select while it is built (RS-03c), and GD §19 puts a fourth class in V2. Promoted when the owner rules, before M8-06's store build.
 - **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
+- **The HUD's pieces are separate textures, so the top band is about fifteen draw calls.** A sprite atlas would batch them, and `EditorSettings`' sprite packer is off (a `ProjectSettings/` change). Promoted by the device's first frame-time capture, or by the next UI row that adds pieces.
 - **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).

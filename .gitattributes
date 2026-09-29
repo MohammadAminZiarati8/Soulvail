@@ -33,6 +33,10 @@
 # than a file glob, so the next pack is covered without touching this file again.
 Assets/ThirdParty/** -whitespace
 
+# A font's licence, on the same terms: the SIL OFL text carries trailing spaces, and it is
+# reproduced verbatim beside the font it licenses (UI-01a).
+Assets/_Project/Art/UI/Fonts/OFL-*.txt -whitespace
+
 # ── Unity YAML — merged with UnityYAMLMerge (see CLAUDE.md for the git config) ──
 *.unity               merge=unityyaml text
 *.prefab              merge=unityyaml text

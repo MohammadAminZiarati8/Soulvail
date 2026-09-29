@@ -491,6 +491,21 @@ public sealed class PaletteTests
     }
 
     /// <summary>
+    /// UI-01a: the HUD's outline is the art's own near-black, and it is nowhere near the danger colour.
+    /// </summary>
+    [Test]
+    public void Ink_IsTheArtsOutline()
+    {
+        AssertHex(Palette.Ink, 0x0F, 0x14, 0x19, nameof(Palette.Ink));
+
+        Assert.That(Palette.IsDanger(Palette.Ink), Is.False, "Palette.Ink is the danger colour.");
+
+        Color.RGBToHSV(Palette.Ink, out _, out _, out float value);
+
+        Assert.That(value, Is.LessThan(0.15f), "an outline that is not near-black does not read as the art's ink.");
+    }
+
+    /// <summary>
     /// GD §16.3's white hit flash — the ninth reader, and the one no ledger row had ever counted.
     /// </summary>
     /// <remarks>
@@ -614,8 +629,9 @@ public sealed class PaletteTests
 
         Assert.That(
             typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
-            Is.EqualTo(19),
-            "Palette gained a member. A Pact is GD §16.4's violet, not a second one.");
+            Is.EqualTo(20),
+            "Palette gained a member. A Pact is GD §16.4's violet, not a second one. "
+                + "The twentieth is UI-01a's Ink, the HUD art's outline.");
     }
 
     /// <summary>

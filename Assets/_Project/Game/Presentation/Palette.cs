@@ -275,6 +275,28 @@ public static class Palette
     /// </remarks>
     public static readonly Color HeldFocus = Rgb(0x22, 0xD3, 0xEE);
 
+    // ---- The HUD's art (UI-01). -----------------------------------------------------------------
+
+    /// <summary>
+    /// <c>#0F1419</c> — the outline on every HUD word and number, and the art's own ink (UI-01a).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The one colour the new art and the code have to agree on.</b> Every piece Gemini drew for
+    /// the HUD is outlined in a near-black, and <c>UI_v2/compose.py</c> strokes the mockup's words in
+    /// exactly this value. <c>LilitaOne_SDF</c>'s material carries it as both its outline and its
+    /// shadow, so a number drawn over a frame is outlined in the frame's own ink — which is why it
+    /// is a member rather than a colour typed into a material, and why <c>HudArtTests</c> reads the
+    /// material back against it.
+    /// </para>
+    /// <para>
+    /// <b>It is <em>everything else</em> in GD §16.4's sense</b>: not the player, not a reward, not
+    /// the Veil, and nowhere near <see cref="Danger"/>. A view that wants it translucent — the skill
+    /// row's cooldown shade — multiplies its own alpha, the class remarks' rule.
+    /// </para>
+    /// </remarks>
+    public static readonly Color Ink = Rgb(0x0F, 0x14, 0x19);
+
     /// <summary>
     /// True when <paramref name="colour"/> is GD §16.4's reserved danger colour. How the
     /// <em>"for nothing else, ever"</em> half of the rule is tested rather than promised.

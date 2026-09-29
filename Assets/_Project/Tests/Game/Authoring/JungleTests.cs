@@ -12,15 +12,16 @@ namespace Soulvail.Tests.Game.Authoring;
 
 /// <summary>
 /// The Jungle as a place a run is played in (M7-05i): its own Husk, Descent's numbers, a small room
-/// for its first stages, and the first mode a new run starts.
+/// for its first stages, and the first mode a new run starts. Its Husk is the Frog since M7-05m.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The Rootling is its own archetype with the Husk's numbers</b>, not the Husk in a skin: identity is
-/// a <see cref="ContentId"/>, a look is keyed by it, and a place's enemies are its mode's roster, so
-/// the Jungle's Husk is one roster row naming a different id. <see cref="Rootling_PlaysTheHusksRole"/>
+/// <b>The Jungle's Husk is its own archetype with the Husk's numbers</b>, not the Husk in a skin:
+/// identity is a <see cref="ContentId"/>, a look is keyed by it, and a place's enemies are its mode's
+/// roster, so the Jungle's Husk is one roster row naming a different id. <see cref="JunglesHusk_PlaysTheHusksRole"/>
 /// pins the numbers equal; they part when someone edits that row, which is the moment to decide they
-/// should.
+/// should. The Rootling, which the Frog replaced, keeps its row: it is authored and could be rostered
+/// again by one line.
 /// </para>
 /// <para>
 /// <b>The Jungle is Descent with its own content.</b> <see cref="Jungle_IsDescentsNumbers"/> compares
@@ -34,8 +35,10 @@ public sealed class JungleTests
     private const string JunglePath = "Assets/_Project/Data/Modes/Jungle.asset";
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
     private const string RootlingPath = "Assets/_Project/Data/Enemies/Rootling.asset";
+    private const string FrogPath = "Assets/_Project/Data/Enemies/Frog.asset";
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
+    private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string ArenaFolder = "Assets/_Project/Prefabs/Arenas";
 
@@ -52,38 +55,40 @@ public sealed class JungleTests
         "_sanctum", "_bossRoster", "_ordeals",
     };
 
-    [Test]
-    public void Rootling_PlaysTheHusksRole()
+    [TestCase(FrogPath, "enemy.frog")]
+    [TestCase(RootlingPath, "enemy.rootling")]
+    public void JunglesHusk_PlaysTheHusksRole(string path, string id)
     {
-        EnemySpec rootling = Load<EnemyDefinition>(RootlingPath).ToSpec();
+        EnemySpec ours = Load<EnemyDefinition>(path).ToSpec();
         EnemySpec husk = Load<EnemyDefinition>(HuskPath).ToSpec();
 
-        Assert.That(rootling.Id.Value, Is.EqualTo("enemy.rootling"));
-        Assert.That(rootling.NameKey.Key, Is.EqualTo("enemy.rootling.name"));
+        Assert.That(ours.Id.Value, Is.EqualTo(id));
+        Assert.That(ours.NameKey.Key, Is.EqualTo(id + ".name"));
 
-        Assert.That(rootling.Behaviour, Is.EqualTo(husk.Behaviour), "It beelines and swings (GD §8.1).");
-        Assert.That(rootling.MaxHp, Is.EqualTo(husk.MaxHp));
-        Assert.That(rootling.MoveSpeed, Is.EqualTo(husk.MoveSpeed));
-        Assert.That(rootling.TargetPriority, Is.EqualTo(husk.TargetPriority));
-        Assert.That(rootling.ThreatCost, Is.EqualTo(husk.ThreatCost));
-        Assert.That(rootling.XpValue, Is.EqualTo(husk.XpValue));
-        Assert.That(rootling.IsElite, Is.EqualTo(husk.IsElite));
-        Assert.That(rootling.ContactDamage, Is.EqualTo(husk.ContactDamage));
-        Assert.That(rootling.Reach, Is.EqualTo(husk.Reach));
-        Assert.That(rootling.WindupTime, Is.EqualTo(husk.WindupTime));
-        Assert.That(rootling.RecoverTime, Is.EqualTo(husk.RecoverTime));
-        Assert.That(rootling.AggroRange, Is.EqualTo(husk.AggroRange));
-        Assert.That(rootling.Projectile, Is.Null);
-        Assert.That(rootling.Explosion, Is.Null);
+        Assert.That(ours.Behaviour, Is.EqualTo(husk.Behaviour), "It beelines and swings (GD §8.1).");
+        Assert.That(ours.MaxHp, Is.EqualTo(husk.MaxHp));
+        Assert.That(ours.MoveSpeed, Is.EqualTo(husk.MoveSpeed));
+        Assert.That(ours.TargetPriority, Is.EqualTo(husk.TargetPriority));
+        Assert.That(ours.ThreatCost, Is.EqualTo(husk.ThreatCost));
+        Assert.That(ours.XpValue, Is.EqualTo(husk.XpValue));
+        Assert.That(ours.IsElite, Is.EqualTo(husk.IsElite));
+        Assert.That(ours.ContactDamage, Is.EqualTo(husk.ContactDamage));
+        Assert.That(ours.Reach, Is.EqualTo(husk.Reach));
+        Assert.That(ours.WindupTime, Is.EqualTo(husk.WindupTime));
+        Assert.That(ours.RecoverTime, Is.EqualTo(husk.RecoverTime));
+        Assert.That(ours.AggroRange, Is.EqualTo(husk.AggroRange));
+        Assert.That(ours.Projectile, Is.Null);
+        Assert.That(ours.Explosion, Is.Null);
     }
 
-    [Test]
-    public void Rootling_WearsItsOwnBody()
+    [TestCase(FrogPath, FrogBodyPath)]
+    [TestCase(RootlingPath, RootlingBodyPath)]
+    public void JunglesHusk_WearsItsOwnBody(string path, string bodyPath)
     {
-        EnemyLook look = Load<EnemyDefinition>(RootlingPath).ToLook();
+        EnemyLook look = Load<EnemyDefinition>(path).ToLook();
 
         Assert.That(look.Body, Is.Not.Null);
-        Assert.That(look.Body.gameObject, Is.EqualTo(AssetDatabase.LoadAssetAtPath<GameObject>(RootlingBodyPath)));
+        Assert.That(look.Body.gameObject, Is.EqualTo(AssetDatabase.LoadAssetAtPath<GameObject>(bodyPath)));
         Assert.That(look.Tint, Is.EqualTo(Color.white), "White, so the atlas reads as it was painted.");
         Assert.That(look.BodyScale, Is.EqualTo(1f));
     }
@@ -109,10 +114,10 @@ public sealed class JungleTests
         Assert.That(jungle.Id.Value, Is.EqualTo("mode.jungle"));
         Assert.That(jungle.Roster.Select(r => (r.SpecId.Value, r.IntroducedAtStage)), Is.EqualTo(new[]
         {
-            ("enemy.rootling", 1),
+            ("enemy.frog", 1),
             ("enemy.spitter", 2),
             ("enemy.bloater", 4),
-        }), "The Rootling where Descent has the Husk; the Spitter and the Bloater keep their capsules.");
+        }), "The Frog where Descent has the Husk (the owner, 2026-09-29, in the Rootling's place); the Spitter and the Bloater keep their capsules.");
     }
 
     [Test]
@@ -165,7 +170,12 @@ public sealed class JungleTests
 
         SerializedProperty enemies = serialized.FindProperty("_enemies");
         var listed = Enumerable.Range(0, enemies.arraySize).Select(i => enemies.GetArrayElementAtIndex(i).objectReferenceValue).ToList();
-        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(RootlingPath)));
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(FrogPath)));
+
+        // Every bodied archetype the catalog lists is prewarmed to a pool of DeviceEnemyCap + 1 at
+        // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode.
+        Assert.That(listed, Has.No.Member(Load<EnemyDefinition>(RootlingPath)),
+            "The Rootling is listed but no mode rosters it, so a run builds 29 of its bodies for nothing.");
     }
 
     private static T Load<T>(string path)

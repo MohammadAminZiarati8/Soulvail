@@ -62,7 +62,7 @@ MonoBehaviour:
     _cleansePrice: 60
     _cleanseAmount: 15
   _roster:
-  - _specId: enemy.rootling
+  - _specId: enemy.frog
     _introducedAtStage: 1
   - _specId: enemy.spitter
     _introducedAtStage: 2

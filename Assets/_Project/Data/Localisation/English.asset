@@ -440,3 +440,5 @@ MonoBehaviour:
     _text: Rootling
   - _key: mode.jungle.name
     _text: Jungle
+  - _key: enemy.frog.name
+    _text: Frog

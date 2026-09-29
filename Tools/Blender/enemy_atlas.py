@@ -1,11 +1,11 @@
 """The shared enemy atlas, T_Enemy_Albedo: every enemy body samples it through M_Enemy (M7-05f).
 
-Imported by each body's script (rootling.py, frog.py), and each writes the whole atlas, so a re-run of
-either leaves the same bytes. A body's swatches are added here, never in its own script, which is what
-keeps one body's re-run from erasing another's columns.
+Imported by each body's script (rootling.py, frog.py, pitcher.py), and each writes the whole atlas, so a
+re-run of any leaves the same bytes. A body's swatches are added here, never in its own script, which is
+what keeps one body's re-run from erasing another's columns.
 
 The layout is M7-05b's at half the size: 512 px square in 64 x 128 px strips, each a vertical gradient
-from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-7 free.
+from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 free.
 """
 
 import os
@@ -35,6 +35,17 @@ SWATCHES = {
     "frog_red": (3, 1, "C8203A", "7E0F22"),
     "frog_pupil": (3, 2, "1B1616", "080606"),
     "frog_tongue": (3, 3, "EC8FA2", "B55570"),
+    # The Pitcher (M7-05o): a pale chartreuse jug, a leaf-green lid, a wine rim and speckles, a dark
+    # throat, green leaves and brown roots. The real plant's violet and orange blotches are wine,
+    # because GD 16.4 keeps violet for the Veil and red-orange for danger.
+    "pitcher_skin": (4, 0, "CCE060", "8CAA34"),
+    "pitcher_lid": (4, 1, "7CB83E", "3F7424"),
+    "pitcher_rim": (4, 2, "A83A4C", "6A1E2C"),
+    "pitcher_throat": (4, 3, "3A1E22", "1C0C0F"),
+    "pitcher_leaf": (5, 0, "9CCB4A", "5A8C2C"),
+    "pitcher_root": (5, 1, "9A7550", "5C4430"),
+    "pitcher_eye": (5, 2, "1E1A1A", "0A0808"),
+    "pitcher_shine": (5, 3, "FFFFFF", "F0ECE2"),
 }
 SWATCH_NAMES = list(SWATCHES)
 

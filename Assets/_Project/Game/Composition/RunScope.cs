@@ -73,6 +73,18 @@ namespace Soulvail.Game.Composition
         /// </remarks>
         private const int TelegraphRingPrewarm = 8;
 
+        /// <summary>
+        /// How many bodies each class's own shot, and each impact a shot names, is built with before
+        /// the run starts (RS-06b rule 3).
+        /// </summary>
+        /// <remarks>
+        /// Two of the largest volley core allows: a Ranger's arrow is in the air for at most a third of
+        /// a second and an impact lasts under that, so two volleys overlapping is the most either pool
+        /// is ever asked for. Past it a pool grows, the cost of being wrong is one <c>Instantiate</c>,
+        /// and it keeps what it grew.
+        /// </remarks>
+        private const int ClassShotPrewarm = 2 * VolleySpec.MaxArrows;
+
         [SerializeField] private PlayerView _playerView;
 
         [Tooltip("The body a run wears when its class names none: Prefabs/Player/Bodies/Knight. " +
@@ -700,12 +712,15 @@ namespace Soulvail.Game.Composition
             // that starts firing is exactly the moment a hitch cannot be afforded.
             //
             // The class look book has no WithParameter, EnemyViews' look book's bargain: it resolves
-            // by type from BootScope, and it is what picks a class's own shot (RS-02c). Only the
-            // default is prewarmed; a class's pool is built on its first shot.
+            // by type from BootScope, and it is what picks a class's own shot (RS-02c). Each class's
+            // shot and each impact is prewarmed to ClassShotPrewarm (RS-06b). The camera goes by name
+            // for TapToFocusAdapter's reason, and is what an arrow's impact faces.
             builder.Register<ProjectileViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _projectilePrefab)
                 .WithParameter("parent", _projectileParent)
-                .WithParameter("prewarm", BootInstaller.ProjectileCapacity);
+                .WithParameter("prewarm", BootInstaller.ProjectileCapacity)
+                .WithParameter("classPrewarm", ClassShotPrewarm)
+                .WithParameter("viewer", _camera.transform);
 
             // Sized to the snapshot's capacity rather than to the quota above: the cache is keyed
             // by enemy id and evicts only what stopped asking, so a table smaller than the arena

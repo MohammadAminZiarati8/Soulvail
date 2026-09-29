@@ -132,4 +132,10 @@ public sealed class CharacterLookBook
     /// </remarks>
     public CharacterLook For(ContentId characterId)
         => _looks.TryGetValue(characterId, out CharacterLook look) ? look : default;
+
+    /// <summary>
+    /// Every class's look, in no particular order: for <c>ProjectileViews</c>, which prewarms each
+    /// named shot's pools while the run is composed (RS-06b).
+    /// </summary>
+    public IReadOnlyCollection<CharacterLook> All => _looks.Values;
 }

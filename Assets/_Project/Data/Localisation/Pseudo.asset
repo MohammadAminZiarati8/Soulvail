@@ -483,3 +483,5 @@ MonoBehaviour:
     _text: "[R\xF4\xF4tl\xEE\xF1g \xB7\xB7\xB7]"
   - _key: mode.jungle.name
     _text: "[J\xFB\xF1gl\xE9 \xB7\xB7\xB7]"
+  - _key: enemy.frog.name
+    _text: "[Fr\xF4g \xB7\xB7]"

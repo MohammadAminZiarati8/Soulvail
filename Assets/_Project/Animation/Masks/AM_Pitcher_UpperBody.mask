@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AM_Pitcher_UpperBody
+  m_Mask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 0
+  - m_Path: Pitcher_Body
+    m_Weight: 0
+  - m_Path: Rig_Pitcher
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/jug
+    m_Weight: 1
+  - m_Path: Rig_Pitcher/root/body/jug/leaf.l
+    m_Weight: 1
+  - m_Path: Rig_Pitcher/root/body/jug/leaf.r
+    m_Weight: 1
+  - m_Path: Rig_Pitcher/root/body/jug/mouth
+    m_Weight: 1
+  - m_Path: Rig_Pitcher/root/body/jug/mouth/lid
+    m_Weight: 1
+  - m_Path: Rig_Pitcher/root/body/thigh.l
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/thigh.l/shin.l
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/thigh.l/shin.l/foot.l
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/thigh.r
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/thigh.r/shin.r
+    m_Weight: 0
+  - m_Path: Rig_Pitcher/root/body/thigh.r/shin.r/foot.r
+    m_Weight: 0

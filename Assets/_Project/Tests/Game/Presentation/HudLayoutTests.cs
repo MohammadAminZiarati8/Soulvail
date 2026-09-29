@@ -43,8 +43,11 @@ public sealed class HudLayoutTests
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
-    /// <summary>How many of the skill row's cells the band must hold at both sizes.</summary>
-    private const int RowCellsChecked = 8;
+    /// <summary>
+    /// How many of the skill row's Active cells the band must hold at both sizes, after the volley's:
+    /// seven 34 dp cells in all reach the enemies chip's column at 9:20 and stop short of it (UI-01e).
+    /// </summary>
+    private const int RowCellsChecked = 6;
 
     /// <summary>Half a dp: the resolution a layout claim here is made at.</summary>
     private const float Slack = 0.5f;
@@ -201,8 +204,13 @@ public sealed class HudLayoutTests
         {
             Dictionary<string, Rect> band = Lay(size);
 
-            Assert.That(band["cell1"].xMin, Is.EqualTo(band["bar"].xMin).Within(Slack), $"at {size}");
-            Assert.That(band["cell1"].yMin - band["bar"].yMax, Is.EqualTo(8f).Within(Slack), $"at {size}");
+            Assert.That(band["volley"].xMin, Is.EqualTo(band["bar"].xMin).Within(Slack), $"at {size}");
+            Assert.That(band["volley"].yMin - band["bar"].yMax, Is.EqualTo(8f).Within(Slack), $"at {size}");
+
+            // The pips under the volley's cell, as wide together as it, and inside the band.
+            Assert.That(band["pip1"].xMin, Is.EqualTo(band["volley"].xMin).Within(Slack), $"at {size}");
+            Assert.That(band[$"pip{AutoCastRow.MaxPips}"].xMax, Is.EqualTo(band["volley"].xMax).Within(Slack), $"at {size}");
+            Assert.That(band["pip1"].yMin - band["volley"].yMax, Is.EqualTo(3f).Within(Slack), $"at {size}");
         }
     }
 
@@ -342,9 +350,18 @@ public sealed class HudLayoutTests
 
         Transform row = hudSafe.Find("AutoCastRow");
 
-        // The first eight of the twelve: the row packs from the front, and past eight a 9:20 portrait
-        // runs it under the right-hand corner (the parking lot's line). No shipped class owns more
-        // than three Actives.
+        // The volley's cell, its five pips, and the first six Active cells after it: the row packs from
+        // the front, and past the seventh cell a 9:20 portrait runs it under the right-hand column (the
+        // parking lot's line). No shipped class owns more than three Actives.
+        var volley = (RectTransform)row.Find("VolleyCell");
+
+        pieces["volley"] = Dp(hudSafe, volley, px);
+
+        for (int pip = 1; pip <= AutoCastRow.MaxPips; pip++)
+        {
+            pieces[$"pip{pip}"] = Dp(hudSafe, (RectTransform)volley.Find($"Pip{pip}"), px);
+        }
+
         for (int cell = 1; cell <= RowCellsChecked; cell++)
         {
             pieces[$"cell{cell}"] = Dp(hudSafe, (RectTransform)row.Find($"Cell{cell}"), px);
@@ -379,7 +396,12 @@ public sealed class HudLayoutTests
 
         Invoke(_hud.GetComponent<HudPresenter>(), "Place");
         Invoke(_hud.GetComponentInChildren<XpBarView>(true), "Place");
-        Invoke(_hud.GetComponentInChildren<AutoCastRow>(true), "Place");
+        // Laid out as a Ranger's row is once Volley is taken: the volley's cell first, and every Active
+        // cell one slot right of it (UI-01e rule 1).
+        AutoCastRow row = _hud.GetComponentInChildren<AutoCastRow>(true);
+
+        SetField(row, "_hasVolley", true);
+        Invoke(row, "Place");
         Invoke(_hud.GetComponentInChildren<BossBarView>(true), "Place");
         Invoke(_pause.GetComponent<PausePresenter>(), "Place");
         Invoke(_hud.GetComponentInChildren<StageReadout>(true), "Place");

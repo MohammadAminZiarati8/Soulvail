@@ -622,7 +622,7 @@ public sealed class XpBarViewTests
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, _catalog);
+        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
@@ -652,7 +652,7 @@ public sealed class XpBarViewTests
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, _catalog);
+        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
@@ -740,11 +740,11 @@ public sealed class XpBarViewTests
 
         Assert.That(stripSo.FindProperty("_heightDp").floatValue, Is.EqualTo(StripDp));
 
-        // Twelve row cells present and wired — 24 serialized Images, because rule 7 authors them
-        // rather than cloning a template.
+        // Twelve row cells present and wired, because rule 7 authors them rather than cloning a
+        // template. Since UI-01e a cell is a container and its sweep a shade over the icon.
         var rowSo = new SerializedObject(row);
-        SerializedProperty fills = rowSo.FindProperty("_fills");
-        SerializedProperty strips = rowSo.FindProperty("_kindStrips");
+        SerializedProperty fills = rowSo.FindProperty("_sweeps");
+        SerializedProperty strips = rowSo.FindProperty("_cells");
 
         Assert.That(fills.arraySize, Is.EqualTo(SkillRunner.MaxActives));
         Assert.That(strips.arraySize, Is.EqualTo(SkillRunner.MaxActives));
@@ -752,7 +752,7 @@ public sealed class XpBarViewTests
         for (int cell = 0; cell < SkillRunner.MaxActives; cell++)
         {
             var fill = fills.GetArrayElementAtIndex(cell).objectReferenceValue as Image;
-            var body = strips.GetArrayElementAtIndex(cell).objectReferenceValue as Image;
+            var body = strips.GetArrayElementAtIndex(cell).objectReferenceValue as RectTransform;
 
             Assert.That(fill, Is.Not.Null, $"cell {cell + 1} has no fill.");
             Assert.That(body, Is.Not.Null, $"cell {cell + 1} has no body.");
@@ -958,6 +958,12 @@ public sealed class XpBarViewTests
             .Invoke(_toast, new object[] { unscaledDt });
 
     private void SetDwell(float seconds) => SetPrivate(_toast, "_secondsShown", seconds);
+
+    /// <summary>An icon book with no icons, for the row's constructor — this fixture draws none.</summary>
+    private static SkillIconBook NoIcons() => new SkillIconBook(new Dictionary<ContentId, Sprite>());
+
+    /// <summary>A look book with no looks, for the row's constructor.</summary>
+    private static CharacterLookBook NoLooks() => new CharacterLookBook(new Dictionary<ContentId, CharacterLook>());
 
     private Image Fill() => Field<Image>(_strip, "_fill");
 

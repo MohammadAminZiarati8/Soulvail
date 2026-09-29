@@ -228,11 +228,15 @@ public static class BootInstaller
         EnemySpec[] enemySpecs = Convert(
             enemies, definition => definition.ToSpec(), "enemy", nameof(enemies));
 
+        // Hoisted into a local like the two above, so the icon book below is built from the same
+        // converted ids the catalog holds (UI-01e).
+        SkillSpec[] skillSpecs = Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills));
+
         builder.RegisterInstance(new ContentCatalog(
             characterSpecs,
             enemySpecs,
             Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
-            Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills)),
+            skillSpecs,
             Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees)),
             Convert(
                 bosses ?? Array.Empty<BossDefinition>(),
@@ -250,6 +254,9 @@ public static class BootInstaller
         // rather than per run for that book's reason too: it is built from the boot list, which a
         // run scope never sees, and RunScope resolves it by type from here.
         builder.RegisterInstance(BuildCharacterLookBook(characters, characterSpecs));
+
+        // The skills' icons (UI-01e), after the catalog and at the root for the two books' reasons.
+        builder.RegisterInstance(BuildSkillIconBook(skills, skillSpecs));
 
         // Which classes class select shows (RS-05c). Always registered, so everything that asks
         // for it resolves; an omitted list is an empty roster, which shows every class.
@@ -448,6 +455,28 @@ public static class BootInstaller
         }
 
         return new CharacterLookBook(looks);
+    }
+
+    /// <summary>
+    /// Builds the skill → icon index the HUD's auto-cast row draws from (UI-01e).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BuildCharacterLookBook"/>'s shape: keyed by the spec's id, index-parallel with the
+    /// definitions. A skill with no icon is left out, and the book answers null for it.
+    /// </remarks>
+    private static SkillIconBook BuildSkillIconBook(IReadOnlyList<SkillDefinition> definitions, SkillSpec[] specs)
+    {
+        var icons = new Dictionary<ContentId, Sprite>(specs.Length);
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            if (definitions[i].Icon != null)
+            {
+                icons[specs[i].Id] = definitions[i].Icon;
+            }
+        }
+
+        return new SkillIconBook(icons);
     }
 
     /// <summary>

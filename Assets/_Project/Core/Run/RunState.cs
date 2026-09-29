@@ -420,6 +420,25 @@ public sealed class RunState
     public bool IsSkillReady(int index) => Skills.IsReady(index);
 
     /// <summary>
+    /// How many ordinary shots the class's volley counts to: <c>Volley.EveryCount</c>, and 0 for a
+    /// class with no volley or before a node has given one (UI-01e).
+    /// </summary>
+    /// <remarks>
+    /// One of three narrow reads for the skill row's pips, beside the cooldown reads above and for
+    /// their reason: the <c>Volley</c> lives on <see cref="Combat"/>, which stays <c>internal</c>
+    /// (AR §18.2), so a HUD is handed numbers rather than the counter it could advance.
+    /// </remarks>
+    public int VolleyEvery => Combat.Volley?.EveryCount ?? 0;
+
+    /// <summary>Ordinary shots since the last volley — <c>Volley.ShotsTowardNext</c>, or 0 with none.</summary>
+    /// <inheritdoc cref="VolleyEvery" path="/remarks" />
+    public int VolleyShotsTowardNext => Combat.Volley?.ShotsTowardNext ?? 0;
+
+    /// <summary>The next shot is a volley — <c>Volley.IsReady</c>, or false with none.</summary>
+    /// <inheritdoc cref="VolleyEvery" path="/remarks" />
+    public bool IsVolleyReady => Combat.Volley?.IsReady ?? false;
+
+    /// <summary>
     /// How many of CC §6.2's four manual slots are occupied — <b>what a screen must ask before
     /// sending <c>SetAutoCast(id, false)</c></b>, because the fifth is refused (M3-07a rule 2).
     /// </summary>

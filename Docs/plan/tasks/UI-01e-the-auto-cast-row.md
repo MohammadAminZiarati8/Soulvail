@@ -172,4 +172,46 @@ catalog and gains the two books.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**As specified in behaviour, with six deviations.**
+
+**Deviation 1: a 9:20 portrait holds seven cells, not nine.** Rule 7's nine was written before UI-01d
+put the enemies-left chip under the pause button. The chip's column starts 58 dp in from the right,
+and the row, at 34 dp cells from 60, reaches it on its eighth cell. So `HudLayoutTests` checks the
+volley's cell, its five pips and six Active cells at both sizes, and the
+[parking-lot](../ROADMAP.md#parking-lot) line reads *"past its seventh cell"*.
+
+**Deviation 2: the volley's arrival is polled as well as rule 6's events.** The volley's node is a
+Passive, and `NodeTaken` skips a Passive without a lookup, which is M3-10b's rule and still right for
+every other Passive. So `Update` compares `VolleyEvery >= 1` with the cell's presence and marks the row
+dirty when they disagree. One comparison a frame; the rebuild is still deferred.
+
+**Deviation 3: a cell is a container, not a frame.** The Public API named `_frames`. A ready glow has
+to draw *behind* the frame, and uGUI draws a parent before its children, so a frame on the cell's root
+could only ever have its glow on top. Each cell is a `RectTransform` (`_cells`) holding `Glow`,
+`Frame`, `Icon` and `Sweep` in that order. The volley's cell holds `Glow`, `Frame`, `Icon` and five
+`Pip`s, and no sweep. `Row_HoldsTwelve` counts 13 children and 56 images, and a full row is 452 dp.
+
+**Deviation 4: three files outside the table.** `XpBarViewTests` builds the row in two rows and pins
+its prefab in a third, so it follows the constructor and the new fields. And
+`PaletteTests.RewrittenRows_StillAssertWhatTheyAsserted` named `Row_TintsByKind` as the row that
+must keep reading `Palette.KindActive`. The tint went with the icons (rule 8), so the entry names
+`Row_CarriesNoColourOfItsOwn`, which reads `Palette.Ink`.
+
+**Deviation 5: `EveryCount_IsEveryFloored` drives the count below zero, not to NaN.** `ModifyStat`
+refuses a non-finite value at construction, so NaN never reaches the stat. The row gives 4.7, then
+−10, and reads 4, then 0.
+
+**Deviation 6: `SkillIconBook` leaves a skill with no icon out**, and has a `Count`. The spec said the
+book answers null for such a skill, and it does, by having no entry. `Install_RegistersTheIconBook`
+builds a boot container over the Ranger, Volley and Quick Draw, and finds one icon.
+
+**How the rows reach a volley.** The fixture's class carries a `VolleySpec` when a row asks for one,
+and a taken Passive node gives it its count through `ModifyStat` on `VolleyEvery`, as a run's does.
+Shots are loosed on core's own `Volley` through the internal `Combat` handle, which is
+`RangerTreeTests`' reflection. `Volley_RunStateReadsTheCount` does the same over a real Ranger run
+that takes Volley through the level-up.
+
+**The captures** are in `Soulvail_GeminiSamples/UI_v2/captures/`, landscape on the Device Simulator at
+480 dpi and 9:20 at its dp-equivalent. A level-1 Ranger has not taken Volley, so the volley's cell was
+shown with three of five pips charged for the frame, as the mockup draws it. The first capture after
+showing it landed a frame early and the second showed it, so each was taken twice.

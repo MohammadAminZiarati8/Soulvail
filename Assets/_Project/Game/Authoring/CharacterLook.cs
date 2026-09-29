@@ -39,10 +39,11 @@ public readonly struct CharacterLook
     /// the run's default bolt, as an enemy's do. Optional, so a look that names only a body is
     /// written as it was before RS-02c.
     /// </param>
-    public CharacterLook(GameObject body, ProjectileView projectile = null)
+    public CharacterLook(GameObject body, ProjectileView projectile = null, ContentId volleyNode = default)
     {
         Body = body;
         Projectile = projectile;
+        VolleyNode = volleyNode;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -59,6 +60,17 @@ public readonly struct CharacterLook
     /// than a <see cref="GameObject"/> to look it up on.
     /// </remarks>
     public ProjectileView Projectile { get; }
+
+    /// <summary>
+    /// The tree node the HUD draws this class's volley as, or <c>default</c> for none (UI-01e).
+    /// </summary>
+    /// <remarks>
+    /// <b>Authored, not inferred.</b> The volley is a counter on the class's weapon, and which node
+    /// turns it on is the tree's business; inferring the picture from <em>"the first taken node that
+    /// moves <c>VolleyEvery</c>"</em> would read effects to decide an icon. So the class names the
+    /// node, and <c>AutoCastRow</c> asks <c>SkillIconBook</c> for its icon.
+    /// </remarks>
+    public ContentId VolleyNode { get; }
 }
 
 /// <summary>

@@ -79,6 +79,11 @@ namespace Soulvail.Game.Authoring
                  "below this one.")]
         [SerializeField] private SkillDefinition _parent;
 
+        [Header("Look (UI-01e) — what the HUD draws this skill as")]
+        [Tooltip("The skill's icon in the HUD's auto-cast row, from Art/UI/Icons/. Empty is not an " +
+                 "error: the row draws Icon_Placeholder, as it does for every skill without art yet.")]
+        [SerializeField] private Sprite _icon;
+
         [Header("Pact — GD §13.2's corrupted form. Optional on any kind but Active")]
         [Tooltip("Whether this node has a corrupted form at all. Off means it can never be " +
                  "offered as a Pact. On an Active it is refused at boot (M6-05a rule 3).")]
@@ -101,6 +106,12 @@ namespace Soulvail.Game.Authoring
         /// to be well-formed: only a <see cref="ToSpec"/> that returned tells you that.
         /// </summary>
         public string Id => _id;
+
+        /// <summary>
+        /// The skill's icon as authored, or null for one with none yet (UI-01e). Read beside
+        /// <see cref="ToSpec"/> and never through it: a <see cref="Sprite"/> cannot cross into core (AR §2).
+        /// </summary>
+        public Sprite Icon => _icon;
 
         /// <summary>
         /// Builds the immutable spec core consumes. A fresh instance every call — this asset holds

@@ -5,6 +5,7 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,111 +18,136 @@ namespace Soulvail.Game.Presentation
 {
     /// <summary>
     /// GD §16.1's <em>"auto-cast skills need visible cooldowns even though the player doesn't trigger
-    /// them"</em>: a row of small radial fills under the health bar, one for every Active the player
-    /// is <em>not</em> casting themselves.
+    /// them"</em>: a row of cells under the health bar, one for every skill that fires on its own, each
+    /// with its icon, a dark sweep over what is left of its cooldown, and a glow when it is ready.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>It exists because the default build is otherwise invisible, and that is GD §16.1's own
     /// argument</b> (M3-10b rule 4). Every skill starts on Auto (CC §6.1) and <em>"a player who never
     /// opens the menu has a complete, playable game with one button"</em> — which means a player who
-    /// never opens the menu has every Active firing itself with no readout anywhere. This row is the
-    /// only thing in M3 that makes an auto-cast build legible, and it matters more than the S1–S4
-    /// buttons, which exist only for players who opted out of the default.
+    /// never opens the menu has every Active firing itself with no readout anywhere but here.
     /// </para>
     /// <para>
-    /// <b>Membership is exactly the Actives that are <em>not</em> in a slot</b> (rule 5), walked as
-    /// <see cref="RunState.OwnedActiveCount"/> → <see cref="RunState.SkillIdAt"/> →
-    /// <see cref="RunState.IsAutoCast"/>. A skill switched to Manual leaves this row and gains a
-    /// button (M3-10a); a skill switched back does the reverse. The two readouts are <b>disjoint by
-    /// construction</b>, so nothing on screen ever shows one cooldown twice — which is the rule
-    /// <c>HudPresenter</c> states for the Charge (<em>"a second readout here would be a second answer
-    /// to when the player may dash"</em>), applied to the skills. <b>This class is the one that is
-    /// allowed to ask</b>: <c>SkillBarPresenter</c> and <c>ManualSkillButton</c> are not, and
-    /// <c>Bar_KnowsNothingAboutAuto</c> walks their IL to prove it (M3-10a rule 11).
+    /// <b>Two kinds of member, since UI-01e.</b> The Actives that are <em>not</em> in a slot, walked
+    /// as <see cref="RunState.OwnedActiveCount"/> → <see cref="RunState.SkillIdAt"/> →
+    /// <see cref="RunState.IsAutoCast"/> (M3-10b rule 5), and the class's volley once a node has given
+    /// it one. The Ranger's volley is a Passive node in the tree and its only self-firing skill, so it
+    /// is admitted by what core says about the volley — <see cref="RunState.VolleyEvery"/> — and never
+    /// by its node's kind. <b>No other Passive makes a cell.</b> A skill switched to Manual leaves this
+    /// row and gains a button (M3-10a); the two readouts are <b>disjoint by construction</b>, and
+    /// <c>SkillBarPresenter</c> is not allowed to ask what this class asks
+    /// (<c>Bar_KnowsNothingAboutAuto</c>).
     /// </para>
     /// <para>
-    /// <b>Membership is rebuilt from two events and the fills are polled</b> (rule 6).
-    /// <c>NodeTaken</c> with <c>Kind == Active</c> adds a cell and <c>SkillAutoCastChanged</c> moves
-    /// one in or out — both carry what is needed (M3-03 rule 7, M3-07a rule 9). The fills are read
-    /// every frame from <see cref="RunState.SkillCooldownFraction"/>, <c>SkillButton</c>'s bargain: a
-    /// fill slides continuously and an event per frame is not an event.
+    /// <b>Membership is rebuilt on its events and on the volley's arrival; the sweeps, glows and pips
+    /// are polled</b> (rule 6). <c>NodeTaken</c> with <c>Kind == Active</c>, <c>SkillAutoCastChanged</c>
+    /// and <c>RunStarted</c> mark the row dirty. The volley's node is a Passive, which
+    /// <c>NodeTaken</c> skips without a lookup, so its cell is admitted by the frame that first reads a
+    /// volley count. The rebuild is deferred to the next <see cref="Update"/> for M3-09c's reason:
+    /// <c>LevelUpFlow.ChooseOffer</c> publishes <c>NodeTaken</c> before <c>SkillRunner.Add</c>, so a
+    /// handler that rebuilt at once would miss the cell it had just been told about.
     /// </para>
     /// <para>
-    /// <b>The rebuild is deferred to the next <see cref="Update"/> rather than done in the handler,
-    /// and that is a correctness fix rather than a batching one.</b> <c>LevelUpFlow.ChooseOffer</c>
-    /// calls <c>SkillTree.Take</c> — which publishes <c>NodeTaken</c> — and hands the spec to
-    /// <c>SkillRunner.Add</c> <em>afterwards</em>, so a handler reading
-    /// <see cref="RunState.OwnedActiveCount"/> from inside the event sees the count from
-    /// <em>before</em> the node. That is M3-09c's finding, and a row that rebuilt immediately would
-    /// simply miss the cell it was told about until the next event arrived. One flag, one rebuild, at
-    /// the point in the frame where the fills are read anyway — and <c>Update</c> runs at a
-    /// <c>timeScale</c> of 0, so the row is correct before the level-up screen has even closed.
+    /// <b>Twelve Active cells and one volley cell, authored on <c>Hud.prefab</c> and deactivated,
+    /// never instantiated during a run</b> (rule 7). <see cref="SkillRunner.MaxActives"/> is 12, and a
+    /// row of cooldowns that hitched on the frame a skill was granted would hitch on exactly the frame
+    /// the player is watching it. The volley's cell comes first when it is there, so its arrival moves
+    /// the rest by one: a rebuild re-places the cells, which is a rare event rather than a frame's work.
     /// </para>
     /// <para>
-    /// <b>Sized for twelve and drawn for as many as there are</b> (rule 7).
-    /// <see cref="SkillRunner.MaxActives"/> is 12 and CH §4's ~25 % of 27 is about seven; twelve 24 dp
-    /// cells with 4 dp gaps is 332 dp, which fits a landscape safe area under a 320 dp health bar.
-    /// <b>The cells are authored on <c>Hud.prefab</c> and deactivated, never instantiated during a
-    /// run</b> — which is the opposite of <c>SkillsPresenter</c>, <c>TreeViewPresenter</c> and
-    /// <c>LevelUpPresenter</c>, all of which clone a template. Twelve cells is a fixed, small,
-    /// knowable number where twenty-seven tree nodes are not, and a row of cooldowns that hitched on
-    /// the frame a skill was granted would hitch on exactly the frame the player is watching it.
+    /// <b>No colour is serialized</b> (M3-13a, UI-01e rule 8). The sweep is <see cref="Palette.Ink"/> at
+    /// <see cref="_sweepAlpha"/> — the palette is opaque and a view multiplies its own alpha — the glow
+    /// is <see cref="Palette.Player"/>, and the frames, icons and pips are the art, untinted. The kind
+    /// tint M3-10b drew on a bare 24 dp cell is gone: an icon is the cell's identity now, and only
+    /// Actives and the volley reach the row.
     /// </para>
     /// <para>
-    /// <b>A cell has no icon and no text, and that is ledger row 9's worst corner</b> (rule 8). There
-    /// are no skill icons, and a 24 dp cell cannot hold <c>skill.oathbound.consecrate</c> — it cannot
-    /// hold <em>"Consecrate"</em> either. So a cell is a radial fill and a kind tint, and which skill
-    /// it is is not communicated at all until art exists. This is <b>worse than the card and the
-    /// button</b>, where a key at least occupies the space its text will: here there is no space, so
-    /// M3-14a's table does not fix it and only icons will.
-    /// </para>
-    /// <para>
-    /// <b>Four kind tints, and as of M3-13a they are <see cref="Palette"/>'s</b> (M3-10b rule 9).
-    /// They were serialized here, and the same four values were serialized on <c>OfferCard</c> and
-    /// again on <c>TreeNodeView</c> — the third copy, which is where ledger row 6 said a palette
-    /// stops being one. They never drifted, so M3-13a inherited one answer rather than three; what
-    /// changes here is that there is now nothing left to drift. <b>Only
-    /// <see cref="SkillKind.Active"/> is reachable in a live run</b>, because rule 5's membership
-    /// admits Actives and nothing else; the lookup is total anyway, for <c>TreeNodeView.Frame</c>'s
-    /// reason — a closed enum answered in one place beats a silent wrong colour if this row ever
-    /// draws something else.
-    /// </para>
-    /// <para>
-    /// <b>A nonsense dp field leaves the authored layout alone</b>, which is
-    /// <c>SkillBarPresenter.Place</c>'s answer rather than <c>TreeViewPresenter.Layout</c>'s: these
-    /// twelve cells <em>are</em> authored on <c>Hud.prefab</c>, at a real size under the health bar,
-    /// so there is something honest to fall back to.
+    /// <b>A nonsense dp field leaves the authored layout alone</b>, <c>SkillBarPresenter.Place</c>'s
+    /// answer: these cells <em>are</em> authored on <c>Hud.prefab</c>, at a real size under the
+    /// health bar, so there is something honest to fall back to.
     /// </para>
     /// </remarks>
     public sealed class AutoCastRow : MonoBehaviour
     {
-        /// <summary>GD §16.1's cell size, and ledger row 9's worst corner. CH §4.</summary>
+        /// <summary>A cell's side in dp — the owner's starting size (UI-01e rule 7).</summary>
         /// <remarks>
-        /// A constant beside the field so the row that checks the prefab quotes rule 7 rather than a
+        /// A constant beside the field so the row that checks the prefab quotes the rule rather than a
         /// literal of its own — <c>SkillBarPresenter.MinimumSpacingDp</c>'s reason.
         /// </remarks>
-        public const float CellSizeDp = 24f;
+        public const float CellSizeDp = 34f;
 
         /// <summary>The gap between two cells, in dp.</summary>
         public const float GapDp = 4f;
 
-        [Tooltip("The twelve radial sweeps, left to right. Each Image must be Filled / Radial360 — " +
-                 "fillAmount is the only thing written to it. Twelve because SkillRunner.MaxActives " +
-                 "is twelve; a run owning three draws three and deactivates the rest.")]
-        [SerializeField] private Image[] _fills = new Image[SkillRunner.MaxActives];
+        /// <summary>The most pips drawn under the volley's cell (UI-01e rule 5).</summary>
+        /// <remarks>
+        /// Five, because the Ranger's Volley counts five and each rank lowers it; a count above five
+        /// is drawn as five pips with the shots scaled to them, floored.
+        /// </remarks>
+        public const int MaxPips = 5;
 
-        [Tooltip("The twelve cell bodies, left to right, tinted by CH §4's kind — and each one is " +
-                 "also the object that is switched off when there is no skill for it. Same order as " +
-                 "the fills above.")]
-        [SerializeField] private Image[] _kindStrips = new Image[SkillRunner.MaxActives];
+        /// <summary>How far under the volley's cell the pips sit, in dp.</summary>
+        private const float PipDropDp = 3f;
 
-        [Tooltip("How wide and tall one cell is, in dp. 24 is rule 7's number; whether a 24 dp " +
-                 "radial fill reads as a cooldown or as a dot is a device question (ledger row 4).")]
+        /// <summary>How tall the pips are, in dp — the art's aspect at a sixth of the cell's width.</summary>
+        private const float PipHeightDp = 4f;
+
+        /// <summary>The gap between two pips, in dp.</summary>
+        private const float PipGapDp = 1f;
+
+        /// <summary>How far the glow reaches past the cell on every side, as a fraction of the cell.</summary>
+        private const float GlowSpread = 0.3f;
+
+        [Tooltip("The twelve Active cells, left to right: each is a container whose frame, glow, " +
+                 "icon and sweep are children, and the object switched off when there is no skill " +
+                 "for it. Twelve because SkillRunner.MaxActives is twelve.")]
+        [SerializeField] private RectTransform[] _cells = new RectTransform[SkillRunner.MaxActives];
+
+        [Tooltip("The twelve icons, in the cells' order.")]
+        [SerializeField] private Image[] _icons = new Image[SkillRunner.MaxActives];
+
+        [Tooltip("The twelve sweeps, in the cells' order. Each Image must be Filled / Radial360 from " +
+                 "the top, clockwise — fillAmount is the cooldown left, and colour the only other thing " +
+                 "written.")]
+        [SerializeField] private Image[] _sweeps = new Image[SkillRunner.MaxActives];
+
+        [Tooltip("The twelve ready glows, in the cells' order, each behind its cell's frame. Optional " +
+                 "cell by cell: a cell with none simply never glows.")]
+        [SerializeField] private Image[] _glows = new Image[SkillRunner.MaxActives];
+
+        [Tooltip("The volley's cell (UI-01e): shown once a node has given the class a volley, first " +
+                 "in the row. Optional — a HUD without one draws no volley.")]
+        [SerializeField] private RectTransform _volleyCell;
+
+        [Tooltip("The volley cell's icon.")]
+        [SerializeField] private Image _volleyIcon;
+
+        [Tooltip("The volley cell's ready glow, behind its frame.")]
+        [SerializeField] private Image _volleyGlow;
+
+        [Tooltip("The volley's pips under its cell, left to right: one for each shot it counts, up " +
+                 "to five.")]
+        [SerializeField] private Image[] _pips = new Image[MaxPips];
+
+        [Tooltip("What a skill with no icon of its own draws — Icon_Placeholder.")]
+        [SerializeField] private Sprite _placeholderIcon;
+
+        [Tooltip("A pip not yet charged — ChargePip_Empty.")]
+        [SerializeField] private Sprite _pipEmpty;
+
+        [Tooltip("A pip charged by a shot — ChargePip_Full.")]
+        [SerializeField] private Sprite _pipFull;
+
+        [Tooltip("How dark the cooldown sweep is over the icon, 0 to 1. The view multiplies its own " +
+                 "alpha rather than asking the palette for a faded colour (M3-13a rule 8).")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _sweepAlpha = 0.55f;
+
+        [Tooltip("How wide and tall one cell is, in dp.")]
         [SerializeField] private float _cellSizeDp = CellSizeDp;
 
-        [Tooltip("The gap between two cells, in dp. Twelve cells and eleven gaps at these numbers " +
-                 "is 332 dp, which fits under a 320 dp health bar.")]
+        [Tooltip("The gap between two cells, in dp.")]
         [SerializeField] private float _gapDp = GapDp;
 
         [Tooltip("Where the row's top-left corner sits, in dp from the safe area's left edge and " +
@@ -130,7 +156,8 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private Vector2 _marginDp = new Vector2(HudLayout.BarLeftDp, HudLayout.SkillRowTopDp);
 
         private IRunSession _session;
-        private ContentCatalog _catalog;
+        private SkillIconBook _iconBook;
+        private CharacterLookBook _looks;
 
         private IDisposable _startedSubscription;
         private IDisposable _takenSubscription;
@@ -140,51 +167,61 @@ namespace Soulvail.Game.Presentation
         /// Which owned active each drawn cell is showing, by its index in the runner's walk order.
         /// Only the first <see cref="_cellCount"/> entries mean anything.
         /// </summary>
-        /// <remarks>
-        /// The runner's index rather than the skill's id, because
-        /// <see cref="RunState.SkillCooldownFraction"/> is addressed by index — which is exactly the
-        /// mapping M3-10a had to put in <c>RunState</c> for the <em>slot</em> case and does not have
-        /// to here, since take order is the row's own order.
-        /// </remarks>
         private readonly int[] _cellSkill = new int[SkillRunner.MaxActives];
 
-        /// <summary>The last fraction written to each cell, so an idle frame costs no rebuild.</summary>
-        /// <remarks>
-        /// Seeded outside <c>[0, 1]</c>, like <c>ManualSkillButton._shownFraction</c>, so the first
-        /// frame after a rebuild always draws — a cell whose skill has changed must not compare
-        /// against what the previous one left behind.
-        /// </remarks>
-        private readonly float[] _shownFraction = new float[SkillRunner.MaxActives];
+        /// <summary>The last sweep written to each cell, so an idle frame costs no rebuild.</summary>
+        /// <remarks>Seeded outside <c>[0, 1]</c>, so the first frame after a rebuild always draws.</remarks>
+        private readonly float[] _shownSweep = new float[SkillRunner.MaxActives];
 
-        /// <summary>How many cells are on screen — the first <em>n</em> of the twelve.</summary>
+        /// <summary>The last glow written to each cell: −1 unknown, 0 off, 1 on.</summary>
+        private readonly int[] _shownGlow = new int[SkillRunner.MaxActives];
+
+        /// <summary>How many Active cells are on screen — the first <em>n</em> of the twelve.</summary>
         private int _cellCount;
 
+        /// <summary>Whether the volley's cell is on screen.</summary>
+        private bool _hasVolley;
+
+        /// <summary>The volley count, the shots and the ready flag as last drawn, so an idle frame writes nothing.</summary>
+        private int _shownEvery = -1;
+        private int _shownShots = -1;
+        private int _shownVolleyGlow = -1;
+
+        /// <summary>Whether the cells were last placed with the volley first, so a rebuild re-places only on a change.</summary>
+        private bool? _placedWithVolley;
+
         /// <summary>Membership is stale and the next <see cref="Update"/> owes a rebuild.</summary>
-        /// <remarks>
-        /// Starts true, so a row whose run began before its <c>Start</c> is right on its first frame
-        /// even if no event ever arrives.
-        /// </remarks>
+        /// <remarks>Starts true, so a row whose run began before its <c>Start</c> is right on its first frame.</remarks>
         private bool _dirty = true;
 
-        /// <summary>How many cells are drawn right now. The one read a test needs.</summary>
+        /// <summary>How many Active cells are drawn right now.</summary>
         public int CellCount => _cellCount;
 
-        /// <param name="session">
-        /// The run, for the four narrow reads this row walks. Not the runner — <c>RunState</c> hands
-        /// out scalar reads and keeps the handle (AR §18.2), and this row needed no twelfth read
-        /// because M3-09b's and M3-10a's eleven already cover it.
-        /// </param>
+        /// <summary>Whether the volley's cell is drawn.</summary>
+        public bool HasVolleyCell => _hasVolley;
+
+        /// <summary>How many pips the volley's cell shows.</summary>
+        public int PipsShown { get; private set; }
+
+        /// <summary>How many of those are full.</summary>
+        public int PipsFull { get; private set; }
+
+        /// <param name="session">The run, for the narrow reads this row walks and polls.</param>
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
-        /// <param name="catalog">
-        /// What a skill <em>is</em>: <c>RunState</c> hands out ids, so the kind behind a tint is
-        /// looked up here — <c>SkillBarPresenter</c>'s bargain, one readout over.
-        /// </param>
+        /// <param name="icons">What each skill looks like (UI-01e) — built at boot beside the catalog.</param>
+        /// <param name="looks">Which node the class's volley is drawn as — <c>CharacterLook.VolleyNode</c>.</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+        /// <remarks>
+        /// <b>The catalog left at UI-01e</b>: it was here for the kind behind a tint, and the tint went
+        /// with the icons (rule 8). The two books arrived in its place, both root singletons that
+        /// <c>RunScope</c> resolves by type from the boot scope.
+        /// </remarks>
         [Inject]
-        public void Construct(IRunSession session, DomainEventHub hub, ContentCatalog catalog)
+        public void Construct(IRunSession session, DomainEventHub hub, SkillIconBook icons, CharacterLookBook looks)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _iconBook = icons ?? throw new ArgumentNullException(nameof(icons));
+            _looks = looks ?? throw new ArgumentNullException(nameof(looks));
 
             if (hub is null)
             {
@@ -205,20 +242,16 @@ namespace Soulvail.Game.Presentation
 
         /// <exception cref="MissingReferenceException">Fewer than twelve cells are dressed.</exception>
         /// <exception cref="InvalidOperationException">Nothing injected this row.</exception>
-        /// <remarks>
-        /// In <c>Start</c> rather than <c>Awake</c> for <c>HudPresenter</c>'s reason: that is the
-        /// earliest moment every <c>Awake</c> in the scene is guaranteed to have run, so "not
-        /// injected" is a conclusion rather than a race.
-        /// </remarks>
+        /// <remarks>In <c>Start</c> rather than <c>Awake</c> for <c>HudPresenter</c>'s reason.</remarks>
         private void Start()
         {
             if (!HasCells())
             {
                 throw new MissingReferenceException(
                     $"{nameof(AutoCastRow)} has fewer than {SkillRunner.MaxActives} cells assigned, " +
-                    "or a cell is missing its fill. Rule 7 sizes this row for the runner's ceiling " +
-                    "and drives it from the front, so a hole in the middle is a skill whose cooldown " +
-                    "is simply invisible — which is the exact failure GD §16.1 built this row to fix.");
+                    "or a cell is missing its icon or its sweep. Rule 7 sizes this row for the " +
+                    "runner's ceiling and drives it from the front, so a hole in the middle is a skill " +
+                    "whose cooldown is simply invisible — the exact failure GD §16.1 built this row to fix.");
             }
 
             if (_session is null)
@@ -229,19 +262,15 @@ namespace Soulvail.Game.Presentation
                     "registered by RunScope — drag this object onto its Auto Cast Row field.");
             }
 
-            Place();
+            Paint();
 
             // Rebuilt once immediately, because whether RunStarted has already been published
             // depends on the order VContainer's entry points and this component's Start happen to
-            // run in. Either path lands here — HudPresenter's argument, for the eighth screen.
+            // run in. Either path lands here — HudPresenter's argument.
             Rebuild();
         }
 
-        /// <remarks>
-        /// Explicit rather than left to the hub's disposal, for <c>HudPresenter.OnDestroy</c>'s
-        /// reason: a view destroyed before its scope would otherwise stay in three subscriber lists
-        /// and be handed events for a component Unity has killed.
-        /// </remarks>
+        /// <remarks>Explicit rather than left to the hub's disposal, for <c>HudPresenter.OnDestroy</c>'s reason.</remarks>
         private void OnDestroy()
         {
             _startedSubscription?.Dispose();
@@ -255,39 +284,38 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <remarks>
-        /// <c>Update</c>, not <c>LateUpdate</c>, for <c>ManualSkillButton</c>'s reason:
-        /// <c>RunTicker</c> is an <c>ITickable</c> and so runs in the Update phase, and a cell one
-        /// frame behind the cooldown it draws is exactly as wrong at the moment that matters — the
-        /// instant the skill fires — as it is useful the rest of the time.
+        /// <c>Update</c>, not <c>LateUpdate</c>, for <c>ManualSkillButton</c>'s reason: <c>RunTicker</c>
+        /// ticks in the Update phase, and a cell a frame behind its cooldown is wrong at the moment that
+        /// matters — the instant the skill fires.
         /// </remarks>
         private void Update()
         {
+            RunState state = _session?.State;
+
+            // The volley's node is a Passive, which NodeTaken skips without a lookup — so the frame
+            // that first reads a count is what admits its cell (rule 6).
+            if (state is not null && _volleyCell != null && (state.VolleyEvery >= 1) != _hasVolley)
+            {
+                _dirty = true;
+            }
+
             if (_dirty)
             {
                 Rebuild();
             }
 
-            DrawFills();
+            DrawSweeps();
+            DrawVolley();
         }
 
-        /// <remarks>
-        /// The opening state, which no event can describe: a resumed run comes back owning whatever
-        /// <c>TakenNodeIds</c> said (M3-03), and nothing publishes a <c>NodeTaken</c> for a restore.
-        /// </remarks>
+        /// <remarks>The opening state, which no event can describe — a resumed run comes back owning whatever <c>TakenNodeIds</c> said.</remarks>
         private void OnRunStarted(RunStarted evt)
         {
             _dirty = true;
         }
 
-        /// <summary>
-        /// A node was taken: if it can fire, the row owes a cell (rule 6).
-        /// </summary>
-        /// <remarks>
-        /// <b>A Passive is refused without a catalog lookup</b>, because <c>NodeTaken</c> carries the
-        /// <c>Kind</c> (M3-03 rule 7) — and a tree is mostly passives, so most takes cost nothing
-        /// here at all. The rebuild itself is deferred; see the class remarks for why that is
-        /// mandatory rather than tidy.
-        /// </remarks>
+        /// <summary>A node was taken: if it can fire, the row owes a cell (rule 6).</summary>
+        /// <remarks>A Passive is refused without a lookup — <c>NodeTaken</c> carries the kind.</remarks>
         private void OnNodeTaken(NodeTaken evt)
         {
             if (evt.Kind != SkillKind.Active)
@@ -298,27 +326,16 @@ namespace Soulvail.Game.Presentation
             _dirty = true;
         }
 
-        /// <summary>
-        /// A skill moved between Auto and Manual: it joins this row or leaves it (rule 5).
-        /// </summary>
-        /// <remarks>
-        /// The payload is used for nothing, which is <c>SkillBarPresenter.OnAutoCastChanged</c>'s
-        /// answer for its reason: the row is packed from the front, so one skill leaving slides every
-        /// cell after it — and a walk of twelve on a tap the player just made is not work worth
-        /// splitting into two paths.
-        /// </remarks>
+        /// <summary>A skill moved between Auto and Manual: it joins this row or leaves it (M3-10b rule 5).</summary>
         private void OnAutoCastChanged(SkillAutoCastChanged evt)
         {
             _dirty = true;
         }
 
-        /// <summary>
-        /// Which cells exist and what each is showing, from one walk of the owned actives (rule 5).
-        /// </summary>
+        /// <summary>Which cells exist and what each is showing (rule 1).</summary>
         /// <remarks>
         /// A null state is a row in a scene where no run has begun, which is a workflow rather than a
-        /// fault — <c>HudPresenter</c>'s argument. Every cell is taken off in that case rather than
-        /// left at whatever the prefab was dressed with, so an undressed scene shows a bare HUD.
+        /// fault — every cell is taken off, so an undressed scene shows a bare HUD.
         /// </remarks>
         private void Rebuild()
         {
@@ -327,6 +344,22 @@ namespace Soulvail.Game.Presentation
 
             RunState state = _session?.State;
 
+            _hasVolley = state is not null && state.VolleyEvery >= 1 && _volleyCell != null;
+
+            if (_volleyCell != null)
+            {
+                SetShown(_volleyCell.gameObject, _hasVolley);
+            }
+
+            if (_hasVolley)
+            {
+                SetIcon(_volleyIcon, _looks.For(state.CharacterId).VolleyNode);
+            }
+
+            _shownEvery = -1;
+            _shownShots = -1;
+            _shownVolleyGlow = -1;
+
             int owned = state is null ? 0 : state.OwnedActiveCount;
 
             for (int index = 0; index < owned && _cellCount < SkillRunner.MaxActives; index++)
@@ -334,8 +367,7 @@ namespace Soulvail.Game.Presentation
                 ContentId id = state.SkillIdAt(index);
 
                 // **The read SkillBarPresenter is forbidden and this class is required to make**
-                // (rule 5, M3-10a rule 11). A Manual skill has a button in the corner instead, so
-                // the two readouts are disjoint and no cooldown is ever shown twice.
+                // (M3-10b rule 5, M3-10a rule 11). A Manual skill has a button instead.
                 if (!state.IsAutoCast(id))
                 {
                     continue;
@@ -350,6 +382,11 @@ namespace Soulvail.Game.Presentation
             {
                 Hide(cell);
             }
+
+            if (_placedWithVolley != _hasVolley)
+            {
+                Place();
+            }
         }
 
         /// <summary>Puts the active at <paramref name="index"/> under cell <paramref name="cell"/>.</summary>
@@ -358,64 +395,57 @@ namespace Soulvail.Game.Presentation
             _cellSkill[cell] = index;
 
             // Forgotten rather than kept, so the first frame after a rebuild draws rather than
-            // comparing against what a different skill left behind — ManualSkillButton.ShowEmpty's
-            // rule, with twelve cells that reshuffle instead of four that do not.
-            _shownFraction[cell] = -1f;
+            // comparing against what a different skill left behind.
+            _shownSweep[cell] = -1f;
+            _shownGlow[cell] = -1;
 
-            Image strip = _kindStrips[cell];
-
-            if (strip != null)
-            {
-                // The resolve cannot fail in a live run — TreeRules resolved every node of this tree
-                // at RunSession.Start, before RunStarted — so the miss branch is a scene composed
-                // against a catalog that does not hold the run's content. Active is the honest
-                // answer there rather than a throw inside an event handler: everything this row
-                // draws is one (rule 5).
-                SkillKind kind = _catalog is not null && _catalog.TryGetSkill(id, out SkillSpec spec)
-                    ? spec.Kind
-                    : SkillKind.Active;
-
-                strip.color = Tint(kind);
-                strip.gameObject.SetActive(true);
-            }
+            SetIcon(_icons[cell], id);
+            SetShown(_cells[cell].gameObject, true);
         }
 
-        /// <summary>Takes cell <paramref name="cell"/> off the screen entirely (rule 7).</summary>
-        /// <remarks>
-        /// Deactivated rather than made transparent, so it takes no touches and costs no canvas
-        /// rebuild — <c>ManualSkillButton.ShowEmpty</c>'s reason. That is the state of all twelve in
-        /// every run in this build, because nothing in <c>Data/Trees</c> ships an Active until M3-12.
-        /// </remarks>
+        /// <summary>Takes cell <paramref name="cell"/> off the screen (rule 7).</summary>
+        /// <remarks>Deactivated rather than made transparent, so it costs no canvas rebuild.</remarks>
         private void Hide(int cell)
         {
-            Image strip = _kindStrips[cell];
-
-            if (strip != null)
+            if (_cells[cell] != null)
             {
-                strip.gameObject.SetActive(false);
+                SetShown(_cells[cell].gameObject, false);
             }
 
-            _shownFraction[cell] = -1f;
+            _shownSweep[cell] = -1f;
+            _shownGlow[cell] = -1;
+        }
+
+        /// <summary>A skill's icon, or the placeholder for one without (rule 2).</summary>
+        private void SetIcon(Image icon, ContentId skillId)
+        {
+            if (icon == null)
+            {
+                return;
+            }
+
+            Sprite sprite = _iconBook is null ? null : _iconBook.For(skillId);
+
+            icon.sprite = sprite != null ? sprite : _placeholderIcon;
         }
 
         /// <summary>
-        /// Rule 6: each drawn cell's fill is <c>1 − fraction</c> — empty the instant a cast starts,
-        /// full when the skill is live again.
+        /// Rules 3 and 4: each drawn cell's sweep is the cooldown left, and its glow is on while the
+        /// skill is ready. Only changed cells are written.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The same convention as <c>SkillButton</c> and <c>ManualSkillButton</c>, deliberately: the
-        /// player can have a cell and a button on screen at once, and two fills that emptied in
-        /// opposite directions would be two answers to one question.
+        /// <b>The sweep shades what is left, where M3-10b's fill grew back.</b> The mockup and the art's
+        /// cooling button draw a cooling skill as a dark wedge over its icon that clears clockwise, so
+        /// the fill is <see cref="RunState.SkillCooldownFraction"/> itself: full at the cast, empty when
+        /// the skill is live. The information is M3-10b's; the picture is the icon's.
         /// </para>
         /// <para>
-        /// <b>Only changed cells are written.</b> Assigning <c>fillAmount</c> marks the graphic dirty
-        /// and queues a canvas rebuild, so writing an unchanged value would rebuild the HUD on every
-        /// frame of every second a skill is not being cast — which, for a skill on an eight-second
-        /// cooldown, is most of them. Twelve cells make that argument twelve times over.
+        /// <b>Only changed cells are written.</b> Assigning <c>fillAmount</c> or toggling a glow marks
+        /// the canvas dirty, and a skill on an eight-second cooldown is idle for most of it.
         /// </para>
         /// </remarks>
-        private void DrawFills()
+        private void DrawSweeps()
         {
             RunState state = _session?.State;
 
@@ -426,57 +456,150 @@ namespace Soulvail.Game.Presentation
 
             for (int cell = 0; cell < _cellCount; cell++)
             {
-                Image fill = _fills[cell];
+                int index = _cellSkill[cell];
+                Image sweep = _sweeps[cell];
 
-                if (fill == null)
+                // Clamped rather than trusted, for SkillButton's reason.
+                float left = Mathf.Clamp01(state.SkillCooldownFraction(index));
+
+                if (sweep != null && !Mathf.Approximately(left, _shownSweep[cell]))
                 {
-                    continue;
+                    _shownSweep[cell] = left;
+                    sweep.fillAmount = left;
                 }
 
-                // Clamped rather than trusted, for SkillButton's reason: core guarantees [0, 1] and
-                // there is no path by which it would not, but a fillAmount outside the range is the
-                // kind of thing uGUI renders as an empty or a full ring rather than as an error.
-                float clamped = Mathf.Clamp01(state.SkillCooldownFraction(_cellSkill[cell]));
+                int glow = state.IsSkillReady(index) ? 1 : 0;
 
-                if (Mathf.Approximately(clamped, _shownFraction[cell]))
+                if (glow != _shownGlow[cell])
                 {
-                    continue;
-                }
+                    _shownGlow[cell] = glow;
 
-                _shownFraction[cell] = clamped;
-                fill.fillAmount = 1f - clamped;
+                    if (_glows[cell] != null)
+                    {
+                        SetShown(_glows[cell].gameObject, glow == 1);
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// Rule 7: twelve cells across in dp, left to right from <see cref="_marginDp"/> in the safe
-        /// area's top-left corner.
+        /// Rules 4 and 5: the volley's pips are its shots toward the next, and its cell glows while the
+        /// next shot is the fan.
+        /// </summary>
+        /// <remarks>
+        /// <c>min(VolleyEvery, MaxPips)</c> pips, the first <c>VolleyShotsTowardNext</c> of them full.
+        /// Past five the shots are scaled to five and floored, so a count of eight shows a pip filling
+        /// every 1.6 shots. Ready fills every pip, which is the moment the count reaches the last one.
+        /// Written only when the count, the shots or the flag moves.
+        /// </remarks>
+        private void DrawVolley()
+        {
+            RunState state = _session?.State;
+
+            if (!_hasVolley || state is null)
+            {
+                return;
+            }
+
+            int every = state.VolleyEvery;
+            int shots = state.VolleyShotsTowardNext;
+            bool ready = state.IsVolleyReady;
+            int glow = ready ? 1 : 0;
+
+            // Ready fills every pip, and the frame that readies it is not always a frame that moved
+            // the shots — a rank taken mid-count readies the volley with the count where it was. So a
+            // change of the flag redraws the pips as well as the glow.
+            if (every != _shownEvery || shots != _shownShots || glow != _shownVolleyGlow)
+            {
+                _shownEvery = every;
+                _shownShots = shots;
+
+                int shown = Mathf.Clamp(every, 0, Mathf.Min(MaxPips, _pips.Length));
+                int full = ready ? shown : every <= MaxPips ? shots : shots * MaxPips / Math.Max(1, every);
+
+                PipsShown = shown;
+                PipsFull = Mathf.Clamp(full, 0, shown);
+
+                for (int pip = 0; pip < _pips.Length; pip++)
+                {
+                    Image image = _pips[pip];
+
+                    if (image == null)
+                    {
+                        continue;
+                    }
+
+                    SetShown(image.gameObject, pip < shown);
+
+                    Sprite sprite = pip < PipsFull ? _pipFull : _pipEmpty;
+
+                    if (image.sprite != sprite)
+                    {
+                        image.sprite = sprite;
+                    }
+                }
+            }
+
+            if (glow != _shownVolleyGlow)
+            {
+                _shownVolleyGlow = glow;
+
+                if (_volleyGlow != null)
+                {
+                    SetShown(_volleyGlow.gameObject, ready);
+                }
+            }
+        }
+
+        /// <summary>The two colours this row writes, once (rule 8).</summary>
+        private void Paint()
+        {
+            Color shade = Palette.Ink;
+
+            shade.a = Mathf.Clamp01(_sweepAlpha);
+
+            for (int cell = 0; cell < SkillRunner.MaxActives; cell++)
+            {
+                if (_sweeps[cell] != null)
+                {
+                    _sweeps[cell].color = shade;
+                }
+
+                if (_glows[cell] != null)
+                {
+                    _glows[cell].color = Palette.Player;
+                }
+            }
+
+            if (_volleyGlow != null)
+            {
+                _volleyGlow.color = Palette.Player;
+            }
+        }
+
+        /// <summary>
+        /// Rule 7: the cells across in dp from <see cref="_marginDp"/>, the volley's first when it is
+        /// there, and its pips under it.
         /// </summary>
         /// <remarks>
         /// <para>
         /// Here rather than in the prefab for <c>HudPresenter.Place</c>'s two reasons: a
-        /// Scale-With-Screen-Size canvas measures in reference pixels, so a cell authored at 24 of
-        /// those is a different physical size on every phone — and the twelve have to agree about
-        /// where each other are, which twelve components each doing their own arithmetic would be
-        /// twelve chances to get wrong.
+        /// Scale-With-Screen-Size canvas measures in reference pixels, and thirteen cells doing their own
+        /// arithmetic would be thirteen chances to get it wrong.
         /// </para>
         /// <para>
-        /// <b>All twelve are placed, not only the drawn ones.</b> The row is packed from the front, so
-        /// a cell's position is a property of its index and never of what is in it — which means
-        /// membership changing is an activation and never a re-layout.
+        /// <b>All twelve Active cells are placed, not only the drawn ones</b>, so membership changing is
+        /// an activation and never a re-layout — except the volley's arrival, which moves every Active
+        /// cell one slot right and is the one reason <see cref="Rebuild"/> places again.
         /// </para>
         /// <para>
-        /// <b>A nonsense field leaves the authored layout alone</b> rather than substituting a
-        /// constant — <c>SkillBarPresenter.Place</c>'s answer, for its reason. An unusable margin or
-        /// gap skips the whole row, because every cell's position depends on both; an unusable cell
-        /// size does too. <b>A gap of 0 is legal and honoured</b> — twelve cells touching is a
-        /// layout — where a cell size of 0 is not, because a row of 0 dp cells is this readout
-        /// silently absent.
+        /// <b>A nonsense field leaves the authored layout alone.</b> An unusable margin, gap or cell size
+        /// skips the whole row; a gap of 0 is legal and honoured, a cell of 0 is not.
         /// </para>
         /// </remarks>
         private void Place()
         {
-            if (_kindStrips is null
+            if (_cells is null
                 || !IsUsableSize(_cellSizeDp)
                 || !IsUsableGap(_gapDp)
                 || !IsUsableMargin(_marginDp))
@@ -484,67 +607,118 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
+            _placedWithVolley = _hasVolley;
+
             float pxPerDp = PixelsPerDp();
-            var size = new Vector2(_cellSizeDp, _cellSizeDp);
+            int first = _hasVolley ? 1 : 0;
 
-            for (int cell = 0; cell < _kindStrips.Length; cell++)
+            PlaceCell(_volleyCell, 0, pxPerDp);
+
+            for (int cell = 0; cell < _cells.Length; cell++)
             {
-                Image strip = _kindStrips[cell];
+                PlaceCell(_cells[cell], cell + first, pxPerDp);
+            }
 
-                if (strip == null || strip.transform is not RectTransform rect)
+            PlaceGlow(_volleyGlow);
+
+            for (int cell = 0; cell < _glows.Length; cell++)
+            {
+                PlaceGlow(_glows[cell]);
+            }
+
+            PlacePips(pxPerDp);
+        }
+
+        private void PlaceCell(RectTransform rect, int slot, float pxPerDp)
+        {
+            if (rect == null)
+            {
+                return;
+            }
+
+            float left = _marginDp.x + (slot * (_cellSizeDp + _gapDp));
+
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.sizeDelta = new Vector2(_cellSizeDp, _cellSizeDp) * pxPerDp;
+            rect.anchoredPosition = new Vector2(left * pxPerDp, -_marginDp.y * pxPerDp);
+        }
+
+        /// <summary>A glow reaches <see cref="GlowSpread"/> of the cell past it on every side, centred on it.</summary>
+        private static void PlaceGlow(Image glow)
+        {
+            if (glow == null || glow.transform is not RectTransform rect)
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(-GlowSpread, -GlowSpread);
+            rect.anchorMax = new Vector2(1f + GlowSpread, 1f + GlowSpread);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>The pips as wide together as the volley's cell, <see cref="PipDropDp"/> under it.</summary>
+        private void PlacePips(float pxPerDp)
+        {
+            int count = _pips is null ? 0 : _pips.Length;
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            float width = (_cellSizeDp - ((count - 1) * PipGapDp)) / count;
+
+            for (int pip = 0; pip < count; pip++)
+            {
+                if (_pips[pip] == null || _pips[pip].transform is not RectTransform rect)
                 {
                     continue;
                 }
 
-                float left = _marginDp.x + (cell * (_cellSizeDp + _gapDp));
-
-                rect.anchorMin = new Vector2(0f, 1f);
-                rect.anchorMax = new Vector2(0f, 1f);
+                // Hung from the cell's bottom-left, so the pips move with the cell.
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.zero;
                 rect.pivot = new Vector2(0f, 1f);
-                rect.sizeDelta = size * pxPerDp;
-                rect.anchoredPosition = new Vector2(left * pxPerDp, -_marginDp.y * pxPerDp);
+                rect.sizeDelta = new Vector2(width, PipHeightDp) * pxPerDp;
+                rect.anchoredPosition = new Vector2(pip * (width + PipGapDp) * pxPerDp, -PipDropDp * pxPerDp);
             }
         }
 
-        /// <summary>CH §4's four kinds, in <see cref="Palette"/>'s four tints.</summary>
-        /// <remarks>
-        /// A <c>switch</c> on a <see cref="SkillKind"/> and not on an effect type — the banned shape
-        /// is <c>switch (effect.Type)</c>, which is a dispatch that should have been polymorphism.
-        /// This is a presentation lookup over a closed enum of four, which is what an enum is for.
-        /// <c>OfferCard.Tint</c>'s words, and as of M3-13a its values rather than a third copy of
-        /// them. <b>Only <see cref="SkillKind.Active"/> is reachable in a live run</b>, because rule
-        /// 5's membership admits Actives and nothing else; the lookup is total anyway, for
-        /// <c>TreeNodeView.Frame</c>'s reason.
-        /// </remarks>
-        private static Color Tint(SkillKind kind) => kind switch
-        {
-            SkillKind.Passive => Palette.KindPassive,
-            SkillKind.Active => Palette.KindActive,
-            SkillKind.Upgrade => Palette.KindUpgrade,
-            SkillKind.Keystone => Palette.KindKeystone,
-            _ => Palette.KindActive,
-        };
-
-        /// <summary>Whether all twelve cells and all twelve fills are dressed.</summary>
+        /// <summary>Whether all twelve cells, icons and sweeps are dressed.</summary>
         private bool HasCells()
         {
-            if (_fills is null
-                || _kindStrips is null
-                || _fills.Length < SkillRunner.MaxActives
-                || _kindStrips.Length < SkillRunner.MaxActives)
+            if (_cells is null
+                || _icons is null
+                || _sweeps is null
+                || _glows is null
+                || _cells.Length < SkillRunner.MaxActives
+                || _icons.Length < SkillRunner.MaxActives
+                || _sweeps.Length < SkillRunner.MaxActives
+                || _glows.Length < SkillRunner.MaxActives)
             {
                 return false;
             }
 
             for (int cell = 0; cell < SkillRunner.MaxActives; cell++)
             {
-                if (_fills[cell] == null || _kindStrips[cell] == null)
+                if (_cells[cell] == null || _icons[cell] == null || _sweeps[cell] == null)
                 {
                     return false;
                 }
             }
 
             return true;
+        }
+
+        private static void SetShown(GameObject target, bool shown)
+        {
+            if (target.activeSelf != shown)
+            {
+                target.SetActive(shown);
+            }
         }
 
         private static bool IsUsableSize(float dp) => float.IsFinite(dp) && dp > 0f;
@@ -554,9 +728,7 @@ namespace Soulvail.Game.Presentation
         private static bool IsUsableMargin(Vector2 dp) =>
             float.IsFinite(dp.x) && float.IsFinite(dp.y) && dp.x >= 0f && dp.y >= 0f;
 
-        /// <summary>
-        /// How many canvas units one dp is worth — <c>HudPresenter.PixelsPerDp</c>, for its reason.
-        /// </summary>
+        /// <summary>How many canvas units one dp is worth — <c>HudPresenter.PixelsPerDp</c>, for its reason.</summary>
         private float PixelsPerDp()
         {
             var canvas = GetComponentInParent<Canvas>();

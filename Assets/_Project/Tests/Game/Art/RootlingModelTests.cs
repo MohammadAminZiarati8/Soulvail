@@ -29,10 +29,10 @@ public sealed class RootlingModelTests
     private const string EnemyMaterialPath = "Assets/_Project/Materials/Enemies/M_Enemy.mat";
     private const string DissolveMaterialPath = "Assets/_Project/Materials/Enemies/M_Enemy_Dissolve.mat";
 
-    /// <summary>GD §17.1's crowd budget.</summary>
+    /// <summary>GD §17.1's crowd budget, raised from 1,200 for smooth shells at M7-05n.</summary>
     private const int MinTriangles = 400;
 
-    private const int MaxTriangles = 1200;
+    private const int MaxTriangles = 2500;
 
     /// <summary>
     /// How light the Rootling must be on average — Rec. 709 luma over the atlas's stored values.

@@ -24,13 +24,14 @@ SWATCHES = {
     "lichen": (0, 3, "D2D2C0", "9A9B88"),
     "bark_dark": (1, 0, "A39380", "675A4B"),
     "socket": (1, 1, "3C352E", "221D19"),
-    # The Frog: the reference sheet's camo greens and cream belly. Its orange eyes and toes are moved
-    # to crimson, because GD 16.4 keeps red-orange for danger alone and the frog's wind-up glows it.
-    "frog_green": (2, 0, "6CBE42", "347A26"),
-    "frog_lime": (2, 1, "A2D24E", "5E9A30"),
-    "frog_dark": (2, 2, "3E7F2E", "1C4A1A"),
-    "frog_spot": (2, 3, "C9CF55", "8E9A34"),
-    "frog_belly": (3, 0, "EFE8C6", "C2B68E"),
+    # The Frog (M7-05n): a warm lime skin with darker spots, a cream belly, jaw and toe pads, a dark
+    # mouth that shows when the jaw drops, and a glint in each eye. The reference sheet's orange eyes
+    # are crimson, because GD 16.4 keeps red-orange for danger alone and the frog's wind-up glows it.
+    "frog_green": (2, 0, "B0D850", "66A02C"),
+    "frog_shine": (2, 1, "FFFFFF", "F0ECE2"),
+    "frog_mouth": (2, 2, "6A2433", "3C121D"),
+    "frog_spot": (2, 3, "5F9632", "3A6A20"),
+    "frog_belly": (3, 0, "EEE6B2", "C9B983"),
     "frog_red": (3, 1, "C8203A", "7E0F22"),
     "frog_pupil": (3, 2, "1B1616", "080606"),
     "frog_tongue": (3, 3, "EC8FA2", "B55570"),

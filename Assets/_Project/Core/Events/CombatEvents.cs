@@ -1,4 +1,5 @@
 using System.Numerics;
+using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Events;
 
@@ -214,6 +215,11 @@ public readonly struct PlayerShieldChanged
 /// the facing, because the swing arc has to be drawn along the same direction the cone will be
 /// resolved along. Two answers to "which way did he swing" is one answer too many.
 /// </para>
+/// <para>
+/// <b>And, since RS-06a, the kind of swing</b>, because only a cone has a wedge to draw. The
+/// Ranger's bow draws a swing like the Censer's, so a view that drew the wedge on every swing
+/// flashed a sword's arc on every arrow.
+/// </para>
 /// </remarks>
 public readonly struct PlayerAttacked
 {
@@ -223,9 +229,21 @@ public readonly struct PlayerAttacked
     /// </summary>
     public readonly Vector2 FacingXZ;
 
-    public PlayerAttacked(Vector2 facingXZ)
+    /// <summary>
+    /// The weapon's kind: <see cref="WeaponKind.Cone"/> for a swing that sweeps a wedge,
+    /// <see cref="WeaponKind.Projectile"/> for one that looses a shot.
+    /// </summary>
+    public readonly WeaponKind Kind;
+
+    /// <param name="facingXZ">The swing's facing.</param>
+    /// <param name="kind">
+    /// The weapon's kind. A cone when unsaid, which is what every swing was before M5-01 and what
+    /// <c>default(PlayerAttacked)</c> reads anyway, since <see cref="WeaponKind.Cone"/> is zero.
+    /// </param>
+    public PlayerAttacked(Vector2 facingXZ, WeaponKind kind = WeaponKind.Cone)
     {
         FacingXZ = facingXZ;
+        Kind = kind;
     }
 }
 

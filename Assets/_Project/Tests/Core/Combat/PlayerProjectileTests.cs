@@ -399,6 +399,20 @@ public sealed class PlayerProjectileTests
     }
 
     [Test]
+    public void Combat_ASwingNamesAShot()
+    {
+        Spawn(TargetRange);
+
+        TickToSwingStart();
+
+        // RS-06a rule 1: a bolt's swing sweeps no wedge, so it must not say it is a cone — a view
+        // that heard "cone" would flash the Censer's 8 m arc on every shot.
+        PlayerAttacked attacked = _events.Of<PlayerAttacked>()[0];
+
+        Assert.That(attacked.Kind, Is.EqualTo(WeaponKind.Projectile));
+    }
+
+    [Test]
     public void Combat_ATargetThatDiedProducesNoShot()
     {
         EnemyAgent husk = Spawn(TargetRange);

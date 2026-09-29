@@ -129,6 +129,11 @@ namespace Soulvail.Game.Composition
                  "player who never opens a menu has no readout of their build at all.")]
         [SerializeField] private AutoCastRow _autoCastRow;
 
+        [Tooltip("The stage chip and the enemies-left chip, top-right on the HUD (UI-01d). Optional " +
+                 "on the HUD's terms — a scene without it plays the same stage and simply never says " +
+                 "which one it is or how many are left.")]
+        [SerializeField] private StageReadout _stageReadout;
+
         [Tooltip("The Overflow announcement, on the HUD. Optional on the HUD's terms — a scene " +
                  "without one grants CH §5.2's Overflow silently, which by stage 30 is more than " +
                  "half the power the player has gained (ledger row 1).")]
@@ -452,6 +457,14 @@ namespace Soulvail.Game.Composition
             if (_autoCastRow != null)
             {
                 builder.RegisterComponent(_autoCastRow);
+            }
+
+            // UI-01d's chips, on the same terms as the strip and the row above: a live component in
+            // this scene, injected and destroyed with it, and loud from its own Start if it is on the
+            // prefab and not dressed here.
+            if (_stageReadout != null)
+            {
+                builder.RegisterComponent(_stageReadout);
             }
 
             if (_overflowToast != null)

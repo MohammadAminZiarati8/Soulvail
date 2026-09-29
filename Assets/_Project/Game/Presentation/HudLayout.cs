@@ -61,9 +61,13 @@ public static class HudLayout
     public const float BarLeftDp = MarginDp + StarSizeDp + GapDp;
 
     /// <summary>
-    /// The skill row's top: 6 dp under the bar, which sits on the star's centre line (UI-01b rule 12).
+    /// The skill row's top: 8 dp under the bar, which sits on the star's centre line (UI-01b rule 12).
     /// </summary>
-    public const float SkillRowTopDp = RowTopDp + ((StarSizeDp - BarHeightDp) * 0.5f) + BarHeightDp + 6f;
+    /// <remarks>
+    /// Eight rather than UI-01b's six since UI-01d: the stage chip's bottom edge is 53 dp down, and at
+    /// 9:20 a long row reaches the chip's column, so the row starts clear of it.
+    /// </remarks>
+    public const float SkillRowTopDp = RowTopDp + ((StarSizeDp - BarHeightDp) * 0.5f) + BarHeightDp + 8f;
 
     /// <summary>The widest the health bar is ever drawn — the owner's starting size.</summary>
     public const float BarMaxWidthDp = 240f;
@@ -77,6 +81,39 @@ public static class HudLayout
     /// before the bar.
     /// </summary>
     public const float RightReserveDp = 150f;
+
+    /// <summary>The pause button, square, <see cref="MarginDp"/> in and <see cref="RowTopDp"/> down (UI-01d).</summary>
+    public const float PauseSizeDp = 44f;
+
+    /// <summary>The stage chip's width: room for <em>Wave 5/5</em> at 14 dp.</summary>
+    public const float StageChipWidthDp = 80f;
+
+    /// <summary>The stage chip's height: two lines, on the star's centre line.</summary>
+    public const float StageChipHeightDp = 36f;
+
+    /// <summary>The stage chip's right edge, in from the safe area's: past the pause button and a 6 dp gap.</summary>
+    public const float StageChipRightDp = MarginDp + PauseSizeDp + 6f;
+
+    /// <summary>The stage chip's top, which puts its centre on the row's centre line.</summary>
+    public const float StageChipTopDp = RowTopDp + ((StarSizeDp - StageChipHeightDp) * 0.5f);
+
+    /// <summary>The enemies-left chip's width.</summary>
+    public const float EnemiesChipWidthDp = 48f;
+
+    /// <summary>The enemies-left chip's height.</summary>
+    public const float EnemiesChipHeightDp = 22f;
+
+    /// <summary>The enemies-left chip's right edge, in from the safe area's: centred under the pause button.</summary>
+    public const float EnemiesChipRightDp = MarginDp + ((PauseSizeDp - EnemiesChipWidthDp) * 0.5f);
+
+    /// <summary>The enemies-left chip's top: one gap under the pause button.</summary>
+    public const float EnemiesChipTopDp = RowTopDp + PauseSizeDp + GapDp;
+
+    /// <summary>
+    /// Where the right-hand column's switched-off readouts hang, the Essence counter and the Veilrot
+    /// meter: under the boss band's row, where nothing else is (UI-01d rule 8).
+    /// </summary>
+    public const float EconomyTopDp = 124f;
 
     /// <summary>
     /// The top band's floor. Nothing in the band reaches lower: the skill row's pips, the lowest piece,

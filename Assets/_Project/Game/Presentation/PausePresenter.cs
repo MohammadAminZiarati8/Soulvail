@@ -165,11 +165,13 @@ namespace Soulvail.Game.Presentation
                  "the reason SkillButton applies its own: a Scale-With-Screen-Size canvas measures " +
                  "in reference pixels, which are a different physical size on every phone. A guess " +
                  "until a phone exists — ledger row 4.")]
-        [SerializeField] private float _iconSizeDp = 44f;
+        [SerializeField] private float _iconSizeDp = HudLayout.PauseSizeDp;
 
         [Tooltip("How far the icon's top-right corner sits in from the safe area's right edge and " +
-                 "down from its top, in dp. A guess until a phone exists — ledger row 4.")]
-        [SerializeField] private Vector2 _iconMarginDp = new Vector2(16f, 16f);
+                 "down from its top, in dp — the top band's margin and row, so its centre is the " +
+                 "star's and the stage chip's (UI-01d rule 7). A guess until a phone exists — ledger " +
+                 "row 4.")]
+        [SerializeField] private Vector2 _iconMarginDp = new Vector2(HudLayout.MarginDp, HudLayout.RowTopDp);
 
         private IRunSession _session;
         private RunPause _pause;

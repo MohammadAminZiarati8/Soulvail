@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Run;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Presentation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -101,6 +102,19 @@ public sealed class RunSceneTests
             Invoke("PrewarmCount"),
             Is.EqualTo(BootInstaller.DeviceEnemyCap + 1),
             "The pool is sized to the device cap plus the one spare a dissolving corpse holds.");
+    }
+
+    /// <summary>
+    /// UI-01d: the stage chip and the enemies-left chip are registered, so they are injected and do
+    /// not throw from their own <c>Start</c> in a run.
+    /// </summary>
+    [Test]
+    public void RunScene_WiresTheStageReadout()
+    {
+        var readout = Field("_stageReadout").objectReferenceValue as StageReadout;
+
+        Assert.That(readout, Is.Not.Null, "RunScope's Stage Readout field is empty, so the chips are never injected.");
+        Assert.That(readout.gameObject.scene, Is.EqualTo(_scene), "the readout is not the Run scene's own HUD's.");
     }
 
     private SerializedProperty Field(string name)

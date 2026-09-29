@@ -1036,14 +1036,28 @@ public sealed class SkillBarPresenterTests
             { "EssenceLabel", SlotFontPoints },
             { "VeilrotLabel", SlotFontPoints },
             { "ClaimedLabel", SlotFontPoints },
+
+            // UI-01d's three, sized in dp at runtime by StageReadout rather than in points on the
+            // prefab, so their authored 14 is a placeholder and their floor is StageReadoutTests'
+            // Chips_ClearTheAndroidFloor, which measures the dp they are drawn at.
+            { "StageText", 14f },
+            { "WaveText", 14f },
+            { "EnemiesText", 14f },
         };
 
-        foreach (float points in expected.Values)
+        var sizedInDp = new HashSet<string> { "StageText", "WaveText", "EnemiesText" };
+
+        foreach (KeyValuePair<string, float> text in expected)
         {
+            if (sizedInDp.Contains(text.Key))
+            {
+                continue;
+            }
+
             Assert.That(
-                DeviceDp(points),
+                DeviceDp(text.Value),
                 Is.GreaterThan(AndroidBodyTextFloorSp),
-                $"{points} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
+                $"{text.Value} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
         }
 
         var slotLabels = new HashSet<TMP_Text>(SlotLabels());

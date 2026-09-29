@@ -539,6 +539,21 @@ public sealed class PaletteTests
         Assert.That(low, Is.LessThan(player), "the low end is not darker than the player's cyan.");
     }
 
+    /// <summary>UI-01d rule 9: a caption on the band is bone, <em>everything else</em>, and not danger.</summary>
+    [Test]
+    public void HudCaption_IsBone()
+    {
+        AssertHex(Palette.HudCaption, 0xCC, 0xC4, 0xB7, nameof(Palette.HudCaption));
+
+        Assert.That(Palette.IsDanger(Palette.HudCaption), Is.False);
+
+        Color.RGBToHSV(Palette.HudCaption, out _, out float saturation, out _);
+
+        Assert.That(saturation, Is.LessThan(0.2f), "a caption that is not a desaturated bone reads as a meaning.");
+        Assert.That(Reads(typeof(StageReadout), typeof(Palette).GetField(nameof(Palette.HudCaption))), Is.True,
+            "StageReadout does not paint STAGE in Palette.HudCaption.");
+    }
+
     /// <summary>UI-01b rule 13: the band's numbers are white, and a member of their own.</summary>
     [Test]
     public void HudText_IsWhite()
@@ -673,10 +688,10 @@ public sealed class PaletteTests
 
         Assert.That(
             typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
-            Is.EqualTo(23),
+            Is.EqualTo(24),
             "Palette gained a member. A Pact is GD §16.4's violet, not a second one. "
                 + "The twentieth is UI-01a's Ink, the HUD art's outline; the next three are UI-01b's "
-                + "ghost, low beat and band text.");
+                + "ghost, low beat and band text; the twenty-fourth is UI-01d's caption.");
     }
 
     /// <summary>

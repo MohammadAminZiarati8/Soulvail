@@ -125,7 +125,7 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private float _gapDp = GapDp;
 
         [Tooltip("Where the row's top-left corner sits, in dp from the safe area's left edge and " +
-                 "from its top. Under the health bar, 6 dp below it, and left-aligned with it so the " +
+                 "from its top. Under the health bar, 8 dp below it, and left-aligned with it so the " +
                  "two read as one block (UI-01b rule 12).")]
         [SerializeField] private Vector2 _marginDp = new Vector2(HudLayout.BarLeftDp, HudLayout.SkillRowTopDp);
 

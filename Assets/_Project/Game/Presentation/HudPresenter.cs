@@ -248,15 +248,17 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private Vector2 _meterSizeDp = new Vector2(12f, 160f);
 
         [Tooltip("Where the meter's top-right corner sits, in dp in from the safe area's right edge " +
-                 "and down from its top. Under the pause icon, which owns the corner itself.")]
-        [SerializeField] private Vector2 _meterInsetDp = new Vector2(16f, 76f);
+                 "and down from its top. In the right-hand column under the boss band's row, below " +
+                 "the Essence counter and its caption (UI-01d rule 8).")]
+        [SerializeField] private Vector2 _meterInsetDp = new Vector2(16f, HudLayout.EconomyTopDp + 48f);
 
         [Tooltip("The Essence counter's width and height in dp.")]
         [SerializeField] private Vector2 _essenceSizeDp = new Vector2(96f, 24f);
 
         [Tooltip("Where the counter's top-right corner sits, in dp in from the safe area's right " +
-                 "edge and down from its top — left of the 44 dp pause icon and its 16 dp margin.")]
-        [SerializeField] private Vector2 _essenceInsetDp = new Vector2(68f, 16f);
+                 "edge and down from its top — at the head of the column under the boss band's row, " +
+                 "over the Veilrot meter. Its old place left of the pause icon is the stage chip's (UI-01d).")]
+        [SerializeField] private Vector2 _essenceInsetDp = new Vector2(16f, HudLayout.EconomyTopDp);
 
         private IRunSession _session;
         private ILocalizer _localizer;
@@ -1069,9 +1071,10 @@ namespace Soulvail.Game.Presentation
         /// <para>
         /// A second method rather than more of <see cref="Place"/>'s row, because nothing here shares
         /// an edge with it: the row reads left to right from the top-left, and these two hang from the
-        /// top-right around the pause icon, which <c>PausePresenter</c> places 44 dp across at a 16 dp
-        /// margin. So the counter's default inset is 68 dp from the right and the meter's is 76 dp
-        /// down — beside the icon and under it respectively.
+        /// top-right. <b>Since UI-01d they hang below the band</b>, from
+        /// <see cref="HudLayout.EconomyTopDp"/>: the stage chip took the counter's place left of the
+        /// pause icon, and the enemies-left chip took the meter's under it. Both are switched off in
+        /// every shipped mode (RS-05b, RS-05d), and switched off is not removed.
         /// </para>
         /// <para>
         /// <b>A nonsense dp field leaves the prefab's layout alone</b>, <c>XpBarView.Place</c>'s

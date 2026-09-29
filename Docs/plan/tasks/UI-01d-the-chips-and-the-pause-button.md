@@ -147,4 +147,46 @@ public sealed class StageReadout : MonoBehaviour     // block namespace (Traps ย
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer, measured._
+**As specified in its chips, with six deviations, two of them layout the band's own test found.**
+
+**Deviation 1: the Essence counter sits over the meter, not left of it.** At the spec's insets the
+counter (36 dp in, 124 down) and the Claiming's name, which hangs beside the meter's top, occupied
+the same rect once both were switched on. So the counter heads the column at (16, 124) and the meter
+starts under its caption at (16, 172). Both are off in every shipped mode. `Hud_PlacesBothInDp`
+pinned the counter's old 68 dp inset and reads 16 now.
+
+**Deviation 2: *STAGE* is 12 dp, not 11.** `Hud_NothingElseMoved` holds every text on the HUD to
+Android's 12 sp floor (M4-07), and 11 is under it. The three new texts are sized in dp at run time,
+so the row skips their authored points and `Chips_ClearTheAndroidFloor` measures the dp they are drawn
+at. Twelve and fourteen still fit two lines in the 36 dp chip.
+
+**Deviation 3: the skill row starts 8 dp under the bar, not 6.** `HudLayoutTests` found the stage
+chip's bottom edge (53 dp) and the eighth cell's top (52 dp) overlapping at 9:20. `HudLayout.SkillRowTopDp`
+is 54 now, and the pips still end inside the band's 96 dp floor at UI-01e's 34 dp cells. UI-01b's two
+rows that pinned 6 read 8.
+
+**Deviation 4: `Strings_NoLocalizerDrawsTheKeys` is `Strings_AMissingRowDrawsTheKey`.** `Construct`
+refuses a null localizer, as `HudPresenter.Construct` does, so rule 4's null branch is unreachable.
+The row asserts the reachable case: a table with no row draws the key.
+
+**Deviation 5: the allocation row measures frames on which the count holds.** Its first form went
+red, and a bisect found the whole allocation in TMP's `SetText(string, float)`, which ends with
+`#if UNITY_EDITOR m_text = InternalTextBackingArrayToString()`. That line is compiled out of a
+build, so the float overload stays the zero-garbage route on a phone. An Editor row over a changing
+count measures that line, so this one measures the chip, and `Enemies_WritesOnlyWhenTheCountMoves`
+pins that a write happens on a change alone. Filed as [Traps ยง9](../../Traps.md), which is not in
+the Files table.
+
+**Deviation 6: two files outside the table.** `RunSceneTests.RunScene_WiresTheStageReadout` pins the
+scene's wiring, since no row checked `RunScope`'s HUD fields. `Run.unity` was edited by hand to the
+twelve lines that wiring needs: the Editor's own save carried 380 lines of TMP overrides on other
+prefab instances. `English.asset` was edited by hand for the same reason. `Pseudo.asset` came from its
+generator's menu.
+
+**As built, the rest.** `StageReadout` sits on a stretched `StageReadout` object under the safe area,
+with `StageChip` (`Pill_Dark`, `StageText`, `WaveText`) and `EnemiesChip` (`Chip_Counter`, `Skull`,
+`EnemiesText`) under it. `Place` fits both pills' slices to their height. `Pause.prefab`'s icon wears
+`Button_Pause`, untinted, and its `Glyph` child is gone. The captures are in
+`Soulvail_GeminiSamples/UI_v2/captures/`. In landscape the pill, the round button and the skull chip
+sit on the star's centre line, as the mockup's corner does. At 9:20 the bar narrows to 201 dp beside
+them. For each capture the chip was forced on with *3*, because stage 1 holds ten enemies.

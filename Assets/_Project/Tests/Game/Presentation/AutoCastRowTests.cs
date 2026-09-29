@@ -604,7 +604,8 @@ public sealed class AutoCastRowTests
 
         // Under the health bar rather than over it (UI-01b rule 12): the bar is centred on the star's
         // centre line, so its bottom is the star's top plus half the star plus half the bar — 46 dp —
-        // and the row ships 6 dp under it, left-aligned with it.
+        // and the row ships 8 dp under it, left-aligned with it: 6 at UI-01b, and 8 since UI-01d put
+        // the stage chip's bottom edge at 53.
         HudPresenter hud = _hud.GetComponent<HudPresenter>();
         Vector2 barSize = Field<Vector2>(hud, "_barSizeDp");
         Vector2 starMargin = Field<Vector2>(hud, "_marginDp");
@@ -613,7 +614,7 @@ public sealed class AutoCastRowTests
         float barBottom = starMargin.y + ((star - barSize.y) * 0.5f) + barSize.y;
 
         Assert.That(margin.y, Is.GreaterThanOrEqualTo(barBottom), "the auto-cast row overlaps the health bar.");
-        Assert.That(margin.y - barBottom, Is.EqualTo(6f).Within(1e-3f), "the row is not 6 dp under the bar.");
+        Assert.That(margin.y - barBottom, Is.EqualTo(8f).Within(1e-3f), "the row is not 8 dp under the bar.");
         Assert.That(margin.x, Is.EqualTo(starMargin.x + star + gap).Within(1e-3f), "the row is not under the bar's left edge.");
     }
 

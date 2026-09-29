@@ -332,6 +332,16 @@ public static class Palette
     public static readonly Color HudText = Rgb(0xFF, 0xFF, 0xFF);
 
     /// <summary>
+    /// <c>#CCC4B7</c> — a caption on the band: the <em>STAGE</em> over the wave (UI-01d).
+    /// </summary>
+    /// <remarks>
+    /// GD §16.4's <em>everything else</em>, at the brightness a word on a dark pill needs, which is
+    /// <see cref="Boss"/>'s value and <see cref="Heal"/>'s argument for a member of its own: a
+    /// caption and a boss's bar are two meanings, and the day one moves the other must not.
+    /// </remarks>
+    public static readonly Color HudCaption = Rgb(0xCC, 0xC4, 0xB7);
+
+    /// <summary>
     /// True when <paramref name="colour"/> is GD §16.4's reserved danger colour. How the
     /// <em>"for nothing else, ever"</em> half of the rule is tested rather than promised.
     /// </summary>

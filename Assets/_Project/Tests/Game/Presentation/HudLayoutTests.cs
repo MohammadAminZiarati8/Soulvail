@@ -150,6 +150,11 @@ public sealed class HudLayoutTests
 
             Assert.That(band["star"].width, Is.EqualTo(HudLayout.StarSizeDp).Within(Slack));
             Assert.That(band["bar"].height, Is.EqualTo(HudLayout.BarHeightDp).Within(Slack));
+
+            // UI-01d rules 6 and 7: the right-hand end of the row is on the same line.
+            Assert.That(band["pause"].center.y, Is.EqualTo(centre).Within(Slack), $"the pause icon at {size}");
+            Assert.That(band["stage"].center.y, Is.EqualTo(centre).Within(Slack), $"the stage chip at {size}");
+            Assert.That(band["enemies"].center.x, Is.EqualTo(band["pause"].center.x).Within(Slack), $"the enemies chip at {size}");
         }
 
         // Behind the star: uGUI draws in sibling order.
@@ -197,7 +202,7 @@ public sealed class HudLayoutTests
             Dictionary<string, Rect> band = Lay(size);
 
             Assert.That(band["cell1"].xMin, Is.EqualTo(band["bar"].xMin).Within(Slack), $"at {size}");
-            Assert.That(band["cell1"].yMin - band["bar"].yMax, Is.EqualTo(6f).Within(Slack), $"at {size}");
+            Assert.That(band["cell1"].yMin - band["bar"].yMax, Is.EqualTo(8f).Within(Slack), $"at {size}");
         }
     }
 
@@ -247,6 +252,15 @@ public sealed class HudLayoutTests
         ("numbers", "bar"),
     };
 
+    /// <summary>
+    /// The pieces that hang below the band by design: the boss band, and the right-hand column the
+    /// economy readouts stepped down to at UI-01d.
+    /// </summary>
+    private static readonly HashSet<string> BelowTheBand = new HashSet<string>
+    {
+        "boss", "essence", "essenceWord", "meter", "meterWord", "claimed",
+    };
+
     private void AssertBandHolds(Vector2 size)
     {
         Dictionary<string, Rect> band = Lay(size);
@@ -260,7 +274,7 @@ public sealed class HudLayoutTests
             Assert.That(r.xMax, Is.LessThanOrEqualTo(size.x + Slack), $"{piece.Key} leaves the safe area's right at {size}.");
             Assert.That(r.yMin, Is.GreaterThanOrEqualTo(-Slack), $"{piece.Key} leaves the safe area's top at {size}.");
 
-            if (piece.Key != "boss")
+            if (!BelowTheBand.Contains(piece.Key))
             {
                 Assert.That(
                     r.yMax,
@@ -315,6 +329,15 @@ public sealed class HudLayoutTests
             ["numbers"] = Dp(hudSafe, "HpText", px),
             ["boss"] = Dp(hudSafe, "BossBar", px),
             ["pause"] = Dp(pauseSafe, "Icon", px),
+
+            // UI-01d: the right-hand chips, and the two switched-off economy readouts they displaced.
+            ["stage"] = Dp(hudSafe, "StageReadout/StageChip", px),
+            ["enemies"] = Dp(hudSafe, "StageReadout/EnemiesChip", px),
+            ["essence"] = Dp(hudSafe, "EssenceCounter", px),
+            ["essenceWord"] = Dp(hudSafe, "EssenceLabel", px),
+            ["meter"] = Dp(hudSafe, "VeilrotMeter", px),
+            ["meterWord"] = Dp(hudSafe, "VeilrotLabel", px),
+            ["claimed"] = Dp(hudSafe, "ClaimedLabel", px),
         };
 
         Transform row = hudSafe.Find("AutoCastRow");
@@ -359,6 +382,7 @@ public sealed class HudLayoutTests
         Invoke(_hud.GetComponentInChildren<AutoCastRow>(true), "Place");
         Invoke(_hud.GetComponentInChildren<BossBarView>(true), "Place");
         Invoke(_pause.GetComponent<PausePresenter>(), "Place");
+        Invoke(_hud.GetComponentInChildren<StageReadout>(true), "Place");
     }
 
     private GameObject Spawn(string path)

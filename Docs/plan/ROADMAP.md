@@ -370,6 +370,14 @@ What the planning found:
 | UI-01d | [The stage chip, the enemies-left chip and the pause button](tasks/UI-01d-the-chips-and-the-pause-button.md) | S | UI-01b, UI-01c | ☑ |
 | UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☑ |
 | UI-01f | [The boss bar in the new art](tasks/UI-01f-the-boss-bar.md) | S | UI-01b | ☑ |
+| UI-02a | [The lower controls' art, imported](tasks/UI-02a-the-lower-controls-art.md) — 8 sprites for stick, roll and skill buttons | S | UI-01f | ☑ |
+| UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☐ |
+| UI-02c | [The Roll and skill buttons in the new art](tasks/UI-02c-the-roll-and-skill-buttons.md) | M | UI-02a | ☐ |
+
+**UI-02 — The lower controls in the new art:**
+Rebuilding the lower half of the HUD in the owner's art: the floating stick on the left 45% (`Stick_Base`, `Stick_Knob`),
+and the Roll and manual skill buttons on the right (`RollButton_*`, `Icon_Roll`, `SkillButton_*`).
+UI-02a imports the 8 sprites with mobile settings; UI-02b dresses the stick; UI-02c dresses the Roll and manual skill buttons.
 
 ---
 

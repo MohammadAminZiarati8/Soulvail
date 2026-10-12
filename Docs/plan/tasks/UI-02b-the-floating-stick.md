@@ -55,4 +55,11 @@ No public API changes.
 
 ## As built
 
-_Filled at merge._
+**Built as specified, with zero deviations.**
+
+`FloatingStick`'s `_base` and `_knob` on `Prefabs/UI/Hud.prefab` now wear `Stick_Base` and `Stick_Knob` with `preserveAspect = true` and `color = Color.white`. `FloatingStick.Awake` sizes both elements to their 120 dp and 52 dp specifications at initialisation via `StickShaper.PixelsPerDp(Screen.dpi)` and ensures their native aspect is preserved. Floating origin dynamic placement, drag recentring past 60 dp (`StickShaper.MaxRadiusDp`), touch-up release hiding, single-touch capture, and virtual gamepad left stick routing (`<Gamepad>/leftStick`) are preserved intact.
+
+`FloatingStickTests.cs` adds 8 EditMode tests covering sprite dressing, aspect preservation, untinted color, dp sizing across multiple DPIs (160, 320, 400), touch visibility, single-pointer capture, drag recentring, and virtual gamepad control path.
+
+**Verified:** **3 754 EditMode — 3 753 passed / 0 failed / 1 inconclusive (+8)** through `TestRunnerApi`; `FloatingStickTests` 8 rows green. Console after EditMode: 16 expected errors from passing negative-path tests, zero compiler errors, zero analyzer warnings, `dotnet format whitespace` clean over `FloatingStick.cs` and `FloatingStickTests.cs`, `TimeManager.asset` reverted.
+

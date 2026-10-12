@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.Layouts;
 using UnityEngine.InputSystem.OnScreen;
+using UnityEngine.UI;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
 // cannot find the type in a file-scoped namespace, and Hud.prefab's reference to this component
@@ -79,7 +80,25 @@ namespace Soulvail.Game.Controls
             // and asking per drag frame would be a GetComponent in the hot path.
             _canvas = _region != null ? _region.GetComponentInParent<Canvas>() : null;
 
+            float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+            Resize(_base, BaseDiameterDp, pxPerDp);
+            Resize(_knob, KnobDiameterDp, pxPerDp);
+
+            EnsureDressedAspect();
             Show(false);
+        }
+
+        private void EnsureDressedAspect()
+        {
+            if (_base != null && _base.TryGetComponent(out Image baseImage))
+            {
+                baseImage.preserveAspect = true;
+            }
+
+            if (_knob != null && _knob.TryGetComponent(out Image knobImage))
+            {
+                knobImage.preserveAspect = true;
+            }
         }
 
         /// <summary>

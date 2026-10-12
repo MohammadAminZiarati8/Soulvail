@@ -371,7 +371,7 @@ What the planning found:
 | UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☑ |
 | UI-01f | [The boss bar in the new art](tasks/UI-01f-the-boss-bar.md) | S | UI-01b | ☑ |
 | UI-02a | [The lower controls' art, imported](tasks/UI-02a-the-lower-controls-art.md) — 8 sprites for stick, roll and skill buttons | S | UI-01f | ☑ |
-| UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☐ |
+| UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☑ |
 | UI-02c | [The Roll and skill buttons in the new art](tasks/UI-02c-the-roll-and-skill-buttons.md) | M | UI-02a | ☐ |
 
 **UI-02 — The lower controls in the new art:**

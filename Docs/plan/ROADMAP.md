@@ -380,7 +380,7 @@ What the planning found:
 | UI-03d | [The switch: pause door, the Jungle on, the docs](tasks/UI-03d-the-switch-and-the-docs.md) — CH §5.1 / GD §13.1 rewritten | S | UI-03c | ☑ |
 | UI-04a | [The tree screen's art, imported](tasks/UI-04a-the-tree-art.md) — this section and four specs, 22 sprites | S | UI-03c | ☑ |
 | UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☑ |
-| UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☐ |
+| UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☑ |
 | UI-04d | [Select, then Learn](tasks/UI-04d-select-and-learn.md) — a tap selects, the card describes, Learn spends | M | UI-04c | ☐ |
 
 **UI-04 — The tree screen in the new art** *(owner, 2026-10-13)*: UI-03c's plain grid dressed as `UI_v2/mockups/SkillTree.png` — the stone frame, one class block, and a detail card whose green Learn button is the only way to spend a point. **Not in UI-04, by the owner's scope:** the capstone star, a second class's block (the "take a new class" area), and the stat diff line on the card. Only the Ranger has icons and an emblem; every other class draws `Icon_Placeholder` and a plate without one.

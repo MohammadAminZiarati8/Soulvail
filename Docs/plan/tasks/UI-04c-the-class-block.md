@@ -66,4 +66,12 @@ public void Show(SkillTreeSpec tree, Func<ContentId, NodeState> stateOf, ILocali
 
 ## As built
 
-_Filled at merge._
+As specified, with five differences.
+
+1. **`TreeBlockView` also owns the layout** (`Arrange(tree, cells, columns, branchLabels, pxPerDp, tileMaxPx, gapPx)`), beside the spec's `Show`. One tile size is worked out for the whole block and the columns, tiles, links, row labels, branch names and plate are placed from it; `TreeViewPresenter.Layout` and `RowHeight` are gone. Links are pooled clones parented behind each column's tiles.
+2. **`TreeNodeButton.Show` drops the localizer** (`Show(spec, state, icon, tier, takeable)`), so `TreeNodeButton` leaves the two `TableLocalizerTests` lists of readers. `TreeViewPresenter.Construct` takes `SkillIconBook` and `CharacterLookBook`; the plate's name is the character spec's `NameKey`.
+3. **Plus shows only on a takeable tile** (Available, free run, a point banked), which is rule 4's "only while a point is banked" and also keeps a drawing run's Available tiles bare.
+4. **Rows rewritten, not carried:** `Tree_TintsByKind` is deleted (the kind stripe is gone), `Tree_FrameColoursByState` became `Tree_TilesByState`, `Tree_DrawsEnglish` reads the branch heading and the plate, and `PaletteTests`' rewritten-rows list follows. `Palette.NodeTaken`, `NodeAvailable` and `NodeBanished` now have no reader in the game; only `NodeLocked` (the icon dim) does. `SkillIconBookTests` expected Quick Draw to have no icon and now expects it.
+5. **The card's room is a constant**, `CardSpaceDp` = 190, taken off the block's bottom edge, so the frame shows an empty band under the plate until UI-04d. The tile ceiling is 64 dp (`_cellHeightDp`, now 64 on the prefab).
+
+Not done: a look at the block in the Editor or on a phone. The layout is pinned by `Block_FitsPortrait` at 9:20 only.

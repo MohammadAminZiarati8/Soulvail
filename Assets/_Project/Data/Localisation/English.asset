@@ -158,6 +158,8 @@ MonoBehaviour:
     _text: Close
   - _key: ui.tree.title
     _text: Skill Tree
+  - _key: ui.tree.row
+    _text: LV {0:0}
   - _key: ui.tree.points
     _text: '{0:0}'
   - _key: character.oathbound.name

@@ -22,6 +22,7 @@ MonoBehaviour:
   _trigger: []
   _onCast: []
   _parent: {fileID: 11400000, guid: 6a850892b44e3d54faf069e1768a8121, type: 2}
+  _icon: {fileID: 21300000, guid: af72b975880b23b48afb2bf722a720fd, type: 3}
   _hasPact: 0
   _pactEffects: []
   _pactVeilrot: 15

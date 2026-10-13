@@ -168,6 +168,8 @@ MonoBehaviour:
     _text: "[\xC7l\xF4s\xE9 \xB7\xB7]"
   - _key: ui.tree.title
     _text: "[Sk\xEEll Tr\xE9\xE9 \xB7\xB7\xB7\xB7]"
+  - _key: ui.tree.row
+    _text: "[LV {0:0} \xB7\xB7\xB7]"
   - _key: ui.tree.points
     _text: "[{0:0} \xB7\xB7]"
   - _key: character.oathbound.name

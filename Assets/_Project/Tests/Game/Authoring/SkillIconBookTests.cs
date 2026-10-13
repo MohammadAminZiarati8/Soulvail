@@ -136,10 +136,10 @@ public sealed class SkillIconBookTests
         var book = container.Resolve<SkillIconBook>();
 
         // Built from the same list as the catalog, at the root: the Volley has its art and Quick Draw
-        // has none, so it is left out and the row draws the placeholder for it.
+        // gained its art with UI-04c; the book answers for both.
         Assert.That(book.For(new ContentId(VolleyId)), Is.SameAs(Icon()));
-        Assert.That(book.For(new ContentId("skill.ranger.quick-draw")), Is.Null);
-        Assert.That(book.Count, Is.EqualTo(1));
+        Assert.That(book.For(new ContentId("skill.ranger.quick-draw")).name, Is.EqualTo("Icon_QuickDraw"));
+        Assert.That(book.Count, Is.EqualTo(2));
     }
 
     // ---- The shipped content (rule 9) ------------------------------------------------------------

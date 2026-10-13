@@ -288,7 +288,14 @@ public sealed class FreePickModeTests
         GameObject tree = Spawn(TreePath);
 
         _screen = tree.GetComponent<TreeViewPresenter>();
-        _screen.Construct(_session, _session, _pause, _catalog, localizer);
+        _screen.Construct(
+            _session,
+            _session,
+            _pause,
+            _catalog,
+            localizer,
+            new SkillIconBook(new Dictionary<ContentId, Sprite>()),
+            new CharacterLookBook(new Dictionary<ContentId, CharacterLook>()));
 
         GameObject pause = Spawn(PausePath);
 

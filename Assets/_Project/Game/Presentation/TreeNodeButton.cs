@@ -1,6 +1,5 @@
 using System;
 using Soulvail.Core.Content;
-using Soulvail.Core.Ports;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -41,48 +40,55 @@ namespace Soulvail.Game.Presentation
     }
 
     /// <summary>
-    /// One cell of the tree screen: a name, a description, a stripe for CH §4's kind, a frame for its
-    /// state, a padlock while locked — and, in a free run with a point banked, a button (UI-03c).
+    /// One tile of the tree screen: a state-plated tile, the skill's icon, a badge at its top-right
+    /// corner and the node's tier as a numeral at the bottom-left — and, in a free run with a point
+    /// banked, a button (UI-04c, over UI-03c).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>It reports a tap and decides nothing.</b> <see cref="Show"/> says whether the cell is
-    /// takeable; the button is interactable and the outline lit exactly then, and a tap is handed to
-    /// the presenter, which asks core again before it sends <c>TakeNode</c> (UI-03c rule 4). A
-    /// drawing run's cells are never takeable, which is rule 7's read-only view.
+    /// <b>It reports a tap and decides nothing.</b> <see cref="Show"/> says whether the tile is
+    /// takeable; the button is interactable exactly then, and a tap is handed to the presenter, which
+    /// asks core again before it sends <c>TakeNode</c> (UI-03c rule 4).
     /// </para>
     /// <para>
-    /// Replaced <c>TreeNodeView</c> in place, GUID and all, so the prefab's cell kept its four
-    /// references. Every piece is written through a Unity-null check rather than assumed:
+    /// <b>The tile art carries the state's colour</b>, so it is drawn untinted; the one tint left is
+    /// the icon's, dimmed while the node is out of reach. The name and description left the tile with
+    /// UI-04c: UI-04d's selection panel is where a node is read.
+    /// </para>
+    /// <para>
+    /// Every piece is written through a Unity-null check rather than assumed:
     /// <c>TreeViewPresenter.Start</c> refuses an undressed screen by name, and this class only has to
     /// not throw on the way there — <c>OfferCard</c>'s bargain.
     /// </para>
     /// </remarks>
     public sealed class TreeNodeButton : MonoBehaviour
     {
-        [Tooltip("The node's name, resolved through ILocalizer.")]
-        [SerializeField] private TMP_Text _name;
+        /// <summary>The tier numerals; past the table a tier is written as its number.</summary>
+        private static readonly string[] Numerals = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" };
 
-        [Tooltip("What the node does, resolved the same way.")]
-        [SerializeField] private TMP_Text _description;
+        [Tooltip("The tile: TreeTile_Taken, _Available or _Locked, by state. Drawn untinted.")]
+        [SerializeField] private Image _tile;
 
-        [Tooltip("The cell's body, tinted by the four node-state colours — the thing a player reads " +
-                 "their own path off.")]
-        [SerializeField] private Image _frame;
+        [Tooltip("The skill's icon, centred on the tile. Dimmed to Palette.NodeLocked while out of reach.")]
+        [SerializeField] private Image _icon;
 
-        [Tooltip("The stripe that says which of CH §4's four kinds this is — OfferCard's stripe.")]
-        [SerializeField] private Image _kindStrip;
+        [Tooltip("The badge at the tile's top-right: check, plus or lock; off when there is none.")]
+        [SerializeField] private Image _badge;
+
+        [Tooltip("The node's tier in its branch, as a numeral, at the tile's bottom-left.")]
+        [SerializeField] private TMP_Text _numeral;
 
         [Tooltip("What a tap lands on. Interactable only while the node can be taken (UI-03c rule 4).")]
         [SerializeField] private Button _button;
 
-        [Tooltip("The Palette.Available outline, on only while the node can be taken (rule 3).")]
-        [SerializeField] private Outline _outline;
+        [SerializeField] private Sprite _takenTile;
+        [SerializeField] private Sprite _availableTile;
+        [SerializeField] private Sprite _lockedTile;
+        [SerializeField] private Sprite _checkBadge;
+        [SerializeField] private Sprite _plusBadge;
+        [SerializeField] private Sprite _lockBadge;
 
-        [Tooltip("The padlock drawn over a locked node (rule 3). Placeholder art until the owner's.")]
-        [SerializeField] private GameObject _padlock;
-
-        /// <summary>Which node this cell is currently drawing, or <c>default</c> while hidden.</summary>
+        /// <summary>Which node this tile is currently drawing, or <c>default</c> while hidden.</summary>
         private ContentId _node;
 
         /// <summary>What it was last drawn as. <c>Locked</c> while hidden.</summary>
@@ -93,10 +99,10 @@ namespace Soulvail.Game.Presentation
         /// <summary>The presenter's handler, handed the node on a tap.</summary>
         private Action<ContentId> _tapped;
 
-        /// <summary>Whether the cell is currently drawn.</summary>
+        /// <summary>Whether the tile is currently drawn.</summary>
         public bool IsShown => gameObject.activeSelf;
 
-        /// <summary>The node this cell is drawing, or <c>default</c> while it is hidden.</summary>
+        /// <summary>The node this tile is drawing, or <c>default</c> while it is hidden.</summary>
         public ContentId Node => _node;
 
         /// <summary>How it was last drawn — the read every state row asserts against.</summary>
@@ -106,8 +112,8 @@ namespace Soulvail.Game.Presentation
         public bool IsTakeable => _takeable;
 
         /// <summary>
-        /// Hands the cell the one thing it reports to. Called once per clone by the presenter that
-        /// built it; a cell is a runtime clone that nothing injects (M3-14a rule 11).
+        /// Hands the tile the one thing it reports to. Called once per clone by the presenter that
+        /// built it; a tile is a runtime clone that nothing injects (M3-14a rule 11).
         /// </summary>
         public void Bind(Action<ContentId> tapped)
         {
@@ -120,67 +126,63 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        /// <summary>
-        /// Draws <paramref name="spec"/> as one cell, framed by <paramref name="state"/>.
-        /// </summary>
-        /// <param name="spec">The node to draw. Any of CH §4's four kinds.</param>
-        /// <param name="state">What it is to this run — one of the four states.</param>
-        /// <param name="localizer">What turns the spec's two <c>LocKey</c>s into words.</param>
+        /// <summary>Draws <paramref name="spec"/> as one tile, plated by <paramref name="state"/>.</summary>
+        /// <param name="spec">The node to draw.</param>
+        /// <param name="state">What it is to this run.</param>
+        /// <param name="icon">The skill's icon, or the placeholder the block chose for it.</param>
+        /// <param name="tier">The node's tier in its branch, from 1.</param>
         /// <param name="takeable">
-        /// Whether a tap may take it. The presenter's answer, and false for anything but an
-        /// Available node in a free run with a point banked.
+        /// Whether a tap may take it, and so whether the plus badge shows. The presenter's answer, and
+        /// false for anything but an Available node in a free run with a point banked.
         /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="spec"/> or <paramref name="localizer"/> is null.
-        /// </exception>
+        /// <exception cref="ArgumentNullException"><paramref name="spec"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="state"/> is not one of the four — see <see cref="Frame"/>.
+        /// <paramref name="state"/> is not one of the four — see <see cref="TileFor"/>.
         /// </exception>
-        public void Show(SkillSpec spec, NodeState state, ILocalizer localizer, bool takeable = false)
+        public void Show(SkillSpec spec, NodeState state, Sprite icon, int tier, bool takeable = false)
         {
             if (spec is null)
             {
                 throw new ArgumentNullException(
                     nameof(spec),
-                    "A cell with no node to draw is a presenter that walked past the end of the "
+                    "A tile with no node to draw is a presenter that walked past the end of the "
                         + "tree — SkillTreeSpec.NodeCount is the bound, and it is what the pool was "
                         + "built to.");
             }
 
-            if (localizer is null)
-            {
-                throw new ArgumentNullException(
-                    nameof(localizer),
-                    "A cell with no localizer would draw two keys, and this screen draws a whole tree "
-                        + "at once (M3-14a rule 1).");
-            }
-
-            // Resolved before anything is written, so the loud default below is reached whether or
-            // not this cell happens to have a frame dressed onto it.
-            Color frame = Frame(state);
+            // Resolved before anything is written, so the loud default is reached whether or not
+            // this tile happens to have its art dressed onto it.
+            Sprite tile = TileFor(state);
 
             _node = spec.Id;
             _state = state;
             _takeable = takeable && state == NodeState.Available;
 
-            if (_name != null)
+            if (_tile != null)
             {
-                _name.text = localizer.Get(spec.NameKey);
+                _tile.sprite = tile;
+                _tile.color = Color.white;
             }
 
-            if (_description != null)
+            if (_icon != null)
             {
-                _description.text = localizer.Get(spec.DescriptionKey);
+                _icon.sprite = icon;
+                _icon.color = state is NodeState.Locked or NodeState.Banished ? Palette.NodeLocked : Color.white;
             }
 
-            if (_frame != null)
+            if (_badge != null)
             {
-                _frame.color = frame;
+                Sprite badge = BadgeFor(state, _takeable);
+
+                _badge.sprite = badge;
+                _badge.gameObject.SetActive(badge != null);
             }
 
-            if (_kindStrip != null)
+            if (_numeral != null)
             {
-                _kindStrip.color = Tint(spec.Kind);
+                _numeral.text = tier >= 1 && tier <= Numerals.Length
+                    ? Numerals[tier - 1]
+                    : tier.ToString();
             }
 
             if (_button != null)
@@ -188,36 +190,35 @@ namespace Soulvail.Game.Presentation
                 _button.interactable = _takeable;
             }
 
-            if (_outline != null)
-            {
-                _outline.effectColor = Palette.Available;
-                _outline.enabled = _takeable;
-            }
-
-            if (_padlock != null)
-            {
-                _padlock.SetActive(state == NodeState.Locked);
-            }
-
             gameObject.SetActive(true);
         }
 
-        /// <summary>The name's and the description's sizes, in canvas units the presenter worked out from dp.</summary>
-        public void SizeText(float name, float description)
+        /// <summary>
+        /// Sizes the tile's pieces from its own side, in canvas units the presenter worked out from dp:
+        /// the icon inset, the badge in the top-right corner, the numeral in the bottom-left.
+        /// </summary>
+        public void Size(float tile, float numeralFont)
         {
-            if (_name != null)
+            if (_icon != null)
             {
-                _name.fontSize = name;
+                Place(_icon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), tile * 0.62f, Vector2.zero);
             }
 
-            if (_description != null)
+            if (_badge != null)
             {
-                _description.fontSize = description;
+                Place(_badge.rectTransform, Vector2.one, Vector2.one, tile * 0.38f, Vector2.zero);
+            }
+
+            if (_numeral != null)
+            {
+                Place(_numeral.rectTransform, Vector2.zero, Vector2.zero, tile * 0.4f, new Vector2(tile * 0.06f, tile * 0.04f));
+                _numeral.fontSize = numeralFont;
+                _numeral.alignment = TextAlignmentOptions.BottomLeft;
             }
         }
 
         /// <summary>
-        /// Takes the cell off the screen — a pooled cell past the end of a tree shorter than the one
+        /// Takes the tile off the screen — a pooled tile past the end of a tree shorter than the one
         /// the pool was built for.
         /// </summary>
         public void Hide()
@@ -245,7 +246,7 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// A tap on a cell that is not takeable reports nothing — <c>onClick</c> fires on an
+        /// A tap on a tile that is not takeable reports nothing — <c>onClick</c> fires on an
         /// <c>Invoke</c> whatever <c>interactable</c> says, so the guard is here as well (rule 4).
         /// </summary>
         private void OnClick()
@@ -256,34 +257,40 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        /// <summary>The four node states, in <see cref="Palette"/>'s four.</summary>
+        /// <summary>The tile for a state; a banished node wears the locked one (UI-04c rule 2).</summary>
         /// <remarks>
-        /// <b>A member with no colour throws, where <see cref="Tint"/>'s falls back</b>: a new state
-        /// without a colour would draw as <em>locked</em>, which is a node the player owns reading as
-        /// one they cannot reach, silently. <c>PlayerStats.Resolve</c>'s rule.
+        /// <b>A member with no tile throws</b>: a new state without one would draw as <em>locked</em>,
+        /// which is a node the player owns reading as one they cannot reach, silently.
+        /// <c>PlayerStats.Resolve</c>'s rule.
         /// </remarks>
-        private static Color Frame(NodeState state) => state switch
+        private Sprite TileFor(NodeState state) => state switch
         {
-            NodeState.Locked => Palette.NodeLocked,
-            NodeState.Available => Palette.NodeAvailable,
-            NodeState.Taken => Palette.NodeTaken,
-            NodeState.Banished => Palette.NodeBanished,
+            NodeState.Taken => _takenTile,
+            NodeState.Available => _availableTile,
+            NodeState.Locked or NodeState.Banished => _lockedTile,
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(state),
                 state,
-                "No frame colour is written for this node state. A member added here without a "
-                    + "line would draw as Locked, which reads as a node the player cannot reach."),
+                "No tile is written for this node state. A member added here without a line would "
+                    + "draw as Locked, which reads as a node the player cannot reach."),
         };
 
-        /// <summary>CH §4's four kinds, in <see cref="Palette"/>'s four tints — <c>OfferCard.Tint</c>'s values.</summary>
-        private static Color Tint(SkillKind kind) => kind switch
+        /// <summary>Check when taken, plus while a point can take it, lock when out of reach (rule 4).</summary>
+        private Sprite BadgeFor(NodeState state, bool takeable) => state switch
         {
-            SkillKind.Passive => Palette.KindPassive,
-            SkillKind.Active => Palette.KindActive,
-            SkillKind.Upgrade => Palette.KindUpgrade,
-            SkillKind.Keystone => Palette.KindKeystone,
-            _ => Palette.KindPassive,
+            NodeState.Taken => _checkBadge,
+            NodeState.Available => takeable ? _plusBadge : null,
+            _ => _lockBadge,
         };
+
+        private static void Place(RectTransform rect, Vector2 anchor, Vector2 pivot, float size, Vector2 position)
+        {
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = pivot;
+            rect.sizeDelta = new Vector2(size, size);
+            rect.anchoredPosition = position;
+        }
     }
 }

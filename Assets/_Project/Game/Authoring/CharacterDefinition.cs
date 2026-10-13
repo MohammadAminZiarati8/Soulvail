@@ -240,6 +240,10 @@ namespace Soulvail.Game.Authoring
                  "and no node here draws Icon_Placeholder.")]
         [SerializeField] private SkillDefinition _volleyNode;
 
+        [Tooltip("The emblem drawn at the left end of the class plate under the skill tree (UI-04c), " +
+                 "from Art/UI/Tree/. Empty is not an error: the plate shows the class name alone.")]
+        [SerializeField] private Sprite _emblem;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -412,7 +416,8 @@ namespace Soulvail.Game.Authoring
         public CharacterLook ToLook() => new CharacterLook(
             _body,
             _projectile,
-            _volleyNode == null ? default : new ContentId(_volleyNode.Id));
+            _volleyNode == null ? default : new ContentId(_volleyNode.Id),
+            _emblem);
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

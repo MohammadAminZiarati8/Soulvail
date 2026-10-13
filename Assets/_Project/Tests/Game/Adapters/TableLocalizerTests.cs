@@ -872,13 +872,12 @@ public sealed class TableLocalizerTests
         {
             typeof(OfferCard),
             typeof(SkillRow),
-            typeof(TreeNodeButton),
             typeof(ManualSkillButton),
             typeof(FirstActiveHint),
             typeof(OverflowToast),
         })
         {
-            // Ledger row 9's six readers, by name. Each must be able to reach the port at all —
+            // Ledger row 9's readers, by name (TreeNodeButton left at UI-04c: a tile draws no words). Each must be able to reach the port at all —
             // through a draw call for the four pooled cells, through [Inject] for the two
             // components RunScope owns.
             Assert.That(
@@ -904,7 +903,7 @@ public sealed class TableLocalizerTests
     {
         foreach (Type cell in new[]
         {
-            typeof(OfferCard), typeof(SkillRow), typeof(TreeNodeButton), typeof(ManualSkillButton),
+            typeof(OfferCard), typeof(SkillRow), typeof(ManualSkillButton),
         })
         {
             MethodInfo show = cell.GetMethod("Show", BindingFlags.Instance | BindingFlags.Public);

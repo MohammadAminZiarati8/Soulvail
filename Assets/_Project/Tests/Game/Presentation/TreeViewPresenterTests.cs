@@ -350,72 +350,34 @@ public sealed class TreeViewPresenterTests
     }
 
     [Test]
-    public void Tree_TintsByKind()
-    {
-        // One of each of CH §4's four kinds, drawn from a *legal* tree rather than from specs built
-        // by hand: the keystone ends its branch alone and the upgrade's parent is below it in the
-        // same branch, which is what TreeRules refuses a tree for getting wrong.
-        StartRun();
-        BuildScreen();
-
-        _presenter.Open(null);
-
-        Color passive = StripOf(Node('a', 1, 'b'));
-        Color active = StripOf(ConsecrateKey);
-        Color upgrade = StripOf(Node('a', 2, 'b'));
-        Color keystone = StripOf(Keystone('a'));
-
-        Assert.That(_catalog.Skill(new ContentId(Node('a', 2, 'b'))).Kind, Is.EqualTo(SkillKind.Upgrade));
-
-        var all = new[] { passive, active, upgrade, keystone };
-
-        // Four different colours — CH §4's four kinds are what a player distinguishes at a glance,
-        // and two kinds sharing a tint is the one failure here that still looks like a working
-        // screen.
-        Assert.That(
-            all.Distinct().Count(),
-            Is.EqualTo(4),
-            "Two of CH §4's four kinds are drawn in the same colour, so the strip says nothing.");
-
-        // **And they are Palette's four, which is what M3-13a changed here.** This used to compare
-        // TreeNodeButton's four serialized fields against OfferCard's four, field name by field name,
-        // because the two screens each carried their own copy and two answers to one question is how
-        // a Keystone ends up a different colour on the card that offered it and the tree that holds
-        // it. There is one answer now, so the row asserts the answer rather than the agreement.
-        Assert.That(passive, Is.EqualTo(Palette.KindPassive));
-        Assert.That(active, Is.EqualTo(Palette.KindActive));
-        Assert.That(upgrade, Is.EqualTo(Palette.KindUpgrade));
-        Assert.That(keystone, Is.EqualTo(Palette.KindKeystone));
-    }
-
-    [Test]
-    public void Tree_FrameColoursByState()
+    public void Tree_TilesByState()
     {
         StartRun(level: 3, taken: new[] { ConsecrateKey, Node('a', 1, 'b') });
         BuildScreen();
 
         _presenter.Open(null);
 
-        Color taken = FrameOf(ConsecrateKey);
-        Color available = FrameOf(Node('a', 2, 'b'));
-        Color locked = FrameOf(Node('a', 4, 'a'));
-
         Assert.That(Expected(new ContentId(Node('a', 2, 'b'))), Is.EqualTo(NodeState.Available));
         Assert.That(Expected(new ContentId(Node('a', 4, 'a'))), Is.EqualTo(NodeState.Locked));
 
-        // Three different frames, and the frame is the thing CH §5.1's "the player's path
+        Sprite taken = TileOf(ConsecrateKey);
+        Sprite available = TileOf(Node('a', 2, 'b'));
+        Sprite locked = TileOf(Node('a', 4, 'a'));
+
+        // Three different tiles, and the tile is the thing CH §5.1's "the player's path
         // highlighted" is made of — two states sharing one is a tree that cannot be read at all.
         Assert.That(
             new[] { locked, available, taken }.Distinct().Count(),
             Is.EqualTo(3),
-            "Two of the three node states are drawn in the same frame colour.");
+            "Two of the three node states are drawn on the same tile.");
 
-        // From Palette rather than from three serialized fields on the cell template, which is what
-        // M3-13a changed here. The claim the row makes is the same one — these three frames are the
-        // three states, named — and it is now made against the one place the values live.
-        Assert.That(locked, Is.EqualTo(Palette.NodeLocked));
-        Assert.That(available, Is.EqualTo(Palette.NodeAvailable));
-        Assert.That(taken, Is.EqualTo(Palette.NodeTaken));
+        Assert.That(taken.name, Is.EqualTo("TreeTile_Taken"));
+        Assert.That(available.name, Is.EqualTo("TreeTile_Available"));
+        Assert.That(locked.name, Is.EqualTo("TreeTile_Locked"));
+
+        // The art carries the colour; the one tint left is the icon's, dimmed to Palette's locked grey.
+        Assert.That(Field<Image>(CellFor(Node('a', 4, 'a')), "_icon").color, Is.EqualTo(Palette.NodeLocked));
+        Assert.That(Field<Image>(CellFor(ConsecrateKey), "_icon").color, Is.EqualTo(Color.white));
     }
 
     // ---- The fourth state: a node Banish took (M6-03b rules 7, 8, 9) -----------------------------
@@ -445,7 +407,7 @@ public sealed class TreeViewPresenterTests
             Assert.That(cell.State, Is.EqualTo(Expected(cell.Node)), $"'{cell.Node}'.");
         }
 
-        Assert.That(FrameOf(Node('b', 1, 'a')), Is.EqualTo(Palette.NodeBanished));
+        Assert.That(TileOf(Node('b', 1, 'a')).name, Is.EqualTo("TreeTile_Locked"));
     }
 
     [Test]
@@ -485,20 +447,19 @@ public sealed class TreeViewPresenterTests
     }
 
     [Test]
-    public void Node_BanishedDrawsItsOwnFrame()
+    public void Node_BanishedWearsTheLockedTile()
     {
         StartRun();
         BuildScreen();
 
         TreeNodeButton cell = _cellTemplateOf();
 
-        cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Banished, Passthrough());
+        cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Banished, null, 1);
 
         Assert.That(cell.State, Is.EqualTo(NodeState.Banished));
-        Assert.That(Field<Image>(cell, "_frame").color, Is.EqualTo(Palette.NodeBanished));
-
-        // Its own, and not Locked's: a banished node drawn locked is M6-02b's gap, still open.
-        Assert.That(Palette.NodeBanished, Is.Not.EqualTo(Palette.NodeLocked));
+        Assert.That(Field<Image>(cell, "_tile").sprite, Is.SameAs(Field<Sprite>(cell, "_lockedTile")));
+        Assert.That(Field<Image>(cell, "_icon").color, Is.EqualTo(Palette.NodeLocked));
+        Assert.That(Field<Image>(cell, "_badge").sprite, Is.SameAs(Field<Sprite>(cell, "_lockBadge")));
     }
 
     [Test]
@@ -528,7 +489,7 @@ public sealed class TreeViewPresenterTests
 
         Assert.That(Enum.IsDefined(typeof(NodeState), fifth), Is.False, "the fixture's premise.");
         Assert.That(
-            () => _cellTemplateOf().Show(_catalog.Skill(new ContentId(ConsecrateKey)), fifth, Passthrough()),
+            () => _cellTemplateOf().Show(_catalog.Skill(new ContentId(ConsecrateKey)), fifth, null, 1),
             Throws.InstanceOf<ArgumentOutOfRangeException>());
     }
 
@@ -537,42 +498,19 @@ public sealed class TreeViewPresenterTests
     {
         StartRun();
 
-        SkillSpec spec = _catalog.Skill(new ContentId(ConsecrateKey));
+        CharacterSpec character = _catalog.Character(_session.State.CharacterId);
 
         BuildScreen(new DictionaryLocalizer(
-            spec.NameKey.Key, "Consecrate",
-            spec.DescriptionKey.Key, "Healing ground underfoot.",
+            character.NameKey.Key, "Paladin",
             _tree.Branches[0].NameKey.Key, "Oath"));
 
         _presenter.Open(null);
 
-        // **M3-09d's `Tree_DrawsKeysNotEnglish`, inverted** — ledger row 9's fourth reader and by a
-        // long way its densest, closing. That row pinned one cell to the exact string a player
-        // would read so that resolving it would be a red row somebody had to argue with; this is
-        // the argument. Rewritten rather than deleted, which is why the count does not move.
-        Assert.That(NameOn(ConsecrateKey), Is.EqualTo("Consecrate"));
-        Assert.That(NameOn(ConsecrateKey), Is.Not.EqualTo(ConsecrateKey));
-        Assert.That(DescriptionOn(ConsecrateKey), Is.EqualTo("Healing ground underfoot."));
-
-        // And the branch's own heading, which is one of rule 7's three.
+        // **M3-09d's `Tree_DrawsKeysNotEnglish`, inverted** — rewritten at UI-04c, when the tile
+        // stopped carrying a node's name: the words left on the screen are the branch headings and the
+        // class plate, and both resolve through the port.
         Assert.That(Field<TMP_Text[]>(_presenter, "_branchLabels")[0].text, Is.EqualTo("Oath"));
-
-        // **Every other cell falls back to its key, and that is rule 1 rather than a gap** — this
-        // fixture's tree is synthetic and the table above holds one node. It is also exactly why
-        // "every key has a row" is M3-14b's: from a cell, a missing row and a wrong key look the
-        // same, so a coverage claim asserted here would be this task grading its own homework.
-        foreach (TreeNodeButton cell in ShownCells())
-        {
-            if (cell.Node == new ContentId(ConsecrateKey))
-            {
-                continue;
-            }
-
-            Assert.That(
-                Text(cell, "_name"),
-                Does.StartWith("skill."),
-                $"'{cell.Node}' has no row, so it should have fallen back to its own key.");
-        }
+        Assert.That(Field<TMP_Text>(Field<TreeBlockView>(_presenter, "_block"), "_className").text, Is.EqualTo("Paladin"));
 
         // And the member is still `Key`. M3-00c recorded the spec's four `.Value` sites two spec
         // groups ago and M3-08b fixed them; this task reads the same member inside TableLocalizer.
@@ -646,7 +584,7 @@ public sealed class TreeViewPresenterTests
         // screen is up, because nothing in this class runs on one.
         TreeNodeButton cell = ShownCells()[0];
 
-        Label(cell, "_name").text = "sentinel";
+        Label(cell, "_numeral").text = "sentinel";
 
         for (int frame = 0; frame < 60; frame++)
         {
@@ -654,7 +592,7 @@ public sealed class TreeViewPresenterTests
         }
 
         Assert.That(
-            Text(cell, "_name"),
+            Text(cell, "_numeral"),
             Is.EqualTo("sentinel"),
             "Something repainted a cell without being asked, so the tree is being polled.");
     }
@@ -1026,7 +964,7 @@ public sealed class TreeViewPresenterTests
 
         var cellSo = new SerializedObject(template);
 
-        foreach (string field in new[] { "_name", "_description", "_frame", "_kindStrip", "_button", "_outline", "_padlock" })
+        foreach (string field in new[] { "_tile", "_icon", "_badge", "_numeral", "_button", "_takenTile", "_availableTile", "_lockedTile", "_checkBadge", "_plusBadge", "_lockBadge" })
         {
             Assert.That(
                 cellSo.FindProperty(field).objectReferenceValue,
@@ -1129,9 +1067,14 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        Assert.That(() => _presenter.Construct(null, _session, NewPause(), _catalog, Passthrough()), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), null, Passthrough()), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), _catalog, null), Throws.ArgumentNullException);
+        SkillIconBook icons = NoIcons();
+        CharacterLookBook looks = NoLooks();
+
+        Assert.That(() => _presenter.Construct(null, _session, NewPause(), _catalog, Passthrough(), icons, looks), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), null, Passthrough(), icons, looks), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), _catalog, null, icons, looks), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), _catalog, Passthrough(), null, looks), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), _catalog, Passthrough(), icons, null), Throws.ArgumentNullException);
     }
 
     [Test]
@@ -1143,21 +1086,15 @@ public sealed class TreeViewPresenterTests
         TreeNodeButton cell = _cellTemplateOf();
 
         Assert.That(
-            () => cell.Show(null, NodeState.Locked, Passthrough()),
+            () => cell.Show(null, NodeState.Locked, null, 1),
             Throws.ArgumentNullException,
             "A cell with no node to draw is a presenter that walked past the end of the tree.");
-
-        // A cell with no localizer would draw two keys, twelve cells at a time — the densest place
-        // in the game for that to happen silently (M3-14a rule 1).
-        Assert.That(
-            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Locked, null),
-            Throws.ArgumentNullException);
 
         // **Loud rather than silent**, and the reason is that M6-02 is already named as the task
         // that adds a fourth member: a new state with no colour would draw as Locked, which is a
         // node the player owns reading as one they cannot reach (PlayerStats.Resolve's rule).
         Assert.That(
-            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), (NodeState)7, Passthrough()),
+            () => cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), (NodeState)7, null, 1),
             Throws.InstanceOf<ArgumentOutOfRangeException>(),
             "A node state with no frame colour was absorbed rather than reported.");
     }
@@ -1319,7 +1256,7 @@ public sealed class TreeViewPresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
-        _presenter.Construct(_session, _session, NewPause(), _catalog, localizer ?? Passthrough());
+        _presenter.Construct(_session, _session, NewPause(), _catalog, localizer ?? Passthrough(), NoIcons(), NoLooks());
     }
 
     /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
@@ -1471,13 +1408,11 @@ public sealed class TreeViewPresenterTests
     private Vector2[] Rects() =>
         ShownCells().Select(c => ((RectTransform)c.transform).sizeDelta).ToArray();
 
-    private string NameOn(string id) => Text(CellFor(id), "_name");
+    private Sprite TileOf(string id) => Field<Image>(CellFor(id), "_tile").sprite;
 
-    private string DescriptionOn(string id) => Text(CellFor(id), "_description");
+    private static SkillIconBook NoIcons() => new SkillIconBook(new Dictionary<ContentId, Sprite>());
 
-    private Color StripOf(string id) => Field<Image>(CellFor(id), "_kindStrip").color;
-
-    private Color FrameOf(string id) => Field<Image>(CellFor(id), "_frame").color;
+    private static CharacterLookBook NoLooks() => new CharacterLookBook(new Dictionary<ContentId, CharacterLook>());
 
     /// <summary>What the run says this node is — the four answers, from core.</summary>
     private NodeState Expected(ContentId id)

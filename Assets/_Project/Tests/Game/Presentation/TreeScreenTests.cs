@@ -71,6 +71,8 @@ public sealed partial class TreeScreenTests : InputTestFixture
     private readonly List<GameObject> _spawned = new List<GameObject>();
 
     private DomainEventHub _hub;
+    private readonly Dictionary<ContentId, Sprite> _iconMap = new Dictionary<ContentId, Sprite>();
+    private readonly Dictionary<ContentId, CharacterLook> _lookMap = new Dictionary<ContentId, CharacterLook>();
     private RunSession _session;
     private RunPause _pause;
     private SkillTreeSpec _tree;
@@ -87,6 +89,8 @@ public sealed partial class TreeScreenTests : InputTestFixture
         _restoreTimeScale = Time.timeScale;
 
         _hub = new DomainEventHub();
+        _iconMap.Clear();
+        _lookMap.Clear();
         _pause = new RunPause();
     }
 
@@ -265,26 +269,23 @@ public sealed partial class TreeScreenTests : InputTestFixture
 
             Assert.That(cell.State, Is.EqualTo(expected), $"'{cell.Node}'.");
 
-            // Outlined in Palette.Available exactly while it can be taken, a point being banked.
-            var outline = Field<Outline>(cell, "_outline");
+            // The plus badge exactly while it can be taken, a point being banked; a lock while locked.
+            var badge = Field<Image>(cell, "_badge");
 
-            Assert.That(outline.enabled, Is.EqualTo(expected == NodeState.Available), $"'{cell.Node}' outline.");
-            Assert.That(outline.effectColor, Is.EqualTo(Palette.Available));
-
-            // Dim with a padlock while locked, and only then.
-            Assert.That(Field<GameObject>(cell, "_padlock").activeSelf, Is.EqualTo(expected == NodeState.Locked));
+            Assert.That(badge.gameObject.activeSelf && badge.sprite.name == "TreeBadge_Plus", Is.EqualTo(expected == NodeState.Available), $"'{cell.Node}' plus.");
+            Assert.That(badge.gameObject.activeSelf && badge.sprite.name == "TreeBadge_Lock", Is.EqualTo(expected == NodeState.Locked), $"'{cell.Node}' lock.");
 
             seen.Add(expected);
         }
 
         Assert.That(seen, Is.EquivalentTo(new[] { NodeState.Taken, NodeState.Available, NodeState.Locked }));
         Assert.That(CellFor(first).State, Is.EqualTo(NodeState.Taken));
-        Assert.That(Field<Image>(CellFor(first), "_frame").color, Is.EqualTo(Palette.NodeTaken), "a taken node is not lit.");
-        Assert.That(Field<Image>(CellFor(LockedNode()), "_frame").color, Is.EqualTo(Palette.NodeLocked));
+        Assert.That(Field<Image>(CellFor(first), "_tile").sprite.name, Is.EqualTo("TreeTile_Taken"), "a taken node is not lit.");
+        Assert.That(Field<Image>(CellFor(LockedNode()), "_tile").sprite.name, Is.EqualTo("TreeTile_Locked"));
     }
 
     [Test]
-    public void Cells_NoPoint_NoOutline()
+    public void Cells_NoPoint_NoPlus()
     {
         StartRun(Ranger(), free: true, pending: 0);
         Build();
@@ -295,7 +296,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
 
         foreach (TreeNodeButton cell in Shown())
         {
-            Assert.That(Field<Outline>(cell, "_outline").enabled, Is.False, $"'{cell.Node}' is outlined at 0 points.");
+            Assert.That(PlusShown(cell), Is.False, $"'{cell.Node}' shows a plus at 0 points.");
             Assert.That(cell.IsTakeable, Is.False);
         }
     }
@@ -414,7 +415,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
         foreach (TreeNodeButton cell in Shown())
         {
             Assert.That(Field<Button>(cell, "_button").interactable, Is.False, $"'{cell.Node}' is interactable.");
-            Assert.That(Field<Outline>(cell, "_outline").enabled, Is.False);
+            Assert.That(PlusShown(cell), Is.False);
 
             Tap(cell);
         }
@@ -587,7 +588,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
 
         Assert.That(_screen, Is.Not.Null, "TreeViewPresenter did not load off its prefab (Traps §5).");
 
-        _screen.Construct(_session, _session, _pause, _catalog, localizer);
+        _screen.Construct(_session, _session, _pause, _catalog, localizer, new SkillIconBook(_iconMap), new CharacterLookBook(_lookMap));
 
         GameObject hud = Spawn(HudPath);
 
@@ -632,6 +633,13 @@ public sealed partial class TreeScreenTests : InputTestFixture
     }
 
     private void TapClose() => Field<Button>(_screen, "_close").onClick.Invoke();
+
+    private static bool PlusShown(TreeNodeButton cell)
+    {
+        var badge = Field<Image>(cell, "_badge");
+
+        return badge.gameObject.activeSelf && badge.sprite.name == "TreeBadge_Plus";
+    }
 
     /// <summary>
     /// A tap as the EventSystem would deliver it to an interactable cell; <c>Invoke</c> ignores

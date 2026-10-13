@@ -4,6 +4,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using TMPro;
@@ -98,7 +99,7 @@ namespace Soulvail.Game.Presentation
     public sealed class TreeViewPresenter : MonoBehaviour
     {
         /// <summary>The cell height a non-finite or non-positive <see cref="_cellHeightDp"/> falls back to.</summary>
-        private const float DefaultCellHeightDp = 44f;
+        private const float DefaultCellHeightDp = 64f;
 
         // The screen's chrome in dp (UI-03c rule 9). Every word clears Android's 12 sp floor (M4-07);
         // the rest are guesses until a phone exists.
@@ -129,10 +130,8 @@ namespace Soulvail.Game.Presentation
         private const float RibbonBorderPx = 200f;
         private const float RibbonSpriteHeightPx = 267f;
         private const float PillBorderPx = 105f;
-        private const float BranchLabelDp = 24f;
-        private const float BranchTextDp = 14f;
-        private const float NodeNameDp = 13f;
-        private const float NodeTextDp = 12f;
+        /// <summary>The room kept under the block for UI-04d's card, in dp (UI-04c rule 10).</summary>
+        private const float CardSpaceDp = 190f;
 
         /// <summary>
         /// <em>"This class has no skill tree yet."</em> — shown instead of the columns for a class
@@ -180,6 +179,9 @@ namespace Soulvail.Game.Presentation
                  "is built under its own column on first open and reused after that (rule 4).")]
         [SerializeField] private TreeNodeButton _cellTemplate;
 
+        [Tooltip("The block the grid, its links, row labels and the class plate are drawn by (UI-04c).")]
+        [SerializeField] private TreeBlockView _block;
+
         [Tooltip("The pill's count of banked points, from ui.tree.points: a bare number. A drawing " +
                  "run reads 0 (UI-04b rule 5).")]
         [SerializeField] private TMP_Text _pointsLabel;
@@ -211,10 +213,11 @@ namespace Soulvail.Game.Presentation
                  "placeholder — the empty label's pattern (M3-14c).")]
         [SerializeField] private TMP_Text _closeLabel;
 
-        [Tooltip("How tall one tier's row wants to be, in dp. A ceiling rather than a size: a " +
-                 "branch taller than its column shrinks to fit (rule 9). Applied at runtime for " +
-                 "the reason HudPresenter applies its own — a Scale-With-Screen-Size canvas " +
-                 "measures in reference pixels. A guess until a phone exists — ledger row 4.")]
+        [Tooltip("How wide and tall one tile wants to be, in dp. A ceiling rather than a size: a " +
+                 "block taller or narrower than that shrinks its tiles to fit (UI-04c rule 10). " +
+                 "Applied at runtime for the reason HudPresenter applies its own — a " +
+                 "Scale-With-Screen-Size canvas measures in reference pixels. A guess until a " +
+                 "phone exists — ledger row 4.")]
         [SerializeField] private float _cellHeightDp = DefaultCellHeightDp;
 
         [Tooltip("The gap between two cells, in dp, both down a column and across a tier. A guess " +
@@ -226,6 +229,8 @@ namespace Soulvail.Game.Presentation
         private IProgressionCommands _progression;
         private RunPause _pause;
         private ContentCatalog _catalog;
+        private SkillIconBook _icons;
+        private CharacterLookBook _looks;
 
         /// <summary>Android Back while the screen is up; created on first show (UI-03c rule 5).</summary>
         private InputAction _back;
@@ -305,14 +310,20 @@ namespace Soulvail.Game.Presentation
         /// (M3-14a rule 11) — and used directly for the three column headings, which are this
         /// class's own.
         /// </param>
+        /// <param name="icons">Each skill's icon, for its tile (UI-04c rule 3).</param>
+        /// <param name="looks">The class's emblem, for the plate under the block (rule 8).</param>
         [Inject]
         public void Construct(
             IRunSession session,
             IProgressionCommands progression,
             RunPause pause,
             ContentCatalog catalog,
-            ILocalizer localizer)
+            ILocalizer localizer,
+            SkillIconBook icons,
+            CharacterLookBook looks)
         {
+            _icons = icons ?? throw new ArgumentNullException(nameof(icons));
+            _looks = looks ?? throw new ArgumentNullException(nameof(looks));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             _pause = pause ?? throw new ArgumentNullException(nameof(pause));
@@ -331,10 +342,10 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void Start()
         {
-            if (_root == null || _cellTemplate == null || _emptyLabel == null || _close == null)
+            if (_root == null || _cellTemplate == null || _block == null || _emptyLabel == null || _close == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(TreeViewPresenter)} is missing its root, its cell template, its empty " +
+                    $"{nameof(TreeViewPresenter)} is missing its root, its cell template, its block, its empty " +
                     "label or its Close button. A tree view that is only partly dressed opens over " +
                     "a stopped game, shows nothing, and cannot be closed — which is " +
                     "indistinguishable from a crash.");
@@ -524,7 +535,7 @@ namespace Soulvail.Game.Presentation
 
             WritePoints(points);
 
-            // Before Layout, which reads the columns' height.
+            // Before Arrange, which reads the block's size.
             PlaceChrome();
 
             if (_emptyLabel != null)
@@ -547,7 +558,13 @@ namespace Soulvail.Game.Presentation
             }
 
             Build(tree);
-            Layout(tree);
+
+            if (_block != null)
+            {
+                float px = PixelsPerDp();
+
+                _block.Arrange(tree, _cells, _branchColumns, _branchLabels, px, CellHeight * px, CellGap * px);
+            }
 
             int index = 0;
 
@@ -572,7 +589,12 @@ namespace Soulvail.Game.Presentation
                         ContentId id = tier[i];
 
                         // Rule 3 and rule 7 in one flag: a drawing run's cells are never takeable.
-                        _cells[index].Show(_catalog.Skill(id), StateOf(state, id), _localizer, points > 0);
+                        _cells[index].Show(
+                            _catalog.Skill(id),
+                            StateOf(state, id),
+                            IconOf(id),
+                            t,
+                            points > 0);
 
                         index++;
                     }
@@ -583,6 +605,24 @@ namespace Soulvail.Game.Presentation
             {
                 _cells[i].Hide();
             }
+
+            if (_block != null)
+            {
+                _block.Show(
+                    tree,
+                    id => StateOf(state, id),
+                    _localizer,
+                    _looks?.For(state.CharacterId).Emblem,
+                    _catalog.Character(state.CharacterId).NameKey);
+            }
+        }
+
+        /// <summary>The node's icon from the book, else the block's placeholder (UI-04c rule 3).</summary>
+        private Sprite IconOf(ContentId id)
+        {
+            Sprite icon = _icons?.For(id);
+
+            return icon != null ? icon : _block != null ? _block.Placeholder : null;
         }
 
         /// <summary>
@@ -708,94 +748,12 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Lays each branch out down its own column: one row per tier, the tier's nodes side by side
-        /// (rule 4), shrinking to fit (rule 9).
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// Here rather than in the prefab for <c>HudPresenter.Place</c>'s two reasons, and a third
-        /// this screen adds: a Scale-With-Screen-Size canvas measures in reference pixels, so a
-        /// 44 dp cell authored as 44 of those is a different physical size on every phone; twenty-
-        /// seven rects that have to agree about where each other are is twenty-seven chances to
-        /// overlap; and the cells do not exist at author time at all, being clones made on first
-        /// open.
-        /// </para>
-        /// <para>
-        /// <b>Both float doors fall back to a value rather than leaving the layout alone, and that
-        /// is the opposite of <c>PausePresenter.Place</c> on purpose.</b> There is no authored layout
-        /// to fall back to: every cell is a clone that starts life on the template's rect, so
-        /// "leave it alone" is twenty-seven cells stacked on top of each other. The two fall back
-        /// differently because the fields differ — a cell <em>height</em> has no honest zero, so it
-        /// takes <see cref="DefaultCellHeightDp"/> (<c>FirstActiveHint.Dwell</c>'s answer), while a
-        /// <em>gap</em> does, so an unusable one is 0 and the grid is cells touching, which is a
-        /// layout rather than a fault.
-        /// </para>
-        /// </remarks>
-        private void Layout(SkillTreeSpec tree)
-        {
-            if (_cells.Count == 0)
-            {
-                return;
-            }
-
-            float pxPerDp = PixelsPerDp();
-            float gapPx = CellGap * pxPerDp;
-            float wantedPx = CellHeight * pxPerDp;
-
-            int index = 0;
-
-            for (int b = 0; b < tree.Branches.Count; b++)
-            {
-                SkillBranchSpec branch = tree.Branches[b];
-                RectTransform column = ColumnRect(b);
-
-                float rowPx = RowHeight(column, branch.TierCount, wantedPx, gapPx);
-
-                for (int t = 1; t <= branch.TierCount; t++)
-                {
-                    IReadOnlyList<ContentId> tier = branch.Tier(t);
-
-                    // A tier is a row and its nodes share that row's width in equal shares
-                    // (M3-02a rule 7): CH §5's one-node-a-tier drawing is one case of this, not the
-                    // shape the game ships.
-                    float share = 1f / tier.Count;
-
-                    for (int i = 0; i < tier.Count; i++)
-                    {
-                        if (index >= _cells.Count)
-                        {
-                            return;
-                        }
-
-                        _cells[index].SizeText(NodeNameDp * pxPerDp, NodeTextDp * pxPerDp);
-
-                        if (_cells[index].transform is RectTransform rect)
-                        {
-                            // Tier 1 at the bottom (UI-03c rule 2): a tree grows upward, and every
-                            // column's first row sits on the same line whatever its height.
-                            rect.anchorMin = new Vector2(i * share, 0f);
-                            rect.anchorMax = new Vector2((i + 1) * share, 0f);
-                            rect.pivot = new Vector2(0.5f, 0f);
-
-                            // Stretched across its share of the column and inset by the gap, so the
-                            // column's own width is the prefab's business and never arithmetic here.
-                            rect.sizeDelta = new Vector2(-gapPx, rowPx);
-                            rect.anchoredPosition = new Vector2(0f, (t - 1) * (rowPx + gapPx));
-                        }
-
-                        index++;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// The header, the columns under it and every word on the screen, in dp (UI-03c rules 5, 9).
+        /// The header, the block under it and every word on the screen, in dp (UI-03c rules 5, 9).
         /// </summary>
         /// <remarks>
         /// The prefab authored these in reference units of a 1920×1080 landscape canvas, which on a
         /// 9:20 phone ran the header past the safe area while the cells, already in dp, shrank to
-        /// fit. Placed here for <see cref="Layout"/>'s reasons, so the whole screen is one unit.
+        /// fit. Placed here so the whole screen is one unit.
         /// The columns hang from the header's bottom edge, so a cell can never run under it.
         /// </remarks>
         private void PlaceChrome()
@@ -905,44 +863,16 @@ namespace Soulvail.Game.Presentation
                 _emptyLabel.fontSize = HeaderTextDp * px;
             }
 
-            float labelPx = BranchLabelDp * px;
-
-            for (int b = 0; b < SkillTreeSpec.BranchCount; b++)
+            // The block fills the frame's content area, less the room UI-04d's card will take under
+            // it (UI-04c rule 10); everything inside it is the block's to place.
+            if (_block != null && _block.transform is RectTransform grid)
             {
-                RectTransform cells = ColumnRect(b);
+                float inset = margin + (ContentInsetDp * px);
 
-                if (cells == null)
-                {
-                    continue;
-                }
-
-                // The column is the cells' parent, and the grid the columns' — the prefab's shape.
-                if (b == 0 && cells.parent != null && cells.parent.parent is RectTransform grid)
-                {
-                    grid.anchorMin = Vector2.zero;
-                    grid.anchorMax = Vector2.one;
-                    float inset = margin + (ContentInsetDp * px);
-
-                    grid.offsetMin = new Vector2(inset, inset);
-                    grid.offsetMax = new Vector2(-inset, -(top + (ribbonHeight / 2f) + margin));
-                }
-
-                cells.anchorMin = Vector2.zero;
-                cells.anchorMax = Vector2.one;
-                cells.offsetMin = Vector2.zero;
-                cells.offsetMax = new Vector2(0f, -(labelPx + (CellGap * px)));
-
-                if (_branchLabels is not null && b < _branchLabels.Length && _branchLabels[b] != null)
-                {
-                    RectTransform label = _branchLabels[b].rectTransform;
-
-                    label.anchorMin = new Vector2(0f, 1f);
-                    label.anchorMax = Vector2.one;
-                    label.pivot = new Vector2(0.5f, 1f);
-                    label.anchoredPosition = Vector2.zero;
-                    label.sizeDelta = new Vector2(0f, labelPx);
-                    _branchLabels[b].fontSize = BranchTextDp * px;
-                }
+                grid.anchorMin = Vector2.zero;
+                grid.anchorMax = Vector2.one;
+                grid.offsetMin = new Vector2(inset, inset + (CardSpaceDp * px));
+                grid.offsetMax = new Vector2(-inset, -(top + (ribbonHeight / 2f) + margin));
             }
         }
 
@@ -971,33 +901,6 @@ namespace Soulvail.Game.Presentation
             {
                 image.pixelsPerUnitMultiplier = borderPx / wanted;
             }
-        }
-
-        /// <summary>
-        /// How tall one tier's row may be: what it wants, or what the column has room for (rule 9).
-        /// </summary>
-        /// <remarks>
-        /// A column with no height yet — an undressed prefab, or a canvas that has never been
-        /// through a layout pass — keeps the wanted height rather than collapsing to nothing, which
-        /// is the difference between a screen that is too small and a screen that is not there.
-        /// </remarks>
-        private static float RowHeight(RectTransform column, int rows, float wantedPx, float gapPx)
-        {
-            if (column == null || rows <= 0)
-            {
-                return wantedPx;
-            }
-
-            float available = column.rect.height;
-
-            if (!float.IsFinite(available) || available <= 0f)
-            {
-                return wantedPx;
-            }
-
-            float fitted = (available - ((rows - 1) * gapPx)) / rows;
-
-            return float.IsFinite(fitted) && fitted > 0f && fitted < wantedPx ? fitted : wantedPx;
         }
 
         private void WriteBranchLabels(SkillTreeSpec tree)

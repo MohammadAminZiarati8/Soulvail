@@ -39,11 +39,16 @@ public readonly struct CharacterLook
     /// the run's default bolt, as an enemy's do. Optional, so a look that names only a body is
     /// written as it was before RS-02c.
     /// </param>
-    public CharacterLook(GameObject body, ProjectileView projectile = null, ContentId volleyNode = default)
+    public CharacterLook(
+        GameObject body,
+        ProjectileView projectile = null,
+        ContentId volleyNode = default,
+        Sprite emblem = null)
     {
         Body = body;
         Projectile = projectile;
         VolleyNode = volleyNode;
+        Emblem = emblem;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -71,6 +76,12 @@ public readonly struct CharacterLook
     /// node, and <c>AutoCastRow</c> asks <c>SkillIconBook</c> for its icon.
     /// </remarks>
     public ContentId VolleyNode { get; }
+
+    /// <summary>
+    /// The emblem on the class plate under the tree (UI-04c), or null for none: the plate then shows the
+    /// class name alone. Read with Unity's <c>==</c> for <see cref="Body"/>'s reason.
+    /// </summary>
+    public Sprite Emblem { get; }
 }
 
 /// <summary>

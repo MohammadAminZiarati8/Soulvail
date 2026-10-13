@@ -881,8 +881,7 @@ public sealed class PaletteTests
         {
             ("Soulvail.Tests.Game.Views.SkillViewTests", "Views_UseNoDangerColour", nameof(Palette.Player)),
             ("Soulvail.Tests.Game.Presentation.LevelUpPresenterTests", "Card_TintsByKind", nameof(Palette.KindPassive)),
-            ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_TintsByKind", nameof(Palette.KindKeystone)),
-            ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_FrameColoursByState", nameof(Palette.NodeLocked)),
+            ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_TilesByState", nameof(Palette.NodeLocked)),
             // UI-01e took the row's kind tint away with the icons, so the row that asserts its colours
             // is the one that replaced Row_TintsByKind, and its member is the sweep's ink.
             ("Soulvail.Tests.Game.Presentation.AutoCastRowTests", "Row_CarriesNoColourOfItsOwn", nameof(Palette.Ink)),

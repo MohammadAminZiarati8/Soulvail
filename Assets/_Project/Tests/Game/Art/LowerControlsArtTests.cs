@@ -20,7 +20,7 @@ namespace Soulvail.Tests.Game.Art;
 /// </para>
 /// <para>
 /// <b>The pieces are driven by name, not by folder.</b> There are 7 pieces in <c>Art/UI/Hud/</c>
-/// and 1 icon in <c>Art/UI/Icons/</c>, bringing the total HUD sprite count to 27 across both folders.
+/// and 1 icon in <c>Art/UI/Icons/</c>, bringing the total HUD sprite count to 27 across both folders; UI-04a's three tree icons make it 30.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -88,15 +88,15 @@ public sealed class LowerControlsArtTests
     }
 
     [Test]
-    public void LowerControlsArt_TotalHudCountIsTwentySeven()
+    public void LowerControlsArt_TotalHudCountIsThirty()
     {
         string[] found = AssetDatabase.FindAssets("t:Texture2D", new[] { HudFolder, IconFolder })
             .Select(AssetDatabase.GUIDToAssetPath)
             .OrderBy(path => path)
             .ToArray();
 
-        Assert.That(found, Has.Length.EqualTo(27),
-            "the HUD holds exactly 27 pieces: 19 from UI-01 top band + 8 from UI-02a lower controls.");
+        Assert.That(found, Has.Length.EqualTo(30),
+            "Hud/ and Icons/ hold exactly 30 pieces: 19 from UI-01, 8 from UI-02a, 3 tree icons from UI-04a.");
     }
 
     [TestCaseSource(nameof(LowerControlPaths))]

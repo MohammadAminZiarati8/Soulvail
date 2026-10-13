@@ -378,6 +378,12 @@ What the planning found:
 | UI-03b | [The level-up banner and the point badge](tasks/UI-03b-the-point-badge.md) — non-blocking toast, green count on the star | S | UI-03a | ☑ |
 | UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☑ |
 | UI-03d | [The switch: pause door, the Jungle on, the docs](tasks/UI-03d-the-switch-and-the-docs.md) — CH §5.1 / GD §13.1 rewritten | S | UI-03c | ☑ |
+| UI-04a | [The tree screen's art, imported](tasks/UI-04a-the-tree-art.md) — this section and four specs, 22 sprites | S | UI-03c | ☑ |
+| UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☐ |
+| UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☐ |
+| UI-04d | [Select, then Learn](tasks/UI-04d-select-and-learn.md) — a tap selects, the card describes, Learn spends | M | UI-04c | ☐ |
+
+**UI-04 — The tree screen in the new art** *(owner, 2026-10-13)*: UI-03c's plain grid dressed as `UI_v2/mockups/SkillTree.png` — the stone frame, one class block, and a detail card whose green Learn button is the only way to spend a point. **Not in UI-04, by the owner's scope:** the capstone star, a second class's block (the "take a new class" area), and the stat diff line on the card. Only the Ranger has icons and an emblem; every other class draws `Icon_Placeholder` and a plate without one.
 
 **UI-03 — Levelling by banked points** *(owner, 2026-09-29; plain 3×3 only)*: a level banks a point and the game runs on; the tree screen pauses and takes any open node. Everything is behind a mode flag, off until UI-03d turns it on for the Jungle, so no row before it changes a shipped run; Descent keeps the random-three flow until its classes are reshaped. The Ranger's tree is already 3 branches × 3 single-node tiers, so today's tier gate *is* the owner's "a level opens when the one below it is taken". Not in UI-03: the "take a new class" area, reshaping the other three classes, and the M7-04a–k specs it supersedes (the owner's to rule on).
 

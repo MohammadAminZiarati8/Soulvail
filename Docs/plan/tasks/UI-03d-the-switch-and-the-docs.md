@@ -53,4 +53,12 @@ Rules 5 and 6 are document edits and have no row.
 
 ## As built
 
-_Filled at merge, 6 000 bytes or fewer._
+**Built to the Files table plus the edits below; 7 rows in `FreePickModeTests`, one per row of the table. Deviations:**
+
+1. **Branched off `ui-03c-the-tree-screen`**, since `origin/dev` held none of UI-03a–c when this began.
+2. **`TreeViewPresenter.OpenHoldingPause(Action)` is new public API** (the spec said none). `Open()` is now `OpenHoldingPause(null)`. The pause panel needs a door that takes `Tree` *and* runs a return callback; `Open(Action)` holds no pause and stays for a drawing run and the level-up screen.
+3. **The hand-over lives in `PausePresenter.OpenTree`**: in a free run it resumes `Menu`, calls `OpenHoldingPause(OnFreeTreeClosed)`, and takes `Menu` back at once if the screen refused to open. `OnFreeTreeClosed` re-pauses `Menu` only while the panel is still open and not retired, so `PausePresenter.Close` (death, Resume) closing the tree does not re-raise a pause. A drawing run takes the old `Open(OnTreeClosed)` path unchanged.
+4. **Rule 4's count is on the View Tree button's label, not in the tree screen's header** (which already shows "Points: n"). New key `ui.pause.tree.points` ("View Tree ({0:0})"), tinted `Palette.Available`, the authored colour back at 0; rewritten only when the number changes. The Pseudo row was hand-typed one dot long and `Pseudo_IsTheGeneratorsOutput` caught it.
+5. **"No tick in between" is asserted as holder and `timeScale`**, since EditMode has no ticker: both calls are inside one tap handler, so no frame separates them.
+6. **Docs:** CH §5.1 is now "Levelling: banked points, and the tree screen" with the random three under a "Descent, until its classes are reshaped" sub-heading; GD §13.1 gains the free-pick paragraph and keeps the old text under the Descent label. Pacts, Reroll, Banish and the half-tree splash are listed as off while free.
+

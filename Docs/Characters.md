@@ -235,9 +235,15 @@ between.** Overflow is where more than half a stage-30 run's power comes from, s
 completes the tree"* stopped being true some time before anyone noticed. Whether that is the right shape is
 [§8](#8-open-questions)'s fourth open question, and M7-04 is the task that can move it.
 
-### 5.1 The level-up screen
+### 5.1 Levelling: banked points, and the tree screen
 
-Levelling pauses the game and offers **3 nodes drawn at random from everything currently available** (prerequisites met, not yet taken). Tap to take.
+**In the Jungle (a mode with `HasFreePick`), a level banks a point and play goes on.** A green count on the level star shows the points unspent, and a "LEVEL UP!" toast marks the moment without stopping anything. Tapping the star — or View Tree in the pause menu — **pauses and opens the tree as a grid** (a column per branch, tier 1 at the bottom). A banked point takes **any available node**; the screen stays open until the player closes it, and closing returns to play (from the star) or to the pause menu (from the menu). **Overflow comes only once nothing is open to spend on**: a full tree's leftover points settle into Overflow as before.
+
+Free-pick is a tree of 3 × 3, so it ships for the Ranger alone. **Pacts, Reroll, Banish and the half-tree splash are off while free** — switched off, not removed — because each of them acts on the random-three offer, which a free run does not make.
+
+#### Descent, until its classes are reshaped
+
+Descent keeps the older flow, because its classes have 12-node trees not yet reshaped into 3 × 3, and class select offers the Ranger alone. Levelling there pauses the game and offers **3 nodes drawn at random from everything currently available** (prerequisites met, not yet taken). Tap to take.
 
 Random-from-available rather than free-pick-anything, because:
 
@@ -245,7 +251,7 @@ Random-from-available rather than free-pick-anything, because:
 - It preserves run-to-run variety, which is the entire point of a roguelite
 - It makes Upgrade nodes exciting rather than automatic
 
-But **a "View Tree" toggle on the level-up screen** shows the full tree with your path highlighted, for players who want to plan. Opt-in, so it never slows down anyone who doesn't care. The tree is also viewable any time from pause.
+But **a "View Tree" toggle on the level-up screen** shows the full tree with your path highlighted, for players who want to plan. Opt-in, so it never slows down anyone who doesn't care. The tree is also viewable any time from pause (read-only in a mode without free-pick).
 
 | Sanctum service | Cost | Effect |
 |---|---|---|

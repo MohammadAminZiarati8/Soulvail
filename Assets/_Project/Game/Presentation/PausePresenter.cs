@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
@@ -109,6 +110,13 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private static readonly LocKey TreeKey = new LocKey("ui.pause.tree");
 
+        /// <summary>
+        /// <see cref="TreeKey"/> with the banked points after it, in a free run with a point to spend
+        /// (UI-03d rule 4). A second row rather than a suffix glued on in code, so a translator owns
+        /// the word order.
+        /// </summary>
+        private static readonly LocKey TreePointsKey = new LocKey("ui.pause.tree.points");
+
         /// <summary>Out to the Menu. It does not delete the run — see the class remarks.</summary>
         private static readonly LocKey QuitKey = new LocKey("ui.pause.quit");
 
@@ -179,6 +187,15 @@ namespace Soulvail.Game.Presentation
         private ILocalizer _localizer;
 
         private IDisposable _diedSubscription;
+
+        /// <summary>
+        /// The count drawn on View Tree; 0 is the plain label. Compared before every write so the
+        /// per-frame <see cref="RefreshPanel"/> allocates nothing while the number stands still.
+        /// </summary>
+        private int _shownPoints;
+
+        /// <summary>The View Tree label's colour as authored, restored when the count goes to 0.</summary>
+        private Color _viewTreeColor;
 
         /// <summary>
         /// The player is dead, so this screen is over for the rest of the run.
@@ -255,6 +272,8 @@ namespace Soulvail.Game.Presentation
             // Death is the one event this screen renders — see OnPlayerDied.
             _diedSubscription?.Dispose();
             _diedSubscription = hub.Subscribe<PlayerDied>(OnPlayerDied);
+
+            _viewTreeColor = _viewTreeLabel != null ? _viewTreeLabel.color : Color.white;
 
             Wire(_icon, Open);
             Wire(_resume, Close);
@@ -530,7 +549,28 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
-            _treeScreen.Open(OnTreeClosed);
+            // A free run's tree screen holds its own pause (UI-03d rule 2): the panel gives up Menu
+            // and the screen takes Tree in the same call, so RunPause never holds two and no frame
+            // ticks between them. A drawing run keeps today's read-only view over the Menu pause.
+            if (_session?.State is { IsFreePick: true } && _pause is not null)
+            {
+                if (_pause.Holder == PauseReason.Menu)
+                {
+                    _pause.Resume(PauseReason.Menu);
+                }
+
+                _treeScreen.OpenHoldingPause(OnFreeTreeClosed);
+
+                // Refused (something else holds the pause): the panel takes Menu back untouched.
+                if (!_treeScreen.IsOpen && !_pause.IsPaused)
+                {
+                    _pause.Pause(PauseReason.Menu);
+                }
+            }
+            else
+            {
+                _treeScreen.Open(OnTreeClosed);
+            }
 
             // Now rather than on the next Update, so the panel underneath cannot take a second tap
             // in the same EventSystem pass that opened the screen — OpenSkills' reason.
@@ -540,6 +580,24 @@ namespace Soulvail.Game.Presentation
         /// <summary>The tree gave the panel back. Rule 5's callback, and this door's whole half of it.</summary>
         private void OnTreeClosed()
         {
+            RefreshPanel();
+        }
+
+        /// <summary>
+        /// A free run's tree screen went down and released <c>Tree</c>: take <c>Menu</c> back and
+        /// give the panel its buttons (UI-03d rule 3).
+        /// </summary>
+        /// <remarks>
+        /// Skipped when <see cref="Close"/> is what closed the tree — <c>IsOpen</c> is already false
+        /// there, and the run is about to play on rather than return to a menu.
+        /// </remarks>
+        private void OnFreeTreeClosed()
+        {
+            if (IsOpen && !_retired && _pause is not null && !_pause.IsPaused)
+            {
+                _pause.Pause(PauseReason.Menu);
+            }
+
             RefreshPanel();
         }
 
@@ -716,6 +774,43 @@ namespace Soulvail.Game.Presentation
             }
 
             SetPanelInteractable(IsOpen && !_quitting && !skillsUp && !treeUp);
+
+            RefreshViewTreeLabel();
+        }
+
+        /// <summary>
+        /// View Tree carries the banked points in <c>Palette.Available</c> in a free run, and the
+        /// plain word at 0 or in a drawing run (UI-03d rule 4).
+        /// </summary>
+        private void RefreshViewTreeLabel()
+        {
+            if (_viewTreeLabel == null)
+            {
+                return;
+            }
+
+            RunState state = _session?.State;
+            int points = state is { IsFreePick: true } ? state.SkillPoints : 0;
+
+            if (points == _shownPoints)
+            {
+                return;
+            }
+
+            _shownPoints = points;
+
+            if (points > 0)
+            {
+                _viewTreeLabel.text = _localizer is null
+                    ? TreePointsKey.ToString()
+                    : _localizer.Format(TreePointsKey, points);
+                _viewTreeLabel.color = Palette.Available;
+            }
+            else
+            {
+                Write(_viewTreeLabel, TreeKey);
+                _viewTreeLabel.color = _viewTreeColor;
+            }
         }
 
         private void SetPanelInteractable(bool value)

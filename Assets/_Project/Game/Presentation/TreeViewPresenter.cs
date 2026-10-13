@@ -369,7 +369,19 @@ namespace Soulvail.Game.Presentation
         /// Sanctum. <c>RunPause.Pause</c> would throw for a second holder, and a tap that threw is a
         /// dead button at best; <c>PausePresenter.Open</c>'s guard, for its reason.
         /// </remarks>
-        public void Open()
+        public void Open() => OpenHoldingPause(null);
+
+        /// <summary>
+        /// The pause panel's door in a free run (UI-03d rule 2): holds <c>PauseReason.Tree</c> like
+        /// <see cref="Open()"/>, and runs <paramref name="onClosed"/> after <see cref="Close"/>.
+        /// </summary>
+        /// <remarks>
+        /// <b>The caller must have released its own pause first</b>, in the same call, so
+        /// <c>RunPause</c> never holds two and the run never ticks between them. Refused like
+        /// <see cref="Open()"/> when anything still holds the pause; check <see cref="IsOpen"/>
+        /// afterwards to learn which.
+        /// </remarks>
+        public void OpenHoldingPause(Action onClosed)
         {
             if (IsOpen || _pause is null || _pause.IsPaused || _session?.State is null)
             {
@@ -378,7 +390,7 @@ namespace Soulvail.Game.Presentation
 
             _pause.Pause(PauseReason.Tree);
 
-            Open(null);
+            Open(onClosed);
         }
 
         /// <summary>

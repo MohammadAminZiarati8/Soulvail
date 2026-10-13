@@ -147,6 +147,8 @@ MonoBehaviour:
     _text: "[Sk\xEElls \xB7\xB7\xB7]"
   - _key: ui.pause.tree
     _text: "[V\xEE\xE9w Tr\xE9\xE9 \xB7\xB7\xB7\xB7]"
+  - _key: ui.pause.tree.points
+    _text: "[Vîéw Tréé ({0:0}) ······]"
   - _key: ui.pause.quit
     _text: "[Q\xFB\xEEt \xB7\xB7]"
   - _key: ui.skills.close

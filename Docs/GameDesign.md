@@ -512,7 +512,11 @@ Two separate moments, doing two separate jobs. **Level-up is progression. The Sa
 
 ### 13.1 Level-up — the progression moment
 
-Fires mid-stage, whenever XP crosses the threshold. **The game pauses**, three skills are offered from the current class's tree, the player taps one, play resumes. Every 25–90 seconds depending on depth.
+Fires mid-stage, whenever XP crosses the threshold. Every 25–90 seconds depending on depth.
+
+**In the Jungle (free-pick) a level banks a point and play goes on**: the level star shows the count, a toast says "LEVEL UP!", and tapping the star (or View Tree in the pause menu) pauses and opens the whole tree, where a banked point takes any available node. Overflow comes only once nothing is open. Pacts, Reroll, Banish and the half-tree splash are **off while free**, not removed. Detail in [Characters.md §5.1](Characters.md).
+
+**Descent, until its classes are reshaped:** the game pauses, three skills are offered from the current class's tree, the player taps one, play resumes. The rules below describe this flow.
 
 Full design — tree shape, node kinds, the levelling curve, auto-cast, pinning — is in [Characters.md §4–5](Characters.md).
 

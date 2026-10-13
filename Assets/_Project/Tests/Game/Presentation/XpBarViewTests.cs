@@ -56,9 +56,9 @@ namespace Soulvail.Tests.Game.Presentation;
 /// </para>
 /// <para>
 /// <b>Three rows are the first assertions ever made about <c>HudPresenter</c>.</b> Nothing has ever
-/// tested that class — <c>Place</c> has laid the HP row out since M1-17 with no row watching it — so
-/// <see cref="Level_IsPlacedInTheHudRow"/> checks the whole row rather than only the rect this task
-/// added, which is the cheapest moment there will ever be to do it.
+/// tested that class — <c>Place</c> has laid the HP row out since M1-17 with no row watching it. Since
+/// UI-01b the level sits in the star, which <see cref="Level_SitsInTheStar"/> checks, and the whole
+/// band's arrangement is <c>HudLayoutTests</c>'.
 /// </para>
 /// <para>
 /// <c>Awake</c> and <c>Start</c> do not run on an instantiated prefab in EditMode (Traps §5), so each
@@ -188,7 +188,11 @@ public sealed class XpBarViewTests
         // Rule 2: the event carries the fraction already settled, so the strip does no arithmetic
         // and asks the run nothing.
         Assert.That(_strip.Fraction, Is.EqualTo(0.42f).Within(1e-4f));
-        Assert.That(Fill().fillAmount, Is.EqualTo(0.42f).Within(1e-4f));
+
+        // UI-01b rule 1: a sliced fill does not draw fillAmount, so its width is its right-hand anchor.
+        Assert.That(((RectTransform)Fill().transform).anchorMax.x, Is.EqualTo(0.42f).Within(1e-4f));
+        Assert.That(Fill().enabled, Is.True);
+        Assert.That(Fill().color, Is.EqualTo(Palette.Player), "the strip's fill is not the player's cyan.");
     }
 
     [Test]
@@ -249,7 +253,7 @@ public sealed class XpBarViewTests
     }
 
     [Test]
-    public void Xp_StripIsFourDpAndFullWidth()
+    public void Xp_StripIsEightDpAndFullWidth()
     {
         StartRun(level: 1);
         BuildHud();
@@ -257,9 +261,17 @@ public sealed class XpBarViewTests
         var rect = (RectTransform)_strip.transform;
         float pxPerDp = PixelsPerDp();
 
-        // Four **dp**, converted at the screen boundary: a Scale-With-Screen-Size canvas measures in
-        // reference pixels, and four of those is a different physical height on every phone (rule 1).
+        // Eight **dp**, converted at the screen boundary: a Scale-With-Screen-Size canvas measures in
+        // reference pixels, and eight of those is a different physical height on every phone (rule
+        // 1). It was four until UI-01b, and the four is now the fill inside the art's track.
+        Assert.That(StripDp, Is.EqualTo(8f), "the band's strip is 8 dp.");
         Assert.That(rect.sizeDelta.y, Is.EqualTo(StripDp * pxPerDp).Within(1e-2f));
+
+        var well = Field<RectTransform>(_strip, "_well");
+
+        Assert.That(well, Is.Not.Null, "the strip has no well.");
+        Assert.That(well.rect.height / pxPerDp, Is.EqualTo(StripDp * (1f - (2f * 0.24f))).Within(0.05f),
+            "GD §16.1's fill is about 4 dp, inside the 8 dp track.");
 
         // Full width, and the width is the anchors' rather than this file's arithmetic: 0 to 1 with a
         // zero sizeDelta.x is exactly the safe area's width however wide it turns out to be.
@@ -349,62 +361,40 @@ public sealed class XpBarViewTests
     }
 
     [Test]
-    public void Level_IsPlacedInTheHudRow()
+    public void Level_SitsInTheStar()
     {
         StartRun(level: 1);
         BuildHud();
 
         float pxPerDp = PixelsPerDp();
 
-        float marginX = Field<Vector2>(_presenter, "_marginDp").x;
-        float marginY = Field<Vector2>(_presenter, "_marginDp").y;
-        Vector2 barDp = Field<Vector2>(_presenter, "_barSizeDp");
-        float textDp = Field<float>(_presenter, "_textWidthDp");
-        float ringDp = Field<float>(_presenter, "_ringSizeDp");
-        float gapDp = Field<float>(_presenter, "_gapDp");
-        float levelDp = Const<float>(typeof(HudPresenter), "LevelWidthDp");
+        Vector2 margin = Field<Vector2>(_presenter, "_marginDp");
+        float starDp = Field<float>(_presenter, "_starSizeDp");
 
-        // **The whole row, not only the rect this task added.** Place() has laid this out untested
-        // since M1-17, and one method owning all four is the reason the spec gives for the level not
-        // being a component of its own — so the row that finally checks it checks the invariant that
-        // reason is about: nothing overlaps, and everything is in order.
-        (float Left, float Right)[] spans =
-        {
-            Span(Rect(_presenter, "_hp")),
-            Span(Rect(_presenter, "_hpText")),
-            Span(Rect(_presenter, "_shield")),
-            Span(Rect(_presenter, "_levelText")),
-        };
+        RectTransform star = Rect(_presenter, "_levelStar");
+        RectTransform level = Rect(_presenter, "_levelText");
 
-        for (int i = 1; i < spans.Length; i++)
-        {
-            Assert.That(
-                spans[i].Left,
-                Is.GreaterThanOrEqualTo(spans[i - 1].Right - 1e-2f),
-                $"rect {i} of the HP row starts before rect {i - 1} ends, so the two overlap.");
-        }
+        // UI-01b rule 2: the star is 44 dp, the margin in and the row's top down, and the level is the
+        // star's own rect — dropped a little, because a star's body is below the middle of its box.
+        Assert.That(star.sizeDelta, Is.EqualTo(new Vector2(starDp, starDp) * pxPerDp));
+        Assert.That(star.anchoredPosition.x, Is.EqualTo(margin.x * pxPerDp).Within(1e-2f));
+        Assert.That(star.anchoredPosition.y, Is.EqualTo(-margin.y * pxPerDp).Within(1e-2f));
 
-        // And the level is exactly one gap past the ring, in dp, which is the arithmetic the method
-        // does rather than a position anybody authored.
-        float expectedLeft = marginX + barDp.x + gapDp + textDp + gapDp + ringDp + gapDp;
-
+        Assert.That(level.sizeDelta, Is.EqualTo(star.sizeDelta), "the level is not the star's size.");
+        Assert.That(level.anchoredPosition.x, Is.EqualTo(star.anchoredPosition.x).Within(1e-2f));
         Assert.That(
-            spans[3].Left,
-            Is.EqualTo(expectedLeft * pxPerDp).Within(1e-2f),
-            "the level is not beside the Aegis ring (GD §16.1's \"top-left, beside HP\").");
-
-        Assert.That(
-            spans[3].Right,
-            Is.EqualTo((expectedLeft + levelDp) * pxPerDp).Within(1e-2f));
+            star.anchoredPosition.y - level.anchoredPosition.y,
+            Is.InRange(0f, 0.1f * starDp * pxPerDp),
+            "the level is not in the star.");
 
         // Anchored to the parent's top-left with the rest of the row, so SafeAreaFitter insets it on
         // a notched device rather than the screen edge cutting it off.
-        var levelRect = Rect(_presenter, "_levelText");
+        Assert.That(level.anchorMin, Is.EqualTo(new Vector2(0f, 1f)));
+        Assert.That(level.anchorMax, Is.EqualTo(new Vector2(0f, 1f)));
 
-        Assert.That(levelRect.anchorMin, Is.EqualTo(new Vector2(0f, 1f)));
-        Assert.That(levelRect.anchorMax, Is.EqualTo(new Vector2(0f, 1f)));
-        Assert.That(levelRect.anchoredPosition.y, Is.EqualTo(-marginY * pxPerDp).Within(1e-2f));
-        Assert.That(levelRect.sizeDelta.y, Is.EqualTo(barDp.y * pxPerDp).Within(1e-2f));
+        // Drawn over the star: a later sibling.
+        Assert.That(level.GetSiblingIndex(), Is.GreaterThan(star.GetSiblingIndex()));
+        Assert.That(Field<TMP_Text>(_presenter, "_levelText").color, Is.EqualTo(Palette.HudText));
     }
 
     // ---- Overflow (rules 10, 11, 12, 13) ---------------------------------------------------------
@@ -632,7 +622,7 @@ public sealed class XpBarViewTests
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, _catalog);
+        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
@@ -662,7 +652,7 @@ public sealed class XpBarViewTests
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, _catalog);
+        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
@@ -734,19 +724,27 @@ public sealed class XpBarViewTests
         var stripFill = stripSo.FindProperty("_fill").objectReferenceValue as Image;
 
         Assert.That(stripFill, Is.Not.Null, "the strip has no fill.");
-        Assert.That(stripFill.type, Is.EqualTo(Image.Type.Filled));
-        Assert.That(
-            stripFill.fillMethod,
-            Is.EqualTo(Image.FillMethod.Horizontal),
-            "the strip's fill is not Horizontal, so fillAmount draws a ring rather than a bar.");
+
+        // UI-01b rule 1: a sliced pill in the track's well, whose width is its anchor.
+        Assert.That(stripFill.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(stripFill.sprite, Is.Not.Null);
+        Assert.That(stripFill.sprite.name, Is.EqualTo("Fill_BarThin"));
+
+        var track = stripSo.FindProperty("_track").objectReferenceValue as Image;
+
+        Assert.That(track, Is.Not.Null, "the strip has no track.");
+        Assert.That(track.sprite.name, Is.EqualTo("XpStrip_Track"));
+        Assert.That(track.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(stripFill.transform.parent, Is.SameAs(stripSo.FindProperty("_well").objectReferenceValue),
+            "the fill is not in the well.");
 
         Assert.That(stripSo.FindProperty("_heightDp").floatValue, Is.EqualTo(StripDp));
 
-        // Twelve row cells present and wired — 24 serialized Images, because rule 7 authors them
-        // rather than cloning a template.
+        // Twelve row cells present and wired, because rule 7 authors them rather than cloning a
+        // template. Since UI-01e a cell is a container and its sweep a shade over the icon.
         var rowSo = new SerializedObject(row);
-        SerializedProperty fills = rowSo.FindProperty("_fills");
-        SerializedProperty strips = rowSo.FindProperty("_kindStrips");
+        SerializedProperty fills = rowSo.FindProperty("_sweeps");
+        SerializedProperty strips = rowSo.FindProperty("_cells");
 
         Assert.That(fills.arraySize, Is.EqualTo(SkillRunner.MaxActives));
         Assert.That(strips.arraySize, Is.EqualTo(SkillRunner.MaxActives));
@@ -754,7 +752,7 @@ public sealed class XpBarViewTests
         for (int cell = 0; cell < SkillRunner.MaxActives; cell++)
         {
             var fill = fills.GetArrayElementAtIndex(cell).objectReferenceValue as Image;
-            var body = strips.GetArrayElementAtIndex(cell).objectReferenceValue as Image;
+            var body = strips.GetArrayElementAtIndex(cell).objectReferenceValue as RectTransform;
 
             Assert.That(fill, Is.Not.Null, $"cell {cell + 1} has no fill.");
             Assert.That(body, Is.Not.Null, $"cell {cell + 1} has no body.");
@@ -960,6 +958,12 @@ public sealed class XpBarViewTests
             .Invoke(_toast, new object[] { unscaledDt });
 
     private void SetDwell(float seconds) => SetPrivate(_toast, "_secondsShown", seconds);
+
+    /// <summary>An icon book with no icons, for the row's constructor — this fixture draws none.</summary>
+    private static SkillIconBook NoIcons() => new SkillIconBook(new Dictionary<ContentId, Sprite>());
+
+    /// <summary>A look book with no looks, for the row's constructor.</summary>
+    private static CharacterLookBook NoLooks() => new CharacterLookBook(new Dictionary<ContentId, CharacterLook>());
 
     private Image Fill() => Field<Image>(_strip, "_fill");
 

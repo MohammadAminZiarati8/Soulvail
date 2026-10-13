@@ -225,6 +225,50 @@ public sealed class SpawnDirector
     public int PendingCount => _pendingCount;
 
     /// <summary>
+    /// Bodies this stage will still stand up: queued, telegraphed, and every wave not yet started. A
+    /// boss stage's boss until it stands. Zero before <see cref="Begin"/> and after <see cref="Clear"/>
+    /// (UI-01c rules 1–3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One number out of the bookkeeping, and nothing about its shape.</b> A started wave's
+    /// outstanding count already falls as each body stands, and a wave not yet started is its plan's
+    /// <see cref="WavePlan.BodyCount"/>, so the sum is exact at every tick without a counter of its
+    /// own to keep in step. A body leaves it the moment it stands, when it joins
+    /// <c>EnemySystem.LivingCount</c>, so the two never count one body twice.
+    /// </para>
+    /// <para>
+    /// <b>A boss stage counts its boss, not its adds.</b> The adds are summoned by the fight rather
+    /// than planned by a wave, so they are living when they stand and never to come. At most
+    /// <see cref="WavePlan.WaveCount"/> additions a read, and nothing allocates.
+    /// </para>
+    /// </remarks>
+    public int Unspawned
+    {
+        get
+        {
+            if (_plan is null)
+            {
+                return 0;
+            }
+
+            if (IsBossStage)
+            {
+                return _bossEnemyId == 0 && !_bossCleared ? 1 : 0;
+            }
+
+            int left = 0;
+
+            for (int w = 0; w < _plan.WaveCount; w++)
+            {
+                left += _waveStarted[w] ? _waveOutstanding[w] : _plan.BodyCount(w + 1);
+            }
+
+            return left;
+        }
+    }
+
+    /// <summary>
     /// Every wave has started, every body has been spawned, and every one of them is dead.
     /// </summary>
     /// <remarks>

@@ -399,7 +399,10 @@ public sealed class VeilrotMeterViewTests
         float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
 
         Assert.That(at1.height, Is.EqualTo(160f * pxPerDp).Within(1e-2f));
-        Assert.That(at1.inset, Is.EqualTo(68f * pxPerDp).Within(1e-2f));
+
+        // 16 dp in since UI-01d rule 8, at the head of the column under the boss band's row: the
+        // 68 dp place left of the pause icon it held from M6-03b is the stage chip's now.
+        Assert.That(at1.inset, Is.EqualTo(16f * pxPerDp).Within(1e-2f));
     }
 
     [Test]

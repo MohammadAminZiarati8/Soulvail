@@ -91,6 +91,16 @@ public sealed class Volley
     public bool IsReady { get; private set; }
 
     /// <summary>
+    /// <see cref="Every"/> as the whole number of shots <see cref="Loose"/> counts to: floored, and 0
+    /// when there is no volley (UI-01e).
+    /// </summary>
+    /// <remarks>
+    /// The count the counter is measured against, handed out so a HUD draws the same number the
+    /// shots are counted to — a pip per shot — rather than flooring the stat again with its own rule.
+    /// </remarks>
+    public int EveryCount => Count();
+
+    /// <summary>
     /// Ordinary shots since the last volley, in <c>[0, Every]</c> while <see cref="Every"/> holds still.
     /// </summary>
     public int ShotsTowardNext { get; private set; }

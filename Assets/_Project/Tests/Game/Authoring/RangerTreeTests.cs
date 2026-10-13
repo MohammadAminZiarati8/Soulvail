@@ -261,6 +261,38 @@ public sealed class RangerTreeTests
         }
     }
 
+    /// <summary>
+    /// UI-01e: the three narrow reads the skill row's pips are drawn from, through a real Ranger run —
+    /// the count Volley gives, the shots toward the next, and the flag.
+    /// </summary>
+    [Test]
+    public void Volley_RunStateReadsTheCount()
+    {
+        RunSession session = StartRanger(picks: 1);
+
+        Assert.That(session.State.VolleyEvery, Is.Zero, "no Volley taken, no count.");
+        Assert.That(session.State.VolleyShotsTowardNext, Is.Zero);
+        Assert.That(session.State.IsVolleyReady, Is.False);
+
+        Take(session, Volley, 0);
+
+        Soulvail.Core.Combat.Volley volley = Combat(session).Volley;
+
+        for (int shot = 0; shot < 3; shot++)
+        {
+            volley.Loose();
+        }
+
+        Assert.That(session.State.VolleyEvery, Is.EqualTo(5), "Volley gives five.");
+        Assert.That(session.State.VolleyShotsTowardNext, Is.EqualTo(3));
+        Assert.That(session.State.IsVolleyReady, Is.False);
+
+        volley.Loose();
+        volley.Loose();
+
+        Assert.That(session.State.IsVolleyReady, Is.True, "five shots ready the fan.");
+    }
+
     // ---- Fixtures ----------------------------------------------------------------------------------
 
     /// <summary>

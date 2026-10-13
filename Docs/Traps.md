@@ -854,6 +854,14 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   internally. A preallocated builder bounds the allocation, it does not remove it. The free route
   for a per-frame readout is TMP's `SetText(string format, float, …)` overloads (up to 8 floats)
   and `SetText(StringBuilder)` for the copy (M0-18).
+- **…and that route is free on a phone and allocates in the Editor, so an EditMode allocation row
+  over a changing `SetText` fails whatever the code does.** TMP's `SetText(string, float, …)` ends
+  with `#if UNITY_EDITOR m_text = InternalTextBackingArrayToString(); #endif`, so the Inspector can
+  show the text: one string per write, compiled out of a build. M0-18's *"free route"* was argued,
+  never measured, and UI-01d's first `AllocationAssert` over the enemies-left chip went red on this
+  line alone — a bisect found a frame with the count held at 0 bytes and a bare `SetText` alternating
+  4 and 3 at more. **Measure the frames on which nothing is written, and pin with a second row that
+  the write happens on a change alone** (UI-01d).
 - **`NavMeshPath.corners` allocates a fresh array on every read** — always `GetCornersNonAlloc`
   into a preallocated buffer (M1-19).
 - **A `StateMachine<T>` transition allocates nothing on Unity's Mono**, measured in M1-18:

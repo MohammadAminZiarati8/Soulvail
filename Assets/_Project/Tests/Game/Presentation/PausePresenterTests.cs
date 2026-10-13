@@ -772,8 +772,10 @@ public sealed class PausePresenterTests
         Assert.That(rect.anchorMax, Is.EqualTo(new Vector2(1f, 1f)));
         Assert.That(rect.pivot, Is.EqualTo(new Vector2(1f, 1f)));
 
-        Assert.That(rect.anchoredPosition.x, Is.EqualTo(-16f * pxPerDp).Within(0.001f));
-        Assert.That(rect.anchoredPosition.y, Is.EqualTo(-16f * pxPerDp).Within(0.001f));
+        // The top band's margin and row since UI-01d rule 7, so the icon's centre is the star's and
+        // the stage chip's. It was 16 and 16 from M3-09a.
+        Assert.That(rect.anchoredPosition.x, Is.EqualTo(-HudLayout.MarginDp * pxPerDp).Within(0.001f));
+        Assert.That(rect.anchoredPosition.y, Is.EqualTo(-HudLayout.RowTopDp * pxPerDp).Within(0.001f));
 
         Assert.That(
             rect.parent.GetComponent<SafeAreaFitter>(),

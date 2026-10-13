@@ -670,6 +670,25 @@ public sealed class BossPhasesTests
         }
     }
 
+    /// <summary>
+    /// UI-01c rule 2: a boss stage has one body to come, the boss, until it stands. Here rather than in
+    /// <c>SpawnDirectorTests</c>, because this fixture is the one that builds a boss.
+    /// </summary>
+    [Test]
+    public void Unspawned_ABossIsOneUntilItStands()
+    {
+        SpawnDirector director = Director();
+
+        director.Begin(Plan(), Points(), _clock, Id(BossId));
+
+        Assert.That(director.Unspawned, Is.EqualTo(1), "the boss is to come, and the plan's waves are not.");
+
+        director.Tick(_clock, Vector3.Zero, Stream());
+
+        Assert.That(director.BossEnemyId, Is.Not.Zero, "the fixture's premise: the boss stood up.");
+        Assert.That(director.Unspawned, Is.Zero, "a standing boss is living, not to come.");
+    }
+
     [Test]
     public void Boss_TheStageIsOverWhenTheBossIsDown()
     {

@@ -380,6 +380,30 @@ public sealed class SkillBarPresenterTests
     }
 
     [Test]
+    public void ManualSkillButton_WearsSkillButtonSprites()
+    {
+        StartRun(actives: 1, manual: new[] { 0, -1, -1, -1 });
+        Bar();
+
+        ManualSkillButton button = Buttons()[0];
+        Image frame = Field<Image>(button, "_buttonFrame");
+
+        Assert.That(frame, Is.Not.Null, "button frame Image is dressed.");
+        Assert.That(frame.sprite, Is.Not.Null, "button frame sprite is set.");
+        Assert.That(frame.sprite.name, Is.EqualTo("SkillButton_Ready"), "wears SkillButton_Ready when ready.");
+
+        Commands().CastSkill(0);
+        Draw(button);
+
+        Assert.That(frame.sprite.name, Is.EqualTo("SkillButton_Cooling"), "wears SkillButton_Cooling while cooling.");
+
+        TickRun(FirstCooldown + Frame);
+        Draw(button);
+
+        Assert.That(frame.sprite.name, Is.EqualTo("SkillButton_Ready"), "restores SkillButton_Ready when ready again.");
+    }
+
+    [Test]
     public void Button_CoolingTapSendsNothing()
     {
         StartRun(actives: 1, manual: new[] { 0, -1, -1, -1 });
@@ -1036,14 +1060,28 @@ public sealed class SkillBarPresenterTests
             { "EssenceLabel", SlotFontPoints },
             { "VeilrotLabel", SlotFontPoints },
             { "ClaimedLabel", SlotFontPoints },
+
+            // UI-01d's three, sized in dp at runtime by StageReadout rather than in points on the
+            // prefab, so their authored 14 is a placeholder and their floor is StageReadoutTests'
+            // Chips_ClearTheAndroidFloor, which measures the dp they are drawn at.
+            { "StageText", 14f },
+            { "WaveText", 14f },
+            { "EnemiesText", 14f },
         };
 
-        foreach (float points in expected.Values)
+        var sizedInDp = new HashSet<string> { "StageText", "WaveText", "EnemiesText" };
+
+        foreach (KeyValuePair<string, float> text in expected)
         {
+            if (sizedInDp.Contains(text.Key))
+            {
+                continue;
+            }
+
             Assert.That(
-                DeviceDp(points),
+                DeviceDp(text.Value),
                 Is.GreaterThan(AndroidBodyTextFloorSp),
-                $"{points} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
+                $"{text.Value} pt on Hud.prefab is below Android's {AndroidBodyTextFloorSp} sp floor.");
         }
 
         var slotLabels = new HashSet<TMP_Text>(SlotLabels());
@@ -1104,6 +1142,9 @@ public sealed class SkillBarPresenterTests
         {
             Assert.That(buttons[slot], Is.Not.Null, $"S{slot + 1} is not assigned.");
 
+            Assert.That(Field<Image>(buttons[slot], "_buttonFrame"), Is.Not.Null, $"S{slot + 1} frame");
+            Assert.That(Field<Sprite>(buttons[slot], "_readySprite"), Is.Not.Null, $"S{slot + 1} ready sprite");
+            Assert.That(Field<Sprite>(buttons[slot], "_coolingSprite"), Is.Not.Null, $"S{slot + 1} cooling sprite");
             Assert.That(Field<Image>(buttons[slot], "_radialFill"), Is.Not.Null, $"S{slot + 1} fill");
             Assert.That(Field<CanvasGroup>(buttons[slot], "_group"), Is.Not.Null, $"S{slot + 1} group");
             Assert.That(Field<Button>(buttons[slot], "_button"), Is.Not.Null, $"S{slot + 1} button");
@@ -1133,6 +1174,11 @@ public sealed class SkillBarPresenterTests
         var charge = prefab.GetComponentInChildren<SkillButton>(true);
 
         Assert.That(charge, Is.Not.Null, "The Charge did not load off Hud.prefab.");
+        Assert.That(Field<Image>(charge, "_buttonFrame"), Is.Not.Null);
+        Assert.That(Field<Image>(charge, "_icon"), Is.Not.Null);
+        Assert.That(Field<Sprite>(charge, "_readySprite"), Is.Not.Null);
+        Assert.That(Field<Sprite>(charge, "_coolingSprite"), Is.Not.Null);
+        Assert.That(Field<Sprite>(charge, "_pressedSprite"), Is.Not.Null);
         Assert.That(Field<Image>(charge, "_radialFill"), Is.Not.Null);
         Assert.That(Field<CanvasGroup>(charge, "_group"), Is.Not.Null);
         Assert.That(Field<float>(charge, "_sizeDp"), Is.EqualTo(72f));

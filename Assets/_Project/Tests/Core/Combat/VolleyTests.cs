@@ -193,6 +193,26 @@ public sealed class VolleyTests
         Assert.That(Arrows(), Is.EqualTo(new[] { 1, 1, 1, 1, VolleyArrows }), "4.9 counts as 4.");
     }
 
+    /// <summary>
+    /// UI-01e: the count a HUD draws pips for is the count the shots are counted to — floored, and 0
+    /// for no volley, including a count driven below zero.
+    /// </summary>
+    [Test]
+    public void EveryCount_IsEveryFloored()
+    {
+        PlayerCombat bow = Combat();
+
+        Assert.That(bow.Volley.EveryCount, Is.Zero, "no node, no count.");
+
+        Give(bow, PlayerStat.VolleyEvery, 4.7f);
+
+        Assert.That(bow.Volley.EveryCount, Is.EqualTo(4), "4.7 counts as 4, as Loose counts it.");
+
+        Give(bow, PlayerStat.VolleyEvery, -10f);
+
+        Assert.That(bow.Volley.EveryCount, Is.Zero, "a count below one is no volley.");
+    }
+
     // ---- Rule 3: the counter -----------------------------------------------------------------------
 
     [Test]

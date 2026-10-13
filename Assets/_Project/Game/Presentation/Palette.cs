@@ -184,6 +184,30 @@ public static class Palette
     public static readonly Color PlayerBlocked = new Color(0.78f, 0.98f, 1f, 1f);
 
     /// <summary>
+    /// <c>#A5F3FC</c> — the health bar's ghost: the health that was there a moment ago (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>Pale cyan, and not the gold it was dressed in from M1-17 to UI-01b</b>, because GD §16.4's
+    /// gold means rewards and a band of it across the player's own bar said <em>"you gained
+    /// something"</em> at the moment they lost it. Its own member rather than <see cref="PlayerBlocked"/>
+    /// again: the ghost and the blocked flash can be on the bar at once, and the flash has to be the
+    /// brighter of the two to be seen.
+    /// </remarks>
+    public static readonly Color PlayerGhost = Rgb(0xA5, 0xF3, 0xFC);
+
+    /// <summary>
+    /// <c>#0E7490</c> — the deep end of the health bar's low-health beat, below a quarter (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>A darker cyan, never a warmer one.</b> The owner's word for the low state is that it
+    /// <em>"must never turn red-orange"</em>, and GD §16.4 would say the same without being asked: a
+    /// health bar in <see cref="Danger"/> would read as a telegraph on the player's own row. So the
+    /// bar beats between <see cref="Player"/> and this, and a colour it passes through is a mix of two
+    /// cyans.
+    /// </remarks>
+    public static readonly Color PlayerLow = Rgb(0x0E, 0x74, 0x90);
+
+    /// <summary>
     /// M3-11b's healing ground. A safe thing, so <see cref="Player"/>'s family — and today its exact
     /// value, which is what <c>VFX_ConsecrateZone.prefab</c> was dressed with.
     /// </summary>
@@ -255,8 +279,8 @@ public static class Palette
     /// M3-13b's health-bar fill and M4-03's invulnerable-beat shell — and <see cref="EnemyDying"/> is
     /// the third thing on one. A boss's bar drawn in any of those would say <em>"an ordinary
     /// enemy"</em> in the one place GD §16.2 wants <em>"the fight you are in"</em>. <c>BossBarView</c>
-    /// reads this for the fill and <see cref="Neutral"/> for the seams between segments, which is the
-    /// contrast that makes a mark legible on a filled bar.
+    /// reads this for the fill. Its seams were <see cref="Neutral"/> until UI-01f, when they became the
+    /// art's own dark pills, drawn untinted — the same contrast, drawn in.
     /// </para>
     /// </remarks>
     public static readonly Color Boss = Rgb(0xCC, 0xC4, 0xB7);
@@ -274,6 +298,48 @@ public static class Palette
     /// colour's — which is this file's alpha rule (see the class remarks) seen from the other side.
     /// </remarks>
     public static readonly Color HeldFocus = Rgb(0x22, 0xD3, 0xEE);
+
+    // ---- The HUD's art (UI-01). -----------------------------------------------------------------
+
+    /// <summary>
+    /// <c>#0F1419</c> — the outline on every HUD word and number, and the art's own ink (UI-01a).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The one colour the new art and the code have to agree on.</b> Every piece Gemini drew for
+    /// the HUD is outlined in a near-black, and <c>UI_v2/compose.py</c> strokes the mockup's words in
+    /// exactly this value. <c>LilitaOne_SDF</c>'s material carries it as both its outline and its
+    /// shadow, so a number drawn over a frame is outlined in the frame's own ink — which is why it
+    /// is a member rather than a colour typed into a material, and why <c>HudArtTests</c> reads the
+    /// material back against it.
+    /// </para>
+    /// <para>
+    /// <b>It is <em>everything else</em> in GD §16.4's sense</b>: not the player, not a reward, not
+    /// the Veil, and nowhere near <see cref="Danger"/>. A view that wants it translucent — the skill
+    /// row's cooldown shade — multiplies its own alpha, the class remarks' rule.
+    /// </para>
+    /// </remarks>
+    public static readonly Color Ink = Rgb(0x0F, 0x14, 0x19);
+
+    /// <summary>
+    /// <c>#FFFFFF</c> — every number on the top band: the health, the level, the wave (UI-01b).
+    /// </summary>
+    /// <remarks>
+    /// <b>The same white as <see cref="HitFlash"/>, and a member of its own</b> — <see cref="Heal"/>'s
+    /// argument: a meaning, not a value. The day the owner wants the band's numbers a shade warmer,
+    /// the hit flash must not warm with them.
+    /// </remarks>
+    public static readonly Color HudText = Rgb(0xFF, 0xFF, 0xFF);
+
+    /// <summary>
+    /// <c>#CCC4B7</c> — a caption on the band: the <em>STAGE</em> over the wave (UI-01d).
+    /// </summary>
+    /// <remarks>
+    /// GD §16.4's <em>everything else</em>, at the brightness a word on a dark pill needs, which is
+    /// <see cref="Boss"/>'s value and <see cref="Heal"/>'s argument for a member of its own: a
+    /// caption and a boss's bar are two meanings, and the day one moves the other must not.
+    /// </remarks>
+    public static readonly Color HudCaption = Rgb(0xCC, 0xC4, 0xB7);
 
     /// <summary>
     /// True when <paramref name="colour"/> is GD §16.4's reserved danger colour. How the

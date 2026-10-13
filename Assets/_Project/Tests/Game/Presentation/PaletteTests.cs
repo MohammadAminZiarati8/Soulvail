@@ -491,6 +491,80 @@ public sealed class PaletteTests
     }
 
     /// <summary>
+    /// UI-01a: the HUD's outline is the art's own near-black, and it is nowhere near the danger colour.
+    /// </summary>
+    [Test]
+    public void Ink_IsTheArtsOutline()
+    {
+        AssertHex(Palette.Ink, 0x0F, 0x14, 0x19, nameof(Palette.Ink));
+
+        Assert.That(Palette.IsDanger(Palette.Ink), Is.False, "Palette.Ink is the danger colour.");
+
+        Color.RGBToHSV(Palette.Ink, out _, out _, out float value);
+
+        Assert.That(value, Is.LessThan(0.15f), "an outline that is not near-black does not read as the art's ink.");
+    }
+
+    /// <summary>
+    /// UI-01b rule 13: the ghost is a pale cyan in the player's family, and no longer the prefab's gold.
+    /// </summary>
+    [Test]
+    public void Ghost_IsPaleCyan()
+    {
+        AssertHex(Palette.PlayerGhost, 0xA5, 0xF3, 0xFC, nameof(Palette.PlayerGhost));
+
+        Assert.That(Palette.IsDanger(Palette.PlayerGhost), Is.False);
+        Assert.That(SameColour(Palette.PlayerGhost, Palette.Essence), Is.False, "the ghost is the reward gold again.");
+        Assert.That(HueDistance(Palette.PlayerGhost, Palette.Player), Is.LessThan(15f),
+            "the ghost has left the player's cyan.");
+        Assert.That(Reads(typeof(HpBarView), typeof(Palette).GetField(nameof(Palette.PlayerGhost))), Is.True,
+            "HpBarView does not draw the ghost in Palette.PlayerGhost.");
+    }
+
+    /// <summary>
+    /// UI-01b rule 8: the low beat's deep end is a darker cyan, so the bar never warms toward danger.
+    /// </summary>
+    [Test]
+    public void PlayerLow_IsADeeperCyan()
+    {
+        AssertHex(Palette.PlayerLow, 0x0E, 0x74, 0x90, nameof(Palette.PlayerLow));
+
+        Assert.That(Palette.IsDanger(Palette.PlayerLow), Is.False);
+        Assert.That(HueDistance(Palette.PlayerLow, Palette.Player), Is.LessThan(15f),
+            "the low beat has left the player's cyan.");
+
+        Color.RGBToHSV(Palette.PlayerLow, out _, out _, out float low);
+        Color.RGBToHSV(Palette.Player, out _, out _, out float player);
+
+        Assert.That(low, Is.LessThan(player), "the low end is not darker than the player's cyan.");
+    }
+
+    /// <summary>UI-01d rule 9: a caption on the band is bone, <em>everything else</em>, and not danger.</summary>
+    [Test]
+    public void HudCaption_IsBone()
+    {
+        AssertHex(Palette.HudCaption, 0xCC, 0xC4, 0xB7, nameof(Palette.HudCaption));
+
+        Assert.That(Palette.IsDanger(Palette.HudCaption), Is.False);
+
+        Color.RGBToHSV(Palette.HudCaption, out _, out float saturation, out _);
+
+        Assert.That(saturation, Is.LessThan(0.2f), "a caption that is not a desaturated bone reads as a meaning.");
+        Assert.That(Reads(typeof(StageReadout), typeof(Palette).GetField(nameof(Palette.HudCaption))), Is.True,
+            "StageReadout does not paint STAGE in Palette.HudCaption.");
+    }
+
+    /// <summary>UI-01b rule 13: the band's numbers are white, and a member of their own.</summary>
+    [Test]
+    public void HudText_IsWhite()
+    {
+        AssertHex(Palette.HudText, 0xFF, 0xFF, 0xFF, nameof(Palette.HudText));
+
+        Assert.That(Reads(typeof(HudPresenter), typeof(Palette).GetField(nameof(Palette.HudText))), Is.True,
+            "HudPresenter does not paint the band's numbers in Palette.HudText.");
+    }
+
+    /// <summary>
     /// GD §16.3's white hit flash — the ninth reader, and the one no ledger row had ever counted.
     /// </summary>
     /// <remarks>
@@ -614,8 +688,10 @@ public sealed class PaletteTests
 
         Assert.That(
             typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
-            Is.EqualTo(19),
-            "Palette gained a member. A Pact is GD §16.4's violet, not a second one.");
+            Is.EqualTo(24),
+            "Palette gained a member. A Pact is GD §16.4's violet, not a second one. "
+                + "The twentieth is UI-01a's Ink, the HUD art's outline; the next three are UI-01b's "
+                + "ghost, low beat and band text; the twenty-fourth is UI-01d's caption.");
     }
 
     /// <summary>
@@ -807,7 +883,9 @@ public sealed class PaletteTests
             ("Soulvail.Tests.Game.Presentation.LevelUpPresenterTests", "Card_TintsByKind", nameof(Palette.KindPassive)),
             ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_TintsByKind", nameof(Palette.KindKeystone)),
             ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_FrameColoursByState", nameof(Palette.NodeLocked)),
-            ("Soulvail.Tests.Game.Presentation.AutoCastRowTests", "Row_TintsByKind", nameof(Palette.KindActive)),
+            // UI-01e took the row's kind tint away with the icons, so the row that asserts its colours
+            // is the one that replaced Row_TintsByKind, and its member is the sweep's ink.
+            ("Soulvail.Tests.Game.Presentation.AutoCastRowTests", "Row_CarriesNoColourOfItsOwn", nameof(Palette.Ink)),
         };
 
         foreach ((string fixture, string row, string member) in rows)
@@ -956,6 +1034,17 @@ public sealed class PaletteTests
         Byte(a.r) == Byte(b.r) && Byte(a.g) == Byte(b.g) && Byte(a.b) == Byte(b.b);
 
     private static int Byte(float channel) => Mathf.RoundToInt(Mathf.Clamp01(channel) * 255f);
+
+    /// <summary>How far apart two colours' hues are round the wheel, in degrees.</summary>
+    private static float HueDistance(Color a, Color b)
+    {
+        Color.RGBToHSV(a, out float hueA, out _, out _);
+        Color.RGBToHSV(b, out float hueB, out _, out _);
+
+        float turn = Mathf.Abs(hueA - hueB);
+
+        return Mathf.Min(turn, 1f - turn) * 360f;
+    }
 
     /// <summary>One <see cref="Image"/> on a child of <paramref name="root"/>, named for a message.</summary>
     private static Image Graphic(GameObject root, string name)

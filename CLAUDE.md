@@ -79,6 +79,8 @@ Folders say the *kind* (`Prefabs/Enemies/`, `Data/Characters/`); file names are 
 | VFX prefab | `VFX_Name` | `VFX_SwingCone.prefab` |
 | Audio | `SFX_Name` / `MUS_Name` | `SFX_Charge.wav` |
 | UI prefab | `Name` under `Prefabs/UI/` | `Hud.prefab` |
+| UI sprite | `Name_Part` under `Art/UI/<Screen>/`, or `Icon_Name` under `Art/UI/Icons/` — the cutter's own names, no `T_` | `HealthBar_Frame.png`, `Icon_Volley.png` |
+| Font / TMP font asset | the foundry's file name, and `<Family>_SDF` beside it with its licence, under `Art/UI/Fonts/` | `LilitaOne-Regular.ttf`, `LilitaOne_SDF.asset` |
 | Test file | `TypeTests.cs` | `PlayerMotorTests.cs` |
 
 A data asset's file name matches the last segment of its `ContentId`: `Oathbound.asset` ↔ `character.oathbound`.

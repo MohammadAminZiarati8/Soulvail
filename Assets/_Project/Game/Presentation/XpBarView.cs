@@ -20,11 +20,17 @@ namespace Soulvail.Game.Presentation
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Four <em>dp</em>, not four pixels</b> (M3-10b rule 1). Every touch target and every bar in
-    /// this project has been measured in dp since M1-16, because a reference pixel is a different
-    /// physical size on every phone and a strip that vanished on a dense screen would be the one HUD
-    /// element nobody noticed was broken. The number is serialized so the owner can disagree with it
-    /// on a real device (ledger row 4).
+    /// <b>Four <em>dp</em>, not four pixels</b> (M3-10b rule 1) — and as of UI-01b the four are the
+    /// fill, inside an eight-dp track in the owner's art. Every touch target and every bar in this
+    /// project has been measured in dp since M1-16, because a reference pixel is a different physical
+    /// size on every phone and a strip that vanished on a dense screen would be the one HUD element
+    /// nobody noticed was broken. The number is serialized so the owner can disagree with it on a
+    /// real device (ledger row 4).
+    /// </para>
+    /// <para>
+    /// <b>The fill is a sliced pill whose right-hand anchor is the fraction</b> (UI-01b rule 1), in
+    /// the track's well, and <see cref="Palette.Player"/> — <c>HpBarView</c>'s shape, for its reason: a
+    /// horizontal <c>Filled</c> image cuts a pill's round end square.
     /// </para>
     /// <para>
     /// <b>Driven by <c>XpChanged</c> and nothing else</b> (rule 2). The event carries the fraction
@@ -64,17 +70,32 @@ namespace Soulvail.Game.Presentation
     /// </remarks>
     public sealed class XpBarView : MonoBehaviour
     {
-        /// <summary>GD §16.1's height, and what a nonsense field is <em>not</em> replaced by.</summary>
+        /// <summary>The track's height, and what a nonsense field is <em>not</em> replaced by.</summary>
         /// <remarks>
         /// A constant beside the field rather than a fallback the field falls back to: see the class
-        /// remarks. It is here so the row that checks the prefab quotes GD §16.1 rather than a literal
-        /// of its own.
+        /// remarks. It is <see cref="HudLayout.StripHeightDp"/>, the band's number, so the row that
+        /// checks the prefab quotes the band rather than a literal of its own. GD §16.1's 4 dp is the
+        /// fill inside it: the well is inset <see cref="WellEdgeInset"/> of the track at top and bottom.
         /// </remarks>
-        public const float HeightDp = 4f;
+        public const float HeightDp = HudLayout.StripHeightDp;
 
-        [Tooltip("The strip itself. Its Image must be Filled / Horizontal — fillAmount is the only " +
-                 "thing written to it.")]
+        /// <summary>How far the well sits in from each end of the track, as a fraction of its height.</summary>
+        private const float WellEndInset = 0.29f;
+
+        /// <summary>How far the well sits in from the track's top and bottom, as a fraction of its height.</summary>
+        private const float WellEdgeInset = 0.24f;
+
+        [Tooltip("The fill: a sliced Fill_BarThin in the well. Its right-hand anchor is the " +
+                 "fraction, and its colour is the only other thing written to it.")]
         [SerializeField] private Image _fill;
+
+        [Tooltip("The track: a sliced XpStrip_Track across the whole strip. Optional — without it " +
+                 "the fill draws on nothing.")]
+        [SerializeField] private Image _track;
+
+        [Tooltip("Where the fill lives, inset in the track past its end caps. Optional — without it " +
+                 "the fill spans the whole strip.")]
+        [SerializeField] private RectTransform _well;
 
         [Tooltip("How tall the strip is, in dp. GD §16.1's 4 — deliberately ignorable, and a field " +
                  "because whether 4 dp is visible at all beside a notch is a device question " +
@@ -93,7 +114,7 @@ namespace Soulvail.Game.Presentation
         private float _shownFraction = -1f;
 
         /// <summary>How full the strip is drawing, in <c>[0, 1]</c>. The one read a test needs.</summary>
-        public float Fraction => _fill == null ? 0f : _fill.fillAmount;
+        public float Fraction => _shownFraction < 0f ? 0f : _shownFraction;
 
         /// <param name="session">
         /// The run, for the one read a <c>RunStarted</c> has no payload for. Not
@@ -219,10 +240,15 @@ namespace Soulvail.Game.Presentation
         /// place that cannot report it.
         /// </para>
         /// <para>
-        /// <b>Only a changed value is written.</b> Assigning <c>fillAmount</c> marks the graphic
-        /// dirty and queues a canvas rebuild, and a kill that lands on a level boundary publishes
-        /// several events in one frame — <c>ManualSkillButton.Draw</c>'s argument, arriving here
-        /// through a different door.
+        /// <b>Only a changed value is written.</b> Assigning an anchor marks the graphic dirty and
+        /// queues a canvas rebuild, and a kill that lands on a level boundary publishes several events
+        /// in one frame — <c>ManualSkillButton.Draw</c>'s argument, arriving here through a different
+        /// door.
+        /// </para>
+        /// <para>
+        /// <b>Switched off at zero</b>, for <c>HpBarView.DrawWidth</c>'s reason: a sliced pill with no
+        /// width draws its two end caps as a dot, which on this strip would say a level had begun
+        /// with experience in it.
         /// </para>
         /// </remarks>
         private void Draw(float fraction)
@@ -240,7 +266,23 @@ namespace Soulvail.Game.Presentation
             }
 
             _shownFraction = clamped;
-            _fill.fillAmount = clamped;
+
+            bool any = clamped > 0f;
+
+            _fill.enabled = any;
+
+            if (_fill.color != Palette.Player)
+            {
+                _fill.color = Palette.Player;
+            }
+
+            if (_fill.transform is RectTransform rect)
+            {
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = new Vector2(clamped, 1f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+            }
         }
 
         /// <summary>
@@ -282,6 +324,33 @@ namespace Soulvail.Game.Presentation
             rect.pivot = new Vector2(0f, 1f);
             rect.sizeDelta = new Vector2(0f, _heightDp * pxPerDp);
             rect.anchoredPosition = Vector2.zero;
+
+            Fit(_heightDp * pxPerDp);
+        }
+
+        /// <summary>
+        /// Insets the well in the track and fits both slices to the strip's height (UI-01b rule 1).
+        /// </summary>
+        /// <remarks>
+        /// Fractions of the height because the track's end caps scale with it — <c>HpBarView.Fit</c>'s
+        /// arithmetic, one strip up.
+        /// </remarks>
+        private void Fit(float height)
+        {
+            HudLayout.FitSlices(_track);
+
+            if (_well != null)
+            {
+                var ends = new Vector2(WellEndInset * height, WellEdgeInset * height);
+
+                _well.anchorMin = Vector2.zero;
+                _well.anchorMax = Vector2.one;
+                _well.pivot = new Vector2(0.5f, 0.5f);
+                _well.offsetMin = ends;
+                _well.offsetMax = -ends;
+            }
+
+            HudLayout.FitSlices(_fill);
         }
 
         private static bool IsUsableHeight(float dp) => float.IsFinite(dp) && dp > 0f;

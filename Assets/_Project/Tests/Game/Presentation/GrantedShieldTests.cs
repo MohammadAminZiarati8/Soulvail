@@ -337,10 +337,35 @@ public sealed class GrantedShieldTests
 
         _hub.Publish(new ShieldGranted(35f, 35f, 5f));
 
-        // GD §16.2's player row is "never ambiguous", and "140/140 (+35)" is a third number in a
-        // 320 dp row that M3-10b has just added a level label to. The segment says it; the text does
-        // not say it again.
-        Assert.That(Field<TMP_Text>(_presenter, "_hpText").text, Is.EqualTo("140/140"));
+        // GD §16.2's player row is "never ambiguous", and "140 / 140 (+35)" would be a third number
+        // inside a 22 dp bar. The segment says it; the text does not say it again. Spaced since
+        // UI-01b rule 9, as the owner's mockup draws it.
+        Assert.That(Field<TMP_Text>(_presenter, "_hpText").text, Is.EqualTo("140 / 140"));
+    }
+
+    /// <summary>
+    /// UI-01b rule 9: the readout sits inside the bar, spaced as the owner's mockup draws it. Here
+    /// rather than in <c>HpBarViewTests</c> because the numbers are a run's, and this fixture builds one.
+    /// </summary>
+    [Test]
+    public void Numbers_AreInsideTheBar()
+    {
+        StartRun();
+        BuildHud();
+
+        var bar = (RectTransform)_bar.transform;
+        var text = Field<TMP_Text>(_presenter, "_hpText");
+        var rect = (RectTransform)text.transform;
+
+        Assert.That(rect.anchoredPosition, Is.EqualTo(bar.anchoredPosition), "the readout is not on the bar.");
+        Assert.That(rect.sizeDelta, Is.EqualTo(bar.sizeDelta), "the readout is not the bar's size.");
+        Assert.That(text.alignment, Is.EqualTo(TextAlignmentOptions.Center), "the readout is not centred in the bar.");
+        Assert.That(text.GetComponent<RectTransform>().GetSiblingIndex(), Is.GreaterThan(bar.GetSiblingIndex()),
+            "the readout draws under the bar.");
+
+        Assert.That(text.text, Is.EqualTo("140 / 140"));
+        Assert.That(text.color, Is.EqualTo(Palette.HudText));
+        Assert.That(text.enableAutoSizing, Is.False, "the readout's size is dp's, not TMP's.");
     }
 
     [Test]

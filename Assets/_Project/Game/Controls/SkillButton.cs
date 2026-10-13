@@ -3,6 +3,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using VContainer;
 
@@ -50,10 +51,25 @@ namespace Soulvail.Game.Controls
     /// press, and core ignores it.
     /// </para>
     /// </remarks>
-    public sealed class SkillButton : MonoBehaviour
+    public sealed class SkillButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         /// <summary>Opacity while the cooldown is running. CC §6.2.</summary>
         private const float CoolingAlpha = 0.4f;
+
+        [Tooltip("The button frame image whose sprite swaps between states.")]
+        [SerializeField] private Image _buttonFrame;
+
+        [Tooltip("The centered icon image wearing Icon_Roll.")]
+        [SerializeField] private Image _icon;
+
+        [Tooltip("The frame sprite when movement skill is ready (RollButton_Ready).")]
+        [SerializeField] private Sprite _readySprite;
+
+        [Tooltip("The frame sprite while movement skill is cooling (RollButton_Cooling).")]
+        [SerializeField] private Sprite _coolingSprite;
+
+        [Tooltip("The frame sprite on pointer down (RollButton_Pressed).")]
+        [SerializeField] private Sprite _pressedSprite;
 
         [Tooltip("The radial sweep drawn over the button. Its Image must be Filled / Radial360 — " +
                  "fillAmount is the only thing written to it.")]
@@ -75,6 +91,9 @@ namespace Soulvail.Game.Controls
 
         private IRunSession _session;
 
+        /// <summary>Whether the button is currently pressed down.</summary>
+        private bool _isPressed;
+
         /// <summary>
         /// The last fraction written, so a frame that changed nothing costs no canvas rebuild.
         /// Seeded outside <c>[0, 1]</c> so the first frame always draws.
@@ -95,7 +114,26 @@ namespace Soulvail.Game.Controls
             _session = session ?? throw new ArgumentNullException(nameof(session));
         }
 
-        /// <exception cref="MissingReferenceException">The fill or the group is not dressed.</exception>
+        /// <summary>Rule 3: displays RollButton_Pressed on pointer down.</summary>
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            _isPressed = true;
+            UpdateFrameSprite();
+        }
+
+        /// <summary>Restores Ready or Cooling sprite on pointer up.</summary>
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _isPressed = false;
+            UpdateFrameSprite();
+        }
+
+        private void OnDisable()
+        {
+            _isPressed = false;
+        }
+
+        /// <exception cref="MissingReferenceException">The fill, group, or frame is not dressed.</exception>
         /// <exception cref="InvalidOperationException">Nothing injected this button.</exception>
         /// <remarks>
         /// Checked in <c>Start</c> rather than <c>Awake</c> for the reason every other injected view
@@ -111,6 +149,13 @@ namespace Soulvail.Game.Controls
                     "child onto Radial Fill and this object's CanvasGroup onto Group — without " +
                     "them the Charge is a button with no cooldown on it, which is worse than no " +
                     "button at all.");
+            }
+
+            if (_buttonFrame == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(SkillButton)} is missing its button frame image. Drag the Image onto " +
+                    "Button Frame — without it the Roll button has no frame sprite to display.");
             }
 
             if (_session is null)
@@ -259,6 +304,34 @@ namespace Soulvail.Game.Controls
             // Alpha only. blocksRaycasts and interactable are deliberately untouched, so an early
             // tap still reaches core and the input buffer keeps working — see the class remarks.
             _group.alpha = clamped > 0f ? CoolingAlpha : 1f;
+
+            UpdateFrameSprite();
+        }
+
+        /// <summary>
+        /// Rules 1–3: the frame wears Pressed while a thumb is on it, Cooling while the fraction
+        /// is above zero, and Ready otherwise. Called on a fraction change and on a press or release.
+        /// </summary>
+        private void UpdateFrameSprite()
+        {
+            Sprite target;
+            if (_isPressed && _pressedSprite != null)
+            {
+                target = _pressedSprite;
+            }
+            else if (_shownFraction > 0f && _coolingSprite != null)
+            {
+                target = _coolingSprite;
+            }
+            else
+            {
+                target = _readySprite;
+            }
+
+            if (_buttonFrame.sprite != target)
+            {
+                _buttonFrame.sprite = target;
+            }
         }
     }
 }

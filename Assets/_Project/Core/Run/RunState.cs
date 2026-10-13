@@ -420,6 +420,25 @@ public sealed class RunState
     public bool IsSkillReady(int index) => Skills.IsReady(index);
 
     /// <summary>
+    /// How many ordinary shots the class's volley counts to: <c>Volley.EveryCount</c>, and 0 for a
+    /// class with no volley or before a node has given one (UI-01e).
+    /// </summary>
+    /// <remarks>
+    /// One of three narrow reads for the skill row's pips, beside the cooldown reads above and for
+    /// their reason: the <c>Volley</c> lives on <see cref="Combat"/>, which stays <c>internal</c>
+    /// (AR §18.2), so a HUD is handed numbers rather than the counter it could advance.
+    /// </remarks>
+    public int VolleyEvery => Combat.Volley?.EveryCount ?? 0;
+
+    /// <summary>Ordinary shots since the last volley — <c>Volley.ShotsTowardNext</c>, or 0 with none.</summary>
+    /// <inheritdoc cref="VolleyEvery" path="/remarks" />
+    public int VolleyShotsTowardNext => Combat.Volley?.ShotsTowardNext ?? 0;
+
+    /// <summary>The next shot is a volley — <c>Volley.IsReady</c>, or false with none.</summary>
+    /// <inheritdoc cref="VolleyEvery" path="/remarks" />
+    public bool IsVolleyReady => Combat.Volley?.IsReady ?? false;
+
+    /// <summary>
     /// How many of CC §6.2's four manual slots are occupied — <b>what a screen must ask before
     /// sending <c>SetAutoCast(id, false)</c></b>, because the fifth is refused (M3-07a rule 2).
     /// </summary>
@@ -999,6 +1018,25 @@ public sealed class RunState
     /// counts here until M1-11 has published its death and despawned it.
     /// </remarks>
     public int EnemyCount => Enemies.Registry.AliveCount;
+
+    /// <summary>
+    /// The living enemies and the bodies still to come this stage (UI-01c): what the stage has left.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Living, not registered</b>, which is the difference from <see cref="EnemyCount"/>: a corpse
+    /// sits in the registry for <c>EnemySystem.CorpseTime</c> while it dissolves, and a chip that
+    /// counted it would say one was left after the last kill. <b>And the bodies to come</b>, because
+    /// waves overlap (GD §7.3): the living alone dip under five at every wave's start, and a chip that
+    /// read 3 and then 9 would be wrong twice. So this only falls, and it falls to 0 at the clear.
+    /// </para>
+    /// <para>
+    /// <c>internal set</c> and written once a tick by <c>RunSession.Tick</c>, after the flow —
+    /// <see cref="StageIndex"/>'s arrangement, because this state does not hold the director. Zero
+    /// through the arrival beat, which spawns nothing yet, and through the Sanctum.
+    /// </para>
+    /// </remarks>
+    public int EnemiesLeft { get; internal set; }
 
     /// <summary>
     /// The player's current hit points, in <c>[0, <see cref="PlayerMaxHp"/>]</c>. The left-hand

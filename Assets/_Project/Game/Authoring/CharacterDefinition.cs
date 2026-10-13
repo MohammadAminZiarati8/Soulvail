@@ -234,6 +234,12 @@ namespace Soulvail.Game.Authoring
                  "bolt, which is what every shipped class does.")]
         [SerializeField] private ProjectileView _projectile;
 
+        [Tooltip("The tree node the HUD draws this class's volley as (UI-01e): its icon heads the " +
+                 "auto-cast row once a node has given the volley. The Ranger's is Volley. Empty is " +
+                 "not an error: a class with no volley has no cell to draw, and one with a volley " +
+                 "and no node here draws Icon_Placeholder.")]
+        [SerializeField] private SkillDefinition _volleyNode;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -403,7 +409,10 @@ namespace Soulvail.Game.Authoring
         /// the wrong model is wrong on screen, where no rule reads it. A shot named on a Cone class
         /// is never flown, because a Cone fires nothing.
         /// </remarks>
-        public CharacterLook ToLook() => new CharacterLook(_body, _projectile);
+        public CharacterLook ToLook() => new CharacterLook(
+            _body,
+            _projectile,
+            _volleyNode == null ? default : new ContentId(_volleyNode.Id));
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

@@ -1486,6 +1486,110 @@ public sealed class StageFlowTests
         Assert.That(session.State.StageIndex, Is.EqualTo(4));
     }
 
+    // ---- What the stage has left (UI-01c rule 4) -------------------------------------------------
+
+    [Test]
+    public void EnemiesLeft_IsZeroThroughTheArrival()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        session.Start(SessionConfig(1));
+
+        Assert.That(session.State.EnemiesLeft, Is.Zero, "a run that has not ticked has nothing left.");
+
+        // Three of the arrival's four half-second ticks: the director has not been handed a plan yet.
+        for (int i = 0; i < 3; i++)
+        {
+            session.Tick(SessionSnapshot(0.5f, Vector3.Zero));
+
+            Assert.That(session.State.EnemiesLeft, Is.Zero, $"tick {i} of the arrival");
+        }
+    }
+
+    [Test]
+    public void EnemiesLeft_IsTheLivingAndTheUnspawned()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        session.Start(SessionConfig(1));
+
+        for (int i = 0; i < 600 && _events.Count<WaveStarted>() == 0; i++)
+        {
+            session.Tick(SessionSnapshot(1f / 60f, Vector3.Zero));
+        }
+
+        // The stage's one Husk, still to come on the tick its wave opened.
+        Assert.That(_events.Count<EnemySpawned>(), Is.Zero);
+        Assert.That(session.State.EnemiesLeft, Is.EqualTo(1));
+
+        for (int i = 0; i < 600 && _events.Count<EnemySpawned>() == 0; i++)
+        {
+            session.Tick(SessionSnapshot(1f / 60f, Vector3.Zero));
+        }
+
+        session.Tick(SessionSnapshot(1f / 60f, Vector3.Zero));
+
+        // And the same Husk, standing: counted once, as living.
+        Assert.That(session.State.EnemiesLeft, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void EnemiesLeft_DoesNotCountACorpse()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        session.Start(SessionConfig(1));
+
+        Vector3 at = KillTheWave(session);
+
+        session.Tick(SessionSnapshot(1f / 60f, at));
+
+        // Inside EnemySystem.CorpseTime the body is still registered, and it is not left.
+        Assert.That(session.State.EnemyCount, Is.EqualTo(1), "the fixture's premise: the corpse is registered.");
+        Assert.That(session.State.EnemiesLeft, Is.Zero, "a corpse was counted as an enemy left.");
+    }
+
+    [Test]
+    public void EnemiesLeft_ReachesZeroAtTheClear()
+    {
+        RunSession session = Session(new RecordingIntents());
+
+        session.Start(SessionConfig(1));
+
+        Vector3 at = KillTheWave(session);
+
+        for (int i = 0; i < 600 && _events.Count<StageCleared>() == 0; i++)
+        {
+            session.Tick(SessionSnapshot(1f / 60f, at));
+        }
+
+        Assert.That(_events.Count<StageCleared>(), Is.EqualTo(1), "the fixture failed to clear the stage.");
+        Assert.That(session.State.EnemiesLeft, Is.Zero);
+    }
+
+    [Test]
+    public void EnemiesLeft_AllocatesNothing()
+    {
+        var intents = new RecordingIntents();
+        RunSession session = Session(intents);
+        WorldSnapshot snapshot = SessionSnapshot(1f / 60f, Vector3.Zero);
+
+        session.Start(SessionConfig(1));
+
+        // Into the wave with its one Husk standing, then far enough in that every recorder has grown
+        // past the measured window — RunSessionTests.Tick_AllocatesNothing's warm-up, for its reason.
+        for (int i = 0; i < 20_000; i++)
+        {
+            session.Tick(snapshot);
+        }
+
+        Assert.That(session.State.EnemiesLeft, Is.EqualTo(1), "the fixture's premise: a run in a wave.");
+
+        intents.Clear();
+
+        AllocationAssert.None(() => session.Tick(snapshot), 100);
+    }
+
     // ---- Fixture -------------------------------------------------------------------------------
 
     /// <summary>

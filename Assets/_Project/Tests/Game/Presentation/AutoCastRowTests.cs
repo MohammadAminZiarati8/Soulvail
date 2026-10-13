@@ -69,6 +69,9 @@ public sealed class AutoCastRowTests
     private const string TreeId = "tree.oathbound";
     private const string ArenaId = "arena.pillars";
 
+    /// <summary>The volley node the fixture's class may take (UI-01e).</summary>
+    private const string VolleyNodeId = "skill.test.volley";
+
     private const int Capacity = 64;
     private const int DeviceCap = 28;
     private const int ProjectileCapacity = 8;
@@ -92,6 +95,12 @@ public sealed class AutoCastRowTests
     private RunConfig _config;
 
     private string[] _activeIds;
+
+    /// <summary>The icons <see cref="Row"/> hands the row, by skill id — empty unless a row adds one.</summary>
+    private readonly Dictionary<ContentId, Sprite> _iconMap = new Dictionary<ContentId, Sprite>();
+
+    /// <summary>The node the fixture's class draws its volley as, or <c>default</c>.</summary>
+    private ContentId _volleyNode;
 
     private GameObject _hud;
     private AutoCastRow _row;
@@ -127,66 +136,37 @@ public sealed class AutoCastRowTests
 
     // ---- Which cells exist (rules 5, 6, 7) -------------------------------------------------------
 
-    /// <summary>
-    /// Ledger row 9's <em>seventh</em> reader, and the one M3-14a's table deliberately cannot fix.
-    /// </summary>
+    /// <summary>UI-01e rule 2: a cell wears its skill's own icon, from the book built at boot.</summary>
     /// <remarks>
-    /// <para>
-    /// <b>This row exists to say why it is not closed</b> (M3-14a rule 9). Every other reader row 9
-    /// counts draws a <c>LocKey</c> and now draws a word; a 24 dp cell holds <em>neither</em> — not
-    /// <c>skill.oathbound.consecrate.name</c> and not <em>"Consecrate"</em> — because there is no
-    /// space at all. So which skill a cell is showing is communicated in no form until icons exist,
-    /// and the gap is <b>M7</b>'s art pass rather than a missing table row.
-    /// </para>
-    /// <para>
-    /// <b>It must not be conflated with the 60 dp slot button beside it</b>, and the difference is
-    /// the whole of why one closes and one does not: on the button a word <em>plausibly</em> fits and
-    /// the open question is legibility on a phone ([ledger row 4]); in a cell nothing fits, and no
-    /// table can help.
-    /// </para>
-    /// <para>
-    /// Asserted as the <em>absence of a text component</em> rather than as an empty string, because
-    /// an empty label would be a cell that could quietly gain a word later and close this row without
-    /// anyone ruling on it.
-    /// </para>
+    /// <b>This replaced <c>AutoCastRow_IsStillIconless</c></b>, whose subject was the absence of icons
+    /// and which said so: ledger row 9's seventh reader could only close with art. UI-01e is the art.
     /// </remarks>
     [Test]
-    public void AutoCastRow_IsStillIconless()
+    public void Row_DrawsEachSkillsIcon()
     {
-        StartRun(actives: 1);
+        StartRun(actives: 2);
 
-        AutoCastRow row = Row();
+        Sprite art = TestIcon();
 
-        Image[] fills = Field<Image[]>(row, "_fills");
+        _iconMap[new ContentId(_activeIds[0])] = art;
 
-        Assert.That(fills, Is.Not.Empty, "the row has no cells, so this test asserts nothing.");
+        Row();
 
-        foreach (Image fill in fills)
-        {
-            Assert.That(fill, Is.Not.Null);
+        Assert.That(Icons()[0].sprite, Is.SameAs(art), "the cell does not wear its skill's icon.");
+    }
 
-            // The cell is the fill's own object and its children — a sweep rather than a single
-            // GetComponent, so a label parented one level down would still be caught.
-            Assert.That(
-                fill.GetComponentsInChildren<TMP_Text>(true),
-                Is.Empty,
-                "A 24 dp auto-cast cell gained a text component. If a word really fits, that is "
-                    + "ledger row 9's seventh reader closing and it is a ruling, not a tweak — "
-                    + "say so rather than deleting this row.");
-        }
+    [Test]
+    public void Row_ASkillWithNoIconDrawsThePlaceholder()
+    {
+        StartRun(actives: 2);
+        Row();
 
-        // And the class takes no ILocalizer at all, which is the structural half of the same claim.
-        foreach (MethodInfo method in typeof(AutoCastRow).GetMethods(
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-        {
-            foreach (ParameterInfo parameter in method.GetParameters())
-            {
-                Assert.That(
-                    parameter.ParameterType,
-                    Is.Not.EqualTo(typeof(ILocalizer)),
-                    $"AutoCastRow.{method.Name} takes an ILocalizer, so it means to draw a word.");
-            }
-        }
+        var placeholder = Field<Sprite>(_row, "_placeholderIcon");
+
+        Assert.That(placeholder, Is.Not.Null, "the prefab dresses no placeholder.");
+        Assert.That(placeholder.name, Is.EqualTo("Icon_Placeholder"));
+        Assert.That(Icons()[0].sprite, Is.SameAs(placeholder));
+        Assert.That(Icons()[1].sprite, Is.SameAs(placeholder));
     }
 
     [Test]
@@ -324,8 +304,10 @@ public sealed class AutoCastRowTests
         int cellsBefore = _row.transform.childCount;
         int imagesBefore = _row.GetComponentsInChildren<Image>(includeInactive: true).Length;
 
-        Assert.That(cellsBefore, Is.EqualTo(SkillRunner.MaxActives), "the prefab authors twelve cells.");
-        Assert.That(imagesBefore, Is.EqualTo(SkillRunner.MaxActives * 2), "a body and a fill each.");
+        // Twelve Active cells and the volley's, each a glow, a frame and an icon; the Active cells a
+        // sweep as well, and the volley's cell five pips (UI-01e).
+        Assert.That(cellsBefore, Is.EqualTo(SkillRunner.MaxActives + 1), "the prefab authors twelve cells and the volley's.");
+        Assert.That(imagesBefore, Is.EqualTo((SkillRunner.MaxActives * 4) + 3 + AutoCastRow.MaxPips), "four images a cell, and the volley's eight.");
 
         for (int frame = 0; frame < 5; frame++)
         {
@@ -342,15 +324,15 @@ public sealed class AutoCastRowTests
             Is.EqualTo(imagesBefore),
             "the row instantiated an Image after Start.");
 
-        // Twelve 24 dp cells with 4 dp gaps is 332 dp, which fits a landscape safe area under a
-        // 320 dp health bar — the arithmetic rule 7 sizes the row by.
+        // Twelve 34 dp cells with 4 dp gaps is 452 dp, which a landscape safe area holds beside the
+        // band's right-hand end; a 9:20 portrait holds seven, which HudLayoutTests pins (UI-01e rule 7).
         float pxPerDp = PixelsPerDp();
         var first = (RectTransform)Strips()[0].transform;
         var last = (RectTransform)Strips()[SkillRunner.MaxActives - 1].transform;
 
         Assert.That(
             (last.anchoredPosition.x + last.sizeDelta.x - first.anchoredPosition.x) / pxPerDp,
-            Is.EqualTo(332f).Within(0.01f));
+            Is.EqualTo(452f).Within(0.01f));
     }
 
     [Test]
@@ -377,10 +359,10 @@ public sealed class AutoCastRowTests
     // ---- What a cell is showing (rules 6, 9) -----------------------------------------------------
 
     [Test]
-    public void Row_FillsTrackTheirSkills()
+    public void Row_SweepIsWhatIsLeftOfTheCooldown()
     {
-        // A fires itself on the first tick and B never does, which is what makes "that cell's fill
-        // moves and the other's does not" a claim about the mapping rather than about two fills that
+        // A fires itself on the first tick and B never does, which is what makes "that cell's sweep
+        // moves and the other's does not" a claim about the mapping rather than about two sweeps that
         // happen to be at different places.
         StartRun(actives: 2, firesImmediately: new[] { true, false });
         Row();
@@ -390,53 +372,43 @@ public sealed class AutoCastRowTests
         Image a = Fills()[0];
         Image b = Fills()[1];
 
-        Assert.That(a.fillAmount, Is.EqualTo(1f).Within(1e-3f), "a live skill draws a full ring.");
-        Assert.That(b.fillAmount, Is.EqualTo(1f).Within(1e-3f));
+        Assert.That(a.fillAmount, Is.EqualTo(0f).Within(1e-3f), "a live skill is shaded.");
+        Assert.That(b.fillAmount, Is.EqualTo(0f).Within(1e-3f));
 
-        // One tick: the runner casts at most one a tick, in take order (M3-06), and only A's trigger
-        // is ever met.
         TickRun(Frame);
         PassAFrame();
 
-        // Empty the instant the cast starts: the fill is 1 − fraction, which is SkillButton's and
-        // ManualSkillButton's convention and deliberately the same one, because the player can have
-        // a cell and a button on screen at once.
-        Assert.That(a.fillAmount, Is.EqualTo(0f).Within(1e-3f), "A's cell did not follow its cast.");
-        Assert.That(b.fillAmount, Is.EqualTo(1f).Within(1e-3f), "B's cell moved for A's cast.");
+        // **Full the instant the cast starts, where M3-10b's fill was empty** (UI-01e rule 3). The
+        // sweep is a dark wedge over the icon that clears clockwise — the mockup's and the art's
+        // cooling button's picture — so its fill is the cooldown left rather than one minus it. The
+        // number is core's either way.
+        Assert.That(a.fillAmount, Is.EqualTo(1f).Within(1e-3f), "A's cell did not shade on its cast.");
+        Assert.That(b.fillAmount, Is.EqualTo(0f).Within(1e-3f), "B's cell moved for A's cast.");
 
-        // Half the wait gone, half the ring back. The number is core's — SkillCooldownFraction
-        // measured against the *current* effective cooldown — and this row only draws it.
         TickRun(FirstCooldown / 2f);
         PassAFrame();
 
         Assert.That(a.fillAmount, Is.EqualTo(0.5f).Within(0.05f));
-        Assert.That(b.fillAmount, Is.EqualTo(1f).Within(1e-3f));
+        Assert.That(b.fillAmount, Is.EqualTo(0f).Within(1e-3f));
 
-        // Stopped a little short of ready on purpose: A's trigger holds on every tick, so ticking
-        // past its cooldown would cast it again and the row would honestly be near-empty rather
-        // than full. What the last step is about is that the cell keeps recovering, which a recast
-        // would hide.
+        // Stopped short of ready on purpose, for the old row's reason: A's trigger holds every tick.
         TickRun(1f);
         PassAFrame();
 
-        Assert.That(a.fillAmount, Is.EqualTo(0.9f).Within(0.05f));
-        Assert.That(b.fillAmount, Is.EqualTo(1f).Within(1e-3f));
+        Assert.That(a.fillAmount, Is.EqualTo(0.1f).Within(0.05f));
+        Assert.That(b.fillAmount, Is.EqualTo(0f).Within(1e-3f));
     }
 
     [Test]
-    public void Row_WritesOnlyChangedFills()
+    public void Row_WritesOnlyChangedSweeps()
     {
-        // Two Actives whose triggers are never met, so the run is idle and every cell's fraction
-        // stays at 0 for the whole row.
         StartRun(actives: 2, firesImmediately: new[] { false, false });
         Row();
 
         PassAFrame();
 
-        // A sentinel nothing should overwrite. Assigning fillAmount marks the graphic dirty and
-        // queues a canvas rebuild, so a row that wrote an unchanged value would rebuild the HUD on
-        // every frame of every second a skill is not being cast — which, for a skill on an
-        // eight-second cooldown, is most of them. Twelve cells make that argument twelve times over.
+        // A sentinel nothing should overwrite: assigning fillAmount queues a canvas rebuild, and a
+        // skill on an eight-second cooldown is idle for most of it.
         Fills()[0].fillAmount = 0.42f;
         Fills()[1].fillAmount = 0.37f;
 
@@ -445,56 +417,160 @@ public sealed class AutoCastRowTests
             PassAFrame();
         }
 
-        Assert.That(
-            Fills()[0].fillAmount,
-            Is.EqualTo(0.42f).Within(1e-4f),
-            "the row repainted a frame in which nothing had changed.");
-
+        Assert.That(Fills()[0].fillAmount, Is.EqualTo(0.42f).Within(1e-4f), "the row repainted a frame in which nothing had changed.");
         Assert.That(Fills()[1].fillAmount, Is.EqualTo(0.37f).Within(1e-4f));
 
-        // And it *does* write when something changes, so the row above is about redundancy rather
-        // than about a row that has stopped drawing.
+        // And it *does* write when something changes, so the row above is about redundancy.
         SetPrivate(_row, "_dirty", true);
         PassAFrame();
 
-        Assert.That(Fills()[0].fillAmount, Is.EqualTo(1f).Within(1e-3f));
+        Assert.That(Fills()[0].fillAmount, Is.EqualTo(0f).Within(1e-3f));
     }
 
     [Test]
-    public void Row_TintsByKind()
+    public void Row_GlowsWhenReady()
+    {
+        StartRun(actives: 2, firesImmediately: new[] { true, false });
+        Row();
+
+        PassAFrame();
+
+        // Both live: both glow (UI-01e rule 4).
+        Assert.That(Glows()[0].gameObject.activeSelf, Is.True, "a ready skill does not glow.");
+        Assert.That(Glows()[1].gameObject.activeSelf, Is.True);
+
+        TickRun(Frame);
+        PassAFrame();
+
+        Assert.That(Glows()[0].gameObject.activeSelf, Is.False, "a cooling skill glows.");
+        Assert.That(Glows()[1].gameObject.activeSelf, Is.True);
+    }
+
+    [Test]
+    public void Row_CarriesNoColourOfItsOwn()
     {
         StartRun(actives: 1);
         Row();
 
-        // **A live cell is always the Active tint, because rule 5's membership admits nothing else**
-        // — the runner holds Actives and only Actives, so the other three of ledger row 6's four
-        // colours are unreachable through a run. That is worth saying rather than working around:
-        // the lookup is still total, for TreeNodeView.Frame's reason, and this is where it is proved
-        // to answer four different things.
-        Assert.That(Strips()[0].color, Is.EqualTo(Tint(SkillKind.Active)));
+        // UI-01e rule 8: the sweep is the art's ink at the row's own alpha — the palette is opaque
+        // and a view multiplies its own — and the glow is the player's cyan. The kind tint went with
+        // the icons: a cell's identity is its picture now.
+        Color shade = Palette.Ink;
 
-        var tints = new[]
-        {
-            Tint(SkillKind.Passive),
-            Tint(SkillKind.Active),
-            Tint(SkillKind.Upgrade),
-            Tint(SkillKind.Keystone),
-        };
+        shade.a = Field<float>(_row, "_sweepAlpha");
 
+        Assert.That(Fills()[0].color, Is.EqualTo(shade));
+        Assert.That(Glows()[0].color, Is.EqualTo(Palette.Player));
+        Assert.That(Palette.IsDanger(Fills()[0].color), Is.False);
+        Assert.That(typeof(AutoCastRow).GetMethod("Tint", BindingFlags.Static | BindingFlags.NonPublic), Is.Null,
+            "the kind tint is back; a cell's identity is its icon (rule 8).");
+    }
+
+    // ---- The volley (UI-01e rules 1, 2, 4, 5) ----------------------------------------------------
+
+    [Test]
+    public void Volley_HasNoCellUntilANodeGivesOne()
+    {
+        StartRun(actives: 0, volleyEvery: 0);
+        Row();
+        PassAFrame();
+
+        Assert.That(_row.HasVolleyCell, Is.False, "a volley nobody has given drew a cell.");
+
+        StartRun(actives: 0, volleyEvery: 5);
+        Row();
+        PassAFrame();
+
+        Assert.That(_row.HasVolleyCell, Is.True, "the volley has no cell.");
+        Assert.That(Field<RectTransform>(_row, "_volleyCell").gameObject.activeSelf, Is.True);
+    }
+
+    [Test]
+    public void Volley_ComesFirst()
+    {
+        StartRun(actives: 1, volleyEvery: 5);
+        Row();
+        PassAFrame();
+
+        float px = PixelsPerDp();
+        Vector2 margin = Field<Vector2>(_row, "_marginDp");
+        var volley = Field<RectTransform>(_row, "_volleyCell");
+        var active = (RectTransform)Strips()[0].transform;
+
+        Assert.That(volley.anchoredPosition.x, Is.EqualTo(margin.x * px).Within(1e-2f), "the volley is not first.");
         Assert.That(
-            tints.Distinct().Count(),
-            Is.EqualTo(4),
-            "two of CH §4's four kinds share a tint, so a player could not tell them apart.");
+            active.anchoredPosition.x,
+            Is.EqualTo((margin.x + AutoCastRow.CellSizeDp + AutoCastRow.GapDp) * px).Within(1e-2f),
+            "the Active did not move over for the volley.");
+    }
 
-        // **And they are Palette's four, which is what M3-13a changed here.** This used to compare
-        // the row's four serialized fields against OfferCard's, field name by field name, because
-        // this was the *third* copy of the same four values — M3-10b rule 9's whole complaint, and
-        // the state ledger row 6 predicted. There is one answer now, so the row asserts the answer
-        // rather than the agreement, and there is nothing left for a fourth screen to copy.
-        Assert.That(Tint(SkillKind.Passive), Is.EqualTo(Palette.KindPassive));
-        Assert.That(Tint(SkillKind.Active), Is.EqualTo(Palette.KindActive));
-        Assert.That(Tint(SkillKind.Upgrade), Is.EqualTo(Palette.KindUpgrade));
-        Assert.That(Tint(SkillKind.Keystone), Is.EqualTo(Palette.KindKeystone));
+    [Test]
+    public void Volley_DrawsItsNodesIcon()
+    {
+        StartRun(actives: 0, volleyEvery: 5);
+
+        Sprite art = TestIcon();
+
+        _iconMap[new ContentId(VolleyNodeId)] = art;
+        _volleyNode = new ContentId(VolleyNodeId);
+
+        Row();
+        PassAFrame();
+
+        Assert.That(Field<Image>(_row, "_volleyIcon").sprite, Is.SameAs(art), "the volley does not wear its node's icon.");
+    }
+
+    [Test]
+    public void Volley_PipsAreTheShotsTowardTheNext()
+    {
+        StartRun(actives: 0, volleyEvery: 5);
+        Row();
+
+        Loose(3);
+        PassAFrame();
+
+        Assert.That(_row.PipsShown, Is.EqualTo(5));
+        Assert.That(_row.PipsFull, Is.EqualTo(3));
+        Assert.That(Pips()[2].sprite, Is.SameAs(Field<Sprite>(_row, "_pipFull")));
+        Assert.That(Pips()[3].sprite, Is.SameAs(Field<Sprite>(_row, "_pipEmpty")));
+    }
+
+    [Test]
+    public void Volley_PipsFollowARank()
+    {
+        StartRun(actives: 0, volleyEvery: 4);
+        Row();
+        PassAFrame();
+
+        Assert.That(_row.PipsShown, Is.EqualTo(4), "Volley II's four shots are not four pips.");
+        Assert.That(Pips()[4].gameObject.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void Volley_PipsScalePastFive()
+    {
+        StartRun(actives: 0, volleyEvery: 8);
+        Row();
+
+        Loose(4);
+        PassAFrame();
+
+        Assert.That(_row.PipsShown, Is.EqualTo(5));
+        Assert.That(_row.PipsFull, Is.EqualTo(2), "four of eight shots is two and a half of five pips, floored.");
+    }
+
+    [Test]
+    public void Volley_ReadyFillsThePipsAndGlows()
+    {
+        StartRun(actives: 0, volleyEvery: 5);
+        Row();
+
+        Loose(5);
+        PassAFrame();
+
+        Assert.That(_session.State.IsVolleyReady, Is.True, "the fixture's premise: five shots ready the fan.");
+        Assert.That(_row.PipsFull, Is.EqualTo(5));
+        Assert.That(Field<Image>(_row, "_volleyGlow").gameObject.activeSelf, Is.True, "a ready volley does not glow.");
     }
 
     // ---- Where the cells sit (rule 7) ------------------------------------------------------------
@@ -508,6 +584,7 @@ public sealed class AutoCastRowTests
         var rect = (RectTransform)Strips()[0].transform;
         Vector2 placed = rect.anchoredPosition;
         Vector2 sized = rect.sizeDelta;
+        Vector2 margin = Field<Vector2>(_row, "_marginDp");
 
         // **These twelve cells are authored on Hud.prefab, so leaving the layout alone is an answer**
         // (SkillBarPresenter.Place's, not TreeViewPresenter.Layout's) — a tree cell is a runtime
@@ -551,12 +628,14 @@ public sealed class AutoCastRowTests
         // only nonsense and a negative are refused.
         foreach (float bad in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity, -16f })
         {
-            SetPrivate(_row, "_marginDp", new Vector2(bad, 48f));
+            SetPrivate(_row, "_marginDp", new Vector2(bad, margin.y));
 
             Assert.That(() => Place(), Throws.Nothing, $"Place threw on a margin of {bad}.");
         }
 
-        SetPrivate(_row, "_marginDp", new Vector2(16f, 48f));
+        // The shipped margin back, read at the top rather than typed here: UI-01b moved it under the
+        // new bar, and a literal of the old one is what this row compared against until then.
+        SetPrivate(_row, "_marginDp", margin);
         Place();
 
         Assert.That(rect.anchoredPosition, Is.EqualTo(placed), "the authored layout did not come back.");
@@ -599,16 +678,20 @@ public sealed class AutoCastRowTests
             Assert.That(rect.anchoredPosition.y, Is.EqualTo(-margin.y * pxPerDp).Within(1e-2f));
         }
 
-        // Under the health bar rather than over it: HudPresenter's row is 16 dp down and 24 dp tall,
-        // so the first honest place for this one is 40 and it ships at 48.
+        // Under the health bar rather than over it (UI-01b rule 12): the bar is centred on the star's
+        // centre line, so its bottom is the star's top plus half the star plus half the bar — 46 dp —
+        // and the row ships 8 dp under it, left-aligned with it: 6 at UI-01b, and 8 since UI-01d put
+        // the stage chip's bottom edge at 53.
         HudPresenter hud = _hud.GetComponent<HudPresenter>();
         Vector2 barSize = Field<Vector2>(hud, "_barSizeDp");
-        Vector2 barMargin = Field<Vector2>(hud, "_marginDp");
+        Vector2 starMargin = Field<Vector2>(hud, "_marginDp");
+        float star = Field<float>(hud, "_starSizeDp");
+        float gap = Field<float>(hud, "_gapDp");
+        float barBottom = starMargin.y + ((star - barSize.y) * 0.5f) + barSize.y;
 
-        Assert.That(
-            margin.y,
-            Is.GreaterThanOrEqualTo(barMargin.y + barSize.y),
-            "the auto-cast row overlaps the health bar.");
+        Assert.That(margin.y, Is.GreaterThanOrEqualTo(barBottom), "the auto-cast row overlaps the health bar.");
+        Assert.That(margin.y - barBottom, Is.EqualTo(8f).Within(1e-3f), "the row is not 8 dp under the bar.");
+        Assert.That(margin.x, Is.EqualTo(starMargin.x + star + gap).Within(1e-3f), "the row is not under the bar's left edge.");
     }
 
     // ---- Guards ----------------------------------------------------------------------------------
@@ -619,9 +702,11 @@ public sealed class AutoCastRowTests
         StartRun(actives: 1);
         Row();
 
-        Assert.Throws<ArgumentNullException>(() => _row.Construct(null, _hub, _catalog));
-        Assert.Throws<ArgumentNullException>(() => _row.Construct(_session, null, _catalog));
-        Assert.Throws<ArgumentNullException>(() => _row.Construct(_session, _hub, null));
+        // The catalog left at UI-01e with the kind tint; the two books came in its place.
+        Assert.Throws<ArgumentNullException>(() => _row.Construct(null, _hub, IconBook(), LookBook()));
+        Assert.Throws<ArgumentNullException>(() => _row.Construct(_session, null, IconBook(), LookBook()));
+        Assert.Throws<ArgumentNullException>(() => _row.Construct(_session, _hub, null, LookBook()));
+        Assert.Throws<ArgumentNullException>(() => _row.Construct(_session, _hub, IconBook(), null));
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------
@@ -644,7 +729,7 @@ public sealed class AutoCastRowTests
     /// <c>RunSession.Start</c> adds a restored Active through short of playing a level-up, and the
     /// only one that can state a loadout. The level accounts for the nodes (M3-08a rule 9).
     /// </remarks>
-    private void CreateRun(int actives, int[] manual = null, bool[] firesImmediately = null)
+    private void CreateRun(int actives, int[] manual = null, bool[] firesImmediately = null, int volleyEvery = 0)
     {
         _activeIds = new string[actives];
 
@@ -675,8 +760,15 @@ public sealed class AutoCastRowTests
             activeTier.Add(filler.Id);
         }
 
-        SkillSpec second = PassiveNode("skill.test.p0");
+        // The volley's node (UI-01e): a Passive that gives the class's volley its count, taken like
+        // the actives, so the row meets a volley exactly as a run does — through a node.
+        SkillSpec second = volleyEvery > 0 ? VolleyNode(volleyEvery) : PassiveNode("skill.test.p0");
         SkillSpec third = PassiveNode("skill.test.p1");
+
+        if (volleyEvery > 0)
+        {
+            taken.Add(second.Id);
+        }
 
         skills.Add(second);
         skills.Add(third);
@@ -692,7 +784,7 @@ public sealed class AutoCastRowTests
             });
 
         _catalog = new ContentCatalog(
-            new[] { Oathbound() },
+            new[] { Oathbound(volleyEvery > 0) },
             new[] { Husk() },
             new[] { Mode() },
             skills,
@@ -750,9 +842,9 @@ public sealed class AutoCastRowTests
     }
 
     /// <summary><see cref="CreateRun"/>, started.</summary>
-    private void StartRun(int actives, int[] manual = null, bool[] firesImmediately = null)
+    private void StartRun(int actives, int[] manual = null, bool[] firesImmediately = null, int volleyEvery = 0)
     {
-        CreateRun(actives, manual, firesImmediately);
+        CreateRun(actives, manual, firesImmediately, volleyEvery);
 
         _session.Start(_config);
     }
@@ -779,7 +871,7 @@ public sealed class AutoCastRowTests
 
         // What RunScope's RegisterComponent does, and then the Start that Unity does not run on an
         // instantiated prefab in EditMode: the placement and the first membership build live there.
-        _row.Construct(_session, _hub, _catalog);
+        _row.Construct(_session, _hub, IconBook(), LookBook());
 
         Invoke(_row, "Start");
 
@@ -824,24 +916,58 @@ public sealed class AutoCastRowTests
         }
     }
 
-    private Image[] Fills() => Field<Image[]>(_row, "_fills");
+    private Image[] Fills() => Field<Image[]>(_row, "_sweeps");
 
-    private Image[] Strips() => Field<Image[]>(_row, "_kindStrips");
+    private RectTransform[] Strips() => Field<RectTransform[]>(_row, "_cells");
+
+    private Image[] Icons() => Field<Image[]>(_row, "_icons");
+
+    private Image[] Glows() => Field<Image[]>(_row, "_glows");
+
+    private Image[] Pips() => Field<Image[]>(_row, "_pips");
+
+    private SkillIconBook IconBook() => new SkillIconBook(_iconMap);
+
+    private CharacterLookBook LookBook() => new CharacterLookBook(new Dictionary<ContentId, CharacterLook>
+    {
+        [new ContentId(OathboundId)] = new CharacterLook(null, null, _volleyNode),
+    });
+
+    /// <summary>A sprite that is not the placeholder: the Ranger's own volley icon, off the art folder.</summary>
+    private static Sprite TestIcon()
+    {
+        var sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/Art/UI/Icons/Icon_Volley.png");
+
+        Assert.That(sprite, Is.Not.Null, "the fixture's sprite is missing.");
+
+        return sprite;
+    }
+
+    /// <summary>
+    /// Looses <paramref name="shots"/> ordinary shots on the run's volley — what <c>PlayerCombat</c>
+    /// does once per damage frame — through the internal combat handle, which a Tests.Game fixture
+    /// reaches by reflection alone (AR §18.2).
+    /// </summary>
+    private void Loose(int shots)
+    {
+        object combat = typeof(RunState)
+            .GetProperty("Combat", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(_session.State);
+
+        var volley = (Volley)combat.GetType().GetProperty("Volley").GetValue(combat);
+
+        Assert.That(volley, Is.Not.Null, "the fixture's class has no volley.");
+
+        for (int i = 0; i < shots; i++)
+        {
+            volley.Loose();
+        }
+    }
 
     private bool[] Shown() => Strips().Select(s => s != null && s.gameObject.activeSelf).ToArray();
 
     /// <summary>Which owned active cell <paramref name="cell"/> is drawing, by runner index.</summary>
     private int CellSkill(int cell) => Field<int[]>(_row, "_cellSkill")[cell];
-
-    /// <summary>
-    /// The row's own kind lookup, invoked directly. <c>BindingFlags.Static</c> as of M3-13a: the
-    /// method read four serialized fields until this task and reads <c>Palette</c> now, so it holds
-    /// no instance state left to be an instance method for.
-    /// </summary>
-    private static Color Tint(SkillKind kind) =>
-        (Color)typeof(AutoCastRow)
-            .GetMethod("Tint", BindingFlags.Static | BindingFlags.NonPublic)
-            .Invoke(null, new object[] { kind });
 
     private IPlayerCommands Commands() => _session;
 
@@ -906,7 +1032,7 @@ public sealed class AutoCastRowTests
             new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.05f),
         });
 
-    private static CharacterSpec Oathbound() => new CharacterSpec(
+    private static CharacterSpec Oathbound(bool volley = false) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
         new LocKey("character.oathbound.description"),
@@ -919,7 +1045,19 @@ public sealed class AutoCastRowTests
         // put a modifier and a stream of events into a fixture measuring neither.
         new FocusSpec(0.4f, 1f, 1f),
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
-        new ShieldSpec(30f, 3f, 1f));
+        new ShieldSpec(30f, 3f, 1f),
+        volley: volley ? new VolleySpec(5, 30f, 1.5f) : null);
+
+    /// <summary>The volley's node: a Passive that gives the class's volley <paramref name="every"/>.</summary>
+    private static SkillSpec VolleyNode(int every) => new SkillSpec(
+        new ContentId(VolleyNodeId),
+        new LocKey($"{VolleyNodeId}.name"),
+        new LocKey($"{VolleyNodeId}.desc"),
+        SkillKind.Passive,
+        new IEffect[]
+        {
+            new ModifyStat(PlayerStat.VolleyEvery, ModifierKind.Flat, every),
+        });
 
     private static EnemySpec Husk() => new EnemySpec(
         new ContentId(HuskId),

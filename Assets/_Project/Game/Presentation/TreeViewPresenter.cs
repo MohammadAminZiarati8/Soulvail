@@ -104,9 +104,31 @@ namespace Soulvail.Game.Presentation
         // the rest are guesses until a phone exists.
         private const float HeaderMarginDp = 12f;
         private const float HeaderHeightDp = 40f;
-        private const float CloseWidthDp = 112f;
-        private const float PointsWidthDp = 160f;
         private const float HeaderTextDp = 18f;
+
+        // The stone frame (UI-04b). The top margin is deeper than the others because the ribbon is
+        // centred on the frame's top edge and must stay inside the safe area; the border is the
+        // width the sliced art's rim is drawn at.
+        private const float FrameTopMarginDp = 36f;
+        private const float FrameBorderDp = 32f;
+        private const float ContentInsetDp = 28f;
+        private const float RibbonWidthDp = 170f;
+        private const float RibbonHeightDp = 56f;
+        private const float RibbonTextInsetDp = 30f;
+        private const float RibbonTextDp = 16f;
+        private const float PillWidthDp = 80f;
+        private const float PillHeightDp = 28f;
+        private const float PillPadDp = 12f;
+        private const float PillIconDp = 20f;
+        private const float PillTextDp = 16f;
+        private const float CloseSizeDp = 48f;
+        private const float PieceGapDp = 4f;
+
+        /// <summary>Border widths of the sliced art, in sprite pixels (UI-04a rule 3).</summary>
+        private const float PanelBorderPx = 110f;
+        private const float RibbonBorderPx = 200f;
+        private const float RibbonSpriteHeightPx = 267f;
+        private const float PillBorderPx = 105f;
         private const float BranchLabelDp = 24f;
         private const float BranchTextDp = 14f;
         private const float NodeNameDp = 13f;
@@ -135,6 +157,9 @@ namespace Soulvail.Game.Presentation
         /// <summary><em>"Points: {0}"</em> — the header's count of banked points (UI-03c rule 5).</summary>
         private static readonly LocKey PointsKey = new LocKey("ui.tree.points");
 
+        /// <summary><em>"Skill Tree"</em> — the ribbon's title (UI-04b rule 2).</summary>
+        private static readonly LocKey TitleKey = new LocKey("ui.tree.title");
+
         /// <summary>Android Back, as the Input System reports it.</summary>
         private const string BackBinding = "<Keyboard>/escape";
 
@@ -155,9 +180,24 @@ namespace Soulvail.Game.Presentation
                  "is built under its own column on first open and reused after that (rule 4).")]
         [SerializeField] private TreeNodeButton _cellTemplate;
 
-        [Tooltip("The header's count of banked points, from ui.tree.points. Shown in a free run " +
-                 "only — a drawing run has no points to count (UI-03c rule 5).")]
+        [Tooltip("The pill's count of banked points, from ui.tree.points: a bare number. A drawing " +
+                 "run reads 0 (UI-04b rule 5).")]
         [SerializeField] private TMP_Text _pointsLabel;
+
+        [Tooltip("The stone popup: a sliced Popup_Panel filling the safe area less its margin.")]
+        [SerializeField] private RectTransform _frame;
+
+        [Tooltip("The sliced Popup_TitleRibbon, centred on the frame's top edge.")]
+        [SerializeField] private RectTransform _ribbon;
+
+        [Tooltip("The ribbon's title, from ui.tree.title.")]
+        [SerializeField] private TMP_Text _titleLabel;
+
+        [Tooltip("The points pill: a sliced Pill_Dark right of the ribbon.")]
+        [SerializeField] private RectTransform _pill;
+
+        [Tooltip("Icon_SkillPoint, left in the pill.")]
+        [SerializeField] private RectTransform _pillIcon;
 
         [Tooltip("\"This class has no skill tree\", as a LocKey. Shown instead of the columns for a " +
                  "class with none, because an empty screen and a broken screen look identical.")]
@@ -471,12 +511,18 @@ namespace Soulvail.Game.Presentation
 
             WriteBranchLabels(tree);
 
+            // Written on every draw rather than in Start, which EditMode never runs (Traps §5).
+            if (_titleLabel != null)
+            {
+                _titleLabel.text = Resolve(TitleKey);
+            }
+
             // Read here, after any TakeNode has returned — never in a NodeTaken handler, which core
             // publishes before it spends the point (UI-03b's As built 2).
             bool free = state.IsFreePick;
             int points = free ? state.SkillPoints : 0;
 
-            WritePoints(free, points);
+            WritePoints(points);
 
             // Before Layout, which reads the columns' height.
             PlaceChrome();
@@ -563,20 +609,17 @@ namespace Soulvail.Game.Presentation
             Draw(state);
         }
 
-        /// <summary>The header's count — a free run's alone (UI-03c rule 5).</summary>
-        private void WritePoints(bool free, int points)
+        /// <summary>The pill's count, tinted while there is a point to spend (UI-04b rule 3).</summary>
+        private void WritePoints(int points)
         {
             if (_pointsLabel == null)
             {
                 return;
             }
 
-            _pointsLabel.gameObject.SetActive(free);
-
-            if (free)
-            {
-                _pointsLabel.text = _localizer is null ? PointsKey.ToString() : _localizer.Format(PointsKey, points);
-            }
+            // Always shown (UI-04b rule 5): a drawing run's points are 0, passed in by Draw.
+            _pointsLabel.text = _localizer is null ? PointsKey.ToString() : _localizer.Format(PointsKey, points);
+            _pointsLabel.color = points > 0 ? Palette.Available : Color.white;
         }
 
         /// <summary>
@@ -761,9 +804,32 @@ namespace Soulvail.Game.Presentation
             float margin = HeaderMarginDp * px;
             float header = HeaderHeightDp * px;
 
+            float top = FrameTopMarginDp * px;
+            float gap = PieceGapDp * px;
+            float closeSize = CloseSizeDp * px;
+            float pillWidth = PillWidthDp * px;
+            float ribbonWidth = RibbonWidthDp * px;
+            float ribbonHeight = RibbonHeightDp * px;
+
+            // UI-04b rule 1: the frame fills the safe area less its margins.
+            if (_frame != null)
+            {
+                _frame.anchorMin = Vector2.zero;
+                _frame.anchorMax = Vector2.one;
+                _frame.offsetMin = new Vector2(margin, margin);
+                _frame.offsetMax = new Vector2(-margin, -top);
+
+                SetBorder(_frame, PanelBorderPx, FrameBorderDp * px);
+            }
+
+            // The header pieces sit on the frame's top edge: Close and the pill from the right, the
+            // ribbon centred unless the pill would run under it (rules 2 to 4).
+            float closeX = -(margin + gap + (closeSize / 2f));
+            float pillRight = -(margin + gap + closeSize + gap);
+
             if (_close != null && _close.transform is RectTransform close)
             {
-                PlaceCorner(close, 1f, new Vector2(CloseWidthDp * px, header), margin);
+                PlaceOnEdge(close, 1f, 0.5f, new Vector2(closeSize, closeSize), new Vector2(closeX, -top));
             }
 
             if (_closeLabel != null)
@@ -771,10 +837,62 @@ namespace Soulvail.Game.Presentation
                 _closeLabel.fontSize = HeaderTextDp * px;
             }
 
+            if (_pill != null)
+            {
+                PlaceOnEdge(_pill, 1f, 1f, new Vector2(pillWidth, PillHeightDp * px), new Vector2(pillRight, -top));
+                SetBorder(_pill, PillBorderPx, PillHeightDp * px / 2f);
+            }
+
+            if (_pillIcon != null)
+            {
+                float iconSize = PillIconDp * px;
+
+                _pillIcon.anchorMin = new Vector2(0f, 0.5f);
+                _pillIcon.anchorMax = new Vector2(0f, 0.5f);
+                _pillIcon.pivot = new Vector2(0f, 0.5f);
+                _pillIcon.sizeDelta = new Vector2(iconSize, iconSize);
+                _pillIcon.anchoredPosition = new Vector2(PillPadDp * px, 0f);
+            }
+
             if (_pointsLabel != null)
             {
-                PlaceCorner(_pointsLabel.rectTransform, 0f, new Vector2(PointsWidthDp * px, header), margin);
-                _pointsLabel.fontSize = HeaderTextDp * px;
+                RectTransform count = _pointsLabel.rectTransform;
+
+                count.anchorMin = Vector2.zero;
+                count.anchorMax = Vector2.one;
+                count.offsetMin = new Vector2((PillPadDp + PillIconDp + PieceGapDp) * px, 0f);
+                count.offsetMax = new Vector2(-PillPadDp * px, 0f);
+                _pointsLabel.fontSize = PillTextDp * px;
+                _pointsLabel.alignment = TextAlignmentOptions.Center;
+            }
+
+            if (_ribbon != null)
+            {
+                float width = _ribbon.parent is RectTransform safe ? safe.rect.width : 0f;
+                float shift = 0f;
+
+                if (float.IsFinite(width) && width > 0f)
+                {
+                    // Keep the ribbon's right edge a gap short of the pill's left one.
+                    float pillLeftFromRight = -pillRight + pillWidth + gap;
+
+                    shift = Mathf.Min(0f, (width / 2f) - pillLeftFromRight - (ribbonWidth / 2f));
+                }
+
+                PlaceOnEdge(_ribbon, 0.5f, 0.5f, new Vector2(ribbonWidth, ribbonHeight), new Vector2(shift, -top));
+                SetBorder(_ribbon, RibbonBorderPx, ribbonHeight * RibbonBorderPx / RibbonSpriteHeightPx);
+            }
+
+            if (_titleLabel != null)
+            {
+                RectTransform title = _titleLabel.rectTransform;
+
+                title.anchorMin = Vector2.zero;
+                title.anchorMax = Vector2.one;
+                title.offsetMin = new Vector2(RibbonTextInsetDp * px, 0f);
+                title.offsetMax = new Vector2(-RibbonTextInsetDp * px, 0f);
+                _titleLabel.fontSize = RibbonTextDp * px;
+                _titleLabel.alignment = TextAlignmentOptions.Center;
             }
 
             if (_emptyLabel != null)
@@ -803,8 +921,10 @@ namespace Soulvail.Game.Presentation
                 {
                     grid.anchorMin = Vector2.zero;
                     grid.anchorMax = Vector2.one;
-                    grid.offsetMin = new Vector2(margin, margin);
-                    grid.offsetMax = new Vector2(-margin, -(margin + header + margin));
+                    float inset = margin + (ContentInsetDp * px);
+
+                    grid.offsetMin = new Vector2(inset, inset);
+                    grid.offsetMax = new Vector2(-inset, -(top + (ribbonHeight / 2f) + margin));
                 }
 
                 cells.anchorMin = Vector2.zero;
@@ -826,14 +946,31 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        /// <summary>A header piece in a top corner: <paramref name="side"/> 0 is left, 1 is right.</summary>
-        private static void PlaceCorner(RectTransform rect, float side, Vector2 size, float margin)
+        /// <summary>
+        /// A header piece hung from the safe area's top edge at horizontal anchor
+        /// <paramref name="anchorX"/>, vertically centred on <paramref name="position"/>'s y.
+        /// </summary>
+        private static void PlaceOnEdge(RectTransform rect, float anchorX, float pivotX, Vector2 size, Vector2 position)
         {
-            rect.anchorMin = new Vector2(side, 1f);
-            rect.anchorMax = new Vector2(side, 1f);
-            rect.pivot = new Vector2(side, 1f);
+            rect.anchorMin = new Vector2(anchorX, 1f);
+            rect.anchorMax = new Vector2(anchorX, 1f);
+            rect.pivot = new Vector2(pivotX, 0.5f);
             rect.sizeDelta = size;
-            rect.anchoredPosition = new Vector2(side > 0.5f ? -margin : margin, -margin);
+            rect.anchoredPosition = position;
+        }
+
+        /// <summary>
+        /// Draws a sliced sprite's border <paramref name="wanted"/> canvas units wide: the border is
+        /// <paramref name="borderPx"/> sprite pixels, so this is the multiplier that scales it to dp.
+        /// </summary>
+        private static void SetBorder(RectTransform rect, float borderPx, float wanted)
+        {
+            var image = rect.GetComponent<Image>();
+
+            if (image != null && wanted > 0f)
+            {
+                image.pixelsPerUnitMultiplier = borderPx / wanted;
+            }
         }
 
         /// <summary>

@@ -379,7 +379,7 @@ What the planning found:
 | UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☑ |
 | UI-03d | [The switch: pause door, the Jungle on, the docs](tasks/UI-03d-the-switch-and-the-docs.md) — CH §5.1 / GD §13.1 rewritten | S | UI-03c | ☑ |
 | UI-04a | [The tree screen's art, imported](tasks/UI-04a-the-tree-art.md) — this section and four specs, 22 sprites | S | UI-03c | ☑ |
-| UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☐ |
+| UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☑ |
 | UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☐ |
 | UI-04d | [Select, then Learn](tasks/UI-04d-select-and-learn.md) — a tap selects, the card describes, Learn spends | M | UI-04c | ☐ |
 

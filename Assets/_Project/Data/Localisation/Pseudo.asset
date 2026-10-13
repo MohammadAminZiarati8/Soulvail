@@ -148,7 +148,7 @@ MonoBehaviour:
   - _key: ui.pause.tree
     _text: "[V\xEE\xE9w Tr\xE9\xE9 \xB7\xB7\xB7\xB7]"
   - _key: ui.pause.tree.points
-    _text: "[Vîéw Tréé ({0:0}) ······]"
+    _text: "[V\xEE\xE9w Tr\xE9\xE9 ({0:0}) \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.pause.quit
     _text: "[Q\xFB\xEEt \xB7\xB7]"
   - _key: ui.skills.close
@@ -166,8 +166,10 @@ MonoBehaviour:
     _text: "[P\xEE\xE7k {0:0} \xF4f {1:0} \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.tree.close
     _text: "[\xC7l\xF4s\xE9 \xB7\xB7]"
+  - _key: ui.tree.title
+    _text: "[Sk\xEEll Tr\xE9\xE9 \xB7\xB7\xB7\xB7]"
   - _key: ui.tree.points
-    _text: "[P\xF4\xEE\xF1ts: {0:0} \xB7\xB7\xB7\xB7\xB7]"
+    _text: "[{0:0} \xB7\xB7]"
   - _key: character.oathbound.name
     _text: "[\xD4\xE1thb\xF4\xFB\xF1d \xB7\xB7\xB7\xB7]"
   - _key: enemy.husk.name
@@ -403,7 +405,7 @@ MonoBehaviour:
   - _key: ui.hud.wave
     _text: "[W\xE1v\xE9 {0:0}/{1:0} \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.hud.levelup
-    _text: "[LÉVÉL ÛP! ····]"
+    _text: "[L\xC9V\xC9L \xDBP! \xB7\xB7\xB7\xB7]"
   - _key: skill.oathbound.keen-censer.pact.description
     _text: "[+45% \xE7\xE9\xF1s\xE9r d\xE1m\xE1g\xE9, b\xFBt -25 m\xE1x\xEEm\xFBm
       h\xE9\xE1lth. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"

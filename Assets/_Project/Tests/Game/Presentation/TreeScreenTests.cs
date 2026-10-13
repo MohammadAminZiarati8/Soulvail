@@ -47,7 +47,7 @@ namespace Soulvail.Tests.Game.Presentation;
 /// </para>
 /// </remarks>
 [TestFixture]
-public sealed class TreeScreenTests : InputTestFixture
+public sealed partial class TreeScreenTests : InputTestFixture
 {
     private const string TreePath = "Assets/_Project/Prefabs/UI/TreeView.prefab";
     private const string HudPath = "Assets/_Project/Prefabs/UI/Hud.prefab";
@@ -374,11 +374,11 @@ public sealed class TreeScreenTests : InputTestFixture
         TMP_Text points = Field<TMP_Text>(_screen, "_pointsLabel");
 
         Assert.That(points.gameObject.activeSelf, Is.True);
-        Assert.That(points.text, Is.EqualTo("Points: 2"));
+        Assert.That(points.text, Is.EqualTo("2"));
 
         Tap(CellFor(_tree.Branches[0].Tier(1)[0]));
 
-        Assert.That(points.text, Is.EqualTo("Points: 1"), "the count was read before the point was spent.");
+        Assert.That(points.text, Is.EqualTo("1"), "the count was read before the point was spent.");
         Assert.That(Field<Button>(_screen, "_close"), Is.Not.Null);
     }
 
@@ -404,7 +404,7 @@ public sealed class TreeScreenTests : InputTestFixture
     public void NotFree_IsReadOnly()
     {
         StartRun(Ranger(), free: false, pending: 1);
-        Build();
+        Build(Shipped());
 
         // The pause panel's door — the only way into a drawing run's tree.
         _screen.Open(null);
@@ -421,7 +421,7 @@ public sealed class TreeScreenTests : InputTestFixture
 
         Assert.That(_session.State.TakenNodeCount, Is.Zero, "a drawing run's tree sent a command.");
         Assert.That(_session.State.PendingLevelUps, Is.EqualTo(1));
-        Assert.That(Field<TMP_Text>(_screen, "_pointsLabel").gameObject.activeSelf, Is.False, "a drawing run counts points.");
+        Assert.That(Field<TMP_Text>(_screen, "_pointsLabel").text, Is.EqualTo("0"), "a drawing run counts points.");
     }
 
     [Test]

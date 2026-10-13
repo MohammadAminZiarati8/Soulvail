@@ -50,4 +50,11 @@ None new.
 
 ## As built
 
-_Filled at merge._
+As specified, with four differences.
+
+1. **The frame's margins are not one number.** Sides and bottom are 12 dp; the top is 36 dp, because the ribbon is centred on the frame's top edge and its upper half (28 dp) must stay inside the safe area. `Frame_FillsSafeAreaLessMargin` pins both.
+2. **Close straddles the frame's top edge**, on the ribbon's centreline as in the mockup, rather than sitting wholly inside it: a 48 dp hit area does not fit the mockup's rim. It is inside the safe area and does not overlap the ribbon or the pill at 9:20 or 20:9.
+3. **Close's text label stays on the prefab, switched off.** `TreeViewPresenterTests` reads its key off the prefab, and the label is the button's accessible name. The pill's width is 80 dp and the ribbon shifts left of centre when the pill would run under it.
+4. **The new rows are a second file of `TreeScreenTests`** (`public sealed partial class`), not a second fixture: the run, the catalog and both prefabs are that fixture's private helpers. `ui.tree.title` is written on every draw, not in `Start`, which EditMode never runs.
+
+Sliced pieces draw their borders in dp: `PlaceChrome` sets each Image's `pixelsPerUnitMultiplier` to the sprite's border over the width wanted. Pseudo was regenerated from the menu; it also re-escaped two unrelated lines.

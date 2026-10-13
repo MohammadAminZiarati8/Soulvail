@@ -12,8 +12,9 @@ namespace Soulvail.Tests.Game.Controls;
 
 /// <summary>
 /// UI-02b: FloatingStick dressed with Stick_Base and Stick_Knob on Hud.prefab, preserving the
-/// 120 dp base and 52 dp knob dimensions, dynamic touch-down placement, and drag recentring.
-/// CC §2.1–2.3; GD §16.4.
+/// 120 dp base and 52 dp knob dimensions. UI-02d: the stick is fixed at a dp offset from the safe
+/// area's bottom-left, always visible, read from that centre; the floating behaviour of CC §2.3
+/// survives behind <c>_floating</c>. CC §2.1–2.3; GD §16.4.
 /// </summary>
 [TestFixture]
 public sealed class FloatingStickTests
@@ -121,9 +122,9 @@ public sealed class FloatingStickTests
     // ---- Visibility and capture tests (Rule 3) ---------------------------------------------------
 
     [Test]
-    public void FloatingStick_HiddenUntilTouched()
+    public void Floating_HiddenUntilTouched()
     {
-        FloatingStick stick = SpawnStick();
+        FloatingStick stick = SpawnStick(floating: true);
         var baseRect = Field<RectTransform>(stick, "_base");
         var knobRect = Field<RectTransform>(stick, "_knob");
 
@@ -166,7 +167,6 @@ public sealed class FloatingStickTests
         int capturedPointer = Field<int>(stick, "_pointerId");
         Vector2 capturedOrigin = Field<Vector2>(stick, "_originPx");
         Assert.That(capturedPointer, Is.EqualTo(0));
-        Assert.That(capturedOrigin, Is.EqualTo(new Vector2(100f, 100f)));
 
         var secondDown = new PointerEventData(EventSystem.current)
         {
@@ -187,6 +187,69 @@ public sealed class FloatingStickTests
         stick.OnPointerUp(secondUp);
 
         Assert.That(Field<int>(stick, "_pointerId"), Is.EqualTo(0), "Second touch up released the first pointer.");
+    }
+
+    // ---- Fixed-stick tests (UI-02d rules 1 to 4) -------------------------------------------------
+
+    [Test]
+    public void Fixed_CentreIsRegionBottomLeftPlusOffsetInDp()
+    {
+        FloatingStick stick = SpawnStick();
+        float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+
+        Assert.That(Field<bool>(stick, "_floating"), Is.False, "Hud.prefab's stick is floating.");
+        Assert.That(Field<Vector2>(stick, "_fixedOffsetDp"), Is.EqualTo(new Vector2(110f, 110f)));
+        Assert.That(Field<Vector2>(stick, "_originPx"), Is.EqualTo(ExpectedCentre(stick)).Using(new Vector2Comparer(1e-2f)));
+        Assert.That(ExpectedCentre(stick) - RegionCornerPx(stick), Is.EqualTo(new Vector2(110f, 110f) * pxPerDp).Using(new Vector2Comparer(1e-2f)));
+    }
+
+    [Test]
+    public void Fixed_IsVisibleAtRest_AndAfterRelease()
+    {
+        FloatingStick stick = SpawnStick();
+        var baseRect = Field<RectTransform>(stick, "_base");
+        var knobRect = Field<RectTransform>(stick, "_knob");
+        Assert.That(baseRect.gameObject.activeSelf && knobRect.gameObject.activeSelf, Is.True, "Hidden before touch.");
+
+        stick.OnPointerDown(Pointer(0, ExpectedCentre(stick) + new Vector2(50f, 0f)));
+        stick.OnPointerUp(Pointer(0, ExpectedCentre(stick)));
+
+        Assert.That(baseRect.gameObject.activeSelf && knobRect.gameObject.activeSelf, Is.True, "Hidden after release.");
+        Assert.That(Field<int>(stick, "_pointerId"), Is.EqualTo(int.MinValue), "Release did not free the stick.");
+        Assert.That(knobRect.anchoredPosition, Is.EqualTo(baseRect.anchoredPosition).Using(new Vector2Comparer(1e-2f)), "Knob did not return to centre.");
+    }
+
+    [Test]
+    public void Fixed_TouchAwayFromCentre_ReadsFromCentre()
+    {
+        FloatingStick stick = SpawnStick();
+        float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+        Vector2 centre = ExpectedCentre(stick);
+
+        stick.OnPointerDown(Pointer(0, centre + new Vector2(30f * pxPerDp, 0f)));
+
+        Assert.That(Field<Vector2>(stick, "_originPx"), Is.EqualTo(centre).Using(new Vector2Comparer(1e-2f)), "Touch moved the origin.");
+        Assert.That(LastValue(stick), Is.EqualTo(StickShaper.Shape(new Vector2(30f, 0f))).Using(new Vector2Comparer(1e-3f)));
+    }
+
+    [Test]
+    public void Fixed_DragPastRim_DoesNotRecentre_AndKnobClamps()
+    {
+        FloatingStick stick = SpawnStick();
+        float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+        Vector2 centre = ExpectedCentre(stick);
+
+        stick.OnPointerDown(Pointer(0, centre));
+        stick.OnDrag(Pointer(0, centre + new Vector2(100f * pxPerDp, 0f)));
+
+        Assert.That(Field<Vector2>(stick, "_originPx"), Is.EqualTo(centre).Using(new Vector2Comparer(1e-2f)), "Origin recentred.");
+        Assert.That(LastValue(stick), Is.EqualTo(new Vector2(1f, 0f)).Using(new Vector2Comparer(1e-3f)), "Not full deflection.");
+
+        var baseRect = Field<RectTransform>(stick, "_base");
+        var knobRect = Field<RectTransform>(stick, "_knob");
+        float scale = stick.GetComponentInParent<Canvas>() is { scaleFactor: > 0f } c ? c.scaleFactor : 1f;
+        float knobDistance = (knobRect.anchoredPosition - baseRect.anchoredPosition).magnitude * scale;
+        Assert.That(knobDistance, Is.EqualTo(StickShaper.MaxRadiusDp * pxPerDp).Within(0.5f), "Knob did not clamp at the 60 dp rim.");
     }
 
     // ---- Region and routing tests (Rules 3, 4) ---------------------------------------------------
@@ -215,9 +278,9 @@ public sealed class FloatingStickTests
     }
 
     [Test]
-    public void FloatingStick_DragRecentres_WhenExceedingMaxRadius()
+    public void Floating_DragRecentres_WhenExceedingMaxRadius()
     {
-        FloatingStick stick = SpawnStick();
+        FloatingStick stick = SpawnStick(floating: true);
         float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
 
         var downEvent = new PointerEventData(EventSystem.current)
@@ -244,7 +307,7 @@ public sealed class FloatingStickTests
 
     // ---- Fixtures --------------------------------------------------------------------------------
 
-    private FloatingStick SpawnStick()
+    private FloatingStick SpawnStick(bool floating = false)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
@@ -255,11 +318,39 @@ public sealed class FloatingStickTests
         var stick = instance.GetComponentInChildren<FloatingStick>(includeInactive: true);
         Assert.That(stick, Is.Not.Null, "FloatingStick component not found on instantiated Hud.");
 
+        typeof(FloatingStick).GetField("_floating", Private)!.SetValue(stick, floating);
         typeof(FloatingStick)
             .GetMethod("Awake", Private)!
             .Invoke(stick, null);
 
         return stick;
+    }
+
+    private static PointerEventData Pointer(int id, Vector2 position) =>
+        new PointerEventData(EventSystem.current) { pointerId = id, position = position };
+
+    private static Vector2 RegionCornerPx(FloatingStick stick)
+    {
+        var corners = new Vector3[4];
+        Field<RectTransform>(stick, "_region").GetWorldCorners(corners);
+        return RectTransformUtility.WorldToScreenPoint(null, corners[0]);
+    }
+
+    private static Vector2 ExpectedCentre(FloatingStick stick) =>
+        RegionCornerPx(stick) + Field<Vector2>(stick, "_fixedOffsetDp") * StickShaper.PixelsPerDp(Screen.dpi);
+
+    /// <summary>The last value the stick wrote to its control; EditMode has no virtual gamepad to read it from.</summary>
+    private static Vector2 LastValue(FloatingStick stick) => Field<Vector2>(stick, "_reported");
+
+    private sealed class Vector2Comparer : IEqualityComparer<Vector2>
+    {
+        private readonly float _tolerance;
+
+        public Vector2Comparer(float tolerance) => _tolerance = tolerance;
+
+        public bool Equals(Vector2 a, Vector2 b) => (a - b).magnitude <= _tolerance;
+
+        public int GetHashCode(Vector2 v) => v.GetHashCode();
     }
 
     private static T Field<T>(object target, string name) =>

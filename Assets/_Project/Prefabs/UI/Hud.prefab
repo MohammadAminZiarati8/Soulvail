@@ -8043,6 +8043,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.FloatingStick
   _controlPath: <Gamepad>/leftStick
   _region: {fileID: 3911366968253964894}
+  _floating: 0
+  _fixedOffsetDp: {x: 110, y: 110}
   _base: {fileID: 7080181019301522861}
   _knob: {fileID: 56065390721579511}
 --- !u!1 &6555171653287119642

@@ -10,11 +10,16 @@ using UnityEngine.UI;
 namespace Soulvail.Game.Controls
 {
     /// <summary>
-    /// The one-thumb control the whole game rests on: a joystick with no fixed home, whose origin
-    /// is wherever the thumb landed and which follows the thumb rather than making it come back.
-    /// CC §2.1–2.3.
+    /// The one-thumb control the whole game rests on: a joystick fixed at one place on the screen,
+    /// read from that centre wherever in the left region the thumb lands. CC §2.1.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// The owner's ruling of 2026-10-13 replaced the floating stick (CC §2.1–2.3) with a fixed one.
+    /// The floating behaviour — origin planted where the thumb landed, recentred behind it — is
+    /// kept behind <c>_floating</c> rather than deleted. The class keeps its name for the same
+    /// reason: <c>Hud.prefab</c> and its tests refer to it.
+    /// </para>
     /// <para>
     /// Every number lives in <see cref="StickShaper"/>; this class owns only what needs a frame
     /// and a pointer — which finger has the stick, where its origin currently is, and where the
@@ -55,6 +60,12 @@ namespace Soulvail.Game.Controls
         [Tooltip("The virtual joystick region — the left 45% of the screen. This component sits on it.")]
         [SerializeField] private RectTransform _region;
 
+        [Tooltip("Off: the stick is fixed at Fixed Offset Dp and always visible (CC §2.1). On: the old floating stick, planted under the thumb and recentred behind it.")]
+        [SerializeField] private bool _floating;
+
+        [Tooltip("The fixed stick's centre in dp from the region's bottom-left, which is the safe area's. Tune on device.")]
+        [SerializeField] private Vector2 _fixedOffsetDp = new Vector2(110f, 110f);
+
         [Tooltip("The 120 dp ring that appears under the thumb, centred on the stick's origin.")]
         [SerializeField] private RectTransform _base;
 
@@ -66,6 +77,10 @@ namespace Soulvail.Game.Controls
 
         /// <summary>The stick's origin in screen pixels — where the thumb landed, then recentred.</summary>
         private Vector2 _originPx;
+
+        private Vector2 _reported;
+
+        private readonly Vector3[] _corners = new Vector3[4];
 
         /// <inheritdoc/>
         protected override string controlPathInternal
@@ -85,7 +100,57 @@ namespace Soulvail.Game.Controls
             Resize(_knob, KnobDiameterDp, pxPerDp);
 
             EnsureDressedAspect();
-            Show(false);
+            Rest();
+        }
+
+        // The region's layout is not final in Awake (safe area, canvas scaler), and it changes on
+        // rotation, so a resting fixed stick follows its region rather than trusting one placement.
+        private void LateUpdate()
+        {
+            if (!_floating && _pointerId == NoPointer)
+            {
+                Vector2 before = _originPx;
+                Rest();
+                if (before != _originPx)
+                {
+                    float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+                    Resize(_base, BaseDiameterDp, pxPerDp);
+                    Resize(_knob, KnobDiameterDp, pxPerDp);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The idle look: nothing in floating mode, base and knob at the fixed centre otherwise.
+        /// </summary>
+        private void Rest()
+        {
+            if (_floating)
+            {
+                Show(false);
+                return;
+            }
+
+            _originPx = FixedCentrePx();
+            Show(true);
+            PlaceAt(_base, _originPx);
+            PlaceAt(_knob, _originPx);
+        }
+
+        /// <summary>
+        /// The fixed centre in screen pixels: the region's bottom-left corner, which is the safe
+        /// area's, plus the offset in dp — so it holds in both orientations and at any density.
+        /// </summary>
+        private Vector2 FixedCentrePx()
+        {
+            if (_region == null)
+            {
+                return Vector2.zero;
+            }
+
+            _region.GetWorldCorners(_corners);
+            Vector2 corner = RectTransformUtility.WorldToScreenPoint(EventCamera, _corners[0]);
+            return corner + _fixedOffsetDp * StickShaper.PixelsPerDp(Screen.dpi);
         }
 
         private void EnsureDressedAspect()
@@ -115,7 +180,7 @@ namespace Soulvail.Game.Controls
             }
 
             _pointerId = eventData.pointerId;
-            _originPx = eventData.position;
+            _originPx = _floating ? eventData.position : FixedCentrePx();
 
             // Sized here rather than in the prefab because a Scale-With-Screen-Size canvas measures
             // in reference pixels, not dp, and the ring's radius is load-bearing: at 120 dp across
@@ -128,7 +193,15 @@ namespace Soulvail.Game.Controls
             PlaceAt(_base, _originPx);
             PlaceAt(_knob, _originPx);
 
-            SendValueToControl(Vector2.zero);
+            if (_floating)
+            {
+                Report(Vector2.zero);
+                return;
+            }
+
+            // A fixed stick is read from its centre, so touching down away from it is already a
+            // deflection; there is no origin the touch just created to measure from.
+            Drive(eventData.position, pxPerDp, StickShaper.MaxRadiusDp);
         }
 
         /// <summary>
@@ -143,20 +216,40 @@ namespace Soulvail.Game.Controls
             }
 
             float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi);
+
+            if (!_floating)
+            {
+                // No recentring: past the rim the knob clamps and the stick keeps reading full.
+                Drive(eventData.position, pxPerDp, StickShaper.MaxRadiusDp);
+                return;
+            }
+
             Vector2 touchPx = eventData.position;
 
             // Recentring is done in dp and written back in pixels, so the 60 dp radius is the same
             // physical distance on a 320 dpi phone as on a 440 dpi one.
             _originPx = StickShaper.Recenter(_originPx / pxPerDp, touchPx / pxPerDp) * pxPerDp;
 
-            Vector2 deltaPx = touchPx - _originPx;
-            SendValueToControl(StickShaper.Shape(deltaPx / pxPerDp));
-
             PlaceAt(_base, _originPx);
 
             // The knob stops at the full-speed threshold rather than at the ring's edge: it shows
             // how much speed the player is asking for, and past 40 dp there is no more to ask for.
-            PlaceAt(_knob, _originPx + Vector2.ClampMagnitude(deltaPx, StickShaper.FullSpeedDp * pxPerDp));
+            Drive(touchPx, pxPerDp, StickShaper.FullSpeedDp);
+        }
+
+        /// <summary>Writes the deflection to the virtual gamepad, remembering it so a test can read what was sent.</summary>
+        private void Report(Vector2 value)
+        {
+            _reported = value;
+            SendValueToControl(value);
+        }
+
+        /// <summary>Reports the deflection of a touch from the origin and moves the knob, clamped to a radius.</summary>
+        private void Drive(Vector2 touchPx, float pxPerDp, float knobRadiusDp)
+        {
+            Vector2 deltaPx = touchPx - _originPx;
+            Report(StickShaper.Shape(deltaPx / pxPerDp));
+            PlaceAt(_knob, _originPx + Vector2.ClampMagnitude(deltaPx, knobRadiusDp * pxPerDp));
         }
 
         /// <summary>Releases the stick when the finger that owns it lifts. Other ups are not ours.</summary>
@@ -187,7 +280,7 @@ namespace Soulvail.Game.Controls
         }
 
         /// <summary>
-        /// Sends zero, hides the visuals and gives up the capture. Idempotent, so a pointer-up
+        /// Sends zero, returns the visuals to rest (hidden when floating) and gives up the capture. Idempotent, so a pointer-up
         /// followed by a disable in the same frame costs one event, not two.
         /// </summary>
         private void Release()
@@ -198,8 +291,8 @@ namespace Soulvail.Game.Controls
             }
 
             _pointerId = NoPointer;
-            SendValueToControl(Vector2.zero);
-            Show(false);
+            Report(Vector2.zero);
+            Rest();
         }
 
         private void Show(bool visible)

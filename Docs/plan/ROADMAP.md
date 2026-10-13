@@ -373,6 +373,7 @@ What the planning found:
 | UI-02a | [The lower controls' art, imported](tasks/UI-02a-the-lower-controls-art.md) — 8 sprites for stick, roll and skill buttons | S | UI-01f | ☑ |
 | UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☑ |
 | UI-02c | [The Roll and skill buttons in the new art](tasks/UI-02c-the-roll-and-skill-buttons.md) | M | UI-02a | ☑ |
+| UI-02d | [A fixed stick](tasks/UI-02d-a-fixed-stick.md) — owner ruling 2026-10-13, supersedes CC §2.1 "floating, never fixed" | S | UI-02b | ☑ |
 
 **UI-02 — The lower controls in the new art:**
 Rebuilding the lower half of the HUD in the owner's art: the floating stick on the left 45% (`Stick_Base`, `Stick_Knob`),

@@ -21,16 +21,16 @@ Nothing else. No stages, no waves, no tree, no art. If this isn't fun with untex
 
 ## 2. Movement
 
-### 2.1 The floating joystick
+### 2.1 The fixed joystick
 
 | Property | Value | Notes |
 |---|---|---|
 | **Virtual joystick region (VJR)** | Left **45%** of screen width, full height below the top HUD strip | Touches outside it do not move you |
-| **Origin** | Spawns wherever the thumb lands | *Floating*, never fixed. A fixed stick forces the player to look down to find it. |
+| **Origin** | Fixed: 110 × 110 dp from the safe area's bottom-left, always visible (tune on device) | *Fixed*, by the owner's ruling of 2026-10-13, superseding "floating, never fixed". A touch anywhere in the VJR grabs it and is measured from the fixed centre. The floating stick survives behind `FloatingStick._floating`. |
 | **Deadzone** | 8 dp | Below this, no movement |
 | **Full-speed threshold** | 40 dp | See §2.2 |
-| **Max radius** | 60 dp | Beyond this, recentering kicks in (§2.3) |
-| **Visual base / knob** | 120 dp / 52 dp | Base fades in on touch at 60% opacity |
+| **Max radius** | 60 dp | Fixed: the knob clamps at the rim, no recentring. Floating only: recentring kicks in (§2.3) |
+| **Visual base / knob** | 120 dp / 52 dp | Both always visible (floating only: base fades in on touch at 60% opacity) |
 | **Direction** | Full 360°, analog | Not 8-way. It's a 3D arena. |
 | **Multi-touch** | Required | Movement and buttons must work simultaneously, always |
 
@@ -48,7 +48,9 @@ Between 8dp and 40dp you get proportional speed for fine positioning; past 40dp 
 
 **Why not pure analog to the edge:** in practice players hold near-full deflection ~95% of the time, and demanding thumb precision for normal movement is exactly the ergonomic failure that makes virtual sticks feel bad. **Why not pure binary:** threading between two projectiles wants sub-maximal speed, and losing that costs the game's best moments.
 
-### 2.3 Dynamic recentering — do not skip this
+### 2.3 Dynamic recentering — floating mode only
+
+_Applies only with `FloatingStick._floating` on; the fixed stick (§2.1) never recentres._
 
 When the thumb travels beyond `maxRadius` from the origin, **move the origin so it stays exactly `maxRadius` behind the thumb.**
 

@@ -127,6 +127,24 @@ public static class HudLayout
     /// <summary>The widest the boss band is ever drawn — the owner's starting size.</summary>
     public const float BossMaxWidthDp = 400f;
 
+    /// <summary>The point badge's diameter, on the star's upper-right corner (UI-03b).</summary>
+    public const float PointBadgeSizeDp = 20f;
+
+    /// <summary>
+    /// How far the badge hangs past the star's right edge. Less than <see cref="GapDp"/>, so it never
+    /// reaches the bar; its top is the star's, so it never reaches the strip.
+    /// </summary>
+    public const float PointBadgeOverhangDp = 3f;
+
+    /// <summary>The "LEVEL UP!" toast's width.</summary>
+    public const float LevelUpToastWidthDp = 200f;
+
+    /// <summary>The toast's height.</summary>
+    public const float LevelUpToastHeightDp = 32f;
+
+    /// <summary>How far above the safe area's centre the toast's centre sits.</summary>
+    public const float LevelUpToastRiseDp = 56f;
+
     /// <summary>
     /// How wide the health bar is, given the safe area: the room between its left edge and the right
     /// cluster, between <see cref="BarMinWidthDp"/> and <paramref name="maxDp"/>.

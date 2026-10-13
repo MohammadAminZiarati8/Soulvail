@@ -342,6 +342,18 @@ public static class Palette
     public static readonly Color HudCaption = Rgb(0xCC, 0xC4, 0xB7);
 
     /// <summary>
+    /// <c>#4ADE80</c> — a point to spend: the green count on the level star (UI-03b).
+    /// </summary>
+    /// <remarks>
+    /// <b>A green, and never the red-orange.</b> GD §16.4 gives a banked point no colour of its own, so it
+    /// is <em>everything else</em> in the one hue the band does not use: not the player's cyan, not the
+    /// reward gold, not the Veil's violet, and nowhere near <see cref="Danger"/>, which means a
+    /// telegraph and nothing else. A member of its own, <see cref="Heal"/>'s argument: a meaning,
+    /// not a value.
+    /// </remarks>
+    public static readonly Color Available = Rgb(0x4A, 0xDE, 0x80);
+
+    /// <summary>
     /// True when <paramref name="colour"/> is GD §16.4's reserved danger colour. How the
     /// <em>"for nothing else, ever"</em> half of the rule is tested rather than promised.
     /// </summary>

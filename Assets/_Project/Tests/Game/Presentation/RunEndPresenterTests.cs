@@ -532,14 +532,14 @@ public sealed class RunEndPresenterTests
             }
         }
 
-        // The only words it draws are M6-03b's three, and neither death key is among them — those
-        // live on this screen now (M4-06 rule 3).
+        // The only words it draws are M6-03b's three and UI-03b's toast, and neither death key is
+        // among them — those live on this screen now (M4-06 rule 3).
         string[] keys = typeof(HudPresenter).GetFields(Everything)
             .Where(field => field.FieldType == typeof(LocKey))
             .Select(field => ((LocKey)field.GetValue(null)).Key)
             .ToArray();
 
-        Assert.That(keys, Is.EquivalentTo(new[] { "ui.hud.essence", "ui.hud.veilrot", "ui.hud.claimed" }));
+        Assert.That(keys, Is.EquivalentTo(new[] { "ui.hud.essence", "ui.hud.veilrot", "ui.hud.claimed", "ui.hud.levelup" }));
 
         AssertNothingHandles(typeof(HudPresenter), typeof(PlayerDied));
 

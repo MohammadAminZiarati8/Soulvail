@@ -398,6 +398,8 @@ MonoBehaviour:
     _text: "[ST\xC1G\xC9 {0:0} \xB7\xB7\xB7\xB7]"
   - _key: ui.hud.wave
     _text: "[W\xE1v\xE9 {0:0}/{1:0} \xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.hud.levelup
+    _text: "[LÉVÉL ÛP! ····]"
   - _key: skill.oathbound.keen-censer.pact.description
     _text: "[+45% \xE7\xE9\xF1s\xE9r d\xE1m\xE1g\xE9, b\xFBt -25 m\xE1x\xEEm\xFBm
       h\xE9\xE1lth. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"

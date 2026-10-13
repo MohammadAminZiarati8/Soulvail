@@ -1067,9 +1067,15 @@ public sealed class SkillBarPresenterTests
             { "StageText", 14f },
             { "WaveText", 14f },
             { "EnemiesText", 14f },
+
+            // UI-03b's two, sized in dp at runtime by HudPresenter.Place: the digit at 12.4 dp and the
+            // toast at 22.4, so their authored points are placeholders and their floor is
+            // PointBadgeTests' Text_ClearsTheAndroidFloor.
+            { "Count", 12f },
+            { "LevelUpToast", 28f },
         };
 
-        var sizedInDp = new HashSet<string> { "StageText", "WaveText", "EnemiesText" };
+        var sizedInDp = new HashSet<string> { "StageText", "WaveText", "EnemiesText", "Count", "LevelUpToast" };
 
         foreach (KeyValuePair<string, float> text in expected)
         {

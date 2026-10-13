@@ -137,6 +137,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>GD §16.1's <em>"small counter"</em>, captioned.</summary>
         private static readonly LocKey EssenceKey = new LocKey("ui.hud.essence");
 
+        /// <summary>The toast that says a level happened in a mode that banks its points (UI-03b).</summary>
+        private static readonly LocKey LevelUpKey = new LocKey("ui.hud.levelup");
+
         /// <summary>The meter's caption, under it.</summary>
         private static readonly LocKey VeilrotKey = new LocKey("ui.hud.veilrot");
 
@@ -152,6 +155,9 @@ namespace Soulvail.Game.Presentation
         /// through it, so it owes no non-finite row.
         /// </remarks>
         private const float NumberScale = 0.62f;
+
+        /// <summary>The toast's size, as a fraction of its height (UI-03b).</summary>
+        private const float ToastScale = 0.7f;
 
         /// <summary>The level's size, as a fraction of the star's (UI-01b rule 2).</summary>
         private const float LevelScale = 0.45f;
@@ -196,6 +202,11 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("The blue star the level sits in (UI-01b rule 2). Optional on the level's terms.")]
         [SerializeField] private Image _levelStar;
+
+        [Tooltip("The green count of unspent skill points on the star's upper-right corner, and the " +
+                 "\"LEVEL UP!\" toast (UI-03b). Optional on the level's terms: a HUD without one plays " +
+                 "the same run and a free pick just goes unannounced.")]
+        [SerializeField] private PointBadge _badge;
 
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
@@ -262,6 +273,7 @@ namespace Soulvail.Game.Presentation
 
         private IRunSession _session;
         private ILocalizer _localizer;
+        private DomainEventHub _hub;
 
         private IDisposable _startedSubscription;
         private IDisposable _damagedSubscription;
@@ -348,6 +360,8 @@ namespace Soulvail.Game.Presentation
             {
                 throw new ArgumentNullException(nameof(hub));
             }
+
+            _hub = hub;
 
             _startedSubscription = hub.Subscribe<RunStarted>(OnRunStarted);
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnPlayerDamaged);
@@ -824,6 +838,11 @@ namespace Soulvail.Game.Presentation
             Write(_essenceLabel, EssenceKey, Palette.Essence);
             Write(_veilrotLabel, VeilrotKey, Palette.Veilrot);
             Write(_claimedLabel, ClaimedKey, Palette.Veilrot);
+
+            if (_badge != null)
+            {
+                _badge.SetToastText(_localizer is null ? LevelUpKey.ToString() : _localizer.Get(LevelUpKey));
+            }
         }
 
         private void Write(TMP_Text label, LocKey key, Color colour)
@@ -897,6 +916,13 @@ namespace Soulvail.Game.Presentation
 
             WriteEssence(state.Essence);
             WriteMeter();
+
+            // UI-03b rule 6: a resumed run's banked points are restored silently, so this read is the
+            // only way they reach the badge before the first tick.
+            if (_badge != null && _hub is not null)
+            {
+                _badge.Bind(state, _hub);
+            }
         }
 
         /// <remarks>
@@ -1022,7 +1048,51 @@ namespace Soulvail.Game.Presentation
             Paint(_hpText);
             Paint(_levelText);
 
+            if (starUsable)
+            {
+                PlaceBadge(pxPerDp);
+            }
+
+            PlaceToast(pxPerDp);
             PlaceRightEdge(pxPerDp);
+        }
+
+        /// <summary>
+        /// UI-03b rule 1: the badge on the star's upper-right corner, in dp. Its top is the star's, so
+        /// it never reaches the strip, and it hangs <see cref="HudLayout.PointBadgeOverhangDp"/> past
+        /// the star's edge, which is less than the gap, so it never reaches the bar.
+        /// </summary>
+        private void PlaceBadge(float pxPerDp)
+        {
+            if (_badge == null)
+            {
+                return;
+            }
+
+            float size = HudLayout.PointBadgeSizeDp;
+            float left = _marginDp.x + _starSizeDp + HudLayout.PointBadgeOverhangDp - size;
+
+            PlaceRect(_badge.Badge, left, _marginDp.y, new Vector2(size, size), pxPerDp);
+            SizeText(_badge.Count, size * NumberScale * pxPerDp);
+        }
+
+        /// <summary>UI-03b rule 3: the toast above the arena's centre, centred on it horizontally.</summary>
+        private void PlaceToast(float pxPerDp)
+        {
+            RectTransform toast = _badge == null ? null : _badge.Toast;
+
+            if (toast == null)
+            {
+                return;
+            }
+
+            toast.anchorMin = new Vector2(0.5f, 0.5f);
+            toast.anchorMax = new Vector2(0.5f, 0.5f);
+            toast.pivot = new Vector2(0.5f, 0.5f);
+            toast.sizeDelta = new Vector2(HudLayout.LevelUpToastWidthDp, HudLayout.LevelUpToastHeightDp) * pxPerDp;
+            toast.anchoredPosition = new Vector2(0f, HudLayout.LevelUpToastRiseDp * pxPerDp);
+
+            SizeText(_badge.ToastLabel, HudLayout.LevelUpToastHeightDp * ToastScale * pxPerDp);
         }
 
         /// <summary>A number's size, from dp rather than from the prefab's points (Traps §9).</summary>

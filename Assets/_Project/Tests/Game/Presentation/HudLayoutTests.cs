@@ -198,6 +198,38 @@ public sealed class HudLayoutTests
     }
 
     [Test]
+    public void HudLayout_BadgeOverlapsOnlyTheStar()
+    {
+        foreach (Vector2 size in new[] { Landscape, Portrait })
+        {
+            Dictionary<string, Rect> band = Lay(size);
+
+            Rect badge = band["badge"];
+            Rect star = band["star"];
+
+            Assert.That(badge.width, Is.EqualTo(HudLayout.PointBadgeSizeDp).Within(Slack), $"at {size}");
+            Assert.That(badge.height, Is.EqualTo(HudLayout.PointBadgeSizeDp).Within(Slack), $"at {size}");
+
+            // On the upper-right corner: level with the star's top, hanging a little past its right edge.
+            Assert.That(badge.yMin, Is.EqualTo(star.yMin).Within(Slack), $"not on the star's top at {size}");
+            Assert.That(
+                badge.xMax,
+                Is.EqualTo(star.xMax + HudLayout.PointBadgeOverhangDp).Within(Slack),
+                $"not on the star's right corner at {size}");
+            Assert.That(Overlaps(badge, star), Is.True, $"the badge is not on its star at {size}");
+
+            // Never the strip above the row, never the bar beside it, never the right-hand column.
+            foreach (string other in band.Keys.Where(k => k != "badge" && !IsHost("badge", k)))
+            {
+                Assert.That(
+                    Overlaps(badge, band[other]),
+                    Is.False,
+                    $"the badge {badge} overlaps {other} {band[other]} at {size} dp.");
+            }
+        }
+    }
+
+    [Test]
     public void Band_TheRowStartsUnderTheBar()
     {
         foreach (Vector2 size in new[] { Landscape, Portrait })
@@ -258,6 +290,12 @@ public sealed class HudLayoutTests
         ("ring", "star"),
         ("ring", "level"),
         ("numbers", "bar"),
+
+        // UI-03b: the badge hangs on the star's corner, so it overlaps the star and the two pieces drawn
+        // in the star — the ring behind it and the level inside it — and nothing else.
+        ("badge", "star"),
+        ("badge", "ring"),
+        ("badge", "level"),
     };
 
     /// <summary>
@@ -266,7 +304,7 @@ public sealed class HudLayoutTests
     /// </summary>
     private static readonly HashSet<string> BelowTheBand = new HashSet<string>
     {
-        "boss", "essence", "essenceWord", "meter", "meterWord", "claimed",
+        "boss", "essence", "essenceWord", "meter", "meterWord", "claimed", "toast",
     };
 
     private void AssertBandHolds(Vector2 size)
@@ -346,6 +384,10 @@ public sealed class HudLayoutTests
             ["meter"] = Dp(hudSafe, "VeilrotMeter", px),
             ["meterWord"] = Dp(hudSafe, "VeilrotLabel", px),
             ["claimed"] = Dp(hudSafe, "ClaimedLabel", px),
+
+            // UI-03b: the point badge on the star's corner, and the toast above the arena's centre.
+            ["badge"] = Dp(hudSafe, "PointBadge/Badge", px),
+            ["toast"] = Dp(hudSafe, "PointBadge/LevelUpToast", px),
         };
 
         Transform row = hudSafe.Find("AutoCastRow");

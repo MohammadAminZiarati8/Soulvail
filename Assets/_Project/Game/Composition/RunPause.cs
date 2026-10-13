@@ -46,6 +46,9 @@ public enum PauseReason
     /// 4: an untimed room that keeps ticking is a room that pays you to wait.
     /// </summary>
     Sanctum,
+
+    /// <summary>The tree screen, opened from the level star in a free run (UI-03c rule 1).</summary>
+    Tree,
 }
 
 /// <summary>

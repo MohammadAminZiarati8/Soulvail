@@ -78,7 +78,7 @@ public sealed class PaletteTests
         typeof(TelegraphRings),
         typeof(HpBarView),
         typeof(OfferCard),
-        typeof(TreeNodeView),
+        typeof(TreeNodeButton),
         typeof(AutoCastRow),
         typeof(ZoneView),
         typeof(BulwarkView),
@@ -871,7 +871,7 @@ public sealed class PaletteTests
     /// fixture, the method and the palette member the rewritten body must read, so a row that is
     /// removed goes red on the lookup, a row that is renamed goes red on the same lookup, and a row
     /// that is gutted into a tautology goes red on the IL. <b>Five rather than the spec's four</b>:
-    /// <c>Tree_TintsByKind</c> compared <c>TreeNodeView</c>'s four serialized tints against
+    /// <c>Tree_TintsByKind</c> compared <c>TreeNodeButton</c>'s four serialized tints against
     /// <c>OfferCard</c>'s field by field and could not survive the fields going either.
     /// </remarks>
     [Test]

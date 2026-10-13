@@ -4,9 +4,11 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using VContainer;
 
@@ -16,19 +18,20 @@ using VContainer;
 namespace Soulvail.Game.Presentation
 {
     /// <summary>
-    /// CH §5.1's <em>"View Tree"</em>: the whole tree in three columns with the player's path
-    /// highlighted, opened from the pause panel or from the level-up screen, read-only. GD §13.1,
-    /// §16.4.
+    /// The tree screen: the whole tree as a grid, a column per branch and tier 1 at the bottom, with
+    /// the player's path highlighted. In a free run the level star opens it over its own pause and a
+    /// banked point takes any open node (UI-03c); in a drawing run it is CH §5.1's read-only
+    /// <em>"View Tree"</em>, opened from the pause panel or the level-up screen. GD §13.1, §16.4.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Read-only, and that is the design rather than a simplification</b> (rule 1). CH §5.1 chose
-    /// random-from-available <em>over</em> free-pick precisely so a level-up is a two-second
-    /// decision, and a tree you could tap to buy from would be the free-pick screen the design
-    /// refused, arriving through the back door. Nothing here sends a command and this class takes no
-    /// <c>IProgressionCommands</c> and no <c>IPlayerCommands</c>: a screen that cannot spend a pick
-    /// cannot be argued into spending one. <c>TreeNodeView</c> carries no <see cref="Button"/>
-    /// either, so the refusal is structural at both ends and a row pins it.
+    /// <b>It spends a point only in a free run, and asks core every time</b> (UI-03c rules 4, 7).
+    /// CH §5.1's random-from-available is superseded for a mode with <c>HasFreePick</c>; for every
+    /// other mode this is still the read-only view, so a cell is takeable only when
+    /// <c>RunState.IsFreePick</c>, a point is banked and core says the node is available — and the
+    /// tap handler asks all three again before it sends <c>TakeNode</c>. <b>The points are read after
+    /// <c>TakeNode</c> returns, never in a <c>NodeTaken</c> handler</b>: core publishes that event
+    /// before it spends the point (UI-03b's As built 2).
     /// </para>
     /// <para>
     /// <b>The shape comes from the catalog and the state from the run</b> (rule 2).
@@ -53,20 +56,17 @@ namespace Soulvail.Game.Presentation
     /// guarantees <em>a</em> door.
     /// </para>
     /// <para>
-    /// <b>It holds no pause and must not.</b> <c>RunPause</c> holds one reason at a time (M3-08a
-    /// rule 12) and is already held by whichever screen the player opened first —
-    /// <c>PauseReason.Menu</c> from the panel, <c>PauseReason.LevelUp</c> from the ticker — so a
-    /// screen raised over a screen raised over a stopped game is one gate rather than three
-    /// (M3-09b rule 10, for the second time). <b>The level-up screen does not lower its pause to
-    /// show this either</b>: a tree view that resumed the game underneath itself would be the
-    /// opposite of what a planning screen is for. <c>RunPause</c> is deliberately not a dependency
-    /// of this class and a row pins its absence at the constructor.
+    /// <b>Two ways in, and only the star's holds a pause.</b> <see cref="Open()"/> is the level
+    /// star's: it holds <c>PauseReason.Tree</c> itself, <c>PausePresenter</c>'s pattern, and only
+    /// when nothing else holds the pause — otherwise it does not open, because <c>RunPause</c> throws
+    /// for a second holder (M3-08a rule 12). <see cref="Open(Action)"/> is the two older doors', and
+    /// holds none: the panel's <c>Menu</c> or the ticker's <c>LevelUp</c> is already up underneath.
+    /// <see cref="Close"/> resumes <c>Tree</c> only if it is the holder.
     /// </para>
     /// <para>
     /// <b>It renders no events at all</b> (rule 10), and declares no <c>Update</c> — which is the
-    /// strongest way to say it, <c>SkillsPresenter</c>'s phrasing. The tree cannot change while this
-    /// is up: the tick is gated on both doors, and the one thing that could change it — taking a
-    /// node — is the screen underneath, which is hidden. Built on open from reads.
+    /// strongest way to say it, <c>SkillsPresenter</c>'s phrasing. The tree changes under this screen
+    /// only by a take made on it, which redraws on the spot. Built on open from reads.
     /// </para>
     /// <para>
     /// <b>Its canvas sorts above every screen it can be opened from, and that is the rule rather
@@ -79,16 +79,15 @@ namespace Soulvail.Game.Presentation
     /// underneath the cards on a stopped game, which is the family this project keeps refusing.
     /// </para>
     /// <para>
-    /// <b>No scroll and no zoom</b> (rule 9). Three columns of at most eight tiers is a fixed grid
-    /// that either fits a landscape safe area or does not, and finding out is a device question
-    /// (ledger row 4). Cells shrink to fit their column, so the honest failure mode is <em>small</em>
-    /// rather than <em>clipped</em>; M7-04's eighty-one nodes are when a tree earns a pinch-zoom.
+    /// <b>No scroll and no zoom</b> (UI-03c rule 9). Three columns of at most eight tiers is a fixed
+    /// grid that fits a 9:20 safe area; cells shrink to fit their column, so the honest failure mode
+    /// is <em>small</em> rather than <em>clipped</em>, and how small is a device question.
     /// </para>
     /// <para>
-    /// <b>Close is a button and the Android back gesture is not wired</b> (rule 11). The app has
-    /// never run outside the Editor (ledger row 4) and <c>InputAdapter</c> carries no back binding;
-    /// adding one for this screen alone would be the first of three inconsistent answers. Named
-    /// rather than forgotten.
+    /// <b>Close is a button, and Android Back closes too</b> (UI-03c rule 5). Back arrives as the
+    /// Input System's Escape key; it is one <c>InputAction</c> of this screen's own, enabled only
+    /// while the screen is up, so its callback is the whole of the wiring and no <c>Update</c> polls
+    /// for it.
     /// </para>
     /// <para>
     /// <b>No fade, in or out.</b> <c>Time.timeScale</c> is 0 while this is up, so a scaled animation
@@ -100,6 +99,18 @@ namespace Soulvail.Game.Presentation
     {
         /// <summary>The cell height a non-finite or non-positive <see cref="_cellHeightDp"/> falls back to.</summary>
         private const float DefaultCellHeightDp = 44f;
+
+        // The screen's chrome in dp (UI-03c rule 9). Every word clears Android's 12 sp floor (M4-07);
+        // the rest are guesses until a phone exists.
+        private const float HeaderMarginDp = 12f;
+        private const float HeaderHeightDp = 40f;
+        private const float CloseWidthDp = 112f;
+        private const float PointsWidthDp = 160f;
+        private const float HeaderTextDp = 18f;
+        private const float BranchLabelDp = 24f;
+        private const float BranchTextDp = 14f;
+        private const float NodeNameDp = 13f;
+        private const float NodeTextDp = 12f;
 
         /// <summary>
         /// <em>"This class has no skill tree yet."</em> — shown instead of the columns for a class
@@ -121,6 +132,12 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private static readonly LocKey CloseKey = new LocKey("ui.tree.close");
 
+        /// <summary><em>"Points: {0}"</em> — the header's count of banked points (UI-03c rule 5).</summary>
+        private static readonly LocKey PointsKey = new LocKey("ui.tree.points");
+
+        /// <summary>Android Back, as the Input System reports it.</summary>
+        private const string BackBinding = "<Keyboard>/escape";
+
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — see the class " +
                  "remarks: timeScale is 0 while this is up, so a scaled tween would freeze.")]
         [SerializeField] private CanvasGroup _root;
@@ -136,14 +153,18 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("The cell every node is cloned from, and never shown itself. One clone per node " +
                  "is built under its own column on first open and reused after that (rule 4).")]
-        [SerializeField] private TreeNodeView _cellTemplate;
+        [SerializeField] private TreeNodeButton _cellTemplate;
+
+        [Tooltip("The header's count of banked points, from ui.tree.points. Shown in a free run " +
+                 "only — a drawing run has no points to count (UI-03c rule 5).")]
+        [SerializeField] private TMP_Text _pointsLabel;
 
         [Tooltip("\"This class has no skill tree\", as a LocKey. Shown instead of the columns for a " +
                  "class with none, because an empty screen and a broken screen look identical.")]
         [SerializeField] private TMP_Text _emptyLabel;
 
-        [Tooltip("Back to whichever door this was opened by. It lowers no pause — this screen " +
-                 "never held one.")]
+        [Tooltip("Back to whichever door this was opened by, and gives back the Tree pause when " +
+                 "the star's Open took it.")]
         [SerializeField] private Button _close;
 
         [Tooltip("\"Close\". Written from ui.tree.close in Start, so the prefab's own value is a " +
@@ -162,7 +183,12 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private float _cellGapDp = 6f;
 
         private IRunSession _session;
+        private IProgressionCommands _progression;
+        private RunPause _pause;
         private ContentCatalog _catalog;
+
+        /// <summary>Android Back while the screen is up; created on first show (UI-03c rule 5).</summary>
+        private InputAction _back;
 
         /// <summary>What a node is called. Handed to each pooled cell on its Show (M3-14a rule 11).</summary>
         private ILocalizer _localizer;
@@ -178,7 +204,7 @@ namespace Soulvail.Game.Presentation
         /// <c>SkillTree.Flatten</c>'s, so a cell's index means the same thing here as it does in
         /// core. The parents never change, because a run's class cannot.
         /// </remarks>
-        private readonly List<TreeNodeView> _cells = new List<TreeNodeView>();
+        private readonly List<TreeNodeButton> _cells = new List<TreeNodeButton>();
 
         /// <summary>How the door that opened this gets itself back — rule 5's whole mechanism.</summary>
         private Action _onClosed;
@@ -221,6 +247,10 @@ namespace Soulvail.Game.Presentation
         /// the shape, the keys and the kinds are looked up here — <c>LevelUpPresenter</c>'s bargain,
         /// two screens on.
         /// </param>
+        /// <param name="progression">
+        /// <c>TakeNode</c>, and nothing else of it — a free run's tap (UI-03c rule 4).
+        /// </param>
+        /// <param name="pause">The gate the star's <see cref="Open()"/> holds (UI-03c rule 1).</param>
         /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
         /// <remarks>
         /// <b>No <c>DomainEventHub</c>, and that is rule 10 at the constructor</b>: this screen
@@ -231,14 +261,21 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         /// <param name="localizer">
         /// What each node and each branch is called. Held here and handed to every cell on
-        /// <c>TreeNodeView.Show</c>, because a cell is a runtime clone nothing injects individually
+        /// <c>TreeNodeButton.Show</c>, because a cell is a runtime clone nothing injects individually
         /// (M3-14a rule 11) — and used directly for the three column headings, which are this
         /// class's own.
         /// </param>
         [Inject]
-        public void Construct(IRunSession session, ContentCatalog catalog, ILocalizer localizer)
+        public void Construct(
+            IRunSession session,
+            IProgressionCommands progression,
+            RunPause pause,
+            ContentCatalog catalog,
+            ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _progression = progression ?? throw new ArgumentNullException(nameof(progression));
+            _pause = pause ?? throw new ArgumentNullException(nameof(pause));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
@@ -298,10 +335,9 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <remarks>
-        /// <b>It drops one button handler and nothing else.</b> There is no subscription (rule 10)
-        /// and no pause to lower — this screen never held one — so unlike
-        /// <c>PausePresenter.OnDestroy</c> there is no global here that something else has to
-        /// restore.
+        /// <b>It drops one button handler and the Back action.</b> There is no subscription (rule 10),
+        /// and a <c>Tree</c> pause still held is given back by <c>RunPause.Dispose</c> with the
+        /// scope — <c>PausePresenter.OnDestroy</c>'s bargain for <c>Menu</c>.
         /// <para>
         /// <b>It does not run the callback.</b> A screen destroyed with a door waiting on it is
         /// exactly the case M3-09b's poll was written for, and the door's own once-a-frame read of
@@ -315,6 +351,34 @@ namespace Soulvail.Game.Presentation
             _onClosed = null;
 
             Unwire(_close, Close);
+
+            if (_back != null)
+            {
+                _back.performed -= OnBack;
+                _back.Dispose();
+                _back = null;
+            }
+        }
+
+        /// <summary>
+        /// The level star's door (UI-03c rule 1): draws the tree and holds <c>PauseReason.Tree</c>
+        /// until <see cref="Close"/>. Opens at 0 points too, to look.
+        /// </summary>
+        /// <remarks>
+        /// <b>Refused, quietly, when anything else holds the pause</b> — a level-up, the panel, the
+        /// Sanctum. <c>RunPause.Pause</c> would throw for a second holder, and a tap that threw is a
+        /// dead button at best; <c>PausePresenter.Open</c>'s guard, for its reason.
+        /// </remarks>
+        public void Open()
+        {
+            if (IsOpen || _pause is null || _pause.IsPaused || _session?.State is null)
+            {
+                return;
+            }
+
+            _pause.Pause(PauseReason.Tree);
+
+            Open(null);
         }
 
         /// <summary>
@@ -373,6 +437,12 @@ namespace Soulvail.Game.Presentation
 
             HideScreen();
 
+            // Only the star's own pause: a door's Menu or LevelUp is that door's to give back.
+            if (_pause != null && _pause.Holder == PauseReason.Tree)
+            {
+                _pause.Resume(PauseReason.Tree);
+            }
+
             Action onClosed = _onClosed;
 
             _onClosed = null;
@@ -388,6 +458,16 @@ namespace Soulvail.Game.Presentation
             SkillTreeSpec tree = Resolve();
 
             WriteBranchLabels(tree);
+
+            // Read here, after any TakeNode has returned — never in a NodeTaken handler, which core
+            // publishes before it spends the point (UI-03b's As built 2).
+            bool free = state.IsFreePick;
+            int points = free ? state.SkillPoints : 0;
+
+            WritePoints(free, points);
+
+            // Before Layout, which reads the columns' height.
+            PlaceChrome();
 
             if (_emptyLabel != null)
             {
@@ -433,7 +513,8 @@ namespace Soulvail.Game.Presentation
 
                         ContentId id = tier[i];
 
-                        _cells[index].Show(_catalog.Skill(id), StateOf(state, id), _localizer);
+                        // Rule 3 and rule 7 in one flag: a drawing run's cells are never takeable.
+                        _cells[index].Show(_catalog.Skill(id), StateOf(state, id), _localizer, points > 0);
 
                         index++;
                     }
@@ -443,6 +524,46 @@ namespace Soulvail.Game.Presentation
             for (int i = index; i < _cells.Count; i++)
             {
                 _cells[i].Hide();
+            }
+        }
+
+        /// <summary>
+        /// A cell's tap (UI-03c rule 4): one point on one open node, then the screen redrawn.
+        /// </summary>
+        /// <remarks>
+        /// Every condition the cell already checked is asked of core again, because
+        /// <c>TakeNode</c> throws for a refused node and a stale cell is one frame from being one.
+        /// Spending the last point leaves the screen up (rule 6); a full tree's leftover points are
+        /// the ticker's <c>SettleFullTree</c>, as before.
+        /// </remarks>
+        private void OnCellTapped(ContentId id)
+        {
+            RunState state = _session?.State;
+
+            if (!IsOpen || state is null || _progression is null
+                || !state.IsFreePick || state.SkillPoints <= 0 || !state.IsNodeAvailable(id))
+            {
+                return;
+            }
+
+            _progression.TakeNode(id);
+
+            Draw(state);
+        }
+
+        /// <summary>The header's count — a free run's alone (UI-03c rule 5).</summary>
+        private void WritePoints(bool free, int points)
+        {
+            if (_pointsLabel == null)
+            {
+                return;
+            }
+
+            _pointsLabel.gameObject.SetActive(free);
+
+            if (free)
+            {
+                _pointsLabel.text = _localizer is null ? PointsKey.ToString() : _localizer.Format(PointsKey, points);
             }
         }
 
@@ -519,9 +640,10 @@ namespace Soulvail.Game.Presentation
 
                     for (int i = 0; i < tier.Count; i++)
                     {
-                        TreeNodeView cell = Instantiate(_cellTemplate, parent);
+                        TreeNodeButton cell = Instantiate(_cellTemplate, parent);
 
                         cell.name = $"Cell{b}_{t}_{i}";
+                        cell.Bind(OnCellTapped);
                         cell.Hide();
 
                         _cells.Add(cell);
@@ -590,22 +712,116 @@ namespace Soulvail.Game.Presentation
                             return;
                         }
 
+                        _cells[index].SizeText(NodeNameDp * pxPerDp, NodeTextDp * pxPerDp);
+
                         if (_cells[index].transform is RectTransform rect)
                         {
-                            rect.anchorMin = new Vector2(i * share, 1f);
-                            rect.anchorMax = new Vector2((i + 1) * share, 1f);
-                            rect.pivot = new Vector2(0.5f, 1f);
+                            // Tier 1 at the bottom (UI-03c rule 2): a tree grows upward, and every
+                            // column's first row sits on the same line whatever its height.
+                            rect.anchorMin = new Vector2(i * share, 0f);
+                            rect.anchorMax = new Vector2((i + 1) * share, 0f);
+                            rect.pivot = new Vector2(0.5f, 0f);
 
                             // Stretched across its share of the column and inset by the gap, so the
                             // column's own width is the prefab's business and never arithmetic here.
                             rect.sizeDelta = new Vector2(-gapPx, rowPx);
-                            rect.anchoredPosition = new Vector2(0f, -(t - 1) * (rowPx + gapPx));
+                            rect.anchoredPosition = new Vector2(0f, (t - 1) * (rowPx + gapPx));
                         }
 
                         index++;
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// The header, the columns under it and every word on the screen, in dp (UI-03c rules 5, 9).
+        /// </summary>
+        /// <remarks>
+        /// The prefab authored these in reference units of a 1920×1080 landscape canvas, which on a
+        /// 9:20 phone ran the header past the safe area while the cells, already in dp, shrank to
+        /// fit. Placed here for <see cref="Layout"/>'s reasons, so the whole screen is one unit.
+        /// The columns hang from the header's bottom edge, so a cell can never run under it.
+        /// </remarks>
+        private void PlaceChrome()
+        {
+            float px = PixelsPerDp();
+            float margin = HeaderMarginDp * px;
+            float header = HeaderHeightDp * px;
+
+            if (_close != null && _close.transform is RectTransform close)
+            {
+                PlaceCorner(close, 1f, new Vector2(CloseWidthDp * px, header), margin);
+            }
+
+            if (_closeLabel != null)
+            {
+                _closeLabel.fontSize = HeaderTextDp * px;
+            }
+
+            if (_pointsLabel != null)
+            {
+                PlaceCorner(_pointsLabel.rectTransform, 0f, new Vector2(PointsWidthDp * px, header), margin);
+                _pointsLabel.fontSize = HeaderTextDp * px;
+            }
+
+            if (_emptyLabel != null)
+            {
+                RectTransform empty = _emptyLabel.rectTransform;
+
+                empty.anchorMin = new Vector2(0f, 0.5f);
+                empty.anchorMax = new Vector2(1f, 0.5f);
+                empty.sizeDelta = new Vector2(-2f * margin, header);
+                _emptyLabel.fontSize = HeaderTextDp * px;
+            }
+
+            float labelPx = BranchLabelDp * px;
+
+            for (int b = 0; b < SkillTreeSpec.BranchCount; b++)
+            {
+                RectTransform cells = ColumnRect(b);
+
+                if (cells == null)
+                {
+                    continue;
+                }
+
+                // The column is the cells' parent, and the grid the columns' — the prefab's shape.
+                if (b == 0 && cells.parent != null && cells.parent.parent is RectTransform grid)
+                {
+                    grid.anchorMin = Vector2.zero;
+                    grid.anchorMax = Vector2.one;
+                    grid.offsetMin = new Vector2(margin, margin);
+                    grid.offsetMax = new Vector2(-margin, -(margin + header + margin));
+                }
+
+                cells.anchorMin = Vector2.zero;
+                cells.anchorMax = Vector2.one;
+                cells.offsetMin = Vector2.zero;
+                cells.offsetMax = new Vector2(0f, -(labelPx + (CellGap * px)));
+
+                if (_branchLabels is not null && b < _branchLabels.Length && _branchLabels[b] != null)
+                {
+                    RectTransform label = _branchLabels[b].rectTransform;
+
+                    label.anchorMin = new Vector2(0f, 1f);
+                    label.anchorMax = Vector2.one;
+                    label.pivot = new Vector2(0.5f, 1f);
+                    label.anchoredPosition = Vector2.zero;
+                    label.sizeDelta = new Vector2(0f, labelPx);
+                    _branchLabels[b].fontSize = BranchTextDp * px;
+                }
+            }
+        }
+
+        /// <summary>A header piece in a top corner: <paramref name="side"/> 0 is left, 1 is right.</summary>
+        private static void PlaceCorner(RectTransform rect, float side, Vector2 size, float margin)
+        {
+            rect.anchorMin = new Vector2(side, 1f);
+            rect.anchorMax = new Vector2(side, 1f);
+            rect.pivot = new Vector2(side, 1f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = new Vector2(side > 0.5f ? -margin : margin, -margin);
         }
 
         /// <summary>
@@ -744,7 +960,17 @@ namespace Soulvail.Game.Presentation
             _root.alpha = 1f;
             _root.blocksRaycasts = true;
             _root.interactable = true;
+
+            if (_back is null)
+            {
+                _back = new InputAction("TreeBack", InputActionType.Button, BackBinding);
+                _back.performed += OnBack;
+            }
+
+            _back.Enable();
         }
+
+        private void OnBack(InputAction.CallbackContext context) => Close();
 
         private void HideScreen()
         {
@@ -756,6 +982,8 @@ namespace Soulvail.Game.Presentation
             _root.alpha = 0f;
             _root.blocksRaycasts = false;
             _root.interactable = false;
+
+            _back?.Disable();
         }
 
         /// <summary><see cref="_cellHeightDp"/> with the Inspector field's mistakes answered.</summary>

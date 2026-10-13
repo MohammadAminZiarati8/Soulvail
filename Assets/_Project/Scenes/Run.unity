@@ -1830,6 +1830,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Hud
       objectReference: {fileID: 0}
+    - target: {fileID: 8209328574051453634, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
+      propertyPath: _treeScreen
+      value: 
+      objectReference: {fileID: 840378153}
     - target: {fileID: 9217165868557884485, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
       propertyPath: m_Pivot.x
       value: 0

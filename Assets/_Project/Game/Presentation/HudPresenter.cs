@@ -208,6 +208,14 @@ namespace Soulvail.Game.Presentation
                  "the same run and a free pick just goes unannounced.")]
         [SerializeField] private PointBadge _badge;
 
+        [Tooltip("The star as a button (UI-03c rule 1): in a free run a tap opens the tree screen. " +
+                 "Inert in every other run, and for a class with no tree (rule 8).")]
+        [SerializeField] private Button _starButton;
+
+        [Tooltip("The tree screen the star opens. Scene dressing, not prefab dressing — the two are " +
+                 "separate root prefabs, as the pause panel's View Tree is (M3-09b).")]
+        [SerializeField] private TreeViewPresenter _treeScreen;
+
         [Tooltip("The full-screen black cover the stage transition fades behind. Optional on the " +
                  "same terms as the reticle: without it a run still crosses every boundary, the " +
                  "arena just swaps in plain sight.")]
@@ -406,6 +414,34 @@ namespace Soulvail.Game.Presentation
             _essenceSubscription = hub.Subscribe<EssenceChanged>(OnEssenceChanged);
             _veilrotSubscription = hub.Subscribe<VeilrotChanged>(OnVeilrotChanged);
             _claimingSubscription = hub.Subscribe<ClaimingBegan>(OnClaimingBegan);
+
+            // The star's tap (UI-03c), wired here for PausePresenter.Construct's reason. Removed
+            // first, so a component injected twice reports one tap once.
+            if (_starButton != null)
+            {
+                _starButton.onClick.RemoveListener(OnStarTapped);
+                _starButton.onClick.AddListener(OnStarTapped);
+            }
+        }
+
+        /// <summary>
+        /// The level star (UI-03c rules 1, 8): opens the tree screen in a free run whose class has a
+        /// tree, and does nothing in any other.
+        /// </summary>
+        /// <remarks>
+        /// <c>TreeViewPresenter.Open()</c> holds its own pause and refuses quietly when anything else
+        /// holds it, so a tap during a level-up or the Sanctum is nothing rather than a throw.
+        /// </remarks>
+        private void OnStarTapped()
+        {
+            RunState state = _session?.State;
+
+            if (state is null || !state.IsFreePick || _treeScreen == null || !_treeScreen.HasTree)
+            {
+                return;
+            }
+
+            _treeScreen.Open();
         }
 
         /// <exception cref="MissingReferenceException">A view or the readout is not dressed.</exception>
@@ -475,6 +511,11 @@ namespace Soulvail.Game.Presentation
             _essenceSubscription?.Dispose();
             _veilrotSubscription?.Dispose();
             _claimingSubscription?.Dispose();
+
+            if (_starButton != null)
+            {
+                _starButton.onClick.RemoveListener(OnStarTapped);
+            }
 
             _essenceSubscription = null;
             _veilrotSubscription = null;

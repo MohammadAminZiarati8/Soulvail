@@ -173,7 +173,7 @@ public sealed class TreeViewPresenterTests
 
         Assert.That(_presenter.IsOpen, Is.True, "Open left the screen down.");
 
-        TreeNodeView[] cells = ShownCells();
+        TreeNodeButton[] cells = ShownCells();
 
         Assert.That(cells.Length, Is.EqualTo(FullTreeNodes), "A 27-node tree did not draw 27 cells.");
 
@@ -192,7 +192,7 @@ public sealed class TreeViewPresenterTests
         // index means the same thing on this screen as it does in core.
         for (int b = 0; b < SkillTreeSpec.BranchCount; b++)
         {
-            TreeNodeView[] column = CellsIn(b);
+            TreeNodeButton[] column = CellsIn(b);
             SkillBranchSpec branch = _tree.Branches[b];
 
             int index = 0;
@@ -204,7 +204,7 @@ public sealed class TreeViewPresenterTests
                 for (int i = 0; i < tier.Count; i++)
                 {
                     Assert.That(
-                        column[index].SkillId,
+                        column[index].Node,
                         Is.EqualTo(tier[i]),
                         $"Branch {b} position {index} draws the wrong node, so the column is not "
                             + "in tier order.");
@@ -316,14 +316,14 @@ public sealed class TreeViewPresenterTests
         // **Every cell cross-checked against core rather than counted against a number this file
         // worked out.** A screen and a run that disagree is the whole failure here, and the only
         // authority on which is right is RunState.
-        foreach (TreeNodeView cell in ShownCells())
+        foreach (TreeNodeButton cell in ShownCells())
         {
-            NodeState expected = Expected(cell.SkillId);
+            NodeState expected = Expected(cell.Node);
 
             Assert.That(
                 cell.State,
                 Is.EqualTo(expected),
-                $"'{cell.SkillId}' is drawn as {cell.State} and the run says {expected}.");
+                $"'{cell.Node}' is drawn as {cell.State} and the run says {expected}.");
 
             states[expected]++;
         }
@@ -378,7 +378,7 @@ public sealed class TreeViewPresenterTests
             "Two of CH §4's four kinds are drawn in the same colour, so the strip says nothing.");
 
         // **And they are Palette's four, which is what M3-13a changed here.** This used to compare
-        // TreeNodeView's four serialized fields against OfferCard's four, field name by field name,
+        // TreeNodeButton's four serialized fields against OfferCard's four, field name by field name,
         // because the two screens each carried their own copy and two answers to one question is how
         // a Keystone ends up a different colour on the card that offered it and the tree that holds
         // it. There is one answer now, so the row asserts the answer rather than the agreement.
@@ -434,15 +434,15 @@ public sealed class TreeViewPresenterTests
         Assert.That(CellFor(Node('b', 1, 'a')).State, Is.EqualTo(NodeState.Banished));
         Assert.That(CellFor(ConsecrateKey).State, Is.EqualTo(NodeState.Taken));
 
-        TreeNodeView[] cells = ShownCells();
+        TreeNodeButton[] cells = ShownCells();
 
         Assert.That(cells.Count(c => c.State == NodeState.Banished), Is.EqualTo(1));
         Assert.That(cells.Count(c => c.State == NodeState.Taken), Is.EqualTo(1));
 
         // The rest are Locked or Available, and each agrees with core.
-        foreach (TreeNodeView cell in cells)
+        foreach (TreeNodeButton cell in cells)
         {
-            Assert.That(cell.State, Is.EqualTo(Expected(cell.SkillId)), $"'{cell.SkillId}'.");
+            Assert.That(cell.State, Is.EqualTo(Expected(cell.Node)), $"'{cell.Node}'.");
         }
 
         Assert.That(FrameOf(Node('b', 1, 'a')), Is.EqualTo(Palette.NodeBanished));
@@ -490,7 +490,7 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        TreeNodeView cell = _cellTemplateOf();
+        TreeNodeButton cell = _cellTemplateOf();
 
         cell.Show(_catalog.Skill(new ContentId(ConsecrateKey)), NodeState.Banished, Passthrough());
 
@@ -523,7 +523,7 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        // A fifth member, one past Banished — TreeNodeView's rule survives the fourth.
+        // A fifth member, one past Banished — TreeNodeButton's rule survives the fourth.
         var fifth = (NodeState)(Enum.GetValues(typeof(NodeState)).Cast<int>().Max() + 1);
 
         Assert.That(Enum.IsDefined(typeof(NodeState), fifth), Is.False, "the fixture's premise.");
@@ -561,9 +561,9 @@ public sealed class TreeViewPresenterTests
         // fixture's tree is synthetic and the table above holds one node. It is also exactly why
         // "every key has a row" is M3-14b's: from a cell, a missing row and a wrong key look the
         // same, so a coverage claim asserted here would be this task grading its own homework.
-        foreach (TreeNodeView cell in ShownCells())
+        foreach (TreeNodeButton cell in ShownCells())
         {
-            if (cell.SkillId == new ContentId(ConsecrateKey))
+            if (cell.Node == new ContentId(ConsecrateKey))
             {
                 continue;
             }
@@ -571,7 +571,7 @@ public sealed class TreeViewPresenterTests
             Assert.That(
                 Text(cell, "_name"),
                 Does.StartWith("skill."),
-                $"'{cell.SkillId}' has no row, so it should have fallen back to its own key.");
+                $"'{cell.Node}' has no row, so it should have fallen back to its own key.");
         }
 
         // And the member is still `Key`. M3-00c recorded the spec's four `.Value` sites two spec
@@ -586,62 +586,32 @@ public sealed class TreeViewPresenterTests
     // ---- What it cannot do (rules 1, 10) -------------------------------------------------------
 
     [Test]
-    public void Tree_SendsNothing()
+    public void Tree_DrawingRun_SendsNothing()
     {
-        StartRun();
+        // **UI-03c rule 7, rewritten from M3-09d's "no Button, no command port".** The presenter
+        // takes IProgressionCommands now and every cell carries a Button, so the read-only view of a
+        // drawing run is a state rather than a structure: no cell interactable, and a tap on every
+        // one — Available ones included, with a pick owed — sends nothing.
+        StartRun(level: 2, pending: 1);
         BuildScreen();
 
-        MethodInfo construct = typeof(TreeViewPresenter).GetMethod(nameof(TreeViewPresenter.Construct));
-
-        Assert.That(construct, Is.Not.Null);
-
-        // **Rule 1 at the constructor.** CH §5.1 chose random-from-available *over* free-pick, so a
-        // tree you could buy from would be the screen the design refused arriving through the back
-        // door. A presenter that cannot reach a command port cannot be argued into sending one.
-        Type[] ports = { typeof(IProgressionCommands), typeof(IPlayerCommands) };
-
-        foreach (Type port in ports)
-        {
-            Assert.That(
-                construct.GetParameters().Select(p => p.ParameterType),
-                Has.None.EqualTo(port),
-                $"TreeViewPresenter took an {port.Name}. The tree is read-only (CH §5.1).");
-
-            Assert.That(
-                typeof(TreeViewPresenter).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Select(f => f.FieldType),
-                Has.None.EqualTo(port),
-                $"TreeViewPresenter holds an {port.Name} field, so it can spend a pick by another "
-                    + "route.");
-        }
-
-        // **And it holds no RunPause either** (rule 5). The gate belongs to whichever screen is
-        // underneath — PauseReason.Menu from the panel, PauseReason.LevelUp from the ticker — and
-        // RunPause throws on a second reason (M3-08a rule 12).
-        Assert.That(
-            construct.GetParameters().Select(p => p.ParameterType),
-            Has.None.EqualTo(typeof(RunPause)));
-
-        Assert.That(
-            typeof(TreeViewPresenter).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                .Select(f => f.FieldType),
-            Has.None.EqualTo(typeof(RunPause)));
-
-        // **A cell is not a target**, which is the same rule made structural at the other end: there
-        // is nothing on a cell for a later task to wire a command to without deleting a field first.
         _presenter.Open(null);
 
-        foreach (TreeNodeView cell in ShownCells())
+        Assert.That(_session.State.IsFreePick, Is.False, "The fixture's premise: this mode draws.");
+
+        foreach (TreeNodeButton cell in ShownCells())
         {
+            Assert.That(cell.IsTakeable, Is.False, $"'{cell.Node}' is takeable in a drawing run.");
             Assert.That(
-                cell.GetComponentsInChildren<Selectable>(true),
-                Is.Empty,
-                $"The cell for '{cell.SkillId}' carries a Selectable, so it can be tapped.");
+                Field<Button>(cell, "_button").interactable,
+                Is.False,
+                $"The cell for '{cell.Node}' can be tapped in a drawing run.");
+
+            Field<Button>(cell, "_button").onClick.Invoke();
         }
 
-        // Tapping one sends nothing because there is nothing to tap and nothing to send: the run's
-        // node count is untouched by the whole screen being open.
         Assert.That(_session.State.TakenNodeCount, Is.Zero, "The tree view took a node.");
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(1), "The tree view spent the pick.");
         Assert.That(_spy.Count<NodeTaken>(), Is.Zero);
     }
 
@@ -674,7 +644,7 @@ public sealed class TreeViewPresenterTests
 
         // And the consequence, spelled out: a sentinel written over a cell survives every frame the
         // screen is up, because nothing in this class runs on one.
-        TreeNodeView cell = ShownCells()[0];
+        TreeNodeButton cell = ShownCells()[0];
 
         Label(cell, "_name").text = "sentinel";
 
@@ -729,8 +699,8 @@ public sealed class TreeViewPresenterTests
             Assert.That(PauseButton(button).interactable, Is.True, $"{button} never came back.");
         }
 
-        // **And it lowered nothing**: this screen never held a pause, so closing it is a canvas
-        // going down rather than a gate being released.
+        // **And it lowered nothing**: a door's open holds no pause (only the star's does, UI-03c),
+        // so closing it is a canvas going down rather than a gate being released.
         Assert.That(Pause().IsPaused, Is.True, "Closing the tree resumed the run.");
         Assert.That(Pause().Holder, Is.EqualTo(PauseReason.Menu));
         Assert.That(_pausePresenter.IsOpen, Is.True);
@@ -919,9 +889,9 @@ public sealed class TreeViewPresenterTests
 
         // Every cell still agrees with core, which is the claim the three assertions above are
         // instances of.
-        foreach (TreeNodeView cell in ShownCells())
+        foreach (TreeNodeButton cell in ShownCells())
         {
-            Assert.That(cell.State, Is.EqualTo(Expected(cell.SkillId)), $"'{cell.SkillId}'.");
+            Assert.That(cell.State, Is.EqualTo(Expected(cell.Node)), $"'{cell.Node}'.");
         }
     }
 
@@ -1045,7 +1015,7 @@ public sealed class TreeViewPresenterTests
         Assert.That(so.FindProperty("_emptyLabel").objectReferenceValue, Is.Not.Null, "no empty label.");
         Assert.That(so.FindProperty("_close").objectReferenceValue, Is.Not.Null, "no Close button.");
 
-        var template = so.FindProperty("_cellTemplate").objectReferenceValue as TreeNodeView;
+        var template = so.FindProperty("_cellTemplate").objectReferenceValue as TreeNodeButton;
 
         Assert.That(template, Is.Not.Null, "no cell template.");
 
@@ -1056,7 +1026,7 @@ public sealed class TreeViewPresenterTests
 
         var cellSo = new SerializedObject(template);
 
-        foreach (string field in new[] { "_name", "_description", "_frame", "_kindStrip" })
+        foreach (string field in new[] { "_name", "_description", "_frame", "_kindStrip", "_button", "_outline", "_padlock" })
         {
             Assert.That(
                 cellSo.FindProperty(field).objectReferenceValue,
@@ -1110,7 +1080,7 @@ public sealed class TreeViewPresenterTests
             Is.Not.Null,
             "no SafeAreaFitter on the content root, so a column can land under a notch.");
 
-        // Rule 11: Close is a button, and it is the only way out until the back gesture is wired.
+        // Close is a button, and its label a key (Android Back is the other way out, UI-03c rule 5).
         var close = (Button)so.FindProperty("_close").objectReferenceValue;
 
         Assert.That(
@@ -1159,9 +1129,9 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        Assert.That(() => _presenter.Construct(null, _catalog, Passthrough()), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, null, Passthrough()), Throws.ArgumentNullException);
-        Assert.That(() => _presenter.Construct(_session, _catalog, null), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(null, _session, NewPause(), _catalog, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), null, Passthrough()), Throws.ArgumentNullException);
+        Assert.That(() => _presenter.Construct(_session, _session, NewPause(), _catalog, null), Throws.ArgumentNullException);
     }
 
     [Test]
@@ -1170,7 +1140,7 @@ public sealed class TreeViewPresenterTests
         StartRun();
         BuildScreen();
 
-        TreeNodeView cell = _cellTemplateOf();
+        TreeNodeButton cell = _cellTemplateOf();
 
         Assert.That(
             () => cell.Show(null, NodeState.Locked, Passthrough()),
@@ -1349,7 +1319,7 @@ public sealed class TreeViewPresenterTests
 
         // What RunScope's RegisterComponent does. Start never runs in EditMode, so nothing else on
         // this object has fired.
-        _presenter.Construct(_session, _catalog, localizer ?? Passthrough());
+        _presenter.Construct(_session, _session, NewPause(), _catalog, localizer ?? Passthrough());
     }
 
     /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>
@@ -1408,8 +1378,17 @@ public sealed class TreeViewPresenterTests
         SetPrivate(_levelUpPresenter, "_treeScreen", _presenter);
     }
 
+    /// <summary>
+    /// The run's one gate, built on first ask: the tree screen and the pause panel share it, as they
+    /// do in <c>RunScope</c> (UI-03c).
+    /// </summary>
     private RunPause NewPause()
     {
+        if (_pauses.Count > 0)
+        {
+            return _pauses[0];
+        }
+
         var pause = new RunPause();
 
         _pauses.Add(pause);
@@ -1467,27 +1446,27 @@ public sealed class TreeViewPresenterTests
     private bool[] CardInteractables() =>
         Cards().Select(c => Field<Button>(c, "_button").interactable).ToArray();
 
-    private TreeNodeView _cellTemplateOf() => Field<TreeNodeView>(_presenter, "_cellTemplate");
+    private TreeNodeButton _cellTemplateOf() => Field<TreeNodeButton>(_presenter, "_cellTemplate");
 
-    private TreeNodeView[] ShownCells() =>
-        Field<List<TreeNodeView>>(_presenter, "_cells").Where(c => c.IsShown).ToArray();
+    private TreeNodeButton[] ShownCells() =>
+        Field<List<TreeNodeButton>>(_presenter, "_cells").Where(c => c.IsShown).ToArray();
 
-    private TreeNodeView[] CellsIn(int branch) =>
+    private TreeNodeButton[] CellsIn(int branch) =>
         Field<RectTransform[]>(_presenter, "_branchColumns")[branch]
-            .GetComponentsInChildren<TreeNodeView>(true)
+            .GetComponentsInChildren<TreeNodeButton>(true)
             .Where(c => c.IsShown)
             .ToArray();
 
-    private TreeNodeView CellFor(ContentId id)
+    private TreeNodeButton CellFor(ContentId id)
     {
-        TreeNodeView cell = ShownCells().FirstOrDefault(c => c.SkillId == id);
+        TreeNodeButton cell = ShownCells().FirstOrDefault(c => c.Node == id);
 
         Assert.That(cell, Is.Not.Null, $"'{id}' is not on the screen at all.");
 
         return cell;
     }
 
-    private TreeNodeView CellFor(string id) => CellFor(new ContentId(id));
+    private TreeNodeButton CellFor(string id) => CellFor(new ContentId(id));
 
     private Vector2[] Rects() =>
         ShownCells().Select(c => ((RectTransform)c.transform).sizeDelta).ToArray();

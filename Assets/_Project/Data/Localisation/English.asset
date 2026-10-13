@@ -154,6 +154,8 @@ MonoBehaviour:
     _text: Pick {0:0} of {1:0}
   - _key: ui.tree.close
     _text: Close
+  - _key: ui.tree.points
+    _text: 'Points: {0:0}'
   - _key: character.oathbound.name
     _text: Oathbound
   - _key: enemy.husk.name

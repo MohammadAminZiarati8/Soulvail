@@ -545,13 +545,11 @@ public sealed class SanctumPresenterTests
                 .SelectMany(method => method.GetParameters()).Select(parameter => parameter.ParameterType))
             .ToArray();
 
-        Assert.That(referenced, Has.No.Member(typeof(TreeNodeView)));
-        Assert.That(referenced, Has.No.Member(typeof(TreeNodeView[])));
+        Assert.That(referenced, Has.No.Member(typeof(TreeNodeButton)));
+        Assert.That(referenced, Has.No.Member(typeof(TreeNodeButton[])));
 
-        Assert.That(
-            typeof(TreeNodeView).GetFields(everything).Select(field => field.FieldType),
-            Has.No.Member(typeof(Button)),
-            "TreeNodeView grew a Button. CH §5.1's tree is not a screen you buy from (M3-09d rule 1).");
+        // The cell's own "no Button" pin left at UI-03c, whose free run buys from the tree: a
+        // drawing run's cells stay read-only by state, which TreeViewPresenterTests pins.
     }
 
     // ---- Rules 4 and 5: the pause is the ticker's ---------------------------------------------

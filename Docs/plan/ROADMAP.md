@@ -376,7 +376,7 @@ What the planning found:
 | UI-02d | [A fixed stick](tasks/UI-02d-a-fixed-stick.md) — owner ruling 2026-10-13, supersedes CC §2.1 "floating, never fixed" | S | UI-02b | ☑ |
 | UI-03a | [Skill points and the free pick, in core](tasks/UI-03a-skill-points-in-core.md) — behind `hasFreePick`; a level banks a point, `TakeNode` spends it, no draw | M | — | ☑ |
 | UI-03b | [The level-up banner and the point badge](tasks/UI-03b-the-point-badge.md) — non-blocking toast, green count on the star | S | UI-03a | ☑ |
-| UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☐ |
+| UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☑ |
 | UI-03d | [The switch: pause door, the Jungle on, the docs](tasks/UI-03d-the-switch-and-the-docs.md) — CH §5.1 / GD §13.1 rewritten | S | UI-03c | ☐ |
 
 **UI-03 — Levelling by banked points** *(owner, 2026-09-29; plain 3×3 only)*: a level banks a point and the game runs on; the tree screen pauses and takes any open node. Everything is behind a mode flag, off until UI-03d turns it on for the Jungle, so no row before it changes a shipped run; Descent keeps the random-three flow until its classes are reshaped. The Ranger's tree is already 3 branches × 3 single-node tiers, so today's tier gate *is* the owner's "a level opens when the one below it is taken". Not in UI-03: the "take a new class" area, reshaping the other three classes, and the M7-04a–k specs it supersedes (the owner's to rule on).

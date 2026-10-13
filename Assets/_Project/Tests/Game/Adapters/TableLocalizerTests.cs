@@ -872,7 +872,7 @@ public sealed class TableLocalizerTests
         {
             typeof(OfferCard),
             typeof(SkillRow),
-            typeof(TreeNodeView),
+            typeof(TreeNodeButton),
             typeof(ManualSkillButton),
             typeof(FirstActiveHint),
             typeof(OverflowToast),
@@ -904,7 +904,7 @@ public sealed class TableLocalizerTests
     {
         foreach (Type cell in new[]
         {
-            typeof(OfferCard), typeof(SkillRow), typeof(TreeNodeView), typeof(ManualSkillButton),
+            typeof(OfferCard), typeof(SkillRow), typeof(TreeNodeButton), typeof(ManualSkillButton),
         })
         {
             MethodInfo show = cell.GetMethod("Show", BindingFlags.Instance | BindingFlags.Public);

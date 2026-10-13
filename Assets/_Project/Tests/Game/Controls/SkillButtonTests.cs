@@ -10,6 +10,7 @@ using Soulvail.Game.Controls;
 using Soulvail.Tests.Core.Fakes;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace Soulvail.Tests.Game.Controls;
@@ -17,6 +18,7 @@ namespace Soulvail.Tests.Game.Controls;
 /// <summary>
 /// RS-03a rule 9: a class with no movement skill has no button. The rest of RS-03a is core's and is
 /// in <c>HoldFireTests</c> and <c>MovementSkillNoneTests</c>.
+/// UI-02c: Roll button wears RollButton_Ready, RollButton_Cooling, RollButton_Pressed, and Icon_Roll.
 /// </summary>
 /// <remarks>
 /// <b>Over the shipped <c>Hud.prefab</c> and a real <c>RunSession</c></b>, <c>VeilrotMeterViewTests</c>'
@@ -66,7 +68,7 @@ public sealed class SkillButtonTests
     [Test]
     public void SkillButton_HiddenOnANoneClass()
     {
-        (SkillButton button, CanvasGroup group) = Bound(MovementSkillKind.None);
+        (SkillButton button, CanvasGroup group, _) = Bound(MovementSkillKind.None);
 
         Assert.That(group.alpha, Is.Zero, "no button for a class with no movement skill.");
         Assert.That(group.blocksRaycasts, Is.False, "and nothing in the way of a thumb.");
@@ -81,10 +83,81 @@ public sealed class SkillButtonTests
     public void SkillButton_ShownOnAClassWithADash()
     {
         // The control: every class that ships keeps its button, live and tappable.
-        (_, CanvasGroup group) = Bound(MovementSkillKind.Charge);
+        (_, CanvasGroup group, _) = Bound(MovementSkillKind.Charge);
 
         Assert.That(group.alpha, Is.EqualTo(1f));
         Assert.That(group.blocksRaycasts, Is.True);
+    }
+
+    [Test]
+    public void SkillButton_WearsReadySpriteWhenAvailable()
+    {
+        (SkillButton button, _, _) = Bound(MovementSkillKind.Charge);
+
+        var frame = (Image)typeof(SkillButton)
+            .GetField("_buttonFrame", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(button);
+
+        Assert.That(frame, Is.Not.Null, "frame Image is dressed.");
+        Assert.That(frame.sprite, Is.Not.Null, "frame sprite is set.");
+        Assert.That(frame.sprite.name, Is.EqualTo("RollButton_Ready"), "wears RollButton_Ready when ready.");
+    }
+
+    [Test]
+    public void SkillButton_WearsCoolingSpriteWhileCooling()
+    {
+        (SkillButton button, _, RunSession session) = Bound(MovementSkillKind.Charge);
+
+        session.MovementSkill();
+        session.Tick(new WorldSnapshot(Capacity) { Dt = 1f / 60f });
+        Assert.That(session.State.MovementSkillCooldownFraction, Is.GreaterThan(0f), "Sanity: cooldown fraction > 0.");
+
+        Invoke(button, "Update");
+
+        var frame = (Image)typeof(SkillButton)
+            .GetField("_buttonFrame", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(button);
+
+        Assert.That(frame, Is.Not.Null);
+        Assert.That(frame.sprite, Is.Not.Null);
+        Assert.That(frame.sprite.name, Is.EqualTo("RollButton_Cooling"), "wears RollButton_Cooling while cooling.");
+    }
+
+    [Test]
+    public void SkillButton_WearsPressedSpriteOnPointerDown()
+    {
+        (SkillButton button, _, _) = Bound(MovementSkillKind.Charge);
+
+        button.OnPointerDown(null);
+
+        var frame = (Image)typeof(SkillButton)
+            .GetField("_buttonFrame", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(button);
+
+        Assert.That(frame, Is.Not.Null);
+        Assert.That(frame.sprite, Is.Not.Null);
+        Assert.That(frame.sprite.name, Is.EqualTo("RollButton_Pressed"), "wears RollButton_Pressed on pointer down.");
+
+        button.OnPointerUp(null);
+        Assert.That(frame.sprite.name, Is.EqualTo("RollButton_Ready"), "restores RollButton_Ready on pointer up.");
+    }
+
+    [Test]
+    public void SkillButton_HasRollIcon()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
+        Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
+
+        SkillButton button = prefab.GetComponentInChildren<SkillButton>(true);
+        Assert.That(button, Is.Not.Null);
+
+        var icon = (Image)typeof(SkillButton)
+            .GetField("_icon", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(button);
+
+        Assert.That(icon, Is.Not.Null, "Icon Image is dressed.");
+        Assert.That(icon.sprite, Is.Not.Null, "Icon sprite is set.");
+        Assert.That(icon.sprite.name, Is.EqualTo("Icon_Roll"), "icon wears Icon_Roll.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------
@@ -93,7 +166,7 @@ public sealed class SkillButtonTests
     /// The HUD's button, injected with a run of a class whose movement skill is
     /// <paramref name="kind"/>, and started — what <c>RunScope</c> and a first frame do.
     /// </summary>
-    private (SkillButton Button, CanvasGroup Group) Bound(MovementSkillKind kind)
+    private (SkillButton Button, CanvasGroup Group, RunSession Session) Bound(MovementSkillKind kind)
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
 
@@ -116,11 +189,12 @@ public sealed class SkillButtonTests
 
         Assert.That(group, Is.Not.Null, "Sanity: the button's group is dressed.");
 
-        button.Construct(Started(kind));
+        RunSession session = Started(kind);
+        button.Construct(session);
 
         Invoke(button, "Start");
 
-        return (button, group);
+        return (button, group, session);
     }
 
     private RunSession Started(MovementSkillKind kind)

@@ -68,6 +68,15 @@ namespace Soulvail.Game.Controls
         /// <summary>No slot — what <see cref="Slot"/> reads before <see cref="Bind"/>.</summary>
         private const int Unbound = -1;
 
+        [Tooltip("The button frame image whose sprite swaps between states.")]
+        [SerializeField] private Image _buttonFrame;
+
+        [Tooltip("The frame sprite when slot is ready (SkillButton_Ready).")]
+        [SerializeField] private Sprite _readySprite;
+
+        [Tooltip("The frame sprite while slot is cooling (SkillButton_Cooling).")]
+        [SerializeField] private Sprite _coolingSprite;
+
         [Tooltip("The radial sweep drawn over the button. Its Image must be Filled / Radial360 — " +
                  "fillAmount is the only thing written to it.")]
         [SerializeField] private Image _radialFill;
@@ -290,6 +299,11 @@ namespace Soulvail.Game.Controls
             _drawn = true;
             _shownFraction = clamped;
             _shownReady = ready;
+
+            if (_buttonFrame != null)
+            {
+                _buttonFrame.sprite = ready ? _readySprite : _coolingSprite;
+            }
 
             if (_radialFill != null)
             {

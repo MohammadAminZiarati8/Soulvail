@@ -69,4 +69,13 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 ## As built
 
-_Filled at merge._
+`SkillButton` and `ManualSkillButton` on `Prefabs/UI/Hud.prefab` now wear the new Clash of Clans-style art:
+- `SkillButton` (Roll) root Image wears `RollButton_Ready` (`Color.white`, `preserveAspect = true`), with child `Icon` wearing `Icon_Roll`. Serialized fields `_buttonFrame`, `_icon`, `_readySprite` (`RollButton_Ready`), `_coolingSprite` (`RollButton_Cooling`), and `_pressedSprite` (`RollButton_Pressed`) wired. `preserveAspect` is set on the prefab, not in code. Implemented `IPointerDownHandler` and `IPointerUpHandler` (both reach this component and the `OnScreenButton` beside it) to show `RollButton_Pressed` during touch, swapping to `RollButton_Cooling` while cooling fraction > 0, and `RollButton_Ready` when available. CC §5's input buffer remains intact (button stays interactable while cooling).
+- `ManualSkillButton` instances (`S1`..`S4`) root Images wear `SkillButton_Ready` (`Color.white`, `preserveAspect = true`). Serialized fields `_buttonFrame`, `_readySprite` (`SkillButton_Ready`), and `_coolingSprite` (`SkillButton_Cooling`) wired. `Draw()` swaps the frame to `_coolingSprite` while cooling and back to `_readySprite` when ready; the 40% dimming and dead tap while cooling (CC §6.2) were already there and are unchanged.
+- Existing radial fills, labels, canvas groups, and dp sizing are preserved intact.
+
+`SkillButtonTests.cs` adds 4 tests (`SkillButton_WearsReadySpriteWhenAvailable`, `SkillButton_WearsCoolingSpriteWhileCooling`, `SkillButton_WearsPressedSpriteOnPointerDown`, `SkillButton_HasRollIcon`). `SkillBarPresenterTests.cs` adds `ManualSkillButton_WearsSkillButtonSprites` and extends `Prefab_IsDressed` to assert all serialized sprite doors.
+
+**Verified:** **3 759 EditMode — 3 758 passed / 0 failed / 1 inconclusive (+5)** through `TestRunnerApi`; `SkillButtonTests` 6 rows, `SkillBarPresenterTests` 30 rows, `FloatingStickTests` 8 rows, `LowerControlsArtTests` 50 rows green. Zero compiler errors, zero analyzer warnings, `dotnet format whitespace` clean over touched files, `TimeManager.asset` reverted. **UI-02 is complete.**
+
+**Deviations:** none.

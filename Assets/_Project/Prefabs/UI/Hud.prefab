@@ -2735,16 +2735,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.16, b: 0.2, a: 0.55}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -2820,6 +2820,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2956e1a635f649b409861fe84a1c48f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.ManualSkillButton
+  _buttonFrame: {fileID: 2862455805657320201}
+  _readySprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
+  _coolingSprite: {fileID: 21300000, guid: 20242725e7faa5a4b85e1ca513ddb88e, type: 3}
   _radialFill: {fileID: 6758426808443873990}
   _group: {fileID: 3152745264234368417}
   _button: {fileID: 5281094096988061946}
@@ -6368,6 +6371,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 180443010337586000}
+  - {fileID: 5547161779833193322}
   m_Father: {fileID: 1742106839593171784}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
@@ -6396,16 +6400,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.16, b: 0.2, a: 0.55}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: d5274d623a4dd204e80198e241d4c19d, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -6450,6 +6454,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3316ffa22f6ad3438ddcf9b871c7a97, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.SkillButton
+  _buttonFrame: {fileID: 3523991988923036143}
+  _icon: {fileID: 6603033188542298174}
+  _readySprite: {fileID: 21300000, guid: d5274d623a4dd204e80198e241d4c19d, type: 3}
+  _coolingSprite: {fileID: 21300000, guid: cf0585b118095164c8f5183edbfeaec3, type: 3}
+  _pressedSprite: {fileID: 21300000, guid: 955c04a3aec7e6c419e92415b3b5196f, type: 3}
   _radialFill: {fileID: 2138367012406607017}
   _group: {fileID: 6807191128140274728}
   _sizeDp: 72
@@ -7034,16 +7043,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.16, b: 0.2, a: 0.55}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -7119,6 +7128,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2956e1a635f649b409861fe84a1c48f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.ManualSkillButton
+  _buttonFrame: {fileID: 6844447769308678280}
+  _readySprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
+  _coolingSprite: {fileID: 21300000, guid: 20242725e7faa5a4b85e1ca513ddb88e, type: 3}
   _radialFill: {fileID: 399681111420546542}
   _group: {fileID: 4936399234083506506}
   _button: {fileID: 4407148356246030001}
@@ -7718,6 +7730,81 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &6491291060237879544
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5547161779833193322}
+  - component: {fileID: 5899854332917915277}
+  - component: {fileID: 6603033188542298174}
+  m_Layer: 0
+  m_Name: Icon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5547161779833193322
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6491291060237879544}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2593318808724407139}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.15, y: 0.15}
+  m_AnchorMax: {x: 0.85, y: 0.85}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &5899854332917915277
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6491291060237879544}
+  m_CullTransparentMesh: 1
+--- !u!114 &6603033188542298174
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6491291060237879544}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 0e7d82889abd1334f91e04dccaf71ed1, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -8956,16 +9043,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.16, b: 0.2, a: 0.55}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -9041,6 +9128,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2956e1a635f649b409861fe84a1c48f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.ManualSkillButton
+  _buttonFrame: {fileID: 8729344461995964892}
+  _readySprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
+  _coolingSprite: {fileID: 21300000, guid: 20242725e7faa5a4b85e1ca513ddb88e, type: 3}
   _radialFill: {fileID: 8935308890502200433}
   _group: {fileID: 5427066446596617466}
   _button: {fileID: 3948106414217160385}
@@ -9933,16 +10023,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.16, b: 0.2, a: 0.55}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -10018,6 +10108,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2956e1a635f649b409861fe84a1c48f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Controls.ManualSkillButton
+  _buttonFrame: {fileID: 8718080035122003187}
+  _readySprite: {fileID: 21300000, guid: 112e07fc20edcfb41870ad4089bc0009, type: 3}
+  _coolingSprite: {fileID: 21300000, guid: 20242725e7faa5a4b85e1ca513ddb88e, type: 3}
   _radialFill: {fileID: 972893311739193700}
   _group: {fileID: 1257478375973832214}
   _button: {fileID: 3925331964335754759}

@@ -1152,5 +1152,11 @@ public sealed class SanctumPresenterTests
         }
 
         public int BanishableInto(Span<ContentId> destination) => _inner.BanishableInto(destination);
+
+        public int SkillPoints => _inner.SkillPoints;
+
+        public void TakeNode(ContentId id) => _inner.TakeNode(id);
+
+        public void SettleFullTree() => _inner.SettleFullTree();
     }
 }

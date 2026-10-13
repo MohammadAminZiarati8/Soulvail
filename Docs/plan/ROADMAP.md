@@ -374,7 +374,7 @@ What the planning found:
 | UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☑ |
 | UI-02c | [The Roll and skill buttons in the new art](tasks/UI-02c-the-roll-and-skill-buttons.md) | M | UI-02a | ☑ |
 | UI-02d | [A fixed stick](tasks/UI-02d-a-fixed-stick.md) — owner ruling 2026-10-13, supersedes CC §2.1 "floating, never fixed" | S | UI-02b | ☑ |
-| UI-03a | [Skill points and the free pick, in core](tasks/UI-03a-skill-points-in-core.md) — behind `hasFreePick`; a level banks a point, `TakeNode` spends it, no draw | M | — | ☐ |
+| UI-03a | [Skill points and the free pick, in core](tasks/UI-03a-skill-points-in-core.md) — behind `hasFreePick`; a level banks a point, `TakeNode` spends it, no draw | M | — | ☑ |
 | UI-03b | [The level-up banner and the point badge](tasks/UI-03b-the-point-badge.md) — non-blocking toast, green count on the star | S | UI-03a | ☐ |
 | UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☐ |
 | UI-03d | [The switch: pause door, the Jungle on, the docs](tasks/UI-03d-the-switch-and-the-docs.md) — CH §5.1 / GD §13.1 rewritten | S | UI-03c | ☐ |

@@ -739,6 +739,12 @@ public sealed class ModeSpec
     /// Optional and last, for <paramref name="hasVeilrot"/>'s reason, and <see langword="true"/>
     /// omitted for the same one.
     /// </param>
+    /// <param name="hasFreePick">
+    /// Whether a level in this mode banks a skill point to spend on any open node instead of opening
+    /// a draw of three (UI-03a). Optional and last, for <paramref name="hasSanctum"/>'s reason, and
+    /// <see langword="false"/> omitted: every mode drew until the owner's ruling of 2026-09-29, and a
+    /// fixture that never mentions it is a fixture written before that.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
@@ -780,7 +786,8 @@ public sealed class ModeSpec
         OrdealScheduleSpec ordealSchedule = default,
         IReadOnlyList<OrdealSpec> ordeals = null,
         bool hasVeilrot = true,
-        bool hasSanctum = true)
+        bool hasSanctum = true,
+        bool hasFreePick = false)
     {
         if (id.Value is null)
         {
@@ -865,6 +872,7 @@ public sealed class ModeSpec
 
         HasVeilrot = hasVeilrot;
         HasSanctum = hasSanctum;
+        HasFreePick = hasFreePick;
 
         _ordeals = CopyOrdeals(ordeals, id);
 
@@ -982,6 +990,15 @@ public sealed class ModeSpec
     /// <remarks>Read by <c>StageFlow</c> at every clear, by <c>Ordeals</c>, and by the HUD through
     /// <c>RunState.HasSanctum</c>.</remarks>
     public bool HasSanctum { get; }
+
+    /// <summary>
+    /// Whether a level banks a skill point instead of opening a draw of three. True means no offer
+    /// is ever drawn, no Pact or half-tree splash is offered, and a command spends the point on any
+    /// open node (UI-03a).
+    /// </summary>
+    /// <remarks>Read by <c>RunSession.Start</c>, which hands it to the run's <c>LevelUpFlow</c> and
+    /// <c>RunState</c>.</remarks>
+    public bool HasFreePick { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

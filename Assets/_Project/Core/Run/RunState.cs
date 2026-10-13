@@ -709,7 +709,24 @@ public sealed class RunState
     /// the whole of this milestone.
     /// </remarks>
     public bool IsLevelUpPending =>
-        LevelUp is not null && !LevelUp.HasOffer && Progression.PendingLevelUps > 0;
+        LevelUp is not null && !LevelUp.IsFree && !LevelUp.HasOffer && Progression.PendingLevelUps > 0;
+
+    /// <summary>
+    /// Whether this run spends banked points on a node of the player's choosing rather than drawing
+    /// an offer — its mode's <c>HasFreePick</c>, and only where there is a tree to spend them on
+    /// (UI-03a).
+    /// </summary>
+    /// <remarks>
+    /// Read off the flow rather than stored beside <see cref="HasSanctum"/>: a run with no tree has no
+    /// flow, banks its levels either way, and has nothing for a free pick to be free of.
+    /// </remarks>
+    public bool IsFreePick => LevelUp is not null && LevelUp.IsFree;
+
+    /// <summary>
+    /// How many nodes the player may take right now: the banked points of a free run, and 0 for a run
+    /// that draws or has no tree (UI-03a rule 3).
+    /// </summary>
+    public int SkillPoints => IsFreePick ? Progression.PendingLevelUps : 0;
 
     /// <summary>
     /// How many levels this run has spent on CH §5.2's Overflow rather than on a node — 0 for a run
@@ -751,7 +768,7 @@ public sealed class RunState
     /// §5.4's own branch (rule 3).
     /// </para>
     /// </remarks>
-    public bool IsSplashPending => Splash is not null && Splash.IsPending && !HasOffer;
+    public bool IsSplashPending => Splash is not null && !IsFreePick && Splash.IsPending && !HasOffer;
 
     /// <summary>Whether the splash screen is up — what the pause is held against.</summary>
     public bool IsSplashOpen => Splash is not null && Splash.IsOpen;
@@ -912,9 +929,17 @@ public sealed class RunState
     /// <remarks>
     /// The open-shop term is here rather than on <c>SanctumShop</c>, which knows nothing about
     /// phases: AR §18.1's boundary row rests on purchases happening only in the Sanctum.
+    /// <para>
+    /// <b>A free run is refused the two that act on offers</b> (UI-03a rule 7): a Reroll charges the
+    /// next draw and a Banish narrows what a draw can find, and a free run draws nothing.
+    /// </para>
     /// </remarks>
     public bool CanBuySanctum(SanctumService service) =>
-        Shop is not null && IsSanctumOpen && Shop.CanBuy(service);
+        Shop is not null && IsSanctumOpen && !(IsFreePick && ActsOnOffers(service)) && Shop.CanBuy(service);
+
+    /// <summary>Whether <paramref name="service"/> only means something to a run that draws offers.</summary>
+    internal static bool ActsOnOffers(SanctumService service) =>
+        service is SanctumService.Reroll or SanctumService.Banish;
 
     /// <summary>Rerolls bought this run — what the save's counter carries. Zero with no shop.</summary>
     public int RerollsBought => Shop is null ? 0 : Shop.RerollsBought;

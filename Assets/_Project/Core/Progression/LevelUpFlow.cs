@@ -96,6 +96,12 @@ public sealed class LevelUpFlow
     private readonly ModifyStat _overflowDamage;
     private readonly ModifyStat _overflowMaxHp;
 
+    /// <summary>
+    /// Where <see cref="Settle"/> asks the tree what is available. Allocated only for a free run and
+    /// regrown if a borrowed branch ever widens the tree; a drawing run never reads it.
+    /// </summary>
+    private ContentId[] _availability;
+
     private int _count;
 
     /// <summary>
@@ -127,10 +133,15 @@ public sealed class LevelUpFlow
     /// is a true statement below the mode's first Ordeal stage rather than a mis-wiring (M6-06b
     /// rule 5, and the stated reason it differs from <paramref name="veilrot"/>'s ruling).
     /// </param>
+    /// <param name="isFree">
+    /// Whether a level banks a point to spend on any open node rather than opening a draw of three
+    /// (<see cref="ModeSpec.HasFreePick"/>, UI-03a). Optional and last, and off omitted: a flow built
+    /// without it is the one every earlier fixture built.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any reference argument but <paramref name="ordeals"/> is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
                        EffectRegistry effects, IDomainEvents events, OverflowSpec overflow,
-                       Veilrot veilrot, Ordeals ordeals = null)
+                       Veilrot veilrot, Ordeals ordeals = null, bool isFree = false)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -139,6 +150,9 @@ public sealed class LevelUpFlow
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _veilrot = veilrot ?? throw new ArgumentNullException(nameof(veilrot));
         _ordeals = ordeals;
+
+        IsFree = isFree;
+        _availability = isFree ? new ContentId[tree.Rules.Count] : Array.Empty<ContentId>();
 
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
@@ -149,6 +163,12 @@ public sealed class LevelUpFlow
         _overflowDamage = new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, overflow.Damage);
         _overflowMaxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, overflow.MaxHp);
     }
+
+    /// <summary>
+    /// Whether this run spends banked points on a node of the player's choosing rather than drawing
+    /// an offer — the mode's <c>HasFreePick</c>. Fixed for the run.
+    /// </summary>
+    public bool IsFree { get; }
 
     /// <summary>Whether an offer is on the table.</summary>
     public bool HasOffer => _count > 0;
@@ -224,6 +244,14 @@ public sealed class LevelUpFlow
         if (offers is null)
         {
             throw new ArgumentNullException(nameof(offers));
+        }
+
+        // A free run never draws: its points wait for Take, or for Settle when the tree is full
+        // (UI-03a rule 2). Guarded here as well as by RunState.IsLevelUpPending, so a stray call
+        // cannot spend a draw the simulation is not counting on.
+        if (IsFree)
+        {
+            return;
         }
 
         // Rule 3, and it is above the loop rather than inside it: an offer already on the table is
@@ -372,6 +400,79 @@ public sealed class LevelUpFlow
         if (_count == 0)
         {
             _events.Publish(new LevelUpClosed(_progression.Level));
+        }
+    }
+
+    /// <summary>
+    /// Spends one banked point on <paramref name="id"/>, with no draw (UI-03a rule 4).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Choose"/>'s order, minus the offer: <c>SkillTree.Take</c> first, so a node the tree
+    /// refuses throws before the point is spent; then the point; then, for an Active, the runner.
+    /// Never a Pact — a free run offers none, and a corrupted take is a choice on a card.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The run is not free, no point is banked, or the tree refuses <paramref name="id"/>.
+    /// </exception>
+    /// <exception cref="KeyNotFoundException"><paramref name="id"/> is not in this tree.</exception>
+    public void Take(ContentId id)
+    {
+        if (!IsFree)
+        {
+            throw new InvalidOperationException(
+                "This run draws its level-ups, so there is no point to spend on a node of the "
+                    + "player's choosing. A view sent TakeNode on a mode without a free pick.");
+        }
+
+        if (_progression.PendingLevelUps <= 0)
+        {
+            throw new InvalidOperationException(
+                "No skill point is banked, so there is nothing to spend on a node. A view sent "
+                    + "TakeNode without a point to send it for.");
+        }
+
+        _tree.Take(id);
+
+        _progression.SpendLevelUp();
+
+        SkillSpec spec = _tree.Rules.Skill(id);
+
+        if (spec.Kind == SkillKind.Active)
+        {
+            _runner.Add(spec);
+        }
+    }
+
+    /// <summary>
+    /// Spends every banked point as Overflow when the tree has no node left to take; otherwise does
+    /// nothing (UI-03a rule 6).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Open"/>'s Overflow branch for a run that never draws: a point with nowhere to go is
+    /// worth CH §5.2's consolation rather than waiting for a screen that has nothing on it. Nothing
+    /// here is a draw, so it is as safe on any frame as <see cref="Open"/> is on the frame after a
+    /// tick.
+    /// </remarks>
+    public void Settle()
+    {
+        if (!IsFree || _progression.PendingLevelUps <= 0)
+        {
+            return;
+        }
+
+        if (_tree.Rules.Count > _availability.Length)
+        {
+            _availability = new ContentId[_tree.Rules.Count];
+        }
+
+        if (_tree.Available(_availability) > 0)
+        {
+            return;
+        }
+
+        while (_progression.PendingLevelUps > 0)
+        {
+            GrantOne();
         }
     }
 

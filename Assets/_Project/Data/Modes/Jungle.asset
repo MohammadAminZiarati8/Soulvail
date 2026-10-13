@@ -88,3 +88,4 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 57ed2632d8c128d47a7a184aba8b3295, type: 2}
   _hasVeilrot: 0
   _hasSanctum: 0
+  _hasFreePick: 0

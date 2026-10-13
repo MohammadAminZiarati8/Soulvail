@@ -112,6 +112,12 @@ namespace Soulvail.Game.Authoring
                  "back on works mid-save. Switched off in every shipped mode on 2026-09-28 (RS-05d).")]
         [SerializeField] private bool _hasSanctum = true;
 
+        [Tooltip("Whether a level banks a skill point to spend on any open node, instead of opening " +
+                 "a draw of three. On: no offer is drawn, no Pact or half-tree splash is offered, and " +
+                 "the Sanctum's Reroll and Banish are refused. Off in every shipped mode until " +
+                 "UI-03d.")]
+        [SerializeField] private bool _hasFreePick = false;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -150,7 +156,8 @@ namespace Soulvail.Game.Authoring
                     BuildOrdealSchedule(),
                     BuildOrdeals(),
                     _hasVeilrot,
-                    _hasSanctum);
+                    _hasSanctum,
+                    _hasFreePick);
             }
             catch (ArgumentException inner)
             {

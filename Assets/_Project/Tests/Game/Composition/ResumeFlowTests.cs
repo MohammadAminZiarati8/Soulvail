@@ -1213,6 +1213,18 @@ public sealed class ResumeFlowTests
         }
 
         public int BanishableInto(Span<ContentId> destination) => 0;
+
+        // UI-03a's three, inert like the rest: SkillPoints answering 0 keeps the level-up phase a
+        // no-op for every row in this file.
+        public int SkillPoints => 0;
+
+        public void TakeNode(ContentId id)
+        {
+        }
+
+        public void SettleFullTree()
+        {
+        }
     }
 
     /// <summary>

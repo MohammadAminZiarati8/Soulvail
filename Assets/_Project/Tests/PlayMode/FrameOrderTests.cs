@@ -735,6 +735,26 @@ public sealed class FrameOrderTests
     }
 
     /// <summary>
+    /// A banked point is settled instead of opened, and settling holds nothing (UI-03a rule 6).
+    /// </summary>
+    [UnityTest]
+    public IEnumerator Frame_BankedPointIsSettledNotOpened()
+    {
+        _core.SkillPoints = 2;
+
+        yield return Frame();
+
+        Assert.That(_core.Touched[0], Is.EqualTo("level-up:settle"), "The phase runs first.");
+        Assert.That(_core.Touched, Has.None.EqualTo("level-up:open"), "A free run draws nothing.");
+
+        // Nothing is on the table, so nothing is paused and the frame went on to tick.
+        Assert.That(_pause.IsPaused, Is.False);
+        Assert.That(_core.Touched, Has.Some.EqualTo("tick"));
+
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    /// <summary>
     /// The tick that earns the level finishes: its facts are still reported, and the pause takes
     /// effect on the frame after.
     /// </summary>
@@ -1776,6 +1796,14 @@ public sealed class FrameOrderTests
         public void Banish(ContentId skillId) => _touched.Add("sanctum:banish");
 
         public int BanishableInto(Span<ContentId> destination) => 0;
+
+        // UI-03a's three. SkillPoints is settable for the reason the level-up's pair is, and left 0
+        // by every row that is not about a free pick, which keeps the phase's new branch inert.
+        public int SkillPoints { get; set; }
+
+        public void TakeNode(ContentId id) => _touched.Add("level-up:take");
+
+        public void SettleFullTree() => _touched.Add("level-up:settle");
 
         private static CoreVector3 Find(WorldSnapshot snapshot, int id)
         {

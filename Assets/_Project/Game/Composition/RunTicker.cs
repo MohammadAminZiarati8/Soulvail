@@ -723,6 +723,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         {
             _progression.OpenLevelUp();
         }
+        else if (_progression.SkillPoints > 0)
+        {
+            // A free run draws nothing (UI-03a): a banked point waits for the player, unless the
+            // tree has no node left to spend it on, which is Overflow's job exactly as it is for a
+            // run that draws.
+            _progression.SettleFullTree();
+        }
 
         bool splash = _progression.IsSplashOpen;
         bool offer = _progression.HasOffer;

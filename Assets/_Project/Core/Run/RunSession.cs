@@ -783,7 +783,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
         LevelUpFlow levelUp = tree is null
             ? null
-            : new LevelUpFlow(tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals);
+            : new LevelUpFlow(
+                tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals, mode.HasFreePick);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -1721,6 +1722,45 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     }
 
     /// <inheritdoc />
+    /// <remarks><see cref="IsLevelUpPending"/>'s reasoning — a read, zero outside a run.</remarks>
+    public int SkillPoints => IsRunning ? State.SkillPoints : 0;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Throws rather than no-ops when the class has no tree or the mode draws, for
+    /// <see cref="ChooseOffer"/>'s reason: a view reporting a tap on a node that cannot be bought.
+    /// <c>LevelUpFlow.Take</c> asks the tree before it spends, so a refused node keeps its point.
+    /// </remarks>
+    public void TakeNode(ContentId id)
+    {
+        RequireRunning(nameof(TakeNode));
+
+        if (State.LevelUp is null)
+        {
+            throw new InvalidOperationException(
+                "This run's class has no tree, so there is no node to take. A view sent TakeNode "
+                    + "without a tree to send it for.");
+        }
+
+        State.LevelUp.Take(id);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>No-op outside a run and on a class with no tree</b>, where <see cref="OpenLevelUp"/> throws:
+    /// <c>RunTicker</c> asks this every frame a point is banked and is still an <c>ITickable</c>
+    /// after a run has ended. It draws nothing, so it needs no ordering against the boundary
+    /// snapshot — only that it is not inside a tick, which the frame loop guarantees.
+    /// </remarks>
+    public void SettleFullTree()
+    {
+        if (IsRunning)
+        {
+            State.LevelUp?.Settle();
+        }
+    }
+
+    /// <inheritdoc />
     /// <remarks>
     /// Throws rather than no-ops when the class has no tree, unlike <see cref="OpenLevelUp"/>: an
     /// open call is the frame loop asking a standing question, where this one is a view reporting a
@@ -1844,6 +1884,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         RequireRunning(nameof(Buy));
         RequireShopOpen(nameof(Buy));
 
+        if (State.IsFreePick && RunState.ActsOnOffers(service))
+        {
+            throw FreePickRefusal(service.ToString());
+        }
+
         State.Shop.Buy(service);
     }
 
@@ -1853,13 +1898,33 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         RequireRunning(nameof(Banish));
         RequireShopOpen(nameof(Banish));
 
+        if (State.IsFreePick)
+        {
+            throw FreePickRefusal(nameof(Banish));
+        }
+
         State.Shop.Banish(skillId);
     }
 
     /// <inheritdoc />
-    /// <remarks>A read: zero outside a run and for a class with no shop, whatever the buffer.</remarks>
+    /// <remarks>
+    /// A read: zero outside a run, for a class with no shop, and for a free run, whatever the buffer
+    /// (UI-03a rule 7).
+    /// </remarks>
     public int BanishableInto(Span<ContentId> destination) =>
-        IsRunning && State.Shop is not null ? State.Shop.BanishableInto(destination) : 0;
+        IsRunning && State.Shop is not null && !State.IsFreePick
+            ? State.Shop.BanishableInto(destination)
+            : 0;
+
+    /// <summary>
+    /// What a free run answers a Reroll or a Banish with: both act on offers, and it has none
+    /// (UI-03a rule 7). <c>CanBuy</c> says so first, so reaching here is a screen offering what the
+    /// run refuses.
+    /// </summary>
+    private static InvalidOperationException FreePickRefusal(string service) => new InvalidOperationException(
+        $"{service} acts on the offers a level-up draws, and this mode has a free pick: it banks "
+            + "points and draws nothing. CanBuy answers false for it, so reaching here is a screen "
+            + "offering what the run refuses.");
 
     /// <summary>
     /// Refuses a purchase outside the Sanctum, or in a run with no shop.

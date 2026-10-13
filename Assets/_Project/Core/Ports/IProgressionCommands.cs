@@ -115,6 +115,46 @@ public interface IProgressionCommands
     void ChooseOffer(int index);
 
     /// <summary>
+    /// How many nodes the player may take right now: the banked points of a mode with a free pick,
+    /// and 0 for a mode that draws, a class with no tree, or no run (UI-03a rule 3).
+    /// </summary>
+    /// <remarks>
+    /// A read, polled by the frame loop and by the badge that shows it, so it answers 0 outside a
+    /// run instead of throwing — <see cref="IsLevelUpPending"/>'s reasoning.
+    /// </remarks>
+    int SkillPoints { get; }
+
+    /// <summary>
+    /// Spends one banked point on <paramref name="id"/>, a node the tree has open — no draw, no
+    /// offer (UI-03a rule 4).
+    /// </summary>
+    /// <remarks>
+    /// A <c>ContentId</c> rather than a card position, for <see cref="ChooseSplash"/>'s reason: the
+    /// tree screen is a map of nodes, not three cards repainted in place. Core takes the node, then
+    /// spends the point, then tells the runner about an Active (<see cref="ChooseOffer"/>'s order).
+    /// </remarks>
+    /// <exception cref="System.InvalidOperationException">
+    /// No run is running, the mode has no free pick, no point is banked, or the tree refuses the node
+    /// — locked, already taken or banished. A refused node leaves the point where it was.
+    /// </exception>
+    /// <exception cref="System.Collections.Generic.KeyNotFoundException">
+    /// <paramref name="id"/> is not a node of this run's tree.
+    /// </exception>
+    void TakeNode(ContentId id);
+
+    /// <summary>
+    /// Spends every banked point as Overflow (CH §5.2) when the tree has no node left to take;
+    /// otherwise does nothing (UI-03a rule 6).
+    /// </summary>
+    /// <remarks>
+    /// <b>Called every frame the frame loop sees a banked point</b>, where it calls
+    /// <see cref="OpenLevelUp"/> for a mode that draws. A no-op unless the mode has a free pick and
+    /// nothing is available — and, being a question the frame loop asks every frame, it is a no-op
+    /// rather than a throw when no run is running.
+    /// </remarks>
+    void SettleFullTree();
+
+    /// <summary>
     /// Whether CH §5.4's half-tree moment is owed with nothing else on the table — the one question
     /// that decides whether this frame opens the splash screen.
     /// </summary>

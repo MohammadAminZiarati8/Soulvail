@@ -317,7 +317,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-29 · UI-01a · The HUD's art and its font, imported
 
-**Built:** [UI-01a](tasks/UI-01a-the-huds-art-and-font.md). The owner's pieces for the top band, 16 under `Art/UI/Hud/` and 3 under `Art/UI/Icons/`, copied from `UI_v2/png/` and imported as UI sprites: no mipmaps, ASTC 4×4 on Android, and 9-slice borders on the eight that stretch. Lilita One is `Art/UI/Fonts/LilitaOne_SDF`, a static 1024² atlas of 160 glyphs on TMP's mobile SDF shader, outlined and shadowed in the new `Palette.Ink` `#0F1419`, with its OFL licence beside it. The [UI track](ROADMAP.md#ui--the-hud-in-the-new-art-a-side-track-the-top-band-first) opens with six specs, UI-01a to UI-01f, and CLAUDE.md's naming table gains UI sprites and fonts. Nothing draws the art yet.
+**Built:** UI-01a. The owner's pieces for the top band, 16 under `Art/UI/Hud/` and 3 under `Art/UI/Icons/`, copied from `UI_v2/png/` and imported as UI sprites: no mipmaps, ASTC 4×4 on Android, and 9-slice borders on the eight that stretch. Lilita One is `Art/UI/Fonts/LilitaOne_SDF`, a static 1024² atlas of 160 glyphs on TMP's mobile SDF shader, outlined and shadowed in the new `Palette.Ink` `#0F1419`, with its OFL licence beside it. The [UI track](ROADMAP.md#ui--the-hud-in-the-new-art-a-side-track-the-top-band-first) opens with six specs, UI-01a to UI-01f, and CLAUDE.md's naming table gains UI sprites and fonts. Nothing draws the art yet.
 
 **Verified:** **3 615 EditMode — 3 614 / 0 / 1 inconclusive (+106 against `dev` at #206)**, through `TestRunnerApi`; `HudArtTests` 105 rows and `Ink_IsTheArtsOutline`. Console after EditMode: 16 errors, each from a passing negative-path row. Zero analyzer warnings, `dotnet format` clean over 3 files, `TimeManager.asset` untouched. Branched from `dev` at #206, M7-05r's merge.
 
@@ -329,7 +329,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-29 · UI-01b · The health bar, the XP strip and the level star
 
-**Built:** [UI-01b](tasks/UI-01b-the-health-bar-xp-and-star.md). The player's row in the owner's art: `HealthBar_Frame` with a `Fill_Bar` fill, ghost and gloss in its well, each as wide as its fraction; the ghost in `Palette.PlayerGhost` `#A5F3FC`, not the prefab's gold; below a quarter the fill beats between `Palette.Player` and `Palette.PlayerLow` `#0E7490`; `72 / 120` inside the bar in Lilita. The level sits in a 44 dp `LevelStar` with the Aegis ring behind it, and the XP strip is an 8 dp `XpStrip_Track`. `HudLayout` holds the band's dp numbers; the bar takes what the row leaves, 240 dp landscape and 201 at 9:20. The boss band and the skill row moved under the new row.
+**Built:** UI-01b. The player's row in the owner's art: `HealthBar_Frame` with a `Fill_Bar` fill, ghost and gloss in its well, each as wide as its fraction; the ghost in `Palette.PlayerGhost` `#A5F3FC`, not the prefab's gold; below a quarter the fill beats between `Palette.Player` and `Palette.PlayerLow` `#0E7490`; `72 / 120` inside the bar in Lilita. The level sits in a 44 dp `LevelStar` with the Aegis ring behind it, and the XP strip is an 8 dp `XpStrip_Track`. `HudLayout` holds the band's dp numbers; the bar takes what the row leaves, 240 dp landscape and 201 at 9:20. The boss band and the skill row moved under the new row.
 
 **Verified:** **3 643 EditMode — 3 642 / 0 / 1 inconclusive (+28)** and **PlayMode 66 / 1 / 0**, through `TestRunnerApi`. The one is `RangerSandboxTests.Loop_ShootsOnlyStandingStill`, *"No arrow on the run"*, which failed alone too (28 / 1) with `isApplicationActive` false throughout ([Traps §8](../Traps.md)); it touches no HUD code. Captured in Play: landscape on the Device Simulator at 480 dpi, and 9:20 as the Game view at its dp-equivalent 308 × 686, in `Soulvail_GeminiSamples/UI_v2/captures/`. Zero Console errors, zero analyzer warnings, `dotnet format` clean over 14 files, `TimeManager.asset` reverted.
 
@@ -341,7 +341,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-29 · UI-01c · Enemies left, in core
 
-**Built:** [UI-01c](tasks/UI-01c-enemies-left-in-core.md). `SpawnDirector.Unspawned` is the bodies a stage will still stand up — each started wave's queued and telegraphed, every later wave's `BodyCount`, a boss until it stands — summed from the bookkeeping it already kept. `RunState.EnemiesLeft` is that plus `EnemySystem.LivingCount()`, copied by `RunSession.Tick` after the flow, as `StageIndex` is. It only falls: a corpse is not left, the arrival and the Sanctum read 0, and the clear reads 0 on its tick. No UI yet; UI-01d's chip reads it.
+**Built:** UI-01c. `SpawnDirector.Unspawned` is the bodies a stage will still stand up — each started wave's queued and telegraphed, every later wave's `BodyCount`, a boss until it stands — summed from the bookkeeping it already kept. `RunState.EnemiesLeft` is that plus `EnemySystem.LivingCount()`, copied by `RunSession.Tick` after the flow, as `StageIndex` is. It only falls: a corpse is not left, the arrival and the Sanctum read 0, and the clear reads 0 on its tick. No UI yet; UI-01d's chip reads it.
 
 **Verified:** **3 656 EditMode — 3 655 / 0 / 1 inconclusive (+13)** and **PlayMode 66 / 1 / 0**, through `TestRunnerApi`; the one PlayMode failure is Traps §8's sandbox row, Unity inactive. Zero Console errors, zero analyzer warnings, `dotnet format` clean over 6 files, `TimeManager.asset` reverted.
 
@@ -353,7 +353,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-29 · UI-01d · The stage chip, the enemies-left chip and the pause button
 
-**Built:** [UI-01d](tasks/UI-01d-the-chips-and-the-pause-button.md). `StageReadout`, a fifth view on `Hud.prefab`, draws *STAGE 3* over *Wave 2/3* in a `Pill_Dark` left of the pause button, and the stage alone through the arrival; `ui.hud.stage` and `ui.hud.wave` are keys, in `Palette.HudCaption` `#CCC4B7` and `HudText`. Under the pause button a `Chip_Counter` with a skull shows `RunState.EnemiesLeft` for the last five and hides at 0. The pause button wears `Button_Pause` at the band's margin. The Essence counter and the Veilrot meter step down below the band, still wired.
+**Built:** UI-01d. `StageReadout`, a fifth view on `Hud.prefab`, draws *STAGE 3* over *Wave 2/3* in a `Pill_Dark` left of the pause button, and the stage alone through the arrival; `ui.hud.stage` and `ui.hud.wave` are keys, in `Palette.HudCaption` `#CCC4B7` and `HudText`. Under the pause button a `Chip_Counter` with a skull shows `RunState.EnemiesLeft` for the last five and hides at 0. The pause button wears `Button_Pause` at the band's margin. The Essence counter and the Veilrot meter step down below the band, still wired.
 
 **Verified:** **3 673 EditMode — 3 672 / 0 / 1 inconclusive (+17)** and **PlayMode 66 / 1 / 0**, through `TestRunnerApi`; the one PlayMode failure is Traps §8's sandbox row, Unity inactive. Captured in Play at 480 dpi landscape and at 9:20's dp-equivalent, in `Soulvail_GeminiSamples/UI_v2/captures/`: the corner matches the mockup's. Zero Console errors, zero analyzer warnings, `dotnet format` clean over 15 files, `TimeManager.asset` reverted.
 
@@ -365,7 +365,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-29 · UI-01e · The auto-cast row: icons, sweeps, glows and the volley's pips
 
-**Built:** [UI-01e](tasks/UI-01e-the-auto-cast-row.md). `AutoCastRow` draws 34 dp `SkillCell_Frame` cells, each with its skill's icon from the new root `SkillIconBook` (built at boot from `SkillDefinition._icon`, or `Icon_Placeholder`), a `Sweep_Disc` shade over the cooldown left in `Palette.Ink`, and a `Glow_Soft` in `Palette.Player` when ready. The class's volley heads the row once a node gives it a count: `CharacterDefinition._volleyNode` names the node it is drawn as (the Ranger's Volley, wearing `Icon_Volley`), and five pips under it fill a shot at a time from three new `RunState` reads. No other Passive makes a cell; the kind tint is gone.
+**Built:** UI-01e. `AutoCastRow` draws 34 dp `SkillCell_Frame` cells, each with its skill's icon from the new root `SkillIconBook` (built at boot from `SkillDefinition._icon`, or `Icon_Placeholder`), a `Sweep_Disc` shade over the cooldown left in `Palette.Ink`, and a `Glow_Soft` in `Palette.Player` when ready. The class's volley heads the row once a node gives it a count: `CharacterDefinition._volleyNode` names the node it is drawn as (the Ranger's Volley, wearing `Icon_Volley`), and five pips under it fill a shot at a time from three new `RunState` reads. No other Passive makes a cell; the kind tint is gone.
 
 **Verified:** **3 692 EditMode — 3 691 / 0 / 1 inconclusive (+19)** and **PlayMode 66 / 1 / 0**, through `TestRunnerApi`; the one PlayMode failure is Traps §8's sandbox row, Unity inactive. Captured in Play at 480 dpi landscape and 9:20's dp-equivalent, in `Soulvail_GeminiSamples/UI_v2/captures/`: the top band now reads as the mockup's. Zero Console errors, zero analyzer warnings, `dotnet format` clean over 15 files, `TimeManager.asset` reverted.
 
@@ -377,7 +377,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-09-30 · UI-01f · The boss bar in the new art
 
-**Built:** [UI-01f](tasks/UI-01f-the-boss-bar.md). The boss band is `BossBar_Frame`, 18 dp tall, at UI-01b's place. In its well runs a sliced `Fill_Bar` in `Palette.Boss`, as wide as the boss's whole fraction and switched off at zero. `BossBar_PhaseSeam` marks sit untinted at the authored thresholds, a little taller than the well. The frame's dark well is the track now, so the faint bone track and `_trackAlpha` are gone. **UI-01 is complete.**
+**Built:** UI-01f. The boss band is `BossBar_Frame`, 18 dp tall, at UI-01b's place. In its well runs a sliced `Fill_Bar` in `Palette.Boss`, as wide as the boss's whole fraction and switched off at zero. `BossBar_PhaseSeam` marks sit untinted at the authored thresholds, a little taller than the well. The frame's dark well is the track now, so the faint bone track and `_trackAlpha` are gone. **UI-01 is complete.**
 
 **Verified:** **3 696 EditMode — 3 695 / 0 / 1 inconclusive (+4)** and **PlayMode 66 / 1 / 0**, through `TestRunnerApi`; the one PlayMode failure is Traps §8's sandbox row. Captured in Play at 480 dpi landscape and at 9:20's dp-equivalent, in `Soulvail_GeminiSamples/UI_v2/captures/`, with the band bound to three phases at 80 %. The mockup draws no boss, so the band was checked against the art. Zero Console errors, zero analyzer warnings, `dotnet format` clean over 3 files, `TimeManager.asset` reverted.
 
@@ -389,7 +389,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-10-12 · UI-02a · The lower controls' art, imported
 
-**Built:** [UI-02a](tasks/UI-02a-the-lower-controls-art.md). Eight sprites for the lower HUD controls imported from `UI_v2/png/` with phone settings: `Stick_Base` and `Stick_Knob` for the virtual stick, `RollButton_Ready`, `RollButton_Cooling`, `RollButton_Pressed` and `Icon_Roll` for the Roll button, and `SkillButton_Ready` and `SkillButton_Cooling` for manual skill buttons. Texture type Sprite, single, full-rect, 100 PPU, clamped, bilinear, no mipmaps, ASTC 4×4 on Android, and unsliced (`spriteBorder` zero). `LowerControlsArtTests` pins the assets, settings, and cut dimensions. The UI track is planned in ROADMAP through UI-02c, with specs for UI-02a–c written.
+**Built:** UI-02a. Eight sprites for the lower HUD controls imported from `UI_v2/png/` with phone settings: `Stick_Base` and `Stick_Knob` for the virtual stick, `RollButton_Ready`, `RollButton_Cooling`, `RollButton_Pressed` and `Icon_Roll` for the Roll button, and `SkillButton_Ready` and `SkillButton_Cooling` for manual skill buttons. Texture type Sprite, single, full-rect, 100 PPU, clamped, bilinear, no mipmaps, ASTC 4×4 on Android, and unsliced (`spriteBorder` zero). `LowerControlsArtTests` pins the assets, settings, and cut dimensions. The UI track is planned in ROADMAP through UI-02c, with specs for UI-02a–c written.
 
 **Verified:** **3 746 EditMode — 3 745 / 0 / 1 inconclusive (+50)** through `TestRunnerApi`; `LowerControlsArtTests` 50 rows and `HudArtTests` 105 rows green. Console after EditMode: 16 expected errors from passing negative-path tests, zero compiler errors, zero analyzer warnings, `dotnet format whitespace` clean over `Assets/_Project/Tests/Game/Art/`, `TimeManager.asset` untouched.
 
@@ -401,7 +401,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-10-12 · UI-02b · The floating stick in the new art
 
-**Built:** [UI-02b](tasks/UI-02b-the-floating-stick.md). `FloatingStick`'s `_base` and `_knob` on `Hud.prefab` wear `Stick_Base` and `Stick_Knob` with `preserveAspect = true` and untinted `Color.white`. `FloatingStick.Awake` sizes both elements to their 120 dp and 52 dp specifications via `StickShaper.PixelsPerDp(Screen.dpi)` and ensures native aspect preservation. Dynamic touch-down placement within the left 45% region, drag recentring past 60 dp (`StickShaper.MaxRadiusDp`), touch-up release hiding, single-touch capture, and virtual gamepad left stick routing (`<Gamepad>/leftStick`) are preserved intact.
+**Built:** UI-02b. `FloatingStick`'s `_base` and `_knob` on `Hud.prefab` wear `Stick_Base` and `Stick_Knob` with `preserveAspect = true` and untinted `Color.white`. `FloatingStick.Awake` sizes both elements to their 120 dp and 52 dp specifications via `StickShaper.PixelsPerDp(Screen.dpi)` and ensures native aspect preservation. Dynamic touch-down placement within the left 45% region, drag recentring past 60 dp (`StickShaper.MaxRadiusDp`), touch-up release hiding, single-touch capture, and virtual gamepad left stick routing (`<Gamepad>/leftStick`) are preserved intact.
 
 **Verified:** **3 754 EditMode — 3 753 / 0 / 1 inconclusive (+8)** through `TestRunnerApi`; `FloatingStickTests` 8 rows, `LowerControlsArtTests` 50 rows and `HudArtTests` 105 rows green. Console after EditMode: 16 expected errors from passing negative-path tests, zero compiler errors, zero analyzer warnings, `dotnet format whitespace` clean over `FloatingStick.cs` and `FloatingStickTests.cs`, `TimeManager.asset` reverted.
 
@@ -413,7 +413,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-10-12 · UI-02c · The Roll and skill buttons in the new art
 
-**Built:** [UI-02c](tasks/UI-02c-the-roll-and-skill-buttons.md). `SkillButton` (Roll) and `ManualSkillButton` (`S1`..`S4`) on `Hud.prefab` wear the Clash-style art. Roll displays `RollButton_Ready` with child `Icon_Roll`, swapping to `RollButton_Pressed` on pointer down, `RollButton_Cooling` while cooling, with CC §5's input buffer intact. Manual skill buttons wear `SkillButton_Ready`, and `SkillButton_Cooling` while cooling; CC §6.2's dimming and dead tap are unchanged. **UI-02 is complete.**
+**Built:** UI-02c. `SkillButton` (Roll) and `ManualSkillButton` (`S1`..`S4`) on `Hud.prefab` wear the Clash-style art. Roll displays `RollButton_Ready` with child `Icon_Roll`, swapping to `RollButton_Pressed` on pointer down, `RollButton_Cooling` while cooling, with CC §5's input buffer intact. Manual skill buttons wear `SkillButton_Ready`, and `SkillButton_Cooling` while cooling; CC §6.2's dimming and dead tap are unchanged. **UI-02 is complete.**
 
 **Verified:** **3 759 EditMode — 3 758 / 0 / 1 inconclusive (+5)** through `TestRunnerApi`; `SkillButtonTests` 6 rows, `SkillBarPresenterTests` 30 rows, `FloatingStickTests` 8 rows, `LowerControlsArtTests` 50 rows green. Zero Console errors, zero analyzer warnings, `dotnet format whitespace` clean over touched files, `TimeManager.asset` reverted.
 
@@ -425,7 +425,7 @@ _M0, M1, M2, M3, M4, M5 and M6 are archived: [M0](archive/PROGRESS-M0.md) (20 en
 
 ### 2026-10-13 · UI-02d · A fixed stick
 
-**Built:** [UI-02d](tasks/UI-02d-a-fixed-stick.md). By the owner's ruling of 2026-10-13, `FloatingStick` is fixed: base and knob always visible at 110 × 110 dp from the safe area's bottom-left (`_fixedOffsetDp`), a touch anywhere in the left 45 % read from that centre, no recentring, knob clamped at the 60 dp rim. The floating behaviour is kept behind `_floating` (off). CC §2.1–2.3 rewritten to match.
+**Built:** UI-02d. By the owner's ruling of 2026-10-13, `FloatingStick` is fixed: base and knob always visible at 110 × 110 dp from the safe area's bottom-left (`_fixedOffsetDp`), a touch anywhere in the left 45 % read from that centre, no recentring, knob clamped at the 60 dp rim. The floating behaviour is kept behind `_floating` (off). CC §2.1–2.3 rewritten to match.
 
 **Verified:** **3 763 EditMode — 3 762 / 0 / 1 inconclusive (+4)** through `TestRunnerApi`; `FloatingStickTests` 12 rows green. Zero compiler errors, `dotnet format whitespace` clean over touched files, `TimeManager.asset` reverted.
 

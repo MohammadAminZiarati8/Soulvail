@@ -364,16 +364,16 @@ What the planning found:
 
 | ID | Task | Size | Depends on | Status |
 |---|---|---|---|---|
-| UI-01a | [The HUD's art and its font, imported](tasks/UI-01a-the-huds-art-and-font.md) — this section and the six specs, 19 sprites, Lilita One | S | — | ☑ |
-| UI-01b | [The health bar, the XP strip and the level star](tasks/UI-01b-the-health-bar-xp-and-star.md) — and the band's layout in dp | M | UI-01a | ☑ |
-| UI-01c | [Enemies left, in core](tasks/UI-01c-enemies-left-in-core.md) — the living and the not-yet-spawned | S | — | ☑ |
-| UI-01d | [The stage chip, the enemies-left chip and the pause button](tasks/UI-01d-the-chips-and-the-pause-button.md) | S | UI-01b, UI-01c | ☑ |
-| UI-01e | [The auto-cast row: icons, sweeps, glows and the volley's pips](tasks/UI-01e-the-auto-cast-row.md) | M | UI-01b | ☑ |
-| UI-01f | [The boss bar in the new art](tasks/UI-01f-the-boss-bar.md) | S | UI-01b | ☑ |
-| UI-02a | [The lower controls' art, imported](tasks/UI-02a-the-lower-controls-art.md) — 8 sprites for stick, roll and skill buttons | S | UI-01f | ☑ |
-| UI-02b | [The floating stick in the new art](tasks/UI-02b-the-floating-stick.md) | S | UI-02a | ☑ |
-| UI-02c | [The Roll and skill buttons in the new art](tasks/UI-02c-the-roll-and-skill-buttons.md) | M | UI-02a | ☑ |
-| UI-02d | [A fixed stick](tasks/UI-02d-a-fixed-stick.md) — owner ruling 2026-10-13, supersedes CC §2.1 "floating, never fixed" | S | UI-02b | ☑ |
+| UI-01a | The HUD's art and its font, imported — this section and the six specs, 19 sprites, Lilita One | S | — | ☑ |
+| UI-01b | The health bar, the XP strip and the level star — and the band's layout in dp | M | UI-01a | ☑ |
+| UI-01c | Enemies left, in core — the living and the not-yet-spawned | S | — | ☑ |
+| UI-01d | The stage chip, the enemies-left chip and the pause button | S | UI-01b, UI-01c | ☑ |
+| UI-01e | The auto-cast row: icons, sweeps, glows and the volley's pips | M | UI-01b | ☑ |
+| UI-01f | The boss bar in the new art | S | UI-01b | ☑ |
+| UI-02a | The lower controls' art, imported — 8 sprites for stick, roll and skill buttons | S | UI-01f | ☑ |
+| UI-02b | The floating stick in the new art | S | UI-02a | ☑ |
+| UI-02c | The Roll and skill buttons in the new art | M | UI-02a | ☑ |
+| UI-02d | A fixed stick — owner ruling 2026-10-13, supersedes CC §2.1 "floating, never fixed" | S | UI-02b | ☑ |
 | UI-03a | [Skill points and the free pick, in core](tasks/UI-03a-skill-points-in-core.md) — behind `hasFreePick`; a level banks a point, `TakeNode` spends it, no draw | M | — | ☑ |
 | UI-03b | [The level-up banner and the point badge](tasks/UI-03b-the-point-badge.md) — non-blocking toast, green count on the star | S | UI-03a | ☑ |
 | UI-03c | [The tree screen: pause, look, take](tasks/UI-03c-the-tree-screen.md) — the plain 3×3, star-tap opens it, `PauseReason.Tree` | M | UI-03a, UI-03b | ☑ |

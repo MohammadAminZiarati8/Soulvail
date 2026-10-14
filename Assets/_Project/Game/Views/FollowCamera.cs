@@ -51,7 +51,36 @@ namespace Soulvail.Game.Views
         /// </summary>
         [SerializeField] private float _smoothTime = 0.12f;
 
+        /// <summary>
+        /// The field of view, in degrees, across the screen's short side — vertical at 16:9 (the 60°
+        /// the scene always had) and horizontal in portrait. See <see cref="VerticalFov"/>.
+        /// </summary>
+        [SerializeField] private float _shortSideFovDeg = 60f;
+
+        private Camera _camera;
+        private float _appliedAspect;
         private Vector3 _followVelocity;
+
+        /// <summary>
+        /// The vertical field of view that gives the screen's short side
+        /// <paramref name="shortSideFovDeg"/>. At an aspect of 1 or wider the short side is the
+        /// height, so it is the vertical field as it stands. Narrower, the short side is the width,
+        /// so the horizontal field is <paramref name="shortSideFovDeg"/> and the vertical follows
+        /// from it: <c>2·atan(tan(short/2) / aspect)</c>.
+        /// </summary>
+        /// <param name="shortSideFovDeg">Degrees across the short side.</param>
+        /// <param name="aspect">Width over height. Zero or less is read as 1.</param>
+        public static float VerticalFov(float shortSideFovDeg, float aspect)
+        {
+            if (aspect >= 1f || aspect <= 0f)
+            {
+                return shortSideFovDeg;
+            }
+
+            float halfShort = shortSideFovDeg * 0.5f * Mathf.Deg2Rad;
+
+            return 2f * Mathf.Atan(Mathf.Tan(halfShort) / aspect) * Mathf.Rad2Deg;
+        }
 
         /// <remarks>
         /// Validated once, loudly, rather than per frame: an unassigned target is a wiring mistake
@@ -73,6 +102,12 @@ namespace Soulvail.Game.Views
 
             _followVelocity = Vector3.zero;
 
+            // Looked up once, here, and never in LateUpdate. Forgotten on enable so that a camera
+            // that was re-enabled re-applies the field even if the aspect did not move meanwhile.
+            _camera = GetComponent<Camera>();
+            _appliedAspect = 0f;
+            ApplyAspect();
+
             transform.SetPositionAndRotation(Desired(Rotation()), Rotation());
         }
 
@@ -87,6 +122,8 @@ namespace Soulvail.Game.Views
                 return;
             }
 
+            ApplyAspect();
+
             Quaternion rotation = Rotation();
 
             // Time.deltaTime, not the snapshot's clamped Dt, and the distinction matters. Everything
@@ -96,6 +133,29 @@ namespace Soulvail.Game.Views
             transform.SetPositionAndRotation(
                 Vector3.SmoothDamp(transform.position, Desired(rotation), ref _followVelocity, _smoothTime),
                 rotation);
+        }
+
+        /// <summary>
+        /// Writes <c>fieldOfView</c> when the camera's aspect is not the one it was last written
+        /// for, and on no other frame. Reading <c>aspect</c> is a field read; the write is what
+        /// dirties the projection matrix, so a frame that changed nothing touches nothing.
+        /// </summary>
+        private void ApplyAspect()
+        {
+            if (_camera == null)
+            {
+                return;
+            }
+
+            float aspect = _camera.aspect;
+
+            if (Mathf.Approximately(aspect, _appliedAspect))
+            {
+                return;
+            }
+
+            _appliedAspect = aspect;
+            _camera.fieldOfView = VerticalFov(_shortSideFovDeg, aspect);
         }
 
         /// <summary>The authored orientation, rebuilt each frame so the angle can be tuned in the

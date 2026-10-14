@@ -49,4 +49,8 @@ The fixed whole-arena camera of the endgame (the owner's direction, a later task
 
 ## As built
 
-_Filled at merge._
+**Built.** `FollowCamera` holds `_shortSideFovDeg` (60) and a public static `VerticalFov(short, aspect)`: the short side at an aspect of 1 or wider, `2·atan(tan(short/2)/aspect)` below it (104.1° at 9:20). It caches its `Camera` in `OnEnable` and writes `fieldOfView` from `ApplyAspect`, which `OnEnable` and `LateUpdate` call and which writes only when the camera's aspect is not the one last applied. Pitch, yaw, smoothing, distance (16) and the follow are unchanged; `Run.unity` is untouched, its camera still stores 60, which the component overwrites on enable. `FollowCameraTests` has the four rows; the fourth plants a sentinel field of view and shows two frames at the same aspect leave it.
+
+**Look.** Not through `Capture Look`: no Device Simulator was opened (opening one edits `Packages/manifest.json`, Traps §9). Instead `Run.unity` was opened in edit mode with `Arena_Hollow` (24 m floor, walls at ±12.5) instantiated, the camera put where `FollowCamera` puts it for a player at the origin, and rendered at 1080 × 2400 through `SubmitRenderRequest` with the new field and with the old 60° vertical (`Soulvail_Looks/UI-08b_hollow_new.png` and `_old.png`; nothing saved). New: the north and south walls are both in frame and the east and west walls sit just off the edge (the view is 18.5 m across at the player's depth). Old: the floor under the player and one wall. No HUD, enemies or run state in these. **Distance not retuned.**
+
+**Judgement calls.** The owner's look at the framing, and whether to pull the distance back to bring the side walls in, is the device step.

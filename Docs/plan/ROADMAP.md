@@ -393,7 +393,7 @@ What the planning found:
 | UI-07c | [Lilita One everywhere](tasks/UI-07c-lilita-one-everywhere.md) — Menu, TreeView, Pause, RunEnd off LiberationSans | S | UI-07a | ☑ |
 | UI-07d | [The tree's labels and centring](tasks/UI-07d-tree-labels-and-centring.md) — branch names clear the card; the block centred | S | UI-07a | ☑ |
 | UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☑ |
-| UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☐ |
+| UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☑ |
 | UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☐ |
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☐ |
 | UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) | M | UI-08a, UI-07c, UI-07d | ☐ |

@@ -394,7 +394,7 @@ What the planning found:
 | UI-07d | [The tree's labels and centring](tasks/UI-07d-tree-labels-and-centring.md) — branch names clear the card; the block centred | S | UI-07a | ☑ |
 | UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☑ |
 | UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☑ |
-| UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☐ |
+| UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☐☑ |
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☐ |
 | UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) | M | UI-08a, UI-07c, UI-07d | ☐ |
 | UI-09 | The Pause and Run-end screens in the new art — *title only; waits on a Gemini sheet* | — | UI-08e | ☐ |
@@ -424,7 +424,8 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **The splash screen's class page holds three cards, and four classes now fill it** (RS-03c). A fifth class would leave one lender off the page, silently: `SplashPresenter.DrawClasses` has no capacity warning, unlike class select. Promoted by the fifth class.
 - **The HUD's pieces are separate textures, so the top band is about fifteen draw calls.** A sprite atlas would batch them, and `EditorSettings`' sprite packer is off (a `ProjectSettings/` change). Promoted by the device's first frame-time capture, or by the next UI row that adds pieces.
 - **A class with no Aegis still draws the Aegis ring**: an empty ring whose dark backing shows behind the level star since UI-01b. The ring is kept working by the owner's brief. Promoted when the owner says whether a class without the Aegis should show one.
-- **The skill row runs under the right-hand column past its seventh cell at 9:20** (UI-01b, UI-01e's 34 dp cells). It packs from the front with the volley first, and no shipped class owns more than three Actives. Promoted by the first class or borrowed branch that owns seven.
+- **The skill row runs under the right-hand column past its seventh cell at 411 dp wide, and past its sixth at 360 dp** (UI-01b, UI-01e's 34 dp cells, UI-08c). It packs from the front with the volley first, and no shipped class owns more than three Actives. Promoted by the first class or borrowed branch that owns six.
+- **At 360 dp wide the Veilrot meter's caption overlaps the level-up toast** (UI-08c). Veilrot is switched off in every shipped mode. Promoted when a mode switches Veilrot back on.
 - **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).

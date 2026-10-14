@@ -7,6 +7,7 @@ using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Controls;
 using Soulvail.Game.Views;
 using TMPro;
 using UnityEngine;
@@ -300,9 +301,58 @@ namespace Soulvail.Game.Presentation
                     "intent buffer, and only the run's scope can hand it those.");
             }
 
+            Place();
+
             // Written once immediately, so an overlay that shows nothing is unambiguous evidence
             // that the run never started, rather than a refresh that has not come round yet.
             Refresh();
+        }
+
+        /// <summary>
+        /// Docks the line under the top band and the boss band, across the safe area's width less
+        /// the band's margins, wrapping (UI-08c rule 4).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// From UI-07a's finding 6: authored 16 reference px from the top-left, the line drew over the
+        /// XP strip in every development build. It hangs from <see cref="HudPresenter.UnderBossDp"/>
+        /// now, in dp, for <c>HudPresenter.Place</c>'s reason — the band is dp, so a reference-pixel
+        /// offset clears it on one phone and not the next.
+        /// </para>
+        /// <para>
+        /// <b>It wraps</b>, because a 9:20 screen is narrower than the one line: unwrapped it ran off
+        /// the right edge. The height is the authored one and the text overflows it downwards, over the
+        /// arena, which is where a development readout belongs.
+        /// </para>
+        /// </remarks>
+        private void Place()
+        {
+            if (_text == null || _text.transform is not RectTransform rect || rect.parent is not RectTransform)
+            {
+                return;
+            }
+
+            var canvas = GetComponentInParent<Canvas>();
+            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+            float pxPerDp = StickShaper.PixelsPerDp(Screen.dpi) / scale;
+
+            if (!float.IsFinite(pxPerDp) || pxPerDp <= 0f)
+            {
+                return;
+            }
+
+            float margin = HudLayout.MarginDp * pxPerDp;
+
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+
+            // Stretched across the top edge: the size's x is what the width falls short of the safe
+            // area's, and the height is the authored one.
+            rect.anchoredPosition = new Vector2(margin, -HudPresenter.UnderBossDp * pxPerDp);
+            rect.sizeDelta = new Vector2(-2f * margin, rect.sizeDelta.y);
+
+            _text.textWrappingMode = TextWrappingModes.Normal;
         }
 
         /// <remarks>

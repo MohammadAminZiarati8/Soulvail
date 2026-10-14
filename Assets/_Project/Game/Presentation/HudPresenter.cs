@@ -101,6 +101,11 @@ namespace Soulvail.Game.Presentation
     /// the row leaves it, which is what lets one layout hold at 20:9 and at 9:20 —
     /// <see cref="HudLayout"/>'s remarks, and <c>HudLayoutTests</c>' two sizes.
     /// </para>
+    /// <para>
+    /// <b>As of UI-08c it also sizes the two rects the lower half of the screen is shared out by</b>:
+    /// the stick's touch zone, in portrait, and the lane the threat arrows ride, under the boss band.
+    /// See <see cref="PlaceLowerControls"/>.
+    /// </para>
     /// </remarks>
     public sealed class HudPresenter : MonoBehaviour
     {
@@ -178,6 +183,30 @@ namespace Soulvail.Game.Presentation
         /// would put a namespace edge into a HUD to save declaring a zero.
         /// </remarks>
         private const int NoBoss = 0;
+
+        /// <summary>
+        /// Where the arena's own screen space starts, in dp from the safe area's top: one gap under the
+        /// boss band, so under the whole top band too. <c>DebugOverlay</c>'s text hangs from here
+        /// (UI-08c rule 4).
+        /// </summary>
+        public const float UnderBossDp = HudLayout.BossTopDp + BossBarView.HeightDp + HudLayout.GapDp;
+
+        /// <summary>
+        /// The top of the rect the threat arrows ride the border of, in dp from the safe area's top
+        /// (UI-08c rule 5).
+        /// </summary>
+        /// <remarks>
+        /// One gap lower than <see cref="UnderBossDp"/>, because <c>ThreatArrows</c> holds an arrow's
+        /// centre a fixed distance inside its rect and a corner arrow, turned 45°, reaches a few dp
+        /// past that distance. <c>HudLayoutTests</c> measures that reach at both portrait sizes.
+        /// </remarks>
+        public const float ArrowLaneTopDp = UnderBossDp + HudLayout.GapDp;
+
+        /// <summary>The stick's touch zone in portrait, as fractions of the safe area: the left half (UI-08c rule 3).</summary>
+        public const float StickZoneWidth = 0.5f;
+
+        /// <summary>…and the bottom 40 %.</summary>
+        public const float StickZoneHeight = 0.4f;
 
         [Tooltip("The health bar, with its fill and ghost. The one thing on screen the player is " +
                  "never allowed to be unsure about.")]
@@ -278,6 +307,15 @@ namespace Soulvail.Game.Presentation
                  "edge and down from its top — at the head of the column under the boss band's row, " +
                  "over the Veilrot meter. Its old place left of the pause icon is the stage chip's (UI-01d).")]
         [SerializeField] private Vector2 _essenceInsetDp = new Vector2(16f, HudLayout.EconomyTopDp);
+
+        [Tooltip("The stick's touch zone: FloatingStick's region. In portrait it is re-anchored to the " +
+                 "left half of the safe area's bottom 40 % (UI-08c rule 3); in landscape the prefab's " +
+                 "left 45 % stands. Optional: without it the stick keeps whatever the prefab drew.")]
+        [SerializeField] private RectTransform _stickZone;
+
+        [Tooltip("The rect ThreatArrows rides the border of. Its top is held under the boss band, so " +
+                 "no arrow lands on the top band (UI-08c rule 5). Optional on the stick zone's terms.")]
+        [SerializeField] private RectTransform _arrowLane;
 
         private IRunSession _session;
         private ILocalizer _localizer;
@@ -1096,6 +1134,45 @@ namespace Soulvail.Game.Presentation
 
             PlaceToast(pxPerDp);
             PlaceRightEdge(pxPerDp);
+            PlaceLowerControls(pxPerDp);
+        }
+
+        /// <summary>
+        /// UI-08c rules 3 and 5: the stick's touch zone from the safe area's bottom edge in portrait,
+        /// and the threat arrows' rect under the boss band.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The stick and the buttons place themselves</b> — <c>FloatingStick</c> its fixed centre
+        /// from the zone's bottom-left corner, <c>SkillButton</c> and <c>SkillBarPresenter</c> theirs
+        /// from the safe area's bottom-right — so all this does for them is size the zone the thumb
+        /// lands in. The zone's bottom-left corner is the safe area's in both orientations, so the
+        /// stick's centre does not move when the zone is re-anchored, and the stick re-places its
+        /// sprites from it every <c>LateUpdate</c>.
+        /// </para>
+        /// <para>
+        /// <b>Fractions for the zone, dp for the lane.</b> The zone is a share of the thumb's half of
+        /// the screen, whatever the phone; the lane's top is the band's floor, which is dp. The prefab
+        /// keeps the landscape zone, so a test that reads the asset still reads UI-02d's 45 %.
+        /// </para>
+        /// </remarks>
+        private void PlaceLowerControls(float pxPerDp)
+        {
+            if (_arrowLane != null && float.IsFinite(pxPerDp) && pxPerDp > 0f)
+            {
+                _arrowLane.anchorMin = Vector2.zero;
+                _arrowLane.anchorMax = Vector2.one;
+                _arrowLane.offsetMin = Vector2.zero;
+                _arrowLane.offsetMax = new Vector2(0f, -ArrowLaneTopDp * pxPerDp);
+            }
+
+            if (_stickZone != null && _stickZone.parent is RectTransform safe && safe.rect.height > safe.rect.width)
+            {
+                _stickZone.anchorMin = Vector2.zero;
+                _stickZone.anchorMax = new Vector2(StickZoneWidth, StickZoneHeight);
+                _stickZone.offsetMin = Vector2.zero;
+                _stickZone.offsetMax = Vector2.zero;
+            }
         }
 
         /// <summary>

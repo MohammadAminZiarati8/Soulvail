@@ -34,12 +34,18 @@ namespace Soulvail.Tests.Game.Presentation;
 /// <b>UI-01d, UI-01e and UI-01f extend <see cref="Pieces"/></b>, which is how a later task's chip or
 /// cell is held to the same rule without a second fixture.
 /// </para>
+/// <para>
+/// <b>UI-08c adds the lower half</b>: the stick's zone and ring, the Roll, the four skill buttons, the
+/// threat arrows' lane and the development readout, at the two portrait phones its rules name.
+/// </para>
 /// </remarks>
 [TestFixture]
 public sealed class HudLayoutTests
 {
     private const string HudPath = "Assets/_Project/Prefabs/UI/Hud.prefab";
     private const string PausePath = "Assets/_Project/Prefabs/UI/Pause.prefab";
+    private const string DebugPath = "Assets/_Project/Prefabs/UI/DebugOverlay.prefab";
+    private const string ArrowPath = "Assets/_Project/Prefabs/UI/ThreatArrow.prefab";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
@@ -48,6 +54,9 @@ public sealed class HudLayoutTests
     /// seven 34 dp cells in all reach the enemies chip's column at 9:20 and stop short of it (UI-01e).
     /// </summary>
     private const int RowCellsChecked = 6;
+
+    /// <summary>The most Actives a shipped class owns, so the most cells its row shows after the volley's.</summary>
+    private const int ShippedActives = 3;
 
     /// <summary>Half a dp: the resolution a layout claim here is made at.</summary>
     private const float Slack = 0.5f;
@@ -278,6 +287,253 @@ public sealed class HudLayoutTests
         Assert.That(float.IsFinite(bar.sizeDelta.x), Is.True, "a NaN star reached the bar.");
     }
 
+    // ---- Portrait (UI-08c) -----------------------------------------------------------------------
+
+    [Test]
+    public void Hud_Canvas_IsReferencedPortrait()
+    {
+        foreach (string path in new[] { HudPath, DebugPath })
+        {
+            var scaler = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<CanvasScaler>();
+
+            Assert.That(scaler, Is.Not.Null, $"no CanvasScaler on {path}.");
+            Assert.That(scaler.uiScaleMode, Is.EqualTo(CanvasScaler.ScaleMode.ScaleWithScreenSize), path);
+            Assert.That(scaler.referenceResolution, Is.EqualTo(new Vector2(1080f, 1920f)), path);
+            Assert.That(scaler.matchWidthOrHeight, Is.EqualTo(0.5f), path);
+        }
+    }
+
+    [Test]
+    public void Hud_Controls_SitInTheThumbZones()
+    {
+        foreach (Phone phone in Phones)
+        {
+            Vector2 size = phone.SafeDp;
+            Dictionary<string, Rect> controls = LayControls(size);
+            string at = phone.ToString();
+
+            // The zone: the left half of the bottom 40 %, measured from the safe area's bottom edge.
+            Rect zone = controls["zone"];
+
+            Assert.That(zone.xMin, Is.EqualTo(0f).Within(Slack), $"the zone's left at {at}");
+            Assert.That(zone.xMax, Is.EqualTo(size.x * HudPresenter.StickZoneWidth).Within(Slack), $"the zone's right at {at}");
+            Assert.That(zone.yMax, Is.EqualTo(size.y).Within(Slack), $"the zone's bottom at {at}");
+            Assert.That(zone.yMin, Is.EqualTo(size.y * (1f - HudPresenter.StickZoneHeight)).Within(Slack), $"the zone's top at {at}");
+
+            // The stick in the bottom-left quarter and inside its zone; the rest in the bottom-right.
+            Rect stick = controls["stick"];
+
+            Assert.That(stick.xMax, Is.LessThanOrEqualTo((size.x * 0.5f) + Slack), $"the stick crosses the middle at {at}");
+            Assert.That(stick.yMin, Is.GreaterThanOrEqualTo(zone.yMin - Slack), $"the stick leaves its zone at {at}");
+            AssertClearOfTheEdges("stick", stick, size, at);
+
+            foreach (string name in RightThumb)
+            {
+                Rect r = controls[name];
+
+                Assert.That(r.xMin, Is.GreaterThanOrEqualTo((size.x * 0.5f) - Slack), $"{name} {r} crosses the middle at {at}");
+                Assert.That(r.yMin, Is.GreaterThanOrEqualTo((size.y * 0.5f) - Slack), $"{name} {r} leaves the bottom half at {at}");
+                AssertClearOfTheEdges(name, r, size, at);
+            }
+        }
+    }
+
+    [Test]
+    public void Hud_DebugOverlay_ClearsTheTopBand()
+    {
+        foreach (Phone phone in Phones)
+        {
+            Vector2 size = phone.SafeDp;
+            Dictionary<string, Rect> band = Lay(size);
+
+            GameObject overlay = Spawn(DebugPath);
+            RectTransform safe = Size(overlay, size);
+
+            Invoke(overlay.GetComponent<DebugOverlay>(), "Place");
+            Canvas.ForceUpdateCanvases();
+
+            Rect line = Dp(safe, "Line", PixelsPerDp());
+            string at = phone.ToString();
+
+            Assert.That(line.yMin, Is.GreaterThanOrEqualTo(band["boss"].yMax - Slack), $"the line {line} reaches the boss band at {at}");
+            Assert.That(line.yMin, Is.GreaterThanOrEqualTo(band["strip"].yMax - Slack), $"the line {line} reaches the XP strip at {at}");
+            Assert.That(line.xMin, Is.GreaterThanOrEqualTo(HudLayout.MarginDp - Slack), $"at {at}");
+            Assert.That(line.xMax, Is.LessThanOrEqualTo(size.x - HudLayout.MarginDp + Slack), $"the line leaves the safe area at {at}");
+
+            foreach (KeyValuePair<string, Rect> piece in band.Where(p => !BelowTheBand.Contains(p.Key)))
+            {
+                Assert.That(Overlaps(line, piece.Value), Is.False, $"the line {line} overlaps {piece.Key} {piece.Value} at {at}");
+            }
+        }
+    }
+
+    [Test]
+    public void Hud_Portrait_NothingOverlaps()
+    {
+        foreach (Phone phone in Phones)
+        {
+            Vector2 size = phone.SafeDp;
+            string at = phone.ToString();
+
+            // Rule 2: the band as UI-01b laid it out, at this phone's size, as a shipped run draws it:
+            // the cells a shipped class can fill, and without the two economy readouts every shipped
+            // mode switches off. At 360 dp a sixth Active's cell reaches under the pause icon, and the
+            // Veilrot meter's caption into the level-up toast — the parking lot's two lines.
+            AssertBandHolds(size, ShippedActives, shippedOnly: true);
+
+            Dictionary<string, Rect> band = Shipped(Pieces(ShippedActives));
+            Dictionary<string, Rect> controls = LayControls(size);
+            string[] lower = new[] { "stick" }.Concat(RightThumb).ToArray();
+
+            // The controls against each other, against every piece of the band and against the boss band.
+            for (int i = 0; i < lower.Length; i++)
+            {
+                for (int j = i + 1; j < lower.Length; j++)
+                {
+                    Assert.That(
+                        Overlaps(controls[lower[i]], controls[lower[j]]),
+                        Is.False,
+                        $"{lower[i]} {controls[lower[i]]} overlaps {lower[j]} {controls[lower[j]]} at {at}");
+                }
+
+                foreach (KeyValuePair<string, Rect> piece in band)
+                {
+                    Assert.That(
+                        Overlaps(controls[lower[i]], piece.Value),
+                        Is.False,
+                        $"{lower[i]} {controls[lower[i]]} overlaps {piece.Key} {piece.Value} at {at}");
+                }
+            }
+
+            // The threat arrows ride a border held inside their lane, and a corner arrow reaches past
+            // that border by half its diagonal: the lane's top keeps that reach off the boss band, and
+            // its three other sides keep it off every control.
+            Rect lane = controls["lane"];
+            float reach = ArrowReachDp(phone, inward: true);
+            float overhang = ArrowReachDp(phone, inward: false);
+
+            Assert.That(lane.yMin - overhang, Is.GreaterThanOrEqualTo(band["boss"].yMax - Slack), $"an arrow reaches the boss band at {at}");
+            Assert.That(lane.yMax, Is.EqualTo(size.y).Within(Slack), $"the lane stops short of the bottom at {at}");
+
+            foreach (string name in lower)
+            {
+                Rect r = controls[name];
+
+                Assert.That(r.xMin - lane.xMin, Is.GreaterThanOrEqualTo(reach), $"an arrow on the left edge reaches {name} at {at}");
+                Assert.That(lane.xMax - r.xMax, Is.GreaterThanOrEqualTo(reach), $"an arrow on the right edge reaches {name} at {at}");
+                Assert.That(lane.yMax - r.yMax, Is.GreaterThanOrEqualTo(reach), $"an arrow on the bottom edge reaches {name} at {at}");
+            }
+        }
+    }
+
+    /// <summary>The two phones UI-08c's rules are written against, as their safe areas in dp.</summary>
+    private static readonly Phone[] Phones =
+    {
+        new Phone(1080, 2400, 420f),
+        new Phone(720, 1600, 320f),
+    };
+
+    /// <summary>The Roll and the four skill buttons: the right thumb's controls.</summary>
+    private static readonly string[] RightThumb = { "roll", "s1", "s2", "s3", "s4" };
+
+    /// <summary>UI-08c rule 3's distance from the safe area's edges, in dp.</summary>
+    private const float EdgeClearDp = 24f;
+
+    private static void AssertClearOfTheEdges(string name, Rect r, Vector2 size, string at)
+    {
+        Assert.That(r.xMin, Is.GreaterThanOrEqualTo(EdgeClearDp - Slack), $"{name} {r} is within 24 dp of the left edge at {at}");
+        Assert.That(size.x - r.xMax, Is.GreaterThanOrEqualTo(EdgeClearDp - Slack), $"{name} {r} is within 24 dp of the right edge at {at}");
+        Assert.That(size.y - r.yMax, Is.GreaterThanOrEqualTo(EdgeClearDp - Slack), $"{name} {r} is within 24 dp of the bottom edge at {at}");
+    }
+
+    /// <summary>
+    /// The HUD at <paramref name="size"/> dp with every lower control placed as its own component
+    /// places it, read back in dp: the stick's zone and ring, the Roll, the four skill buttons and the
+    /// threat arrows' lane.
+    /// </summary>
+    private Dictionary<string, Rect> LayControls(Vector2 size)
+    {
+        Build(size);
+
+        Invoke(_hud.GetComponentInChildren<SkillButton>(true), "Place");
+        Invoke(_hud.GetComponentInChildren<SkillBarPresenter>(true), "Place");
+
+        // The stick places its ring in Awake, from its zone's bottom-left corner, after HudPresenter's
+        // Start has sized the zone — the order a run gets, since every Awake precedes every Start.
+        Invoke(_hud.GetComponentInChildren<FloatingStick>(true), "Awake");
+
+        Canvas.ForceUpdateCanvases();
+
+        RectTransform safe = Safe(_hud);
+        float px = PixelsPerDp();
+
+        return new Dictionary<string, Rect>
+        {
+            ["zone"] = Dp(safe, "Region", px),
+            ["stick"] = Dp(safe, "Region/Base", px),
+            ["roll"] = Dp(safe, "SkillButton", px),
+            ["s1"] = Dp(safe, "SkillBar/S1", px),
+            ["s2"] = Dp(safe, "SkillBar/S2", px),
+            ["s3"] = Dp(safe, "SkillBar/S3", px),
+            ["s4"] = Dp(safe, "SkillBar/S4", px),
+            ["lane"] = Dp(safe, "Arrows", px),
+        };
+    }
+
+    /// <summary>
+    /// How far a threat arrow reaches, in dp on <paramref name="phone"/>: <paramref name="inward"/>,
+    /// from its lane's edge to the far side of a corner arrow; otherwise, past the lane's edge.
+    /// </summary>
+    /// <remarks>
+    /// The arrow and its border inset are canvas units rather than dp, so the answer depends on the
+    /// phone's canvas scale, which is Hud.prefab's <c>CanvasScaler</c> applied to its pixels. The
+    /// Editor's own scale is pinned to 1 here and says nothing about a phone (Traps §9).
+    /// </remarks>
+    private static float ArrowReachDp(Phone phone, bool inward)
+    {
+        float edge = Constant(typeof(ThreatArrows), "EdgeMargin");
+        float near = Constant(typeof(ThreatArrows), "NearScale");
+        var arrow = (RectTransform)AssetDatabase.LoadAssetAtPath<GameObject>(ArrowPath).transform;
+        float halfDiagonal = Mathf.Max(arrow.sizeDelta.x, arrow.sizeDelta.y) * near * Mathf.Sqrt(2f) * 0.5f;
+
+        var scaler = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath).GetComponent<CanvasScaler>();
+        Vector2 reference = scaler.referenceResolution;
+        float scale = Mathf.Pow(
+            2f,
+            Mathf.Lerp(
+                Mathf.Log(phone.Width / reference.x, 2f),
+                Mathf.Log(phone.Height / reference.y, 2f),
+                scaler.matchWidthOrHeight));
+
+        float units = inward ? edge + halfDiagonal : Mathf.Max(0f, halfDiagonal - edge);
+
+        return units * scale / StickShaper.PixelsPerDp(phone.Dpi);
+    }
+
+    private static float Constant(System.Type type, string name) =>
+        (float)type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic).GetRawConstantValue();
+
+    /// <summary>A phone: its pixels and its density, and the safe area that makes in dp.</summary>
+    private readonly struct Phone
+    {
+        public Phone(int width, int height, float dpi)
+        {
+            Width = width;
+            Height = height;
+            Dpi = dpi;
+        }
+
+        public int Width { get; }
+
+        public int Height { get; }
+
+        public float Dpi { get; }
+
+        public Vector2 SafeDp => new Vector2(Width, Height) / StickShaper.PixelsPerDp(Dpi);
+
+        public override string ToString() => $"{Width} × {Height} @ {Dpi} dpi";
+    }
+
     // ---- The pieces ------------------------------------------------------------------------------
 
     /// <summary>
@@ -307,9 +563,27 @@ public sealed class HudLayoutTests
         "boss", "essence", "essenceWord", "meter", "meterWord", "claimed", "toast",
     };
 
-    private void AssertBandHolds(Vector2 size)
+    /// <summary>
+    /// The Essence counter and the Veilrot meter, with their words: switched off in every shipped
+    /// mode (RS-05b, RS-05d), and switched off is not removed.
+    /// </summary>
+    private static readonly HashSet<string> SwitchedOff = new HashSet<string>
     {
-        Dictionary<string, Rect> band = Lay(size);
+        "essence", "essenceWord", "meter", "meterWord", "claimed",
+    };
+
+    /// <summary><paramref name="band"/> as a shipped run draws it: without <see cref="SwitchedOff"/>.</summary>
+    private static Dictionary<string, Rect> Shipped(Dictionary<string, Rect> band) =>
+        band.Where(p => !SwitchedOff.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
+
+    private void AssertBandHolds(Vector2 size, int cells = RowCellsChecked, bool shippedOnly = false)
+    {
+        Dictionary<string, Rect> band = Lay(size, cells);
+
+        if (shippedOnly)
+        {
+            band = Shipped(band);
+        }
 
         foreach (KeyValuePair<string, Rect> piece in band)
         {
@@ -349,15 +623,15 @@ public sealed class HudLayoutTests
     }
 
     /// <summary>Lays both prefabs out at <paramref name="size"/> dp and reads every piece back in dp.</summary>
-    private Dictionary<string, Rect> Lay(Vector2 size)
+    private Dictionary<string, Rect> Lay(Vector2 size, int cells = RowCellsChecked)
     {
         Build(size);
 
-        return Pieces();
+        return Pieces(cells);
     }
 
     /// <summary>The band's pieces, in dp from their safe area's top-left, y down.</summary>
-    private Dictionary<string, Rect> Pieces()
+    private Dictionary<string, Rect> Pieces(int cells = RowCellsChecked)
     {
         Canvas.ForceUpdateCanvases();
 
@@ -392,9 +666,10 @@ public sealed class HudLayoutTests
 
         Transform row = hudSafe.Find("AutoCastRow");
 
-        // The volley's cell, its five pips, and the first six Active cells after it: the row packs from
-        // the front, and past the seventh cell a 9:20 portrait runs it under the right-hand column (the
-        // parking lot's line). No shipped class owns more than three Actives.
+        // The volley's cell, its five pips, and the first `cells` Active cells after it (six unless a row
+        // asks for fewer): the row packs from the front, and past the seventh cell a 411 dp portrait runs
+        // it under the right-hand column, past the sixth a 360 dp one (the parking lot's line). No
+        // shipped class owns more than three Actives.
         var volley = (RectTransform)row.Find("VolleyCell");
 
         pieces["volley"] = Dp(hudSafe, volley, px);
@@ -404,7 +679,7 @@ public sealed class HudLayoutTests
             pieces[$"pip{pip}"] = Dp(hudSafe, (RectTransform)volley.Find($"Pip{pip}"), px);
         }
 
-        for (int cell = 1; cell <= RowCellsChecked; cell++)
+        for (int cell = 1; cell <= cells; cell++)
         {
             pieces[$"cell{cell}"] = Dp(hudSafe, (RectTransform)row.Find($"Cell{cell}"), px);
         }
@@ -423,18 +698,8 @@ public sealed class HudLayoutTests
         _hud = Spawn(HudPath);
         _pause = Spawn(PausePath);
 
-        float px = PixelsPerDp();
-
-        foreach (GameObject root in new[] { _hud, _pause })
-        {
-            RectTransform safe = Safe(root);
-
-            safe.anchorMin = new Vector2(0.5f, 0.5f);
-            safe.anchorMax = new Vector2(0.5f, 0.5f);
-            safe.pivot = new Vector2(0.5f, 0.5f);
-            safe.sizeDelta = size * px;
-            safe.anchoredPosition = Vector2.zero;
-        }
+        Size(_hud, size);
+        Size(_pause, size);
 
         Invoke(_hud.GetComponent<HudPresenter>(), "Place");
         Invoke(_hud.GetComponentInChildren<XpBarView>(true), "Place");
@@ -464,6 +729,20 @@ public sealed class HudLayoutTests
         root.GetComponent<Canvas>().scaleFactor = 1f;
 
         return root;
+    }
+
+    /// <summary>Sizes <paramref name="root"/>'s safe area to <paramref name="size"/> dp, and returns it.</summary>
+    private static RectTransform Size(GameObject root, Vector2 size)
+    {
+        RectTransform safe = Safe(root);
+
+        safe.anchorMin = new Vector2(0.5f, 0.5f);
+        safe.anchorMax = new Vector2(0.5f, 0.5f);
+        safe.pivot = new Vector2(0.5f, 0.5f);
+        safe.sizeDelta = size * PixelsPerDp();
+        safe.anchoredPosition = Vector2.zero;
+
+        return safe;
     }
 
     private static RectTransform Safe(GameObject root) =>

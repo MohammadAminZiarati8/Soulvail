@@ -13,7 +13,7 @@ Under the preview, four icon tiles show what the class can do; a tap names one a
 |---|---|---|
 | `Game/Presentation/SkillStrip.cs` | Game | four `SkillFrame` tiles, a selection and a caption |
 | `Tests/Game/Presentation/SkillStripTests.cs` | Tests.Game | one row per rule |
-| *small edits* | | `CharacterLook` and `CharacterLookBook` gain `SpaceIcon`; `Ranger`'s look gets `Icon_Roll`; `ClassSelect.prefab` gets the strip; `CharacterPage` calls `Show`; the Ranger's Space move gets a name and description key (`character.ranger.space.name`, `.description`) |
+| *small edits* | | `CharacterLook` and `CharacterLookBook` gain `SpaceIcon`; `Ranger`'s look gets `Icon_Roll`; `ClassSelect.prefab` gets the strip; `CharacterPage` calls `Show`; the Ranger's Space move gets a name and description key (`character.ranger.space.name` "Roll", `.description` "A quick roll that slips past attacks.") |
 | *ripple* | | the fakes that build a `CharacterLook` |
 
 ## Public API

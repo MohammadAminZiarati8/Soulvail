@@ -82,3 +82,6 @@ MonoBehaviour:
   _projectile: {fileID: 4033840791202304795, guid: 0970ffa85d8c87d4885a77d52bfa88cd, type: 3}
   _volleyNode: {fileID: 11400000, guid: 64824180c572399488a5a3cd030382bf, type: 2}
   _emblem: {fileID: 21300000, guid: 0c90605e930981e40a0cd074501c229a, type: 3}
+  _spaceIcon: {fileID: 21300000, guid: 0e7d82889abd1334f91e04dccaf71ed1, type: 3}
+  _spaceNameKey: character.ranger.space.name
+  _spaceDescriptionKey: character.ranger.space.description

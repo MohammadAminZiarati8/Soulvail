@@ -1319,6 +1319,19 @@ public sealed class ContentValidationTests
             // LocalisationSweepTests found the three rows named by nothing it could see.
             yield return new AuthoredKey(path, "the description key", spec.DescriptionKey);
 
+            // UI-05d: the Space move's words live on the look, beside its icon, and the skill strip draws them.
+            CharacterLook look = asset.ToLook();
+
+            if (look.SpaceNameKey.Key is not null)
+            {
+                yield return new AuthoredKey(path, "the Space move's name key", look.SpaceNameKey);
+            }
+
+            if (look.SpaceDescriptionKey.Key is not null)
+            {
+                yield return new AuthoredKey(path, "the Space move's description key", look.SpaceDescriptionKey);
+            }
+
             // The same gap, one field over, and nothing draws a minion's name yet. Swept anyway,
             // so the first screen that does gets a word rather than 'minion.wight.name'.
             if (spec.Minions is not null)

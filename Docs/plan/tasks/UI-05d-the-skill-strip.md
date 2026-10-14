@@ -60,4 +60,12 @@ Under the preview, four icon tiles show what the class can do; a tap names one a
 
 ## As built
 
-_Filled at merge._
+As specified, with the differences below. Batch-mode EditMode: **4 045 run, 4 043 passed, 1 failed, 1 inconclusive**; the failure is `CharacterPreviewTests.Resize_MakesTheTextureCappedAndFreesTheOld`, which fails the same on a clean `dev` (depth 32, not 24) and is not this task's. Not seen in the Editor.
+
+1. **The Space move's words are on the look, not the spec.** Core's `MovementSkillSpec` carries numbers and no text, so `CharacterLook` gained `SpaceIcon`, `SpaceNameKey` and `SpaceDescriptionKey` (trailing optional constructor arguments, so no fake needed a ripple), and `CharacterDefinition` three fields to author them. The Ranger's asset sets `Icon_Roll` and `character.ranger.space.name` / `.description`; English gained "Roll" and "A quick roll that slips past attacks."; `Pseudo.asset` was regenerated.
+2. **Files beyond the table.** `ContentValidationTests.EveryAuthoredKey` now walks the look's two Space keys, because the orphan sweep reads authored keys through the spec and would call the new rows unnamed. `ClassSelectPresenter` takes `SkillIconBook` as a trailing optional parameter and builds the entries; `ClassPageModel` gained an optional `Strip`.
+3. **`SkillStrip.Build` is static and takes the catalog, the book and the look**, so rule 1 is tested without a prefab. A node's icon is null from the book when it has none and the strip draws its own `Icon_Placeholder`.
+4. **Layout.** The strip is 118 dp tall (a 56 dp tile, 8 dp, three 14 sp lines at 1.25) and sits between the dots and the body, so the body gives up that much plus a gap. Tiles are 12 dp apart, centred. A class whose Space key is not authored still gets a fourth tile with an empty caption; the Oathbound, Gravecaller and Emberwright are in that case and are off the focus build.
+5. **`ClassSelect.prefab` was edited in place** by a throwaway batch-mode script, deleted afterwards; the root, its `CanvasGroup` and the presenter keep their file IDs (checked against the Menu scene's references).
+
+Not done: the strip has not been seen in the Editor or on a device. If it crowds the body or the button, adjust `TileDp`, `TileGapDp` and `CaptionGapDp` in `SkillStrip` and `RowGapDp` in `CharacterPage`.

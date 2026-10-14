@@ -41,7 +41,14 @@ namespace Soulvail.Game.Presentation
     public readonly struct ClassPageModel
     {
         public ClassPageModel(
-            CharacterSpec spec, int index, int count, PageButton button, int price, string deedLine, RoleKind role)
+            CharacterSpec spec,
+            int index,
+            int count,
+            PageButton button,
+            int price,
+            string deedLine,
+            RoleKind role,
+            IReadOnlyList<StripEntry> strip = null)
         {
             Spec = spec;
             Index = index;
@@ -50,6 +57,7 @@ namespace Soulvail.Game.Presentation
             Price = price;
             DeedLine = deedLine;
             Role = role;
+            Strip = strip;
         }
 
         public CharacterSpec Spec { get; }
@@ -67,6 +75,9 @@ namespace Soulvail.Game.Presentation
         public string DeedLine { get; }
 
         public RoleKind Role { get; }
+
+        /// <summary>The skill strip's tiles (UI-05d), or null for none.</summary>
+        public IReadOnlyList<StripEntry> Strip { get; }
     }
 
     /// <summary>
@@ -144,6 +155,9 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private RawImage _preview;
         [SerializeField] private Button _previous;
         [SerializeField] private Button _next;
+
+        [Header("Skill strip")]
+        [SerializeField] private SkillStrip _strip;
 
         [Header("Dots")]
         [SerializeField] private RectTransform _dots;
@@ -263,12 +277,18 @@ namespace Soulvail.Game.Presentation
             SetActive(_next, several && model.Index < model.Count - 1);
 
             DrawDots(model.Index, several ? model.Count : 0);
+            DrawStrip(model, localizer);
             DrawButton(model, localizer);
         }
 
         /// <summary>Takes the page off the screen. Nothing is bound or drawn.</summary>
         public void Clear()
         {
+            if (_strip != null)
+            {
+                _strip.Hide();
+            }
+
             gameObject.SetActive(false);
         }
 
@@ -292,7 +312,9 @@ namespace Soulvail.Game.Presentation
             float deedY = bottom;
             float buttonY = deedY + deedHeight + rowGap;
             float dotsY = buttonY + Mathf.Max(buttonHeight, PillHeightDp * px) + rowGap;
-            float previewY = dotsY + dotsHeight + rowGap;
+            float stripY = dotsY + dotsHeight + rowGap;
+            float stripHeight = SkillStrip.HeightDp * px;
+            float previewY = stripY + stripHeight + rowGap;
             float bandHeight = NameBandDp * px;
             float edge = EdgeDp * px;
             float arrow = ArrowDp * px;
@@ -353,6 +375,13 @@ namespace Soulvail.Game.Presentation
             {
                 Anchor(_dots, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, dotsHeight), new Vector2(0f, dotsY), new Vector2(0.5f, 0f));
                 _dots.sizeDelta = new Vector2(0f, dotsHeight);
+            }
+
+            if (_strip != null && _strip.transform is RectTransform strip)
+            {
+                Anchor(strip, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, stripHeight), new Vector2(0f, stripY), new Vector2(0.5f, 0f));
+                strip.sizeDelta = new Vector2(0f, stripHeight);
+                _strip.Layout(px);
             }
 
             if (_deed != null)
@@ -510,6 +539,22 @@ namespace Soulvail.Game.Presentation
                 _roleBadge.sprite = sprite;
                 _roleBadge.gameObject.SetActive(sprite != null);
             }
+        }
+
+        private void DrawStrip(ClassPageModel model, ILocalizer localizer)
+        {
+            if (_strip == null)
+            {
+                return;
+            }
+
+            if (model.Strip == null || model.Strip.Count == 0)
+            {
+                _strip.Hide();
+                return;
+            }
+
+            _strip.Show(model.Strip, localizer);
         }
 
         private void DrawDots(int index, int count)

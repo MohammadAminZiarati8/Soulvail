@@ -244,6 +244,16 @@ namespace Soulvail.Game.Authoring
                  "from Art/UI/Tree/. Empty is not an error: the plate shows the class name alone.")]
         [SerializeField] private Sprite _emblem;
 
+        [Tooltip("The icon of this class's Space move on the class page's skill strip (UI-05d), from " +
+                 "Art/UI/Icons/. Empty draws Icon_Placeholder.")]
+        [SerializeField] private Sprite _spaceIcon;
+
+        [Tooltip("The Space move's name (UI-05d), e.g. character.ranger.space.name. Empty leaves it unnamed.")]
+        [SerializeField] private string _spaceNameKey = string.Empty;
+
+        [Tooltip("The Space move's one line (UI-05d), e.g. character.ranger.space.description.")]
+        [SerializeField] private string _spaceDescriptionKey = string.Empty;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -417,7 +427,10 @@ namespace Soulvail.Game.Authoring
             _body,
             _projectile,
             _volleyNode == null ? default : new ContentId(_volleyNode.Id),
-            _emblem);
+            _emblem,
+            _spaceIcon,
+            string.IsNullOrEmpty(_spaceNameKey) ? default : new LocKey(_spaceNameKey),
+            string.IsNullOrEmpty(_spaceDescriptionKey) ? default : new LocKey(_spaceDescriptionKey));
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

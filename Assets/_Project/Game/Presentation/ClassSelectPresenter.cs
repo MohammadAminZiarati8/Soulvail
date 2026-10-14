@@ -113,6 +113,8 @@ namespace Soulvail.Game.Presentation
         private ClassSelectRoster _roster;
         private CharacterPreview _preview;
         private CharacterLookBook _looks;
+        private SkillIconBook _icons;
+        private readonly List<StripEntry> _strip = new List<StripEntry>(SkillStrip.MaxTiles);
         private SceneLoader _loader;
         private ILocalizer _localizer;
         private ProfileStore _profile;
@@ -192,7 +194,8 @@ namespace Soulvail.Game.Presentation
             ProfileStore profile,
             ClassSelectRoster roster = null,
             CharacterPreview preview = null,
-            CharacterLookBook looks = null)
+            CharacterLookBook looks = null,
+            SkillIconBook icons = null)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
@@ -203,6 +206,7 @@ namespace Soulvail.Game.Presentation
             _roster = roster;
             _preview = preview;
             _looks = looks;
+            _icons = icons;
 
             Wire(_back, Close);
 
@@ -414,6 +418,8 @@ namespace Soulvail.Game.Presentation
                 ? PageButton.Choose
                 : ClassUnlocks.CanBuy(spec.Id, _drawn, _catalog) ? PageButton.Unlock : PageButton.Dead;
 
+            SkillStrip.Build(spec, _catalog, _icons, _looks?.For(spec.Id) ?? default, _strip);
+
             _page.Show(
                 new ClassPageModel(
                     spec,
@@ -422,7 +428,8 @@ namespace Soulvail.Game.Presentation
                     button,
                     owned ? 0 : spec.Unlock.ShardPrice,
                     owned ? null : DeedLine(spec.Unlock),
-                    RoleOf(spec)),
+                    RoleOf(spec),
+                    _strip),
                 _localizer);
         }
 

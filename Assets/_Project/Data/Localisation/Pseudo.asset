@@ -312,18 +312,22 @@ MonoBehaviour:
     _text: "[\xC1r\xE7\xE1\xF1\xE1 \xB7\xB7\xB7]"
   - _key: tree.emberwright.ash
     _text: "[\xC1sh \xB7\xB7]"
-  - _key: ui.classselect.title
-    _text: "[\xC7h\xF4\xF4s\xE9 \xFD\xF4\xFBr \xE7l\xE1ss \xB7\xB7\xB7\xB7\xB7\xB7]"
-  - _key: ui.classselect.back
-    _text: "[B\xE1\xE7k \xB7\xB7]"
-  - _key: ui.classselect.balance
-    _text: "[{0} S\xF4\xFBl Sh\xE1rds \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.classselect.locked.price
     _text: "[{0} S\xF4\xFBl Sh\xE1rds \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.classselect.locked.buy
     _text: "[\xDB\xF1l\xF4\xE7k: {0} S\xF4\xFBl Sh\xE1rds \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.classselect.locked.deed
     _text: "[\xF4r r\xE9\xE1\xE7h st\xE1g\xE9 {0} \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.classselect.choose
+    _text: "[\xC7h\xF4\xF4s\xE9 \xB7\xB7\xB7]"
+  - _key: ui.classselect.unlock
+    _text: "[\xDB\xF1l\xF4\xE7k \xB7\xB7\xB7]"
+  - _key: ui.classselect.role.ranged
+    _text: "[R\xE1\xF1g\xE9d \xB7\xB7\xB7]"
+  - _key: ui.classselect.role.melee
+    _text: "[M\xE9l\xE9\xE9 \xB7\xB7]"
+  - _key: ui.classselect.role.caster
+    _text: "[\xC7\xE1st\xE9r \xB7\xB7\xB7]"
   - _key: ui.classselect.hp
     _text: "[{0:0} HP \xB7\xB7\xB7]"
   - _key: ui.classselect.speed

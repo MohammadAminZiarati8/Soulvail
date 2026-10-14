@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Soulvail.Core.Content;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
@@ -129,35 +131,27 @@ public sealed class BootSmokeTests
             Is.EqualTo(SceneLoader.Menu),
             "Descend loaded a scene. Since M5-07 the class is chosen first, one screen along.");
 
-        ClassCard[] cards = Field<ClassCard[]>(screen, "_cards");
-        ClassCard card = FirstOwned(cards);
-        Assert.That(
-            card != null,
-            Is.True,
-            "No card on the class-select screen plays a run, and the starter is never priced.");
+        var page = Field<CharacterPage>(screen, "_page");
+        var shown = Field<IReadOnlyList<CharacterSpec>>(screen, "_shown");
 
-        Field<Button>(card, "_button").onClick.Invoke();
+        Assert.That(page.ButtonState, Is.EqualTo(PageButton.Choose), "The first page is not a class the player can play, and the starter is never priced.");
+
+        page.Primary.onClick.Invoke();
 
         // Read before the load answers: RunTicker clears the slot once the run has its config.
         PendingRun pending = LifetimeScope.Find<BootScope>().Container.Resolve<PendingRun>();
-        Assert.That(pending.IsSet, Is.True, "The card's tap recorded no run.");
-        Assert.That(pending.CharacterId, Is.EqualTo(card.CharacterId), "The run is not the tapped class.");
+        Assert.That(pending.IsSet, Is.True, "The Choose tap recorded no run.");
+        Assert.That(pending.CharacterId, Is.EqualTo(shown[screen.Index].Id), "The run is not the class on the page.");
         Assert.That(
             pending.Snapshot,
             Is.Null,
             "The tap resumed the run on disk rather than starting a fresh one.");
 
-        foreach (ClassCard each in cards)
-        {
-            if (each != null && each.IsShown)
-            {
-                Assert.That(
-                    each.IsInteractable,
-                    Is.False,
-                    "A card stayed interactable while the run was loading, so a second touch " +
-                    "would start a second load.");
-            }
-        }
+        Assert.That(
+            page.Primary.interactable,
+            Is.False,
+            "The button stayed interactable while the run was loading, so a second touch " +
+            "would start a second load.");
 
         yield return WaitFor(SceneLoader.Run);
 
@@ -185,23 +179,6 @@ public sealed class BootSmokeTests
         Assert.That(field, Is.Not.Null, $"{owner.GetType().Name} has no field {name} any more.");
 
         return (T)field.GetValue(owner);
-    }
-
-    /// <summary>
-    /// The first card that plays a run rather than buying a class, or null. The Oathbound on any
-    /// profile, since the starter is never priced.
-    /// </summary>
-    private static ClassCard FirstOwned(ClassCard[] cards)
-    {
-        foreach (ClassCard card in cards)
-        {
-            if (card != null && card.State == ClassCardState.Owned)
-            {
-                return card;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>

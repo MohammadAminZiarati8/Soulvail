@@ -474,10 +474,10 @@ public sealed class EmberwrightTests
             "MovementSkillSpec.Decoy's line, unchanged by a third member: only a Shroudstep leaves one.");
     }
 
-    // ---- Rule 9: the third card, with no prefab edit ------------------------------------------------
+    // ---- Rule 9: the third class, with no prefab edit ----------------------------------------------
 
     [Test]
-    public void Class_TheThirdCardIsBoundWithNoPrefabEdit()
+    public void Class_TheThirdClassIsReachedWithNoPrefabEdit()
     {
         string before = File.ReadAllText(ClassSelectPath);
 
@@ -501,20 +501,21 @@ public sealed class EmberwrightTests
 
         presenter.Open();
 
-        var cards = (ClassCard[])typeof(ClassSelectPresenter)
-            .GetField("_cards", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+        // UI-05c: the roster is a list the page steps through, so a class arriving is an entry, not
+        // a card on the prefab.
+        var next = typeof(ClassSelectPresenter)
+            .GetMethod("Next", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        next.Invoke(presenter, null);
+        next.Invoke(presenter, null);
+
+        Assert.That(presenter.Index, Is.EqualTo(2), "two steps from the first class do not reach the third.");
+
+        var shown = (System.Collections.Generic.IReadOnlyList<CharacterSpec>)typeof(ClassSelectPresenter)
+            .GetField("_shown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             .GetValue(presenter);
 
-        Assert.That(cards.Length, Is.EqualTo(4), "the prefab authors CH §3's roster of three and the Ranger.");
-
-        foreach (ClassCard card in cards)
-        {
-            Assert.That(card.IsShown, Is.True, "every card is bound: the catalog holds four classes.");
-        }
-
-        Assert.That(cards[2].CharacterId.Value, Is.EqualTo(EmberwrightId),
-            "ClassCard.Clear's own prediction: the Emberwright's arrival is a card being filled.");
-
+        Assert.That(shown[2].Id.Value, Is.EqualTo(EmberwrightId));
         Assert.That(File.ReadAllText(ClassSelectPath), Is.EqualTo(before), "and the prefab on disk did not move.");
     }
 

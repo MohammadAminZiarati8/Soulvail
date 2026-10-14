@@ -65,11 +65,16 @@ namespace Soulvail.Game.Composition
             builder.RegisterComponent(_menu);
             builder.RegisterComponent(_classSelect);
 
-            // Optional until UI-05c wires the page that shows it; the Menu scene carries one stage.
-            if (_preview != null)
+            // Required since UI-05c: the character page shows the class's body through it.
+            if (_preview == null)
             {
-                builder.RegisterComponent(_preview);
+                throw new MissingReferenceException(
+                    $"{nameof(MenuScope)} has no {nameof(CharacterPreview)} assigned. Drag the " +
+                    "CharacterStage object in this scene onto its Preview field — without it the " +
+                    "class-select page stands no body on its pedestal.");
             }
+
+            builder.RegisterComponent(_preview);
         }
     }
 }

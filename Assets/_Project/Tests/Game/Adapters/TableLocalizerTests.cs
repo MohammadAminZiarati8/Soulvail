@@ -849,7 +849,7 @@ public sealed class TableLocalizerTests
         {
             "ui.app.title", "ui.menu.descend", "ui.menu.continue", "ui.death.title", "ui.death.hint",
             "ui.runend.depth", "ui.runend.bosses", "ui.runend.shards",
-            "ui.classselect.title", "ui.classselect.back",
+            "ui.classselect.choose", "ui.classselect.unlock",
         })
         {
             Assert.That(shipped.Has(new LocKey(key)), Is.True, $"English.asset has no row for {key}.");

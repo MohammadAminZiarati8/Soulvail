@@ -294,18 +294,22 @@ MonoBehaviour:
     _text: Arcana
   - _key: tree.emberwright.ash
     _text: Ash
-  - _key: ui.classselect.title
-    _text: Choose your class
-  - _key: ui.classselect.back
-    _text: Back
-  - _key: ui.classselect.balance
-    _text: '{0} Soul Shards'
   - _key: ui.classselect.locked.price
     _text: '{0} Soul Shards'
   - _key: ui.classselect.locked.buy
     _text: 'Unlock: {0} Soul Shards'
   - _key: ui.classselect.locked.deed
     _text: or reach stage {0}
+  - _key: ui.classselect.choose
+    _text: Choose
+  - _key: ui.classselect.unlock
+    _text: Unlock
+  - _key: ui.classselect.role.ranged
+    _text: Ranged
+  - _key: ui.classselect.role.melee
+    _text: Melee
+  - _key: ui.classselect.role.caster
+    _text: Caster
   - _key: ui.classselect.hp
     _text: '{0:0} HP'
   - _key: ui.classselect.speed

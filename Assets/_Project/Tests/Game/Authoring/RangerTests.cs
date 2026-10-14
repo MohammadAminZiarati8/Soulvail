@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
-using Soulvail.Game.Controls;
-using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
@@ -41,8 +38,6 @@ public sealed class RangerTests
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private const string DescentPath = "Assets/_Project/Data/Modes/Descent.asset";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
-    private const string ClassSelectPath = "Assets/_Project/Prefabs/UI/ClassSelect.prefab";
-    private const string MenuScenePath = "Assets/_Project/Scenes/Menu.unity";
     private const string BodyPath = "Assets/_Project/Prefabs/Player/Bodies/Ranger.prefab";
     private const string ArrowPath = "Assets/_Project/Prefabs/Projectiles/Arrow.prefab";
 
@@ -64,11 +59,6 @@ public sealed class RangerTests
     private const int BandLow = 3;
 
     private const int BandHigh = 5;
-
-    /// <summary>The Menu canvas's <c>CanvasScaler</c>, as <c>Menu.unity</c> authors it.</summary>
-    private const float ReferenceWidth = 1920f;
-
-    private const float ReferenceHeight = 1080f;
 
     private const int EnemyCapacity = 8;
     private const float Tolerance = 1e-5f;
@@ -200,76 +190,6 @@ public sealed class RangerTests
         Assert.That(look.Projectile, Is.SameAs(arrow), "RS-02c's Arrow.prefab.");
     }
 
-    // ---- Rule 6: four cards on the Menu --------------------------------------------------------------
-
-    [Test]
-    public void Cards_FourFitTheMenu()
-    {
-        // The reference, read off the Menu scene rather than restated: one CanvasScaler, 1920 × 1080
-        // at match 0.5, which is the only canvas ClassSelect.prefab is ever drawn under.
-        string[] menu = File.ReadAllLines(MenuScenePath);
-
-        Assert.That(Lines(menu, "m_ReferenceResolution:"), Is.EqualTo(new[] { "m_ReferenceResolution: {x: 1920, y: 1080}" }));
-        Assert.That(Lines(menu, "m_MatchWidthOrHeight:"), Is.EqualTo(new[] { "m_MatchWidthOrHeight: 0.5" }));
-
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ClassSelectPath);
-
-        Assert.That(prefab, Is.Not.Null, $"No prefab at {ClassSelectPath}.");
-
-        var root = (RectTransform)prefab.transform;
-
-        Assert.That(root.anchorMin, Is.EqualTo(Vector2.zero), "the screen fills its canvas.");
-        Assert.That(root.anchorMax, Is.EqualTo(Vector2.one));
-        Assert.That(root.offsetMin, Is.EqualTo(Vector2.zero));
-        Assert.That(root.offsetMax, Is.EqualTo(Vector2.zero));
-
-        var canvas = new Rect(-ReferenceWidth / 2f, -ReferenceHeight / 2f, ReferenceWidth, ReferenceHeight);
-
-        var cards = (ClassCard[])typeof(ClassSelectPresenter)
-            .GetField("_cards", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            .GetValue(prefab.GetComponent<ClassSelectPresenter>());
-
-        Assert.That(cards, Has.Length.EqualTo(4), "a card for each of the four classes.");
-
-        var rects = new Rect[cards.Length];
-
-        for (int i = 0; i < cards.Length; i++)
-        {
-            Assert.That(cards[i], Is.Not.Null, $"_cards[{i}] is an empty slot.");
-
-            var rect = (RectTransform)cards[i].transform;
-
-            Assert.That(rect.parent, Is.SameAs(root), $"card {i} sits directly on the screen.");
-            Assert.That(rect.localScale, Is.EqualTo(UnityEngine.Vector3.one), $"card {i} is unscaled.");
-            Assert.That(rect.localRotation, Is.EqualTo(Quaternion.identity), $"card {i} is unrotated.");
-
-            rects[i] = In(rect, canvas);
-
-            Assert.That(Contains(canvas, rects[i]), Is.True, $"card {i} at {rects[i]} leaves the 1920 × 1080 reference.");
-
-            for (int j = 0; j < i; j++)
-            {
-                Assert.That(cards[j], Is.Not.SameAs(cards[i]), $"cards {j} and {i} are one card.");
-                Assert.That(rects[i].Overlaps(rects[j]), Is.False, $"card {i} at {rects[i]} overlaps card {j} at {rects[j]}.");
-            }
-        }
-
-        // And nothing else on the screen is under one.
-        foreach (string other in new[] { "Title", "Balance", "Back" })
-        {
-            var rect = (RectTransform)root.Find(other);
-
-            Assert.That(rect, Is.Not.Null, $"the screen has no {other}.");
-
-            Rect drawn = In(rect, canvas);
-
-            for (int i = 0; i < rects.Length; i++)
-            {
-                Assert.That(drawn.Overlaps(rects[i]), Is.False, $"{other} at {drawn} overlaps card {i} at {rects[i]}.");
-            }
-        }
-    }
-
     // ---- Fixtures ----------------------------------------------------------------------------------
 
     private static CharacterDefinition Definition()
@@ -331,42 +251,4 @@ public sealed class RangerTests
 
         return new ContentCatalog(specs);
     }
-
-    /// <summary>Every trimmed line of <paramref name="lines"/> that starts with <paramref name="field"/>.</summary>
-    private static string[] Lines(string[] lines, string field)
-    {
-        var found = new List<string>();
-
-        foreach (string line in lines)
-        {
-            string trimmed = line.Trim();
-
-            if (trimmed.StartsWith(field, StringComparison.Ordinal))
-            {
-                found.Add(trimmed);
-            }
-        }
-
-        return found.ToArray();
-    }
-
-    /// <summary>
-    /// Where <paramref name="child"/> is drawn inside <paramref name="parent"/>, a rectangle in the
-    /// parent's own space: the anchors placed on the parent, then the offsets added. What a
-    /// <c>RectTransform</c> does, without asking a canvas to have done it.
-    /// </summary>
-    private static Rect In(RectTransform child, Rect parent)
-    {
-        Vector2 anchorMin = parent.min + Vector2.Scale(child.anchorMin, parent.size);
-        Vector2 anchorMax = parent.min + Vector2.Scale(child.anchorMax, parent.size);
-
-        return Rect.MinMaxRect(
-            anchorMin.x + child.offsetMin.x,
-            anchorMin.y + child.offsetMin.y,
-            anchorMax.x + child.offsetMax.x,
-            anchorMax.y + child.offsetMax.y);
-    }
-
-    private static bool Contains(Rect outer, Rect inner) =>
-        inner.xMin >= outer.xMin && inner.yMin >= outer.yMin && inner.xMax <= outer.xMax && inner.yMax <= outer.yMax;
 }

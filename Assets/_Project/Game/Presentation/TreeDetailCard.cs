@@ -29,6 +29,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>The height <see cref="Layout"/> is built for, in dp; the presenter sizes the card to it.</summary>
         public const float HeightDp = 176f;
 
+        /// <summary>The height of the compact, horizontal card a short screen gets (UI-07d), in dp.</summary>
+        public const float CompactHeightDp = 88f;
+
         private const float PadDp = 10f;
         private const float RibbonWidthDp = 220f;
         private const float RibbonHeightDp = 40f;
@@ -46,6 +49,13 @@ namespace Soulvail.Game.Presentation
         private const float LearnCountWidthDp = 18f;
         private const float LearnPadDp = 22f;
         private const float HintTextDp = 16f;
+
+        private const float CompactPadDp = 8f;
+        private const float CompactRibbonWidthDp = 200f;
+        private const float CompactRibbonHeightDp = 26f;
+        private const float CompactRibbonTextDp = 14f;
+        private const float CompactDescriptionTextDp = 12f;
+        private const float CompactLearnWidthDp = 150f;
 
         private const float CardBorderPx = 80f;
         private const float CardBorderDp = 14f;
@@ -236,8 +246,20 @@ namespace Soulvail.Game.Presentation
         /// Sizes and places every piece inside the card from its current rect, in canvas units
         /// <paramref name="px"/> to the dp.
         /// </summary>
-        public void Layout(float px)
+        /// <param name="px">Canvas units to the dp.</param>
+        /// <param name="compact">
+        /// The short-screen card (UI-07d): the tile on the left, the name, level and description in
+        /// the middle, Learn on the right, in <see cref="CompactHeightDp"/>.
+        /// </param>
+        public void Layout(float px, bool compact = false)
         {
+            if (compact)
+            {
+                LayoutCompact(px);
+
+                return;
+            }
+
             float pad = PadDp * px;
             float width = transform is RectTransform self ? self.rect.width : 0f;
 
@@ -320,6 +342,110 @@ namespace Soulvail.Game.Presentation
             if (_costCount != null)
             {
                 Anchor(_costCount.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(count, LearnHeightDp * px), new Vector2(-inset, 0f));
+                _costCount.fontSize = LearnTextDp * px;
+                _costCount.alignment = TextAlignmentOptions.Center;
+            }
+
+            if (_costIcon != null)
+            {
+                Anchor(_costIcon.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(icon, icon), new Vector2(-(inset + count), 0f));
+            }
+
+            if (_learnLabel != null)
+            {
+                Stretch(_learnLabel.rectTransform, inset, 0f, inset + count + icon, 0f);
+                _learnLabel.fontSize = LearnTextDp * px;
+                _learnLabel.alignment = TextAlignmentOptions.Center;
+            }
+        }
+
+        private void LayoutCompact(float px)
+        {
+            float pad = CompactPadDp * px;
+            float width = transform is RectTransform self ? self.rect.width : 0f;
+
+            if (!float.IsFinite(width) || width <= 0f)
+            {
+                width = 600f * px;
+            }
+
+            float height = CompactHeightDp * px;
+            float tile = TileDp * px;
+            float learnW = CompactLearnWidthDp * px;
+            float learnH = LearnHeightDp * px;
+            float textLeft = pad + tile + (BodyGapDp * px);
+            float textWidth = Mathf.Max(0f, width - textLeft - pad - learnW - (BodyGapDp * px));
+            float ribbonH = CompactRibbonHeightDp * px;
+            float ribbonW = Mathf.Min(CompactRibbonWidthDp * px, textWidth);
+            float rowTop = -(6f * px);
+
+            Border(_background, CardBorderPx, CardBorderDp * px);
+
+            if (_ribbon != null)
+            {
+                Anchor(_ribbon, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(ribbonW, ribbonH), new Vector2(textLeft, rowTop));
+                Border(_ribbon.GetComponent<Image>(), RibbonBorderPx, ribbonH * RibbonBorderPx / RibbonSpriteHeightPx);
+            }
+
+            if (_title != null)
+            {
+                Stretch(_title.rectTransform, RibbonTextInsetDp * px, 0f, RibbonTextInsetDp * px, 0f);
+                _title.fontSize = CompactRibbonTextDp * px;
+                _title.alignment = TextAlignmentOptions.Center;
+                _title.overflowMode = TextOverflowModes.Ellipsis;
+            }
+
+            if (_tile != null)
+            {
+                Anchor(_tile.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(tile, tile), new Vector2(pad, 0f));
+            }
+
+            if (_icon != null)
+            {
+                Anchor(_icon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(tile * 0.62f, tile * 0.62f), Vector2.zero);
+            }
+
+            float levelLeft = textLeft + ribbonW + (BodyGapDp * px);
+
+            if (_level != null)
+            {
+                Anchor(_level.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(Mathf.Max(0f, textLeft + textWidth - levelLeft), ribbonH), new Vector2(levelLeft, rowTop));
+                _level.fontSize = LevelTextDp * px;
+                _level.alignment = TextAlignmentOptions.MidlineLeft;
+                _level.overflowMode = TextOverflowModes.Ellipsis;
+            }
+
+            float descTop = rowTop - ribbonH - (4f * px);
+
+            if (_description != null)
+            {
+                Anchor(_description.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(textWidth, height + descTop - pad), new Vector2(textLeft, descTop));
+                _description.fontSize = CompactDescriptionTextDp * px;
+                _description.alignment = TextAlignmentOptions.TopLeft;
+                _description.overflowMode = TextOverflowModes.Ellipsis;
+                _description.textWrappingMode = TextWrappingModes.Normal;
+            }
+
+            if (_hint != null)
+            {
+                Stretch(_hint.rectTransform, pad, pad, pad, pad);
+                _hint.fontSize = HintTextDp * px;
+                _hint.alignment = TextAlignmentOptions.Center;
+            }
+
+            if (_learn != null && _learn.transform is RectTransform learn)
+            {
+                Anchor(learn, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(learnW, learnH), new Vector2(-pad, 0f));
+                Border(_learnFace, ButtonBorderPx, learnH * ButtonBorderPx / ButtonSpriteHeightPx);
+            }
+
+            float icon = LearnIconDp * px;
+            float count = LearnCountWidthDp * px;
+            float inset = LearnPadDp * px;
+
+            if (_costCount != null)
+            {
+                Anchor(_costCount.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(count, learnH), new Vector2(-inset, 0f));
                 _costCount.fontSize = LearnTextDp * px;
                 _costCount.alignment = TextAlignmentOptions.Center;
             }

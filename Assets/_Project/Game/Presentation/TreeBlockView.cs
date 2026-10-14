@@ -45,6 +45,8 @@ namespace Soulvail.Game.Presentation
         private const float LinkWidthRatio = 0.3f;
         private const float LinkSpritePx = 147f;
         private const float NumeralDp = 12f;
+        private const float CompactPadDp = 4f;
+        private const float CompactBranchLabelDp = 18f;
 
         /// <summary><em>"LV {0:0}"</em> — a row's label.</summary>
         private static readonly LocKey RowKey = new LocKey("ui.tree.row");
@@ -84,6 +86,12 @@ namespace Soulvail.Game.Presentation
         /// <summary>Where the plate's name starts with and without an emblem, set by <see cref="Arrange"/>.</summary>
         private float _emblemRight;
         private float _plateInset;
+
+        /// <summary>
+        /// Whether the block is on a short screen (UI-07d): tighter padding and labels, and no class
+        /// plate. Set by the presenter before <see cref="Arrange"/>.
+        /// </summary>
+        public bool Compact { get; set; }
 
         /// <summary>Icon_Placeholder, for a skill with no icon of its own (UI-04c rule 3).</summary>
         public Sprite Placeholder => _placeholder;
@@ -137,11 +145,13 @@ namespace Soulvail.Game.Presentation
             }
 
             var block = (RectTransform)transform;
-            float pad = PadDp * pxPerDp;
+            float pad = (Compact ? CompactPadDp : PadDp) * pxPerDp;
             float labelW = RowLabelDp * pxPerDp;
-            float labelH = BranchLabelDp * pxPerDp;
-            float plateH = PlateHeightDp * pxPerDp;
-            float plateGap = PlateGapDp * pxPerDp;
+            float labelH = (Compact ? CompactBranchLabelDp : BranchLabelDp) * pxPerDp;
+
+            // A short screen has no room for the class plate (UI-07d).
+            float plateH = Compact ? 0f : PlateHeightDp * pxPerDp;
+            float plateGap = Compact ? 0f : PlateGapDp * pxPerDp;
 
             int rows = 1;
             int per = 1;
@@ -401,6 +411,13 @@ namespace Soulvail.Game.Presentation
         private void ArrangePlate(float panelH, float plateGap, float plateH, float width, float pxPerDp)
         {
             if (_plate == null)
+            {
+                return;
+            }
+
+            _plate.gameObject.SetActive(!Compact);
+
+            if (Compact)
             {
                 return;
             }

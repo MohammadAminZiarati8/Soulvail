@@ -133,6 +133,14 @@ namespace Soulvail.Game.Presentation
         /// <summary>The room kept under the block for UI-04d's card, in dp (UI-04c rule 10).</summary>
         private const float CardSpaceDp = 190f;
 
+        // A safe area shorter than this cannot stack the block over the full card, so the card goes
+        // compact (UI-07d): 320 dp tall is the look pass's phone, 432 dp the next one up.
+        private const float CompactBelowDp = 480f;
+        private const float CompactBottomDp = 16f;
+        private const float CompactGapDp = 8f;
+        private const float CompactTopGapDp = 2f;
+        private const float CompactCellGapDp = 4f;
+
         /// <summary>
         /// <em>"This class has no skill tree yet."</em> — shown instead of the columns for a class
         /// with none (M3-09d rule 2).
@@ -254,6 +262,12 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private readonly List<TreeNodeButton> _cells = new List<TreeNodeButton>();
 
+        /// <summary>Canvas units to the dp when set above 0, else read from the screen (UI-07d rule 4).</summary>
+        private float _pxPerDpOverride;
+
+        /// <summary>Whether the last layout was the short-screen one: compact card, no plate.</summary>
+        private bool _compact;
+
         /// <summary>The tapped node, or <c>default</c>; cleared on open and on <see cref="Close"/>.</summary>
         private ContentId _selected;
 
@@ -275,6 +289,24 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The node whose card is showing, or <c>default</c> when none is (UI-04d rule 2).</summary>
         public ContentId Selected => _selected;
+
+        /// <summary>Whether the last layout used the compact card for a short screen (UI-07d).</summary>
+        public bool IsCompact => _compact;
+
+        /// <summary>
+        /// Lays the screen out with <paramref name="canvasUnitsPerDp"/> instead of the screen's own,
+        /// redrawing if it is open: what a device would have, for a layout check (UI-07d rule 4).
+        /// Zero or less goes back to the screen's.
+        /// </summary>
+        public void UsePixelsPerDp(float canvasUnitsPerDp)
+        {
+            _pxPerDpOverride = float.IsFinite(canvasUnitsPerDp) && canvasUnitsPerDp > 0f ? canvasUnitsPerDp : 0f;
+
+            if (IsOpen && _session?.State is not null)
+            {
+                Draw(_session.State);
+            }
+        }
 
         /// <summary>Whether the screen is currently up — both doors' poll (rule 5).</summary>
         public bool IsOpen => _root != null && _root.alpha > 0f;
@@ -582,7 +614,7 @@ namespace Soulvail.Game.Presentation
             {
                 float px = PixelsPerDp();
 
-                _block.Arrange(tree, _cells, _branchColumns, _branchLabels, px, CellHeight * px, CellGap * px);
+                _block.Arrange(tree, _cells, _branchColumns, _branchLabels, px, CellHeight * px, (_compact ? Mathf.Min(CellGap, CompactCellGapDp) : CellGap) * px);
             }
 
             int index = 0;
@@ -661,7 +693,7 @@ namespace Soulvail.Game.Presentation
             }
 
             _card.gameObject.SetActive(true);
-            _card.Layout(PixelsPerDp());
+            _card.Layout(PixelsPerDp(), _compact);
 
             if (spec is null || _localizer is null)
             {
@@ -942,20 +974,35 @@ namespace Soulvail.Game.Presentation
             if (_block != null && _block.transform is RectTransform grid)
             {
                 float inset = margin + (ContentInsetDp * px);
+                float safeHeight = _frame != null && _frame.parent is RectTransform area ? area.rect.height : 0f;
+
+                // A safe area too short for the block over the full card gets the compact one
+                // (UI-07d); an unmeasured one keeps the full card.
+                _compact = float.IsFinite(safeHeight) && safeHeight > 0f && safeHeight / px < CompactBelowDp;
+                _block.Compact = _compact;
+
+                float bottom = _compact ? margin + (CompactBottomDp * px) : inset;
+                float cardHeight = (_compact ? TreeDetailCard.CompactHeightDp : TreeDetailCard.HeightDp) * px;
+                float above = _compact
+                    ? bottom + cardHeight + (CompactGapDp * px)
+                    : inset + (CardSpaceDp * px);
+                float below = _compact
+                    ? top + (ribbonHeight / 2f) + (CompactTopGapDp * px)
+                    : top + (ribbonHeight / 2f) + margin;
 
                 if (_card != null && _card.transform is RectTransform card)
                 {
                     card.anchorMin = new Vector2(0f, 0f);
                     card.anchorMax = new Vector2(1f, 0f);
                     card.pivot = new Vector2(0.5f, 0f);
-                    card.offsetMin = new Vector2(inset, inset);
-                    card.offsetMax = new Vector2(-inset, inset + (TreeDetailCard.HeightDp * px));
+                    card.offsetMin = new Vector2(inset, bottom);
+                    card.offsetMax = new Vector2(-inset, bottom + cardHeight);
                 }
 
                 grid.anchorMin = Vector2.zero;
                 grid.anchorMax = Vector2.one;
-                grid.offsetMin = new Vector2(inset, inset + (CardSpaceDp * px));
-                grid.offsetMax = new Vector2(-inset, -(top + (ribbonHeight / 2f) + margin));
+                grid.offsetMin = new Vector2(inset, above);
+                grid.offsetMax = new Vector2(-inset, -below);
             }
         }
 
@@ -1134,6 +1181,11 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private float PixelsPerDp()
         {
+            if (_pxPerDpOverride > 0f)
+            {
+                return _pxPerDpOverride;
+            }
+
             var canvas = GetComponentInParent<Canvas>();
             float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
 

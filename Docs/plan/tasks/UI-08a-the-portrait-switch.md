@@ -38,4 +38,6 @@ Any layout, camera or canvas change: UI-08b to UI-08e. The application identifie
 
 ## As built
 
-_Filled at merge._
+**Built.** `ProjectSettings.asset`: `defaultScreenOrientation` Portrait, all four `allowedAutorotateTo*` off (set through `PlayerSettings` in the Editor; `useOSAutorotation` left at 1, inert with every side off). `OrientationTests.Orientation_IsPortraitOnly` reads them. Words: `CLAUDE.md` header; GD §1 platform, §5.2, §7.2, §16.1 headings and open question 2 (now the ruling); CC §2 ergonomic line; the ROADMAP UI bullet. The 45 % stick number (CC §2.1, GD §5.2) and the landscape diagram/HUD positions are marked for UI-08c, not re-derived.
+
+**Judgement calls.** GD §5.2 and §16.1 keep their landscape diagram and table, flagged in the heading, because re-laying them is UI-08c. No Device Simulator was opened: manual step 1 and the device step are owed to the owner.

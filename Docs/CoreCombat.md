@@ -25,7 +25,7 @@ Nothing else. No stages, no waves, no tree, no art. If this isn't fun with untex
 
 | Property | Value | Notes |
 |---|---|---|
-| **Virtual joystick region (VJR)** | Left **45%** of screen width, full height below the top HUD strip | Touches outside it do not move you |
+| **Virtual joystick region (VJR)** | Left **45%** of screen width, full height below the top HUD strip | Touches outside it do not move you | *(landscape number; UI-08c re-derives it for portrait)*
 | **Origin** | Fixed: 110 × 110 dp from the safe area's bottom-left, always visible (tune on device) | *Fixed*, by the owner's ruling of 2026-10-13, superseding "floating, never fixed". A touch anywhere in the VJR grabs it and is measured from the fixed centre. The floating stick survives behind `FloatingStick._floating`. |
 | **Deadzone** | 8 dp | Below this, no movement |
 | **Full-speed threshold** | 40 dp | See §2.2 |
@@ -265,7 +265,7 @@ Passive skills have no toggle and no button. The movement skill is always manual
 
 Attempting to set a 5th skill to Manual prompts: *"Manual slots full — which skill goes back to auto?"* with the current four shown. Never silently refuse, and never silently swap.
 
-Four is the ergonomic ceiling for a right thumb in landscape, and it's the same budget Diablo Immortal settled on for the same reason.
+Four is the ergonomic ceiling for a right thumb in portrait, and it's the same budget Diablo Immortal settled on for the same reason.
 
 ```
                           ╭────╮

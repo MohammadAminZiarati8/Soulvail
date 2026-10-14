@@ -342,8 +342,8 @@ buttons, the arrows, the reticle, the telegraphs and every overlay screen are la
 - **It is the owner's art direction, not a milestone's.** GD §16.4's colour law still governs it:
   `Palette` is the only source of colour, every fill is a white sprite tinted from it, and red-orange
   means danger alone. The ghost goes pale cyan, because gold means rewards.
-- **Landscape today, portrait next.** The owner ruled the game portrait on 2026-09-29, and nothing has
-  switched yet. So every piece is placed in dp from the safe area's top edge, and one row
+- **Portrait since UI-08a.** The owner ruled the game portrait on 2026-09-29, and UI-08a switched
+  the project. So every piece is placed in dp from the safe area's top edge, and one row
   (`HudLayoutTests`) lays the band out at 20:9 and at 9:20 and finds nothing overlapping.
 - **Switched off is not removed.** The Essence counter, the Veilrot meter and the Aegis ring stay
   wired and move out of the new pieces' way. The new levelling flow and its "+1" bubble are not this
@@ -392,7 +392,7 @@ What the planning found:
 | UI-07b | [A look-capture tool](tasks/UI-07b-the-look-capture-tool.md) — Editor-only; world and canvases, as the Simulator shows them, to a PNG | S | UI-07a | ☑ |
 | UI-07c | [Lilita One everywhere](tasks/UI-07c-lilita-one-everywhere.md) — Menu, TreeView, Pause, RunEnd off LiberationSans | S | UI-07a | ☑ |
 | UI-07d | [The tree's labels and centring](tasks/UI-07d-tree-labels-and-centring.md) — branch names clear the card; the block centred | S | UI-07a | ☑ |
-| UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☐ |
+| UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☑ |
 | UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☐ |
 | UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☐ |
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☐ |

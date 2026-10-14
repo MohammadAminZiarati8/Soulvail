@@ -3,7 +3,7 @@
 **Version:** 0.2 (founding draft, mobile-first)
 **Date:** 2026-09-06
 **Engine:** Unity 6.3 (`6000.3.23f1`), Universal Render Pipeline 17.3, Input System 1.20
-**Target platform:** **Android** (phone-first, landscape). PC is a possible later port, not a design constraint.
+**Target platform:** **Android** (phone-first, portrait). PC is a possible later port, not a design constraint.
 **Perspective:** Top-down twin-stick — *decided*
 **Companion docs:** [Characters.md](Characters.md) — classes, skills, in-run trees · [CoreCombat.md](CoreCombat.md) — movement, targeting, attack, skill casting (build spec)
 **Mode:** V1 ships one mode, **Descent** (endless). More modes later — see §4.5.
@@ -117,7 +117,7 @@ This is the model Archero and Survivor.io use, and it dominates the genre for a 
 
 Critically, **this makes our pillars stronger, not weaker.** P2 already says "movement is the answer." Removing manual aim doesn't remove skill — it concentrates *all* skill into positioning, which is exactly where we wanted it.
 
-### 5.2 Layout (landscape)
+### 5.2 Layout (portrait; the diagram below is the old landscape sketch, re-laid by UI-08c)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -138,7 +138,7 @@ Critically, **this makes our pillars stronger, not weaker.** P2 already says "mo
 
 | Input | Gesture | Notes |
 |---|---|---|
-| **Move** | Touch anywhere in the left 45% and drag | *Floating* stick — origin spawns under your thumb, never fixed. Full deflection at 55px drag. |
+| **Move** | Touch anywhere in the left 45% and drag | *Floating* stick — origin spawns under your thumb, never fixed. Full deflection at 55px drag. | *(landscape number; UI-08c re-derives it)*
 | **Fire** | Automatic | Continuous, at the current target. No fire button. |
 | **Movement skill** | Tap the fixed right-side button | 48dp minimum, corner-anchored in natural thumb arc. Radial cooldown fill on the button. |
 | **Manual skills** | Tap — up to 4 optional buttons | Only appear for skills the player has switched to Manual. Everything else auto-casts. |
@@ -251,7 +251,7 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 
 ### 7.2 Arena design rules
 
-- Roughly **36m × 36m**, bounded, flat or gently tiered. Square, so it frames well in landscape.
+- Roughly **36m × 36m**, bounded, flat or gently tiered. Square, so it frames well in portrait too: the short side keeps the view (UI-08b).
 - **3–6 cover pillars** placed off-center. Cover blocks enemy projectiles but not pathing.
 - No dead ends. The player must always have a circle-strafe route.
 - Camera never collides with geometry. No ceilings, no corridors.
@@ -638,7 +638,7 @@ Essence per stage clear at depth *n*: `20 + 4·n`, plus 15 per Elite and 60 per 
 
 ## 16. UI and feedback
 
-### 16.1 HUD layout (landscape, safe-area aware)
+### 16.1 HUD layout (portrait, safe-area aware; positions below were drawn for landscape and UI-08c re-derives the bottom controls)
 
 The bottom corners belong to thumbs. Nothing important goes there.
 
@@ -823,7 +823,7 @@ Each ends with something playable. No milestone is "build the architecture" — 
 Ranked by how much downstream work they affect.
 
 1. **Business model — premium, or free-to-play?** This document currently assumes **premium** (paid once, no ads, no IAP). F2P would change meta-progression pacing substantially: Shard costs in §14 are tuned for a player who owns the game, not one being nudged toward a purchase. It would also add systems (ad-revive, energy, battle pass) that touch the run loop directly. **Decide before M2**, because meta-progression is where it lands.
-2. **Orientation** — landscape (recommended, assumed throughout) or portrait? Portrait enables true one-handed play and is what Archero/Survivor.io use, but it costs arena readability and the two-button right thumb. Landscape is assumed; changing it later means redoing every UI screen.
+2. **Orientation** — **ruled portrait by the owner, 2026-09-29, and switched in UI-08a.** Portrait enables true one-handed play and is what Archero/Survivor.io use.
 3. **Minimum device spec** — how old a phone do we support? This sets the low tier in §11.1 and therefore the floor for everything visual.
 4. **Art sourcing** — asset store kits, AI-generated meshes (Unity's AI packages are already installed in this project), or hand-modelled? Dramatically affects the M4 timeline. **Ruled by the owner, 2026-09-25:** the KayKit packs already in the project, plus models made with Gemini and skinned onto KayKit's `Rig_Medium` (not Mixamo), with weapons as separate props. M7-00e specs it. Where the audio comes from is still open.
 5. **Should the level-up offer guarantee variety?** Pure random produces dead offers, and a dead offer at level 12 costs a run. Probably soft weighting — never 3 nodes from one branch, always ≥1 Active if you own fewer than 2.

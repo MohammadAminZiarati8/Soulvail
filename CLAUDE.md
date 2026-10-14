@@ -1,6 +1,6 @@
 # Soulvail — project notes for Claude
 
-Unity 6.3 (`6000.3.23f1`) · URP · Input System · **Android, landscape** · top-down auto-aim action roguelite.
+Unity 6.3 (`6000.3.23f1`) · URP · Input System · **Android, portrait** · top-down auto-aim action roguelite.
 Solo project. **Claude implements only when the owner says so. The owner reviews every PR, playtests on a real phone, and makes every commit.**
 
 ## Docs

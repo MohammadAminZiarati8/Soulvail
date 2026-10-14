@@ -382,6 +382,14 @@ What the planning found:
 | UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☑ |
 | UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☑ |
 | UI-04d | [Select, then Learn](tasks/UI-04d-select-and-learn.md) — a tap selects, the card describes, Learn spends | M | UI-04c | ☑ |
+| UI-05a | [The character page's art, imported](tasks/UI-05a-the-character-page-art.md) — 14 sprites cut from `UI_v3_sheets` | S | UI-04d | ☐ |
+| UI-05b | [The character preview](tasks/UI-05b-the-character-preview.md) — the class's 3D body on a pedestal, rendered to a texture | S | UI-05a | ☐ |
+| UI-05c | [The character page](tasks/UI-05c-the-character-page.md) — class select as one class at a time; Choose, Unlock or dead | M | UI-05a, UI-05b | ☐ |
+| UI-05d | [The skill strip](tasks/UI-05d-the-skill-strip.md) — four icon tiles and a caption | S | UI-05c | ☐ |
+| UI-06a | [The menu's art, imported](tasks/UI-06a-the-menu-art.md) — blue button, title plate; waits on a Gemini sheet | S | UI-05a | ☐ |
+| UI-06b | [The menu screen](tasks/UI-06b-the-menu-screen.md) — a title and at most two buttons | S | UI-06a, UI-05c | ☐ |
+
+**UI-05 and UI-06 — The character page and the menu** *(owner, 2026-10-14)*: class select becomes a page that shows one class at a time with its real 3D body on a pedestal, its four skills as icons and one button; the menu becomes a title and at most two buttons. **Simplicity is the brief:** one primary button per screen, no tabs, no stat bars, no roster grid. The owner commissioned the art as Gemini sheets (`Soulvail_GeminiSamples/UI_v3_sheets/`). **Ranger only for now**: its emblem and its four icons (Quick Draw, Volley, Fleet Foot, Roll) already exist, and the page is built for more classes (arrows, dots, the Unlock path) that hide while there is one. The preview is a render texture on a stage parked off-screen, so no layer or `ProjectSettings/` change. **Not in these rows:** a second class's content, skill animations on the preview, a settings page (M8-02). **Process, from 2026-10-14:** the owner has Claude commit to `dev` directly, so these specs name no branch.
 
 **UI-04 — The tree screen in the new art** *(owner, 2026-10-13)*: UI-03c's plain grid dressed as `UI_v2/mockups/SkillTree.png` — the stone frame, one class block, and a detail card whose green Learn button is the only way to spend a point. **Not in UI-04, by the owner's scope:** the capstone star, a second class's block (the "take a new class" area), and the stat diff line on the card. Only the Ranger has icons and an emblem; every other class draws `Icon_Placeholder` and a plate without one.
 

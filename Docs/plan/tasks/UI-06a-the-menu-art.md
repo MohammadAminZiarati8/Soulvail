@@ -37,4 +37,8 @@ Wearing any of it: UI-06b. A settings button: M8-02 owns options.
 
 ## As built
 
-_Filled at merge._
+1. **The cutter grew a section, not a new script.** `UI_v3/cut_sheets.py` cuts `One more Gemini prompt (UI-06a).jpg` into the three pieces, each scaled to 1000 px wide: `Button_Blue` 1000×269, `Button_Blue_Pressed` 1000×274, `Menu_TitlePlate` 1000×331.
+2. **The plate takes `key_violet`, the buttons `key_magenta`.** `key_magenta` floods through the plate's cream rim and left a band inside it half see-through (233 alpha across 7 493 px); `key_violet` leaves none. No piece has a partial-alpha pixel away from its edge.
+3. **Borders:** the buttons `x/0/x/0` at 0.37 × height (100 and 101); the plate 56 on all four sides, which clears its rivets and chamfered corners.
+4. **Metas are hand-built** from `Button_Green.png.meta` (new GUIDs, sprite names, borders); no Editor was open. A batch-mode import left them unchanged.
+5. **Tests:** `MenuArtTests` 10/10 in batch mode (the byte-for-byte rows ran, none ignored). The full suite was not re-run.

@@ -396,7 +396,7 @@ What the planning found:
 | UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☑ |
 | UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☑ |
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☑ |
-| UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) | M | UI-08a, UI-07c, UI-07d | ☐ |
+| UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) — the tree stacks block over card, Pause and Run end are one centred column | M | UI-08a, UI-07c, UI-07d | ☑ |
 | UI-09 | The Pause and Run-end screens in the new art — *title only; waits on a Gemini sheet* | — | UI-08e | ☐ |
 | UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☐ |
 | UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *waits on the owner's answer, written in the spec* | S | owner | ☐ |

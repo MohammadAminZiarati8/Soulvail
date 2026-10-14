@@ -4,6 +4,7 @@ using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -113,6 +114,25 @@ namespace Soulvail.Game.Presentation
         /// <summary>What the two of them are worth, in Soul Shards.</summary>
         private static readonly LocKey ShardsKey = new LocKey("ui.runend.shards");
 
+        // The column, in dp (UI-08e rule 3): centred on the safe area, no wider than its width less a
+        // side. Guesses until a phone exists — ledger row 4.
+        private const float ColumnSideDp = 16f;
+        private const float ColumnMaxWidthDp = 360f;
+        private const float TitleHeightDp = 56f;
+        private const float TitleTextDp = 40f;
+        private const float RowHeightDp = 36f;
+        private const float RowTextDp = 22f;
+        private const float ShardTextDp = 28f;
+        private const float RowGapDp = 8f;
+        private const float TitleGapDp = 16f;
+        private const float ReturnGapDp = 24f;
+        private const float ReturnMaxWidthDp = 280f;
+        private const float ReturnHeightDp = 56f;
+        private const float ReturnTextDp = 22f;
+
+        /// <summary>A row's word takes this share of its width, its number the rest.</summary>
+        private const float LabelShare = 0.6f;
+
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — the run is already " +
                  "stopped and a tween here would be a second clock (rule 4).")]
         [SerializeField] private CanvasGroup _root;
@@ -167,8 +187,23 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private bool _leaving;
 
+        /// <summary>Canvas units to the dp when set above 0, else read from the screen (UI-08e).</summary>
+        private float _pxPerDpOverride;
+
         /// <summary>Whether the screen is currently up. The one read a test needs.</summary>
         public bool IsShown => _root != null && _root.alpha > 0f;
+
+        /// <summary>
+        /// Lays the screen out with <paramref name="canvasUnitsPerDp"/> instead of the screen's own:
+        /// what a device would have, for a layout check — <c>TreeViewPresenter</c>'s seam (UI-07d
+        /// rule 4). Zero or less goes back to the screen's.
+        /// </summary>
+        public void UsePixelsPerDp(float canvasUnitsPerDp)
+        {
+            _pxPerDpOverride = float.IsFinite(canvasUnitsPerDp) && canvasUnitsPerDp > 0f ? canvasUnitsPerDp : 0f;
+
+            LayOut();
+        }
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <param name="loader">Where the exit goes. The only thing this screen asks of the app.</param>
@@ -433,6 +468,10 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
+            // Laid out on the way up, because the safe area is read here and the screen is
+            // invisible until now.
+            LayOut();
+
             _root.alpha = 1f;
             _root.blocksRaycasts = true;
             _root.interactable = true;
@@ -456,6 +495,152 @@ namespace Soulvail.Game.Presentation
             _root.alpha = 0f;
             _root.blocksRaycasts = false;
             _root.interactable = false;
+        }
+
+        /// <summary>
+        /// One centred column in the safe area, top to bottom: the title, the three rows, the exit —
+        /// no wider than the safe width less <see cref="ColumnSideDp"/> a side, in dp (UI-08e rule 3).
+        /// </summary>
+        /// <remarks>
+        /// The prefab authored these in reference units of a 1920 × 1080 canvas, where the title was
+        /// 1400 wide: past the edges of any portrait phone. Every piece hangs from the safe area's
+        /// centre, so the column is centred on the part of the screen a thumb can reach.
+        /// </remarks>
+        private void LayOut()
+        {
+            if (_return == null || _return.transform.parent is not RectTransform safe)
+            {
+                return;
+            }
+
+            float px = PixelsPerDp();
+            Rect area = safe.rect;
+
+            if (!float.IsFinite(px) || px <= 0f || !float.IsFinite(area.width) || area.width <= 0f)
+            {
+                return;
+            }
+
+            float width = Mathf.Min(area.width - (2f * ColumnSideDp * px), ColumnMaxWidthDp * px);
+            float title = TitleHeightDp * px;
+            float row = RowHeightDp * px;
+            float rowGap = RowGapDp * px;
+            float exit = ReturnHeightDp * px;
+            float total = title + (TitleGapDp * px) + (3f * row) + (2f * rowGap) + (ReturnGapDp * px) + exit;
+
+            Vector2 centre = area.center;
+            float top = centre.y + (total / 2f);
+
+            if (_title != null)
+            {
+                Place(_title.rectTransform, new Vector2(width, title), new Vector2(centre.x, top - (title / 2f)));
+                Size(_title, TitleTextDp * px, TextAlignmentOptions.Center);
+            }
+
+            top -= title + (TitleGapDp * px);
+
+            PlaceRow(_depthLabel, _depth, RowTextDp, centre.x, top, width, row, px);
+            top -= row + rowGap;
+
+            PlaceRow(_bossLabel, _bosses, RowTextDp, centre.x, top, width, row, px);
+            top -= row + rowGap;
+
+            PlaceRow(_shardLabel, _shards, ShardTextDp, centre.x, top, width, row, px);
+            top -= row + (ReturnGapDp * px);
+
+            if (_return.transform is RectTransform button)
+            {
+                Place(button, new Vector2(Mathf.Min(width, ReturnMaxWidthDp * px), exit), new Vector2(centre.x, top - (exit / 2f)));
+            }
+
+            if (_returnLabel != null)
+            {
+                RectTransform label = _returnLabel.rectTransform;
+
+                label.anchorMin = Vector2.zero;
+                label.anchorMax = Vector2.one;
+                label.pivot = new Vector2(0.5f, 0.5f);
+                label.offsetMin = Vector2.zero;
+                label.offsetMax = Vector2.zero;
+                Size(_returnLabel, ReturnTextDp * px, TextAlignmentOptions.Center);
+            }
+        }
+
+        /// <summary>
+        /// One row of the column: its rect <paramref name="width"/> wide with its top at
+        /// <paramref name="top"/>, the word on the left share and the number on the right.
+        /// </summary>
+        private static void PlaceRow(TMP_Text word, TMP_Text figure, float figureDp, float x, float top, float width, float height, float px)
+        {
+            RectTransform rowRect = word != null ? word.rectTransform.parent as RectTransform
+                : figure != null ? figure.rectTransform.parent as RectTransform
+                : null;
+
+            if (rowRect == null)
+            {
+                return;
+            }
+
+            Place(rowRect, new Vector2(width, height), new Vector2(x, top - (height / 2f)));
+
+            if (word != null)
+            {
+                RectTransform rect = word.rectTransform;
+
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = new Vector2(LabelShare, 1f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                Size(word, RowTextDp * px, TextAlignmentOptions.MidlineLeft);
+            }
+
+            if (figure != null)
+            {
+                RectTransform rect = figure.rectTransform;
+
+                rect.anchorMin = new Vector2(LabelShare, 0f);
+                rect.anchorMax = Vector2.one;
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                Size(figure, figureDp * px, TextAlignmentOptions.MidlineRight);
+            }
+        }
+
+        /// <summary>A rect of <paramref name="size"/> centred on <paramref name="position"/> from its parent's centre.</summary>
+        private static void Place(RectTransform rect, Vector2 size, Vector2 position)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
+        }
+
+        private static void Size(TMP_Text text, float size, TextAlignmentOptions alignment)
+        {
+            text.enableAutoSizing = false;
+            text.fontSize = size;
+            text.alignment = alignment;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        /// <summary>
+        /// How many canvas units one dp is worth — <c>HudPresenter.PixelsPerDp</c>, for its reason.
+        /// </summary>
+        private float PixelsPerDp()
+        {
+            if (_pxPerDpOverride > 0f)
+            {
+                return _pxPerDpOverride;
+            }
+
+            var canvas = GetComponentInParent<Canvas>();
+            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+
+            return StickShaper.PixelsPerDp(Screen.dpi) / scale;
         }
 
         /// <remarks>

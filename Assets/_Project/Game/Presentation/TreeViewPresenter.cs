@@ -141,6 +141,11 @@ namespace Soulvail.Game.Presentation
         private const float CompactTopGapDp = 2f;
         private const float CompactCellGapDp = 4f;
 
+        // A safe area taller than it is wide (UI-08e): the popup is the safe width less this a side,
+        // the block sits over the full card, and the card keeps the bottom, under the thumb.
+        private const float PortraitSideDp = 16f;
+        private const float PortraitCardGapDp = 8f;
+
         /// <summary>
         /// <em>"This class has no skill tree yet."</em> — shown instead of the columns for a class
         /// with none (M3-09d rule 2).
@@ -268,6 +273,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>Whether the last layout was the short-screen one: compact card, no plate.</summary>
         private bool _compact;
 
+        /// <summary>Whether the last layout was for a safe area taller than it is wide.</summary>
+        private bool _portrait;
+
         /// <summary>The tapped node, or <c>default</c>; cleared on open and on <see cref="Close"/>.</summary>
         private ContentId _selected;
 
@@ -292,6 +300,9 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>Whether the last layout used the compact card for a short screen (UI-07d).</summary>
         public bool IsCompact => _compact;
+
+        /// <summary>Whether the last layout was the portrait one: safe area taller than wide (UI-08e).</summary>
+        public bool IsPortrait => _portrait;
 
         /// <summary>
         /// Lays the screen out with <paramref name="canvasUnitsPerDp"/> instead of the screen's own,
@@ -615,6 +626,11 @@ namespace Soulvail.Game.Presentation
                 float px = PixelsPerDp();
 
                 _block.Arrange(tree, _cells, _branchColumns, _branchLabels, px, CellHeight * px, (_compact ? Mathf.Min(CellGap, CompactCellGapDp) : CellGap) * px);
+
+                if (_portrait && !_compact)
+                {
+                    FitBlockToContent(px);
+                }
             }
 
             int index = 0;
@@ -865,7 +881,12 @@ namespace Soulvail.Game.Presentation
         private void PlaceChrome()
         {
             float px = PixelsPerDp();
-            float margin = HeaderMarginDp * px;
+            Rect safeRect = _frame != null && _frame.parent is RectTransform safeArea ? safeArea.rect : default;
+
+            // An unmeasured safe area keeps the landscape layout, as it keeps the full card.
+            _portrait = float.IsFinite(safeRect.width) && safeRect.width > 0f && safeRect.height > safeRect.width;
+
+            float margin = (_portrait ? PortraitSideDp : HeaderMarginDp) * px;
             float header = HeaderHeightDp * px;
 
             float top = FrameTopMarginDp * px;
@@ -974,7 +995,7 @@ namespace Soulvail.Game.Presentation
             if (_block != null && _block.transform is RectTransform grid)
             {
                 float inset = margin + (ContentInsetDp * px);
-                float safeHeight = _frame != null && _frame.parent is RectTransform area ? area.rect.height : 0f;
+                float safeHeight = safeRect.height;
 
                 // A safe area too short for the block over the full card gets the compact one
                 // (UI-07d); an unmeasured one keeps the full card.
@@ -1004,6 +1025,56 @@ namespace Soulvail.Game.Presentation
                 grid.offsetMin = new Vector2(inset, above);
                 grid.offsetMax = new Vector2(-inset, -below);
             }
+        }
+
+        /// <summary>
+        /// In portrait, shrinks the block's rect to what <c>TreeBlockView.Arrange</c> drew in it and
+        /// centres that in the band between the header and the card (UI-08e rule 2).
+        /// </summary>
+        /// <remarks>
+        /// A tall phone leaves the band twice the height the tiles need, and the block hangs
+        /// everything from its top edge, so without this the class plate ends half a screen above the
+        /// card. Measured from the block's own children rather than re-derived, so the block's
+        /// arithmetic stays in <c>TreeBlockView</c>; everything in it is anchored to its top, so
+        /// moving both edges by the same amount moves the drawing and does not re-flow it.
+        /// </remarks>
+        private void FitBlockToContent(float px)
+        {
+            if (_block == null || _block.transform is not RectTransform grid)
+            {
+                return;
+            }
+
+            Rect band = grid.rect;
+            float lowest = band.yMax;
+            var corners = new Vector3[4];
+
+            for (int i = 0; i < grid.childCount; i++)
+            {
+                if (grid.GetChild(i) is not RectTransform child || !child.gameObject.activeSelf)
+                {
+                    continue;
+                }
+
+                child.GetWorldCorners(corners);
+
+                for (int c = 0; c < corners.Length; c++)
+                {
+                    lowest = Mathf.Min(lowest, grid.InverseTransformPoint(corners[c]).y);
+                }
+            }
+
+            float content = band.yMax - lowest;
+
+            if (!float.IsFinite(content) || content <= 0f || content >= band.height - (PortraitCardGapDp * px))
+            {
+                return;
+            }
+
+            float spare = (band.height - content) / 2f;
+
+            grid.offsetMin = new Vector2(grid.offsetMin.x, grid.offsetMin.y + spare);
+            grid.offsetMax = new Vector2(grid.offsetMax.x, grid.offsetMax.y - spare);
         }
 
         /// <summary>

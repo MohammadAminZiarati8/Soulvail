@@ -120,6 +120,14 @@ namespace Soulvail.Game.Presentation
         /// <summary>Out to the Menu. It does not delete the run — see the class remarks.</summary>
         private static readonly LocKey QuitKey = new LocKey("ui.pause.quit");
 
+        // The panel's column, in dp (UI-08e rule 3): centred on the safe area, no wider than its width
+        // less a side, every button a thumb tall. Guesses until a phone exists — ledger row 4.
+        private const float ColumnSideDp = 16f;
+        private const float ColumnMaxWidthDp = 320f;
+        private const float ButtonHeightDp = 56f;
+        private const float ButtonGapDp = 12f;
+        private const float ButtonTextDp = 22f;
+
         [Tooltip("The top-right icon. A Button rather than a read of the Input System — see the " +
                  "class remarks: the one thing this target must never be is tappable anywhere.")]
         [SerializeField] private Button _icon;
@@ -217,6 +225,15 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private bool _quitting;
 
+        /// <summary>Canvas units to the dp when set above 0, else read from the screen (UI-08e).</summary>
+        private float _pxPerDpOverride;
+
+        /// <summary>The panel's four buttons, top to bottom: the column <see cref="LayOutColumn"/> stacks.</summary>
+        private Button[] _column;
+
+        /// <summary>The safe area's corners, reused by every layout.</summary>
+        private readonly Vector3[] _corners = new Vector3[4];
+
         /// <summary>True while this screen holds the pause — M3-09b and M3-09c's gate.</summary>
         /// <remarks>
         /// A field rather than a read of <c>RunPause.Holder</c>, so that the panel being up and the
@@ -225,6 +242,19 @@ namespace Soulvail.Game.Presentation
         /// nothing behind it.
         /// </remarks>
         public bool IsOpen { get; private set; }
+
+        /// <summary>
+        /// Lays the panel and the icon out with <paramref name="canvasUnitsPerDp"/> instead of the
+        /// screen's own: what a device would have, for a layout check — <c>TreeViewPresenter</c>'s
+        /// seam (UI-07d rule 4). Zero or less goes back to the screen's.
+        /// </summary>
+        public void UsePixelsPerDp(float canvasUnitsPerDp)
+        {
+            _pxPerDpOverride = float.IsFinite(canvasUnitsPerDp) && canvasUnitsPerDp > 0f ? canvasUnitsPerDp : 0f;
+
+            Place();
+            LayOutColumn();
+        }
 
         /// <param name="session">
         /// The run, for the one thing <see cref="Open"/> has to know: whether there is still a run to
@@ -711,6 +741,11 @@ namespace Soulvail.Game.Presentation
             // Through the refresh rather than straight to true, so a panel reopened underneath a
             // Skills screen that is somehow still up comes back inert rather than live.
             RefreshPanel();
+
+            // On every open rather than once, because the safe area is read here and the panel is
+            // invisible until now: a column laid out at Start would be a column for the screen the
+            // app launched on.
+            LayOutColumn();
         }
 
         private void HidePanel()
@@ -770,6 +805,9 @@ namespace Soulvail.Game.Presentation
                 if (_viewTree.gameObject.activeSelf != offered)
                 {
                     _viewTree.gameObject.SetActive(offered);
+
+                    // The column stacks the buttons it shows, so one coming or going re-stacks it.
+                    LayOutColumn();
                 }
             }
 
@@ -887,6 +925,113 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
+        /// Stacks the panel's shown buttons as one column centred on the safe area, no wider than the
+        /// safe width less <see cref="ColumnSideDp"/> a side, each <see cref="ButtonHeightDp"/> tall
+        /// (UI-08e rule 3).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The panel is full-screen so its scrim covers the notch strip, and the safe area is its
+        /// sibling, so the safe rect is carried into the panel's space through world corners rather
+        /// than assumed to be the panel's own. The prefab authored the column in reference units of
+        /// a 1920 × 1080 canvas; in dp it is the same size on every phone.
+        /// </para>
+        /// <para>
+        /// Only the shown buttons are stacked, so a class with no tree has no gap where View Tree
+        /// was. Allocates nothing after the first call.
+        /// </para>
+        /// </remarks>
+        private void LayOutColumn()
+        {
+            if (_panel == null || _panel.transform is not RectTransform panel)
+            {
+                return;
+            }
+
+            _column ??= new[] { _resume, _skills, _viewTree, _quit };
+
+            float px = PixelsPerDp();
+            Rect safe = SafeRectIn(panel);
+
+            if (!float.IsFinite(px) || px <= 0f || !float.IsFinite(safe.width) || safe.width <= 0f)
+            {
+                return;
+            }
+
+            float width = Mathf.Min(safe.width - (2f * ColumnSideDp * px), ColumnMaxWidthDp * px);
+            float height = ButtonHeightDp * px;
+            float gap = ButtonGapDp * px;
+            int shown = 0;
+
+            for (int i = 0; i < _column.Length; i++)
+            {
+                if (_column[i] != null && _column[i].gameObject.activeSelf)
+                {
+                    shown++;
+                }
+            }
+
+            // From the panel's centre, which is where a centre-anchored button's position counts from.
+            Vector2 centre = safe.center - panel.rect.center;
+            float y = centre.y + (((shown * height) + ((shown - 1) * gap)) / 2f) - (height / 2f);
+
+            for (int i = 0; i < _column.Length; i++)
+            {
+                Button button = _column[i];
+
+                if (button == null || !button.gameObject.activeSelf || button.transform is not RectTransform rect)
+                {
+                    continue;
+                }
+
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.sizeDelta = new Vector2(width, height);
+                rect.anchoredPosition = new Vector2(centre.x, y);
+
+                y -= height + gap;
+            }
+
+            SizeLabel(_resumeLabel, px);
+            SizeLabel(_skillsLabel, px);
+            SizeLabel(_viewTreeLabel, px);
+            SizeLabel(_quitLabel, px);
+        }
+
+        /// <summary>The safe area's rect in <paramref name="space"/>'s local units, or its own rect without one.</summary>
+        private Rect SafeRectIn(RectTransform space)
+        {
+            var fitter = GetComponentInChildren<SafeAreaFitter>(true);
+
+            if (fitter == null || fitter.transform is not RectTransform safe)
+            {
+                return space.rect;
+            }
+
+            safe.GetWorldCorners(_corners);
+
+            Vector3 min = space.InverseTransformPoint(_corners[0]);
+            Vector3 max = space.InverseTransformPoint(_corners[2]);
+
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        }
+
+        private static void SizeLabel(TMP_Text label, float px)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.enableAutoSizing = false;
+            label.fontSize = ButtonTextDp * px;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        /// <summary>
         /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there (M3-14c).
         /// </summary>
         /// <remarks>
@@ -921,6 +1066,11 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         private float PixelsPerDp()
         {
+            if (_pxPerDpOverride > 0f)
+            {
+                return _pxPerDpOverride;
+            }
+
             var canvas = GetComponentInParent<Canvas>();
             float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
 

@@ -32,7 +32,9 @@ public sealed partial class TreeScreenTests
         StartRun(Ranger(), free: true, pending: 1);
         Build();
 
-        OpenAt(Portrait);
+        // Landscape: a portrait popup is the safe width less 16 dp a side (UI-08e rule 2), which
+        // Tree_Portrait_StacksBlockCardLearn holds.
+        OpenAt(Landscape);
 
         float px = StickShaper.PixelsPerDp(Screen.dpi);
         Rect area = WorldRect(Safe());

@@ -10,7 +10,8 @@ namespace Soulvail.Tests.Game.Presentation;
 
 /// <summary>
 /// UI-07d: the tree screen on a landscape phone — the block centred, the branch names whole and
-/// clear of the card, nothing overlapping.
+/// clear of the card, nothing overlapping. UI-08e: the same screen on a portrait phone — the popup
+/// the safe width less 16 dp a side, the block over the full card, Learn at the card's foot.
 /// </summary>
 /// <remarks>
 /// Each row lays the screen out with the px per dp its device would have rather than the Editor's
@@ -25,8 +26,17 @@ public sealed partial class TreeScreenTests
         (new Vector2(1920f, 1080f), 400f),
     };
 
+    /// <summary>UI-08e rule 4's two phones, held upright.</summary>
+    private static readonly (Vector2 Pixels, float Dpi)[] PortraitDevices =
+    {
+        (new Vector2(1080f, 2400f), 420f),
+        (new Vector2(720f, 1600f), 320f),
+    };
+
     private const float DpiPerDp = 160f;
     private const float LabelClearDp = 8f;
+    private const float PortraitSideDp = 16f;
+    private const float ThumbDp = 48f;
     private static readonly string[] BranchNames = { "Draw", "Volley", "Stride" };
 
     [Test]
@@ -34,20 +44,8 @@ public sealed partial class TreeScreenTests
     {
         foreach ((Vector2 pixels, float dpi) in Devices)
         {
-            OpenOnDevice(pixels, dpi, out float px);
-
-            Rect frame = WorldRect(Piece("_frame"));
-            var block = Field<TreeBlockView>(_screen, "_block");
-            Rect[] pieces = { WorldRect(block), WorldRect(Field<RectTransform>(block, "_panel")) };
-
-            foreach (Rect piece in pieces)
-            {
-                float left = piece.xMin - frame.xMin;
-                float right = frame.xMax - piece.xMax;
-
-                Assert.That(left, Is.GreaterThan(0f), $"{pixels}: the block leaves the frame.");
-                Assert.That(Mathf.Abs(left - right) / px, Is.LessThanOrEqualTo(1f), $"{pixels}: margins {left / px} dp and {right / px} dp.");
-            }
+            OpenOnDevice(pixels, dpi, compact: true, out float px);
+            AssertBlockCentred(pixels, px);
         }
     }
 
@@ -56,23 +54,8 @@ public sealed partial class TreeScreenTests
     {
         foreach ((Vector2 pixels, float dpi) in Devices)
         {
-            OpenOnDevice(pixels, dpi, out float px);
-
-            Rect card = WorldRect(Field<TreeDetailCard>(_screen, "_card"));
-            TMP_Text[] labels = Field<TMP_Text[]>(_screen, "_branchLabels");
-
-            for (int b = 0; b < labels.Length; b++)
-            {
-                // The shipped names, whichever keys the fixture's tree carries.
-                labels[b].text = BranchNames[b];
-
-                Rect rect = WorldRect(labels[b].rectTransform);
-                float width = labels[b].GetPreferredValues(BranchNames[b]).x;
-
-                Assert.That(rect.yMin, Is.GreaterThanOrEqualTo(card.yMax + (LabelClearDp * px) - 0.5f), $"{pixels}: '{BranchNames[b]}' ends {(rect.yMin - card.yMax) / px} dp above the card.");
-                Assert.That(width, Is.LessThanOrEqualTo(rect.width + 0.5f), $"{pixels}: '{BranchNames[b]}' wants {width} of {rect.width}.");
-                Assert.That(rect.height, Is.GreaterThanOrEqualTo(labels[b].fontSize), $"{pixels}: '{BranchNames[b]}' is clipped.");
-            }
+            OpenOnDevice(pixels, dpi, compact: true, out float px);
+            AssertNamesClearTheCard(pixels, px);
         }
     }
 
@@ -81,80 +64,177 @@ public sealed partial class TreeScreenTests
     {
         foreach ((Vector2 pixels, float dpi) in Devices)
         {
-            OpenOnDevice(pixels, dpi, out float px);
+            OpenOnDevice(pixels, dpi, compact: true, out float px);
+            AssertNothingOverlaps(pixels, px);
+        }
+    }
 
-            var block = Field<TreeBlockView>(_screen, "_block");
-            var card = Field<TreeDetailCard>(_screen, "_card");
+    // ---- UI-08e: portrait ------------------------------------------------------------------------
 
-            var top = new List<(string Name, Rect Rect)>
-            {
-                ("ribbon", WorldRect(Piece("_ribbon"))),
-                ("pill", WorldRect(Piece("_pill"))),
-                ("close", WorldRect(Field<UnityEngine.UI.Button>(_screen, "_close").transform as RectTransform)),
-                ("block", WorldRect(block)),
-                ("card", WorldRect(card)),
-            };
+    [Test]
+    public void Tree_Portrait_StacksBlockCardLearn()
+    {
+        foreach ((Vector2 pixels, float dpi) in PortraitDevices)
+        {
+            OpenOnDevice(pixels, dpi, compact: false, out float px);
 
-            AssertDisjoint(top, pixels);
+            Assert.That(_screen.IsPortrait, Is.True, $"{pixels} is a portrait screen.");
 
+            Rect safe = WorldRect(Safe());
             Rect frame = WorldRect(Piece("_frame"));
 
-            foreach ((string name, Rect rect) in top.Skip(3))
-            {
-                Assert.That(Contains(frame, rect), Is.True, $"{pixels}: {name} {rect} leaves the frame {frame}.");
-            }
+            // The popup is the safe width less 16 dp a side.
+            Assert.That((frame.xMin - safe.xMin) / px, Is.EqualTo(PortraitSideDp).Within(0.5f), $"{pixels}: left margin.");
+            Assert.That((safe.xMax - frame.xMax) / px, Is.EqualTo(PortraitSideDp).Within(0.5f), $"{pixels}: right margin.");
 
-            // Inside the block: the three names and every tile.
-            Rect inner = WorldRect(block);
-            var parts = new List<(string Name, Rect Rect)>();
+            Rect block = WorldRect(Field<TreeBlockView>(_screen, "_block"));
+            var card = Field<TreeDetailCard>(_screen, "_card");
+            Rect cardRect = WorldRect(card);
 
-            foreach (TMP_Text label in Field<TMP_Text[]>(_screen, "_branchLabels"))
-            {
-                parts.Add((label.name, WorldRect(label.rectTransform)));
-            }
+            // The block above the card, both the same full width.
+            Assert.That(block.yMin, Is.GreaterThanOrEqualTo(cardRect.yMax - 0.5f), $"{pixels}: the block {block} runs into the card {cardRect}.");
+            Assert.That(Mathf.Abs(block.xMin - cardRect.xMin), Is.LessThanOrEqualTo(0.5f), $"{pixels}: block and card start apart.");
+            Assert.That(Mathf.Abs(block.xMax - cardRect.xMax), Is.LessThanOrEqualTo(0.5f), $"{pixels}: block and card end apart.");
+            Assert.That(Contains(frame, cardRect), Is.True, $"{pixels}: the card leaves the frame.");
 
-            foreach (TreeNodeButton cell in Shown())
-            {
-                parts.Add((cell.name, WorldRect(cell)));
-            }
+            // The full card, not the compact one, and Learn under its words.
+            Assert.That(cardRect.height / px, Is.EqualTo(TreeDetailCard.HeightDp).Within(0.5f), $"{pixels}: the card is not the full one.");
 
-            AssertDisjoint(parts, pixels);
-
-            foreach ((string name, Rect rect) in parts)
-            {
-                Assert.That(Contains(inner, rect), Is.True, $"{pixels}: {name} {rect} leaves the block {inner}.");
-            }
-
-            // Inside the card, with a node selected: tile, name, level, description, Learn.
             Tap(Shown().First(c => c.State == NodeState.Available));
             Canvas.ForceUpdateCanvases();
 
-            Rect cardRect = WorldRect(card);
-            var inside = new List<(string Name, Rect Rect)>();
+            Rect learn = WorldRect(Field<Component>(card, "_learn"));
+            Rect description = WorldRect(Field<Component>(card, "_description"));
 
-            foreach (string field in new[] { "_ribbon", "_level", "_description", "_learn" })
-            {
-                inside.Add((field, WorldRect(Field<Component>(card, field))));
-            }
+            Assert.That(learn.yMax, Is.LessThanOrEqualTo(description.yMin + 0.5f), $"{pixels}: Learn {learn} is not under the words {description}.");
+            Assert.That(learn.height / px, Is.GreaterThanOrEqualTo(ThumbDp - 1e-3f), $"{pixels}: Learn is under a thumb.");
+            Assert.That(Contains(cardRect, learn), Is.True, $"{pixels}: Learn leaves the card.");
+            Assert.That(Contains(safe, learn), Is.True, $"{pixels}: Learn leaves the safe area.");
+        }
+    }
 
-            inside.Add(("_tile", WorldRect(Field<Component>(card, "_tile"))));
+    [Test]
+    public void Tree_Portrait_KeepsUi07dRules()
+    {
+        foreach ((Vector2 pixels, float dpi) in PortraitDevices)
+        {
+            OpenOnDevice(pixels, dpi, compact: false, out float px);
+            AssertBlockCentred(pixels, px);
+            AssertNamesClearTheCard(pixels, px);
 
-            AssertDisjoint(inside, pixels);
+            OpenOnDevice(pixels, dpi, compact: false, out px);
+            AssertNothingOverlaps(pixels, px);
+        }
+    }
 
-            foreach ((string name, Rect rect) in inside)
-            {
-                Assert.That(Contains(cardRect, rect), Is.True, $"{pixels}: card {name} {rect} leaves the card {cardRect}.");
-            }
+    private void AssertBlockCentred(Vector2 pixels, float px)
+    {
+        Rect frame = WorldRect(Piece("_frame"));
+        var block = Field<TreeBlockView>(_screen, "_block");
+        Rect[] pieces = { WorldRect(block), WorldRect(Field<RectTransform>(block, "_panel")) };
 
-            foreach (TMP_Text text in _screen.GetComponentsInChildren<TMP_Text>(false))
-            {
-                Assert.That(text.fontSize / px, Is.GreaterThanOrEqualTo(12f - 1e-3f), $"{pixels}: {text.name} is under the floor.");
-            }
+        foreach (Rect piece in pieces)
+        {
+            float left = piece.xMin - frame.xMin;
+            float right = frame.xMax - piece.xMax;
+
+            Assert.That(left, Is.GreaterThan(0f), $"{pixels}: the block leaves the frame.");
+            Assert.That(Mathf.Abs(left - right) / px, Is.LessThanOrEqualTo(1f), $"{pixels}: margins {left / px} dp and {right / px} dp.");
+        }
+    }
+
+    private void AssertNamesClearTheCard(Vector2 pixels, float px)
+    {
+        Rect card = WorldRect(Field<TreeDetailCard>(_screen, "_card"));
+        TMP_Text[] labels = Field<TMP_Text[]>(_screen, "_branchLabels");
+
+        for (int b = 0; b < labels.Length; b++)
+        {
+            // The shipped names, whichever keys the fixture's tree carries.
+            labels[b].text = BranchNames[b];
+
+            Rect rect = WorldRect(labels[b].rectTransform);
+            float width = labels[b].GetPreferredValues(BranchNames[b]).x;
+
+            Assert.That(rect.yMin, Is.GreaterThanOrEqualTo(card.yMax + (LabelClearDp * px) - 0.5f), $"{pixels}: '{BranchNames[b]}' ends {(rect.yMin - card.yMax) / px} dp above the card.");
+            Assert.That(width, Is.LessThanOrEqualTo(rect.width + 0.5f), $"{pixels}: '{BranchNames[b]}' wants {width} of {rect.width}.");
+            Assert.That(rect.height, Is.GreaterThanOrEqualTo(labels[b].fontSize), $"{pixels}: '{BranchNames[b]}' is clipped.");
+        }
+    }
+
+    private void AssertNothingOverlaps(Vector2 pixels, float px)
+    {
+        var block = Field<TreeBlockView>(_screen, "_block");
+        var card = Field<TreeDetailCard>(_screen, "_card");
+
+        var top = new List<(string Name, Rect Rect)>
+        {
+            ("ribbon", WorldRect(Piece("_ribbon"))),
+            ("pill", WorldRect(Piece("_pill"))),
+            ("close", WorldRect(Field<UnityEngine.UI.Button>(_screen, "_close").transform as RectTransform)),
+            ("block", WorldRect(block)),
+            ("card", WorldRect(card)),
+        };
+
+        AssertDisjoint(top, pixels);
+
+        Rect frame = WorldRect(Piece("_frame"));
+
+        foreach ((string name, Rect rect) in top.Skip(3))
+        {
+            Assert.That(Contains(frame, rect), Is.True, $"{pixels}: {name} {rect} leaves the frame {frame}.");
+        }
+
+        // Inside the block: the three names and every tile.
+        Rect inner = WorldRect(block);
+        var parts = new List<(string Name, Rect Rect)>();
+
+        foreach (TMP_Text label in Field<TMP_Text[]>(_screen, "_branchLabels"))
+        {
+            parts.Add((label.name, WorldRect(label.rectTransform)));
+        }
+
+        foreach (TreeNodeButton cell in Shown())
+        {
+            parts.Add((cell.name, WorldRect(cell)));
+        }
+
+        AssertDisjoint(parts, pixels);
+
+        foreach ((string name, Rect rect) in parts)
+        {
+            Assert.That(Contains(inner, rect), Is.True, $"{pixels}: {name} {rect} leaves the block {inner}.");
+        }
+
+        // Inside the card, with a node selected: tile, name, level, description, Learn.
+        Tap(Shown().First(c => c.State == NodeState.Available));
+        Canvas.ForceUpdateCanvases();
+
+        Rect cardRect = WorldRect(card);
+        var inside = new List<(string Name, Rect Rect)>();
+
+        foreach (string field in new[] { "_ribbon", "_level", "_description", "_learn" })
+        {
+            inside.Add((field, WorldRect(Field<Component>(card, field))));
+        }
+
+        inside.Add(("_tile", WorldRect(Field<Component>(card, "_tile"))));
+
+        AssertDisjoint(inside, pixels);
+
+        foreach ((string name, Rect rect) in inside)
+        {
+            Assert.That(Contains(cardRect, rect), Is.True, $"{pixels}: card {name} {rect} leaves the card {cardRect}.");
+        }
+
+        foreach (TMP_Text text in _screen.GetComponentsInChildren<TMP_Text>(false))
+        {
+            Assert.That(text.fontSize / px, Is.GreaterThanOrEqualTo(12f - 1e-3f), $"{pixels}: {text.name} is under the floor.");
         }
     }
 
     /// <summary>A fresh Ranger run opened on a device of <paramref name="pixels"/> at <paramref name="dpi"/>.</summary>
-    private void OpenOnDevice(Vector2 pixels, float dpi, out float px)
+    private void OpenOnDevice(Vector2 pixels, float dpi, bool compact, out float px)
     {
         DestroyWorld();
         CreateWorld();
@@ -175,7 +255,7 @@ public sealed partial class TreeScreenTests
         _screen.Open();
         Canvas.ForceUpdateCanvases();
 
-        Assert.That(_screen.IsCompact, Is.True, $"{pixels} is a short screen.");
+        Assert.That(_screen.IsCompact, Is.EqualTo(compact), $"{pixels}: compact should be {compact}.");
     }
 
     private static bool Contains(Rect outer, Rect inner, float slack = 0.5f) =>

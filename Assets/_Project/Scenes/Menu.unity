@@ -377,6 +377,74 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 50}
   m_SizeDelta: {x: 480, y: 160}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1001 &352383038
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -500
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2133086442837355897, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3108534714182282949, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      propertyPath: m_Name
+      value: CharacterStage
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+--- !u!114 &352383039 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4813843707559515074, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+  m_PrefabInstance: {fileID: 352383038}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98d24b5eece6e8a4a94a3645f76e4d47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.CharacterPreview
 --- !u!1 &409997350
 GameObject:
   m_ObjectHideFlags: 0
@@ -873,6 +941,7 @@ MonoBehaviour:
   autoInjectGameObjects: []
   _menu: {fileID: 707872287}
   _classSelect: {fileID: 1537660220}
+  _preview: {fileID: 352383039}
 --- !u!4 &1468701933
 Transform:
   m_ObjectHideFlags: 0
@@ -1283,3 +1352,4 @@ SceneRoots:
   - {fileID: 707872286}
   - {fileID: 652852361}
   - {fileID: 1468701933}
+  - {fileID: 352383038}

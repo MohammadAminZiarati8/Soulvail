@@ -39,6 +39,8 @@ namespace Soulvail.Game.Composition
 
         [SerializeField] private ClassSelectPresenter _classSelect;
 
+        [SerializeField] private CharacterPreview _preview;
+
         protected override void Configure(IContainerBuilder builder)
         {
             if (_menu == null)
@@ -62,6 +64,12 @@ namespace Soulvail.Game.Composition
             // injects them and destroys nothing.
             builder.RegisterComponent(_menu);
             builder.RegisterComponent(_classSelect);
+
+            // Optional until UI-05c wires the page that shows it; the Menu scene carries one stage.
+            if (_preview != null)
+            {
+                builder.RegisterComponent(_preview);
+            }
         }
     }
 }

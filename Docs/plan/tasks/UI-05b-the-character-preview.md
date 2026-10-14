@@ -63,4 +63,13 @@ The class's real 3D body stands on a stone pedestal, lit and idling, rendered to
 
 ## As built
 
-_Filled at merge._
+As specified, with four differences.
+
+1. **`Show` disables every `MonoBehaviour` on the body.** The Ranger's body (`Prefabs/Player/Bodies/Ranger.prefab`) carries `RangerAnimatorView`, whose `Start` throws with no `PlayerView` above it and no injection. Rule 1 expected none; switching them off right after `Instantiate` keeps them from `Start` and `Update`. The `Animator` is unaffected.
+2. **A look with no body hides the stage.** `CharacterLook.Body` null means "the run's default body", which the preview does not have.
+3. **A `_debugBody` field and a "Show debug body" context menu** (the Ranger's body, assigned in the prefab) serve the manual step. Not in the Files table's purpose line.
+4. **`Destroy` in play, `DestroyImmediate` in EditMode**, and the body is detached first so the anchor never holds two. `Destroy_FreesTheTexture` invokes `OnDestroy` by hand: it does not run on an EditMode `DestroyImmediate`.
+
+The pedestal is a flattened cylinder (M_BoneGrey) standing in for the sprite. The prefab and scene wiring were made by a throwaway batch-mode editor script, deleted afterwards. `MenuScope`'s `_preview` is optional, unlike its two presenters, until UI-05c needs it.
+
+Not done: the stage has not been seen in the Editor, so the camera's framing (28° field, 3.4 m back, 1 m up) is a guess for a 1.8 m body.

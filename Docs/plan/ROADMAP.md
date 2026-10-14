@@ -388,6 +388,20 @@ What the planning found:
 | UI-05d | [The skill strip](tasks/UI-05d-the-skill-strip.md) — four icon tiles and a caption | S | UI-05c | ☑ |
 | UI-06a | [The menu's art, imported](tasks/UI-06a-the-menu-art.md) — blue button, title plate; waits on a Gemini sheet | S | UI-05a | ☑ |
 | UI-06b | [The menu screen](tasks/UI-06b-the-menu-screen.md) — a title and at most two buttons | S | UI-06a, UI-05c | ☑ |
+| UI-07a | [The look pass's specs](tasks/UI-07a-the-look-pass-specs.md) — this group, UI-08, UI-10, Traps §9 | S | UI-06b | ☑ |
+| UI-07b | [A look-capture tool](tasks/UI-07b-the-look-capture-tool.md) — Editor-only; world and canvases, as the Simulator shows them, to a PNG | S | UI-07a | ☐ |
+| UI-07c | [Lilita One everywhere](tasks/UI-07c-lilita-one-everywhere.md) — Menu, TreeView, Pause, RunEnd off LiberationSans | S | UI-07a | ☐ |
+| UI-07d | [The tree's labels and centring](tasks/UI-07d-tree-labels-and-centring.md) — branch names clear the card; the block centred | S | UI-07a | ☐ |
+| UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☐ |
+| UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☐ |
+| UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☐ |
+| UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☐ |
+| UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) | M | UI-08a, UI-07c, UI-07d | ☐ |
+| UI-09 | The Pause and Run-end screens in the new art — *title only; waits on a Gemini sheet* | — | UI-08e | ☐ |
+| UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☐ |
+| UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *waits on the owner's answer, written in the spec* | S | owner | ☐ |
+
+**UI-07 — The look pass's fixes; UI-08 — Portrait; UI-10 — In-world** *(2026-10-14)*: Claude ran the game in the Device Simulator at 2658 × 960 @ 480 dpi and wrote down what it saw; [UI-07a](tasks/UI-07a-the-look-pass-specs.md) lists the six findings and which task owns each. **UI-07b comes first** because every later row is checked from its PNG, not from the Game view, whose dpi is the monitor's. **UI-08 applies the owner's portrait ruling of 2026-09-29**: the switch and the docs, then the camera, the HUD, and the screens, each with its own capture. **UI-10 is the in-world look**: the square telegraph rings and the second player cyan, the latter waiting on one owner answer. **UI-09 waits on art.**
 
 **UI-05 and UI-06 — The character page and the menu** *(owner, 2026-10-14)*: class select becomes a page that shows one class at a time with its real 3D body on a pedestal, its four skills as icons and one button; the menu becomes a title and at most two buttons. **Simplicity is the brief:** one primary button per screen, no tabs, no stat bars, no roster grid. The owner commissioned the art as Gemini sheets (`Soulvail_GeminiSamples/UI_v3_sheets/`). **Ranger only for now**: its emblem and its four icons (Quick Draw, Volley, Fleet Foot, Roll) already exist, and the page is built for more classes (arrows, dots, the Unlock path) that hide while there is one. The preview is a render texture on a stage parked off-screen, so no layer or `ProjectSettings/` change. **Not in these rows:** a second class's content, skill animations on the preview, a settings page (M8-02). **Process, from 2026-10-14:** the owner has Claude commit to `dev` directly, so these specs name no branch.
 
@@ -414,7 +428,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
-- **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
+- **Promoted 2026-10-14 to [UI-10b](tasks/UI-10b-one-player-cyan.md), which carries the owner's question; the line stays until it merges.** **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
   `ThreatArrows`, `VFX_ConsecrateZone` and `VFX_Bulwark` are `#22D3EE` — now `Palette.Player` — while
   `ReticleView._colour`, `FocusGlowView._colour` and `PlayerView._swingColour` are `#4CE6FF`, dressed
   that way on `Player.prefab` and `Reticle.prefab` since M0/M1. Found at **M3-13a** and deliberately

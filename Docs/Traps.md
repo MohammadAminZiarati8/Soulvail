@@ -867,6 +867,26 @@ a capture from a CLI-entered Play session cannot (RS-02a).
 - **A `StateMachine<T>` transition allocates nothing on Unity's Mono**, measured in M1-18:
   `EqualityComparer<TEnum>.Default` is specialised rather than boxing. The standing warning is
   about keeping `Tick` off the dictionary, not about `Apply`.
+- **Opening the Device Simulator edits `Packages/manifest.json`.** The first time its window opens,
+  Unity adds `com.unity.device-simulator.devices` to the manifest — a package change nobody asked
+  for, and one CLAUDE.md says needs the owner. **Revert the manifest (and `packages-lock.json` if it
+  moved) before every handover that opened the Simulator**; the window works without the package
+  staying (UI-07a).
+- **`ScreenCapture` captures the Game view, not the Simulator.** `ScreenCapture.CaptureScreenshot`
+  and `CaptureScreenshotAsTexture` read the Game view's back buffer, so with the Simulator showing a
+  2658 × 960 phone the PNG is whatever the Game view's own size was — a picture of the wrong screen
+  that looks right. A capture of what the Simulator shows renders it: UI-07b (UI-07a).
+- **With the Game view and the Simulator both open, `Screen.*` mixes their values.** `Screen.width`,
+  `Screen.height`, `Screen.dpi` and `Screen.safeArea` are not read from one window consistently, so
+  a layout computed then fits neither — and every presenter here reads `Screen.dpi` itself. **Close
+  the Game view while measuring in the Simulator** (UI-07a).
+- **The Run scene's canvases are on the `Default` layer**, the world's layer. No culling mask can
+  render the UI without the world or the world without the UI; a capture separates them by
+  disabling renderers, and adding a layer is a `ProjectSettings/` change (UI-07a).
+- **Rendering a URP camera into a texture on demand is `RenderPipeline.SubmitRenderRequest` with a
+  `UniversalRenderPipeline.SingleCameraRequest`**, its `destination` set to the `RenderTexture`.
+  `Camera.Render` is the built-in pipeline's path and is not the one to reach for under URP
+  (UI-07a).
 
 ---
 

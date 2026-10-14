@@ -74,6 +74,7 @@ public sealed class TreeArtTests
     {
         string[] found = AssetDatabase.FindAssets("t:Texture2D", new[] { PopupFolder, TreeFolder })
             .Select(AssetDatabase.GUIDToAssetPath)
+            .Where(path => !path.Contains("/Button_Violet"))   // UI-05a's two, beside the tree's
             .OrderBy(path => path)
             .ToArray();
         string[] expected = PiecePaths().Where(path => !path.StartsWith(IconFolder)).OrderBy(path => path).ToArray();

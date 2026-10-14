@@ -50,4 +50,14 @@ None. Nothing wears the art yet.
 
 ## As built
 
-_Filled at merge._
+As specified, with five differences.
+
+1. **The violet buttons have their own key.** `key_magenta` read the violet fill (nearer the key colour than any other piece) as a blend and returned it translucent blue. `cut_sheets.py` carries `key_violet`: a flood from the corners over pixels near the key, and a 3 px blend around it.
+2. **The buttons are scaled to 1000 px wide** (1000×234 and 1000×235) from the sheet's 2404. Their borders are 87 at each end, 0.37 × the height. The cost pill is 740×273 with 136 at each end.
+3. **Each piece is cut by connected blob, not by row and column**, because the frames and the lock overlap rows. The cutter keeps a piece's own glow and shadow (16 px) and drops a neighbour's.
+4. **The background is the sheet, as a PNG** (1408×3040), so its Android and default `maxTextureSize` is 4096, not 2048. ASTC 6×6.
+5. **Two older tests count folders and had to change:** `TreeArt_IsTheTwentyTwoPieces` ignores `Button_Violet*` in `Popup/`, and `LowerControlsArt_TotalHudCountIsThirty` is `…ThirtyOne` (the shard is in `Icons/`).
+
+The edge clean-up is a despill (pull the magenta excess out of every pixel within 3 px of clear), not `fix_colours.py`'s pink-to-grey recolour, which is for icons and would grey the shard. The three role badges not imported (melee, a second melee, caster) are cut by the same script's table and dropped there. The metas were written from `Button_Green`'s and imported by Unity.
+
+Not done: a look at any piece in a scene; nothing wears them.

@@ -382,7 +382,7 @@ What the planning found:
 | UI-04b | [The tree screen's frame](tasks/UI-04b-the-tree-frame.md) — stone popup, ribbon, points pill, round Close | S | UI-04a | ☑ |
 | UI-04c | [The class block: tiles, badges, links and the plate](tasks/UI-04c-the-class-block.md) — and the Ranger's branch icons | M | UI-04b | ☑ |
 | UI-04d | [Select, then Learn](tasks/UI-04d-select-and-learn.md) — a tap selects, the card describes, Learn spends | M | UI-04c | ☑ |
-| UI-05a | [The character page's art, imported](tasks/UI-05a-the-character-page-art.md) — 14 sprites cut from `UI_v3_sheets` | S | UI-04d | ☐ |
+| UI-05a | [The character page's art, imported](tasks/UI-05a-the-character-page-art.md) — 14 sprites cut from `UI_v3_sheets` | S | UI-04d | ☑ |
 | UI-05b | [The character preview](tasks/UI-05b-the-character-preview.md) — the class's 3D body on a pedestal, rendered to a texture | S | UI-05a | ☐ |
 | UI-05c | [The character page](tasks/UI-05c-the-character-page.md) — class select as one class at a time; Choose, Unlock or dead | M | UI-05a, UI-05b | ☐ |
 | UI-05d | [The skill strip](tasks/UI-05d-the-skill-strip.md) — four icon tiles and a caption | S | UI-05c | ☐ |

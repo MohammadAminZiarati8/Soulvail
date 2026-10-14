@@ -887,6 +887,13 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   `UniversalRenderPipeline.SingleCameraRequest`**, its `destination` set to the `RenderTexture`.
   `Camera.Render` is the built-in pipeline's path and is not the one to reach for under URP
   (UI-07a).
+- **A UI pass rendered over a transparent clear reads back premultiplied.** UGUI's and TMP's shaders
+  blend `One OneMinusSrcAlpha`, so a straight-alpha composite of that texture darkens every
+  antialiased edge; `LookCompositor.Unpremultiply` undoes it first (UI-07b).
+- **On Direct3D12 a 24-bit depth request reads back as 32.** `new RenderTexture(w, h, 24)` gets
+  `D32_SFloat_S8_UInt` and `.depth` is 32, while batch mode reports 24 — which is why
+  `CharacterPreviewTests.Resize_MakesTheTextureCappedAndFreesTheOld` fails in the open Editor and
+  passes in a batch run. Environmental, not a regression (UI-07b).
 
 ---
 

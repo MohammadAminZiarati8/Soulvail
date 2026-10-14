@@ -67,4 +67,11 @@ Several sizes in one click, comparison against a reference image, and a `Screen`
 
 ## As built
 
-_Filled at merge._
+As specified, with four deviations.
+
+1. **`LookCompositor.Unpremultiply`** is a public member the spec did not list. UGUI and TMP blend `One OneMinusSrcAlpha`, so the UI pass reads back premultiplied over the transparent clear, and rule 4's straight-alpha `Over` would darken every antialiased edge. `LookCapture` unpremultiplies the UI pass before `Over`. It has no test row of its own; the Run capture's text edges are the check ([Traps §9](../../Traps.md#9-rendering-canvas-and-tmp)).
+2. **`Soulvail.Editor.asmdef`** gained `UnityEngine.UI`, `Unity.RenderPipelines.Core.Runtime` and `Unity.RenderPipelines.Universal.Runtime`, for `Canvas` and `SingleCameraRequest`. A small edit beyond the Files table.
+3. **Rule 3 renders once, not once per canvas.** Every overlay canvas goes onto one capture camera, and canvases on one camera sort by sorting layer and order, as overlay canvases do. The capture camera also sits 10 000 units below the arena, so no world-space canvas falls in its view.
+4. **The menu item is greyed out outside Play** (a validate function), as well as `Capture()` refusing with a reason.
+
+**Manual verification, done by Claude through the MCP:** in the Simulator at 2658 × 960 @ 480 dpi, with the Game view open the capture refused and logged why (`Screen` read 480 × 800 @ 120 at that moment); with the Game view closed it wrote `Menu_2658x960_480dpi_….png` and `Run_2658x960_480dpi_….png` to `Soulvail_Looks/`, both matching the Simulator: the HUD, stick and dash button over the arena, with no fringes. After the capture no overlay canvas was left in camera mode, the capture camera was gone, the renderers that were off before were the only ones off after, and the run played on with a clean Console. **Finding 1's broken page was not reproduced in a file**: the run was entered through Continue, so the class page was not shown; it is UI-08d's to capture. The Menu capture does reproduce [UI-07a](UI-07a-the-look-pass-specs.md)'s finding 2: the title and both buttons draw in LiberationSans. With the Simulator closed, the item refuses with "no Device Simulator window is open". `Packages/manifest.json` was not modified this time (the Simulator was opened through `EditorWindow.GetWindow`), so there was nothing to revert.

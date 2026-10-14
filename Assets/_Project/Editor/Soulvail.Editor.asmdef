@@ -3,7 +3,10 @@
     "rootNamespace": "Soulvail.Editor",
     "references": [
         "Soulvail.Core",
-        "Soulvail.Game"
+        "Soulvail.Game",
+        "UnityEngine.UI",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [
         "Editor"

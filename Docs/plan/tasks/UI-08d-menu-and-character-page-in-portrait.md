@@ -48,4 +48,15 @@ New art, a second class, and the tree, Pause and RunEnd (UI-08e).
 
 ## As built
 
-_Filled at merge._
+**Built.** `Menu.unity`'s `Background` is now the canvas's first child, not `Safe`'s, so it stretches over the whole canvas and draws behind everything. The Menu's `CanvasScaler` reads 1080 × 1920, match 0.5. `MenuPresenter` and `CharacterPage` each gained `Refit(width, height, dpi, safeArea)`, called from `LateUpdate`. It lays out when any of the four values, or the px per dp they give on the canvas, differs from the last call, and returns without touching a rect when none does. `LateUpdate` is used because `CanvasScaler` and `SafeAreaFitter` take the frame's screen in `Update`. The menu's `OnEnable` now goes through `Refit`. The page's `Layout` reads its own rect. When the page holds the stack with a 120 dp preview (`PreviewMinDp`, 478.5 dp in all), it stacks: band, role, preview, strip, caption, dots, button row, deed. The preview takes what is left and never less than 120 dp. When the page is shorter than that and wider than tall, it lays out in three columns under the band: the preview between its arrows, the strip, then dots over the button row over the deed. At the look pass's 886 × 320 dp the preview is 170 × 140 dp. `MenuLayoutTests` has three new rows and `CharacterPageTests` has four new tests (eight rows). The phones are worked out from px and dpi: 411 × 914, 360 × 800 and 886 × 320 dp.
+
+**Deviations.**
+1. **`ClassSelect.prefab` has no `CanvasScaler`.** It is nested under the Menu's canvas, so the Menu's scaler is the one it draws by, and the table's "likewise" changed nothing.
+2. **The page has a landscape layout, which rule 3 does not describe.** Rule 5 asks the page to fit without overlap at 2658 × 960 @ 480 dpi. The page is 248 dp tall there, and the stack needs 478.5. No stack fits, so the short, wide page uses columns. At 1920 × 1080 @ 400 dpi, which no row runs, the columns leave the preview 52 dp wide. It is narrow, but nothing overlaps. The game is portrait-only.
+3. **`Refit` also compares the px per dp**, which is the four values plus the canvas's scale. `CanvasScaler` can take its first reading a frame after the menu's `OnEnable`, and the four values alone would never notice.
+4. **`MenuLayoutTests`' `Layout` helper now sizes the canvas as well as `Safe`**. `Menu_FitsPortrait`'s background check now measures the canvas, which the helper makes the same size as the area. One assertion message changed.
+5. **No `Capture Look`.** No Device Simulator was opened, because it edits `Packages/manifest.json` and the Game view would have to close. Manual steps 1 and 2 are the owner's.
+
+**Stale beside this.** `ClassSelectPresenter` still places its chrome and sizes the preview's texture only on open and on a step. That is a [parking-lot](../ROADMAP.md#parking-lot) line. The ROADMAP's UI-08c box read `☐☑` and now reads `☑`.
+
+**Judgement calls for the owner.** How the columns look on a landscape screen, if one ever shows the page. Whether the Ranger reads well in a 224 × 370 dp preview on a 360 dp phone.

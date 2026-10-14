@@ -96,7 +96,9 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>It lays itself out in dp</b> (<see cref="Layout"/>), the way <c>TreeDetailCard</c> does, so
-    /// the page fits 9:20 and every other aspect from anchors rather than from authored pixels.
+    /// the page fits 9:20 and every other aspect from its rect rather than from authored pixels —
+    /// <b>and lays out again whenever the screen, its dpi or its safe area changes</b>
+    /// (<see cref="Refit"/>, UI-08d rule 2), not only when the presenter opens it.
     /// </para>
     /// </remarks>
     public sealed class CharacterPage : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -106,6 +108,9 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>Degrees the model turns per dragged pixel.</summary>
         public const float DegreesPerPixel = 0.5f;
+
+        /// <summary>The least height the preview is given, in dp, however short the page (UI-08d rule 4).</summary>
+        public const float PreviewMinDp = 120f;
 
         private const float NameBandDp = 84f;
         private const float NameDp = 28f;
@@ -132,6 +137,17 @@ namespace Soulvail.Game.Presentation
         private const float ButtonSpriteHeightPx = 348f;
         private const float PillBorderPx = 136f;
         private const float PillSpriteHeightPx = 273f;
+
+        /// <summary>The columns layout's gap between preview, strip and button group.</summary>
+        private const float ColumnGapDp = 16f;
+
+        /// <summary>The strip's tile row: four 56 dp tiles and three 12 dp gaps (<c>SkillStrip</c>).</summary>
+        private const float StripWidthDp = 260f;
+
+        /// <summary>The page height the stack needs with the preview at its least, in dp.</summary>
+        private static float StackDp =>
+            BottomDp + DeedHeightDp + RowGapDp + Mathf.Max(ButtonHeightDp, PillHeightDp) + RowGapDp + DotsRowDp +
+            RowGapDp + SkillStrip.HeightDp + RowGapDp + PreviewMinDp + RowGapDp + NameBandDp;
 
         private static readonly LocKey ChooseKey = new LocKey("ui.classselect.choose");
         private static readonly LocKey UnlockKey = new LocKey("ui.classselect.unlock");
@@ -185,8 +201,16 @@ namespace Soulvail.Game.Presentation
         private Action _onNext;
         private Action _onPrimary;
         private Action<float> _onRotate;
+        private Canvas _canvas;
         private float _px = 1f;
+        private float _buttonX;
         private float _buttonY;
+        private bool _fitted;
+        private int _fitWidth;
+        private int _fitHeight;
+        private float _fitDpi;
+        private Rect _fitSafe;
+        private float _fitPx;
         private bool _pillShown;
         private DragMode _drag;
 
@@ -297,27 +321,225 @@ namespace Soulvail.Game.Presentation
         /// units to the dp (UI-05c rule 9). Text is never below 12 sp and the button is never below
         /// 48 dp tall.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>A stack, top to bottom, wherever it fits</b> (UI-08d rule 3): the name band with the
+        /// role under the name, the preview, the skill strip and its caption, the dots, the button
+        /// row and the deed line. The preview takes what the rest leaves, and when that is less than
+        /// <see cref="PreviewMinDp"/> it is the preview that stops shrinking, never anything else
+        /// (rule 4).
+        /// </para>
+        /// <para>
+        /// <b>A page wider than tall that cannot hold the stack lays out in three columns</b> under
+        /// the band — preview between its arrows, strip, then dots, button and deed — which is what a
+        /// landscape phone 320 dp tall needs (UI-07a finding 1, where the stack gave the preview a
+        /// negative height and drew the strip over the band).
+        /// </para>
+        /// </remarks>
         public void Layout(float px)
         {
             _px = px > 0f ? px : 1f;
             px = _px;
 
+            LayoutHeader(px);
+            LayoutButtonFaces(px);
+
+            Vector2 page = transform is RectTransform self ? self.rect.size : Vector2.zero;
+            bool fits = float.IsFinite(page.y) && page.y >= StackDp * px;
+
+            if (!fits && float.IsFinite(page.x) && page.x > page.y)
+            {
+                LayoutColumns(page, px);
+            }
+            else
+            {
+                LayoutStack(page, px);
+            }
+
+            PlaceButtonRow();
+        }
+
+        /// <summary>
+        /// Lays the page out again if the screen, its density or its safe area moved since the last
+        /// time — once a frame, and nothing at all when none did (UI-08d rule 2).
+        /// </summary>
+        /// <returns>Whether it laid out.</returns>
+        public bool Refit(int width, int height, float dpi, Rect safeArea)
+        {
+            if (width <= 0 || height <= 0)
+            {
+                return false;
+            }
+
+            float px = PixelsPerDp(dpi);
+
+            if (_fitted && width == _fitWidth && height == _fitHeight && dpi == _fitDpi && safeArea == _fitSafe && px == _fitPx)
+            {
+                return false;
+            }
+
+            _fitted = true;
+            _fitWidth = width;
+            _fitHeight = height;
+            _fitDpi = dpi;
+            _fitSafe = safeArea;
+            _fitPx = px;
+
+            Layout(px);
+
+            return true;
+        }
+
+        private void OnEnable()
+        {
+            // The presenter lays the page out as it opens; the first LateUpdate after any enable
+            // takes the screen as it is then, so a change made while the page was down is caught.
+            _fitted = false;
+        }
+
+        /// <remarks>
+        /// Late, so <c>CanvasScaler</c> and <c>SafeAreaFitter</c> have both taken this frame's screen
+        /// in their own <c>Update</c> before the page reads the scale and its rect.
+        /// </remarks>
+        private void LateUpdate()
+        {
+            Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
+        }
+
+        /// <summary>How many canvas units one dp is worth at <paramref name="dpi"/> on this page's canvas.</summary>
+        private float PixelsPerDp(float dpi)
+        {
+            if (_canvas == null)
+            {
+                _canvas = GetComponentInParent<Canvas>();
+            }
+
+            float scale = _canvas != null && _canvas.scaleFactor > 0f ? _canvas.scaleFactor : 1f;
+
+            return StickShaper.PixelsPerDp(dpi) / scale;
+        }
+
+        /// <summary>The bottom-up stack: deed, button row, dots, strip, then the preview takes what is left.</summary>
+        private void LayoutStack(Vector2 page, float px)
+        {
             float bottom = BottomDp * px;
             float deedHeight = DeedHeightDp * px;
             float buttonHeight = ButtonHeightDp * px;
             float rowGap = RowGapDp * px;
             float dotsHeight = DotsRowDp * px;
+            float edge = EdgeDp * px;
+            float arrow = ArrowDp * px;
 
-            // Bottom up: deed line, button row, dots, then the preview takes what is left.
             float deedY = bottom;
             float buttonY = deedY + deedHeight + rowGap;
             float dotsY = buttonY + Mathf.Max(buttonHeight, PillHeightDp * px) + rowGap;
             float stripY = dotsY + dotsHeight + rowGap;
             float stripHeight = SkillStrip.HeightDp * px;
             float previewY = stripY + stripHeight + rowGap;
-            float bandHeight = NameBandDp * px;
+            float top = (NameBandDp + RowGapDp) * px;
+            float previewHeight = Mathf.Max(PreviewMinDp * px, float.IsFinite(page.y) ? page.y - previewY - top : 0f);
+
+            if (_preview != null)
+            {
+                RectTransform rect = _preview.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(0.5f, 0f);
+                rect.offsetMin = new Vector2(edge + arrow, previewY);
+                rect.offsetMax = new Vector2(-(edge + arrow), previewY + previewHeight);
+            }
+
+            float arrowY = previewY + (previewHeight * 0.5f);
+
+            PlaceArrow(_previous, 0f, 0f, edge, arrowY, arrow);
+            PlaceArrow(_next, 1f, 1f, -edge, arrowY, arrow);
+
+            if (_dots != null)
+            {
+                Anchor(_dots, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, dotsHeight), new Vector2(0f, dotsY), new Vector2(0.5f, 0f));
+            }
+
+            if (_strip != null && _strip.transform is RectTransform strip)
+            {
+                Anchor(strip, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, stripHeight), new Vector2(0f, stripY), new Vector2(0.5f, 0f));
+                _strip.Layout(px);
+            }
+
+            if (_deed != null)
+            {
+                Anchor(_deed.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-2f * edge, deedHeight), new Vector2(0f, deedY), new Vector2(0.5f, 0f));
+            }
+
+            _buttonX = 0f;
+            _buttonY = buttonY;
+        }
+
+        /// <summary>
+        /// Three columns under the band, each centred on the height left: the preview between its
+        /// arrows, the strip, and the dots over the button row over the deed line.
+        /// </summary>
+        private void LayoutColumns(Vector2 page, float px)
+        {
             float edge = EdgeDp * px;
             float arrow = ArrowDp * px;
+            float gap = ColumnGapDp * px;
+            float rowGap = RowGapDp * px;
+            float deedHeight = DeedHeightDp * px;
+            float buttonRow = Mathf.Max(ButtonHeightDp, PillHeightDp) * px;
+            float dotsHeight = DotsRowDp * px;
+            float stripWidth = StripWidthDp * px;
+            float stripHeight = SkillStrip.HeightDp * px;
+            float groupWidth = (ButtonWidthDp + RowGapDp + PillWidthDp) * px;
+            float groupHeight = deedHeight + rowGap + buttonRow + rowGap + dotsHeight;
+
+            float contentBottom = BottomDp * px;
+            float contentHeight = Mathf.Max(0f, page.y - ((NameBandDp + RowGapDp) * px) - contentBottom);
+            float leftWidth = page.x - (2f * edge) - stripWidth - groupWidth - (2f * gap);
+            float previewWidth = Mathf.Max(0f, leftWidth - (2f * arrow));
+            float previewHeight = Mathf.Max(PreviewMinDp * px, contentHeight);
+
+            if (_preview != null)
+            {
+                Anchor(_preview.rectTransform, Vector2.zero, Vector2.zero, new Vector2(previewWidth, previewHeight), new Vector2(edge + arrow, contentBottom), Vector2.zero);
+            }
+
+            float arrowY = contentBottom + (previewHeight * 0.5f);
+
+            PlaceArrow(_previous, 0f, 0f, edge, arrowY, arrow);
+            PlaceArrow(_next, 0f, 1f, edge + arrow + previewWidth + arrow, arrowY, arrow);
+
+            float stripX = edge + Mathf.Max(0f, leftWidth) + gap;
+
+            if (_strip != null && _strip.transform is RectTransform strip)
+            {
+                Anchor(strip, Vector2.zero, Vector2.zero, new Vector2(stripWidth, stripHeight), new Vector2(stripX, contentBottom + ((contentHeight - stripHeight) * 0.5f)), Vector2.zero);
+                _strip.Layout(px);
+            }
+
+            float groupCentre = stripX + stripWidth + gap + (groupWidth * 0.5f);
+            float deedY = contentBottom + ((contentHeight - groupHeight) * 0.5f);
+            float buttonY = deedY + deedHeight + rowGap;
+            float dotsY = buttonY + buttonRow + rowGap;
+
+            if (_dots != null)
+            {
+                Anchor(_dots, Vector2.zero, Vector2.zero, new Vector2(groupWidth, dotsHeight), new Vector2(groupCentre, dotsY), new Vector2(0.5f, 0f));
+            }
+
+            if (_deed != null)
+            {
+                Anchor(_deed.rectTransform, Vector2.zero, Vector2.zero, new Vector2(groupWidth, deedHeight), new Vector2(groupCentre, deedY), new Vector2(0.5f, 0f));
+            }
+
+            _buttonX = groupCentre - (page.x * 0.5f);
+            _buttonY = buttonY;
+        }
+
+        /// <summary>The name band across the top, the name in it and the role under the name.</summary>
+        private void LayoutHeader(float px)
+        {
+            float bandHeight = NameBandDp * px;
+            float edge = EdgeDp * px;
 
             if (_nameBand != null)
             {
@@ -357,37 +579,15 @@ namespace Soulvail.Game.Presentation
             {
                 Anchor(_roleBadge.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(roleHeight, roleHeight), new Vector2(-roleWidth * 0.25f, -(NameDp * px * 1.3f) - (4f * px)), new Vector2(0.5f, 1f));
             }
+        }
 
-            if (_preview != null)
-            {
-                RectTransform rect = _preview.rectTransform;
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = Vector2.one;
-                rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.offsetMin = new Vector2(edge + arrow, previewY);
-                rect.offsetMax = new Vector2(-(edge + arrow), -(bandHeight + rowGap));
-            }
-
-            PlaceArrow(_previous, true, edge, arrow, previewY, bandHeight + rowGap);
-            PlaceArrow(_next, false, edge, arrow, previewY, bandHeight + rowGap);
-
-            if (_dots != null)
-            {
-                Anchor(_dots, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, dotsHeight), new Vector2(0f, dotsY), new Vector2(0.5f, 0f));
-                _dots.sizeDelta = new Vector2(0f, dotsHeight);
-            }
-
-            if (_strip != null && _strip.transform is RectTransform strip)
-            {
-                Anchor(strip, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, stripHeight), new Vector2(0f, stripY), new Vector2(0.5f, 0f));
-                strip.sizeDelta = new Vector2(0f, stripHeight);
-                _strip.Layout(px);
-            }
+        /// <summary>The sizes and type of the button, its pill and the deed line; where they sit is the layout's.</summary>
+        private void LayoutButtonFaces(float px)
+        {
+            float buttonHeight = ButtonHeightDp * px;
 
             if (_deed != null)
             {
-                Anchor(_deed.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, deedHeight), new Vector2(0f, deedY), new Vector2(0.5f, 0f));
-                _deed.rectTransform.sizeDelta = new Vector2(-2f * edge, deedHeight);
                 _deed.fontSize = DeedDp * px;
                 _deed.alignment = TextAlignmentOptions.Center;
                 _deed.enableAutoSizing = false;
@@ -436,10 +636,6 @@ namespace Soulvail.Game.Presentation
                 _price.alignment = TextAlignmentOptions.Center;
                 _price.enableAutoSizing = false;
             }
-
-            _buttonY = buttonY;
-
-            PlaceButtonRow();
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -657,7 +853,7 @@ namespace Soulvail.Game.Presentation
             float buttonWidth = ButtonWidthDp * _px;
             float pillWidth = PillWidthDp * _px;
             float total = _pillShown ? buttonWidth + gap + pillWidth : buttonWidth;
-            float left = -total * 0.5f;
+            float left = _buttonX - (total * 0.5f);
 
             if (_primary != null && _primary.transform is RectTransform button)
             {
@@ -673,22 +869,19 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        private static void PlaceArrow(Button button, bool left, float edge, float size, float bottom, float top)
+        /// <summary>
+        /// An arrow anchored to the page's bottom edge at <paramref name="anchorX"/>, its side
+        /// <paramref name="pivotX"/> on <paramref name="x"/> and its middle on the preview's,
+        /// <paramref name="y"/> up.
+        /// </summary>
+        private static void PlaceArrow(Button button, float anchorX, float pivotX, float x, float y, float size)
         {
             if (button == null || button.transform is not RectTransform rect)
             {
                 return;
             }
 
-            float x = left ? 0f : 1f;
-
-            // Centred on the preview's height: the page-middle anchor, shifted by the half the
-            // preview sits off it.
-            rect.anchorMin = new Vector2(x, 0.5f);
-            rect.anchorMax = new Vector2(x, 0.5f);
-            rect.pivot = new Vector2(left ? 0f : 1f, 0.5f);
-            rect.sizeDelta = new Vector2(size, size);
-            rect.anchoredPosition = new Vector2(left ? edge : -edge, (bottom - top) * 0.5f);
+            Anchor(rect, new Vector2(anchorX, 0f), new Vector2(anchorX, 0f), new Vector2(size, size), new Vector2(x, y), new Vector2(pivotX, 0.5f));
         }
 
         private static void Anchor(RectTransform rect, Vector2 min, Vector2 max, Vector2 size, Vector2 position, Vector2? pivot = null)

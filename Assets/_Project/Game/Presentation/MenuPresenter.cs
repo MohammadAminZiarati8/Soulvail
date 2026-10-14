@@ -104,7 +104,8 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private ClassSelectPresenter _classSelect;
 
         [Header("Dressing (UI-06b)")]
-        [Tooltip("CharacterPage_Background, stretched over the safe area.")]
+        [Tooltip("CharacterPage_Background, a child of the canvas rather than of Safe and stretched " +
+                 "over the whole of it, so the notch strip is painted too (UI-08d).")]
         [SerializeField] private Image _background;
 
         [Tooltip("Menu_TitlePlate; the title sits on it.")]
@@ -119,6 +120,14 @@ namespace Soulvail.Game.Presentation
         private SavedRun _saved;
         private SceneLoader _loader;
         private ILocalizer _localizer;
+        private Canvas _canvas;
+        private bool _hasSave;
+        private bool _fitted;
+        private int _fitWidth;
+        private int _fitHeight;
+        private float _fitDpi;
+        private Rect _fitSafe;
+        private float _fitPx;
 
         /// <param name="localizer">
         /// What turns this screen's three keys into words (M3-14a rule 8). Resolved from
@@ -192,13 +201,61 @@ namespace Soulvail.Game.Presentation
             // is true when the player sees it.
             _continue.gameObject.SetActive(_saved.IsPresent);
 
-            Layout(PixelsPerDp(), _saved.IsPresent);
+            _hasSave = _saved.IsPresent;
+            _fitted = false;
+            Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
+        }
+
+        /// <remarks>
+        /// Late, so <c>CanvasScaler</c> and <c>SafeAreaFitter</c> have both taken this frame's screen in
+        /// their own <c>Update</c> before the menu reads the scale (UI-08d rule 2).
+        /// </remarks>
+        private void LateUpdate()
+        {
+            Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
         }
 
         /// <summary>
-        /// Places the pieces in dp, <paramref name="px"/> canvas units to the dp (UI-06b). Everything is
-        /// anchored to its parent, the safe area, so nothing here needs the rect's size: the plate sits
-        /// on the upper third's centre line, the primary button on the middle and the secondary under it.
+        /// Lays the menu out again if the screen, its density or its safe area moved since the last
+        /// time — checked once a frame, and nothing at all is done when none did (UI-08d rule 2,
+        /// UI-07a finding 5: the menu used to lay out once, on enable).
+        /// </summary>
+        /// <returns>Whether it laid out.</returns>
+        /// <remarks>
+        /// The canvas's scale is compared too, through the px per dp it gives: <c>CanvasScaler</c> can
+        /// take its first reading of a screen a frame after this object's <c>OnEnable</c>.
+        /// </remarks>
+        public bool Refit(int width, int height, float dpi, Rect safeArea)
+        {
+            if (width <= 0 || height <= 0)
+            {
+                return false;
+            }
+
+            float px = PixelsPerDp(dpi);
+
+            if (_fitted && width == _fitWidth && height == _fitHeight && dpi == _fitDpi && safeArea == _fitSafe && px == _fitPx)
+            {
+                return false;
+            }
+
+            _fitted = true;
+            _fitWidth = width;
+            _fitHeight = height;
+            _fitDpi = dpi;
+            _fitSafe = safeArea;
+            _fitPx = px;
+
+            Layout(px, _hasSave);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Places the pieces in dp, <paramref name="px"/> canvas units to the dp (UI-06b). The
+        /// background stretches over the whole canvas, notch strip included (UI-08d rule 1); the rest
+        /// is anchored to the safe area, so nothing here needs the rect's size: the plate sits on the
+        /// upper third's centre line, the primary button on the middle and the secondary under it.
         /// </summary>
         /// <remarks>
         /// <b>With a save, Continue is the green primary and Descend the blue secondary below it; with
@@ -208,6 +265,7 @@ namespace Soulvail.Game.Presentation
         public void Layout(float px, bool hasSave)
         {
             px = px > 0f ? px : 1f;
+            _hasSave = hasSave;
 
             if (_background != null)
             {
@@ -306,13 +364,20 @@ namespace Soulvail.Game.Presentation
             image.pixelsPerUnitMultiplier = sprite.rect.height / image.rectTransform.sizeDelta.y;
         }
 
-        /// <summary>How many canvas units one dp is worth — <c>ClassSelectPresenter.PixelsPerDp</c>, for its reason.</summary>
-        private float PixelsPerDp()
+        /// <summary>
+        /// How many canvas units one dp is worth at <paramref name="dpi"/> —
+        /// <c>ClassSelectPresenter.PixelsPerDp</c>, for its reason. The canvas is found once and kept.
+        /// </summary>
+        private float PixelsPerDp(float dpi)
         {
-            var canvas = GetComponentInParent<Canvas>();
-            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+            if (_canvas == null)
+            {
+                _canvas = GetComponentInParent<Canvas>();
+            }
 
-            return StickShaper.PixelsPerDp(Screen.dpi) / scale;
+            float scale = _canvas != null && _canvas.scaleFactor > 0f ? _canvas.scaleFactor : 1f;
+
+            return StickShaper.PixelsPerDp(dpi) / scale;
         }
 
         /// <summary>

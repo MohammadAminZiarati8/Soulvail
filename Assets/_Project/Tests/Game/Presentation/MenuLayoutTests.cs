@@ -128,7 +128,7 @@ public sealed class MenuLayoutTests
         var safe = new Rect(Vector2.zero, area);
         Rect background = InSafe(Field<Image>("_background").rectTransform);
 
-        Assert.That(background.size, Is.EqualTo(area), "the background fills the safe area");
+        Assert.That(background.size, Is.EqualTo(area), "the background fills the canvas");
 
         var pieces = new System.Collections.Generic.List<Rect> { InSafe(Field<Image>("_titlePlate").rectTransform) };
         pieces.Add(InSafe(Field<Button>("_descend")));
@@ -156,8 +156,89 @@ public sealed class MenuLayoutTests
         Assert.That(Field<TMP_Text>("_continueLabel").fontSize, Is.GreaterThanOrEqualTo(12f));
     }
 
+    [Test]
+    public void Menu_Background_CoversTheFullCanvas()
+    {
+        // A notched phone: the safe area loses 34 dp at the top and 24 at the bottom.
+        Layout(Portrait, true);
+        _safe.anchoredPosition = new Vector2(0f, 24f);
+        _safe.sizeDelta = new Vector2(Portrait.x, Portrait.y - 58f);
+        _menu.Layout(1f, true);
+
+        Image background = Field<Image>("_background");
+        var canvas = (RectTransform)_menu.transform;
+
+        Assert.That(background.transform.parent, Is.SameAs(canvas), "the background is not the canvas's own child.");
+        Assert.That(background.transform.GetSiblingIndex(), Is.Zero, "the background draws over something.");
+
+        Rect painted = InSafe(background.rectTransform);
+        Rect whole = InSafe(canvas);
+
+        Assert.That(painted.min.x, Is.EqualTo(whole.min.x).Within(0.01f));
+        Assert.That(painted.min.y, Is.EqualTo(whole.min.y).Within(0.01f));
+        Assert.That(painted.max.x, Is.EqualTo(whole.max.x).Within(0.01f));
+        Assert.That(painted.max.y, Is.EqualTo(whole.max.y).Within(0.01f));
+
+        var safe = new Rect(Vector2.zero, _safe.sizeDelta);
+
+        foreach (RectTransform piece in new[] { Field<Image>("_titlePlate").rectTransform, (RectTransform)Field<Button>("_continue").transform, (RectTransform)Field<Button>("_descend").transform })
+        {
+            Rect rect = InSafe(piece);
+            Assert.That(safe.Contains(rect.min) && safe.Contains(rect.max), Is.True, $"{piece.name} {rect} leaves the safe area {safe}.");
+        }
+    }
+
+    [Test]
+    public void Menu_ScreenChanges_LaysOutAgain()
+    {
+        Layout(Portrait, false);
+
+        var descend = (RectTransform)Field<Button>("_descend").transform;
+        var screen = new Rect(0f, 0f, 1080f, 2400f);
+
+        Assert.That(_menu.Refit(1080, 2400, 160f, screen), Is.True, "the first look lays out.");
+
+        Vector2 laid = descend.anchoredPosition;
+        float width = descend.sizeDelta.x;
+
+        descend.anchoredPosition = new Vector2(123f, 456f);
+
+        Assert.That(_menu.Refit(2400, 1080, 160f, new Rect(0f, 0f, 2400f, 1080f)), Is.True, "a rotation was ignored.");
+        Assert.That(descend.anchoredPosition, Is.EqualTo(laid));
+
+        descend.anchoredPosition = new Vector2(123f, 456f);
+
+        Assert.That(_menu.Refit(2400, 1080, 160f, new Rect(96f, 0f, 2208f, 1080f)), Is.True, "a new safe area was ignored.");
+        Assert.That(descend.anchoredPosition, Is.EqualTo(laid));
+
+        Assert.That(_menu.Refit(2400, 1080, 320f, new Rect(96f, 0f, 2208f, 1080f)), Is.True, "a new dpi was ignored.");
+        Assert.That(descend.sizeDelta.x, Is.EqualTo(2f * width).Within(0.01f));
+    }
+
+    [Test]
+    public void Menu_ScreenUnchanged_DoesNotLayOut()
+    {
+        Layout(Portrait, false);
+
+        var descend = (RectTransform)Field<Button>("_descend").transform;
+        var screen = new Rect(0f, 0f, 1080f, 2400f);
+
+        _menu.Refit(1080, 2400, 420f, screen);
+        descend.anchoredPosition = new Vector2(123f, 456f);
+
+        Assert.That(_menu.Refit(1080, 2400, 420f, screen), Is.False);
+        Assert.That(_menu.Refit(1080, 2400, 420f, screen), Is.False);
+        Assert.That(descend.anchoredPosition, Is.EqualTo(new Vector2(123f, 456f)), "an unchanged screen was laid out again.");
+    }
+
     private void Layout(Vector2 areaDp, bool hasSave)
     {
+        // The canvas is the screen, and the safe area all of it unless a row insets it.
+        var canvas = (RectTransform)_menu.transform;
+        canvas.anchorMin = canvas.anchorMax = canvas.pivot = Vector2.zero;
+        canvas.anchoredPosition = Vector2.zero;
+        canvas.sizeDelta = areaDp;
+
         _safe.anchorMin = Vector2.zero;
         _safe.anchorMax = Vector2.zero;
         _safe.pivot = Vector2.zero;

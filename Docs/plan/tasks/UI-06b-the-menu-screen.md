@@ -44,4 +44,6 @@ The Ranger standing behind the title, music and a settings page: none is asked f
 
 ## As built
 
-_Filled at merge._
+1. **No Editor was open, so `Menu.unity` was edited as YAML.** A `Safe` container (`SafeAreaFitter`) now holds `Background`, `TitlePlate` (with `Title` under it), `Continue` and `Descend`; `ClassSelect` stays a Canvas sibling on top. Both buttons switch to Sprite Swap with their pressed sprites. `MenuLayoutTests` opens the real scene, which wiring-checks it.
+2. **Layout is all anchors plus dp sizes** in `MenuPresenter.Layout(px, hasSave)`, run on enable: plate on the upper third's centre line (320×106 dp), buttons 260×60 dp, 16 dp apart; with no save Descend takes the green primary place. Sliced borders scale by sprite height over drawn height.
+3. **Tests:** `MenuLayoutTests` 8 cases (five tests, `FitsPortrait` run at 411×914 and 360×780, with and without a save). Full EditMode 4 063: 4 062 passed, 1 inconclusive. Not seen in the Editor; the title's colour on the plate is unchecked.

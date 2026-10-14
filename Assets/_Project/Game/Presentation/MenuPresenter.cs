@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Controls;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -68,6 +69,16 @@ namespace Soulvail.Game.Presentation
         /// <summary>The button that resumes the run on disk (M3-07b).</summary>
         private static readonly LocKey ContinueKey = new LocKey("ui.menu.continue");
 
+        /// <summary>Layout, in dp (UI-06b). The buttons are never under 240 × 56; the plate keeps its sprite's ratio.</summary>
+        public const float ButtonWidthDp = 260f;
+        public const float ButtonHeightDp = 60f;
+        public const float ButtonGapDp = 16f;
+        public const float ButtonTextDp = 22f;
+        public const float PlateWidthDp = 320f;
+        public const float PlateRatio = 331f / 1000f;
+        public const float PlateInsetDp = 28f;
+        public const float TitleDp = 40f;
+
         [SerializeField] private Button _descend;
 
         /// <summary>
@@ -91,6 +102,18 @@ namespace Soulvail.Game.Presentation
                  "than on this object, because the screen is its own prefab — PausePresenter " +
                  "reaches the Skills screen the same way and for the same reason.")]
         [SerializeField] private ClassSelectPresenter _classSelect;
+
+        [Header("Dressing (UI-06b)")]
+        [Tooltip("CharacterPage_Background, stretched over the safe area.")]
+        [SerializeField] private Image _background;
+
+        [Tooltip("Menu_TitlePlate; the title sits on it.")]
+        [SerializeField] private Image _titlePlate;
+
+        [SerializeField] private Sprite _greenButton;
+        [SerializeField] private Sprite _greenPressed;
+        [SerializeField] private Sprite _blueButton;
+        [SerializeField] private Sprite _bluePressed;
 
         private PendingRun _pending;
         private SavedRun _saved;
@@ -168,6 +191,128 @@ namespace Soulvail.Game.Presentation
             // alive — and reading it at the moment the menu goes on screen is the only reading that
             // is true when the player sees it.
             _continue.gameObject.SetActive(_saved.IsPresent);
+
+            Layout(PixelsPerDp(), _saved.IsPresent);
+        }
+
+        /// <summary>
+        /// Places the pieces in dp, <paramref name="px"/> canvas units to the dp (UI-06b). Everything is
+        /// anchored to its parent, the safe area, so nothing here needs the rect's size: the plate sits
+        /// on the upper third's centre line, the primary button on the middle and the secondary under it.
+        /// </summary>
+        /// <remarks>
+        /// <b>With a save, Continue is the green primary and Descend the blue secondary below it; with
+        /// none, Descend is the green primary alone</b> (rule 3). The decision is only which button holds
+        /// which place and which sprites it wears — the click handlers are not touched.
+        /// </remarks>
+        public void Layout(float px, bool hasSave)
+        {
+            px = px > 0f ? px : 1f;
+
+            if (_background != null)
+            {
+                RectTransform rect = _background.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+            }
+
+            if (_titlePlate != null)
+            {
+                Place(_titlePlate.rectTransform, new Vector2(0.5f, 5f / 6f), new Vector2(PlateWidthDp * px, PlateWidthDp * PlateRatio * px), 0f);
+                Dress(_titlePlate, _titlePlate.sprite);
+            }
+
+            if (_title != null)
+            {
+                RectTransform rect = _title.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = new Vector2(PlateInsetDp * px, 0f);
+                rect.offsetMax = new Vector2(-PlateInsetDp * px, 0f);
+                _title.fontSize = TitleDp * px;
+                _title.alignment = TextAlignmentOptions.Center;
+                _title.enableAutoSizing = false;
+                _title.overflowMode = TextOverflowModes.Ellipsis;
+            }
+
+            PlaceButton(_continue, _continueLabel, _greenButton, _greenPressed, 0f, px);
+
+            if (hasSave)
+            {
+                PlaceButton(_descend, _descendLabel, _blueButton, _bluePressed, -(ButtonHeightDp + ButtonGapDp), px);
+            }
+            else
+            {
+                PlaceButton(_descend, _descendLabel, _greenButton, _greenPressed, 0f, px);
+            }
+        }
+
+        private static void PlaceButton(Button button, TMP_Text label, Sprite face, Sprite pressed, float yDp, float px)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            Place((RectTransform)button.transform, new Vector2(0.5f, 0.5f), new Vector2(ButtonWidthDp * px, ButtonHeightDp * px), yDp * px);
+
+            SpriteState sprites = button.spriteState;
+            sprites.pressedSprite = pressed;
+            button.spriteState = sprites;
+
+            if (button.targetGraphic is Image image)
+            {
+                image.sprite = face;
+                image.color = Color.white;
+                Dress(image, face);
+            }
+
+            if (label != null)
+            {
+                RectTransform rect = label.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = new Vector2(8f * px, 0f);
+                rect.offsetMax = new Vector2(-8f * px, 0f);
+                label.fontSize = ButtonTextDp * px;
+                label.alignment = TextAlignmentOptions.Center;
+                label.enableAutoSizing = false;
+            }
+        }
+
+        private static void Place(RectTransform rect, Vector2 anchor, Vector2 size, float y)
+        {
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = new Vector2(0f, y);
+        }
+
+        /// <summary>
+        /// Sliced, with the sprite's own borders scaled the way its height is: a 348 px button drawn
+        /// 60 dp tall carries its 130 px ends at 60/348 of their size.
+        /// </summary>
+        private static void Dress(Image image, Sprite sprite)
+        {
+            if (sprite == null)
+            {
+                return;
+            }
+
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = sprite.rect.height / image.rectTransform.sizeDelta.y;
+        }
+
+        /// <summary>How many canvas units one dp is worth — <c>ClassSelectPresenter.PixelsPerDp</c>, for its reason.</summary>
+        private float PixelsPerDp()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+
+            return StickShaper.PixelsPerDp(Screen.dpi) / scale;
         }
 
         /// <summary>

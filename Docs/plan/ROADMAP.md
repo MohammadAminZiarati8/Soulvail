@@ -390,7 +390,7 @@ What the planning found:
 | UI-06b | [The menu screen](tasks/UI-06b-the-menu-screen.md) — a title and at most two buttons | S | UI-06a, UI-05c | ☑ |
 | UI-07a | [The look pass's specs](tasks/UI-07a-the-look-pass-specs.md) — this group, UI-08, UI-10, Traps §9 | S | UI-06b | ☑ |
 | UI-07b | [A look-capture tool](tasks/UI-07b-the-look-capture-tool.md) — Editor-only; world and canvases, as the Simulator shows them, to a PNG | S | UI-07a | ☑ |
-| UI-07c | [Lilita One everywhere](tasks/UI-07c-lilita-one-everywhere.md) — Menu, TreeView, Pause, RunEnd off LiberationSans | S | UI-07a | ☐ |
+| UI-07c | [Lilita One everywhere](tasks/UI-07c-lilita-one-everywhere.md) — Menu, TreeView, Pause, RunEnd off LiberationSans | S | UI-07a | ☑ |
 | UI-07d | [The tree's labels and centring](tasks/UI-07d-tree-labels-and-centring.md) — branch names clear the card; the block centred | S | UI-07a | ☐ |
 | UI-08a | [The portrait switch](tasks/UI-08a-the-portrait-switch.md) — Player Settings portrait-only, and the docs | S | UI-07b | ☐ |
 | UI-08b | [The camera in portrait](tasks/UI-08b-the-camera-in-portrait.md) — the short side keeps 60° | S | UI-08a | ☐ |

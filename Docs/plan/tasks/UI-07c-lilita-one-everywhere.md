@@ -40,4 +40,6 @@ A second font, font sizes, and TMP Settings.
 
 ## As built
 
-_Filled at merge._
+**Built as specced:** `FontTests` (3 rows) and the font edits. A one-off Editor script set `font` and, for texts not already on a Lilita material, `fontSharedMaterial = LilitaOne_SDF.material` on every `TMP_Text` that was not on Lilita: 3 in `Menu.unity` and, in prefabs, FirstActiveHint 1, Hud 9, LevelUp 12, Pause 4, RunEnd 8, Sanctum 29, Skills 24, Splash 23, TreeView 16. The spec named four; the others are the "any other prefab the test finds" row. The Hud edits contradict the spec's claim that Hud was already Lilita: nine of its texts were not. `DebugOverlay` and TMP Settings are untouched; `Boot.unity` is outside the test and the table.
+
+**Overflow (rule 5):** in Play on `Menu.unity` no text overflows (Title 93 x 31 in a 178 x 72 rect, Label 53 x 17 in 165 x 41). The other screens were not measured: no Device Simulator was open, so no `Capture Look` PNG was taken. **Owed to the owner:** capture the tree, Pause and RunEnd; an overflow there is UI-08e's.

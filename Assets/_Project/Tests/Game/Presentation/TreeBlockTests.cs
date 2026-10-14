@@ -227,7 +227,7 @@ public sealed partial class TreeScreenTests
         Assert.That(TileName(CellFor(tier1)), Is.EqualTo("TreeTile_Available"));
         Assert.That(block.LinkAbove(tier1).name, Is.EqualTo("TreeLink_Dark"));
 
-        Tap(CellFor(tier1));
+        Take(CellFor(tier1));
 
         Assert.That(TileName(CellFor(tier1)), Is.EqualTo("TreeTile_Taken"));
         Assert.That(BadgeName(CellFor(tier1)), Is.EqualTo("TreeBadge_Check"));

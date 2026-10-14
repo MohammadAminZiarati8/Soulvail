@@ -46,9 +46,9 @@ namespace Soulvail.Game.Presentation
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>It reports a tap and decides nothing.</b> <see cref="Show"/> says whether the tile is
-    /// takeable; the button is interactable exactly then, and a tap is handed to the presenter, which
-    /// asks core again before it sends <c>TakeNode</c> (UI-03c rule 4).
+    /// <b>It reports a tap and decides nothing.</b> A tap on any shown tile is handed to the
+    /// presenter, which selects it (UI-04d); <see cref="Show"/> says whether the node is takeable
+    /// only so the plus badge shows, and the presenter asks core again before it sends <c>TakeNode</c>.
     /// </para>
     /// <para>
     /// <b>The tile art carries the state's colour</b>, so it is drawn untinted; the one tint left is
@@ -78,8 +78,11 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The node's tier in its branch, as a numeral, at the tile's bottom-left.")]
         [SerializeField] private TMP_Text _numeral;
 
-        [Tooltip("What a tap lands on. Interactable only while the node can be taken (UI-03c rule 4).")]
+        [Tooltip("What a tap lands on. Interactable whenever the tile is shown: a tap selects (UI-04d rule 1).")]
         [SerializeField] private Button _button;
+
+        [Tooltip("TreeTile_SelectedRing, stretched over the tile; shown while this is the selected node.")]
+        [SerializeField] private Image _ring;
 
         [SerializeField] private Sprite _takenTile;
         [SerializeField] private Sprite _availableTile;
@@ -96,6 +99,8 @@ namespace Soulvail.Game.Presentation
 
         private bool _takeable;
 
+        private bool _selected;
+
         /// <summary>The presenter's handler, handed the node on a tap.</summary>
         private Action<ContentId> _tapped;
 
@@ -110,6 +115,24 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>Whether a tap would be sent on — Available, free, and a point banked.</summary>
         public bool IsTakeable => _takeable;
+
+        /// <summary>Whether the selection ring is showing on this tile.</summary>
+        public bool IsSelected => _selected;
+
+        /// <summary>The tier numeral for a tier from 1: "I", "II"…; past the table, its number.</summary>
+        public static string NumeralFor(int tier) =>
+            tier >= 1 && tier <= Numerals.Length ? Numerals[tier - 1] : tier.ToString();
+
+        /// <summary>Puts the selection ring on or off this tile (UI-04d rule 1).</summary>
+        public void SetSelected(bool selected)
+        {
+            _selected = selected;
+
+            if (_ring != null)
+            {
+                _ring.gameObject.SetActive(selected);
+            }
+        }
 
         /// <summary>
         /// Hands the tile the one thing it reports to. Called once per clone by the presenter that
@@ -180,14 +203,12 @@ namespace Soulvail.Game.Presentation
 
             if (_numeral != null)
             {
-                _numeral.text = tier >= 1 && tier <= Numerals.Length
-                    ? Numerals[tier - 1]
-                    : tier.ToString();
+                _numeral.text = NumeralFor(tier);
             }
 
             if (_button != null)
             {
-                _button.interactable = _takeable;
+                _button.interactable = true;
             }
 
             gameObject.SetActive(true);
@@ -226,6 +247,7 @@ namespace Soulvail.Game.Presentation
             _node = default;
             _state = NodeState.Locked;
             _takeable = false;
+            SetSelected(false);
 
             if (_button != null)
             {
@@ -246,12 +268,12 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// A tap on a tile that is not takeable reports nothing — <c>onClick</c> fires on an
-        /// <c>Invoke</c> whatever <c>interactable</c> says, so the guard is here as well (rule 4).
+        /// A tap on a shown tile reports its node, in any state (UI-04d rule 1); a hidden tile has
+        /// none to report.
         /// </summary>
         private void OnClick()
         {
-            if (_takeable)
+            if (IsShown)
             {
                 _tapped?.Invoke(_node);
             }

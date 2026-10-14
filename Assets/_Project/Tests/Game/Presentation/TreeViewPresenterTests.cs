@@ -540,12 +540,10 @@ public sealed class TreeViewPresenterTests
         foreach (TreeNodeButton cell in ShownCells())
         {
             Assert.That(cell.IsTakeable, Is.False, $"'{cell.Node}' is takeable in a drawing run.");
-            Assert.That(
-                Field<Button>(cell, "_button").interactable,
-                Is.False,
-                $"The cell for '{cell.Node}' can be tapped in a drawing run.");
 
+            // UI-04d: a tap selects, in any run; Learn is pressed too, past its own absence.
             Field<Button>(cell, "_button").onClick.Invoke();
+            Field<Button>(Field<TreeDetailCard>(_presenter, "_card"), "_learn").onClick.Invoke();
         }
 
         Assert.That(_session.State.TakenNodeCount, Is.Zero, "The tree view took a node.");

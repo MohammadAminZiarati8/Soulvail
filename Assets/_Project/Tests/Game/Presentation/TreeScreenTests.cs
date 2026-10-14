@@ -304,7 +304,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
     // ---- Rules 4, 6: the take ---------------------------------------------------------------------
 
     [Test]
-    public void Tap_AvailableWithPoint_Takes()
+    public void Learn_AvailableWithPoint_Takes()
     {
         StartRun(Ranger(), free: true, pending: 1);
         Build();
@@ -316,7 +316,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
 
         Assert.That(CellFor(tier2).State, Is.EqualTo(NodeState.Locked), "the fixture's premise.");
 
-        Tap(CellFor(tier1));
+        Take(CellFor(tier1));
 
         Assert.That(_session.State.TakenNodeIds, Has.Member(tier1));
         Assert.That(_session.State.SkillPoints, Is.Zero);
@@ -332,7 +332,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
     }
 
     [Test]
-    public void Tap_LockedTakenOrNoPoint_SendsNothing()
+    public void Learn_LockedTakenOrNoPoint_SendsNothing()
     {
         ContentId first = TreeFirst(Ranger());
 
@@ -344,21 +344,21 @@ public sealed partial class TreeScreenTests : InputTestFixture
         int taken = _session.State.TakenNodeCount;
 
         // Locked and taken: nothing, and no throw.
-        Assert.That(() => Tap(CellFor(_tree.Branches[0].Tier(3)[0])), Throws.Nothing);
-        Assert.That(() => Tap(CellFor(first)), Throws.Nothing);
+        Assert.That(() => Take(CellFor(_tree.Branches[0].Tier(3)[0])), Throws.Nothing);
+        Assert.That(() => Take(CellFor(first)), Throws.Nothing);
 
         Assert.That(_session.State.TakenNodeCount, Is.EqualTo(taken));
         Assert.That(_session.State.SkillPoints, Is.EqualTo(1));
 
         // Spend the point, then tap another open node with none left.
-        Tap(CellFor(_tree.Branches[1].Tier(1)[0]));
+        Take(CellFor(_tree.Branches[1].Tier(1)[0]));
 
         Assert.That(_session.State.SkillPoints, Is.Zero);
 
         ContentId open = _tree.Branches[2].Tier(1)[0];
 
         Assert.That(CellFor(open).State, Is.EqualTo(NodeState.Available));
-        Assert.That(() => Tap(CellFor(open)), Throws.Nothing);
+        Assert.That(() => Take(CellFor(open)), Throws.Nothing);
         Assert.That(_session.State.TakenNodeIds, Has.No.Member(open), "a tap with no point took a node.");
     }
 
@@ -377,7 +377,7 @@ public sealed partial class TreeScreenTests : InputTestFixture
         Assert.That(points.gameObject.activeSelf, Is.True);
         Assert.That(points.text, Is.EqualTo("2"));
 
-        Tap(CellFor(_tree.Branches[0].Tier(1)[0]));
+        Take(CellFor(_tree.Branches[0].Tier(1)[0]));
 
         Assert.That(points.text, Is.EqualTo("1"), "the count was read before the point was spent.");
         Assert.That(Field<Button>(_screen, "_close"), Is.Not.Null);
@@ -414,10 +414,11 @@ public sealed partial class TreeScreenTests : InputTestFixture
 
         foreach (TreeNodeButton cell in Shown())
         {
-            Assert.That(Field<Button>(cell, "_button").interactable, Is.False, $"'{cell.Node}' is interactable.");
             Assert.That(PlusShown(cell), Is.False);
 
-            Tap(cell);
+            Take(cell);
+
+            Assert.That(Field<TreeDetailCard>(_screen, "_card").LearnShown, Is.False, "a drawing run offers Learn.");
         }
 
         Assert.That(_session.State.TakenNodeCount, Is.Zero, "a drawing run's tree sent a command.");
@@ -646,6 +647,13 @@ public sealed partial class TreeScreenTests : InputTestFixture
     /// <c>interactable</c>, which is what makes the cell's own guard part of what a row checks.
     /// </summary>
     private static void Tap(TreeNodeButton cell) => Field<Button>(cell, "_button").onClick.Invoke();
+
+    /// <summary>Select the cell, then press Learn — what a take is since UI-04d.</summary>
+    private void Take(TreeNodeButton cell)
+    {
+        Tap(cell);
+        Field<Button>(Field<TreeDetailCard>(_screen, "_card"), "_learn").onClick.Invoke();
+    }
 
     private RectTransform Safe() =>
         (RectTransform)_screen.GetComponentInChildren<SafeAreaFitter>(true).transform;

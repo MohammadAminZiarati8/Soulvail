@@ -172,6 +172,14 @@ MonoBehaviour:
     _text: "[LV {0:0} \xB7\xB7\xB7]"
   - _key: ui.tree.points
     _text: "[{0:0} \xB7\xB7]"
+  - _key: ui.tree.learn
+    _text: "[L\xE9\xE1r\xF1 \xB7\xB7]"
+  - _key: ui.tree.level
+    _text: "[L\xE9v\xE9l {0:0} \xF4f {1:0} \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.tree.pick
+    _text: "[T\xE1p \xE1 sk\xEEll t\xF4 s\xE9\xE9 \xEEt \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.tree.learned
+    _text: "[L\xE9\xE1r\xF1\xE9d \xB7\xB7\xB7]"
   - _key: character.oathbound.name
     _text: "[\xD4\xE1thb\xF4\xFB\xF1d \xB7\xB7\xB7\xB7]"
   - _key: enemy.husk.name

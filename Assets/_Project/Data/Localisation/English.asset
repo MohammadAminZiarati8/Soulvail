@@ -162,6 +162,14 @@ MonoBehaviour:
     _text: LV {0:0}
   - _key: ui.tree.points
     _text: '{0:0}'
+  - _key: ui.tree.learn
+    _text: Learn
+  - _key: ui.tree.level
+    _text: Level {0:0} of {1:0}
+  - _key: ui.tree.pick
+    _text: Tap a skill to see it
+  - _key: ui.tree.learned
+    _text: Learned
   - _key: character.oathbound.name
     _text: Oathbound
   - _key: enemy.husk.name

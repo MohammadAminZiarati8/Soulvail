@@ -98,7 +98,7 @@ public sealed partial class TreeScreenTests
 
         OpenAt(Portrait);
 
-        Tap(CellFor(_tree.Branches[0].Tier(1)[0]));
+        Take(CellFor(_tree.Branches[0].Tier(1)[0]));
 
         TMP_Text count = Field<TMP_Text>(_screen, "_pointsLabel");
 

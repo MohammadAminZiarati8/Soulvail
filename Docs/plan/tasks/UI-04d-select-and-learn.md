@@ -58,4 +58,12 @@ A tap selects a node and the card under the block describes it; the green Learn 
 
 ## As built
 
-_Filled at merge._
+As specified, with three differences.
+
+1. **`TreeDetailCard.Show` takes a trailing `bool free = true`** beside the spec's signature. Rule 6 needs the card to know the run draws; `canLearn` alone cannot say "no button at all".
+2. **Every shown tile is interactable.** `TreeNodeButton` reports a tap in any state and any run (rule 1), so `IsTakeable` now drives only the plus badge. The `NotFree_IsReadOnly` and `Tree_DrawingRun_SendsNothing` rows drop their "not interactable" assertion and check the card has no Learn instead.
+3. **Rows moved, not just added:** `Tap_AvailableWithPoint_Takes` became `Learn_AvailableWithPoint_Takes` and `Tap_LockedTakenOrNoPoint_SendsNothing` became `Learn_LockedTakenOrNoPoint_SendsNothing`; both, and the take steps in `TreeBlockTests`, `TreeFrameTests` and the header row, go through a `Take` helper (select, then Learn). The nine spec rows are in `TreeDetailCardTests.cs`.
+
+Unspecified numbers: the card is 176 dp tall (`TreeDetailCard.HeightDp`, inside UI-04c's 190 dp band), its ribbon 220×40 dp, Learn 168×48 dp. The title is "Name" plus the tier numeral. Pseudo-locale regenerated for the four new keys.
+
+Not done: a look at the card in the Editor or on a phone. `Card_FitsPortrait` pins 9:20 only.

@@ -182,6 +182,9 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The block the grid, its links, row labels and the class plate are drawn by (UI-04c).")]
         [SerializeField] private TreeBlockView _block;
 
+        [Tooltip("The card under the block: the selected node and its Learn button (UI-04d).")]
+        [SerializeField] private TreeDetailCard _card;
+
         [Tooltip("The pill's count of banked points, from ui.tree.points: a bare number. A drawing " +
                  "run reads 0 (UI-04b rule 5).")]
         [SerializeField] private TMP_Text _pointsLabel;
@@ -251,6 +254,9 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private readonly List<TreeNodeButton> _cells = new List<TreeNodeButton>();
 
+        /// <summary>The tapped node, or <c>default</c>; cleared on open and on <see cref="Close"/>.</summary>
+        private ContentId _selected;
+
         /// <summary>How the door that opened this gets itself back — rule 5's whole mechanism.</summary>
         private Action _onClosed;
 
@@ -266,6 +272,9 @@ namespace Soulvail.Game.Presentation
         /// every frame of a run.
         /// </remarks>
         private bool _resolved;
+
+        /// <summary>The node whose card is showing, or <c>default</c> when none is (UI-04d rule 2).</summary>
+        public ContentId Selected => _selected;
 
         /// <summary>Whether the screen is currently up — both doors' poll (rule 5).</summary>
         public bool IsOpen => _root != null && _root.alpha > 0f;
@@ -331,6 +340,8 @@ namespace Soulvail.Game.Presentation
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             Wire(_close, Close);
+
+            _card?.Bind(Learn);
         }
 
         /// <exception cref="MissingReferenceException">The root, a column, the template or Close is not dressed.</exception>
@@ -475,6 +486,7 @@ namespace Soulvail.Game.Presentation
             }
 
             _onClosed = onClosed;
+            _selected = default;
 
             Draw(state);
             ShowScreen();
@@ -499,6 +511,8 @@ namespace Soulvail.Game.Presentation
             }
 
             HideScreen();
+
+            _selected = default;
 
             // Only the star's own pause: a door's Menu or LevelUp is that door's to give back.
             if (_pause != null && _pause.Holder == PauseReason.Tree)
@@ -554,6 +568,11 @@ namespace Soulvail.Game.Presentation
                 // in this state, so this is the undressed-scene path rather than a shipped one.
                 HideCells();
 
+                if (_card != null)
+                {
+                    _card.gameObject.SetActive(false);
+                }
+
                 return;
             }
 
@@ -567,6 +586,12 @@ namespace Soulvail.Game.Presentation
             }
 
             int index = 0;
+
+            SkillSpec selectedSpec = null;
+            Sprite selectedIcon = null;
+            NodeState selectedState = NodeState.Locked;
+            int selectedTier = 0;
+            int selectedTiers = 0;
 
             for (int b = 0; b < tree.Branches.Count; b++)
             {
@@ -587,14 +612,22 @@ namespace Soulvail.Game.Presentation
                         }
 
                         ContentId id = tier[i];
+                        SkillSpec spec = _catalog.Skill(id);
+                        NodeState nodeState = StateOf(state, id);
+                        Sprite icon = IconOf(id);
 
                         // Rule 3 and rule 7 in one flag: a drawing run's cells are never takeable.
-                        _cells[index].Show(
-                            _catalog.Skill(id),
-                            StateOf(state, id),
-                            IconOf(id),
-                            t,
-                            points > 0);
+                        _cells[index].Show(spec, nodeState, icon, t, points > 0);
+                        _cells[index].SetSelected(id == _selected);
+
+                        if (id == _selected)
+                        {
+                            selectedSpec = spec;
+                            selectedIcon = icon;
+                            selectedState = nodeState;
+                            selectedTier = t;
+                            selectedTiers = branch.TierCount;
+                        }
 
                         index++;
                     }
@@ -615,6 +648,29 @@ namespace Soulvail.Game.Presentation
                     _looks?.For(state.CharacterId).Emblem,
                     _catalog.Character(state.CharacterId).NameKey);
             }
+
+            DrawCard(selectedSpec, selectedIcon, selectedState, selectedTier, selectedTiers, free, points > 0);
+        }
+
+        /// <summary>The card under the block: the selected node, or the hint (UI-04d rules 2, 3).</summary>
+        private void DrawCard(SkillSpec spec, Sprite icon, NodeState nodeState, int tier, int tiers, bool free, bool canLearn)
+        {
+            if (_card == null)
+            {
+                return;
+            }
+
+            _card.gameObject.SetActive(true);
+            _card.Layout(PixelsPerDp());
+
+            if (spec is null || _localizer is null)
+            {
+                _card.ShowHint(_localizer);
+
+                return;
+            }
+
+            _card.Show(spec, icon, nodeState, tier, tiers, canLearn, _localizer, free);
         }
 
         /// <summary>The node's icon from the book, else the block's placeholder (UI-04c rule 3).</summary>
@@ -626,25 +682,43 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// A cell's tap (UI-03c rule 4): one point on one open node, then the screen redrawn.
+        /// A cell's tap (UI-04d rule 1): selects the node, in any state, and sends nothing.
         /// </summary>
-        /// <remarks>
-        /// Every condition the cell already checked is asked of core again, because
-        /// <c>TakeNode</c> throws for a refused node and a stale cell is one frame from being one.
-        /// Spending the last point leaves the screen up (rule 6); a full tree's leftover points are
-        /// the ticker's <c>SettleFullTree</c>, as before.
-        /// </remarks>
         private void OnCellTapped(ContentId id)
         {
             RunState state = _session?.State;
 
-            if (!IsOpen || state is null || _progression is null
-                || !state.IsFreePick || state.SkillPoints <= 0 || !state.IsNodeAvailable(id))
+            if (!IsOpen || state is null)
             {
                 return;
             }
 
-            _progression.TakeNode(id);
+            _selected = id;
+
+            Draw(state);
+        }
+
+        /// <summary>
+        /// The card's Learn (UI-04d rule 5): one point on the selected node, then the screen redrawn
+        /// with the selection kept.
+        /// </summary>
+        /// <remarks>
+        /// Every condition the card already checked is asked of core again, because
+        /// <c>TakeNode</c> throws for a refused node and a stale card is one frame from being one.
+        /// Spending the last point leaves the screen up; a full tree's leftover points are the
+        /// ticker's <c>SettleFullTree</c>, as before.
+        /// </remarks>
+        private void Learn()
+        {
+            RunState state = _session?.State;
+
+            if (!IsOpen || state is null || _progression is null || _selected == default
+                || !state.IsFreePick || state.SkillPoints <= 0 || !state.IsNodeAvailable(_selected))
+            {
+                return;
+            }
+
+            _progression.TakeNode(_selected);
 
             Draw(state);
         }
@@ -863,11 +937,20 @@ namespace Soulvail.Game.Presentation
                 _emptyLabel.fontSize = HeaderTextDp * px;
             }
 
-            // The block fills the frame's content area, less the room UI-04d's card will take under
+            // The block fills the frame's content area, less the room UI-04d's card takes under
             // it (UI-04c rule 10); everything inside it is the block's to place.
             if (_block != null && _block.transform is RectTransform grid)
             {
                 float inset = margin + (ContentInsetDp * px);
+
+                if (_card != null && _card.transform is RectTransform card)
+                {
+                    card.anchorMin = new Vector2(0f, 0f);
+                    card.anchorMax = new Vector2(1f, 0f);
+                    card.pivot = new Vector2(0.5f, 0f);
+                    card.offsetMin = new Vector2(inset, inset);
+                    card.offsetMax = new Vector2(-inset, inset + (TreeDetailCard.HeightDp * px));
+                }
 
                 grid.anchorMin = Vector2.zero;
                 grid.anchorMax = Vector2.one;

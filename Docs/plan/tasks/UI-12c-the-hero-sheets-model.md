@@ -142,3 +142,11 @@ None: nothing on screen changes in this task. UI-12d draws it.
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"._
+
+_2026-10-16._ Built to the Files table.
+
+**Deviations**
+
+1. **`ContentValidationTests.cs` gains the attack's two keys** (`AuthoredKeys`, beside the Space move's): `Sweep_EveryAuthoredAssetKeyIsAlreadyCovered` reported both Longbow rows as named by nothing until it could see them. Not in the Files table.
+2. **The "two-branch tree" is three branches**: `SkillTreeSpec` demands exactly three. Branch a holds a tier-2 pair; b and c one node each. Test skill ids are `skill.a1` and so on, as `ContentId` refuses a single segment.
+3. **Test count**: 14 rows in `HeroSheetTests` and one in `CharacterLookTests`, +15.

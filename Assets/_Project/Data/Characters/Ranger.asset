@@ -86,3 +86,5 @@ MonoBehaviour:
   _spaceNameKey: character.ranger.space.name
   _spaceDescriptionKey: character.ranger.space.description
   _portrait: {fileID: 21300000, guid: c4b2c72cfb0f1474ab18ad10e48ab5b6, type: 3}
+  _attackNameKey: character.ranger.attack.name
+  _attackDescriptionKey: character.ranger.attack.description

@@ -259,6 +259,13 @@ namespace Soulvail.Game.Authoring
                  "the bake leaves it alone. Empty: the screens draw the emblem.")]
         [SerializeField] private Sprite _portrait;
 
+        [Tooltip("The basic attack's name on the hero page (UI-12c), e.g. character.ranger.attack.name. " +
+                 "Empty: the page draws no attack entry.")]
+        [SerializeField] private string _attackNameKey = string.Empty;
+
+        [Tooltip("The basic attack's one line (UI-12c), e.g. character.ranger.attack.description.")]
+        [SerializeField] private string _attackDescriptionKey = string.Empty;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -436,7 +443,9 @@ namespace Soulvail.Game.Authoring
             _spaceIcon,
             string.IsNullOrEmpty(_spaceNameKey) ? default : new LocKey(_spaceNameKey),
             string.IsNullOrEmpty(_spaceDescriptionKey) ? default : new LocKey(_spaceDescriptionKey),
-            _portrait);
+            _portrait,
+            string.IsNullOrEmpty(_attackNameKey) ? default : new LocKey(_attackNameKey),
+            string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey));
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

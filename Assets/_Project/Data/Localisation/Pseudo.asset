@@ -544,3 +544,37 @@ MonoBehaviour:
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name
     _text: "[P\xEEt\xE7h\xE9r \xB7\xB7\xB7]"
+  - _key: ui.hero.stats
+    _text: "[St\xE1ts \xB7\xB7]"
+  - _key: ui.hero.attack
+    _text: "[B\xE1s\xEE\xE7 \xE1tt\xE1\xE7k \xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.hero.space
+    _text: "[Sp\xE9\xE7\xEE\xE1l m\xF4v\xE9 \xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.hero.tree
+    _text: "[Sk\xEEll tr\xE9\xE9 \xB7\xB7\xB7\xB7]"
+  - _key: ui.hero.rank
+    _text: "[R\xE1\xF1k {0} \xB7\xB7\xB7]"
+  - _key: ui.hero.stat.health
+    _text: "[H\xE9\xE1lth \xB7\xB7\xB7]"
+  - _key: ui.hero.stat.damage
+    _text: "[D\xE1m\xE1g\xE9 \xB7\xB7\xB7]"
+  - _key: ui.hero.stat.rate
+    _text: "[\xC1tt\xE1\xE7ks/s \xB7\xB7\xB7\xB7]"
+  - _key: ui.hero.stat.range
+    _text: "[R\xE1\xF1g\xE9 \xB7\xB7]"
+  - _key: ui.hero.stat.speed
+    _text: "[Sp\xE9\xE9d \xB7\xB7]"
+  - _key: ui.hero.value.whole
+    _text: "[{0:0} \xB7\xB7]"
+  - _key: ui.hero.value.tenths
+    _text: "[{0:0.0} \xB7\xB7\xB7]"
+  - _key: ui.hero.value.metres
+    _text: "[{0:0} m \xB7\xB7\xB7]"
+  - _key: ui.hero.value.speed
+    _text: "[{0:0.0} m/s \xB7\xB7\xB7\xB7]"
+  - _key: character.ranger.attack.name
+    _text: "[L\xF4\xF1gb\xF4w \xB7\xB7\xB7]"
+  - _key: character.ranger.attack.description
+    _text: "[L\xF4\xF4s\xE9s \xE1\xF1 \xE1rr\xF4w \xE1t th\xE9 \xF1\xE9\xE1r\xE9st
+      \xE9\xF1\xE9m\xFD \xEE\xF1 r\xE1\xF1g\xE9. Th\xE9 R\xE1\xF1g\xE9r \xF4\xF1l\xFD
+      sh\xF4\xF4ts wh\xEEl\xE9 st\xE1\xF1d\xEE\xF1g st\xEEll. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"

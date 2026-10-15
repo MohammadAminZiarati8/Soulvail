@@ -47,7 +47,9 @@ public readonly struct CharacterLook
         Sprite spaceIcon = null,
         LocKey spaceNameKey = default,
         LocKey spaceDescriptionKey = default,
-        Sprite portrait = null)
+        Sprite portrait = null,
+        LocKey attackNameKey = default,
+        LocKey attackDescriptionKey = default)
     {
         Body = body;
         Projectile = projectile;
@@ -57,6 +59,8 @@ public readonly struct CharacterLook
         SpaceNameKey = spaceNameKey;
         SpaceDescriptionKey = spaceDescriptionKey;
         Portrait = portrait;
+        AttackNameKey = attackNameKey;
+        AttackDescriptionKey = attackDescriptionKey;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -112,6 +116,15 @@ public readonly struct CharacterLook
     /// for <see cref="Body"/>'s reason.
     /// </summary>
     public Sprite Portrait { get; }
+
+    /// <summary>
+    /// What the basic attack is called on the hero page (UI-12c), or <c>default</c> for none: the page
+    /// then draws no attack entry. Authored here, beside the Space move's, for its reason.
+    /// </summary>
+    public LocKey AttackNameKey { get; }
+
+    /// <summary>The basic attack's one line, or <c>default</c> for none.</summary>
+    public LocKey AttackDescriptionKey { get; }
 }
 
 /// <summary>

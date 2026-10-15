@@ -1415,6 +1415,17 @@ public sealed class ContentValidationTests
                 yield return new AuthoredKey(path, "the Space move's description key", look.SpaceDescriptionKey);
             }
 
+            // UI-12c: the basic attack's words, drawn by the hero page.
+            if (look.AttackNameKey.Key is not null)
+            {
+                yield return new AuthoredKey(path, "the attack's name key", look.AttackNameKey);
+            }
+
+            if (look.AttackDescriptionKey.Key is not null)
+            {
+                yield return new AuthoredKey(path, "the attack's description key", look.AttackDescriptionKey);
+            }
+
             // The same gap, one field over, and nothing draws a minion's name yet. Swept anyway,
             // so the first screen that does gets a word rather than 'minion.wight.name'.
             if (spec.Minions is not null)

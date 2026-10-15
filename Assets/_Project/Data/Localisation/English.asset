@@ -500,3 +500,35 @@ MonoBehaviour:
     _text: Frog
   - _key: enemy.pitcher.name
     _text: Pitcher
+  - _key: ui.hero.stats
+    _text: Stats
+  - _key: ui.hero.attack
+    _text: Basic attack
+  - _key: ui.hero.space
+    _text: Special move
+  - _key: ui.hero.tree
+    _text: Skill tree
+  - _key: ui.hero.rank
+    _text: 'Rank {0}'
+  - _key: ui.hero.stat.health
+    _text: Health
+  - _key: ui.hero.stat.damage
+    _text: Damage
+  - _key: ui.hero.stat.rate
+    _text: Attacks/s
+  - _key: ui.hero.stat.range
+    _text: Range
+  - _key: ui.hero.stat.speed
+    _text: Speed
+  - _key: ui.hero.value.whole
+    _text: '{0:0}'
+  - _key: ui.hero.value.tenths
+    _text: '{0:0.0}'
+  - _key: ui.hero.value.metres
+    _text: '{0:0} m'
+  - _key: ui.hero.value.speed
+    _text: '{0:0.0} m/s'
+  - _key: character.ranger.attack.name
+    _text: Longbow
+  - _key: character.ranger.attack.description
+    _text: Looses an arrow at the nearest enemy in range. The Ranger only shoots while standing still.

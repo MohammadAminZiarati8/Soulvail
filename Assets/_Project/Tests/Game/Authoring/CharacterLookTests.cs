@@ -166,6 +166,27 @@ public sealed class CharacterLookTests
         Assert.That(new CharacterLook(Knight()).Portrait, Is.Null, "the constructor's portrait is optional.");
     }
 
+    /// <summary>UI-12c: the definition's two attack keys ride on its look, and empty is default.</summary>
+    [Test]
+    public void CharacterLook_CarriesTheAttackKeys()
+    {
+        CharacterDefinition definition = NewDefinition("Attacking");
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_attackNameKey").stringValue = "character.test.attack.name";
+        serialized.FindProperty("_attackDescriptionKey").stringValue = "character.test.attack.description";
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        CharacterLook look = definition.ToLook();
+
+        Assert.That(look.AttackNameKey.Key, Is.EqualTo("character.test.attack.name"));
+        Assert.That(look.AttackDescriptionKey.Key, Is.EqualTo("character.test.attack.description"));
+
+        CharacterLook empty = NewDefinition("Unarmed").ToLook();
+
+        Assert.That(empty.AttackNameKey, Is.EqualTo(default(LocKey)), "empty is default: the page draws no attack.");
+        Assert.That(empty.AttackDescriptionKey, Is.EqualTo(default(LocKey)));
+    }
+
     // ---- Rule 3: one choice of class -----------------------------------------------------------
 
     [Test]

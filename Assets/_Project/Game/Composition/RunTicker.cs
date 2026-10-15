@@ -177,8 +177,14 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         TapToFocusAdapter tapToFocus,
         SkillSlotInput skillSlots,
         ConeOverlapQuery cone,
-        ClassSelectRoster classSelect = null)
+        ClassSelectRoster classSelect = null,
+        PlaceWriter placeWriter = null)
     {
+        // Taken and not kept: being on this chain is what constructs the writer before core can
+        // publish (AR §18.1). Optional for the fixtures that build a ticker by hand, like the
+        // roster above; the scope always supplies it.
+        _ = placeWriter;
+
         // Optional and last, for the fixtures that build a ticker by hand: RunCharacter's fallback
         // reads it, and none means the catalog's first class (RS-05c rule 4).
         _classSelect = classSelect;

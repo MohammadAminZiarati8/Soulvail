@@ -88,6 +88,10 @@ public static class RunInstaller
         // failure this wants rather than a run that silently banks nothing.
         builder.Register<ShardWriter>(Lifetime.Scoped);
 
+        // What records the place a run was played in and whether it was finished (UI-11d). ShardWriter's
+        // shape and reasons: scoped, a plain type, constructed by being on RunTicker's chain.
+        builder.Register<PlaceWriter>(Lifetime.Scoped);
+
         // The one-frame buffer between a slot button and CommandPhase (M3-10a rule 3). Here rather
         // than on RunScope, unlike TapToFocusAdapter: that one needs this scene's camera and this
         // one needs nothing but the command port, which is exactly the line the split is drawn on.

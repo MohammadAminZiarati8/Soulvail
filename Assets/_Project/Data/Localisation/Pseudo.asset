@@ -141,6 +141,10 @@ MonoBehaviour:
     _text: "[B\xF4ss\xE9s \xB7\xB7\xB7]"
   - _key: ui.runend.shards
     _text: "[S\xF4\xFBl Sh\xE1rds \xB7\xB7\xB7\xB7]"
+  - _key: ui.runend.finished
+    _text: "[{0} \xE7l\xE9\xE1r\xE9d! \xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.runend.opened
+    _text: "[\xD1\xE9w pl\xE1\xE7\xE9: {0} \xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.pause.resume
     _text: "[R\xE9s\xFBm\xE9 \xB7\xB7\xB7]"
   - _key: ui.pause.skills

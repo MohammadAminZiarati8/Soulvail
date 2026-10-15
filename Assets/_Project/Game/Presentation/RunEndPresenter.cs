@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -114,6 +115,12 @@ namespace Soulvail.Game.Presentation
         /// <summary>What the two of them are worth, in Soul Shards.</summary>
         private static readonly LocKey ShardsKey = new LocKey("ui.runend.shards");
 
+        /// <summary><em>"{0} cleared!"</em> — a finished place's title, with its name (UI-11d rule 4).</summary>
+        private static readonly LocKey FinishedKey = new LocKey("ui.runend.finished");
+
+        /// <summary><em>"New place: {0}"</em> — the line under the title when a finish opened one (rule 5).</summary>
+        private static readonly LocKey OpenedKey = new LocKey("ui.runend.opened");
+
         // The column, in dp (UI-08e rule 3): centred on the safe area, no wider than its width less a
         // side. Guesses until a phone exists — ledger row 4.
         private const float ColumnSideDp = 16f;
@@ -172,8 +179,24 @@ namespace Soulvail.Game.Presentation
 
         private SceneLoader _loader;
         private ILocalizer _localizer;
+        private ContentCatalog _catalog;
 
         private IDisposable _awardSubscription;
+        private IDisposable _finishSubscription;
+
+        /// <summary>
+        /// The "New place" line, built in <see cref="Start"/> beside the title rather than authored on
+        /// the prefab (UI-11d's table lists no prefab). Null until then, and hidden unless a finish
+        /// opened a place.
+        /// </summary>
+        private TMP_Text _opened;
+
+        /// <summary>The title's colour as the prefab dressed it, which a death goes back to.</summary>
+        /// <remarks>Nullable so the class still carries no serialized-colour-typed field (rule 6).</remarks>
+        private Color? _titleColor;
+
+        /// <summary>Whether <see cref="_opened"/> is drawn, which <see cref="LayOut"/> makes room for.</summary>
+        private bool _showsOpened;
 
         /// <summary>
         /// The exit has been hit and the scene load has not answered yet.
@@ -220,10 +243,14 @@ namespace Soulvail.Game.Presentation
         /// button handler is wired here for the same reason and dropped in the same place.
         /// </remarks>
         [Inject]
-        public void Construct(DomainEventHub hub, SceneLoader loader, ILocalizer localizer)
+        public void Construct(DomainEventHub hub, SceneLoader loader, ILocalizer localizer, ContentCatalog catalog)
         {
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _localizer = localizer;
+
+            // Allowed to be null, like the localizer: without it a finish keeps the death title
+            // rather than throwing on a run that has already ended.
+            _catalog = catalog;
 
             if (hub is null)
             {
@@ -235,6 +262,11 @@ namespace Soulvail.Game.Presentation
             // carries no number.
             _awardSubscription?.Dispose();
             _awardSubscription = hub.Subscribe<ShardsAwarded>(OnShardsAwarded);
+
+            // The one addition (UI-11d): ModeFinished follows ShardsAwarded in the same tick and
+            // re-dresses the screen that event just opened. Still no RunEnded and no PlayerDied.
+            _finishSubscription?.Dispose();
+            _finishSubscription = hub.Subscribe<ModeFinished>(OnModeFinished);
 
             Wire(_return, ReturnToMenu);
         }
@@ -277,6 +309,12 @@ namespace Soulvail.Game.Presentation
 
             Tint();
 
+            if (_title != null)
+            {
+                _titleColor = _title.color;
+                _opened = BuildOpenedLine(_title);
+            }
+
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot
             // ship covering the arena — HudPresenter's argument for its death panel, inherited with
             // the rest of the path.
@@ -292,6 +330,8 @@ namespace Soulvail.Game.Presentation
         {
             _awardSubscription?.Dispose();
             _awardSubscription = null;
+            _finishSubscription?.Dispose();
+            _finishSubscription = null;
 
             Unwire(_return, ReturnToMenu);
         }
@@ -311,6 +351,21 @@ namespace Soulvail.Game.Presentation
             Draw(_bosses, evt.BossesKilled);
             Draw(_shards, evt.Total);
 
+            // A death's dressing, every time: a finish re-dresses it from ModeFinished, which follows.
+            Write(_title, TitleKey);
+
+            if (_title != null && _titleColor.HasValue)
+            {
+                _title.color = _titleColor.Value;
+            }
+
+            _showsOpened = false;
+
+            if (_opened != null)
+            {
+                _opened.gameObject.SetActive(false);
+            }
+
             // Armed on the way up rather than left as the prefab was dressed, so a screen opened a
             // second time — which no run can do, and a test can — is not opened dead.
             _leaving = false;
@@ -321,6 +376,75 @@ namespace Soulvail.Game.Presentation
             }
 
             Show();
+        }
+
+        /// <summary>
+        /// The place is finished: the title says so in <see cref="Palette.Essence"/> (rule 4), and a
+        /// place this one opens gets a line under it (rule 5).
+        /// </summary>
+        /// <remarks>
+        /// Colour is Essence because gold means rewards. A mode the catalog cannot name keeps the
+        /// death title: a screen that says the wrong place was cleared is worse than one that is plain.
+        /// </remarks>
+        private void OnModeFinished(ModeFinished evt)
+        {
+            if (_catalog is null || !_catalog.TryGetMode(evt.ModeId, out ModeSpec mode))
+            {
+                return;
+            }
+
+            if (_title != null)
+            {
+                _title.text = Format(FinishedKey, Name(mode));
+                _title.color = Palette.Essence;
+            }
+
+            IReadOnlyList<ModeSpec> modes = _catalog.Modes;
+
+            for (int i = 0; i < modes.Count; i++)
+            {
+                if (modes[i].IsListed && modes[i].UnlockedBy == evt.ModeId)
+                {
+                    if (_opened != null)
+                    {
+                        _opened.text = Format(OpenedKey, Name(modes[i]));
+                        _opened.gameObject.SetActive(true);
+                        _showsOpened = true;
+                    }
+
+                    break;
+                }
+            }
+
+            LayOut();
+        }
+
+        private string Name(ModeSpec mode) =>
+            _localizer is null ? mode.NameKey.ToString() : _localizer.Get(mode.NameKey);
+
+        /// <summary>A key with one argument; the bare key when there is no localizer.</summary>
+        private string Format(LocKey key, string argument) =>
+            _localizer is null ? key.ToString() : _localizer.Format(key, argument);
+
+        /// <summary>
+        /// The "New place" line: a second text beside the title, built here because the prefab is
+        /// not in UI-11d's table. Off until a finish opens a place.
+        /// </summary>
+        private static TMP_Text BuildOpenedLine(TMP_Text title)
+        {
+            var go = new GameObject("Opened", typeof(RectTransform));
+
+            go.transform.SetParent(title.transform.parent, false);
+
+            TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
+
+            text.font = title.font;
+            text.fontSharedMaterial = title.fontSharedMaterial;
+            text.color = Palette.Neutral;
+            text.raycastTarget = false;
+            go.SetActive(false);
+
+            return text;
         }
 
         /// <summary>
@@ -526,7 +650,8 @@ namespace Soulvail.Game.Presentation
             float row = RowHeightDp * px;
             float rowGap = RowGapDp * px;
             float exit = ReturnHeightDp * px;
-            float total = title + (TitleGapDp * px) + (3f * row) + (2f * rowGap) + (ReturnGapDp * px) + exit;
+            float opened = _showsOpened && _opened != null ? row + rowGap : 0f;
+            float total = title + (TitleGapDp * px) + opened + (3f * row) + (2f * rowGap) + (ReturnGapDp * px) + exit;
 
             Vector2 centre = area.center;
             float top = centre.y + (total / 2f);
@@ -538,6 +663,13 @@ namespace Soulvail.Game.Presentation
             }
 
             top -= title + (TitleGapDp * px);
+
+            if (opened > 0f)
+            {
+                Place(_opened.rectTransform, new Vector2(width, row), new Vector2(centre.x, top - (row / 2f)));
+                Size(_opened, RowTextDp * px, TextAlignmentOptions.Center);
+                top -= opened;
+            }
 
             PlaceRow(_depthLabel, _depth, RowTextDp, centre.x, top, width, row, px);
             top -= row + rowGap;

@@ -132,6 +132,10 @@ MonoBehaviour:
     _text: Bosses
   - _key: ui.runend.shards
     _text: Soul Shards
+  - _key: ui.runend.finished
+    _text: '{0} cleared!'
+  - _key: ui.runend.opened
+    _text: 'New place: {0}'
   - _key: ui.pause.resume
     _text: Resume
   - _key: ui.pause.skills

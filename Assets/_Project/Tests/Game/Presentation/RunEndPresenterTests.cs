@@ -283,7 +283,8 @@ public sealed class RunEndPresenterTests
         FieldInfo[] keys = Array.FindAll(
             typeof(RunEndPresenter).GetFields(Everything), f => f.FieldType == typeof(LocKey));
 
-        Assert.That(keys, Has.Length.EqualTo(Rows.Length), "RunEndPresenter's key count moved.");
+        // Plus UI-11d's two, the finished title and the "opened" line, which RunEndFinishTests reads.
+        Assert.That(keys, Has.Length.EqualTo(Rows.Length + 2), "RunEndPresenter's key count moved.");
     }
 
     /// <summary>
@@ -432,11 +433,11 @@ public sealed class RunEndPresenterTests
     {
         LoadScreen();
 
-        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(null, _loader, Passthrough()));
-        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, null, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(null, _loader, Passthrough(), null));
+        Assert.Throws<ArgumentNullException>(() => _presenter.Construct(_hub, null, Passthrough(), null));
 
         // And the localizer is deliberately not among them — see Screen_FallsBackToTheKey.
-        Assert.DoesNotThrow(() => _presenter.Construct(_hub, _loader, null));
+        Assert.DoesNotThrow(() => _presenter.Construct(_hub, _loader, null, null));
     }
 
     [Test]
@@ -682,7 +683,7 @@ public sealed class RunEndPresenterTests
     {
         LoadScreen();
 
-        _presenter.Construct(_hub, loader ?? _loader, localizer);
+        _presenter.Construct(_hub, loader ?? _loader, localizer, null);
 
         Invoke(_presenter, "Start");
     }

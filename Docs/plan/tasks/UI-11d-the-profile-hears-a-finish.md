@@ -45,4 +45,4 @@ Every run's deepest stage and every finished place are written to `profile.json`
 
 ## As built
 
-_Filled at merge._
+Filled in the PROGRESS entry of 2026-10-15; deviations listed there. The writer flushes on `RunEnded` (a teardown with nothing noted writes nothing).

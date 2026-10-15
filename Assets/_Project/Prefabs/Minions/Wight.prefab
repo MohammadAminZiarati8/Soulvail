@@ -96,7 +96,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.MinionView
   _renderer: {fileID: 7427908590887123162}
-  _tint: {r: 0.13333334, g: 0.827451, b: 0.93333334, a: 1}
 --- !u!1 &1665920525372780616
 GameObject:
   m_ObjectHideFlags: 0

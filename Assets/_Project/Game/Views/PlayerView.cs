@@ -3,6 +3,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
@@ -74,9 +75,12 @@ namespace Soulvail.Game.Views
         [Range(1f, 360f)]
         [SerializeField] private float _swingAngleDeg = 60f;
 
-        [Tooltip("The wedge's colour. Cyan at a quarter alpha — the player's own colour, faint " +
-                 "enough to read the enemies through it.")]
-        [SerializeField] private Color _swingColour = new Color(0.3f, 0.9f, 1f, 0.25f);
+        // The wedge: the player's cyan at a quarter alpha, faint enough to read the enemies through it.
+        // The rgb is not serialized; the alpha is a constant.
+        private const float SwingAlpha = 0.25f;
+
+        /// <summary>The swing wedge: <see cref="Palette.Player"/>'s rgb at <c>0.25</c> alpha.</summary>
+        public Color SwingColour => new Color(Palette.Player.r, Palette.Player.g, Palette.Player.b, SwingAlpha);
 
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because
@@ -401,7 +405,7 @@ namespace Soulvail.Game.Views
             var block = new MaterialPropertyBlock();
 
             _swingRenderer.GetPropertyBlock(block);
-            block.SetColor(_baseColorId, _swingColour);
+            block.SetColor(_baseColorId, SwingColour);
             _swingRenderer.SetPropertyBlock(block);
         }
     }

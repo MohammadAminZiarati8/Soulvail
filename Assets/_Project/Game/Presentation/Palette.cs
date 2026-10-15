@@ -68,12 +68,10 @@ public static class Palette
     /// <c>#22D3EE</c> — the player, and the things that keep them safe. GD §16.4.
     /// </summary>
     /// <remarks>
-    /// Read by the health bar, the threat arrows' held focus, the Bulwark shell and the Consecrate
-    /// ground. <b>It is not the only cyan in the build</b>, and that is recorded rather than tidied:
-    /// <c>ReticleView</c>, <c>FocusGlowView</c> and <c>PlayerView._swingColour</c> hold
-    /// <c>#4CE6FF</c>, a lighter cyan that predates GD §16.4's hex, and moving them here would be a
-    /// visible recolour of three world-space views rather than the refactor this file is —
-    /// <c>Palette_IsNotTheOnlyCyanInTheBuild</c> is what keeps that from being forgotten.
+    /// Read by the health bar, the threat arrows' held focus, the Bulwark shell, the Consecrate
+    /// ground, and, since UI-10b, the reticle, the focus glow and the swing arc. <b>It is the only
+    /// player cyan in the build</b>: <c>Palette_IsTheOnlyPlayerCyanInTheBuild</c> fails a serialized
+    /// copy of it, or of the older <c>#4CE6FF</c>, under <c>Prefabs/</c> or <c>Scenes/</c>.
     /// </remarks>
     public static readonly Color Player = Rgb(0x22, 0xD3, 0xEE);
 

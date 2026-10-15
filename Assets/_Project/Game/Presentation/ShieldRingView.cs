@@ -89,6 +89,9 @@ namespace Soulvail.Game.Presentation
                     "Fill field — without it the Aegis is 30 points of survivability the player " +
                     "has no way of knowing they have.");
             }
+
+            // The ring is the player's cyan, read from the palette rather than authored on the prefab (UI-10b).
+            _fill.color = Palette.Player;
         }
     }
 }

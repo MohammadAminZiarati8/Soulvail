@@ -66,11 +66,10 @@ public sealed class PaletteTests
     /// M3-13a, and the ninth that nothing had ever counted.
     /// </summary>
     /// <remarks>
-    /// <b>Nine and not twelve, and the difference is a ruling rather than an oversight.</b>
-    /// <c>ReticleView</c>, <c>FocusGlowView</c> and <c>PlayerView</c> each hold a serialized cyan
-    /// too — but it is <c>#4CE6FF</c>, not GD §16.4's <c>#22D3EE</c>, so moving them here would be a
-    /// visible recolour of three world-space views rather than the relocation this task is.
-    /// <see cref="Palette_IsNotTheOnlyCyanInTheBuild"/> is where that is recorded and pinned.
+    /// <b>Nine and not twelve.</b> <c>ReticleView</c>, <c>FocusGlowView</c> and <c>PlayerView</c>
+    /// joined the palette later (UI-10b), as properties rather than relocated fields, so they are not
+    /// among the nine this list was written against.
+    /// <see cref="Reticle_DrawsPalettePlayer"/> is where they are pinned.
     /// </remarks>
     private static readonly Type[] Readers =
     {
@@ -400,14 +399,14 @@ public sealed class PaletteTests
         }
 
         // **The three this row is deliberately not told about**, so it cannot go red on views it was
-        // never scoped to. See Palette_IsNotTheOnlyCyanInTheBuild for the ruling and the reason.
+        // never scoped to. See UI-10b: they read the palette through a property, not a relocated field.
         foreach (Type outside in new[] { typeof(ReticleView), typeof(FocusGlowView), typeof(PlayerView) })
         {
             Assert.That(
                 Readers,
                 Has.No.Member(outside),
-                $"{outside.Name} was added to the nine readers without the ruling that keeps its "
-                    + "#4CE6FF out of the palette being revisited.");
+                $"{outside.Name} was added to the nine readers as a field reader; they "
+                    + "read the palette through a property (UI-10b).");
         }
     }
 
@@ -773,69 +772,91 @@ public sealed class PaletteTests
     }
 
     /// <summary>
-    /// The finding this task made and did not act on: there are <em>two</em> player cyans in the
-    /// shipped build, and only one of them is GD §16.4's.
+    /// The reticle, the focus glow and the swing arc used to hold <c>#4CE6FF</c>, a second cyan that
+    /// predates GD §16.4's. UI-10b moved them onto <see cref="Palette.Player"/> (the owner's ruling);
+    /// these rows keep them there.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <c>ReticleView._colour</c>, <c>FocusGlowView._colour</c> and <c>PlayerView._swingColour</c>
-    /// all hold <c>#4CE6FF</c> — a lighter cyan that predates GD §16.4's hex — while
-    /// <c>HpBarView</c>, <c>ThreatArrows</c> and both M3-11c prefabs hold <c>#22D3EE</c>. That is
-    /// exactly the drift ledger row 6 exists to catch, arrived at <em>before</em> the palette rather
-    /// than after it, and neither the row nor M3-13a's spec had counted it.
-    /// </para>
-    /// <para>
-    /// <b>They are out of scope on purpose.</b> Moving them onto <see cref="Palette.Player"/> would
-    /// recolour the reticle, the focus glow and the swing arc on every frame of every run, which
-    /// manual step 2 forbids and the spec's <em>Out of scope</em> — <em>"any new colour; this task
-    /// moves what exists"</em> — rules out. Which cyan the player's own world-space views should be
-    /// is the owner's call, and it is a parking-lot line rather than a ledger row because no task
-    /// owns it. This row is what stops it being quietly tidied either way.
-    /// </para>
-    /// </remarks>
     [Test]
-    public void Palette_IsNotTheOnlyCyanInTheBuild()
+    public void Reticle_DrawsPalettePlayer()
     {
-        var player = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
         var reticle = AssetDatabase.LoadAssetAtPath<GameObject>(ReticlePrefabPath);
-
-        Assert.That(player, Is.Not.Null, $"No prefab at {PlayerPrefabPath}.");
         Assert.That(reticle, Is.Not.Null, $"No prefab at {ReticlePrefabPath}.");
 
-        var dressed = new (string Name, Color Colour)[]
+        Assert.That(SameColour(reticle.GetComponentInChildren<ReticleView>(true).Colour, Palette.Player), Is.True);
+    }
+
+    [Test]
+    public void FocusGlow_DrawsPalettePlayer()
+    {
+        var player = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+        Assert.That(player, Is.Not.Null, $"No prefab at {PlayerPrefabPath}.");
+
+        Assert.That(SameColour(player.GetComponentInChildren<FocusGlowView>(true).Colour, Palette.Player), Is.True);
+    }
+
+    [Test]
+    public void Swing_DrawsPalettePlayerAtItsAlpha()
+    {
+        var player = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+        Assert.That(player, Is.Not.Null, $"No prefab at {PlayerPrefabPath}.");
+
+        Color swing = player.GetComponentInChildren<PlayerView>(true).SwingColour;
+
+        Assert.That(SameColour(new Color(swing.r, swing.g, swing.b, 1f), Palette.Player), Is.True);
+        Assert.That(swing.a, Is.EqualTo(0.25f).Within(1e-4f));
+    }
+
+    /// <summary>
+    /// No serialized colour under <c>Prefabs/</c> or <c>Scenes/</c> is either player cyan, so a second
+    /// one cannot come back through the Inspector: the player's cyan is read from
+    /// <see cref="Palette.Player"/>, and an authored copy of it is a copy that can drift.
+    /// </summary>
+    [Test]
+    public void Palette_IsTheOnlyPlayerCyanInTheBuild()
+    {
+        string root = System.IO.Path.Combine(Application.dataPath, "_Project");
+        var rgb = new System.Text.RegularExpressions.Regex(
+            @"\{r: (?<r>[-\d.e]+), g: (?<g>[-\d.e]+), b: (?<b>[-\d.e]+), a: [-\d.e]+\}");
+        var cyans = new[] { Palette.Player, (Color)new Color32(0x4C, 0xE6, 0xFF, 0xFF) };
+        var found = new List<string>();
+
+        foreach (string folder in new[] { "Prefabs", "Scenes" })
         {
-            ("PlayerView._swingColour", Field<Color>(player.GetComponentInChildren<PlayerView>(true), "_swingColour")),
-            ("FocusGlowView._colour", Field<Color>(player.GetComponentInChildren<FocusGlowView>(true), "_colour")),
-            ("ReticleView._colour", Field<Color>(reticle.GetComponentInChildren<ReticleView>(true), "_colour")),
-        };
+            foreach (string path in System.IO.Directory.GetFiles(
+                         System.IO.Path.Combine(root, folder), "*.*", System.IO.SearchOption.AllDirectories))
+            {
+                if (!path.EndsWith(".prefab", StringComparison.Ordinal)
+                    && !path.EndsWith(".unity", StringComparison.Ordinal))
+                {
+                    continue;
+                }
 
-        // Asserted as the floats the three actually ship rather than as a hex, deliberately: 0.3 and
-        // 0.9 sit within half an eight-bit step of two different bytes, so naming a hex here would
-        // make the row's failure message an argument about rounding rather than about a colour. What
-        // matters is that all three hold one value, that it is not the palette's, and that nobody has
-        // moved it.
-        var lighter = new Color(0.3f, 0.9f, 1f, 1f);
+                foreach (string line in System.IO.File.ReadLines(path))
+                {
+                    var m = rgb.Match(line);
+                    if (!m.Success)
+                    {
+                        continue;
+                    }
 
-        foreach ((string name, Color colour) in dressed)
-        {
-            Assert.That(colour.r, Is.EqualTo(lighter.r).Within(1e-4f), $"{name} red moved.");
-            Assert.That(colour.g, Is.EqualTo(lighter.g).Within(1e-4f), $"{name} green moved.");
-            Assert.That(colour.b, Is.EqualTo(lighter.b).Within(1e-4f), $"{name} blue moved.");
+                    var c = new Color(
+                        float.Parse(m.Groups["r"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                        float.Parse(m.Groups["g"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                        float.Parse(m.Groups["b"].Value, System.Globalization.CultureInfo.InvariantCulture),
+                        1f);
 
-            Assert.That(
-                SameColour(colour, Palette.Player),
-                Is.False,
-                $"{name} is now GD §16.4's #22D3EE. If that was deliberate it is a visible recolour "
-                    + "and belongs in a task's As built with a playtest behind it; if it was not, "
-                    + "three world-space views have quietly changed colour.");
-
-            Assert.That(Palette.IsDanger(colour), Is.False, $"{name} is drawn in the danger colour.");
+                    foreach (Color cyan in cyans)
+                    {
+                        if (SameColour(c, new Color(cyan.r, cyan.g, cyan.b, 1f)))
+                        {
+                            found.Add($"{System.IO.Path.GetFileName(path)}: {line.Trim()}");
+                        }
+                    }
+                }
+            }
         }
 
-        // The one that carries an alpha, which is why it could not have moved into the palette as-is
-        // even if the hue had matched: rule 8 says every member here is opaque and a view multiplies
-        // its own.
-        Assert.That(dressed[0].Colour.a, Is.EqualTo(0.25f).Within(1e-4f));
+        Assert.That(found, Is.Empty, "A serialized player cyan is back; read Palette.Player instead.");
     }
 
     [Test]

@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
@@ -112,9 +113,12 @@ namespace Soulvail.Game.Views
         [Tooltip("How high over the target the focused chevron floats, in metres.")]
         [SerializeField] private float _chevronHeight = 2.2f;
 
-        [Tooltip("Ring colour. Cyan for all three states — red is reserved for danger (GD §16.4), " +
-                 "so a blocked target must never look like an attack telegraph.")]
-        [SerializeField] private Color _colour = new Color(0.3f, 0.9f, 1f, 1f);
+        // Ring colour: the player's cyan for all three states, since red is reserved for danger
+        // (GD §16.4) and a blocked target must never look like an attack telegraph. Not serialized.
+        private static Color _colour => Palette.Player;
+
+        /// <summary>The ring's rgb: <see cref="Palette.Player"/>, never an authored value.</summary>
+        public Color Colour => _colour;
 
         [Tooltip("Alpha of the auto-aimed ring. Subtle: it is on screen constantly.")]
         [Range(0f, 1f)]

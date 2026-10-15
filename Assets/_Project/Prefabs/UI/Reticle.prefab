@@ -233,7 +233,6 @@ MonoBehaviour:
   _segments: 32
   _groundOffset: 0.02
   _chevronHeight: 2.2
-  _colour: {r: 0.3, g: 0.9, b: 1, a: 1}
   _autoAlpha: 0.6
   _width: 0.08
   _blockedWidth: 0.03

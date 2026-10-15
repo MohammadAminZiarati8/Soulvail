@@ -441,7 +441,6 @@ MonoBehaviour:
   _swingSeconds: 0.1
   _swingRange: 8
   _swingAngleDeg: 60
-  _swingColour: {r: 0.3, g: 0.9, b: 1, a: 0.25}
 --- !u!114 &7401882501133620004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -456,7 +455,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.FocusGlowView
   _show: 0
   _glow: {fileID: 7401882501133620002}
-  _colour: {r: 0.3, g: 0.9, b: 1, a: 1}
   _maxAlpha: 0.35
   _baseRadius: 1
   _radiusGain: 0.5

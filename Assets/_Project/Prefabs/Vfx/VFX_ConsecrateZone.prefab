@@ -104,7 +104,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ZoneView
   _quad: {fileID: 4070659103302185033}
-  _colour: {r: 0.13333334, g: 0.827451, b: 0.93333334, a: 1}
   _baseAlpha: 0.18
   _pulseAlpha: 0.55
   _pulseSeconds: 0.2

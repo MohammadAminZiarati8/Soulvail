@@ -50,4 +50,14 @@ Any other colour, and the HUD art's sprites, which are white and tinted already.
 
 ## As built
 
-_Filled at merge._
+Built as specced, owner's answer `#22D3EE`. `ReticleView` and `FocusGlowView` read `Palette.Player` through a static property (`_colour`) and expose it as `Colour`; `PlayerView.SwingColour` is `Palette.Player`'s rgb at the `SwingAlpha` constant (0.25). The three serialized fields and their prefab values are gone.
+
+**Deviations (outside the Files table, forced by rule 2):**
+1. Rule 2 as written also caught serialized cyans the table did not list, so the test failed until they went: orphaned `_colour` lines on `VFX_Bulwark` and `VFX_ConsecrateZone` (fields removed at M3-13a, YAML left behind), `_tint` on `Wight` and `VFX_Decoy` (the field default is already `Palette.Player`, so the line was dropped), and the `Ring` Image on `Hud.prefab`.
+2. That Ring is `ShieldRingView._fill`, and nothing painted it: the prefab tint was its only source. `ShieldRingView.cs` gains `_fill.color = Palette.Player` in `Start`, and the prefab Image is white. Same colour on screen.
+3. The `AutoCast` glow Image on `Hud.prefab` held `#4CE6FF` at alpha 0.85; code overwrites it with `Palette.Player` before it shows, so it is now white (alpha 0.85 kept).
+4. `Palette.cs` and `PaletteTests.cs` doc comments that pointed at the retired test were reworded.
+
+**Tests:** `Reticle_DrawsPalettePlayer`, `FocusGlow_DrawsPalettePlayer`, `Swing_DrawsPalettePlayerAtItsAlpha`, `Palette_IsTheOnlyPlayerCyanInTheBuild` (scans every `.prefab` and `.unity` under `Prefabs/` and `Scenes/` for an rgb of either cyan); `Palette_IsNotTheOnlyCyanInTheBuild` retired. 4 282 EditMode: 4 280 passed / 1 failed / 1 inconclusive (+3: +4 rows, −1 retired); the failure is `CharacterPreviewTests.Resize_…` (D3D12 depth, Traps §9).
+
+**Owed:** manual step 1, the Editor look at reticle, focus glow and swing arc beside the health bar.

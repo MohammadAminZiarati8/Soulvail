@@ -136,6 +136,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.BulwarkView
   _shell: {fileID: 763814837114657700}
-  _colour: {r: 0.13333334, g: 0.827451, b: 0.93333334, a: 1}
   _maxAlpha: 0.45
   _fadeSeconds: 0.15

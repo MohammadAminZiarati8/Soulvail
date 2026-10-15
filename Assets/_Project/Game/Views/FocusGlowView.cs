@@ -1,6 +1,7 @@
 using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
@@ -60,9 +61,12 @@ namespace Soulvail.Game.Views
                  "numbers below — the filter may ship empty.")]
         [SerializeField] private MeshFilter _glow;
 
-        [Tooltip("The glow's colour. Cyan, the player's own colour: red is reserved for danger " +
-                 "(GD §16.4), so a reward must never read as a threat.")]
-        [SerializeField] private Color _colour = new Color(0.3f, 0.9f, 1f, 1f);
+        // The glow's colour: the player's cyan, since red is reserved for danger (GD §16.4) and a
+        // reward must never read as a threat. Not serialized.
+        private static Color _colour => Palette.Player;
+
+        /// <summary>The glow's rgb: <see cref="Palette.Player"/>, never an authored value.</summary>
+        public Color Colour => _colour;
 
         [Tooltip("Alpha at full Focus. 0.35 is CC §4.3's 'subtle' — visible under the character " +
                  "without hiding what is standing on it.")]

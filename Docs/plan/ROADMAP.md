@@ -399,7 +399,7 @@ What the planning found:
 | UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) — the tree stacks block over card, Pause and Run end are one centred column | M | UI-08a, UI-07c, UI-07d | ☑ |
 | UI-09 | The Pause and Run-end screens in the new art — *title only; waits on a Gemini sheet* | — | UI-08e | ☐ |
 | UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☑ |
-| UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *waits on the owner's answer, written in the spec* | S | owner | ☐ |
+| UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *the owner chose `#22D3EE`* | S | owner | ☑ |
 | UI-11a | [The profile remembers places and picks](tasks/UI-11a-the-profile-remembers-places.md) — `PlayerProfile` v5: finished places, best stages, the picked class and place | M | — | ☑ |
 | UI-11b | [Places unlock in order](tasks/UI-11b-places-unlock-in-order.md) — `UnlockedBy`, `PlaceUnlocks`; the Jungle ends at stage 30 | M | UI-11a | ☑ |
 | UI-11c | [Finishing a place, in core](tasks/UI-11c-finishing-a-place-in-core.md) — `ModeFinished`, and a finish pays like a death | S | UI-11b | ☑ |
@@ -449,7 +449,7 @@ Unscheduled. **One item, one line: what it is and what promotes it.** History li
 - **No PlayMode row taps Continue end to end.** `ResumeFlowTests` covers the tap in EditMode. Since RS-03g a PlayMode row can write its own `run.json` into the sheltered save folder. Promoted by the next change to the Menu's Continue path or to the resume.
 - **The Knight's Charge plays KayKit's `Dodge_Forward`, whose `root` curve carries the mesh 0.22 m ahead of the body and snaps it back** (measured at RS-03d). `A_Dodge_Forward_InPlace.anim` is the fix, one motion on `AC_Player`'s `Charge` state. Promoted by M7's art round, or by the owner seeing the snap.
 - ~~**`PlayerAnimatorView` has no tests.**~~ Promoted at M2-15 to M3 ledger row 5, closed by M3-11c with fourteen rows and no behaviour change. [History](archive/ROADMAP-M2.md#parking-lot-items-closed-in-m2).
-- **Promoted 2026-10-14 to [UI-10b](tasks/UI-10b-one-player-cyan.md), which carries the owner's question; the line stays until it merges.** **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,
+- ~~- **Promoted 2026-10-14 to [UI-10b](tasks/UI-10b-one-player-cyan.md), which carries the owner's question; the line stays until it merges.** **There are two player cyans in the build, and only one of them is GD §16.4's.** `HpBarView`,~~ **Done: [UI-10b](tasks/UI-10b-one-player-cyan.md), 2026-10-16 — the owner chose `#22D3EE`.**
   `ThreatArrows`, `VFX_ConsecrateZone` and `VFX_Bulwark` are `#22D3EE` — now `Palette.Player` — while
   `ReticleView._colour`, `FocusGlowView._colour` and `PlayerView._swingColour` are `#4CE6FF`, dressed
   that way on `Player.prefab` and `Reticle.prefab` since M0/M1. Found at **M3-13a** and deliberately

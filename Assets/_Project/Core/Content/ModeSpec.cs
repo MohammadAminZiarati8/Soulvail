@@ -745,7 +745,15 @@ public sealed class ModeSpec
     /// <see langword="false"/> omitted: every mode drew until the owner's ruling of 2026-09-29, and a
     /// fixture that never mentions it is a fixture written before that.
     /// </param>
+    /// <param name="unlockedBy">
+    /// The place that must be finished first (UI-11b). Optional and last, for
+    /// <paramref name="hasFreePick"/>'s reason; omitted, the mode is open from the start.
+    /// </param>
+    /// <param name="isListed">
+    /// Whether the Places tab shows it (UI-11b). Optional and last; omitted, <see langword="true"/>.
+    /// </param>
     /// <exception cref="ArgumentException">
+    /// <paramref name="unlockedBy"/> names <paramref name="id"/> itself;
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
     /// and so names no archetype; two entries share an id; or two entries are introduced at the
     /// same stage. The last is GD §8.2's rule — <em>"new enemies arrive one at a time, in a wave
@@ -787,13 +795,23 @@ public sealed class ModeSpec
         IReadOnlyList<OrdealSpec> ordeals = null,
         bool hasVeilrot = true,
         bool hasSanctum = true,
-        bool hasFreePick = false)
+        bool hasFreePick = false,
+        ContentId unlockedBy = default,
+        bool isListed = true)
     {
         if (id.Value is null)
         {
             throw new ArgumentException(
                 "id must be a valid ContentId; default(ContentId) names no mode.",
                 nameof(id));
+        }
+
+        if (unlockedBy.Value is not null && unlockedBy == id)
+        {
+            throw new ArgumentException(
+                $"'{id}' is unlocked by itself, so it could never be opened. Name the place before "
+                    + "it, or none.",
+                nameof(unlockedBy));
         }
 
         if (startingStage < 1)
@@ -873,6 +891,8 @@ public sealed class ModeSpec
         HasVeilrot = hasVeilrot;
         HasSanctum = hasSanctum;
         HasFreePick = hasFreePick;
+        UnlockedBy = unlockedBy;
+        IsListed = isListed;
 
         _ordeals = CopyOrdeals(ordeals, id);
 
@@ -999,6 +1019,15 @@ public sealed class ModeSpec
     /// <remarks>Read by <c>RunSession.Start</c>, which hands it to the run's <c>LevelUpFlow</c> and
     /// <c>RunState</c>.</remarks>
     public bool HasFreePick { get; }
+
+    /// <summary>
+    /// The place that must be finished before this one opens; <c>default(ContentId)</c> means it is
+    /// open from the start (UI-11b rule 1).
+    /// </summary>
+    public ContentId UnlockedBy { get; }
+
+    /// <summary>Whether the Places tab shows this mode. Unlisted modes stay in the catalog (UI-11b rule 5).</summary>
+    public bool IsListed { get; }
 
     /// <summary>Every archetype the mode may spawn, in the order they were authored.</summary>
     public IReadOnlyList<RosterEntry> Roster => _rosterView;

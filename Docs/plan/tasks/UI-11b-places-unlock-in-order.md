@@ -63,4 +63,11 @@ public static class PlaceUnlocks
 
 ## As built
 
-_Filled at merge._
+Built to the Files table, with two test edits outside it, both forced by the data change:
+
+- `JungleTests.SharedBlocks` no longer lists `_isEndless` and `_finalStage`; the Jungle now differs from Descent there on purpose.
+- `ClassUnlocksTests.Profile_CarriesNoNumberThatAffectsARun` expects two readers of `PlayerProfile`, `ClassUnlocks` and `PlaceUnlocks`, and checks both return only `bool` or `int`.
+
+`isListed` defaults to `true` and `unlockedBy` to `default` in the constructor, so every existing fixture compiles. Both assets carry the new keys explicitly, so `Descent_EveryYamlKeyBindsToAField` binds them. `Listed` throws on a buffer that is too short rather than truncating. The three catalog rows live in `ContentValidationTests` as `Modes_UnlockedByIsKnown`, `Modes_UnlockedByIsFinite` and `Modes_UnlockChainHasNoLoop`.
+
+Suite: 4 130 EditMode, 4 128 passed, 1 failed (the known D3D12 depth row), 1 inconclusive.

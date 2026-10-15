@@ -118,6 +118,14 @@ namespace Soulvail.Game.Authoring
                  "UI-03d.")]
         [SerializeField] private bool _hasFreePick = false;
 
+        [Tooltip("The id of the place that must be finished before this one opens. Empty = open " +
+                 "from the start. Must name a finite mode in the catalog (UI-11b).")]
+        [SerializeField] private string _unlockedBy = "";
+
+        [Tooltip("Whether the Places tab shows this mode. Off keeps it in the catalog but out of " +
+                 "sight — a switch, not a removal (UI-11b).")]
+        [SerializeField] private bool _isListed = true;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -157,7 +165,9 @@ namespace Soulvail.Game.Authoring
                     BuildOrdeals(),
                     _hasVeilrot,
                     _hasSanctum,
-                    _hasFreePick);
+                    _hasFreePick,
+                    string.IsNullOrEmpty(_unlockedBy) ? default : new ContentId(_unlockedBy),
+                    _isListed);
             }
             catch (ArgumentException inner)
             {

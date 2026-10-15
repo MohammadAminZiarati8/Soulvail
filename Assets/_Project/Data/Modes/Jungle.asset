@@ -15,8 +15,8 @@ MonoBehaviour:
   _id: mode.jungle
   _nameKey: mode.jungle.name
   _startingStage: 1
-  _isEndless: 1
-  _finalStage: 1
+  _isEndless: 0
+  _finalStage: 30
   _scaling:
     _budgetBase: 40
     _budgetLinear: 12
@@ -89,3 +89,5 @@ MonoBehaviour:
   _hasVeilrot: 0
   _hasSanctum: 0
   _hasFreePick: 1
+  _unlockedBy: 
+  _isListed: 1

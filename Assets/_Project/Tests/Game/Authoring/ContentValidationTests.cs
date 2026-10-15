@@ -458,6 +458,89 @@ public sealed class ContentValidationTests
     }
 
     [Test]
+    public void Modes_UnlockedByIsKnown()
+    {
+        // UI-11b rule 4: a place waiting on a mode that is not in the catalog is never opened.
+        Dictionary<string, ModeSpec> modes = LoadShippedModes();
+        var problems = new List<string>();
+
+        foreach (ModeSpec mode in modes.Values)
+        {
+            if (mode.UnlockedBy.Value is not null && !modes.ContainsKey(mode.UnlockedBy.Value))
+            {
+                problems.Add($"{mode.Id}: unlocked by '{mode.UnlockedBy}', which no mode asset authors.");
+            }
+        }
+
+        AssertNoProblems(problems, "Mode UnlockedBy names a known mode (UI-11b)");
+    }
+
+    [Test]
+    public void Modes_UnlockedByIsFinite()
+    {
+        // An endless mode is never finished, so a place behind one is never opened.
+        Dictionary<string, ModeSpec> modes = LoadShippedModes();
+        var problems = new List<string>();
+
+        foreach (ModeSpec mode in modes.Values)
+        {
+            if (mode.UnlockedBy.Value is not null
+                && modes.TryGetValue(mode.UnlockedBy.Value, out ModeSpec previous)
+                && previous.IsEndless)
+            {
+                problems.Add($"{mode.Id}: unlocked by '{previous.Id}', which is endless and can never be finished.");
+            }
+        }
+
+        AssertNoProblems(problems, "Mode UnlockedBy names a finite mode (UI-11b)");
+    }
+
+    [Test]
+    public void Modes_UnlockChainHasNoLoop()
+    {
+        Dictionary<string, ModeSpec> modes = LoadShippedModes();
+        var problems = new List<string>();
+
+        foreach (ModeSpec start in modes.Values)
+        {
+            ModeSpec at = start;
+
+            for (int hops = 0; hops <= modes.Count; hops++)
+            {
+                if (at.UnlockedBy.Value is null || !modes.TryGetValue(at.UnlockedBy.Value, out at))
+                {
+                    break;
+                }
+
+                if (hops == modes.Count)
+                {
+                    problems.Add($"{start.Id}: its unlock chain loops back on itself.");
+                }
+            }
+        }
+
+        AssertNoProblems(problems, "Mode unlock chains end (UI-11b)");
+    }
+
+    private static Dictionary<string, ModeSpec> LoadShippedModes()
+    {
+        var modes = new Dictionary<string, ModeSpec>();
+
+        foreach (string path in PathsOf<ModeDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path);
+
+            if (definition != null)
+            {
+                ModeSpec spec = definition.ToSpec();
+                modes[spec.Id.Value] = spec;
+            }
+        }
+
+        return modes;
+    }
+
+    [Test]
     public void Content_EveryShippedModePricesItsSanctum()
     {
         // **M6-01a rule 3's guard with one more column** (M6-02b rule 1). `SanctumSpec` is an

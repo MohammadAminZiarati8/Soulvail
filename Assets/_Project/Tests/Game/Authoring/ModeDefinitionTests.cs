@@ -326,6 +326,29 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Jungle_IsFiniteAt30_Listed_Open()
+    {
+        // UI-11b rule 5: a place ends on a boss kill, so its final stage is a boss stage.
+        ModeSpec jungle = AssetDatabase.LoadAssetAtPath<ModeDefinition>(
+            "Assets/_Project/Data/Modes/Jungle.asset").ToSpec();
+
+        Assert.That(jungle.IsEndless, Is.False);
+        Assert.That(jungle.FinalStage, Is.EqualTo(30));
+        Assert.That(jungle.TryGetBossFor(30, out _), Is.True, "stage 30 holds a boss.");
+        Assert.That(jungle.IsListed, Is.True);
+        Assert.That(jungle.UnlockedBy.Value, Is.Null, "the first place is open from the start.");
+    }
+
+    [Test]
+    public void Descent_IsUnlisted()
+    {
+        // A switch, not a removal (focus build): still in the catalog, not on the Places tab.
+        ModeSpec descent = AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec();
+
+        Assert.That(descent.IsListed, Is.False);
+    }
+
+    [Test]
     public void Definition_ToSpec_RoundTrip()
     {
         ModeDefinition definition = NewDefinition("RoundTripMode");

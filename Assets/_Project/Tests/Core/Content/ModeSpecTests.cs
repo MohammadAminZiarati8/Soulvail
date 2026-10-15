@@ -250,6 +250,16 @@ public sealed class ModeSpecTests
     }
 
     [Test]
+    public void Ctor_UnlockedBySelf_Throws()
+    {
+        // UI-11b rule 4: a place opened by itself could never be opened.
+        Assert.Throws<ArgumentException>(
+            () => new ModeSpec(
+                Id(), Name(), 1, false, 30, Scalings.Design(), Scalings.Xp(), DesignRoster,
+                unlockedBy: Id()));
+    }
+
+    [Test]
     public void Ctor_Guards()
     {
         Assert.Throws<ArgumentException>(

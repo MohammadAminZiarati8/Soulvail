@@ -95,3 +95,5 @@ MonoBehaviour:
   _hasVeilrot: 0
   _hasSanctum: 0
   _hasFreePick: 0
+  _unlockedBy: 
+  _isListed: 0

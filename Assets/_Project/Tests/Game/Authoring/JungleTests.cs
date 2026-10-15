@@ -57,7 +57,7 @@ public sealed class JungleTests
 
     private static readonly string[] SharedBlocks =
     {
-        "_startingStage", "_isEndless", "_finalStage", "_scaling", "_xp", "_overflow", "_essence",
+        "_startingStage", "_scaling", "_xp", "_overflow", "_essence",
         "_sanctum", "_bossRoster", "_ordeals",
     };
 

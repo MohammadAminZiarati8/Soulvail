@@ -243,11 +243,13 @@ public sealed class ClassUnlocksTests
 
         Assert.That(
             readers,
-            Is.EqualTo(new[] { nameof(ClassUnlocks) }),
+            Is.EqualTo(new[] { nameof(ClassUnlocks), nameof(PlaceUnlocks) }),
             $"PlayerProfile is read in Soulvail.Core by: {string.Join(", ", readers)}. A profile field " +
             "that reaches a run's numbers is a permanent power layer, which GD §14.3 forbids.");
 
-        foreach (MethodInfo method in typeof(ClassUnlocks).GetMethods(BindingFlags.Public | BindingFlags.Static))
+        // PlaceUnlocks (UI-11b) is the second reader: which places are open, as the same bool or count.
+        foreach (MethodInfo method in typeof(ClassUnlocks).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Concat(typeof(PlaceUnlocks).GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)))
         {
             Assert.That(
                 method.ReturnType == typeof(bool) || method.ReturnType == typeof(int),

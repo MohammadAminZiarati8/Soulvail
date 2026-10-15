@@ -71,6 +71,8 @@ Melancholy, not grimdark. Bone-white and ash, lit by the cyan of your own soul-f
 
 Biome changes every 10 stages. Beyond 40 the Abyss loops previous layers with stacking **Ordeals** (§13.4).
 
+**Places (owner's ruling, 2026-10-15; supersedes the layers above for the shipped build).** The player picks a *place*, and each place is a finite mode that ends on a boss kill (the Jungle: stage 30, a Warden stage). **Every place opens when the one before it is finished** — its final stage cleared. The first place is open from the start. Descent stays in the catalog but unlisted.
+
 ---
 
 ## 4. Core loop
@@ -100,6 +102,8 @@ Death is total. The tree is gone, the build is gone. Only which classes you've u
 More modes come later, and the only thing that matters now is that **a mode is a data object, not an assumption baked into the code.** A mode configures: the stage sequence, the difficulty curve, the win/lose conditions, which classes are legal, and any starting modifiers. Nothing in the run loop, spawn director, or class definitions may hard-code "endless" or "starts at stage 1."
 
 Getting this boundary right at M1 costs almost nothing. Retrofitting it after three classes and a boss roster assume Descent is a rewrite.
+
+**Places (UI-11b).** A mode may name the mode that opens it (`UnlockedBy`; none = open from the start, never itself, never an endless mode, no loops) and may be unlisted (`IsListed`) so the Places tab skips it. The Jungle is the first listed place, finite at stage 30; Descent is the endless mode, unlisted.
 
 Plausible later modes, listed only to check the abstraction holds — **not designed, not committed**: a fixed-seed Daily with a leaderboard, a Boss Rush, a finite curated campaign with an ending, a Trial that hands you a pre-built tree and tests execution rather than luck.
 

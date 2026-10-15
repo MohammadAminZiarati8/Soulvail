@@ -45,8 +45,8 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>Every string on screen is a <see cref="LocKey"/></b> (M3-14a rule 8). The Heroes tab and the
-    /// class card open the hero grid (UI-11f); the Places tab and the place card do nothing until
-    /// UI-11g.
+    /// class card open the hero grid (UI-11f); the Places tab and the place card open the place list
+    /// (UI-11g).
     /// </para>
     /// </remarks>
     public sealed class MenuPresenter : MonoBehaviour
@@ -128,6 +128,9 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("The Heroes tab's grid (UI-11f), a child of Safe under the tab bar. Off until the tab is tapped.")]
         [SerializeField] private HeroGrid _heroes;
+
+        [Tooltip("The Places tab's column (UI-11g), a child of Safe under the tab bar. Off until the tab is tapped.")]
+        [SerializeField] private PlaceList _places;
 
         [Header("Dressing (UI-06b)")]
         [Tooltip("CharacterPage_Background, a child of the canvas rather than of Safe and stretched " +
@@ -318,6 +321,17 @@ namespace Soulvail.Game.Presentation
 
                 _heroes.Tapped += OnHeroTapped;
                 _heroes.Hide();
+            }
+
+            if (_places != null)
+            {
+                if (_catalog != null)
+                {
+                    _places.Configure(_catalog, _localizer);
+                }
+
+                _places.Tapped += OnPlaceTapped;
+                _places.Hide();
             }
 
             if (_tabs != null)
@@ -524,6 +538,11 @@ namespace Soulvail.Game.Presentation
             {
                 _heroes.Layout(px);
             }
+
+            if (_places != null)
+            {
+                _places.Layout(px);
+            }
         }
 
         private void LayoutCards(float px)
@@ -699,6 +718,11 @@ namespace Soulvail.Game.Presentation
                 _heroes.Tapped -= OnHeroTapped;
             }
 
+            if (_places != null)
+            {
+                _places.Tapped -= OnPlaceTapped;
+            }
+
             if (_tabs != null)
             {
                 _tabs.Selected -= OnTab;
@@ -745,6 +769,11 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
+            if (_places != null)
+            {
+                _places.Hide();
+            }
+
             _heroes.Show(_profile.Current, SelectedCharacter);
             _heroes.Layout(PixelsPerDp(Screen.dpi));
 
@@ -760,6 +789,11 @@ namespace Soulvail.Game.Presentation
             if (_heroes != null)
             {
                 _heroes.Hide();
+            }
+
+            if (_places != null)
+            {
+                _places.Hide();
             }
 
             if (_tabs != null)
@@ -784,9 +818,39 @@ namespace Soulvail.Game.Presentation
             Draw();
         }
 
-        /// <summary>The Places tab and the place card: nothing, until UI-11g.</summary>
+        /// <summary>The Places tab and the place card: the column of every listed place (UI-11g).</summary>
         private void OpenPlaces()
         {
+            if (_places == null || _catalog is null || _profile is null)
+            {
+                return;
+            }
+
+            if (_heroes != null)
+            {
+                _heroes.Hide();
+            }
+
+            _places.Show(_profile.Current, SelectedMode);
+            _places.Layout(PixelsPerDp(Screen.dpi));
+
+            if (_tabs != null)
+            {
+                _tabs.Show(Tab.Places);
+            }
+        }
+
+        /// <summary>An open place was tapped: it becomes the pick, with the current class, and home shows it.</summary>
+        private void OnPlaceTapped(ContentId modeId)
+        {
+            if (_profile is null)
+            {
+                return;
+            }
+
+            _profile.Pick(SelectedCharacter, modeId);
+            ShowHome();
+            Draw();
         }
 
         /// <summary>

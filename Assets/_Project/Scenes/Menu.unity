@@ -1423,6 +1423,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 629608729}
   m_CullTransparentMesh: 1
+--- !u!1 &633151773
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 633151774}
+  - component: {fileID: 633151775}
+  m_Layer: 0
+  m_Name: Places
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &633151774
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 633151773}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1900000002}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &633151775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 633151773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166486aa76b18aa488b73531012eb8b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.PlaceList
+  _font: {fileID: 11400000, guid: 4c9df70117b5fa64886f0064cd335716, type: 2}
 --- !u!1 &652852358
 GameObject:
   m_ObjectHideFlags: 0
@@ -1633,6 +1682,7 @@ MonoBehaviour:
   _className: {fileID: 376845104}
   _tabs: {fileID: 338213970}
   _heroes: {fileID: 319754901}
+  _places: {fileID: 633151775}
   _background: {fileID: 1900000014}
   _titlePlate: {fileID: 1900000024}
   _greenButton: {fileID: 21300000, guid: c4b8cf8331e779143abdb3fa63a31b8e, type: 3}
@@ -3120,6 +3170,7 @@ RectTransform:
   - {fileID: 205823282}
   - {fileID: 1534106378}
   - {fileID: 319754900}
+  - {fileID: 633151774}
   - {fileID: 338213969}
   m_Father: {fileID: 707872286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

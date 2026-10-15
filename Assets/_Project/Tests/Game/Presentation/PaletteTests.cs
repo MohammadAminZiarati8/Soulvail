@@ -730,7 +730,7 @@ public sealed class PaletteTests
         // ServiceRow reads it too, for the prices, and is the Sanctum's own control; HudPresenter
         // joined at M6-03b for GD §16.1's corner counter; ClassSelectPresenter and ClassCard at
         // M6-09b, for the Shard balance and a price that can be paid; CharacterPage at UI-05c, for the
-        // price pill.
+        // price pill; HeroGrid and PlaceList (UI-11f, UI-11g) for a price and a "Finished" line.
         Assert.That(readers, Does.Contain(typeof(RunEndPresenter)));
         Assert.That(readers, Does.Contain(typeof(SanctumPresenter)));
         Assert.That(
@@ -739,6 +739,7 @@ public sealed class PaletteTests
             {
                 typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow), typeof(HudPresenter),
                 typeof(ClassSelectPresenter), typeof(ClassCard), typeof(CharacterPage), typeof(HeroGrid),
+                typeof(PlaceList),
             }));
 
         // And the summary says so. XML docs do not exist at run time, so the source is read: the

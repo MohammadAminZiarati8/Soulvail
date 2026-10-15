@@ -45,4 +45,4 @@ The Places tab is a scrolling column of every listed place: open ones show their
 
 ## As built
 
-_Filled at merge._
+Filled in the PROGRESS entry of 2026-10-15; deviations listed there. `PlaceList` builds its scroll area and cards in code on the first show (backdrop `Palette.Ink`, one full-width 140 dp card per listed place, the viewport ending above the tab bar). A locked or "soon" card is a non-interactable `Button` whose disabled colour is white, so it keeps its dressed tint and plays no pressed state. The list raises `Tapped` only for an open place; `MenuPresenter` saves the pick with the current class and returns home.

@@ -134,6 +134,16 @@ MonoBehaviour:
     _text: Heroes
   - _key: ui.heroes.picked
     _text: Picked
+  - _key: ui.places.title
+    _text: Places
+  - _key: ui.places.best
+    _text: 'Best: stage {0} / {1}'
+  - _key: ui.places.finished
+    _text: Finished
+  - _key: ui.places.locked
+    _text: 'Finish {0} to open'
+  - _key: ui.places.soon
+    _text: More places coming
   - _key: ui.death.title
     _text: You died
   - _key: ui.death.hint

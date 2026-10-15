@@ -722,7 +722,7 @@ public sealed class SaveDtoTests
     public void Profile_RecordsTheNewField()
     {
         var profile = new PlayerProfile(
-            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         // All three read back, and the two bools are set the opposite way round from each other —
         // a constructor that assigned one field to both would pass a row where they agree.
@@ -735,7 +735,7 @@ public sealed class SaveDtoTests
     public void Profile_CarriesShards()
     {
         var profile = new PlayerProfile(
-            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         // v3's field, and the other three with it. The two bools are set the opposite way round
         // from each other and neither matches the version's parity, so a constructor that crossed
@@ -758,7 +758,7 @@ public sealed class SaveDtoTests
                 PlayerProfile.CurrentVersion,
                 hapticsEnabled: true,
                 seenFirstActiveHint: false,
-                shards: -1, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+                shards: -1, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
     }
 
     [Test]
@@ -770,7 +770,7 @@ public sealed class SaveDtoTests
         // than convenient — and it is the answer a fresh install gets, because a missing file is
         // substituted with this and never written back.
         Assert.That(profile.SeenFirstActiveHint, Is.False);
-        Assert.That(profile.Version, Is.EqualTo(4), "v4 is what this build writes (M6-09a).");
+        Assert.That(profile.Version, Is.EqualTo(5), "v5 is what this build writes (UI-11a).");
     }
 
     [Test]
@@ -793,7 +793,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: true,
             seenFirstActiveHint: true,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile haptics = profile.WithHaptics(false);
 
@@ -808,7 +808,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: false,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile hint = seen.WithSeenFirstActiveHint(true);
 
@@ -828,7 +828,7 @@ public sealed class SaveDtoTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile banked = profile.WithShards(50);
 
@@ -847,7 +847,7 @@ public sealed class SaveDtoTests
     public void Profile_WithHelpersKeepTheVersion()
     {
         var profile = new PlayerProfile(
-            2, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            2, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         // Not CurrentVersion — the version a profile carries is the format it was *read* in, and a
         // helper that quietly stamped the current one would turn a decoded v1 into a v2 document
@@ -865,7 +865,7 @@ public sealed class SaveDtoTests
     {
         Assert.Catch<ArgumentOutOfRangeException>(
             () => new PlayerProfile(
-                0, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+                0, hapticsEnabled: true, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
     }
 
     [Test]
@@ -885,7 +885,8 @@ public sealed class SaveDtoTests
             properties,
             Is.EqualTo(new[]
             {
-                "HapticsEnabled", "Locale", "MetArchetypeIds", "SeenFirstActiveHint", "Shards",
+                "BestStages", "FinishedModeIds", "HapticsEnabled", "Locale", "MetArchetypeIds",
+                "SeenFirstActiveHint", "SelectedCharacterId", "SelectedModeId", "Shards",
                 "UnlockedCharacterIds", "Version",
             }));
     }
@@ -898,7 +899,7 @@ public sealed class SaveDtoTests
         var unlocked = new[] { Gravecaller, Emberwright };
         var met = new[] { Husk };
 
-        var profile = new PlayerProfile(4, true, false, 10, unlocked, met, "fr");
+        var profile = new PlayerProfile(4, true, false, 10, unlocked, met, "fr", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(unlocked));
         Assert.That(profile.MetArchetypeIds, Is.EqualTo(met));
@@ -915,7 +916,7 @@ public sealed class SaveDtoTests
         PlayerProfile profile = PlayerProfile.Default;
 
         // Rule 3: an empty unlock list is a playable game, because the starter needs no entry.
-        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Version, Is.EqualTo(5));
         Assert.That(profile.UnlockedCharacterIds, Is.Not.Null.And.Empty);
         Assert.That(profile.MetArchetypeIds, Is.Not.Null.And.Empty);
         Assert.That(profile.Locale, Is.EqualTo(string.Empty));
@@ -927,9 +928,9 @@ public sealed class SaveDtoTests
     {
         ContentId[] none = Array.Empty<ContentId>();
 
-        var unlocked = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, null, none, ""));
-        var met = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, null, ""));
-        var locale = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, none, null));
+        var unlocked = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, null, none, "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
+        var met = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, null, "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
+        var locale = Assert.Throws<ArgumentNullException>(() => new PlayerProfile(4, true, false, 0, none, none, null, Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         Assert.That(unlocked.ParamName, Is.EqualTo("unlockedCharacterIds"));
         Assert.That(met.ParamName, Is.EqualTo("metArchetypeIds"));
@@ -947,8 +948,8 @@ public sealed class SaveDtoTests
         ContentId[] holed = { Husk, default };
         ContentId[] none = Array.Empty<ContentId>();
 
-        var unlocked = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, holed, none, ""));
-        var met = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, none, holed, ""));
+        var unlocked = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, holed, none, "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
+        var met = Assert.Throws<ArgumentException>(() => new PlayerProfile(4, true, false, 0, none, holed, "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         Assert.That(unlocked.Message, Does.Contain("unlockedCharacterIds[1]"), "names the list and the index.");
         Assert.That(met.Message, Does.Contain("metArchetypeIds[1]"));
@@ -961,7 +962,7 @@ public sealed class SaveDtoTests
         // that refused to load over it would cost the player every Shard they ever banked.
         var deleted = new ContentId("character.deleted");
 
-        var profile = new PlayerProfile(4, true, false, 0, new[] { deleted }, Array.Empty<ContentId>(), "");
+        var profile = new PlayerProfile(4, true, false, 0, new[] { deleted }, Array.Empty<ContentId>(), "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { deleted }));
     }
@@ -972,7 +973,7 @@ public sealed class SaveDtoTests
         var unlocked = new List<ContentId> { Gravecaller };
         var met = new List<ContentId> { Husk };
 
-        var profile = new PlayerProfile(4, true, false, 0, unlocked, met, "");
+        var profile = new PlayerProfile(4, true, false, 0, unlocked, met, "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         unlocked.Add(Emberwright);
         met[0] = Spitter;
@@ -986,7 +987,7 @@ public sealed class SaveDtoTests
     {
         // Every field away from a fresh profile's value, so a helper that authored the struct from
         // its one argument visibly moves one — M4-05b rule 2's rule at seven fields.
-        var full = new PlayerProfile(4, false, true, 650, new[] { Gravecaller }, new[] { Husk }, "fr");
+        var full = new PlayerProfile(4, false, true, 650, new[] { Gravecaller }, new[] { Husk }, "fr", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile unlocked = full.WithUnlocked(new[] { Gravecaller, Emberwright });
         PlayerProfile met = full.WithMetArchetypes(new[] { Husk, Spitter });
@@ -1041,7 +1042,7 @@ public sealed class SaveDtoTests
         // exact bug v2 exists to have fixed rather than repeated, with a far worse consequence than
         // the one it was fixed for.
         Assert.That(constructors, Has.Length.EqualTo(1));
-        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(7), "seven as of M6-09a.");
+        Assert.That(constructors[0].GetParameters(), Has.Length.EqualTo(11), "eleven as of UI-11a.");
     }
 
     [Test]

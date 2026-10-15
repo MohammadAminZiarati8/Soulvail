@@ -257,7 +257,11 @@ public static class SaveMigrations
                 shards: 0,
                 Array.Empty<ContentId>(),
                 Array.Empty<ContentId>(),
-                locale: string.Empty);
+                locale: string.Empty,
+                Array.Empty<ContentId>(),
+                Array.Empty<ModeBest>(),
+                default,
+                default);
         }
 
         // **v2 → v3: a player who has never been paid for dying.** A v2 profile was written by a
@@ -282,7 +286,11 @@ public static class SaveMigrations
                 shards: 0,
                 Array.Empty<ContentId>(),
                 Array.Empty<ContentId>(),
-                locale: string.Empty);
+                locale: string.Empty,
+                Array.Empty<ContentId>(),
+                Array.Empty<ModeBest>(),
+                default,
+                default);
         }
 
         // **v3 → v4: a player who owns what their build let them pick — and the one step in this
@@ -311,7 +319,32 @@ public static class SaveMigrations
                 current.Shards,
                 GrandfatheredCharacterIds,
                 Array.Empty<ContentId>(),
-                locale: string.Empty);
+                locale: string.Empty,
+                Array.Empty<ContentId>(),
+                Array.Empty<ModeBest>(),
+                default,
+                default);
+        }
+
+        // **v4 → v5: a player who has finished no place and picked nothing.** v4 had no places to
+        // finish — the campaign's "choose a place" shape arrived with v5 — so empty lists and no
+        // picks are the truth about every v4 install rather than a default standing in for an
+        // unknown. Every v4 field is kept exactly as it was read, which is the Shards rule again:
+        // the step adds, it never rebuilds what the player already earned.
+        if (version < 5)
+        {
+            current = new PlayerProfile(
+                5,
+                current.HapticsEnabled,
+                current.SeenFirstActiveHint,
+                current.Shards,
+                current.UnlockedCharacterIds,
+                current.MetArchetypeIds,
+                current.Locale,
+                Array.Empty<ContentId>(),
+                Array.Empty<ModeBest>(),
+                default,
+                default);
         }
 
         return current;

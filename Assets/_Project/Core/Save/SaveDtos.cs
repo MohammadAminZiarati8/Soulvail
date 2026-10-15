@@ -852,6 +852,28 @@ public readonly struct RunSnapshot
 }
 
 /// <summary>
+/// One place's best: the furthest stage reached in it. Part of <see cref="PlayerProfile"/> from v5.
+/// </summary>
+/// <remarks>
+/// Unguarded on its own, because <c>default(ModeBest)</c> exists whatever the constructor says;
+/// <see cref="PlayerProfile"/>'s constructor refuses a stage below 1 and is the one check (AR §18.3).
+/// </remarks>
+public readonly struct ModeBest
+{
+    public ModeBest(ContentId modeId, int stage)
+    {
+        ModeId = modeId;
+        Stage = stage;
+    }
+
+    /// <summary>The place, e.g. <c>mode.jungle</c>.</summary>
+    public ContentId ModeId { get; }
+
+    /// <summary>The furthest stage reached, from 1.</summary>
+    public int Stage { get; }
+}
+
+/// <summary>
 /// What survives every run: the player's own settings, what the game has already shown them, their
 /// Shards, the classes they own, the archetypes they have met, and the language they read.
 /// </summary>
@@ -904,7 +926,7 @@ public readonly struct RunSnapshot
 public readonly struct PlayerProfile
 {
     /// <summary>The format this build writes.</summary>
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 
     /// <param name="version">The format the profile is written in.</param>
     /// <param name="hapticsEnabled">Whether the device is allowed to buzz (GD §16.3).</param>
@@ -925,12 +947,30 @@ public readonly struct PlayerProfile
     /// <param name="locale">
     /// The language table to read, or empty for the device's. v4. Never null.
     /// </param>
+    /// <param name="finishedModeIds">
+    /// The places this install has finished, in the order it finished them. v5. Never null, never
+    /// holding <c>default(ContentId)</c> or a repeat; copied.
+    /// </param>
+    /// <param name="bestStages">
+    /// The furthest stage reached in each place played. v5. Never null; one row per place, each at
+    /// stage 1 or more; copied.
+    /// </param>
+    /// <param name="selectedCharacterId">
+    /// The class last picked, or <c>default</c> for none yet. v5. Not resolved against the catalog.
+    /// </param>
+    /// <param name="selectedModeId">
+    /// The place last picked, or <c>default</c> for none yet. v5. Not resolved against the catalog.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="version"/> is below 1 — the value <c>default(PlayerProfile)</c> carries — or
     /// <paramref name="shards"/> is negative.
     /// </exception>
-    /// <exception cref="ArgumentNullException">Either list, or <paramref name="locale"/>, is null.</exception>
-    /// <exception cref="ArgumentException">Either list holds <c>default(ContentId)</c>.</exception>
+    /// <exception cref="ArgumentNullException">Any list, or <paramref name="locale"/>, is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// Any id list holds <c>default(ContentId)</c>, <paramref name="finishedModeIds"/> or
+    /// <paramref name="bestStages"/> names a place twice, or a <see cref="ModeBest"/> has a stage
+    /// below 1.
+    /// </exception>
     /// <remarks>
     /// <b>There is deliberately no overload that omits a field.</b> One would compile at every
     /// existing call site on the day a fourth field lands and quietly reset it, which is exactly the
@@ -945,7 +985,11 @@ public readonly struct PlayerProfile
         int shards,
         IReadOnlyList<ContentId> unlockedCharacterIds,
         IReadOnlyList<ContentId> metArchetypeIds,
-        string locale)
+        string locale,
+        IReadOnlyList<ContentId> finishedModeIds,
+        IReadOnlyList<ModeBest> bestStages,
+        ContentId selectedCharacterId,
+        ContentId selectedModeId)
     {
         if (version < 1)
         {
@@ -988,6 +1032,10 @@ public readonly struct PlayerProfile
         UnlockedCharacterIds = CopyIds(unlockedCharacterIds, nameof(unlockedCharacterIds));
         MetArchetypeIds = CopyIds(metArchetypeIds, nameof(metArchetypeIds));
         Locale = locale;
+        FinishedModeIds = CopyUniqueIds(finishedModeIds, nameof(finishedModeIds));
+        BestStages = CopyBestStages(bestStages);
+        SelectedCharacterId = selectedCharacterId;
+        SelectedModeId = selectedModeId;
     }
 
     /// <summary>The format this profile was written in. 0 for <c>default(PlayerProfile)</c>.</summary>
@@ -1063,12 +1111,49 @@ public readonly struct PlayerProfile
     /// </remarks>
     public string Locale { get; }
 
+    /// <summary>
+    /// The places this install has finished, in the order it finished them — the fact that opens
+    /// the next place. v5. Never null.
+    /// </summary>
+    /// <remarks>
+    /// An id this build no longer ships is kept, for <see cref="UnlockedCharacterIds"/>' reason.
+    /// </remarks>
+    public IReadOnlyList<ContentId> FinishedModeIds { get; }
+
+    /// <summary>
+    /// The furthest stage reached in each place played, one row per place. v5. Never null.
+    /// </summary>
+    public IReadOnlyList<ModeBest> BestStages { get; }
+
+    /// <summary>The class last picked; <c>default</c> until one has been. v5.</summary>
+    public ContentId SelectedCharacterId { get; }
+
+    /// <summary>The place last picked; <c>default</c> until one has been. v5.</summary>
+    public ContentId SelectedModeId { get; }
+
+    /// <summary>The furthest stage reached in <paramref name="modeId"/>, or 0 when never played.</summary>
+    public int BestStage(ContentId modeId)
+    {
+        IReadOnlyList<ModeBest> rows = BestStages;
+
+        for (int i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].ModeId == modeId)
+            {
+                return rows[i].Stage;
+            }
+        }
+
+        return 0;
+    }
+
     /// <summary>This profile with <see cref="HapticsEnabled"/> moved and nothing else touched.</summary>
     /// <remarks>The shape a multi-field record needs — see the type's remarks.</remarks>
     public PlayerProfile WithHaptics(bool value)
     {
         return new PlayerProfile(
-            Version, value, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale);
+            Version, value, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
     }
 
     /// <summary>
@@ -1078,7 +1163,8 @@ public readonly struct PlayerProfile
     public PlayerProfile WithSeenFirstActiveHint(bool value)
     {
         return new PlayerProfile(
-            Version, HapticsEnabled, value, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale);
+            Version, HapticsEnabled, value, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
     }
 
     /// <summary>This profile with <see cref="Shards"/> moved and nothing else touched.</summary>
@@ -1090,7 +1176,8 @@ public readonly struct PlayerProfile
     public PlayerProfile WithShards(int value)
     {
         return new PlayerProfile(
-            Version, HapticsEnabled, SeenFirstActiveHint, value, UnlockedCharacterIds, MetArchetypeIds, Locale);
+            Version, HapticsEnabled, SeenFirstActiveHint, value, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
     }
 
     /// <summary>
@@ -1105,7 +1192,8 @@ public readonly struct PlayerProfile
     public PlayerProfile WithUnlocked(IReadOnlyList<ContentId> value)
     {
         return new PlayerProfile(
-            Version, HapticsEnabled, SeenFirstActiveHint, Shards, value, MetArchetypeIds, Locale);
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, value, MetArchetypeIds, Locale,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
     }
 
     /// <summary>
@@ -1114,14 +1202,83 @@ public readonly struct PlayerProfile
     public PlayerProfile WithMetArchetypes(IReadOnlyList<ContentId> value)
     {
         return new PlayerProfile(
-            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, value, Locale);
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, value, Locale,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
     }
 
     /// <summary>This profile with <see cref="Locale"/> moved and nothing else touched.</summary>
     public PlayerProfile WithLocale(string value)
     {
         return new PlayerProfile(
-            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, value);
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, value,
+            FinishedModeIds, BestStages, SelectedCharacterId, SelectedModeId);
+    }
+
+    /// <summary>
+    /// This profile with <paramref name="modeId"/> added to <see cref="FinishedModeIds"/> once.
+    /// Finishing a place a second time changes nothing.
+    /// </summary>
+    public PlayerProfile WithFinished(ContentId modeId)
+    {
+        for (int i = 0; i < FinishedModeIds.Count; i++)
+        {
+            if (FinishedModeIds[i] == modeId)
+            {
+                return this;
+            }
+        }
+
+        var grown = new ContentId[FinishedModeIds.Count + 1];
+
+        for (int i = 0; i < FinishedModeIds.Count; i++)
+        {
+            grown[i] = FinishedModeIds[i];
+        }
+
+        grown[grown.Length - 1] = modeId;
+
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            grown, BestStages, SelectedCharacterId, SelectedModeId);
+    }
+
+    /// <summary>
+    /// This profile with <paramref name="stage"/> recorded as the best in <paramref name="modeId"/>
+    /// — only if it beats the one held. A lower or equal stage returns the profile unchanged, and a
+    /// place never seen gains a row.
+    /// </summary>
+    public PlayerProfile WithBestStage(ContentId modeId, int stage)
+    {
+        if (stage <= BestStage(modeId))
+        {
+            return this;
+        }
+
+        var rows = new List<ModeBest>(BestStages.Count + 1);
+
+        for (int i = 0; i < BestStages.Count; i++)
+        {
+            if (BestStages[i].ModeId != modeId)
+            {
+                rows.Add(BestStages[i]);
+            }
+        }
+
+        rows.Add(new ModeBest(modeId, stage));
+
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            FinishedModeIds, rows, SelectedCharacterId, SelectedModeId);
+    }
+
+    /// <summary>
+    /// This profile with both picks replaced. <c>default</c> means "none picked" and is legal.
+    /// </summary>
+    public PlayerProfile WithSelection(ContentId characterId, ContentId modeId)
+    {
+        return new PlayerProfile(
+            Version, HapticsEnabled, SeenFirstActiveHint, Shards, UnlockedCharacterIds, MetArchetypeIds, Locale,
+            FinishedModeIds, BestStages, characterId, modeId);
     }
 
     /// <summary>
@@ -1143,7 +1300,11 @@ public readonly struct PlayerProfile
             shards: 0,
             Array.Empty<ContentId>(),
             Array.Empty<ContentId>(),
-            locale: string.Empty);
+            locale: string.Empty,
+            Array.Empty<ContentId>(),
+            Array.Empty<ModeBest>(),
+            selectedCharacterId: default,
+            selectedModeId: default);
 
     /// <summary>
     /// <paramref name="ids"/> as a list of this profile's own, refusing null and an entry that
@@ -1184,6 +1345,82 @@ public readonly struct PlayerProfile
             }
 
             copy[i] = id;
+        }
+
+        return Array.AsReadOnly(copy);
+    }
+
+    /// <summary><see cref="CopyIds"/> that also refuses a repeat — for the lists that are sets.</summary>
+    private static IReadOnlyList<ContentId> CopyUniqueIds(IReadOnlyList<ContentId> ids, string name)
+    {
+        IReadOnlyList<ContentId> copy = CopyIds(ids, name);
+
+        for (int i = 1; i < copy.Count; i++)
+        {
+            for (int earlier = 0; earlier < i; earlier++)
+            {
+                if (copy[earlier] == copy[i])
+                {
+                    throw new ArgumentException(
+                        $"{name} names '{copy[i]}' twice. It is a set of places, so a repeat is a " +
+                        "hand-edited file rather than anything a writer can produce.",
+                        name);
+                }
+            }
+        }
+
+        return copy;
+    }
+
+    /// <summary>
+    /// <paramref name="rows"/> as a list of this profile's own, refusing null, a row naming no place,
+    /// a stage below 1 and a place with two rows.
+    /// </summary>
+    private static IReadOnlyList<ModeBest> CopyBestStages(IReadOnlyList<ModeBest> rows)
+    {
+        if (rows is null)
+        {
+            throw new ArgumentNullException(
+                nameof(rows),
+                "bestStages must be a list, empty for an install that has played nowhere. Null and " +
+                "empty are not two ways of saying the same thing here — a reader must never have to ask.");
+        }
+
+        if (rows.Count == 0)
+        {
+            return Array.Empty<ModeBest>();
+        }
+
+        var copy = new ModeBest[rows.Count];
+
+        for (int i = 0; i < rows.Count; i++)
+        {
+            ModeBest row = rows[i];
+
+            if (row.ModeId.Value is null)
+            {
+                throw new ArgumentException(
+                    $"bestStages[{i}] is default(ContentId) and names no place.", nameof(rows));
+            }
+
+            if (row.Stage < 1)
+            {
+                throw new ArgumentException(
+                    $"bestStages[{i}] holds stage {row.Stage} for '{row.ModeId}'. Stages are " +
+                    "numbered from 1, and a place never played has no row.",
+                    nameof(rows));
+            }
+
+            for (int earlier = 0; earlier < i; earlier++)
+            {
+                if (copy[earlier].ModeId == row.ModeId)
+                {
+                    throw new ArgumentException(
+                        $"bestStages names '{row.ModeId}' twice. One place has one best.", nameof(rows));
+                }
+            }
+
+            copy[i] = row;
         }
 
         return Array.AsReadOnly(copy);

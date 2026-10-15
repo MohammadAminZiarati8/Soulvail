@@ -413,7 +413,7 @@ public sealed class SaveMigrationTests
             version++)
         {
             var profile = new PlayerProfile(
-                version, hapticsEnabled: false, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+                version, hapticsEnabled: false, seenFirstActiveHint: false, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
             PlayerProfile migrated = SaveMigrations.MigrateProfile(version, profile);
 
@@ -434,7 +434,7 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void ProfileGate_AcceptsOneToFourRefusesFive()
+    public void ProfileGate_AcceptsOneToFiveRefusesSix()
     {
         // The numbers written out, which the row above deliberately cannot say: it is phrased
         // against CurrentVersion throughout, so it would keep passing unchanged if the floor were
@@ -445,9 +445,10 @@ public sealed class SaveMigrationTests
         Assert.That(SaveMigrations.CanReadProfile(2), Is.True, "and so are v2 ones.");
         Assert.That(SaveMigrations.CanReadProfile(3), Is.True, "and v3, which is every install since m4.");
         Assert.That(SaveMigrations.CanReadProfile(4), Is.True);
+        Assert.That(SaveMigrations.CanReadProfile(5), Is.True);
 
         Assert.That(SaveMigrations.OldestSupportedProfileVersion, Is.EqualTo(1));
-        Assert.That(PlayerProfile.CurrentVersion, Is.EqualTo(4));
+        Assert.That(PlayerProfile.CurrentVersion, Is.EqualTo(5));
 
         // And the two formats still version independently: they read 4 and 4 as of M6-09a, which
         // is a coincidence of arithmetic again rather than a rule — M6-01b bumped the run alone and
@@ -458,11 +459,11 @@ public sealed class SaveMigrationTests
     [Test]
     public void Migrate_RefusesAVersionAboveThis()
     {
-        // A downgraded build must refuse a v5 document at the gate *and* at the migration: reading
+        // A downgraded build must refuse a v6 document at the gate *and* at the migration: reading
         // it as though the fields it does not know were absent would silently delete them on the
         // next write. A throw rather than a null, because by there the caller has asked the gate.
-        Assert.That(SaveMigrations.CanReadProfile(5), Is.False);
-        Assert.Throws<NotSupportedException>(() => SaveMigrations.MigrateProfile(5, PlayerProfile.Default));
+        Assert.That(SaveMigrations.CanReadProfile(6), Is.False);
+        Assert.Throws<NotSupportedException>(() => SaveMigrations.MigrateProfile(6, PlayerProfile.Default));
     }
 
     [Test]
@@ -473,13 +474,13 @@ public sealed class SaveMigrationTests
         // "the input happened to be that" (M3-01b rule 3's shape, on the other format).
         var decoded = new PlayerProfile(
             1, hapticsEnabled: false, seenFirstActiveHint: true, shards: 999,
-            new[] { Emberwright }, new[] { Husk }, locale: "fr");
+            new[] { Emberwright }, new[] { Husk }, locale: "fr", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(1, decoded);
 
-        // v4 from a v1 input: the chain, now three steps. Landing anywhere short of 4 is a step
+        // v5 from a v1 input: the chain, now four steps. Landing anywhere short of 5 is a step
         // reading `decoded` instead of `current`, or a step missing.
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
 
         // The first step: no build that wrote v1 had a skill, so the callout cannot have been shown.
         Assert.That(migrated.SeenFirstActiveHint, Is.False, "a v1 document is a v1 document whatever it carries.");
@@ -505,11 +506,11 @@ public sealed class SaveMigrationTests
         // authority and writes its field regardless of what the mirror held, and an input that was
         // already zero could not tell that apart from a step that passed the field through.
         var decoded = new PlayerProfile(
-            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 999, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            2, hapticsEnabled: false, seenFirstActiveHint: true, shards: 999, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(2, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(4), "through v3 and on to v4.");
+        Assert.That(migrated.Version, Is.EqualTo(5), "through v3 and v4 and on to v5.");
         Assert.That(
             migrated.Shards,
             Is.Zero,
@@ -529,11 +530,11 @@ public sealed class SaveMigrationTests
         // M4-05b rule 8's failure direction: a thing not written is data destroyed.
         var decoded = new PlayerProfile(
             3, hapticsEnabled: false, seenFirstActiveHint: true, shards: 650,
-            Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(3, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
         Assert.That(migrated.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "exactly the Gravecaller.");
         Assert.That(migrated.Shards, Is.EqualTo(650), "the banked total, as read.");
         Assert.That(migrated.MetArchetypeIds, Is.Empty);
@@ -549,7 +550,7 @@ public sealed class SaveMigrationTests
         // so grandfathering it would gate nothing in the only install that exists.
         var decoded = new PlayerProfile(
             3, hapticsEnabled: true, seenFirstActiveHint: false, shards: 650,
-            Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(3, decoded);
 
@@ -559,18 +560,48 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Migrate_V4IsTheIdentity()
+    public void Migrate_V5IsTheIdentity()
     {
         // Identity is a property of the *current* version, so it moves up with every bump and there
         // is only ever one of it. Every field away from its default, and the lists holding what the
-        // v3 step would never write, so a step that ran when it should not have goes red.
+        // earlier steps would never write, so a step that ran when it should not have goes red.
+        var decoded = new PlayerProfile(
+            5, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
+            new[] { Emberwright }, new[] { Husk }, locale: "fr",
+            new[] { Jungle }, new[] { new ModeBest(Jungle, 12) }, Emberwright, Jungle);
+
+        PlayerProfile migrated = SaveMigrations.MigrateProfile(5, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(5));
+        Assert.That(migrated.HapticsEnabled, Is.False);
+        Assert.That(migrated.SeenFirstActiveHint, Is.True);
+        Assert.That(migrated.Shards, Is.EqualTo(220));
+        Assert.That(migrated.UnlockedCharacterIds, Is.EqualTo(new[] { Emberwright }));
+        Assert.That(migrated.MetArchetypeIds, Is.EqualTo(new[] { Husk }));
+        Assert.That(migrated.Locale, Is.EqualTo("fr"));
+        Assert.That(migrated.FinishedModeIds, Is.EqualTo(new[] { Jungle }));
+        Assert.That(migrated.BestStage(Jungle), Is.EqualTo(12));
+        Assert.That(migrated.SelectedCharacterId, Is.EqualTo(Emberwright));
+        Assert.That(migrated.SelectedModeId, Is.EqualTo(Jungle));
+    }
+
+    [Test]
+    public void Migrate_V4_AddsEmptyPlaces()
+    {
+        // Rule 5. Places and picks set on the v4 input, which no real v4 document can carry: the
+        // step is the authority and writes them empty, and every v4 field is kept as it was read.
         var decoded = new PlayerProfile(
             4, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
-            new[] { Emberwright }, new[] { Husk }, locale: "fr");
+            new[] { Emberwright }, new[] { Husk }, locale: "fr",
+            new[] { Jungle }, new[] { new ModeBest(Jungle, 12) }, Emberwright, Jungle);
 
         PlayerProfile migrated = SaveMigrations.MigrateProfile(4, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
+        Assert.That(migrated.FinishedModeIds, Is.Empty);
+        Assert.That(migrated.BestStages, Is.Empty);
+        Assert.That(migrated.SelectedCharacterId, Is.EqualTo(default(ContentId)));
+        Assert.That(migrated.SelectedModeId, Is.EqualTo(default(ContentId)));
         Assert.That(migrated.HapticsEnabled, Is.False);
         Assert.That(migrated.SeenFirstActiveHint, Is.True);
         Assert.That(migrated.Shards, Is.EqualTo(220));
@@ -579,9 +610,26 @@ public sealed class SaveMigrationTests
         Assert.That(migrated.Locale, Is.EqualTo("fr"));
     }
 
+    [Test]
+    public void Migrate_V1_ReachesV5()
+    {
+        var decoded = new PlayerProfile(
+            1, hapticsEnabled: false, seenFirstActiveHint: false, shards: 0,
+            Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "",
+            Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
+
+        PlayerProfile migrated = SaveMigrations.MigrateProfile(1, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(5));
+        Assert.That(migrated.FinishedModeIds, Is.Empty);
+        Assert.That(migrated.BestStages, Is.Empty);
+        Assert.That(migrated.HapticsEnabled, Is.False);
+    }
+
     private static readonly ContentId Gravecaller = new ContentId("character.gravecaller");
     private static readonly ContentId Emberwright = new ContentId("character.emberwright");
     private static readonly ContentId Husk = new ContentId("enemy.husk");
+    private static readonly ContentId Jungle = new ContentId("mode.jungle");
 
     /// <summary>A snapshot in <paramref name="version"/>'s format, with every field distinct.</summary>
     /// <remarks>

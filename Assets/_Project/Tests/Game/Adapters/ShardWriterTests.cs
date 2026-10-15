@@ -143,7 +143,7 @@ public sealed class ShardWriterTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
@@ -247,7 +247,7 @@ public sealed class ShardWriterTests
             shards: 5,
             new[] { Gravecaller },
             new[] { Husk },
-            locale: "fr"));
+            locale: "fr", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         using var writer = new ShardWriter(_profiles, _hub, _catalog);
 
@@ -325,7 +325,7 @@ public sealed class ShardWriterTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: true,
             seenFirstActiveHint: false,
-            shards: shards, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: shards, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
     }
 
     /// <summary>The profile as it stands on the fake's "disk".</summary>

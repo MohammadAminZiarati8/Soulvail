@@ -52,7 +52,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         Assert.That(settings.Enabled, Is.False);
     }
@@ -83,7 +83,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: false,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         // A load that immediately re-saves is a load that can corrupt what it just read — and on a
         // fresh install it would put a profile on disk for a player who has changed nothing. The
@@ -144,7 +144,7 @@ public sealed class HapticsSettingsTests
 
         profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         settings.Enabled = false;
 

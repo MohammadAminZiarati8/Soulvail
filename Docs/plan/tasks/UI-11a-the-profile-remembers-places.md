@@ -68,4 +68,10 @@ public PlayerProfile WithSelection(ContentId characterId, ContentId modeId);
 
 ## As built
 
-_Filled at merge._
+Built to the Files table; the ripple was 40 `new PlayerProfile(…)` sites across eight test files, each given the four arguments.
+
+- **`ModeBest` does not guard.** `default(ModeBest)` exists whatever its constructor says, so the one check is `PlayerProfile`'s: it refuses a stage below 1, a `default` id and a repeated place (`Ctor_BestStageZero_Throws` covers both `new ModeBest(id, 0)` and `default`).
+- **The mirror stores bests as parallel arrays** (`bestStageModeIds`, `bestStages`) next to `finishedModeIds`, `selectedCharacterId`, `selectedModeId` — flat, like the rest of the document.
+- **The decoder is lenient, the constructor is not.** A best row whose id does not parse, whose stage is below 1 or that repeats a place is dropped, as is a repeated finished id (`Store_AMalformedBestRowIsDroppedNotFatal`). A refused profile costs every Shard; a dropped row costs one number.
+- **Renamed rows:** `Migrate_V4IsTheIdentity` → `Migrate_V5IsTheIdentity`, `ProfileGate_AcceptsOneToFourRefusesFive` → `…OneToFiveRefusesSix`, `Store_WritesAV4ProfileLiteral` → `Profile_V5_RoundTrips` (byte-for-byte `V5Profile`); `V4Profile` stays as the migration input (`Store_ReadsTheV4ProfileLiteral`).
+- **Suite:** 4 119 EditMode, 4 117 passed / 1 failed (`CharacterPreviewTests.Resize_…`, D3D12 depth) / 1 inconclusive.

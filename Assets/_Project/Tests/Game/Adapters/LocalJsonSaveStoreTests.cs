@@ -213,7 +213,7 @@ public sealed class LocalJsonSaveStoreTests
     private const string V3Profile =
         "{\"version\":3,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220}";
 
-    /// <summary>A v4 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <summary>A v4 profile, as it is spelled on disk — now a migration input.</summary>
     /// <remarks>
     /// <b>Three new keys, flat, following <c>shards</c></b> (M6-09a rule 7): two string arrays and a
     /// string, so the document stays one a human can read in a bug report.
@@ -222,6 +222,17 @@ public sealed class LocalJsonSaveStoreTests
         "{\"version\":4,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220," +
         "\"unlockedCharacterIds\":[\"character.emberwright\"],\"metArchetypeIds\":[\"enemy.husk\"]," +
         "\"locale\":\"fr\"}";
+
+    /// <summary>A v5 profile, as it is spelled on disk — what this build writes.</summary>
+    /// <remarks>
+    /// <b>Five new keys, flat, following <c>locale</c></b> (UI-11a): the bests are two parallel
+    /// arrays, ids then stages, so the document stays one a human can read in a bug report.
+    /// </remarks>
+    private const string V5Profile =
+        "{\"version\":5,\"hapticsEnabled\":false,\"seenFirstActiveHint\":true,\"shards\":220," +
+        "\"unlockedCharacterIds\":[\"character.emberwright\"],\"metArchetypeIds\":[\"enemy.husk\"]," +
+        "\"locale\":\"fr\",\"finishedModeIds\":[\"mode.jungle\"],\"bestStageModeIds\":[\"mode.jungle\"]," +
+        "\"bestStages\":[12],\"selectedCharacterId\":\"character.ranger\",\"selectedModeId\":\"mode.jungle\"}";
 
     private static readonly ContentId Mode = new ContentId("mode.descent");
     private static readonly ContentId Character = new ContentId("character.oathbound");
@@ -406,7 +417,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: true,
-            shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
+            shards: 220, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default)));
 
         PlayerProfile? loaded = Result(_store.LoadProfile());
 
@@ -455,7 +466,7 @@ public sealed class LocalJsonSaveStoreTests
             PlayerProfile.CurrentVersion,
             hapticsEnabled: false,
             seenFirstActiveHint: false,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "")));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default)));
 
         Await(_store.ClearRun());
 
@@ -645,7 +656,7 @@ public sealed class LocalJsonSaveStoreTests
         // unchanged from M2-13b; what changed is first that loading it became a migration rather
         // than a read (M3-09c), and now that the migration is three steps deep — and this is the
         // only place the steps and the code that calls them are tested together.
-        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Version, Is.EqualTo(5));
         Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "grandfathered.");
 
         // Haptics as before: the one v1 field is something the player chose and survives both steps.
@@ -672,7 +683,7 @@ public sealed class LocalJsonSaveStoreTests
         // every bump, and what used to be this row's subject is now a migration input — which is
         // exactly the transition a bump makes. `Fixture_V2Run_DecodesToTheExpectedSnapshot` made
         // the same move on the other format at M3-07b.
-        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Version, Is.EqualTo(5));
 
         // The document has no `shards` key at all, so this is the v2 → v3 step's answer read
         // through the real adapter rather than through the mirror's field initialiser: JsonUtility
@@ -694,7 +705,7 @@ public sealed class LocalJsonSaveStoreTests
 
         PlayerProfile profile = Result(_store.LoadProfile()).Value;
 
-        Assert.That(profile.Version, Is.EqualTo(4));
+        Assert.That(profile.Version, Is.EqualTo(5));
         Assert.That(profile.Shards, Is.EqualTo(220), "the banked total survives the step.");
         Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { Gravecaller }), "and the Gravecaller is unlocked.");
         Assert.That(profile.MetArchetypeIds, Is.Empty);
@@ -704,25 +715,69 @@ public sealed class LocalJsonSaveStoreTests
     }
 
     [Test]
-    public void Store_WritesAV4ProfileLiteral()
+    public void Profile_V5_RoundTrips()
     {
+        var jungle = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+
         Await(_store.SaveProfile(new PlayerProfile(
-            version: 4, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
-            new[] { new ContentId("character.emberwright") }, new[] { new ContentId("enemy.husk") }, locale: "fr")));
+            version: 5, hapticsEnabled: false, seenFirstActiveHint: true, shards: 220,
+            new[] { new ContentId("character.emberwright") }, new[] { new ContentId("enemy.husk") }, locale: "fr",
+            new[] { jungle }, new[] { new ModeBest(jungle, 12) }, ranger, jungle)));
 
         string written = File.ReadAllText(
             Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName));
 
-        // Byte for byte, and the three new keys flat on the end (rule 7). A field renamed,
-        // reordered or added changes this text.
-        Assert.That(written, Is.EqualTo(V4Profile));
+        // Byte for byte, and the five new keys flat on the end. A field renamed, reordered or
+        // added changes this text.
+        Assert.That(written, Is.EqualTo(V5Profile));
 
-        // And it reads back as written: the round trip of every one of the seven.
+        // And it reads back as written: the round trip of every one of the eleven.
         PlayerProfile loaded = Result(_store.LoadProfile()).Value;
 
+        Assert.That(loaded.Version, Is.EqualTo(5));
         Assert.That(loaded.UnlockedCharacterIds, Is.EqualTo(new[] { new ContentId("character.emberwright") }));
         Assert.That(loaded.MetArchetypeIds, Is.EqualTo(new[] { new ContentId("enemy.husk") }));
         Assert.That(loaded.Locale, Is.EqualTo("fr"));
+        Assert.That(loaded.FinishedModeIds, Is.EqualTo(new[] { jungle }));
+        Assert.That(loaded.BestStage(jungle), Is.EqualTo(12));
+        Assert.That(loaded.SelectedCharacterId, Is.EqualTo(ranger));
+        Assert.That(loaded.SelectedModeId, Is.EqualTo(jungle));
+    }
+
+    [Test]
+    public void Store_ReadsTheV4ProfileLiteral()
+    {
+        File.WriteAllText(Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName), V4Profile);
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Version, Is.EqualTo(5));
+        Assert.That(profile.Shards, Is.EqualTo(220));
+        Assert.That(profile.UnlockedCharacterIds, Is.EqualTo(new[] { new ContentId("character.emberwright") }));
+        Assert.That(profile.Locale, Is.EqualTo("fr"));
+        Assert.That(profile.FinishedModeIds, Is.Empty);
+        Assert.That(profile.BestStages, Is.Empty);
+        Assert.That(profile.SelectedModeId, Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Store_AMalformedBestRowIsDroppedNotFatal()
+    {
+        // Stage 0, a repeat, and a stray id: each costs its row, never the Shards beside it.
+        File.WriteAllText(
+            Path.Combine(_directory, LocalJsonSaveStore.ProfileFileName),
+            "{\"version\":5,\"hapticsEnabled\":true,\"seenFirstActiveHint\":false,\"shards\":900," +
+            "\"finishedModeIds\":[\"mode.jungle\",\"mode.jungle\"]," +
+            "\"bestStageModeIds\":[\"mode.jungle\",\"mode.jungle\",\"mode.desert\",\"Not An Id\"]," +
+            "\"bestStages\":[7,9,0,3]}");
+
+        PlayerProfile profile = Result(_store.LoadProfile()).Value;
+
+        Assert.That(profile.Shards, Is.EqualTo(900));
+        Assert.That(profile.FinishedModeIds, Is.EqualTo(new[] { new ContentId("mode.jungle") }));
+        Assert.That(profile.BestStages, Has.Count.EqualTo(1));
+        Assert.That(profile.BestStage(new ContentId("mode.jungle")), Is.EqualTo(7));
     }
 
     [Test]

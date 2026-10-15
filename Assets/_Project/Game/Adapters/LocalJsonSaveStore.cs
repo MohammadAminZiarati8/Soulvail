@@ -93,6 +93,11 @@ public sealed class LocalJsonSaveStore : ISaveStore
             unlockedCharacterIds = ToStrings(profile.UnlockedCharacterIds),
             metArchetypeIds = ToStrings(profile.MetArchetypeIds),
             locale = profile.Locale,
+            finishedModeIds = ToStrings(profile.FinishedModeIds),
+            bestStageModeIds = ToBestModeIds(profile.BestStages),
+            bestStages = ToBestStages(profile.BestStages),
+            selectedCharacterId = profile.SelectedCharacterId.Value ?? string.Empty,
+            selectedModeId = profile.SelectedModeId.Value ?? string.Empty,
         };
 
         return Write(_profilePath, JsonUtility.ToJson(mirror));
@@ -384,9 +389,98 @@ public sealed class LocalJsonSaveStore : ISaveStore
             mirror.shards,
             ToProfileIds(mirror.unlockedCharacterIds),
             ToProfileIds(mirror.metArchetypeIds),
-            mirror.locale ?? string.Empty);
+            mirror.locale ?? string.Empty,
+            ToDistinctProfileIds(mirror.finishedModeIds),
+            ToBestRows(mirror.bestStageModeIds, mirror.bestStages),
+            ToContentId(mirror.selectedCharacterId),
+            ToContentId(mirror.selectedModeId));
 
         return SaveMigrations.MigrateProfile(mirror.version, decoded);
+    }
+
+    /// <summary><see cref="ToProfileIds"/> that also drops a repeat, for the same reason it drops the rest.</summary>
+    private static ContentId[] ToDistinctProfileIds(string[] values)
+    {
+        ContentId[] ids = ToProfileIds(values);
+
+        if (ids.Length < 2)
+        {
+            return ids;
+        }
+
+        var distinct = new List<ContentId>(ids.Length);
+
+        foreach (ContentId id in ids)
+        {
+            if (!distinct.Contains(id))
+            {
+                distinct.Add(id);
+            }
+        }
+
+        return distinct.ToArray();
+    }
+
+    /// <summary>
+    /// The per-place bests a file names. The two parallel arrays are read pairwise; a row whose id
+    /// does not parse, whose stage is below 1, or that repeats a place is dropped — a lost best costs
+    /// one number, a refused profile costs every Shard (<see cref="ToProfileIds"/>' argument).
+    /// </summary>
+    private static ModeBest[] ToBestRows(string[] modeIds, int[] stages)
+    {
+        if (modeIds is null || stages is null)
+        {
+            return Array.Empty<ModeBest>();
+        }
+
+        int count = Math.Min(modeIds.Length, stages.Length);
+        var rows = new List<ModeBest>(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            if (!ContentId.TryParse(modeIds[i], out ContentId id) || stages[i] < 1)
+            {
+                continue;
+            }
+
+            bool seen = false;
+
+            foreach (ModeBest row in rows)
+            {
+                seen |= row.ModeId == id;
+            }
+
+            if (!seen)
+            {
+                rows.Add(new ModeBest(id, stages[i]));
+            }
+        }
+
+        return rows.ToArray();
+    }
+
+    private static string[] ToBestModeIds(IReadOnlyList<ModeBest> rows)
+    {
+        var ids = new string[rows.Count];
+
+        for (int i = 0; i < ids.Length; i++)
+        {
+            ids[i] = rows[i].ModeId.Value;
+        }
+
+        return ids;
+    }
+
+    private static int[] ToBestStages(IReadOnlyList<ModeBest> rows)
+    {
+        var stages = new int[rows.Count];
+
+        for (int i = 0; i < stages.Length; i++)
+        {
+            stages[i] = rows[i].Stage;
+        }
+
+        return stages;
     }
 
     /// <summary>The ids a profile names, as core spells them — dropping any that are not ids.</summary>
@@ -747,5 +841,18 @@ public sealed class LocalJsonSaveStore : ISaveStore
         public string[] unlockedCharacterIds = Array.Empty<string>();
         public string[] metArchetypeIds = Array.Empty<string>();
         public string locale = string.Empty;
+
+        /// <summary>
+        /// v5's five, appended after <see cref="locale"/>: field order is key order on disk. The
+        /// bests are two parallel arrays — ids and stages — rather than a nested class, for the
+        /// economy's flat-document reason; the reader pairs them and drops what does not pair.
+        /// Initialised to empty for the lists, <see cref="finishedModeIds"/>' null being the pre-v5
+        /// file that would otherwise reach a null guard; the step is the authority regardless.
+        /// </summary>
+        public string[] finishedModeIds = Array.Empty<string>();
+        public string[] bestStageModeIds = Array.Empty<string>();
+        public int[] bestStages = Array.Empty<int>();
+        public string selectedCharacterId = string.Empty;
+        public string selectedModeId = string.Empty;
     }
 }

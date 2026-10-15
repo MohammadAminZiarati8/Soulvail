@@ -76,7 +76,7 @@ public sealed class ProfileStoreTests
     public void Store_AdoptDoesNotWrite()
     {
         var loaded = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         _profiles.Adopt(loaded);
 
@@ -93,7 +93,7 @@ public sealed class ProfileStoreTests
     public void Store_SaveWritesAndUpdates()
     {
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         _profiles.Save(profile);
 
@@ -115,7 +115,7 @@ public sealed class ProfileStoreTests
     {
         _profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: false,
-            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: ""));
+            shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         _profiles.Save(_profiles.Current.WithSeenFirstActiveHint(true));
         _profiles.Save(_profiles.Current.WithHaptics(false));
@@ -143,7 +143,7 @@ public sealed class ProfileStoreTests
         LogAssert.Expect(LogType.Error, new Regex("Could not save the player profile"));
 
         var profile = new PlayerProfile(
-            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "");
+            PlayerProfile.CurrentVersion, hapticsEnabled: true, seenFirstActiveHint: true, shards: 0, Array.Empty<ContentId>(), Array.Empty<ContentId>(), locale: "", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default);
 
         // Rule 5: a profile write that fails must not take down a run, and the smallest possible
         // consequence in the project is a hint shown twice because a disk was full.
@@ -227,7 +227,7 @@ public sealed class ProfileStoreTests
 
         _profiles.Adopt(new PlayerProfile(
             PlayerProfile.CurrentVersion, hapticsEnabled: false, seenFirstActiveHint: true,
-            shards: 4_000, new[] { new ContentId("character.gravecaller") }, met, locale: "en"));
+            shards: 4_000, new[] { new ContentId("character.gravecaller") }, met, locale: "en", Array.Empty<ContentId>(), Array.Empty<ModeBest>(), default, default));
 
         _profiles.Unlock(Emberwright, ShippedCatalog());
 

@@ -155,7 +155,7 @@ public sealed class HeroGridTests
     public void Card_Picked_ShowsSelectedFrame()
     {
         _profiles.Adopt(PlayerProfile.Default.WithSelection(Ranger, new ContentId("mode.jungle")));
-        Enable();
+        Enable(Looks(true));
         OpenHeroes();
         Grid().Layout(1f);
 
@@ -169,6 +169,73 @@ public sealed class HeroGridTests
         Assert.That(picked.Rim.transform.GetSiblingIndex(), Is.GreaterThan(picked.Frame.transform.GetSiblingIndex()), "the selected frame is not drawn over the normal one.");
         Assert.That(picked.PickedLabel.gameObject.activeSelf, Is.True);
         Assert.That(picked.PickedLabel.text, Is.EqualTo("Picked"));
+    }
+
+    [Test]
+    public void Card_WithPortrait_ShowsIt_StandingOnTheName()
+    {
+        CharacterLookBook looks = Looks(true);
+
+        Enable(looks);
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        HeroGrid.Card card = Grid().Cards[0];
+        Rect opening = InSafe((RectTransform)card.Button.transform);
+        Rect portrait = InSafe(card.Emblem.rectTransform);
+
+        Assert.That(card.ShowsPortrait, Is.True);
+        Assert.That(card.Emblem.sprite == looks.For(Ranger).Portrait, Is.True);
+        Assert.That(card.Emblem.color, Is.EqualTo(Color.white));
+        Assert.That(card.Emblem.preserveAspect, Is.True);
+        Assert.That(card.Emblem.rectTransform.pivot, Is.EqualTo(new Vector2(0.5f, 0f)));
+        Assert.That(portrait.yMin, Is.EqualTo(InSafe(card.NameLabel.rectTransform).yMax).Within(0.01f), "the portrait does not stand on the name.");
+        Assert.That(portrait.xMin, Is.EqualTo(opening.xMin).Within(0.01f));
+        Assert.That(portrait.xMax, Is.EqualTo(opening.xMax).Within(0.01f));
+        Assert.That(opening.yMax - portrait.yMax, Is.EqualTo(HeroGrid.PortraitTopDp).Within(0.01f));
+    }
+
+    [Test]
+    public void Card_NoPortrait_FallsBackToTheEmblem()
+    {
+        CharacterLookBook looks = Looks(false);
+
+        Enable(looks);
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        HeroGrid.Card card = Grid().Cards[0];
+        Rect opening = InSafe((RectTransform)card.Button.transform);
+        Rect emblem = InSafe(card.Emblem.rectTransform);
+
+        Assert.That(card.ShowsPortrait, Is.False);
+        Assert.That(card.Emblem.sprite == looks.For(Ranger).Emblem, Is.True);
+        Assert.That(card.Emblem.enabled, Is.True);
+        Assert.That(emblem.xMin - opening.xMin, Is.EqualTo(4f).Within(0.01f), "the emblem lost its inset.");
+        Assert.That(opening.yMax - emblem.yMax, Is.EqualTo(4f).Within(0.01f));
+
+        // No look book at all: no emblem, no portrait, no throw.
+        Enable();
+
+        Assert.That(() => OpenHeroes(), Throws.Nothing);
+        Assert.That(Grid().Cards[0].ShowsPortrait, Is.False);
+        Assert.That(Grid().Cards[0].Emblem.enabled, Is.False);
+    }
+
+    [Test]
+    public void LockedCard_PortraitGreyed_PadlockOver()
+    {
+        Enable(Looks(true));
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        HeroGrid.Card locked = Grid().Cards[3];
+
+        Assert.That(locked.ShowsPortrait, Is.True);
+        Assert.That(locked.Emblem.color.r, Is.EqualTo(Palette.NodeLocked.r).Within(0.001f));
+        Assert.That(locked.Emblem.color.a, Is.EqualTo(HeroGrid.LockedAlpha).Within(0.001f));
+        Assert.That(locked.Lock.gameObject.activeSelf, Is.True);
+        Assert.That(locked.Lock.transform.GetSiblingIndex(), Is.GreaterThan(locked.Emblem.transform.GetSiblingIndex()));
     }
 
     [Test]
@@ -191,7 +258,7 @@ public sealed class HeroGridTests
     [Test]
     public void Card_Plate_AndContents_ClearTheFrame()
     {
-        Enable();
+        Enable(Looks(true));
         OpenHeroes();
         Grid().Layout(1f);
 
@@ -303,7 +370,7 @@ public sealed class HeroGridTests
     [Test]
     public void Grid_FitsPortrait([Values(0, 1)] int size)
     {
-        Enable();
+        Enable(Looks(true));
 
         Vector2 area = size == 0 ? new Vector2(411f, 914f) : new Vector2(360f, 780f);
         Layout(area);
@@ -320,6 +387,15 @@ public sealed class HeroGridTests
 
             Assert.That(rect.width, Is.GreaterThanOrEqualTo(HeroGrid.MinCardWidthDp), "a card is under 120 dp wide.");
             Assert.That(rect.xMin >= -0.01f && rect.xMax <= safe.xMax + 0.01f, Is.True, $"card {rect} leaves {safe} sideways.");
+
+            Rect opening = InSafe((RectTransform)card.Button.transform);
+            Rect portrait = InSafe(card.Emblem.rectTransform);
+
+            Assert.That(card.ShowsPortrait, Is.True);
+            Assert.That(portrait.xMin, Is.GreaterThanOrEqualTo(opening.xMin - 0.01f), "the portrait runs under the left stone.");
+            Assert.That(portrait.xMax, Is.LessThanOrEqualTo(opening.xMax + 0.01f), "the portrait runs under the right stone.");
+            Assert.That(portrait.yMin, Is.GreaterThanOrEqualTo(opening.yMin - 0.01f), "the portrait runs under the bottom stone.");
+            Assert.That(portrait.yMax, Is.LessThanOrEqualTo(opening.yMax + 0.01f), "the portrait runs under the top stone.");
         }
 
         for (int a = 0; a < rows.Count; a++)
@@ -344,13 +420,29 @@ public sealed class HeroGridTests
 
     // ---- Fixture ---------------------------------------------------------------------------------
 
+    /// <summary>A look per class: a square portrait and an emblem, or the emblem alone.</summary>
+    private static CharacterLookBook Looks(bool portrait)
+    {
+        var texture = new Texture2D(8, 8);
+        var picture = Sprite.Create(texture, new Rect(0f, 0f, 8f, 8f), new Vector2(0.5f, 0f));
+        var emblem = Sprite.Create(texture, new Rect(0f, 0f, 8f, 8f), new Vector2(0.5f, 0.5f));
+        var looks = new Dictionary<ContentId, CharacterLook>();
+
+        foreach (ContentId id in new[] { Ranger, Oathbound, Gravecaller, Emberwright })
+        {
+            looks.Add(id, new CharacterLook(null, emblem: emblem, portrait: portrait ? picture : null));
+        }
+
+        return new CharacterLookBook(looks);
+    }
+
     private HeroGrid Grid() => Field<HeroGrid>("_heroes");
 
     private static Sprite Art(string path) => AssetDatabase.LoadAssetAtPath<Sprite>(path);
 
-    private void Enable()
+    private void Enable(CharacterLookBook looks = null)
     {
-        _menu.Construct(_pending, new SavedRun(), _loader, _words, _catalog, _profiles, _roster);
+        _menu.Construct(_pending, new SavedRun(), _loader, _words, _catalog, _profiles, _roster, looks: looks);
 
         typeof(MenuPresenter).GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_menu, null);
 

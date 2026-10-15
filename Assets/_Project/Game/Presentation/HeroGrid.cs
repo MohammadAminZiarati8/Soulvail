@@ -44,6 +44,7 @@ namespace Soulvail.Game.Presentation
         public const float GlowPadDp = 6f;        // the frame is drawn this far outside the card, for the glow
         public const float CardRatio = 1.3f;
         public const float LockedAlpha = 0.35f;
+        public const float PortraitTopDp = 4f;    // the portrait stops this far under the frame's opening
 
         private const int Columns = 2;
         private const float LockDp = 36f;
@@ -233,8 +234,21 @@ namespace Soulvail.Game.Presentation
             RectTransform emblem = card.Emblem.rectTransform;
             emblem.anchorMin = Vector2.zero;
             emblem.anchorMax = Vector2.one;
-            emblem.offsetMin = new Vector2(inner, top);
-            emblem.offsetMax = new Vector2(-inner, -inner);
+
+            if (card.ShowsPortrait)
+            {
+                // Standing on the name band, the opening's full width; a square portrait in this taller
+                // rect keeps its spare height above the head because the pivot is bottom-centre.
+                emblem.pivot = new Vector2(0.5f, 0f);
+                emblem.offsetMin = new Vector2(0f, top);
+                emblem.offsetMax = new Vector2(0f, -PortraitTopDp * _px);
+            }
+            else
+            {
+                emblem.pivot = new Vector2(0.5f, 0.5f);
+                emblem.offsetMin = new Vector2(inner, top);
+                emblem.offsetMax = new Vector2(-inner, -inner);
+            }
 
             RectTransform padlock = card.Lock.rectTransform;
             padlock.anchorMin = padlock.anchorMax = padlock.pivot = new Vector2(1f, 1f);
@@ -282,7 +296,9 @@ namespace Soulvail.Game.Presentation
         {
             bool owned = ClassUnlocks.IsUnlocked(spec.Id, profile, _catalog);
             bool isPicked = owned && spec.Id == picked;
-            Sprite emblem = _looks?.For(spec.Id).Emblem;
+            CharacterLook look = _looks?.For(spec.Id) ?? default;
+            bool portrait = look.Portrait != null;
+            Sprite emblem = portrait ? look.Portrait : look.Emblem;
 
             card.Id = spec.Id;
             card.Locked = !owned;
@@ -294,6 +310,7 @@ namespace Soulvail.Game.Presentation
             card.Rim.color = Color.white;
             card.Rim.gameObject.SetActive(isPicked);
 
+            card.ShowsPortrait = portrait;
             card.Emblem.sprite = emblem;
             card.Emblem.enabled = emblem != null;
             card.Emblem.preserveAspect = true;
@@ -446,6 +463,7 @@ namespace Soulvail.Game.Presentation
 
             public Button Button { get; }
 
+            /// <summary>Draws the class's portrait when it has one, its emblem when not.</summary>
             public Image Emblem { get; }
 
             public Image Lock { get; }
@@ -461,6 +479,9 @@ namespace Soulvail.Game.Presentation
             public ContentId Id { get; internal set; }
 
             public bool Locked { get; internal set; }
+
+            /// <summary>True when <see cref="Emblem"/> is drawing the portrait rather than the emblem.</summary>
+            public bool ShowsPortrait { get; internal set; }
         }
     }
 }

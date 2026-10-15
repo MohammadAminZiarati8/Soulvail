@@ -61,4 +61,19 @@ No new `[SerializeField]`, so `Menu.unity` does not change.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"._
+_2026-10-16._ Built to the Files table; `Menu.unity` unchanged. As specified, with these notes.
+
+**Notes**
+
+1. **Draw order needed no change.** `Emblem` and `Lock` were already children of the plate (emblem made first), and `Frame` and `Rim` siblings after it, so plate, portrait, padlock, frame, rim holds by construction; the test asserts the padlock above the portrait.
+2. **The portrait's bottom-centre alignment is the rect's pivot**, `(0.5, 0)`: `Image.preserveAspect` places a sprite by its rect's pivot, so the sprite's import alignment does not matter. The emblem fallback sets the pivot back to centre.
+3. **Tests.** Three new rows (`Card_WithPortrait_ShowsIt_StandingOnTheName`, `Card_NoPortrait_FallsBackToTheEmblem`, `LockedCard_PortraitGreyed_PadlockOver`); `Card_Picked_ShowsSelectedFrame`, `Card_Plate_AndContents_ClearTheFrame` and `Grid_FitsPortrait` now run with portraits, and `Grid_FitsPortrait` also asserts every portrait inside its card's opening. The fixture's `Enable` takes an optional `CharacterLookBook`; the portraits are generated 8 × 8 sprites, so the rows do not depend on the baked PNGs.
+
+**Manual verification (by eye, in the open Editor)**
+
+A throwaway test rendered the real `Menu.unity` Heroes tab to a PNG at 411 × 914 and 360 × 780 (2x), with all four classes on the roster and the real baked portraits; it was removed after. `Capture Look` itself needs Play mode and the Device Simulator, not driven here.
+
+1. **The Ranger's portrait** sits in the cyan selected frame, head and shoulders over its name, the bow's limb entering at the right, "Picked" below. The name reads cleanly; the shoulders end on the name band's top edge with no overlap.
+2. **A locked class** (the Gravecaller and the Emberwright, rendered with the roster widened in the harness only) shows the Knight's portrait as a dark grey ghost, the padlock over it at the top right, then the name, deed and price.
+3. **The Knight's helmet edge reads.** The peak sits a few dp under the opening's top (`PortraitTopDp` 4 gives a clear gap), not touching the stone; no scrim under the name was needed, so none was added.
+4. **Not seen:** the home screen's own class card (kept its emblem, out of scope), and any of this on a phone.

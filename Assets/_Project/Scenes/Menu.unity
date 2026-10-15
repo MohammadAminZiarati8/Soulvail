@@ -833,6 +833,8 @@ GameObject:
   m_Component:
   - component: {fileID: 338213969}
   - component: {fileID: 338213970}
+  - component: {fileID: 338213972}
+  - component: {fileID: 338213971}
   m_Layer: 0
   m_Name: TabBar
   m_TagString: Untagged
@@ -882,10 +884,53 @@ MonoBehaviour:
   - {fileID: 1664439465}
   - {fileID: 248173160}
   - {fileID: 1835305408}
-  _blue: {fileID: 21300000, guid: e6cc4889b48b45678411ccadd4eff83f, type: 3}
-  _bluePressed: {fileID: 21300000, guid: 9e2d04ad5c894d4894878aeedab67e17, type: 3}
-  _green: {fileID: 21300000, guid: c4b8cf8331e779143abdb3fa63a31b8e, type: 3}
-  _greenPressed: {fileID: 21300000, guid: 850bb01004f8929429d416033059b3dd, type: 3}
+  _plate: {fileID: 338213971}
+  _icons:
+  - {fileID: 21300000, guid: f6fcf35cf9d643bf855819e8d4f8f9a2, type: 3}
+  - {fileID: 21300000, guid: ef2aecfe04f64970976154ec4f9b2fb6, type: 3}
+  - {fileID: 21300000, guid: a90e84bee0524b5d8ef1733675b98d67, type: 3}
+  _iconsOn:
+  - {fileID: 21300000, guid: 6527e260559e4f1c81415a27e5b7504b, type: 3}
+  - {fileID: 21300000, guid: 3daa2ef3dca842a6a8c57160e6993a72, type: 3}
+  - {fileID: 21300000, guid: 9adb7b2a1da04ab6bc1e679f0f9c9eca, type: 3}
+--- !u!114 &338213971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 338213968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: b32683079a9a4e98898ea5ae746c4392, type: 3}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &338213972
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 338213968}
+  m_CullTransparentMesh: 1
 --- !u!1001 &352383038
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1747,7 +1792,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 2
+  m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -1792,9 +1837,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e6cc4889b48b45678411ccadd4eff83f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ef2aecfe04f64970976154ec4f9b2fb6, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -2005,7 +2050,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 2
+  m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -2050,9 +2095,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e6cc4889b48b45678411ccadd4eff83f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f6fcf35cf9d643bf855819e8d4f8f9a2, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -2935,7 +2980,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 2
+  m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -2980,9 +3025,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e6cc4889b48b45678411ccadd4eff83f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a90e84bee0524b5d8ef1733675b98d67, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1

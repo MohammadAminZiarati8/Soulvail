@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
@@ -15,8 +16,9 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.Game.Presentation;
 
 /// <summary>
-/// UI-05c: the page as a view. It is told a <see cref="ClassPageModel"/> and draws it; the presenter
-/// rows (<c>ClassSelectPresenterTests</c>) own what the model says.
+/// UI-05c and UI-12d: the page as a view. It is told a <see cref="ClassPageModel"/> and draws it; the
+/// presenter rows (<c>ClassSelectPresenterTests</c>) own what the model says, and
+/// <c>HeroSheetViewTests</c> what the sheet draws.
 /// </summary>
 /// <remarks>
 /// Over the shipped <c>ClassSelect.prefab</c>, so the rows describe the asset the Menu scene holds.
@@ -26,6 +28,8 @@ public sealed class CharacterPageTests
 {
     private const string PrefabPath = "Assets/_Project/Prefabs/UI/ClassSelect.prefab";
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
+    private const string RangerPath = "Assets/_Project/Data/Characters/Ranger.asset";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
     /// <summary><c>ClassSelectPresenter.HeaderDp</c>: the page starts under the back button's row.</summary>
@@ -33,15 +37,11 @@ public sealed class CharacterPageTests
 
     private const float Slack = 0.01f;
 
-    /// <summary>
-    /// UI-08d's phones, in dp (px × 160 ÷ dpi): 1080 × 2400 @ 420, 720 × 1600 @ 320, and the look
-    /// pass's 2658 × 960 @ 480 (UI-07a finding 1).
-    /// </summary>
+    /// <summary>UI-12d rule 12's phones, in dp: 9:20 at 411 × 914 and 360 × 780.</summary>
     private static readonly Vector2[] Phones =
     {
-        new Vector2(1080f, 2400f) * (160f / 420f),
-        new Vector2(720f, 1600f) * (160f / 320f),
-        new Vector2(2658f, 960f) * (160f / 480f),
+        new Vector2(411f, 914f),
+        new Vector2(360f, 780f),
     };
 
     private GameObject _screen;
@@ -182,61 +182,103 @@ public sealed class CharacterPageTests
     }
 
     [Test]
+    public void Gesture_DragOnTheSheet_NeitherStepsNorTurns()
+    {
+        LayOut(Phones[1]);
+
+        Drag(_page.Sheet.Scroll.viewport.gameObject, deltaX: 40f, travelled: -4f * CharacterPage.SwipePixels);
+
+        Assert.That(_next + _previous, Is.Zero, "a drag on the sheet stepped.");
+        Assert.That(_rotated, Is.Zero, "a drag on the sheet turned the model.");
+
+        Drag(_page.Sheet.Rows[0].Root.gameObject, deltaX: 40f, travelled: 4f * CharacterPage.SwipePixels);
+
+        Assert.That(_next + _previous, Is.Zero, "a drag on a row stepped.");
+        Assert.That(_rotated, Is.Zero, "a drag on a row turned the model.");
+    }
+
+    [Test]
     public void Show_RefusesANullLocalizer()
     {
         Assert.Throws<ArgumentNullException>(() => _page.Show(Model(PageButton.Choose, price: 0), null));
     }
 
     [Test]
-    public void Page_Portrait_StacksWithoutOverlap([Values(0, 1)] int phone)
+    public void Page_Stack_BandPreviewSheetButton_NoOverlap([Values(0, 1)] int phone)
     {
         Rect page = LayOut(Phones[phone]);
 
-        Rect name = InPage(FieldOf<TMP_Text>("_name").rectTransform);
-        Rect role = InPage(FieldOf<TMP_Text>("_roleLabel").rectTransform);
+        Rect band = InPage(RectOf("_nameBand"));
         Rect preview = InPage(_page.Preview.rectTransform);
-        Rect tiles = Tiles();
-        Rect caption = InPage(Strip().Caption.rectTransform);
-        Rect button = InPage((RectTransform)_page.Primary.transform);
+        Rect sheet = Viewport();
+        Rect buttons = ButtonRow();
 
-        // Top to bottom: name band, role, preview, strip, caption, button (rule 3).
-        Assert.That(name.yMin, Is.GreaterThanOrEqualTo(role.yMax - Slack), "the role is not under the name.");
-        Assert.That(role.yMin, Is.GreaterThanOrEqualTo(preview.yMax - Slack), "the preview is not under the role.");
-        Assert.That(preview.yMin, Is.GreaterThanOrEqualTo(tiles.yMax - Slack), "the strip is not under the preview.");
-        Assert.That(tiles.yMin, Is.GreaterThanOrEqualTo(caption.yMax - Slack), "the caption is not under the tiles.");
-        Assert.That(caption.yMin, Is.GreaterThanOrEqualTo(button.yMax - Slack), "the button is not under the caption.");
+        // Top to bottom: name band, preview, sheet, button row (rule 1).
+        Assert.That(band.yMin, Is.GreaterThanOrEqualTo(preview.yMax - Slack), "the preview is not under the band.");
+        Assert.That(preview.yMin, Is.GreaterThanOrEqualTo(sheet.yMax - Slack), "the sheet is not under the preview.");
+        Assert.That(sheet.yMin, Is.GreaterThanOrEqualTo(buttons.yMax - Slack), "the button row is not under the sheet.");
 
-        AssertFitsWithoutOverlap(page);
+        // Rule 12.
+        Assert.That(preview.height, Is.GreaterThanOrEqualTo(CharacterPage.PreviewMinDp - Slack));
+        Assert.That(sheet.height, Is.GreaterThanOrEqualTo(160f - Slack), "the sheet's viewport is under 160 dp.");
+
+        AssertFitsWithoutOverlap(page, dots: true);
     }
 
     [Test]
-    public void Page_Preview_NeverUnder120Dp([Values(0, 1, 2, 3)] int phone)
+    public void Page_Preview_TakesItsShare_Clamped([Values(300f, 600f, 1200f)] float pageHeight)
     {
-        // The fourth size is a short portrait page the stack cannot fill: the preview stops at its
-        // floor there, and nothing else gives way (rule 4).
-        LayOut(phone < Phones.Length ? Phones[phone] : new Vector2(320f, 420f));
+        // 300 dp is under the clamp (108 → 120), 600 inside it (216) and 1200 over it (432 → 300).
+        LayOut(new Vector2(360f, pageHeight + HeaderDp));
 
-        Rect preview = InPage(_page.Preview.rectTransform);
+        float expected = Mathf.Clamp(CharacterPage.PreviewShare * pageHeight, CharacterPage.PreviewMinDp, CharacterPage.PreviewMaxDp);
 
-        Assert.That(preview.height, Is.GreaterThanOrEqualTo(CharacterPage.PreviewMinDp - Slack));
-        Assert.That(preview.width, Is.GreaterThan(0f), "the preview has no width, and the body never draws.");
+        Assert.That(InPage(_page.Preview.rectTransform).height, Is.EqualTo(expected).Within(Slack));
         Assert.That(((RectTransform)_page.Primary.transform).sizeDelta, Is.EqualTo(new Vector2(168f, 60f)), "the button gave way.");
-        Assert.That(((RectTransform)Strip().transform).sizeDelta.y, Is.EqualTo(SkillStrip.HeightDp).Within(Slack), "the strip gave way.");
     }
 
     [Test]
-    public void Page_LookPassSize_Fits()
+    public void Page_NoDots_KeepsNoSpace()
     {
-        // UI-07a finding 1: 2658 × 960 @ 480 dpi, a landscape phone 320 dp tall.
-        Rect page = LayOut(Phones[2]);
+        LayOut(Phones[1], count: 1);
 
-        Rect preview = InPage(_page.Preview.rectTransform);
+        Assert.That(RectOf("_dots").gameObject.activeSelf, Is.False, "the dots row is drawn for one class.");
+        Assert.That(Viewport().yMax, Is.EqualTo(InPage(_page.Preview.rectTransform).yMin - 8f).Within(Slack), "the sheet does not start one gap under the preview.");
 
-        Assert.That(preview.height, Is.GreaterThanOrEqualTo(CharacterPage.PreviewMinDp - Slack));
-        Assert.That(preview.width, Is.GreaterThanOrEqualTo(CharacterPage.PreviewMinDp - Slack), "the Ranger has no room to stand.");
-        Assert.That(InPage(Strip().Caption.rectTransform).yMax, Is.LessThanOrEqualTo(InPage(FieldOf<TMP_Text>("_roleLabel").rectTransform).yMin + Slack), "the caption reaches the role label.");
+        AssertFitsWithoutOverlap(InPage((RectTransform)_page.transform), dots: false);
+    }
 
-        AssertFitsWithoutOverlap(page);
+    [Test]
+    public void Page_Dots_SitUnderThePreview()
+    {
+        LayOut(Phones[1], count: 3);
+
+        Rect dots = InPage(RectOf("_dots"));
+
+        Assert.That(RectOf("_dots").gameObject.activeSelf, Is.True);
+        Assert.That(dots.yMax, Is.LessThanOrEqualTo(InPage(_page.Preview.rectTransform).yMin + Slack), "the dots are not under the preview.");
+        Assert.That(Viewport().yMax, Is.LessThanOrEqualTo(dots.yMin + Slack), "the sheet is not under the dots.");
+    }
+
+    [Test]
+    public void Page_ButtonRow_StaysPut_WhenTheSheetScrolls()
+    {
+        LayOut(Phones[1]);
+
+        Rect button = InPage((RectTransform)_page.Primary.transform);
+        Rect deed = InPage(FieldOf<TMP_Text>("_deed").rectTransform);
+        Rect viewport = Viewport();
+        RectTransform content = _page.Sheet.Scroll.content;
+
+        Assert.That(_page.Sheet.ContentHeight, Is.GreaterThan(viewport.height), "the fixture's premise: the Ranger's sheet scrolls.");
+
+        content.anchoredPosition = new Vector2(0f, _page.Sheet.ContentHeight - viewport.height);
+
+        Assert.That(InPage(_page.Sheet.Rows[_page.Sheet.Rows.Count - 1].Root).yMin, Is.GreaterThanOrEqualTo(viewport.yMin - Slack), "the content did not scroll to its bottom.");
+        Assert.That(InPage((RectTransform)_page.Primary.transform), Is.EqualTo(button), "the button moved with the sheet.");
+        Assert.That(InPage(FieldOf<TMP_Text>("_deed").rectTransform), Is.EqualTo(deed), "the deed moved with the sheet.");
+        Assert.That(Viewport().yMin, Is.GreaterThanOrEqualTo(ButtonRow().yMax - Slack), "the viewport reaches the button row.");
+        Assert.That(_page.Sheet.Scroll.viewport.GetComponent<RectMask2D>(), Is.Not.Null, "the viewport does not clip.");
     }
 
     [Test]
@@ -272,10 +314,11 @@ public sealed class CharacterPageTests
 
     /// <summary>
     /// Sizes the screen to <paramref name="screenDp"/> at one canvas unit to the dp, places the page
-    /// under the header as the presenter does, draws every piece a locked class shows and lays out.
+    /// under the header as the presenter does, draws a locked Ranger with its sheet and lays out —
+    /// in the presenter's order, layout first.
     /// </summary>
     /// <returns>The page's rect, in its own space.</returns>
-    private Rect LayOut(Vector2 screenDp)
+    private Rect LayOut(Vector2 screenDp, int count = 3)
     {
         var root = (RectTransform)_screen.transform;
         root.localScale = Vector3.one;
@@ -297,40 +340,38 @@ public sealed class CharacterPageTests
         page.offsetMin = Vector2.zero;
         page.offsetMax = new Vector2(0f, -HeaderDp);
 
-        var strip = new[]
-        {
-            new StripEntry(null, new LocKey("skill.a.name"), new LocKey("skill.a.description")),
-            new StripEntry(null, new LocKey("skill.b.name"), new LocKey("skill.b.description")),
-            new StripEntry(null, new LocKey("skill.c.name"), new LocKey("skill.c.description")),
-            new StripEntry(null, new LocKey("skill.d.name"), new LocKey("skill.d.description")),
-        };
+        CharacterDefinition ranger = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(RangerPath);
+        HeroSheet sheet = HeroSheet.Build(ranger.ToSpec(), ShippedCatalog(), ranger.ToLook(), null);
 
-        _page.Show(new ClassPageModel(_spec, 1, 3, PageButton.Unlock, 2_000, "or reach stage 20", RoleKind.Ranged, strip), Localizer());
         _page.Layout(1f);
+        _page.Show(new ClassPageModel(ranger.ToSpec(), 0, count, PageButton.Unlock, 2_000, "or reach stage 20", RoleKind.Ranged, sheet), English());
 
         return InPage(page);
     }
 
     /// <summary>
-    /// Every piece inside the page and no two overlapping: name, role, preview, both arrows, tiles,
-    /// caption, dots, button, pill and deed line.
+    /// Every piece inside the page and no two overlapping: name, role, preview, both arrows, the
+    /// dots when drawn, the sheet's viewport, button, pill and deed line.
     /// </summary>
-    private void AssertFitsWithoutOverlap(Rect page)
+    private void AssertFitsWithoutOverlap(Rect page, bool dots)
     {
-        var pieces = new (string Name, Rect Rect)[]
+        var pieces = new List<(string Name, Rect Rect)>
         {
             ("name", InPage(FieldOf<TMP_Text>("_name").rectTransform)),
             ("role", InPage(FieldOf<TMP_Text>("_roleLabel").rectTransform)),
             ("preview", InPage(_page.Preview.rectTransform)),
             ("previous", InPage((RectTransform)FieldOf<Button>("_previous").transform)),
             ("next", InPage((RectTransform)FieldOf<Button>("_next").transform)),
-            ("tiles", Tiles()),
-            ("caption", InPage(Strip().Caption.rectTransform)),
-            ("dots", InPage(RectOf("_dots"))),
+            ("sheet", Viewport()),
             ("button", InPage((RectTransform)_page.Primary.transform)),
             ("pill", InPage(RectOf("_pill"))),
             ("deed", InPage(FieldOf<TMP_Text>("_deed").rectTransform)),
         };
+
+        if (dots)
+        {
+            pieces.Add(("dots", InPage(RectOf("_dots"))));
+        }
 
         foreach ((string name, Rect rect) in pieces)
         {
@@ -341,9 +382,9 @@ public sealed class CharacterPageTests
                 $"{name} {rect} leaves the page {page}.");
         }
 
-        for (int a = 0; a < pieces.Length; a++)
+        for (int a = 0; a < pieces.Count; a++)
         {
-            for (int b = a + 1; b < pieces.Length; b++)
+            for (int b = a + 1; b < pieces.Count; b++)
             {
                 Assert.That(Shrunk(pieces[a].Rect).Overlaps(Shrunk(pieces[b].Rect)), Is.False, $"{pieces[a].Name} {pieces[a].Rect} overlaps {pieces[b].Name} {pieces[b].Rect}.");
             }
@@ -353,16 +394,19 @@ public sealed class CharacterPageTests
     private static Rect Shrunk(Rect rect) =>
         Rect.MinMaxRect(rect.xMin + Slack, rect.yMin + Slack, rect.xMax - Slack, rect.yMax - Slack);
 
-    private SkillStrip Strip() => FieldOf<SkillStrip>("_strip");
+    private Rect Viewport() => InPage(_page.Sheet.Scroll.viewport);
 
-    /// <summary>The tile row: the first tile to the last.</summary>
-    private Rect Tiles()
+    /// <summary>The button and the pill beside it, as one rect.</summary>
+    private Rect ButtonRow()
     {
-        Transform strip = Strip().transform;
-        Rect first = InPage((RectTransform)strip.Find("Tile0"));
-        Rect last = InPage((RectTransform)strip.Find("Tile3"));
+        Rect button = InPage((RectTransform)_page.Primary.transform);
+        Rect pill = InPage(RectOf("_pill"));
 
-        return Rect.MinMaxRect(first.xMin, Mathf.Min(first.yMin, last.yMin), last.xMax, Mathf.Max(first.yMax, last.yMax));
+        return Rect.MinMaxRect(
+            Mathf.Min(button.xMin, pill.xMin),
+            Mathf.Min(button.yMin, pill.yMin),
+            Mathf.Max(button.xMax, pill.xMax),
+            Mathf.Max(button.yMax, pill.yMax));
     }
 
     /// <summary><paramref name="rect"/>'s corners in the page's own space.</summary>
@@ -383,6 +427,33 @@ public sealed class CharacterPageTests
 
     private static Soulvail.Core.Ports.ILocalizer Localizer() =>
         new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>());
+
+    private static Soulvail.Core.Ports.ILocalizer English() =>
+        new TableLocalizer(AssetDatabase.LoadAssetAtPath<LocalizationTable>(EnglishPath));
+
+    private static ContentCatalog ShippedCatalog()
+    {
+        var characters = new List<CharacterSpec>();
+        var skills = new List<SkillSpec>();
+        var trees = new List<SkillTreeSpec>();
+
+        foreach (string guid in AssetDatabase.FindAssets("t:CharacterDefinition"))
+        {
+            characters.Add(AssetDatabase.LoadAssetAtPath<CharacterDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
+        }
+
+        foreach (string guid in AssetDatabase.FindAssets("t:SkillDefinition"))
+        {
+            skills.Add(AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
+        }
+
+        foreach (string guid in AssetDatabase.FindAssets("t:SkillTreeDefinition"))
+        {
+            trees.Add(AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
+        }
+
+        return new ContentCatalog(characters, skills: skills, trees: trees);
+    }
 
     private void Drag(GameObject onto, float deltaX, float travelled)
     {

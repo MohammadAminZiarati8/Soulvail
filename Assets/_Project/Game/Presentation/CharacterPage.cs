@@ -48,7 +48,7 @@ namespace Soulvail.Game.Presentation
             int price,
             string deedLine,
             RoleKind role,
-            IReadOnlyList<StripEntry> strip = null)
+            HeroSheet sheet = null)
         {
             Spec = spec;
             Index = index;
@@ -57,7 +57,7 @@ namespace Soulvail.Game.Presentation
             Price = price;
             DeedLine = deedLine;
             Role = role;
-            Strip = strip;
+            Sheet = sheet;
         }
 
         public CharacterSpec Spec { get; }
@@ -76,13 +76,13 @@ namespace Soulvail.Game.Presentation
 
         public RoleKind Role { get; }
 
-        /// <summary>The skill strip's tiles (UI-05d), or null for none.</summary>
-        public IReadOnlyList<StripEntry> Strip { get; }
+        /// <summary>The class's hero sheet (UI-12d), or null for none.</summary>
+        public HeroSheet Sheet { get; }
     }
 
     /// <summary>
     /// The class-select screen's one page: a class's name and role, its 3D body, the arrows and dots
-    /// that move between classes, and the one button (UI-05c).
+    /// that move between classes, its hero sheet, and the one button (UI-05c, UI-12d).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -91,8 +91,10 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>One gesture is never two.</b> A drag that starts on the preview only turns the model; one
-    /// that starts on the name band only steps, once it passes <see cref="SwipeDp"/>. Which one is
-    /// decided where the press landed, at the start of the drag.
+    /// that starts on the name band only steps, once it passes <see cref="SwipeDp"/>; one that
+    /// starts on the sheet only scrolls it, because the sheet's <c>ScrollRect</c> takes the drag
+    /// before it reaches the page (UI-12d rule 8). Which one is decided where the press landed, at
+    /// the start of the drag.
     /// </para>
     /// <para>
     /// <b>It lays itself out in dp</b> (<see cref="Layout"/>), the way <c>TreeDetailCard</c> does, so
@@ -111,6 +113,12 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The least height the preview is given, in dp, however short the page (UI-08d rule 4).</summary>
         public const float PreviewMinDp = 120f;
+
+        /// <summary>The preview's share of the page's height, before the clamp (UI-12d rule 1).</summary>
+        public const float PreviewShare = 0.36f;
+
+        /// <summary>The most height the preview is given, in dp, however tall the page.</summary>
+        public const float PreviewMaxDp = 300f;
 
         private const float NameBandDp = 84f;
         private const float NameDp = 28f;
@@ -138,17 +146,6 @@ namespace Soulvail.Game.Presentation
         private const float PillBorderPx = 136f;
         private const float PillSpriteHeightPx = 273f;
 
-        /// <summary>The columns layout's gap between preview, strip and button group.</summary>
-        private const float ColumnGapDp = 16f;
-
-        /// <summary>The strip's tile row: four 56 dp tiles and three 12 dp gaps (<c>SkillStrip</c>).</summary>
-        private const float StripWidthDp = 260f;
-
-        /// <summary>The page height the stack needs with the preview at its least, in dp.</summary>
-        private static float StackDp =>
-            BottomDp + DeedHeightDp + RowGapDp + Mathf.Max(ButtonHeightDp, PillHeightDp) + RowGapDp + DotsRowDp +
-            RowGapDp + SkillStrip.HeightDp + RowGapDp + PreviewMinDp + RowGapDp + NameBandDp;
-
         private static readonly LocKey ChooseKey = new LocKey("ui.classselect.choose");
         private static readonly LocKey UnlockKey = new LocKey("ui.classselect.unlock");
         private static readonly LocKey RangedKey = new LocKey("ui.classselect.role.ranged");
@@ -172,8 +169,9 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private Button _previous;
         [SerializeField] private Button _next;
 
-        [Header("Skill strip")]
-        [SerializeField] private SkillStrip _strip;
+        [Header("Sheet")]
+        [Tooltip("The scrolling hero sheet between the preview and the button row (UI-12d).")]
+        [SerializeField] private HeroSheetView _sheet;
 
         [Header("Dots")]
         [SerializeField] private RectTransform _dots;
@@ -203,7 +201,6 @@ namespace Soulvail.Game.Presentation
         private Action<float> _onRotate;
         private Canvas _canvas;
         private float _px = 1f;
-        private float _buttonX;
         private float _buttonY;
         private bool _fitted;
         private int _fitWidth;
@@ -212,6 +209,9 @@ namespace Soulvail.Game.Presentation
         private Rect _fitSafe;
         private float _fitPx;
         private bool _pillShown;
+        private bool _several;
+        private bool _laidOut;
+        private bool _laidSeveral;
         private DragMode _drag;
 
         private enum DragMode
@@ -223,6 +223,9 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The image the 3D body is drawn into.</summary>
         public RawImage Preview => _preview;
+
+        /// <summary>The scrolling hero sheet.</summary>
+        public HeroSheetView Sheet => _sheet;
 
         /// <summary>The page's button, for the presenter to switch off while a load is in flight.</summary>
         public Button Primary => _primary;
@@ -275,7 +278,7 @@ namespace Soulvail.Game.Presentation
             Wire(_primary, OnPrimary);
         }
 
-        /// <summary>Draws one class: name, role, arrows, dots, badge, button and price.</summary>
+        /// <summary>Draws one class: name, role, arrows, dots, badge, sheet, button and price.</summary>
         /// <exception cref="ArgumentNullException"><paramref name="localizer"/> is null.</exception>
         public void Show(ClassPageModel model, ILocalizer localizer)
         {
@@ -295,22 +298,30 @@ namespace Soulvail.Game.Presentation
 
             SetActive(_lockBadge, model.Button != PageButton.Choose);
 
-            bool several = model.Count > 1;
+            _several = model.Count > 1;
 
-            SetActive(_previous, several && model.Index > 0);
-            SetActive(_next, several && model.Index < model.Count - 1);
+            SetActive(_previous, _several && model.Index > 0);
+            SetActive(_next, _several && model.Index < model.Count - 1);
+            SetActive(_dots, _several);
 
-            DrawDots(model.Index, several ? model.Count : 0);
-            DrawStrip(model, localizer);
+            DrawDots(model.Index, _several ? model.Count : 0);
+            DrawSheet(model, localizer);
             DrawButton(model, localizer);
+
+            // The dots row takes space only when it is drawn (rule 1), so a page laid out before it
+            // knew how many classes there are lays out again once it does.
+            if (_laidOut && _several != _laidSeveral)
+            {
+                Layout(_px);
+            }
         }
 
         /// <summary>Takes the page off the screen. Nothing is bound or drawn.</summary>
         public void Clear()
         {
-            if (_strip != null)
+            if (_sheet != null)
             {
-                _strip.Hide();
+                _sheet.Hide();
             }
 
             gameObject.SetActive(false);
@@ -322,19 +333,12 @@ namespace Soulvail.Game.Presentation
         /// 48 dp tall.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// <b>A stack, top to bottom, wherever it fits</b> (UI-08d rule 3): the name band with the
-        /// role under the name, the preview, the skill strip and its caption, the dots, the button
-        /// row and the deed line. The preview takes what the rest leaves, and when that is less than
-        /// <see cref="PreviewMinDp"/> it is the preview that stops shrinking, never anything else
-        /// (rule 4).
-        /// </para>
-        /// <para>
-        /// <b>A page wider than tall that cannot hold the stack lays out in three columns</b> under
-        /// the band — preview between its arrows, strip, then dots, button and deed — which is what a
-        /// landscape phone 320 dp tall needs (UI-07a finding 1, where the stack gave the preview a
-        /// negative height and drew the strip over the band).
-        /// </para>
+        /// <b>One portrait stack at every size</b> (UI-12d rules 1 and 11): the name band with the role
+        /// under the name, the preview between its arrows, the dots when there are several classes,
+        /// the sheet, then the button row and the deed line fixed at the bottom. The preview takes
+        /// <see cref="PreviewShare"/> of the page, between <see cref="PreviewMinDp"/> and
+        /// <see cref="PreviewMaxDp"/>, and the sheet everything left. The columns layout UI-07a
+        /// needed for a landscape phone went with landscape.
         /// </remarks>
         public void Layout(float px)
         {
@@ -345,18 +349,12 @@ namespace Soulvail.Game.Presentation
             LayoutButtonFaces(px);
 
             Vector2 page = transform is RectTransform self ? self.rect.size : Vector2.zero;
-            bool fits = float.IsFinite(page.y) && page.y >= StackDp * px;
 
-            if (!fits && float.IsFinite(page.x) && page.x > page.y)
-            {
-                LayoutColumns(page, px);
-            }
-            else
-            {
-                LayoutStack(page, px);
-            }
-
+            LayoutStack(page, px);
             PlaceButtonRow();
+
+            _laidOut = true;
+            _laidSeveral = _several;
         }
 
         /// <summary>
@@ -419,25 +417,29 @@ namespace Soulvail.Game.Presentation
             return StickShaper.PixelsPerDp(dpi) / scale;
         }
 
-        /// <summary>The bottom-up stack: deed, button row, dots, strip, then the preview takes what is left.</summary>
+        /// <summary>
+        /// The stack: the button row and the deed line up from the bottom, the preview down from the
+        /// band, the dots under it, and the sheet between.
+        /// </summary>
         private void LayoutStack(Vector2 page, float px)
         {
-            float bottom = BottomDp * px;
             float deedHeight = DeedHeightDp * px;
-            float buttonHeight = ButtonHeightDp * px;
             float rowGap = RowGapDp * px;
             float dotsHeight = DotsRowDp * px;
             float edge = EdgeDp * px;
             float arrow = ArrowDp * px;
+            float height = float.IsFinite(page.y) ? page.y : 0f;
 
-            float deedY = bottom;
+            float deedY = BottomDp * px;
             float buttonY = deedY + deedHeight + rowGap;
-            float dotsY = buttonY + Mathf.Max(buttonHeight, PillHeightDp * px) + rowGap;
-            float stripY = dotsY + dotsHeight + rowGap;
-            float stripHeight = SkillStrip.HeightDp * px;
-            float previewY = stripY + stripHeight + rowGap;
-            float top = (NameBandDp + RowGapDp) * px;
-            float previewHeight = Mathf.Max(PreviewMinDp * px, float.IsFinite(page.y) ? page.y - previewY - top : 0f);
+            float buttonTop = buttonY + (Mathf.Max(ButtonHeightDp, PillHeightDp) * px);
+
+            float previewHeight = Mathf.Clamp(PreviewShare * height, PreviewMinDp * px, PreviewMaxDp * px);
+            float previewY = height - ((NameBandDp + RowGapDp) * px) - previewHeight;
+            float dotsY = previewY - rowGap - dotsHeight;
+
+            float sheetY = buttonTop + rowGap;
+            float sheetTop = (_several ? dotsY : previewY) - rowGap;
 
             if (_preview != null)
             {
@@ -459,10 +461,10 @@ namespace Soulvail.Game.Presentation
                 Anchor(_dots, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, dotsHeight), new Vector2(0f, dotsY), new Vector2(0.5f, 0f));
             }
 
-            if (_strip != null && _strip.transform is RectTransform strip)
+            if (_sheet != null && _sheet.transform is RectTransform sheet)
             {
-                Anchor(strip, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, stripHeight), new Vector2(0f, stripY), new Vector2(0.5f, 0f));
-                _strip.Layout(px);
+                Anchor(sheet, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, Mathf.Max(0f, sheetTop - sheetY)), new Vector2(0f, sheetY), new Vector2(0.5f, 0f));
+                _sheet.Layout(px);
             }
 
             if (_deed != null)
@@ -470,68 +472,6 @@ namespace Soulvail.Game.Presentation
                 Anchor(_deed.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-2f * edge, deedHeight), new Vector2(0f, deedY), new Vector2(0.5f, 0f));
             }
 
-            _buttonX = 0f;
-            _buttonY = buttonY;
-        }
-
-        /// <summary>
-        /// Three columns under the band, each centred on the height left: the preview between its
-        /// arrows, the strip, and the dots over the button row over the deed line.
-        /// </summary>
-        private void LayoutColumns(Vector2 page, float px)
-        {
-            float edge = EdgeDp * px;
-            float arrow = ArrowDp * px;
-            float gap = ColumnGapDp * px;
-            float rowGap = RowGapDp * px;
-            float deedHeight = DeedHeightDp * px;
-            float buttonRow = Mathf.Max(ButtonHeightDp, PillHeightDp) * px;
-            float dotsHeight = DotsRowDp * px;
-            float stripWidth = StripWidthDp * px;
-            float stripHeight = SkillStrip.HeightDp * px;
-            float groupWidth = (ButtonWidthDp + RowGapDp + PillWidthDp) * px;
-            float groupHeight = deedHeight + rowGap + buttonRow + rowGap + dotsHeight;
-
-            float contentBottom = BottomDp * px;
-            float contentHeight = Mathf.Max(0f, page.y - ((NameBandDp + RowGapDp) * px) - contentBottom);
-            float leftWidth = page.x - (2f * edge) - stripWidth - groupWidth - (2f * gap);
-            float previewWidth = Mathf.Max(0f, leftWidth - (2f * arrow));
-            float previewHeight = Mathf.Max(PreviewMinDp * px, contentHeight);
-
-            if (_preview != null)
-            {
-                Anchor(_preview.rectTransform, Vector2.zero, Vector2.zero, new Vector2(previewWidth, previewHeight), new Vector2(edge + arrow, contentBottom), Vector2.zero);
-            }
-
-            float arrowY = contentBottom + (previewHeight * 0.5f);
-
-            PlaceArrow(_previous, 0f, 0f, edge, arrowY, arrow);
-            PlaceArrow(_next, 0f, 1f, edge + arrow + previewWidth + arrow, arrowY, arrow);
-
-            float stripX = edge + Mathf.Max(0f, leftWidth) + gap;
-
-            if (_strip != null && _strip.transform is RectTransform strip)
-            {
-                Anchor(strip, Vector2.zero, Vector2.zero, new Vector2(stripWidth, stripHeight), new Vector2(stripX, contentBottom + ((contentHeight - stripHeight) * 0.5f)), Vector2.zero);
-                _strip.Layout(px);
-            }
-
-            float groupCentre = stripX + stripWidth + gap + (groupWidth * 0.5f);
-            float deedY = contentBottom + ((contentHeight - groupHeight) * 0.5f);
-            float buttonY = deedY + deedHeight + rowGap;
-            float dotsY = buttonY + buttonRow + rowGap;
-
-            if (_dots != null)
-            {
-                Anchor(_dots, Vector2.zero, Vector2.zero, new Vector2(groupWidth, dotsHeight), new Vector2(groupCentre, dotsY), new Vector2(0.5f, 0f));
-            }
-
-            if (_deed != null)
-            {
-                Anchor(_deed.rectTransform, Vector2.zero, Vector2.zero, new Vector2(groupWidth, deedHeight), new Vector2(groupCentre, deedY), new Vector2(0.5f, 0f));
-            }
-
-            _buttonX = groupCentre - (page.x * 0.5f);
             _buttonY = buttonY;
         }
 
@@ -737,20 +677,12 @@ namespace Soulvail.Game.Presentation
             }
         }
 
-        private void DrawStrip(ClassPageModel model, ILocalizer localizer)
+        private void DrawSheet(ClassPageModel model, ILocalizer localizer)
         {
-            if (_strip == null)
+            if (_sheet != null)
             {
-                return;
+                _sheet.Show(model.Sheet, localizer);
             }
-
-            if (model.Strip == null || model.Strip.Count == 0)
-            {
-                _strip.Hide();
-                return;
-            }
-
-            _strip.Show(model.Strip, localizer);
         }
 
         private void DrawDots(int index, int count)
@@ -853,7 +785,7 @@ namespace Soulvail.Game.Presentation
             float buttonWidth = ButtonWidthDp * _px;
             float pillWidth = PillWidthDp * _px;
             float total = _pillShown ? buttonWidth + gap + pillWidth : buttonWidth;
-            float left = _buttonX - (total * 0.5f);
+            float left = -(total * 0.5f);
 
             if (_primary != null && _primary.transform is RectTransform button)
             {

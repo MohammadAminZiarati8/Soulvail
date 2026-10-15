@@ -122,3 +122,18 @@ public sealed class HeroSheetView : MonoBehaviour
 ## As built
 
 _Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"._
+
+_2026-10-16._ Built to the Files table.
+
+**Deviations**
+
+1. **`CharacterPage.Show` lays the page out again when the dots row appears or goes.** The presenter lays out before it shows (`PlaceChrome`, then `DrawPage`), so a page that only learned the class count in `Show` kept the space of the count before it: rule 1's "no space is kept" needed it. `Page_NoDots_KeepsNoSpace` covers the first case and `Page_Dots_SitUnderThePreview` the second.
+2. **The viewport carries a transparent `Image`** as well as its `RectMask2D`: rows draw nothing that takes a raycast, so without it a drag between two rows lands on nothing and the sheet does not scroll. `Sheet_Scroll_VerticalClamped` asserts it.
+3. **`Row` is one pooled shape for every kind**: frame, icon, title, value and body, the parts a kind does not draw switched off, and the public getters null for them as the API says. One pool rather than one per kind, so rule 9 is a single list.
+4. **Colours the spec left open:** a heading is `HeadingDp` in `Palette.HudText`, a branch name `TitleDp` in `Palette.HudCaption`, the description `BodyDp` in `HudText`.
+5. **`ClassSelectPresenterTests` gains a `CatalogWithTrees()` helper** (and `using System.Linq`) for `Presenter_Model_CarriesTheSheet`, which reads the model through the sheet's rows (three branch names) because the page exposes no model. No existing row read `Strip`, so the named ripple was empty.
+6. **`CharacterPageTests`' phones are the spec's 411 × 914 and 360 × 780 dp**, not UI-08d's three; `Page_Preview_NeverUnder120Dp` folds into `Page_Preview_TakesItsShare_Clamped`, whose 300 dp page is the under-the-clamp case. `CharacterPage._buttonX` went with the columns layout, where it was the only thing that set it.
+7. **`HeroSheet.cs`'s summary still names `SkillStrip.Build`** as what it superseded: history, outside the table, left.
+8. **Test count:** −9 `SkillStripTests`, +10 `HeroSheetViewTests`, +2 net in `CharacterPageTests`, +1 in the presenter's: **+4**.
+
+**The look.** A throwaway render (temporary camera, canvas and `CharacterStage`, destroyed in the same command) at 1079 × 2399 px (411 × 914 dp, 420 dpi) and 720 × 1560 px (360 × 780 dp, 320 dpi): the preview is 300 dp (the clamp) and 255 dp, the sheet's viewport 328 dp and 239 dp. The name, role, Ranger, description and stats read at both sizes; scrolled to the bottom, the three Stride ranks with "Rank n" right on the name's line, and Choose did not move. The body stands in its bind pose because nothing ticks its animator in an edit-time render, and the icons are the placeholder because the render passed no icon book. **The sheet reads on the page's background without a panel**, so the *Out of scope* panel row is not raised.

@@ -39,8 +39,8 @@ namespace Soulvail.Game.Presentation
     /// <para>
     /// <b>One page, an index into the roster</b> (UI-05c rule 1). The presenter owns the index and
     /// <see cref="CharacterPage"/> is told what to draw. <b>Nothing is instantiated</b> but the
-    /// page's dots, once, on demand: the screen is up for the four seconds before a run and must not
-    /// hitch (AR §14).
+    /// page's dots and the hero sheet's rows, each once, on demand: the screen is up for the four
+    /// seconds before a run and must not hitch (AR §14).
     /// </para>
     /// <para>
     /// <b>It draws the unlock gate and owns none of it</b> (M6-09b rule 1). <c>ClassUnlocks</c>
@@ -110,7 +110,6 @@ namespace Soulvail.Game.Presentation
         private CharacterPreview _preview;
         private CharacterLookBook _looks;
         private SkillIconBook _icons;
-        private readonly List<StripEntry> _strip = new List<StripEntry>(SkillStrip.MaxTiles);
         private ILocalizer _localizer;
         private ProfileStore _profile;
 
@@ -432,8 +431,6 @@ namespace Soulvail.Game.Presentation
                 ? PageButton.Choose
                 : ClassUnlocks.CanBuy(spec.Id, _drawn, _catalog) ? PageButton.Unlock : PageButton.Dead;
 
-            SkillStrip.Build(spec, _catalog, _icons, _looks?.For(spec.Id) ?? default, _strip);
-
             _page.Show(
                 new ClassPageModel(
                     spec,
@@ -443,7 +440,7 @@ namespace Soulvail.Game.Presentation
                     owned ? 0 : spec.Unlock.ShardPrice,
                     owned ? null : DeedLine(spec.Unlock),
                     RoleOf(spec),
-                    _strip),
+                    HeroSheet.Build(spec, _catalog, _looks?.For(spec.Id) ?? default, _icons)),
                 _localizer);
         }
 

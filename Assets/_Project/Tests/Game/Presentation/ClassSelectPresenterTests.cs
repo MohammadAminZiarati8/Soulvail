@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -907,6 +908,26 @@ public sealed class ClassSelectPresenterTests
             () => Page().Show(new ClassPageModel(Character(OathboundPath).ToSpec(), 0, 1, PageButton.Choose, 0, null, RoleKind.Melee), null));
     }
 
+    // ---- UI-12d rule 10: the sheet, not the strip -------------------------------------------------------
+
+    [Test]
+    public void Presenter_Model_CarriesTheSheet()
+    {
+        BuildScreen(
+            catalog: CatalogWithTrees(),
+            localizer: Shipped(),
+            roster: new ClassSelectRoster(new[] { new ContentId(RangerId) }));
+
+        _presenter.Open();
+
+        HeroSheetView sheet = Page().Sheet;
+
+        Assert.That(sheet, Is.Not.Null, "the page has no sheet.");
+        Assert.That(sheet.gameObject.activeSelf, Is.True, "the shown model carried no sheet.");
+        Assert.That(sheet.Rows[0].Kind, Is.EqualTo(HeroSheetView.RowKind.Description));
+        Assert.That(sheet.Rows.Count(r => r.Kind == HeroSheetView.RowKind.BranchName), Is.EqualTo(3), "the Ranger's three branches.");
+    }
+
     // ---- ClassCard: still the Splash screen's, so its own rows stay --------------------------------------
 
     /// <summary>GD §14.3 working: a locked card's numbers are the numbers.</summary>
@@ -1186,6 +1207,27 @@ public sealed class ClassSelectPresenterTests
         },
         new[] { AssetDatabase.LoadAssetAtPath<EnemyDefinition>(HuskPath).ToSpec() },
         new[] { AssetDatabase.LoadAssetAtPath<ModeDefinition>(DescentPath).ToSpec() });
+
+    /// <summary><see cref="ShippedCatalog"/> with every shipped skill and tree, so a sheet has its branches.</summary>
+    private static ContentCatalog CatalogWithTrees()
+    {
+        var skills = new List<SkillSpec>();
+        var trees = new List<SkillTreeSpec>();
+
+        foreach (string guid in AssetDatabase.FindAssets("t:SkillDefinition"))
+        {
+            skills.Add(AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
+        }
+
+        foreach (string guid in AssetDatabase.FindAssets("t:SkillTreeDefinition"))
+        {
+            trees.Add(AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
+        }
+
+        ContentCatalog shipped = ShippedCatalog();
+
+        return new ContentCatalog(shipped.Characters, shipped.Enemies, shipped.Modes, skills, trees);
+    }
 
     /// <summary>
     /// A catalog with <paramref name="classes"/> classes, ids <c>character.stand-in-N</c>: the

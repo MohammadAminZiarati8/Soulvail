@@ -154,6 +154,7 @@ namespace Soulvail.Game.Presentation
         private ClassSelectRoster _roster;
         private CharacterPreview _preview;
         private CharacterLookBook _looks;
+        private PlaceLookBook _pictures;
         private Canvas _canvas;
         private bool _starting;
         private bool _bodyDirty;
@@ -180,6 +181,7 @@ namespace Soulvail.Game.Presentation
         /// <param name="roster">Which classes are on offer. None means every class.</param>
         /// <param name="preview">The 3D stage the class card shows. Null leaves the card without a body.</param>
         /// <param name="looks">The class → body table the preview stands from.</param>
+        /// <param name="places">The place → picture table the Places tab's cards wear.</param>
         /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
         [Inject]
         public void Construct(
@@ -191,7 +193,8 @@ namespace Soulvail.Game.Presentation
             ProfileStore profile = null,
             ClassSelectRoster roster = null,
             CharacterPreview preview = null,
-            CharacterLookBook looks = null)
+            CharacterLookBook looks = null,
+            PlaceLookBook places = null)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _saved = saved ?? throw new ArgumentNullException(nameof(saved));
@@ -202,6 +205,7 @@ namespace Soulvail.Game.Presentation
             _roster = roster;
             _preview = preview;
             _looks = looks;
+            _pictures = places;
         }
 
         /// <summary>
@@ -327,7 +331,7 @@ namespace Soulvail.Game.Presentation
             {
                 if (_catalog != null)
                 {
-                    _places.Configure(_catalog, _localizer);
+                    _places.Configure(_catalog, _localizer, _pictures);
                 }
 
                 _places.Tapped += OnPlaceTapped;

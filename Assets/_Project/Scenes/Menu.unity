@@ -1517,6 +1517,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.PlaceList
   _font: {fileID: 11400000, guid: 4c9df70117b5fa64886f0064cd335716, type: 2}
+  _frame: {fileID: 21300000, guid: 0f588a93e0164c68bc8028e43beac3de, type: 3}
+  _frameSelected: {fileID: 21300000, guid: 94c6ff7587024f34b6a0eef660d14c23, type: 3}
+  _lockSprite: {fileID: 21300000, guid: d5056b6e5b17416ea91c3f05c69c7284, type: 3}
+  _soonPicture: {fileID: 21300000, guid: 2d880df7274747d0b641665f84d8a903, type: 3}
 --- !u!1 &652852358
 GameObject:
   m_ObjectHideFlags: 0

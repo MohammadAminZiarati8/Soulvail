@@ -232,10 +232,13 @@ public static class BootInstaller
         // converted ids the catalog holds (UI-01e).
         SkillSpec[] skillSpecs = Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills));
 
+        // Hoisted for the place book below, as the skills are for the icon book.
+        ModeSpec[] modeSpecs = Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes));
+
         builder.RegisterInstance(new ContentCatalog(
             characterSpecs,
             enemySpecs,
-            Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes)),
+            modeSpecs,
             skillSpecs,
             Convert(trees, definition => definition.ToSpec(), "tree", nameof(trees)),
             Convert(
@@ -261,6 +264,9 @@ public static class BootInstaller
         // Which classes class select shows (RS-05c). Always registered, so everything that asks
         // for it resolves; an omitted list is an empty roster, which shows every class.
         builder.RegisterInstance(BuildClassSelectRoster(classSelect));
+
+        // The places' pictures (UI-11h-b), at the root for the books' reasons above.
+        builder.RegisterInstance(BuildPlaceLookBook(modes, modeSpecs));
 
         // The wall clock, at the root: it is a device the whole app shares, not something a run
         // owns — the same argument as the vibrator below, and the opposite of IRandom, which is
@@ -477,6 +483,28 @@ public static class BootInstaller
         }
 
         return new SkillIconBook(icons);
+    }
+
+    /// <summary>
+    /// Builds the place → picture index the Places tab draws from (UI-11h-b).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BuildSkillIconBook"/>'s shape: keyed by the spec's id, index-parallel with the
+    /// definitions. A place with no picture is left out, and the book answers null for it.
+    /// </remarks>
+    private static PlaceLookBook BuildPlaceLookBook(IReadOnlyList<ModeDefinition> definitions, ModeSpec[] specs)
+    {
+        var pictures = new Dictionary<ContentId, Sprite>(specs.Length);
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            if (definitions[i].Picture != null)
+            {
+                pictures[specs[i].Id] = definitions[i].Picture;
+            }
+        }
+
+        return new PlaceLookBook(pictures);
     }
 
     /// <summary>

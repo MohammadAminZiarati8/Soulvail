@@ -266,3 +266,18 @@ Built as specified, with these facts and three deviations.
 **Tests:** `HomeArtTests` (5 rows, 13 pieces for three of them) and eight `TabBar_…` rows in `HomeScreenTests` replace `TabBar_OnSafeBottom_PlaySelected`'s sprite and 64 dp asserts. 4 226 EditMode: 4 224 passed, 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive (an animator clock row), +51 on UI-11g. The Console's errors and warnings after the run are the expected output of rows that provoke them (`SkillAuthoringTests`, `ResumeFlowTests`, `RunEndPresenterTests`), not new.
 
 **Not done:** manual step 2 (tap the three tabs) and step 3 (a phone).
+
+### UI-11h-b
+
+As specified, with four deviations.
+
+1. **`Descent.asset` is a sixth file**: `Descent_EveryYamlKeyBindsToAField` reserialises it and failed until the new `_picture: {fileID: 0}` line was in it. Unity wrote it.
+2. **`Card.Scrim` and `PlaceList.LockDp` (36) are public additions**; `RimDp` is gone.
+3. **`MenuPresenter.Construct` is an `[Inject]` method**, and `PlaceLookBook` is registered at the root, so the `= null` only serves tests ([Traps §6](../../Traps.md) concerns constructors).
+4. **The text bands rise `PictureTuckDp` + 2 dp and sit `PictureTuckDp` further in**: the frame covers 14 dp of the card's edge, so the old 6 dp bands would sit under stone.
+
+**Geometry (dp):** frame outset 6, border drawn 20, so the opening is 14 in; the picture is 12 under it. `pixelsPerUnitMultiplier` = `border.x ÷ (20 × px)` (5 at 1×). Padlock 36, 18 in from the corner.
+
+**The Look, 411 × 914 and 360 × 780** (throwaway test, world-space canvas; deleted). Jungle: the picture edge to edge in the stone frame, the white name on the scrim, readable over the vines, the scrim's top edge hard. Picked: cyan glow clear of the screen edge and title. "More to come": a fogged ruin, name in `Palette.Neutral`, dim but legible. A test-only locked card: greyed, padlock top right, "Finish Jungle to open". Not recut: the picture stretches about 15 % wide at 411; the normal frame's cream inner line.
+
+**Tests:** 2 book rows, 8 new and 2 rewritten card rows. **4 236 EditMode: 4 234 passed, 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive** (+10).

@@ -126,6 +126,13 @@ namespace Soulvail.Game.Authoring
                  "sight — a switch, not a removal (UI-11b).")]
         [SerializeField] private bool _isListed = true;
 
+        [Tooltip("The picture this place's card wears on the Places tab (UI-11h-b). Empty leaves " +
+                 "the card a flat colour. It lives here, not in the catalog: a sprite cannot be core.")]
+        [SerializeField] private Sprite _picture;
+
+        /// <summary>The place's card picture, or null when none is authored.</summary>
+        public Sprite Picture => _picture;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a

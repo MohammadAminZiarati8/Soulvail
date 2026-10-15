@@ -34,6 +34,11 @@ public sealed class PlaceListTests
     private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
     private const string JunglePath = "Assets/_Project/Data/Modes/Jungle.asset";
     private const string RangerPath = "Assets/_Project/Data/Characters/Ranger.asset";
+    private const string JungleArt = "Assets/_Project/Art/UI/Home/PlaceCard_Jungle.png";
+    private const string SoonArt = "Assets/_Project/Art/UI/Home/PlaceCard_Soon.png";
+    private const string FrameArt = "Assets/_Project/Art/UI/Home/PlaceCard_Frame.png";
+    private const string FrameSelectedArt = "Assets/_Project/Art/UI/Home/PlaceCard_FrameSelected.png";
+    private const string LockArt = "Assets/_Project/Art/UI/Character/CharacterPage_LockBadge.png";
 
     private static readonly ContentId Ranger = new ContentId("character.ranger");
     private static readonly ContentId Jungle = new ContentId("mode.jungle");
@@ -136,37 +141,177 @@ public sealed class PlaceListTests
     }
 
     [Test]
-    public void OpenCard_Picked_HasRim()
+    public void OpenCard_ShowsItsPicture()
     {
-        _catalog = Catalog(withSecond: true);
-        _profiles.Adopt(PlayerProfile.Default.WithFinished(Jungle).WithSelection(Ranger, Descent));
-        Enable();
+        Enable(Pictures());
         OpenPlaces();
+        List().Layout(1f);
 
-        Assert.That(List().Cards[1].Rim.gameObject.activeSelf, Is.True);
-        Assert.That(List().Cards[1].Rim.color, Is.EqualTo(Palette.Player));
-        Assert.That(List().Cards[0].Rim.gameObject.activeSelf, Is.False);
-        Assert.That(List().Cards[2].Rim.gameObject.activeSelf, Is.False);
+        PlaceList.Card card = List().Cards[0];
+
+        Assert.That(card.Plate.sprite, Is.SameAs(Art(JungleArt)));
+        Assert.That(card.Plate.color, Is.EqualTo(Color.white));
+
+        // It fills the frame's opening and runs PictureTuckDp under the frame.
+        float opening = PlaceList.FrameBorderDp - PlaceList.GlowPadDp;
+        var plate = (RectTransform)card.Button.transform;
+
+        Assert.That(plate.offsetMin.x, Is.EqualTo(opening - PlaceList.PictureTuckDp).Within(0.01f));
+        Assert.That(plate.offsetMax.y, Is.EqualTo(-(opening - PlaceList.PictureTuckDp)).Within(0.01f));
     }
 
     [Test]
-    public void LockedCard_NamesOpener_NotTappable()
+    public void Card_Frame_IsSlicedAndOutset()
+    {
+        Enable(Pictures());
+        OpenPlaces();
+        List().Layout(1f);
+
+        foreach (PlaceList.Card card in List().Cards)
+        {
+            Assert.That(card.Frame.gameObject.activeSelf, Is.True);
+            Assert.That(card.Frame.enabled, Is.True);
+            Assert.That(card.Frame.sprite, Is.SameAs(Art(FrameArt)));
+            Assert.That(card.Frame.type, Is.EqualTo(Image.Type.Sliced));
+            Assert.That(card.Frame.pixelsPerUnitMultiplier * PlaceList.FrameBorderDp,
+                Is.EqualTo(card.Frame.sprite.border.x).Within(0.01f), "the drawn border is not FrameBorderDp.");
+            Assert.That(card.Frame.rectTransform.offsetMin.x, Is.EqualTo(-PlaceList.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMin.y, Is.EqualTo(-PlaceList.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMax.x, Is.EqualTo(PlaceList.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMax.y, Is.EqualTo(PlaceList.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.raycastTarget, Is.False);
+        }
+    }
+
+    [Test]
+    public void OpenCard_Picked_ShowsSelectedFrame()
     {
         _catalog = Catalog(withSecond: true);
-        Enable();
+        _profiles.Adopt(PlayerProfile.Default.WithFinished(Jungle).WithSelection(Ranger, Descent));
+        Enable(Pictures());
+        OpenPlaces();
+        List().Layout(1f);
+
+        PlaceList.Card picked = List().Cards[1];
+
+        Assert.That(picked.Rim.gameObject.activeSelf, Is.True);
+        Assert.That(picked.Rim.sprite, Is.SameAs(Art(FrameSelectedArt)));
+        Assert.That(picked.Rim.color, Is.EqualTo(Color.white));
+        Assert.That(picked.Rim.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(picked.Rim.transform.GetSiblingIndex(), Is.GreaterThan(picked.Frame.transform.GetSiblingIndex()), "the selected frame is under the normal one.");
+        Assert.That(picked.Rim.rectTransform.offsetMin, Is.EqualTo(picked.Frame.rectTransform.offsetMin));
+        Assert.That(picked.Rim.rectTransform.offsetMax, Is.EqualTo(picked.Frame.rectTransform.offsetMax));
+    }
+
+    [Test]
+    public void OpenCard_Unpicked_RimOff()
+    {
+        _catalog = Catalog(withSecond: true);
+        _profiles.Adopt(PlayerProfile.Default.WithFinished(Jungle).WithSelection(Ranger, Descent));
+        Enable(Pictures());
         OpenPlaces();
 
+        Assert.That(List().Cards[0].Rim.gameObject.activeSelf, Is.False);
+        Assert.That(List().Cards[2].Rim.gameObject.activeSelf, Is.False, "the soon card is rimmed.");
+    }
+
+    [Test]
+    public void LockedCard_TintedAndLocked_NotTappable()
+    {
+        _catalog = Catalog(withSecond: true);
+        Enable(Pictures());
+        OpenPlaces();
+        List().Layout(1f);
+
+        PlaceList.Card open = List().Cards[0];
         PlaceList.Card locked = List().Cards[1];
 
         Assert.That(locked.Locked, Is.True);
         Assert.That(locked.StatusLabel.text, Is.EqualTo("Finish Jungle to open"));
-        Assert.That(locked.Plate.color, Is.Not.EqualTo(List().Cards[0].Plate.color));
+        Assert.That(locked.Plate.sprite, Is.SameAs(Art(JungleArt)), "a locked card hides its picture.");
+        Assert.That(locked.Plate.color, Is.EqualTo(Palette.NodeLocked));
+        Assert.That(open.Plate.color, Is.EqualTo(Color.white));
+        Assert.That(open.Lock.gameObject.activeSelf, Is.False);
+
+        Assert.That(locked.Lock.gameObject.activeSelf, Is.True);
+        Assert.That(locked.Lock.sprite, Is.SameAs(Art(LockArt)));
+        Assert.That(locked.Lock.rectTransform.sizeDelta, Is.EqualTo(new Vector2(PlaceList.LockDp, PlaceList.LockDp)));
+        Assert.That(locked.Lock.rectTransform.anchorMin, Is.EqualTo(Vector2.one), "the padlock is not top right.");
+        Assert.That(locked.Lock.transform.GetSiblingIndex(), Is.GreaterThan(locked.Frame.transform.GetSiblingIndex()));
         Assert.That(locked.Button.interactable, Is.False, "a locked card presses.");
 
         locked.Button.onClick.Invoke();
 
         Assert.That(_profiles.Current.SelectedModeId.Value, Is.Not.EqualTo(Descent.Value));
         Assert.That(List().gameObject.activeSelf, Is.True, "a tap on a locked card left the list.");
+    }
+
+    [Test]
+    public void SoonCard_ShowsSoonPicture_NoLock()
+    {
+        Enable(Pictures());
+        OpenPlaces();
+
+        PlaceList.Card soon = List().Cards[1];
+
+        Assert.That(soon.IsSoon, Is.True);
+        Assert.That(soon.Plate.sprite, Is.SameAs(Art(SoonArt)));
+        Assert.That(soon.Plate.color, Is.EqualTo(new Color(1f, 1f, 1f, PlaceList.SoonAlpha)));
+        Assert.That(soon.Lock.gameObject.activeSelf, Is.False);
+        Assert.That(soon.Frame.gameObject.activeSelf, Is.True);
+        Assert.That(soon.Rim.gameObject.activeSelf, Is.False);
+        Assert.That(soon.Button.interactable, Is.False);
+    }
+
+    [Test]
+    public void Card_NoPicture_FallsBackToFlat()
+    {
+        _catalog = Catalog(withSecond: true);
+
+        // A book that knows no place, then no book at all.
+        foreach (PlaceLookBook book in new[] { new PlaceLookBook(new Dictionary<ContentId, Sprite>()), null })
+        {
+            Enable(book);
+            OpenPlaces();
+            List().Layout(1f);
+
+            PlaceList.Card open = List().Cards[0];
+            PlaceList.Card locked = List().Cards[1];
+
+            Assert.That(open.Plate.sprite, Is.Null);
+            Assert.That(open.Plate.color, Is.Not.EqualTo(Color.white), "a flat card is drawn white.");
+            Assert.That(open.Plate.color.a, Is.EqualTo(1f));
+            Assert.That(locked.Plate.sprite, Is.Null);
+            Assert.That(locked.Plate.color, Is.Not.EqualTo(open.Plate.color));
+            Assert.That(open.NameLabel.text, Is.EqualTo("Jungle"));
+        }
+    }
+
+    [Test]
+    public void Card_Scrim_SitsBetweenPictureAndFrame()
+    {
+        Enable(Pictures());
+        OpenPlaces();
+        List().Layout(1f);
+
+        PlaceList.Card card = List().Cards[0];
+
+        // Drawn after the picture's own pixels (a child of it) and before the words, and under the frame.
+        Assert.That(card.Scrim.transform.parent, Is.SameAs(card.Plate.transform));
+        Assert.That(card.Scrim.transform.GetSiblingIndex(), Is.LessThan(card.NameLabel.transform.GetSiblingIndex()));
+        Assert.That(card.Plate.transform.GetSiblingIndex(), Is.LessThan(card.Frame.transform.GetSiblingIndex()));
+        Assert.That(card.Scrim.color.r, Is.EqualTo(Palette.Ink.r).Within(0.001f));
+        Assert.That(card.Scrim.color.a, Is.EqualTo(PlaceList.ScrimAlpha).Within(0.001f));
+        Assert.That(card.Scrim.raycastTarget, Is.False);
+
+        // It reaches above every word band.
+        float scrimTop = card.Scrim.rectTransform.offsetMax.y;
+
+        foreach (TMP_Text label in new[] { card.NameLabel, card.StatusLabel, card.FinishedLabel })
+        {
+            Assert.That(label.rectTransform.offsetMax.y, Is.LessThanOrEqualTo(scrimTop + 0.01f), $"{label.name} rises above the scrim.");
+            Assert.That(label.rectTransform.offsetMin.y, Is.GreaterThanOrEqualTo(PlaceList.PictureTuckDp), $"{label.name} is under the frame.");
+        }
     }
 
     [Test]
@@ -241,6 +386,27 @@ public sealed class PlaceListTests
         }
     }
 
+    [Test]
+    public void Card_StaysOneHundredFortyDp([Values(0, 1)] int size)
+    {
+        _catalog = Catalog(withSecond: true);
+        Enable(Pictures());
+
+        Layout(size == 0 ? new Vector2(411f, 914f) : new Vector2(360f, 780f));
+        OpenPlaces();
+        List().Layout(1f);
+
+        foreach (PlaceList.Card card in List().Cards)
+        {
+            Assert.That(card.Root.rect.height, Is.EqualTo(PlaceList.CardHeightDp).Within(0.01f));
+
+            // The frame's glow overlaps the gap and the margin, never the neighbouring card.
+            Assert.That(PlaceList.GlowPadDp, Is.LessThan(PlaceList.GapDp));
+            Assert.That(PlaceList.GlowPadDp, Is.LessThan(PlaceList.MarginDp));
+            Assert.That(card.Frame.rectTransform.rect.height, Is.EqualTo(PlaceList.CardHeightDp + (2f * PlaceList.GlowPadDp)).Within(0.01f));
+        }
+    }
+
     // ---- Fixture ---------------------------------------------------------------------------------
 
     private PlaceList List() => Field<PlaceList>("_places");
@@ -260,9 +426,24 @@ public sealed class PlaceListTests
         return count;
     }
 
-    private void Enable()
+    private static Sprite Art(string path)
     {
-        _menu.Construct(_pending, new SavedRun(), _loader, _words, _catalog, _profiles, new ClassSelectRoster(new[] { Ranger }));
+        var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        Assert.That(sprite, Is.Not.Null, $"{path} is not a sprite.");
+
+        return sprite;
+    }
+
+    /// <summary>A book giving the Jungle and the test-only second place the Jungle's picture.</summary>
+    private static PlaceLookBook Pictures() => new PlaceLookBook(new Dictionary<ContentId, Sprite>
+    {
+        [Jungle] = Art(JungleArt),
+        [Descent] = Art(JungleArt),
+    });
+
+    private void Enable(PlaceLookBook pictures = null)
+    {
+        _menu.Construct(_pending, new SavedRun(), _loader, _words, _catalog, _profiles, new ClassSelectRoster(new[] { Ranger }), places: pictures);
 
         typeof(MenuPresenter).GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_menu, null);
 

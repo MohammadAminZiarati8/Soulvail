@@ -4,6 +4,7 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Progression;
 using Soulvail.Core.Save;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using TMPro;
 using UnityEngine;
@@ -38,8 +39,22 @@ namespace Soulvail.Game.Presentation
         public const float TitleTextDp = 26f;
         public const float NameTextDp = 24f;
         public const float SmallTextDp = 16f;
-        public const float RimDp = 3f;
         public const float SoonAlpha = 0.5f;
+
+        /// <summary>The frame's drawn border, however thick the sprite's own is.</summary>
+        public const float FrameBorderDp = 20f;
+
+        /// <summary>The frame is drawn this far outside the card, for the glow.</summary>
+        public const float GlowPadDp = 6f;
+
+        /// <summary>The picture runs this far under the frame, so no gap shows.</summary>
+        public const float PictureTuckDp = 12f;
+
+        /// <summary>The padlock's side, top right.</summary>
+        public const float LockDp = 36f;
+
+        /// <summary>How opaque the <see cref="Palette.Ink"/> strip behind the words is.</summary>
+        public const float ScrimAlpha = 0.6f;
 
         private static readonly LocKey TitleKey = new LocKey("ui.places.title");
         private static readonly LocKey BestKey = new LocKey("ui.places.best");
@@ -50,9 +65,22 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The scene's UI font, so the list's words match the screens around it.")]
         [SerializeField] private TMP_FontAsset _font;
 
+        [Tooltip("PlaceCard_Frame: the stone frame every card wears.")]
+        [SerializeField] private Sprite _frame;
+
+        [Tooltip("PlaceCard_FrameSelected: the cyan-glowing frame the picked place wears over the normal one.")]
+        [SerializeField] private Sprite _frameSelected;
+
+        [Tooltip("CharacterPage_LockBadge: the padlock on a locked card.")]
+        [SerializeField] private Sprite _lockSprite;
+
+        [Tooltip("PlaceCard_Soon: the fog behind the \"more to come\" card.")]
+        [SerializeField] private Sprite _soonPicture;
+
         private readonly List<Card> _cards = new List<Card>();
         private ContentCatalog _catalog;
         private ILocalizer _localizer;
+        private PlaceLookBook _pictures;
         private ContentId[] _listed = Array.Empty<ContentId>();
         private TMP_Text _title;
         private RectTransform _viewport;
@@ -70,9 +98,11 @@ namespace Soulvail.Game.Presentation
 
         /// <param name="catalog">What places exist.</param>
         /// <param name="localizer">What turns the list's keys and place names into words.</param>
+        /// <param name="pictures">What gives each place its picture. Null leaves every card a flat colour.</param>
         /// <exception cref="ArgumentNullException">The catalog or the localizer is null.</exception>
-        public void Configure(ContentCatalog catalog, ILocalizer localizer)
+        public void Configure(ContentCatalog catalog, ILocalizer localizer, PlaceLookBook pictures = null)
         {
+            _pictures = pictures;
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
         }
@@ -196,17 +226,55 @@ namespace Soulvail.Game.Presentation
 
         private void LayoutCard(Card card)
         {
-            float rim = RimDp * _px;
+            float glow = GlowPadDp * _px;
+            float tuck = PictureTuckDp * _px;
+            float edge = (FrameBorderDp - GlowPadDp) * _px;
             float text = NameTextDp * _px;
             float small = SmallTextDp * _px;
 
-            Stretch(card.Rim.rectTransform, 0f);
-            Stretch((RectTransform)card.Button.transform, rim);
+            // Both frames are drawn outside the card, over the gap and the margin, never the neighbour.
+            Stretch(card.Frame.rectTransform, -glow);
+            Stretch(card.Rim.rectTransform, -glow);
+            FrameBorder(card.Frame);
+            FrameBorder(card.Rim);
 
-            // From the bottom of the plate: the finished line, the best / locked line, then the name.
-            Band(card.FinishedLabel, small * 0.4f, small * 1.8f, small);
-            Band(card.StatusLabel, small * 1.8f, small * 3.2f, small);
-            Band(card.NameLabel, small * 3.2f, small * 3.2f + (text * 1.4f), text);
+            // The picture fills the frame's opening and runs under the frame by the tuck.
+            Stretch((RectTransform)card.Button.transform, edge - tuck);
+
+            RectTransform padlock = card.Lock.rectTransform;
+            padlock.anchorMin = padlock.anchorMax = padlock.pivot = Vector2.one;
+            padlock.sizeDelta = new Vector2(LockDp * _px, LockDp * _px);
+            padlock.anchoredPosition = new Vector2(-(edge + (4f * _px)), -(edge + (4f * _px)));
+
+            // From the bottom of the plate, clear of the frame: the finished line, the best / locked
+            // line, then the name. The scrim covers all three.
+            float lift = tuck + (2f * _px);
+            float top = lift + (small * 3.2f) + (text * 1.4f) + (small * 0.4f);
+
+            Band(card.FinishedLabel, lift + (small * 0.4f), lift + (small * 1.8f), small, tuck);
+            Band(card.StatusLabel, lift + (small * 1.8f), lift + (small * 3.2f), small, tuck);
+            Band(card.NameLabel, lift + (small * 3.2f), lift + (small * 3.2f) + (text * 1.4f), text, tuck);
+
+            RectTransform scrim = card.Scrim.rectTransform;
+            scrim.anchorMin = Vector2.zero;
+            scrim.anchorMax = new Vector2(1f, 0f);
+            scrim.pivot = new Vector2(0.5f, 0f);
+            scrim.offsetMin = Vector2.zero;
+            scrim.offsetMax = new Vector2(0f, top);
+        }
+
+        /// <summary>Draws the sprite's border <see cref="FrameBorderDp"/> thick, whatever it is in pixels.</summary>
+        private void FrameBorder(Image image)
+        {
+            image.enabled = image.sprite != null;
+
+            if (image.sprite == null)
+            {
+                return;
+            }
+
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = image.sprite.border.x / (FrameBorderDp * _px);
         }
 
         private static void Stretch(RectTransform rect, float inset)
@@ -217,14 +285,14 @@ namespace Soulvail.Game.Presentation
             rect.offsetMax = new Vector2(-inset, -inset);
         }
 
-        private static void Band(TMP_Text label, float bottom, float top, float size)
+        private static void Band(TMP_Text label, float bottom, float top, float size, float side)
         {
             RectTransform rect = label.rectTransform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = new Vector2(1f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.offsetMin = new Vector2(8f, bottom);
-            rect.offsetMax = new Vector2(-8f, top);
+            rect.offsetMin = new Vector2(8f + side, bottom);
+            rect.offsetMax = new Vector2(-(8f + side), top);
             label.fontSize = size;
             label.alignment = TextAlignmentOptions.Center;
             label.enableAutoSizing = false;
@@ -245,9 +313,16 @@ namespace Soulvail.Game.Presentation
             card.Root.gameObject.SetActive(true);
 
             card.Rim.gameObject.SetActive(isPicked);
-            card.Rim.color = Palette.Player;
+            card.Rim.sprite = _frameSelected;
+            card.Rim.color = Color.white;
 
-            card.Plate.color = open ? Plate : Color.Lerp(Plate, Palette.NodeLocked, 0.6f);
+            // A picture is shown as drawn, or tinted when locked; with none, today's flat colour.
+            Sprite picture = _pictures?.For(id);
+            card.Plate.sprite = picture;
+            card.Plate.color = picture != null
+                ? (open ? Color.white : Palette.NodeLocked)
+                : (open ? Plate : Color.Lerp(Plate, Palette.NodeLocked, 0.6f));
+            card.Lock.gameObject.SetActive(!open);
             card.Button.interactable = open;
 
             card.NameLabel.text = _localizer.Get(mode.NameKey);
@@ -281,7 +356,11 @@ namespace Soulvail.Game.Presentation
             card.Root.gameObject.SetActive(true);
 
             card.Rim.gameObject.SetActive(false);
-            card.Plate.color = new Color(Plate.r, Plate.g, Plate.b, SoonAlpha);
+            card.Lock.gameObject.SetActive(false);
+            card.Plate.sprite = _soonPicture;
+            card.Plate.color = _soonPicture != null
+                ? new Color(1f, 1f, 1f, SoonAlpha)
+                : new Color(Plate.r, Plate.g, Plate.b, SoonAlpha);
             card.Button.interactable = false;
 
             card.NameLabel.gameObject.SetActive(true);
@@ -338,10 +417,26 @@ namespace Soulvail.Game.Presentation
             var root = new GameObject("Card", typeof(RectTransform));
             root.transform.SetParent(_content, false);
 
+            // Back to front: the picture (with the scrim and the words on it), the frame over it, the
+            // selected frame over that, the padlock on top.
+            Image plate = MakeImage("Plate", root.transform);
+
+            Image scrim = MakeImage("Scrim", plate.transform);
+            scrim.color = new Color(Palette.Ink.r, Palette.Ink.g, Palette.Ink.b, ScrimAlpha);
+            scrim.raycastTarget = false;
+
+            Image frame = MakeImage("Frame", root.transform);
+            frame.sprite = _frame;
+            frame.color = Color.white;
+            frame.raycastTarget = false;
+
             Image rim = MakeImage("Rim", root.transform);
             rim.raycastTarget = false;
 
-            Image plate = MakeImage("Plate", root.transform);
+            Image padlock = MakeImage("Lock", root.transform);
+            padlock.sprite = _lockSprite;
+            padlock.preserveAspect = true;
+            padlock.raycastTarget = false;
 
             var button = plate.gameObject.AddComponent<Button>();
             button.targetGraphic = plate;
@@ -351,7 +446,7 @@ namespace Soulvail.Game.Presentation
             colours.disabledColor = Color.white;
             button.colors = colours;
 
-            var card = new Card((RectTransform)root.transform, rim, plate, button,
+            var card = new Card((RectTransform)root.transform, frame, rim, padlock, scrim, plate, button,
                 MakeText("Name", plate.transform), MakeText("Status", plate.transform), MakeText("Finished", plate.transform));
 
             button.onClick.AddListener(() =>
@@ -393,10 +488,15 @@ namespace Soulvail.Game.Presentation
         /// <summary>One place's card: the pieces a test and the layout read.</summary>
         public sealed class Card
         {
-            internal Card(RectTransform root, Image rim, Image plate, Button button, TMP_Text name, TMP_Text status, TMP_Text finished)
+            internal Card(
+                RectTransform root, Image frame, Image rim, Image padlock, Image scrim, Image plate,
+                Button button, TMP_Text name, TMP_Text status, TMP_Text finished)
             {
                 Root = root;
+                Frame = frame;
                 Rim = rim;
+                Lock = padlock;
+                Scrim = scrim;
                 Plate = plate;
                 Button = button;
                 NameLabel = name;
@@ -406,9 +506,19 @@ namespace Soulvail.Game.Presentation
 
             public RectTransform Root { get; }
 
-            /// <summary>The <see cref="Palette.Player"/> frame behind the plate, on while this is the pick.</summary>
+            /// <summary>The normal stone frame, always on, over the picture.</summary>
+            public Image Frame { get; }
+
+            /// <summary>The selected frame, drawn over <see cref="Frame"/> while this is the pick.</summary>
             public Image Rim { get; }
 
+            /// <summary>The padlock, on for a locked card.</summary>
+            public Image Lock { get; }
+
+            /// <summary>The <see cref="Palette.Ink"/> strip behind the words, over the picture.</summary>
+            public Image Scrim { get; }
+
+            /// <summary>The picture (a flat colour when there is none).</summary>
             public Image Plate { get; }
 
             /// <summary>Not interactable on a locked card or the "more to come" card, so neither presses.</summary>

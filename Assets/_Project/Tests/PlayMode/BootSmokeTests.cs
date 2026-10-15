@@ -118,39 +118,54 @@ public sealed class BootSmokeTests
         var presenter = Object.FindAnyObjectByType<MenuPresenter>();
         Assert.That(presenter, Is.Not.Null, "The Menu scene has no MenuPresenter in it.");
 
-        Button descend = Field<Button>(presenter, "_classCard");
-        Assert.That(descend != null, Is.True, "The Menu's presenter has no class card wired.");
-        Assert.That(descend.interactable, Is.True, "The class card starts out untappable.");
+        Button classCard = Field<Button>(presenter, "_classCard");
+        Assert.That(classCard != null, Is.True, "The Menu's presenter has no class card wired.");
 
-        descend.onClick.Invoke();
+        // The class card opens the hero grid; a card opens the page; Choose picks and starts nothing.
+        classCard.onClick.Invoke();
+
+        var grid = Field<HeroGrid>(presenter, "_heroes");
+        Assert.That(grid.gameObject.activeSelf, Is.True, "The class card did not open the hero grid.");
+        Assert.That(grid.Cards.Count, Is.GreaterThan(0), "The hero grid drew no cards.");
+
+        grid.Cards[0].Button.onClick.Invoke();
 
         ClassSelectPresenter screen = Field<ClassSelectPresenter>(presenter, "_classSelect");
-        Assert.That(screen.IsOpen, Is.True, "The class card did not open the class-select screen.");
-        Assert.That(
-            SceneManager.GetActiveScene().name,
-            Is.EqualTo(SceneLoader.Menu),
-            "The class card loaded a scene. Since M5-07 the class is chosen first, one screen along.");
+        Assert.That(screen.IsOpen, Is.True, "A hero card did not open the class page.");
 
         var page = Field<CharacterPage>(screen, "_page");
         var shown = Field<IReadOnlyList<CharacterSpec>>(screen, "_shown");
 
         Assert.That(page.ButtonState, Is.EqualTo(PageButton.Choose), "The first page is not a class the player can play, and the starter is never priced.");
 
+        PendingRun pending = LifetimeScope.Find<BootScope>().Container.Resolve<PendingRun>();
+        ContentId chosen = shown[screen.Index].Id;
+
         page.Primary.onClick.Invoke();
 
+        Assert.That(screen.IsOpen, Is.False, "Choose left the class page up.");
+        Assert.That(pending.IsSet, Is.False, "Choose recorded a run. Since UI-11f only Play does.");
+        Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(SceneLoader.Menu), "Choose loaded a scene.");
+        Assert.That(presenter.SelectedCharacter, Is.EqualTo(chosen), "Home does not show the class that was chosen.");
+
+        // Play starts the run with it.
+        Button play = Field<Button>(presenter, "_descend");
+        Assert.That(play.interactable, Is.True, "Play starts out untappable.");
+
+        play.onClick.Invoke();
+
         // Read before the load answers: RunTicker clears the slot once the run has its config.
-        PendingRun pending = LifetimeScope.Find<BootScope>().Container.Resolve<PendingRun>();
-        Assert.That(pending.IsSet, Is.True, "The Choose tap recorded no run.");
-        Assert.That(pending.CharacterId, Is.EqualTo(shown[screen.Index].Id), "The run is not the class on the page.");
+        Assert.That(pending.IsSet, Is.True, "The Play tap recorded no run.");
+        Assert.That(pending.CharacterId, Is.EqualTo(chosen), "The run is not the class that was chosen.");
         Assert.That(
             pending.Snapshot,
             Is.Null,
             "The tap resumed the run on disk rather than starting a fresh one.");
 
         Assert.That(
-            page.Primary.interactable,
+            play.interactable,
             Is.False,
-            "The button stayed interactable while the run was loading, so a second touch " +
+            "Play stayed interactable while the run was loading, so a second touch " +
             "would start a second load.");
 
         yield return WaitFor(SceneLoader.Run);

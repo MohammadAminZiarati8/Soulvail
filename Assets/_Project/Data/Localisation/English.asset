@@ -130,6 +130,10 @@ MonoBehaviour:
     _text: Places
   - _key: ui.home.best
     _text: 'Best: stage {0}'
+  - _key: ui.heroes.title
+    _text: Heroes
+  - _key: ui.heroes.picked
+    _text: Picked
   - _key: ui.death.title
     _text: You died
   - _key: ui.death.hint

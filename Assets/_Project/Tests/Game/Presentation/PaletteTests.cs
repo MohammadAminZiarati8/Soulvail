@@ -738,7 +738,7 @@ public sealed class PaletteTests
             Is.EquivalentTo(new[]
             {
                 typeof(RunEndPresenter), typeof(SanctumPresenter), typeof(ServiceRow), typeof(HudPresenter),
-                typeof(ClassSelectPresenter), typeof(ClassCard), typeof(CharacterPage),
+                typeof(ClassSelectPresenter), typeof(ClassCard), typeof(CharacterPage), typeof(HeroGrid),
             }));
 
         // And the summary says so. XML docs do not exist at run time, so the source is read: the

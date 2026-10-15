@@ -405,7 +405,7 @@ What the planning found:
 | UI-11c | [Finishing a place, in core](tasks/UI-11c-finishing-a-place-in-core.md) — `ModeFinished`, and a finish pays like a death | S | UI-11b | ☑ |
 | UI-11d | [The profile hears a finish, and Run end says so](tasks/UI-11d-the-profile-hears-a-finish.md) — `PlaceWriter`, "Jungle cleared!" | M | UI-11a, UI-11c | ☑ |
 | UI-11e | [The home screen and its tab bar](tasks/UI-11e-the-home-screen.md) — picked place, picked class, Play; Heroes · Play · Places | M | UI-11a, UI-11b | ☑ |
-| UI-11f | [The Heroes tab](tasks/UI-11f-the-heroes-tab.md) — every class, locked ones too; Choose picks rather than starts | M | UI-11e | ☐ |
+| UI-11f | [The Heroes tab](tasks/UI-11f-the-heroes-tab.md) — every class, locked ones too; Choose picks rather than starts | M | UI-11e | ☑ |
 | UI-11g | [The Places tab](tasks/UI-11g-the-places-tab.md) — every listed place, locked ones say what opens them | M | UI-11b, UI-11e | ☐ |
 | UI-11h | The home screen's art — tab bar, place card frame, a picture per place, a lock — *title only; waits on a Gemini sheet* | S | UI-11g | ☐ |
 

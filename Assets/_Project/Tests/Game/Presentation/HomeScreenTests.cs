@@ -176,13 +176,11 @@ public sealed class HomeScreenTests
     {
         Enable();
 
-        var classSelect = Field<ClassSelectPresenter>("_classSelect");
-
         Field<Button>("_classCard").onClick.Invoke();
 
-        Assert.That(classSelect.IsOpen, Is.True, "the class card opens the class page.");
-        Assert.That(Field<TMP_Text>("_className").text, Is.EqualTo("Ranger"));
-        Assert.That(_pending.IsSet, Is.False, "opening the page starts nothing.");
+        Assert.That(Field<HeroGrid>("_heroes").gameObject.activeSelf, Is.True, "the class card opens the hero grid (UI-11f).");
+        Assert.That(Field<TabBar>("_tabs").Current, Is.EqualTo(Tab.Heroes));
+        Assert.That(_pending.IsSet, Is.False, "opening the grid starts nothing.");
     }
 
     // ---- Rule 4: Play and Continue ---------------------------------------------------------------

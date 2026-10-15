@@ -46,4 +46,4 @@ The Heroes tab is a grid of every class on the roster, locked ones included. A c
 
 ## As built
 
-_Filled at merge._
+Filled in the PROGRESS entry of 2026-10-15; deviations listed there. `HeroGrid` builds its scroll area and cards in code on the first show (backdrop `Palette.Ink`, two columns, cards at least 120 dp wide, the viewport ending above the tab bar). The Heroes tab and the class card show it and light the Heroes tab; a card tap opens the class page on that class (`ClassSelectPresenter.Open(ContentId)`); Choose calls `ProfileStore.Pick` with `MenuPresenter.PickedMode`, closes the page and raises `Picked`, which the menu answers by hiding the grid, lighting Play and redrawing. `ClassSelectPresenter` no longer touches `PendingRun` or the scene loader: Play is the one method that starts a fresh run.

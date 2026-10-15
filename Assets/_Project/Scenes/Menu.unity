@@ -335,7 +335,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -594,7 +594,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -652,6 +652,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 248173158}
   m_CullTransparentMesh: 1
+--- !u!1 &319754899
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 319754900}
+  - component: {fileID: 319754901}
+  m_Layer: 0
+  m_Name: Heroes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &319754900
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 319754899}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1900000002}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &319754901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 319754899}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52d4a30fc7759a74b98b0b05e9c9565d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HeroGrid
+  _lockSprite: {fileID: 21300000, guid: d5056b6e5b17416ea91c3f05c69c7284, type: 3}
+  _font: {fileID: 11400000, guid: 4c9df70117b5fa64886f0064cd335716, type: 2}
 --- !u!1 &321415730
 GameObject:
   m_ObjectHideFlags: 0
@@ -891,7 +941,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4022207824048839747, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 352383043}
+    - targetCorrespondingSourceObject: {fileID: 600679595298661070, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 352383042}
   m_SourcePrefab: {fileID: 100100000, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
 --- !u!114 &352383039 stripped
 MonoBehaviour:
@@ -904,6 +960,74 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98d24b5eece6e8a4a94a3645f76e4d47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.CharacterPreview
+--- !u!1 &352383040 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 600679595298661070, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+  m_PrefabInstance: {fileID: 352383038}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &352383041 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4022207824048839747, guid: 6eaa15f534d83374cb946fde8603d47d, type: 3}
+  m_PrefabInstance: {fileID: 352383038}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &352383042
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 352383040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
+--- !u!114 &352383043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 352383041}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &376845102
 GameObject:
   m_ObjectHideFlags: 0
@@ -983,7 +1107,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -1508,6 +1632,7 @@ MonoBehaviour:
   _classPreview: {fileID: 1596972333}
   _className: {fileID: 376845104}
   _tabs: {fileID: 338213970}
+  _heroes: {fileID: 319754901}
   _background: {fileID: 1900000014}
   _titlePlate: {fileID: 1900000024}
   _greenButton: {fileID: 21300000, guid: c4b8cf8331e779143abdb3fa63a31b8e, type: 3}
@@ -1714,7 +1839,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2211,6 +2336,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 707872286}
     m_Modifications:
+    - target: {fileID: 118978616721983506, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 1829140587529485032, guid: 6948556717606454ab1f212167a27f1e, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -2302,6 +2431,30 @@ PrefabInstance:
     - target: {fileID: 2193803304218190682, guid: 6948556717606454ab1f212167a27f1e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2500236143676995727, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 2587426700668138811, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 2615909249176351116, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 4326818810795672720, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 5529117131630014212, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 6228002440841729291, guid: 6948556717606454ab1f212167a27f1e, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 6792903546093612118, guid: 6948556717606454ab1f212167a27f1e, type: 3}
       propertyPath: m_Name
@@ -2479,7 +2632,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2874,7 +3027,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2966,6 +3119,7 @@ RectTransform:
   - {fileID: 409997354}
   - {fileID: 205823282}
   - {fileID: 1534106378}
+  - {fileID: 319754900}
   - {fileID: 338213969}
   m_Father: {fileID: 707872286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

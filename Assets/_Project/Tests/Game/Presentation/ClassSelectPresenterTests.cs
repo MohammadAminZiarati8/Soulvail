@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Soulvail.Core.Content;
@@ -18,7 +17,6 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.TestTools;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -100,25 +98,6 @@ public sealed class ClassSelectPresenterTests
         }
 
         _spawned.Clear();
-    }
-
-    // ---- The class card opens the screen; the screen starts the run -------------------------------
-
-    [Test]
-    public void Menu_ClassCardOpensTheScreen()
-    {
-        BuildScreen();
-
-        MenuPresenter menu = Menu(out Button descend, out _);
-        Button card = (Button)typeof(MenuPresenter).GetField("_classCard", Private).GetValue(menu);
-
-        card.onClick.Invoke();
-
-        Assert.That(_presenter.IsOpen, Is.True, "The class card did not open the class-select screen.");
-        Assert.That(_loader.Asked, Is.Empty, "The class card loaded a scene. The class is not chosen yet.");
-        Assert.That(_pending.IsSet, Is.False, "The class card wrote a pending run.");
-        Assert.That(menu, Is.Not.Null);
-        Assert.That(descend.interactable, Is.True);
     }
 
     // ---- Rule 1: one class on screen ---------------------------------------------------------------
@@ -307,18 +286,15 @@ public sealed class ClassSelectPresenterTests
     // ---- Rule 6: the button --------------------------------------------------------------------------
 
     [Test]
-    public void Choose_StartsTheRunOnce()
+    public void Choose_PicksOnce_StartsNothing()
     {
-        var pending = new PendingRun();
-        var slow = new SlowLoader();
-
         BuildScreen(
             catalog: ShippedCatalog(),
-            pending: pending,
-            loader: slow,
             roster: new ClassSelectRoster(new[] { new ContentId(RangerId) }),
             localizer: Shipped());
 
+        ContentId picked = default;
+        _presenter.Picked += id => picked = id;
         _presenter.Open();
 
         Assert.That(PageText("_primaryLabel"), Is.EqualTo("Choose"));
@@ -327,36 +303,30 @@ public sealed class ClassSelectPresenterTests
         Page().Primary.onClick.Invoke();
         Page().Primary.onClick.Invoke();
 
-        Assert.That(slow.Attempts, Is.EqualTo(1), "two taps asked for two scene loads.");
-        Assert.That(pending.CharacterId.Value, Is.EqualTo(RangerId));
-        Assert.That(pending.ModeId.Value, Is.EqualTo(DescentId));
-        Assert.That(pending.Snapshot, Is.Null, "a fresh run, not a resume.");
-        Assert.That(Page().Primary.interactable, Is.False, "the button is live under the load.");
-
-        slow.Finish();
+        Assert.That(_store.ProfileWriteCount, Is.EqualTo(1), "two taps wrote two picks.");
+        Assert.That(_profiles.Current.SelectedCharacterId.Value, Is.EqualTo(RangerId));
+        Assert.That(_profiles.Current.SelectedModeId.Value, Is.EqualTo(DescentId));
+        Assert.That(picked.Value, Is.EqualTo(RangerId), "Picked was not raised.");
+        Assert.That(_presenter.IsOpen, Is.False, "Choose left the page up.");
+        Assert.That(_pending.IsSet, Is.False, "Choose set a pending run. Play starts runs.");
+        Assert.That(_loader.Asked, Is.Empty, "Choose loaded a scene.");
     }
 
     [Test]
-    public void Choose_AFailedLoadGivesTheButtonBack()
+    public void Open_OnAGivenClass()
     {
-        var refusing = new RefusingLoader();
+        BuildScreen(
+            catalog: ShippedCatalog(),
+            roster: new ClassSelectRoster(new[] { new ContentId(OathboundId), new ContentId(EmberwrightId), new ContentId(RangerId) }));
 
-        BuildScreen(loader: refusing);
+        _presenter.Open(new ContentId(EmberwrightId));
 
-        _presenter.Open();
+        Assert.That(_presenter.Index, Is.EqualTo(1), "the page did not open on the tapped class.");
+        Assert.That(Page().ButtonState, Is.EqualTo(PageButton.Dead), "a locked class opens locked.");
 
-        LogAssert.Expect(LogType.Exception, new Regex(RefusingLoader.Message));
+        _presenter.Open(new ContentId("character.nobody"));
 
-        Page().Primary.onClick.Invoke();
-
-        Assert.That(_presenter.IsOpen, Is.True, "the screen went down over a load that never happened.");
-        Assert.That(Page().Primary.interactable, Is.True, "the button is dead and the player is stranded.");
-
-        LogAssert.Expect(LogType.Exception, new Regex(RefusingLoader.Message));
-
-        Page().Primary.onClick.Invoke();
-
-        Assert.That(refusing.Attempts, Is.EqualTo(2), "the latch did not come down with the button.");
+        Assert.That(_presenter.Index, Is.Zero, "an unlisted class falls back to the first owned.");
     }
 
     [Test]
@@ -390,12 +360,13 @@ public sealed class ClassSelectPresenterTests
         Assert.That(_pending.IsSet, Is.False, "the tap that bought the class also started a run.");
         Assert.That(_loader.Asked, Is.Empty);
 
-        // A later frame, and a second tap: now it plays.
+        // A later frame, and a second tap: now it picks.
         Update();
         Page().Primary.onClick.Invoke();
 
-        Assert.That(_pending.CharacterId.Value, Is.EqualTo(EmberwrightId));
-        Assert.That(_loader.Asked, Is.EqualTo(new[] { SceneLoader.Run }));
+        Assert.That(_profiles.Current.SelectedCharacterId.Value, Is.EqualTo(EmberwrightId));
+        Assert.That(_pending.IsSet, Is.False);
+        Assert.That(_loader.Asked, Is.Empty);
     }
 
     /// <summary>Two taps from one <c>EventSystem</c> pass: one purchase, and no descent.</summary>
@@ -1304,38 +1275,6 @@ public sealed class ClassSelectPresenterTests
             Asked.Add(sceneName);
 
             return Task.CompletedTask;
-        }
-    }
-
-    /// <summary>A loader whose task does not complete, so a second tap arrives while the first is in flight.</summary>
-    private sealed class SlowLoader : SceneLoader
-    {
-        private readonly TaskCompletionSource<bool> _gate = new TaskCompletionSource<bool>();
-
-        public int Attempts { get; private set; }
-
-        public override Task LoadAsync(string sceneName)
-        {
-            Attempts++;
-
-            return _gate.Task;
-        }
-
-        public void Finish() => _gate.TrySetResult(true);
-    }
-
-    /// <summary>A loader that refuses — <c>RunEndPresenterTests</c>' shape.</summary>
-    private sealed class RefusingLoader : SceneLoader
-    {
-        public const string Message = "the scene load was refused";
-
-        public int Attempts { get; private set; }
-
-        public override Task LoadAsync(string sceneName)
-        {
-            Attempts++;
-
-            throw new InvalidOperationException(Message);
         }
     }
 }

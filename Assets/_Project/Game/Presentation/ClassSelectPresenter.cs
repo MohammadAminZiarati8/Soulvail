@@ -32,10 +32,9 @@ namespace Soulvail.Game.Presentation
     /// wall-clock derived for the reason it always was.
     /// </para>
     /// <para>
-    /// <b>The tap that starts the run is here, in one method, and it was moved rather than
-    /// copied.</b> The double-tap guard, the <c>async void</c> and the <c>catch</c> that gives the
-    /// button back came with the write they were guarding, so there is still exactly one method in
-    /// the project that starts a fresh run: <see cref="OnCardChosen"/>.
+    /// <b>Choose picks and starts nothing</b> (UI-11f rule 5): it saves the class through
+    /// <see cref="ProfileStore.Pick"/>, closes the page and raises <see cref="Picked"/>. The run
+    /// starts from <see cref="MenuPresenter"/>'s Play, so there is one method that starts a fresh run.
     /// </para>
     /// <para>
     /// <b>One page, an index into the roster</b> (UI-05c rule 1). The presenter owns the index and
@@ -66,8 +65,7 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>A <c>Continue</c> takes none of this.</b> Mode, class and seed all come off the snapshot
-    /// (M2-14b rule 7), and <c>PendingRun</c> is written on the Choose tap and on no other path
-    /// through this file.
+    /// (M2-14b rule 7), and <c>PendingRun</c> is not written anywhere in this file.
     /// </para>
     /// </remarks>
     public sealed class ClassSelectPresenter : MonoBehaviour
@@ -107,14 +105,12 @@ namespace Soulvail.Game.Presentation
                  "a purchase, and on nothing else (M6-09b rule 5).")]
         [SerializeField] private TMP_Text _balance;
 
-        private PendingRun _pending;
         private ContentCatalog _catalog;
         private ClassSelectRoster _roster;
         private CharacterPreview _preview;
         private CharacterLookBook _looks;
         private SkillIconBook _icons;
         private readonly List<StripEntry> _strip = new List<StripEntry>(SkillStrip.MaxTiles);
-        private SceneLoader _loader;
         private ILocalizer _localizer;
         private ProfileStore _profile;
 
@@ -137,19 +133,11 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private bool _buying;
 
-        /// <summary>
-        /// A class has been chosen and the scene load has not answered yet.
-        /// </summary>
-        /// <remarks>
-        /// The latch rather than the button's <c>interactable</c>, because the button is only the
-        /// first of the two guards: uGUI dispatches both taps of a double tap from one
-        /// <c>EventSystem</c> pass, and a handler invoked directly — which is what a test does —
-        /// never consults <c>interactable</c> at all. <c>PausePresenter._quitting</c>'s argument.
-        /// </remarks>
-        private bool _descending;
-
         /// <summary>Whether the screen is up. Read by <see cref="MenuPresenter"/> and by the tests.</summary>
         public bool IsOpen { get; private set; }
+
+        /// <summary>Raised after Choose has saved the pick and closed the page, with the class picked.</summary>
+        public event Action<ContentId> Picked;
 
         /// <summary>
         /// What the player has to spend, as last drawn. Read from the profile at every draw and at
@@ -160,9 +148,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>The roster index the page is on.</summary>
         public int Index => _index;
 
-        /// <param name="pending">What the next run should be. Written on Choose and nowhere else.</param>
+        /// <param name="pending">Unused since UI-11f: Choose picks and Play starts. Kept so the scope's injection and every caller stay as they were.</param>
         /// <param name="catalog">What classes exist, and which mode is first. Read, never written.</param>
-        /// <param name="loader">Where a chosen class goes.</param>
+        /// <param name="loader">Unused since UI-11f, <paramref name="pending"/>'s reason.</param>
         /// <param name="localizer">
         /// What turns this screen's keys, and each class's, into words. Resolved from
         /// <c>BootScope</c> through <c>MenuScope</c>'s parent container (M3-14a rule 4).
@@ -196,9 +184,17 @@ namespace Soulvail.Game.Presentation
             CharacterLookBook looks = null,
             SkillIconBook icons = null)
         {
-            _pending = pending ?? throw new ArgumentNullException(nameof(pending));
+            if (pending is null)
+            {
+                throw new ArgumentNullException(nameof(pending));
+            }
+
+            if (loader is null)
+            {
+                throw new ArgumentNullException(nameof(loader));
+            }
+
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-            _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
             _profile = profile ?? throw new ArgumentNullException(nameof(profile));
 
@@ -241,10 +237,6 @@ namespace Soulvail.Game.Presentation
         /// Lowers the purchase latch, and does nothing else — no draw and no profile read (M6-09b
         /// rules 5 and 10). <c>LevelUpPresenter._choosing</c>'s rule.
         /// </summary>
-        /// <remarks>
-        /// <b><see cref="_descending"/> is not cleared here</b>: it spans an awaited scene load, which
-        /// is many frames, and comes down only when that load fails.
-        /// </remarks>
         private void Update()
         {
             _buying = false;
@@ -270,19 +262,24 @@ namespace Soulvail.Game.Presentation
         /// than throwing</b>: the Back button still works, so the player is on a blank screen they
         /// can leave instead of in a menu that raised an exception mid-tap.
         /// </remarks>
-        public void Open()
+        public void Open() => Open(default);
+
+        /// <summary>
+        /// Puts the screen up on <paramref name="characterId"/> if the roster lists it, otherwise on the
+        /// first class the player owns (UI-11f rule 4).
+        /// </summary>
+        public void Open(ContentId characterId)
         {
             if (_catalog is null)
             {
                 return;
             }
 
-            _descending = false;
             _buying = false;
 
             _drawn = _profile.Current;
             _shown = _roster is null ? _catalog.Characters : _roster.ShownFrom(_catalog);
-            _index = FirstOwnedIndex();
+            _index = IndexOf(characterId) ?? FirstOwnedIndex();
 
             PlaceChrome();
             DrawBalance();
@@ -323,7 +320,7 @@ namespace Soulvail.Game.Presentation
         {
             int target = _index + delta;
 
-            if (_descending || target < 0 || target >= _shown.Count)
+            if (target < 0 || target >= _shown.Count)
             {
                 return;
             }
@@ -361,6 +358,24 @@ namespace Soulvail.Game.Presentation
             {
                 OnUnlockTapped(spec.Id);
             }
+        }
+
+        private int? IndexOf(ContentId characterId)
+        {
+            if (characterId.Value is null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _shown.Count; i++)
+            {
+                if (_shown[i].Id == characterId)
+                {
+                    return i;
+                }
+            }
+
+            return null;
         }
 
         private int FirstOwnedIndex()
@@ -501,7 +516,7 @@ namespace Soulvail.Game.Presentation
         /// </remarks>
         private void OnUnlockTapped(ContentId characterId)
         {
-            if (_descending || _buying)
+            if (_buying)
             {
                 return;
             }
@@ -523,55 +538,28 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// The Choose button was tapped: record the run and load the scene it is played in.
+        /// The Choose button was tapped: make the class the pick, take the page down, and say so
+        /// (UI-11f rule 5). It starts nothing — <c>Play</c> on the home screen does.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// <b>The latch goes down before anything else happens</b>, and the button goes dead with
-        /// it, so a second touch arriving during the load finds a dead button —
-        /// <c>MenuPresenter.Descend</c>'s guard.
-        /// </para>
-        /// <para>
-        /// <c>async void</c>, which is otherwise a smell, is exactly right for what is effectively
-        /// an event handler: every path out of the await is handled here, so nothing escapes to the
-        /// synchronisation context.
-        /// </para>
-        /// <para>
-        /// <b>Nothing touches <c>SavedRun</c> and nothing deletes the file</b> (M2-14b rule 7).
-        /// Abandoning a deep run by starting a new one is recorded by the new run's opening write,
-        /// one scene later.
-        /// </para>
+        /// <see cref="_buying"/> still guards it: a class bought this frame is live again, and the
+        /// second half of the double tap that bought it must not also pick (M6-09b rule 8). The pick
+        /// is written for the place the home screen would start in, so the profile's two selections
+        /// always name a pair that exists.
         /// </remarks>
         /// <param name="characterId">The class the page was standing for.</param>
-        private async void OnCardChosen(ContentId characterId)
+        private void OnCardChosen(ContentId characterId)
         {
-            // _buying as well: a class bought this frame is live again, and the second half of the
-            // double tap that bought it must not start a run (M6-09b rule 8).
-            if (_descending || _buying)
+            if (_buying || !IsOpen)
             {
                 return;
             }
 
-            _descending = true;
+            _profile.Pick(characterId, MenuPresenter.PickedMode(_catalog, _drawn));
 
-            SetButtonInteractable(false);
+            Close();
 
-            try
-            {
-                _pending.Set(MenuPresenter.PickedMode(_catalog, _drawn), characterId, Environment.TickCount);
-
-                await _loader.LoadAsync(SceneLoader.Run);
-            }
-            catch (Exception exception)
-            {
-                // The load failed, so this object is still alive and the screen is still up. Give
-                // the button back rather than stranding the player on a dead screen.
-                _descending = false;
-
-                SetButtonInteractable(true);
-
-                Debug.LogException(exception, this);
-            }
+            Picked?.Invoke(characterId);
         }
 
         /// <summary>
@@ -675,14 +663,6 @@ namespace Soulvail.Game.Presentation
             if (_preview != null)
             {
                 _preview.Hide();
-            }
-        }
-
-        private void SetButtonInteractable(bool value)
-        {
-            if (_page != null && _page.Primary != null)
-            {
-                _page.Primary.interactable = value;
             }
         }
 

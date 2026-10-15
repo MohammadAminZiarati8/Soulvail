@@ -45,7 +45,7 @@ namespace Soulvail.Game.Presentation
     /// </para>
     /// <para>
     /// <b>Every string on screen is a <see cref="LocKey"/></b> (M3-14a rule 8). The Heroes tab and the
-    /// class card open the class page until UI-11f; the Places tab and the place card do nothing until
+    /// class card open the hero grid (UI-11f); the Places tab and the place card do nothing until
     /// UI-11g.
     /// </para>
     /// </remarks>
@@ -125,6 +125,9 @@ namespace Soulvail.Game.Presentation
         [SerializeField] private TMP_Text _className;
 
         [SerializeField] private TabBar _tabs;
+
+        [Tooltip("The Heroes tab's grid (UI-11f), a child of Safe under the tab bar. Off until the tab is tapped.")]
+        [SerializeField] private HeroGrid _heroes;
 
         [Header("Dressing (UI-06b)")]
         [Tooltip("CharacterPage_Background, a child of the canvas rather than of Safe and stretched " +
@@ -303,6 +306,19 @@ namespace Soulvail.Game.Presentation
             _continue.onClick.AddListener(Continue);
             AddListener(_placeCard, OpenPlaces);
             AddListener(_classCard, OpenHeroes);
+
+            _classSelect.Picked += OnPicked;
+
+            if (_heroes != null)
+            {
+                if (_catalog != null)
+                {
+                    _heroes.Configure(_catalog, _roster, _localizer, _looks);
+                }
+
+                _heroes.Tapped += OnHeroTapped;
+                _heroes.Hide();
+            }
 
             if (_tabs != null)
             {
@@ -503,6 +519,11 @@ namespace Soulvail.Game.Presentation
             {
                 _tabs.Layout(px);
             }
+
+            if (_heroes != null)
+            {
+                _heroes.Layout(px);
+            }
         }
 
         private void LayoutCards(float px)
@@ -668,6 +689,16 @@ namespace Soulvail.Game.Presentation
             RemoveListener(_placeCard, OpenPlaces);
             RemoveListener(_classCard, OpenHeroes);
 
+            if (_classSelect != null)
+            {
+                _classSelect.Picked -= OnPicked;
+            }
+
+            if (_heroes != null)
+            {
+                _heroes.Tapped -= OnHeroTapped;
+            }
+
             if (_tabs != null)
             {
                 _tabs.Selected -= OnTab;
@@ -697,21 +728,60 @@ namespace Soulvail.Game.Presentation
                 case Tab.Heroes:
                     OpenHeroes();
                     break;
+                case Tab.Play:
+                    ShowHome();
+                    break;
                 case Tab.Places:
                     OpenPlaces();
                     break;
             }
         }
 
-        /// <summary>The Heroes tab and the class card: the class page, until UI-11f.</summary>
+        /// <summary>The Heroes tab and the class card: the grid of every class on the roster (UI-11f).</summary>
         private void OpenHeroes()
         {
-            if (_classSelect == null || _classSelect.IsOpen)
+            if (_heroes == null || _catalog is null || _profile is null)
             {
                 return;
             }
 
-            _classSelect.Open();
+            _heroes.Show(_profile.Current, SelectedCharacter);
+            _heroes.Layout(PixelsPerDp(Screen.dpi));
+
+            if (_tabs != null)
+            {
+                _tabs.Show(Tab.Heroes);
+            }
+        }
+
+        /// <summary>The home screen proper: the grid down and the Play tab lit.</summary>
+        private void ShowHome()
+        {
+            if (_heroes != null)
+            {
+                _heroes.Hide();
+            }
+
+            if (_tabs != null)
+            {
+                _tabs.Show(Tab.Play);
+            }
+        }
+
+        /// <summary>A hero card was tapped: the character page opens on that class.</summary>
+        private void OnHeroTapped(ContentId characterId)
+        {
+            if (_classSelect != null && !_classSelect.IsOpen)
+            {
+                _classSelect.Open(characterId);
+            }
+        }
+
+        /// <summary>Choose on the page saved a pick: home again, drawn with it (UI-11f rule 5).</summary>
+        private void OnPicked(ContentId characterId)
+        {
+            ShowHome();
+            Draw();
         }
 
         /// <summary>The Places tab and the place card: nothing, until UI-11g.</summary>

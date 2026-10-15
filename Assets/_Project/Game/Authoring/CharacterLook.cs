@@ -46,7 +46,8 @@ public readonly struct CharacterLook
         Sprite emblem = null,
         Sprite spaceIcon = null,
         LocKey spaceNameKey = default,
-        LocKey spaceDescriptionKey = default)
+        LocKey spaceDescriptionKey = default,
+        Sprite portrait = null)
     {
         Body = body;
         Projectile = projectile;
@@ -55,6 +56,7 @@ public readonly struct CharacterLook
         SpaceIcon = spaceIcon;
         SpaceNameKey = spaceNameKey;
         SpaceDescriptionKey = spaceDescriptionKey;
+        Portrait = portrait;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -90,7 +92,7 @@ public readonly struct CharacterLook
     public Sprite Emblem { get; }
 
     /// <summary>
-    /// The icon of the class's Space move — the Ranger's Roll — on the class page's skill strip
+    /// The icon of the class's Space move â€” the Ranger's Roll â€” on the class page's skill strip
     /// (UI-05d), or null for the placeholder. Read with Unity's <c>==</c> for <see cref="Body"/>'s reason.
     /// </summary>
     public Sprite SpaceIcon { get; }
@@ -103,6 +105,13 @@ public readonly struct CharacterLook
 
     /// <summary>The Space move's one line, or <c>default</c> for none.</summary>
     public LocKey SpaceDescriptionKey { get; }
+
+    /// <summary>
+    /// The class's avatar, a baked render of its body or a painted one put in its place (UI-12a), or
+    /// null for none: the screens then fall back to <see cref="Emblem"/>. Read with Unity's <c>==</c>
+    /// for <see cref="Body"/>'s reason.
+    /// </summary>
+    public Sprite Portrait { get; }
 }
 
 /// <summary>

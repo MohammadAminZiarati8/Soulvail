@@ -67,6 +67,9 @@ MonoBehaviour:
   _minionReach: 1.5
   _kindlingMaxStacks: 30
   _kindlingPerStack: 0.02
+  _volleyArrows: 0
+  _volleyFanAngleDeg: 30
+  _volleyDamageMultiplier: 1.5
   _veilrotStart: 0
   _veilrotGainMultiplier: 1
   _veilrotCleansePriceMultiplier: 1
@@ -76,3 +79,10 @@ MonoBehaviour:
   _unlockDeedStage: 20
   _unlockDeedBossId: 
   _body: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}
+  _projectile: {fileID: 0}
+  _volleyNode: {fileID: 0}
+  _emblem: {fileID: 0}
+  _spaceIcon: {fileID: 0}
+  _spaceNameKey: 
+  _spaceDescriptionKey: 
+  _portrait: {fileID: 21300000, guid: 225e76139f12bf841a6fb1feb5b9a047, type: 3}

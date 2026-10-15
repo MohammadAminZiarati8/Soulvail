@@ -726,6 +726,11 @@ a capture from a CLI-entered Play session cannot (RS-02a).
   before Play and back after, so every PlayMode row meets a fresh install. If the Editor dies
   mid-pass, the files wait in the shelter, and the game plays a fresh install until the next PlayMode
   run restores them with a warning (RS-03g).
+- **`Is.SameAs` on an asset reference fails after a reimport, with the same name on both sides.**
+  Once a texture is reimported, a `ScriptableObject`'s field and `AssetDatabase.LoadAssetAtPath` can
+  hand back two managed wrappers over one native sprite, with one instance id. `Expected: same as
+  <Portrait_X> But was: <Portrait_X>` is that, not a wrong reference. Compare with Unity's `==`
+  (UI-12a).
 
 ---
 

@@ -254,6 +254,11 @@ namespace Soulvail.Game.Authoring
         [Tooltip("The Space move's one line (UI-05d), e.g. character.ranger.space.description.")]
         [SerializeField] private string _spaceDescriptionKey = string.Empty;
 
+        [Tooltip("The class's avatar (UI-12a), from Art/UI/Heroes/. Soulvail/Heroes/Bake Portraits sets " +
+                 "it to a render of the body; a painted portrait dragged here replaces the render, and " +
+                 "the bake leaves it alone. Empty: the screens draw the emblem.")]
+        [SerializeField] private Sprite _portrait;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -430,7 +435,8 @@ namespace Soulvail.Game.Authoring
             _emblem,
             _spaceIcon,
             string.IsNullOrEmpty(_spaceNameKey) ? default : new LocKey(_spaceNameKey),
-            string.IsNullOrEmpty(_spaceDescriptionKey) ? default : new LocKey(_spaceDescriptionKey));
+            string.IsNullOrEmpty(_spaceDescriptionKey) ? default : new LocKey(_spaceDescriptionKey),
+            _portrait);
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

@@ -85,3 +85,4 @@ MonoBehaviour:
   _spaceIcon: {fileID: 21300000, guid: 0e7d82889abd1334f91e04dccaf71ed1, type: 3}
   _spaceNameKey: character.ranger.space.name
   _spaceDescriptionKey: character.ranger.space.description
+  _portrait: {fileID: 21300000, guid: c4b2c72cfb0f1474ab18ad10e48ab5b6, type: 3}

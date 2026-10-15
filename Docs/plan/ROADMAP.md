@@ -410,7 +410,7 @@ What the planning found:
 | UI-11h-a | [The home screen's art, and the tab bar](tasks/UI-11h-the-home-screens-art.md#ui-11h-a--the-art-imported-and-the-tab-bar) — 13 pieces cut from the Gemini sheets into `Art/UI/Home/`; the tab bar wears them | M | UI-11g | ☑ |
 | UI-11h-b | [The place cards](tasks/UI-11h-the-home-screens-art.md#ui-11h-b--the-place-cards) — a picture per place in a stone frame, the lock on a locked card, `PlaceLookBook` | M | UI-11h-a | ☑ |
 | UI-11h-c | [The hero cards](tasks/UI-11h-the-home-screens-art.md#ui-11h-c--the-hero-cards) — the portrait frame | S | UI-11h-a | ☑ |
-| UI-12a | [The avatar, baked](tasks/UI-12a-the-avatar-baked.md) — `Soulvail/Heroes/Bake Portraits` renders each body, head and shoulders, to `Art/UI/Heroes/Portrait_<Class>.png`; `CharacterLook.Portrait` | M | UI-11h-c | ☐ |
+| UI-12a | [The avatar, baked](tasks/UI-12a-the-avatar-baked.md) — `Soulvail/Heroes/Bake Portraits` renders each body, head and shoulders, to `Art/UI/Heroes/Portrait_<Class>.png`; `CharacterLook.Portrait` | M | UI-11h-c | ☑ |
 | UI-12b | [The card wears it](tasks/UI-12b-the-card-wears-it.md) — the portrait in the hero card's frame; greyed under the padlock when locked; the emblem when there is none | S | UI-12a | ☐ |
 | UI-12c | [The hero sheet's model](tasks/UI-12c-the-hero-sheets-model.md) — `HeroSheet.Build`: description, five stats as numbers, attack, special move, every rank; the labels in English | S | UI-12a | ☐ |
 | UI-12d | [The page shows it](tasks/UI-12d-the-page-shows-it.md) — the sheet scrolls under the 3D model, the button stays at the bottom; `SkillStrip` and the columns layout go | M | UI-12c | ☐ |

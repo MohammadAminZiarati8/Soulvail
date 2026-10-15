@@ -106,4 +106,19 @@ The PNG rows read the committed files; they do not bake in the suite. **A row th
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"._
+_2026-10-16._ Built to the Files table; four PNGs baked and committed, `_portrait` set on all four definitions.
+
+**Deviations**
+
+1. **`ShoulderFraction` is 0.6, not 0.42.** KayKit bodies are chibi: the Ranger stands 1.62 m and its head alone is 0.71 m of it (0.79–1.50), the Knight 1.80 m with a 0.95 m helmet. At 0.42 the first bake framed the face alone, eyebrows to chin, hair cut by the top edge. At 0.6 the band reaches the chest bone (≈ 0.62 m), so head, collar and shoulders show. Still one framing for every body.
+2. **Rule 4's "5 % higher" is 5 % of the band's height, and the distance is solved, not estimated.** The band's top sits exactly on the field's upper edge (a quadratic in the horizontal distance, far root; `Frame`'s remarks); the bottom then sits 0.6 % inside the lower edge. Read as 5 % of the *distance*, the tilt leaves the bottom 1.7 % inside and the 1 % row fails.
+3. **The stage stands in an Editor preview scene** (`EditorSceneManager.NewPreviewScene`, `PrefabUtility.InstantiatePrefab(prefab, scene)`, `camera.scene`) as well as `HideAndDontSave`, so the open scene never sees it: manual step 3 holds by construction. The stage's lights light the body there. The camera is not "put back": it belongs to the stage instance, which is destroyed.
+4. **The render is 1024² averaged down to 512² by alpha**, so the silhouette's edge is smooth without asking a render request for MSAA, and the clear colour's black never bleeds into it.
+5. **`Definitions_PointAtTheirPortrait` compares with Unity's `==`, not `Is.SameAs`**: after the bake's reimport the field and `LoadAssetAtPath` returned two managed wrappers over one sprite (one instance id), and `SameAs` failed with the same name on both sides. Filed in [Traps §7](../../Traps.md#7-tests-nunit-and-measuring-allocation).
+6. **Outside the table, small:** `CharacterLook.cs` carried two Windows-1252 em-dash bytes (line 93) in a UTF-8 file, which the edit tooling refuses; converted to UTF-8. The four `.asset` diffs also carry Unity's first serialisation of fields added since they were last saved (volley, projectile, emblem, Space keys), at their defaults; nothing read changes.
+
+**Manual steps, done in the open Editor**
+
+1. Baked: four PNGs, each named in the log, no error. **`Portrait_Ranger.png` by eye:** head and shoulders, front on, a little from above; the hair inside the top edge with a margin, the blue scarf and both shoulders in frame, the bow's upper limb and string entering lower right (allowed). Corners transparent (asserted). The three Knight portraits are one picture, byte for byte; **the helmet's peak touches the top edge**, because the face sits nearer the camera than the bounds' centre the band is measured at. Not cut through; if it reads wrong on the card, a painted portrait is the fix (out of scope).
+2. Baked twice: all four PNGs' SHA-256 matched the first bake, and the second changed no `.asset`.
+3. After a bake: the open scene not dirty, its root count unchanged, no `CharacterStage` alive.

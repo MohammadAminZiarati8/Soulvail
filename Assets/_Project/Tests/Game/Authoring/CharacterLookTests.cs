@@ -149,6 +149,23 @@ public sealed class CharacterLookTests
         Assert.That(look.Body, Is.Null);
     }
 
+    /// <summary>UI-12a rule 9: the definition's portrait rides on its look, and none is null.</summary>
+    [Test]
+    public void CharacterLook_CarriesThePortrait()
+    {
+        var portrait = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/Art/UI/Icons/Icon_Placeholder.png");
+        Assert.That(portrait, Is.Not.Null);
+
+        CharacterDefinition definition = NewDefinition("Portrayed");
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_portrait").objectReferenceValue = portrait;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(definition.ToLook().Portrait, Is.SameAs(portrait));
+        Assert.That(NewDefinition("Unportrayed").ToLook().Portrait, Is.Null, "no portrait is null: the screens draw the emblem.");
+        Assert.That(new CharacterLook(Knight()).Portrait, Is.Null, "the constructor's portrait is optional.");
+    }
+
     // ---- Rule 3: one choice of class -----------------------------------------------------------
 
     [Test]

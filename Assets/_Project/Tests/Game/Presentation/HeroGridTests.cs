@@ -30,6 +30,8 @@ public sealed class HeroGridTests
 {
     private const string ScenePath = "Assets/_Project/Scenes/Menu.unity";
     private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
+    private const string FrameArt = "Assets/_Project/Art/UI/Home/HeroCard_Frame.png";
+    private const string SelectedArt = "Assets/_Project/Art/UI/Home/HeroCard_FrameSelected.png";
     private const string JunglePath = "Assets/_Project/Data/Modes/Jungle.asset";
 
     private static readonly string[] CharacterPaths =
@@ -123,28 +125,115 @@ public sealed class HeroGridTests
     }
 
     [Test]
-    public void Card_Picked_HasRimAndLabel()
+    public void Card_Frame_IsSlicedAndOutset()
+    {
+        Enable();
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        foreach (HeroGrid.Card card in Grid().Cards)
+        {
+            Assert.That(card.Frame.gameObject.activeSelf, Is.True);
+            Assert.That(card.Frame.enabled, Is.True);
+            Assert.That(card.Frame.sprite, Is.SameAs(Art(FrameArt)));
+            Assert.That(card.Frame.type, Is.EqualTo(Image.Type.Sliced));
+            Assert.That(card.Frame.pixelsPerUnitMultiplier * HeroGrid.FrameBorderDp,
+                Is.EqualTo(card.Frame.sprite.border.x).Within(0.01f), "the drawn border is not FrameBorderDp.");
+            Assert.That(card.Frame.rectTransform.offsetMin.x, Is.EqualTo(-HeroGrid.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMin.y, Is.EqualTo(-HeroGrid.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMax.x, Is.EqualTo(HeroGrid.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.rectTransform.offsetMax.y, Is.EqualTo(HeroGrid.GlowPadDp).Within(0.01f));
+            Assert.That(card.Frame.raycastTarget, Is.False);
+        }
+
+        // CardRatio is unchanged: the frame is drawn outside the card, the card keeps its size.
+        Rect card0 = InSafe(Grid().Cards[0].Root);
+        Assert.That(card0.height, Is.EqualTo(card0.width * HeroGrid.CardRatio).Within(0.01f));
+    }
+
+    [Test]
+    public void Card_Picked_ShowsSelectedFrame()
     {
         _profiles.Adopt(PlayerProfile.Default.WithSelection(Ranger, new ContentId("mode.jungle")));
         Enable();
         OpenHeroes();
+        Grid().Layout(1f);
 
         HeroGrid.Card picked = Grid().Cards[0];
 
         Assert.That(picked.Locked, Is.False);
         Assert.That(picked.Rim.gameObject.activeSelf, Is.True);
-        Assert.That(picked.Rim.color, Is.EqualTo(Palette.Player));
+        Assert.That(picked.Rim.sprite, Is.SameAs(Art(SelectedArt)));
+        Assert.That(picked.Rim.color, Is.EqualTo(Color.white), "the sprite carries the cyan.");
+        Assert.That(picked.Rim.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(picked.Rim.transform.GetSiblingIndex(), Is.GreaterThan(picked.Frame.transform.GetSiblingIndex()), "the selected frame is not drawn over the normal one.");
         Assert.That(picked.PickedLabel.gameObject.activeSelf, Is.True);
         Assert.That(picked.PickedLabel.text, Is.EqualTo("Picked"));
+    }
 
-        foreach (HeroGrid.Card other in Grid().Cards)
+    [Test]
+    public void Card_Unpicked_RimOff()
+    {
+        _profiles.Adopt(PlayerProfile.Default.WithSelection(Ranger, new ContentId("mode.jungle")));
+        Enable();
+        OpenHeroes();
+
+        for (int i = 1; i < Grid().Cards.Count; i++)
         {
-            if (other != picked)
+            HeroGrid.Card other = Grid().Cards[i];
+
+            Assert.That(other.Rim.gameObject.activeSelf, Is.False, $"{other.Id} wears the rim.");
+            Assert.That(other.PickedLabel.gameObject.activeSelf, Is.False);
+            Assert.That(other.Frame.gameObject.activeSelf, Is.True);
+        }
+    }
+
+    [Test]
+    public void Card_Plate_AndContents_ClearTheFrame()
+    {
+        Enable();
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        float edge = HeroGrid.FrameBorderDp - HeroGrid.GlowPadDp;
+
+        foreach (HeroGrid.Card card in Grid().Cards)
+        {
+            Rect outer = InSafe(card.Root);
+            Rect plate = InSafe((RectTransform)card.Button.transform);
+
+            Assert.That(plate.xMin - outer.xMin, Is.EqualTo(edge).Within(0.01f));
+            Assert.That(outer.yMax - plate.yMax, Is.EqualTo(edge).Within(0.01f));
+            Assert.That(card.Button.targetGraphic.color, Is.EqualTo(Color.Lerp(Palette.Ink, Color.white, 0.14f)), "the plate lost its flat colour.");
+
+            foreach (Graphic part in new Graphic[] { card.Emblem, card.Lock, card.NameLabel, card.PickedLabel, card.Price, card.Deed })
             {
-                Assert.That(other.Rim.gameObject.activeSelf, Is.False, $"{other.Id} wears the rim.");
-                Assert.That(other.PickedLabel.gameObject.activeSelf, Is.False);
+                Rect rect = InSafe(part.rectTransform);
+
+                Assert.That(rect.xMin, Is.GreaterThanOrEqualTo(plate.xMin - 0.01f), $"{part.name} runs under the left stone.");
+                Assert.That(rect.xMax, Is.LessThanOrEqualTo(plate.xMax + 0.01f), $"{part.name} runs under the right stone.");
+                Assert.That(rect.yMin, Is.GreaterThanOrEqualTo(plate.yMin - 0.01f), $"{part.name} runs under the bottom stone.");
+                Assert.That(rect.yMax, Is.LessThanOrEqualTo(plate.yMax + 0.01f), $"{part.name} runs under the top stone.");
             }
         }
+    }
+
+    [Test]
+    public void LockedCard_Unchanged_InsideTheFrame()
+    {
+        Enable();
+        OpenHeroes();
+        Grid().Layout(1f);
+
+        HeroGrid.Card locked = Grid().Cards[3];
+
+        Assert.That(locked.Frame.enabled, Is.True);
+        Assert.That(locked.Frame.sprite, Is.SameAs(Art(FrameArt)));
+        Assert.That(locked.Rim.gameObject.activeSelf, Is.False);
+        Assert.That(locked.Lock.gameObject.activeSelf, Is.True);
+        Assert.That(locked.Emblem.color.a, Is.EqualTo(HeroGrid.LockedAlpha).Within(0.001f));
+        Assert.That(locked.Price.gameObject.activeSelf, Is.True);
+        Assert.That(locked.Deed.gameObject.activeSelf, Is.True);
     }
 
     [Test]
@@ -256,6 +345,8 @@ public sealed class HeroGridTests
     // ---- Fixture ---------------------------------------------------------------------------------
 
     private HeroGrid Grid() => Field<HeroGrid>("_heroes");
+
+    private static Sprite Art(string path) => AssetDatabase.LoadAssetAtPath<Sprite>(path);
 
     private void Enable()
     {

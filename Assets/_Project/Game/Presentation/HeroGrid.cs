@@ -40,7 +40,8 @@ namespace Soulvail.Game.Presentation
         public const float TitleTextDp = 26f;
         public const float NameTextDp = 18f;
         public const float SmallTextDp = 14f;
-        public const float RimDp = 3f;
+        public const float FrameBorderDp = 18f;   // the frame's drawn border, however thick the sprite's own
+        public const float GlowPadDp = 6f;        // the frame is drawn this far outside the card, for the glow
         public const float CardRatio = 1.3f;
         public const float LockedAlpha = 0.35f;
 
@@ -53,6 +54,12 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("CharacterPage_LockBadge, drawn over a locked card.")]
         [SerializeField] private Sprite _lockSprite;
+
+        [Tooltip("HeroCard_Frame: the stone portrait frame every card wears.")]
+        [SerializeField] private Sprite _frame;
+
+        [Tooltip("HeroCard_FrameSelected: the cyan-glowing frame the picked hero wears over the normal one.")]
+        [SerializeField] private Sprite _frameSelected;
 
         [Tooltip("The scene's UI font, so the grid's words match the screens around it.")]
         [SerializeField] private TMP_FontAsset _font;
@@ -201,12 +208,20 @@ namespace Soulvail.Game.Presentation
 
         private void LayoutCard(Card card)
         {
-            float rim = RimDp * _px;
+            float glow = GlowPadDp * _px;
+            float edge = (FrameBorderDp - GlowPadDp) * _px;
+            float inner = 4f * _px;
             float text = NameTextDp * _px;
             float small = SmallTextDp * _px;
 
-            Stretch(card.Rim.rectTransform, 0f);
-            Stretch((RectTransform)card.Button.transform, rim);
+            // Both frames are drawn outside the card, over the gap and the margin, never the neighbour.
+            Stretch(card.Frame.rectTransform, -glow);
+            Stretch(card.Rim.rectTransform, -glow);
+            FrameBorder(card.Frame);
+            FrameBorder(card.Rim);
+
+            // The plate fills the frame's opening, so nothing on it is ever under stone.
+            Stretch((RectTransform)card.Button.transform, edge);
 
             // From the bottom of the plate: the picked line, the price, the deed, then the name.
             Band(card.PickedLabel, 0f, small * 1.4f, small);
@@ -218,14 +233,27 @@ namespace Soulvail.Game.Presentation
             RectTransform emblem = card.Emblem.rectTransform;
             emblem.anchorMin = Vector2.zero;
             emblem.anchorMax = Vector2.one;
-            emblem.offsetMin = new Vector2(rim * 2f, top);
-            emblem.offsetMax = new Vector2(-rim * 2f, -rim * 2f);
+            emblem.offsetMin = new Vector2(inner, top);
+            emblem.offsetMax = new Vector2(-inner, -inner);
 
             RectTransform padlock = card.Lock.rectTransform;
             padlock.anchorMin = padlock.anchorMax = padlock.pivot = new Vector2(1f, 1f);
             padlock.sizeDelta = new Vector2(LockDp * _px, LockDp * _px);
-            padlock.anchoredPosition = new Vector2(-rim * 3f, -rim * 3f);
+            padlock.anchoredPosition = new Vector2(-inner, -inner);
+        }
 
+        /// <summary>Draws the sprite's border <see cref="FrameBorderDp"/> thick, whatever it is in pixels.</summary>
+        private void FrameBorder(Image image)
+        {
+            image.enabled = image.sprite != null;
+
+            if (image.sprite == null)
+            {
+                return;
+            }
+
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = image.sprite.border.x / (FrameBorderDp * _px);
         }
 
         private static void Stretch(RectTransform rect, float inset)
@@ -260,8 +288,11 @@ namespace Soulvail.Game.Presentation
             card.Locked = !owned;
             card.Root.gameObject.SetActive(true);
 
+            card.Frame.sprite = _frame;
+            card.Frame.color = Color.white;
+            card.Rim.sprite = _frameSelected;
+            card.Rim.color = Color.white;
             card.Rim.gameObject.SetActive(isPicked);
-            card.Rim.color = Palette.Player;
 
             card.Emblem.sprite = emblem;
             card.Emblem.enabled = emblem != null;
@@ -332,11 +363,16 @@ namespace Soulvail.Game.Presentation
             var root = new GameObject("Card", typeof(RectTransform));
             root.transform.SetParent(_content, false);
 
-            Image rim = MakeImage("Rim", root.transform);
-            rim.raycastTarget = false;
-
+            // Back to front: the flat plate with the emblem and words on it, the frame over it, the
+            // selected frame over that.
             Image plate = MakeImage("Plate", root.transform);
             plate.color = Color.Lerp(Palette.Ink, Color.white, 0.14f);
+
+            Image frame = MakeImage("Frame", root.transform);
+            frame.raycastTarget = false;
+
+            Image rim = MakeImage("Rim", root.transform);
+            rim.raycastTarget = false;
 
             var button = plate.gameObject.AddComponent<Button>();
             button.targetGraphic = plate;
@@ -349,7 +385,7 @@ namespace Soulvail.Game.Presentation
             padlock.preserveAspect = true;
             padlock.raycastTarget = false;
 
-            var card = new Card((RectTransform)root.transform, rim, button, emblem, padlock,
+            var card = new Card((RectTransform)root.transform, frame, rim, button, emblem, padlock,
                 MakeText("Name", plate.transform), MakeText("Picked", plate.transform),
                 MakeText("Price", plate.transform), MakeText("Deed", plate.transform));
 
@@ -386,9 +422,10 @@ namespace Soulvail.Game.Presentation
         /// <summary>One class's card: the pieces a test and the layout read.</summary>
         public sealed class Card
         {
-            internal Card(RectTransform root, Image rim, Button button, Image emblem, Image padlock, TMP_Text name, TMP_Text picked, TMP_Text price, TMP_Text deed)
+            internal Card(RectTransform root, Image frame, Image rim, Button button, Image emblem, Image padlock, TMP_Text name, TMP_Text picked, TMP_Text price, TMP_Text deed)
             {
                 Root = root;
+                Frame = frame;
                 Rim = rim;
                 Button = button;
                 Emblem = emblem;
@@ -401,7 +438,10 @@ namespace Soulvail.Game.Presentation
 
             public RectTransform Root { get; }
 
-            /// <summary>The <see cref="Palette.Player"/> frame behind the plate, on while this is the pick.</summary>
+            /// <summary>The normal frame, always on.</summary>
+            public Image Frame { get; }
+
+            /// <summary>The selected frame, drawn over <see cref="Frame"/> while this is the pick.</summary>
             public Image Rim { get; }
 
             public Button Button { get; }

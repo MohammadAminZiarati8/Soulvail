@@ -255,17 +255,15 @@ Built as specified, with these facts and three deviations.
 
 1. **The place frame's border is 100, not the spec's ≈ 80, and the hero frame's 120, not ≈ 110.** Set by eye against the cut: the corner stones, with the selected frame's glow, end 100 and 120 px in. A smaller border stretches the stone's last pixels along the rail. Both pairs share their border (a test row), so a swap slices alike. UI-11h-b and -c read the border off the sprite, as the spec's formulas do, so nothing downstream names a number.
 2. **Rule 8's colours are the label's, not the tile's.** `Palette.HudText` and `Palette.Neutral` colour the tab's label; the tile stays white so the press tint (rule 9) multiplies a clean sprite. The off tab's label is `Palette.Neutral`, `#6E6A63`, a dark grey on the blue plate: legible in the capture at 411 but faint, and the owner's call whether to brighten it.
-3. **The Look was rendered by a throwaway EditMode test, not `Soulvail/Capture Look`.** The menu is a Screen Space overlay canvas, so the test put it in world space at the phone's dp size, rendered with an orthographic camera at 2× and wrote `Logs/look_<w>x<h>.png`; the file was deleted before handover. The first `Camera.Render` worked under URP in the Editor. The Home page's emblem preview (a render texture) drew white, so only the bar is a judgement; the rest is not the Menu as Play shows it.
+3. **The Look was a throwaway EditMode test, not `Soulvail/Capture Look`:** the overlay canvas put in world space at the phone's dp size, an orthographic camera at 2×, `Logs/look_<w>x<h>.png`, deleted after. The Home page's render-texture emblem drew white, so only the bar is a judgement.
 
-**The metas** are hand-built from `Button_Blue.png.meta`: single sprite, full rect, 100 PPU, clamped, bilinear, no mipmaps, ASTC 4×4 on Android; the two pictures ASTC 6×6, `alphaUsage` none, `maxTextureSize` 2048. Unity rewrote them on import (sprite ids); the rewritten files are the ones committed. `alphaIsTransparency` stays on for the pictures, harmless on an opaque PNG.
+**The metas** are hand-built from `Button_Blue.png.meta` (Unity rewrote them on import; those are committed): full rect, 100 PPU, clamped, bilinear, no mipmaps, ASTC 4×4; the pictures ASTC 6×6, `alphaUsage` none, 2048.
 
-**The tab bar's geometry.** A cap is `border.x × 72 ÷ plate height` = 80 dp; the column is `(width − 2 caps) ÷ 3` = 83.7 dp at 411 and 66.7 at 360. The tile is 44 dp tall (about 40 wide) with its label at 12 dp in an 18 dp band under it. `Layout` sets the tile's size and anchor itself, so the scene's authored rects are placeholders. Menu.unity gained the bar's `Image`, the plate and tile sprites and `m_Transition` ColorTint; the four `_blue…_greenPressed` fields went.
+**The tab bar's geometry.** A cap is 80 dp; the column is 83.7 dp at 411 and 66.7 at 360. The tile is 44 dp tall with its 12 dp label in an 18 dp band under it. `Layout` sets the tile's rect itself. Menu.unity gained the bar's `Image`, the sprites and ColorTint; the four `_blue…_greenPressed` fields went.
 
 **The Look, 411 × 914 and 360 × 780:** the plate reads as a stone bar, three tiles between its two cyan-ringed caps, Play lit with a cyan glow that stays inside the plate's top edge. **No overlap at either size. At 360 the caps are close to the outer tiles**: the Heroes and Places tiles stand about 10 dp from the cap's inner stone. That is crowding by a small margin, not a collision; nothing was recut (ruling 3). At 411 there is room to spare.
 
-**Tests:** `HomeArtTests` (5 rows, 13 pieces for three of them) and eight `TabBar_…` rows in `HomeScreenTests` replace `TabBar_OnSafeBottom_PlaySelected`'s sprite and 64 dp asserts. 4 226 EditMode: 4 224 passed, 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive (an animator clock row), +51 on UI-11g. The Console's errors and warnings after the run are the expected output of rows that provoke them (`SkillAuthoringTests`, `ResumeFlowTests`, `RunEndPresenterTests`), not new.
-
-**Not done:** manual step 2 (tap the three tabs) and step 3 (a phone).
+**Tests:** `HomeArtTests` (5 rows) and eight `TabBar_…` rows replace `TabBar_OnSafeBottom_PlaySelected`'s 64 dp asserts. 4 226 EditMode: 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive, +51. **Not done:** manual steps 2 and 3.
 
 ### UI-11h-b
 
@@ -278,6 +276,17 @@ As specified, with four deviations.
 
 **Geometry (dp):** frame outset 6, border drawn 20, so the opening is 14 in; the picture is 12 under it. `pixelsPerUnitMultiplier` = `border.x ÷ (20 × px)` (5 at 1×). Padlock 36, 18 in from the corner.
 
-**The Look, 411 × 914 and 360 × 780** (throwaway test, world-space canvas; deleted). Jungle: the picture edge to edge in the stone frame, the white name on the scrim, readable over the vines, the scrim's top edge hard. Picked: cyan glow clear of the screen edge and title. "More to come": a fogged ruin, name in `Palette.Neutral`, dim but legible. A test-only locked card: greyed, padlock top right, "Finish Jungle to open". Not recut: the picture stretches about 15 % wide at 411; the normal frame's cream inner line.
+**The Look, 411 × 914 and 360 × 780** (throwaway test; deleted). Jungle: the picture fills the frame, the name readable on the scrim. Picked: cyan glow clear of the edge and title. "More to come": a fogged ruin, dim but legible. A test-only locked card: greyed, padlock top right. Not recut: the picture stretches about 15 % wide at 411.
 
 **Tests:** 2 book rows, 8 new and 2 rewritten card rows. **4 236 EditMode: 4 234 passed, 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive** (+10).
+
+### UI-11h-c
+
+As specified, with two notes.
+
+1. **The plate is inset by `FrameBorderDp − GlowPadDp` (12 dp), not left at the card's edge.** The frame is outset 6 and draws 18 thick, so it covers the card's outer 12 dp; the plate starts where the stone ends, and the emblem, words and padlock sit 4 dp inside it (was `rim × 2` and `× 3`). `Card.Frame` is public, `RimDp` gone. Draw order: `Plate`, `Frame`, `Rim` (the rim was behind the plate).
+2. **`Card_Frame_IsSlicedAndOutset` compares offsets per component with a tolerance:** `Is.EqualTo(Vector2)` failed on `-6.00` vs `-6.00` (float noise).
+
+**The Look, 411 × 914 and 360 × 780** (throwaway test, deleted). The Ranger's card, one card at the left: the cyan selected frame over the stone one, the glow clear of the screen edge and the title, the dark flat plate in the opening, "Ranger" white and "Picked" cyan inside it, clear of the stone. **No emblem drew**: the harness passed no `CharacterLookBook`, so the opening is empty and the emblem inside it is still unseen; the owner's Play shows it. Not recut: the stone's bottom edge shows a faint dashed line under the frame.
+
+**Tests:** 5 rows replace `Card_Picked_HasRimAndLabel`. **4 240 EditMode: 4 238 passed, 1 failed (`CharacterPreviewTests.Resize_…`, D3D12), 1 inconclusive** (+4).

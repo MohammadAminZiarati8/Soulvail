@@ -409,7 +409,7 @@ What the planning found:
 | UI-11g | [The Places tab](tasks/UI-11g-the-places-tab.md) — every listed place, locked ones say what opens them | M | UI-11b, UI-11e | ☑ |
 | UI-11h-a | [The home screen's art, and the tab bar](tasks/UI-11h-the-home-screens-art.md#ui-11h-a--the-art-imported-and-the-tab-bar) — 13 pieces cut from the Gemini sheets into `Art/UI/Home/`; the tab bar wears them | M | UI-11g | ☑ |
 | UI-11h-b | [The place cards](tasks/UI-11h-the-home-screens-art.md#ui-11h-b--the-place-cards) — a picture per place in a stone frame, the lock on a locked card, `PlaceLookBook` | M | UI-11h-a | ☑ |
-| UI-11h-c | [The hero cards](tasks/UI-11h-the-home-screens-art.md#ui-11h-c--the-hero-cards) — the portrait frame | S | UI-11h-a | ☐ |
+| UI-11h-c | [The hero cards](tasks/UI-11h-the-home-screens-art.md#ui-11h-c--the-hero-cards) — the portrait frame | S | UI-11h-a | ☑ |
 
 **UI-11 — Home, Heroes and Places** *(owner, 2026-10-15)*: the menu becomes a home screen with a bottom tab bar: **Heroes**, a page of every class, locked ones included; **Places**, a page of every campaign, where the player picks one; and **Play** between them, which starts a run with the remembered pick in one tap. **The owner's ruling: every place unlocks when the one before it is finished**, which means clearing its final stage. So the Jungle stops being endless and ends at stage 30, on a Warden (Claude's number, one field on `Jungle.asset`). Core first (UI-11a–d: the profile, the unlock rule, the finish and its writer), then the three screens (UI-11e–g) on the existing sprites, then the art (UI-11h). **This supersedes UI-05/UI-06's "no tabs, no roster grid" brief**; one primary button per screen still holds. Descent stays in the catalog, unlisted.
 

@@ -701,6 +701,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.HeroGrid
   _lockSprite: {fileID: 21300000, guid: d5056b6e5b17416ea91c3f05c69c7284, type: 3}
+  _frame: {fileID: 21300000, guid: b023a584bd614235af3d28b7dbba21d7, type: 3}
+  _frameSelected: {fileID: 21300000, guid: ebc5c3aeef2a4a5da2db94f934605967, type: 3}
   _font: {fileID: 11400000, guid: 4c9df70117b5fa64886f0064cd335716, type: 2}
 --- !u!1 &321415730
 GameObject:

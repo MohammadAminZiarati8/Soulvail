@@ -1406,25 +1406,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // asked for the event's breakdown and again inside For, which is one redundant walk of
             // an authored array on the one frame a run ever ends — paid instead of re-declaring
             // GD §14.1's arithmetic at the call site.
-            ModeSpec mode = _catalog.Mode(State.ModeId);
-
-            // GD §14.1's third term (M6-09a rule 6): the ids rather than a count, because
-            // ShardWriter has to add them to the profile's set. The copy is the run's one
-            // allocation on a death tick, sized to what was actually met — and none at all on the
-            // usual death of a returning player, who meets nothing new.
-            int met = ShardPayout.NewArchetypes(
-                State.StageIndex, mode, _archetypesAlreadyMet, _newArchetypeScratch);
-
-            ContentId[] newArchetypes = met == 0
-                ? Array.Empty<ContentId>()
-                : _newArchetypeScratch.AsSpan(0, met).ToArray();
-
-            _events.Publish(new ShardsAwarded(
-                ShardPayout.For(State.StageIndex, mode, _archetypesAlreadyMet),
-                State.StageIndex,
-                ShardPayout.BossesKilled(State.StageIndex, mode),
-                newArchetypes,
-                State.ModeId));
+            PublishPayout();
 
             End();
             return;
@@ -1507,8 +1489,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // ending the run is this class's word and nobody else's (rule 14). Inert for Descent,
             // which is endless — and written anyway, because ModeSpec.FinalStage exists and the
             // alternative is a run walking through a door into a stage its mode does not have.
+            //
+            // **Paid like a death, then said** (UI-11c rules 1 to 3): ShardsAwarded → ModeFinished →
+            // RunEnded, in this tick. No snapshot follows, because the check sits above the
+            // boundary write below — Continue never offers a finished run.
             if (_flow.IsModeComplete)
             {
+                PublishPayout();
+
+                _events.Publish(new ModeFinished(State.ModeId, State.StageIndex));
+
                 End();
 
                 return;
@@ -2081,6 +2071,35 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         }
 
         _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
+    }
+
+    /// <summary>
+    /// GD §14.1's payout for the stage the run is at, published as <see cref="ShardsAwarded"/>. The
+    /// one body behind both ways a run is paid — a death and a finished mode (UI-11c rule 1) — so
+    /// the two cannot disagree about the arithmetic.
+    /// </summary>
+    /// <remarks>
+    /// GD §14.1's third term (M6-09a rule 6): the ids rather than a count, because ShardWriter has
+    /// to add them to the profile's set. The copy is the one allocation on a run-ending tick, sized
+    /// to what was actually met — and none at all for a returning player, who meets nothing new.
+    /// </remarks>
+    private void PublishPayout()
+    {
+        ModeSpec mode = _catalog.Mode(State.ModeId);
+
+        int met = ShardPayout.NewArchetypes(
+            State.StageIndex, mode, _archetypesAlreadyMet, _newArchetypeScratch);
+
+        ContentId[] newArchetypes = met == 0
+            ? Array.Empty<ContentId>()
+            : _newArchetypeScratch.AsSpan(0, met).ToArray();
+
+        _events.Publish(new ShardsAwarded(
+            ShardPayout.For(State.StageIndex, mode, _archetypesAlreadyMet),
+            State.StageIndex,
+            ShardPayout.BossesKilled(State.StageIndex, mode),
+            newArchetypes,
+            State.ModeId));
     }
 
     /// <summary>

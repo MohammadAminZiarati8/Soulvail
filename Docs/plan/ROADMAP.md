@@ -402,7 +402,7 @@ What the planning found:
 | UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *waits on the owner's answer, written in the spec* | S | owner | ☐ |
 | UI-11a | [The profile remembers places and picks](tasks/UI-11a-the-profile-remembers-places.md) — `PlayerProfile` v5: finished places, best stages, the picked class and place | M | — | ☑ |
 | UI-11b | [Places unlock in order](tasks/UI-11b-places-unlock-in-order.md) — `UnlockedBy`, `PlaceUnlocks`; the Jungle ends at stage 30 | M | UI-11a | ☑ |
-| UI-11c | [Finishing a place, in core](tasks/UI-11c-finishing-a-place-in-core.md) — `ModeFinished`, and a finish pays like a death | S | UI-11b | ☐ |
+| UI-11c | [Finishing a place, in core](tasks/UI-11c-finishing-a-place-in-core.md) — `ModeFinished`, and a finish pays like a death | S | UI-11b | ☑ |
 | UI-11d | [The profile hears a finish, and Run end says so](tasks/UI-11d-the-profile-hears-a-finish.md) — `PlaceWriter`, "Jungle cleared!" | M | UI-11a, UI-11c | ☐ |
 | UI-11e | [The home screen and its tab bar](tasks/UI-11e-the-home-screen.md) — picked place, picked class, Play; Heroes · Play · Places | M | UI-11a, UI-11b | ☐ |
 | UI-11f | [The Heroes tab](tasks/UI-11f-the-heroes-tab.md) — every class, locked ones too; Choose picks rather than starts | M | UI-11e | ☐ |

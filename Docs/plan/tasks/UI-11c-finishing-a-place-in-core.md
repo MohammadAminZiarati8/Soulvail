@@ -53,4 +53,10 @@ public readonly struct ModeFinished
 
 ## As built
 
-_Filled at merge._
+Built to the Files table, no deviations.
+
+The death branch's payout moved into a private `RunSession.PublishPayout()`, which the completion branch also calls, so the two cannot disagree about the arithmetic (rule 1) and the completion branch allocates exactly what the death branch does (rule 5). The new `ModeFinished` carries `State.ModeId` and `State.StageIndex`, which the flow leaves at the final stage. `ShardsAwarded`'s doc comment now names the finish as its second publisher.
+
+`RunSessionFinishTests` plays a real session through a flat-scaled two-stage mode (so the endless row's stage 40 is the same fight as stage 1). `FinalClear_TakesNoSnapshot` counts `RunSnapshotTaken` after the stage-2 arrival and again after the end.
+
+Suite: 4 135 EditMode, 4 133 passed, 1 failed (the known D3D12 depth row), 1 inconclusive. Nothing writes `FinishedModeIds` yet; that is UI-11d.

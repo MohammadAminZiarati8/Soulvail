@@ -58,7 +58,8 @@ public readonly struct RunEnded
 }
 
 /// <summary>
-/// What the run just paid, in Soul Shards (GD §14.1). Published on the death path and nowhere else.
+/// What the run just paid, in Soul Shards (GD §14.1). Published on the death path and when a finite
+/// mode's final stage is cleared (UI-11c), and nowhere else.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -126,5 +127,30 @@ public readonly struct ShardsAwarded
         BossesKilled = bossesKilled;
         NewArchetypes = newArchetypes ?? Array.Empty<ContentId>();
         ModeId = modeId;
+    }
+}
+
+/// <summary>
+/// The run cleared its mode's final stage (UI-11c). Published by <c>RunSession.Tick</c> when a
+/// finite mode has run out of stages, and never for a death or for an endless mode.
+/// </summary>
+/// <remarks>
+/// The order on the wire is <see cref="ShardsAwarded"/> → <c>ModeFinished</c> → <see cref="RunEnded"/>,
+/// in one tick: a finished run is paid exactly as a death at the final stage would be, then says
+/// the place is done, then closes. Its own event rather than a field on <c>ShardsAwarded</c>,
+/// because a death must be able to say nothing about it.
+/// </remarks>
+public readonly struct ModeFinished
+{
+    /// <summary>The mode that was finished.</summary>
+    public readonly ContentId ModeId;
+
+    /// <summary>The stage that was cleared last — the mode's <c>FinalStage</c>.</summary>
+    public readonly int FinalStage;
+
+    public ModeFinished(ContentId modeId, int finalStage)
+    {
+        ModeId = modeId;
+        FinalStage = finalStage;
     }
 }

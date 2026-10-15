@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
+using Soulvail.Core.Save;
+using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Controls;
 using TMPro;
@@ -14,48 +19,34 @@ using VContainer;
 namespace Soulvail.Game.Presentation
 {
     /// <summary>
-    /// The menu, which is two buttons — one of them usually hidden. Tapping <c>Descend</c> opens
-    /// the class-select screen; tapping <c>Continue</c> records the run most recently written — the
-    /// one <c>SavedRun</c> holds, which boot seeds and every run's writer keeps current (M6-11a) —
-    /// and loads the Run scene. See AR §3 — this is presentation: it decides nothing about the run
-    /// beyond which mode, which class and which seed, and all three are choices a player makes, not
-    /// outcomes a simulation computes.
+    /// The home screen (UI-11e): the picked place, the picked class, <c>Play</c>, and a tab bar.
+    /// <c>Play</c> starts a run with both picks in one tap; <c>Continue</c> records the run most
+    /// recently written — the one <c>SavedRun</c> holds (M6-11a) — and loads the Run scene. See
+    /// AR §3 — this is presentation: it decides nothing about the run beyond which mode, which class
+    /// and which seed, and all three are choices a player makes, not outcomes a simulation computes.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b><c>Descend</c> stopped starting a run at M5-07 (rule 1).</b> It used to set
-    /// <c>PendingRun</c> from the catalog's first mode and first class and await the load in one
-    /// method — keeping the mode and losing the class, which is why six merged tasks shipped a
-    /// second class nobody could reach. That write now belongs to the card the player taps, and the
-    /// double-tap guard, the <c>async void</c> and the <c>catch</c> that gives the buttons back went
-    /// with it rather than being copied, so there is still one method in the project that starts a
-    /// fresh run. This file no longer reads the catalog at all.
+    /// <b>The picks resolve and never fail</b> (UI-11e rule 1): <see cref="PickedMode"/> and
+    /// <see cref="PickedCharacter"/> read the profile's selection and fall back to the first open
+    /// place and the first owned class when it names one that is gone, locked or not on offer. A fresh
+    /// profile therefore plays the Jungle with the Ranger.
     /// </para>
     /// <para>
-    /// The seed is wall-clock derived, because no mode supplies one yet — Daily mode is where a
-    /// seed stops being arbitrary. A <c>Continue</c> chooses none of the three: mode, class and
-    /// seed all come off the snapshot (M2-14b rule 7), so a resumed Gravecaller run resumes as a
-    /// Gravecaller without <see cref="ClassSelectPresenter"/> having an opinion.
+    /// <b><c>Play</c> is the one method that starts a fresh run from this screen</b>, and the class
+    /// page's Choose is the other (M5-07). The seed is wall-clock derived, because no mode supplies
+    /// one yet. A <c>Continue</c> chooses none of the three: mode, class and seed all come off the
+    /// snapshot (M2-14b rule 7).
     /// </para>
     /// <para>
-    /// <b><c>Descend</c> with a save present does not delete it</b>, and the absence of that line is
-    /// deliberate. The new run's opening write overwrites the file on its first frame (M2-14a rule
-    /// 1), so the abandonment is recorded by the thing that already records every run — and the
-    /// alternative would put an <c>ISaveStore</c> and a fire-and-forget delete into a presenter.
-    /// A confirmation dialog before abandoning a deep run is real UX and it is M8-02's, with the
-    /// string M6-10 owns. <b>Opening the class-select screen is not abandoning anything</b>: nothing
-    /// is written until a card is tapped, and <c>Back</c> costs the player nothing.
+    /// <b><c>Play</c> with a save present does not delete it</b>: the new run's opening write
+    /// overwrites the file on its first frame (M2-14a rule 1). A confirmation before abandoning a deep
+    /// run is M8-02's.
     /// </para>
     /// <para>
-    /// <b>The three strings on screen stopped being raw English at M3-14a</b> (rule 8). They were
-    /// typed into <c>Menu.unity</c> from M0-17, and the ROADMAP's parking-lot line said they would
-    /// become <see cref="LocKey"/>s <em>"when <c>ILocalizer</c> and the English tables land"</em> —
-    /// which is this task, three milestones early. <b>Three, not the two that line names</b>:
-    /// <c>Continue</c> was added by M3-07b's resume flow and counted by nobody. So M6-10 inherits
-    /// no English typed into this scene, and AR §11.5's <em>"no raw user-facing string anywhere"</em>
-    /// is a thing a test asserts here rather than an aspiration. Showing anything <em>about</em> the
-    /// saved run on the button — "Stage 9, 12 minutes ago" — needs a format as well as a key, and is
-    /// still M8-02's.
+    /// <b>Every string on screen is a <see cref="LocKey"/></b> (M3-14a rule 8). The Heroes tab and the
+    /// class card open the class page until UI-11f; the Places tab and the place card do nothing until
+    /// UI-11g.
     /// </para>
     /// </remarks>
     public sealed class MenuPresenter : MonoBehaviour
@@ -63,11 +54,14 @@ namespace Soulvail.Game.Presentation
         /// <summary>The game's name. Shared with <c>Boot.unity</c>'s splash, which nothing resolves.</summary>
         private static readonly LocKey TitleKey = new LocKey("ui.app.title");
 
-        /// <summary>The button that starts a new run.</summary>
-        private static readonly LocKey DescendKey = new LocKey("ui.menu.descend");
+        /// <summary>The button that starts a new run with the picked place and class.</summary>
+        private static readonly LocKey PlayKey = new LocKey("ui.menu.play");
 
         /// <summary>The button that resumes the run on disk (M3-07b).</summary>
         private static readonly LocKey ContinueKey = new LocKey("ui.menu.continue");
+
+        /// <summary>"Best: stage {0}" under the place card.</summary>
+        private static readonly LocKey BestKey = new LocKey("ui.home.best");
 
         /// <summary>Layout, in dp (UI-06b). The buttons are never under 240 × 56; the plate keeps its sprite's ratio.</summary>
         public const float ButtonWidthDp = 260f;
@@ -79,6 +73,19 @@ namespace Soulvail.Game.Presentation
         public const float PlateInsetDp = 28f;
         public const float TitleDp = 40f;
 
+        /// <summary>Home layout (UI-11e), in dp up from the safe area's bottom edge.</summary>
+        public const float CardWidthDp = 320f;
+        public const float PlaceCardBottomDp = 440f;
+        public const float PlaceCardHeightDp = 108f;
+        public const float ClassCardBottomDp = 232f;
+        public const float ClassCardHeightDp = 192f;
+        public const float PrimaryCenterDp = 186f;
+        public const float CardNameDp = 22f;
+        public const float CardBestDp = 16f;
+
+        private const int FallbackPreviewPx = 512;
+
+        [Tooltip("The Play button (once Descend): starts a run with the picked place and class.")]
         [SerializeField] private Button _descend;
 
         /// <summary>
@@ -88,20 +95,36 @@ namespace Soulvail.Game.Presentation
         /// </summary>
         [SerializeField] private Button _continue;
 
-        [Tooltip("The game's name over the menu. Written from ui.app.title on enable, so the " +
-                 "scene's own value is a placeholder — see the class remarks.")]
+        [Tooltip("The game's name over the menu. Written from ui.app.title on enable.")]
         [SerializeField] private TMP_Text _title;
 
-        [Tooltip("The Descend button's label, written from ui.menu.descend.")]
+        [Tooltip("The Play button's label, written from ui.menu.play.")]
         [SerializeField] private TMP_Text _descendLabel;
 
         [Tooltip("The Continue button's label, written from ui.menu.continue.")]
         [SerializeField] private TMP_Text _continueLabel;
 
-        [Tooltip("The class-select screen Descend opens (M5-07). Dressed in Menu.unity rather " +
-                 "than on this object, because the screen is its own prefab — PausePresenter " +
-                 "reaches the Skills screen the same way and for the same reason.")]
+        [Tooltip("The class page the class card and the Heroes tab open (M5-07).")]
         [SerializeField] private ClassSelectPresenter _classSelect;
+
+        [Header("Home (UI-11e)")]
+        [Tooltip("The place card: tapping it opens the Places tab.")]
+        [SerializeField] private Button _placeCard;
+
+        [SerializeField] private TMP_Text _placeName;
+
+        [Tooltip("\"Best: stage N\", off when the best is 0.")]
+        [SerializeField] private TMP_Text _placeBest;
+
+        [Tooltip("The class card: tapping it opens the Heroes tab.")]
+        [SerializeField] private Button _classCard;
+
+        [Tooltip("The picked class's body, drawn from CharacterPreview's texture.")]
+        [SerializeField] private RawImage _classPreview;
+
+        [SerializeField] private TMP_Text _className;
+
+        [SerializeField] private TabBar _tabs;
 
         [Header("Dressing (UI-06b)")]
         [Tooltip("CharacterPage_Background, a child of the canvas rather than of Safe and stretched " +
@@ -120,7 +143,15 @@ namespace Soulvail.Game.Presentation
         private SavedRun _saved;
         private SceneLoader _loader;
         private ILocalizer _localizer;
+        private ContentCatalog _catalog;
+        private ProfileStore _profile;
+        private ClassSelectRoster _roster;
+        private CharacterPreview _preview;
+        private CharacterLookBook _looks;
         private Canvas _canvas;
+        private bool _starting;
+        private bool _bodyDirty;
+        private bool _classSelectWasOpen;
         private bool _hasSave;
         private bool _fitted;
         private int _fitWidth;
@@ -129,29 +160,113 @@ namespace Soulvail.Game.Presentation
         private Rect _fitSafe;
         private float _fitPx;
 
+        /// <summary>The place the home screen shows and <c>Play</c> starts, as of the last <see cref="Draw"/>.</summary>
+        public ContentId SelectedMode { get; private set; }
+
+        /// <summary>The class the home screen shows and <c>Play</c> starts, as of the last <see cref="Draw"/>.</summary>
+        public ContentId SelectedCharacter { get; private set; }
+
         /// <param name="localizer">
-        /// What turns this screen's three keys into words (M3-14a rule 8). Resolved from
-        /// <c>BootScope</c>, which is why the localizer is registered there rather than in
-        /// <c>RunScope</c> — <b>the Menu needs it and has no run</b> (rule 4).
+        /// What turns this screen's keys into words (M3-14a rule 8). Resolved from <c>BootScope</c>.
         /// </param>
-        /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
-        /// <remarks>
-        /// <b>The <c>ContentCatalog</c> left this signature at M5-07</b>, with the two methods that
-        /// read it. Nothing on this screen asks what content exists any more — the class-select
-        /// screen does, and it resolves its own — and an injected dependency nobody reads is a
-        /// claim about a file that has stopped being true.
-        /// </remarks>
+        /// <param name="catalog">What places and classes exist. Null leaves the cards undrawn.</param>
+        /// <param name="profile">The picks, the bests and what is owned; <c>Play</c> saves the picks.</param>
+        /// <param name="roster">Which classes are on offer. None means every class.</param>
+        /// <param name="preview">The 3D stage the class card shows. Null leaves the card without a body.</param>
+        /// <param name="looks">The class → body table the preview stands from.</param>
+        /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
         [Inject]
         public void Construct(
             PendingRun pending,
             SavedRun saved,
             SceneLoader loader,
-            ILocalizer localizer)
+            ILocalizer localizer,
+            ContentCatalog catalog = null,
+            ProfileStore profile = null,
+            ClassSelectRoster roster = null,
+            CharacterPreview preview = null,
+            CharacterLookBook looks = null)
         {
             _pending = pending ?? throw new ArgumentNullException(nameof(pending));
             _saved = saved ?? throw new ArgumentNullException(nameof(saved));
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
+            _catalog = catalog;
+            _profile = profile;
+            _roster = roster;
+            _preview = preview;
+            _looks = looks;
+        }
+
+        /// <summary>
+        /// The place a run starts in: the profile's pick if it is listed and open, otherwise the first
+        /// listed open place, otherwise the catalog's first (UI-11e rule 1).
+        /// </summary>
+        /// <exception cref="InvalidOperationException">The catalog holds no modes.</exception>
+        public static ContentId PickedMode(ContentCatalog catalog, in PlayerProfile profile)
+        {
+            ContentId picked = profile.SelectedModeId;
+
+            if (picked.Value is not null
+                && catalog.TryGetMode(picked, out ModeSpec chosen)
+                && chosen.IsListed
+                && PlaceUnlocks.IsUnlocked(picked, profile, catalog))
+            {
+                return picked;
+            }
+
+            IReadOnlyList<ModeSpec> modes = catalog.Modes;
+
+            for (int i = 0; i < modes.Count; i++)
+            {
+                if (modes[i].IsListed && PlaceUnlocks.IsUnlocked(modes[i].Id, profile, catalog))
+                {
+                    return modes[i].Id;
+                }
+            }
+
+            if (modes.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "The content catalog holds no modes, so a run has no mode to start in. Add a " +
+                    "ModeDefinition to BootScope's mode list.");
+            }
+
+            return modes[0].Id;
+        }
+
+        /// <summary>
+        /// The class a run starts as: the profile's pick if it is on offer and owned, otherwise the
+        /// first owned class on offer (UI-11e rule 1).
+        /// </summary>
+        /// <exception cref="InvalidOperationException">No class is on offer.</exception>
+        public static ContentId PickedCharacter(ContentCatalog catalog, ClassSelectRoster roster, in PlayerProfile profile)
+        {
+            IReadOnlyList<CharacterSpec> shown = roster is null ? catalog.Characters : roster.ShownFrom(catalog);
+            ContentId picked = profile.SelectedCharacterId;
+
+            for (int i = 0; i < shown.Count; i++)
+            {
+                if (shown[i].Id == picked && ClassUnlocks.IsUnlocked(shown[i].Id, profile, catalog))
+                {
+                    return picked;
+                }
+            }
+
+            for (int i = 0; i < shown.Count; i++)
+            {
+                if (ClassUnlocks.IsUnlocked(shown[i].Id, profile, catalog))
+                {
+                    return shown[i].Id;
+                }
+            }
+
+            if (shown.Count == 0)
+            {
+                throw new InvalidOperationException("No class is on offer, so a run has nobody to start as.");
+            }
+
+            return shown[0].Id;
         }
 
         /// <remarks>
@@ -163,7 +278,7 @@ namespace Soulvail.Game.Presentation
             if (_descend == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(MenuPresenter)} has no {nameof(Button)} assigned. Drag the Descend " +
+                    $"{nameof(MenuPresenter)} has no {nameof(Button)} assigned. Drag the Play " +
                     "button in this scene onto its Descend field — without it the menu has no way " +
                     "into a run.");
             }
@@ -181,50 +296,126 @@ namespace Soulvail.Game.Presentation
                 throw new MissingReferenceException(
                     $"{nameof(MenuPresenter)} has no {nameof(ClassSelectPresenter)} assigned. Drag " +
                     "the ClassSelect object in this scene onto its Class Select field — without it " +
-                    "Descend has no screen to open and the menu has no way into a run.");
+                    "the class card has no screen to open.");
             }
 
-            _descend.onClick.AddListener(Descend);
+            _descend.onClick.AddListener(Play);
             _continue.onClick.AddListener(Continue);
+            AddListener(_placeCard, OpenPlaces);
+            AddListener(_classCard, OpenHeroes);
 
-            // Written on every enable rather than once at injection, for the reason the Continue
-            // button's visibility is decided here: this is the screen the app comes back to after a
-            // death, and drawing it at the moment it goes on screen is the only reading that is true
-            // when the player sees it. Three labels, and none of them typed into the scene (rule 8).
+            if (_tabs != null)
+            {
+                _tabs.Selected += OnTab;
+                _tabs.Configure(_localizer);
+                _tabs.Show(Tab.Play);
+            }
+
+            // Written on every enable: this is the screen the app comes back to after a death, and
+            // drawing it at the moment it goes on screen is the only reading that is true when the
+            // player sees it.
             Write(_title, TitleKey);
-            Write(_descendLabel, DescendKey);
+            Write(_descendLabel, PlayKey);
             Write(_continueLabel, ContinueKey);
 
-            // Decided here, on every enable, rather than once at injection. The Menu is the screen
-            // the app comes back to after a death, so the answer changes while this object is
-            // alive — and reading it at the moment the menu goes on screen is the only reading that
-            // is true when the player sees it.
             _continue.gameObject.SetActive(_saved.IsPresent);
 
             _hasSave = _saved.IsPresent;
+            _starting = false;
             _fitted = false;
-            Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
-        }
 
-        /// <remarks>
-        /// Late, so <c>CanvasScaler</c> and <c>SafeAreaFitter</c> have both taken this frame's screen in
-        /// their own <c>Update</c> before the menu reads the scale (UI-08d rule 2).
-        /// </remarks>
-        private void LateUpdate()
-        {
+            Draw();
             Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
         }
 
         /// <summary>
+        /// Resolves the picks and draws the two cards from the profile as it stands (UI-11e rules 1–3).
+        /// Does nothing without a catalog and a profile.
+        /// </summary>
+        public void Draw()
+        {
+            if (_catalog is null || _profile is null)
+            {
+                return;
+            }
+
+            PlayerProfile profile = _profile.Current;
+
+            SelectedMode = PickedMode(_catalog, profile);
+            SelectedCharacter = PickedCharacter(_catalog, _roster, profile);
+
+            ModeSpec mode = _catalog.Mode(SelectedMode);
+            int best = profile.BestStage(SelectedMode);
+
+            if (_placeName != null)
+            {
+                _placeName.text = _localizer.Get(mode.NameKey);
+            }
+
+            if (_placeBest != null)
+            {
+                _placeBest.gameObject.SetActive(best > 0);
+                _placeBest.text = best > 0 ? _localizer.Format(BestKey, best) : string.Empty;
+            }
+
+            if (_className != null)
+            {
+                _className.text = _localizer.Get(_catalog.Character(SelectedCharacter).NameKey);
+            }
+
+            _bodyDirty = true;
+        }
+
+        /// <summary>
+        /// Late, so <c>CanvasScaler</c> and <c>SafeAreaFitter</c> have both taken this frame's screen in
+        /// their own <c>Update</c> before the menu reads the scale (UI-08d rule 2).
+        /// </summary>
+        private void LateUpdate()
+        {
+            Refit(Screen.width, Screen.height, Screen.dpi, Screen.safeArea);
+
+            // The class page shares the one preview stage and puts it down when it closes, so the
+            // card stands its body again on the frame after. Late, because ClassSelect hides the
+            // stage in its own Start.
+            bool open = _classSelect != null && _classSelect.IsOpen;
+
+            if (_classSelectWasOpen && !open)
+            {
+                _bodyDirty = true;
+            }
+
+            _classSelectWasOpen = open;
+
+            if (_bodyDirty && !open)
+            {
+                _bodyDirty = false;
+                ShowBody();
+            }
+        }
+
+        private void ShowBody()
+        {
+            if (_preview == null || _looks == null || _classPreview == null || SelectedCharacter.Value is null)
+            {
+                return;
+            }
+
+            float scale = _classPreview.canvas != null && _classPreview.canvas.scaleFactor > 0f ? _classPreview.canvas.scaleFactor : 1f;
+            Vector2 size = _classPreview.rectTransform.rect.size * scale;
+            bool usable = size.x > 1f && size.y > 1f && float.IsFinite(size.x) && float.IsFinite(size.y);
+
+            _preview.Resize(
+                usable ? Mathf.RoundToInt(size.x) : FallbackPreviewPx,
+                usable ? Mathf.RoundToInt(size.y) : FallbackPreviewPx);
+            _classPreview.texture = _preview.Texture;
+            _preview.Show(_looks.For(SelectedCharacter));
+        }
+
+        /// <summary>
         /// Lays the menu out again if the screen, its density or its safe area moved since the last
-        /// time — checked once a frame, and nothing at all is done when none did (UI-08d rule 2,
-        /// UI-07a finding 5: the menu used to lay out once, on enable).
+        /// time — checked once a frame, and nothing at all is done when none did (UI-08d rule 2).
         /// </summary>
         /// <returns>Whether it laid out.</returns>
-        /// <remarks>
-        /// The canvas's scale is compared too, through the px per dp it gives: <c>CanvasScaler</c> can
-        /// take its first reading of a screen a frame after this object's <c>OnEnable</c>.
-        /// </remarks>
         public bool Refit(int width, int height, float dpi, Rect safeArea)
         {
             if (width <= 0 || height <= 0)
@@ -252,15 +443,15 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// Places the pieces in dp, <paramref name="px"/> canvas units to the dp (UI-06b). The
+        /// Places the pieces in dp, <paramref name="px"/> canvas units to the dp (UI-06b, UI-11e). The
         /// background stretches over the whole canvas, notch strip included (UI-08d rule 1); the rest
-        /// is anchored to the safe area, so nothing here needs the rect's size: the plate sits on the
-        /// upper third's centre line, the primary button on the middle and the secondary under it.
+        /// is anchored to the safe area. From the top: the title plate on the upper sixth's centre
+        /// line; from the bottom: the tab bar, the buttons, the class card and the place card.
         /// </summary>
         /// <remarks>
-        /// <b>With a save, Continue is the green primary and Descend the blue secondary below it; with
-        /// none, Descend is the green primary alone</b> (rule 3). The decision is only which button holds
-        /// which place and which sprites it wears — the click handlers are not touched.
+        /// <b>With a save, Continue is the green primary and Play the blue secondary below it; with
+        /// none, Play is the green primary alone</b> (UI-11e rule 4). The decision is only which button
+        /// holds which place and which sprites it wears — the click handlers are not touched.
         /// </remarks>
         public void Layout(float px, bool hasSave)
         {
@@ -295,18 +486,85 @@ namespace Soulvail.Game.Presentation
                 _title.overflowMode = TextOverflowModes.Ellipsis;
             }
 
-            PlaceButton(_continue, _continueLabel, _greenButton, _greenPressed, 0f, px);
+            PlaceButton(_continue, _continueLabel, _greenButton, _greenPressed, PrimaryCenterDp, px);
 
             if (hasSave)
             {
-                PlaceButton(_descend, _descendLabel, _blueButton, _bluePressed, -(ButtonHeightDp + ButtonGapDp), px);
+                PlaceButton(_descend, _descendLabel, _blueButton, _bluePressed, PrimaryCenterDp - (ButtonHeightDp + ButtonGapDp), px);
             }
             else
             {
-                PlaceButton(_descend, _descendLabel, _greenButton, _greenPressed, 0f, px);
+                PlaceButton(_descend, _descendLabel, _greenButton, _greenPressed, PrimaryCenterDp, px);
+            }
+
+            LayoutCards(px);
+
+            if (_tabs != null)
+            {
+                _tabs.Layout(px);
             }
         }
 
+        private void LayoutCards(float px)
+        {
+            if (_placeCard != null)
+            {
+                Place((RectTransform)_placeCard.transform, new Vector2(0.5f, 0f), new Vector2(CardWidthDp * px, PlaceCardHeightDp * px), (PlaceCardBottomDp + (PlaceCardHeightDp * 0.5f)) * px);
+            }
+
+            if (_placeName != null)
+            {
+                Stretch(_placeName, px, 0.5f, 1f, CardNameDp, TextAlignmentOptions.Bottom);
+            }
+
+            if (_placeBest != null)
+            {
+                Stretch(_placeBest, px, 0f, 0.5f, CardBestDp, TextAlignmentOptions.Top);
+            }
+
+            if (_classCard != null)
+            {
+                Place((RectTransform)_classCard.transform, new Vector2(0.5f, 0f), new Vector2(CardWidthDp * px, ClassCardHeightDp * px), (ClassCardBottomDp + (ClassCardHeightDp * 0.5f)) * px);
+            }
+
+            if (_classPreview != null)
+            {
+                RectTransform rect = _classPreview.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = new Vector2(0f, 36f * px);
+                rect.offsetMax = Vector2.zero;
+            }
+
+            if (_className != null)
+            {
+                RectTransform rect = _className.rectTransform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(0.5f, 0f);
+                rect.offsetMin = new Vector2(8f * px, 0f);
+                rect.offsetMax = new Vector2(-8f * px, 36f * px);
+                _className.fontSize = CardNameDp * px;
+                _className.alignment = TextAlignmentOptions.Center;
+                _className.enableAutoSizing = false;
+            }
+        }
+
+        /// <summary>A label over a band of its card, between two heights as fractions of the card.</summary>
+        private static void Stretch(TMP_Text label, float px, float yMin, float yMax, float sizeDp, TextAlignmentOptions alignment)
+        {
+            RectTransform rect = label.rectTransform;
+            rect.anchorMin = new Vector2(0f, yMin);
+            rect.anchorMax = new Vector2(1f, yMax);
+            rect.offsetMin = new Vector2(8f * px, 0f);
+            rect.offsetMax = new Vector2(-8f * px, 0f);
+            label.fontSize = sizeDp * px;
+            label.alignment = alignment;
+            label.enableAutoSizing = false;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        /// <summary>A button's centre is <paramref name="yDp"/> up from the safe area's bottom edge.</summary>
         private static void PlaceButton(Button button, TMP_Text label, Sprite face, Sprite pressed, float yDp, float px)
         {
             if (button == null)
@@ -314,7 +572,7 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
-            Place((RectTransform)button.transform, new Vector2(0.5f, 0.5f), new Vector2(ButtonWidthDp * px, ButtonHeightDp * px), yDp * px);
+            Place((RectTransform)button.transform, new Vector2(0.5f, 0f), new Vector2(ButtonWidthDp * px, ButtonHeightDp * px), yDp * px);
 
             SpriteState sprites = button.spriteState;
             sprites.pressedSprite = pressed;
@@ -380,15 +638,10 @@ namespace Soulvail.Game.Presentation
             return StickShaper.PixelsPerDp(dpi) / scale;
         }
 
-        /// <summary>
-        /// Draws <paramref name="key"/> onto <paramref name="label"/>, if both are there.
-        /// </summary>
         /// <remarks>
         /// <b>A missing label is silent and a missing localizer falls back to the key</b>, which is
-        /// deliberately softer than the two <c>MissingReferenceException</c>s above it: a button with
-        /// no <c>Button</c> is a menu with no way into a run, where a button with no <em>label</em>
-        /// is a menu the player can still use. <c>TreeViewPresenter.Resolve</c>'s answer, and
-        /// <c>ToString()</c> rather than <c>Key</c> for <c>TableLocalizer.Get</c>'s reason.
+        /// deliberately softer than the <c>MissingReferenceException</c>s above: a menu with no
+        /// <c>Button</c> has no way into a run, where one with no <em>label</em> can still be used.
         /// </remarks>
         private void Write(TMP_Text label, LocKey key)
         {
@@ -404,34 +657,54 @@ namespace Soulvail.Game.Presentation
         {
             if (_descend != null)
             {
-                _descend.onClick.RemoveListener(Descend);
+                _descend.onClick.RemoveListener(Play);
             }
 
             if (_continue != null)
             {
                 _continue.onClick.RemoveListener(Continue);
             }
+
+            RemoveListener(_placeCard, OpenPlaces);
+            RemoveListener(_classCard, OpenHeroes);
+
+            if (_tabs != null)
+            {
+                _tabs.Selected -= OnTab;
+            }
         }
 
-        /// <summary>
-        /// Opens the class-select screen (M5-07 rule 1). Nothing is recorded and no scene loads.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// <b>Synchronous, and it writes nothing.</b> Until M5-07 this method set
-        /// <c>PendingRun</c> from the catalog's first mode and first class and awaited the Run
-        /// scene; the write, the await, the double-tap guard and the <c>catch</c> that gave the
-        /// buttons back are all <see cref="ClassSelectPresenter"/>'s now, on the card's tap, because
-        /// that is where the class is finally known. What is left here is a screen going up.
-        /// </para>
-        /// <para>
-        /// <b>No double-tap guard, and its absence is the point.</b> The screen is a full-screen
-        /// <see cref="CanvasGroup"/> that blocks raycasts, so a second touch lands on it rather than
-        /// on this button, and <c>Open</c> called twice draws the same cards twice. The guard that
-        /// matters is on the thing that starts a run, which is one screen along.
-        /// </para>
-        /// </remarks>
-        private void Descend()
+        private static void AddListener(Button button, UnityEngine.Events.UnityAction handler)
+        {
+            if (button != null)
+            {
+                button.onClick.AddListener(handler);
+            }
+        }
+
+        private static void RemoveListener(Button button, UnityEngine.Events.UnityAction handler)
+        {
+            if (button != null)
+            {
+                button.onClick.RemoveListener(handler);
+            }
+        }
+
+        private void OnTab(Tab tab)
+        {
+            switch (tab)
+            {
+                case Tab.Heroes:
+                    OpenHeroes();
+                    break;
+                case Tab.Places:
+                    OpenPlaces();
+                    break;
+            }
+        }
+
+        /// <summary>The Heroes tab and the class card: the class page, until UI-11f.</summary>
+        private void OpenHeroes()
         {
             if (_classSelect == null || _classSelect.IsOpen)
             {
@@ -441,29 +714,62 @@ namespace Soulvail.Game.Presentation
             _classSelect.Open();
         }
 
+        /// <summary>The Places tab and the place card: nothing, until UI-11g.</summary>
+        private void OpenPlaces()
+        {
+        }
+
+        /// <summary>
+        /// Starts a fresh run with the picked place and class (UI-11e rule 4), and saves the picks.
+        /// </summary>
+        /// <remarks>
+        /// <c>async void</c> is right for what is effectively an event handler: every path out of the
+        /// await is handled here. The latch goes down before anything else, and both buttons go dead
+        /// with it, so a second touch during the load finds nothing to start.
+        /// </remarks>
+        private async void Play()
+        {
+            if (_starting || _catalog is null || _profile is null)
+            {
+                return;
+            }
+
+            _starting = true;
+            SetButtons(false);
+
+            try
+            {
+                _profile.Pick(SelectedCharacter, SelectedMode);
+                _pending.Set(SelectedMode, SelectedCharacter, Environment.TickCount);
+
+                await _loader.LoadAsync(SceneLoader.Run);
+            }
+            catch (Exception exception)
+            {
+                _starting = false;
+                SetButtons(true);
+                Debug.LogException(exception, this);
+            }
+        }
+
         /// <summary>
         /// Records the run on disk as the one to play, and loads the scene it is played in.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// <b>The same path <see cref="Descend"/> takes, differing in one call.</b> The mode, the
-        /// class and the seed all come off the snapshot rather than being chosen here, which is
-        /// what makes a resume unable to disagree with the run it is resuming — and is why this
-        /// method reads nothing from the catalog at all.
-        /// </para>
-        /// <para>
-        /// <b>Nothing is deleted, here or anywhere on this path</b> (M2-14b rule 10). The file
-        /// survives until the next stage boundary overwrites it or death clears it, so a player
-        /// interrupted twice inside one stage resumes twice. The cost is that a resumed run rewinds
-        /// to the top of its stage each time, which the owner ruled acceptable at M2-00e.
-        /// </para>
+        /// The mode, the class and the seed all come off the snapshot rather than being chosen here,
+        /// which is what makes a resume unable to disagree with the run it is resuming. <b>Nothing is
+        /// deleted, here or anywhere on this path</b> (M2-14b rule 10): a run interrupted twice inside
+        /// one stage resumes twice, rewound to the top of its stage each time.
         /// </remarks>
         private async void Continue()
         {
-            // Both buttons, not just this one: the guard below is about not starting two runs, and
-            // a Descend tapped during the load would start the other kind.
-            _continue.interactable = false;
-            _descend.interactable = false;
+            if (_starting)
+            {
+                return;
+            }
+
+            _starting = true;
+            SetButtons(false);
 
             try
             {
@@ -476,15 +782,16 @@ namespace Soulvail.Game.Presentation
             }
             catch (Exception exception)
             {
-                _continue.interactable = true;
-                _descend.interactable = true;
+                _starting = false;
+                SetButtons(true);
                 Debug.LogException(exception, this);
             }
         }
 
-        // FirstModeId and FirstCharacterId left this file at M5-07. The first is
-        // ClassSelectPresenter.FirstModeId, unchanged and beside the write it feeds — GD §4.5's
-        // rule that no code may assume Descent is enforced in the same one place it always was.
-        // The second is gone outright: the class is a tap now, which is the whole task.
+        private void SetButtons(bool value)
+        {
+            _continue.interactable = value;
+            _descend.interactable = value;
+        }
     }
 }

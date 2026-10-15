@@ -127,10 +127,18 @@ MonoBehaviour:
     _text: "[Th\xEEs \xE7l\xE1ss h\xE1s \xF1\xF4 sk\xEEll tr\xE9\xE9 \xFD\xE9t. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.app.title
     _text: "[S\xF4\xFBlv\xE1\xEEl \xB7\xB7\xB7]"
-  - _key: ui.menu.descend
-    _text: "[D\xE9s\xE7\xE9\xF1d \xB7\xB7\xB7]"
+  - _key: ui.menu.play
+    _text: "[Pl\xE1\xFD \xB7\xB7]"
   - _key: ui.menu.continue
     _text: "[\xC7\xF4\xF1t\xEE\xF1\xFB\xE9 \xB7\xB7\xB7]"
+  - _key: ui.tab.heroes
+    _text: "[H\xE9r\xF4\xE9s \xB7\xB7\xB7]"
+  - _key: ui.tab.play
+    _text: "[Pl\xE1\xFD \xB7\xB7]"
+  - _key: ui.tab.places
+    _text: "[Pl\xE1\xE7\xE9s \xB7\xB7\xB7]"
+  - _key: ui.home.best
+    _text: "[B\xE9st: st\xE1g\xE9 {0} \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.death.title
     _text: "[\xDD\xF4\xFB d\xEE\xE9d \xB7\xB7\xB7]"
   - _key: ui.death.hint

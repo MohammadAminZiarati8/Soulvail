@@ -302,7 +302,7 @@ public sealed class TableLocalizerTests
     public void Localizer_ReadsThePickedTable()
     {
         var localizer = new TableLocalizer(new[] { LoadShippedTable(), LoadPseudoTable() }, "qps-ploc");
-        var key = new LocKey("ui.menu.descend");
+        var key = new LocKey("ui.menu.play");
 
         Assert.That(localizer.Locale, Is.EqualTo("qps-ploc"));
         Assert.That(localizer.Get(key), Is.EqualTo(LoadPseudoTable().ToDictionary()[key]));
@@ -765,7 +765,7 @@ public sealed class TableLocalizerTests
             Is.SameAs(fromRoot),
             "disposing the run took the localizer with it, so the Menu would have none.");
 
-        Assert.That(fromRoot.Get(new LocKey("ui.menu.descend")), Is.Not.Empty);
+        Assert.That(fromRoot.Get(new LocKey("ui.menu.play")), Is.Not.Empty);
     }
 
     // ---- AR §11.5, which is what this whole task makes assertable (rules 8, 9, 11) ---------------
@@ -847,7 +847,7 @@ public sealed class TableLocalizerTests
 
         foreach (string key in new[]
         {
-            "ui.app.title", "ui.menu.descend", "ui.menu.continue", "ui.death.title", "ui.death.hint",
+            "ui.app.title", "ui.menu.play", "ui.menu.continue", "ui.death.title", "ui.death.hint",
             "ui.runend.depth", "ui.runend.bosses", "ui.runend.shards",
             "ui.classselect.choose", "ui.classselect.unlock",
         })

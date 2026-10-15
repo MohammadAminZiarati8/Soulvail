@@ -118,18 +118,18 @@ public sealed class BootSmokeTests
         var presenter = Object.FindAnyObjectByType<MenuPresenter>();
         Assert.That(presenter, Is.Not.Null, "The Menu scene has no MenuPresenter in it.");
 
-        Button descend = Field<Button>(presenter, "_descend");
-        Assert.That(descend != null, Is.True, "The Menu's presenter has no Descend button wired.");
-        Assert.That(descend.interactable, Is.True, "The Descend button starts out untappable.");
+        Button descend = Field<Button>(presenter, "_classCard");
+        Assert.That(descend != null, Is.True, "The Menu's presenter has no class card wired.");
+        Assert.That(descend.interactable, Is.True, "The class card starts out untappable.");
 
         descend.onClick.Invoke();
 
         ClassSelectPresenter screen = Field<ClassSelectPresenter>(presenter, "_classSelect");
-        Assert.That(screen.IsOpen, Is.True, "Descend did not open the class-select screen.");
+        Assert.That(screen.IsOpen, Is.True, "The class card did not open the class-select screen.");
         Assert.That(
             SceneManager.GetActiveScene().name,
             Is.EqualTo(SceneLoader.Menu),
-            "Descend loaded a scene. Since M5-07 the class is chosen first, one screen along.");
+            "The class card loaded a scene. Since M5-07 the class is chosen first, one screen along.");
 
         var page = Field<CharacterPage>(screen, "_page");
         var shown = Field<IReadOnlyList<CharacterSpec>>(screen, "_shown");

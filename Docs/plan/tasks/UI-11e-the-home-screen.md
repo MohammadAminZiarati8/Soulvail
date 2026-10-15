@@ -61,4 +61,4 @@ public void Pick(ContentId characterId, ContentId modeId);
 
 ## As built
 
-_Filled at merge._
+Filled in the PROGRESS entry of 2026-10-15; deviations listed there. The home layout is dp up from the safe area's bottom: tab bar 0–64, buttons, class card 232–424, place card 440–548, title plate above. The class card shares the one `CharacterPreview` with the class page and stands its body again when the page closes.

@@ -102,20 +102,21 @@ public sealed class ClassSelectPresenterTests
         _spawned.Clear();
     }
 
-    // ---- Descend opens the screen; the screen starts the run -------------------------------------
+    // ---- The class card opens the screen; the screen starts the run -------------------------------
 
     [Test]
-    public void Menu_DescendOpensTheScreen()
+    public void Menu_ClassCardOpensTheScreen()
     {
         BuildScreen();
 
         MenuPresenter menu = Menu(out Button descend, out _);
+        Button card = (Button)typeof(MenuPresenter).GetField("_classCard", Private).GetValue(menu);
 
-        descend.onClick.Invoke();
+        card.onClick.Invoke();
 
-        Assert.That(_presenter.IsOpen, Is.True, "Descend did not open the class-select screen.");
-        Assert.That(_loader.Asked, Is.Empty, "Descend loaded a scene. The class is not known yet.");
-        Assert.That(_pending.IsSet, Is.False, "Descend wrote a pending run.");
+        Assert.That(_presenter.IsOpen, Is.True, "The class card did not open the class-select screen.");
+        Assert.That(_loader.Asked, Is.Empty, "The class card loaded a scene. The class is not chosen yet.");
+        Assert.That(_pending.IsSet, Is.False, "The class card wrote a pending run.");
         Assert.That(menu, Is.Not.Null);
         Assert.That(descend.interactable, Is.True);
     }
@@ -1082,6 +1083,7 @@ public sealed class ClassSelectPresenterTests
         Set(menu, "_descend", descend);
         Set(menu, "_continue", @continue);
         Set(menu, "_classSelect", _presenter);
+        Set(menu, "_classCard", NewButton("ClassCard", root));
 
         menu.Construct(_pending, saved ?? new SavedRun(), _loader, Passthrough());
 

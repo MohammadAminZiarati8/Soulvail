@@ -161,6 +161,21 @@ public sealed class ProfileStore
             .WithUnlocked(Appended(current.UnlockedCharacterIds, characterId)));
     }
 
+    /// <summary>
+    /// Records the class and place the home screen starts runs with (UI-11e), through
+    /// <see cref="PlayerProfile.WithSelection"/> so no other field moves. Writes nothing when the
+    /// profile already holds both.
+    /// </summary>
+    public void Pick(ContentId characterId, ContentId modeId)
+    {
+        if (_current.SelectedCharacterId == characterId && _current.SelectedModeId == modeId)
+        {
+            return;
+        }
+
+        Save(_current.WithSelection(characterId, modeId));
+    }
+
     /// <summary><paramref name="ids"/> with <paramref name="id"/> on the end, as a new array.</summary>
     /// <remarks>
     /// Shared with <c>ShardWriter</c>, which grows both of the profile's lists this way: the

@@ -26,10 +26,9 @@ namespace Soulvail.Game.Presentation
     /// <para>
     /// <b>It decides nothing about the run beyond which class</b> — AR §3, and
     /// <see cref="MenuPresenter"/>'s own argument: mode, class and seed are choices a player makes,
-    /// not outcomes a simulation computes. <b>The mode is still the catalog's first and this screen
-    /// invents no mode-select</b>. GD §4.5's rule is that a mode is a data object and no code may
-    /// assume Descent, so <see cref="FirstModeId"/> is the same stand-in
-    /// <c>MenuPresenter.FirstModeId</c> was, moved here with the write it feeds. The seed stays
+    /// not outcomes a simulation computes. <b>The mode is the home screen's pick</b>, resolved by
+    /// <see cref="MenuPresenter.PickedMode"/> (UI-11e) and not by a mode-select of this screen's own;
+    /// GD §4.5's rule that no code may assume Descent still holds. The seed stays
     /// wall-clock derived for the reason it always was.
     /// </para>
     /// <para>
@@ -559,7 +558,7 @@ namespace Soulvail.Game.Presentation
 
             try
             {
-                _pending.Set(FirstModeId(), characterId, Environment.TickCount);
+                _pending.Set(MenuPresenter.PickedMode(_catalog, _drawn), characterId, Environment.TickCount);
 
                 await _loader.LoadAsync(SceneLoader.Run);
             }
@@ -573,29 +572,6 @@ namespace Soulvail.Game.Presentation
 
                 Debug.LogException(exception, this);
             }
-        }
-
-        /// <summary>
-        /// The mode this run plays: the first the catalog holds, which is Descent because it is the
-        /// only one (GD §4.5).
-        /// </summary>
-        /// <remarks>
-        /// <b><c>MenuPresenter.FirstModeId</c>, moved with the write it feeds</b> — the first, rather
-        /// than <c>mode.descent</c> written here. GD §4.5's rule is that a mode is a data object and
-        /// nothing in the code may assume Descent. When there is a mode-select screen this becomes a
-        /// second choice; until then it is a stand-in.
-        /// </remarks>
-        /// <exception cref="InvalidOperationException">The catalog holds no modes.</exception>
-        private ContentId FirstModeId()
-        {
-            if (_catalog.Modes.Count == 0)
-            {
-                throw new InvalidOperationException(
-                    "The content catalog holds no modes, so a chosen class has no mode to start a " +
-                    "run with. Add a ModeDefinition to BootScope's mode list.");
-            }
-
-            return _catalog.Modes[0].Id;
         }
 
         /// <summary>

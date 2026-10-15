@@ -118,10 +118,18 @@ MonoBehaviour:
     _text: This class has no skill tree yet.
   - _key: ui.app.title
     _text: Soulvail
-  - _key: ui.menu.descend
-    _text: Descend
+  - _key: ui.menu.play
+    _text: Play
   - _key: ui.menu.continue
     _text: Continue
+  - _key: ui.tab.heroes
+    _text: Heroes
+  - _key: ui.tab.play
+    _text: Play
+  - _key: ui.tab.places
+    _text: Places
+  - _key: ui.home.best
+    _text: 'Best: stage {0}'
   - _key: ui.death.title
     _text: You died
   - _key: ui.death.hint

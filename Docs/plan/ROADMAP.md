@@ -398,7 +398,7 @@ What the planning found:
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☑ |
 | UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) — the tree stacks block over card, Pause and Run end are one centred column | M | UI-08a, UI-07c, UI-07d | ☑ |
 | UI-09 | The Pause and Run-end screens in the new art — *title only; waits on a Gemini sheet* | — | UI-08e | ☐ |
-| UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☐ |
+| UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☑ |
 | UI-10b | [One player cyan](tasks/UI-10b-one-player-cyan.md) — *waits on the owner's answer, written in the spec* | S | owner | ☐ |
 
 **UI-07 — The look pass's fixes; UI-08 — Portrait; UI-10 — In-world** *(2026-10-14)*: Claude ran the game in the Device Simulator at 2658 × 960 @ 480 dpi and wrote down what it saw; [UI-07a](tasks/UI-07a-the-look-pass-specs.md) lists the six findings and which task owns each. **UI-07b comes first** because every later row is checked from its PNG, not from the Game view, whose dpi is the monitor's. **UI-08 applies the owner's portrait ruling of 2026-09-29**: the switch and the docs, then the camera, the HUD, and the screens, each with its own capture. **UI-10 is the in-world look**: the square telegraph rings and the second player cyan, the latter waiting on one owner answer. **UI-09 waits on art.**

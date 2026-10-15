@@ -44,4 +44,8 @@ New decal shapes, animation in the shader, and the arena-hazard look.
 
 ## As built
 
-_Filled at merge._
+As specified. Nothing outside the Files table changed.
+
+- **Edge and rim.** `TelegraphRingTextureGenerator` computes alpha per texel from the distance to the centre: one texel of antialiasing at the edge, 50 % at exactly half the width, and the rim step from 0.45 to 1 at 92 % of the radius. `RingMask_IsInscribedCircle` walks outwards from inside the rim, not from the centre: the fill's 0.45 is under the 50 % line, so a walk from the centre stops 13 texels early. The first draft of the row did that and failed.
+- **`_MainTex` is set too.** Unity mirrors `_BaseMap` into `_MainTex` on the material; the diff shows both. Nothing reads `_MainTex`.
+- **Not witnessed.** The manual step (spawn rings as growing discs, round blast rings, the Pitcher's and boss decals) was not taken; no `Capture Look` was made. It is the owner's Editor check.

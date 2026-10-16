@@ -204,7 +204,7 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The title ribbon, centred on the frame's top edge; the title sits on it (rule 2).")]
         [SerializeField] private Image _ribbon;
 
-        [Tooltip("Glow_Soft behind the payout, tinted Palette.Essence (rule 5).")]
+        [Tooltip("RunEnd_Glow behind the payout, tinted Palette.Essence (rule 5; UI-09d).")]
         [SerializeField] private Image _shardGlow;
 
         [Tooltip("Icon_Stage, on the Depth row's pill.")]
@@ -856,7 +856,7 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// <c>Glow_Soft</c> centred on the payout's figure, twice its row's height: a child of the row
+        /// <c>RunEnd_Glow</c> centred on the payout's figure, twice its row's height: a child of the row
         /// drawn before the figure, so it sits behind the number and above the pill (rule 5).
         /// </summary>
         private void PlaceGlow(float width, float row, float px)

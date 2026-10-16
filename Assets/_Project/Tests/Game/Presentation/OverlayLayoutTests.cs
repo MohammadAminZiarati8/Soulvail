@@ -415,7 +415,7 @@ public sealed class OverlayLayoutTests
 
             expected.a = 0.6f;
 
-            Assert.That(glow.sprite.name, Is.EqualTo("Glow_Soft"), $"{pixels}");
+            Assert.That(glow.sprite.name, Is.EqualTo("RunEnd_Glow"), $"{pixels}: UI-09d's soft glow, not the HUD's Glow_Soft.");
             Assert.That(glow.color, Is.EqualTo(expected), $"{pixels}: Essence at 0.6.");
             Assert.That(glow.raycastTarget, Is.False, $"{pixels}");
             Assert.That(glow.transform.parent, Is.EqualTo(figure.transform.parent), $"{pixels}: above the pill, which is the row's own image.");

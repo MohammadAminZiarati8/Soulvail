@@ -10,7 +10,8 @@ namespace Soulvail.Tests.Game.Art;
 
 /// <summary>
 /// UI-09a: the eleven pieces Pause and Run end wear that the popup kit does not already have (two title
-/// ribbons, two emblems, three stat icons, four button glyphs), as imported for mobile.
+/// ribbons, two emblems, three stat icons, four button glyphs), as imported for mobile; and UI-09d's payout
+/// glow, which is generated rather than cut.
 /// </summary>
 [TestFixture]
 public sealed class RunEndArtTests
@@ -22,6 +23,11 @@ public sealed class RunEndArtTests
     /// Where <c>UI_v5/cut_sheets.py</c> writes the pieces, beside the repository.
     /// </summary>
     private const string CutFolder = "../Soulvail_GeminiSamples/UI_v5/png";
+
+    /// <summary>The payout's glow, written by <c>UI_v5/make_glow.py</c> into <see cref="CutFolder"/> (UI-09d).</summary>
+    private const string GlowPath = RunEndFolder + "/RunEnd_Glow.png";
+
+    private const int GlowSize = 256;
 
     private static readonly string[] RunEndPieces =
     {
@@ -37,15 +43,15 @@ public sealed class RunEndArtTests
         .Concat(Icons.Select(n => $"{IconsFolder}/{n}.png"));
 
     [Test]
-    public void RunEndArt_IsTheFourPieces()
+    public void RunEndArt_IsTheFivePieces()
     {
-        string[] expected = RunEndPieces.Select(n => $"{RunEndFolder}/{n}.png").OrderBy(p => p).ToArray();
+        string[] expected = RunEndPieces.Select(n => $"{RunEndFolder}/{n}.png").Append(GlowPath).OrderBy(p => p).ToArray();
         string[] found = AssetDatabase.FindAssets("t:Texture2D", new[] { RunEndFolder })
             .Select(AssetDatabase.GUIDToAssetPath)
             .OrderBy(p => p)
             .ToArray();
 
-        Assert.That(found, Is.EqualTo(expected), "RunEnd/ holds the four pieces and nothing else.");
+        Assert.That(found, Is.EqualTo(expected), "RunEnd/ holds the four cut pieces, the glow, and nothing else.");
 
         string[] files = Directory.GetFiles(RunEndFolder)
             .Where(f => !f.EndsWith(".meta"))
@@ -83,6 +89,92 @@ public sealed class RunEndArtTests
 
     [TestCaseSource(nameof(PiecePaths))]
     public void RunEndArt_ImportsAsAUiSprite(string path)
+    {
+        AssertUiSprite(path);
+    }
+
+    [Test]
+    public void RunEndArt_Glow_IsByteForByteTheScript()
+    {
+        string made = Path.Combine(CutFolder, Path.GetFileName(GlowPath));
+
+        if (!Directory.Exists(CutFolder))
+        {
+            Assert.Ignore($"{CutFolder} is not beside the repository on this machine.");
+        }
+
+        Assert.That(File.Exists(made), Is.True, $"{made}: make_glow.py wrote no such file.");
+        Assert.That(Hash(GlowPath), Is.EqualTo(Hash(made)),
+            $"{GlowPath} is not the file make_glow.py wrote. Run it again and copy it rather than editing it here.");
+    }
+
+    [Test]
+    public void RunEndArt_Glow_IsWhiteAndRadial()
+    {
+        Color32[] px = Pixels(GlowPath, out int w, out int h);
+
+        Assert.That((w, h), Is.EqualTo((GlowSize, GlowSize)));
+        Assert.That(px.All(c => c.r == 255 && c.g == 255 && c.b == 255), Is.True, "white, so Palette.Essence tints it exactly.");
+        Assert.That(px[(GlowSize / 2 * GlowSize) + (GlowSize / 2)].a, Is.EqualTo(255), "full at the centre.");
+
+        // The pixel whose centre is 64.5 px right of the image's centre: r = 64.5 / 128.
+        float r = 64.5f / (GlowSize / 2f);
+        float expected = 255f * (1f - (r * r)) * (1f - (r * r));
+
+        Assert.That((float)px[(GlowSize / 2 * GlowSize) + (GlowSize / 2) + 64].a, Is.EqualTo(expected).Within(1f), "(1 - r²)² at r ≈ 0.5.");
+    }
+
+    [Test]
+    public void RunEndArt_Glow_FadesToZeroAtItsEdge()
+    {
+        Color32[] px = Pixels(GlowPath, out int w, out int h);
+        int half = w / 2;
+        int beyond = 0;
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float dx = (x + 0.5f - half) / half;
+                float dy = (y + 0.5f - half) / half;
+
+                if ((dx * dx) + (dy * dy) >= 1f && px[(y * w) + x].a != 0)
+                {
+                    beyond++;
+                }
+            }
+        }
+
+        Assert.That(beyond, Is.Zero, "every pixel at r >= 1, all four edges with them, is clear.");
+
+        // Out from the centre along the four half-axes: never rising, and never a step a rim could show in.
+        foreach ((int sx, int sy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+        {
+            int x = sx < 0 ? half - 1 : half;
+            int y = sy < 0 ? half - 1 : half;
+            int last = px[(y * w) + x].a;
+
+            for (int i = 1; i < half; i++)
+            {
+                int a = px[((y + (sy * i)) * w) + x + (sx * i)].a;
+
+                Assert.That(a, Is.LessThanOrEqualTo(last), $"({sx}, {sy}) step {i}: alpha rises outward.");
+                Assert.That(last - a, Is.LessThanOrEqualTo(4), $"({sx}, {sy}) step {i}: {last} -> {a} is a rim.");
+                last = a;
+            }
+
+            Assert.That(last, Is.Zero, $"({sx}, {sy}): the edge pixel is clear.");
+        }
+    }
+
+    [Test]
+    public void RunEndArt_Glow_ImportsAsAUiSprite()
+    {
+        AssertUiSprite(GlowPath);
+        Assert.That(Importer(GlowPath).spriteBorder, Is.EqualTo(Vector4.zero), "the glow is drawn whole, not sliced.");
+    }
+
+    private static void AssertUiSprite(string path)
     {
         TextureImporter importer = Importer(path);
         var settings = new TextureImporterSettings();
@@ -182,6 +274,17 @@ public sealed class RunEndArtTests
 
         Assert.That(magenta, Is.Zero, $"{Path.GetFileName(path)}: {magenta} visible pixels are magenta-hued; the key left a fringe.");
         Assert.That(strayPartial, Is.Zero, $"{Path.GetFileName(path)}: {strayPartial} partial-alpha pixels sit away from the edge.");
+    }
+
+    private static Color32[] Pixels(string path, out int w, out int h)
+    {
+        var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        Assert.That(tex.LoadImage(File.ReadAllBytes(path)), Is.True, $"{path} does not decode.");
+        Color32[] px = tex.GetPixels32();
+        w = tex.width;
+        h = tex.height;
+        Object.DestroyImmediate(tex);
+        return px;
     }
 
     private static bool TouchesClear(Color32[] px, int w, int h, int x, int y)

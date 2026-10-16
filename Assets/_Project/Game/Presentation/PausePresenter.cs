@@ -120,6 +120,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>Out to the Menu. It does not delete the run — see the class remarks.</summary>
         private static readonly LocKey QuitKey = new LocKey("ui.pause.quit");
 
+        /// <summary>"Paused", on the ribbon (UI-09b rule 2).</summary>
+        private static readonly LocKey TitleKey = new LocKey("ui.pause.title");
+
         // The panel's column, in dp (UI-08e rule 3): centred on the safe area, no wider than its width
         // less a side, every button a thumb tall. Guesses until a phone exists — ledger row 4.
         private const float ColumnSideDp = 16f;
@@ -127,6 +130,20 @@ namespace Soulvail.Game.Presentation
         private const float ButtonHeightDp = 56f;
         private const float ButtonGapDp = 12f;
         private const float ButtonTextDp = 22f;
+
+        // The stone popup round the column (UI-09b rules 1, 2, 4), in dp.
+        private const float FrameSideDp = 24f;
+        private const float FrameTopDp = 40f;
+        private const float FrameBottomDp = 24f;
+        private const float FrameBorderDp = 32f;
+        private const float RibbonExtraDp = 48f;
+        private const float RibbonHeightDp = 64f;
+        private const float TitleTextDp = 28f;
+        private const float GlyphDp = 28f;
+        private const float GlyphInsetDp = 16f;
+
+        /// <summary><c>Popup_Panel</c>'s border, in sprite pixels.</summary>
+        private const float PanelBorderPx = 110f;
 
         [Tooltip("The top-right icon. A Button rather than a read of the Input System — see the " +
                  "class remarks: the one thing this target must never be is tappable anywhere.")]
@@ -176,6 +193,16 @@ namespace Soulvail.Game.Presentation
 
         [Tooltip("\"Quit\". Written from ui.pause.quit in Start.")]
         [SerializeField] private TMP_Text _quitLabel;
+
+        [Tooltip("The stone popup behind the buttons: Popup_Panel, sliced, sized to the shown " +
+                 "buttons by LayOutColumn (UI-09b rule 1).")]
+        [SerializeField] private Image _frame;
+
+        [Tooltip("The dark title ribbon, Popup_TitleRibbon, sliced, centred on the frame's top edge.")]
+        [SerializeField] private Image _ribbon;
+
+        [Tooltip("\"Paused\". Written from ui.pause.title in Start.")]
+        [SerializeField] private TMP_Text _titleLabel;
 
         [Tooltip("The icon's side in dp — GD §5.2's small top-right target. Applied at runtime for " +
                  "the reason SkillButton applies its own: a Scale-With-Screen-Size canvas measures " +
@@ -230,6 +257,9 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The panel's four buttons, top to bottom: the column <see cref="LayOutColumn"/> stacks.</summary>
         private Button[] _column;
+
+        /// <summary>Each button's <c>Glyph</c> child, in <see cref="_column"/>'s order; found once.</summary>
+        private RectTransform[] _glyphs;
 
         /// <summary>The safe area's corners, reused by every layout.</summary>
         private readonly Vector3[] _corners = new Vector3[4];
@@ -357,6 +387,7 @@ namespace Soulvail.Game.Presentation
             Write(_skillsLabel, SkillsKey);
             Write(_viewTreeLabel, TreeKey);
             Write(_quitLabel, QuitKey);
+            Write(_titleLabel, TitleKey);
 
             // **Taken off the panel rather than left dead** when no Skills screen was dressed into
             // the scene — M3-09a's own rule 6, from the other side: a button that does nothing is
@@ -958,7 +989,9 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
-            float width = Mathf.Min(safe.width - (2f * ColumnSideDp * px), ColumnMaxWidthDp * px);
+            // The frame's sides come out of the same safe width, so the stone stays inside it on a
+            // 360 dp phone too (UI-09b rule 7); from 400 dp up the column is UI-08e's 320 dp.
+            float width = Mathf.Min(safe.width - (2f * (ColumnSideDp + FrameSideDp) * px), ColumnMaxWidthDp * px);
             float height = ButtonHeightDp * px;
             float gap = ButtonGapDp * px;
             int shown = 0;
@@ -973,7 +1006,10 @@ namespace Soulvail.Game.Presentation
 
             // From the panel's centre, which is where a centre-anchored button's position counts from.
             Vector2 centre = safe.center - panel.rect.center;
-            float y = centre.y + (((shown * height) + ((shown - 1) * gap)) / 2f) - (height / 2f);
+            float span = (shown * height) + (Mathf.Max(shown - 1, 0) * gap);
+            float y = centre.y + (span / 2f) - (height / 2f);
+
+            _glyphs ??= FindGlyphs(_column);
 
             for (int i = 0; i < _column.Length; i++)
             {
@@ -989,6 +1025,9 @@ namespace Soulvail.Game.Presentation
                 rect.pivot = new Vector2(0.5f, 0.5f);
                 rect.sizeDelta = new Vector2(width, height);
                 rect.anchoredPosition = new Vector2(centre.x, y);
+                HudLayout.FitSlices(button.targetGraphic as Image);
+
+                PlaceGlyph(_glyphs[i], px);
 
                 y -= height + gap;
             }
@@ -997,6 +1036,89 @@ namespace Soulvail.Game.Presentation
             SizeLabel(_skillsLabel, px);
             SizeLabel(_viewTreeLabel, px);
             SizeLabel(_quitLabel, px);
+
+            float top = centre.y + (span / 2f);
+            float bottom = centre.y - (span / 2f);
+
+            LayOutFrame(centre.x, width, top, bottom, px);
+        }
+
+        /// <summary>
+        /// The stone round the shown buttons and the ribbon on its top edge (UI-09b rules 1, 2): the
+        /// frame <see cref="FrameSideDp"/> wider a side, <see cref="FrameTopDp"/> above the first
+        /// button and <see cref="FrameBottomDp"/> below the last.
+        /// </summary>
+        private void LayOutFrame(float x, float width, float top, float bottom, float px)
+        {
+            float frameTop = top + (FrameTopDp * px);
+            float frameBottom = bottom - (FrameBottomDp * px);
+
+            if (_frame != null)
+            {
+                RectTransform rect = _frame.rectTransform;
+
+                Centre(rect, new Vector2(width + (2f * FrameSideDp * px), frameTop - frameBottom), new Vector2(x, (frameTop + frameBottom) / 2f));
+                _frame.type = Image.Type.Sliced;
+                _frame.pixelsPerUnitMultiplier = PanelBorderPx / (FrameBorderDp * px);
+            }
+
+            if (_ribbon != null)
+            {
+                RectTransform rect = _ribbon.rectTransform;
+
+                Centre(rect, new Vector2(width + (RibbonExtraDp * px), RibbonHeightDp * px), new Vector2(x, frameTop));
+                _ribbon.type = Image.Type.Sliced;
+                HudLayout.FitSlices(_ribbon);
+            }
+
+            if (_titleLabel != null)
+            {
+                _titleLabel.enableAutoSizing = false;
+                _titleLabel.fontSize = TitleTextDp * px;
+                _titleLabel.color = Palette.HudText;
+                _titleLabel.alignment = TextAlignmentOptions.Center;
+                _titleLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                _titleLabel.overflowMode = TextOverflowModes.Ellipsis;
+            }
+        }
+
+        /// <summary>
+        /// A glyph <see cref="GlyphDp"/> square, <see cref="GlyphInsetDp"/> in from its button's left
+        /// edge and centred on its height (UI-09b rule 4).
+        /// </summary>
+        private static void PlaceGlyph(RectTransform glyph, float px)
+        {
+            if (glyph == null)
+            {
+                return;
+            }
+
+            glyph.anchorMin = new Vector2(0f, 0.5f);
+            glyph.anchorMax = new Vector2(0f, 0.5f);
+            glyph.pivot = new Vector2(0f, 0.5f);
+            glyph.sizeDelta = new Vector2(GlyphDp, GlyphDp) * px;
+            glyph.anchoredPosition = new Vector2(GlyphInsetDp * px, 0f);
+        }
+
+        private static RectTransform[] FindGlyphs(Button[] column)
+        {
+            var glyphs = new RectTransform[column.Length];
+
+            for (int i = 0; i < column.Length; i++)
+            {
+                glyphs[i] = column[i] != null ? column[i].transform.Find("Glyph") as RectTransform : null;
+            }
+
+            return glyphs;
+        }
+
+        private static void Centre(RectTransform rect, Vector2 size, Vector2 position)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
         }
 
         /// <summary>The safe area's rect in <paramref name="space"/>'s local units, or its own rect without one.</summary>
@@ -1023,6 +1145,14 @@ namespace Soulvail.Game.Presentation
             {
                 return;
             }
+
+            // The label centres in the button right of its glyph (UI-09b rule 4).
+            RectTransform rect = label.rectTransform;
+
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2((GlyphInsetDp + GlyphDp) * px, 0f);
+            rect.offsetMax = Vector2.zero;
 
             label.enableAutoSizing = false;
             label.fontSize = ButtonTextDp * px;

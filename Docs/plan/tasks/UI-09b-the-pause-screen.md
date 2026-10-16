@@ -59,4 +59,10 @@ The scrim's colour, a settings button (M8-02), and the Skills screen itself, whi
 
 ## As built
 
-_Filled at merge._
+**2026-10-17.** Built as specced, in the Files table's five files plus the regenerated `Pseudo.asset`.
+
+- **Deviation 1, rule 5 against rule 7:** at 720 × 1600 @ 320 dpi the safe width is 360 dp, so UI-08e's 320 dp column plus 24 dp a side is a 368 dp frame, which leaves the safe area. The column now subtracts the frame's sides too, `min(safe − 2 × (16 + 24) dp, 320 dp)`: 320 dp from a 400 dp phone up, unchanged, and 280 dp on a 360 dp one. Rule 7 wins because a frame off the screen is a defect and a narrower column is not.
+- **The ribbon is the column plus 48 dp in all**, so it is the frame's width; its tails are its border, drawn at its height's scale through `HudLayout.FitSlices`. The frame's border draws at 32 dp, `TreeViewPresenter`'s.
+- **The glyphs are found once by name (`Glyph`)**, not serialized: the public API lists only the frame, ribbon and title.
+- **The label colours are authored white (`Palette.HudText`) on the prefab, not written in code**, so View Tree's authored colour, which its point count restores, is that white (rule 6).
+- **A throwaway render at 1080 × 2400** in a preview scene showed the stone popup, "Paused" on the dark ribbon and the four glyphs; the owner's `Capture Look` is still owed.

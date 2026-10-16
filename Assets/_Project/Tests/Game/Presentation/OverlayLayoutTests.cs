@@ -98,7 +98,163 @@ public sealed class OverlayLayoutTests
             }
 
             AssertColumn(rects, safe, px, pixels, thumb: rects);
+
+            // UI-09b rule 7: the stone and its ribbon stay inside the safe area too.
+            float widest = safe.width - (2f * SideDp * px);
+
+            foreach (string field in new[] { "_frame", "_ribbon" })
+            {
+                Rect rect = WorldRect(Field<Image>(pause, field));
+
+                Assert.That(Contains(safe, rect), Is.True, $"{pixels}: {field} {rect} leaves the safe area {safe}.");
+                Assert.That(rect.width, Is.LessThanOrEqualTo(widest + 0.5f), $"{pixels}: {field} is {rect.width / px} dp wide.");
+            }
         }
+    }
+
+    [Test]
+    public void Pause_Frame_WrapsTheShownButtons()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            foreach (bool withTree in new[] { true, false })
+            {
+                PausePresenter pause = OpenPause(pixels, dpi, out float px, out Rect safe);
+
+                if (!withTree)
+                {
+                    Field<Button>(pause, "_viewTree").gameObject.SetActive(false);
+                    pause.UsePixelsPerDp(px);
+                    Canvas.ForceUpdateCanvases();
+                }
+
+                Image frame = Field<Image>(pause, "_frame");
+                Rect first = WorldRect(Field<Button>(pause, "_resume"));
+                Rect last = WorldRect(Field<Button>(pause, "_quit"));
+                Rect rect = WorldRect(frame);
+                string at = $"{pixels}, tree {withTree}";
+
+                Assert.That(frame.sprite.name, Is.EqualTo("Popup_Panel"), at);
+                Assert.That(frame.type, Is.EqualTo(Image.Type.Sliced), at);
+                Assert.That(rect.width, Is.EqualTo(first.width + (48f * px)).Within(0.5f), $"{at}: 24 dp a side.");
+                Assert.That(rect.yMax, Is.EqualTo(first.yMax + (40f * px)).Within(0.5f), $"{at}: 40 dp above the first button.");
+                Assert.That(rect.yMin, Is.EqualTo(last.yMin - (24f * px)).Within(0.5f), $"{at}: 24 dp below the last button.");
+                Assert.That(rect.center.x, Is.EqualTo(safe.center.x).Within(0.5f), $"{at}: centred on the safe area.");
+                Assert.That(frame.transform.GetSiblingIndex(), Is.LessThan(Field<Button>(pause, "_resume").transform.GetSiblingIndex()), $"{at}: behind the buttons.");
+                Assert.That(frame.transform.GetSiblingIndex(), Is.GreaterThan(frame.transform.parent.Find("Scrim").GetSiblingIndex()), $"{at}: over the scrim.");
+
+                float expected = withTree ? (4 * 56f) + (3 * 12f) : (3 * 56f) + (2 * 12f);
+
+                Assert.That(first.yMax - last.yMin, Is.EqualTo(expected * px).Within(0.5f), $"{at}: the frame fits the shown buttons, no empty slot.");
+            }
+        }
+    }
+
+    [Test]
+    public void Pause_Ribbon_StraddlesTheFrameTop()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            PausePresenter pause = OpenPause(pixels, dpi, out float px, out _);
+            Image ribbon = Field<Image>(pause, "_ribbon");
+            TMP_Text title = Field<TMP_Text>(pause, "_titleLabel");
+            Rect rect = WorldRect(ribbon);
+            Rect frame = WorldRect(Field<Image>(pause, "_frame"));
+            Rect column = WorldRect(Field<Button>(pause, "_resume"));
+
+            Assert.That(ribbon.sprite.name, Is.EqualTo("Popup_TitleRibbon"), $"{pixels}");
+            Assert.That(ribbon.type, Is.EqualTo(Image.Type.Sliced), $"{pixels}");
+            Assert.That(rect.width, Is.EqualTo(column.width + (48f * px)).Within(0.5f), $"{pixels}: the column plus 48 dp.");
+            Assert.That(rect.height, Is.EqualTo(64f * px).Within(0.5f), $"{pixels}: 64 dp tall.");
+            Assert.That(rect.center.y, Is.EqualTo(frame.yMax).Within(0.5f), $"{pixels}: centred on the frame's top edge.");
+            Assert.That(rect.center.x, Is.EqualTo(frame.center.x).Within(0.5f), $"{pixels}");
+            Assert.That(title.transform.parent, Is.EqualTo(ribbon.transform), "the title sits on the ribbon.");
+            Assert.That(title.fontSize / px, Is.EqualTo(28f).Within(1e-3f), $"{pixels}: 28 dp.");
+            Assert.That(title.color, Is.EqualTo(Palette.HudText), $"{pixels}");
+            Assert.That(title.alignment, Is.EqualTo(TextAlignmentOptions.Center), $"{pixels}");
+        }
+    }
+
+    [Test]
+    public void Pause_Buttons_WearTheirSprites()
+    {
+        GameObject root = Spawn(PausePath);
+        var pause = root.GetComponent<PausePresenter>();
+
+        foreach ((string field, string label, string face, string pressed) in new[]
+        {
+            ("_resume", "_resumeLabel", "Button_Green", "Button_Green_Pressed"),
+            ("_skills", "_skillsLabel", "Button_Blue", "Button_Blue_Pressed"),
+            ("_viewTree", "_viewTreeLabel", "Button_Blue", "Button_Blue_Pressed"),
+            ("_quit", "_quitLabel", "Button_Grey", null),
+        })
+        {
+            Button button = Field<Button>(pause, field);
+            var image = (Image)button.targetGraphic;
+
+            Assert.That(image.sprite.name, Is.EqualTo(face), field);
+            Assert.That(image.type, Is.EqualTo(Image.Type.Sliced), field);
+            Assert.That(image.color, Is.EqualTo(Color.white), $"{field}: the art is not tinted.");
+            Assert.That(Field<TMP_Text>(pause, label).color, Is.EqualTo(Palette.HudText), label);
+
+            if (pressed != null)
+            {
+                Assert.That(button.transition, Is.EqualTo(Selectable.Transition.SpriteSwap), field);
+                Assert.That(button.spriteState.pressedSprite.name, Is.EqualTo(pressed), field);
+            }
+            else
+            {
+                Assert.That(button.transition, Is.EqualTo(Selectable.Transition.ColorTint), $"{field}: no pressed sprite, so a tint.");
+                Assert.That(button.colors.pressedColor, Is.EqualTo(new Color(0.8f, 0.8f, 0.8f, 1f)), field);
+            }
+        }
+    }
+
+    [Test]
+    public void Pause_Glyphs_SitLeftOfTheLabel()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            PausePresenter pause = OpenPause(pixels, dpi, out float px, out _);
+
+            foreach ((string field, string label, string glyph) in new[]
+            {
+                ("_resume", "_resumeLabel", "Icon_Resume"),
+                ("_skills", "_skillsLabel", "Icon_Skills"),
+                ("_viewTree", "_viewTreeLabel", "Icon_Tree"),
+                ("_quit", "_quitLabel", "Icon_Quit"),
+            })
+            {
+                Button button = Field<Button>(pause, field);
+                var image = button.transform.Find("Glyph").GetComponent<Image>();
+                Rect buttonRect = WorldRect(button);
+                Rect rect = WorldRect(image);
+                Rect labelRect = WorldRect(Field<TMP_Text>(pause, label));
+                string at = $"{pixels}: {field}";
+
+                Assert.That(image.sprite.name, Is.EqualTo(glyph), at);
+                Assert.That(image.raycastTarget, Is.False, $"{at}: the glyph takes no tap from its button.");
+                Assert.That(rect.width / px, Is.EqualTo(28f).Within(1e-3f), $"{at}: 28 dp wide.");
+                Assert.That(rect.height / px, Is.EqualTo(28f).Within(1e-3f), $"{at}: 28 dp tall.");
+                Assert.That((rect.xMin - buttonRect.xMin) / px, Is.EqualTo(16f).Within(1e-3f), $"{at}: 16 dp in.");
+                Assert.That(rect.center.y, Is.EqualTo(buttonRect.center.y).Within(0.5f), $"{at}: centred on the height.");
+                Assert.That(labelRect.xMin, Is.EqualTo(rect.xMax).Within(0.5f), $"{at}: the label starts right of the glyph.");
+                Assert.That(labelRect.xMax, Is.EqualTo(buttonRect.xMax).Within(0.5f), $"{at}: and runs to the button's right edge.");
+            }
+        }
+    }
+
+    [Test]
+    public void Pause_Title_IsWritten()
+    {
+        var key = new LocKey("ui.pause.title");
+
+        Assert.That(Shipped().Get(key), Is.EqualTo("Paused"));
+
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(LocalisationSweepTests.PseudoPath);
+
+        Assert.That(pseudo, Is.Not.Null, $"No localization table at {LocalisationSweepTests.PseudoPath}.");
+        Assert.That(pseudo.ToDictionary().ContainsKey(key), Is.True, "Pseudo has no ui.pause.title row; regenerate it.");
     }
 
     [Test]
@@ -205,6 +361,7 @@ public sealed class OverlayLayoutTests
         Field<TMP_Text>(pause, "_skillsLabel").text = english.Get(new LocKey("ui.pause.skills"));
         Field<TMP_Text>(pause, "_viewTreeLabel").text = english.Format(new LocKey("ui.pause.tree.points"), 3);
         Field<TMP_Text>(pause, "_quitLabel").text = english.Get(new LocKey("ui.pause.quit"));
+        Field<TMP_Text>(pause, "_titleLabel").text = english.Get(new LocKey("ui.pause.title"));
 
         px = dpi / DpiPerDp;
         safe = PinSafe(root, pixels);

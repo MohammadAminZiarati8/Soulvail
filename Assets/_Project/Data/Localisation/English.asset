@@ -168,6 +168,8 @@ MonoBehaviour:
     _text: 'View Tree ({0:0})'
   - _key: ui.pause.quit
     _text: Quit
+  - _key: ui.pause.title
+    _text: Paused
   - _key: ui.skills.close
     _text: Close
   - _key: ui.skills.cancel

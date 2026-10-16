@@ -156,7 +156,7 @@ MonoBehaviour:
   - _key: ui.death.title
     _text: "[\xDD\xF4\xFB d\xEE\xE9d \xB7\xB7\xB7]"
   - _key: ui.death.hint
-    _text: "[T\xE1p t\xF4 r\xE9t\xFBr\xF1 \xB7\xB7\xB7\xB7\xB7]"
+    _text: "[H\xF4m\xE9 \xB7\xB7]"
   - _key: ui.runend.depth
     _text: "[D\xE9pth \xB7\xB7]"
   - _key: ui.runend.bosses

@@ -64,7 +64,7 @@ public sealed class RunEndFinishTests
         Finish(Jungle);
 
         Assert.That(Title().text, Is.EqualTo("Jungle cleared!"));
-        Assert.That(Title().color, Is.EqualTo(Palette.Essence), "gold means rewards.");
+        Assert.That(Title().color, Is.EqualTo(Palette.HudText), "the gold is the ribbon's; gold text on it cannot be read (UI-09c rule 3).");
     }
 
     [Test]
@@ -75,7 +75,7 @@ public sealed class RunEndFinishTests
         _hub.Publish(new ShardsAwarded(10, 12, 2, null, Jungle));
 
         Assert.That(Title().text, Is.EqualTo("You died"));
-        Assert.That(Title().color, Is.Not.EqualTo(Palette.Essence));
+        Assert.That(Title().color, Is.EqualTo(Palette.HudText));
         Assert.That(Opened().gameObject.activeSelf, Is.False);
     }
 
@@ -98,6 +98,36 @@ public sealed class RunEndFinishTests
         Finish(Jungle);
 
         Assert.That(Opened().gameObject.activeSelf, Is.False, "the Jungle alone opens nothing.");
+    }
+
+    [Test]
+    public void RunEnd_Death_DrawsTheDefeatPair()
+    {
+        Build(Catalog(opens: true));
+
+        Finish(Jungle);
+        _hub.Publish(new ShardsAwarded(10, 12, 2, null, Jungle));
+
+        Assert.That(Picture("_emblem").sprite.name, Is.EqualTo("RunEnd_EmblemDefeat"), "a death after a finish is dressed as a death.");
+        Assert.That(Picture("_ribbon").sprite.name, Is.EqualTo("RunEnd_RibbonDefeat"));
+        Assert.That(Title().color, Is.EqualTo(Palette.HudText));
+    }
+
+    [Test]
+    public void RunEnd_Finish_SwapsInTheVictoryPair()
+    {
+        Build(Catalog(opens: false));
+
+        _hub.Publish(new ShardsAwarded(10, 30, 6, null, Jungle));
+
+        Assert.That(Picture("_emblem").sprite.name, Is.EqualTo("RunEnd_EmblemDefeat"));
+
+        _hub.Publish(new ModeFinished(Jungle, 30));
+
+        Assert.That(Picture("_emblem").sprite.name, Is.EqualTo("RunEnd_EmblemVictory"));
+        Assert.That(Picture("_ribbon").sprite.name, Is.EqualTo("RunEnd_RibbonVictory"));
+        Assert.That(Title().text, Is.EqualTo("Jungle cleared!"), "on the same call that rewrites the title.");
+        Assert.That(Title().color, Is.EqualTo(Palette.HudText), "gold text on a gold ribbon cannot be read.");
     }
 
     private void Finish(ContentId mode)
@@ -124,6 +154,9 @@ public sealed class RunEndFinishTests
     private TMP_Text Title() => Get("_title");
 
     private TMP_Text Opened() => Get("_opened");
+
+    private UnityEngine.UI.Image Picture(string field) =>
+        (UnityEngine.UI.Image)_presenter.GetType().GetField(field, Private).GetValue(_presenter);
 
     private TMP_Text Get(string field) =>
         (TMP_Text)_presenter.GetType().GetField(field, Private).GetValue(_presenter);

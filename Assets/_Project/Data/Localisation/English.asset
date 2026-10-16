@@ -147,7 +147,7 @@ MonoBehaviour:
   - _key: ui.death.title
     _text: You died
   - _key: ui.death.hint
-    _text: Tap to return
+    _text: Home
   - _key: ui.runend.depth
     _text: Depth
   - _key: ui.runend.bosses

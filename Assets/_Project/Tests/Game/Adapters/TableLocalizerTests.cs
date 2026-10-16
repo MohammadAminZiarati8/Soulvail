@@ -816,7 +816,7 @@ public sealed class TableLocalizerTests
 
         Assert.That(runEnd, Is.Not.Empty, "the prefab has no TMP_Text at all, so this row tests nothing.");
 
-        foreach (string authored in new[] { "You died", "Tap to return", "Depth", "Bosses", "Soul Shards" })
+        foreach (string authored in new[] { "You died", "Home", "Depth", "Bosses", "Soul Shards" })
         {
             Assert.That(
                 runEnd,

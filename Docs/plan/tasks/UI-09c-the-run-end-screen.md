@@ -62,4 +62,12 @@ Counting the numbers up, any tween or particle (timeScale is 0), a "Play again" 
 
 ## As built
 
-_Filled at merge._
+**2026-10-17.** Built as specced in the three files plus the ripple; `Pseudo.asset` regenerated.
+
+- **Deviation 1, the column:** as UI-09b, the frame's 24 dp sides come out of the safe width, `min(safe − 2 × (16 + 24) dp, 360 dp)`, so the stone fits a 360 dp phone (rule 8): 331 dp at 411 dp wide, 280 dp at 360.
+- **Deviation 2, where two rows live:** `RunEnd_Death_DrawsTheDefeatPair` and `RunEnd_Finish_SwapsInTheVictoryPair` are in `RunEndFinishTests`, which already publishes `ShardsAwarded` and `ModeFinished` into the shipped prefab; `OverlayLayoutTests` never injects. The other seven rows are in `OverlayLayoutTests`.
+- **Rows are 44 dp tall** (rule 4), up from UI-08e's 36. The word starts 8 dp right of its icon; the figure's rect ends 16 dp from the pill's right edge.
+- **The glow is the row's child, drawn first**, so it is above the pill (the row's own `Image`) and behind the figure; it is `2 × 44 dp` square, centred on the figure's text, not its rect.
+- **The "New place" line is parented to the safe area now**, since the title moved onto the ribbon; `Icon_PlaceOpened` is a prefab `Image` shown and hidden with it.
+- **Found in the render, not fixed:** `Glow_Soft`'s alpha is still 76/255 25 px from its edge, so the payout glow shows a box edge on the dark pill. Replacing the sprite is outside the Files table and `HudArtTests` pins it byte for byte; filed in the [parking lot](../ROADMAP.md#parking-lot).
+- **Throwaway renders** at 720 × 1600 (death) and 1080 × 2400 (finish) in a preview scene; the owner's `Capture Look` is still owed.

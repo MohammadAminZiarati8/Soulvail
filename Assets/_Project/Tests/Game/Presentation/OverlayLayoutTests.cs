@@ -262,18 +262,204 @@ public sealed class OverlayLayoutTests
     {
         foreach ((Vector2 pixels, float dpi) in Phones)
         {
-            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out Rect safe);
-            var rects = new List<(string Name, Rect Rect)>
+            foreach (bool withLine in new[] { false, true })
             {
-                ("_title", WorldRect(Field<TMP_Text>(end, "_title"))),
-                ("depth row", WorldRect(Field<TMP_Text>(end, "_depthLabel").transform.parent)),
-                ("bosses row", WorldRect(Field<TMP_Text>(end, "_bossLabel").transform.parent)),
-                ("shards row", WorldRect(Field<TMP_Text>(end, "_shardLabel").transform.parent)),
-                ("_return", WorldRect(Field<Button>(end, "_return"))),
-            };
+                RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out Rect safe, withLine);
+                // The emblem overlaps the ribbon by design (rule 2), so it is held to the safe area
+                // below rather than to the column's no-overlap rule.
+                var rects = new List<(string Name, Rect Rect)>
+                {
+                    ("_title", WorldRect(Field<TMP_Text>(end, "_title"))),
+                };
 
-            AssertColumn(rects, safe, px, pixels, thumb: rects.GetRange(4, 1));
+                if (withLine)
+                {
+                    // The archway and its words are centred together (rule 6), so the pair is the piece.
+                    Rect words = WorldRect(Field<TMP_Text>(end, "_opened"));
+                    Rect arch = WorldRect(Field<Image>(end, "_openedIcon"));
+
+                    rects.Add(("opened line", Rect.MinMaxRect(
+                        Mathf.Min(words.xMin, arch.xMin), Mathf.Min(words.yMin, arch.yMin),
+                        Mathf.Max(words.xMax, arch.xMax), Mathf.Max(words.yMax, arch.yMax))));
+                }
+
+                rects.Add(("depth row", WorldRect(Field<TMP_Text>(end, "_depthLabel").transform.parent)));
+                rects.Add(("bosses row", WorldRect(Field<TMP_Text>(end, "_bossLabel").transform.parent)));
+                rects.Add(("shards row", WorldRect(Field<TMP_Text>(end, "_shardLabel").transform.parent)));
+                rects.Add(("_return", WorldRect(Field<Button>(end, "_return"))));
+
+                AssertColumn(rects, safe, px, pixels, thumb: rects.GetRange(rects.Count - 1, 1));
+
+                // UI-09c rule 8: the emblem's top and the stone stay inside the safe area too.
+                Rect emblem = WorldRect(Field<Image>(end, "_emblem"));
+                Rect frame = WorldRect(Field<Image>(end, "_frame"));
+
+                Assert.That(Contains(safe, emblem), Is.True, $"{pixels}, line {withLine}: the emblem {emblem} leaves the safe area {safe}.");
+
+                Assert.That(Contains(safe, frame), Is.True, $"{pixels}, line {withLine}: the frame {frame} leaves the safe area {safe}.");
+                Assert.That(frame.width, Is.LessThanOrEqualTo(safe.width - (2f * SideDp * px) + 0.5f), $"{pixels}: the frame is {frame.width / px} dp wide.");
+                AssertWords(end.gameObject, px, pixels);
+            }
         }
+    }
+
+    [Test]
+    public void RunEnd_Frame_HoldsTheColumn()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out Rect safe);
+            Image frame = Field<Image>(end, "_frame");
+            Rect rect = WorldRect(frame);
+            Rect row = WorldRect(Field<TMP_Text>(end, "_depthLabel").transform.parent);
+            Rect exit = WorldRect(Field<Button>(end, "_return"));
+            Rect ribbon = WorldRect(Field<Image>(end, "_ribbon"));
+
+            Assert.That(frame.sprite.name, Is.EqualTo("Popup_Panel"), $"{pixels}");
+            Assert.That(frame.type, Is.EqualTo(Image.Type.Sliced), $"{pixels}");
+            Assert.That(frame.transform.GetSiblingIndex(), Is.Zero, $"{pixels}: the frame is drawn behind everything in the safe area.");
+            Assert.That(rect.width, Is.EqualTo(row.width + (48f * px)).Within(0.5f), $"{pixels}: the column plus 24 dp a side.");
+            Assert.That(rect.center.x, Is.EqualTo(safe.center.x).Within(0.5f), $"{pixels}: centred on the safe area.");
+            Assert.That(rect.center.y, Is.EqualTo(safe.center.y).Within(0.5f), $"{pixels}: centred on the safe area.");
+            Assert.That(rect.yMax, Is.EqualTo(ribbon.center.y).Within(0.5f), $"{pixels}: it holds the ribbon's lower half.");
+            Assert.That(rect.yMin, Is.EqualTo(exit.yMin - (24f * px)).Within(0.5f), $"{pixels}: 24 dp below Return.");
+            Assert.That(Contains(rect, row) && Contains(rect, exit), Is.True, $"{pixels}: the rows and Return are on the stone.");
+        }
+    }
+
+    [Test]
+    public void RunEnd_EmblemAndRibbon_StackOnTheFrameTop()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out _);
+            Rect emblem = WorldRect(Field<Image>(end, "_emblem"));
+            Image ribbonImage = Field<Image>(end, "_ribbon");
+            Rect ribbon = WorldRect(ribbonImage);
+            Rect frame = WorldRect(Field<Image>(end, "_frame"));
+            Rect row = WorldRect(Field<TMP_Text>(end, "_depthLabel").transform.parent);
+            TMP_Text title = Field<TMP_Text>(end, "_title");
+
+            Assert.That(ribbonImage.type, Is.EqualTo(Image.Type.Sliced), $"{pixels}");
+            Assert.That(ribbon.width, Is.EqualTo(row.width + (48f * px)).Within(0.5f), $"{pixels}: the column plus 48 dp.");
+            Assert.That(ribbon.height, Is.EqualTo(72f * px).Within(0.5f), $"{pixels}: 72 dp tall.");
+            Assert.That(ribbon.center.y, Is.EqualTo(frame.yMax).Within(0.5f), $"{pixels}: centred on the frame's top edge.");
+            Assert.That(emblem.width / px, Is.EqualTo(96f).Within(1e-3f), $"{pixels}: 96 dp square.");
+            Assert.That(emblem.height / px, Is.EqualTo(96f).Within(1e-3f), $"{pixels}: 96 dp square.");
+            Assert.That(emblem.center.x, Is.EqualTo(ribbon.center.x).Within(0.5f), $"{pixels}: centred above the ribbon.");
+            Assert.That((ribbon.yMax - emblem.yMin) / px, Is.EqualTo(16f).Within(1e-3f), $"{pixels}: overlapping it by 16 dp.");
+            Assert.That(Field<Image>(end, "_emblem").transform.GetSiblingIndex(), Is.GreaterThan(ribbonImage.transform.GetSiblingIndex()), "the emblem is drawn over the ribbon.");
+            Assert.That(title.transform.parent, Is.EqualTo(ribbonImage.transform), "the title sits on the ribbon.");
+            Assert.That(title.fontSize / px, Is.EqualTo(40f).Within(1e-3f), $"{pixels}: UI-08e's 40 dp.");
+        }
+    }
+
+    [Test]
+    public void RunEnd_Rows_SitOnPillsWithIcons()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out _);
+
+            Invoke(end, "Tint");
+
+            foreach ((string word, string figure, string icon, string sprite, Color colour) in new[]
+            {
+                ("_depthLabel", "_depth", "_depthIcon", "Icon_Stage", Palette.HudText),
+                ("_bossLabel", "_bosses", "_bossIcon", "Icon_BossKill", Palette.HudText),
+                ("_shardLabel", "_shards", "_shardIcon", "Icon_SoulShard", Palette.Essence),
+            })
+            {
+                TMP_Text label = Field<TMP_Text>(end, word);
+                TMP_Text number = Field<TMP_Text>(end, figure);
+                Image iconImage = Field<Image>(end, icon);
+                var pill = label.transform.parent.GetComponent<Image>();
+                Rect row = WorldRect(label.transform.parent);
+                Rect iconRect = WorldRect(iconImage);
+                Rect labelRect = WorldRect(label);
+                Rect numberRect = WorldRect(number);
+                string at = $"{pixels}: {word}";
+
+                Assert.That(pill, Is.Not.Null, $"{at}: no pill.");
+                Assert.That(pill.sprite.name, Is.EqualTo("Pill_Dark"), at);
+                Assert.That(pill.type, Is.EqualTo(Image.Type.Sliced), at);
+                Assert.That(row.height / px, Is.EqualTo(44f).Within(1e-3f), $"{at}: 44 dp tall.");
+                Assert.That(iconImage.sprite.name, Is.EqualTo(sprite), at);
+                Assert.That(iconRect.width / px, Is.EqualTo(28f).Within(1e-3f), $"{at}: a 28 dp icon.");
+                Assert.That((iconRect.xMin - row.xMin) / px, Is.EqualTo(12f).Within(1e-3f), $"{at}: 12 dp in.");
+                Assert.That(iconRect.center.y, Is.EqualTo(row.center.y).Within(0.5f), at);
+                Assert.That(labelRect.xMin, Is.GreaterThanOrEqualTo(iconRect.xMax), $"{at}: the word comes after the icon.");
+                Assert.That(label.color, Is.EqualTo(Palette.HudCaption), at);
+                Assert.That((row.xMax - numberRect.xMax) / px, Is.EqualTo(16f).Within(1e-3f), $"{at}: the figure ends 16 dp from the right.");
+                Assert.That(number.alignment, Is.EqualTo(TextAlignmentOptions.MidlineRight), at);
+                Assert.That(number.color, Is.EqualTo(colour), at);
+            }
+        }
+    }
+
+    [Test]
+    public void RunEnd_ShardGlow_SitsBehindTheFigure()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out _);
+
+            Invoke(end, "Tint");
+
+            Image glow = Field<Image>(end, "_shardGlow");
+            TMP_Text figure = Field<TMP_Text>(end, "_shards");
+            Rect rect = WorldRect(glow);
+            Rect numberRect = WorldRect(figure);
+            float wide = figure.GetPreferredValues(figure.text).x;
+            Color expected = Palette.Essence;
+
+            expected.a = 0.6f;
+
+            Assert.That(glow.sprite.name, Is.EqualTo("Glow_Soft"), $"{pixels}");
+            Assert.That(glow.color, Is.EqualTo(expected), $"{pixels}: Essence at 0.6.");
+            Assert.That(glow.raycastTarget, Is.False, $"{pixels}");
+            Assert.That(glow.transform.parent, Is.EqualTo(figure.transform.parent), $"{pixels}: above the pill, which is the row's own image.");
+            Assert.That(glow.transform.GetSiblingIndex(), Is.LessThan(figure.transform.GetSiblingIndex()), $"{pixels}: behind the figure.");
+            Assert.That(rect.height, Is.EqualTo(2f * numberRect.height).Within(0.5f), $"{pixels}: twice the figure's height.");
+            Assert.That(rect.center.y, Is.EqualTo(numberRect.center.y).Within(0.5f), $"{pixels}: centred on the figure.");
+            Assert.That(rect.center.x, Is.EqualTo(numberRect.xMax - (wide / 2f)).Within(0.5f), $"{pixels}: centred on the figure's text.");
+        }
+    }
+
+    [Test]
+    public void RunEnd_Opened_HasItsIcon()
+    {
+        foreach ((Vector2 pixels, float dpi) in Phones)
+        {
+            RunEndPresenter end = OpenRunEnd(pixels, dpi, out float px, out Rect safe, withLine: true);
+            Image icon = Field<Image>(end, "_openedIcon");
+            TMP_Text line = Field<TMP_Text>(end, "_opened");
+            Rect iconRect = WorldRect(icon);
+            Rect lineRect = WorldRect(line);
+
+            Assert.That(icon.gameObject.activeSelf, Is.True, $"{pixels}: shown with the line.");
+            Assert.That(icon.sprite.name, Is.EqualTo("Icon_PlaceOpened"), $"{pixels}");
+            Assert.That(iconRect.width / px, Is.EqualTo(28f).Within(1e-3f), $"{pixels}: 28 dp.");
+            Assert.That(iconRect.xMax, Is.LessThanOrEqualTo(lineRect.xMin + 0.5f), $"{pixels}: left of the text.");
+            Assert.That(iconRect.center.y, Is.EqualTo(lineRect.center.y).Within(0.5f), $"{pixels}");
+            Assert.That((iconRect.xMin + lineRect.xMax) / 2f, Is.EqualTo(safe.center.x).Within(0.5f), $"{pixels}: the two centred together.");
+            Assert.That(line.color, Is.EqualTo(Palette.Neutral), $"{pixels}: Neutral on the light stone.");
+        }
+    }
+
+    [Test]
+    public void RunEnd_Return_IsGreenHome()
+    {
+        RunEndPresenter end = OpenRunEnd(Phones[0].Pixels, Phones[0].Dpi, out _, out _);
+        Button button = Field<Button>(end, "_return");
+        var face = (Image)button.targetGraphic;
+
+        Assert.That(face.sprite.name, Is.EqualTo("Button_Green"));
+        Assert.That(face.type, Is.EqualTo(Image.Type.Sliced));
+        Assert.That(button.transition, Is.EqualTo(Selectable.Transition.SpriteSwap));
+        Assert.That(button.spriteState.pressedSprite.name, Is.EqualTo("Button_Green_Pressed"));
+        Assert.That(Field<TMP_Text>(end, "_returnLabel").text, Is.EqualTo("Home"));
+        Assert.That(Field<TMP_Text>(end, "_returnLabel").color, Is.EqualTo(Palette.HudText));
     }
 
     [Test]
@@ -372,7 +558,7 @@ public sealed class OverlayLayoutTests
         return pause;
     }
 
-    private RunEndPresenter OpenRunEnd(Vector2 pixels, float dpi, out float px, out Rect safe)
+    private RunEndPresenter OpenRunEnd(Vector2 pixels, float dpi, out float px, out Rect safe, bool withLine = false)
     {
         GameObject root = Spawn(RunEndPath);
         var end = root.GetComponent<RunEndPresenter>();
@@ -391,6 +577,20 @@ public sealed class OverlayLayoutTests
         Field<TMP_Text>(end, "_depth").text = "999";
         Field<TMP_Text>(end, "_bosses").text = "99";
         Field<TMP_Text>(end, "_shards").text = "99999";
+
+        if (withLine)
+        {
+            // Built the way Start builds it, then shown the way a finish that opens a place shows it.
+            var line = (TMP_Text)typeof(RunEndPresenter)
+                .GetMethod("BuildOpenedLine", BindingFlags.Static | BindingFlags.NonPublic)
+                .Invoke(null, new object[] { Field<TMP_Text>(end, "_title"), Field<Button>(end, "_return").transform.parent });
+
+            line.text = english.Format(new LocKey("ui.runend.opened"), "Descent");
+            line.gameObject.SetActive(true);
+            Field<Image>(end, "_openedIcon").gameObject.SetActive(true);
+            SetField(end, "_opened", line);
+            SetField(end, "_showsOpened", true);
+        }
 
         px = dpi / DpiPerDp;
         safe = PinSafe(root, pixels);
@@ -459,6 +659,12 @@ public sealed class OverlayLayoutTests
 
         return Rect.MinMaxRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
     }
+
+    private static void SetField(object target, string name, object value) =>
+        target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
+
+    private static void Invoke(object target, string name) =>
+        target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, null);
 
     private static T Field<T>(object target, string name) =>
         (T)target.GetType()

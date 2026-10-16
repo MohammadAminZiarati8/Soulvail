@@ -101,8 +101,8 @@ namespace Soulvail.Game.Presentation
         private static readonly LocKey TitleKey = new LocKey("ui.death.title");
 
         /// <summary>
-        /// <em>"Tap to return"</em> — now the exit button's label rather than an instruction under a
-        /// full-screen tap (rules 3, 9).
+        /// <em>"Home"</em> — the exit button's label rather than an instruction under a full-screen
+        /// tap (rules 3, 9); it read "Tap to return" until UI-09c.
         /// </summary>
         private static readonly LocKey ReturnKey = new LocKey("ui.death.hint");
 
@@ -125,9 +125,8 @@ namespace Soulvail.Game.Presentation
         // side. Guesses until a phone exists — ledger row 4.
         private const float ColumnSideDp = 16f;
         private const float ColumnMaxWidthDp = 360f;
-        private const float TitleHeightDp = 56f;
         private const float TitleTextDp = 40f;
-        private const float RowHeightDp = 36f;
+        private const float RowHeightDp = 44f;
         private const float RowTextDp = 22f;
         private const float ShardTextDp = 28f;
         private const float RowGapDp = 8f;
@@ -139,6 +138,23 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>A row's word takes this share of its width, its number the rest.</summary>
         private const float LabelShare = 0.6f;
+
+        // The stone popup, its emblem and ribbon, and the rows' pills (UI-09c rules 1–6), in dp.
+        private const float FrameSideDp = 24f;
+        private const float FrameBottomDp = 24f;
+        private const float FrameBorderDp = 32f;
+        private const float RibbonExtraDp = 48f;
+        private const float RibbonHeightDp = 72f;
+        private const float EmblemDp = 96f;
+        private const float EmblemOverlapDp = 16f;
+        private const float IconDp = 28f;
+        private const float IconInsetDp = 12f;
+        private const float IconGapDp = 8f;
+        private const float FigureInsetDp = 16f;
+        private const float GlowAlpha = 0.6f;
+
+        /// <summary><c>Popup_Panel</c>'s border, in sprite pixels.</summary>
+        private const float PanelBorderPx = 110f;
 
         [Tooltip("The whole screen, switched between alpha 0 and 1. No fade — the run is already " +
                  "stopped and a tween here would be a second clock (rule 4).")]
@@ -153,7 +169,7 @@ namespace Soulvail.Game.Presentation
         [Tooltip("\"You died\", written from ui.death.title in Start.")]
         [SerializeField] private TMP_Text _title;
 
-        [Tooltip("\"Tap to return\" on the exit button, written from ui.death.hint in Start.")]
+        [Tooltip("\"Home\" on the exit button, written from ui.death.hint in Start.")]
         [SerializeField] private TMP_Text _returnLabel;
 
         [Tooltip("\"Depth\", written from ui.runend.depth in Start.")]
@@ -165,17 +181,55 @@ namespace Soulvail.Game.Presentation
         [Tooltip("\"Soul Shards\", written from ui.runend.shards in Start.")]
         [SerializeField] private TMP_Text _shardLabel;
 
-        [Tooltip("How deep the run got, off ShardsAwarded.DeepestStage. Palette.Neutral — a fact " +
-                 "about the run rather than the reward (rule 6).")]
+        [Tooltip("How deep the run got, off ShardsAwarded.DeepestStage. Palette.HudText — a fact " +
+                 "about the run rather than the reward, and the grey cannot be read on a dark pill " +
+                 "(UI-09c rule 4).")]
         [SerializeField] private TMP_Text _depth;
 
-        [Tooltip("How many bosses it killed, off ShardsAwarded.BossesKilled. Palette.Neutral, for " +
+        [Tooltip("How many bosses it killed, off ShardsAwarded.BossesKilled. Palette.HudText, for " +
                  "the same reason.")]
         [SerializeField] private TMP_Text _bosses;
 
         [Tooltip("The payout, off ShardsAwarded.Total. Palette.Essence — GD §16.4's reward colour, " +
                  "and this is its first reader (rule 6).")]
         [SerializeField] private TMP_Text _shards;
+
+        [Tooltip("The stone popup: Popup_Panel, sliced, holding the ribbon's lower half, the rows " +
+                 "and the exit (UI-09c rule 1).")]
+        [SerializeField] private Image _frame;
+
+        [Tooltip("The emblem above the ribbon: cracked for a death, the laurel for a finish (rule 3).")]
+        [SerializeField] private Image _emblem;
+
+        [Tooltip("The title ribbon, centred on the frame's top edge; the title sits on it (rule 2).")]
+        [SerializeField] private Image _ribbon;
+
+        [Tooltip("Glow_Soft behind the payout, tinted Palette.Essence (rule 5).")]
+        [SerializeField] private Image _shardGlow;
+
+        [Tooltip("Icon_Stage, on the Depth row's pill.")]
+        [SerializeField] private Image _depthIcon;
+
+        [Tooltip("Icon_BossKill, on the Bosses row's pill.")]
+        [SerializeField] private Image _bossIcon;
+
+        [Tooltip("Icon_SoulShard, on the Soul Shards row's pill.")]
+        [SerializeField] private Image _shardIcon;
+
+        [Tooltip("Icon_PlaceOpened, left of the \"New place\" line and shown with it (rule 6).")]
+        [SerializeField] private Image _openedIcon;
+
+        [Tooltip("RunEnd_RibbonDefeat, the grey ribbon a death draws.")]
+        [SerializeField] private Sprite _ribbonDefeat;
+
+        [Tooltip("RunEnd_RibbonVictory, the gold ribbon a finish swaps in.")]
+        [SerializeField] private Sprite _ribbonVictory;
+
+        [Tooltip("RunEnd_EmblemDefeat, the cracked emblem a death draws.")]
+        [SerializeField] private Sprite _emblemDefeat;
+
+        [Tooltip("RunEnd_EmblemVictory, the laurel a finish swaps in.")]
+        [SerializeField] private Sprite _emblemVictory;
 
         private SceneLoader _loader;
         private ILocalizer _localizer;
@@ -312,7 +366,7 @@ namespace Soulvail.Game.Presentation
             if (_title != null)
             {
                 _titleColor = _title.color;
-                _opened = BuildOpenedLine(_title);
+                _opened = BuildOpenedLine(_title, _return.transform.parent);
             }
 
             // Down whatever the prefab was left dressed as, so a screen someone was editing cannot
@@ -366,6 +420,13 @@ namespace Soulvail.Game.Presentation
                 _opened.gameObject.SetActive(false);
             }
 
+            if (_openedIcon != null)
+            {
+                _openedIcon.gameObject.SetActive(false);
+            }
+
+            Dress(_emblemDefeat, _ribbonDefeat);
+
             // Armed on the way up rather than left as the prefab was dressed, so a screen opened a
             // second time — which no run can do, and a test can — is not opened dead.
             _leaving = false;
@@ -379,12 +440,14 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// The place is finished: the title says so in <see cref="Palette.Essence"/> (rule 4), and a
-        /// place this one opens gets a line under it (rule 5).
+        /// The place is finished: the title says so on the gold ribbon under the laurel (UI-11d rule 4,
+        /// UI-09c rule 3), and a place this one opens gets a line under it (rule 5).
         /// </summary>
         /// <remarks>
-        /// Colour is Essence because gold means rewards. A mode the catalog cannot name keeps the
-        /// death title: a screen that says the wrong place was cleared is worse than one that is plain.
+        /// The title stays <see cref="Palette.HudText"/>: the gold is the ribbon's now, and gold text
+        /// on a gold ribbon cannot be read (UI-09c supersedes UI-11d's gold title). A mode the catalog
+        /// cannot name keeps the death dressing: a screen that says the wrong place was cleared is
+        /// worse than one that is plain.
         /// </remarks>
         private void OnModeFinished(ModeFinished evt)
         {
@@ -396,8 +459,10 @@ namespace Soulvail.Game.Presentation
             if (_title != null)
             {
                 _title.text = Format(FinishedKey, Name(mode));
-                _title.color = Palette.Essence;
+                _title.color = Palette.HudText;
             }
+
+            Dress(_emblemVictory, _ribbonVictory);
 
             IReadOnlyList<ModeSpec> modes = _catalog.Modes;
 
@@ -410,6 +475,11 @@ namespace Soulvail.Game.Presentation
                         _opened.text = Format(OpenedKey, Name(modes[i]));
                         _opened.gameObject.SetActive(true);
                         _showsOpened = true;
+
+                        if (_openedIcon != null)
+                        {
+                            _openedIcon.gameObject.SetActive(true);
+                        }
                     }
 
                     break;
@@ -417,6 +487,20 @@ namespace Soulvail.Game.Presentation
             }
 
             LayOut();
+        }
+
+        /// <summary>The emblem and the ribbon as one pair: the defeat one or the victory one (rule 3).</summary>
+        private void Dress(Sprite emblem, Sprite ribbon)
+        {
+            if (_emblem != null && emblem != null)
+            {
+                _emblem.sprite = emblem;
+            }
+
+            if (_ribbon != null && ribbon != null)
+            {
+                _ribbon.sprite = ribbon;
+            }
         }
 
         private string Name(ModeSpec mode) =>
@@ -427,14 +511,15 @@ namespace Soulvail.Game.Presentation
             _localizer is null ? key.ToString() : _localizer.Format(key, argument);
 
         /// <summary>
-        /// The "New place" line: a second text beside the title, built here because the prefab is
-        /// not in UI-11d's table. Off until a finish opens a place.
+        /// The "New place" line, in the title's font, built here because the prefab was not in
+        /// UI-11d's table. A child of the safe area rather than of the title, which sits on the ribbon
+        /// since UI-09c. Off until a finish opens a place.
         /// </summary>
-        private static TMP_Text BuildOpenedLine(TMP_Text title)
+        private static TMP_Text BuildOpenedLine(TMP_Text title, Transform parent)
         {
             var go = new GameObject("Opened", typeof(RectTransform));
 
-            go.transform.SetParent(title.transform.parent, false);
+            go.transform.SetParent(parent, false);
 
             TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
 
@@ -545,7 +630,8 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>
         /// GD §16.4 on the three numbers: the reward is <see cref="Palette.Essence"/>, the two facts
-        /// about the run are <see cref="Palette.Neutral"/> (rule 6).
+        /// about the run are <see cref="Palette.HudText"/> on their dark pills (UI-09c rule 4; they were
+        /// <see cref="Palette.Neutral"/> on the bare scrim), and the words are <see cref="Palette.HudCaption"/>.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -570,12 +656,28 @@ namespace Soulvail.Game.Presentation
 
             if (_depth != null)
             {
-                _depth.color = Palette.Neutral;
+                _depth.color = Palette.HudText;
             }
 
             if (_bosses != null)
             {
-                _bosses.color = Palette.Neutral;
+                _bosses.color = Palette.HudText;
+            }
+
+            foreach (TMP_Text word in new[] { _depthLabel, _bossLabel, _shardLabel })
+            {
+                if (word != null)
+                {
+                    word.color = Palette.HudCaption;
+                }
+            }
+
+            if (_shardGlow != null)
+            {
+                Color glow = Palette.Essence;
+
+                glow.a = GlowAlpha;
+                _shardGlow.color = glow;
             }
         }
 
@@ -622,13 +724,16 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// One centred column in the safe area, top to bottom: the title, the three rows, the exit —
-        /// no wider than the safe width less <see cref="ColumnSideDp"/> a side, in dp (UI-08e rule 3).
+        /// The stone popup centred in the safe area (UI-09c rules 1, 2, 4–7): the emblem over the
+        /// ribbon on the frame's top edge, then the "New place" line when there is one, the three rows
+        /// on their pills, and the exit — the column no wider than the safe width less
+        /// <see cref="ColumnSideDp"/> and the frame's sides, in dp.
         /// </summary>
         /// <remarks>
-        /// The prefab authored these in reference units of a 1920 × 1080 canvas, where the title was
-        /// 1400 wide: past the edges of any portrait phone. Every piece hangs from the safe area's
-        /// centre, so the column is centred on the part of the screen a thumb can reach.
+        /// The prefab authored these in reference units of a 1920 × 1080 canvas; every piece hangs
+        /// from the safe area's centre, so the popup is centred on the part of the screen a thumb can
+        /// reach. The frame's sides come out of the same safe width as the column, so the stone stays
+        /// inside a 360 dp phone too (rule 8).
         /// </remarks>
         private void LayOut()
         {
@@ -645,44 +750,75 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
-            float width = Mathf.Min(area.width - (2f * ColumnSideDp * px), ColumnMaxWidthDp * px);
-            float title = TitleHeightDp * px;
+            float width = Mathf.Min(area.width - (2f * (ColumnSideDp + FrameSideDp) * px), ColumnMaxWidthDp * px);
             float row = RowHeightDp * px;
             float rowGap = RowGapDp * px;
             float exit = ReturnHeightDp * px;
+            float halfRibbon = RibbonHeightDp * px / 2f;
             float opened = _showsOpened && _opened != null ? row + rowGap : 0f;
-            float total = title + (TitleGapDp * px) + opened + (3f * row) + (2f * rowGap) + (ReturnGapDp * px) + exit;
+            float frame = halfRibbon + (TitleGapDp * px) + opened + (3f * row) + (2f * rowGap) + (ReturnGapDp * px) + exit + (FrameBottomDp * px);
 
             Vector2 centre = area.center;
-            float top = centre.y + (total / 2f);
+            float frameTop = centre.y + (frame / 2f);
+            float wide = width + (2f * FrameSideDp * px);
+
+            if (_frame != null)
+            {
+                Place(_frame.rectTransform, new Vector2(wide, frame), centre);
+                _frame.type = Image.Type.Sliced;
+                _frame.pixelsPerUnitMultiplier = PanelBorderPx / (FrameBorderDp * px);
+            }
+
+            if (_ribbon != null)
+            {
+                Place(_ribbon.rectTransform, new Vector2(width + (RibbonExtraDp * px), RibbonHeightDp * px), new Vector2(centre.x, frameTop));
+                _ribbon.type = Image.Type.Sliced;
+                HudLayout.FitSlices(_ribbon);
+            }
+
+            if (_emblem != null)
+            {
+                float emblem = EmblemDp * px;
+                float bottom = frameTop + halfRibbon - (EmblemOverlapDp * px);
+
+                Place(_emblem.rectTransform, new Vector2(emblem, emblem), new Vector2(centre.x, bottom + (emblem / 2f)));
+                _emblem.preserveAspect = true;
+            }
 
             if (_title != null)
             {
-                Place(_title.rectTransform, new Vector2(width, title), new Vector2(centre.x, top - (title / 2f)));
+                RectTransform rect = _title.rectTransform;
+
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
                 Size(_title, TitleTextDp * px, TextAlignmentOptions.Center);
             }
 
-            top -= title + (TitleGapDp * px);
+            float top = frameTop - halfRibbon - (TitleGapDp * px);
 
             if (opened > 0f)
             {
-                Place(_opened.rectTransform, new Vector2(width, row), new Vector2(centre.x, top - (row / 2f)));
-                Size(_opened, RowTextDp * px, TextAlignmentOptions.Center);
+                PlaceOpened(centre.x, top - (row / 2f), width, row, px);
                 top -= opened;
             }
 
-            PlaceRow(_depthLabel, _depth, RowTextDp, centre.x, top, width, row, px);
+            PlaceRow(_depthLabel, _depth, _depthIcon, RowTextDp, centre.x, top, width, row, px);
             top -= row + rowGap;
 
-            PlaceRow(_bossLabel, _bosses, RowTextDp, centre.x, top, width, row, px);
+            PlaceRow(_bossLabel, _bosses, _bossIcon, RowTextDp, centre.x, top, width, row, px);
             top -= row + rowGap;
 
-            PlaceRow(_shardLabel, _shards, ShardTextDp, centre.x, top, width, row, px);
+            PlaceRow(_shardLabel, _shards, _shardIcon, ShardTextDp, centre.x, top, width, row, px);
+            PlaceGlow(width, row, px);
             top -= row + (ReturnGapDp * px);
 
             if (_return.transform is RectTransform button)
             {
                 Place(button, new Vector2(Mathf.Min(width, ReturnMaxWidthDp * px), exit), new Vector2(centre.x, top - (exit / 2f)));
+                HudLayout.FitSlices(_return.targetGraphic as Image);
             }
 
             if (_returnLabel != null)
@@ -699,10 +835,50 @@ namespace Soulvail.Game.Presentation
         }
 
         /// <summary>
-        /// One row of the column: its rect <paramref name="width"/> wide with its top at
-        /// <paramref name="top"/>, the word on the left share and the number on the right.
+        /// The "New place" line and its archway, <see cref="IconDp"/> left of the words, the two
+        /// centred together on the column at <paramref name="y"/> (rule 6).
         /// </summary>
-        private static void PlaceRow(TMP_Text word, TMP_Text figure, float figureDp, float x, float top, float width, float height, float px)
+        private void PlaceOpened(float x, float y, float width, float row, float px)
+        {
+            Size(_opened, RowTextDp * px, TextAlignmentOptions.MidlineLeft);
+
+            float icon = _openedIcon != null ? (IconDp + IconGapDp) * px : 0f;
+            float words = Mathf.Min(_opened.GetPreferredValues(_opened.text).x, width - icon);
+            float left = x - ((icon + words) / 2f);
+
+            if (_openedIcon != null)
+            {
+                Place(_openedIcon.rectTransform, new Vector2(IconDp, IconDp) * px, new Vector2(left + (IconDp * px / 2f), y));
+                _openedIcon.preserveAspect = true;
+            }
+
+            Place(_opened.rectTransform, new Vector2(words, row), new Vector2(left + icon + (words / 2f), y));
+        }
+
+        /// <summary>
+        /// <c>Glow_Soft</c> centred on the payout's figure, twice its row's height: a child of the row
+        /// drawn before the figure, so it sits behind the number and above the pill (rule 5).
+        /// </summary>
+        private void PlaceGlow(float width, float row, float px)
+        {
+            if (_shardGlow == null || _shards == null)
+            {
+                return;
+            }
+
+            float figure = _shards.GetPreferredValues(_shards.text).x;
+            float x = (width / 2f) - (FigureInsetDp * px) - (figure / 2f);
+
+            Place(_shardGlow.rectTransform, new Vector2(2f * row, 2f * row), new Vector2(x, 0f));
+            _shardGlow.raycastTarget = false;
+        }
+
+        /// <summary>
+        /// One row of the column on its <c>Pill_Dark</c>: its rect <paramref name="width"/> wide with
+        /// its top at <paramref name="top"/>, the icon <see cref="IconInsetDp"/> in, the word after it
+        /// and the number right-aligned <see cref="FigureInsetDp"/> from the right edge (rule 4).
+        /// </summary>
+        private static void PlaceRow(TMP_Text word, TMP_Text figure, Image icon, float figureDp, float x, float top, float width, float height, float px)
         {
             RectTransform rowRect = word != null ? word.rectTransform.parent as RectTransform
                 : figure != null ? figure.rectTransform.parent as RectTransform
@@ -715,6 +891,24 @@ namespace Soulvail.Game.Presentation
 
             Place(rowRect, new Vector2(width, height), new Vector2(x, top - (height / 2f)));
 
+            if (rowRect.TryGetComponent(out Image pill))
+            {
+                pill.type = Image.Type.Sliced;
+                HudLayout.FitSlices(pill);
+            }
+
+            if (icon != null)
+            {
+                RectTransform rect = icon.rectTransform;
+
+                rect.anchorMin = new Vector2(0f, 0.5f);
+                rect.anchorMax = new Vector2(0f, 0.5f);
+                rect.pivot = new Vector2(0f, 0.5f);
+                rect.sizeDelta = new Vector2(IconDp, IconDp) * px;
+                rect.anchoredPosition = new Vector2(IconInsetDp * px, 0f);
+                icon.preserveAspect = true;
+            }
+
             if (word != null)
             {
                 RectTransform rect = word.rectTransform;
@@ -722,7 +916,7 @@ namespace Soulvail.Game.Presentation
                 rect.anchorMin = Vector2.zero;
                 rect.anchorMax = new Vector2(LabelShare, 1f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.offsetMin = Vector2.zero;
+                rect.offsetMin = new Vector2((IconInsetDp + IconDp + IconGapDp) * px, 0f);
                 rect.offsetMax = Vector2.zero;
                 Size(word, RowTextDp * px, TextAlignmentOptions.MidlineLeft);
             }
@@ -735,7 +929,7 @@ namespace Soulvail.Game.Presentation
                 rect.anchorMax = Vector2.one;
                 rect.pivot = new Vector2(0.5f, 0.5f);
                 rect.offsetMin = Vector2.zero;
-                rect.offsetMax = Vector2.zero;
+                rect.offsetMax = new Vector2(-FigureInsetDp * px, 0f);
                 Size(figure, figureDp * px, TextAlignmentOptions.MidlineRight);
             }
         }

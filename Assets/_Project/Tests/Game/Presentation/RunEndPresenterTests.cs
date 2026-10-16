@@ -68,7 +68,7 @@ public sealed class RunEndPresenterTests
     private static readonly (string Key, string Word)[] Rows =
     {
         ("ui.death.title", "You died"),
-        ("ui.death.hint", "Tap to return"),
+        ("ui.death.hint", "Home"),
         ("ui.runend.depth", "Depth"),
         ("ui.runend.bosses", "Bosses"),
         ("ui.runend.shards", "Soul Shards"),
@@ -312,9 +312,10 @@ public sealed class RunEndPresenterTests
         Assert.That(Label("_shards").color, Is.EqualTo(Palette.Essence), "the payout is not Essence.");
 
         // And the two facts about the run are deliberately not amber: three amber numbers would say
-        // nothing about which one matters.
-        Assert.That(Label("_depth").color, Is.EqualTo(Palette.Neutral));
-        Assert.That(Label("_bosses").color, Is.EqualTo(Palette.Neutral));
+        // nothing about which one matters. White since UI-09c, because the grey cannot be read on a
+        // dark pill.
+        Assert.That(Label("_depth").color, Is.EqualTo(Palette.HudText));
+        Assert.That(Label("_bosses").color, Is.EqualTo(Palette.HudText));
     }
 
     /// <summary>GD §16.4's <em>"nothing else, ever"</em>, over every colour this screen puts on a pixel.</summary>
@@ -603,7 +604,7 @@ public sealed class RunEndPresenterTests
         // already carried them, and retiring them to coin synonyms would break a shipped row for
         // nothing — so this row is what says a later task may not quietly rename them.
         Assert.That(shipped.Get(new LocKey("ui.death.title")), Is.EqualTo("You died"));
-        Assert.That(shipped.Get(new LocKey("ui.death.hint")), Is.EqualTo("Tap to return"));
+        Assert.That(shipped.Get(new LocKey("ui.death.hint")), Is.EqualTo("Home"));
 
         // And no row this screen draws takes an argument: nothing in this project's localisation
         // does, and inventing it here would be M6-10 arriving early (rule 5).

@@ -88,15 +88,15 @@ public sealed class LowerControlsArtTests
     }
 
     [Test]
-    public void LowerControlsArt_TotalHudCountIsThirtyOne()
+    public void LowerControlsArt_TotalHudCountIsThirtyEight()
     {
         string[] found = AssetDatabase.FindAssets("t:Texture2D", new[] { HudFolder, IconFolder })
             .Select(AssetDatabase.GUIDToAssetPath)
             .OrderBy(path => path)
             .ToArray();
 
-        Assert.That(found, Has.Length.EqualTo(31),
-            "Hud/ and Icons/ hold exactly 31 pieces: 19 from UI-01, 8 from UI-02a, 3 tree icons from UI-04a, the shard from UI-05a.");
+        Assert.That(found, Has.Length.EqualTo(38),
+            "Hud/ and Icons/ hold exactly 38 pieces: 19 from UI-01, 8 from UI-02a, 3 tree icons from UI-04a, the shard from UI-05a, 7 icons from UI-09a.");
     }
 
     [TestCaseSource(nameof(LowerControlPaths))]

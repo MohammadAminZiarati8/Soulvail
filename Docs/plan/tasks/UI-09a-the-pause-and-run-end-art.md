@@ -62,4 +62,10 @@ Wearing any of it: UI-09b and UI-09c. A redrawn glow burst: `Glow_Soft` covers i
 
 ## As built
 
-_Filled at merge._
+**2026-10-17.** Eleven pieces in, as specced; `UI_v5/cut_sheets.py` and `UI_v5/contact.png` beside them.
+
+- **Sizes:** ribbons 504 × 315, emblems 461 × 417 (each pair padded to the larger body), `Icon_Stage` 296 × 401, `Icon_BossKill` 310 × 318, `Icon_PlaceOpened` 304 × 347, `Icon_Resume` 179 × 217, `Icon_Skills` 245 × 263, `Icon_Tree` 259 × 259, `Icon_Quit` 257 × 270.
+- **The ribbons' border is `184/0/184/0`**: the folded tails end about 176 px in from each side on both sheets.
+- **Rule 5 is enforced by the cutter**, not hoped for: a `finish` pass clears any magenta-hued pixel left after `despill` (5 on the defeat ribbon, 45 on the laurel, 3 on the tower) and makes any partial-alpha pixel more than 2 px from a clear one opaque.
+- **The glow burst is skipped by position** (a blob centred right of x = 1010 on `2.jpg`), because its core outranks the icons by area.
+- **Deviation, 1:** `LowerControlsArt_TotalHudCountIsThirtyOne` counts `Hud/` and `Icons/`, so it is `…ThirtyEight` now (seven icons). Not in the Files table; UI-05a's precedent.

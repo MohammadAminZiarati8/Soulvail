@@ -397,7 +397,7 @@ What the planning found:
 | UI-08c | [The HUD in portrait](tasks/UI-08c-the-hud-in-portrait.md) — controls at the bottom; the debug readout off the XP strip | M | UI-08a | ☑ |
 | UI-08d | [The menu and the character page in portrait](tasks/UI-08d-menu-and-character-page-in-portrait.md) — the page fits, the menu's background fills the notch, both re-lay out | M | UI-08a, UI-07c | ☑ |
 | UI-08e | [The tree, Pause and Run end in portrait](tasks/UI-08e-tree-pause-and-run-end-in-portrait.md) — the tree stacks block over card, Pause and Run end are one centred column | M | UI-08a, UI-07c, UI-07d | ☑ |
-| UI-09a | [The Pause and Run-end art, imported](tasks/UI-09a-the-pause-and-run-end-art.md) — 11 pieces cut from the owner's three `UI_v5` sheets: two ribbons, two emblems, seven icons | S | UI-08e | ☐ |
+| UI-09a | [The Pause and Run-end art, imported](tasks/UI-09a-the-pause-and-run-end-art.md) — 11 pieces cut from the owner's three `UI_v5` sheets: two ribbons, two emblems, seven icons | S | UI-08e | ☑ |
 | UI-09b | [The Pause screen](tasks/UI-09b-the-pause-screen.md) — stone popup, "Paused" ribbon, green/blue/grey buttons with glyphs | M | UI-09a | ☐ |
 | UI-09c | [The Run-end screen](tasks/UI-09c-the-run-end-screen.md) — defeat or victory emblem and ribbon, rows on pills with icons, the payout glows, green Home | M | UI-09a | ☐ |
 | UI-10a | [A circle for the telegraph rings](tasks/UI-10a-the-telegraph-ring-texture.md) — one mask texture fixes all five decals | S | — | ☑ |

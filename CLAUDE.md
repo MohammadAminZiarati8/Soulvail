@@ -1,35 +1,35 @@
 # Soulvail — project notes for Claude
 
 Unity 6.3 (`6000.3.23f1`) · URP · Input System · **Android, portrait** · top-down auto-aim action roguelite.
-Solo project. **Claude implements only when the owner says so. The owner reviews every PR, playtests on a real phone, and makes every commit.**
+Solo project. **Claude implements only when the owner says so.** The owner directs the game and playtests; Claude is the engineer.
 
 ## Docs
 
 - [Docs/GameDesign.md](Docs/GameDesign.md) — what the game is: pillars, loops, enemies, bosses, difficulty math, Veilrot
 - [Docs/Characters.md](Docs/Characters.md) — classes, skills, the in-run skill tree, levelling
 - [Docs/CoreCombat.md](Docs/CoreCombat.md) — movement, targeting, basic attack, skill-cast spec
-- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.** §18 is the invariants: orderings and boundary rules the code depends on. Soft spots a named task must fix are in the ROADMAP's carry-forward ledger, not there.
+- [Docs/Architecture.md](Docs/Architecture.md) — **the architecture. Read before touching any system.** §18 is the invariants: orderings and boundary rules the code depends on.
 - [Docs/Traps.md](Docs/Traps.md) — **things in this toolchain that lie to you.** Unity, the MCP, VContainer, the Input System, shell probes, allocation measurement. Read before debugging a probe that says "no", and before believing one that says "yes".
 - [Docs/adr/](Docs/adr/) — why each architectural decision was made
 
 ## Status
 
-**Design, architecture and plan decided; implementation is underway, one task at a time.** Where it stands — milestone, last merged task, next task, watch list — lives in PROGRESS → Current State, never here. A task is built **only when the owner names it and says go.** Answering a clarifying question is not a go-ahead.
+Where the project stands lives in PROGRESS, never here. A task is built **only when the owner names it and says go.** Answering a clarifying question is not a go-ahead.
 
 ## Plan and progress
 
-- [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the map: milestones → tasks (ID, size, dependencies, status). Closed milestones' tables and ledgers are in [Docs/plan/archive/](Docs/plan/archive/); the ROADMAP keeps a stub heading for each so links resolve.
-- [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **the log: read the Current State block first, every session.** Closed milestones are in [Docs/plan/archive/](Docs/plan/archive/).
-- [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. A milestone's specs are written by its own first tasks (`M<n>-00a…`); later milestones are titles.
+- [Docs/plan/PROGRESS.md](Docs/plan/PROGRESS.md) — **where the project stands; read it first, every session.** Current State only, no log, ≤ 10 000 bytes.
+- [Docs/plan/ROADMAP.md](Docs/plan/ROADMAP.md) — the plan: milestones → tasks, sizing and ID rules. Empty until the owner sets the next direction.
+- [Docs/plan/tasks/](Docs/plan/tasks/) — one spec per task; `_TEMPLATE.md` is the shape. A spec is deleted once its work is merged and its manual steps are done; git keeps it.
 
 ## Session protocol
 
-1. Read PROGRESS → Current State. Open the spec for the next task (or the one the owner names).
+1. Read PROGRESS. Open the spec for the task the owner names.
 2. Build exactly the spec's Files table. Behaviour rules ↔ tests, one to one. Nothing outside the table without saying so.
 3. Before handing over: tests green, zero errors, zero new analyzer warnings, manual steps listed for the owner.
-4. Append the PROGRESS entry and update Current State **in the same change** — overwrite its rows rather than extend them, under the byte caps in [PROGRESS › How to write an entry](Docs/plan/PROGRESS.md#how-to-write-an-entry); tick the ROADMAP box; fill the spec's *As built* footer, under the template's cap.
-5. Report what changed and give the owner a commit message. **The owner commits and opens the PR.**
-   - **Anything the owner is meant to copy goes in a fenced code block, always** — commit messages, tag messages, shell commands, and **the prompt for the next task**. Prose the owner has to re-type or hand-select is a defect in the handover. Prose *about* the thing stays outside the block; the block holds only what gets pasted.
+4. In the same change: fill the spec's *As built* footer (≤ 6 000 bytes), overwrite PROGRESS's rows (never append history), tick the ROADMAP box. There is no per-task log entry.
+5. Report what changed.
+   - **Anything the owner is meant to copy goes in a fenced code block, always** — commit messages, tag messages, shell commands, and **the prompt for the next task**. Prose *about* the thing stays outside the block.
 6. A task that grows past 5 files is split (`M0-07a`, `M0-07b`) before continuing, never after. What counts as a file: [ROADMAP › How to read this](Docs/plan/ROADMAP.md#how-to-read-this).
 
 ## Architecture in five lines (details in Architecture.md)
@@ -42,14 +42,13 @@ Solo project. **Claude implements only when the owner says so. The owner reviews
 
 ## Git workflow (decided)
 
-- **Claude never commits or pushes. The owner does all commits.** Claude edits files and reports exactly what changed; the owner stages, commits, pushes, and opens PRs.
-- `main` — tagged milestones only. `dev` — integration. `m0-09-run-contracts` — lowercase task ID + slug, one task each, branched from `dev`, merged through a PR the owner reviews.
+- **Since 2026-10-14 Claude commits and pushes straight to `dev`** with `ALLOW_DIRECT_COMMIT=1` (the hook otherwise refuses `dev`). No task branches or PRs unless the owner asks for them.
+- `main` — tagged milestones only. `dev` — integration.
 - Conventional commits: `feat:` `fix:` `chore:` `docs:` `refactor:`. Body says *why*. **No `Co-Authored-By` trailer** — the owner is the sole author.
 - **The commit subject is `<type>(<scope>)?: <summary>`, ≤ 72 characters, no trailing period. Count it before handing it over — do not estimate.** The hook rejects a long one and the message has to be rewritten after the fact, which has now happened. `printf '%s' "<subject>" | wc -c` or `${#subject}` settles it in one line. Full type list: `feat fix docs chore refactor test perf build ci style revert`. Merge, revert, `fixup!` and `squash!` messages are waved through.
 - **A tag message is not a commit message and must not be handed over as one.** `git tag -a` runs no `commit-msg` hook, so a tag reads `m3 — Levelling and the tree` and a commit reads `docs: …`. When a handover offers both, **label which is which**; pasting the tag message into `git commit` is a rejection that looks like a hook bug and is not one.
-- **Before offering a commit command, check the branch.** The hook refuses a commit on `dev` or `main`; work belongs on `<lowercase task ID>-<slug>` branched from `dev`. If the working tree is on `dev`, say so in the handover and give the `git checkout -b` line with it.
 - Binary assets go through Git LFS (see `.gitattributes`). Never commit `Library/`, `Temp/`, `Logs/`, `*.csproj`, `*.slnx`.
-- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, deliberate `ProjectSettings/` changes (`ALLOW_PROJECT_SETTINGS=1` to stage one on purpose), that a staged PROGRESS.md's *Last merged task* row names its newest Log entry (`ALLOW_STALE_STATE=1` to override), and forward to LFS.
+- Git hooks live in `.githooks/` (see its README). Enable once per clone: `git config core.hooksPath .githooks`. They enforce the branch rule, Conventional Commits, no `Co-Authored-By`, Unity `.meta` consistency, large-file/LFS checks, deliberate `ProjectSettings/` changes (`ALLOW_PROJECT_SETTINGS=1` to stage one on purpose), and forward to LFS.
 - Unity YAML merge driver, once per clone:
   ```
   git config merge.unityyaml.name "Unity SmartMerge"
@@ -92,7 +91,7 @@ A data asset's file name matches the last segment of its `ContentId`: `Oathbound
 - **Every `MonoBehaviour` and `ScriptableObject` uses a block namespace, never a file-scoped one** — otherwise every asset referencing it loads as null and nothing reports an error ([Traps §5](Docs/Traps.md)). Pure C# keeps file-scoped namespaces.
 - **Never hand-roll a GC allocation probe** — `GC.GetAllocatedBytesForCurrentThread()` is inert on Unity's Mono. Use `AllocationAssert.None` (`Tests/Core/Support/`, [Traps §7](Docs/Traps.md)).
 - **Domain reload is disabled on Play** (Enter Play Mode Options). Iteration is instant, and it's safe *only* because the architecture bans static mutable state. If a static is ever unavoidable, reset it in `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`. Scene reload stays enabled.
-- **Reference device: none, and nothing has ever run outside the Editor.** BlueStacks installs the APK and crashes on launch ([M0-20a](Docs/plan/tasks/M0-20a-apk-runs-on-bluestacks.md)); the Unity Device Simulator serves for layout only. Device-only checks — multi-touch, haptics, latency, frame rate, thermal — are listed as deferred in PROGRESS → Current State.
+- **Reference device: none, and nothing has ever run outside the Editor.** BlueStacks installs the APK and crashes on launch; the Unity Device Simulator serves for layout only. Device-only checks — multi-touch, haptics, latency, frame rate, thermal — are listed as deferred in PROGRESS.
 - **Application identifier is a placeholder** (`com.soulvail.dev`) until publishing. It is permanent once uploaded to a store — M8-06 changes it first.
 - `Screen.sleepTimeout` is `NeverSleep` only during a run (set in `RunTicker.Start`, restored on dispose) — never app-wide, menus shouldn't burn battery.
 - **C# lint:** `Microsoft.Unity.Analyzers` (v1.27.0) at `Assets/Plugins/Analyzers/`, labelled `RoslynAnalyzer`, all platforms disabled. Runs inside Unity's compiler (Console) and the IDE. `.editorconfig` carries the style rules the IDE enforces. **The .NET SDK (10.0.401) is now installed, so the pre-commit format check is live** — it stopped self-skipping at M3-12c, which is the first task it ever refused. Run `dotnet format whitespace --folder --verify-no-changes --include <files>` before handing over; the whole of `Assets/_Project` passes as of M3-12c, so a failure is yours. The check still probes `dotnet format --version` rather than the bare binary, which is what stops M0-02's phantom violation if the SDK is ever removed again.

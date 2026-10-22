@@ -1,7 +1,7 @@
 # M0-00 — Title in sentence case
 
 **Size:** S | M · **Depends on:** — · **Branch:** `m0-00-slug`
-**Design refs:** AR §n, ADR-nnnn, CC §n · **Ledger rows:** n, m — or "none"
+**Design refs:** AR §n, ADR-nnnn, CC §n
 
 ## Goal
 
@@ -41,13 +41,13 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 "allocated-bytes delta == 0" in any spec means `AllocationAssert.None(body, iterations)` from M0-02 — never the raw `GC` API.
 
-**A row that opens an asset, a prefab or a `Soulvail.Game` type cannot live in Tests.Core**, which references `Soulvail.Core` alone. Name its Tests.Game file in *small edits*; M6-06a, M6-07c and M6-09a each moved such rows after the fact.
+**A row that opens an asset, a prefab or a `Soulvail.Game` type cannot live in Tests.Core**, which references `Soulvail.Core` alone. Name its Tests.Game file in *small edits*.
 
 **Guard rows are implied, not listed:** every new spec type gets a validation row, every public constructor a null row, every `float` door a non-finite row. They belong in the test file and are not deviations.
 
 ## Manual verification (Editor / device)
 
-_Only if a Game-side change is visible._ Numbered steps, each with the expected observation, each tagged **[Editor]** (a probe, or the owner's Play) or **[device]** (deferred until a phone exists — PROGRESS lists them).
+_Only if a Game-side change is visible._ Numbered steps, each with the expected observation, each tagged **[Editor]** (a probe, or the owner's Play) or **[device]** (deferred until a phone exists — PROGRESS lists them). Steps the owner still owes after merge go into PROGRESS → *Owed to the owner*.
 
 ## Out of scope
 
@@ -55,7 +55,7 @@ _Only if a Game-side change is visible._ Numbered steps, each with the expected 
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one paragraph that links to the test that pins it, and the argument that does not fit is the argument that was not needed. This footer owns the deviations; the PROGRESS entry only counts them and links here. No superlatives._
+_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one paragraph that links to the test that pins it, and the argument that does not fit is the argument that was not needed. No superlatives. There is no separate PROGRESS log entry: this footer is the record, and the spec is deleted once its work is merged and its manual steps are done (git keeps it)._
 
 ---
 
@@ -63,5 +63,4 @@ _Spec self-check, before a spec is called finished — delete this block from th
 - [ ] Every § reference resolves to a heading that exists.
 - [ ] Every member Behaviour names is in the Public API block, with the same signature.
 - [ ] Every Behaviour rule has at least one Tests row, and no row tests a rule that isn't written.
-- [ ] Every row of the current milestone's [ledger](../ROADMAP.md) naming this task is answered in Behaviour or Out of scope.
-- [ ] Code is cited by member (`HudPresenter.ReturnToMenu`), never by line number — a line drifts by the next task, and M4-05a recorded two drifted citations as deviations.
+- [ ] Code is cited by member (`HudPresenter.ReturnToMenu`), never by line number.

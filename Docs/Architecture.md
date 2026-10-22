@@ -459,132 +459,172 @@ A mod/plugin system · a scripting language · an effect DSL · a generic ECS ·
 
 ## 18. Invariants
 
-**Rules the code currently depends on.** Each was decided in a task, is load-bearing somewhere, and
-breaking it produces a bug that does not look like its cause. This is the answer to *"may I change
-this?"* — the answer is yes, but read the reason first and change the reason with it.
-
-Each row is the rule, one clause of why, and where it was set. The argument behind a row — the failing
-test, the alternatives refused, the history — is in the owning task's spec *As built*, and the long form
-of this section as it stood at M4-05b is [archived](plan/archive/Architecture-18-invariants-history.md).
-A task that adds an invariant adds a row in this shape; the argument goes in its *As built*.
-
-Toolchain traps — things that lie to you rather than rules the code relies on — live in
-[Traps.md](Traps.md). The two files are deliberately separate: one is about our design, the other
-is about Unity's.
+**Rules the code depends on.** Breaking one produces a bug that doesn't look like its cause. You may
+change any of them — read the reason first and change it with the rule. Format: rule — why it holds
+(test that pins it, where one exists). A task that adds an invariant adds a line here. Toolchain
+traps are in [Traps.md](Traps.md).
 
 ### 18.1 Ordering
 
-| Invariant | Break it and | Set in |
-|---|---|---|
-| `RunTicker`'s frame order: commands → snapshot → clear intents → core tick → bodies → **sync** → facts → knockbacks | a tap lands a frame late; a cleared buffer erases an unread intent; a sweep resolves against last frame's arena | M0-16, M1-09, M1-12, M1-15; asserted by `Tests/PlayMode/FrameOrderTests.cs` since M2-11b, every step including commands since M3-10a |
-| **Every command adapter is polled from `RunTicker.CommandPhase` and none is an `ITickable`** — `TapToFocusAdapter.Poll`, `SkillSlotInput.Poll`, the movement-skill press. Their order *within* the phase is not load-bearing; being *in* it is | as `ITickable`s their order against the snapshot is whatever `RunScope` registered, so a tap is acted on a frame late or a cast resolves against stale senses. A uGUI `Button` calling `IPlayerCommands` from `onClick` has the same defect | M1-09, M1-16, M3-10a (`FrameOrderTests.Frame_SlotPollSitsBesideTapToFocus`, `SkillBarPresenterTests.Input_PressIsSentInCommandPhase`) |
-| **`Physics.SyncTransforms()` sits between the bodies step and the fact phase** — one flush at the one seam, never `autoSyncTransforms` project-wide | `autoSyncTransforms` is 0, so without it a cone or sweep resolves against where bodies stood last frame: rare, silent, reads as bad aim. Adapter fixtures that move transforms directly still call it themselves | M2-15a |
-| `RunSession.Tick`: time → **lure expiry** → ingest (**enemies and minions together**) → **veilrot** → combat → **take the shot** → **skills** → **timed expiry** → **zones** → enemy behaviours → **minions** → **projectiles** → **death drain + rise** → (dead? end) → **xp drain** → **director** → **stage flow** → motor → intent | the gun aims at where enemies *were*; the motor turns before it knows its facing | M1-06, M1-08, M2-05, M2-07a, M2-10, M3-01a, M3-06, M3-11a-ii, M3-11b, M5-01, M5-03, M5-04a, M5-04b, M6-04 |
-| **`Veilrot.Tick` sits immediately above `PlayerCombat.Tick`, and it is the one writer of `CombatBlackboard.Veilrot`.** Inside it the blackboard is written first, then the Claiming's drain steps at most once per whole second, and **every step calls `PlayerCombat.AnnounceDeath`** — the one publisher of `PlayerDied`, reachable by a death no `DamageResult` describes | below the runner, CH §4.2's Rot Nova compares against last tick's meter for ever; below the death check, a drain step that empties the maximum leaves the player playing a frame at zero; without the announcement, a run drained to nothing ends with the HUD, the haptics and every subscriber never told — `RunSession` reads `IsDead`, nobody publishes | M6-04 (`VeilrotTests.Claiming_PublishesPlayerDied`, `Claiming_DoesNotPublishTwiceIfDamageGotThereFirst`, `Trigger_VeilrotIsWrittenEveryTick`) |
-| **`LureSystem.Tick` sits immediately above the ingest, and a corpse decoy redirects an enemy in `EnemySystem.Perceive` — the one site that writes the four player fields — never in a behaviour.** `PathDirectionToPlayer` is zeroed for a lured agent, so the straight-line fallback M1-19 built for a missing NavMesh is what steers it. `EnemyBlackboard.QuarryIsADecoy` says which, and `ChaserBehaviour.EnterStrike` is the **one** reader: every other way an enemy hurts the player already resolves against the real `RunState.PlayerPosition` | below the ingest, an enemy spends a frame walking at a corpse that has already rotted; redirected in the behaviours, it is four state machines to keep in step instead of one local; left steering by the body's path, a lured enemy walks past the corpse towards the player it is not chasing; without the flag, a Husk in reach of a decoy hits a player six metres away. **This is deliberately not a targeting system** — no `TargetId`, no threat table, no way to pull *some* enemies — and V2's Choir (GD §19) is what pays for renaming the four fields — re-aimed at M7-00a, since M7-01 builds no Choir; the Lunger's dash reads the real player through `EnemySystem.PlayerPosition` (M7-01a) and needs no target | M5-03 (`LurePerceptionTests.Run_TheExpiryIsAbovePerception`, `Perception_ALuredEnemyIsToldTheDecoy`, `Chaser_StrikesTheDecoyAndHurtsNobody`) |
-| **`MinionSystem.Ingest` runs beside `EnemySystem.Ingest` and `MinionSystem.Tick` immediately after the enemy behaviours, above the death check; inside the system the order is expire → choose → walk → strike.** A Wight is its own type, never an `EnemyAgent`, and its kill goes through `EnemySystem.ApplyDamage` like every other death | split ingests let a Wight act on last frame's positions while the arena acts on this frame's; ticked *before* the behaviours, a Wight removes a Husk that never got to act; *below* the death check, a kill landing on the tick the player dies is silently lost. Expiring first stops a Wight in its last frame picking a target it will never reach; striking last means it swings from the position it was **reported** at rather than the one it is walking to. Reusing `EnemyAgent` would put a friendly body inside `SpawnDirector.IsStageComplete`, `PlayerCombat.BuildCandidates`, the XP path and `WaveComposer` — four exceptions found one at a time | M5-04a (`MinionSystemTests.Minion_IsNotAnEnemy`, `Minion_StrikesAtItsReach`, `Minion_ExpiresOnTime`) |
-| **`RunTicker.ApplyMinionMoves` sits immediately after `ApplyEnemyMoves` and above `Physics.SyncTransforms()`, and it resolves ids through `MinionViews` — a second census and a second intent list, never the enemies'.** `SnapshotBuilder` copies the minion census in **after** the enemies and **before** `WriteSenses`, and `WriteSenses` is deliberately never extended to the minion slots | *beside the enemies*: both are bodies core decided a velocity for this tick, and a body stepped on `Time.deltaTime` while core integrated `snapshot.Dt` turns a hitch into a teleport (M1-18). *Above the flush*: nothing sweeps a Wight today, and a body written after it would be the one exception nobody remembered on the day something does. *Through its own census*: both registries number from 1, so a minion id resolved through `EnemyViews.TryGet` does not miss — it finds an **enemy** with that number and walks it. *After the enemies*: `LineOfSightSense`'s per-frame budget is sized from `snapshot.EnemyCount`, and a Wight inside it buys raycasts for bodies that never ask. *Before `WriteSenses`*: that method walks the same count. *Not extended*: `NavPathSense` only ever paths to the **player**, so a route computed for a Wight is to the wrong place, costed per Wight per frame, and read by nothing | M5-05a (`FrameOrderTests.Ticker_AMinionMoveWalksAMinion`, `Ticker_MinionsMoveBeforeTheFlush`; `MinionViewsTests.Minions_AreNotInTheEnemySlots`, `Minions_DoNotInflateTheSightBudget`, `Minions_HaveNoPathSearch`) |
-| **`EnemySystem.DrainDeaths` is pulled after every pass that can kill an enemy and above the death check, and `RisePassive.OnDeaths` is offered the result on the same line.** Core does not subscribe to its own events: a death is banked in `ApplyDamage`'s kill branch beside `PendingXp` and `PendingKills`, and pulled once a tick into a buffer `RunSession` owns. **One draw from `IRandom.Drops` per death, before a boss, a full army or an unreadable chance can refuse the raise** | above the projectile step, a bolt's kill waits a frame to rise; below the death check, a kill landing on the tick the player dies silently loses its rise. A subscription would make core a listener to itself; `PendingKills` is a count and a Wight stands up *where the corpse fell*. A draw skipped at the cap would make a seeded run's later rises depend on how crowded an earlier fight was — and a sixth stream would be a `RandomState` field, so a **v4** save for a 25 % chance | M5-04b (`RiseTests.Run_ARiseOnTheTickThePlayerDies`, `Rise_DrawsOncePerDeathWhateverTheOutcome`, `Rise_DrawsFromTheDropsStream`) |
-| **`PlayerCombat.TryTakeShot` is drained immediately after the combat step and above the skills block**, and a `WeaponKind.Projectile` damage frame writes `PendingShot` instead of a `ConeHitIntent` — an arrival is a point and a moment core computes itself, so the body is asked nothing | lower down, a bolt leaves aimed with positions that are already a frame stale; left undrained, the same shot is fired again on the next tick that reads it. The projectile step runs after the enemy behaviours, which is what gives a player's bolt the one-frame grace M2-07a gives a Spitter's — fired and landed in one tick, the flight the weapon exists for would not exist | M5-01 (`PlayerProjectileTests.Run_TheShotIsInTheAirTheTickItWasDecided`) |
-| **`TimedEffects.Tick` sits immediately after `SkillRunner.Tick`, above `ProjectileSystem.Tick`**, and reads the `SimulatedClock` written beside `State.Time += Dt`, never `IClock` | expiring before the runner takes a grant back and re-grants it on a recast tick, with an instant of no shield between; expiring below the projectile step lets a lapsed grant absorb a hit; a wall clock would drain a shield through a level-up at `timeScale` 0 | M3-11a-ii (`Timed_TicksAfterTheRunner`, `Timed_TicksBeforeTheProjectileStep`) |
-| **`ZoneSystem.Tick` sits immediately after `TimedEffects.Tick`; inside one zone, pulses come before retirement**; a zone is placed at `CombatBlackboard.PlayerPosition`, not a `Tick` parameter | a zone cast this tick must exist this tick; interleaving the two expiry mechanisms makes the order a shield comes off in depend on a zone ending the same tick; retiring first makes Consecrate worth 33 hit points not 36; `Spawn` runs inside `Apply`, so a cached position is a frame stale | M3-11b (`Zone_TicksAfterTheTimedEffects`, `Zone_PulsesOnTheTickItExpires`) |
-| **`SkillRunner.Tick` sits between `PlayerCombat.Tick` and the enemy behaviours, above `ProjectileSystem.Tick`** | below combat, an HP trigger fires a frame after every hit, for ever; below the projectile step, `IncomingProjectiles` describes the sky *after* the hit and Bulwark becomes a shield over a wound. The staleness is the mechanic | M3-06 (`Session_TicksTheRunnerAfterCombatAndBeforeTheBehaviours`, `Session_TicksTheRunnerBeforeTheProjectileStep`) |
-| `StageFlow` ticks **after** the director and **before** the motor, **and the boundary snapshot is taken on entering `Clear`** — phase read before the flow ticks, compared after — **which is `ClearTime` before the Sanctum opens** | the flow reads `IsStageComplete` a frame stale; a stage ends in an arena whose run ended this tick; a snapshot on the *phase* writes a file once a frame, one at `StageArrived` leaves the gate wait unsaved; one taken in or after the Sanctum saves a half-spent wallet, and a run killed mid-purchase resumes with what it was spending rather than what it walked in with. **So a purchase is refused outside the Sanctum** (M6-02b): one made mid-stage would be kept by the next clear's snapshot while a Sanctum one is rolled back, and the two would disagree about what a kill undoes | M2-10, M2-14a, M6-02a (`StageFlowTests.Stage_TheBoundarySnapshotIsStillTakenOnTheClearEdge`), M6-02b (`RunSessionResumeTests.Port_BuysOnlyInTheSanctum`) |
-| **Every `RunSnapshot` is captured before anything has drawn for the stage it describes** — the opening capture is the first statement of `RunSession.Start`, the boundary capture is on entering `Clear` | a resumed run restores a stream position that already spent the composition and deals itself a different stage under the same number | M2-14a, M2 ledger row 1 |
-| A stage boundary calls `SpawnDirector.Clear()` **before** recomposing the `WavePlan`; nobody may recompose a plan a director is still holding | the director sized its arrays from the old plan, and `SweepTheDead` walks off the end when a wave grows | M2-10 |
-| A boundary sets `EnemySystem.Depth` **before** `EnemySystem.Clear`, and clears projectiles and `Targeter` before recomposing | the new stage's first body is priced at the old stage; a bolt lands at coordinates that no longer mean anything | M2-10 |
-| **A boundary also clears the decoys and the army, silently, and a zone is the one thing it deliberately leaves standing** | a decoy lives 3 s and a Wight **20 s** against a boundary's 2 s of gate and arrival, so both cross one: the decoy taunts the next arena's bodies from the last arena's floor, and the Wight arrives walking at an enemy id the boundary has just wiped out of the registry. A zone is the player's own and survives on purpose (M3-11b) | M5-03, M5-04b (`StageFlowTests.Advance_SweepsTheArmy`) |
-| **The sweep is silent, so the view side tears down on `StageArrived` instead** — `MinionViews` releases every standing body on the event `StageFlow.EnterArrival` publishes immediately after the sweep it mirrors, the same event `ArenaPool` swaps the room on | core publishes no `MinionDespawned` at a boundary (`EnemySystem.Clear`'s silence, for its reason), so a census built on the census events alone stands its whole army in the **next** arena for the rest of the run: eight bodies reporting under ids that no longer resolve, a pool with nothing left to hand out, and the entry for id 1 overwritten by the next stage's first Wight — which leaks that body out of the index entirely. **`ProjectileViews` has the identical gap and no answer yet**, and so will the decoy view: `ProjectileSystem.Clear` and `LureSystem.Clear` are swept at the same boundary and are just as silent. What differs is reachability — a bolt lives under a second and a decoy three, against a Wight's twenty | M5-05a (`MinionViewsTests.Minions_AreSweptAtAStageBoundary`), discharging M5-04b's finding on [ledger row 9](plan/ROADMAP.md#carry-forward-into-m5) |
-| The boundary calls `player.Targeter.Reset()` and **never** `PlayerCombat.Reset()` | every boundary becomes a free heal, deleting GD §12.5's attrition | M2-10 |
-| Projectiles tick **after** the enemy behaviours and **before** the death check | a shot lands the tick it left; a killing bolt leaves the player at zero for a frame, still playing | M2-07a |
-| The director ticks **after** the death check and **before** the motor | a wave telegraphed into an ended run; a director seeing a position the rest of the tick did not | M2-05 |
-| **Experience is drained into `LevelTracker` after the death check and before the director** (`State.Progression.Grant(State.Enemies.DrainXp())`), granted on the tick, never on the fact | above the death check, `LeveledUp` lands in a scope mid-teardown; below the director, a stage's last kill levels *after* the boundary snapshot and the run resumes a level short. Kills between ticks accrue on `EnemySystem.PendingXp`, at most a frame late (ADR-0003) | M3-01a |
-| **`RunSession.Start`'s restore block is an order**: **`SplashFlow.TryDerive` + `Restore` (which installs the borrowed branch)** → `LevelTracker.Restore` → `SkillTree.Restore(takenNodeIds)` → the runner told about the restored Actives → `SkillRunner.Restore(manualSkillIds)` → `LevelUpFlow.GrantOverflow(derived)` → **`EssenceWallet.Restore(Economy.Essence)`** → **`Veilrot.Restore(Economy.Veilrot)`** → **`Health.Restore(hp, shield)` last**. Overflow is derived, `Level − 1 − TakenNodeCount − PendingLevelUps`, and below zero refuses the run. **CH §5.4's borrowed branch is derived too** — every foreign id in `TakenNodeIds` is in the same branch of the same class, because the choice is locked for the run — so v4 carries no field for it either. **M6's restores have their place stated in advance rather than each task choosing one**: Veilrot (built at M6-04, silent, and a run saved Claimed — or, from a file older than M6-11b's flag, at exactly 100 — comes back Claimed with `ClaimedFor` at zero), the banished nodes (M6-02b) and the Pacts (M6-05a) go **below `SkillTree.Restore` and above `Health.Restore`**, beside the wallet's line — the banishes and the Pacts because they are refused against a tree that must already exist, Veilrot because its −20 % max HP modifier at 75 has to be on before the absolute hit points are clamped. **Ordeals (M6-06a) are order-free against `Health.Restore` but not against the composition: since M6-06b they are restored above `RunSession.Start`'s opening `Compose`, outside this block**, because Swarm prices the stage a resumed run opens on (`OrdealEffectsTests.Run_AResumedStageIsComposedUnderItsOrdeals`). **Every task that adds a restore adds to this row** | saved hit points are absolute and clamped against the **live** maximum, so any `MaxHp` mover replayed after the clamp costs the player hit points on every resume, silently; a slot restored before the runner knows its skill is dropped as stale; a branch installed *after* the replay means `SkillTree.Restore` refuses a borrowed node as content it has never heard of. The tree throws on an unknown node, the runner drops an unknown slot; both are silent and gated because nothing may publish before `RunStarted`. **The derivation's one cost is stated rather than hidden**: a run saved after the choice and before its first borrowed pick carries no foreign id, comes back un-splashed and is asked again | M3-01b, M3-03, M3-06, M3-07b, M3-08a, M5-07a-ii, M6-01b (`RunSessionResumeTests.Start_RestoresNodesBeforeHealth`, `Start_RestoresSlotsAfterTheRunnerKnowsTheActives`; `SplashFlowTests.Resume_InstallsBeforeItReplays`, `Resume_ASaveWithNoBorrowedIdsComesBackUnsplashed`; `RunSessionResumeTests.Resume_TheWalletComesBack`), M6-04 (`VeilrotTests.Restore_AtAHundredComesBackClaimed`, `Claiming_PublishesPlayerDied` — a run resumed at 100) |
-| `RunSession.Start` composes the stage **before** `RunStarted` and begins the director **after** `SpawnAll` | a mode introducing nothing at its starting stage throws with the run announced; wave 1's concurrency check cannot see dressed-in enemies | M2-05 |
-| **`EnemySystem.ApplyDamage` leaves the corpse registered; a behaviour retiring *another* agent queues through `EnemySystem.DespawnAtEndOfTick`, never `Despawn`; the forward walk stays forward** | `EnemyRegistry.Despawn` is an order-preserving shift, so a direct despawn inside the pass reads past the span into a null; reversing the walk would change the order every enemy acts in, which `TargetScorer`'s tie-break reads and a seeded run replays | M2-08, M4-01b |
-| **A boss's phase check runs after this frame's damage and before the boss acts**: `BossPhases.Tick(Health.Fraction, dt)`, then clear, beat, summon, announce, then the delegated behaviour. The fraction is `Health`'s, **never `EnemyBlackboard.HpFraction`**; adds clear on the beat's *first* tick | a crossing seen a frame late; a corpse's blackboard is frozen at its last living reading, so a machine driven from it reads a dead boss as healthy — which is also why `SpawnDirector` ends a boss stage on `IsAlive` | M4-01b (`Order_CrossingIsSeenTheFrameTheHitLands`, `Boss_ACorpseIsNotAHealthyBoss`) |
-| An explosion is triggered by the spec carrying an `ExplosionSpec`, **never by the behaviour kind**, and is published after the `EnemyDied` that caused it | "explodes on death" stops being true for a Bloater killed by anything but its fuse; M7-02's Volatile affix would need a second mechanism | M2-08 |
-| Ingest runs before anything reads an enemy | every distance a frame stale, reads as an AI bug | M1-06 |
-| `EnemySystem.Ingest` is two passes **split by writer** — snapshot-keyed copy, then registry-keyed derive | a lagging enemy carries a distance from last frame's position | M1-06 |
-| `PlayerMotor.Tick` integrates velocity **before** facing | a frame of rotation discarded on every start from rest, invisible to a test written from rest | M0-07 |
-| `EnemyAgent.Initialise` re-bases `Health.MaxHp` **before** `Health.Reset()` | a recycled enemy arrives at the previous archetype's hit points | M1-05 |
-| `EnemyAgent.Initialise` calls the **no-argument** `Stat.RemoveAll()` on all three stats before re-basing | a recycled Husk wears the last one's depth scaling, later its affixes; a source token would need every future source listed at this line | M2-03 |
-| `EnemySystem.Spawn` applies depth **after** registration and **before** `EnemySpawned` | a health bar built on the spawn event is sized to the unscaled maximum for a frame | M2-03 |
-| `DepthScaling.Apply` refills health **after** the `MaxHp` modifier goes on | a stage-20 Husk at stage-1 hit points behind a part-filled bar | M2-03 |
-| `EnemyHitFeedback.ResetVisuals` restores the opaque material **before** writing the colour | the dissolve's alpha honoured for a frame by the transparent material | M1-12 |
-| Both run lifecycle events publish **before** `IsRunning` moves | a reader inside a lifecycle event sees the state it is *leaving* — deliberately | M0-10 |
-| `EnemySpawned` is published **after** registration; `EnemyDespawned` **after** removal | a handler resolving the id finds nothing, or a ghost | M1-06 |
-| A subscriber that must hear the opening of a run subscribes **from a constructor on the dependency chain**, never from a `Start` of its own | VContainer orders no two entry points' `Start`s; the opening population is dropped in silence | M1-07 |
-| A view that answers core with a **fact** takes `Step(dt)` from `RunTicker` and never owns an `Update` | core writes intents after the reader applied them; the intent list reads empty *every* frame | M1-16 |
-| **`RunTicker.LevelUpPhase` sits above `CommandPhase`, below the `IsRunning` guard, and a held pause returns before either** — the level-up opens between ticks, never inside one; a paused frame is skipped, not clocked at zero; the tick that earns the level finishes. A gated frame costs zero simulated seconds, so `RunState.Time` is *play* time | below the phase, a tap on the level-up screen also focuses or casts; inside the tick, a draw is captured at a stream position already advanced and killing the app with a pick owed is a free reroll; a `Dt = 0` tick still walks the whole pipeline and fires a due swing | M3-08a (`FrameOrderTests.Frame_LevelUpPhaseRunsAboveCommands`, `Frame_TheLevellingTickCompletes`, `Frame_PausedFrameDoesNotTickCore`, `Frame_PausedTicksCostNoSimulatedTime`) |
-| **Inside that phase: CH §5.4's splash is read first and only one of the two may open on a frame, and the pause is *given back before it is taken*.** `PauseReason.Splash` joins `LevelUp` and `Menu`; `RunState.IsSplashPending` is false while an offer is on the table, so a level-up mid-episode finishes first | both can be owed at once — a sixth node taken between ticks and a kill that levelled on the same tick — and `RunPause.Pause` throws for a second holder, so a gate that discovered the collision from inside the frame loop would turn two screens into a dead run. Written as two independent blocks, the frame a splash becomes owed is the frame a level-up stops being: the splash would find the pause still held and decline it, the level-up block would then hand it back, and the screen would be up over a running fight | M5-07a-ii (`FrameOrderTests.Run_TheSplashPauseIsItsOwnReason`, `Run_TheSplashIsReadBeforeTheLevelUp`; `SplashFlowTests.Run_BothCanBeOwedOnOneFrame`) |
+**`RunTicker` frame:** held pause returns early → `LevelUpPhase` → `CommandPhase` → snapshot →
+clear intents → core tick → enemy moves → minion moves → `Physics.SyncTransforms()` → facts →
+knockbacks (`FrameOrderTests`).
+
+- Every command adapter (`TapToFocusAdapter.Poll`, `SkillSlotInput.Poll`, the movement-skill press)
+  is polled from `CommandPhase`, never an `ITickable` or a uGUI `onClick` — else a tap lands a frame
+  late or casts against stale senses.
+- One `Physics.SyncTransforms()` between bodies and facts; never `autoSyncTransforms` — else sweeps
+  resolve against last frame's bodies.
+- `LevelUpPhase` sits above commands and below the `IsRunning` guard; a level-up opens between
+  ticks; a paused frame is skipped (costs zero simulated time, so `RunState.Time` is play time); the
+  levelling tick finishes. Inside it the splash is read first, only one screen opens per frame, and
+  the pause is given back before it is taken (`RunPause.Pause` throws for a second holder).
+- `ApplyMinionMoves` follows `ApplyEnemyMoves`, above the flush, and resolves ids through
+  `MinionViews` — both registries number from 1, so a minion id through `EnemyViews` walks an enemy.
+  `SnapshotBuilder` copies minions after enemies and before `WriteSenses`, which never covers minion
+  slots.
+- A view answering core with a fact takes `Step(dt)` from `RunTicker`, never its own `Update`.
+
+**`RunSession.Tick`:** time → lure expiry → ingest (enemies + minions) → Veilrot → combat → take
+the shot → skills → timed effects → zones → enemy behaviours → minions → projectiles → death drain +
+rise → (dead? end) → XP drain → director → stage flow → motor → intent.
+
+- `LureSystem.Tick` above ingest; a decoy redirects in `EnemySystem.Perceive` only (the one writer
+  of the four player fields). `QuarryIsADecoy` has one reader, `ChaserBehaviour.EnterStrike`. Not a
+  targeting system.
+- `Veilrot.Tick` directly above combat and sole writer of `CombatBlackboard.Veilrot`; each Claiming
+  drain step calls `PlayerCombat.AnnounceDeath` (the one `PlayerDied` publisher).
+- `TryTakeShot` drains right after combat; a projectile weapon writes `PendingShot`, not a
+  `ConeHitIntent`.
+- `SkillRunner.Tick` after combat, before behaviours and projectiles — HP triggers and Bulwark read
+  this tick's state.
+- `TimedEffects.Tick` right after the runner, on `SimulatedClock` (never `IClock`); `ZoneSystem.Tick`
+  right after it; within a zone, pulses before retirement; zones spawn at
+  `CombatBlackboard.PlayerPosition`.
+- `MinionSystem` ingests beside enemies and ticks after behaviours, above the death check; inside:
+  expire → choose → walk → strike. A Wight is never an `EnemyAgent`; its kills go through
+  `EnemySystem.ApplyDamage`.
+- Projectiles tick after behaviours and before the death check (a shot never lands the tick it left).
+- `EnemySystem.DrainDeaths` after every killing pass, above the death check, handed to
+  `RisePassive.OnDeaths` on the same line. Core never subscribes to its own events. One
+  `IRandom.Drops` draw per death, before anything can refuse the raise.
+- XP drains into `LevelTracker` after the death check, before the director.
+- Director after the death check, before the motor. `StageFlow` after the director, before the
+  motor.
+- `PlayerMotor.Tick` integrates velocity before facing.
+- A boss's `BossPhases.Tick(Health.Fraction, dt)` runs after this frame's damage, before it acts;
+  read `Health`, never `EnemyBlackboard.HpFraction` (frozen on a corpse).
+
+**Stage boundary and snapshots**
+
+- The boundary snapshot is taken on entering `Clear` — before the Sanctum opens. Purchases are
+  refused outside the Sanctum.
+- Every `RunSnapshot` is captured before anything draws for its stage (`RunSession.Start`'s first
+  statement; the `Clear` edge).
+- At a boundary: set `EnemySystem.Depth` before `EnemySystem.Clear`; `SpawnDirector.Clear()` before
+  recomposing the `WavePlan`; clear projectiles and `Targeter` before recomposing; sweep decoys and
+  the army silently; leave zones standing. Call `Targeter.Reset()`, never `PlayerCombat.Reset()`
+  (that would heal).
+- The sweep is silent, so views tear down on `StageArrived` (`MinionViews`). `ProjectileViews` has
+  the same gap, unanswered.
+
+**`RunSession.Start`**
+
+- Restore order: `SplashFlow.TryDerive` + `Restore` → `LevelTracker.Restore` →
+  `SkillTree.Restore` → runner told about Actives → `SkillRunner.Restore` →
+  `LevelUpFlow.GrantOverflow` → wallet, banishes, Pacts, `Veilrot.Restore` → `Health.Restore`
+  **last** (saved HP is absolute and clamped to the live max). Overflow and the borrowed branch are
+  derived, not saved. Ordeals restore above the opening `Compose`. A new restore adds itself here.
+- Compose the stage before `RunStarted`; begin the director after `SpawnAll`.
+
+**Enemies**
+
+- `ApplyDamage` leaves the corpse registered; a behaviour retiring another agent uses
+  `DespawnAtEndOfTick`; the walk stays forward (order feeds `TargetScorer`'s tie-break).
+- Ingest runs before anything reads an enemy, in two passes split by writer.
+- `EnemyAgent.Initialise`: no-argument `Stat.RemoveAll()` on all stats, re-base `MaxHp`, then
+  `Health.Reset()`. `Spawn` applies depth after registration, before `EnemySpawned`; depth refills
+  health after the `MaxHp` modifier.
+- An explosion comes from the spec's `ExplosionSpec`, never the behaviour kind, published after its
+  `EnemyDied`.
+- `EnemyHitFeedback.ResetVisuals` restores the opaque material before writing the colour.
+
+**Events**
+
+- Run lifecycle events publish before `IsRunning` moves. `EnemySpawned` after registration,
+  `EnemyDespawned` after removal.
+- A subscriber that must hear a run open subscribes from a constructor on the dependency chain,
+  never its own `Start`.
 
 ### 18.2 The boundary
 
-- **`IRunSession.Tick` takes the snapshot alone.** `Dt` rides on it; there is **no `IClock` in the session** — simulated time is the sum of each tick's `Dt`, and wall-clock is a different port (M0-09, M0-10).
-- **A port grows a member when the mechanic that needs it lands, not before** (M0-09).
-- **Core decides every outcome an enemy causes and calls `PlayerCombat.ApplyDamage` directly.** Unity owes core a *fact* only when the answer depends on colliders core does not hold (`ReportConeHits`, `ReportChargeHits`); a standing geometric question is a *sense* on the snapshot (`LineOfSightSense` → `EnemySense.HasLineOfSight`). Contact and projectile impact are core-computed. Core holds no walls and never will (M1-18, M2-07a, M2-08, M2-11b; M2 ledger rows 7 and 13).
-- **`EnemyTickContext` is built once per tick by `RunSession`, never per agent, and no behaviour may store it** — implementers unpack it into fields and clear them in a `finally`. It has carried the census since M2-08, bounded because the blast that follows is resolved by `EnemySystem` off the spec (M2-07b, M2-08).
-- **Everything downstream of `SnapshotBuilder` integrates `snapshot.Dt`, never `Time.deltaTime`.** Purely cosmetic view timers are the exception (M0-16).
-- **`WorldSnapshot.Clear()` does not zero `Enemies`.** Readers stop at `EnemyCount`, and **a writer into a reused slot assigns every field, zeroes included** (M0-05, M1-07).
-- **`IntentBuffer.Clear()` lowers `HasPlayerMove` and leaves the stored intent alone.** Every reader checks its flag first, or the player slides (M0-06).
-- **`PlayerView.Velocity` is the velocity core asked for, never `CharacterController.velocity`**, which collapses to zero against a wall (M0-16).
-- **Animation never gates a damage frame, and no clip carries an Animation Event.** Core owns the cadence (CC §4.2); `PlayerAnimatorView` derives `AttackSpeed` from the measured interval between real swings (M2-art).
-- **`applyRootMotion` is off on every rig, and every importer's root node is empty.** Nine of the 173 KayKit clips carry root translation, so this is a live guard (M2-art).
-- **An unreached arena is instantiated under a *deactivated* root, never instantiated and then deactivated** — the second runs `Awake`/`OnEnable`, draws for a frame and doubles the navigation data under the live arena. `ArenaPool` keeps two roots; raising is a reparent plus `SetActive`. Every "build it now, show it later" owes the same shape (M2-11a).
-- **Where a body may spawn is a property of the arena.** It arrives on `WorldSnapshot.SpawnPoints` and `SpawnDirector.Begin` **copies** it, because the snapshot is one buffer refilled every frame (M2-11a).
-- **`FollowCamera`'s yaw stays 0.** The day it can turn, the −yaw rotation goes into `SnapshotBuilder` and never into core (M0-18).
-- **A Wight's walk leaves through `IIntentSink.MinionMove`, never `EnemyMove`, and the struct is the same one.** The three facts are identical; the *registries* are not — `MinionSystem` and `EnemyRegistry` both issue ids from 1, so one shared door would let a Wight's id steer a Husk. `WorldSnapshot.Minions` is a second array for the same reason, sized from `MinionSystem.MaxConcurrent` so it cannot fall behind the cap (M5-04a).
-- **A live object is never handed out of `RunState`.** `Motor`, `Combat`, `Enemies` and `Projectiles` are `internal` with scalar reads, because a public handle on something with a `Tick` lets a view double-integrate a frame. Every future mutable field owes the same question (M0-16, M1-06, M1-08, M2-07a).
-- **`RunState`'s constructor and setters are `internal`, and `Soulvail.Tests.Core` has no `InternalsVisibleTo`** — tests go through `RunSession`, which is also why that constructor carries no argument guards (M0-10).
+- `IRunSession.Tick` takes the snapshot alone; `Dt` rides on it; no `IClock` in the session.
+- A port grows a member when its mechanic lands.
+- Core decides every outcome. Unity reports a fact only when the answer needs colliders core lacks
+  (`ReportConeHits`, `ReportChargeHits`); standing geometric questions are senses on the snapshot.
+  Core holds no walls.
+- `EnemyTickContext` is built once per tick; no behaviour stores it.
+- Downstream of `SnapshotBuilder`, integrate `snapshot.Dt`, never `Time.deltaTime` (cosmetic timers
+  excepted).
+- `WorldSnapshot.Clear()` doesn't zero `Enemies`; readers stop at `EnemyCount`; writers assign every
+  field.
+- `IntentBuffer.Clear()` lowers flags only; readers check the flag first.
+- `PlayerView.Velocity` is what core asked for, never `CharacterController.velocity`.
+- Animation never gates a damage frame; no clip carries an Animation Event. `applyRootMotion` is off
+  on every rig; importers' root node is empty.
+- Build-now-show-later objects are instantiated under a deactivated root (`ArenaPool`), never
+  instantiated then deactivated.
+- Spawn points come from the arena via `WorldSnapshot.SpawnPoints`; `SpawnDirector.Begin` copies
+  them.
+- `FollowCamera` yaw is 0. If it ever turns, the −yaw goes into `SnapshotBuilder`, not core.
+- A Wight moves through `IIntentSink.MinionMove`, never `EnemyMove`; `WorldSnapshot.Minions` is its
+  own array sized from `MinionSystem.MaxConcurrent`.
+- No live object leaves `RunState` (`Motor`, `Combat`, `Enemies`, `Projectiles` are `internal`
+  with scalar reads). `RunState`'s constructor and setters are `internal`; tests go through
+  `RunSession`.
 
 ### 18.3 Numbers and identity
 
-- **A non-positive guard on a float is spelled `!(value > 0f)`, never `value <= 0f`** — NaN passes the natural spelling and is permanent (M0-07).
-- **Guard the argument *before* the arithmetic that launders it** — `radius * radius` turns −1 into 1 (M1-09).
-- **NaN is refused at every door into a `Stat`** — it produces *silence*, not a wrong number, because `Changed` compares and stops firing (M1-01).
-- **A struct with an invariant checks at both ends** — `default(ContentId)` and `default(Modifier)` pass the constructor's guard (M0-08, M1-01).
-- **`ContentId`'s grammar is `^[a-z0-9]+(\.[a-z0-9_-]+)+$`.** Loosening is safe; tightening invalidates content already on disk (M0-08).
-- **`SeededRandom`'s stream indices — Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4 — are part of what a seed means.** A new stream takes the next free index; never renumber (M0-04).
-- **`TreeRules.BranchCount` is the *run's* branch count and the number every branch-shaped member indexes against. `SkillTreeSpec.BranchCount` is 3 and means *branches per class*.** CH §5.4 lets a run borrow a fourth branch; it is always index 3, and it is **appended to the flattened walk, never interleaved**, so an offer drawn before the splash still means what it meant. Anything that sizes a per-branch buffer takes the run's number (M5-07a-i).
-- **Choosing a position makes exactly one draw**: draw a start index, then *walk* the candidates deterministically, so a refusal costs what an acceptance costs and the seed replays whatever the player did. Anything that picks a place from a list owes the same shape (M1-19, M2-05).
-- **GD §12's formulas are authoritative; a table row that disagrees is the error.** `B(40)` is 1 876.9, the code and its tests assert the formula, and the table was corrected to it at M2-15 (M2-03).
-- **`WaveComposer` tracks spend as `int` and each wave's allowance as the *cumulative* share minus that spend, never a running `float` remainder** — a float composes nine Husks at stage 1 instead of GD §12.1's ten. Anything that divides a budget into whole units owes the same shape (M2-04).
-- **Depth scaling is `PercentMult`, never `PercentAdd`** — it must multiply with an Elite's 2.2× rather than pool with it (GD §8.3) (M2-03).
-- **`StatCurve`'s `stageOffset` is 0 or 1 and nothing else** — it spells GD §12.3's `n−1` against `n`; a free shift gives the first stages no scaling (M2-03).
-- **Enemy despawn compacts rather than swapping with the last** — spawn order feeds `TargetScorer`'s tie-break (M1-05).
-- **A lazy cache and a "fires only on change" event cannot both be lazy** — `Stat` is lazy only while nothing subscribes (M1-01).
+- Float guards are `!(value > 0f)`, never `value <= 0f` (NaN). Guard before arithmetic that
+  launders the sign. NaN is refused at every `Stat` door.
+- A struct with an invariant checks both ends — `default(T)` skips the constructor.
+- `ContentId` grammar: `^[a-z0-9]+(\.[a-z0-9_-]+)+$`. Loosen freely; tightening breaks saved
+  content.
+- `SeededRandom` streams: Spawn 0, Offers 1, Affixes 2, Drops 3, Misc 4. New ones take the next
+  index; never renumber.
+- `TreeRules.BranchCount` is the run's count; `SkillTreeSpec.BranchCount` (3) is per class. A
+  borrowed branch is always index 3, appended, never interleaved.
+- Choosing a position is exactly one draw: draw a start index, then walk deterministically.
+- GD §12's formulas beat its tables.
+- `WaveComposer` spends in `int` against a cumulative share, never a float remainder.
+- Depth scaling is `PercentMult`. `StatCurve.stageOffset` is 0 or 1.
+- Enemy despawn compacts (order feeds the tie-break).
+- A `Stat` is lazy only while nothing subscribes to `Changed`.
 
 ### 18.4 Combat and perception
 
-- **All perception is XZ** — distances, directions, the 6 m ally radius, spawn safety. Any new sense that measures a separation owes the same (M1-06).
-- **`LineOfSightSense` is the one exception, measuring occlusion rather than separation**: a 3D ray with both ends at `EyeHeight` 1.1 m, so a 1.5 m pillar blocks it and the floor does not. Every *distance* a Spitter uses stays XZ (M2-11b).
-- **That sense's mask is `Cover` and never the Enemy layer** — cover is the arena's, not the crowd's (M2-11b).
-- **An unmeasured sight line means "can see"**; `SnapshotBuilder` writes `true` for every slot when no sense is composed, because *false* switches the ranged archetype off in silence. `NavPathSense` makes the same choice (M2-11b).
-- **`Health.Tick` credits only the slice of its step past the recharge deadline**, so the Aegis is worth the same at 30 fps and 120. Anything that resumes on a deadline mid-step owes the same arithmetic (M1-02).
-- **`Health` publishes nothing.** Its owner turns `DamageResult` into events (M1-02, M1-08, M1-11).
-- **`Health.HasShield` means "has a `ShieldSpec`", not "the shield is up"**; ask `Shield > 0` for the other question (M1-02).
-- **A telegraph is a promise.** `SpawnDirector` never cancels, moves or lets the concurrency cap eat a `SpawnTelegraphed` — the cap counts the *pending* as well as the living. `Clear` is the one exception (M2-05).
-- **A Spitter's aim never cancels, the deliberate opposite of the Chaser's windup** — the dodge window is the *flight*. Ranged owes the Spitter's shape, melee the Chaser's (M2-07b).
-- **A walk *in* follows `PathDirectionToPlayer`; a walk *out* is `−DirectionToPlayer` and never a negated path**, which points at the next waypoint's opposite rather than away from the player (M2-07b).
-- **`EnemyRegistry.Alive` means *registered*, not breathing.** Readers that care check `IsAlive`; the name is a wart (M1-05).
-- **`Targeter`'s cadence accumulator is never reset by an immediate retarget** — or a stream of dying targets starves the scheduled decision (M1-04).
-- **`Targeter.FocusedTargetId` lags `Focus(id)` by one tick on purpose** — between ticks there is no candidate span to validate against (M1-04).
-- **`TargetScorer` resolves an exact tie to the lowest id even against the incumbent** — hysteresis is a bonus before the comparison, not a veto after (M1-03).
-- **`EnemySpec` does not validate `EnemyBehaviourKind`** — `EnemySystem.Tick`'s dispatch is the loud place, being the one site that knows the full set (M1-05).
-- **A pooled `EnemyView` forgets its last life in `OnDespawn`** — scale, material, alpha, collider, knockback — and a forgotten reset produces a half-transparent unhittable Husk. The archetype's tint and scale are re-applied by `EnemyViews` on **every** spawn, `EnemyLook.Default` when none is authored (M1-19, M2-06).
-- **`EnemyView` carries two colliders and they are not interchangeable**: the `CharacterController` moves the body; the trigger `CapsuleCollider` is what sweeps query and `EnemyViews` indexes (M1-18).
-- **The floating stick's touch region is the left 45 % of the screen, full height.** Every on-screen control added later must be a raycast target, or it steals the focus (M1-09).
+- All perception is XZ. Exception: `LineOfSightSense`, a 3D ray at `EyeHeight` 1.1 m on the `Cover`
+  mask only. An unmeasured sight line or path means "can see".
+- `Health.Tick` credits only the part of the step past the recharge deadline. `Health` publishes
+  nothing. `HasShield` means "has a `ShieldSpec`"; use `Shield > 0` for "up".
+- A telegraph is a promise: the director never cancels, moves or caps one away (the cap counts
+  pending spawns). `Clear` is the exception.
+- A Spitter's aim never cancels (the dodge is the flight); a Chaser's windup can.
+- Walking in follows `PathDirectionToPlayer`; walking out is `−DirectionToPlayer`.
+- `EnemyRegistry.Alive` means registered; check `IsAlive`.
+- `Targeter`'s cadence accumulator is never reset by an immediate retarget. `FocusedTargetId` lags
+  `Focus(id)` by a tick. `TargetScorer` breaks exact ties to the lowest id, even against the
+  incumbent.
+- `EnemySpec` doesn't validate `EnemyBehaviourKind`; `EnemySystem.Tick`'s dispatch is the loud place.
+- A pooled `EnemyView` resets everything in `OnDespawn`; `EnemyViews` re-applies tint and scale on
+  every spawn. Its `CharacterController` moves the body; the trigger `CapsuleCollider` is what
+  sweeps hit.
+- The move stick's touch region is the left 45 % of the screen; every later on-screen control must
+  be a raycast target.
 
-### 18.5 Known soft spots
+### 18.5 Soft spots
 
-Not bugs today. **Anything a named task must deal with lives in the current milestone's
-[carry-forward ledger](plan/ROADMAP.md#carry-forward-into-m4), not here** — follow the ROADMAP's newest
-`Carry-forward into M<n>` heading. What remains below has no owning task yet:
-
-| Soft spot | Bites at |
-|---|---|
-| `IsCurrentBlocked` suppressing the invulnerability retarget has **no test** — the outcome is identical, only the frequency changes | whenever a Warden-like enemy exists |
-| `RunSession.Tick`'s ordering rule has no assertion — no public route from session to blackboard | M1-08 made it observable; still unpinned |
-| A `Health` driven to `MaxHp` 0 dies without a `DamageResult` to say so | the first effect that removes max HP |
-| `Targeter`'s 2 s focus-drop delay and `FocusResolver`'s 3 m radius are `const`s, not authored data | when either must differ per class |
+- `IsCurrentBlocked` suppressing the invulnerability retarget has no test.
+- `RunSession.Tick`'s order has no single assertion.
+- A `Health` driven to `MaxHp` 0 dies without a `DamageResult`.
+- `Targeter`'s 2 s focus-drop delay and `FocusResolver`'s 3 m radius are `const`s.

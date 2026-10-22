@@ -115,7 +115,7 @@ On a phone, the control scheme *is* the game design. Everything downstream depen
 
 ### 5.1 The core decision: one thumb moves, the gun aims itself
 
-**Recommended: single floating joystick + automatic firing + auto-target, with dash and ability as right-thumb buttons.**
+**Recommended: single fixed joystick + automatic firing + auto-target, with dash and ability as right-thumb buttons.**
 
 This is the model Archero and Survivor.io use, and it dominates the genre for a reason: it eliminates the second stick entirely. Virtual twin-stick is a well-documented ergonomic problem — no tactile feedback, thumbs occlude a third of the screen, and precision aiming with a thumb on glass is genuinely bad.
 
@@ -133,8 +133,8 @@ Critically, **this makes our pillars stronger, not weaker.** P2 already says "mo
 │         ▲              ▲              ▲                  │
 │                                                          │
 │    ╭───╮                                        ╭──╮╭──╮ │
-│    │ ◉ │  ← floating stick                      │⚡││✦ │ │  ← dash / ability
-│    ╰───╯     (appears where you touch)          ╰──╯╰──╯ │
+│    │ ◉ │  ← fixed stick                         │⚡││✦ │ │  ← dash / ability
+│    ╰───╯     (grabbed by any touch in the zone) ╰──╯╰──╯ │
 └──────────────────────────────────────────────────────────┘
      LEFT ZONE (45%)                          RIGHT ZONE
      movement only                     buttons + tap-to-focus
@@ -142,7 +142,7 @@ Critically, **this makes our pillars stronger, not weaker.** P2 already says "mo
 
 | Input | Gesture | Notes |
 |---|---|---|
-| **Move** | Touch anywhere in the left 45% and drag | *Floating* stick — origin spawns under your thumb, never fixed. Full deflection at 55px drag. | *(landscape number; UI-08c re-derives it)*
+| **Move** | Touch anywhere in the left 45% and drag | *Fixed* stick at the bottom-left, always visible; a touch anywhere in the zone grabs it (owner's ruling 2026-10-13; [CC §2.1](CoreCombat.md)). The floating stick survives as an option. |
 | **Fire** | Automatic | Continuous, at the current target. No fire button. |
 | **Movement skill** | Tap the fixed right-side button | 48dp minimum, corner-anchored in natural thumb arc. Radial cooldown fill on the button. |
 | **Manual skills** | Tap — up to 4 optional buttons | Only appear for skills the player has switched to Manual. Everything else auto-casts. |
@@ -224,11 +224,11 @@ Weapons differ per class, but all obey the same laws:
 
 > A basic enemy dies in **3–5 hits from any class, at any depth.**
 
-The band is the *weapon's*. A signature that spends a run's worth of not being hit is allowed to beat it: the Emberwright at full Kindling kills a stage-1 Husk in two ([CH §3.3](Characters.md#33-emberwright--wizard), [M6-07a](plan/tasks/M6-07a-the-emberwright-and-the-cinder-orb.md)).
+The band is the *weapon's*. A signature that spends a run's worth of not being hit is allowed to beat it: the Emberwright at full Kindling kills a stage-1 Husk in two ([CH §3.3](Characters.md#33-emberwright--wizard), M6-07a).
 
 At stage 1 an unlevelled class kills a Husk in ~3 hits. At stage 30 a well-built one should still kill a Husk in ~3–5 hits, because tree power and enemy HP scale together by design. If basic enemies start taking 10 hits, the curve has failed and no amount of content fixes it.
 
-**This holds up to the death horizon and not past it** — see §12.4's TTK row and §12.5. **And it is not holding today, measured rather than assumed:** at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md) the Oathbound killed a Husk in 4 hits at every stage from 4 to 16, while the Gravecaller went 4 → 8 by stage 16 with **its entire tree taken**. The cause is the tree rather than the player: the Gravecaller's twelve nodes carry **one** weapon-damage node, so its damage grew 15 % over nineteen stages against a Husk's 108 %. **"Tree power and enemy HP scale together by design" is the design; it is not yet the game.** M8-05 owns closing that gap.
+**This holds up to the death horizon and not past it** — see §12.4's TTK row and §12.5. **And it is not holding today, measured rather than assumed:** at M5-08 the Oathbound killed a Husk in 4 hits at every stage from 4 to 16, while the Gravecaller went 4 → 8 by stage 16 with **its entire tree taken**. The cause is the tree rather than the player: the Gravecaller's twelve nodes carry **one** weapon-damage node, so its damage grew 15 % over nineteen stages against a Husk's 108 %. **"Tree power and enemy HP scale together by design" is the design; it is not yet the game.** M8-05 owns closing that gap.
 
 ### 6.3 Skills
 
@@ -488,7 +488,7 @@ Invariants. Violating them is a bug, not a tuning choice.
 |---|---|
 | **One-shot rule** | No non-boss attack may exceed **35% of max HP** at any depth. Boss attacks cap at **50%**. |
 | **Spawn safety** | Nothing spawns within **6m** of the player. Revenant teleports are exempt but telegraph 0.5s. |
-| **TTK invariant** | A basic enemy dies in **3–5 hits** **up to the death horizon** (§12.5). Drift above 5 *before* that horizon means HP scaling is too steep or player scaling too weak. **Scoped at [M5-08](plan/tasks/M5-08-acceptance-and-tag.md), because "at every depth" contradicted §12.5**: if the power curves cross on purpose, TTK must exceed 5 eventually, so the unscoped rule forbade the very thing that makes Descent losable. Measured there: the Oathbound holds **4 hits flat from stage 4 to 16**; the Gravecaller drifts **4 → 8 by stage 16** and breaks the band at **stage 9**, which is a real violation inside the horizon and is **M8-05**'s. |
+| **TTK invariant** | A basic enemy dies in **3–5 hits** **up to the death horizon** (§12.5). Drift above 5 *before* that horizon means HP scaling is too steep or player scaling too weak. **Scoped at M5-08, because "at every depth" contradicted §12.5**: if the power curves cross on purpose, TTK must exceed 5 eventually, so the unscoped rule forbade the very thing that makes Descent losable. Measured there: the Oathbound holds **4 hits flat from stage 4 to 16**; the Gravecaller drifts **4 → 8 by stage 16** and breaks the band at **stage 9**, which is a real violation inside the horizon and is **M8-05**'s. |
 | **On-screen rule** | No damage originates from outside the camera frustum without a visible edge indicator. Tighter than the PC version of this rule — a phone screen shows less. |
 | **Thumb rule** | Nothing critical may resolve in the bottom-left or bottom-right ~15% of the screen. Thumbs live there. |
 | **Cover guarantee** | Every arena has a valid circle-strafe path at all times. |
@@ -682,8 +682,8 @@ telegraph colour would be the worst readability bug this game could ship — a b
 incoming attack. **A desaturated maroon is still *toward* red**, so both lines are satisfied at once, and
 that is what ships: `Palette.EnemyDying` `#3B2422`, with `Tint_NeverApproachesDanger` sampling every
 archetype at every step and finding a worst-case distance of **0.361**, 2.4× the 0.15 band. Ruled at
-[M3-13b](plan/tasks/M3-13b-health-bar-treatment.md) rule 3 and confirmed at
-[M3-15](plan/tasks/M3-15-acceptance-and-tag.md) rule 9. **Nothing about the shipped behaviour changed; only
+M3-13b rule 3 and confirmed at
+M3-15 rule 9. **Nothing about the shipped behaviour changed; only
 this line did.**
 
 **One thing a playtest should be pointed at, because the Editor found it and cannot judge it:** a Husk at
@@ -774,7 +774,7 @@ Ships in V1. Retrofitting is expensive.
 ### V1 — the shippable core
 
 - **Descent mode**, built on a mode abstraction that could carry others
-- Touch controller: floating stick, auto-fire, auto-target with tap-to-focus, all 3 control modes
+- Touch controller: fixed stick, auto-fire, auto-target with tap-to-focus, all 3 control modes
 - **3 classes — Oathbound, Gravecaller, Emberwright** — with class select, **27-node in-run trees each (81 total)**
 - Levelling, level-up screen, View Tree, auto-cast, cooldowns, manual pinning
 - Stages 1–20, 2 biomes (Ashen Reach, Drowned Choir), 8–12 arenas each
@@ -799,26 +799,13 @@ Ships in V1. Retrofitting is expensive.
 
 ### Explicitly not doing
 
-Multiplayer · procedural mesh/level generation · inventory or equipment screens · dialogue or cutscenes · crafting · open world · destructible environments · portrait mode (V2 at earliest) · iOS (post-launch)
+Multiplayer · procedural mesh/level generation · inventory or equipment screens · dialogue or cutscenes · crafting · open world · destructible environments · landscape mode · iOS (post-launch)
 
 ---
 
 ## 20. Milestones
 
-Each ends with something playable. No milestone is "build the architecture" — architecture emerges from making M0 work and then not breaking it.
-
-| # | Milestone | Done when |
-|---|---|---|
-| **M0** | **Grey-box feel test, on a real phone** | Capsule player moves via floating stick, auto-fires at capsule enemies, dashes, in an untextured box arena — **running on an actual Android device.** Validate Focus (§5.5) here. |
-| **M1** | **Stage loop** | Waves spawn from a threat budget, arena seals/unseals, Gate loads next stage, difficulty visibly rises. 3 enemy types. Object pooling from the start. Weapon/movement/passive are **data-driven** (`CharacterDefinition` assets, not an enum switch), and the **mode abstraction (§4.5) exists** even though only Descent uses it. |
-| **M2** | **Levelling and the tree** | XP, level-up pause screen, ~12 nodes for one class, auto-cast with trigger conditions, cooldowns, health-bar treatment. **This is the core progression milestone and it comes early** — everything after it is content poured into a working loop. Run persistence. |
-| **M3** | **First boss** | Warden of Ash, 3 phases, adds, arena hazard. Death → run-end → payout. |
-| **M4** | **Second class** | Gravecaller playable — Bone Bolt, Shroudstep, autonomous Wights, and its own tree. Proves the class abstraction survives a real second case. |
-| **M5** | **Systems complete** | Sanctum shop, Pact nodes, manual pinning, View Tree UI, class select, third class, Soul Shards and unlocks. |
-| **M6** | **Content pass** | Full V1 enemy roster, Elites + affixes, all 81 nodes, 2nd boss, both biomes with real art. |
-| **M7** | **Feel, perf & ship pass** | Game feel checklist, haptics, audio layers, full options, device tiering, thermal validation, tuning against §12.5 **per class**. |
-
-**M0 is a gate, not a formality — and it must run on hardware.** A touch twin-stick that doesn't feel good with untextured capsules on a real phone will not feel good with art. Editor playtesting with a mouse will lie to you about exactly the thing M0 exists to test. Budget real time for it and be willing to change §5–6 based on what it teaches us.
+Planning lives in [plan/ROADMAP.md](plan/ROADMAP.md).
 
 ---
 
@@ -826,7 +813,7 @@ Each ends with something playable. No milestone is "build the architecture" — 
 
 Ranked by how much downstream work they affect.
 
-1. **Business model — premium, or free-to-play?** This document currently assumes **premium** (paid once, no ads, no IAP). F2P would change meta-progression pacing substantially: Shard costs in §14 are tuned for a player who owns the game, not one being nudged toward a purchase. It would also add systems (ad-revive, energy, battle pass) that touch the run loop directly. **Decide before M2**, because meta-progression is where it lands.
+1. **Business model — premium, or free-to-play?** This document currently assumes **premium** (paid once, no ads, no IAP). F2P would change meta-progression pacing substantially: Shard costs in §14 are tuned for a player who owns the game, not one being nudged toward a purchase. It would also add systems (ad-revive, energy, battle pass) that touch the run loop directly. **Still undecided**; it blocks the store listing.
 2. **Orientation** — **ruled portrait by the owner, 2026-09-29, and switched in UI-08a.** Portrait enables true one-handed play and is what Archero/Survivor.io use.
 3. **Minimum device spec** — how old a phone do we support? This sets the low tier in §11.1 and therefore the floor for everything visual.
 4. **Art sourcing** — asset store kits, AI-generated meshes (Unity's AI packages are already installed in this project), or hand-modelled? Dramatically affects the M4 timeline. **Ruled by the owner, 2026-09-25:** the KayKit packs already in the project, plus models made with Gemini and skinned onto KayKit's `Rig_Medium` (not Mixamo), with weapons as separate props. M7-00e specs it. Where the audio comes from is still open.

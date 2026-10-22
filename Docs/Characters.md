@@ -131,9 +131,19 @@ Minions are also pure class identity at zero input cost, which is why this is th
 
 Pleasing synergy worth noting: slow projectiles are normally the hardest thing to aim, and our auto-targeter leads shots for you. A weapon that would be miserable to thumb-aim becomes the class's whole appeal.
 
-**30 damage breaks GD §6.2 and `Emberwright.asset` ships 17.** A Husk has 36 HP, so `ceil(36 / 30)` is two hits at stage 1 with no tree, no Overflow and no Kindling — under the *"3–5 hits from any class"* GD §6.2 calls the primary balance invariant, and it stays at two until stage 13 on the shipped curve. Lowering the fire rate instead would move DPS without moving hits, which is the argument M5-02 already refused for the Bone Bolt. At 17 it is three hits and 25.5 DPS against one body — the slowest single-target killer in the game and the widest blast in it, which is *"enormous, slow, unforgiving"* as two numbers. Against four bodies inside the 3 m it is 102. The 30 stays in the table because it is what the design published and [M6-07a](plan/tasks/M6-07a-the-emberwright-and-the-cinder-orb.md)'s control test measures it; the number the game plays is the asset's, and the owner overrides it by typing a different one.
+**30 damage breaks GD §6.2 and `Emberwright.asset` ships 17.** A Husk has 36 HP, so `ceil(36 / 30)` is two hits at stage 1 with no tree, no Overflow and no Kindling — under the *"3–5 hits from any class"* GD §6.2 calls the primary balance invariant, and it stays at two until stage 13 on the shipped curve. Lowering the fire rate instead would move DPS without moving hits, which is the argument M5-02 already refused for the Bone Bolt. At 17 it is three hits and 25.5 DPS against one body — the slowest single-target killer in the game and the widest blast in it, which is *"enormous, slow, unforgiving"* as two numbers. Against four bodies inside the 3 m it is 102. The 30 stays in the table because it is what the design published and M6-07a's control test measures it; the number the game plays is the asset's, and the owner overrides it by typing a different one.
 
 **Kindling at full ramp goes under the band on purpose.** +60 % is ×1.6 and GD §6.2's band is 5 / 3 wide, so any weapon at three hits cold is at two hits hot: `ceil(36 / 27.2) = 2`. Thirty consecutive hits without taking a point of damage is the price, and `KindlingTests.Kindling_AtFullRampGoesUnderTheBand` makes a retune of either number a decision rather than a drift.
+
+### 3.4 Ranger — *archer* (the class that ships today)
+
+| | |
+|---|---|
+| **Body** | Own model on `Rig_Medium`. 90 HP, no Aegis, 3.2 m/s |
+| **Weapon** | **Longbow** — 13 dmg arrows, 2.2/s, 10 m range, 30 m/s. **Holds fire while moving**, bow down; stops to shoot |
+| **Movement** | **Roll** on Space — 5 m in 0.3 s, 2.5 s cooldown, its own animation |
+| **Active** | **Volley**, earned from the tree; the cell glows cyan when ready |
+| **Tree** | 3 branches × 3 nodes, free-pick (§5.1). No Veilrot relationship yet |
 
 ---
 
@@ -207,10 +217,10 @@ Identical skeleton for every class, so the UI is built once and content varies.
 
 **Two nodes a tier, four tiers, then the Keystone alone: 9 a branch, 27 a class.** The earlier drawing here
 showed eight tiers of one node, which is 24 — it disagreed with the *Total nodes* row directly beneath it
-for two milestones. Corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) against the shape ruled at
-M3-00a and shipped by [M3-02a](plan/tasks/M3-02a-skill-specs.md) rule 7, which is what `SkillTreeSpec` has
+for two milestones. Corrected at M3-15 against the shape ruled at
+M3-00a and shipped by M3-02a rule 7, which is what `SkillTreeSpec` has
 enforced since it was written. **M3's v1 tree is a subset of this, not a different shape**: three branches ×
-two tiers × two nodes = twelve, no Keystones ([M3-12c](plan/tasks/M3-12c-oathbound-tree-v1.md)).
+two tiers × two nodes = twelve, no Keystones (M3-12c).
 
 | Rule | Value |
 |---|---|
@@ -222,7 +232,7 @@ two tiers × two nodes = twelve, no Keystones ([M3-12c](plan/tasks/M3-12c-oathbo
 | Keystone | Requires all **8** preceding nodes in its branch |
 
 **A deep run reaches roughly level 42 by stage 30 and level 50 by stage 35** — measured at
-[M3-15](plan/tasks/M3-15-acceptance-and-tag.md), not estimated. So a deep run **completes** the tree
+M3-15, not estimated. So a deep run **completes** the tree
 (27 picks, filled around stage 21) and spends everything after that on Overflow; a stage-15 run gets
 twenty picks, which is about three-quarters of it. Reaching a Keystone requires committing **9** of your
 picks to one branch — expensive enough to be a real decision, and reachable in any run that gets past
@@ -277,7 +287,7 @@ XP to reach level N  ≈  20 + 12·N^1.4
 | 20 | **~27** | 65 s |
 | 35 | **~50** | 90 s |
 
-**These are measured, not intended** — corrected at [M3-15](plan/tasks/M3-15-acceptance-and-tag.md) by
+**These are measured, not intended** — corrected at M3-15 by
 running the shipped `XpCurve` against `Descent.asset`'s threat budget at the real `ToReach(Level + 1)`
 threshold. The exponent **stays at 1.4** and the table moved to meet it, which is the reverse of what the
 ROADMAP's parking lot expected: at stages 5 and 10 — the two depths M3-00d's checklist actually tests —
@@ -288,7 +298,7 @@ with no headroom until M7-04 authors all twenty-seven nodes.
 
 **The tree fills at stage 9** on a twelve-node v1 tree (level 13), and at **stage 21** on a full 27-node one.
 Everything past that is Overflow, which by stage 30 is **29 levels** and more than half the damage a run has
-gained — the reason [M3's ledger row 1](plan/ROADMAP.md#carry-forward-into-m3) closes at 5 hits, and the
+gained — the reason M3's ledger row 1 closes at 5 hits, and the
 thing M7-04 shifts back.
 
 Past the point where the tree is full, further levels grant **Overflow**: +2% damage and +2% max HP each, forever. Small, uncapped, and just enough that levelling never stops meaning something in an endless mode.
@@ -367,52 +377,18 @@ Merging cards into the tree and cutting Anchors makes this **smaller** than v0.1
 
 **v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen (**M5-07a-ii**) and a wider draw (**M5-07a-i**).
 
-### 7.1 Build order — one class, all the way through
+### 7.1 What was built
 
-**We build the Oathbound first and completely** — movement, targeting, attack, Charge, Aegis, its full 27-node tree — before starting a second class.
-
-Why the Oathbound:
-
-- It's the **free starter**, so it ships no matter what the schedule does
-- **140 HP and a regenerating shield** make it forgiving to playtest with; you can spend an hour feeling out movement without dying every 20 seconds
-- A cone attack is the **cheapest thing to get on screen** for M0 — no projectile pooling required on day one
-
-The tradeoff worth naming: a short-range cone is the **least representative weapon in the roster**, so there's a real risk of under-building the systems the other classes need. Two mitigations, both in [CoreCombat.md](CoreCombat.md):
-
-1. The cone still drives the **full targeting system** for facing, so scoring, hysteresis, tap-to-focus, and vulnerability awareness all get properly exercised.
-2. The **projectile-leading seam** gets built at M2 even though nothing uses it, because the Emberwright's 25 m/s orb is unusable without it and discovering that at M6 is a rewrite.
-
-### 7.2 Then three
-
-**V1 still targets three classes.** Three is what makes "choose your character" a real proposition — with two, the select screen is a coin flip.
-
-**Designated cut line: the Emberwright.** If the schedule slips, ship two and add the wizard post-launch. Don't ship one; a class-based game with one class is a different game, and the class system is the retention hook.
-
-The expensive part remains the **balance pass per class**, which does not parallelise. Budget for it explicitly.
+The Oathbound first and completely, then the Gravecaller, the Emberwright and the Ranger. The current build ships **the Ranger alone** in class select; the other three are switched off, not removed.
 
 ---
 
 ## 8. Open questions
 
-1. ~~**Do Wights count against the enemy concurrency cap?**~~ ([GameDesign.md §11.1](GameDesign.md)) Rendering says yes, fairness says no. Leaning: separate pool with a tighter cap, and low-tier devices get fewer Wights *plus* a compensating minion damage buff, so difficulty stays device-independent. **Answered at M5-05a rule 5, and the answer takes half the leaning and refuses the other half.** A Wight is **not** in `EnemyRegistry` at all, so it cannot count against GD §11.1's enemy cap even in principle; `MinionSystem.MaxConcurrent` is a **separate pool capped at 8**, which is the tighter cap the leaning asked for. **The device-tiered damage buff is refused**: nothing in the build reads a device tier yet, and authoring a compensating buff against a tier that does not exist would pin a balance number to a guess. It is **M8-03's**, with the rest of device tiering — the day a tier exists is the day *"fewer Wights"* becomes a real consequence worth compensating. **What the cap of 8 has never met is a phone**: 37 bodies in one arena against GD §11.3 is a device row on [ledger row 3](plan/ROADMAP.md#carry-forward-into-m5), not an Editor one.
-2. **Does levelling pause the game?** Assumed yes. Vampire Survivors pauses; Survivor.io pauses. The alternative — choosing while enemies close in — sounds tense and mostly produces mis-taps on a phone.
+1. ~~**Do Wights count against the enemy concurrency cap?**~~ **Answered: no.** Wights live in `MinionSystem`, a separate pool capped at 8, outside `EnemyRegistry`. A device-tiered compensating buff waits until device tiers exist.
+2. ~~**Does levelling pause the game?**~~ **Answered (2026-09-29):** a level banks a point and play goes on; the tree screen pauses (§5.1).
 3. **Should the level-up offer guarantee variety?** e.g. never 3 nodes from the same branch, or always ≥1 Active if you own fewer than 2. Probably yes, with soft weighting — pure random produces genuinely dead offers, and a dead offer at level 12 costs a run.
 4. **Is Overflow (§5.2) enough for very deep runs?** A player at level 45 with a full tree is gaining +2%/level against quadratic enemy scaling. That's intentionally a losing race, but it needs playtesting to confirm it feels like a heroic last stand rather than a slow suffocation.
 5. **Does the Archon mirror the class?** ([GameDesign.md §9.2](GameDesign.md)) The stage-20 boss reflects your Pacts. Against a Gravecaller it should raise *your own Wights* against you. Excellent fight, three times the boss scripting.
 
 ---
-
-## 9. Milestone impact
-
-| # | Change |
-|---|---|
-| **M0** | Unchanged. One capsule, one stick, one weapon. **Do not let classes delay the feel test.** |
-| **M1** | Weapon, movement skill, and passive must be **data-driven from the start** — `CharacterDefinition` assets, not a switch on an enum. Cheap now, brutal at M6. |
-| **M2** | *(changed)* **Levelling and the tree**, not cards. XP, level-up screen, ~12 nodes for one class, auto-cast, cooldowns. This is now the core progression milestone and it comes early. |
-| **M3** | First boss. |
-| **M4** | **Second class playable** — Gravecaller with Bone Bolt, Shroudstep, Wights, and its own tree. Proves the class abstraction survives a real second case. |
-| **M5** | Sanctum shop, Pact nodes, manual pinning, View Tree UI, third class. |
-| **M6** | Content pass across all three trees (81 nodes), Elites, 2nd boss, both biomes with real art. |
-| **M7** | Balance pass **per class** against the death horizon. Budget for three. |
-
-**M4 is the load-bearing milestone.** Building the second class *before* the systems around it are finished means the class abstraction gets tested by a real second case while it's still cheap to change — rather than discovering at M6 that everything quietly assumed one class.

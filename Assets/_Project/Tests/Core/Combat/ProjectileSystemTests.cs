@@ -131,6 +131,24 @@ public sealed class ProjectileSystemTests
     }
 
     [Test]
+    public void Fire_CarriesTheVolleyMark()
+    {
+        ProjectileSystem projectiles = NewSystem();
+
+        projectiles.Fire(Shot(From(0f), At(Standoff)), 0f);
+        projectiles.Fire(
+            new Projectile(Spec(), 0, From(0f), At(Standoff), Speed, Radius, Damage, ShotSide.AtEnemies, isVolley: true),
+            0f);
+
+        IReadOnlyList<ProjectileFired> fired = _events.Of<ProjectileFired>();
+
+        // RS-07b rule 2: a picture for the view, copied across and decided nowhere here.
+        Assert.That(fired[0].IsVolley, Is.False, "an ordinary shot is not a volley.");
+        Assert.That(fired[1].IsVolley, Is.True, "a fan's arrow says so on its event.");
+        Assert.That(fired[1].FlightTime, Is.EqualTo(fired[0].FlightTime), "and flies exactly as far and as long.");
+    }
+
+    [Test]
     public void Fire_FlightTimeIsXzOnly()
     {
         ProjectileSystem projectiles = NewSystem();

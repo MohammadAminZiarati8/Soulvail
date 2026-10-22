@@ -50,6 +50,12 @@ namespace Soulvail.Game.Views
         /// </summary>
         public const int Unbound = 0;
 
+        /// <summary>How far past <see cref="Palette.Player"/> the glow's emission is pushed (RS-07b).</summary>
+        public const float GlowIntensity = 1.5f;
+
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
         [Tooltip("How high the bolt humps above the straight line between its endpoints, in " +
                  "metres, at the midpoint of the flight. Cosmetic in the strict sense: core's hit " +
                  "test is XZ, so no value here can change whether a shot lands.")]
@@ -70,8 +76,16 @@ namespace Soulvail.Game.Views
                  "player's cyan is read, never authored (GD §16.4), so a copy cannot drift.")]
         [SerializeField] private bool _trailInPlayerCyan;
 
+        [Tooltip("A renderer lit in Palette.Player, base and emission, when the body is first bound " +
+                 "(RS-07b): the volley arrow's glowing head. Or none. Its material carries white; " +
+                 "the cyan is read, never authored (GD §16.4).")]
+        [SerializeField] private Renderer _playerGlow;
+
         /// <summary>Whether <see cref="_trail"/> has had <see cref="Palette.Player"/> laid on it.</summary>
         private bool _trailPainted;
+
+        /// <summary>Whether <see cref="_playerGlow"/> has been lit.</summary>
+        private bool _glowLit;
 
         private int _id = Unbound;
         private Vector3 _origin;
@@ -165,6 +179,7 @@ namespace Soulvail.Game.Views
             transform.position = PositionAt(Progress());
 
             PaintTrail();
+            LightGlow();
             ClearTrail();
         }
 
@@ -302,6 +317,28 @@ namespace Soulvail.Game.Views
 
             gradient.SetKeys(keys, gradient.alphaKeys);
             _trail.colorGradient = gradient;
+        }
+
+        /// <summary>
+        /// Lights <see cref="_playerGlow"/> in <see cref="Palette.Player"/>, once per body, through a
+        /// property block so the shared material stays white.
+        /// </summary>
+        /// <remarks><see cref="PaintTrail"/>'s timing, for its reasons.</remarks>
+        private void LightGlow()
+        {
+            if (_glowLit || _playerGlow == null)
+            {
+                return;
+            }
+
+            _glowLit = true;
+
+            var block = new MaterialPropertyBlock();
+
+            _playerGlow.GetPropertyBlock(block);
+            block.SetColor(BaseColorId, Palette.Player);
+            block.SetColor(EmissionColorId, Palette.Player * GlowIntensity);
+            _playerGlow.SetPropertyBlock(block);
         }
 
         private void Awake()

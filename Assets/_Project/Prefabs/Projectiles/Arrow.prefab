@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5705696569851793203}
   - component: {fileID: 4033840791202304795}
-  - component: {fileID: 411098348186231709}
   m_Layer: 0
   m_Name: Arrow
   m_TagString: Untagged
@@ -32,6 +31,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1555859217557819550}
+  - {fileID: 7646153342605136373}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4033840791202304795
@@ -48,16 +48,49 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ProjectileView
   _arcHeight: 0.25
   _impact: {fileID: 5716996564123738491, guid: f8e65b70909c04249be795f855d5d819, type: 3}
-  _trail: {fileID: 411098348186231709}
+  _trail: {fileID: 3208391341270130990}
   _trailInPlayerCyan: 1
---- !u!96 &411098348186231709
+  _playerGlow: {fileID: 0}
+--- !u!1 &8875860149655508159
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7646153342605136373}
+  - component: {fileID: 3208391341270130990}
+  m_Layer: 0
+  m_Name: Tail
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7646153342605136373
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8875860149655508159}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.677398}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5705696569851793203}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!96 &3208391341270130990
 TrailRenderer:
   serializedVersion: 4
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1855079377728804146}
+  m_GameObject: {fileID: 8875860149655508159}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0

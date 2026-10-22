@@ -74,6 +74,10 @@ public readonly struct Projectile
     /// Who it may hurt. Defaulted to <see cref="ShotSide.AtPlayer"/>, which is what every shot in
     /// the game meant before M5-01 — see <see cref="Side"/>.
     /// </param>
+    /// <param name="isVolley">
+    /// Whether it is one arrow of a Volley's fan (RS-07b). A picture, never an outcome: see
+    /// <see cref="IsVolley"/>.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A position is not finite, <paramref name="speed"/> or <paramref name="radius"/> is not a
     /// finite number greater than zero, <paramref name="damage"/> is not a finite number of at
@@ -87,7 +91,8 @@ public readonly struct Projectile
         float speed,
         float radius,
         float damage,
-        ShotSide side = ShotSide.AtPlayer)
+        ShotSide side = ShotSide.AtPlayer,
+        bool isVolley = false)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -97,6 +102,7 @@ public readonly struct Projectile
         Radius = Positive(radius, nameof(radius));
         Damage = NotNegative(damage, nameof(damage));
         Side = Defined(side);
+        IsVolley = isVolley;
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
@@ -136,6 +142,15 @@ public readonly struct Projectile
     /// struct answers the question without ever looking anything up.
     /// </remarks>
     public ShotSide Side { get; }
+
+    /// <summary>Whether it is one arrow of a Volley's fan, which a view draws as its own arrow.</summary>
+    /// <remarks>
+    /// <b>Read by nothing in core.</b> The fan's numbers are already on the shot — its damage carries
+    /// the multiplier and its target the spread — so this decides no outcome; it rides to
+    /// <c>ProjectileFired</c> because a view cannot tell a fan's arrow from an ordinary shot by any
+    /// other field (RS-07b rule 1).
+    /// </remarks>
+    public bool IsVolley { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3),
@@ -386,7 +401,8 @@ public sealed class ProjectileSystem
             shot.SourceId,
             shot.Origin,
             shot.Target,
-            flightTime));
+            flightTime,
+            shot.IsVolley));
 
         return id;
     }

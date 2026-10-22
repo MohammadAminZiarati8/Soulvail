@@ -234,6 +234,10 @@ namespace Soulvail.Game.Authoring
                  "bolt, which is what every shipped class does.")]
         [SerializeField] private ProjectileView _projectile;
 
+        [Tooltip("The shot a Volley's arrows fly, from Prefabs/Projectiles/ (RS-07b). Empty is not " +
+                 "an error: a volley flies the class's shot above.")]
+        [SerializeField] private ProjectileView _volleyProjectile;
+
         [Tooltip("The tree node the HUD draws this class's volley as (UI-01e): its icon heads the " +
                  "auto-cast row once a node has given the volley. The Ranger's is Volley. Empty is " +
                  "not an error: a class with no volley has no cell to draw, and one with a volley " +
@@ -445,7 +449,8 @@ namespace Soulvail.Game.Authoring
             string.IsNullOrEmpty(_spaceDescriptionKey) ? default : new LocKey(_spaceDescriptionKey),
             _portrait,
             string.IsNullOrEmpty(_attackNameKey) ? default : new LocKey(_attackNameKey),
-            string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey));
+            string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey),
+            _volleyProjectile);
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

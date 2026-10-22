@@ -39,6 +39,10 @@ public readonly struct CharacterLook
     /// the run's default bolt, as an enemy's do. Optional, so a look that names only a body is
     /// written as it was before RS-02c.
     /// </param>
+    /// <param name="volleyProjectile">
+    /// The prefab a Volley's arrows fly (RS-07b). Null is not an error: a volley flies
+    /// <paramref name="projectile"/>, as every volley did before.
+    /// </param>
     public CharacterLook(
         GameObject body,
         ProjectileView projectile = null,
@@ -49,7 +53,8 @@ public readonly struct CharacterLook
         LocKey spaceDescriptionKey = default,
         Sprite portrait = null,
         LocKey attackNameKey = default,
-        LocKey attackDescriptionKey = default)
+        LocKey attackDescriptionKey = default,
+        ProjectileView volleyProjectile = null)
     {
         Body = body;
         Projectile = projectile;
@@ -61,6 +66,7 @@ public readonly struct CharacterLook
         Portrait = portrait;
         AttackNameKey = attackNameKey;
         AttackDescriptionKey = attackDescriptionKey;
+        VolleyProjectile = volleyProjectile;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -77,6 +83,12 @@ public readonly struct CharacterLook
     /// than a <see cref="GameObject"/> to look it up on.
     /// </remarks>
     public ProjectileView Projectile { get; }
+
+    /// <summary>
+    /// The shot a Volley's arrows fly, or null for <see cref="Projectile"/> (RS-07b). Read with
+    /// Unity's <c>==</c> for <see cref="Body"/>'s reason.
+    /// </summary>
+    public ProjectileView VolleyProjectile { get; }
 
     /// <summary>
     /// The tree node the HUD draws this class's volley as, or <c>default</c> for none (UI-01e).

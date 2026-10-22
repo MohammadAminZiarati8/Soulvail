@@ -166,6 +166,23 @@ public sealed class CharacterLookTests
         Assert.That(new CharacterLook(Knight()).Portrait, Is.Null, "the constructor's portrait is optional.");
     }
 
+    /// <summary>RS-07b rule 3: the definition's volley shot rides on its look, and none is null.</summary>
+    [Test]
+    public void CharacterLook_CarriesTheVolleyProjectile()
+    {
+        var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>("Assets/_Project/Prefabs/Projectiles/Arrow.prefab");
+        Assert.That(arrow, Is.Not.Null);
+
+        CharacterDefinition definition = NewDefinition("Volleying");
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_volleyProjectile").objectReferenceValue = arrow;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(definition.ToLook().VolleyProjectile, Is.SameAs(arrow));
+        Assert.That(NewDefinition("Unvolleying").ToLook().VolleyProjectile, Is.Null, "none is null: a volley flies the class's shot.");
+        Assert.That(new CharacterLook(Knight()).VolleyProjectile, Is.Null, "the constructor's volley shot is optional.");
+    }
+
     /// <summary>UI-12c: the definition's two attack keys ride on its look, and empty is default.</summary>
     [Test]
     public void CharacterLook_CarriesTheAttackKeys()

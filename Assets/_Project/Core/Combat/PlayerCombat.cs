@@ -1762,7 +1762,7 @@ public sealed class PlayerCombat
             // count nothing (rule 3). The answer decides whether this frame is one shot or a fan.
             if (Volley is null || !Volley.Loose())
             {
-                QueueShot(playerPosition, aim, ShotDamage(Weapon.Damage.Value));
+                QueueShot(playerPosition, aim, ShotDamage(Weapon.Damage.Value), isVolley: false);
 
                 return;
             }
@@ -1775,7 +1775,7 @@ public sealed class PlayerCombat
 
             for (int arrow = 0; arrow < arrows; arrow++)
             {
-                QueueShot(playerPosition, Volley.Aim(arrow, arrows, playerPosition, aim), damage);
+                QueueShot(playerPosition, Volley.Aim(arrow, arrows, playerPosition, aim), damage, isVolley: true);
             }
 
             return;
@@ -1789,8 +1789,9 @@ public sealed class PlayerCombat
     /// <remarks>
     /// Cannot overflow: <see cref="OfferShot"/> clears the queue first and writes at most
     /// <see cref="Volley.ArrowCount"/>, which is clamped to the queue's length.
+    /// <paramref name="isVolley"/> marks a fan's arrow for the view (RS-07b) and changes nothing here.
     /// </remarks>
-    private void QueueShot(Vector3 origin, Vector3 target, float damage)
+    private void QueueShot(Vector3 origin, Vector3 target, float damage, bool isVolley)
     {
         _shots[_shotCount] = new Projectile(
             _characterId,
@@ -1800,7 +1801,8 @@ public sealed class PlayerCombat
             _weaponSpec.ShotSpeed,
             _weaponSpec.ShotRadius,
             damage,
-            ShotSide.AtEnemies);
+            ShotSide.AtEnemies,
+            isVolley);
 
         _shotCount++;
     }

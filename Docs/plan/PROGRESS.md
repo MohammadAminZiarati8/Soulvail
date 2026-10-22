@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after RS-07a._
+_Updated 2026-10-22, after RS-07b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **RS-07a** — the Ranger's arrow at 1.6× with a thin, short trail in `Palette.Player` cyan. Before it, JG-02's Pitcher spit. |
-| **Next task** | **RS-07b** — Volley's own arrow and burst (named and green-lit with RS-07a). |
-| **Verified** | **RS-07a: 4 381 EditMode — 4 379 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **RS-07b** — Volley's own arrow: a fan's shots are marked in core (`IsVolley`) and fly `VolleyArrow` (2.2×, glowing cyan head, wide trail) with a bigger burst. Before it, RS-07a's bigger arrow with a cyan trail. |
+| **Next task** | Whatever the owner names. |
+| **Verified** | **RS-07b: 4 389 EditMode — 4 387 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 
@@ -28,10 +28,11 @@ script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jung
 shot prefab; the Pitcher lobs red-orange goo (`PitcherSpit`, 7 m/s) that splats on a hit. Jungle
 enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
 Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, a 1.33 m arrow per shot with a
-short cyan trail, holds fire on the move, Volley, a real roll on Space. **Levelling:** a kill is XP;
-a level banks a skill point; the tree screen pauses and takes a free pick. **Death** pays Shards into the profile. **Saves:**
-`run.json` v4, `profile.json` v5, all older versions load; Continue offers the run last written.
-**UI** in the Clash-style art: HUD, fixed move stick, Roll and skill buttons, level-up banner, tree,
+short cyan trail, holds fire on the move, Volley (its fan flies a bigger glowing arrow with its own
+burst), a real roll on Space. **Levelling:** a kill is XP; a level banks a skill point; the tree
+screen pauses and takes a free pick. **Death** pays Shards into the profile. **Saves:** `run.json`
+v4, `profile.json` v5, all older versions load; Continue offers the run last written. **UI** in the
+Clash-style art: HUD, fixed move stick, Roll and skill buttons, level-up banner, tree,
 hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string is a `LocKey`.
 
 ## Owed to the owner (manual checks, in the Editor)
@@ -52,7 +53,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    out of; a hit splats red-orange; no trail streaks from where the last spit landed.
 8. **RS-07a**: a Ranger's arrows are visibly larger and draw a thin cyan streak that dies within a
    body length; no streak runs from where the last arrow landed back to the bow.
-9. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+9. **RS-07b**: with Volley taken, every Nth shot is a fan of bigger arrows with a glowing cyan head
+   and a wider cyan trail; a volley hit plays a bigger white-and-cyan burst; ordinary shots unchanged.
+10. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

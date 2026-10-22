@@ -58,6 +58,9 @@ public sealed class ProjectileViewsTests
     /// <summary>A class whose look names no shot.</summary>
     private static readonly ContentId Plain = new ContentId("character.y");
 
+    /// <summary>A class whose look names the arrow and a volley arrow (RS-07b).</summary>
+    private static readonly ContentId Volleyer = new ContentId("character.v");
+
     /// <summary>
     /// The prefab's own <c>_arcHeight</c>, in metres. Duplicated here rather than read back,
     /// because the row that matters is that the hump is <em>there</em> and is what the field says.
@@ -66,6 +69,7 @@ public sealed class ProjectileViewsTests
 
     private const string BoltMesh = "BoltMesh";
     private const string ArrowMesh = "ArrowMesh";
+    private const string VolleyMesh = "VolleyMesh";
 
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
@@ -75,6 +79,8 @@ public sealed class ProjectileViewsTests
     private ProjectileView _prefab;
     private GameObject _arrowObject;
     private ProjectileView _arrow;
+    private GameObject _volleyObject;
+    private ProjectileView _volley;
     private GameObject _impactObject;
     private ImpactView _impact;
     private IObjectResolver _container;
@@ -91,6 +97,10 @@ public sealed class ProjectileViewsTests
         _arrowObject = new GameObject("ArrowPrefab");
         _arrow = _arrowObject.AddComponent<ProjectileView>();
         new GameObject(ArrowMesh).transform.SetParent(_arrowObject.transform, false);
+
+        _volleyObject = new GameObject("VolleyPrefab");
+        _volley = _volleyObject.AddComponent<ProjectileView>();
+        new GameObject(VolleyMesh).transform.SetParent(_volleyObject.transform, false);
 
         _impactObject = new GameObject("ImpactPrefab");
         _impactObject.AddComponent<MeshRenderer>();
@@ -143,6 +153,11 @@ public sealed class ProjectileViewsTests
         if (_arrowObject != null)
         {
             Object.DestroyImmediate(_arrowObject);
+        }
+
+        if (_volleyObject != null)
+        {
+            Object.DestroyImmediate(_volleyObject);
         }
 
         if (_impactObject != null)
@@ -653,6 +668,78 @@ public sealed class ProjectileViewsTests
     }
 
     [Test]
+    public void Bind_LightsThePlayerGlowInPaletteCyan()
+    {
+        // RS-07b rule 5: the head's material is white, and Palette.Player arrives through a block.
+        var head = new GameObject("Head");
+        head.transform.SetParent(_prefabObject.transform, false);
+        MeshRenderer glow = head.AddComponent<MeshRenderer>();
+
+        using (var serialized = new SerializedObject(_prefab))
+        {
+            serialized.FindProperty("_playerGlow").objectReferenceValue = glow;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        Bound(1, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+        Bound(2, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+
+        var block = new MaterialPropertyBlock();
+        glow.GetPropertyBlock(block);
+
+        Color player = Soulvail.Game.Presentation.Palette.Player;
+
+        Color baseColour = block.GetColor("_BaseColor");
+        Color emission = block.GetColor("_EmissionColor");
+
+        Assert.That(baseColour.r, Is.EqualTo(player.r).Within(0.01f), "lit in the player's cyan.");
+        Assert.That(baseColour.g, Is.EqualTo(player.g).Within(0.01f));
+        Assert.That(baseColour.b, Is.EqualTo(player.b).Within(0.01f));
+        Assert.That(emission.g, Is.EqualTo(player.g * ProjectileView.GlowIntensity).Within(0.01f), "and glowing past it.");
+        Assert.That(emission.b, Is.EqualTo(player.b * ProjectileView.GlowIntensity).Within(0.01f));
+    }
+
+    [Test]
+    public void Fired_AVolleyFliesTheClassVolleyArrow()
+    {
+        _views = Census(prewarm: 1, VolleyBook());
+
+        Shoot(id: 1, Volleyer, isVolley: true);
+        Shoot(id: 2, Volleyer);
+
+        Assert.That(_views.TryGet(1, out ProjectileView volley), Is.True);
+        Assert.That(_views.TryGet(2, out ProjectileView ordinary), Is.True);
+
+        Assert.That(volley.transform.Find(VolleyMesh), Is.Not.Null, "a volley flies the class's volley arrow.");
+        Assert.That(ordinary.transform.Find(ArrowMesh), Is.Not.Null, "an ordinary shot never does.");
+        Assert.That(ordinary.transform.Find(VolleyMesh), Is.Null);
+    }
+
+    [Test]
+    public void Fired_AVolleyWithNoVolleyArrowFliesTheShot()
+    {
+        _views = Census(prewarm: 1, Book());
+
+        Shoot(id: 1, Archer, isVolley: true);
+        Shoot(id: 2, Plain, isVolley: true);
+
+        Assert.That(_views.TryGet(1, out ProjectileView archer), Is.True);
+        Assert.That(_views.TryGet(2, out ProjectileView plain), Is.True);
+
+        AssertFlies(archer, ArrowMesh, "no volley arrow named: the volley flies the class's shot.");
+        AssertFlies(plain, BoltMesh, "no shot named at all: the volley flies the default.");
+    }
+
+    [Test]
+    public void Construct_PrewarmsTheVolleyArrow()
+    {
+        _views = Census(prewarm: 0, VolleyBook(), classPrewarm: 2);
+
+        Assert.That(_views.PooledCountOf(_volley), Is.EqualTo(2), "built with the run, like a class's shot (RS-06b).");
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(2));
+    }
+
+    [Test]
     public void Fired_AClassWithNoLookFliesTheDefault()
     {
         _views = Census(prewarm: 2, Book());
@@ -1048,8 +1135,15 @@ public sealed class ProjectileViewsTests
     /// A player's shot: its <c>SpecId</c> is the class, and its source nobody, as
     /// <c>PlayerCombat</c> fires one.
     /// </summary>
-    private void Shoot(int id, ContentId characterId) =>
-        _hub.Publish(new ProjectileFired(id, characterId, sourceId: 0, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f));
+    private void Shoot(int id, ContentId characterId, bool isVolley = false) =>
+        _hub.Publish(new ProjectileFired(id, characterId, sourceId: 0, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f, isVolley));
+
+    /// <summary><see cref="Volleyer"/> flies the fixture's arrow, and its volley the fixture's volley arrow.</summary>
+    private CharacterLookBook VolleyBook() =>
+        new CharacterLookBook(new Dictionary<ContentId, CharacterLook>
+        {
+            [Volleyer] = new CharacterLook(body: null, _arrow, volleyProjectile: _volley),
+        });
 
     private void Impact(int id, Vector3 position) =>
         _hub.Publish(new ProjectileImpacted(id, position, hit: false));

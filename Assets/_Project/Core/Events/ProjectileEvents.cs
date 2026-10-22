@@ -71,13 +71,20 @@ public readonly struct ProjectileFired
     /// </remarks>
     public readonly float FlightTime;
 
+    /// <summary>
+    /// Whether it is one arrow of a Volley's fan (RS-07b), so a view can fly the class's volley arrow.
+    /// Copied from <c>Projectile.IsVolley</c>, and as cosmetic as it is.
+    /// </summary>
+    public readonly bool IsVolley;
+
     public ProjectileFired(
         int id,
         ContentId specId,
         int sourceId,
         Vector3 origin,
         Vector3 target,
-        float flightTime)
+        float flightTime,
+        bool isVolley = false)
     {
         Id = id;
         SpecId = specId;
@@ -85,6 +92,7 @@ public readonly struct ProjectileFired
         Origin = origin;
         Target = target;
         FlightTime = flightTime;
+        IsVolley = isVolley;
     }
 }
 

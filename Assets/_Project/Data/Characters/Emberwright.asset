@@ -80,6 +80,7 @@ MonoBehaviour:
   _unlockDeedBossId: 
   _body: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}
   _projectile: {fileID: 0}
+  _volleyProjectile: {fileID: 0}
   _volleyNode: {fileID: 0}
   _emblem: {fileID: 0}
   _spaceIcon: {fileID: 0}

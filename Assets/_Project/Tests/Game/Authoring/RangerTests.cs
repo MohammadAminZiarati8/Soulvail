@@ -42,6 +42,8 @@ public sealed class RangerTests
     private const string BodyPath = "Assets/_Project/Prefabs/Player/Bodies/Ranger.prefab";
     private const string ArrowPath = "Assets/_Project/Prefabs/Projectiles/Arrow.prefab";
     private const string ImpactMaterialPath = "Assets/_Project/Materials/M_Impact.mat";
+    private const string VolleyArrowPath = "Assets/_Project/Prefabs/Projectiles/VolleyArrow.prefab";
+    private const string VolleyImpactPath = "Assets/_Project/Prefabs/Vfx/VFX_VolleyImpact.prefab";
 
     /// <summary>RS-02c's scale on the KayKit arrow model, before RS-07a made it 1.6× this.</summary>
     private const float KayKitArrowScale = 0.6615215f;
@@ -213,9 +215,9 @@ public sealed class RangerTests
     public void Arrow_TrailsThinShortAndCyan()
     {
         var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPath);
-        TrailRenderer trail = arrow.GetComponent<TrailRenderer>();
+        TrailRenderer trail = arrow.GetComponentInChildren<TrailRenderer>();
 
-        Assert.That(trail, Is.Not.Null, "RS-07a's trail is on the arrow's root.");
+        Assert.That(trail, Is.Not.Null, "RS-07a's trail rides on the arrow's Tail, at the fletching.");
         Assert.That(
             new SerializedObject(arrow).FindProperty("_trail").objectReferenceValue,
             Is.SameAs(trail),
@@ -239,7 +241,7 @@ public sealed class RangerTests
         {
             body.Bind(1, UnityEngine.Vector3.zero, UnityEngine.Vector3.forward * 6f, 1f);
 
-            Color head = body.GetComponent<TrailRenderer>().colorGradient.Evaluate(0f);
+            Color head = body.GetComponentInChildren<TrailRenderer>().colorGradient.Evaluate(0f);
 
             Assert.That(head.r, Is.EqualTo(Palette.Player.r).Within(0.01f), "GD §16.4: player shots are cyan.");
             Assert.That(head.g, Is.EqualTo(Palette.Player.g).Within(0.01f));
@@ -256,7 +258,51 @@ public sealed class RangerTests
         Assert.That(trail.sharedMaterial.shader, Is.SameAs(impact.shader), "M_Impact's unlit vertex-colour shader.");
     }
 
+    // ---- RS-07b: Volley's own arrow ----------------------------------------------------------------
+
+    [Test]
+    public void Ranger_FliesItsVolleyArrow()
+    {
+        var volley = AssetDatabase.LoadAssetAtPath<ProjectileView>(VolleyArrowPath);
+        var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPath);
+
+        Assert.That(volley, Is.Not.Null, $"No ProjectileView on {VolleyArrowPath}.");
+        Assert.That(Definition().ToLook().VolleyProjectile, Is.SameAs(volley), "the Ranger names it.");
+
+        Assert.That(volley.transform.Find("Mesh").localScale.x, Is.EqualTo(KayKitArrowScale * 2.2f).Within(1e-3f), "2.2× RS-02c's arrow.");
+
+        // The head glows in the player's cyan: a renderer of its own, lit at Bind (rule 5).
+        var serialized = new SerializedObject(volley);
+        var glow = serialized.FindProperty("_playerGlow").objectReferenceValue as Renderer;
+
+        Assert.That(glow, Is.Not.Null, "the volley arrow's head is its _playerGlow.");
+        Assert.That(glow.sharedMaterial.IsKeywordEnabled("_EMISSION"), Is.True, "an emissive head.");
+        Assert.That(glow.shadowCastingMode, Is.EqualTo(UnityEngine.Rendering.ShadowCastingMode.Off));
+
+        // A wider, longer, brighter trail than the ordinary arrow's, in Palette.Player.
+        TrailRenderer trail = volley.GetComponentInChildren<TrailRenderer>();
+        TrailRenderer plain = arrow.GetComponentInChildren<TrailRenderer>();
+
+        Assert.That(serialized.FindProperty("_trail").objectReferenceValue, Is.SameAs(trail));
+        Assert.That(serialized.FindProperty("_trailInPlayerCyan").boolValue, Is.True);
+        Assert.That(trail.widthCurve.Evaluate(0f), Is.EqualTo(0.26f).Within(1e-3f), "wider: 0.26 m.");
+        Assert.That(trail.time, Is.EqualTo(0.22f).Within(Tolerance), "longer: 0.22 s.");
+        Assert.That(trail.colorGradient.Evaluate(1f).g, Is.GreaterThan(plain.colorGradient.Evaluate(1f).g), "brighter to its tail.");
+        Assert.That(trail.sharedMaterial.shader, Is.SameAs(AssetDatabase.LoadAssetAtPath<Material>(ImpactMaterialPath).shader), "opaque, M_Impact's shader.");
+
+        // Its own burst, bigger than an ordinary hit's.
+        var burst = AssetDatabase.LoadAssetAtPath<ImpactView>(VolleyImpactPath);
+
+        Assert.That(volley.Impact, Is.SameAs(burst), "VFX_VolleyImpact on a hit.");
+        Assert.That(Float(burst, "_starSize"), Is.GreaterThan(Float(arrow.Impact, "_starSize")));
+        Assert.That(Float(burst, "_ringRadius"), Is.GreaterThan(Float(arrow.Impact, "_ringRadius")));
+        Assert.That(Float(burst, "_shardLength"), Is.GreaterThan(Float(arrow.Impact, "_shardLength")));
+    }
+
     // ---- Fixtures ----------------------------------------------------------------------------------
+
+    private static float Float(UnityEngine.Object target, string field) =>
+        new SerializedObject(target).FindProperty(field).floatValue;
 
     private static CharacterDefinition Definition()
     {

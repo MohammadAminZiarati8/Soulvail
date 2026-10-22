@@ -358,6 +358,25 @@ public sealed class VolleyTests
     }
 
     [Test]
+    public void Fan_EveryArrowIsMarkedAVolley()
+    {
+        PlayerCombat bow = Combat();
+
+        Give(bow, PlayerStat.VolleyEvery, 1f);
+        RunShots(bow, 2);
+
+        // RS-07b rule 1: the mark is the view's, so a fan of 3 is still 3 shots at 13 × 1.5.
+        Assert.That(_frames[0][0].IsVolley, Is.False, "an ordinary shot is not a volley.");
+        Assert.That(_frames[1], Has.Length.EqualTo(VolleyArrows));
+
+        foreach (Projectile arrow in _frames[1])
+        {
+            Assert.That(arrow.IsVolley, Is.True, "every arrow of the fan is marked.");
+            Assert.That(arrow.Damage, Is.EqualTo(19.5f).Within(Tolerance), "with its damage unchanged.");
+        }
+    }
+
+    [Test]
     public void Fan_EachArrowCarriesTheMultiplier()
     {
         PlayerCombat bow = Combat();

@@ -195,6 +195,11 @@ public sealed class ProjectileViews : IDisposable
                 {
                     KindFor(look.Projectile);
                 }
+
+                if (look.VolleyProjectile != null)
+                {
+                    KindFor(look.VolleyProjectile);
+                }
             }
         }
 
@@ -401,7 +406,7 @@ public sealed class ProjectileViews : IDisposable
 
     private void OnFired(ProjectileFired evt)
     {
-        ShotKind kind = KindOf(evt.SpecId);
+        ShotKind kind = KindOf(evt.SpecId, evt.IsVolley);
         ProjectileView view = kind.Shots.Get();
 
         view.Bind(evt.Id, evt.Origin.ToUnity(), evt.Target.ToUnity(), evt.FlightTime);
@@ -446,15 +451,17 @@ public sealed class ProjectileViews : IDisposable
 
     /// <summary>
     /// The pools a shot from <paramref name="specId"/> flies from (RS-02c rules 1, 2 and 4): its
-    /// class's prefab's, or the default's.
+    /// class's prefab's, or the default's. A volley's arrow flies the class's volley prefab when it
+    /// names one, and its ordinary shot when it does not (RS-07b rule 4).
     /// </summary>
     /// <remarks>
     /// Two dictionary lookups on a <see cref="ContentId"/> and a prefab, so nothing allocates once
     /// the pools exist — and a class's exist from construction (RS-06b rule 3).
     /// </remarks>
-    private ShotKind KindOf(ContentId specId)
+    private ShotKind KindOf(ContentId specId, bool isVolley)
     {
-        ProjectileView prefab = _looks is null ? null : _looks.For(specId).Projectile;
+        CharacterLook look = _looks is null ? default : _looks.For(specId);
+        ProjectileView prefab = isVolley && look.VolleyProjectile != null ? look.VolleyProjectile : look.Projectile;
 
         // JG-02: an id no class names may be an archetype's. Ids are namespaced by kind, so a
         // class and an archetype never answer for the same one.

@@ -5,6 +5,7 @@ using Soulvail.Core.Content;
 using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
 
@@ -57,6 +58,12 @@ public sealed class JungleTests
 
     /// <summary>What a Frog is worth since JG-01: three of them reach level 2 (CH §5.2's 51.7).</summary>
     private const float FrogXp = 18f;
+
+    /// <summary>The Pitcher's spit since JG-02, in m/s: two seconds across its 14 m standoff.</summary>
+    private const float PitcherSpitSpeed = 7f;
+
+    private const string PitcherSpitPath = "Assets/_Project/Prefabs/Projectiles/PitcherSpit.prefab";
+    private const string PitcherSplatPath = "Assets/_Project/Prefabs/VFX/VFX_PitcherSplat.prefab";
 
     private static readonly string[] SharedBlocks =
     {
@@ -113,7 +120,8 @@ public sealed class JungleTests
         Assert.That(ours.AggroRange, Is.EqualTo(spitter.AggroRange));
         Assert.That(ours.Projectile, Is.Not.Null);
         Assert.That(ours.Projectile.StandoffRange, Is.EqualTo(spitter.Projectile.StandoffRange));
-        Assert.That(ours.Projectile.Speed, Is.EqualTo(spitter.Projectile.Speed));
+        Assert.That(ours.Projectile.Speed, Is.EqualTo(PitcherSpitSpeed),
+            "The Pitcher's spit parted from the Spitter's in JG-02: slower, so it can be seen and dodged.");
         Assert.That(ours.Projectile.Radius, Is.EqualTo(spitter.Projectile.Radius));
         Assert.That(ours.Explosion, Is.Null);
     }
@@ -190,6 +198,17 @@ public sealed class JungleTests
 
         Assert.That(xp, Is.GreaterThanOrEqualTo(jungle.Xp.ToReach(2)), "Stage 1 must reach level 2.");
         Assert.That(xp, Is.LessThan(jungle.Xp.ToReach(2) + jungle.Xp.ToReach(3)), "…and not level 3.");
+    }
+
+    [Test]
+    public void JunglesSpitter_ThrowsItsOwnSpit()
+    {
+        ProjectileView spit = Load<EnemyDefinition>(PitcherPath).ToLook().Projectile;
+
+        Assert.That(spit, Is.SameAs(Load<ProjectileView>(PitcherSpitPath)), "JG-02: the Pitcher throws its own goo.");
+        Assert.That(spit.Impact, Is.SameAs(Load<ImpactView>(PitcherSplatPath)), "…and it splats on a hit.");
+        Assert.That(Load<EnemyDefinition>(SpitterPath).ToLook().Projectile == null, Is.True,
+            "Descent's Spitter still throws the default bolt.");
     }
 
     [Test]

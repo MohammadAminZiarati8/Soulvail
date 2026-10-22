@@ -27,7 +27,7 @@ MonoBehaviour:
   _aggroRange: 30
   _behaviour: 2
   _projectileStandoffRange: 14
-  _projectileSpeed: 12
+  _projectileSpeed: 7
   _projectileRadius: 1.6
   _explosionRadius: 0
   _hopTime: 0
@@ -35,3 +35,4 @@ MonoBehaviour:
   _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 1
   _body: {fileID: 4602156729013314041, guid: f50ac3e459cef0e4c8be525a64c9851c, type: 3}
+  _projectile: {fileID: 7540841994579863046, guid: 06ce5ae1043e2124aac9f2e4fa9a33c1, type: 3}

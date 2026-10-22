@@ -71,7 +71,10 @@ public sealed class ProjectileViews : IDisposable
     /// <summary>Class id → the prefab its shots fly, or null: every shot flies the default.</summary>
     private readonly CharacterLookBook _looks;
 
-    /// <summary>The default bolt's pools: every enemy's shot, and every class that names none.</summary>
+    /// <summary>Enemy id → the prefab its shots fly, or null: every enemy flies the default (JG-02).</summary>
+    private readonly EnemyLookBook _enemyLooks;
+
+    /// <summary>The default bolt's pools: every shot whose class or archetype names none.</summary>
     private readonly ShotKind _default;
 
     /// <summary>
@@ -132,6 +135,12 @@ public sealed class ProjectileViews : IDisposable
     /// The camera an impact faces and is pulled toward, or null: every impact is seen from overhead.
     /// Its rotation is read on each hit, never cached.
     /// </param>
+    /// <param name="enemyLooks">
+    /// What each archetype's shots look like, or null for none: every enemy shot flies
+    /// <paramref name="prefab"/> (JG-02). <c>RunScope</c> resolves the boot scope's book by type,
+    /// the one <c>EnemyViews</c> uses. Each named shot is prewarmed to
+    /// <paramref name="classPrewarm"/>.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="resolver"/>, <paramref name="prefab"/> or <paramref name="hub"/> is null.
     /// <paramref name="parent"/>, <paramref name="looks"/> and <paramref name="viewer"/> may be null;
@@ -148,7 +157,8 @@ public sealed class ProjectileViews : IDisposable
         int prewarm = 0,
         CharacterLookBook looks = null,
         int classPrewarm = 0,
-        Transform viewer = null)
+        Transform viewer = null,
+        EnemyLookBook enemyLooks = null)
     {
         if (hub is null)
         {
@@ -168,6 +178,7 @@ public sealed class ProjectileViews : IDisposable
         _resolver = resolver;
         _parent = parent;
         _looks = looks;
+        _enemyLooks = enemyLooks;
         _classPrewarm = classPrewarm;
         _viewer = viewer == null ? null : viewer;
 
@@ -184,6 +195,15 @@ public sealed class ProjectileViews : IDisposable
                 {
                     KindFor(look.Projectile);
                 }
+            }
+        }
+
+        // JG-02: an archetype's own shot is built now too, for rule 3's reason.
+        if (enemyLooks != null)
+        {
+            for (int i = 0; i < enemyLooks.Projectiles.Count; i++)
+            {
+                KindFor(enemyLooks.Projectiles[i]);
             }
         }
 
@@ -434,12 +454,14 @@ public sealed class ProjectileViews : IDisposable
     /// </remarks>
     private ShotKind KindOf(ContentId specId)
     {
-        if (_looks is null)
-        {
-            return _default;
-        }
+        ProjectileView prefab = _looks is null ? null : _looks.For(specId).Projectile;
 
-        ProjectileView prefab = _looks.For(specId).Projectile;
+        // JG-02: an id no class names may be an archetype's. Ids are namespaced by kind, so a
+        // class and an archetype never answer for the same one.
+        if (prefab == null && _enemyLooks != null)
+        {
+            prefab = _enemyLooks.For(specId).Projectile;
+        }
 
         // Unity's ==: an enemy's id and a class that names nothing both read a real null here, and
         // a prefab deleted from the project reads a live reference only the engine calls null.

@@ -59,6 +59,11 @@ namespace Soulvail.Game.Views
                  "pools it beside this shot's own bodies and plays it on a hit, never on a miss.")]
         [SerializeField] private ImpactView _impact;
 
+        [Tooltip("A trail drawn behind this shot (JG-02), or none. Cleared whenever the body is " +
+                 "placed at a new flight's start or returned to the pool, so a reused shot never " +
+                 "draws a streak from where its last flight ended.")]
+        [SerializeField] private TrailRenderer _trail;
+
         private int _id = Unbound;
         private Vector3 _origin;
         private Vector3 _target;
@@ -149,6 +154,8 @@ namespace Soulvail.Game.Views
             // frame at wherever the previous shot ended. The two calls happen in the same frame,
             // before anything renders.
             transform.position = PositionAt(Progress());
+
+            ClearTrail();
         }
 
         /// <summary>
@@ -239,7 +246,18 @@ namespace Soulvail.Game.Views
         {
             transform.SetPositionAndRotation(_restPosition, _restRotation);
 
+            ClearTrail();
             Unbind();
+        }
+
+        /// <summary>Forgets every point the trail has laid down, if there is one.</summary>
+        private void ClearTrail()
+        {
+            // Unity's ==: a trail destroyed under a live body reads null only through the engine.
+            if (_trail != null)
+            {
+                _trail.Clear();
+            }
         }
 
         private void Awake()

@@ -726,7 +726,8 @@ namespace Soulvail.Game.Composition
             //
             // The class look book has no WithParameter, EnemyViews' look book's bargain: it resolves
             // by type from BootScope, and it is what picks a class's own shot (RS-02c). Each class's
-            // shot and each impact is prewarmed to ClassShotPrewarm (RS-06b). The camera goes by name
+            // shot and each impact is prewarmed to ClassShotPrewarm (RS-06b), and so is each
+            // archetype's, from the enemy look book resolved the same way (JG-02). The camera goes by name
             // for TapToFocusAdapter's reason, and is what an arrow's impact faces.
             builder.Register<ProjectileViews>(Lifetime.Scoped)
                 .WithParameter("prefab", _projectilePrefab)

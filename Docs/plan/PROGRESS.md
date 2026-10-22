@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after JG-01._
+_Updated 2026-10-22, after JG-02._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-01** — scripted stages: a mode can list a stage's enemies by hand; the Jungle opens with 3 Frogs, then 2 Pitchers. |
+| **Last merged task** | **JG-02** — the Pitcher's spit: its own red-orange goo shot with a trail and a splat, at 7 m/s (was 12). Before it, JG-01's scripted stages. |
 | **Next task** | Whatever the owner names. |
-| **Verified** | **JG-01: 4 372 EditMode — 4 369 passed / 2 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Known: `CharacterPreviewTests` and the inconclusive one ([Traps §7](../Traps.md#7-tests-nunit-allocation)); `Jungle_IsDescentsNumbers` fails only on the owner's uncommitted `_budgetBase` 20 in `Jungle.asset`. |
+| **Verified** | **JG-02: 4 378 EditMode — 4 376 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 
@@ -24,7 +24,8 @@ Focus disc are switched off (mode flags), and class select lists the **Ranger** 
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
 sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). A mode can
 script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
-3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers. Jungle
+3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers. An enemy asset can name its own
+shot prefab; the Pitcher lobs red-orange goo (`PitcherSpit`, 7 m/s) that splats on a hit. Jungle
 enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
 Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, an arrow per shot, holds fire on
 the move, Volley, a real roll on Space. **Levelling:** a kill is XP; a level banks a skill point; the
@@ -47,7 +48,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
 6. **JG-01**: a new Jungle run spawns exactly 3 Frogs on stage 1, and the third kill raises
    level 2; stage 2 spawns exactly 2 Pitchers; `Jungle.asset` › Scripted Stages edits in the
    Inspector.
-7. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+7. **JG-02**: Jungle stage 2's Pitchers lob red-orange goo with a short trail, slow enough to step
+   out of; a hit splats red-orange; no trail streaks from where the last spit landed.
+8. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

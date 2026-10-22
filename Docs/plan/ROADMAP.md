@@ -31,3 +31,4 @@ the portrait switch. Tags `m0`–`m5`; history in `git log`.
 _No milestone. The owner is setting the next direction._
 
 - [x] **JG-01** — Scripted stages: a mode lists a stage's enemies by hand; the Jungle opens with 3 Frogs, then 2 Pitchers (M) · [spec](tasks/JG-01-scripted-stages.md)
+- [x] **JG-02** — The Pitcher's spit: an enemy can name its own shot; the Pitcher lobs slower red-orange goo with a trail and a splat (M) · [spec](tasks/JG-02-pitcher-spit.md)

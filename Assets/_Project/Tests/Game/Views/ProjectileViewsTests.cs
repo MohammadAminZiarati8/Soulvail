@@ -557,6 +557,60 @@ public sealed class ProjectileViewsTests
         Assert.That(_views.Count + _views.PooledCount, Is.EqualTo(1), "And no other body was built for it.");
     }
 
+    // ---- JG-02: an archetype's own shot ----------------------------------------------------------
+
+    [Test]
+    public void Fired_AnArchetypeWithAProjectileLookFliesIt()
+    {
+        _views = Census(prewarm: 1, enemyLooks: EnemyBook(), classPrewarm: 2);
+
+        Assert.That(_views.PooledCountOf(_arrow), Is.EqualTo(2),
+            "The archetype's shot is prewarmed at construction, not on its first throw.");
+
+        Fire(id: 1, origin: Vector3.Zero, target: new Vector3(6f, 0f, 0f), flightTime: 1f);
+
+        Assert.That(_views.TryGet(1, out ProjectileView view), Is.True);
+
+        AssertFlies(view, ArrowMesh, "enemy.spitter's look names the arrow, so its shot is the arrow's body.");
+
+        Assert.That(_views.PooledCountOf(_prefab), Is.EqualTo(1), "The default bolt was not rented.");
+    }
+
+    [Test]
+    public void Fired_AnArchetypeWithNoLookFliesTheDefault()
+    {
+        _views = Census(prewarm: 1, enemyLooks: EnemyBook());
+
+        _hub.Publish(new ProjectileFired(1, new ContentId("enemy.other"), sourceId: 7, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f));
+
+        Assert.That(_views.TryGet(1, out ProjectileView view), Is.True);
+
+        AssertFlies(view, BoltMesh, "An archetype with no look flies the default bolt.");
+    }
+
+    [Test]
+    public void Bind_ClearsTheTrail()
+    {
+        // A reused shot must not draw a streak from where its last flight ended.
+        TrailRenderer trail = _prefabObject.AddComponent<TrailRenderer>();
+
+        using (var serialized = new SerializedObject(_prefab))
+        {
+            serialized.FindProperty("_trail").objectReferenceValue = trail;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        trail.AddPosition(new UnityEngine.Vector3(9f, 0f, 9f));
+        Bound(1, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+
+        Assert.That(trail.positionCount, Is.Zero, "Bind clears it.");
+
+        trail.AddPosition(new UnityEngine.Vector3(3f, 0f, 0f));
+        _prefab.OnDespawn();
+
+        Assert.That(trail.positionCount, Is.Zero, "The return to the pool clears it.");
+    }
+
     [Test]
     public void Fired_AClassWithNoLookFliesTheDefault()
     {
@@ -899,8 +953,16 @@ public sealed class ProjectileViewsTests
         int prewarm,
         CharacterLookBook looks = null,
         int classPrewarm = 0,
-        Transform viewer = null) =>
-        new ProjectileViews(_container, _prefab, null, _hub, prewarm, looks, classPrewarm, viewer);
+        Transform viewer = null,
+        EnemyLookBook enemyLooks = null) =>
+        new ProjectileViews(_container, _prefab, null, _hub, prewarm, looks, classPrewarm, viewer, enemyLooks);
+
+    /// <summary><see cref="Spitter"/> throws the fixture's arrow; every other archetype has no look.</summary>
+    private EnemyLookBook EnemyBook() =>
+        new EnemyLookBook(new Dictionary<ContentId, EnemyLook>
+        {
+            [Spitter] = new EnemyLook(Color.white, 1f, body: null, projectile: _arrow),
+        });
 
     /// <summary>
     /// <see cref="Archer"/> flies the fixture's arrow; <see cref="Plain"/> has a look and names no

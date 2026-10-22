@@ -72,11 +72,12 @@ public readonly struct EnemyLook
     /// The prefab this archetype wears, if it has one of its own. Null is not an error: it is the
     /// shared body. Optional, so a look that names only a tint and a scale is written as it was.
     /// </param>
-    public EnemyLook(Color tint, float bodyScale, EnemyView body = null)
+    public EnemyLook(Color tint, float bodyScale, EnemyView body = null, ProjectileView projectile = null)
     {
         Tint = tint;
         BodyScale = bodyScale;
         Body = body;
+        Projectile = projectile;
     }
 
     /// <summary>Grey, scale 1 — what an id nobody authored a look for gets.</summary>
@@ -101,6 +102,11 @@ public readonly struct EnemyLook
     /// shared one rather than taking a spawn down.
     /// </remarks>
     public EnemyView Body { get; }
+
+    /// <summary>
+    /// The prefab this archetype's shots fly (JG-02), or null: they fly the default bolt.
+    /// </summary>
+    public ProjectileView Projectile { get; }
 }
 
 /// <summary>
@@ -125,6 +131,8 @@ public sealed class EnemyLookBook
     private readonly Dictionary<ContentId, EnemyLook> _looks;
 
     private readonly List<EnemyView> _bodies = new List<EnemyView>();
+
+    private readonly List<ProjectileView> _projectiles = new List<ProjectileView>();
 
     /// <param name="looks">
     /// Every authored look, keyed by archetype id. Copied; the caller's dictionary is not retained,
@@ -173,6 +181,14 @@ public sealed class EnemyLookBook
             {
                 _bodies.Add(body);
             }
+
+            // The same rule for shots (JG-02): two archetypes flying one prefab share one pool.
+            ProjectileView projectile = entry.Value.Projectile;
+
+            if (projectile != null && !_projectiles.Contains(projectile))
+            {
+                _projectiles.Add(projectile);
+            }
         }
     }
 
@@ -181,6 +197,12 @@ public sealed class EnemyLookBook
     /// for beside the shared body's (M7-05g rule 2).
     /// </summary>
     public IReadOnlyList<EnemyView> Bodies => _bodies;
+
+    /// <summary>
+    /// Every distinct shot prefab an archetype names, in the order met (JG-02) — what
+    /// <c>ProjectileViews</c> prewarms a pool for while the scene loads.
+    /// </summary>
+    public IReadOnlyList<ProjectileView> Projectiles => _projectiles;
 
     /// <summary>
     /// The look authored for <paramref name="specId"/>, or <see cref="EnemyLook.Default"/> for an id

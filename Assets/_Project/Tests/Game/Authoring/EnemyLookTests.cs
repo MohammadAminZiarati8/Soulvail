@@ -221,6 +221,40 @@ public sealed class EnemyLookTests
     }
 
     [Test]
+    public void Definition_ToLook_CarriesItsProjectile()
+    {
+        // JG-02: a shot of its own is carried as authored; empty is the default bolt.
+        EnemyDefinition definition = NewDefinition("Throwing");
+        var shot = new GameObject("OwnShot").AddComponent<ProjectileView>();
+        _created.Add(shot.gameObject);
+
+        Assert.That(definition.ToLook().Projectile == null, Is.True);
+
+        var serialized = new SerializedObject(definition);
+        serialized.FindProperty("_projectile").objectReferenceValue = shot;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(definition.ToLook().Projectile, Is.SameAs(shot));
+    }
+
+    [Test]
+    public void Book_ListsEachProjectileOnce()
+    {
+        var shot = new GameObject("SharedShot").AddComponent<ProjectileView>();
+        _created.Add(shot.gameObject);
+
+        var book = new EnemyLookBook(new Dictionary<ContentId, EnemyLook>
+        {
+            [new ContentId("enemy.a")] = new EnemyLook(Color.white, 1f, projectile: shot),
+            [new ContentId("enemy.b")] = new EnemyLook(Color.white, 1f, projectile: shot),
+            [new ContentId("enemy.c")] = new EnemyLook(Color.white, 1f),
+        });
+
+        Assert.That(book.Projectiles, Is.EqualTo(new[] { shot }), "Two archetypes on one shot share one pool.");
+        Assert.That(EnemyLook.Default.Projectile == null, Is.True);
+    }
+
+    [Test]
     public void Definition_ToLook_NoBodyIsTheShared()
     {
         // Empty is not an error: it is the shared body, which is what every archetype wore before.

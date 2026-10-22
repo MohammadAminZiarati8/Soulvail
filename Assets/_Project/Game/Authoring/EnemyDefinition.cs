@@ -132,6 +132,10 @@ namespace Soulvail.Game.Authoring
                  "wears the shared body, tinted and scaled by the two fields above (M7-05g).")]
         [SerializeField] private EnemyView _body;
 
+        [Tooltip("The shot this archetype throws, if it has one of its own (JG-02) — a prefab with " +
+                 "a ProjectileView. Empty flies the default bolt. Only a projectile behaviour throws.")]
+        [SerializeField] private ProjectileView _projectile;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -219,7 +223,7 @@ namespace Soulvail.Game.Authoring
         /// <see cref="EnemyLook"/>'s constructor gives: a wrong colour is wrong on screen, where a
         /// wrong number would be wrong in a rule.
         /// </remarks>
-        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body);
+        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body, _projectile);
 
         /// <remarks>
         /// Only the id, and only its shape — the same bargain <c>CharacterDefinition</c> makes. A

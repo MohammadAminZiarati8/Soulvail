@@ -35,3 +35,4 @@ MonoBehaviour:
   _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 1
   _body: {fileID: 7579078707440573725, guid: 00dce45fd781c314c94f3ba81e5c1ea7, type: 3}
+  _projectile: {fileID: 0}

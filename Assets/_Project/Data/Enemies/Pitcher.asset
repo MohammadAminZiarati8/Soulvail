@@ -23,7 +23,7 @@ MonoBehaviour:
   _contactDamage: 12
   _reach: 1.2
   _windupTime: 0.7
-  _recoverTime: 0.9
+  _recoverTime: 2.3
   _aggroRange: 30
   _behaviour: 2
   _projectileStandoffRange: 14

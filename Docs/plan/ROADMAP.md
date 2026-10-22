@@ -36,3 +36,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **RS-07b** — Volley's own arrow: a volley shot is marked, and flies a bigger arrow with a brighter trail and its own burst (M) · [spec](tasks/RS-07b-volley-arrow.md)
 - [x] **JG-03a** — The Puffball's model: the Jungle's Bloater as a puffball mushroom, `puffball.py` on a rig of its own with five clips (S) · [spec](tasks/JG-03a-the-puffballs-model.md)
 - [x] **JG-03b** — The Puffball's body: prefab, controller, a cyan-white wind-up glow and a spore burst on death (M) · [spec](tasks/JG-03b-the-puffballs-body.md)
+- [x] **JG-03c** — Puffballs in the Jungle: `enemy.puffball` with the Bloater's numbers, rostered at stage 4, stage 4 scripted as 2 Puffballs (S) · [spec](tasks/JG-03c-puffballs-in-the-jungle.md)

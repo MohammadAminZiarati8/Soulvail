@@ -66,7 +66,7 @@ MonoBehaviour:
     _introducedAtStage: 1
   - _specId: enemy.pitcher
     _introducedAtStage: 2
-  - _specId: enemy.bloater
+  - _specId: enemy.puffball
     _introducedAtStage: 4
   _arenas:
   - _arenaId: arena.jungle.hollow
@@ -97,6 +97,11 @@ MonoBehaviour:
     - _wave: 1
       _specId: enemy.frog
       _count: 3
+  - _stage: 4
+    _spawns:
+    - _wave: 1
+      _specId: enemy.puffball
+      _count: 2
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after JG-03b._
+_Updated 2026-10-22, after JG-03c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-03b** — the Puffball's body: `Puffball.prefab` (a variant of `Enemy.prefab` wearing JG-03a's model at 1.3), `AC_Puffball`, a cyan-white wind-up glow (`Palette.SporeGlow`, the owner's one exception to red-orange telegraphs) and a spore burst on death (`VFX_SporeBurst`). Not yet in a run. |
-| **Next task** | **JG-03c** — the Puffball's content: `enemy.puffball` with the Bloater's numbers, in the Jungle's roster at stage 4, stage 4 scripted as 2 Puffballs. |
-| **Verified** | **JG-03b: 4 409 EditMode — 4 407 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **JG-03c** — Puffballs in the Jungle: `enemy.puffball` (the Bloater's numbers) on JG-03b's body, rostered at stage 4, and stage 4 scripted as 2 Puffballs. Before it, JG-03a's model and JG-03b's body: a cream puffball that swells and glows cyan-white (`Palette.SporeGlow`), and bursts in spores. |
+| **Next task** | Whatever the owner names. |
+| **Verified** | **JG-03c: 4 411 EditMode — 4 409 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 
@@ -24,10 +24,12 @@ Focus disc are switched off (mode flags), and class select lists the **Ranger** 
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
 sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). A mode can
 script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
-3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers, stage 3 is 2 Pitchers + 3 Frogs. An enemy asset can name its own
+3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers, stage 3 is 2 Pitchers + 3 Frogs,
+stage 4 is 2 Puffballs. An enemy asset can name its own
 shot prefab; the Pitcher lobs red-orange goo (`PitcherSpit`, 7 m/s) that splats on a hit. Jungle
-enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
-Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, a 1.33 m arrow per shot with a
+enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`) and the puffball
+(`enemy.puffball`, the Bloater's role: swells glowing cyan-white, bursts in spores); Descent keeps the
+Husk, Spitter and Bloater capsules. **The Ranger:** its own model on `Rig_Medium`, a 1.33 m arrow per shot with a
 short cyan trail, holds fire on the move, Volley (its fan flies a bigger glowing arrow with its own
 burst), a real roll on Space. **Levelling:** a kill is XP; a level banks a skill point; the tree
 screen pauses and takes a free pick. **Death** pays Shards into the profile. **Saves:** `run.json`
@@ -55,7 +57,11 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    body length; no streak runs from where the last arrow landed back to the bow.
 9. **RS-07b**: with Volley taken, every Nth shot is a fan of bigger arrows with a glowing cyan head
    and a wider cyan trail; a volley hit plays a bigger white-and-cyan burst; ordinary shots unchanged.
-10. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+10. **JG-03**: a Jungle run's stage 4 is exactly 2 Puffballs. They waddle in, swell with the cap
+   glowing cyan-white when close, and burst in a cream spore puff inside the red-orange ring; a hit
+   squashes the cap; one killed at range collapses and bursts too. Stage 5 on: Puffballs where
+   Bloaters were.
+11. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet
@@ -65,7 +71,7 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    has passed stage 19.
 2. **The Sanctum plays as zero** — nothing bought in two natural runs (switched off now).
 3. **A Pact is about one offer in 62.**
-4. **Past stage ~26 the late waves are all Bloaters**: `WaveComposer.Upgrade` swaps a capped wave's
+4. **Past stage ~26 the late waves are all Bloaters** (Puffballs in the Jungle): `WaveComposer.Upgrade` swaps a capped wave's
    bodies for the dearest archetype.
 5. **No audio, no Elites, one boss.** The feel pass and a second language have not happened.
 

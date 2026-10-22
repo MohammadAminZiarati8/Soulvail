@@ -502,6 +502,8 @@ MonoBehaviour:
     _text: Frog
   - _key: enemy.pitcher.name
     _text: Pitcher
+  - _key: enemy.puffball.name
+    _text: Puffball
   - _key: ui.hero.stats
     _text: Stats
   - _key: ui.hero.attack

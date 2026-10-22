@@ -13,8 +13,8 @@ namespace Soulvail.Tests.Game.Authoring;
 
 /// <summary>
 /// The Jungle as a place a run is played in (M7-05i): its own Husk, Descent's numbers, a small room
-/// for its first stages, and the first mode a new run starts. Its Husk is the Frog since M7-05m, and
-/// its Spitter the Pitcher since M7-05q.
+/// for its first stages, and the first mode a new run starts. Its Husk is the Frog since M7-05m, its
+/// Spitter the Pitcher since M7-05q, and its Bloater the Puffball since JG-03c.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,7 +25,8 @@ namespace Soulvail.Tests.Game.Authoring;
 /// should. The Rootling, which the Frog replaced, keeps its row: it is authored and could be rostered
 /// again by one line. The Jungle's Spitter is the same ruling a second time:
 /// <see cref="JunglesSpitter_PlaysTheSpittersRole"/> pins the Pitcher to the Spitter, which Descent
-/// still rosters as a capsule.
+/// still rosters as a capsule, and <see cref="JunglesBloater_PlaysTheBloatersRole"/> pins the Puffball to
+/// the Bloater, a third time.
 /// </para>
 /// <para>
 /// <b>The Jungle is Descent with its own content.</b> <see cref="Jungle_IsDescentsNumbers"/> compares
@@ -43,9 +44,12 @@ public sealed class JungleTests
     private const string HuskPath = "Assets/_Project/Data/Enemies/Husk.asset";
     private const string PitcherPath = "Assets/_Project/Data/Enemies/Pitcher.asset";
     private const string SpitterPath = "Assets/_Project/Data/Enemies/Spitter.asset";
+    private const string PuffballPath = "Assets/_Project/Data/Enemies/Puffball.asset";
+    private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
     private const string PitcherBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher.prefab";
+    private const string PuffballBodyPath = "Assets/_Project/Prefabs/Enemies/Puffball.prefab";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string ArenaFolder = "Assets/_Project/Prefabs/Arenas";
 
@@ -130,9 +134,36 @@ public sealed class JungleTests
         Assert.That(ours.Explosion, Is.Null);
     }
 
+    [Test]
+    public void JunglesBloater_PlaysTheBloatersRole()
+    {
+        EnemySpec ours = Load<EnemyDefinition>(PuffballPath).ToSpec();
+        EnemySpec bloater = Load<EnemyDefinition>(BloaterPath).ToSpec();
+
+        Assert.That(ours.Id.Value, Is.EqualTo("enemy.puffball"));
+        Assert.That(ours.NameKey.Key, Is.EqualTo("enemy.puffball.name"));
+        Assert.That(ours.Behaviour, Is.EqualTo(bloater.Behaviour), "It waddles in and bursts (GD §8.1).");
+        Assert.That(ours.MaxHp, Is.EqualTo(bloater.MaxHp));
+        Assert.That(ours.MoveSpeed, Is.EqualTo(bloater.MoveSpeed));
+        Assert.That(ours.TargetPriority, Is.EqualTo(bloater.TargetPriority));
+        Assert.That(ours.ThreatCost, Is.EqualTo(bloater.ThreatCost));
+        Assert.That(ours.XpValue, Is.EqualTo(bloater.XpValue));
+        Assert.That(ours.IsElite, Is.EqualTo(bloater.IsElite));
+        Assert.That(ours.ContactDamage, Is.EqualTo(bloater.ContactDamage));
+        Assert.That(ours.Reach, Is.EqualTo(bloater.Reach));
+        Assert.That(ours.WindupTime, Is.EqualTo(bloater.WindupTime), "The wind-up the Puffball's swell is timed to (JG-03b).");
+        Assert.That(ours.RecoverTime, Is.EqualTo(bloater.RecoverTime));
+        Assert.That(ours.AggroRange, Is.EqualTo(bloater.AggroRange));
+        Assert.That(ours.Projectile, Is.Null);
+        Assert.That(bloater.Projectile, Is.Null);
+        Assert.That(ours.Explosion, Is.Not.Null);
+        Assert.That(ours.Explosion.Radius, Is.EqualTo(bloater.Explosion.Radius), "The 3 m blast its spores are drawn inside.");
+    }
+
     [TestCase(FrogPath, FrogBodyPath)]
     [TestCase(RootlingPath, RootlingBodyPath)]
     [TestCase(PitcherPath, PitcherBodyPath)]
+    [TestCase(PuffballPath, PuffballBodyPath)]
     public void JunglesEnemy_WearsItsOwnBody(string path, string bodyPath)
     {
         EnemyLook look = Load<EnemyDefinition>(path).ToLook();
@@ -166,12 +197,12 @@ public sealed class JungleTests
         {
             ("enemy.frog", 1),
             ("enemy.pitcher", 2),
-            ("enemy.bloater", 4),
-        }), "The Frog and the Pitcher where Descent has the Husk and the Spitter (the owner, 2026-09-29); the Bloater keeps its capsule.");
+            ("enemy.puffball", 4),
+        }), "The Frog, the Pitcher and the Puffball where Descent has the Husk, the Spitter and the Bloater (the owner, 2026-09-29 and 2026-10-22).");
     }
 
     [Test]
-    public void Jungle_ScriptsItsFirstThreeStages()
+    public void Jungle_ScriptsItsFirstFourStages()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
@@ -188,7 +219,11 @@ public sealed class JungleTests
             Is.EqualTo(new[] { (1, "enemy.pitcher", 2), (1, "enemy.frog", 3) }),
             "The owner, 2026-10-22: two Pitchers and three Frogs, together.");
 
-        Assert.That(jungle.TryGetScriptedStage(4, out _), Is.False, "Stage 4 on is the budget's.");
+        Assert.That(jungle.TryGetScriptedStage(4, out ScriptedStage fourth), Is.True);
+        Assert.That(fourth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
+            Is.EqualTo(new[] { (1, "enemy.puffball", 2) }), "The owner, 2026-10-22: two Puffballs, nothing else.");
+
+        Assert.That(jungle.TryGetScriptedStage(5, out _), Is.False, "Stage 5 on is the budget's.");
     }
 
     [Test]
@@ -273,6 +308,8 @@ public sealed class JungleTests
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(FrogPath)));
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(PitcherPath)));
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(SpitterPath)), "Descent still rosters the Spitter's capsule.");
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(PuffballPath)));
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(BloaterPath)), "Descent still rosters the Bloater's capsule.");
 
         // Every bodied archetype the catalog lists is prewarmed to a pool of DeviceEnemyCap + 1 at
         // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode.

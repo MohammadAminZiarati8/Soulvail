@@ -95,6 +95,12 @@ namespace Soulvail.Game.Authoring
                  "reaches a boss stage.")]
         [SerializeField] private BossRosterRow[] _bossRoster = Array.Empty<BossRosterRow>();
 
+        [Tooltip("Stages whose enemies are written by hand instead of bought from the budget " +
+                 "(JG-01). Each line is a wave, an enemy id and a count; waves run 1, 2, … and " +
+                 "each starts when the one before is nearly dead. Every enemy must be in the " +
+                 "roster above. A stage not listed here is composed from the budget as usual.")]
+        [SerializeField] private ScriptedStageRow[] _scriptedStages = Array.Empty<ScriptedStageRow>();
+
         [Tooltip("When this mode deals GD §13.4's Ordeals, and the pool they are drawn from. " +
                  "A schedule with an empty pool, or a pool with no schedule, is refused on a " +
                  "shipped mode by content validation.")]
@@ -174,7 +180,8 @@ namespace Soulvail.Game.Authoring
                     _hasSanctum,
                     _hasFreePick,
                     string.IsNullOrEmpty(_unlockedBy) ? default : new ContentId(_unlockedBy),
-                    _isListed);
+                    _isListed,
+                    BuildScriptedStages());
             }
             catch (ArgumentException inner)
             {
@@ -402,6 +409,23 @@ namespace Soulvail.Game.Authoring
         /// authored yet. M4-02 adds Descent's row in the same change that authors the Warden — the
         /// bargain M2-02 rule 10 made for the enemy roster, made again.
         /// </remarks>
+        private IReadOnlyList<ScriptedStage> BuildScriptedStages()
+        {
+            if (_scriptedStages is null || _scriptedStages.Length == 0)
+            {
+                return Array.Empty<ScriptedStage>();
+            }
+
+            var stages = new ScriptedStage[_scriptedStages.Length];
+
+            for (int i = 0; i < _scriptedStages.Length; i++)
+            {
+                stages[i] = _scriptedStages[i].ToStage();
+            }
+
+            return stages;
+        }
+
         private IReadOnlyList<BossRosterEntry> BuildBossRoster()
         {
             if (_bossRoster is null || _bossRoster.Length == 0)
@@ -875,6 +899,53 @@ namespace Soulvail.Game.Authoring
             /// <summary>Converts this row, letting <see cref="BossRosterEntry"/> refuse a bad one.</summary>
             public BossRosterEntry ToEntry() =>
                 new BossRosterEntry(new ContentId(_bossId), _everyNStages);
+        }
+
+        /// <summary>One authored scripted stage: the stage, and every line of it (JG-01).</summary>
+        /// <remarks>
+        /// <see cref="RosterRow"/>'s shape, holding an array of <see cref="ScriptedSpawnRow"/> so a
+        /// stage's lines sit under its number in the Inspector.
+        /// </remarks>
+        [Serializable]
+        private struct ScriptedStageRow
+        {
+            [Tooltip("The stage these enemies replace. 1 = the first stage.")]
+            [SerializeField, Min(1)] private int _stage;
+
+            [Tooltip("Every line of the stage: which wave, which enemy, how many.")]
+            [SerializeField] private ScriptedSpawnRow[] _spawns;
+
+            /// <summary>Converts this row, letting <see cref="ScriptedStage"/> refuse a bad one.</summary>
+            public ScriptedStage ToStage()
+            {
+                ScriptedSpawnRow[] rows = _spawns ?? Array.Empty<ScriptedSpawnRow>();
+                var spawns = new ScriptedSpawn[rows.Length];
+
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    spawns[i] = rows[i].ToSpawn();
+                }
+
+                return new ScriptedStage(_stage, spawns);
+            }
+        }
+
+        /// <summary>One line of a scripted stage: a wave, an archetype id and a count (JG-01).</summary>
+        /// <remarks><see cref="RosterRow"/>'s shape and its reasons.</remarks>
+        [Serializable]
+        private struct ScriptedSpawnRow
+        {
+            [Tooltip("The wave it arrives in. 1 = the first wave.")]
+            [SerializeField, Min(1)] private int _wave;
+
+            [Tooltip("The enemy's id, e.g. enemy.frog.")]
+            [SerializeField] private string _specId;
+
+            [Tooltip("How many of it.")]
+            [SerializeField, Min(1)] private int _count;
+
+            /// <summary>Converts this row, letting <see cref="ScriptedSpawn"/> refuse a bad one.</summary>
+            public ScriptedSpawn ToSpawn() => new ScriptedSpawn(_wave, new ContentId(_specId), _count);
         }
     }
 }

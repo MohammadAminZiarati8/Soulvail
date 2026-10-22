@@ -517,6 +517,92 @@ public sealed class WaveComposerTests
         Assert.That(thrown.Message, Does.Contain("enemy.ghost"));
     }
 
+    // ---- Hand-written stages (JG-01 rule 3) ------------------------------------------------------
+
+    [Test]
+    public void Compose_ScriptedStage_WritesItsWaves()
+    {
+        ModeSpec mode = Scripted();
+        WavePlan plan = Plan(mode);
+
+        Composer(mode).Compose(1, mode, plan, Stream());
+
+        Assert.That(plan.Stage, Is.EqualTo(1));
+        Assert.That(plan.WaveCount, Is.EqualTo(2), "The script's two waves, not W(1).");
+        Assert.That(plan.Concurrency, Is.EqualTo(10), "The curve's C(1): the arena's cap still holds.");
+        Assert.That(plan.EntryCount(1), Is.EqualTo(1));
+        Assert.That(CountOf(plan, 1, HuskId), Is.EqualTo(3));
+        Assert.That(plan.BodyCount(1), Is.EqualTo(3));
+        Assert.That(plan.EntryCount(2), Is.EqualTo(1));
+        Assert.That(CountOf(plan, 2, BloaterId), Is.EqualTo(2),
+            "A script may name an archetype before its introduction stage.");
+        Assert.That(plan.UnspentThreat, Is.Zero, "No budget, so nothing is unspent.");
+    }
+
+    [Test]
+    public void Compose_ScriptedStage_DrawsNothing()
+    {
+        // The stream a scripted stage is composed from reaches the next stage untouched, so stage 3
+        // after a scripted stage 1 is the stage 3 a fresh stream gives.
+        ModeSpec mode = Scripted();
+        WaveComposer composer = Composer(mode);
+        IRandomStream shared = Stream(Alternating(40));
+
+        composer.Compose(1, mode, Plan(mode), shared);
+
+        WavePlan after = Plan(mode);
+        composer.Compose(3, mode, after, shared);
+
+        WavePlan fresh = Plan(mode);
+        composer.Compose(3, mode, fresh, Stream(Alternating(40)));
+
+        AssertSameComposition(fresh, after);
+    }
+
+    [Test]
+    public void Compose_UnscriptedStage_StillComposedFromBudget()
+    {
+        ModeSpec scripted = Scripted();
+        ModeSpec plain = Mixed();
+        WavePlan withScript = Plan(scripted);
+        WavePlan without = Plan(plain);
+
+        Composer(scripted).Compose(3, scripted, withScript, Stream(Alternating(40)));
+        Composer(plain).Compose(3, plain, without, Stream(Alternating(40)));
+
+        AssertSameComposition(without, withScript);
+    }
+
+    [Test]
+    public void Compose_ScriptedStage_ReplacesThePreviousComposition()
+    {
+        // The plan is reused across stages (M2-04 rule 9): a budgeted stage with more waves, then a
+        // scripted one, must leave no wave of the first behind.
+        ModeSpec mode = Scripted();
+        WaveComposer composer = Composer(mode);
+        WavePlan plan = Plan(mode);
+
+        composer.Compose(15, mode, plan, Stream());
+        composer.Compose(1, mode, plan, Stream());
+
+        Assert.That(plan.WaveCount, Is.EqualTo(2));
+        Assert.That(TotalBodies(plan), Is.EqualTo(5));
+        Assert.Throws<ArgumentOutOfRangeException>(() => plan.BodyCount(3));
+    }
+
+    [Test]
+    public void Compose_ScriptedStage_AllocatesNothing()
+    {
+        ModeSpec mode = Scripted();
+        WaveComposer composer = Composer(mode);
+        WavePlan plan = Plan(mode);
+        IRandomStream spawn = Stream();
+
+        composer.Compose(1, mode, plan, spawn);
+
+        AllocationAssert.None(() => composer.Compose(1, mode, plan, spawn), 1_000);
+    }
+
     // ---- Fixtures ------------------------------------------------------------------------------
 
     /// <summary>GD §8.1's three cheapest archetypes, costs included, plus nothing else.</summary>
@@ -561,6 +647,27 @@ public sealed class WaveComposerTests
     /// composes at stage 3 or deeper.
     /// </remarks>
     private static ModeSpec Mixed() => Mode((HuskId, 1), (BloaterId, 2));
+
+    /// <summary>
+    /// <see cref="Mixed"/> with stage 1 written by hand: three Husks, then two Bloaters.
+    /// </summary>
+    private static ModeSpec Scripted() => new ModeSpec(
+        new ContentId("mode.test"),
+        new LocKey("mode.test.name"),
+        startingStage: 1,
+        isEndless: true,
+        finalStage: 0,
+        Scalings.Design(),
+        Scalings.Xp(),
+        new[] { new RosterEntry(new ContentId(HuskId), 1), new RosterEntry(new ContentId(BloaterId), 2) },
+        scriptedStages: new[]
+        {
+            new ScriptedStage(1, new[]
+            {
+                new ScriptedSpawn(1, new ContentId(HuskId), 3),
+                new ScriptedSpawn(2, new ContentId(BloaterId), 2),
+            }),
+        });
 
     private static ModeSpec Mode(params (string Id, int Stage)[] roster) =>
         Mode(Scalings.Design(), roster);

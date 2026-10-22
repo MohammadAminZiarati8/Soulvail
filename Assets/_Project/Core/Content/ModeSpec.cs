@@ -654,6 +654,11 @@ public sealed class ModeSpec
 
     private readonly ReadOnlyCollection<OrdealSpec> _ordealsView;
 
+    /// <summary>The hand-written stages, for <see cref="TryGetScriptedStage"/>'s walk (JG-01).</summary>
+    private readonly ScriptedStage[] _scriptedStages;
+
+    private readonly ReadOnlyCollection<ScriptedStage> _scriptedStagesView;
+
     /// <param name="id">The mode's stable content id, e.g. <c>mode.descent</c>.</param>
     /// <param name="nameKey">Localisation key for the display name.</param>
     /// <param name="startingStage">The depth a fresh run of this mode begins at. Usually 1.</param>
@@ -752,6 +757,13 @@ public sealed class ModeSpec
     /// <param name="isListed">
     /// Whether the Places tab shows it (UI-11b). Optional and last; omitted, <see langword="true"/>.
     /// </param>
+    /// <param name="scriptedStages">
+    /// Stages whose enemies are written by hand instead of bought from the budget (JG-01). Copied.
+    /// Null and empty mean the same thing: every stage is composed. Optional and last; refused when
+    /// two name one stage, one names a stage the mode does not have or a boss stage, one names an
+    /// archetype not in <paramref name="roster"/>, or one has more waves than the wave curve's
+    /// maximum — the run's one <c>WavePlan</c> is sized to that.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="unlockedBy"/> names <paramref name="id"/> itself;
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
@@ -797,7 +809,8 @@ public sealed class ModeSpec
         bool hasSanctum = true,
         bool hasFreePick = false,
         ContentId unlockedBy = default,
-        bool isListed = true)
+        bool isListed = true,
+        IReadOnlyList<ScriptedStage> scriptedStages = null)
     {
         if (id.Value is null)
         {
@@ -912,6 +925,11 @@ public sealed class ModeSpec
         _bossRoster = CopyBossRoster(bossRoster, id);
 
         _bossRosterView = Array.AsReadOnly(_bossRoster);
+
+        // Last, because it is checked against the roster, the bosses and the wave curve above.
+        _scriptedStages = CopyScriptedStages(scriptedStages);
+
+        _scriptedStagesView = Array.AsReadOnly(_scriptedStages);
     }
 
     /// <summary>The mode's stable content id, e.g. <c>mode.descent</c>.</summary>
@@ -1049,6 +1067,9 @@ public sealed class ModeSpec
     /// </summary>
     public IReadOnlyList<BossRosterEntry> BossRoster => _bossRosterView;
 
+    /// <summary>The hand-written stages, in authored order (JG-01). May be empty.</summary>
+    public IReadOnlyList<ScriptedStage> ScriptedStages => _scriptedStagesView;
+
     /// <summary>
     /// Whether <paramref name="stage"/> is a stage this mode has.
     /// </summary>
@@ -1144,6 +1165,26 @@ public sealed class ModeSpec
         }
 
         specId = default;
+        return false;
+    }
+
+    /// <summary>
+    /// The hand-written enemies of <paramref name="stage"/> (JG-01), or false when the stage is
+    /// composed from the budget.
+    /// </summary>
+    /// <remarks>Allocates nothing; asked once per stage by <c>WaveComposer.Compose</c>.</remarks>
+    public bool TryGetScriptedStage(int stage, out ScriptedStage scripted)
+    {
+        for (int i = 0; i < _scriptedStages.Length; i++)
+        {
+            if (_scriptedStages[i].Stage == stage)
+            {
+                scripted = _scriptedStages[i];
+                return true;
+            }
+        }
+
+        scripted = null;
         return false;
     }
 
@@ -1487,6 +1528,96 @@ public sealed class ModeSpec
     /// two bosses on one interval means the second is unreachable for the life of the mode — with
     /// nothing on screen to say so, which is the silence M2-06 rule 11 refuses.
     /// </remarks>
+    /// <summary>
+    /// Copies the scripted stages, refusing any this mode could not run (JG-01 rule 2).
+    /// </summary>
+    /// <remarks>
+    /// An instance method, unlike the copies beside it, because every check reads something the
+    /// constructor has already stored: the stages, the roster, the bosses and the wave curve.
+    /// </remarks>
+    private ScriptedStage[] CopyScriptedStages(IReadOnlyList<ScriptedStage> scriptedStages)
+    {
+        if (scriptedStages is null || scriptedStages.Count == 0)
+        {
+            return Array.Empty<ScriptedStage>();
+        }
+
+        var copy = new ScriptedStage[scriptedStages.Count];
+        var stages = new HashSet<int>();
+
+        for (int i = 0; i < scriptedStages.Count; i++)
+        {
+            ScriptedStage scripted = scriptedStages[i]
+                ?? throw new ArgumentException(
+                    $"scriptedStages[{i}] of '{Id}' is null.", nameof(scriptedStages));
+
+            int stage = scripted.Stage;
+
+            if (!stages.Add(stage))
+            {
+                throw new ArgumentException(
+                    $"'{Id}' scripts stage {stage} twice. One stage has one list of enemies.",
+                    nameof(scriptedStages));
+            }
+
+            if (!HasStage(stage))
+            {
+                throw new ArgumentException(
+                    $"'{Id}' scripts stage {stage}, which it does not have — its stages run from "
+                        + $"{StartingStage} to {FinalStage}.",
+                    nameof(scriptedStages));
+            }
+
+            if (TryGetBossFor(stage, out ContentId boss))
+            {
+                throw new ArgumentException(
+                    $"'{Id}' scripts stage {stage}, which is '{boss}'s stage. A boss stage spawns "
+                        + "its boss and no waves, so the script would never run.",
+                    nameof(scriptedStages));
+            }
+
+            if (scripted.WaveCount > Scaling.Waves.Max)
+            {
+                throw new ArgumentException(
+                    $"'{Id}' scripts {scripted.WaveCount} waves for stage {stage}, and its wave "
+                        + $"curve stops at {Scaling.Waves.Max}. Raise the curve's maximum or use "
+                        + "fewer waves.",
+                    nameof(scriptedStages));
+            }
+
+            for (int s = 0; s < scripted.Spawns.Count; s++)
+            {
+                ContentId specId = scripted.Spawns[s].SpecId;
+
+                if (!InRoster(specId))
+                {
+                    throw new ArgumentException(
+                        $"'{Id}' scripts '{specId}' on stage {stage}, which is not in its roster. "
+                            + "Add it to the roster — a run only prepares the archetypes listed "
+                            + "there.",
+                        nameof(scriptedStages));
+                }
+            }
+
+            copy[i] = scripted;
+        }
+
+        return copy;
+    }
+
+    private bool InRoster(ContentId specId)
+    {
+        for (int i = 0; i < _roster.Length; i++)
+        {
+            if (_roster[i].SpecId == specId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static BossRosterEntry[] CopyBossRoster(
         IReadOnlyList<BossRosterEntry> bossRoster,
         ContentId id)

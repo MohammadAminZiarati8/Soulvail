@@ -144,9 +144,6 @@ public sealed class WaveComposer
                 "Stages are numbered from 1 (GD §8.2).");
         }
 
-        int eligible = PrepareEligible(stage, mode, destination, ordeals);
-        int waves = _budget.Waves(stage);
-        float total = _budget.Budget(stage);
 
         // **Swarm's bonus, re-clamped to the device — which is what GD §13.4's "device permitting"
         // means** (M6-06b rule 3). The curve's answer is already capped at the device, so adding the
@@ -157,6 +154,20 @@ public sealed class WaveComposer
         // with no Ordeals adds zero, and min(C, cap) is C.
         int bonus = ordeals is null ? 0 : ordeals.ConcurrencyBonus;
         int concurrency = Math.Min(_budget.Concurrency(stage) + bonus, _budget.DeviceCap);
+
+        // **A hand-written stage replaces the composition and nothing else** (JG-01 rule 3). No
+        // draw, so the Spawn stream reaches the next stage where it was; no budget, so nothing is
+        // reported unspent. The concurrency above still applies, Swarm's bonus included, because
+        // the arena's cap is the director's rule and not the composer's to waive.
+        if (mode.TryGetScriptedStage(stage, out ScriptedStage scripted))
+        {
+            ComposeScripted(stage, scripted, destination, concurrency);
+            return;
+        }
+
+        int eligible = PrepareEligible(stage, mode, destination, ordeals);
+        int waves = _budget.Waves(stage);
+        float total = _budget.Budget(stage);
 
         destination.Begin(stage, waves, concurrency);
 
@@ -241,6 +252,19 @@ public sealed class WaveComposer
         }
 
         destination.Complete(total - spent);
+    }
+
+    /// <summary>Writes a hand-written stage into <paramref name="destination"/> as authored (JG-01).</summary>
+    private static void ComposeScripted(int stage, ScriptedStage scripted, WavePlan destination, int concurrency)
+    {
+        destination.Begin(stage, scripted.WaveCount, concurrency);
+
+        for (int wave = 1; wave <= scripted.WaveCount; wave++)
+        {
+            destination.SetWave(wave, scripted);
+        }
+
+        destination.Complete(0f);
     }
 
     /// <summary>

@@ -84,6 +84,7 @@ MonoBehaviour:
   _bossRoster:
   - _bossId: boss.warden
     _everyNStages: 5
+  _scriptedStages: []
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

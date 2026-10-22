@@ -55,6 +55,9 @@ public sealed class JungleTests
     /// </summary>
     private const float SmallRoomFloor = 26f;
 
+    /// <summary>What a Frog is worth since JG-01: three of them reach level 2 (CH §5.2's 51.7).</summary>
+    private const float FrogXp = 18f;
+
     private static readonly string[] SharedBlocks =
     {
         "_startingStage", "_scaling", "_xp", "_overflow", "_essence",
@@ -76,7 +79,8 @@ public sealed class JungleTests
         Assert.That(ours.MoveSpeed, Is.EqualTo(husk.MoveSpeed));
         Assert.That(ours.TargetPriority, Is.EqualTo(husk.TargetPriority));
         Assert.That(ours.ThreatCost, Is.EqualTo(husk.ThreatCost));
-        Assert.That(ours.XpValue, Is.EqualTo(husk.XpValue));
+        Assert.That(ours.XpValue, Is.EqualTo(id == "enemy.frog" ? FrogXp : husk.XpValue),
+            "The Frog's XP parted from the Husk's in JG-01, so stage 1's three level the hero once.");
         Assert.That(ours.IsElite, Is.EqualTo(husk.IsElite));
         Assert.That(ours.ContactDamage, Is.EqualTo(husk.ContactDamage));
         Assert.That(ours.Reach, Is.EqualTo(husk.Reach));
@@ -155,6 +159,40 @@ public sealed class JungleTests
     }
 
     [Test]
+    public void Jungle_ScriptsItsFirstTwoStages()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(1, out ScriptedStage first), Is.True);
+        Assert.That(first.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
+            Is.EqualTo(new[] { (1, "enemy.frog", 3) }), "The owner, 2026-10-22: three Frogs.");
+
+        Assert.That(jungle.TryGetScriptedStage(2, out ScriptedStage second), Is.True);
+        Assert.That(second.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
+            Is.EqualTo(new[] { (1, "enemy.pitcher", 2) }), "The owner, 2026-10-22: two Pitchers.");
+
+        Assert.That(jungle.TryGetScriptedStage(3, out _), Is.False, "Stage 3 on is the budget's.");
+    }
+
+    [Test]
+    public void Jungle_FirstStageLevelsTheHeroOnce()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        jungle.TryGetScriptedStage(1, out ScriptedStage first);
+
+        float xp = 0f;
+
+        foreach (ScriptedSpawn spawn in first.Spawns)
+        {
+            string path = $"Assets/_Project/Data/Enemies/{Capitalised(spawn.SpecId)}.asset";
+            xp += Load<EnemyDefinition>(path).ToSpec().XpValue * spawn.Count;
+        }
+
+        Assert.That(xp, Is.GreaterThanOrEqualTo(jungle.Xp.ToReach(2)), "Stage 1 must reach level 2.");
+        Assert.That(xp, Is.LessThan(jungle.Xp.ToReach(2) + jungle.Xp.ToReach(3)), "…and not level 3.");
+    }
+
+    [Test]
     public void Jungle_OpensInASmallRoom()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
@@ -212,6 +250,14 @@ public sealed class JungleTests
         // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode.
         Assert.That(listed, Has.No.Member(Load<EnemyDefinition>(RootlingPath)),
             "The Rootling is listed but no mode rosters it, so a run builds 29 of its bodies for nothing.");
+    }
+
+    /// <summary><c>enemy.frog</c> → <c>Frog</c>: an asset's file name is its id's last segment.</summary>
+    private static string Capitalised(ContentId id)
+    {
+        string last = id.Value.Substring(id.Value.LastIndexOf('.') + 1);
+
+        return char.ToUpperInvariant(last[0]) + last.Substring(1);
     }
 
     private static T Load<T>(string path)

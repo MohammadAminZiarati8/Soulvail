@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Director;
@@ -324,6 +325,54 @@ public sealed class WavePlan
             _entries[(waveIndex * _stride) + written] = new WaveEntry(roster[i].SpecId, counts[i]);
             written++;
             bodies += counts[i];
+        }
+
+        _entryCounts[waveIndex] = written;
+        _bodyCounts[waveIndex] = bodies;
+    }
+
+    /// <summary>
+    /// Writes wave <paramref name="wave"/> from a hand-written stage: every line of
+    /// <paramref name="scripted"/> that names this wave, in authored order (JG-01).
+    /// </summary>
+    /// <remarks>
+    /// Reads the stage's lines in place rather than through the composer's buffers, so a scripted
+    /// stage allocates nothing either. <see cref="ScriptedStage"/> refuses one archetype twice in a
+    /// wave and <see cref="ModeSpec"/> refuses one outside the roster, so a wave never holds more
+    /// lines than the roster is long — the stride check stays for a plan sized wrong.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="wave"/> is outside <c>1..WaveCount</c>, or the wave holds more than
+    /// <see cref="MaxEntriesPerWave"/> archetypes.
+    /// </exception>
+    internal void SetWave(int wave, ScriptedStage scripted)
+    {
+        int waveIndex = Index(wave);
+        int written = 0;
+        int bodies = 0;
+        IReadOnlyList<ScriptedSpawn> spawns = scripted.Spawns;
+
+        for (int i = 0; i < spawns.Count; i++)
+        {
+            ScriptedSpawn spawn = spawns[i];
+
+            if (spawn.Wave != wave)
+            {
+                continue;
+            }
+
+            if (written == _stride)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(scripted),
+                    written + 1,
+                    $"Wave {wave} holds more than the {_stride} archetypes this plan was sized "
+                        + "for. Size maxEntriesPerWave to the mode's roster length.");
+            }
+
+            _entries[(waveIndex * _stride) + written] = new WaveEntry(spawn.SpecId, spawn.Count);
+            written++;
+            bodies += spawn.Count;
         }
 
         _entryCounts[waveIndex] = written;

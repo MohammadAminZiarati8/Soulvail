@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after the docs cleanup._
+_Updated 2026-10-22, after JG-01._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **UI-09d** — a soft glow for the Run-end payout; then `fix(enemy): the Frog moves only while it hops`. |
+| **Last merged task** | **JG-01** — scripted stages: a mode can list a stage's enemies by hand; the Jungle opens with 3 Frogs, then 2 Pitchers. |
 | **Next task** | Whatever the owner names. |
-| **Verified** | **UI-09d: 4 346 EditMode — 4 344 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. All three non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Verified** | **JG-01: 4 372 EditMode — 4 369 passed / 2 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Known: `CharacterPreviewTests` and the inconclusive one ([Traps §7](../Traps.md#7-tests-nunit-allocation)); `Jungle_IsDescentsNumbers` fails only on the owner's uncommitted `_budgetBase` 20 in `Jungle.asset`. |
 
 ## What works
 
@@ -22,7 +22,9 @@ A **portrait** top-down run. **Home** with Heroes and Places tabs; places unlock
 **Jungle** is the first place and ends at stage 30. **Focus build:** Veilrot, the Sanctum and the
 Focus disc are switched off (mode flags), and class select lists the **Ranger** alone (BootScope
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
-sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). Jungle
+sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). A mode can
+script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
+3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers. Jungle
 enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
 Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, an arrow per shot, holds fire on
 the move, Volley, a real roll on Space. **Levelling:** a kill is XP; a level banks a skill point; the
@@ -42,7 +44,10 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
 5. **Heroes tab and hero page**: the Ranger's avatar fills its frame; the page scrolls to Basic
    attack, Special move and three branches of nine ranks; dragging the model turns it, dragging the
    sheet only scrolls.
-6. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+6. **JG-01**: a new Jungle run spawns exactly 3 Frogs on stage 1, and the third kill raises
+   level 2; stage 2 spawns exactly 2 Pitchers; `Jungle.asset` › Scripted Stages edits in the
+   Inspector.
+7. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

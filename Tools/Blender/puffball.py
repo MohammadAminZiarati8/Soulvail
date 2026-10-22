@@ -242,9 +242,10 @@ def build():
              (STALK_TOP, 0.155), (STALK_TOP + 0.01, 0.0))
     add(lathe(stalk, 20), "puff_stalk", "stalk")
 
-    # The eyes: small and dark with a glint, a little below the cap's equator, so it has a front.
+    # The eyes: small and dark with a glint, high on the front of the cap, where the game camera
+    # looks down on them (JG-03b), so it has a front.
     for _, s in SIDES:
-        hit, normal = surface(shell, 22 * s, 0.6)
+        hit, normal = surface(shell, 21 * s, 0.75)
         centre = hit - normal * 0.004
         place(blob(1), centre, (0.06, 0.08, 0.03), "puff_eye", "cap", facing(normal))
         place(ball(6, 4), centre + normal * 0.026 + v(-0.018 * s, 0, 0.03), (0.018, 0.018, 0.014), "puff_shine", "cap")

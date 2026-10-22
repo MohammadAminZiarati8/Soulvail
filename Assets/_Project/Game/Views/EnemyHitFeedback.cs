@@ -71,6 +71,11 @@ namespace Soulvail.Game.Views
     /// one more thing a rental must forget, and every reset below writes it black.
     /// </para>
     /// <para>
+    /// <b>Two switches for the Puffball, as of JG-03b.</b> <c>_sporeTelegraph</c> glows the wind-up in
+    /// <see cref="Palette.SporeGlow"/> rather than danger, the owner's one exception; <c>_deathBurst</c>
+    /// is a particle system the death plays and the reset clears. Both are off on every other body.
+    /// </para>
+    /// <para>
     /// <b>The tint is composed from <c>EnemyDamaged.HpFraction</c>, so no health is held here.</b>
     /// That field has ridden the event since M1-11; this reads it, keeps one float, and decides
     /// nothing. At full health the lerp is identity, so a freshly spawned body looks exactly as M2-06
@@ -115,6 +120,15 @@ namespace Soulvail.Game.Views
                  "does not, so the capsules keep the swell alone.")]
         [Min(0f)]
         [SerializeField] private float _telegraphGlow = 0.9f;
+
+        [Tooltip("The wind-up glows Palette.SporeGlow, cyan-white, instead of danger red-orange: the " +
+                 "Puffball's swelling cap, by the owner's ruling (JG-03b). Off on every other body.")]
+        [SerializeField] private bool _sporeTelegraph;
+
+        [Tooltip("A particle system on this body played when it dies, and stopped and cleared when it " +
+                 "goes back to the pool: the Puffball's spore burst. Simulated in world space and done " +
+                 "inside EnemySystem.CorpseTime, or the despawn cuts it off. Empty on most bodies.")]
+        [SerializeField] private ParticleSystem _deathBurst;
 
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because
@@ -369,6 +383,13 @@ namespace Soulvail.Game.Views
                 transform.localScale = _liveScale;
             }
 
+            // A burst cut off by the despawn must not resume on the next rental: one more thing a
+            // pooled body forgets (AR §18.4), ahead of the guard for the scale's reason.
+            if (_deathBurst != null)
+            {
+                _deathBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
             if (_block is null)
             {
                 return;
@@ -507,6 +528,14 @@ namespace Soulvail.Game.Views
             // drawn over a fade (the killing blow's own rule, above).
             SetEmission(Color.black);
 
+            // The Puffball's spores (JG-03b). On the death rather than on EnemyExploded, which follows
+            // every death of an archetype that explodes, so the two are the same moment; this is the
+            // event the body already hears.
+            if (_deathBurst != null)
+            {
+                _deathBurst.Play(true);
+            }
+
             TickDissolve(0f);
         }
 
@@ -578,7 +607,8 @@ namespace Soulvail.Game.Views
 
         /// <summary>
         /// The emission a wind-up wants right now: danger red-orange rising with the wind-up to
-        /// <see cref="_telegraphGlow"/>, or black when there is none (M7-05h rule 6).
+        /// <see cref="_telegraphGlow"/>, or black when there is none (M7-05h rule 6). A spore body
+        /// glows <see cref="Palette.SporeGlow"/> instead (JG-03b).
         /// </summary>
         private Color TelegraphGlow()
         {
@@ -588,7 +618,7 @@ namespace Soulvail.Game.Views
             }
 
             float t = 1f - (_telegraphRemaining / _telegraphDuration);
-            Color glow = Palette.Danger * (_telegraphGlow * t);
+            Color glow = (_sporeTelegraph ? Palette.SporeGlow : Palette.Danger) * (_telegraphGlow * t);
             glow.a = 1f;
 
             return glow;

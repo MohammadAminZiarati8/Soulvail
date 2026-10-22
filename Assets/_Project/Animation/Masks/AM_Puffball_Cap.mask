@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AM_Puffball_Cap
+  m_Mask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 0
+  - m_Path: Puffball_Body
+    m_Weight: 0
+  - m_Path: Rig_Puffball
+    m_Weight: 0
+  - m_Path: Rig_Puffball/root
+    m_Weight: 0
+  - m_Path: Rig_Puffball/root/body
+    m_Weight: 0
+  - m_Path: Rig_Puffball/root/body/stalk
+    m_Weight: 0
+  - m_Path: Rig_Puffball/root/body/stalk/cap
+    m_Weight: 1

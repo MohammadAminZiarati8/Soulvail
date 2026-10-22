@@ -220,6 +220,18 @@ public static class Palette
     public static readonly Color HitFlash = Rgb(0xFF, 0xFF, 0xFF);
 
     /// <summary>
+    /// <c>#D4F8FF</c> — the Puffball's wind-up glow, cyan-white, where every other body's is
+    /// <see cref="Danger"/> (JG-03b).
+    /// </summary>
+    /// <remarks>
+    /// <b>The one telegraph not in danger's colour, by the owner's ruling of 2026-10-22</b>: the cap
+    /// glows cyan-white as it swells. GD §16.4 gives telegraphs red-orange, and the blast ring the burst
+    /// draws still is; this is the body's own glow. A member here rather than a colour on the prefab, so
+    /// the exception is named once and <c>EnemyHitFeedback._sporeTelegraph</c> is a switch, not a value.
+    /// </remarks>
+    public static readonly Color SporeGlow = Rgb(0xD4, 0xF8, 0xFF);
+
+    /// <summary>
     /// <c>#3B2422</c> — where an enemy's body is heading as its hit points run out (M3-13b). A dark,
     /// low-saturation maroon, and deliberately <em>not</em> <see cref="Danger"/>.
     /// </summary>

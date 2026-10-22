@@ -521,6 +521,64 @@ public sealed class EnemyHitFeedbackTests
             "The glow is emission's alone, so a material with emission off — every capsule — looks as it did.");
     }
 
+    // ---- The Puffball's switches (JG-03b rules 6–7) ----------------------------------------------
+
+    [Test]
+    public void Glow_SporeWindUpRisesToSporeGlow()
+    {
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+        typeof(EnemyHitFeedback).GetField("_sporeTelegraph", Private).SetValue(_feedback, true);
+        float glow = (float)typeof(EnemyHitFeedback).GetField("_telegraphGlow", Private).GetValue(_feedback);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f));
+        Tick(0.2f);
+
+        Color halfway = Palette.SporeGlow * (glow * 0.5f);
+        halfway.a = 1f;
+
+        AssertColour(Glowing(), halfway, "Halfway through the wind-up, half the glow, cyan-white (the owner, 2026-10-22).");
+
+        Tick(0.3f);
+
+        AssertColour(Glowing(), Color.black, "It drops at the strike, as the danger glow does.");
+    }
+
+    [Test]
+    public void Glow_SporeGlowIsNotDanger()
+    {
+        Assert.That(Palette.IsDanger(Palette.SporeGlow), Is.False);
+        Assert.That(Distance(Palette.SporeGlow, Palette.Danger), Is.GreaterThan(1f),
+            "Cyan-white and red-orange are told apart at a glance.");
+    }
+
+    [Test]
+    public void Burst_PlaysOnItsOwnDeath()
+    {
+        ParticleSystem burst = Burst();
+
+        _hub.Publish(new EnemyDied(Id + 1, Bloater, System.Numerics.Vector3.Zero));
+
+        Assert.That(burst.isPlaying, Is.False, "Another body's death plays nothing here.");
+
+        _hub.Publish(new EnemyDied(Id, Bloater, System.Numerics.Vector3.Zero));
+
+        Assert.That(burst.isPlaying, Is.True, "This body's death plays its burst.");
+    }
+
+    [Test]
+    public void Burst_ResetClearsIt()
+    {
+        ParticleSystem burst = Burst();
+
+        _hub.Publish(new EnemyDied(Id, Bloater, System.Numerics.Vector3.Zero));
+        burst.Emit(5);
+
+        _feedback.ResetVisuals();
+
+        Assert.That(burst.isPlaying, Is.False, "A pooled body's burst stops (AR §18.4).");
+        Assert.That(burst.particleCount, Is.Zero, "…and leaves nothing behind for the next rental.");
+    }
+
     [Test]
     public void Construct_RejectsANullHub()
     {
@@ -541,6 +599,23 @@ public sealed class EnemyHitFeedbackTests
     }
 
     // ---- Fixture helpers ------------------------------------------------------------------------
+
+    /// <summary>A particle system under the body, named as its death burst, idle until told.</summary>
+    private ParticleSystem Burst()
+    {
+        var holder = new GameObject("Burst");
+        holder.transform.SetParent(_body.transform, false);
+
+        ParticleSystem burst = holder.AddComponent<ParticleSystem>();
+        burst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        ParticleSystem.MainModule main = burst.main;
+        main.playOnAwake = false;
+
+        Set("_deathBurst", burst);
+
+        return burst;
+    }
 
     private Color Glowing()
     {

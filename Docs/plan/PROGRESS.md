@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after JG-03a._
+_Updated 2026-10-22, after JG-03b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-03a** — the Puffball's model: `puffball.py` builds the Jungle's Bloater as a cream puffball mushroom on its own `Rig_Puffball` with five clips (Idle, Waddle, Swell, Burst, Hit), atlas columns 6–7. Not yet in a run. |
-| **Next task** | **JG-03b** (the Puffball's body), then **JG-03c** (its content; stage 4 scripted as 2 Puffballs) — the owner's go of 2026-10-22. |
-| **Verified** | **JG-03a: 4 397 EditMode — 4 395 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **JG-03b** — the Puffball's body: `Puffball.prefab` (a variant of `Enemy.prefab` wearing JG-03a's model at 1.3), `AC_Puffball`, a cyan-white wind-up glow (`Palette.SporeGlow`, the owner's one exception to red-orange telegraphs) and a spore burst on death (`VFX_SporeBurst`). Not yet in a run. |
+| **Next task** | **JG-03c** — the Puffball's content: `enemy.puffball` with the Bloater's numbers, in the Jungle's roster at stage 4, stage 4 scripted as 2 Puffballs. |
+| **Verified** | **JG-03b: 4 409 EditMode — 4 407 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 

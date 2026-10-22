@@ -147,6 +147,28 @@ public sealed class EnemyAnimatorViewTests
     }
 
     [Test]
+    public void Hop_TakeoffIsFullSpeedAtOneX()
+    {
+        // A hopper's legs do not chase the body's speed up from a sit: the leap leaves at once, and
+        // the clip plays at 1x whatever the speed, because its leap is authored to core's hop time.
+        typeof(EnemyAnimatorView).GetField("_hops", Private).SetValue(_view, true);
+
+        _view.Step(0.05f);
+
+        Walk(3.2f);
+        _view.Step(0.01f);
+
+        Assert.That(_animator.GetFloat(SpeedId), Is.EqualTo(3.2f).Within(1e-4f));
+        Assert.That(_animator.GetFloat(WalkRateId), Is.EqualTo(1f).Within(1e-4f));
+
+        // And a landing settles the way a walker stops, rather than snapping to the sit.
+        Walk(0f);
+        _view.Step(0.01f);
+
+        Assert.That(_animator.GetFloat(SpeedId), Is.EqualTo(3.2f - 0.24f).Within(1e-4f));
+    }
+
+    [Test]
     public void View_FindsEnemyViewInItsParent()
     {
         // The view lives on the model, not beside the EnemyView: the body is found above it, which is

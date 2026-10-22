@@ -12,7 +12,8 @@ namespace Soulvail.Game.Views
     /// <summary>
     /// Drives an enemy body's <see cref="Animator"/> from what core already publishes: the legs from
     /// the body's velocity, a strike from its wind-up, a flinch from a hit, a fall from its death
-    /// (M7-05h). It decides nothing.
+    /// (M7-05h). It decides nothing. A hopping body's Locomotion restarts on every takeoff and plays
+    /// at 1x, so the leap on screen is the hop core moves it through.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -69,18 +70,25 @@ namespace Soulvail.Game.Views
         [Min(0.01f)]
         [SerializeField] private float _strikeSeconds = 0.87f;
 
+        [Tooltip("A body whose archetype hops (EnemySpec.HopTime above 0). Each takeoff restarts " +
+                 "the Locomotion state at its first frame and plays it at 1x, so the clip's leap is " +
+                 "the hop core is moving it through.")]
+        [SerializeField] private bool _hops;
+
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
         private readonly int _attackId = Animator.StringToHash("Attack");
         private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _deadId = Animator.StringToHash("Dead");
+        private readonly int _locomotionId = Animator.StringToHash("Locomotion");
 
         private EnemyView _body;
         private IDisposable _telegraphSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
         private float _shownSpeed;
+        private float _bodySpeed;
         private bool _dead;
         private bool _injected;
 
@@ -127,10 +135,27 @@ namespace Soulvail.Game.Views
             Vector3 velocity = _dead || _body == null ? Vector3.zero : _body.Velocity;
             velocity.y = 0f;
 
-            _shownSpeed = Mathf.MoveTowards(_shownSpeed, velocity.magnitude, SpeedFollowRate * dt);
+            float speed = velocity.magnitude;
+            bool takeoff = _hops && speed > 0f && !(_bodySpeed > 0f);
+
+            _bodySpeed = speed;
+
+            if (takeoff)
+            {
+                // A hop leaves at full speed and from the clip's first frame, never mid-leap from
+                // wherever the last one stopped.
+                _shownSpeed = speed;
+
+                if (_animator.HasState(0, _locomotionId))
+                {
+                    _animator.Play(_locomotionId, 0, 0f);
+                }
+            }
+
+            _shownSpeed = Mathf.MoveTowards(_shownSpeed, speed, SpeedFollowRate * dt);
 
             _animator.SetFloat(_speedId, _shownSpeed);
-            _animator.SetFloat(_walkRateId, Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
+            _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
         }
 
         /// <summary>
@@ -146,6 +171,7 @@ namespace Soulvail.Game.Views
         {
             _dead = false;
             _shownSpeed = 0f;
+            _bodySpeed = 0f;
 
             if (_animator == null)
             {

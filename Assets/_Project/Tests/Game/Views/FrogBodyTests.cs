@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Soulvail.Core.Content;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -28,6 +30,7 @@ public sealed class FrogBodyTests
     private const string MaskPath = "Assets/_Project/Animation/Masks/AM_Frog_UpperBody.mask";
     private const string DissolvePath = "Assets/_Project/Materials/Enemies/M_Enemy_Dissolve.mat";
     private const string ModelPath = "Assets/_Project/Art/Enemies/Frog.fbx";
+    private const string DefinitionPath = "Assets/_Project/Data/Enemies/Frog.asset";
 
     /// <summary>One frame of the Frog's clips, which are authored at 30 fps.</summary>
     private const float Frame = 1f / 30f;
@@ -176,6 +179,56 @@ public sealed class FrogBodyTests
 
         Assert.That(tree.children.Single(c => c.motion.name == "Hop").threshold, Is.EqualTo(ViewField("_strideSpeed")).Within(1e-4f));
         Assert.That(tree.children.Single(c => c.motion.name == "Idle").threshold, Is.Zero);
+    }
+
+    [Test]
+    public void Frog_HopTimeIsTheClipsLeap()
+    {
+        // Core moves a Frog only while it is in the air (EnemySpec.HopTime), and the view plays the
+        // Hop clip from its first frame at 1x on every takeoff. So the hop time has to be when the
+        // clip's feet come back down: the frame after the peak where a foot is back within 5 mm of
+        // where it started. Sampled at every frame of the clip.
+        var model = (GameObject)Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath));
+        model.hideFlags = HideFlags.HideAndDontSave;
+        _created.Add(model);
+
+        Transform foot = model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "foot.l");
+        AnimationClip hop = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>().Single(c => c.name == "Hop");
+
+        hop.SampleAnimation(model, 0f);
+        float rest = foot.position.y, highest = rest, landed = hop.length;
+        bool falling = false;
+
+        for (float t = Frame; t <= hop.length + 1e-4f; t += Frame)
+        {
+            hop.SampleAnimation(model, t);
+            float y = foot.position.y;
+
+            if (y > highest)
+            {
+                highest = y;
+            }
+            else if (highest > rest + 0.05f)
+            {
+                falling = true;
+            }
+
+            if (falling && y - rest < 0.005f)
+            {
+                landed = t;
+
+                break;
+            }
+        }
+
+        EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(DefinitionPath).ToSpec();
+
+        Assert.That(spec.HopTime, Is.EqualTo(landed).Within(Frame), $"The Hop clip lands at {landed:F3} s.");
+        Assert.That(spec.HopRestTime, Is.GreaterThan(0f), "A Frog sits between hops.");
+
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        Assert.That(new SerializedObject(prefab.GetComponentInChildren<EnemyAnimatorView>(true)).FindProperty("_hops").boolValue, Is.True,
+            "The body restarts its hop on every takeoff.");
     }
 
     [Test]

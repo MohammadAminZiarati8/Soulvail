@@ -108,6 +108,15 @@ namespace Soulvail.Game.Authoring
                  "Bloater (GD §8.1).")]
         [SerializeField, Min(0f)] private float _explosionRadius;
 
+        [Header("Hop — leave the hop time at 0 on an archetype that walks")]
+        [Tooltip("Seconds one hop spends in the air. 0 walks. A hopper moves only in the air, at " +
+                 "the speed that keeps its average at Move Speed. The Frog's 0.5 is its Hop " +
+                 "clip's leap at 1x.")]
+        [SerializeField, Min(0f)] private float _hopTime;
+
+        [Tooltip("Seconds a hopper sits still between hops.")]
+        [SerializeField, Min(0f)] private float _hopRestTime;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -183,7 +192,9 @@ namespace Soulvail.Game.Authoring
                         : null,
                     _explosionRadius > 0f
                         ? new ExplosionSpec(_explosionRadius)
-                        : null);
+                        : null,
+                    _hopTime,
+                    _hopRestTime);
             }
             catch (ArgumentException inner)
             {

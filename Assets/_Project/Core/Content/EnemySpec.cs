@@ -182,6 +182,8 @@ public sealed class EnemySpec
     /// What it does when it goes off, or <see langword="null"/> for an archetype that does not —
     /// which is every archetype but the Bloater.
     /// </param>
+    /// <param name="hopTime">Seconds a hop spends in the air; zero walks. See <see cref="HopTime"/>.</param>
+    /// <param name="hopRestTime">Seconds a hopper sits between hops. See <see cref="HopRestTime"/>.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -195,7 +197,8 @@ public sealed class EnemySpec
     /// <paramref name="maxHp"/>, <paramref name="reach"/> or <paramref name="aggroRange"/> is not a
     /// finite number greater than zero; <paramref name="moveSpeed"/>,
     /// <paramref name="contactDamage"/>, <paramref name="windupTime"/> or
-    /// <paramref name="recoverTime"/> is negative, NaN or infinite;
+    /// <paramref name="recoverTime"/>, <paramref name="hopTime"/> or <paramref name="hopRestTime"/>
+    /// is negative, NaN or infinite;
     /// <paramref name="xpValue"/> is not a finite number greater than zero;
     /// <paramref name="targetPriority"/> is outside 1–8; or <paramref name="threatCost"/> is
     /// below 1.
@@ -216,7 +219,9 @@ public sealed class EnemySpec
         float aggroRange,
         EnemyBehaviourKind behaviour,
         ProjectileSpec projectile = null,
-        ExplosionSpec explosion = null)
+        ExplosionSpec explosion = null,
+        float hopTime = 0f,
+        float hopRestTime = 0f)
     {
         if (id.Value is null)
         {
@@ -278,6 +283,8 @@ public sealed class EnemySpec
         Behaviour = behaviour;
         Projectile = projectile;
         Explosion = explosion;
+        HopTime = NonNegative(hopTime, nameof(hopTime));
+        HopRestTime = NonNegative(hopRestTime, nameof(hopRestTime));
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -384,6 +391,21 @@ public sealed class EnemySpec
     /// </summary>
     /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Bloater and M2-08.</remarks>
     public ExplosionSpec Explosion { get; }
+
+    /// <summary>
+    /// Seconds one hop spends in the air, or zero for an archetype that walks. The Frog's 0.5 is its
+    /// Hop clip's leap at 1x.
+    /// </summary>
+    /// <remarks>
+    /// A hopper moves only while it is in the air and sits still for <see cref="HopRestTime"/>
+    /// between hops; the air speed is raised so the average over a hop and a rest is still
+    /// <see cref="MoveSpeed"/>, which keeps every speed number, depth scaling included, meaning what
+    /// it meant. Read by <c>ChaserBehaviour</c>'s chase.
+    /// </remarks>
+    public float HopTime { get; }
+
+    /// <summary>Seconds a hopper sits between hops. Ignored when <see cref="HopTime"/> is zero.</summary>
+    public float HopRestTime { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too: every

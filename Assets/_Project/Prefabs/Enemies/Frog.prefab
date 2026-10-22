@@ -112,6 +112,7 @@ MonoBehaviour:
   _strideSpeed: 1.8000001
   _windupFromSeconds: 0
   _strikeSeconds: 0.5
+  _hops: 1
 --- !u!1001 &8472070875360905090
 PrefabInstance:
   m_ObjectHideFlags: 0

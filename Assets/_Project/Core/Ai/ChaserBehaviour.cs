@@ -125,6 +125,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
         _machine.OnTick(ChaserState.Idle, TickIdle);
 
+        _machine.OnEnter(ChaserState.Chase, EnterChase);
         _machine.OnTick(ChaserState.Chase, TickChase);
 
         _machine.OnEnter(ChaserState.Windup, EnterWindup);
@@ -231,6 +232,12 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         }
     }
 
+    /// <summary>Every chase starts at the top of a hop, for an archetype that hops.</summary>
+    private void EnterChase()
+    {
+        _agent.Blackboard.StateTimer = 0f;
+    }
+
     /// <summary>Rule 2: walk at the player, and plant when close enough to swing.</summary>
     /// <remarks>
     /// <para>
@@ -257,6 +264,22 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         // The agent's stat, not the spec's float: depth scaling and M7-02's affixes live on the
         // stack behind it, and the spec's number is only its base (M2-03 rule 7).
         float speed = _agent.MoveSpeed.Value;
+
+        float hop = _agent.Spec.HopTime;
+
+        if (hop > 0f)
+        {
+            // A hopper moves only in the air: a leap of HopTime, then HopRestTime sat still, with the
+            // leap fast enough that the average is still MoveSpeed. The timer counts from the chase's
+            // start, so the first hop leaves on the first tick.
+            float cycle = hop + _agent.Spec.HopRestTime;
+            float phase = blackboard.StateTimer % cycle;
+
+            // Kept inside one cycle, so a long chase never loses the timer's precision.
+            blackboard.StateTimer = phase + dt;
+
+            speed = phase < hop ? speed * cycle / hop : 0f;
+        }
 
         Emit(new Vector3(direction.X * speed, 0f, direction.Y * speed), direction);
 

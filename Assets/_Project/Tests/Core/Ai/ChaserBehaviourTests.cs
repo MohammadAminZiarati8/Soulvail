@@ -420,6 +420,81 @@ public sealed class ChaserBehaviourTests
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
 
+    // ---- A hopper moves only in the air -----------------------------------------------------------
+
+    [Test]
+    public void Chase_HopperMovesOnlyInTheAir()
+    {
+        // The Frog's gait on the Husk's speed: 0.5 s in the air, 0.3 s sat still. In the air it
+        // goes 3.5 · 0.8 / 0.5 = 5.6 m/s, so a hop and a rest still average 3.5.
+        _system = new EnemySystem(Catalog(hopTime: 0.5f, hopRestTime: 0.3f), _events, new FixedRandom(), Scaling(), Capacity);
+
+        ChaserBehaviour chaser = Chaser(distance: 10f);
+        EnemyAgent agent = Agent(chaser);
+
+        float distance = 0f;
+        int airborne = 0, sat = 0;
+        int frames = (int)MathF.Round(1.6f / Frame);
+
+        for (int i = 0; i < frames; i++)
+        {
+            _intents.Clear();
+
+            Tick(chaser);
+
+            float speed = _intents.LastEnemyMove.Velocity.Length();
+
+            if (i == 0)
+            {
+                Assert.That(chaser.State, Is.EqualTo(ChaserState.Chase));
+            }
+
+            if (speed > 0f)
+            {
+                Assert.That(speed, Is.EqualTo(5.6f).Within(1e-3f), $"Frame {i} moves at the wrong speed.");
+                airborne++;
+            }
+            else
+            {
+                sat++;
+            }
+
+            distance += speed * Frame;
+
+            agent.Blackboard.DistanceToPlayer = 10f;
+        }
+
+        // The noticing tick stands, as every Idle tick does; the two cycles after it are 60 frames in
+        // the air and 36 sat each, to within a frame of float accumulation.
+        Assert.That(airborne, Is.EqualTo(120).Within(2), "Frames in the air over two hops.");
+        Assert.That(sat, Is.EqualTo(frames - airborne));
+        Assert.That(distance / (frames * Frame), Is.EqualTo(MoveSpeed).Within(0.1f), "The average speed is the archetype's.");
+    }
+
+    [Test]
+    public void Chase_HopperStartsEveryChaseInTheAir()
+    {
+        // A chase after a recovery leaves at once, from the top of a hop, wherever the last chase's
+        // timer stopped.
+        _system = new EnemySystem(Catalog(hopTime: 0.5f, hopRestTime: 0.3f), _events, new FixedRandom(), Scaling(), Capacity);
+
+        ChaserBehaviour chaser = Windup(distance: 1f);
+
+        TickUntil(chaser, ChaserState.Recover, 1f);
+
+        _intents.Clear();
+
+        TickUntil(chaser, ChaserState.Chase, RecoverTime + 0.1f);
+
+        Blackboard(chaser).DistanceToPlayer = 10f;
+
+        _intents.Clear();
+
+        Tick(chaser);
+
+        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(5.6f).Within(1e-3f));
+    }
+
     // ---- M2-03: the fight reads the agent's stats, not the archetype's floats -------------------
 
     [Test]
@@ -759,9 +834,10 @@ public sealed class ChaserBehaviourTests
         sense.HasLineOfSight = true;
     }
 
-    private static ContentCatalog Catalog(float aggroRange = AggroRange) => new ContentCatalog(
-        new[] { Oathbound() },
-        new[] { Husk(aggroRange) });
+    private static ContentCatalog Catalog(float aggroRange = AggroRange, float hopTime = 0f, float hopRestTime = 0f) =>
+        new ContentCatalog(
+            new[] { Oathbound() },
+            new[] { Husk(aggroRange, hopTime, hopRestTime) });
 
     /// <summary>
     /// GD §12's curves, required by every <c>EnemySystem</c> as of M2-03.
@@ -778,9 +854,11 @@ public sealed class ChaserBehaviourTests
     /// <remarks>
     /// <paramref name="aggroRange"/> is the one number a row is allowed to vary, because as of
     /// M2-06 it is the archetype's rather than the behaviour's (rule 4) and
-    /// <see cref="Chaser_UsesSpecAggroRange"/> is what proves the const is really gone.
+    /// <see cref="Chaser_UsesSpecAggroRange"/> is what proves the const is really gone. The hop pair
+    /// is the other, set only by the hopper rows: a Husk that hops is the Frog's gait on numbers
+    /// every other row already knows.
     /// </remarks>
-    private static EnemySpec Husk(float aggroRange = AggroRange) => new EnemySpec(
+    private static EnemySpec Husk(float aggroRange = AggroRange, float hopTime = 0f, float hopRestTime = 0f) => new EnemySpec(
         new ContentId(HuskId),
         new LocKey("enemy.husk.name"),
         maxHp: 36f,
@@ -794,7 +872,9 @@ public sealed class ChaserBehaviourTests
         windupTime: WindupTime,
         recoverTime: RecoverTime,
         aggroRange: aggroRange,
-        behaviour: EnemyBehaviourKind.Chaser);
+        behaviour: EnemyBehaviourKind.Chaser,
+        hopTime: hopTime,
+        hopRestTime: hopRestTime);
 
     /// <summary>The Oathbound of CC §7 — what the strikes land on.</summary>
     /// <remarks>

@@ -24,7 +24,7 @@ MonoBehaviour:
   _shieldRechargeDelay: 4
   _shieldRefillPerSecond: 15
   _hitIFrames: 0.5
-  _acquireRange: 12
+  _acquireRange: 15
   _distanceWeight: 3
   _eliteBonus: 2
   _finisherBonus: 1
@@ -32,8 +32,8 @@ MonoBehaviour:
   _targetCadence: 0.1
   _weaponKind: 1
   _weaponDamage: 13
-  _weaponSwingsPerSecond: 1.5
-  _weaponRange: 10
+  _weaponSwingsPerSecond: 1.1
+  _weaponRange: 13
   _weaponConeAngleDeg: 360
   _weaponDamageFrame: 0.72
   _weaponShotSpeed: 30

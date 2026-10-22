@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after RS-07b._
+_Updated 2026-10-22, after JG-03a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **RS-07b** — Volley's own arrow: a fan's shots are marked in core (`IsVolley`) and fly `VolleyArrow` (2.2×, glowing cyan head, wide trail) with a bigger burst. Before it, RS-07a's bigger arrow with a cyan trail. |
-| **Next task** | Whatever the owner names. |
-| **Verified** | **RS-07b: 4 389 EditMode — 4 387 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **JG-03a** — the Puffball's model: `puffball.py` builds the Jungle's Bloater as a cream puffball mushroom on its own `Rig_Puffball` with five clips (Idle, Waddle, Swell, Burst, Hit), atlas columns 6–7. Not yet in a run. |
+| **Next task** | **JG-03b** (the Puffball's body), then **JG-03c** (its content; stage 4 scripted as 2 Puffballs) — the owner's go of 2026-10-22. |
+| **Verified** | **JG-03a: 4 397 EditMode — 4 395 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 

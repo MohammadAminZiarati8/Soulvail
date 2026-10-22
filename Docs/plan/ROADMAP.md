@@ -34,3 +34,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-02** — The Pitcher's spit: an enemy can name its own shot; the Pitcher lobs slower red-orange goo with a trail and a splat (M) · [spec](tasks/JG-02-pitcher-spit.md)
 - [x] **RS-07a** — Bigger arrows: the Ranger's arrow at 1.6× with a thin, short cyan trail (S) · [spec](tasks/RS-07a-bigger-arrows.md)
 - [x] **RS-07b** — Volley's own arrow: a volley shot is marked, and flies a bigger arrow with a brighter trail and its own burst (M) · [spec](tasks/RS-07b-volley-arrow.md)
+- [x] **JG-03a** — The Puffball's model: the Jungle's Bloater as a puffball mushroom, `puffball.py` on a rig of its own with five clips (S) · [spec](tasks/JG-03a-the-puffballs-model.md)

@@ -32,7 +32,7 @@ MonoBehaviour:
   _targetCadence: 0.1
   _weaponKind: 1
   _weaponDamage: 13
-  _weaponSwingsPerSecond: 2.2
+  _weaponSwingsPerSecond: 1.5
   _weaponRange: 10
   _weaponConeAngleDeg: 360
   _weaponDamageFrame: 0.72

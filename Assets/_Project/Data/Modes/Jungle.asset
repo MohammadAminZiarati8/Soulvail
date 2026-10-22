@@ -89,6 +89,14 @@ MonoBehaviour:
     - _wave: 1
       _specId: enemy.pitcher
       _count: 2
+  - _stage: 3
+    _spawns:
+    - _wave: 1
+      _specId: enemy.pitcher
+      _count: 2
+    - _wave: 1
+      _specId: enemy.frog
+      _count: 3
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

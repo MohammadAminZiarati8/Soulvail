@@ -143,7 +143,7 @@ public sealed class HeroSheetViewTests
         HeroSheetView.Row[] stats = _sheet.Rows.Where(r => r.Kind == RowKind.Stat).ToArray();
 
         Assert.That(stats.Select(r => r.Title.text), Is.EqualTo(new[] { "Health", "Damage", "Attacks/s", "Range", "Speed" }));
-        Assert.That(stats.Select(r => r.Value.text), Is.EqualTo(new[] { "90", "13", "2.2", "10 m", "3.2 m/s" }));
+        Assert.That(stats.Select(r => r.Value.text), Is.EqualTo(new[] { "90", "13", "1.1", "13 m", "3.2 m/s" }));
 
         foreach (HeroSheetView.Row stat in stats)
         {

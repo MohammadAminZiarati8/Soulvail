@@ -108,8 +108,8 @@ public sealed class RangerTests
 
         Assert.That(bow.Kind, Is.EqualTo(WeaponKind.Projectile), "Bow: a projectile.");
         Assert.That(bow.Damage, Is.EqualTo(13f).Within(Tolerance), "Bow: 13 damage.");
-        Assert.That(bow.SwingsPerSecond, Is.EqualTo(2.2f).Within(Tolerance), "Bow: 2.2 shots/s.");
-        Assert.That(bow.Range, Is.EqualTo(10f).Within(Tolerance), "Bow: 10 m.");
+        Assert.That(bow.SwingsPerSecond, Is.EqualTo(1.1f).Within(Tolerance), "Bow: 1.1 shots/s (the owner, 2026-10-22).");
+        Assert.That(bow.Range, Is.EqualTo(13f).Within(Tolerance), "Bow: 13 m (the owner, 2026-10-22).");
         Assert.That(bow.DamageFrame, Is.EqualTo(0.72f).Within(Tolerance), "Bow: damage frame 0.72.");
         Assert.That(bow.ShotSpeed, Is.EqualTo(30f).Within(Tolerance), "Bow: 30 m/s.");
         Assert.That(bow.ShotRadius, Is.EqualTo(0.5f).Within(Tolerance), "Bow: radius 0.5.");
@@ -117,7 +117,7 @@ public sealed class RangerTests
         Assert.That(bow.ShotSpread, Is.Zero, "Reserved (M5-01).");
         Assert.That(bow.FiresWhileMoving, Is.False, "Fires while moving: no (RS-03a).");
 
-        Assert.That(spec.Targeting.AcquireRange, Is.EqualTo(12f).Within(Tolerance), "Acquire: 12 m.");
+        Assert.That(spec.Targeting.AcquireRange, Is.EqualTo(15f).Within(Tolerance), "Acquire: 15 m, 2 m past the bow.");
         Assert.That(spec.Focus.Delay, Is.EqualTo(0.4f).Within(Tolerance), "Focus: 0.4 s.");
         Assert.That(spec.Focus.RampTime, Is.EqualTo(1f).Within(Tolerance), "Focus: 1 s.");
         Assert.That(spec.Focus.MaxMultiplier, Is.EqualTo(1.3f).Within(Tolerance), "Focus: ×1.3.");
@@ -147,8 +147,8 @@ public sealed class RangerTests
         float resting = bow.Damage * bow.SwingsPerSecond;
         CharacterSpec oathbound = Character("Assets/_Project/Data/Characters/Oathbound.asset");
 
-        Assert.That(MathF.Round(resting), Is.EqualTo(29f), "the card's 29 DPS.");
-        Assert.That(MathF.Round(resting * spec.Focus.MaxMultiplier), Is.EqualTo(37f), "37 DPS planted.");
+        Assert.That(MathF.Round(resting), Is.EqualTo(14f), "the card's 14 DPS.");
+        Assert.That(MathF.Round(resting * spec.Focus.MaxMultiplier), Is.EqualTo(19f), "19 DPS planted.");
         Assert.That(oathbound.Weapon.Damage * oathbound.Weapon.SwingsPerSecond, Is.EqualTo(39f).Within(Tolerance),
             "the Oathbound's 39, the table's comparison.");
     }

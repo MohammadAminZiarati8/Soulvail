@@ -85,7 +85,7 @@ public sealed class HeroSheetTests
     {
         HeroSheet sheet = HeroSheet.Build(Ranger().ToSpec(), ShippedCatalog(), Ranger().ToLook(), null);
 
-        Assert.That(sheet.Stats.Select(s => s.Value), Is.EqualTo(new[] { 90f, 13f, 2.2f, 10f, 3.2f }).Within(1e-4f));
+        Assert.That(sheet.Stats.Select(s => s.Value), Is.EqualTo(new[] { 90f, 13f, 1.1f, 13f, 3.2f }).Within(1e-4f));
     }
 
     // ---- Rules 3, 4: the attack and the Space move -------------------------------------------------

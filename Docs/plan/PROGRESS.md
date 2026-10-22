@@ -24,7 +24,7 @@ Focus disc are switched off (mode flags), and class select lists the **Ranger** 
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
 sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). A mode can
 script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
-3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers. An enemy asset can name its own
+3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers, stage 3 is 2 Pitchers + 3 Frogs. An enemy asset can name its own
 shot prefab; the Pitcher lobs red-orange goo (`PitcherSpit`, 7 m/s) that splats on a hit. Jungle
 enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
 Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, a 1.33 m arrow per shot with a

@@ -62,6 +62,9 @@ public sealed class JungleTests
     /// <summary>The Pitcher's spit since JG-02, in m/s: two seconds across its 14 m standoff.</summary>
     private const float PitcherSpitSpeed = 7f;
 
+    /// <summary>The Pitcher's reload since 2026-10-22, in seconds: with its 0.7 s wind-up, one throw every 3 s.</summary>
+    private const float PitcherRecoverTime = 2.3f;
+
     private const string PitcherSpitPath = "Assets/_Project/Prefabs/Projectiles/PitcherSpit.prefab";
     private const string PitcherSplatPath = "Assets/_Project/Prefabs/VFX/VFX_PitcherSplat.prefab";
 
@@ -116,7 +119,8 @@ public sealed class JungleTests
         Assert.That(ours.ContactDamage, Is.EqualTo(spitter.ContactDamage));
         Assert.That(ours.Reach, Is.EqualTo(spitter.Reach));
         Assert.That(ours.WindupTime, Is.EqualTo(spitter.WindupTime), "The wind-up the Pitcher's spit is timed to (M7-05p).");
-        Assert.That(ours.RecoverTime, Is.EqualTo(spitter.RecoverTime));
+        Assert.That(ours.RecoverTime, Is.EqualTo(PitcherRecoverTime),
+            "The owner, 2026-10-22: the Pitcher throws once every 3 s, slower than the Spitter.");
         Assert.That(ours.AggroRange, Is.EqualTo(spitter.AggroRange));
         Assert.That(ours.Projectile, Is.Not.Null);
         Assert.That(ours.Projectile.StandoffRange, Is.EqualTo(spitter.Projectile.StandoffRange));
@@ -167,7 +171,7 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_ScriptsItsFirstTwoStages()
+    public void Jungle_ScriptsItsFirstThreeStages()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
@@ -179,7 +183,12 @@ public sealed class JungleTests
         Assert.That(second.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
             Is.EqualTo(new[] { (1, "enemy.pitcher", 2) }), "The owner, 2026-10-22: two Pitchers.");
 
-        Assert.That(jungle.TryGetScriptedStage(3, out _), Is.False, "Stage 3 on is the budget's.");
+        Assert.That(jungle.TryGetScriptedStage(3, out ScriptedStage third), Is.True);
+        Assert.That(third.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
+            Is.EqualTo(new[] { (1, "enemy.pitcher", 2), (1, "enemy.frog", 3) }),
+            "The owner, 2026-10-22: two Pitchers and three Frogs, together.");
+
+        Assert.That(jungle.TryGetScriptedStage(4, out _), Is.False, "Stage 4 on is the budget's.");
     }
 
     [Test]

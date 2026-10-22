@@ -211,7 +211,7 @@ public sealed class RangerTreeTests
         Stat fireRate = Combat(session).Weapon.FireRate;
         float bow = fireRate.Value;
 
-        Assert.That(bow, Is.EqualTo(2.2f).Within(Tolerance), "the premise: the bow's 2.2 shots a second.");
+        Assert.That(bow, Is.EqualTo(1.1f).Within(Tolerance), "the premise: the bow's 1.1 shots a second.");
 
         for (int r = 0; r < 3; r++)
         {

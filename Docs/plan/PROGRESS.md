@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after JG-02._
+_Updated 2026-10-22, after RS-07a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-02** — the Pitcher's spit: its own red-orange goo shot with a trail and a splat, at 7 m/s (was 12). Before it, JG-01's scripted stages. |
-| **Next task** | Whatever the owner names. |
-| **Verified** | **JG-02: 4 378 EditMode — 4 376 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **RS-07a** — the Ranger's arrow at 1.6× with a thin, short trail in `Palette.Player` cyan. Before it, JG-02's Pitcher spit. |
+| **Next task** | **RS-07b** — Volley's own arrow and burst (named and green-lit with RS-07a). |
+| **Verified** | **RS-07a: 4 381 EditMode — 4 379 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 
@@ -27,9 +27,9 @@ script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jung
 3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers. An enemy asset can name its own
 shot prefab; the Pitcher lobs red-orange goo (`PitcherSpit`, 7 m/s) that splats on a hit. Jungle
 enemies: the Frog (hops; its own `Rig_Frog`), the pitcher plant (`enemy.pitcher`), plus Husk,
-Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, an arrow per shot, holds fire on
-the move, Volley, a real roll on Space. **Levelling:** a kill is XP; a level banks a skill point; the
-tree screen pauses and takes a free pick. **Death** pays Shards into the profile. **Saves:**
+Spitter and Bloater. **The Ranger:** its own model on `Rig_Medium`, a 1.33 m arrow per shot with a
+short cyan trail, holds fire on the move, Volley, a real roll on Space. **Levelling:** a kill is XP;
+a level banks a skill point; the tree screen pauses and takes a free pick. **Death** pays Shards into the profile. **Saves:**
 `run.json` v4, `profile.json` v5, all older versions load; Continue offers the run last written.
 **UI** in the Clash-style art: HUD, fixed move stick, Roll and skill buttons, level-up banner, tree,
 hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string is a `LocKey`.
@@ -50,7 +50,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    Inspector.
 7. **JG-02**: Jungle stage 2's Pitchers lob red-orange goo with a short trail, slow enough to step
    out of; a hit splats red-orange; no trail streaks from where the last spit landed.
-8. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+8. **RS-07a**: a Ranger's arrows are visibly larger and draw a thin cyan streak that dies within a
+   body length; no streak runs from where the last arrow landed back to the bow.
+9. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

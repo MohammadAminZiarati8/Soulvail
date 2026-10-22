@@ -5,6 +5,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
+using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
@@ -40,6 +41,10 @@ public sealed class RangerTests
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string BodyPath = "Assets/_Project/Prefabs/Player/Bodies/Ranger.prefab";
     private const string ArrowPath = "Assets/_Project/Prefabs/Projectiles/Arrow.prefab";
+    private const string ImpactMaterialPath = "Assets/_Project/Materials/M_Impact.mat";
+
+    /// <summary>RS-02c's scale on the KayKit arrow model, before RS-07a made it 1.6× this.</summary>
+    private const float KayKitArrowScale = 0.6615215f;
 
     private const string RangerId = "character.ranger";
 
@@ -188,6 +193,67 @@ public sealed class RangerTests
 
         Assert.That(look.Body, Is.SameAs(body), "RS-02b's Bodies/Ranger.");
         Assert.That(look.Projectile, Is.SameAs(arrow), "RS-02c's Arrow.prefab.");
+    }
+
+    // ---- RS-07a: the arrow reads at the portrait camera's distance ---------------------------------
+
+    [Test]
+    public void Arrow_IsOnePointSixTimesTheKayKitArrow()
+    {
+        var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPath);
+        Transform mesh = arrow.transform.Find("Mesh");
+
+        Assert.That(mesh, Is.Not.Null, "Arrow.prefab's KayKit model is the child named Mesh.");
+        Assert.That(mesh.localScale.x, Is.EqualTo(KayKitArrowScale * 1.6f).Within(1e-3f), "1.6× RS-02c's 0.6615.");
+        Assert.That(mesh.localScale.y, Is.EqualTo(mesh.localScale.x), "scaled uniformly.");
+        Assert.That(mesh.localScale.z, Is.EqualTo(mesh.localScale.x), "scaled uniformly.");
+    }
+
+    [Test]
+    public void Arrow_TrailsThinShortAndCyan()
+    {
+        var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPath);
+        TrailRenderer trail = arrow.GetComponent<TrailRenderer>();
+
+        Assert.That(trail, Is.Not.Null, "RS-07a's trail is on the arrow's root.");
+        Assert.That(
+            new SerializedObject(arrow).FindProperty("_trail").objectReferenceValue,
+            Is.SameAs(trail),
+            "named as ProjectileView._trail, so Bind and OnDespawn clear it (JG-02).");
+
+        Assert.That(trail.time, Is.EqualTo(0.15f).Within(Tolerance), "short: 0.15 s.");
+        Assert.That(trail.widthMultiplier * trail.widthCurve.Evaluate(0f), Is.EqualTo(0.12f).Within(1e-3f), "thin at the head.");
+        Assert.That(trail.widthCurve.Evaluate(1f), Is.EqualTo(0f).Within(Tolerance), "tapering to nothing.");
+        Assert.That(trail.shadowCastingMode, Is.EqualTo(UnityEngine.Rendering.ShadowCastingMode.Off));
+
+        Assert.That(
+            new SerializedObject(arrow).FindProperty("_trailInPlayerCyan").boolValue,
+            Is.True,
+            "the cyan is Palette.Player's, laid on at Bind (PaletteTests bans an authored copy).");
+        Assert.That(trail.colorGradient.Evaluate(0f), Is.EqualTo(Color.white), "full shade at the head.");
+
+        // The colour a run sees: a body cloned from the prefab, bound once.
+        var body = UnityEngine.Object.Instantiate(arrow);
+
+        try
+        {
+            body.Bind(1, UnityEngine.Vector3.zero, UnityEngine.Vector3.forward * 6f, 1f);
+
+            Color head = body.GetComponent<TrailRenderer>().colorGradient.Evaluate(0f);
+
+            Assert.That(head.r, Is.EqualTo(Palette.Player.r).Within(0.01f), "GD §16.4: player shots are cyan.");
+            Assert.That(head.g, Is.EqualTo(Palette.Player.g).Within(0.01f));
+            Assert.That(head.b, Is.EqualTo(Palette.Player.b).Within(0.01f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(body.gameObject);
+        }
+
+        var impact = AssetDatabase.LoadAssetAtPath<Material>(ImpactMaterialPath);
+
+        Assert.That(trail.sharedMaterial, Is.Not.Null.And.Not.SameAs(impact), "a copy of M_Impact, not M_Impact.");
+        Assert.That(trail.sharedMaterial.shader, Is.SameAs(impact.shader), "M_Impact's unlit vertex-colour shader.");
     }
 
     // ---- Fixtures ----------------------------------------------------------------------------------

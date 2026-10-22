@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Game.Pooling;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer cannot
@@ -63,6 +64,14 @@ namespace Soulvail.Game.Views
                  "placed at a new flight's start or returned to the pool, so a reused shot never " +
                  "draws a streak from where its last flight ended.")]
         [SerializeField] private TrailRenderer _trail;
+
+        [Tooltip("Whether the trail is a player's shot (RS-07a): its gradient is then a shade ramp, " +
+                 "white for full, multiplied by Palette.Player when the body is first bound. The " +
+                 "player's cyan is read, never authored (GD §16.4), so a copy cannot drift.")]
+        [SerializeField] private bool _trailInPlayerCyan;
+
+        /// <summary>Whether <see cref="_trail"/> has had <see cref="Palette.Player"/> laid on it.</summary>
+        private bool _trailPainted;
 
         private int _id = Unbound;
         private Vector3 _origin;
@@ -155,6 +164,7 @@ namespace Soulvail.Game.Views
             // before anything renders.
             transform.position = PositionAt(Progress());
 
+            PaintTrail();
             ClearTrail();
         }
 
@@ -258,6 +268,40 @@ namespace Soulvail.Game.Views
             {
                 _trail.Clear();
             }
+        }
+
+        /// <summary>
+        /// Lays <see cref="Palette.Player"/> over the trail's shade ramp, once per body, if the trail
+        /// is a player's.
+        /// </summary>
+        /// <remarks>
+        /// On the first <see cref="Bind"/> rather than in <see cref="Awake"/>, which outside play mode
+        /// never runs (Traps §5), so an EditMode fixture paints the trail the way a run does. Once,
+        /// because reading and writing a <see cref="Gradient"/> allocates, and a pooled body keeps its
+        /// colour between flights. The instance's gradient, never the prefab's.
+        /// </remarks>
+        private void PaintTrail()
+        {
+            if (_trailPainted || !_trailInPlayerCyan || _trail == null)
+            {
+                return;
+            }
+
+            _trailPainted = true;
+
+            Gradient gradient = _trail.colorGradient;
+            GradientColorKey[] keys = gradient.colorKeys;
+            Color cyan = Palette.Player;
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                Color shade = keys[i].color;
+
+                keys[i].color = new Color(shade.r * cyan.r, shade.g * cyan.g, shade.b * cyan.b, 1f);
+            }
+
+            gradient.SetKeys(keys, gradient.alphaKeys);
+            _trail.colorGradient = gradient;
         }
 
         private void Awake()

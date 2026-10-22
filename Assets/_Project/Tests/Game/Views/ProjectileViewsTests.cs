@@ -612,6 +612,47 @@ public sealed class ProjectileViewsTests
     }
 
     [Test]
+    public void Bind_PaintsAPlayersTrailInPaletteCyan()
+    {
+        // RS-07a: the gradient is a shade ramp, and Palette.Player is laid over it — never authored.
+        TrailRenderer trail = _prefabObject.AddComponent<TrailRenderer>();
+        var ramp = new Gradient();
+
+        ramp.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.5f, 0.5f, 0.5f), 1f) },
+            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+        trail.colorGradient = ramp;
+
+        using (var serialized = new SerializedObject(_prefab))
+        {
+            serialized.FindProperty("_trail").objectReferenceValue = trail;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        Bound(1, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+
+        Assert.That(trail.colorGradient.Evaluate(0f), Is.EqualTo(Color.white), "Unflagged, the trail is left as authored (JG-02's spit).");
+
+        using (var serialized = new SerializedObject(_prefab))
+        {
+            serialized.FindProperty("_trailInPlayerCyan").boolValue = true;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        Bound(2, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+        Bound(3, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
+
+        Color player = Soulvail.Game.Presentation.Palette.Player;
+        Color head = trail.colorGradient.Evaluate(0f);
+        Color tail = trail.colorGradient.Evaluate(1f);
+
+        Assert.That(head.r, Is.EqualTo(player.r).Within(0.01f), "white × cyan is cyan, and a second Bind does not darken it again.");
+        Assert.That(head.g, Is.EqualTo(player.g).Within(0.01f));
+        Assert.That(head.b, Is.EqualTo(player.b).Within(0.01f));
+        Assert.That(tail.g, Is.EqualTo(player.g * 0.5f).Within(0.01f), "half shade × cyan.");
+    }
+
+    [Test]
     public void Fired_AClassWithNoLookFliesTheDefault()
     {
         _views = Census(prewarm: 2, Book());

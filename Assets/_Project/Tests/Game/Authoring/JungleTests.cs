@@ -63,6 +63,18 @@ public sealed class JungleTests
     /// <summary>What a Frog is worth since JG-01: three of them reach level 2 (CH §5.2's 51.7).</summary>
     private const float FrogXp = 18f;
 
+    /// <summary>
+    /// The Frog's average speed since JG-05b, in m/s: slower than the Husk's 2, so a 0.8 s sit between
+    /// hops keeps each leap at its old ~1.6 m.
+    /// </summary>
+    private const float FrogMoveSpeed = 1.25f;
+
+    /// <summary>The Frog's sit between hops since JG-05b, in seconds (owner, 2026-10-26: hop less often).</summary>
+    private const float FrogHopRestTime = 0.8f;
+
+    /// <summary>The Frog's leap speed before JG-05b, in m/s: 2 × (0.5 + 0.3) / 0.5. JG-05b keeps it.</summary>
+    private const float FrogLeapSpeed = 3.2f;
+
     /// <summary>The Pitcher's spit since JG-02, in m/s: two seconds across its 14 m standoff.</summary>
     private const float PitcherSpitSpeed = 7f;
 
@@ -82,6 +94,21 @@ public sealed class JungleTests
         "_sanctum", "_ordeals",
     };
 
+    [Test]
+    public void Frog_RestsBetweenHops_LeapUnchanged()
+    {
+        // JG-05b rule 1: a longer sit, not a longer jump. The leap's speed (and so its length, over the
+        // same 0.5 s) is what the Frog had before.
+        EnemySpec frog = Load<EnemyDefinition>(FrogPath).ToSpec();
+
+        Assert.That(frog.HopTime, Is.EqualTo(0.5f).Within(1e-4f), "The Hop clip's leap (FrogBodyTests).");
+        Assert.That(frog.HopRestTime, Is.EqualTo(FrogHopRestTime).Within(1e-4f));
+
+        float leap = frog.MoveSpeed * (frog.HopTime + frog.HopRestTime) / frog.HopTime;
+
+        Assert.That(leap, Is.EqualTo(FrogLeapSpeed).Within(0.1f), "Each hop is still ~1.6 m.");
+    }
+
     [TestCase(FrogPath, "enemy.frog")]
     [TestCase(RootlingPath, "enemy.rootling")]
     public void JunglesHusk_PlaysTheHusksRole(string path, string id)
@@ -94,7 +121,8 @@ public sealed class JungleTests
 
         Assert.That(ours.Behaviour, Is.EqualTo(husk.Behaviour), "It beelines and swings (GD §8.1).");
         Assert.That(ours.MaxHp, Is.EqualTo(husk.MaxHp));
-        Assert.That(ours.MoveSpeed, Is.EqualTo(husk.MoveSpeed));
+        Assert.That(ours.MoveSpeed, Is.EqualTo(id == "enemy.frog" ? FrogMoveSpeed : husk.MoveSpeed),
+            "The Frog's speed parted from the Husk's in JG-05b, so a longer sit keeps the same leap.");
         Assert.That(ours.TargetPriority, Is.EqualTo(husk.TargetPriority));
         Assert.That(ours.ThreatCost, Is.EqualTo(husk.ThreatCost));
         Assert.That(ours.XpValue, Is.EqualTo(id == "enemy.frog" ? FrogXp : husk.XpValue),

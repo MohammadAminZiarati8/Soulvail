@@ -35,6 +35,6 @@ _No milestone. The owner is setting the next direction._
 **Playtest fixes** (owner, 2026-10-26). Four independent tasks, each built only on the owner's go.
 
 - [x] **JG-05a** — A blocked body reports its real speed, so arrows hit a Pitcher backed against a wall (S) · [spec](tasks/JG-05a-a-blocked-body-reports-its-real-speed.md)
-- [ ] **JG-05b** — The Frog rests 0.8 s between hops, each hop the same length (S) · [spec](tasks/JG-05b-the-frog-rests-between-hops.md)
+- [x] **JG-05b** — The Frog rests 0.8 s between hops, each hop the same length (S) · [spec](tasks/JG-05b-the-frog-rests-between-hops.md)
 - [ ] **JG-05c** — Old Croaker hops in like a Frog, never walks; `HopGait` shared with the chaser (M) · [spec](tasks/JG-05c-old-croaker-hops-in.md)
 - [ ] **JG-05d** — A smaller Puffball blast: 2.5 m, the Bloater keeps 3 m (S) · [spec](tasks/JG-05d-a-smaller-puffball-blast.md)

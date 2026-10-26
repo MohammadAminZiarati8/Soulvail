@@ -53,4 +53,8 @@ Only these files change. No code changes.
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ As specified. `Frog.asset`: `_hopRestTime` 0.3 → 0.8, `_moveSpeed` 2 → 1.25 (leap
+1.25 × 1.3 / 0.5 = 3.25 m/s against the old 3.2). In `JungleTests`, `Frog_RestsBetweenHops_LeapUnchanged` is new, and
+`JunglesHusk_PlaysTheHusksRole` now parts the Frog's `MoveSpeed` from the Husk's the way it already parted its XP.
+`FrogBodyTests.Frog_HopTimeIsTheClipsLeap` is untouched and still passes, because `HopTime` did not move.
+Jungle and Frog fixtures: 25/25.

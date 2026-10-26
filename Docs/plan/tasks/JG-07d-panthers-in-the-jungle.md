@@ -82,4 +82,26 @@ where they're the only new thing"*.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-27. Rules 1–5 as specified, with one ripple outside the Files table and two readings.
+
+- **`Husk.asset` gains the five lunge keys at zero.** `EnemyDefinitionTests.Husk_EveryYamlKeyBindsToAField`
+  reserialises the Husk and fails on any change, and a new field is a change. The hop fields did the
+  same before. The other enemy assets pick the keys up the next time the Editor saves them; a missing
+  key reads as 0, which is "no lunge".
+- **`Panther.asset` is the Puffball's asset with its numbers replaced.** HP 44, cost 9, priority 4,
+  wind-up 0.9, recover 1.0, damage 14, prowl 2.4 m/s, XP 27, Lunger, the lunge block 9 / 12 / 24 /
+  0.6 / 2, white tint, scale 1, body `Panther.prefab`. Reach is 1.2, the Husk's: a Lunger's reach is
+  unread (its hit is the lane), and JG-07a's fixture used the same. Its `_body` reference is the
+  variant's `EnemyView` id, computed the way Unity derives it (instance id XOR source id), and
+  `JunglesEnemy_WearsItsOwnBody` loads it.
+- **The Pseudo row is the generator's:** `[Páñthér ···]`; `n` is accented too.
+  `LocalisationSweepTests.Pseudo_IsTheGeneratorsOutput` passes it.
+- `Jungle_ScriptsItsFirstFourStages`' stage-5 line now reads "Old Croaker's", not "the budget's":
+  stage 6 is scripted, so stage 5 is the last unscripted early stage only because it is the boss's.
+  `Jungle_RostersItsOwnEnemies` gains the Panther's row at 6.
+
+**Verified:** in batch mode, the full EditMode suite ran 4 515: 4 512 passed, 2 failed, 1
+inconclusive. The known pair, plus `Husk_EveryYamlKeyBindsToAField` above. After that fix,
+`EnemyDefinitionTests`, `JungleTests`, `LocalisationSweepTests`, `ContentValidationTests` and
+`TableLocalizerTests` passed 114 of 114. No compiler or analyzer warnings in the touched files. Format
+check clean. Nothing ran in Play mode: the three manual steps are owed.

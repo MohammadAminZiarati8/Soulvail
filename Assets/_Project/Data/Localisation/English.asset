@@ -504,6 +504,8 @@ MonoBehaviour:
     _text: Pitcher
   - _key: enemy.puffball.name
     _text: Puffball
+  - _key: enemy.panther.name
+    _text: Panther
   - _key: enemy.croaker.name
     _text: Old Croaker
   - _key: ui.hero.stats

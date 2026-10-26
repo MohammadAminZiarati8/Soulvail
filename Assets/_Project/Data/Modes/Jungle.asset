@@ -68,6 +68,8 @@ MonoBehaviour:
     _introducedAtStage: 2
   - _specId: enemy.puffball
     _introducedAtStage: 4
+  - _specId: enemy.panther
+    _introducedAtStage: 6
   _arenas:
   - _arenaId: arena.jungle.hollow
     _firstStage: 1
@@ -101,6 +103,11 @@ MonoBehaviour:
     _spawns:
     - _wave: 1
       _specId: enemy.puffball
+      _count: 2
+  - _stage: 6
+    _spawns:
+    - _wave: 1
+      _specId: enemy.panther
       _count: 2
   _ordeals:
     _firstStage: 25

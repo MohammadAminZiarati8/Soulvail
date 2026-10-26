@@ -117,6 +117,23 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Seconds a hopper sits still between hops.")]
         [SerializeField, Min(0f)] private float _hopRestTime;
 
+        [Header("Lunge — leave the range at 0 on an archetype that does not dash")]
+        [Tooltip("Metres within which it stops and warns with a lane. 0 means this archetype does " +
+                 "not lunge and the four fields below are ignored. 9 for the Panther (JG-07a).")]
+        [SerializeField, Min(0f)] private float _lungeRange;
+
+        [Tooltip("Metres the dash and its lane run. Never shorter than the range.")]
+        [SerializeField, Min(0f)] private float _lungeLength;
+
+        [Tooltip("Metres per second while it dashes.")]
+        [SerializeField, Min(0f)] private float _lungeSpeed;
+
+        [Tooltip("Half the lane's width, in metres — what one sidestep has to clear.")]
+        [SerializeField, Min(0f)] private float _lungeHalfWidth;
+
+        [Tooltip("Seconds from one dash's end to the next wind-up.")]
+        [SerializeField, Min(0f)] private float _lungeCooldown;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -149,8 +166,8 @@ namespace Soulvail.Game.Authoring
         /// </summary>
         /// <remarks>
         /// <para>
-        /// <b>An enemy has two optional blocks as of M2-06</b>, where this note used to say it had
-        /// none. A <c>_projectileStandoffRange</c> of zero means the archetype throws nothing and
+        /// <b>An enemy has optional blocks</b>: two as of M2-06, where this note used to say it had
+        /// none, and a lunge as of JG-07d, which a zero <c>_lungeRange</c> leaves out the same way. A <c>_projectileStandoffRange</c> of zero means the archetype throws nothing and
         /// produces a <see langword="null"/> <see cref="EnemySpec.Projectile"/> rather than a
         /// <see cref="ProjectileSpec"/> full of zeroes; an <c>_explosionRadius</c> of zero says the
         /// same about the blast. Zero is the switch instead of a separate "has projectile" toggle
@@ -198,7 +215,15 @@ namespace Soulvail.Game.Authoring
                         ? new ExplosionSpec(_explosionRadius)
                         : null,
                     _hopTime,
-                    _hopRestTime);
+                    _hopRestTime,
+                    _lungeRange > 0f
+                        ? new LungeSpec(
+                            _lungeRange,
+                            _lungeLength,
+                            _lungeSpeed,
+                            _lungeHalfWidth,
+                            _lungeCooldown)
+                        : null);
             }
             catch (ArgumentException inner)
             {

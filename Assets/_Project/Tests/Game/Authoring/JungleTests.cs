@@ -46,10 +46,14 @@ public sealed class JungleTests
     private const string SpitterPath = "Assets/_Project/Data/Enemies/Spitter.asset";
     private const string PuffballPath = "Assets/_Project/Data/Enemies/Puffball.asset";
     private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
+    private const string PantherPath = "Assets/_Project/Data/Enemies/Panther.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
     private const string PitcherBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher.prefab";
     private const string PuffballBodyPath = "Assets/_Project/Prefabs/Enemies/Puffball.prefab";
+    private const string PantherBodyPath = "Assets/_Project/Prefabs/Enemies/Panther.prefab";
+    private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
+    private const string PseudoPath = "Assets/_Project/Data/Localisation/Pseudo.asset";
     private const string BootScopePath = "Assets/_Project/Prefabs/Composition/BootScope.prefab";
     private const string ArenaFolder = "Assets/_Project/Prefabs/Arenas";
 
@@ -204,6 +208,7 @@ public sealed class JungleTests
     [TestCase(RootlingPath, RootlingBodyPath)]
     [TestCase(PitcherPath, PitcherBodyPath)]
     [TestCase(PuffballPath, PuffballBodyPath)]
+    [TestCase(PantherPath, PantherBodyPath)]
     public void JunglesEnemy_WearsItsOwnBody(string path, string bodyPath)
     {
         EnemyLook look = Load<EnemyDefinition>(path).ToLook();
@@ -238,7 +243,77 @@ public sealed class JungleTests
             ("enemy.frog", 1),
             ("enemy.pitcher", 2),
             ("enemy.puffball", 4),
-        }), "The Frog, the Pitcher and the Puffball where Descent has the Husk, the Spitter and the Bloater (the owner, 2026-09-29 and 2026-10-22).");
+            ("enemy.panther", 6),
+        }), "The Frog, the Pitcher and the Puffball where Descent has the Husk, the Spitter and the Bloater (the owner, 2026-09-29 and 2026-10-22), and the Panther after Old Croaker (JG-07d).");
+    }
+
+    [Test]
+    public void Jungle_Panther_IsALungerWithItsNumbers()
+    {
+        // JG-07d rule 2: GD §8.1's Lunger where GD has numbers, JG-07a's table for the rest, XP the
+        // next step up the Jungle's ladder.
+        EnemySpec panther = Load<EnemyDefinition>(PantherPath).ToSpec();
+
+        Assert.That(panther.Id.Value, Is.EqualTo("enemy.panther"));
+        Assert.That(panther.NameKey.Key, Is.EqualTo("enemy.panther.name"));
+        Assert.That(panther.Behaviour, Is.EqualTo(EnemyBehaviourKind.Lunger));
+        Assert.That(panther.MaxHp, Is.EqualTo(44f));
+        Assert.That(panther.ThreatCost, Is.EqualTo(9));
+        Assert.That(panther.TargetPriority, Is.EqualTo(4));
+        Assert.That(panther.WindupTime, Is.EqualTo(0.9f).Within(1e-5f), "The crouch the body holds (JG-07c).");
+        Assert.That(panther.RecoverTime, Is.EqualTo(1f));
+        Assert.That(panther.ContactDamage, Is.EqualTo(14f));
+        Assert.That(panther.MoveSpeed, Is.EqualTo(2.4f).Within(1e-5f), "Its prowl.");
+        Assert.That(panther.XpValue, Is.EqualTo(27f), "Frog 18, Pitcher 21, Puffball 24, Panther 27.");
+        Assert.That(panther.Projectile, Is.Null);
+        Assert.That(panther.Explosion, Is.Null);
+
+        Assert.That(panther.Lunge, Is.Not.Null);
+        Assert.That((panther.Lunge.Range, panther.Lunge.Length, panther.Lunge.Speed, panther.Lunge.HalfWidth, panther.Lunge.Cooldown),
+            Is.EqualTo((9f, 12f, 24f, 0.6f, 2f)));
+
+        Assert.That(Load<EnemyDefinition>(PantherPath).ToLook().Body.gameObject,
+            Is.EqualTo(AssetDatabase.LoadAssetAtPath<GameObject>(PantherBodyPath)));
+    }
+
+    [Test]
+    public void Jungle_RostersThePantherFromStageSix()
+    {
+        // JG-07d rule 3: after the Puffball's 4, and the Jungle's alone.
+        RosterEntry panther = Load<ModeDefinition>(JunglePath).ToSpec().Roster.Single(r => r.SpecId.Value == "enemy.panther");
+
+        Assert.That(panther.IntroducedAtStage, Is.EqualTo(6));
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.Select(r => r.SpecId.Value), Has.No.Member("enemy.panther"));
+    }
+
+    [Test]
+    public void Jungle_StageSix_IsTwoPanthers()
+    {
+        // JG-07d rule 4: alone, as stage 4's Puffballs are (GD §8.2). Stages 1-4 are
+        // Jungle_ScriptsItsFirstFourStages' rows; stage 5 is Old Croaker's.
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(6, out ScriptedStage sixth), Is.True);
+        Assert.That(sixth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
+            Is.EqualTo(new[] { (1, "enemy.panther", 2) }), "Two Panthers and nothing else.");
+        Assert.That(jungle.TryGetScriptedStage(7, out _), Is.False, "Stage 7 on draws it from the budget.");
+    }
+
+    [Test]
+    public void Jungle_Panther_Boots()
+    {
+        // JG-07d rule 5: listed in BootScope, so the catalogue resolves the roster's id, and named in
+        // both tables.
+        var boot = AssetDatabase.LoadAssetAtPath<GameObject>(BootScopePath).GetComponentInChildren<BootScope>(true);
+        SerializedProperty enemies = new SerializedObject(boot).FindProperty("_enemies");
+        var listed = Enumerable.Range(0, enemies.arraySize).Select(i => enemies.GetArrayElementAtIndex(i).objectReferenceValue).ToList();
+
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(PantherPath)));
+
+        var key = new LocKey("enemy.panther.name");
+
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[key], Is.EqualTo("Panther"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary().ContainsKey(key), Is.True);
     }
 
     [Test]
@@ -263,7 +338,7 @@ public sealed class JungleTests
         Assert.That(fourth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
             Is.EqualTo(new[] { (1, "enemy.puffball", 2) }), "The owner, 2026-10-22: two Puffballs, nothing else.");
 
-        Assert.That(jungle.TryGetScriptedStage(5, out _), Is.False, "Stage 5 on is the budget's.");
+        Assert.That(jungle.TryGetScriptedStage(5, out _), Is.False, "Stage 5 is Old Croaker's.");
     }
 
     [Test]

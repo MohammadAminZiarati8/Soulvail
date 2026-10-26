@@ -202,6 +202,30 @@ public sealed class EnemyDefinitionTests
     }
 
     [Test]
+    public void Definition_LungeBlock_BuildsALungeSpecOnlyWithARange()
+    {
+        // JG-07d rule 1: the range is the switch, as the standoff and the blast radius are. A
+        // Chaser with a lunge block and no range carries no LungeSpec, whatever the other four say.
+        EnemyDefinition lunger = NewDefinition("Lunger");
+        SetFloat(lunger, "_lungeRange", 9f);
+        SetFloat(lunger, "_lungeLength", 12f);
+        SetFloat(lunger, "_lungeSpeed", 24f);
+        SetFloat(lunger, "_lungeHalfWidth", 0.6f);
+        SetFloat(lunger, "_lungeCooldown", 2f);
+
+        LungeSpec lunge = lunger.ToSpec().Lunge;
+
+        Assert.That(lunge, Is.Not.Null);
+        Assert.That((lunge.Range, lunge.Length, lunge.Speed, lunge.HalfWidth, lunge.Cooldown), Is.EqualTo((9f, 12f, 24f, 0.6f, 2f)));
+
+        EnemyDefinition walker = NewDefinition("Walker");
+        SetFloat(walker, "_lungeLength", 12f);
+        SetFloat(walker, "_lungeSpeed", 24f);
+
+        Assert.That(walker.ToSpec().Lunge, Is.Null);
+    }
+
+    [Test]
     public void ToSpec_InvalidPriority_ThrowsNamingAsset()
     {
         EnemyDefinition definition = NewDefinition("BrokenPriority");

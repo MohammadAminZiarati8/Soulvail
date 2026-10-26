@@ -15,7 +15,7 @@ namespace Soulvail.Tests.Core.Ai;
 /// <summary>
 /// Old Croaker approaching, hop-slamming onto where the player stood, chaining hops by phase,
 /// croaking on a phase's entry, and recovering — JG-04b rules 1–7 — and lashing its tongue while
-/// the slam cools, JG-04e rule 4.
+/// the slam cools, JG-04e rule 4 — and closing in hops, JG-05c.
 /// </summary>
 /// <remarks>
 /// <see cref="WardenBehaviourTests"/>' fixture and its two halves: the rows about one attack drive
@@ -28,6 +28,11 @@ public sealed class CroakerBehaviourTests
 {
     private const string BossId = "boss.croaker";
     private const string CroakerEnemyId = "enemy.croaker";
+    private const string HopperId = "enemy.croaker.hopper";
+
+    /// <summary><c>Croaker.asset</c>'s gait since JG-05c: the Hop clip's landing, then a sit.</summary>
+    private const float HopperHopTime = 0.7f;
+    private const float HopperRestTime = 0.75f;
     private const string HuskId = "enemy.husk";
     private const string OathboundId = "character.oathbound";
 
@@ -420,6 +425,155 @@ public sealed class CroakerBehaviourTests
         Assert.That(_events.Count<LaneArmed>(), Is.Zero);
     }
 
+    // ---- JG-05c -----------------------------------------------------------------------------------
+
+    [Test]
+    public void HopGait_MatchesTheChasersOldArithmetic()
+    {
+        // Rule 1: the arithmetic ChaserBehaviour.TickChase carried inline until JG-05c, step for step.
+        const float speed = 2f, hop = 0.5f, rest = 0.3f, dt = 0.1f;
+
+        float timer = 0f, oldTimer = 0f;
+
+        for (int i = 0; i < 40; i++)
+        {
+            float cycle = hop + rest;
+            float phase = oldTimer % cycle;
+            oldTimer = phase + dt;
+            float expected = phase < hop ? speed * cycle / hop : 0f;
+
+            Assert.That(HopGait.Speed(speed, hop, rest, ref timer, dt), Is.EqualTo(expected), $"Tick {i}.");
+            Assert.That(timer, Is.EqualTo(oldTimer), $"Tick {i}'s timer.");
+        }
+    }
+
+    [Test]
+    public void HopGait_WalkerGetsItsSpeed()
+    {
+        float timer = 0.25f;
+
+        Assert.That(HopGait.Speed(2f, 0f, 0.3f, ref timer, 0.1f), Is.EqualTo(2f));
+        Assert.That(timer, Is.EqualTo(0.25f), "A walker's timer is not the gait's to touch.");
+    }
+
+    [Test]
+    public void Approach_StartsInTheAir()
+    {
+        // Rule 2: every approach leaves at the top of a leap, at the speed that keeps the average.
+        CroakerBehaviour croaker = Croaker(HopperId);
+
+        Place(distance: CroakerBehaviour.SlamRange + 20f);
+
+        TickUntil(croaker, CroakerState.Approach, 1f);
+
+        _intents.Clear();
+        Tick(croaker);
+
+        float leap = CroakerMoveSpeed * (HopperHopTime + HopperRestTime) / HopperHopTime;
+
+        Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.EqualTo(leap).Within(Tolerance));
+    }
+
+    [Test]
+    public void Approach_MovesOnlyInTheAir()
+    {
+        // Rule 2: a leap of HopTime, then HopRestTime sat still, and never a walk.
+        CroakerBehaviour croaker = Croaker(HopperId);
+
+        Place(distance: CroakerBehaviour.SlamRange + 20f);
+
+        TickUntil(croaker, CroakerState.Approach, 1f);
+
+        float leap = CroakerMoveSpeed * (HopperHopTime + HopperRestTime) / HopperHopTime;
+        int moving = 0, still = 0, starts = 0;
+        bool wasMoving = false;
+
+        // Three whole cycles.
+        int ticks = (int)MathF.Round(3f * (HopperHopTime + HopperRestTime) / Frame);
+
+        for (int i = 0; i < ticks; i++)
+        {
+            _intents.Clear();
+            Tick(croaker);
+
+            float z = _intents.LastEnemyMove.Velocity.Z;
+
+            Assert.That(
+                MathF.Abs(z) < Tolerance || MathF.Abs(z - leap) < Tolerance,
+                Is.True,
+                $"Tick {i}: {z} is neither a leap nor a sit.");
+
+            bool isMoving = z > Tolerance;
+
+            moving += isMoving ? 1 : 0;
+            still += isMoving ? 0 : 1;
+            starts += isMoving && !wasMoving ? 1 : 0;
+            wasMoving = isMoving;
+        }
+
+        Assert.That(starts, Is.EqualTo(3), "One takeoff per cycle.");
+        Assert.That(moving * Frame, Is.EqualTo(3f * HopperHopTime).Within(3f * Frame), "In the air for HopTime each.");
+        Assert.That(still * Frame, Is.EqualTo(3f * HopperRestTime).Within(3f * Frame), "Sat for HopRestTime each.");
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach));
+    }
+
+    [Test]
+    public void Approach_FinishesTheLeap_ThenSlams()
+    {
+        // Rule 3: the player steps into slam range mid-leap. The frog lands first, then slams.
+        CroakerBehaviour croaker = Croaker(HopperId);
+
+        Place(distance: CroakerBehaviour.SlamRange + 20f);
+
+        TickUntil(croaker, CroakerState.Approach, 1f);
+
+        float takeoff = _clock;
+
+        Tick(croaker);
+        Tick(croaker);
+
+        Place(distance: CroakerBehaviour.SlamRange - 1f);
+
+        _intents.Clear();
+        Tick(croaker);
+
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach), "Never a slam from mid-air.");
+        Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.GreaterThan(0f), "The leap flies on.");
+
+        float slammed = _clock;
+
+        for (int i = 0; i < 20 && croaker.State != CroakerState.Slam; i++)
+        {
+            slammed = _clock;
+            Tick(croaker);
+        }
+
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Slam));
+        Assert.That(slammed - takeoff, Is.GreaterThanOrEqualTo(HopperHopTime - Tolerance), "Only after the landing.");
+        Assert.That(slammed - takeoff, Is.LessThanOrEqualTo(HopperHopTime + (2f * Frame) + Tolerance), "And at once after it.");
+    }
+
+    [Test]
+    public void Approach_InRangeOnTheGround_SlamsAsBefore()
+    {
+        // Rule 4: on the ground and in range, nothing changed. It stands and slams on the first tick.
+        CroakerBehaviour croaker = Croaker(HopperId);
+
+        Place(distance: CroakerBehaviour.SlamRange - 1f);
+
+        TickUntil(croaker, CroakerState.Approach, 1f);
+
+        _intents.Clear();
+        Tick(croaker);
+
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Slam));
+        Assert.That(CroakerBehaviour.SlamRange, Is.EqualTo(8f), "Ranges and cooldowns keep their values.");
+        Assert.That(CroakerBehaviour.SlamCooldown, Is.EqualTo(8f));
+        Assert.That(CroakerBehaviour.LashCooldown, Is.EqualTo(8f));
+        Assert.That(CroakerBehaviour.AttackGapSeconds, Is.EqualTo(2.5f));
+    }
+
     // ---- Rule 7 -----------------------------------------------------------------------------------
 
     [Test]
@@ -494,9 +648,9 @@ public sealed class CroakerBehaviourTests
     // ---- Fixture ----------------------------------------------------------------------------------
 
     /// <summary>A Croaker on an ordinary agent wearing the boss's body, driven bare: phase 0.</summary>
-    private CroakerBehaviour Croaker()
+    private CroakerBehaviour Croaker(string bodyId = CroakerEnemyId)
     {
-        _driven = _enemies.Spawn(new ContentId(CroakerEnemyId), Vector3.Zero);
+        _driven = _enemies.Spawn(new ContentId(bodyId), Vector3.Zero);
 
         return new CroakerBehaviour(_driven, _shockwaves, _fissures, _lanes, _random.Misc);
     }
@@ -683,7 +837,7 @@ public sealed class CroakerBehaviourTests
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },
-        new[] { Husk(), CroakerBody() },
+        new[] { Husk(), CroakerBody(), HopperBody() },
         modes: null,
         skills: null,
         trees: null,
@@ -717,6 +871,25 @@ public sealed class CroakerBehaviourTests
         1.2f,
         aggroRange: CroakerAggro,
         EnemyBehaviourKind.Boss);
+
+    /// <summary>The boss's body with <c>Croaker.asset</c>'s gait (JG-05c); the plain one walks.</summary>
+    private static EnemySpec HopperBody() => new EnemySpec(
+        new ContentId(HopperId),
+        new LocKey("enemy.croaker.name"),
+        3000f,
+        CroakerMoveSpeed,
+        8,
+        threatCost: 40,
+        xpValue: 300f,
+        isElite: false,
+        CroakerContactDamage,
+        2.5f,
+        0.9f,
+        1.2f,
+        aggroRange: CroakerAggro,
+        EnemyBehaviourKind.Boss,
+        hopTime: HopperHopTime,
+        hopRestTime: HopperRestTime);
 
     private static EnemySpec Husk() => new EnemySpec(
         new ContentId(HuskId),

@@ -82,4 +82,24 @@ public static class HopGait
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ Built as specified, with three deviations.
+
+**The hop is 0.7 s with a 0.75 s sit, not 0.8 s and 0.85 s.** The spec took the `Hop` clip's length
+(24 frames). `FrogBodyTests` measures the Frog's `HopTime` from when the clip's feet land (0.5 s of a
+0.6 s clip), and sampled the same way, `Croaker.fbx`'s `Hop` lands at 0.70 s, with its last 0.1 s a settle. A
+0.75 s sit keeps the leap at 1.8 × 1.45 / 0.7 ≈ 3.7 m/s, the stride the spec aimed for. The leap is
+about 2.6 m. A new `CroakerBodyTests.Croaker_HopTimeIsTheClipsLeap` pins `HopTime` to the clip's landing,
+the Frog's row for the boss. That row is an extra test, not a rule change.
+
+**`HopGait.Grounded` was not built.** The Croaker remembers whether its last approach tick moved
+(`_leaping`, cleared on `EnterApproach` and `Reset`), which answers "mid-leap?" without reading the
+phase back. The phase cannot answer it cleanly: a wrapped timer reads as "in the air" on the tick a leap
+has not yet left. `HopGait` is `Speed` alone.
+
+**`TickApproach` zeroes the timer while it sits in range**, so the next move it makes leaves at the top
+of a leap. That was implied by rule 2's "every approach starts at the top of a leap" and is written down here.
+
+The Croaker body with no hop (`HopTime` 0, the fixture's plain `enemy.croaker`) walks and decides every
+tick, exactly as before, so every JG-04 row passes unedited. The new rows drive a second fixture body,
+`enemy.croaker.hopper`, with the asset's gait. `ChaserBehaviourTests` pass unedited (rule 1).
+Croaker, Chaser, CroakerBody, FrogBody and BossDispatch fixtures: 50/50.

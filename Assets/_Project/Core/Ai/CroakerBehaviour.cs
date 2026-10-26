@@ -21,7 +21,10 @@ public enum CroakerState
     /// <summary>Sitting where it was spawned, unaware. The player has not come close enough.</summary>
     Idle,
 
-    /// <summary>Closing, or sitting and waiting out the slam's cooldown inside its range.</summary>
+    /// <summary>
+    /// Closing in hops, like a Frog (JG-05c), or sitting and waiting out the slam's cooldown inside
+    /// its range.
+    /// </summary>
     Approach,
 
     /// <summary>
@@ -208,6 +211,12 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// <summary>In the air (a hop's telegraph) rather than sitting in the gap between two hops.</summary>
     private bool _airborne;
 
+    /// <summary>
+    /// Mid-leap while approaching (JG-05c): the last approach tick moved. Nothing is decided until
+    /// it lands.
+    /// </summary>
+    private bool _leaping;
+
     /// <summary>Where the hop in progress lands: the fissure's centre.</summary>
     private Vector3 _landing;
 
@@ -243,6 +252,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         _machine.OnTick(CroakerState.Idle, TickIdle);
 
+        _machine.OnEnter(CroakerState.Approach, EnterApproach);
         _machine.OnTick(CroakerState.Approach, TickApproach);
 
         _machine.OnEnter(CroakerState.Slam, EnterSlam);
@@ -331,6 +341,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         _hopCount = 0;
         _hopsLanded = 0;
         _airborne = false;
+        _leaping = false;
 
         _agent.Blackboard.StateTimer = 0f;
     }
@@ -348,45 +359,64 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         }
     }
 
+    /// <summary>Every approach starts on the ground, with its first hop due on its first moving tick.</summary>
+    private void EnterApproach()
+    {
+        _agent.Blackboard.StateTimer = 0f;
+
+        _leaping = false;
+    }
+
     /// <summary>
     /// Rule 1: close until the player is inside <see cref="SlamRange"/>, slam when it is off
     /// cooldown — and, while it cools, lash a player between <see cref="LashMinRange"/> and
     /// <see cref="LashRange"/> (JG-04e rule 4).
     /// </summary>
+    /// <remarks>
+    /// <b>It closes in hops (JG-05c)</b>, the Frog's gait through <see cref="HopGait"/>, and decides
+    /// only on the ground: a leap in progress is flown out before it stops in range or starts a
+    /// lash. Its body's spec without a hop (<c>HopTime</c> 0) walks, as it did before JG-05c.
+    /// </remarks>
     private void TickApproach(float dt)
     {
         EnemyBlackboard blackboard = _agent.Blackboard;
 
         float distance = blackboard.DistanceToPlayer;
 
-        // Resting after the last attack: it still closes, but nothing starts.
-        bool rested = _now >= _nextAttackAt;
-
-        // The slam is cooling, so the lash cannot steal a slam's turn: it only fills the gap.
-        if (rested
-            && _now < _nextSlamAt
-            && _now >= _nextLashAt
-            && distance >= LashMinRange
-            && distance <= LashRange
-            && blackboard.DirectionToPlayer != Vector2.Zero)
+        if (!_leaping)
         {
-            Stand();
+            // Resting after the last attack: it still closes, but nothing starts.
+            bool rested = _now >= _nextAttackAt;
 
-            _machine.Transition(CroakerState.Lash);
-
-            return;
-        }
-
-        if (distance <= SlamRange)
-        {
-            Stand();
-
-            if (rested && _now >= _nextSlamAt)
+            // The slam is cooling, so the lash cannot steal a slam's turn: it only fills the gap.
+            if (rested
+                && _now < _nextSlamAt
+                && _now >= _nextLashAt
+                && distance >= LashMinRange
+                && distance <= LashRange
+                && blackboard.DirectionToPlayer != Vector2.Zero)
             {
-                _machine.Transition(CroakerState.Slam);
+                Stand();
+
+                _machine.Transition(CroakerState.Lash);
+
+                return;
             }
 
-            return;
+            if (distance <= SlamRange)
+            {
+                Stand();
+
+                // Sat in range: the next time it moves, it leaves at the top of a leap.
+                blackboard.StateTimer = 0f;
+
+                if (rested && _now >= _nextSlamAt)
+                {
+                    _machine.Transition(CroakerState.Slam);
+                }
+
+                return;
+            }
         }
 
         Vector2 inbound = blackboard.PathDirectionToPlayer != Vector2.Zero
@@ -394,7 +424,15 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
             : blackboard.DirectionToPlayer;
 
         // The agent's stat, so depth scaling and affixes are already in it.
-        float speed = _agent.MoveSpeed.Value;
+        float speed = HopGait.Speed(
+            _agent.MoveSpeed.Value,
+            _agent.Spec.HopTime,
+            _agent.Spec.HopRestTime,
+            ref blackboard.StateTimer,
+            dt);
+
+        // A walker is never mid-leap, so it decides every tick, as before JG-05c.
+        _leaping = _agent.Spec.HopTime > 0f && speed > 0f;
 
         Emit(new Vector3(inbound.X * speed, 0f, inbound.Y * speed), inbound);
     }

@@ -209,7 +209,52 @@ public sealed class CroakerBodyTests
 
         var view = new SerializedObject(prefab.GetComponentInChildren<EnemyAnimatorView>(true));
         Assert.That(view.FindProperty("_animator").objectReferenceValue, Is.SameAs(animator));
-        Assert.That(view.FindProperty("_hops").boolValue, Is.False, "The approach is a walk; the slam's hop is the Slam clip.");
+        Assert.That(view.FindProperty("_hops").boolValue, Is.True, "It closes in hops since JG-05c; each takeoff restarts Hop.");
+    }
+
+    [Test]
+    public void Croaker_HopTimeIsTheClipsLeap()
+    {
+        // JG-05c: FrogBodyTests' row for the boss. Core moves it only while in the air, and the view
+        // plays Hop from its first frame at 1x on every takeoff, so the hop time is when the clip's
+        // feet come back down: the frame after the peak where a foot is back within 5 mm of rest.
+        var model = (GameObject)Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath));
+        model.hideFlags = HideFlags.HideAndDontSave;
+        _created.Add(model);
+
+        Transform foot = model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "foot.l");
+        AnimationClip hop = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>().Single(c => c.name == "Hop");
+
+        hop.SampleAnimation(model, 0f);
+        float rest = foot.position.y, highest = rest, landed = hop.length;
+        bool falling = false;
+
+        for (float t = Frame; t <= hop.length + 1e-4f; t += Frame)
+        {
+            hop.SampleAnimation(model, t);
+            float y = foot.position.y;
+
+            if (y > highest)
+            {
+                highest = y;
+            }
+            else if (highest > rest + 0.05f)
+            {
+                falling = true;
+            }
+
+            if (falling && y - rest < 0.005f)
+            {
+                landed = t;
+
+                break;
+            }
+        }
+
+        var spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(DefinitionPath).ToSpec();
+
+        Assert.That(spec.HopTime, Is.EqualTo(landed).Within(Frame), $"The Hop clip lands at {landed:F3} s.");
+        Assert.That(spec.HopRestTime, Is.GreaterThan(0f), "It sits between hops, like a Frog.");
     }
 
     /// <summary>The Slam's landing: the first frame after the leap that a foot is back within 5 mm of rest.</summary>

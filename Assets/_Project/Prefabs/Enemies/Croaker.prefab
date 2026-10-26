@@ -193,7 +193,7 @@ MonoBehaviour:
   _strideSpeed: 1.8
   _windupFromSeconds: 0
   _strikeSeconds: 0.9
-  _hops: 0
+  _hops: 1
 --- !u!4 &5699032749147811356 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2194c824b93c02846b8bb43fc6df0ed2, type: 3}

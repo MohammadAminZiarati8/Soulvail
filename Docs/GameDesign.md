@@ -256,7 +256,7 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 ### 7.2 Arena design rules
 
 - Roughly **36m × 36m**, bounded, flat or gently tiered. Square, so it frames well in portrait too: the short side keeps the view (UI-08b).
-- **3–6 cover pillars** placed off-center. Cover blocks enemy projectiles but not pathing.
+- **3–6 cover pillars** placed off-center, or **none**: an open arena (the Jungle's are, by the owner's call, 2026-10-26). One or two is a half-built room. Cover blocks enemy projectiles but not pathing.
 - No dead ends. The player must always have a circle-strafe route.
 - Camera never collides with geometry. No ceilings, no corridors.
 - **V1 uses hand-built arena prefabs from a pool** (target 8–12 per biome), chosen at random per stage. Procedural generation is a V3 conversation at the earliest.

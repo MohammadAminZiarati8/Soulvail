@@ -53,7 +53,7 @@ namespace Soulvail.Game.Arena
         /// <summary>Fewest spawn points an arena may author (rule 2).</summary>
         public const int MinSpawnPoints = 3;
 
-        /// <summary>GD §7.2's cover band: 3–6 pillars, placed off-centre.</summary>
+        /// <summary>GD §7.2's cover band: 3–6 pillars, placed off-centre — or none, for an open arena.</summary>
         public const int MinCoverPillars = 3;
 
         /// <inheritdoc cref="MinCoverPillars" />
@@ -382,11 +382,12 @@ namespace Soulvail.Game.Arena
 
             int cover = CoverCount;
 
-            if (cover < MinCoverPillars || cover > MaxCoverPillars)
+            // None is an open arena, a choice (the Jungle's are); one or two is a half-dressed one.
+            if (cover != 0 && (cover < MinCoverPillars || cover > MaxCoverPillars))
             {
                 faults.Add(
                     $"it has {cover} object(s) on the '{CoverLayerName}' layer and GD §7.2 wants "
-                        + $"{MinCoverPillars}–{MaxCoverPillars} cover pillars");
+                        + $"none or {MinCoverPillars}–{MaxCoverPillars} cover pillars");
             }
 
             if (_surface == null)

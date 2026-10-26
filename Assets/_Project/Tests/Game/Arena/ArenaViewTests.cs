@@ -58,8 +58,8 @@ public sealed class ArenaViewTests
     public void Arena_HasNoFaults(string path)
     {
         // The whole of GD §7.2 as this class states it, in one assertion: at least three spawn
-        // points, every one of them clear of the player start, 3-6 pillars on the Cover layer, a
-        // baked surface, a start and an id that parses.
+        // points, every one of them clear of the player start, none or 3-6 pillars on the Cover
+        // layer, a baked surface, a start and an id that parses.
         Assert.That(Arena(path).DescribeFaults(), Is.Null);
     }
 
@@ -93,11 +93,14 @@ public sealed class ArenaViewTests
     }
 
     [TestCaseSource(nameof(ArenaPaths))]
-    public void Arena_HasThreeToSixCoverPillars(string path)
+    public void Arena_HasNoCoverOrThreeToSixPillars(string path)
     {
         ArenaView arena = Arena(path);
 
-        Assert.That(arena.CoverCount, Is.InRange(ArenaView.MinCoverPillars, ArenaView.MaxCoverPillars));
+        // None is an open arena (the Jungle's); one or two is a room left half-dressed.
+        Assert.That(
+            arena.CoverCount,
+            Is.EqualTo(0).Or.InRange(ArenaView.MinCoverPillars, ArenaView.MaxCoverPillars));
 
         // Counted by layer, which is the same fact M2-11b's raycast mask will read: a pillar that
         // was never put on the layer is invisible to both, and this is where that is caught

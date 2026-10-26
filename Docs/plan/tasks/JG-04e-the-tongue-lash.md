@@ -88,6 +88,7 @@ reads `CroakerBehaviour.LashTelegraphSeconds`. No `BossViews` lane test: the spe
 is unverified on screen (manual step 1).
 
 **Tuned after the owner's playtest (same day):** the fight was too long and the attacks came too fast. `Croaker.asset` `_maxHp` is 800, down from 3 200 (about 1 000 at stage 5, against the Ranger's ~15 DPS standing). `SlamCooldown` and `LashCooldown` are 8 s, up from 5 and 4. A new `AttackGapSeconds` = 2.5 s rest starts when the recover or a lash ends, before any attack may start. Rule 4's 4 s is superseded.
+Then the owner ruled the fight should not get harder: `CroakerBoss.asset` is **one phase** with no summons, so the bar is one band. Since the chained hops and the croak only fire on a phase change, there are none. The code still supports phases. `ContentValidationTests.CroakerBoss_IsOnePhase_SummonsNothing` replaces `CroakerBoss_PhasesSummonFrogs`.
 
 **Verified.** Full EditMode suite through `TestRunnerApi`: **4 440: 4 438 passed / 1 failed / 1
 inconclusive**, the two known rows. All six new rows pass. No compiler error or warning.

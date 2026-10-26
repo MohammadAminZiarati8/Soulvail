@@ -18,11 +18,3 @@ MonoBehaviour:
   _phases:
   - _entersBelow: 1
     _summons: []
-  - _entersBelow: 0.66
-    _summons:
-    - _specId: enemy.frog
-      _count: 3
-  - _entersBelow: 0.33
-    _summons:
-    - _specId: enemy.frog
-      _count: 4

@@ -429,27 +429,19 @@ public sealed class ContentValidationTests
         Assert.That(bossId.Value, Is.EqualTo("boss.warden"));
     }
 
+    /// <summary>
+    /// One phase, no summons: the owner's ruling after playtesting (2026-10-26). The fight does not
+    /// get harder as it goes, and the boss bar is one band.
+    /// </summary>
     [Test]
-    public void CroakerBoss_PhasesSummonFrogs()
+    public void CroakerBoss_IsOnePhase_SummonsNothing()
     {
         BossSpec croaker = LoadShippedBoss("boss.croaker");
 
         Assert.That(croaker.EnemySpecId.Value, Is.EqualTo("enemy.croaker"));
-        Assert.That(croaker.Phases, Has.Count.EqualTo(3));
+        Assert.That(croaker.Phases, Has.Count.EqualTo(1));
         Assert.That(croaker.Phases[0].EntersBelow, Is.EqualTo(1f));
-        Assert.That(croaker.Phases[0].Summons, Is.Empty, "Phase 1 calls in nothing.");
-        Assert.That(croaker.Phases[1].EntersBelow, Is.EqualTo(0.66f));
-        Assert.That(croaker.Phases[2].EntersBelow, Is.EqualTo(0.33f));
-
-        AddWave second = croaker.Phases[1].Summons[0];
-        AddWave third = croaker.Phases[2].Summons[0];
-
-        Assert.That(croaker.Phases[1].Summons, Has.Count.EqualTo(1));
-        Assert.That(second.SpecId.Value, Is.EqualTo("enemy.frog"));
-        Assert.That(second.Count, Is.EqualTo(3));
-        Assert.That(croaker.Phases[2].Summons, Has.Count.EqualTo(1));
-        Assert.That(third.SpecId.Value, Is.EqualTo("enemy.frog"));
-        Assert.That(third.Count, Is.EqualTo(4));
+        Assert.That(croaker.Phases[0].Summons, Is.Empty);
     }
 
     private static BossSpec LoadShippedBoss(string id)

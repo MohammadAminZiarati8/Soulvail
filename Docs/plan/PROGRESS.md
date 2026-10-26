@@ -12,7 +12,7 @@ _Updated 2026-10-26, after JG-04e._
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. **Tuned after the owner's playtest:** `Croaker.asset` 800 HP (was 3 200, the Warden's), both cooldowns 8 s, and a 2.5 s rest after every attack. |
+| **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. **Tuned after the owner's playtest:** `Croaker.asset` 800 HP (was 3 200, the Warden's), both cooldowns 8 s, and a 2.5 s rest after every attack. **One phase**: no escalation, no summoned Frogs, a one-band boss bar (owner, 2026-10-26). |
 | **Next task** | **None named.** JG-04 is done. The mud hazard is the spec's "next, if the owner wants it". Built only on the owner's go. |
 | **Verified** | **JG-04e: full EditMode suite 4 440: 4 438 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
@@ -22,7 +22,7 @@ A **portrait** top-down run. **Home** with Heroes and Places tabs; places unlock
 **Jungle** is the first place and ends at stage 30. **Focus build:** Veilrot, the Sanctum and the
 Focus disc are switched off (mode flags), and class select lists the **Ranger** alone (BootScope
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
-sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden; in the Jungle, Old Croaker — a giant old frog that hop-slams, lashes its tongue down a lane and croaks up Frogs). A mode can
+sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden; in the Jungle, Old Croaker — a giant old frog that hop-slams, lashes its tongue down a lane, and stays the same all fight). A mode can
 script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
 3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers, stage 3 is 2 Pitchers + 3 Frogs,
 stage 4 is 2 Puffballs. An enemy asset can name its own
@@ -64,9 +64,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
 11. **JG-04a**: open `Art/Enemies/Croaker.fbx` in the Inspector's preview: a huge, darker, mossy frog
    with drooping lids, warts and three wine-capped mushrooms; scrub Slam, Lash and Croak.
 12. **JG-04c/d**: jump to Jungle stage 5. Old Croaker hops in, crouches and leaps, and lands on the
-   red-orange circle as the ring goes out. At 66 % it croaks and 3 Frogs come; at 33 %, 4. Its health
-   is on the boss bar, with no bar over it. On death it rolls onto its back. At 411 × 914 the circle,
-   ring and frog fit on screen together. Descent's stage 5 is still the Warden.
+   red-orange circle as the ring goes out. One hop per slam all fight, no croak, no Frogs, and its
+   health is one band on the boss bar with no bar over it. On death it rolls onto its back. At
+   411 × 914 the circle, ring and frog fit on screen together. Descent's stage 5 is still the Warden.
 13. **JG-04e**: on Jungle stage 5, stand mid-range (3–9 m) after a slam. A red-orange strip runs from the
    frog toward you and brightens, the tongue lashes as it flashes, and one sidestep avoids it. The strip
    is a rectangle, not an ellipse, and is gone a moment later.

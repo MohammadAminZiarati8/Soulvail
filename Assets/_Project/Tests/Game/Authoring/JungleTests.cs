@@ -72,10 +72,14 @@ public sealed class JungleTests
     private const string PitcherSpitPath = "Assets/_Project/Prefabs/Projectiles/PitcherSpit.prefab";
     private const string PitcherSplatPath = "Assets/_Project/Prefabs/VFX/VFX_PitcherSplat.prefab";
 
+    /// <remarks>
+    /// <c>_bossRoster</c> left the list in JG-04c: the Jungle's boss is Old Croaker, which
+    /// <c>ContentValidationTests.Jungle_Stage5_IsTheCroaker</c> pins.
+    /// </remarks>
     private static readonly string[] SharedBlocks =
     {
         "_startingStage", "_scaling", "_xp", "_overflow", "_essence",
-        "_sanctum", "_bossRoster", "_ordeals",
+        "_sanctum", "_ordeals",
     };
 
     [TestCase(FrogPath, "enemy.frog")]

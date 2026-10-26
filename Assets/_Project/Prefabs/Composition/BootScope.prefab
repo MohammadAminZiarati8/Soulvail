@@ -61,6 +61,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d6bf46b0ffc70464f8bdc627a860a959, type: 2}
   - {fileID: 11400000, guid: beea6e47207ecd84b95f0ea6df924a86, type: 2}
   - {fileID: 11400000, guid: cf0fddd9bb6bc1049a790cb6b96aebd2, type: 2}
+  - {fileID: 11400000, guid: a715472600874d6f81eeb8802d32da73, type: 2}
   _modes:
   - {fileID: 11400000, guid: 32056a066ee69b94cb162eb829ecd93f, type: 2}
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}
@@ -117,6 +118,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fa38ddb8be599ec46b6b8cabafb9fa26, type: 2}
   _bosses:
   - {fileID: 11400000, guid: 74a6fdaa03d6e184fbff110ee9000655, type: 2}
+  - {fileID: 11400000, guid: 8e9df31e6f18431882ba7ef334877696, type: 2}
   _localization: {fileID: 11400000, guid: e8534041bde963a4185ebefd2397811d, type: 2}
   _languages:
   - {fileID: 11400000, guid: 374abb67f0edbe943a938eae3a7232d9, type: 2}

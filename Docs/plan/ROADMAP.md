@@ -42,6 +42,6 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **JG-04a** — Old Croaker's model: `croaker.py` on `Rig_Frog`, boss dressing and seven clips (S) · [spec](tasks/JG-04a-the-croakers-model.md)
 - [x] **JG-04b** — Old Croaker's behaviour: `CroakerBehaviour` hop-slams with fissure + shockwave; `EnemyTelegraph.Move` (S) · [spec](tasks/JG-04b-the-croakers-behaviour.md)
-- [ ] **JG-04c** — Old Croaker in the Jungle: boss behaviour picked by id, the two assets, Jungle's roster (M) · [spec](tasks/JG-04c-the-croaker-in-the-jungle.md)
+- [x] **JG-04c** — Old Croaker in the Jungle: boss behaviour picked by id, the two assets, Jungle's roster (M) · [spec](tasks/JG-04c-the-croaker-in-the-jungle.md)
 - [ ] **JG-04d** — Old Croaker's body: prefab and controller, a clip per `Move` (M) · [spec](tasks/JG-04d-the-croakers-body.md)
 - [ ] **JG-04e** — The tongue lash: `LaneSystem` in core, its view, the Croaker's second attack (M) · [spec](tasks/JG-04e-the-tongue-lash.md)

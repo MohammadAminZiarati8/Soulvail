@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-26, after JG-04b._
+_Updated 2026-10-26, after JG-04c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-04b** — Old Croaker's behaviour: `CroakerBehaviour` in core approaches, hop-slams onto where the player stood (0.9 s `Move 1` telegraph, a 2.5 m fissure, the body carried there by its move intent, a 7 m/s ring to 6 m on landing), chains 1/2/3 hops by phase 0.4 s apart, croaks (1.0 s, `Move 3`) after each phase's beat, recovers 1.2 s. `EnemyTelegraph.Move` (default 0). Nothing spawns it yet. |
-| **Next task** | **JG-04c** — Old Croaker in the Jungle (boss behaviour picked by id, `Croaker.asset` / `CroakerBoss.asset`, the Jungle's roster); JG-04d–e finish the boss (ROADMAP). Built only on the owner's go. |
-| **Verified** | **JG-04b: full EditMode suite 4 423 — 4 421 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), in a batch-mode Unity (`-runTests`) since the Editor was closed. |
+| **Last merged task** | **JG-04c** — Old Croaker in the Jungle: `RunSession` picks a boss's behaviour by id from a map (`boss.warden` → Warden, `boss.croaker` → Croaker) and `Start` refuses a roster boss with no entry. `Croaker.asset` (`enemy.croaker`, the Warden's numbers, a capsule) and `CroakerBoss.asset` (phases 1 / 0.66 / 0.33, 3 then 4 Frogs); the Jungle's boss is Old Croaker every 5th stage. |
+| **Next task** | **JG-04d** — Old Croaker's body (`Croaker.prefab`, `AC_Croaker`, a clip per `Move`); JG-04e the tongue lash (ROADMAP). Built only on the owner's go. |
+| **Verified** | **JG-04c: full EditMode suite 4 429 — 4 427 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), in a batch-mode Unity (`-runTests`) since the Editor was closed. |
 
 ## What works
 
@@ -22,7 +22,7 @@ A **portrait** top-down run. **Home** with Heroes and Places tabs; places unlock
 **Jungle** is the first place and ends at stage 30. **Focus build:** Veilrot, the Sanctum and the
 Focus disc are switched off (mode flags), and class select lists the **Ranger** alone (BootScope
 list); the Oathbound, Gravecaller and Emberwright still exist behind the switch. A stage is an arena
-sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden). A mode can
+sealed by threat-budgeted, telegraphed waves, then a door; a boss every fifth (the Warden; in the Jungle, Old Croaker — a capsule that hop-slams until JG-04d). A mode can
 script a stage's enemies by hand (`Scripted Stages` on the mode asset): the Jungle's stage 1 is
 3 Frogs (18 XP each, enough for level 2), stage 2 is 2 Pitchers, stage 3 is 2 Pitchers + 3 Frogs,
 stage 4 is 2 Puffballs. An enemy asset can name its own
@@ -63,7 +63,10 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    Bloaters were.
 11. **JG-04a**: open `Art/Enemies/Croaker.fbx` in the Inspector's preview: a huge, darker, mossy frog
    with drooping lids, warts and three wine-capped mushrooms; scrub Slam, Lash and Croak.
-12. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+12. **JG-04c**: jump to Jungle stage 5. A big moss-green capsule named "Old Croaker" hop-slams: a
+   red-orange circle where you stood, then a ring outward from it. At 66 % it croaks and 3 Frogs come;
+   at 33 %, 4. Descent's stage 5 is still the Warden.
+13. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet
@@ -75,7 +78,7 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
 3. **A Pact is about one offer in 62.**
 4. **Past stage ~26 the late waves are all Bloaters** (Puffballs in the Jungle): `WaveComposer.Upgrade` swaps a capped wave's
    bodies for the dearest archetype.
-5. **No audio, no Elites, one boss.** The feel pass and a second language have not happened.
+5. **No audio, no Elites, two bosses (Old Croaker still a capsule).** The feel pass and a second language have not happened.
 
 ## Known issues and loose ends
 

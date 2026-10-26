@@ -76,7 +76,7 @@ MonoBehaviour:
     _firstStage: 5
     _lastStage: 0
   _bossRoster:
-  - _bossId: boss.warden
+  - _bossId: boss.croaker
     _everyNStages: 5
   _scriptedStages:
   - _stage: 1

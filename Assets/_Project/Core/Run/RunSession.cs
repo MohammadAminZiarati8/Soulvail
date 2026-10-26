@@ -134,6 +134,18 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private FissureSystem _fissures;
 
     /// <summary>
+    /// What each boss fights with, by its id (JG-04c): <c>boss.warden</c> the Warden's slams,
+    /// <c>boss.croaker</c> Old Croaker's hops.
+    /// </summary>
+    /// <remarks>
+    /// <b>A map rather than a <c>switch</c> on a <see cref="ContentId"/></b>, because a switch would
+    /// be content identity in code (AR §6), and a map is something <see cref="RequireAuthored"/> can
+    /// ask before the run is announced. Built once for the session: each entry reads the hazards and
+    /// the generator off this object when a boss stands up, so it always gets the live run's.
+    /// </remarks>
+    private readonly Dictionary<ContentId, Func<EnemyAgent, IEnemyBehaviour>> _bossBehaviours;
+
+    /// <summary>
     /// A dash was in flight as of the previous tick. The edge <see cref="Tick"/> needs to know when
     /// to hand movement back to the stick — see the remarks there.
     /// </summary>
@@ -254,6 +266,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Once for the session rather than once per run: it is scratch, it holds nothing between
         // ticks, and a run boundary is not a reason to allocate an array of the same size again.
         _deaths = new EnemyDeath[enemyCapacity];
+
+        // The Misc stream and no other, for both: a boss drawing from Spawn would make every later
+        // stage of a seeded run depend on how long this fight took (ADR-0011).
+        _bossBehaviours = new Dictionary<ContentId, Func<EnemyAgent, IEnemyBehaviour>>
+        {
+            [new ContentId("boss.warden")] =
+                agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+            [new ContentId("boss.croaker")] =
+                agent => new CroakerBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+        };
     }
 
     /// <inheritdoc />
@@ -542,18 +564,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // hazards, the generator and the census at the same time** (M4-02). A factory rather
             // than an instance because a behaviour holds the agent it drives and the agent does
             // not exist until SpawnBoss has made one — EnemySystem._bossInner argues that at
-            // length. The Misc stream and no other: a boss drawing from Spawn would make every
-            // later stage of a seeded run depend on how long this fight took (ADR-0011).
+            // length.
             //
-            // **Every boss gets a WardenBehaviour, and V1 has exactly one boss.** That is stated
-            // rather than hidden: the moment GD §9.2's second boss is authored (M7's Choirmother,
-            // whose whole mechanic is rotating shields and a sonic cone) this line becomes a
-            // dispatch, and the honest place for it is here, where the alternative — a
-            // `switch` on a ContentId, or an attack-set enum invented for a single implementer —
-            // would be content identity in code or an abstraction guessed ahead of its second
-            // caller (AR §6). Nothing can reach it today: RunSession.Start refuses a run whose
-            // roster names a boss the catalog does not hold, and the catalog holds one.
-            (agent, _) => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+            // **Looked up by the boss's id in _bossBehaviours** (JG-04c). The indexer cannot miss:
+            // RequireAuthored refuses a run whose roster names a boss with no entry, before
+            // anything has been announced.
+            (agent, boss) => _bossBehaviours[boss.Id](agent),
             // **GD §10.2's 25 row, read at every spawn rather than pushed at the crossing**
             // (M6-04 rule 4). Optional on the constructor and never absent here: a run without a
             // meter is a fixture, and every run this class starts has one.
@@ -2155,6 +2171,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // boss whose EnemySpecId nobody authored fails one layer deeper and names the enemy
             // rather than the boss.
             RequireArchetype(boss.EnemySpecId, $"'{bossId}'");
+
+            // **And what it fights with** (JG-04c rule 2). A boss the catalog holds and no
+            // behaviour drives would stand on its fifth stage and never attack.
+            if (!_bossBehaviours.ContainsKey(bossId))
+            {
+                throw new KeyNotFoundException(
+                    $"No behaviour for the boss '{bossId}', and '{mode.Id}'s boss roster names it. "
+                        + "Nothing about this run has been announced; add it to RunSession's "
+                        + "_bossBehaviours or correct the id.");
+            }
         }
     }
 

@@ -165,9 +165,9 @@ public sealed class ContentValidationTests
     private const int ShippedOrdeals = 4;
 
     /// <summary>
-    /// The bosses the project ships — GD §9.2's Warden, with the other three at M7 (M4-02).
+    /// The bosses the project ships — GD §9.2's Warden (M4-02) and the Jungle's Old Croaker (JG-04c).
     /// </summary>
-    private const int ShippedBosses = 1;
+    private const int ShippedBosses = 2;
 
     /// <summary>
     /// The shortest telegraph GD §9.1 rule 1 permits, in seconds. <c>WardenBehaviour</c> floors
@@ -407,6 +407,66 @@ public sealed class ContentValidationTests
         }
 
         AssertNoProblems(problems, "Boss telegraph lengths (GD §9.1 rule 1)");
+    }
+
+    // ---- Old Croaker in the Jungle, over the assets that ship (JG-04c rules 3 and 4) -------------
+
+    [Test]
+    public void Jungle_Stage5_IsTheCroaker()
+    {
+        ModeSpec jungle = LoadShippedModes()["mode.jungle"];
+
+        Assert.That(jungle.TryGetBossFor(5, out ContentId bossId), Is.True, "The Jungle names no boss for stage 5.");
+        Assert.That(bossId.Value, Is.EqualTo("boss.croaker"));
+    }
+
+    [Test]
+    public void Descent_Stage5_IsTheWarden()
+    {
+        ModeSpec descent = LoadShippedModes()["mode.descent"];
+
+        Assert.That(descent.TryGetBossFor(5, out ContentId bossId), Is.True, "Descent names no boss for stage 5.");
+        Assert.That(bossId.Value, Is.EqualTo("boss.warden"));
+    }
+
+    [Test]
+    public void CroakerBoss_PhasesSummonFrogs()
+    {
+        BossSpec croaker = LoadShippedBoss("boss.croaker");
+
+        Assert.That(croaker.EnemySpecId.Value, Is.EqualTo("enemy.croaker"));
+        Assert.That(croaker.Phases, Has.Count.EqualTo(3));
+        Assert.That(croaker.Phases[0].EntersBelow, Is.EqualTo(1f));
+        Assert.That(croaker.Phases[0].Summons, Is.Empty, "Phase 1 calls in nothing.");
+        Assert.That(croaker.Phases[1].EntersBelow, Is.EqualTo(0.66f));
+        Assert.That(croaker.Phases[2].EntersBelow, Is.EqualTo(0.33f));
+
+        AddWave second = croaker.Phases[1].Summons[0];
+        AddWave third = croaker.Phases[2].Summons[0];
+
+        Assert.That(croaker.Phases[1].Summons, Has.Count.EqualTo(1));
+        Assert.That(second.SpecId.Value, Is.EqualTo("enemy.frog"));
+        Assert.That(second.Count, Is.EqualTo(3));
+        Assert.That(croaker.Phases[2].Summons, Has.Count.EqualTo(1));
+        Assert.That(third.SpecId.Value, Is.EqualTo("enemy.frog"));
+        Assert.That(third.Count, Is.EqualTo(4));
+    }
+
+    private static BossSpec LoadShippedBoss(string id)
+    {
+        foreach (string path in PathsOf<BossDefinition>())
+        {
+            var definition = AssetDatabase.LoadAssetAtPath<BossDefinition>(path);
+
+            if (definition != null && definition.ToSpec().Id.Value == id)
+            {
+                return definition.ToSpec();
+            }
+        }
+
+        Assert.Fail($"No BossDefinition on disk holds '{id}'.");
+
+        return null;
     }
 
     // ---- GD §15, over the modes that ship (M6-01a rule 3) ----------------------------------------

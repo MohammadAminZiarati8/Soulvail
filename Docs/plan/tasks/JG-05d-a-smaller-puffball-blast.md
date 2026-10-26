@@ -49,4 +49,8 @@ Only these files change. No code changes.
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ As specified. `Puffball.asset` `_explosionRadius` 3 → 2.5. In
+`JungleTests.JunglesBloater_PlaysTheBloatersRole`, the radius row now pins the Puffball at 2.5 and the
+Bloater at 3, with two named constants. Every other row still compares the two. No other test reads
+`Puffball.asset`. `VFX_SporeBurst` is untouched: its puffs fade ~2.3 m out (JG-03b's numbers).
+Full EditMode suite after all four JG-05 tasks: 4 451, 4 449 passed / 1 failed / 1 inconclusive, both known (Traps §7).

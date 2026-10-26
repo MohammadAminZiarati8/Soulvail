@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-26, after JG-04e; JG-05a–d specced._
+_Updated 2026-10-26, after JG-05d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. **Tuned after the owner's playtest:** `Croaker.asset` 800 HP (was 3 200, the Warden's), both cooldowns 8 s, and a 2.5 s rest after every attack. **One phase**: no escalation, no summoned Frogs, a one-band boss bar (owner, 2026-10-26). |
-| **Next task** | **None named.** Four playtest fixes are specced, JG-05a–d (ROADMAP): arrows that miss a Pitcher pinned to a wall, a slower Frog hop, Old Croaker hopping instead of walking, a 2.5 m Puffball blast. Built only on the owner's go. |
-| **Verified** | **JG-04e: full EditMode suite 4 440: 4 438 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
+| **Last merged task** | **JG-05a–d**, the owner's playtest fixes. **a:** `EnemyView.Velocity` is what collision allowed, not what core asked for, so a Pitcher backed into a wall no longer drags the Ranger's lead (and every arrow) into the wall. **b:** the Frog sits 0.8 s between hops (was 0.3) at 1.25 m/s, each hop still ~1.6 m. **c:** Old Croaker closes in hops (`HopGait`, shared with the chaser): 0.7 s leaps, 0.75 s sits, and it slams or lashes only on the ground. **d:** the Puffball's blast is 2.5 m; the Bloater keeps 3 m. |
+| **Next task** | **None named.** The mud hazard is JG-04e's "next, if the owner wants it". Built only on the owner's go. |
+| **Verified** | **JG-05d: full EditMode suite 4 451: 4 449 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
 ## What works
 
@@ -71,7 +71,10 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    frog toward you and brightens, the tongue lashes as it flashes, and one sidestep avoids it. The strip
    is a rectangle, not an ellipse, and is gone a moment later.
    Old Croaker dies in about a minute and rests a couple of seconds between attacks.
-14. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+14. **JG-05**: a Pitcher backed into a wall takes every arrow; Frogs hop, sit visibly, hop again; Old
+   Croaker never walks (hop, sit, hop, then lands and slams), and never lashes from mid-air; a
+   Puffball's ring is smaller and two steps back clear its burst.
+15. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

@@ -75,6 +75,12 @@ public sealed class JungleTests
     /// <summary>The Frog's leap speed before JG-05b, in m/s: 2 × (0.5 + 0.3) / 0.5. JG-05b keeps it.</summary>
     private const float FrogLeapSpeed = 3.2f;
 
+    /// <summary>The Puffball's blast since JG-05d, in metres; its spores are ~2.3 m out when they fade.</summary>
+    private const float PuffballBlastRadius = 2.5f;
+
+    /// <summary>The Bloater's blast, unchanged by JG-05d, in metres.</summary>
+    private const float BloaterBlastRadius = 3f;
+
     /// <summary>The Pitcher's spit since JG-02, in m/s: two seconds across its 14 m standoff.</summary>
     private const float PitcherSpitSpeed = 7f;
 
@@ -189,7 +195,9 @@ public sealed class JungleTests
         Assert.That(ours.Projectile, Is.Null);
         Assert.That(bloater.Projectile, Is.Null);
         Assert.That(ours.Explosion, Is.Not.Null);
-        Assert.That(ours.Explosion.Radius, Is.EqualTo(bloater.Explosion.Radius), "The 3 m blast its spores are drawn inside.");
+        Assert.That(ours.Explosion.Radius, Is.EqualTo(PuffballBlastRadius),
+            "The Puffball's blast parted from the Bloater's in JG-05d (owner, 2026-10-26: a bit less).");
+        Assert.That(bloater.Explosion.Radius, Is.EqualTo(BloaterBlastRadius), "Descent's Bloater keeps its 3 m.");
     }
 
     [TestCase(FrogPath, FrogBodyPath)]

@@ -47,7 +47,7 @@ _No milestone. The owner is setting the next direction._
 
 **The Lunger: a panther** (owner, 2026-10-27). Specs for the owner to OK; each built only on the owner's go. a and b are independent; c needs b, d needs a and c.
 
-- [ ] **JG-07a** — The Lunger dashes down a lane: `LungerBehaviour` stalks, warns with a lane for 0.9 s, dashes 12 m; lanes carry a tongue flag (M) · [spec](tasks/JG-07a-the-lunger-dashes-down-a-lane.md)
-- [ ] **JG-07b** — The Panther's model: the TRELLIS sculpt cut to the crowd's budget, repainted on the atlas, on `Rig_Panther` with six clips (M) · [spec](tasks/JG-07b-the-panthers-model.md)
+- [x] **JG-07a** — The Lunger dashes down a lane: `LungerBehaviour` stalks, warns with a lane for 0.9 s, dashes 12 m; lanes carry a tongue flag (M) · [spec](tasks/JG-07a-the-lunger-dashes-down-a-lane.md)
+- [x] **JG-07b** — The Panther's model: the TRELLIS sculpt cut to the crowd's budget, repainted on the atlas, on `Rig_Panther` with six clips (M) · [spec](tasks/JG-07b-the-panthers-model.md)
 - [ ] **JG-07c** — The Panther's body: prefab and animator, crouch on the wind-up, bound through the dash; the tongue only down a tongue's lane (M) · [spec](tasks/JG-07c-the-panthers-body.md)
 - [ ] **JG-07d** — Panthers in the Jungle: `enemy.panther` from stage 6, stage 6 scripted as 2 Panthers (M) · [spec](tasks/JG-07d-panthers-in-the-jungle.md)

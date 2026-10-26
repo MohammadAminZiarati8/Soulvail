@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-27, after specing JG-07._
+_Updated 2026-10-27, after JG-07a and b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **Open Jungle arenas** (owner's call, no spec): both Jungle arenas (Hollow, Clearing) lose their four cover pieces — two buttress trunks, a ruined pillar and a broken wall — and the green leaf-fall; NavMeshes rebaked. GD §7.2 now allows an arena no cover or 3–6 pieces; Descent's arenas keep theirs. |
-| **Next task** | **JG-07a–d**, the Lunger as a panther: specced for the owner to OK, built only on the owner's go. The fixed TRELLIS sculpt waits in `Resources/…/Panter/`. |
-| **Verified** | **Open Jungle arenas: full EditMode suite 4 475: 4 473 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
+| **Last merged task** | **JG-07a–b**. **a:** `LungerBehaviour` warns with a lane for 0.9 s, then dashes its 12 m; lanes carry a tongue flag. **b:** `Panther.fbx` from the TRELLIS sculpt (`panther.py`), 2,300 tris, six clips. No Lunger is authored yet. |
+| **Next task** | **JG-07c** (the body), then **JG-07d** (stage 6). Built only on the owner's go. |
+| **Verified** | **JG-07a–b: full EditMode suite 4 500: 4 498 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), in batch mode (`Unity.exe -batchmode -runTests`; the Editor was closed). |
 
 ## What works
 
@@ -82,7 +82,8 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    front, the floor clear inside it; it sinks away at its reach. The Warden's slam draws the same.
 18. **Open Jungle arenas**: every Jungle stage, both rooms, has an open floor — no trunks, pillar or
    broken wall inside — and no green flakes falling; enemies still path to you round the edges.
-19. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+19. **JG-07b**: preview `Art/Enemies/Panther.fbx` (or `panther.py`'s pose sheet): a smooth dark cat, tail straight back. **Rule whether the sculpt stays.**
+20. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

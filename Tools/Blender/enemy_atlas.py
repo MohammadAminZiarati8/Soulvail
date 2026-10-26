@@ -1,12 +1,12 @@
 """The shared enemy atlas, T_Enemy_Albedo: every enemy body samples it through M_Enemy (M7-05f).
 
-Imported by each body's script (rootling.py, frog.py, pitcher.py, puffball.py, croaker.py), and each writes the whole atlas, so a
+Imported by each body's script (rootling.py, frog.py, pitcher.py, puffball.py, croaker.py, panther.py), and each writes the whole atlas, so a
 re-run of any leaves the same bytes. A body's swatches are added here, never in its own script, which is
 what keeps one body's re-run from erasing another's columns.
 
 The layout is M7-05b's at half the size: 512 px square in 64 x 128 px strips, each a vertical gradient
-from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 the Puffball's, and the
-last two cells of column 7 Old Croaker's, which fills the atlas.
+from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 the Puffball's, the
+last two cells of column 7 Old Croaker's, and the last two of column 1 the Panther's, which fills the atlas.
 """
 
 import os
@@ -59,6 +59,11 @@ SWATCHES = {
     # Every other part of it wears a swatch above (croaker.py's docstring lists them).
     "croak_skin": (7, 2, "98BE42", "56862A"),
     "croak_moss": (7, 3, "7A9A36", "41601F"),
+    # The Panther (JG-07b): a dusky moss-charcoal coat and a paler grey belly and muzzle, in the two cells
+    # the Rootling left free beside its own. Its rosettes wear the Rootling's socket, its eyes the Frog's
+    # green, its pupils and nose the Frog's pupil and its mouth the Frog's: the atlas is full after it.
+    "panther_fur": (1, 2, "5E6A52", "2E3529"),
+    "panther_belly": (1, 3, "9A9C8C", "6A6C5E"),
 }
 SWATCH_NAMES = list(SWATCHES)
 

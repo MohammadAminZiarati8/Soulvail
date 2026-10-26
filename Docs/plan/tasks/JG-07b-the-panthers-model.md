@@ -113,4 +113,39 @@ Rule 1 is checked by hand: a re-run of each script and a byte compare. The scrip
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-27. Rules 1–7 hold; three deviations and two findings.
+
+- **A voxel remesh before the decimation (not in Why this shape).** The sculpt's head is a tangle of
+  open and non-manifold shells (fix_glb.py leaves 2,584 such edges), and a collapse will not touch them.
+  It stalled at 6,600 triangles with 5,000 in the head, and TRELLIS's UV seams blocked it as well. The
+  decimated copy drops its UVs, is remeshed at 12 mm into one closed surface, then collapsed: **2,300
+  triangles, 1,152 vertices**. The closed shell is also what the skinning weighs.
+- **The skin is weighted by distance to each bone's segment, within the region that bone may move**
+  (a leg's own quadrant below the shoulder, the tail behind the rump, the jaw under the muzzle): at most
+  three bones, normalised. Heat weighting was not tried; this is deterministic and can't fail on a
+  shell. The legs are posed by two-bone IK, so Prowl's and Crouch's planted feet stay planted.
+- **Rule 7 is measured against the full height (to the ears), not the shoulder**, because a mesh's
+  bounds can't find a shoulder. That is the stricter reading. Built: **2.18 m long (tail straight
+  behind), 1.03 m tall, 0.74 m wide**: 2.12 and 2.95, against 2 and 2.5.
+
+**The repaint**: 1,893 faces coat, 341 belly and muzzle, 62 rosette, 4 eye. Two majority passes join
+the rosettes into patches. Mean luma 0.33, saturation 0.21. The tail was swung 54° straight back,
+eased in over its first 5 cm. The body was re-centred 0.066 sculpt units off its own X, and scaled ×1.95
+so nose to rump is 1.52 m.
+
+**Findings for JG-07c.** (1) Nose to rump is 1.52 m, just under JG-07c rule 5's 1.6–2.0 m, and the back
+at the shoulder about 0.94 m, inside its 0.7–0.95 m. That rule was written before the model existed:
+JG-07c either takes its length range from this model or scales the prefab, and says which. A scale of
+1.06 reaches 1.6 m but puts the shoulder at 1.0 m. (2) `STRIDE` is
+0.72 m over Prowl's 0.8 s, so `_strideSpeed` is 0.9 m/s.
+
+**Owner's call (manual step 1):** the pose sheet reads darker than the swatch's numbers suggest. The
+coat's light end, `5E6A52`, sits near the floor's luma, and the cat stands off the floor by its darker
+flanks. Death ends nearer belly-up than on its side. Whether the sculpt stays or the shells fallback
+is wanted is the owner's ruling there.
+
+**Verified:** `PantherModelTests` 8 of 8 in the batch-mode suite (JG-07a's *As built* has the run).
+Rule 1: a second run of `panther.py` differs from the first in 2 bytes of the FBX, its timestamp, and
+`puffball.py` re-run writes a byte-identical atlas. The `.fbx.meta` was written by hand from the
+Puffball's (Generic, own avatar, `M_Enemy` remap, six clips, three looping), because the Editor was
+closed; the importer read it as written.

@@ -13,7 +13,7 @@ _Updated 2026-10-26, after JG-05d._
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
 | **Last merged task** | **JG-05a–d**, the owner's playtest fixes. **a:** `EnemyView.Velocity` is what collision allowed, not what core asked for, so a Pitcher backed into a wall no longer drags the Ranger's lead (and every arrow) into the wall. **b:** the Frog sits 0.8 s between hops (was 0.3) at 1.25 m/s, each hop still ~1.6 m. **c:** Old Croaker closes in hops (`HopGait`, shared with the chaser): 0.7 s leaps, 0.75 s sits, and it slams or lashes only on the ground. **d:** the Puffball's blast is 2.5 m; the Bloater keeps 3 m. |
-| **Next task** | **None named.** The mud hazard is JG-04e's "next, if the owner wants it". Built only on the owner's go. |
+| **Next task** | **JG-06a–c**, Old Croaker's effects (specced 2026-10-26): the tongue drawn to the lane's end, a shake and earth burst on each landing, the shockwave as an earth wave. Built only on the owner's go. |
 | **Verified** | **JG-05d: full EditMode suite 4 451: 4 449 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
 ## What works

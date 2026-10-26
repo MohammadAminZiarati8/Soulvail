@@ -451,7 +451,7 @@ public sealed class BossViews : IDisposable
 
         ShockwaveView view = _shockwavePool.Get();
 
-        view.Bind(evt.Origin.ToUnity(), evt.Speed, evt.MaxRadius);
+        view.Bind(evt.Origin.ToUnity(), evt.Speed, evt.MaxRadius, evt.Thickness);
 
         _shockwaves[evt.Id] = view;
         _lastRadius[evt.Id] = 0f;

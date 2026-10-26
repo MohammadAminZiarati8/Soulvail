@@ -113,6 +113,17 @@ public sealed class ShockwaveAndFissureTests
     }
 
     [Test]
+    public void Emit_CarriesThickness()
+    {
+        // JG-06c rule 5: a view draws the band core bites with, so the event must say how wide.
+        Emit(new Vector3(1f, 0f, 1f));
+
+        Assert.That(
+            _events.Single<ShockwaveEmitted>().Thickness,
+            Is.EqualTo(WardenBehaviour.ShockwaveThickness).Within(Tolerance));
+    }
+
+    [Test]
     public void Shock_RadiusIsAbsoluteRatherThanAccumulated()
     {
         Emit(Vector3.Zero);

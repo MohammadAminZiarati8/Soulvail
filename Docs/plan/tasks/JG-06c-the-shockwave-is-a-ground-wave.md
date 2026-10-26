@@ -89,3 +89,43 @@ namespace Soulvail.Game.Views
 
 - Changing the ring's speed, reach or damage. Ground decals or cracks left behind.
 - The fissure's circle (the landing marker), which keeps its look.
+
+## As built
+
+_2026-10-26._ `ShockwaveView` is rewritten. The body is no longer a scaled quad turned flat. Its
+transform stays at identity and unit scale, the root's `MeshFilter` takes a runtime band mesh, and a
+`Lip` child (`M_Impact`) takes the lip mesh. Both are rebuilt each step. `Radius` stays `Speed × age`,
+capped, so `BossViews`' hazard sweep is unchanged.
+
+- **The band is centred on the edge, not trailing it (rule 1 resolved against the code).**
+  `ShockwaveSystem.Bite` hurts out to `radius + thickness/2`. So `OuterRadius` = min(`Radius` + T/2,
+  `MaxRadius`) and `InnerRadius` = max(0, `Radius` − T/2). The outer rim is the circle core bites, as the
+  spec's goal says. The spec's literal "outer = Speed × age" would draw it 0.6 m short.
+- **No new material.** The band stays on `M_TelegraphRing`. Every UV samples
+  `T_TelegraphRing_Mask`'s solid rim, which is opaque from 0.475 out and 45 % alpha inside. The first render
+  mapped UVs like the old disc and showed a faint brown strip under the lip.
+- **The lip** has a crest at `OuterRadius`, `LipHeight` 0.35 m high. It slopes down to the ground
+  `LipDepth` 0.4 m behind and drops steeply `LipFront` 0.1 m ahead. The spec had no depth, and 0.7 m covered
+  most of the band. Faces are shaded by which way they look against a fixed light. Earth is `6E4E30` and
+  `30 20 12`, written dark because vertex colours come out lighter here. 16 grit tetrahedra hop off the crest at 3 Hz
+  and land 0.8 m behind it.
+- **Fade:** `Strength` drops linearly over the last `_fadeFraction`, now 0.2 (was 0.3) on the
+  prefab and the initialiser. It scales the band's alpha and the lip's height alike.
+- **`ShockwaveEmitted.Thickness`** is an optional last constructor parameter (default 0), so every
+  existing publisher compiles. `ShockwaveSystem.Emit` passes its `thickness`. A view handed 0 draws the
+  edge alone, `EdgeOnlyBand` 0.5 m behind it. `Bind` takes `thickness = 0`.
+- `_quad` is renamed `_band` with `[FormerlySerializedAs("_quad")]`. The prefab is re-saved with the
+  `Lip` child, `_lip` and the fade.
+
+**Deviations (said here):** the band geometry above (rule 1), `LipDepth`, `LipFront`, `EdgeOnlyBand` and
+`Strength` are not in the API block. `BossViewTests` ripple: the fixture sets `_band`, and the two rows
+that read `localScale` (a disc's diameter) now read `OuterRadius`, and `Views_LieFlatAndHoldNoCamera`
+checks the ring is upright with every band vertex at y = 0 instead of a quad's face pointing up. `ShockwaveViewTests` adds
+`Bind_NoThickness_DrawsTheEdgeAlone` and `Prefab_IsDressed`. Manual step 1's "stepping inside the band
+after it passes is safe" was wrong for core and is not claimed. A body inside the ring that was
+never hit is still bitten.
+
+**Verified.** Renders at 0.3 s and 0.6 s beside `Croaker.prefab` at 2.2× from the game's 57°: a red-orange
+band running out with an earth ridge and grit on its front edge, and the green floor clear inside it.
+**Full EditMode suite 4 475: 4 473 passed / 1 failed / 1 inconclusive**, both known (Traps §7). No compiler
+error or warning, and `dotnet format whitespace` is clean on the seven .cs files.

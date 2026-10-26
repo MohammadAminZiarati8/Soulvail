@@ -123,7 +123,7 @@ public sealed class BossViewTests
     [SetUp]
     public void CreateCensus()
     {
-        _shockwavePrefab = Decal<ShockwaveView>("ShockwavePrefab", "_quad");
+        _shockwavePrefab = Decal<ShockwaveView>("ShockwavePrefab", "_band");
         _fissurePrefab = Decal<FissureView>("FissurePrefab", "_quad");
         _beatPrefab = Decal<BossBeatView>("BeatPrefab", "_shell");
 
@@ -195,7 +195,7 @@ public sealed class BossViewTests
 
         // From nothing. A ring that appeared at its ceiling would have already passed the player.
         Assert.That(ring.Radius, Is.Zero);
-        Assert.That(ring.transform.localScale.x, Is.Zero);
+        Assert.That(ring.OuterRadius, Is.Zero, "No thickness on the event: the edge alone, at nothing.");
 
         // Both numbers came off the event and neither is a constant in Soulvail.Game.
         Assert.That(ring.Speed, Is.EqualTo(RingSpeed).Within(1e-4f));
@@ -213,11 +213,11 @@ public sealed class BossViewTests
 
         _views.Step(0.25f);
 
-        // 8 m/s for a quarter of a second is two metres, and the drawn diameter is twice that. This
-        // is the row that would fail if a view ever re-declared WardenBehaviour's constants instead
-        // of reading the event: any other speed lands somewhere other than 2.
+        // 8 m/s for a quarter of a second is two metres, and the drawn rim is there. This is the row
+        // that would fail if a view ever re-declared WardenBehaviour's constants instead of reading
+        // the event: any other speed lands somewhere other than 2.
         Assert.That(ring.Radius, Is.EqualTo(2f).Within(1e-3f));
-        Assert.That(ring.transform.localScale.x, Is.EqualTo(4f).Within(1e-3f));
+        Assert.That(ring.OuterRadius, Is.EqualTo(2f).Within(1e-3f));
     }
 
     [Test]
@@ -623,12 +623,23 @@ public sealed class BossViewTests
         _views.TryGetFissure(1, out FissureView crack);
 
         // A quad's face is its local −Z, so a decal lying on the floor has that pointing at the sky.
-        foreach (Component decal in new Component[] { ring, crack })
+        Assert.That(
+            UnityEngine.Vector3.Dot(-crack.transform.forward, UnityEngine.Vector3.up),
+            Is.EqualTo(1f).Within(1e-3f),
+            "The fissure must lie on the arena floor, not stand up in it.");
+
+        // The ring is a mesh built flat in its own XZ since JG-06c: upright, and every band vertex on
+        // the ground.
+        Assert.That(
+            UnityEngine.Vector3.Dot(ring.transform.up, UnityEngine.Vector3.up),
+            Is.EqualTo(1f).Within(1e-3f),
+            "The ring must not be tilted out of the floor.");
+
+        _views.Step(0.2f);
+
+        for (int i = 0; i < ShockwaveView.Segments * 2; i++)
         {
-            Assert.That(
-                UnityEngine.Vector3.Dot(-decal.transform.forward, UnityEngine.Vector3.up),
-                Is.EqualTo(1f).Within(1e-3f),
-                $"{decal.GetType().Name} must lie on the arena floor, not stand up in it.");
+            Assert.That(ring.BandVertex(i).y, Is.Zero, "The band lies on the arena floor.");
         }
 
         // And none of the three can billboard, which is why rather than a promise that they do not:

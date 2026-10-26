@@ -221,7 +221,7 @@ public sealed class ShockwaveSystem
 
         // After the entry exists, so a listener reading ActiveCount from inside it counts this one
         // — ZoneSystem.Spawn's rule, one layer over.
-        _events.Publish(new ShockwaveEmitted(id, origin, speed, maxRadius));
+        _events.Publish(new ShockwaveEmitted(id, origin, speed, maxRadius, thickness));
 
         return id;
     }

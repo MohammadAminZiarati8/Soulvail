@@ -43,4 +43,4 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **JG-06a** — The tongue reaches down the lane: a drawn tongue shoots to the lane's end on `LaneFired` (S) · [spec](tasks/JG-06a-the-tongue-reaches-down-the-lane.md)
 - [x] **JG-06b** — The slam lands heavy: camera shake and an earth-and-dust burst on every `ShockwaveEmitted` (M) · [spec](tasks/JG-06b-the-slam-lands-heavy.md)
-- [ ] **JG-06c** — The shockwave is a ground wave: a band as wide as the bite, with an earth lip on its edge (M) · [spec](tasks/JG-06c-the-shockwave-is-a-ground-wave.md)
+- [x] **JG-06c** — The shockwave is a ground wave: a band as wide as the bite, with an earth lip on its edge (M) · [spec](tasks/JG-06c-the-shockwave-is-a-ground-wave.md)

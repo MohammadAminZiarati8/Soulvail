@@ -12,9 +12,9 @@ _Updated 2026-10-26, after JG-05d._
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-06a–b**, Old Croaker's effects. **a:** when a lash fires, a drawn pink tongue (`TongueView`, `VFX_Tongue`) shoots from the mouth to the lane's far end (8.1 m), holds, and snaps back in 0.38 s. Before, the modelled tongue reached a few metres and the lane bit 9 m out. **b:** every `ShockwaveEmitted` (Old Croaker's landing, the Warden's slam) kicks a 0.4 s camera thud (`CameraShake`, added on top of `FollowCamera`'s follow) and throws an earth-and-dust burst (`SlamDustView`, `VFX_SlamDust`) out to 4.5 m. |
-| **Next task** | **JG-06c**, the shockwave as an earth wave. The owner gave the go for all three on 2026-10-26. |
-| **Verified** | **JG-06b: full EditMode suite 4 467: 4 465 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
+| **Last merged task** | **JG-06a–c**, Old Croaker's effects. **a:** a lash shoots a drawn pink tongue (`TongueView`) from the mouth to the lane's end (8.1 m) and back in 0.38 s. **b:** every `ShockwaveEmitted` (also the Warden's) kicks a 0.4 s camera thud (`CameraShake` on `FollowCamera`) and an earth-and-dust burst (`SlamDustView`) out to 4.5 m. **c:** the ring is a red band exactly core's bite wide (`ShockwaveEmitted.Thickness`), with an earth ridge and grit on its front edge. |
+| **Next task** | **None named.** The mud hazard is JG-04e's "next, if the owner wants it". Built only on the owner's go. |
+| **Verified** | **JG-06c: full EditMode suite 4 475: 4 473 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
 ## What works
 
@@ -78,7 +78,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    shoots from the frog's mouth to the strip's end and snaps back.
 16. **JG-06b**: every Old Croaker landing thuds. The view jolts and settles in under half a second, and earth
    chunks and dust burst from round its feet. Descent's Warden slam does the same. Pausing mid-shake holds it.
-17. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+17. **JG-06c**: after a landing, a red band about a metre wide runs out with an earth ridge and grit on its
+   front, the floor clear inside it; it sinks away at its reach. The Warden's slam draws the same.
+18. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

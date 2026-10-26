@@ -181,12 +181,20 @@ public readonly struct ShockwaveEmitted
     /// <summary>How far it reaches before it is over. Beyond this is the safe ground.</summary>
     public readonly float MaxRadius;
 
-    public ShockwaveEmitted(int id, Vector3 origin, float speed, float maxRadius)
+    /// <summary>
+    /// The band's width in metres (JG-06c): its front edge, the part that bites, is half of this
+    /// ahead of <c>Speed × age</c>. Zero from a publisher that did not say, which a view draws as
+    /// the edge alone.
+    /// </summary>
+    public readonly float Thickness;
+
+    public ShockwaveEmitted(int id, Vector3 origin, float speed, float maxRadius, float thickness = 0f)
     {
         Id = id;
         Origin = origin;
         Speed = speed;
         MaxRadius = maxRadius;
+        Thickness = thickness;
     }
 }
 

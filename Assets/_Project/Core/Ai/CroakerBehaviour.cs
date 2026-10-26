@@ -102,8 +102,15 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// <summary>How close the player must be for a slam, in metres.</summary>
     public const float SlamRange = 8f;
 
-    /// <summary>Simulated seconds from one attack's first take-off to the next's.</summary>
-    public const float SlamCooldown = 5f;
+    /// <summary>Simulated seconds from one slam's first take-off to the next's.</summary>
+    public const float SlamCooldown = 8f;
+
+    /// <summary>
+    /// Simulated seconds of rest after any attack ends — the recover after a slam, the end of a
+    /// lash — before the next may start. What keeps the lash from following the slam at once
+    /// (owner's playtest, 2026-10-26: the attacks came too fast).
+    /// </summary>
+    public const float AttackGapSeconds = 2.5f;
 
     /// <summary>
     /// How long each hop telegraphs, in seconds: <c>Croaker.fbx</c>'s Slam impact, frame 27 at
@@ -124,7 +131,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     public const float LashRange = 9f;
 
     /// <summary>Simulated seconds from one lash's wind-up to the next's.</summary>
-    public const float LashCooldown = 4f;
+    public const float LashCooldown = 8f;
 
     /// <summary>How far the lane runs from the mouth, in metres.</summary>
     public const float LashLength = 9f;
@@ -185,6 +192,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
     /// <summary>The simulated second the next lash is legal at — absolute, never counted down.</summary>
     private float _nextLashAt;
+
+    /// <summary>The simulated second any attack is legal at: the last one's end plus the gap.</summary>
+    private float _nextAttackAt;
 
     /// <summary>The boss phase this behaviour last acted in; a change is a croak.</summary>
     private int _seenPhase;
@@ -259,6 +269,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// <summary>The simulated second the next lash is legal at. Zero before the first one.</summary>
     public float NextLashAt => _nextLashAt;
 
+    /// <summary>The simulated second the next attack of either kind is legal at. Zero before the first.</summary>
+    public float NextAttackAt => _nextAttackAt;
+
     /// <summary>How many hops the slam in progress makes; 0 before the first.</summary>
     public int HopCount => _hopCount;
 
@@ -313,6 +326,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         _nextSlamAt = 0f;
         _nextLashAt = 0f;
+        _nextAttackAt = 0f;
         _seenPhase = 0;
         _hopCount = 0;
         _hopsLanded = 0;
@@ -345,8 +359,12 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         float distance = blackboard.DistanceToPlayer;
 
+        // Resting after the last attack: it still closes, but nothing starts.
+        bool rested = _now >= _nextAttackAt;
+
         // The slam is cooling, so the lash cannot steal a slam's turn: it only fills the gap.
-        if (_now < _nextSlamAt
+        if (rested
+            && _now < _nextSlamAt
             && _now >= _nextLashAt
             && distance >= LashMinRange
             && distance <= LashRange
@@ -363,7 +381,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         {
             Stand();
 
-            if (_now >= _nextSlamAt)
+            if (rested && _now >= _nextSlamAt)
             {
                 _machine.Transition(CroakerState.Slam);
             }
@@ -515,6 +533,8 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         if (blackboard.StateTimer >= LashTelegraphSeconds)
         {
+            _nextAttackAt = _now + AttackGapSeconds;
+
             _machine.Transition(CroakerState.Approach);
         }
     }
@@ -559,6 +579,8 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         if (blackboard.StateTimer >= RecoverSeconds)
         {
+            _nextAttackAt = _now + AttackGapSeconds;
+
             _machine.Transition(CroakerState.Approach);
         }
     }

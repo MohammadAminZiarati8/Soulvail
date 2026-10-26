@@ -12,7 +12,7 @@ _Updated 2026-10-26, after JG-04e._
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. |
+| **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. **Tuned after the owner's playtest:** `Croaker.asset` 800 HP (was 3 200, the Warden's), both cooldowns 8 s, and a 2.5 s rest after every attack. |
 | **Next task** | **None named.** JG-04 is done. The mud hazard is the spec's "next, if the owner wants it". Built only on the owner's go. |
 | **Verified** | **JG-04e: full EditMode suite 4 440: 4 438 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
@@ -70,6 +70,7 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
 13. **JG-04e**: on Jungle stage 5, stand mid-range (3–9 m) after a slam. A red-orange strip runs from the
    frog toward you and brightens, the tongue lashes as it flashes, and one sidestep avoids it. The strip
    is a rectangle, not an ellipse, and is gone a moment later.
+   Old Croaker dies in about a minute and rests a couple of seconds between attacks.
 14. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 

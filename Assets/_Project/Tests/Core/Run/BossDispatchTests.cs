@@ -219,7 +219,7 @@ public sealed class BossDispatchTests
         new[] { new BossPhaseSpec(1f) },
         1.5f);
 
-    /// <summary><c>Warden.asset</c>'s numbers, which <c>Croaker.asset</c> shares until it is tuned.</summary>
+    /// <summary><c>Warden.asset</c>'s numbers, for both bodies: these rows are about dispatch, not tuning.</summary>
     private static EnemySpec Body(string id) => new EnemySpec(
         new ContentId(id),
         new LocKey(id + ".name"),

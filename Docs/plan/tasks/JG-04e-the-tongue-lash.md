@@ -87,6 +87,8 @@ lash. `Tick_AllocatesNothing` ticks a `LaneSystem` too, and its cycle runs both 
 reads `CroakerBehaviour.LashTelegraphSeconds`. No `BossViews` lane test: the spec lists none. The strip
 is unverified on screen (manual step 1).
 
+**Tuned after the owner's playtest (same day):** the fight was too long and the attacks came too fast. `Croaker.asset` `_maxHp` is 800, down from 3 200 (about 1 000 at stage 5, against the Ranger's ~15 DPS standing). `SlamCooldown` and `LashCooldown` are 8 s, up from 5 and 4. A new `AttackGapSeconds` = 2.5 s rest starts when the recover or a lash ends, before any attack may start. Rule 4's 4 s is superseded.
+
 **Verified.** Full EditMode suite through `TestRunnerApi`: **4 440: 4 438 passed / 1 failed / 1
 inconclusive**, the two known rows. All six new rows pass. No compiler error or warning.
 `dotnet format whitespace` is clean on all eight .cs files.

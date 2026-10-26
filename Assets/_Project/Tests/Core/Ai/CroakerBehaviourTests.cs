@@ -335,6 +335,10 @@ public sealed class CroakerBehaviourTests
         RunOutTheSlam(croaker);
 
         Assert.That(croaker.NextSlamAt, Is.GreaterThan(_clock), "Sanity: the slam is cooling.");
+        Assert.That(
+            croaker.NextAttackAt,
+            Is.EqualTo(_clock - Frame + CroakerBehaviour.AttackGapSeconds).Within(Tolerance),
+            "The recover's end starts the rest.");
 
         // Too close, then too far: no lash.
         Place(distance: CroakerBehaviour.LashMinRange - 0.5f);
@@ -346,14 +350,24 @@ public sealed class CroakerBehaviourTests
         Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach));
         Assert.That(_lanes.ActiveCount, Is.Zero, "Outside 3–9 m the tongue stays in.");
 
-        // Mid-range while the slam cools: the lash.
+        // Mid-range while the slam cools: the lash — but only once the rest after the slam is over.
         Place(distance: 6f);
 
         _events.Clear();
+
         float windup = _clock;
-        Tick(croaker);
+
+        for (int i = 0; i < 40 && croaker.State != CroakerState.Lash; i++)
+        {
+            windup = _clock;
+            Tick(croaker);
+        }
 
         Assert.That(croaker.State, Is.EqualTo(CroakerState.Lash));
+        Assert.That(
+            windup,
+            Is.EqualTo(croaker.NextAttackAt).Within(Frame + Tolerance),
+            "It waits out the rest after the slam, then lashes on the first legal tick.");
 
         EnemyTelegraph telegraph = _events.Single<EnemyTelegraph>();
 
@@ -371,7 +385,10 @@ public sealed class CroakerBehaviourTests
         LaneArmed armed = _events.Single<LaneArmed>();
 
         Assert.That(armed.ArmSeconds, Is.EqualTo(0.8f).Within(Tolerance), "It bites as the telegraph ends.");
-        Assert.That(croaker.NextLashAt, Is.EqualTo(windup + 4f).Within(Tolerance), "4 s cooldown.");
+        Assert.That(
+            croaker.NextLashAt,
+            Is.EqualTo(windup + CroakerBehaviour.LashCooldown).Within(Tolerance),
+            "From the wind-up.");
 
         // The player sidesteps; the lane was aimed at the wind-up's start and does not follow.
         _driven.Blackboard.DirectionToPlayer = Vector2.Normalize(new Vector2(1f, 1f));
@@ -383,6 +400,10 @@ public sealed class CroakerBehaviourTests
             _clock - windup,
             Is.EqualTo(CroakerBehaviour.LashTelegraphSeconds).Within((2f * Frame) + Tolerance),
             "Rooted for the telegraph, then back to approaching.");
+        Assert.That(
+            croaker.NextAttackAt,
+            Is.EqualTo(_clock - Frame + CroakerBehaviour.AttackGapSeconds).Within(Tolerance),
+            "The lash's end starts the rest too.");
 
         // On cooldown: the next ticks hold the tongue until the slam is ready again.
         Place(distance: 6f);
@@ -393,7 +414,7 @@ public sealed class CroakerBehaviourTests
         {
             Tick(croaker);
 
-            Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach), "The lash is cooling.");
+            Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach), "Resting, and the lash is cooling.");
         }
 
         Assert.That(_events.Count<LaneArmed>(), Is.Zero);

@@ -667,6 +667,7 @@ public sealed class BossViews : IDisposable
         strip.Origin = evt.Origin.ToUnity();
         strip.Direction = new Vector2(evt.Direction.X, evt.Direction.Y);
         strip.Length = evt.Length;
+        strip.Tongue = evt.Tongue;
 
         var direction = new Vector3(evt.Direction.X, 0f, evt.Direction.Y);
         Vector3 origin = evt.Origin.ToUnity();
@@ -694,15 +695,20 @@ public sealed class BossViews : IDisposable
     }
 
     /// <summary>
-    /// The tongue has struck: the strip flashes, hit or miss, for the fissure's reason, and a tongue
-    /// shoots down it to the lane's end (JG-06a).
+    /// The lane has bitten: the strip flashes, hit or miss, for the fissure's reason, and on a lane armed
+    /// with a tongue one shoots down it to the lane's end (JG-06a). A Lunger's lane has none; the
+    /// dash is its body (JG-07c rule 7).
     /// </summary>
     private void OnLaneFired(LaneFired evt)
     {
         if (_lanes.TryGetValue(evt.Id, out LaneStrip strip))
         {
             FireLane(strip);
-            ShootTongue(strip);
+
+            if (strip.Tongue)
+            {
+                ShootTongue(strip);
+            }
         }
     }
 
@@ -1028,5 +1034,8 @@ public sealed class BossViews : IDisposable
         public Vector2 Direction { get; set; }
 
         public float Length { get; set; }
+
+        /// <summary>Whether a tongue strikes down it, from <c>LaneArmed</c> (JG-07c rule 7).</summary>
+        public bool Tongue { get; set; }
     }
 }

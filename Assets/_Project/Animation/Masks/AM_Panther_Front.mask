@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AM_Panther_Front
+  m_Mask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 0
+  - m_Path: Panther_Body
+    m_Weight: 0
+  - m_Path: Rig_Panther
+    m_Weight: 0
+  - m_Path: Rig_Panther/root
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest
+    m_Weight: 1
+  - m_Path: Rig_Panther/root/hips/spine/chest/neck
+    m_Weight: 1
+  - m_Path: Rig_Panther/root/hips/spine/chest/neck/head
+    m_Weight: 1
+  - m_Path: Rig_Panther/root/hips/spine/chest/neck/head/jaw
+    m_Weight: 1
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.l/lower.front.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.l/lower.front.l/paw.front.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.r
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.r/lower.front.r
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/spine/chest/upper.front.r/lower.front.r/paw.front.r
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/tail_1
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/tail_1/tail_2
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/tail_1/tail_2/tail_3
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.l/lower.back.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.l/lower.back.l/paw.back.l
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.r
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.r/lower.back.r
+    m_Weight: 0
+  - m_Path: Rig_Panther/root/hips/upper.back.r/lower.back.r/paw.back.r
+    m_Weight: 0

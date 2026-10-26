@@ -88,4 +88,36 @@ None new. `BossViews.LaneStrip` gains a `Tongue` field copied from `LaneArmed`.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-27. Rules 1–7 hold; one rule taken from the model, two readings named.
+
+- **Rule 5's length comes from the model, not a scale (JG-07b finding 1).** The prefab wears
+  `Panther.fbx` at 1.0. A scale of 1.06 reaches 1.6 m nose to rump but lifts the withers past 0.95 m,
+  so the rule's range is now **1.4–1.7 m**, and the cat measures **1.52 m** long and **0.92 m** at the
+  shoulder. If the owner wants it bigger, both ranges move together.
+- **How rule 5 measures, since a mesh has no landmarks.** The rump is the `tail_1` bone, where the tail
+  leaves the body, so the straightened tail does not count. The shoulder is the top of the back
+  5–20 cm behind the front legs' top bone. Directly over that bone the head hangs over it and read
+  1.02 m in the first run. The withers are what the rule means. The bar sits at 1.4 m, 0.37 m over
+  the ears (1.03 m).
+- **The crouch is the whole clip (rule 2).** `_windupFromSeconds` 0, `_strikeSeconds` 0.9, which is
+  `Crouch`'s 27 frames at 30 fps. A 0.9 s wind-up plays it at 1x, the tail lashing from frame 9 to the
+  spring. `_strideSpeed` 0.9 (JG-07b finding 2). The Lunge point is 6 m/s, and `_hops` is off.
+- **`AC_Panther` is `AC_Puffball`'s shape** (copied, then its clips, the third blend child and the mask
+  swapped), so its parameters, transitions and the empty Flinch state are the Puffball's. Every state
+  has *Write Defaults* off. The mask's four active bones are `chest`, `neck`, `head` and `jaw`. `chest`
+  is the front legs' parent, but the legs' own entries are off, so their clip curves stay on the base
+  layer.
+- `_dissolveStretch` is 1, as on the Frog and the Puffball: a cat collapses, it does not stretch. The
+  wind-up glow is the default danger.
+- **Rule 7:** `LaneStrip` keeps `Tongue`; `OnLaneFired` flashes every strip and shoots only on a
+  tongue's. `TongueViewTests`' two lane rows now publish `tongue: true`. The two new rows sit in
+  `BossViewTests` and read the flash off the strip's property block (alpha 0.95).
+
+**Authoring route.** The Editor was closed, so the prefab, controller and mask came from a throwaway
+`Soulvail.Editor` method run once with `Unity.exe -batchmode -executeMethod`, then deleted. The FBX's
+fileIDs are the importer's to compute, not something to write by hand.
+
+**Verified:** in batch mode, the full EditMode suite ran 4 509: 4 506 passed, 2 failed, 1
+inconclusive. The known pair, plus the shoulder row above. After that fix, `PantherBodyTests`,
+`BossViewTests` and `TongueViewTests` passed 48 of 48. No compiler or analyzer warnings in the
+touched files. Format check clean.

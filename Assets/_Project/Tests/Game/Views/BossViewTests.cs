@@ -721,6 +721,35 @@ public sealed class BossViewTests
         AssertDressed<BossBeatView>(BeatPath, v => v.IsDrawable);
     }
 
+    // ---- The lane (JG-07c rule 7) -----------------------------------------------------------------
+
+    [Test]
+    public void Lane_WithoutATongue_FlashesButShootsNone()
+    {
+        // A Lunger's lane: the strip warns and flashes like Old Croaker's, and the dash is the body
+        // itself, so no tongue leaves its mouth.
+        _views = LaneCensus();
+
+        _hub.Publish(new LaneArmed(5, Vector3.Zero, new System.Numerics.Vector2(0f, 1f), 12f, 0.6f, 0.9f));
+        _hub.Publish(new LaneFired(5));
+
+        Assert.That(LaneAlpha(5), Is.GreaterThan(0.9f), "The strip flashes, tongue or none.");
+        Assert.That(_views.TongueCount, Is.Zero);
+    }
+
+    [Test]
+    public void Lane_WithATongue_ShootsOne()
+    {
+        _views = LaneCensus();
+
+        _hub.Publish(new LaneArmed(6, Vector3.Zero, new System.Numerics.Vector2(0f, 1f), 9f, 0.8f, 0.8f, tongue: true));
+        _hub.Publish(new LaneFired(6));
+
+        Assert.That(LaneAlpha(6), Is.GreaterThan(0.9f));
+        Assert.That(_views.TongueCount, Is.EqualTo(1), "Old Croaker's lash, as JG-06a.");
+        Assert.That(_views.Tongue(0).IsLive, Is.True);
+    }
+
     // ---- The arena's own hazard (rule 6) ---------------------------------------------------------
 
     [Test]
@@ -1002,6 +1031,40 @@ public sealed class BossViewTests
             shockwaves,
             fissures,
             beats);
+
+    /// <summary><see cref="Census"/> with a bare tongue body to shoot, as <c>TongueViewTests</c> builds one.</summary>
+    private BossViews LaneCensus()
+    {
+        GameObject tongue = Keep(new GameObject("TonguePrefab", typeof(MeshFilter), typeof(MeshRenderer)));
+
+        return new BossViews(
+            _container,
+            _shockwavePrefab,
+            _fissurePrefab,
+            _beatPrefab,
+            _parentObject.transform,
+            _hub,
+            _enemies,
+            _arenas,
+            1,
+            2,
+            1,
+            tongue.AddComponent<TongueView>());
+    }
+
+    /// <summary>The alpha lane <paramref name="id"/>'s strip is painted at, read off its property block.</summary>
+    private float LaneAlpha(int id)
+    {
+        Transform strip = _parentObject.transform.Find($"Lane {id}");
+
+        Assert.That(strip, Is.Not.Null, $"No strip drawn for lane {id}.");
+
+        var block = new MaterialPropertyBlock();
+
+        strip.GetComponent<MeshRenderer>().GetPropertyBlock(block);
+
+        return block.GetColor("_BaseColor").a;
+    }
 
     /// <summary>Publishes a slam's ring the way <c>ShockwaveSystem</c> does.</summary>
     private void Emit(int id, Vector3 origin) =>

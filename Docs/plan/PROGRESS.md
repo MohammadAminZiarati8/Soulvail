@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-27, after JG-07a and b._
+_Updated 2026-10-27, after JG-07c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-07a–b**. **a:** `LungerBehaviour` warns with a lane for 0.9 s, then dashes its 12 m; lanes carry a tongue flag. **b:** `Panther.fbx` from the TRELLIS sculpt (`panther.py`), 2,300 tris, six clips. No Lunger is authored yet. |
-| **Next task** | **JG-07c** (the body), then **JG-07d** (stage 6). Built only on the owner's go. |
-| **Verified** | **JG-07a–b: full EditMode suite 4 500: 4 498 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), in batch mode (`Unity.exe -batchmode -runTests`; the Editor was closed). |
+| **Last merged task** | **JG-07c**: `Panther.prefab` wears `Panther.fbx` at 1.0 (1.52 m nose to rump, 0.92 m at the shoulder) on `AC_Panther`. It prowls, bounds through the dash, crouches across the 0.9 s wind-up and flinches with its front only. A lane shoots a tongue only if armed with one. No Lunger is authored yet. |
+| **Next task** | **JG-07d** (`enemy.panther`, stage 6). Built only on the owner's go. |
+| **Verified** | **JG-07c: full EditMode suite 4 509: 4 506 passed / 2 failed / 1 inconclusive**, the known pair ([Traps §7](../Traps.md#7-tests-nunit-allocation)) and a shoulder row, fixed (48 of 48), in batch mode. |
 
 ## What works
 

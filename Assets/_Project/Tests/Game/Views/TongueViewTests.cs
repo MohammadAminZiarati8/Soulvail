@@ -163,7 +163,8 @@ public sealed class TongueViewTests
                 new System.Numerics.Vector2(0f, 1f),
                 9f,
                 0.8f,
-                0.8f));
+                0.8f,
+                tongue: true));
 
             Assert.That(views.TongueCount, Is.EqualTo(0), "Nothing strikes while the lane arms.");
 
@@ -223,7 +224,7 @@ public sealed class TongueViewTests
         try
         {
             hub.Publish(new LaneArmed(
-                3, System.Numerics.Vector3.Zero, new System.Numerics.Vector2(1f, 0f), 9f, 0.8f, 0.8f));
+                3, System.Numerics.Vector3.Zero, new System.Numerics.Vector2(1f, 0f), 9f, 0.8f, 0.8f, tongue: true));
             hub.Publish(new LaneFired(3));
 
             Assert.That(views.LaneCount, Is.EqualTo(1));

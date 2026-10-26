@@ -56,4 +56,38 @@ Dust or impact VFX; audio; the mud hazard.
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ **Old Croaker stands 2.99 m in the arena**: `Croaker.fbx`'s 3.42 m × `Model` 0.4 × `Croaker.asset`'s
+`_bodyScale` 2.2, which `EnemyHitFeedback` puts on the root, so the colliders stay the capsule boss's. Made by
+Editor commands, as JG-03b's were: the controller through `AnimatorController`, the prefab a variant saved
+from an instance of `Enemy.prefab`.
+
+- **Each Attack state plays at 1×, from frame 0, not at `AttackRate`.** Core's telegraphs are constants
+  matched to the clips at speed 1 (JG-04a/b): Slam's feet land on frame 27 = 0.9 s, Lash's tongue is
+  furthest out (9.02 m) on frame 24 = 0.8 s, and Croak's call is on frame 30 = 1.0 s. One rate cannot bring
+  three clips' blows to three wind-ups; `AttackRate` can hit only one. The view still writes it, so
+  the controller keeps the parameter and no warning fires. `_windupFromSeconds` is 0 and `_strikeSeconds`
+  0.9 (the Slam's), so the rate it writes is 1 for a slam anyway.
+- **Attack is a sub-state machine** holding `Slam`, `Lash` and `Croak`. Any State goes to each of them on
+  `Attack` + `Move` Equals 1/2/3 + not `Dead`, and each can transition to itself, so a chained hop's
+  second telegraph restarts `Slam`, which is 1.5 s long, though the next take-off comes at 1.3 s. Each
+  exits to Locomotion at 0.92. Death (1.5×) and the Flinch layer (Hit at 1.4×, `AM_Frog_UpperBody`)
+  copy `AC_Frog`'s timings.
+- **`_hasMove` is asked on the first wind-up, not at injection.** A pooled body may be injected while
+  inactive, and an inactive Animator reports no parameters. It is still asked once (`_moveChecked`).
+- **`_strideSpeed` is 1.8 m/s, the boss's move speed**, so the approach is a full Hop at 1×. Its true
+  stride at this scale is ~3.7 m/s (the Frog's 1.8 × 2.75 × the Hop's ¾ speed), which would make the
+  approach a half-blend at the 0.6× floor. The feet slide a little; it reads as a lumbering hop. `_hops`
+  is off: the boss walks in, and the slam's leap is the `Slam` clip.
+- **No floating bar.** The variant removes `EnemyHealthBar` and switches its `HealthBar` child off.
+  `EnemyView.HealthBar` and `EnemyViews` already take null.
+
+**Deviation (said here):** **`Croaker.asset`'s `_tint` is now white**, outside "the prefab". The capsule's
+moss green multiplies a textured body's colour and would draw the frog at about a quarter of its
+brightness. Every textured body (Frog, Pitcher, Puffball) has white. `Croaker_PrefabSize_NoFloatingBar`
+pins it. `LashTelegraphSeconds` (0.8) is a local constant in the test until JG-04e puts it on
+`CroakerBehaviour`.
+
+**Verified.** `CroakerBodyTests` 4 / 4 and `EnemyAnimatorViewTests.View_WithoutMoveParam_Unchanged`.
+With the Frog, Pitcher, Puffball, Croaker-model and boss-dispatch fixtures, that is 54 / 54. Full EditMode
+suite through `TestRunnerApi`: **4 434: 4 432 passed / 1 failed / 1 inconclusive**, the two known rows. No
+compiler warning; `dotnet format whitespace` clean on the three .cs files.

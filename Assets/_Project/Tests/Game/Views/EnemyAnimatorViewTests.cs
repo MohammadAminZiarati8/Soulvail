@@ -218,6 +218,21 @@ public sealed class EnemyAnimatorViewTests
     }
 
     [Test]
+    public void View_WithoutMoveParam_Unchanged()
+    {
+        // A controller with no Move int (every body but a boss's) is never written one: Unity would
+        // warn on each wind-up. The strike is the same as with no move at all (JG-04d rule 2).
+        _view.Construct(_hub);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.4f, move: 2));
+
+        Assert.That(_animator.GetFloat(AttackRateId), Is.EqualTo(0.52f / 0.4f).Within(1e-4f));
+        Assert.That(_animator.GetBool(AttackId), Is.True);
+        Assert.That(typeof(EnemyAnimatorView).GetField("_hasMove", Private).GetValue(_view), Is.False);
+        UnityEngine.TestTools.LogAssert.NoUnexpectedReceived();
+    }
+
+    [Test]
     public void Attack_IgnoresAnotherEnemy()
     {
         _view.Construct(_hub);

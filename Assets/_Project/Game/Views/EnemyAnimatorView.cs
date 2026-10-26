@@ -33,6 +33,13 @@ namespace Soulvail.Game.Views
     /// does to the wind-up.
     /// </para>
     /// <para>
+    /// <b>A body with more than one attack picks it by <c>Move</c></b> (JG-04d). The view sets that
+    /// int from <see cref="EnemyTelegraph.Move"/> just before the trigger, so the controller's
+    /// transitions see both on the same frame. Unity warns on every write to a parameter a controller
+    /// lacks, so whether this one has it is asked once, on the first wind-up (<see cref="_hasMove"/>);
+    /// every body but a boss's lacks it and plays exactly as before.
+    /// </para>
+    /// <para>
     /// <b>A pooled body forgets its life in <see cref="Forget"/></b>, which <see cref="EnemyView"/>'s
     /// despawn calls beside the feedback's reset (AR §18.4). Without it a body rented after a death
     /// would rise from the floor into its first walk.
@@ -79,6 +86,7 @@ namespace Soulvail.Game.Views
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
         private readonly int _attackId = Animator.StringToHash("Attack");
+        private readonly int _moveId = Animator.StringToHash("Move");
         private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _deadId = Animator.StringToHash("Dead");
         private readonly int _locomotionId = Animator.StringToHash("Locomotion");
@@ -91,6 +99,11 @@ namespace Soulvail.Game.Views
         private float _bodySpeed;
         private bool _dead;
         private bool _injected;
+
+        /// <summary>The controller has a <c>Move</c> int; meaningful once <see cref="_moveChecked"/>.</summary>
+        private bool _hasMove;
+
+        private bool _moveChecked;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
@@ -260,8 +273,38 @@ namespace Soulvail.Game.Views
                 return;
             }
 
+            if (HasMove())
+            {
+                _animator.SetInteger(_moveId, evt.Move);
+            }
+
             _animator.SetFloat(_attackRateId, Mathf.Max(_strikeSeconds - _windupFromSeconds, 0.01f) / evt.Duration);
             _animator.SetTrigger(_attackId);
+        }
+
+        /// <summary>Whether the controller has a <c>Move</c> int, asked of the Animator once.</summary>
+        /// <remarks>
+        /// On the first wind-up rather than in <see cref="Construct"/>: a pooled body is injected while
+        /// it may still be inactive, and an inactive Animator reports no parameters at all.
+        /// </remarks>
+        private bool HasMove()
+        {
+            if (_moveChecked)
+            {
+                return _hasMove;
+            }
+
+            _moveChecked = true;
+
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == _moveId && parameter.type == AnimatorControllerParameterType.Int)
+                {
+                    _hasMove = true;
+                }
+            }
+
+            return _hasMove;
         }
 
         private void OnDamaged(EnemyDamaged evt)

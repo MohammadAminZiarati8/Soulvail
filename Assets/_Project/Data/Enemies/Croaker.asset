@@ -32,7 +32,7 @@ MonoBehaviour:
   _explosionRadius: 0
   _hopTime: 0
   _hopRestTime: 0
-  _tint: {r: 0.22745098, g: 0.29803923, b: 0.18039216, a: 1}
+  _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 2.2
-  _body: {fileID: 0}
+  _body: {fileID: 9211549227719485963, guid: 23e528eef468b054d9ad1c69649cd278, type: 3}
   _projectile: {fileID: 0}

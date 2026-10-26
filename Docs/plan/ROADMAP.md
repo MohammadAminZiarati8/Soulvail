@@ -37,3 +37,11 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-03a** — The Puffball's model: the Jungle's Bloater as a puffball mushroom, `puffball.py` on a rig of its own with five clips (S) · [spec](tasks/JG-03a-the-puffballs-model.md)
 - [x] **JG-03b** — The Puffball's body: prefab, controller, a cyan-white wind-up glow and a spore burst on death (M) · [spec](tasks/JG-03b-the-puffballs-body.md)
 - [x] **JG-03c** — Puffballs in the Jungle: `enemy.puffball` with the Bloater's numbers, rostered at stage 4, stage 4 scripted as 2 Puffballs (S) · [spec](tasks/JG-03c-puffballs-in-the-jungle.md)
+
+**Old Croaker, the Jungle's first boss** (owner's go, 2026-10-26). A giant old frog on `Rig_Frog`: hop-slams, tongue lash, croaks up Frogs. Later Jungle bosses (Pitcher Mother, Sporeheart, the Strangler, the Overgrown) are titles only until the owner names them.
+
+- [ ] **JG-04a** — Old Croaker's model: `croaker.py` on `Rig_Frog`, boss dressing and seven clips (S) · [spec](tasks/JG-04a-the-croakers-model.md)
+- [ ] **JG-04b** — Old Croaker's behaviour: `CroakerBehaviour` hop-slams with fissure + shockwave; `EnemyTelegraph.Move` (S) · [spec](tasks/JG-04b-the-croakers-behaviour.md)
+- [ ] **JG-04c** — Old Croaker in the Jungle: boss behaviour picked by id, the two assets, Jungle's roster (M) · [spec](tasks/JG-04c-the-croaker-in-the-jungle.md)
+- [ ] **JG-04d** — Old Croaker's body: prefab and controller, a clip per `Move` (M) · [spec](tasks/JG-04d-the-croakers-body.md)
+- [ ] **JG-04e** — The tongue lash: `LaneSystem` in core, its view, the Croaker's second attack (M) · [spec](tasks/JG-04e-the-tongue-lash.md)

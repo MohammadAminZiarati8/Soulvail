@@ -13,7 +13,7 @@ _Updated 2026-10-22, after JG-03c._
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
 | **Last merged task** | **JG-03c** — Puffballs in the Jungle: `enemy.puffball` (the Bloater's numbers) on JG-03b's body, rostered at stage 4, and stage 4 scripted as 2 Puffballs. Before it, JG-03a's model and JG-03b's body: a cream puffball that swells and glows cyan-white (`Palette.SporeGlow`), and bursts in spores. |
-| **Next task** | Whatever the owner names. |
+| **Next task** | **JG-04a** — Old Croaker's model; JG-04a–e build the Jungle's first boss (ROADMAP). Built only on the owner's go. |
 | **Verified** | **JG-03c: 4 411 EditMode — 4 409 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works

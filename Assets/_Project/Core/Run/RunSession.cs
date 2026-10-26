@@ -133,6 +133,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
     private FissureSystem _fissures;
 
+    private LaneSystem _lanes;
+
     /// <summary>
     /// What each boss fights with, by its id (JG-04c): <c>boss.warden</c> the Warden's slams,
     /// <c>boss.croaker</c> Old Croaker's hops.
@@ -274,7 +276,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             [new ContentId("boss.warden")] =
                 agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
             [new ContentId("boss.croaker")] =
-                agent => new CroakerBehaviour(agent, _shockwaves, _fissures, _random.Misc),
+                agent => new CroakerBehaviour(agent, _shockwaves, _fissures, _lanes, _random.Misc),
         };
     }
 
@@ -492,6 +494,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // live object here: a second Start must not inherit the first run's rings.
         _shockwaves = new ShockwaveSystem(_events);
         _fissures = new FissureSystem(_events);
+        _lanes = new LaneSystem(_events);
 
         // One per run, like the two above: a second Start must not inherit the first run's shots or
         // its ids. It takes no generator, because a shot goes exactly where it was aimed and spread
@@ -1320,6 +1323,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // (ledger row 7).
         _shockwaves.Tick(State.Time, State.PlayerPosition, State.Combat);
         _fissures.Tick(State.Time, State.PlayerPosition, State.Combat);
+        _lanes.Tick(State.Time, State.PlayerPosition, State.Combat);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
@@ -2031,6 +2035,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // The day either is authored longer than that, this line gains a sibling in StageFlow.
         _shockwaves.Clear();
         _fissures.Clear();
+        _lanes.Clear();
     }
 
     /// <summary>

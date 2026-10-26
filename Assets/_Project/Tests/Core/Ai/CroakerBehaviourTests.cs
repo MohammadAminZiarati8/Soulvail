@@ -14,7 +14,8 @@ namespace Soulvail.Tests.Core.Ai;
 
 /// <summary>
 /// Old Croaker approaching, hop-slamming onto where the player stood, chaining hops by phase,
-/// croaking on a phase's entry, and recovering. JG-04b rules 1–7.
+/// croaking on a phase's entry, and recovering — JG-04b rules 1–7 — and lashing its tongue while
+/// the slam cools, JG-04e rule 4.
 /// </summary>
 /// <remarks>
 /// <see cref="WardenBehaviourTests"/>' fixture and its two halves: the rows about one attack drive
@@ -51,6 +52,7 @@ public sealed class CroakerBehaviourTests
     private ProjectileSystem _projectiles;
     private ShockwaveSystem _shockwaves;
     private FissureSystem _fissures;
+    private LaneSystem _lanes;
     private FixedRandom _random;
     private EnemySystem _enemies;
     private EnemyAgent _driven;
@@ -69,6 +71,7 @@ public sealed class CroakerBehaviourTests
         _projectiles = new ProjectileSystem(_events, ProjectileCapacity);
         _shockwaves = new ShockwaveSystem(_events);
         _fissures = new FissureSystem(_events);
+        _lanes = new LaneSystem(_events);
         _random = new FixedRandom().SetMisc(0f);
         _enemies = NewEnemies();
         _clock = 0f;
@@ -107,7 +110,10 @@ public sealed class CroakerBehaviourTests
         RunOutTheSlam(croaker);
 
         // Back in Approach, inside range, on cooldown: it sits rather than slamming or closing.
+        // Inside the lash's minimum too (JG-04e), so the tongue does not take the turn either.
         Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach));
+
+        Place(distance: CroakerBehaviour.LashMinRange - 1f);
 
         _intents.Clear();
         Tick(croaker);
@@ -312,6 +318,87 @@ public sealed class CroakerBehaviourTests
         Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.GreaterThan(0f));
     }
 
+    // ---- JG-04e rule 4 ----------------------------------------------------------------------------
+
+    [Test]
+    public void Croaker_LashesInRange_WhenSlamIsCooling()
+    {
+        CroakerBehaviour croaker = Croaker();
+
+        // Slam ready and in range: the slam wins, and no lane opens.
+        Place(distance: 6f);
+
+        TickUntil(croaker, CroakerState.Slam, 1f);
+
+        Assert.That(_lanes.ActiveCount, Is.Zero, "A ready slam is never a lash.");
+
+        RunOutTheSlam(croaker);
+
+        Assert.That(croaker.NextSlamAt, Is.GreaterThan(_clock), "Sanity: the slam is cooling.");
+
+        // Too close, then too far: no lash.
+        Place(distance: CroakerBehaviour.LashMinRange - 0.5f);
+        Tick(croaker);
+
+        Place(distance: CroakerBehaviour.LashRange + 0.5f);
+        Tick(croaker);
+
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach));
+        Assert.That(_lanes.ActiveCount, Is.Zero, "Outside 3–9 m the tongue stays in.");
+
+        // Mid-range while the slam cools: the lash.
+        Place(distance: 6f);
+
+        _events.Clear();
+        float windup = _clock;
+        Tick(croaker);
+
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Lash));
+
+        EnemyTelegraph telegraph = _events.Single<EnemyTelegraph>();
+
+        Assert.That(telegraph.Id, Is.EqualTo(_driven.Id));
+        Assert.That(telegraph.Move, Is.EqualTo(CroakerBehaviour.LashMove));
+        Assert.That(telegraph.Move, Is.EqualTo(2));
+        Assert.That(telegraph.Duration, Is.EqualTo(0.8f).Within(Tolerance));
+
+        Assert.That(_lanes.ActiveCount, Is.EqualTo(1));
+        Assert.That(_lanes.OriginAt(0), Is.EqualTo(_driven.Position), "From the mouth.");
+        Assert.That(_lanes.DirectionAt(0), Is.EqualTo(new Vector2(0f, 1f)), "At the player.");
+        Assert.That(_lanes.LengthAt(0), Is.EqualTo(9f).Within(Tolerance));
+        Assert.That(_lanes.HalfWidthAt(0), Is.EqualTo(0.8f).Within(Tolerance));
+
+        LaneArmed armed = _events.Single<LaneArmed>();
+
+        Assert.That(armed.ArmSeconds, Is.EqualTo(0.8f).Within(Tolerance), "It bites as the telegraph ends.");
+        Assert.That(croaker.NextLashAt, Is.EqualTo(windup + 4f).Within(Tolerance), "4 s cooldown.");
+
+        // The player sidesteps; the lane was aimed at the wind-up's start and does not follow.
+        _driven.Blackboard.DirectionToPlayer = Vector2.Normalize(new Vector2(1f, 1f));
+
+        TickUntil(croaker, CroakerState.Approach, CroakerBehaviour.LashTelegraphSeconds + (2f * Frame));
+
+        Assert.That(_lanes.DirectionAt(0), Is.EqualTo(new Vector2(0f, 1f)));
+        Assert.That(
+            _clock - windup,
+            Is.EqualTo(CroakerBehaviour.LashTelegraphSeconds).Within((2f * Frame) + Tolerance),
+            "Rooted for the telegraph, then back to approaching.");
+
+        // On cooldown: the next ticks hold the tongue until the slam is ready again.
+        Place(distance: 6f);
+
+        _events.Clear();
+
+        while (_clock < croaker.NextSlamAt - Tolerance)
+        {
+            Tick(croaker);
+
+            Assert.That(croaker.State, Is.EqualTo(CroakerState.Approach), "The lash is cooling.");
+        }
+
+        Assert.That(_events.Count<LaneArmed>(), Is.Zero);
+    }
+
     // ---- Rule 7 -----------------------------------------------------------------------------------
 
     [Test]
@@ -323,6 +410,7 @@ public sealed class CroakerBehaviourTests
         var projectiles = new ProjectileSystem(silent, ProjectileCapacity);
         var shockwaves = new ShockwaveSystem(silent);
         var fissures = new FissureSystem(silent);
+        var lanes = new LaneSystem(silent);
         var enemies = new EnemySystem(
             Catalog(),
             silent,
@@ -332,8 +420,9 @@ public sealed class CroakerBehaviourTests
 
         EnemyAgent agent = enemies.Spawn(new ContentId(CroakerEnemyId), Vector3.Zero);
 
-        var croaker = new CroakerBehaviour(agent, shockwaves, fissures, new FixedRandom(0.1f).Misc);
+        var croaker = new CroakerBehaviour(agent, shockwaves, fissures, lanes, new FixedRandom(0.1f).Misc);
 
+        // Inside the slam's range and at the lash's minimum, so the cycle runs both attacks.
         Place(agent, distance: 3f);
 
         for (int i = 0; i < 600; i++)
@@ -346,9 +435,11 @@ public sealed class CroakerBehaviourTests
             // The hazard tables drain as the run's would, so every slam is a full one.
             shockwaves.Tick(i * Frame, new Vector3(50f, 0f, 50f), player);
             fissures.Tick(i * Frame, new Vector3(50f, 0f, 50f), player);
+            lanes.Tick(i * Frame, new Vector3(50f, 0f, 50f), player);
         }
 
         Assert.That(croaker.HopCount, Is.EqualTo(1), "Sanity: the cycle has slammed.");
+        Assert.That(croaker.NextLashAt, Is.GreaterThan(0f), "Sanity: and lashed.");
 
         _allocationClock = 600 * Frame;
 
@@ -364,6 +455,7 @@ public sealed class CroakerBehaviourTests
 
             shockwaves.Tick(_allocationClock, new Vector3(50f, 0f, 50f), player);
             fissures.Tick(_allocationClock, new Vector3(50f, 0f, 50f), player);
+            lanes.Tick(_allocationClock, new Vector3(50f, 0f, 50f), player);
         });
 
         Assert.That(_allocationStep, Is.GreaterThan(10_000), "The probe is live.");
@@ -385,7 +477,7 @@ public sealed class CroakerBehaviourTests
     {
         _driven = _enemies.Spawn(new ContentId(CroakerEnemyId), Vector3.Zero);
 
-        return new CroakerBehaviour(_driven, _shockwaves, _fissures, _random.Misc);
+        return new CroakerBehaviour(_driven, _shockwaves, _fissures, _lanes, _random.Misc);
     }
 
     private EnemyAgent SpawnBoss()
@@ -524,6 +616,7 @@ public sealed class CroakerBehaviourTests
 
         _shockwaves.Tick(_clock, _player.Blackboard.PlayerPosition, _player);
         _fissures.Tick(_clock, _player.Blackboard.PlayerPosition, _player);
+        _lanes.Tick(_clock, _player.Blackboard.PlayerPosition, _player);
 
         _clock += Frame;
     }
@@ -565,7 +658,7 @@ public sealed class CroakerBehaviourTests
         new FixedRandom(0.1f),
         new DepthScaling(Scalings.Design()),
         Capacity,
-        (agent, _) => new CroakerBehaviour(agent, _shockwaves, _fissures, _random.Misc));
+        (agent, _) => new CroakerBehaviour(agent, _shockwaves, _fissures, _lanes, _random.Misc));
 
     private static ContentCatalog Catalog() => new ContentCatalog(
         new[] { Oathbound() },

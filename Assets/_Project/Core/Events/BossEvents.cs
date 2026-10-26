@@ -22,6 +22,9 @@ namespace Soulvail.Core.Events;
 // draws the ring integrates its own radius rather than asking core where the ring is this frame.
 // That is what keeps `ShockwaveSystem` and `FissureSystem` off `RunState` entirely, unlike
 // `ZoneSystem`, which a decal reads two scalars from (M3-11c).
+//
+// Three more as of JG-04e — a lane arming, biting and closing — the line counterpart of a crack's,
+// and self-sufficient for the same reason.
 
 /// <summary>
 /// A boss has entered a new phase — GD §9.1 rule 3. Published on the tick the threshold is crossed,
@@ -260,6 +263,71 @@ public readonly struct FissureClosed
     public readonly int Id;
 
     public FissureClosed(int id)
+    {
+        Id = id;
+    }
+}
+
+/// <summary>
+/// A lane has opened and is arming — the line counterpart of <see cref="FissureArmed"/> (JG-04e).
+/// Published on the tick it is placed.
+/// </summary>
+/// <remarks>
+/// Self-sufficient for <see cref="FissureArmed"/>'s reason: the strip a view draws is exactly the
+/// rectangle <c>LaneSystem</c> tests, and the arm rides along so the warning cannot disagree with
+/// the hazard about how long the player has.
+/// </remarks>
+public readonly struct LaneArmed
+{
+    /// <summary>The lane's run-stable id, issued from 1 and never reused within a run.</summary>
+    public readonly int Id;
+
+    /// <summary>Where it starts, in world metres — the attacker's mouth.</summary>
+    public readonly Vector3 Origin;
+
+    /// <summary>Which way it runs: a unit vector on XZ, X then Z.</summary>
+    public readonly Vector2 Direction;
+
+    /// <summary>How far it runs, in metres.</summary>
+    public readonly float Length;
+
+    /// <summary>Half its width, in metres.</summary>
+    public readonly float HalfWidth;
+
+    /// <summary>Seconds before it bites. Never under GD §9.1 rule 1's 0.6.</summary>
+    public readonly float ArmSeconds;
+
+    public LaneArmed(int id, Vector3 origin, Vector2 direction, float length, float halfWidth, float armSeconds)
+    {
+        Id = id;
+        Origin = origin;
+        Direction = direction;
+        Length = length;
+        HalfWidth = halfWidth;
+        ArmSeconds = armSeconds;
+    }
+}
+
+/// <summary>The arm is over: whoever was standing in the lane has just been hurt.</summary>
+/// <remarks>Published whether or not anyone was inside, for <see cref="FissureFired"/>'s reason.</remarks>
+public readonly struct LaneFired
+{
+    /// <summary>Which lane — the id <see cref="LaneArmed"/> named.</summary>
+    public readonly int Id;
+
+    public LaneFired(int id)
+    {
+        Id = id;
+    }
+}
+
+/// <summary>The lane has closed and the ground is ordinary again.</summary>
+public readonly struct LaneClosed
+{
+    /// <summary>Which lane — the id <see cref="LaneArmed"/> named.</summary>
+    public readonly int Id;
+
+    public LaneClosed(int id)
     {
         Id = id;
     }

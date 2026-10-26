@@ -30,6 +30,12 @@ public enum CroakerState
     /// </summary>
     Slam,
 
+    /// <summary>
+    /// The tongue lash (JG-04e): rooted, it telegraphs, and a lane armed at the wind-up's start
+    /// fires down the player's line as the telegraph ends.
+    /// </summary>
+    Lash,
+
     /// <summary>The call on entering a phase, once the beat is over. Rooted.</summary>
     Croak,
 
@@ -39,8 +45,9 @@ public enum CroakerState
 
 /// <summary>
 /// Old Croaker's fighting: it approaches and hop-slams onto where the player stood, the landing
-/// opening a fissure and sending a shockwave out of it, and it croaks on entering each phase.
-/// JG-04b; GD §9.1 rules 1, 2 and 7.
+/// opening a fissure and sending a shockwave out of it; while the slam cools it lashes its tongue
+/// down a lane at a player in mid-range; and it croaks on entering each phase. JG-04b and JG-04e;
+/// GD §9.1 rules 1, 2 and 7.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -61,8 +68,9 @@ public enum CroakerState
 /// </para>
 /// <para>
 /// <b>The telegraphs are constants matched to <c>Croaker.fbx</c>, not <c>EnemySpec.WindupTime</c></b>:
-/// Slam's impact is frame 27 and Croak's call frame 30 at 30 fps, so <see cref="SlamTelegraphSeconds"/>
-/// and <see cref="CroakTelegraphSeconds"/> line up with the clips at speed 1. Each
+/// Slam's impact is frame 27, Lash's furthest reach frame 24 and Croak's call frame 30 at 30 fps, so
+/// <see cref="SlamTelegraphSeconds"/>, <see cref="LashTelegraphSeconds"/> and
+/// <see cref="CroakTelegraphSeconds"/> line up with the clips at speed 1. Each
 /// <see cref="EnemyTelegraph"/> names its move so the body plays the right clip.
 /// </para>
 /// <para>
@@ -71,9 +79,9 @@ public enum CroakerState
 /// out of the ring's path (GD §9.1 rule 2).
 /// </para>
 /// <para>
-/// <b>No draw is made today</b> — range and cooldown decide everything — but the run's
-/// <c>Misc</c> stream is taken now (rule 7), so JG-04e's choice between slam and lash replays
-/// from a seed without a signature change.
+/// <b>No draw is made</b>: the slam wins whenever it is ready and in range, and the lash only fills
+/// its cooldown, so range and the two cooldowns decide everything. The run's <c>Misc</c> stream is
+/// still taken (rule 7), so a later random choice replays from a seed without a signature change.
 /// </para>
 /// <para>
 /// Per-tick dependencies are parked in fields and cleared in a <c>finally</c>, for
@@ -102,6 +110,27 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// 30 fps. Above GD §9.1 rule 1's 0.6 s floor (<see cref="WardenBehaviour.MinTelegraphSeconds"/>).
     /// </summary>
     public const float SlamTelegraphSeconds = 0.9f;
+
+    /// <summary>
+    /// How long the lash telegraphs, in seconds: <c>Croaker.fbx</c>'s Lash at its furthest reach,
+    /// frame 24 at 30 fps. The lane is armed for exactly this long, so it bites as the tongue lands.
+    /// </summary>
+    public const float LashTelegraphSeconds = 0.8f;
+
+    /// <summary>The nearest the player may be for a lash, in metres. Closer is the slam's.</summary>
+    public const float LashMinRange = 3f;
+
+    /// <summary>The farthest the player may be for a lash, in metres — the lane's own length.</summary>
+    public const float LashRange = 9f;
+
+    /// <summary>Simulated seconds from one lash's wind-up to the next's.</summary>
+    public const float LashCooldown = 4f;
+
+    /// <summary>How far the lane runs from the mouth, in metres.</summary>
+    public const float LashLength = 9f;
+
+    /// <summary>Half the lane's width, in metres: one sidestep clears it.</summary>
+    public const float LashHalfWidth = 0.8f;
 
     /// <summary>
     /// How long the croak telegraphs, in seconds: <c>Croaker.fbx</c>'s Croak call, frame 30 at 30 fps.
@@ -141,6 +170,8 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
     private readonly FissureSystem _fissures;
 
+    private readonly LaneSystem _lanes;
+
     private readonly StateMachine<CroakerState> _machine;
 
     private float _now;
@@ -151,6 +182,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
     /// <summary>The simulated second the next slam is legal at — absolute, never counted down.</summary>
     private float _nextSlamAt;
+
+    /// <summary>The simulated second the next lash is legal at — absolute, never counted down.</summary>
+    private float _nextLashAt;
 
     /// <summary>The boss phase this behaviour last acted in; a change is a croak.</summary>
     private int _seenPhase;
@@ -173,20 +207,23 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// <param name="agent">The boss's own body.</param>
     /// <param name="shockwaves">Where a landing's ring is sent.</param>
     /// <param name="fissures">Where a landing circle is armed.</param>
+    /// <param name="lanes">Where a lash's lane is armed.</param>
     /// <param name="random">The run's <c>Misc</c> stream (rule 7).</param>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public CroakerBehaviour(
         EnemyAgent agent,
         ShockwaveSystem shockwaves,
         FissureSystem fissures,
+        LaneSystem lanes,
         IRandomStream random)
     {
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         _shockwaves = shockwaves ?? throw new ArgumentNullException(nameof(shockwaves));
         _fissures = fissures ?? throw new ArgumentNullException(nameof(fissures));
+        _lanes = lanes ?? throw new ArgumentNullException(nameof(lanes));
 
-        // Guarded and not yet held: nothing draws until JG-04e's slam-or-lash choice, and a field
-        // that is never read is a warning rather than a promise.
+        // Guarded and not yet held: nothing draws (see the class remarks), and a field that is
+        // never read is a warning rather than a promise.
         if (random is null)
         {
             throw new ArgumentNullException(nameof(random));
@@ -200,6 +237,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         _machine.OnEnter(CroakerState.Slam, EnterSlam);
         _machine.OnTick(CroakerState.Slam, TickSlam);
+
+        _machine.OnEnter(CroakerState.Lash, EnterLash);
+        _machine.OnTick(CroakerState.Lash, TickLash);
 
         _machine.OnEnter(CroakerState.Croak, EnterCroak);
         _machine.OnTick(CroakerState.Croak, TickCroak);
@@ -215,6 +255,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
     /// <summary>The simulated second the next slam is legal at. Zero before the first one.</summary>
     public float NextSlamAt => _nextSlamAt;
+
+    /// <summary>The simulated second the next lash is legal at. Zero before the first one.</summary>
+    public float NextLashAt => _nextLashAt;
 
     /// <summary>How many hops the slam in progress makes; 0 before the first.</summary>
     public int HopCount => _hopCount;
@@ -269,6 +312,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         _machine.Transition(CroakerState.Idle);
 
         _nextSlamAt = 0f;
+        _nextLashAt = 0f;
         _seenPhase = 0;
         _hopCount = 0;
         _hopsLanded = 0;
@@ -290,12 +334,30 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         }
     }
 
-    /// <summary>Rule 1: close until the player is inside <see cref="SlamRange"/>, slam when it is off cooldown.</summary>
+    /// <summary>
+    /// Rule 1: close until the player is inside <see cref="SlamRange"/>, slam when it is off
+    /// cooldown — and, while it cools, lash a player between <see cref="LashMinRange"/> and
+    /// <see cref="LashRange"/> (JG-04e rule 4).
+    /// </summary>
     private void TickApproach(float dt)
     {
         EnemyBlackboard blackboard = _agent.Blackboard;
 
         float distance = blackboard.DistanceToPlayer;
+
+        // The slam is cooling, so the lash cannot steal a slam's turn: it only fills the gap.
+        if (_now < _nextSlamAt
+            && _now >= _nextLashAt
+            && distance >= LashMinRange
+            && distance <= LashRange
+            && blackboard.DirectionToPlayer != Vector2.Zero)
+        {
+            Stand();
+
+            _machine.Transition(CroakerState.Lash);
+
+            return;
+        }
 
         if (distance <= SlamRange)
         {
@@ -411,6 +473,49 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         if (_hopsLanded >= _hopCount)
         {
             _machine.Transition(CroakerState.Recover);
+        }
+    }
+
+    /// <summary>
+    /// JG-04e rule 4: the wind-up's telegraph, and a lane armed for exactly that long down the
+    /// player's line as it is now. Never revised afterwards — the sidestep is the answer.
+    /// </summary>
+    private void EnterLash()
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        blackboard.StateTimer = 0f;
+
+        // From the wind-up, like the slam's from its first take-off.
+        _nextLashAt = _now + LashCooldown;
+
+        Vector2 aim = blackboard.DirectionToPlayer;
+
+        _events.Publish(new EnemyTelegraph(_agent.Id, LashTelegraphSeconds, LashMove));
+
+        // A dropped lane (a full table) is not a special case — the fissure's rule 8.
+        _lanes.Open(
+            _agent.Position,
+            new Vector3(aim.X, 0f, aim.Y),
+            LashLength,
+            LashHalfWidth,
+            LashTelegraphSeconds,
+            _agent.ContactDamage.Value,
+            _now);
+    }
+
+    /// <summary>Rooted until the tongue lands, then back to approaching.</summary>
+    private void TickLash(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        blackboard.StateTimer += dt;
+
+        Stand();
+
+        if (blackboard.StateTimer >= LashTelegraphSeconds)
+        {
+            _machine.Transition(CroakerState.Approach);
         }
     }
 

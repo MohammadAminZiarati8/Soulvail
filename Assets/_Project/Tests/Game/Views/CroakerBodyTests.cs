@@ -41,11 +41,8 @@ public sealed class CroakerBodyTests
     /// <summary>One frame of the Croaker's clips, which are authored at 30 fps.</summary>
     private const float Frame = 1f / 30f;
 
-    /// <summary>
-    /// The lash's wind-up, JG-04e rule 4. Not yet a constant on <see cref="CroakerBehaviour"/>; that
-    /// task adds it, and this row then reads it.
-    /// </summary>
-    private const float LashTelegraphSeconds = 0.8f;
+    /// <summary>The lash's wind-up, JG-04e rule 4 — core's own constant.</summary>
+    private const float LashTelegraphSeconds = CroakerBehaviour.LashTelegraphSeconds;
 
     private const int Id = 7;
 

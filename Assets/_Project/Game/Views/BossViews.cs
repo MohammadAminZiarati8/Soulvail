@@ -1,17 +1,19 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Arena;
 using Soulvail.Game.Pooling;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using VContainer;
 
 namespace Soulvail.Game.Views;
 
 /// <summary>
-/// Everything a boss fight puts on screen: the rings its slams send out, the cracks it opens, and
-/// the shell it wears while it cannot be hurt. <see cref="ZoneViews"/>' shape three times over, and
+/// Everything a boss fight puts on screen: the rings its slams send out, the cracks it opens, the
+/// lanes its lashes run down, and the shell it wears while it cannot be hurt. <see cref="ZoneViews"/>' shape three times over, and
 /// the one listener for the whole of M4-02's vocabulary.
 /// </summary>
 /// <remarks>
@@ -49,6 +51,13 @@ namespace Soulvail.Game.Views;
 /// required because a beat has to hang on something (rule 4), and every run has a census of bodies.
 /// </para>
 /// <para>
+/// <b>A lane is drawn from code, not from a prefab of its own</b> (JG-04e): a flat strip on the
+/// fissure prefab's own quad, with a copy of its material whose texture is plain white, so the
+/// ring's disc does not stretch into an ellipse. The strip is exactly <c>LaneSystem</c>'s rectangle
+/// and <see cref="Palette.Danger"/>, like every telegraph. Four are built with the run
+/// (<see cref="LaneSystem.Capacity"/>) and none after.
+/// </para>
+/// <para>
 /// Not a <see cref="MonoBehaviour"/>, for <see cref="ZoneViews"/>' reason: it has no frame of its own
 /// and nothing in a scene should be able to find it. It is registered in <c>RunScope</c> and disposed
 /// with the run, which is what unsubscribes it — a listener that outlived its run would be handed the
@@ -57,6 +66,20 @@ namespace Soulvail.Game.Views;
 /// </remarks>
 public sealed class BossViews : IDisposable
 {
+    /// <summary>How bright a lane sits at when it starts arming; it brightens to <see cref="LaneArmAlpha"/>.</summary>
+    private const float LaneArmStartAlpha = 0.3f;
+
+    /// <summary>How bright a lane is as its arm ends — the fissure's arming alpha.</summary>
+    private const float LaneArmAlpha = 0.6f;
+
+    /// <summary>How bright it flashes on the frame it bites, fading out over the open window.</summary>
+    private const float LaneFireAlpha = 0.95f;
+
+    /// <summary>Metres above the floor — just over a fissure's, so a strip across a crack wins.</summary>
+    private const float LaneGroundOffset = 0.025f;
+
+    private const string BaseMapName = "_BaseMap";
+
     private readonly ViewPool<ShockwaveView> _shockwavePool;
     private readonly ViewPool<FissureView> _fissurePool;
     private readonly ViewPool<BossBeatView> _beatPool;
@@ -69,6 +92,26 @@ public sealed class BossViews : IDisposable
 
     /// <summary>The boss's enemy id → the shell it is wearing.</summary>
     private readonly Dictionary<int, BossBeatView> _beats = new Dictionary<int, BossBeatView>();
+
+    /// <summary>Core's lane id → the strip standing in for it.</summary>
+    private readonly Dictionary<int, LaneStrip> _lanes = new Dictionary<int, LaneStrip>();
+
+    /// <summary>Strips not in service. Every strip ever built is in <see cref="_allLanes"/> too.</summary>
+    private readonly Stack<LaneStrip> _freeLanes = new Stack<LaneStrip>();
+
+    private readonly List<LaneStrip> _allLanes = new List<LaneStrip>();
+
+    private readonly MaterialPropertyBlock _laneProperties = new MaterialPropertyBlock();
+
+    private readonly int _baseColorId = Shader.PropertyToID("_BaseColor");
+
+    /// <summary>The fissure prefab's quad, shared and not owned.</summary>
+    private readonly Mesh _laneMesh;
+
+    /// <summary>A white-textured copy of the fissure's material, owned and destroyed here.</summary>
+    private readonly Material _laneMaterial;
+
+    private readonly Transform _parent;
 
     /// <summary>
     /// Scratch for the ids a <see cref="Step"/> found to have run out. Three lists for the life of
@@ -93,6 +136,9 @@ public sealed class BossViews : IDisposable
     private readonly IDisposable _closedSubscription;
     private readonly IDisposable _beatStartedSubscription;
     private readonly IDisposable _beatEndedSubscription;
+    private readonly IDisposable _laneArmedSubscription;
+    private readonly IDisposable _laneFiredSubscription;
+    private readonly IDisposable _laneClosedSubscription;
 
     private bool _disposed;
 
@@ -165,6 +211,29 @@ public sealed class BossViews : IDisposable
         _fissurePool = new ViewPool<FissureView>(resolver, fissurePrefab, parent, fissurePrewarm);
         _beatPool = new ViewPool<BossBeatView>(resolver, beatPrefab, parent, beatPrewarm);
 
+        // Unity's ==, for a destroyed parent; the pools have already refused a missing prefab.
+        _parent = parent != null ? parent : null;
+
+        _laneMesh = fissurePrefab.TryGetComponent(out MeshFilter filter) ? filter.sharedMesh : null;
+
+        if (fissurePrefab.TryGetComponent(out MeshRenderer quad) && quad.sharedMaterial != null)
+        {
+            _laneMaterial = new Material(quad.sharedMaterial) { name = "M_TelegraphLane (runtime)" };
+
+            // The ring's texture is a disc; a strip wants the whole quad.
+            _laneMaterial.mainTexture = Texture2D.whiteTexture;
+
+            if (_laneMaterial.HasProperty(BaseMapName))
+            {
+                _laneMaterial.SetTexture(BaseMapName, Texture2D.whiteTexture);
+            }
+        }
+
+        for (int i = 0; i < LaneSystem.Capacity; i++)
+        {
+            _freeLanes.Push(BuildLane());
+        }
+
         _emittedSubscription = hub.Subscribe<ShockwaveEmitted>(OnShockwaveEmitted);
         _passedSubscription = hub.Subscribe<ShockwavePassed>(OnShockwavePassed);
         _armedSubscription = hub.Subscribe<FissureArmed>(OnFissureArmed);
@@ -172,6 +241,9 @@ public sealed class BossViews : IDisposable
         _closedSubscription = hub.Subscribe<FissureClosed>(OnFissureClosed);
         _beatStartedSubscription = hub.Subscribe<BossBeatStarted>(OnBeatStarted);
         _beatEndedSubscription = hub.Subscribe<BossBeatEnded>(OnBeatEnded);
+        _laneArmedSubscription = hub.Subscribe<LaneArmed>(OnLaneArmed);
+        _laneFiredSubscription = hub.Subscribe<LaneFired>(OnLaneFired);
+        _laneClosedSubscription = hub.Subscribe<LaneClosed>(OnLaneClosed);
     }
 
     /// <summary>How many rings are travelling across the floor right now.</summary>
@@ -179,6 +251,9 @@ public sealed class BossViews : IDisposable
 
     /// <summary>How many cracks are on the floor right now, arming or collapsing.</summary>
     public int FissureCount => _fissures.Count;
+
+    /// <summary>How many lanes are drawn on the floor right now, arming or fired.</summary>
+    public int LaneCount => _lanes.Count;
 
     /// <summary>How many bosses are wearing a shell right now.</summary>
     public int BeatCount => _beats.Count;
@@ -233,6 +308,7 @@ public sealed class BossViews : IDisposable
     {
         StepShockwaves(dt);
         StepFissures(dt);
+        StepLanes(dt);
         StepBeats(dt);
     }
 
@@ -262,6 +338,23 @@ public sealed class BossViews : IDisposable
         _closedSubscription.Dispose();
         _beatStartedSubscription.Dispose();
         _beatEndedSubscription.Dispose();
+        _laneArmedSubscription.Dispose();
+        _laneFiredSubscription.Dispose();
+        _laneClosedSubscription.Dispose();
+
+        for (int i = 0; i < _allLanes.Count; i++)
+        {
+            // Unity's ==: a strip parented under a torn-down root is already gone.
+            if (_allLanes[i].Renderer != null)
+            {
+                DestroyObject(_allLanes[i].Renderer.gameObject);
+            }
+        }
+
+        if (_laneMaterial != null)
+        {
+            DestroyObject(_laneMaterial);
+        }
 
         _shockwavePool.Dispose();
         _fissurePool.Dispose();
@@ -270,6 +363,9 @@ public sealed class BossViews : IDisposable
         _shockwaves.Clear();
         _fissures.Clear();
         _beats.Clear();
+        _lanes.Clear();
+        _freeLanes.Clear();
+        _allLanes.Clear();
         _lastRadius.Clear();
         _orphans.Clear();
     }
@@ -450,6 +546,207 @@ public sealed class BossViews : IDisposable
         }
     }
 
+    /// <summary>
+    /// A lash is winding up: a strip from the mouth down the player's line, exactly the rectangle
+    /// <c>LaneSystem</c> will test (JG-04e).
+    /// </summary>
+    private void OnLaneArmed(LaneArmed evt)
+    {
+        if (_lanes.ContainsKey(evt.Id))
+        {
+            RetireLane(evt.Id);
+        }
+
+        // Four were built with the run; a fifth is core's capacity being raised without this.
+        LaneStrip strip = _freeLanes.Count > 0 ? _freeLanes.Pop() : BuildLane();
+
+        strip.Arm = evt.ArmSeconds;
+        strip.Elapsed = 0f;
+        strip.Fired = false;
+
+        var direction = new Vector3(evt.Direction.X, 0f, evt.Direction.Y);
+        Vector3 origin = evt.Origin.ToUnity();
+        Vector3 centre = origin + (direction * (evt.Length * 0.5f));
+
+        float yaw = Mathf.Atan2(evt.Direction.X, evt.Direction.Y) * Mathf.Rad2Deg;
+
+        // The quad stands in XY; tipped flat, its Y runs along the lane and its X across it.
+        Transform body = strip.Renderer.transform;
+
+        body.SetPositionAndRotation(
+            new Vector3(centre.x, origin.y + LaneGroundOffset, centre.z),
+            Quaternion.Euler(90f, yaw, 0f));
+        body.localScale = new Vector3(evt.HalfWidth * 2f, evt.Length, 1f);
+
+        body.gameObject.SetActive(true);
+
+        PaintLane(strip);
+
+        _lanes[evt.Id] = strip;
+
+#if UNITY_EDITOR
+        body.name = $"Lane {evt.Id}";
+#endif
+    }
+
+    /// <summary>The tongue has struck: the strip flashes, hit or miss, for the fissure's reason.</summary>
+    private void OnLaneFired(LaneFired evt)
+    {
+        if (_lanes.TryGetValue(evt.Id, out LaneStrip strip))
+        {
+            FireLane(strip);
+        }
+    }
+
+    /// <summary>The lane's window is shut, and core is the authority on that.</summary>
+    private void OnLaneClosed(LaneClosed evt)
+    {
+        RetireLane(evt.Id);
+    }
+
+    /// <summary>
+    /// Ages every strip on its own clock — the arm, then <see cref="LaneSystem.OpenSeconds"/> — so a
+    /// lane core forgot silently (<c>LaneSystem.Clear</c>) is not left drawn.
+    /// </summary>
+    private void StepLanes(float dt)
+    {
+        _orphans.Clear();
+
+        // Negated, so NaN is refused with the rest — FissureView.Step's rule.
+        bool ticks = dt > 0f && !float.IsInfinity(dt);
+
+        foreach (KeyValuePair<int, LaneStrip> entry in _lanes)
+        {
+            LaneStrip strip = entry.Value;
+
+            if (strip.Renderer == null)
+            {
+                _orphans.Add(entry.Key);
+
+                continue;
+            }
+
+            if (!ticks)
+            {
+                continue;
+            }
+
+            strip.Elapsed += dt;
+
+            if (!strip.Fired && strip.Elapsed >= strip.Arm)
+            {
+                FireLane(strip);
+            }
+            else if (strip.Fired && strip.Elapsed >= LaneSystem.OpenSeconds)
+            {
+                _orphans.Add(entry.Key);
+
+                continue;
+            }
+
+            PaintLane(strip);
+        }
+
+        for (int i = 0; i < _orphans.Count; i++)
+        {
+            RetireLane(_orphans[i]);
+        }
+    }
+
+    /// <summary>The flash: the clock restarts for the open window.</summary>
+    private void FireLane(LaneStrip strip)
+    {
+        if (strip.Fired)
+        {
+            return;
+        }
+
+        strip.Fired = true;
+        strip.Elapsed = 0f;
+
+        PaintLane(strip);
+    }
+
+    /// <summary>
+    /// <see cref="Palette.Danger"/> premultiplied by the strip's alpha — <c>FissureView.Paint</c>'s
+    /// rule, because the shared material blends One / OneMinusSrcAlpha.
+    /// </summary>
+    private void PaintLane(LaneStrip strip)
+    {
+        if (strip.Renderer == null)
+        {
+            return;
+        }
+
+        float alpha = strip.Fired
+            ? LaneFireAlpha * (1f - Mathf.Clamp01(strip.Elapsed / LaneSystem.OpenSeconds))
+            : Mathf.Lerp(LaneArmStartAlpha, LaneArmAlpha, Mathf.Clamp01(strip.Elapsed / strip.Arm));
+
+        Color colour = Palette.Danger;
+
+        _laneProperties.SetColor(
+            _baseColorId,
+            new Color(colour.r * alpha, colour.g * alpha, colour.b * alpha, alpha));
+
+        strip.Renderer.SetPropertyBlock(_laneProperties);
+    }
+
+    /// <summary>One strip, parked: a quad body under the decal root, inactive.</summary>
+    private LaneStrip BuildLane()
+    {
+        var body = new GameObject("Lane", typeof(MeshFilter), typeof(MeshRenderer));
+
+        body.SetActive(false);
+        body.transform.SetParent(_parent, false);
+
+        body.GetComponent<MeshFilter>().sharedMesh = _laneMesh;
+
+        MeshRenderer renderer = body.GetComponent<MeshRenderer>();
+
+        renderer.sharedMaterial = _laneMaterial;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+
+        var strip = new LaneStrip { Renderer = renderer };
+
+        _allLanes.Add(strip);
+
+        return strip;
+    }
+
+    /// <inheritdoc cref="RetireShockwave" />
+    private void RetireLane(int id)
+    {
+        if (!_lanes.TryGetValue(id, out LaneStrip strip))
+        {
+            return;
+        }
+
+        _lanes.Remove(id);
+
+        if (strip.Renderer == null)
+        {
+            return;
+        }
+
+        strip.Renderer.gameObject.SetActive(false);
+
+        _freeLanes.Push(strip);
+    }
+
+    /// <summary>The play-mode split <c>ViewPool.Dispose</c> makes, and for its reason (M0-14).</summary>
+    private static void DestroyObject(UnityEngine.Object target)
+    {
+        if (Application.isPlaying)
+        {
+            UnityEngine.Object.Destroy(target);
+        }
+        else
+        {
+            UnityEngine.Object.DestroyImmediate(target);
+        }
+    }
+
     /// <inheritdoc cref="Step" />
     private void StepBeats(float dt)
     {
@@ -564,5 +861,19 @@ public sealed class BossViews : IDisposable
         _beats.Remove(enemyId);
 
         _beatPool.Release(view);
+    }
+
+    /// <summary>One lane's body and its clock.</summary>
+    private sealed class LaneStrip
+    {
+        public MeshRenderer Renderer { get; set; }
+
+        /// <summary>The arm, from <c>LaneArmed</c> — always greater than zero.</summary>
+        public float Arm { get; set; }
+
+        /// <summary>Seconds into the arm, or into the open window once fired.</summary>
+        public float Elapsed { get; set; }
+
+        public bool Fired { get; set; }
     }
 }

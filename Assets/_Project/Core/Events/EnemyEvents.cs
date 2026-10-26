@@ -172,10 +172,18 @@ public readonly struct EnemyTelegraph
     /// <summary>How long the windup lasts, in seconds — the archetype's <c>WindupTime</c>. 0.4 for the Husk.</summary>
     public readonly float Duration;
 
-    public EnemyTelegraph(int id, float duration)
+    /// <summary>
+    /// Which of the enemy's moves this windup is, so a body with more than one clip plays the
+    /// right one. 0 is "its only attack" and is what every archetype but a boss sends; the
+    /// Croaker sends 1 for Slam, 2 for Lash and 3 for Croak (JG-04b).
+    /// </summary>
+    public readonly int Move;
+
+    public EnemyTelegraph(int id, float duration, int move = 0)
     {
         Id = id;
         Duration = duration;
+        Move = move;
     }
 }
 

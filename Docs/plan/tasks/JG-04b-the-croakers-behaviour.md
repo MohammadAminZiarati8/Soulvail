@@ -60,4 +60,25 @@ Wiring it to a boss id (JG-04c); the tongue lash (JG-04e); any view.
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ **Full EditMode suite: 4 423, 4 421 passed / 1 failed / 1 inconclusive**, the two known
+(`CharacterPreviewTests.Resize_…`, `PlayerAnimatorViewTests.Animator_AttackSpeed…`); 8 / 8 new rows
+green. Zero compile errors or warnings; `dotnet format whitespace` clean on the three files. **Run in a
+batch-mode Unity (`-runTests`, TestRunnerApi underneath)**, because the Editor was closed and the MCP
+unconnected; the project lock was free.
+
+- **The body is not teleported; the hop carries it.** Core cannot place a body (the snapshot owns
+  positions, AR §3), so rule 3's "placed at the landing point" is the move intent: every airborne tick
+  sends `(landing − take-off) / 0.9 s` on the ground plane, facing the landing, so a body that follows
+  its intents arrives as the slam lands. The ring leaves from the fissure's centre, not from
+  `_agent.Position`, so a body stopped short by a wall still slams where the circle is.
+- **The phase is read off `agent.Behaviour as BossBehaviour`.** The boss factory builds the inner
+  before the `BossBehaviour` exists, and the Files table kept `BossBehaviour` untouched. Driven bare,
+  it is phase 0: one hop, no croak. A phase change seen on the first tick after a beat moves it to
+  Croak from any state (an interrupted hop's fissure still fires on its own clock); a second crossing
+  during a croak restarts the call.
+- **Hops = phase index + 1, capped at `MaxHops` 3**, fixed at the first take-off; the 5 s cooldown runs
+  from the first take-off too. A chain is one `Slam` state with an airborne flag and the 0.4 s gap.
+- **Telegraphs are constants (0.9 / 1.0 s), not `EnemySpec.WindupTime`**, because they are the clip's
+  frames. Inside `SlamRange` on cooldown it sits, the Warden's rule. Recover is a constant 1.2 s.
+- **The `IRandomStream` is guarded but not held**: nothing draws until JG-04e, and a never-read field
+  is a warning. `EnemyTelegraph`'s new `move` parameter defaults to 0, so no call site changed.

@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-26, after JG-04a._
+_Updated 2026-10-26, after JG-04b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-04a** — Old Croaker's model: `croaker.py` builds `Croaker.fbx` on `frog.py`'s builder (split for reuse; `Frog.fbx` unchanged), on `Rig_Frog`, 3.4 m tall, with Idle, Hop, Slam (impact frame 27), Lash (reach frame 24), Croak, Hit and Death. Nothing in the game uses it yet. |
-| **Next task** | **JG-04b** — Old Croaker's behaviour (`CroakerBehaviour`, hop-slam, fissure and shockwave); JG-04b–e finish the boss (ROADMAP). Built only on the owner's go. |
-| **Verified** | **JG-04a: `Tests.Game.Art` 538 / 538** (the 4 new rows included) through `TestRunnerApi`; the full suite was last run at JG-03c (4 411: 4 409 passed / 1 failed / 1 inconclusive, both known, [Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **JG-04b** — Old Croaker's behaviour: `CroakerBehaviour` in core approaches, hop-slams onto where the player stood (0.9 s `Move 1` telegraph, a 2.5 m fissure, the body carried there by its move intent, a 7 m/s ring to 6 m on landing), chains 1/2/3 hops by phase 0.4 s apart, croaks (1.0 s, `Move 3`) after each phase's beat, recovers 1.2 s. `EnemyTelegraph.Move` (default 0). Nothing spawns it yet. |
+| **Next task** | **JG-04c** — Old Croaker in the Jungle (boss behaviour picked by id, `Croaker.asset` / `CroakerBoss.asset`, the Jungle's roster); JG-04d–e finish the boss (ROADMAP). Built only on the owner's go. |
+| **Verified** | **JG-04b: full EditMode suite 4 423 — 4 421 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), in a batch-mode Unity (`-runTests`) since the Editor was closed. |
 
 ## What works
 

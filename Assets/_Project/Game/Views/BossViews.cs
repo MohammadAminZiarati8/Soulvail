@@ -90,6 +90,15 @@ public sealed class BossViews : IDisposable
     /// <summary>Tongues out of the mouth right now, stepped until they are back in.</summary>
     private readonly List<TongueView> _tongues = new List<TongueView>();
 
+    /// <summary>The landing bursts (JG-06b), or null when the run was composed without one.</summary>
+    private readonly ViewPool<SlamDustView> _dustPool;
+
+    /// <summary>Bursts on the ground right now, stepped until they have gone.</summary>
+    private readonly List<SlamDustView> _dust = new List<SlamDustView>();
+
+    /// <summary>The camera's landing thud (JG-06b), or null.</summary>
+    private readonly CameraShake _shake;
+
     /// <summary>Core's ring id → the wave standing in for it.</summary>
     private readonly Dictionary<int, ShockwaveView> _shockwaves = new Dictionary<int, ShockwaveView>();
 
@@ -184,6 +193,11 @@ public sealed class BossViews : IDisposable
     /// The tongue a lash strikes with (JG-06a). <b>May be null</b>: the lane still draws and bites,
     /// and only the tongue along it is missing — the same bargain as <paramref name="arenas"/>.
     /// </param>
+    /// <param name="slamDustPrefab">
+    /// The earth-and-dust burst a landing throws up (JG-06b). <b>May be null</b>, for
+    /// <paramref name="tonguePrefab"/>'s reason.
+    /// </param>
+    /// <param name="shake">The camera's shake, kicked on every landing (JG-06b). <b>May be null</b>.</param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="resolver"/>, any of the three prefabs, <paramref name="hub"/> or
     /// <paramref name="enemies"/> is null. <paramref name="parent"/> and <paramref name="arenas"/>
@@ -202,7 +216,9 @@ public sealed class BossViews : IDisposable
         int shockwavePrewarm = 4,
         int fissurePrewarm = 8,
         int beatPrewarm = 1,
-        TongueView tonguePrefab = null)
+        TongueView tonguePrefab = null,
+        SlamDustView slamDustPrefab = null,
+        CameraShake shake = null)
     {
         if (hub is null)
         {
@@ -226,6 +242,13 @@ public sealed class BossViews : IDisposable
         _tonguePool = tonguePrefab != null
             ? new ViewPool<TongueView>(resolver, tonguePrefab, parent, LaneSystem.Capacity)
             : null;
+
+        // One per ring core can hold: four landings cannot outrun four bursts of 0.6 s.
+        _dustPool = slamDustPrefab != null
+            ? new ViewPool<SlamDustView>(resolver, slamDustPrefab, parent, ShockwaveSystem.Capacity)
+            : null;
+
+        _shake = shake != null ? shake : null;
 
         // Unity's ==, for a destroyed parent; the pools have already refused a missing prefab.
         _parent = parent != null ? parent : null;
@@ -276,6 +299,12 @@ public sealed class BossViews : IDisposable
 
     /// <summary>The tongue at <paramref name="index"/> of <see cref="TongueCount"/>.</summary>
     public TongueView Tongue(int index) => _tongues[index];
+
+    /// <summary>How many landing bursts are on the ground right now (JG-06b).</summary>
+    public int DustCount => _dust.Count;
+
+    /// <summary>The burst at <paramref name="index"/> of <see cref="DustCount"/>.</summary>
+    public SlamDustView Dust(int index) => _dust[index];
 
     /// <summary>How many bosses are wearing a shell right now.</summary>
     public int BeatCount => _beats.Count;
@@ -332,6 +361,7 @@ public sealed class BossViews : IDisposable
         StepFissures(dt);
         StepLanes(dt);
         StepTongues(dt);
+        StepDust(dt);
         StepBeats(dt);
     }
 
@@ -383,12 +413,14 @@ public sealed class BossViews : IDisposable
         _fissurePool.Dispose();
         _beatPool.Dispose();
         _tonguePool?.Dispose();
+        _dustPool?.Dispose();
 
         _shockwaves.Clear();
         _fissures.Clear();
         _beats.Clear();
         _lanes.Clear();
         _tongues.Clear();
+        _dust.Clear();
         _freeLanes.Clear();
         _allLanes.Clear();
         _lastRadius.Clear();
@@ -424,12 +456,56 @@ public sealed class BossViews : IDisposable
         _shockwaves[evt.Id] = view;
         _lastRadius[evt.Id] = 0f;
 
+        LandHeavy(evt);
+
 #if UNITY_EDITOR
         // Four objects called "VFX_Shockwave" in the hierarchy are unreadable the moment one of them
         // misbehaves. Editor-only because it allocates a string per ring, which a phone should not
         // pay for — TelegraphRings' rule, for its reason.
         view.name = $"Shockwave {evt.Id}";
 #endif
+    }
+
+    /// <summary>
+    /// A slam's landing is felt (JG-06b): the camera thuds and the ground bursts at the ring's origin.
+    /// Keyed on the ring because the ring <em>is</em> the landing, for the Warden's shield slam as
+    /// much as for Old Croaker's hop.
+    /// </summary>
+    private void LandHeavy(ShockwaveEmitted evt)
+    {
+        // Unity's ==: a camera torn down before the run is a live reference that compares null.
+        if (_shake != null)
+        {
+            _shake.Kick(CameraShake.SlamStrength);
+        }
+
+        if (_dustPool == null)
+        {
+            return;
+        }
+
+        SlamDustView dust = _dustPool.Get();
+
+        dust.Play(evt.Origin.ToUnity(), evt.Id);
+
+        _dust.Add(dust);
+    }
+
+    /// <summary>Steps every burst on the ground and pools the ones that have gone.</summary>
+    private void StepDust(float dt)
+    {
+        for (int i = _dust.Count - 1; i >= 0; i--)
+        {
+            SlamDustView dust = _dust[i];
+
+            if (dust != null && dust.Step(dt))
+            {
+                continue;
+            }
+
+            _dust.RemoveAt(i);
+            _dustPool.Release(dust);
+        }
     }
 
     /// <summary>The ring reached its ceiling, and core is the authority on that.</summary>

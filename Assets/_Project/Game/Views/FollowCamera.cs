@@ -57,9 +57,19 @@ namespace Soulvail.Game.Views
         /// </summary>
         [SerializeField] private float _shortSideFovDeg = 60f;
 
+        [Tooltip("The landing thud (JG-06b), on this camera. Optional — without it the camera " +
+                 "never shakes.")]
+        [SerializeField] private CameraShake _shake;
+
         private Camera _camera;
         private float _appliedAspect;
         private Vector3 _followVelocity;
+
+        /// <summary>
+        /// Where the follow alone has the camera, without the shake. Smoothing reads this, never the
+        /// transform, so a shake is never smoothed into the follow (JG-06b).
+        /// </summary>
+        private Vector3 _followPosition;
 
         /// <summary>
         /// The vertical field of view that gives the screen's short side
@@ -108,7 +118,8 @@ namespace Soulvail.Game.Views
             _appliedAspect = 0f;
             ApplyAspect();
 
-            transform.SetPositionAndRotation(Desired(Rotation()), Rotation());
+            _followPosition = Desired(Rotation());
+            transform.SetPositionAndRotation(_followPosition, Rotation());
         }
 
         private void LateUpdate()
@@ -130,9 +141,18 @@ namespace Soulvail.Game.Views
             // downstream of SnapshotBuilder integrates a step and would diverge from core if it used
             // a different one; this chases a position that is already correct, so a longer step only
             // means the camera arrives sooner. There is nothing here to accumulate.
-            transform.SetPositionAndRotation(
-                Vector3.SmoothDamp(transform.position, Desired(rotation), ref _followVelocity, _smoothTime),
-                rotation);
+            _followPosition = Vector3.SmoothDamp(_followPosition, Desired(rotation), ref _followVelocity, _smoothTime);
+
+            Vector3 shake = Vector3.zero;
+
+            // Unity's ==: the shake is optional, and stepped here so it is always read fresh.
+            if (_shake != null)
+            {
+                _shake.Step(Time.deltaTime);
+                shake = _shake.Offset;
+            }
+
+            transform.SetPositionAndRotation(_followPosition + shake, rotation);
         }
 
         /// <summary>

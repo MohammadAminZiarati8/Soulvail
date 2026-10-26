@@ -89,3 +89,35 @@ namespace Soulvail.Game.Views
 - A settings toggle for screen shake. That comes with the options screen.
 - Haptics, which are device-only and already owned by `HapticsListener`.
 - Changing the ring itself (JG-06c).
+
+## As built
+
+_2026-10-26._ **`CameraShake`** is down-first at 12 Hz on Y, with a half-strength sway at 9 Hz on X. Both run under an
+envelope of `strength × (1 − t/0.4)²`, so `|Offset|` ≤ strength and it is exactly zero at rest. `Kick` ignores
+non-positive or non-finite strengths. `OnDisable` stops a shake. **`FollowCamera` now smooths a private
+`_followPosition`, never `transform.position`.** Otherwise the shake would be smoothed into the follow
+and drift it. It steps its optional `_shake` with `Time.deltaTime` in its own `LateUpdate` and adds `Offset`. So
+the order is fixed and the shake has no `Update` of its own.
+
+**`SlamDustView`** is `ImpactView`'s one-mesh pattern on `M_Impact`: chunks and billows are boxes of 24
+vertices with one shade per face. Chunks are earth `7A5636`, every third moss `5E7A3A`. They leave a 1.8 m
+circle at 55° ± 8° and 8 m/s ± 10% under 30 m/s² of gravity, so the heaviest is down by 0.52 s. They tumble,
+land and stay without bouncing, and shrink into the ground over the last fifth. Billows are squat dust
+`C9B48A` boxes rolling from 1.8 m to 4.5 m, swelling over the first third and then shrinking to nothing. Seeded by the
+ring id, with `ImpactView`'s hash.
+
+- **`BossViews`** takes `slamDustPrefab` and `shake` as optional last parameters, after `tonguePrefab`.
+  `OnShockwaveEmitted` calls `LandHeavy`: `Kick(SlamStrength)` and one pooled burst at the ring's origin.
+  The pool is prewarmed to `ShockwaveSystem.Capacity`. New readers: `DustCount`, `Dust(i)`.
+- `Run.unity`: `CameraShake` added on Main Camera, `FollowCamera._shake` set, and `RunScope._slamDustPrefab` and
+  `_cameraShake` set. `VFX_SlamDust.prefab` was built through the MCP.
+
+**Deviations (said here):** Count and size went up after the first render. 8 chunks, 6 billows and a 1.2 m start
+read as a few loose cubes under a 2.2× boss, so it is now **12 chunks of 0.5 m and 10 billows of 1.3 m from 1.8 m out
+to 4.5 m**. `SlamImpactTests` adds two rows to the table: `Kick_NonPositiveOrNonFinite_IsIgnored` (the implied guard)
+and `Prefab_IsDressed` (Traps §5). `Play(position)` also has a `Play(position, seed)` overload. Manual step 3
+(haptics) stays deferred, as the spec says.
+
+**Verified.** Two renders of the burst beside `Croaker.prefab` at 2.2× from the game's 57° pitch, at
+0.12 s and 0.33 s: a ring of dust and earth bursting out from under the frog, with chunks in the air and then spread.
+Full suite below. No compiler error or warning, and `dotnet format whitespace` is clean on the six .cs files.

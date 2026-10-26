@@ -288,6 +288,14 @@ namespace Soulvail.Game.Composition
                  "Optional — without it the lane still draws and bites, with no tongue along it.")]
         [SerializeField] private TongueView _tonguePrefab;
 
+        [Tooltip("The earth-and-dust burst a slam's landing throws up (JG-06b). Optional — " +
+                 "without it a landing only shakes the camera.")]
+        [SerializeField] private SlamDustView _slamDustPrefab;
+
+        [Tooltip("The shake on this scene's camera, kicked by every slam's landing (JG-06b). " +
+                 "Optional — without it the camera never shakes.")]
+        [SerializeField] private CameraShake _cameraShake;
+
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
                  "the undressed-scene iteration workflow.")]
@@ -1004,7 +1012,9 @@ namespace Soulvail.Game.Composition
                 .WithParameter("shockwavePrewarm", ShockwaveSystem.Capacity)
                 .WithParameter("fissurePrewarm", FissureSystem.Capacity)
                 .WithParameter("beatPrewarm", 1)
-                .WithParameter("tonguePrefab", _tonguePrefab);
+                .WithParameter("tonguePrefab", _tonguePrefab)
+                .WithParameter("slamDustPrefab", _slamDustPrefab)
+                .WithParameter("shake", _cameraShake);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

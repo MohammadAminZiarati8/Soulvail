@@ -12,9 +12,9 @@ _Updated 2026-10-26, after JG-05d._
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-06a**, Old Croaker's tongue: when a lash fires, a drawn pink tongue (`TongueView`, `VFX_Tongue`) shoots from the mouth to the lane's far end (8.1 m), holds, and snaps back in 0.38 s. Before, the modelled tongue reached a few metres and the lane bit 9 m out. |
-| **Next task** | **JG-06b** (a shake and an earth burst on every slam landing), then **JG-06c** (the shockwave as an earth wave). The owner gave the go for all three on 2026-10-26. |
-| **Verified** | **JG-06a: full EditMode suite 4 459: 4 457 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
+| **Last merged task** | **JG-06a–b**, Old Croaker's effects. **a:** when a lash fires, a drawn pink tongue (`TongueView`, `VFX_Tongue`) shoots from the mouth to the lane's far end (8.1 m), holds, and snaps back in 0.38 s. Before, the modelled tongue reached a few metres and the lane bit 9 m out. **b:** every `ShockwaveEmitted` (Old Croaker's landing, the Warden's slam) kicks a 0.4 s camera thud (`CameraShake`, added on top of `FollowCamera`'s follow) and throws an earth-and-dust burst (`SlamDustView`, `VFX_SlamDust`) out to 4.5 m. |
+| **Next task** | **JG-06c**, the shockwave as an earth wave. The owner gave the go for all three on 2026-10-26. |
+| **Verified** | **JG-06b: full EditMode suite 4 467: 4 465 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
 ## What works
 
@@ -76,7 +76,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    Puffball's ring is smaller and two steps back clear its burst.
 15. **JG-06a**: on Jungle stage 5, stand 6–9 m out after a slam. As the strip flashes, a pink tongue
    shoots from the frog's mouth to the strip's end and snaps back.
-16. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+16. **JG-06b**: every Old Croaker landing thuds. The view jolts and settles in under half a second, and earth
+   chunks and dust burst from round its feet. Descent's Warden slam does the same. Pausing mid-shake holds it.
+17. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

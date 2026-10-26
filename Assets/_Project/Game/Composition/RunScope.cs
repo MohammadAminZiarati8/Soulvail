@@ -284,6 +284,10 @@ namespace Soulvail.Game.Composition
                  "boss's own body rather than on a canvas, so its size follows the archetype's.")]
         [SerializeField] private BossBeatView _bossBeatPrefab;
 
+        [Tooltip("Old Croaker's drawn tongue (JG-06a), shot down a lash's lane as it bites. " +
+                 "Optional — without it the lane still draws and bites, with no tongue along it.")]
+        [SerializeField] private TongueView _tonguePrefab;
+
         [Tooltip("Every arena this run may be played in, one prefab per arena id. Empty leaves " +
                  "the run in whatever the scene was dressed with, which is the M0 grey box and " +
                  "the undressed-scene iteration workflow.")]
@@ -999,7 +1003,8 @@ namespace Soulvail.Game.Composition
                 .WithParameter("parent", _decalRoot)
                 .WithParameter("shockwavePrewarm", ShockwaveSystem.Capacity)
                 .WithParameter("fissurePrewarm", FissureSystem.Capacity)
-                .WithParameter("beatPrewarm", 1);
+                .WithParameter("beatPrewarm", 1)
+                .WithParameter("tonguePrefab", _tonguePrefab);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

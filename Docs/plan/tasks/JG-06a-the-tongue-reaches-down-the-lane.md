@@ -77,3 +77,33 @@ namespace Soulvail.Game.Views
 
 - Hiding or re-authoring the model's own tongue. Pulling the player along the tongue.
 - The Frog's attack (it is melee and its tongue already reaches).
+
+## As built
+
+_2026-10-26._ `TongueView` is `ImpactView`'s pattern. It uses one mesh rebuilt per step on `M_Impact` (opaque,
+vertex-coloured): an 8-sided tube of 6 rings, tapering from 0.3 m to 0.17 m, and a 0.4 m knob on the end.
+It is lit `EC8FA2` on top and shadowed `B55570` underneath (the Frog's `frog_tongue` swatch), so it reads round with no light.
+`Length` is the drawn length from the mouth. Out eases over 0.06 s, it holds 0.12 s, and back eases over 0.2 s.
+Finished, it disables its renderer. It finds its own filter and renderer when the fields are unset, because `Awake`
+never runs in EditMode.
+
+- **The mouth was measured, not guessed.** In `Croaker.prefab` the `tongue` bone is at (0, 0.66, 0.45)
+  at 1×. `EnemyHitFeedback` puts `_bodyScale` 2.2 on the root, which gives about 1.45 m up and 1.0 m ahead. So
+  `MouthHeight` is 1.4 and there is a new `MouthForward` = 1.0, which the spec's API did not list. The tip lands
+  0.3 m above the ground at the lane's far end, so a 9 m lane gives an 8.1 m tongue.
+- **`BossViews` takes the prefab as a last optional parameter** (`tonguePrefab = null`), so every
+  existing caller compiles unchanged. A null prefab means no tongue, with the lane unaffected. Tongues are a
+  `ViewPool<TongueView>` prewarmed to `LaneSystem.Capacity`. `LaneStrip` keeps the lane's origin, direction and
+  length from `LaneArmed`. `LaneFired` fires one, `Step` steps them and pools those back in the mouth, and `Dispose` disposes the pool.
+  New readers: `TongueCount`, `Tongue(i)`.
+- `Scenes/Run.unity`: `RunScope._tonguePrefab` → `VFX_Tongue.prefab`. The prefab was built through the MCP.
+
+**Deviations (said here):** `TongueViewTests` has three more rows than the table:
+`Step_NonFiniteOrNegative_DoesNothing` (the implied guard), `BossViews_WithNoTonguePrefab_StillDrawsTheLane`
+(the optional prefab), and `Prefab_IsDressed` (Traps §5). `Run.unity` is a sixth touched file (a one-field
+scene edit), and `MouthForward` is a new public constant.
+
+**Verified.** A render of the prefab beside `Croaker.prefab` at 2.2×: the tongue leaves the mouth and runs
+straight down +Z to the knob. After that render the radii were raised from 0.22/0.12/0.3. The tongue and
+`BossViewTests` fixtures pass 39/39 (full suite below). No compiler error or warning, and
+`dotnet format whitespace` is clean on the four .cs files.

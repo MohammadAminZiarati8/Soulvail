@@ -84,6 +84,12 @@ public sealed class BossViews : IDisposable
     private readonly ViewPool<FissureView> _fissurePool;
     private readonly ViewPool<BossBeatView> _beatPool;
 
+    /// <summary>The drawn tongues (JG-06a), or null when the run was composed without one.</summary>
+    private readonly ViewPool<TongueView> _tonguePool;
+
+    /// <summary>Tongues out of the mouth right now, stepped until they are back in.</summary>
+    private readonly List<TongueView> _tongues = new List<TongueView>();
+
     /// <summary>Core's ring id → the wave standing in for it.</summary>
     private readonly Dictionary<int, ShockwaveView> _shockwaves = new Dictionary<int, ShockwaveView>();
 
@@ -174,6 +180,10 @@ public sealed class BossViews : IDisposable
     /// whole run happen while the scene is still loading rather than on the frame a boss slams
     /// (AR §14, GD §11.3).
     /// </param>
+    /// <param name="tonguePrefab">
+    /// The tongue a lash strikes with (JG-06a). <b>May be null</b>: the lane still draws and bites,
+    /// and only the tongue along it is missing — the same bargain as <paramref name="arenas"/>.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="resolver"/>, any of the three prefabs, <paramref name="hub"/> or
     /// <paramref name="enemies"/> is null. <paramref name="parent"/> and <paramref name="arenas"/>
@@ -191,7 +201,8 @@ public sealed class BossViews : IDisposable
         ArenaPool arenas,
         int shockwavePrewarm = 4,
         int fissurePrewarm = 8,
-        int beatPrewarm = 1)
+        int beatPrewarm = 1,
+        TongueView tonguePrefab = null)
     {
         if (hub is null)
         {
@@ -210,6 +221,11 @@ public sealed class BossViews : IDisposable
         _shockwavePool = new ViewPool<ShockwaveView>(resolver, shockwavePrefab, parent, shockwavePrewarm);
         _fissurePool = new ViewPool<FissureView>(resolver, fissurePrefab, parent, fissurePrewarm);
         _beatPool = new ViewPool<BossBeatView>(resolver, beatPrefab, parent, beatPrewarm);
+
+        // Unity's ==: a destroyed prefab is as missing as an unset one. One per lane core can hold.
+        _tonguePool = tonguePrefab != null
+            ? new ViewPool<TongueView>(resolver, tonguePrefab, parent, LaneSystem.Capacity)
+            : null;
 
         // Unity's ==, for a destroyed parent; the pools have already refused a missing prefab.
         _parent = parent != null ? parent : null;
@@ -254,6 +270,12 @@ public sealed class BossViews : IDisposable
 
     /// <summary>How many lanes are drawn on the floor right now, arming or fired.</summary>
     public int LaneCount => _lanes.Count;
+
+    /// <summary>How many tongues are out of the mouth right now (JG-06a).</summary>
+    public int TongueCount => _tongues.Count;
+
+    /// <summary>The tongue at <paramref name="index"/> of <see cref="TongueCount"/>.</summary>
+    public TongueView Tongue(int index) => _tongues[index];
 
     /// <summary>How many bosses are wearing a shell right now.</summary>
     public int BeatCount => _beats.Count;
@@ -309,6 +331,7 @@ public sealed class BossViews : IDisposable
         StepShockwaves(dt);
         StepFissures(dt);
         StepLanes(dt);
+        StepTongues(dt);
         StepBeats(dt);
     }
 
@@ -359,11 +382,13 @@ public sealed class BossViews : IDisposable
         _shockwavePool.Dispose();
         _fissurePool.Dispose();
         _beatPool.Dispose();
+        _tonguePool?.Dispose();
 
         _shockwaves.Clear();
         _fissures.Clear();
         _beats.Clear();
         _lanes.Clear();
+        _tongues.Clear();
         _freeLanes.Clear();
         _allLanes.Clear();
         _lastRadius.Clear();
@@ -563,6 +588,9 @@ public sealed class BossViews : IDisposable
         strip.Arm = evt.ArmSeconds;
         strip.Elapsed = 0f;
         strip.Fired = false;
+        strip.Origin = evt.Origin.ToUnity();
+        strip.Direction = new Vector2(evt.Direction.X, evt.Direction.Y);
+        strip.Length = evt.Length;
 
         var direction = new Vector3(evt.Direction.X, 0f, evt.Direction.Y);
         Vector3 origin = evt.Origin.ToUnity();
@@ -589,12 +617,54 @@ public sealed class BossViews : IDisposable
 #endif
     }
 
-    /// <summary>The tongue has struck: the strip flashes, hit or miss, for the fissure's reason.</summary>
+    /// <summary>
+    /// The tongue has struck: the strip flashes, hit or miss, for the fissure's reason, and a tongue
+    /// shoots down it to the lane's end (JG-06a).
+    /// </summary>
     private void OnLaneFired(LaneFired evt)
     {
         if (_lanes.TryGetValue(evt.Id, out LaneStrip strip))
         {
             FireLane(strip);
+            ShootTongue(strip);
+        }
+    }
+
+    /// <summary>One tongue along <paramref name="strip"/>'s lane, unless the run has none to draw.</summary>
+    private void ShootTongue(LaneStrip strip)
+    {
+        if (_tonguePool == null)
+        {
+            return;
+        }
+
+        TongueView tongue = _tonguePool.Get();
+
+        tongue.Fire(strip.Origin, strip.Direction, strip.Length);
+
+        _tongues.Add(tongue);
+    }
+
+    /// <summary>Steps every tongue out of the mouth and pools the ones back in.</summary>
+    private void StepTongues(float dt)
+    {
+        for (int i = _tongues.Count - 1; i >= 0; i--)
+        {
+            TongueView tongue = _tongues[i];
+
+            // Unity's ==, for a body destroyed under a frame that is still finishing.
+            if (tongue != null)
+            {
+                tongue.Step(dt);
+
+                if (tongue.IsLive)
+                {
+                    continue;
+                }
+            }
+
+            _tongues.RemoveAt(i);
+            _tonguePool.Release(tongue);
         }
     }
 
@@ -875,5 +945,12 @@ public sealed class BossViews : IDisposable
         public float Elapsed { get; set; }
 
         public bool Fired { get; set; }
+
+        /// <summary>The lane's geometry, from <c>LaneArmed</c>, for the tongue that strikes down it.</summary>
+        public Vector3 Origin { get; set; }
+
+        public Vector2 Direction { get; set; }
+
+        public float Length { get; set; }
     }
 }

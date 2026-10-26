@@ -44,3 +44,10 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-06a** — The tongue reaches down the lane: a drawn tongue shoots to the lane's end on `LaneFired` (S) · [spec](tasks/JG-06a-the-tongue-reaches-down-the-lane.md)
 - [x] **JG-06b** — The slam lands heavy: camera shake and an earth-and-dust burst on every `ShockwaveEmitted` (M) · [spec](tasks/JG-06b-the-slam-lands-heavy.md)
 - [x] **JG-06c** — The shockwave is a ground wave: a band as wide as the bite, with an earth lip on its edge (M) · [spec](tasks/JG-06c-the-shockwave-is-a-ground-wave.md)
+
+**The Lunger: a panther** (owner, 2026-10-27). Specs for the owner to OK; each built only on the owner's go. a and b are independent; c needs b, d needs a and c.
+
+- [ ] **JG-07a** — The Lunger dashes down a lane: `LungerBehaviour` stalks, warns with a lane for 0.9 s, dashes 12 m; lanes carry a tongue flag (M) · [spec](tasks/JG-07a-the-lunger-dashes-down-a-lane.md)
+- [ ] **JG-07b** — The Panther's model: the TRELLIS sculpt cut to the crowd's budget, repainted on the atlas, on `Rig_Panther` with six clips (M) · [spec](tasks/JG-07b-the-panthers-model.md)
+- [ ] **JG-07c** — The Panther's body: prefab and animator, crouch on the wind-up, bound through the dash; the tongue only down a tongue's lane (M) · [spec](tasks/JG-07c-the-panthers-body.md)
+- [ ] **JG-07d** — Panthers in the Jungle: `enemy.panther` from stage 6, stage 6 scripted as 2 Panthers (M) · [spec](tasks/JG-07d-panthers-in-the-jungle.md)

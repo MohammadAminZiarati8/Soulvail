@@ -5,7 +5,7 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-26, after JG-04e._
+_Updated 2026-10-26, after JG-04e; JG-05a–d specced._
 
 ## Current State
 
@@ -13,7 +13,7 @@ _Updated 2026-10-26, after JG-04e._
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
 | **Last merged task** | **JG-04e** — the tongue lash: `LaneSystem` (core's line hazard: armed, fires once, closes 0.2 s later, capacity 4). While the slam cools, Old Croaker lashes a player 3–9 m away: a 0.8 s telegraph (`Move` 2) and a 9 m × 1.6 m lane down the player's line, on a 4 s cooldown. `BossViews` draws the lane as a red-orange strip. **Tuned after the owner's playtest:** `Croaker.asset` 800 HP (was 3 200, the Warden's), both cooldowns 8 s, and a 2.5 s rest after every attack. **One phase**: no escalation, no summoned Frogs, a one-band boss bar (owner, 2026-10-26). |
-| **Next task** | **None named.** JG-04 is done. The mud hazard is the spec's "next, if the owner wants it". Built only on the owner's go. |
+| **Next task** | **None named.** Four playtest fixes are specced, JG-05a–d (ROADMAP): arrows that miss a Pitcher pinned to a wall, a slower Frog hop, Old Croaker hopping instead of walking, a 2.5 m Puffball blast. Built only on the owner's go. |
 | **Verified** | **JG-04e: full EditMode suite 4 440: 4 438 passed / 1 failed / 1 inconclusive**, both known ([Traps §7](../Traps.md#7-tests-nunit-allocation)), through `TestRunnerApi` in the open Editor. |
 
 ## What works

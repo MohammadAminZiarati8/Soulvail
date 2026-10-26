@@ -24,24 +24,17 @@ M0 walking skeleton · M1 combat feel · M2 stage loop · M3 levelling and the t
 run end · M5 second class · M6 systems complete (Sanctum, Veilrot, Pacts, Ordeals, Emberwright,
 unlocks, localisation) · M7 partial (specs for roster, affixes, Choirmother and 81 nodes — removed
 unbuilt; the Jungle's art, Frog and pitcher plant built) · RS the Ranger · UI the Clash-style UI and
-the portrait switch. Tags `m0`–`m5`; history in `git log`.
+the portrait switch · JG-01–04 the Jungle's first five stages (scripted stages, the Pitcher's spit,
+the Puffball, Old Croaker) and RS-07 the Ranger's arrows — specs removed 2026-10-26, kept in git.
+Tags `m0`–`m5`; history in `git log`.
 
 ## Next
 
 _No milestone. The owner is setting the next direction._
 
-- [x] **JG-01** — Scripted stages: a mode lists a stage's enemies by hand; the Jungle opens with 3 Frogs, then 2 Pitchers (M) · [spec](tasks/JG-01-scripted-stages.md)
-- [x] **JG-02** — The Pitcher's spit: an enemy can name its own shot; the Pitcher lobs slower red-orange goo with a trail and a splat (M) · [spec](tasks/JG-02-pitcher-spit.md)
-- [x] **RS-07a** — Bigger arrows: the Ranger's arrow at 1.6× with a thin, short cyan trail (S) · [spec](tasks/RS-07a-bigger-arrows.md)
-- [x] **RS-07b** — Volley's own arrow: a volley shot is marked, and flies a bigger arrow with a brighter trail and its own burst (M) · [spec](tasks/RS-07b-volley-arrow.md)
-- [x] **JG-03a** — The Puffball's model: the Jungle's Bloater as a puffball mushroom, `puffball.py` on a rig of its own with five clips (S) · [spec](tasks/JG-03a-the-puffballs-model.md)
-- [x] **JG-03b** — The Puffball's body: prefab, controller, a cyan-white wind-up glow and a spore burst on death (M) · [spec](tasks/JG-03b-the-puffballs-body.md)
-- [x] **JG-03c** — Puffballs in the Jungle: `enemy.puffball` with the Bloater's numbers, rostered at stage 4, stage 4 scripted as 2 Puffballs (S) · [spec](tasks/JG-03c-puffballs-in-the-jungle.md)
+**Playtest fixes** (owner, 2026-10-26). Four independent tasks, each built only on the owner's go.
 
-**Old Croaker, the Jungle's first boss** (owner's go, 2026-10-26). A giant old frog on `Rig_Frog`: hop-slams, tongue lash, croaks up Frogs. Later Jungle bosses (Pitcher Mother, Sporeheart, the Strangler, the Overgrown) are titles only until the owner names them.
-
-- [x] **JG-04a** — Old Croaker's model: `croaker.py` on `Rig_Frog`, boss dressing and seven clips (S) · [spec](tasks/JG-04a-the-croakers-model.md)
-- [x] **JG-04b** — Old Croaker's behaviour: `CroakerBehaviour` hop-slams with fissure + shockwave; `EnemyTelegraph.Move` (S) · [spec](tasks/JG-04b-the-croakers-behaviour.md)
-- [x] **JG-04c** — Old Croaker in the Jungle: boss behaviour picked by id, the two assets, Jungle's roster (M) · [spec](tasks/JG-04c-the-croaker-in-the-jungle.md)
-- [x] **JG-04d** — Old Croaker's body: prefab and controller, a clip per `Move` (M) · [spec](tasks/JG-04d-the-croakers-body.md)
-- [x] **JG-04e** — The tongue lash: `LaneSystem` in core, its view, the Croaker's second attack (M) · [spec](tasks/JG-04e-the-tongue-lash.md)
+- [ ] **JG-05a** — A blocked body reports its real speed, so arrows hit a Pitcher backed against a wall (S) · [spec](tasks/JG-05a-a-blocked-body-reports-its-real-speed.md)
+- [ ] **JG-05b** — The Frog rests 0.8 s between hops, each hop the same length (S) · [spec](tasks/JG-05b-the-frog-rests-between-hops.md)
+- [ ] **JG-05c** — Old Croaker hops in like a Frog, never walks; `HopGait` shared with the chaser (M) · [spec](tasks/JG-05c-old-croaker-hops-in.md)
+- [ ] **JG-05d** — A smaller Puffball blast: 2.5 m, the Bloater keeps 3 m (S) · [spec](tasks/JG-05d-a-smaller-puffball-blast.md)

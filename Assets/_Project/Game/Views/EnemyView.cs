@@ -113,20 +113,26 @@ namespace Soulvail.Game.Views
         public Vector3 Position => transform.position;
 
         /// <summary>
-        /// The horizontal velocity last applied — the chaser's own walking, or a shove's slide.
+        /// The horizontal velocity the body last achieved — the chaser's own walking, or a shove's
+        /// slide, after collision.
         /// </summary>
         /// <remarks>
         /// <para>
         /// Present since M1-07, and reported into the snapshot since then, for the reason
         /// <c>EnemySense</c> carries the field at all: a zero that is written every frame is a
         /// fact, while a field nobody fills is a slot that keeps whatever the previous occupant of
-        /// the slot left in it. It is what core asked for rather than what collision achieved,
-        /// exactly as <see cref="PlayerView.Velocity"/> is, and for the same reason.
+        /// the slot left in it.
+        /// </para>
+        /// <para>
+        /// <b>It is what collision achieved, not what core asked for</b> (JG-05a). The player's shot
+        /// leads an enemy by this velocity (<c>ProjectileLead</c>), so a Pitcher backing into a wall
+        /// that reported the retreat it was told to make had every arrow aimed into the wall behind
+        /// it. The body's displacement over the step is the only honest answer.
         /// </para>
         /// <para>
         /// <b>A knockback writes it, and that is not a widening of the rule.</b> A shove is core's
-        /// decision arriving as an <c>EnemyKnockbackIntent</c>, so the slide is exactly "what core
-        /// asked for". Leaving it at zero would have the snapshot report a body standing still
+        /// decision arriving as an <c>EnemyKnockbackIntent</c>, and the slide is what it achieved.
+        /// Leaving it at zero would have the snapshot report a body standing still
         /// while its position moved 5 m — two senses about the same enemy that contradict each
         /// other, which is the one thing a sense may not do.
         /// </para>
@@ -303,11 +309,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            Vector3 horizontal = intent.Velocity.ToUnity();
-
-            MoveBody(horizontal, dt);
-
-            _velocity = horizontal;
+            _velocity = MoveBody(intent.Velocity.ToUnity(), dt);
 
             Face(intent.FacingXZ);
         }
@@ -539,9 +541,7 @@ namespace Soulvail.Game.Views
             // Zero dt would divide by nothing; the frame is skipped rather than guessed at.
             Vector3 horizontal = dt > 0f ? delta / dt : Vector3.zero;
 
-            MoveBody(horizontal, dt);
-
-            _velocity = horizontal;
+            _velocity = MoveBody(horizontal, dt);
 
             if (finished)
             {
@@ -551,20 +551,35 @@ namespace Soulvail.Game.Views
 
         /// <summary>
         /// Moves the body by <paramref name="horizontal"/> for <paramref name="dt"/> seconds, with
-        /// gravity folded in. The one place this object touches the controller.
+        /// gravity folded in, and returns the horizontal velocity collision actually allowed. The one
+        /// place this object touches the controller.
         /// </summary>
         /// <remarks>
         /// One <c>Move</c> per frame with both components together, exactly as
         /// <see cref="PlayerView.Apply"/> does it: two calls would resolve collision twice and let a
         /// horizontal push climb what a vertical one had just settled onto.
         /// </remarks>
-        private void MoveBody(Vector3 horizontal, float dt)
+        private Vector3 MoveBody(Vector3 horizontal, float dt)
         {
             CharacterController controller = Controller;
 
             _fallSpeed = controller.isGrounded ? GroundedFallSpeed : _fallSpeed + (Gravity * dt);
 
+            Vector3 before = transform.position;
+
             controller.Move((horizontal + new Vector3(0f, _fallSpeed, 0f)) * dt);
+
+            if (!(dt > 0f) || float.IsInfinity(dt))
+            {
+                return Vector3.zero;
+            }
+
+            // What collision let through, flattened: gravity and the step offset are the body's
+            // business, never the sense's (JG-05a rule 3).
+            Vector3 moved = transform.position - before;
+            moved.y = 0f;
+
+            return moved / dt;
         }
 
         /// <summary>

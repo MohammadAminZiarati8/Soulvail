@@ -66,4 +66,11 @@ public Vector3 Velocity => _velocity;
 
 ## As built
 
-_Filled at merge._
+_2026-10-26._ As specified. `EnemyView.MoveBody` now returns the body's flattened displacement over
+`dt`, measured either side of `CharacterController.Move`, and both `Apply` and the knockback step store
+that as `_velocity`. A zero, negative or infinite `dt` returns zero. The `Velocity` doc comment said
+"what core asked for, not what collision achieved". It now says the opposite and gives the reason.
+`EnemyAnimatorView` reads the same property, so a blocked body's legs now stop as well. The tests are in
+`EnemyViewsTests` with a `Walker` helper. The wall row puts a box face exactly at the capsule's radius plus skin
+(0.58 m) and calls `Physics.SyncTransforms` (`autoSyncTransforms` is 0). The old code stored the intent, 2 m/s, so this row could not have passed.
+The fixture passes 11/11.

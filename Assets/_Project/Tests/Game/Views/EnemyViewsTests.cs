@@ -189,6 +189,67 @@ public sealed class EnemyViewsTests
         Assert.That(_parent.transform.childCount, Is.Zero, "Every body of every pool, standing or pooled.");
     }
 
+    [Test]
+    public void Apply_FreeBody_ReportsTheIntent()
+    {
+        // JG-05a rule 1: nothing in the way, so what collision allowed is what core asked for.
+        EnemyView body = Walker(new Vector3(0f, 0f, 50f));
+
+        body.Apply(new EnemyMoveIntent(1, new Vector3(2f, 0f, 0f).ToNum(), new System.Numerics.Vector2(1f, 0f)), 0.1f);
+
+        Assert.That(body.Velocity.x, Is.EqualTo(2f).Within(0.01f));
+        Assert.That(body.Velocity.y, Is.Zero, "Gravity is the body's business, never the sense's (rule 3).");
+        Assert.That(body.Velocity.z, Is.EqualTo(0f).Within(0.01f));
+    }
+
+    [Test]
+    public void Apply_IntoAWall_ReportsNearZero()
+    {
+        // JG-05a rule 2: a Pitcher backed into the arena wall. It was told to retreat at 2 m/s and
+        // went nowhere, and the player's lead must hear "nowhere", or every arrow lands in the wall.
+        EnemyView body = Walker(new Vector3(0f, 0f, 60f));
+
+        // The body's capsule is 0.5 m wide plus a 0.08 m skin, so the wall's face at 0.58 m touches it.
+        GameObject wall = Track(new GameObject("Wall"));
+        wall.transform.position = new Vector3(1.08f, 0f, 60f);
+        wall.AddComponent<BoxCollider>().size = new Vector3(1f, 6f, 6f);
+
+        Physics.SyncTransforms();
+
+        body.Apply(new EnemyMoveIntent(1, new Vector3(2f, 0f, 0f).ToNum(), new System.Numerics.Vector2(1f, 0f)), 0.1f);
+
+        Assert.That(body.Velocity.magnitude, Is.LessThan(0.1f));
+        Assert.That(body.Velocity.y, Is.Zero);
+    }
+
+    [Test]
+    public void Apply_ZeroDt_ReportsZero()
+    {
+        // JG-05a rule 3: no time passed, so no speed can be measured, and nothing is divided by it.
+        EnemyView body = Walker(new Vector3(0f, 0f, 70f));
+
+        body.Apply(new EnemyMoveIntent(1, new Vector3(2f, 0f, 0f).ToNum(), new System.Numerics.Vector2(1f, 0f)), 0f);
+
+        Assert.That(body.Velocity, Is.EqualTo(Vector3.zero));
+    }
+
+    /// <summary>
+    /// A bound body standing at <paramref name="position"/>, its capsule a trigger as the prefab's
+    /// is, so the controller collides with the world and not with its own collider.
+    /// </summary>
+    private EnemyView Walker(Vector3 position)
+    {
+        GameObject walker = Track(new GameObject("Walker"));
+
+        EnemyView view = walker.AddComponent<EnemyView>();
+        view.Body.isTrigger = true;
+        view.Bind(1, position);
+
+        Physics.SyncTransforms();
+
+        return view;
+    }
+
     private void Build(EnemyLookBook book) =>
         _views = new EnemyViews(_container, _shared, _parent.transform, _hub, book, Prewarm);
 

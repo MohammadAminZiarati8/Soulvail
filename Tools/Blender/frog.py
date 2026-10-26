@@ -20,6 +20,10 @@ are KayKit's too: a head wider than the body, big eyes, short thick limbs, round
 M7-05j's Tripo sculpt, cut to 1,200 flat-shaded triangles, which read as faceted polygon art beside
 KayKit's bodies. Nothing outside the repository is read.
 
+**croaker.py imports this file** (JG-04a) for its skeleton, shells, pose solver and clip writer, so
+`main()` runs only when this file is the script, and each piece takes the Croaker's scale, name and
+clips while defaulting to the Frog's. Run alone, this writes the same Frog.fbx it did before the split.
+
 **Why a rig of its own, not Rig_Medium.** Every other body wears KayKit's humanoid rig so its 139
 clips play unretargeted. A frog cannot use one of them: an upright walk or a two-handed chop on four
 folded legs is not a frog. Its clips are authored below, so its bones are a frog's. Their names and
@@ -93,7 +97,8 @@ def limb_joints(s):
     }
 
 
-def skeleton():
+def skeleton(scale=1.0):
+    """Every bone, its head and tail multiplied by `scale`: croaker.py builds the same skeleton bigger."""
     bones = {
         "root": (None, v(0, 0, 0), v(0, 0, 0.12)),
         "body": ("root", v(0, 0.28, 0.26), v(0, 0.02, 0.36)),
@@ -111,7 +116,7 @@ def skeleton():
         bones[f"thigh.{side}"] = ("body", j["hip"], j["knee"])
         bones[f"shin.{side}"] = (f"thigh.{side}", j["knee"], j["ankle"])
         bones[f"foot.{side}"] = (f"shin.{side}", j["ankle"], j["toes"])
-    return bones
+    return {name: (parent, head * scale, tail * scale) for name, (parent, head, tail) in bones.items()}
 
 
 LIMBS = {  # chain of three, and the parent that carries it
@@ -120,7 +125,7 @@ LIMBS = {  # chain of three, and the parent that carries it
 }
 
 
-def build_armature():
+def build_armature(scale=1.0):
     data = bpy.data.armatures.new("Rig_Frog")
     arm = bpy.data.objects.new("Rig_Frog", data)
     bpy.context.scene.collection.objects.link(arm)
@@ -131,7 +136,7 @@ def build_armature():
     bpy.ops.object.mode_set(mode="EDIT")
     to_arm = arm.matrix_world.inverted()
     edit = {}
-    for name, (parent, head, tail) in skeleton().items():
+    for name, (parent, head, tail) in skeleton(scale).items():
         bone = data.edit_bones.new(name)
         bone.head = to_arm @ head
         bone.tail = to_arm @ tail
@@ -270,6 +275,7 @@ def outward(verts, faces):
 class Part:
     def __init__(self, verts, faces, swatch, weights, closed=True):
         self.verts = verts
+        self.closed = closed
         self.faces = outward(verts, faces) if closed else faces
         self.swatch = swatch
         # one dict for a rigid part, or one per vertex
@@ -379,21 +385,30 @@ def build():
     place(ball(8, 5), TONGUE_TIP, (0.078, 0.072, 0.052), "frog_tongue", "tongue.tip")
 
 
-def spots():
-    """Dark spots pressed into the back: shallow domes laid where a ray from above lands."""
+def surface(swatches, bones):
+    """The shells of these swatches on these bones, as one tree a ray can land on."""
     verts, polys = [], []
     for part in PARTS:
-        if part.swatch == "frog_green" and part.bone in ("body", "head", "thigh.l", "thigh.r"):
+        if part.swatch in swatches and part.bone in bones:
             base = len(verts)
             verts += part.verts
             polys += [[base + i for i in f] for f in part.faces]
-    tree = BVHTree.FromPolygons(verts, polys)
+    return BVHTree.FromPolygons(verts, polys)
+
+
+def landing(tree, x, y):
+    """Where a ray from above lands on `tree` at (x, y), and the surface's normal there, facing up."""
+    hit, normal, _, _ = tree.ray_cast(v(x, y, 3.0), v(0, 0, -1))
+    assert hit is not None, f"no surface under {x}, {y}"
+    return hit, (-normal if normal.z < 0 else normal)
+
+
+def spots():
+    """Dark spots pressed into the back: shallow domes laid where a ray from above lands."""
+    tree = surface(("frog_green",), ("body", "head", "thigh.l", "thigh.r"))
     for x, y, r, bone in ((0.10, 0.06, 0.085, "body"), (-0.14, 0.16, 0.07, "body"), (0.04, 0.30, 0.06, "body"),
                           (0.33, 0.20, 0.055, "thigh.l"), (-0.32, 0.10, 0.05, "thigh.r")):
-        hit, normal, _, _ = tree.ray_cast(v(x, y, 3.0), v(0, 0, -1))
-        assert hit is not None, f"no surface under the spot at {x}, {y}"
-        if normal.z < 0:
-            normal = -normal
+        hit, normal = landing(tree, x, y)
         place(dome(), hit, (r, r * 0.85, 0.012), "frog_spot", bone, facing(normal, v(0, -1, 0)), closed=False)
 
 
@@ -406,7 +421,7 @@ def cull():
         by_bone[part.bone].append(part)
     removed = 0
     for parts in by_bone.values():
-        closed = [(p, BVHTree.FromPolygons(p.verts, p.faces)) for p in parts if len(p.faces) > 20 and p.swatch != "frog_spot"]
+        closed = [(p, BVHTree.FromPolygons(p.verts, p.faces)) for p in parts if len(p.faces) > 20 and p.closed]
         for part in parts:
             def buried(point):
                 for other, tree in closed:
@@ -431,9 +446,9 @@ def cull():
 TOP_Z = 0.84
 
 
-def assemble(arm):
-    mesh = bpy.data.meshes.new("Frog_Body")
-    body = bpy.data.objects.new("Frog_Body", mesh)
+def assemble(arm, name="Frog_Body", top_z=TOP_Z):
+    mesh = bpy.data.meshes.new(name)
+    body = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(body)
     for name in arm.data.bones.keys():
         body.vertex_groups.new(name=name)
@@ -451,7 +466,7 @@ def assemble(arm):
         for f in part.faces:
             face = bm.faces.new([made[i] for i in f])
             for loop in face.loops:
-                loop[uv].uv = uv_for(part.swatch, (TOP_Z - loop.vert.co.z) / TOP_Z)
+                loop[uv].uv = uv_for(part.swatch, (top_z - loop.vert.co.z) / top_z)
     bmesh.ops.triangulate(bm, faces=bm.faces)
     bm.verts.ensure_lookup_table()
     unused = [vt for vt in bm.verts if not vt.link_faces]  # every face around it was buried
@@ -506,8 +521,12 @@ def ik2(a, target, l1, l2, pole):
 
 
 class Poser:
-    def __init__(self, arm):
+    """`unit` scales every pose's offset and limb deltas, which are written in the Frog's metres, so a
+    bigger body on the same skeleton (croaker.py) poses with numbers of the same size."""
+
+    def __init__(self, arm, unit=1.0):
         self.arm = arm
+        self.unit = unit
         self.A = arm.matrix_world.copy()
         self.rest = {b.name: self.A @ b.matrix_local for b in arm.data.bones}
         self.head = {n: m.to_translation() for n, m in self.rest.items()}
@@ -533,7 +552,7 @@ class Poser:
             W[name] = m
             carry[name] = m @ self.rest[name].inverted()
 
-        body = Matrix.Translation(pose.get("offset", v(0, 0, 0))) @ about(self.head["body"], rot(*pose.get("body", (0, 0, 0))))
+        body = Matrix.Translation(pose.get("offset", v(0, 0, 0)) * self.unit) @ about(self.head["body"], rot(*pose.get("body", (0, 0, 0))))
         W["body"] = body @ self.rest["body"]
         carry["body"] = body
         fk("spine", "body", rot(pose.get("spine", 0.0)))
@@ -552,6 +571,7 @@ class Poser:
         its rest place plus delta, "c" carries it with the parent; end_pitch turns the hand or foot
         about the side axis, in degrees, from its rest direction."""
         mode, delta, end_pitch = spec if spec else ("c", v(0, 0, 0), 0.0)
+        delta = delta * self.unit
         upper, lower, end = chain
         C = carry[parent]
         hip = C @ self.head[upper]
@@ -680,11 +700,12 @@ def clips():
     }
 
 
-def author_clips(arm):
-    poser = Poser(arm)
+def author_clips(arm, table=None, unit=1.0):
+    """Keys every clip in `table`, the Frog's by default, onto `arm`, an action each."""
+    poser = Poser(arm, unit)
     arm.animation_data_create()
     made = []
-    for name, (loop, keys) in clips().items():
+    for name, (loop, keys) in (table or clips()).items():
         action = bpy.data.actions.new(name)
         action.use_fake_user = True
         arm.animation_data.action = action
@@ -715,7 +736,7 @@ def author_clips(arm):
 # ---------------------------------------------------------------------------------------------
 
 
-def stand_off(body, atlas):
+def stand_off(body, atlas, label="Frog"):
     """FrogModelTests' last row, run here first: the surface's mean colour against the floor's."""
     floor = bpy.data.images.load(FLOOR)
     px = np.empty(len(floor.pixels), np.float32)
@@ -742,32 +763,32 @@ def stand_off(body, atlas):
         sat += poly.area * float(saturation(colour))
     frog, ground = (lum / area, sat / area), (float(luma(px).mean()), float(saturation(px).mean()))
     print(f"  colour: luma {frog[0]:.3f} and saturation {frog[1]:.3f}, on a floor of {ground[0]:.3f} and {ground[1]:.3f}")
-    assert frog[0] >= ground[0] + STAND_OFF[0] and frog[1] >= ground[1] + STAND_OFF[1], "the Frog does not stand off the Jungle's floor"
+    assert frog[0] >= ground[0] + STAND_OFF[0] and frog[1] >= ground[1] + STAND_OFF[1], f"the {label} does not stand off the Jungle's floor"
 
 
-def check(body, atlas):
+def check(body, atlas, label="Frog", budget=TRIANGLE_BUDGET):
     mesh = body.data
     tris = sum(len(p.vertices) - 2 for p in mesh.polygons)
-    assert TRIANGLE_BUDGET[0] <= tris <= TRIANGLE_BUDGET[1], f"{tris} triangles is outside GD 17.1's crowd budget"
+    assert budget[0] <= tris <= budget[1], f"{tris} triangles is outside the {label}'s budget, {budget}"
     names = [g.name for g in body.vertex_groups]
     for vert in mesh.vertices:
         groups = [(names[g.group], g.weight) for g in vert.groups if g.weight > 0]
         assert groups, f"vertex {vert.index} is unweighted"
         assert len(groups) <= 4 and abs(sum(w for _, w in groups) - 1.0) < 1e-3, f"vertex {vert.index}: {groups}"
         assert not any(n == "root" for n, _ in groups), f"vertex {vert.index} rides the root"
-    stand_off(body, atlas)
+    stand_off(body, atlas, label)
     zs = [vert.co.z for vert in mesh.vertices]
-    print(f"  Frog: {tris} triangles, {len(mesh.vertices)} vertices, {min(zs):.3f}-{max(zs):.3f} m tall")
+    print(f"  {label}: {tris} triangles, {len(mesh.vertices)} vertices, {min(zs):.3f}-{max(zs):.3f} m tall")
 
 
-def export(arm, body):
+def export(arm, body, name="Frog.fbx"):
     bpy.ops.object.select_all(action="DESELECT")
     arm.select_set(True)
     body.select_set(True)
     bpy.context.view_layer.objects.active = arm
     bpy.context.scene.render.fps = FPS
     bpy.ops.export_scene.fbx(
-        filepath=os.path.join(OUT, "Frog.fbx"),
+        filepath=os.path.join(OUT, name),
         use_selection=True,
         object_types={"ARMATURE", "MESH"},
         apply_scale_options="FBX_SCALE_ALL",  # rootling.py says why
@@ -802,12 +823,15 @@ SHEET = {
 }
 
 
-def pose_sheet(path):
+def pose_sheet(path, name="Frog.fbx", sheet=SHEET, unit=1.0, sided=("Hop", "Leap", "Attack", "Death"),
+               game=(("Idle", 0), ("Hop", 6), ("Attack", 12), ("Attack", 15), ("Death", 30))):
+    """`unit` widens every camera for a bigger body; `sided` are the clips drawn from the side too, and
+    `game` the frames drawn from the game's camera."""
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj)
     for action in list(bpy.data.actions):
         bpy.data.actions.remove(action)
-    bpy.ops.import_scene.fbx(filepath=os.path.join(OUT, "Frog.fbx"))
+    bpy.ops.import_scene.fbx(filepath=os.path.join(OUT, name))
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     body = next(o for o in bpy.data.objects if o.type == "MESH")
     image = bpy.data.images.load(os.path.join(TEX, "T_Enemy_Albedo.png"))
@@ -824,7 +848,7 @@ def pose_sheet(path):
     textured(body.data.materials[0], image)
     floor_img = bpy.data.images.new("floor", 4, 4)
     floor_img.pixels.foreach_set(np.tile(np.array([0x4E / 255, 0x6E / 255, 0x3F / 255, 1.0], np.float32), 16))
-    bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 0, 0))
+    bpy.ops.mesh.primitive_plane_add(size=8 * unit, location=(0, 0, 0))
     floor = bpy.context.object
     floor.data.materials.append(bpy.data.materials.new("floor"))
     textured(floor.data.materials[0], floor_img)
@@ -860,17 +884,17 @@ def pose_sheet(path):
 
     pitch_r = math.radians(57)
     views = {
-        "three_quarter": (v(-3.2, -3.4, 2.2), v(0, -0.15, 0.45), 1.9),
-        "side": (v(5, 0, 0.5), v(0, -0.1, 0.5), 2.1),
-        "game": (v(0, -math.cos(pitch_r) * 6, math.sin(pitch_r) * 6 + 0.4), v(0, -0.3, 0.4), 2.0),
+        "three_quarter": (v(-3.2, -3.4, 2.2) * unit, v(0, -0.15, 0.45) * unit, 1.9 * unit),
+        "side": (v(5, 0, 0.5) * unit, v(0, -0.1, 0.5) * unit, 2.1 * unit),
+        "game": (v(0, -math.cos(pitch_r) * 6, math.sin(pitch_r) * 6 + 0.4) * unit, v(0, -0.3, 0.4) * unit, 2.0 * unit),
     }
-    width = max(len(f) for f in SHEET.values())
+    width = max(len(f) for f in sheet.values())
     rows = []
     arm.animation_data_create()
-    for clip, frames in SHEET.items():
+    for clip, frames in sheet.items():
         action = actions[clip]
         arm.animation_data.action = action
-        for view in (("three_quarter", "side") if clip in ("Hop", "Leap", "Attack", "Death") else ("three_quarter",)):
+        for view in (("three_quarter", "side") if clip in sided else ("three_quarter",)):
             aim(*views[view])
             cells = []
             for f in frames:
@@ -882,7 +906,7 @@ def pose_sheet(path):
         print(f"  pose sheet: {clip}")
     # The game camera's view, and the silhouette beside a capsule, as the Rootling's sheet has.
     cells = []
-    for clip, f in (("Idle", 0), ("Hop", 6), ("Attack", 12), ("Attack", 15), ("Death", 30)):
+    for clip, f in game:
         arm.animation_data.action = actions[clip]
         scene.frame_set(f)
         aim(*views["game"])
@@ -897,8 +921,8 @@ def pose_sheet(path):
     scene.display.shading.show_shadows = False
     scene.world = scene.world or bpy.data.worlds.new("sheet")
     scene.world.color = (1, 1, 1)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.4, depth=1.6, location=(1.3, 0, 0.8))
-    aim(v(0.65, -math.cos(pitch_r) * 8, math.sin(pitch_r) * 8 + 0.5), v(0.65, 0, 0.5), 3.4)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.4, depth=1.6, location=(0.9 + 0.4 * unit, 0, 0.8))
+    aim(v(0.45 + 0.2 * unit, -math.cos(pitch_r) * 8 * unit, math.sin(pitch_r) * 8 * unit + 0.5), v(0.45 + 0.2 * unit, 0, 0.5 * unit), 3.4 * unit)
     cells.append(render())
     rows.append(np.concatenate(cells, axis=1))
     save_png(np.concatenate(rows, axis=0), path)
@@ -929,4 +953,5 @@ def main():
         pose_sheet(os.path.abspath(args[args.index("--pose-sheet") + 1]))  # Blender would not read it from here
 
 
-main()
+if __name__ == "__main__":  # croaker.py imports this file for its builder and its clip machinery
+    main()

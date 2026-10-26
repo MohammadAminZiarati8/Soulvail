@@ -1,11 +1,12 @@
 """The shared enemy atlas, T_Enemy_Albedo: every enemy body samples it through M_Enemy (M7-05f).
 
-Imported by each body's script (rootling.py, frog.py, pitcher.py, puffball.py), and each writes the whole atlas, so a
+Imported by each body's script (rootling.py, frog.py, pitcher.py, puffball.py, croaker.py), and each writes the whole atlas, so a
 re-run of any leaves the same bytes. A body's swatches are added here, never in its own script, which is
 what keeps one body's re-run from erasing another's columns.
 
 The layout is M7-05b's at half the size: 512 px square in 64 x 128 px strips, each a vertical gradient
-from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 the Puffball's.
+from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 the Puffball's, and the
+last two cells of column 7 Old Croaker's, which fills the atlas.
 """
 
 import os
@@ -54,6 +55,10 @@ SWATCHES = {
     "puff_eye": (6, 3, "1E1A1A", "0A0808"),
     "puff_shine": (7, 0, "FFFFFF", "F0ECE2"),
     "puff_pore": (7, 1, "9C8262", "6E5A42"),
+    # Old Croaker (JG-04a): the Frog's skin, older, darker and mossier, and the moss mat on its back.
+    # Every other part of it wears a swatch above (croaker.py's docstring lists them).
+    "croak_skin": (7, 2, "98BE42", "56862A"),
+    "croak_moss": (7, 3, "7A9A36", "41601F"),
 }
 SWATCH_NAMES = list(SWATCHES)
 

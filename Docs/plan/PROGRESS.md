@@ -5,16 +5,16 @@ appended: each line states the present. History is `git log`; a merged task's ac
 *As built* until the spec is deleted, then the commit. **Capped at 10 000 bytes** —
 `wc -c Docs/plan/PROGRESS.md` before a handover; over the cap, rewrite the line that grew.
 
-_Updated 2026-10-22, after JG-03c._
+_Updated 2026-10-26, after JG-04a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned.** The owner is setting the next direction; the old M7/M8 plan, the RS and UI tracks and every unbuilt spec were removed on 2026-10-22. M0–M5 are tagged `m0`–`m5`; `m6` is the owner's to tag. |
-| **Last merged task** | **JG-03c** — Puffballs in the Jungle: `enemy.puffball` (the Bloater's numbers) on JG-03b's body, rostered at stage 4, and stage 4 scripted as 2 Puffballs. Before it, JG-03a's model and JG-03b's body: a cream puffball that swells and glows cyan-white (`Palette.SporeGlow`), and bursts in spores. |
-| **Next task** | **JG-04a** — Old Croaker's model; JG-04a–e build the Jungle's first boss (ROADMAP). Built only on the owner's go. |
-| **Verified** | **JG-03c: 4 411 EditMode — 4 409 passed / 1 failed / 1 inconclusive**, through `TestRunnerApi` in the open Editor. Both non-passes are known ([Traps §7](../Traps.md#7-tests-nunit-allocation)). |
+| **Last merged task** | **JG-04a** — Old Croaker's model: `croaker.py` builds `Croaker.fbx` on `frog.py`'s builder (split for reuse; `Frog.fbx` unchanged), on `Rig_Frog`, 3.4 m tall, with Idle, Hop, Slam (impact frame 27), Lash (reach frame 24), Croak, Hit and Death. Nothing in the game uses it yet. |
+| **Next task** | **JG-04b** — Old Croaker's behaviour (`CroakerBehaviour`, hop-slam, fissure and shockwave); JG-04b–e finish the boss (ROADMAP). Built only on the owner's go. |
+| **Verified** | **JG-04a: `Tests.Game.Art` 538 / 538** (the 4 new rows included) through `TestRunnerApi`; the full suite was last run at JG-03c (4 411: 4 409 passed / 1 failed / 1 inconclusive, both known, [Traps §7](../Traps.md#7-tests-nunit-allocation)). |
 
 ## What works
 
@@ -61,7 +61,9 @@ hero page (baked avatar, stats, every skill rank), Pause, Run end. Every string 
    glowing cyan-white when close, and burst in a cream spore puff inside the red-orange ring; a hit
    squashes the cap; one killed at range collapses and bursts too. Stage 5 on: Puffballs where
    Bloaters were.
-11. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
+11. **JG-04a**: open `Art/Enemies/Croaker.fbx` in the Inspector's preview: a huge, darker, mossy frog
+   with drooping lids, warts and three wine-capped mushrooms; scrub Slam, Lash and Croak.
+12. `Soulvail/Capture Look` at **411 × 914** and **360 × 780** of: every portrait screen (HUD, menu,
    home, tree, Pause, Run end, hero page).
 
 ## What does not work yet

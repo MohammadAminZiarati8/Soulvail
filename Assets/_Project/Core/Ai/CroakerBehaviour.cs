@@ -557,7 +557,8 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
             LashHalfWidth,
             LashTelegraphSeconds,
             _agent.ContactDamage.Value,
-            _now);
+            _now,
+            tongue: true);
     }
 
     /// <summary>Rooted until the tongue lands, then back to approaching.</summary>

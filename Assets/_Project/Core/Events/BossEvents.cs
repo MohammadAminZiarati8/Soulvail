@@ -305,7 +305,20 @@ public readonly struct LaneArmed
     /// <summary>Seconds before it bites. Never under GD §9.1 rule 1's 0.6.</summary>
     public readonly float ArmSeconds;
 
-    public LaneArmed(int id, Vector3 origin, Vector2 direction, float length, float halfWidth, float armSeconds)
+    /// <summary>
+    /// Whether a tongue strikes down it when it fires: Old Croaker's lash, not a Lunger's dash
+    /// (JG-07a rule 12).
+    /// </summary>
+    public readonly bool Tongue;
+
+    public LaneArmed(
+        int id,
+        Vector3 origin,
+        Vector2 direction,
+        float length,
+        float halfWidth,
+        float armSeconds,
+        bool tongue = false)
     {
         Id = id;
         Origin = origin;
@@ -313,6 +326,7 @@ public readonly struct LaneArmed
         Length = length;
         HalfWidth = halfWidth;
         ArmSeconds = armSeconds;
+        Tongue = tongue;
     }
 }
 

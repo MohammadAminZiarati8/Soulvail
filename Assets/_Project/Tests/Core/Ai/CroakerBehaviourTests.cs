@@ -326,6 +326,31 @@ public sealed class CroakerBehaviourTests
     // ---- JG-04e rule 4 ----------------------------------------------------------------------------
 
     [Test]
+    public void Croaker_Lash_LaneCarriesATongue()
+    {
+        // JG-07a rule 12: the lash's lane says a tongue strikes down it, so the view draws one.
+        CroakerBehaviour croaker = Croaker();
+
+        Place(distance: 6f);
+
+        TickUntil(croaker, CroakerState.Slam, 1f);
+
+        RunOutTheSlam(croaker);
+
+        Place(distance: 6f);
+
+        _events.Clear();
+
+        for (int i = 0; i < 40 && croaker.State != CroakerState.Lash; i++)
+        {
+            Tick(croaker);
+        }
+
+        Assert.That(croaker.State, Is.EqualTo(CroakerState.Lash), "Sanity: it lashed.");
+        Assert.That(_events.Single<LaneArmed>().Tongue, Is.True);
+    }
+
+    [Test]
     public void Croaker_LashesInRange_WhenSlamIsCooling()
     {
         CroakerBehaviour croaker = Croaker();

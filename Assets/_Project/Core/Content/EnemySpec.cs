@@ -62,6 +62,12 @@ public enum EnemyBehaviourKind
     /// in practice (M4-01a's finding on <c>PlayerStat</c>).
     /// </remarks>
     Boss,
+
+    /// <summary>
+    /// Stalks, warns with a lane, and dashes down it — GD §8.1's Lunger, the Jungle's panther.
+    /// Implemented by <c>LungerBehaviour</c> in JG-07a. Appended, for <see cref="Boss"/>'s reason.
+    /// </summary>
+    Lunger,
 }
 
 /// <summary>
@@ -184,6 +190,10 @@ public sealed class EnemySpec
     /// </param>
     /// <param name="hopTime">Seconds a hop spends in the air; zero walks. See <see cref="HopTime"/>.</param>
     /// <param name="hopRestTime">Seconds a hopper sits between hops. See <see cref="HopRestTime"/>.</param>
+    /// <param name="lunge">
+    /// How it dashes, or <see langword="null"/> for an archetype that does not — which is every
+    /// archetype but the Lunger.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -200,8 +210,9 @@ public sealed class EnemySpec
     /// <paramref name="recoverTime"/>, <paramref name="hopTime"/> or <paramref name="hopRestTime"/>
     /// is negative, NaN or infinite;
     /// <paramref name="xpValue"/> is not a finite number greater than zero;
-    /// <paramref name="targetPriority"/> is outside 1–8; or <paramref name="threatCost"/> is
-    /// below 1.
+    /// <paramref name="targetPriority"/> is outside 1–8; <paramref name="threatCost"/> is
+    /// below 1; or a Lunger's <paramref name="windupTime"/> is under GD §9.1 rule 1's
+    /// <see cref="Ai.WardenBehaviour.MinTelegraphSeconds"/>.
     /// </exception>
     public EnemySpec(
         ContentId id,
@@ -221,7 +232,8 @@ public sealed class EnemySpec
         ProjectileSpec projectile = null,
         ExplosionSpec explosion = null,
         float hopTime = 0f,
-        float hopRestTime = 0f)
+        float hopRestTime = 0f,
+        LungeSpec lunge = null)
     {
         if (id.Value is null)
         {
@@ -245,6 +257,25 @@ public sealed class EnemySpec
                 "A Bloater must carry an ExplosionSpec — a fuse with no blast behind it is an " +
                 "enemy that walks up, telegraphs, and then simply stops.",
                 nameof(explosion));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Lunger && lunge is null)
+        {
+            throw new ArgumentException(
+                "A Lunger must carry a LungeSpec — the dash is the whole of what it does, and a " +
+                "behaviour with no dash would stalk the player for the rest of the run.",
+                nameof(lunge));
+        }
+
+        // Before the general NonNegative check runs below, so NaN is refused there and a number
+        // that is merely too short is refused here, with the rule it breaks.
+        if (behaviour == EnemyBehaviourKind.Lunger && windupTime < Ai.WardenBehaviour.MinTelegraphSeconds)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(windupTime),
+                windupTime,
+                $"A Lunger's windupTime is how long its lane warns, and GD §9.1 rule 1 wants at least "
+                    + $"{Ai.WardenBehaviour.MinTelegraphSeconds} s of warning before a hit.");
         }
 
         if (targetPriority < MinPriority || targetPriority > MaxPriority)
@@ -285,6 +316,7 @@ public sealed class EnemySpec
         Explosion = explosion;
         HopTime = NonNegative(hopTime, nameof(hopTime));
         HopRestTime = NonNegative(hopRestTime, nameof(hopRestTime));
+        Lunge = lunge;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -406,6 +438,12 @@ public sealed class EnemySpec
 
     /// <summary>Seconds a hopper sits between hops. Ignored when <see cref="HopTime"/> is zero.</summary>
     public float HopRestTime { get; }
+
+    /// <summary>
+    /// How it dashes, or <see langword="null"/> on an archetype that does not.
+    /// </summary>
+    /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Lunger and JG-07a.</remarks>
+    public LungeSpec Lunge { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too: every

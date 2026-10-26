@@ -142,4 +142,29 @@ None: nothing authors a Lunger until JG-07d.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-27. Rules 1–12 as specified, with three resolutions.
+
+- **The bite and the dash start within one tick of each other, not on the same tick (rules 2, 4).**
+  `StateMachine` defers a transition requested inside a tick handler until the handler returns, so
+  every state emits the intent for the state it is in. The stalk tick that enters the wind-up sends the
+  halt; the wind-up's last tick stands; the dash moves from the tick after. The lane's deadline is an
+  absolute second and the wind-up a running sum of frames, so the two can fall one tick apart.
+  `Lunger_StandingInTheLane_IsHitOnceAsTheDashLeaves` pins ±1 tick and exactly one hit of 14.
+- **The dash's last tick is cut to the distance left**, so it covers exactly `Length`.
+  `Lunger_AfterTheWindup_DashesItsLength` counts only the ticks that move: the tick that hands over to
+  Recover stands still. Its first run counted that tick and failed by one frame (0.517 s against 0.5).
+- **`EnemySpec` reads `Ai.WardenBehaviour.MinTelegraphSeconds`** for rule 7's floor. It is the first
+  `Core.Content` → `Core.Ai` reference, inside one assembly, so no purity rule applies.
+
+`LungeSpec` refuses a `Range` past `Length` (a strip that stops short of the player). The guard rows
+are in `Spec_Lunger_RefusesAShortWindupOrNoLunge`. Rule 12's two rows live in `LaneSystemTests` and
+`CroakerBehaviourTests`, as the Files table's ripple says. `TongueViewTests` still publishes lanes
+without the flag, which is right until JG-07c makes the view read it.
+
+**Verified:** the Editor was closed and the MCP down for the build, so the four assemblies were first
+compiled outside it (Traps §3's csc route: zero errors, zero warnings, analyzers included). Then the
+EditMode suite ran in batch mode (`Unity.exe -batchmode -runTests`): **4 500 tests, 4 498 passed, 1
+failed, 1 inconclusive**, both known (Traps §7: `CharacterPreviewTests.Resize_…` and
+`PlayerAnimatorViewTests.Animator_AttackSpeedIsUnreachableFromAnEditorClock`). That count is after the
+dash-time row above was fixed and the Lunger fixture re-run: 15 of 15. Format check clean. A batch run
+deletes `Temp/` on exit, results included; LocalLow's `TestResults.xml` keeps them.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
@@ -145,6 +146,22 @@ public sealed class LaneSystemTests
 
         Assert.That(_events.Single<LaneFired>().Id, Is.EqualTo(id));
         Assert.That(_lanes.HasFiredAt(0), Is.True);
+    }
+
+    // ---- JG-07a rule 12 ---------------------------------------------------------------------------
+
+    [Test]
+    public void Lane_Open_PublishesItsTongueFlag()
+    {
+        // Old Croaker's lash carries a tongue; a Lunger's lane does not, and is drawn without one.
+        _lanes.Open(Vector3.Zero, new Vector3(0f, 0f, 1f), Length, HalfWidth, Arm, Damage, 0f, tongue: true);
+        _lanes.Open(Vector3.Zero, new Vector3(0f, 0f, 1f), Length, HalfWidth, Arm, Damage, 0f);
+
+        IReadOnlyList<LaneArmed> armed = _events.Of<LaneArmed>();
+
+        Assert.That(armed, Has.Count.EqualTo(2));
+        Assert.That(armed[0].Tongue, Is.True);
+        Assert.That(armed[1].Tongue, Is.False, "No tongue unless asked for.");
     }
 
     // ---- Rule 3 -----------------------------------------------------------------------------------

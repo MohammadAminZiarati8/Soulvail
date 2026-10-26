@@ -888,6 +888,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Chaser:
                 case EnemyBehaviourKind.Spitter:
                 case EnemyBehaviourKind.Bloater:
+                case EnemyBehaviourKind.Lunger:
                     agent.Behaviour.Tick(ctx);
                     break;
 

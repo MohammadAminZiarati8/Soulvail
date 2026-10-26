@@ -226,6 +226,7 @@ public sealed class EnemyAgent
             EnemyBehaviourKind.Chaser => Behaviour as ChaserBehaviour ?? new ChaserBehaviour(this),
             EnemyBehaviourKind.Spitter => Behaviour as SpitterBehaviour ?? new SpitterBehaviour(this),
             EnemyBehaviourKind.Bloater => Behaviour as BloaterBehaviour ?? new BloaterBehaviour(this),
+            EnemyBehaviourKind.Lunger => Behaviour as LungerBehaviour ?? new LungerBehaviour(this),
 
             // Boss falls through to null on purpose, and it is the one kind that does so while
             // meaning something. A BossBehaviour cannot be built from an EnemySpec — it needs the

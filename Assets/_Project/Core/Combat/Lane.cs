@@ -134,6 +134,10 @@ public sealed class LaneSystem
     /// </param>
     /// <param name="damage">What standing in it costs. Finite and greater than zero.</param>
     /// <param name="now">Simulated run time — <c>RunState.Time</c>, never a wall clock.</param>
+    /// <param name="tongue">
+    /// Whether a tongue strikes down it when it fires — Old Croaker's lash, not a Lunger's dash
+    /// (JG-07a rule 12). Carried on <c>LaneArmed</c> for the view; the bite is the same either way.
+    /// </param>
     /// <returns>
     /// Its run-stable id, issued from 1 — or <b>0 when it was dropped</b> because
     /// <see cref="Capacity"/> were already open. Nothing is published for a dropped lane.
@@ -146,7 +150,8 @@ public sealed class LaneSystem
         float halfWidth,
         float armSeconds,
         float damage,
-        float now)
+        float now,
+        bool tongue = false)
     {
         RequireFinite(origin, nameof(origin));
         RequireFinite(direction, nameof(direction));
@@ -191,7 +196,7 @@ public sealed class LaneSystem
         _count++;
 
         // After the entry exists, so a listener reading ActiveCount from inside it counts this one.
-        _events.Publish(new LaneArmed(id, origin, flat, length, halfWidth, armSeconds));
+        _events.Publish(new LaneArmed(id, origin, flat, length, halfWidth, armSeconds, tongue));
 
         return id;
     }

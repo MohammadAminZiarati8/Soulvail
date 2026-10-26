@@ -57,6 +57,11 @@ public readonly struct EnemyTickContext
     /// enemy through (M2-08 rule 8). See the class remarks for why it was refused in M2-07b and what
     /// changed.
     /// </param>
+    /// <param name="lanes">
+    /// Where a Lunger's warning lane is opened (JG-07a). Optional and trailing, so every fixture that
+    /// builds a context without one still compiles: only <c>RunSession</c> passes it, and a
+    /// <c>LungerBehaviour</c> ticked without one throws rather than dashing unwarned.
+    /// </param>
     /// <exception cref="ArgumentNullException">Any of the five references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="dt"/> or <paramref name="now"/> is not finite. A NaN clock does not produce a
@@ -76,7 +81,8 @@ public readonly struct EnemyTickContext
         IIntentSink intents,
         IDomainEvents events,
         ProjectileSystem projectiles,
-        EnemySystem enemies)
+        EnemySystem enemies,
+        LaneSystem lanes = null)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -85,6 +91,7 @@ public readonly struct EnemyTickContext
         Events = events ?? throw new ArgumentNullException(nameof(events));
         Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         Enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
+        Lanes = lanes;
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
@@ -109,6 +116,12 @@ public readonly struct EnemyTickContext
     /// The census — the one door damage reaches an enemy through, this enemy included (M2-08).
     /// </summary>
     public EnemySystem Enemies { get; }
+
+    /// <summary>
+    /// Where a lane is opened, or <see langword="null"/> in a context built without one — see the
+    /// constructor. Read by <c>LungerBehaviour</c> alone.
+    /// </summary>
+    public LaneSystem Lanes { get; }
 
     private static float Finite(float value, string paramName)
     {

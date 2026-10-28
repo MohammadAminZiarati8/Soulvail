@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-29, after RS-09._
+_Updated 2026-10-29, after RS-09a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **RS-09**: the Ranger flinches when hit (upper-body `Hit_A` on a `Flinch` layer). Before it, DT-01 (test start at any stage). |
-| **Next task** | No named task awaiting a go; owner playtest of JG-08b/c, DT-01 and RS-09. |
-| **Verified** | EditMode after RS-09: 4 534 pass, 0 fail, 1 inconclusive (animator clock by construction). No compiler or analyzer diagnostics. |
+| **Last merged** | **RS-09a**: the Ranger's flinch lets go of the arms (RS-09 left the hit pose frozen over every later shot). RS-09: upper-body `Hit_A` flinch. |
+| **Next task** | No named task awaiting a go; owner playtest of JG-08b/c, DT-01 and RS-09/09a. |
+| **Verified** | EditMode after RS-09a: 4 542 pass, 0 fail, 1 inconclusive (animator clock by construction). No compiler or analyzer diagnostics. |
 
 ## What works
 
@@ -45,7 +45,7 @@ every string a `LocKey`.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.
 16. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
 17. DT-01: menu panel → stage 12, Start → stage 12 with the tree open and points to spend; untick `_on` → no panel, Play/Continue unchanged.
-18. RS-09: stage 1, take a Frog bite — chest and arms jerk, legs keep running, the bow still shoots; a roll through a hit shows no flinch.
+18. RS-09/09a: stage 1, take Frog bites while shooting — one jerk each, then draw and release look as before; legs keep running; a roll through a hit shows no flinch.
 
 ## What does not work yet
 
@@ -66,6 +66,7 @@ every string a `LocKey`.
 8. `SanctumOpened` publishes before `IsSanctumOpen`; presenter draws a frame late.
 9. Nothing damages a Wight. The Knight's Charge root curve snaps 0.22 m.
 10. HUD ~15 draw calls (no sprite atlas). No PlayMode row taps Continue. Disk near full.
+11. Enemy flinch layers hold a pose after a hit (Rootling 44°, Panther 16°, others ≤ 9°): RS-09a's As built.
 
 ## Device
 

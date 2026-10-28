@@ -233,6 +233,12 @@ call. A PlayMode run clears the Console — sweep right after the run you mean t
 - **PlayMode never touches real saves:** `SaveShelter` moves `run.json`/`profile.json` to
   `persistentDataPath/PlayModeShelter/` and back. A killed pass leaves them there until the next
   PlayMode run restores them.
+- **A pose probe on a body reads "nothing moved" unless culling is off.** The bodies' Animators use
+  `CullUpdateTransforms`; nothing sees an EditMode instance, so `Animator.Update` writes no bones.
+  Set `AlwaysAnimate` first, and assert the probe moves something (RS-09a).
+- **An override layer at weight 1 whose empty state does not write defaults holds its last pose.**
+  It does not hand the bones back to the layers below. Wiring tests pass; only a pose comparison
+  catches it. Drive the weight to 0 between plays (`RangerAnimatorView.FlinchWeight`, RS-09a).
 
 ---
 

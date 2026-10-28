@@ -68,3 +68,4 @@ _No milestone. The owner is setting the next direction._
 **Feel** (owner, 2026-10-29).
 
 - [x] **RS-09** — The Ranger flinches when hit: upper-body `Hit_A` on its own layer, not mid-roll, not on the killing blow (S) · [spec](tasks/RS-09-the-ranger-flinches.md)
+- [x] **RS-09a** — The flinch lets go of the arms: the view drives the `Flinch` layer's weight, so shots after a hit pose as before (S) · [spec](tasks/RS-09a-the-flinch-lets-go.md)

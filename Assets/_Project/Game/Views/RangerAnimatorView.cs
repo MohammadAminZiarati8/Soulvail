@@ -101,7 +101,8 @@ namespace Soulvail.Game.Views
         /// <summary>
         /// The flinch's layer in <c>AC_Ranger</c>: above <see cref="UpperBodyLayer"/>, on its mask, so
         /// a hit jerks the chest and arms while the legs keep the stick and the draw keeps time
-        /// underneath (RS-09).
+        /// underneath (RS-09). It rests at weight 0 and <see cref="Step"/> raises it while a flinch
+        /// plays (RS-09a).
         /// </summary>
         public const string FlinchLayer = "Flinch";
 
@@ -145,6 +146,7 @@ namespace Soulvail.Game.Views
         private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _drawStateId = Animator.StringToHash("Draw");
         private readonly int _aimStateId = Animator.StringToHash("Aim");
+        private readonly int _hitStateId = Animator.StringToHash("Hit");
 
         private PlayerView _body;
 
@@ -160,6 +162,7 @@ namespace Soulvail.Game.Views
 
         private Vector3 _shownVelocity;
         private int _upperLayer = -2;
+        private int _flinchLayer = -2;
         private int _drawShape = -2;
         private int _targetId = -1;
         private bool _holding;
@@ -292,8 +295,43 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
-        /// Advances the view by <paramref name="dt"/> seconds: the locomotion blend and the
-        /// bowstring. Called from <c>Update</c> with <c>Time.deltaTime</c>.
+        /// The <see cref="FlinchLayer"/>'s weight for its state: 0 with no flinch in play, 1 while
+        /// one plays (and while one restarts itself), and the transition's progress into or out of
+        /// it. RS-09a rule 1.
+        /// </summary>
+        /// <remarks>
+        /// <b>Why the view owns this weight.</b> The layer overrides the upper body and its states
+        /// do not write defaults, so at weight 1 its empty state holds the last pose the flinch
+        /// wrote rather than handing the bones back — measured at RS-09a as the arms frozen
+        /// 76–128° off every later shot. At weight 0 between flinches it holds nothing.
+        /// </remarks>
+        /// <param name="inHit">The layer's current state is <c>Hit</c>.</param>
+        /// <param name="toHit">The layer is crossfading into <c>Hit</c>.</param>
+        /// <param name="inTransition">The layer is crossfading.</param>
+        /// <param name="transitionTime">The crossfade's normalised time. Non-finite reads as 0.</param>
+        public static float FlinchWeight(bool inHit, bool toHit, bool inTransition, float transitionTime)
+        {
+            float t = float.IsNaN(transitionTime) || float.IsInfinity(transitionTime) ? 0f : Mathf.Clamp01(transitionTime);
+
+            if (inTransition)
+            {
+                if (toHit)
+                {
+                    return inHit ? 1f : t;
+                }
+
+                if (inHit)
+                {
+                    return 1f - t;
+                }
+            }
+
+            return inHit ? 1f : 0f;
+        }
+
+        /// <summary>
+        /// Advances the view by <paramref name="dt"/> seconds: the locomotion blend, the bowstring
+        /// and the flinch's weight. Called from <c>Update</c> with <c>Time.deltaTime</c>.
         /// </summary>
         /// <remarks>
         /// Public so an EditMode fixture can advance the view, which <c>Update</c> never
@@ -330,6 +368,7 @@ namespace Soulvail.Game.Views
             _animator.SetFloat(_moveSpeedId, playback);
 
             PullString();
+            WeighFlinch();
         }
 
         private void Awake()
@@ -636,6 +675,32 @@ namespace Soulvail.Game.Views
             }
 
             _bow.SetBlendShapeWeight(_drawShape, pull * FullBlendShapeWeight);
+        }
+
+        /// <remarks>
+        /// Read from the state the Animator reached last frame and applied on its next evaluation,
+        /// so a flinch fades in over the layer's own 0.05 s crossfade, one frame late — too short to
+        /// see. A controller with no flinch layer is left alone.
+        /// </remarks>
+        private void WeighFlinch()
+        {
+            // Looked up once, lazily: -2 means not yet asked and -1 means absent.
+            if (_flinchLayer == -2)
+            {
+                _flinchLayer = _animator.GetLayerIndex(FlinchLayer);
+            }
+
+            if (_flinchLayer < 0 || !_animator.isInitialized)
+            {
+                return;
+            }
+
+            bool inTransition = _animator.IsInTransition(_flinchLayer);
+            bool inHit = _animator.GetCurrentAnimatorStateInfo(_flinchLayer).shortNameHash == _hitStateId;
+            bool toHit = inTransition && _animator.GetNextAnimatorStateInfo(_flinchLayer).shortNameHash == _hitStateId;
+            float time = inTransition ? _animator.GetAnimatorTransitionInfo(_flinchLayer).normalizedTime : 0f;
+
+            _animator.SetLayerWeight(_flinchLayer, FlinchWeight(inHit, toHit, inTransition, time));
         }
 
         private float PullOf(AnimatorStateInfo state)

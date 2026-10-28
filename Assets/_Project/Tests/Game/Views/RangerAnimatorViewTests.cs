@@ -562,7 +562,7 @@ public sealed class RangerAnimatorViewTests
 
         AnimatorControllerLayer flinch = layers[flinchIndex];
 
-        Assert.That(flinch.defaultWeight, Is.EqualTo(1f));
+        Assert.That(flinch.defaultWeight, Is.Zero, "At rest the layer holds nothing; the view raises it (RS-09a).");
         Assert.That(flinch.blendingMode, Is.EqualTo(AnimatorLayerBlendingMode.Override));
         Assert.That(flinch.avatarMask, Is.Not.Null.And.EqualTo(upper.avatarMask), "Upper Body's mask: the legs keep the stick.");
 
@@ -594,6 +594,28 @@ public sealed class RangerAnimatorViewTests
                 && System.Array.Exists(t.conditions, c => c.parameter == "Dodging" && c.mode == AnimatorConditionMode.If)),
             Is.True,
             "A roll ends the flinch at once.");
+    }
+
+    // ---------------------------------------------------------------- RS-09a: the flinch's weight
+
+    [TestCase(false, false, false, 0f, 0f, TestName = "FlinchWeight_FollowsTheLayer(resting)")]
+    [TestCase(true, false, false, 0f, 1f, TestName = "FlinchWeight_FollowsTheLayer(inHit)")]
+    [TestCase(false, true, true, 0.4f, 0.4f, TestName = "FlinchWeight_FollowsTheLayer(intoHit)")]
+    [TestCase(true, false, true, 0.25f, 0.75f, TestName = "FlinchWeight_FollowsTheLayer(outOfHit)")]
+    [TestCase(true, true, true, 0.5f, 1f, TestName = "FlinchWeight_FollowsTheLayer(hitRestarts)")]
+    [TestCase(false, false, true, 0.5f, 0f, TestName = "FlinchWeight_FollowsTheLayer(noHitInTheCrossfade)")]
+    public void FlinchWeight_FollowsTheLayer(bool inHit, bool toHit, bool inTransition, float time, float expected)
+    {
+        Assert.That(RangerAnimatorView.FlinchWeight(inHit, toHit, inTransition, time), Is.EqualTo(expected).Within(1e-6f));
+    }
+
+    [Test]
+    public void FlinchWeight_ClampsAndRefusesNonFinite()
+    {
+        Assert.That(RangerAnimatorView.FlinchWeight(false, true, true, 1.7f), Is.EqualTo(1f));
+        Assert.That(RangerAnimatorView.FlinchWeight(true, false, true, -0.5f), Is.EqualTo(1f));
+        Assert.That(RangerAnimatorView.FlinchWeight(false, true, true, float.NaN), Is.Zero);
+        Assert.That(RangerAnimatorView.FlinchWeight(true, false, true, float.PositiveInfinity), Is.EqualTo(1f));
     }
 
     /// <summary>Six damage to HP, from full to 0.94, unblocked.</summary>

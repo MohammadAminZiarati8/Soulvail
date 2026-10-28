@@ -556,7 +556,7 @@ public sealed class RangerAnimatorViewTests
 
         AnimatorControllerLayer[] layers = controller.layers;
         AnimatorControllerLayer upper = System.Array.Find(layers, l => l.name == RangerAnimatorView.UpperBodyLayer);
-        int flinchIndex = System.Array.FindIndex(layers, l => l.name == RangerAnimatorView.FlinchLayer);
+        int flinchIndex = System.Array.FindIndex(layers, l => l.name == FlinchLayer.Name);
 
         Assert.That(flinchIndex, Is.EqualTo(layers.Length - 1), "The flinch is the top layer.");
 
@@ -606,16 +606,16 @@ public sealed class RangerAnimatorViewTests
     [TestCase(false, false, true, 0.5f, 0f, TestName = "FlinchWeight_FollowsTheLayer(noHitInTheCrossfade)")]
     public void FlinchWeight_FollowsTheLayer(bool inHit, bool toHit, bool inTransition, float time, float expected)
     {
-        Assert.That(RangerAnimatorView.FlinchWeight(inHit, toHit, inTransition, time), Is.EqualTo(expected).Within(1e-6f));
+        Assert.That(FlinchLayer.Weight(inHit, toHit, inTransition, time), Is.EqualTo(expected).Within(1e-6f));
     }
 
     [Test]
     public void FlinchWeight_ClampsAndRefusesNonFinite()
     {
-        Assert.That(RangerAnimatorView.FlinchWeight(false, true, true, 1.7f), Is.EqualTo(1f));
-        Assert.That(RangerAnimatorView.FlinchWeight(true, false, true, -0.5f), Is.EqualTo(1f));
-        Assert.That(RangerAnimatorView.FlinchWeight(false, true, true, float.NaN), Is.Zero);
-        Assert.That(RangerAnimatorView.FlinchWeight(true, false, true, float.PositiveInfinity), Is.EqualTo(1f));
+        Assert.That(FlinchLayer.Weight(false, true, true, 1.7f), Is.EqualTo(1f));
+        Assert.That(FlinchLayer.Weight(true, false, true, -0.5f), Is.EqualTo(1f));
+        Assert.That(FlinchLayer.Weight(false, true, true, float.NaN), Is.Zero);
+        Assert.That(FlinchLayer.Weight(true, false, true, float.PositiveInfinity), Is.EqualTo(1f));
     }
 
     /// <summary>Six damage to HP, from full to 0.94, unblocked.</summary>

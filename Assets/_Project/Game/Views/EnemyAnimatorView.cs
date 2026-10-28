@@ -90,6 +90,7 @@ namespace Soulvail.Game.Views
         private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _deadId = Animator.StringToHash("Dead");
         private readonly int _locomotionId = Animator.StringToHash("Locomotion");
+        private readonly int _hitStateId = Animator.StringToHash("Hit");
 
         private EnemyView _body;
         private IDisposable _telegraphSubscription;
@@ -104,6 +105,9 @@ namespace Soulvail.Game.Views
         private bool _hasMove;
 
         private bool _moveChecked;
+
+        /// <summary>The flinch layer's index: -2 not yet asked, -1 absent.</summary>
+        private int _flinchLayer = -2;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
@@ -127,7 +131,10 @@ namespace Soulvail.Game.Views
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
         }
 
-        /// <summary>Moves the legs toward the body's speed by <paramref name="dt"/> seconds.</summary>
+        /// <summary>
+        /// Moves the legs toward the body's speed by <paramref name="dt"/> seconds, and weighs the
+        /// flinch layer by its state (JG-09; <see cref="FlinchLayer"/> says why).
+        /// </summary>
         /// <remarks>
         /// Public for <see cref="PlayerAnimatorView.Step"/>'s reason: <c>Time.deltaTime</c> is not
         /// something an EditMode fixture can advance. A zero, negative or non-finite step does
@@ -169,6 +176,13 @@ namespace Soulvail.Game.Views
 
             _animator.SetFloat(_speedId, _shownSpeed);
             _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
+
+            if (_flinchLayer == -2)
+            {
+                _flinchLayer = _animator.GetLayerIndex(FlinchLayer.Name);
+            }
+
+            FlinchLayer.Drive(_animator, _flinchLayer, _hitStateId);
         }
 
         /// <summary>

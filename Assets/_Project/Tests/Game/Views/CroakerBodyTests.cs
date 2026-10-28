@@ -163,7 +163,7 @@ public sealed class CroakerBodyTests
         AnimatorControllerLayer flinch = controller.layers[1];
         Assert.That(flinch.avatarMask, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AvatarMask>(MaskPath)),
             "The Frog's upper-body mask: the Croaker is on the Frog's bones.");
-        Assert.That(flinch.defaultWeight, Is.EqualTo(1f));
+        Assert.That(flinch.defaultWeight, Is.Zero, "At rest the layer holds nothing; the view raises it (JG-09).");
         Assert.That(State(flinch.stateMachine, "Hit").motion.name, Is.EqualTo("Hit"));
 
         foreach (AnimatorState state in controller.layers.SelectMany(l => AllStates(l.stateMachine)))

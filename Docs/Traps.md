@@ -238,7 +238,7 @@ call. A PlayMode run clears the Console — sweep right after the run you mean t
   Set `AlwaysAnimate` first, and assert the probe moves something (RS-09a).
 - **An override layer at weight 1 whose empty state does not write defaults holds its last pose.**
   It does not hand the bones back to the layers below. Wiring tests pass; only a pose comparison
-  catches it. Drive the weight to 0 between plays (`RangerAnimatorView.FlinchWeight`, RS-09a).
+  catches it. Rest the layer at 0 and drive it from its state (`FlinchLayer.Drive`, RS-09a, JG-09).
 
 ---
 

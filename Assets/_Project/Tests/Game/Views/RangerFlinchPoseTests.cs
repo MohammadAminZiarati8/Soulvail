@@ -88,7 +88,7 @@ public sealed class RangerFlinchPoseTests
             animator.Rebind();
 
             Transform[] bones = animator.GetComponentsInChildren<Transform>();
-            int flinch = animator.GetLayerIndex(RangerAnimatorView.FlinchLayer);
+            int flinch = animator.GetLayerIndex(FlinchLayer.Name);
 
             view.Construct(hub);
             animator.SetBool("Aiming", true);

@@ -69,3 +69,4 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **RS-09** — The Ranger flinches when hit: upper-body `Hit_A` on its own layer, not mid-roll, not on the killing blow (S) · [spec](tasks/RS-09-the-ranger-flinches.md)
 - [x] **RS-09a** — The flinch lets go of the arms: the view drives the `Flinch` layer's weight, so shots after a hit pose as before (S) · [spec](tasks/RS-09a-the-flinch-lets-go.md)
+- [x] **JG-09** — Enemy flinches let go of the body: six enemy `Flinch` layers rest at 0, `EnemyAnimatorView` drives them through the shared `FlinchLayer` (S) · [spec](tasks/JG-09-enemy-flinches-let-go.md)

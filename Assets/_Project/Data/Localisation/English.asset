@@ -458,7 +458,7 @@ MonoBehaviour:
   - _key: skill.ranger.volley.name
     _text: Volley
   - _key: skill.ranger.volley.description
-    _text: After every 5 shots, the next is a fan of 3 arrows, each dealing 50% more.
+    _text: After every 5 shots, the next one fires an arrow at every enemy in range, each dealing 50% more.
   - _key: skill.ranger.volley-2.name
     _text: Volley II
   - _key: skill.ranger.volley-2.description

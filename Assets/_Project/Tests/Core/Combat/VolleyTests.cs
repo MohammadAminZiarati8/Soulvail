@@ -17,8 +17,8 @@ using Soulvail.Tests.Core.Support;
 namespace Soulvail.Tests.Core.Combat;
 
 /// <summary>
-/// RS-03b rules 1–8: the volley. After every <em>n</em> shots the next is a fan of arrows, each
-/// dealing more; <em>n</em> is a <see cref="Stat"/> a node moves; the fan is one tell and several
+/// RS-03b and RS-08b: after every <em>n</em> shots the next targets every enemy in range, each
+/// dealing more; <em>n</em> is a <see cref="Stat"/> a node moves; the volley is one tell and several
 /// shots; the run fires them all on one tick; and a tree may name the volley's numbers only on a class
 /// that has them.
 /// </summary>
@@ -26,7 +26,7 @@ namespace Soulvail.Tests.Core.Combat;
 /// <para>
 /// <b>A bow built in code, not the Ranger</b>, for <c>HoldFireTests</c>' reason: RS-03c authors the
 /// class. Two shots a second, the arrow loosed halfway through the draw, a 13-damage arrow, and a Husk
-/// that cannot die standing 8 m ahead. The volley is the Ranger's: three arrows, 30°, ×1.5.
+/// that cannot die standing 8 m ahead. The legacy volley spec still carries three arrows and 30°.
 /// </para>
 /// <para>
 /// <b>Three halves, by what each rule can reach.</b> Rules 1–5 tick a <see cref="PlayerCombat"/> by
@@ -64,7 +64,7 @@ public sealed class VolleyTests
     private const float DamageFrame = 0.5f;
     private const float FullCircle = 360f;
 
-    /// <summary>The Ranger's volley (RS-03c): three arrows, a 30° fan, ×1.5 each.</summary>
+    /// <summary>Legacy authored arrow count, retained by the spec but unused by RS-08b.</summary>
     private const int VolleyArrows = 3;
 
     private const float FanDeg = 30f;
@@ -95,6 +95,7 @@ public sealed class VolleyTests
     private EnemySystem _enemies;
     private WorldSnapshot _snapshot;
     private EnemySense _husk;
+    private List<EnemySense> _extraHusks;
 
     private float _now;
 
@@ -131,6 +132,7 @@ public sealed class VolleyTests
         _now = 0f;
         _frames = new List<Projectile[]>();
         _swingStarts = new List<float>();
+        _extraHusks = new List<EnemySense>();
     }
 
     // ---- Rule 1: the spec refuses what cannot fly --------------------------------------------------
@@ -159,7 +161,7 @@ public sealed class VolleyTests
             Assert.That(thrown.ParamName, Is.EqualTo("damageMultiplier"), $"damage {damage}.");
         }
 
-        // And the edges that fly: two arrows, the queue's seven, a hair of fan, a volley at ×1.
+        // Legacy authored limits remain valid even though they no longer shape the volley.
         Assert.DoesNotThrow(() => new VolleySpec(2, 0.5f, 1f));
         Assert.DoesNotThrow(() => new VolleySpec(VolleySpec.MaxArrows, 179f, 3f));
     }
@@ -190,7 +192,7 @@ public sealed class VolleyTests
 
         RunShots(bow, 5);
 
-        Assert.That(Arrows(), Is.EqualTo(new[] { 1, 1, 1, 1, VolleyArrows }), "4.9 counts as 4.");
+        Assert.That(Arrows(), Is.EqualTo(new[] { 1, 1, 1, 1, 1 }), "4.9 counts as 4.");
     }
 
     /// <summary>
@@ -226,7 +228,7 @@ public sealed class VolleyTests
 
         Assert.That(
             Arrows(),
-            Is.EqualTo(new[] { 1, 1, 1, 1, 1, VolleyArrows, 1, 1, 1, 1, 1, VolleyArrows }),
+            Is.EqualTo(new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }),
             "read literally: five ordinary shots, then the volley — shots 6 and 12.");
 
         // One VolleyReady each way per cycle: ready on the fifth, spent on the sixth.
@@ -255,9 +257,9 @@ public sealed class VolleyTests
             Arrows(),
             Is.EqualTo(new[]
             {
-                1, 1, 1, 1, 1, VolleyArrows,
-                1, 1, 1, 1, VolleyArrows,
-                1, 1, 1, VolleyArrows,
+                1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1,
             }),
             "cycles of five, four and three ordinary shots.");
     }
@@ -284,7 +286,7 @@ public sealed class VolleyTests
 
         RunShots(bow, 1);
 
-        Assert.That(_frames[4], Has.Length.EqualTo(VolleyArrows), "and the next shot is the volley.");
+        Assert.That(_frames[4][0].IsVolley, Is.True, "and the next shot is the volley.");
         Assert.That(bow.Volley.ShotsTowardNext, Is.Zero);
     }
 
@@ -321,102 +323,120 @@ public sealed class VolleyTests
         Assert.That(bow.Volley.ShotsTowardNext, Is.EqualTo(2));
     }
 
-    // ---- Rule 4: the fan ---------------------------------------------------------------------------
+    // ---- RS-08b: one lead-solved arrow per eligible enemy ------------------------------------------
 
     [Test]
-    public void Fan_ThreeArrowsThirtyDegrees()
+    public void Volley_OneArrowPerEnemyInRange()
     {
-        // At chest height, so "the same height" is a number the fan has to keep rather than a zero.
-        _husk.Position = new Vector3(0f, 1.2f, TargetRange);
-
+        AddHusk(new Vector3(-3f, 0f, 7f));
+        AddHusk(new Vector3(3f, 0f, 7f));
         PlayerCombat bow = Combat();
-
         Give(bow, PlayerStat.VolleyEvery, 1f);
+
         RunShots(bow, 2);
 
-        Projectile ordinary = _frames[0][0];
-        Projectile[] fan = _frames[1];
-
-        Assert.That(fan, Has.Length.EqualTo(VolleyArrows), "the second shot is the volley.");
-
-        float[] expected = { -15f, 0f, 15f };
-
-        for (int i = 0; i < fan.Length; i++)
-        {
-            Projectile arrow = fan[i];
-
-            Assert.That(Yaw(arrow), Is.EqualTo(expected[i]).Within(Tolerance), $"arrow {i}'s heading.");
-            Assert.That(DistanceXZ(arrow), Is.EqualTo(TargetRange).Within(Tolerance), $"arrow {i} flies 8 m.");
-            Assert.That(arrow.Target.Y, Is.EqualTo(ordinary.Target.Y).Within(1e-5f), $"arrow {i}'s height.");
-            Assert.That(arrow.Origin, Is.EqualTo(ordinary.Origin), $"arrow {i} leaves where the shot does.");
-            Assert.That(arrow.Speed, Is.EqualTo(ShotSpeed), $"arrow {i} at the weapon's speed.");
-            Assert.That(arrow.Radius, Is.EqualTo(ShotRadius), $"arrow {i} at the weapon's radius.");
-        }
-
-        // The middle arrow goes where the ordinary shot went.
-        Assert.That(Vector3.Distance(fan[1].Target, ordinary.Target), Is.LessThan(1e-4f));
+        Assert.That(_frames[1], Has.Length.EqualTo(3));
+        Assert.That(_frames[1][0].Target.X, Is.EqualTo(0f).Within(Tolerance));
+        Assert.That(_frames[1][1].Target.X, Is.EqualTo(-3f).Within(Tolerance));
+        Assert.That(_frames[1][2].Target.X, Is.EqualTo(3f).Within(Tolerance));
     }
 
     [Test]
-    public void Fan_EveryArrowIsMarkedAVolley()
+    public void Volley_EachArrowLeadsItsOwnEnemy()
     {
+        AddHusk(new Vector3(3f, 0f, 7f), new Vector3(2f, 0f, 0f));
         PlayerCombat bow = Combat();
-
         Give(bow, PlayerStat.VolleyEvery, 1f);
+
         RunShots(bow, 2);
 
-        // RS-07b rule 1: the mark is the view's, so a fan of 3 is still 3 shots at 13 × 1.5.
-        Assert.That(_frames[0][0].IsVolley, Is.False, "an ordinary shot is not a volley.");
-        Assert.That(_frames[1], Has.Length.EqualTo(VolleyArrows));
+        Projectile[] volley = _frames[1];
+        Assert.That(volley, Has.Length.EqualTo(2));
+        Assert.That(volley[0].Target, Is.EqualTo(ProjectileLead.Solve(
+            Vector3.Zero, _husk.Position, _husk.Velocity, ShotSpeed)));
+        Assert.That(volley[1].Target, Is.EqualTo(ProjectileLead.Solve(
+            Vector3.Zero, _extraHusks[0].Position, _extraHusks[0].Velocity, ShotSpeed)));
+        Assert.That(volley[1].Target.X, Is.GreaterThan(_extraHusks[0].Position.X));
+    }
 
+    [Test]
+    public void Volley_ArrowsCarryTheMultiplierAndMark()
+    {
+        AddHusk(new Vector3(3f, 0f, 7f));
+        PlayerCombat bow = Combat();
+        Give(bow, PlayerStat.VolleyEvery, 1f);
+
+        RunShots(bow, 2);
+
+        Assert.That(_frames[0][0].IsVolley, Is.False);
+        Assert.That(_frames[0][0].Damage, Is.EqualTo(ShotDamage));
         foreach (Projectile arrow in _frames[1])
         {
-            Assert.That(arrow.IsVolley, Is.True, "every arrow of the fan is marked.");
-            Assert.That(arrow.Damage, Is.EqualTo(19.5f).Within(Tolerance), "with its damage unchanged.");
+            Assert.That(arrow.IsVolley, Is.True);
+            Assert.That(arrow.Damage, Is.EqualTo(ShotDamage * Multiplier).Within(Tolerance));
+            Assert.That(arrow.Speed, Is.EqualTo(ShotSpeed));
+            Assert.That(arrow.Radius, Is.EqualTo(ShotRadius));
         }
     }
 
     [Test]
-    public void Fan_EachArrowCarriesTheMultiplier()
+    public void Volley_LoneTargetGetsOneArrow()
     {
         PlayerCombat bow = Combat();
-
         Give(bow, PlayerStat.VolleyEvery, 1f);
+
         RunShots(bow, 2);
 
-        Assert.That(_frames[0][0].Damage, Is.EqualTo(ShotDamage).Within(Tolerance), "an ordinary shot deals 13.");
+        Assert.That(_frames[1], Has.Length.EqualTo(1));
+        Assert.That(_frames[1][0].Target, Is.EqualTo(_frames[0][0].Target));
+        Assert.That(_frames[1][0].IsVolley, Is.True);
+    }
 
-        foreach (Projectile arrow in _frames[1])
+    [Test]
+    public void Volley_SkipsCorpsesAndOutOfRange()
+    {
+        EnemyAgent corpse = AddHusk(new Vector3(-3f, 0f, 7f));
+        AddHusk(new Vector3(0f, 0f, ShotRange + 0.1f));
+        PlayerCombat bow = Combat();
+        _enemies.ApplyDamage(corpse.Id, 10_000f, 0f, bow);
+        Give(bow, PlayerStat.VolleyEvery, 1f);
+
+        RunShots(bow, 2);
+
+        Assert.That(_frames[1], Has.Length.EqualTo(1));
+        Assert.That(_frames[1][0].Target.X, Is.EqualTo(0f).Within(Tolerance));
+        Assert.That(DistanceXZ(_frames[1][0]), Is.EqualTo(TargetRange).Within(Tolerance));
+    }
+
+    [Test]
+    public void Volley_FullRegistryFitsTheQueue_NoAllocation()
+    {
+        for (int i = 1; i < EnemyCapacity; i++)
         {
-            Assert.That(arrow.Damage, Is.EqualTo(19.5f).Within(Tolerance), "13 × 1.5, each.");
+            AddHusk(new Vector3(i - 4f, 0f, 7f));
         }
-    }
 
-    [Test]
-    public void Fan_ArrowsAreClampedAndFloored()
-    {
         PlayerCombat bow = Combat();
-        var node = new object();
-
         Give(bow, PlayerStat.VolleyEvery, 1f);
-        Give(bow, PlayerStat.VolleyArrows, 96f, node);
-
-        Assert.That(bow.Volley.Arrows.Value, Is.EqualTo(99f), "Sanity: 3 + 96.");
-        Assert.That(bow.Volley.ArrowCount, Is.EqualTo(VolleySpec.MaxArrows), "99 is clamped to 7.");
-
         RunShots(bow, 2);
+        Assert.That(_frames[1], Has.Length.EqualTo(EnemyCapacity));
 
-        Assert.That(_frames[1], Has.Length.EqualTo(VolleySpec.MaxArrows), "and seven leave.");
+        for (int i = 1; i < EnemyCapacity; i++)
+        {
+            Assert.That(_frames[1][i].Target.X, Is.EqualTo(i - 4f).Within(Tolerance));
+        }
 
-        bow.Volley.Arrows.RemoveAll(node);
-        Give(bow, PlayerStat.VolleyArrows, -1.3f);
-
-        Assert.That(bow.Volley.Arrows.Value, Is.EqualTo(1.7f).Within(Tolerance), "Sanity: 3 − 1.3.");
-        Assert.That(bow.Volley.ArrowCount, Is.EqualTo(2), "1.7 is floored, and a fan is never under 2.");
-
-        RunShots(bow, 2);
-
-        Assert.That(_frames[3], Has.Length.EqualTo(2));
+        var quiet = new PlayerCombat(Bowman(BowmanId, Spec()), new SilentEvents(), _intents, EnemyCapacity);
+        Give(quiet, PlayerStat.VolleyEvery, 1f);
+        float now = 0f;
+        AllocationAssert.None(() =>
+        {
+            now += Interval;
+            quiet.Tick(Interval, now, _snapshot, _enemies.Registry.Alive, Vector3.UnitZ);
+            while (quiet.TryTakeShot(out _))
+            {
+            }
+        }, iterations: 1_000);
     }
 
     // ---- Rule 5: one swing, one draw, one tell -----------------------------------------------------
@@ -436,7 +456,7 @@ public sealed class VolleyTests
         RunShots(bow, 1);
 
         Assert.That(_events.Count<PlayerAttacked>() - before, Is.EqualTo(1), "one PlayerAttacked for the volley.");
-        Assert.That(_frames[1], Has.Length.EqualTo(VolleyArrows), "and three shots from its damage frame.");
+        Assert.That(_frames[1], Has.Length.EqualTo(1), "one target, one arrow from its damage frame.");
 
         // And the fire rate treats it as one shot: the next draw starts one interval after its own.
         RunShots(bow, 1);
@@ -458,7 +478,12 @@ public sealed class VolleyTests
             new ContentId(BowmanId),
             Seed,
             1,
-            new SpawnPlan(new[] { new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, TargetRange)) }),
+            new SpawnPlan(new[]
+            {
+                new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(0f, 0f, TargetRange)),
+                new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(-3f, 0f, 7f)),
+                new SpawnPlan.Entry(new ContentId(HuskId), new Vector3(3f, 0f, 7f)),
+            }),
             Resumed(BowmanId, VolleyNodeId)));
 
         var snapshot = new WorldSnapshot(EnemyCapacity) { Dt = Frame };
@@ -476,7 +501,7 @@ public sealed class VolleyTests
             {
                 volleyTicks++;
 
-                Assert.That(fired, Is.EqualTo(VolleyArrows), "the whole fan on the tick it was loosed.");
+                Assert.That(fired, Is.EqualTo(3), "the whole volley on the tick it was loosed.");
             }
         }
 
@@ -485,7 +510,7 @@ public sealed class VolleyTests
         Assert.That(shots, Has.Count.EqualTo(1 + VolleyArrows), "one ordinary shot, then the volley.");
         Assert.That(volleyTicks, Is.EqualTo(1));
 
-        float[] expected = { -15f, 0f, 15f };
+        float[] expected = { 0f, -3f, 3f };
 
         for (int i = 0; i < VolleyArrows; i++)
         {
@@ -494,9 +519,7 @@ public sealed class VolleyTests
             Assert.That(arrow.Id, Is.EqualTo(shots[1].Id + i), "consecutive ids.");
             Assert.That(arrow.SpecId, Is.EqualTo(new ContentId(BowmanId)));
 
-            float yaw = MathF.Atan2(arrow.Target.X - arrow.Origin.X, arrow.Target.Z - arrow.Origin.Z) * (180f / MathF.PI);
-
-            Assert.That(yaw, Is.EqualTo(expected[i]).Within(Tolerance), "in aim order.");
+            Assert.That(arrow.Target.X, Is.EqualTo(expected[i]).Within(Tolerance), "in registry order.");
         }
     }
 
@@ -564,6 +587,10 @@ public sealed class VolleyTests
         _snapshot.PlayerVelocity = velocity;
         _snapshot.EnemyCount = 0;
         _snapshot.AddEnemy() = _husk;
+        foreach (EnemySense sense in _extraHusks)
+        {
+            _snapshot.AddEnemy() = sense;
+        }
 
         _enemies.Ingest(_snapshot);
 
@@ -642,9 +669,18 @@ public sealed class VolleyTests
         return values;
     }
 
-    /// <summary>A shot's heading as yaw in degrees: 0 is +Z, positive turns towards +X.</summary>
-    private static float Yaw(in Projectile shot) =>
-        MathF.Atan2(shot.Target.X - shot.Origin.X, shot.Target.Z - shot.Origin.Z) * (180f / MathF.PI);
+    private EnemyAgent AddHusk(Vector3 position, Vector3 velocity = default)
+    {
+        EnemyAgent agent = _enemies.Spawn(new ContentId(HuskId), position);
+        _extraHusks.Add(new EnemySense
+        {
+            Id = agent.Id,
+            Position = position,
+            Velocity = velocity,
+            HasLineOfSight = true,
+        });
+        return agent;
+    }
 
     private static float DistanceXZ(in Projectile shot)
     {

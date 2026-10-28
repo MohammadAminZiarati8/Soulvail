@@ -1,5 +1,4 @@
 using System;
-using System.Numerics;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -7,9 +6,8 @@ using Soulvail.Core.Ports;
 namespace Soulvail.Core.Combat;
 
 /// <summary>
-/// The owner's volley of 2026-09-25: after every <em>n</em> shots the next one is a fan of arrows,
-/// each dealing more (RS-03b). The three live numbers, the counter, and where each arrow of the fan
-/// is aimed.
+/// After every <em>n</em> shots the next one fires at every eligible enemy, each dealing more.
+/// Owns the live numbers and the counter; PlayerCombat chooses the targets (RS-08b).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -31,22 +29,12 @@ namespace Soulvail.Core.Combat;
 /// <see cref="IsReady"/> is one <see cref="VolleyReady"/>, and nothing else publishes one.
 /// </para>
 /// <para>
-/// <b>Nothing here allocates</b>: two <see cref="int"/>s, a <see cref="bool"/>, and arithmetic on the
-/// fan. The one delegate is made at construction.
+/// <b>Nothing here allocates</b>: two <see cref="int"/>s and a <see cref="bool"/>. The one delegate is made at construction.
 /// </para>
 /// </remarks>
 public sealed class Volley
 {
-    private const float DegreesToRadians = MathF.PI / 180f;
-
     private readonly IDomainEvents _events;
-
-    /// <summary>The whole fan, edge arrow to edge arrow, in degrees — the spec's, and not a stat.</summary>
-    /// <remarks>
-    /// The Public API names three stats and this is not one of them. No node in RS-03c widens the fan,
-    /// and an address with no node is <c>PlayerStat.ContactDamage</c>'s mistake made on purpose.
-    /// </remarks>
-    private readonly float _fanAngleDeg;
 
     /// <param name="spec">The class's authored volley. Null is refused — build one or do not.</param>
     /// <param name="events">Where <see cref="VolleyReady"/> goes.</param>
@@ -59,7 +47,6 @@ public sealed class Volley
         }
 
         _events = events ?? throw new ArgumentNullException(nameof(events));
-        _fanAngleDeg = spec.FanAngleDeg;
 
         Every = new Stat(0f);
         Arrows = new Stat(spec.Arrows);
@@ -78,7 +65,7 @@ public sealed class Volley
     /// </remarks>
     public Stat Every { get; }
 
-    /// <summary>How many arrows a volley looses, live. Base the spec's. See <see cref="ArrowCount"/>.</summary>
+    /// <summary>Legacy arrow count for authored specs and saved modifiers; unread by the shot path.</summary>
     public Stat Arrows { get; }
 
     /// <summary>
@@ -106,12 +93,11 @@ public sealed class Volley
     public int ShotsTowardNext { get; private set; }
 
     /// <summary>
-    /// <see cref="Arrows"/> as a count a fan can hold: floored, and clamped to
+    /// Legacy <see cref="Arrows"/> count: floored, and clamped to
     /// <c>2..</c><see cref="VolleySpec.MaxArrows"/> — rule 4.
     /// </summary>
     /// <remarks>
-    /// Clamped rather than refused, for <c>PlayerCombat.ConeAngle</c>'s reason: a stack can put the live
-    /// value anywhere, and the damage frame is where it has to mean something. NaN reads as the floor.
+    /// Kept for compatibility; the volley now fires once per eligible enemy. NaN reads as the floor.
     /// </remarks>
     public int ArrowCount
     {
@@ -182,57 +168,6 @@ public sealed class Volley
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Where arrow <paramref name="arrow"/> of a fan of <paramref name="arrows"/> is aimed — rule 4.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <paramref name="middle"/> rotated about <paramref name="origin"/> on XZ by
-    /// <c>−fan/2 + arrow · fan/(arrows − 1)</c> degrees, so arrow 0 is the leftmost edge seen from above
-    /// and the last is the rightmost. A positive angle turns +Z towards +X, which is a heading's yaw.
-    /// The distance on XZ and the aim point's height are kept, so every arrow flies as far and lands as
-    /// low as the ordinary shot would have (AR §18.4: every separation is XZ).
-    /// </para>
-    /// <para>
-    /// An aim point on the shooter has no direction to turn and comes back unchanged.
-    /// </para>
-    /// </remarks>
-    /// <param name="arrow">Which arrow, from 0.</param>
-    /// <param name="arrows">How many in the fan — <see cref="ArrowCount"/>.</param>
-    /// <param name="origin">Where the arrows leave from.</param>
-    /// <param name="middle">Where an ordinary shot would go: the lead-solved aim point.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="arrows"/> is outside <c>2..</c><see cref="VolleySpec.MaxArrows"/>, or
-    /// <paramref name="arrow"/> is not one of them.
-    /// </exception>
-    public Vector3 Aim(int arrow, int arrows, Vector3 origin, Vector3 middle)
-    {
-        if (arrows < 2 || arrows > VolleySpec.MaxArrows)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(arrows), arrows, $"A fan holds 2 to {VolleySpec.MaxArrows} arrows; ArrowCount is.");
-        }
-
-        if (arrow < 0 || arrow >= arrows)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(arrow), arrow, $"There are {arrows} arrows, numbered from 0.");
-        }
-
-        float degrees = (-_fanAngleDeg / 2f) + (arrow * _fanAngleDeg / (arrows - 1));
-        float radians = degrees * DegreesToRadians;
-        float cos = MathF.Cos(radians);
-        float sin = MathF.Sin(radians);
-
-        float dx = middle.X - origin.X;
-        float dz = middle.Z - origin.Z;
-
-        return new Vector3(
-            origin.X + (dx * cos) + (dz * sin),
-            middle.Y,
-            origin.Z - (dx * sin) + (dz * cos));
     }
 
     /// <summary>Back to no shots counted and nothing ready, silently. <c>PlayerCombat.Reset</c>'s.</summary>

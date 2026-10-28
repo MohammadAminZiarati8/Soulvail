@@ -327,14 +327,14 @@ public sealed class PlayerCombat
 
     /// <summary>
     /// The shots this tick's damage frame produced, in aim order: <c>[_shotHead, _shotCount)</c> are
-    /// still to be taken. One for an ordinary shot, a whole fan for a volley (RS-03b rule 6).
+    /// still to be taken. One for an ordinary shot, one per in-range enemy for a volley.
     /// </summary>
     /// <remarks>
-    /// Sized once to <see cref="VolleySpec.MaxArrows"/>, the most one damage frame can loose, so a
+    /// Sized once to the enemy capacity, the most one damage frame can loose, so a
     /// volley allocates nothing. A head rather than a shift, and both go back to zero when the last
     /// shot is taken.
     /// </remarks>
-    private readonly Projectile[] _shots = new Projectile[VolleySpec.MaxArrows];
+    private readonly Projectile[] _shots;
 
     /// <summary>The next shot <see cref="TryTakeShot"/> hands out.</summary>
     private int _shotHead;
@@ -385,6 +385,7 @@ public sealed class PlayerCombat
         _characterId = spec.Id;
         _weaponSpec = spec.Weapon;
         _candidates = new TargetCandidate[enemyCapacity];
+        _shots = new Projectile[enemyCapacity];
         _hitIds = new int[enemyCapacity];
         _chargeHitIds = new int[enemyCapacity];
 
@@ -495,13 +496,13 @@ public sealed class PlayerCombat
     public Kindling Kindling { get; }
 
     /// <summary>
-    /// The volley — after every <em>n</em> shots, a fan of arrows each dealing more — or
+    /// The volley — after every <em>n</em> shots, one arrow per eligible enemy, each dealing more — or
     /// <see langword="null"/> for a class without one, which is every class that ships (RS-03b).
     /// </summary>
     /// <remarks>
     /// <b>One door feeds it</b>: <see cref="OfferShot"/> calls <see cref="Volley.Loose"/> once per
     /// damage frame that looses anything, and that answer decides whether the frame is one shot or a
-    /// fan. A cone looses nothing, so a volley on a cone class never counts.
+    /// volley. A cone looses nothing, so a volley on a cone class never counts.
     /// </remarks>
     public Volley Volley { get; }
 
@@ -697,7 +698,7 @@ public sealed class PlayerCombat
     /// <para>
     /// <b>A queue since RS-03b, and this is its head.</b> A volley is several shots from one damage
     /// frame, so one slot overwrote all but the last. The queue holds up to
-    /// <see cref="VolleySpec.MaxArrows"/>, in aim order.
+    /// the enemy capacity, in registry order.
     /// </para>
     /// <para>
     /// <b>A new damage frame still replaces what was not taken</b>, which is
@@ -1689,7 +1690,7 @@ public sealed class PlayerCombat
     /// <summary>
     /// A <see cref="WeaponKind.Projectile"/> damage frame: a shot aimed at where the target will be,
     /// left on <see cref="PendingShot"/> for the run to put in the air (M5-01 rules 6 and 8) — or,
-    /// when the <see cref="Volley"/> is ready, a fan of them (RS-03b rules 4 and 5).
+    /// when the <see cref="Volley"/> is ready, one for every eligible enemy (RS-08b).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1752,30 +1753,44 @@ public sealed class PlayerCombat
                 return;
             }
 
-            Vector3 aim = ProjectileLead.Solve(
-                playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
-
             // The newest damage frame replaces anything not taken — see PendingShot.
             ClearShots();
 
             // RS-03b: asked here, where a shot is known to leave, so a dropped draw and a dead target
-            // count nothing (rule 3). The answer decides whether this frame is one shot or a fan.
+            // count nothing (rule 3). The answer decides whether this frame is one shot or a volley.
             if (Volley is null || !Volley.Loose())
             {
+                Vector3 aim = ProjectileLead.Solve(
+                    playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
                 QueueShot(playerPosition, aim, ShotDamage(Weapon.Damage.Value), isVolley: false);
 
                 return;
             }
 
-            // Rule 4: every arrow from the same origin at the weapon's speed and radius, the middle one
-            // where the ordinary shot would go. Rule 5: one swing, one PlayerAttacked, so the fan is
-            // only this — several shots from one damage frame.
-            int arrows = Volley.ArrowCount;
+            // One damage frame, one tell. Every live, vulnerable enemy within the weapon's XZ
+            // range gets its own lead-solved arrow; the registry span bounds the preallocated queue.
             float damage = ShotDamage(Weapon.Damage.Value * Volley.DamageMultiplier);
+            float range = ConeRange(Weapon.Range.Value);
+            float rangeSquared = range * range;
 
-            for (int arrow = 0; arrow < arrows; arrow++)
+            for (int enemy = 0; enemy < enemies.Length; enemy++)
             {
-                QueueShot(playerPosition, Volley.Aim(arrow, arrows, playerPosition, aim), damage, isVolley: true);
+                EnemyAgent candidate = enemies[enemy];
+                if (!candidate.IsAlive || !candidate.IsVulnerable)
+                {
+                    continue;
+                }
+
+                float dx = candidate.Position.X - playerPosition.X;
+                float dz = candidate.Position.Z - playerPosition.Z;
+                if ((dx * dx) + (dz * dz) > rangeSquared)
+                {
+                    continue;
+                }
+
+                Vector3 lead = ProjectileLead.Solve(
+                    playerPosition, candidate.Position, candidate.Velocity, _weaponSpec.ShotSpeed);
+                QueueShot(playerPosition, lead, damage, isVolley: true);
             }
 
             return;
@@ -1788,8 +1803,8 @@ public sealed class PlayerCombat
     /// <summary>One of this class's shots, onto the end of the queue.</summary>
     /// <remarks>
     /// Cannot overflow: <see cref="OfferShot"/> clears the queue first and writes at most
-    /// <see cref="Volley.ArrowCount"/>, which is clamped to the queue's length.
-    /// <paramref name="isVolley"/> marks a fan's arrow for the view (RS-07b) and changes nothing here.
+    /// one arrow per registry entry, which fits the enemy-capacity queue.
+    /// <paramref name="isVolley"/> marks a volley's arrow for the view (RS-07b) and changes nothing here.
     /// </remarks>
     private void QueueShot(Vector3 origin, Vector3 target, float damage, bool isVolley)
     {

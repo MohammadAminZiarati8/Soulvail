@@ -68,4 +68,14 @@ arrow; ten enemies, ten arrows. No fan.
 
 ## As built
 
-_Not built._
+Built 2026-10-28 on `dev`. `PlayerCombat` queues one lead-solved, ×1.5 marked arrow per live,
+vulnerable enemy within the live weapon range, using the enemy-capacity buffer. `Volley.Aim` is
+removed; `ArrowCount`, `VolleyArrows`, and `FanAngleDeg` remain for content/save compatibility but
+do not shape shots. The English description and generated pseudo row are updated.
+
+Verification: RS-08b `VolleyTests` 18/18 pass after the final compile; full EditMode run 4,519
+pass, 1 inconclusive, 1 existing Editor D3D12 failure
+(`CharacterPreviewTests.Resize_MakesTheTextureCappedAndFreesTheOld`, Traps §7). Unity compile:
+0 errors, 0 warnings; `dotnet format whitespace` and `git diff --check` pass.
+
+Manual Editor checks still owed: stage 1 three-Frog sixth shot; a late wave with about ten enemies.

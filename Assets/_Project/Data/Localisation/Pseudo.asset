@@ -495,9 +495,7 @@ MonoBehaviour:
   - _key: skill.ranger.volley.name
     _text: "[V\xF4ll\xE9\xFD \xB7\xB7\xB7]"
   - _key: skill.ranger.volley.description
-    _text: "[\xC1ft\xE9r \xE9v\xE9r\xFD 5 sh\xF4ts, th\xE9 \xF1\xE9xt \xEEs \xE1
-      f\xE1\xF1 \xF4f 3 \xE1rr\xF4ws, \xE9\xE1\xE7h d\xE9\xE1l\xEE\xF1g 50% m\xF4r\xE9.
-      \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+    _text: "[Áftér évérý 5 shôts, thé ñéxt ôñé fîrés áñ árrôw át évérý éñémý îñ ráñgé, éáçh déálîñg 50% môré. ··································]"
   - _key: skill.ranger.volley-2.name
     _text: "[V\xF4ll\xE9\xFD \xCE\xCE \xB7\xB7\xB7\xB7]"
   - _key: skill.ranger.volley-2.description

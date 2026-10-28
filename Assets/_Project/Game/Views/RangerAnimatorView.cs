@@ -21,7 +21,8 @@ namespace Soulvail.Game.Views
     /// start of the tell, CC §4.2 — draws, and the player's own <see cref="ProjectileFired"/>
     /// releases, so the string snaps on the frame the arrow leaves rather than on a guess at when
     /// it will. <see cref="VolleyReady"/> lights the bow, <see cref="ChargeStarted"/> and
-    /// <see cref="ChargeEnded"/> bracket the roll, and <see cref="PlayerDied"/> puts it all down.
+    /// <see cref="ChargeEnded"/> bracket the roll, <see cref="PlayerDamaged"/> flinches, and
+    /// <see cref="PlayerDied"/> puts it all down.
     /// These are the facts core publishes for the Ranger. In the sandbox the same facts come from
     /// <c>RangerSandboxLoop</c>, which is what makes the sandbox a test of this contract rather than
     /// of a second one.
@@ -98,6 +99,13 @@ namespace Soulvail.Game.Views
         public const string UpperBodyLayer = "Upper Body";
 
         /// <summary>
+        /// The flinch's layer in <c>AC_Ranger</c>: above <see cref="UpperBodyLayer"/>, on its mask, so
+        /// a hit jerks the chest and arms while the legs keep the stick and the draw keeps time
+        /// underneath (RS-09).
+        /// </summary>
+        public const string FlinchLayer = "Flinch";
+
+        /// <summary>
         /// How fast the shown velocity may chase the body's real one, in m/s². The value and
         /// the reason are <see cref="PlayerAnimatorView"/>'s: it smooths the sample, not the
         /// movement.
@@ -134,6 +142,7 @@ namespace Soulvail.Game.Views
         private readonly int _dodgingId = Animator.StringToHash("Dodging");
         private readonly int _dodgeXId = Animator.StringToHash("DodgeX");
         private readonly int _dodgeZId = Animator.StringToHash("DodgeZ");
+        private readonly int _hitId = Animator.StringToHash("Hit");
         private readonly int _drawStateId = Animator.StringToHash("Draw");
         private readonly int _aimStateId = Animator.StringToHash("Aim");
 
@@ -147,6 +156,7 @@ namespace Soulvail.Game.Views
         private IDisposable _rollSubscription;
         private IDisposable _rollEndedSubscription;
         private IDisposable _diedSubscription;
+        private IDisposable _damagedSubscription;
 
         private Vector3 _shownVelocity;
         private int _upperLayer = -2;
@@ -154,6 +164,7 @@ namespace Soulvail.Game.Views
         private int _targetId = -1;
         private bool _holding;
         private bool _dead;
+        private bool _rolling;
         private bool _injected;
 
         /// <param name="hub">The scope's event hub. Subscribed for this component's life.</param>
@@ -176,6 +187,7 @@ namespace Soulvail.Game.Views
             _rollSubscription = hub.Subscribe<ChargeStarted>(OnRollStarted);
             _rollEndedSubscription = hub.Subscribe<ChargeEnded>(OnRollEnded);
             _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
+            _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnDamaged);
         }
 
         /// <summary>
@@ -387,6 +399,7 @@ namespace Soulvail.Game.Views
             _rollSubscription?.Dispose();
             _rollEndedSubscription?.Dispose();
             _diedSubscription?.Dispose();
+            _damagedSubscription?.Dispose();
 
             _attackSubscription = null;
             _targetSubscription = null;
@@ -396,6 +409,7 @@ namespace Soulvail.Game.Views
             _rollSubscription = null;
             _rollEndedSubscription = null;
             _diedSubscription = null;
+            _damagedSubscription = null;
         }
 
         private void Update()
@@ -511,6 +525,8 @@ namespace Soulvail.Game.Views
 
             local = length > 0f && !float.IsInfinity(length) ? local / length : Vector3.forward;
 
+            _rolling = true;
+
             _animator.SetFloat(_dodgeXId, local.x);
             _animator.SetFloat(_dodgeZId, local.z);
             _animator.SetBool(_dodgingId, true);
@@ -518,12 +534,30 @@ namespace Soulvail.Game.Views
 
         private void OnRollEnded(ChargeEnded evt)
         {
+            _rolling = false;
+
             if (_animator == null)
             {
                 return;
             }
 
             _animator.SetBool(_dodgingId, false);
+        }
+
+        /// <remarks>
+        /// No flinch for a hit that did nothing to HP — blocked, or the Aegis took it whole — for
+        /// <see cref="PlayerAnimatorView"/>'s reason: it would tell the player they were hurt when
+        /// they were not. None for the killing blow, which the death answers in the same tick, and
+        /// none mid-roll, whose clip owns the whole body (RS-09 rules 1–5).
+        /// </remarks>
+        private void OnDamaged(PlayerDamaged evt)
+        {
+            if (_animator == null || _dead || _rolling || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
+            {
+                return;
+            }
+
+            _animator.SetTrigger(_hitId);
         }
 
         /// <remarks>

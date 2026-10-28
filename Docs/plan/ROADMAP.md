@@ -64,3 +64,7 @@ _No milestone. The owner is setting the next direction._
 **Dev tools** (owner, 2026-10-29).
 
 - [x] **DT-01** — Test start at any stage: a dev-only menu panel begins a run at stage N with the XP before it banked as picks (M) · [spec](tasks/DT-01-test-start-at-any-stage.md)
+
+**Feel** (owner, 2026-10-29).
+
+- [x] **RS-09** — The Ranger flinches when hit: upper-body `Hit_A` on its own layer, not mid-roll, not on the killing blow (S) · [spec](tasks/RS-09-the-ranger-flinches.md)

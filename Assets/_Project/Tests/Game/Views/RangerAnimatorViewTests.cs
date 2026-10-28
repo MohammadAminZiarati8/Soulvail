@@ -12,7 +12,7 @@ namespace Soulvail.Tests.Game.Views;
 
 /// <summary>
 /// RS-02a rules V1–V7: the Ranger's legs, its shot speed (RS-08a rule 5), its bowstring, and the three facts it
-/// draws a bow from. RS-03d rules 1–3: the hold, the volley's glow, and the roll.
+/// draws a bow from. RS-03d rules 1–3: the hold, the volley's glow, and the roll. RS-09 rules 1–6: the flinch.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -41,6 +41,8 @@ public sealed class RangerAnimatorViewTests
     /// </summary>
     private const float FullDrawSeconds = 0.72f;
 
+    private const string ControllerPath = "Assets/_Project/Animation/Controllers/AC_Ranger.controller";
+
     private static readonly System.Numerics.Vector2 Facing = new System.Numerics.Vector2(0f, 1f);
 
     private static readonly int MoveXId = Animator.StringToHash("MoveX");
@@ -53,6 +55,7 @@ public sealed class RangerAnimatorViewTests
     private static readonly int DodgingId = Animator.StringToHash("Dodging");
     private static readonly int DodgeXId = Animator.StringToHash("DodgeX");
     private static readonly int DodgeZId = Animator.StringToHash("DodgeZ");
+    private static readonly int HitId = Animator.StringToHash("Hit");
 
     private GameObject _body;
     private RangerAnimatorView _view;
@@ -480,6 +483,122 @@ public sealed class RangerAnimatorViewTests
         Assert.That(_animator.GetBool(DodgingId), Is.False);
     }
 
+    // ---------------------------------------------------------------- RS-09: the flinch
+
+    [Test]
+    public void Flinch_AHurtingHitSetsHit()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(Hurt());
+
+        Assert.That(_animator.GetBool(HitId), Is.True);
+    }
+
+    [Test]
+    public void Flinch_ABlockedOrShieldedHitDoesNot()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(new PlayerDamaged(0f, 0f, 0.8f, 1f, true));
+        _hub.Publish(new PlayerDamaged(6f, 0f, 0.8f, 0.4f, false));
+
+        Assert.That(_animator.GetBool(HitId), Is.False);
+    }
+
+    [Test]
+    public void Flinch_AKillingBlowDoesNot()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(new PlayerDamaged(0f, 12f, 0f, 0f, false));
+
+        Assert.That(_animator.GetBool(HitId), Is.False);
+    }
+
+    [Test]
+    public void Flinch_NotMidRoll()
+    {
+        _view.Construct(_hub);
+        _hub.Publish(new ChargeStarted(Facing));
+
+        _hub.Publish(Hurt());
+
+        Assert.That(_animator.GetBool(HitId), Is.False, "Mid-roll: the roll owns the body.");
+
+        _hub.Publish(new ChargeEnded());
+        _hub.Publish(Hurt());
+
+        Assert.That(_animator.GetBool(HitId), Is.True, "After the roll the next hit flinches.");
+    }
+
+    [Test]
+    public void Flinch_ACorpseDoesNot()
+    {
+        _view.Construct(_hub);
+        _hub.Publish(new PlayerDied(12f));
+
+        _hub.Publish(Hurt());
+
+        Assert.That(_animator.GetBool(HitId), Is.False);
+    }
+
+    [Test]
+    public void AcRanger_HasAnUpperBodyFlinchLayer()
+    {
+        var controller = UnityEditor.AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+
+        Assert.That(controller, Is.Not.Null, ControllerPath);
+        Assert.That(
+            System.Array.Exists(controller.parameters, p => p.name == "Hit" && p.type == AnimatorControllerParameterType.Trigger),
+            Is.True,
+            "No Hit trigger.");
+
+        AnimatorControllerLayer[] layers = controller.layers;
+        AnimatorControllerLayer upper = System.Array.Find(layers, l => l.name == RangerAnimatorView.UpperBodyLayer);
+        int flinchIndex = System.Array.FindIndex(layers, l => l.name == RangerAnimatorView.FlinchLayer);
+
+        Assert.That(flinchIndex, Is.EqualTo(layers.Length - 1), "The flinch is the top layer.");
+
+        AnimatorControllerLayer flinch = layers[flinchIndex];
+
+        Assert.That(flinch.defaultWeight, Is.EqualTo(1f));
+        Assert.That(flinch.blendingMode, Is.EqualTo(AnimatorLayerBlendingMode.Override));
+        Assert.That(flinch.avatarMask, Is.Not.Null.And.EqualTo(upper.avatarMask), "Upper Body's mask: the legs keep the stick.");
+
+        AnimatorStateMachine machine = flinch.stateMachine;
+        AnimatorState empty = System.Array.Find(machine.states, s => s.state.name == "Empty").state;
+        AnimatorState hit = System.Array.Find(machine.states, s => s.state.name == "Hit").state;
+
+        Assert.That(machine.defaultState, Is.EqualTo(empty));
+        Assert.That(empty.motion, Is.Null);
+        Assert.That(hit.motion.name, Is.EqualTo("Hit_A"));
+
+        foreach (ChildAnimatorState child in machine.states)
+        {
+            Assert.That(child.state.writeDefaultValues, Is.False,
+                $"{child.state.name} writes defaults, which snaps the masked bones to the bind pose.");
+        }
+
+        Assert.That(
+            System.Array.Exists(machine.anyStateTransitions, t => t.destinationState == hit
+                && System.Array.Exists(t.conditions, c => c.parameter == "Hit" && c.mode == AnimatorConditionMode.If)),
+            Is.True,
+            "Any State → Hit on Hit.");
+        Assert.That(
+            System.Array.Exists(hit.transitions, t => t.destinationState == empty && t.hasExitTime && t.conditions.Length == 0),
+            Is.True,
+            "Hit returns to Empty at its end.");
+        Assert.That(
+            System.Array.Exists(hit.transitions, t => t.destinationState == empty && !t.hasExitTime
+                && System.Array.Exists(t.conditions, c => c.parameter == "Dodging" && c.mode == AnimatorConditionMode.If)),
+            Is.True,
+            "A roll ends the flinch at once.");
+    }
+
+    /// <summary>Six damage to HP, from full to 0.94, unblocked.</summary>
+    private static PlayerDamaged Hurt() => new PlayerDamaged(0f, 6f, 0.94f, 0f, false);
+
     /// <summary>A glow under the body, dark, dressed on the view as the prefab dresses it.</summary>
     private GameObject DressGlow()
     {
@@ -523,6 +642,7 @@ public sealed class RangerAnimatorViewTests
         controller.AddParameter("Dodging", AnimatorControllerParameterType.Bool);
         controller.AddParameter("DodgeX", AnimatorControllerParameterType.Float);
         controller.AddParameter("DodgeZ", AnimatorControllerParameterType.Float);
+        controller.AddParameter("Hit", AnimatorControllerParameterType.Trigger);
 
         return controller;
     }

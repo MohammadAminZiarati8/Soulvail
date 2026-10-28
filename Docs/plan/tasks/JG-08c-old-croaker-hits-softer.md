@@ -46,4 +46,11 @@ Only these files change. No code changes.
 
 ## As built
 
-_Not built._
+Built 2026-10-29. `Croaker.asset` now authors 12 contact damage; the existing Croaker behavior
+uses that stat for touch, fissure, shockwave, and tongue. `OldCroaker_HitsForTwelve` pins the
+asset's value and the Warden's unchanged 22.
+
+Verification: one full EditMode run after JG-08b and JG-08c — 4,522 total, 4,521 pass, 0 fail,
+1 inconclusive (animator clock by construction). `dotnet format whitespace` and `git diff --check`
+clean. Manual Editor check remains: stage 5, take a tongue or slam hit and confirm roughly 13 HP
+at that depth.

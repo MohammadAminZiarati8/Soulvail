@@ -59,4 +59,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **RS-08c** — A pale wind trail on the ordinary arrow; the volley arrow cyan and ~1.9× its size (S) · [spec](tasks/RS-08c-a-wind-trail-on-the-arrow.md)
 - [x] **JG-08a** — Enemies keep their colour as they lose health; bars carry the read (S) · [spec](tasks/JG-08a-enemies-keep-their-colour.md)
 - [x] **JG-08b** — Old Croaker holds its aim down the lane through the lash (S) · [spec](tasks/JG-08b-old-croaker-holds-its-aim.md)
-- [ ] **JG-08c** — Old Croaker hits for 12, not 22 (S) · [spec](tasks/JG-08c-old-croaker-hits-softer.md)
+- [x] **JG-08c** — Old Croaker hits for 12, not 22 (S) · [spec](tasks/JG-08c-old-croaker-hits-softer.md)

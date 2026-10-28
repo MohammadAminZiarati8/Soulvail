@@ -47,6 +47,8 @@ public sealed class JungleTests
     private const string PuffballPath = "Assets/_Project/Data/Enemies/Puffball.asset";
     private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
     private const string PantherPath = "Assets/_Project/Data/Enemies/Panther.asset";
+    private const string CroakerPath = "Assets/_Project/Data/Enemies/Croaker.asset";
+    private const string WardenPath = "Assets/_Project/Data/Enemies/Warden.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
     private const string PitcherBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher.prefab";
@@ -103,6 +105,17 @@ public sealed class JungleTests
         "_startingStage", "_scaling", "_xp", "_overflow", "_essence",
         "_sanctum", "_ordeals",
     };
+
+    [Test]
+    public void OldCroaker_HitsForTwelve()
+    {
+        EnemySpec croaker = Load<EnemyDefinition>(CroakerPath).ToSpec();
+        EnemySpec warden = Load<EnemyDefinition>(WardenPath).ToSpec();
+
+        Assert.That(croaker.Id.Value, Is.EqualTo("enemy.croaker"));
+        Assert.That(croaker.ContactDamage, Is.EqualTo(12f));
+        Assert.That(warden.ContactDamage, Is.EqualTo(22f), "Descent's Warden keeps its authored hit.");
+    }
 
     [Test]
     public void Frog_RestsBetweenHops_LeapUnchanged()

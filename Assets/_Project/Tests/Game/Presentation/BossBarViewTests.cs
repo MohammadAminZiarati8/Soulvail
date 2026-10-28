@@ -745,10 +745,9 @@ public sealed class BossBarViewTests
 
         // Palette.Boss is a *tenth member* rather than a second name for one that was taken:
         // Palette.Neutral is already an enemy's health bar (M3-13b) and M4-03's invulnerable-beat
-        // shell, and Palette.EnemyDying is the dying tint. A boss's band in any of those would say
+        // shell. A boss's band in either would say
         // "an ordinary enemy".
         Assert.That(SameColour(Palette.Boss, Palette.Neutral), Is.False);
-        Assert.That(SameColour(Palette.Boss, Palette.EnemyDying), Is.False);
         Assert.That(SameColour(Palette.Boss, Palette.Player), Is.False);
     }
 

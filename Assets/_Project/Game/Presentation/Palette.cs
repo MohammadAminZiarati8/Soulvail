@@ -235,36 +235,6 @@ public static class Palette
     public static readonly Color SporeGlow = Rgb(0xD4, 0xF8, 0xFF);
 
     /// <summary>
-    /// <c>#3B2422</c> — where an enemy's body is heading as its hit points run out (M3-13b). A dark,
-    /// low-saturation maroon, and deliberately <em>not</em> <see cref="Danger"/>.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>GD §16.2 and GD §16.4 disagree about this and §16.4 wins.</b> §16.2 says a dying body
-    /// <em>"darkens and shifts toward red"</em>; §16.4 reserves saturated red-orange for danger
-    /// <em>"for nothing else, ever."</em> A Husk at 20 % HP drawn in the telegraph colour would be the
-    /// worst readability bug this project could ship, and <c>EnemyHitFeedback</c> has already made
-    /// this call once — its telegraph is a <em>shape</em> change for exactly this reason. So the body
-    /// darkens toward red without ever arriving at the reserved one. <b>The contradiction is flagged
-    /// for the owner rather than edited</b> (M3-02a rule 7's precedent); M3-15 resolves it.
-    /// </para>
-    /// <para>
-    /// <b>Red is the whole of the margin, and that is a fact about the shipped archetypes rather than
-    /// about this value.</b> The Bloater ships at <c>(0.639, 0.341, 0.220)</c>, whose green is 0.051
-    /// from <see cref="Danger"/>'s and whose blue is 0.098 from it — <em>before</em> any tint is
-    /// applied. As hp falls its green crosses <see cref="Danger"/>'s exactly and its blue converges to
-    /// 0.012 away, so neither channel can carry a distance claim. Red can: it lerps monotonically
-    /// between each archetype's red and the 0.231 here, and the worst case over all three archetypes
-    /// at every step is the Bloater at full health, 0.361 away from <see cref="Danger"/>'s 1.0.
-    /// <c>Tint_NeverApproachesDanger</c> is therefore written as <em>not all three channels within
-    /// 0.15</em>, which is a claim about a colour being the danger colour; <em>no channel within
-    /// 0.15</em> would be a claim about coincidence, and it is red on a Bloater standing at full
-    /// health in the build that exists.
-    /// </para>
-    /// </remarks>
-    public static readonly Color EnemyDying = Rgb(0x3B, 0x24, 0x22);
-
-    /// <summary>
     /// <c>#CCC4B7</c> — the boss's own bar across the top of the screen (M4-04). <see cref="Neutral"/>
     /// brightened: the same bone, at the value a full-width band needs.
     /// </summary>
@@ -289,9 +259,9 @@ public static class Palette
     /// <para>
     /// <b>A separate member was necessary rather than tidy, and that is a fact about what is already
     /// taken.</b> <see cref="Neutral"/> itself is spoken for on an enemy <em>body</em> twice over —
-    /// M3-13b's health-bar fill and M4-03's invulnerable-beat shell — and <see cref="EnemyDying"/> is
-    /// the third thing on one. A boss's bar drawn in any of those would say <em>"an ordinary
-    /// enemy"</em> in the one place GD §16.2 wants <em>"the fight you are in"</em>. <c>BossBarView</c>
+    /// M3-13b's health-bar fill and M4-03's invulnerable-beat shell. A boss's bar drawn in either
+    /// would say <em>"an ordinary enemy"</em> in the one place GD §16.2 wants <em>"the fight you
+    /// are in"</em>. <c>BossBarView</c>
     /// reads this for the fill. Its seams were <see cref="Neutral"/> until UI-01f, when they became the
     /// art's own dark pills, drawn untinted — the same contrast, drawn in.
     /// </para>

@@ -42,24 +42,7 @@ namespace Soulvail.Game.Views
     /// <b>It owns the archetype's look as of M2-06, because it already owned the reset.</b> Every
     /// effect here is written relative to two fields — <c>_liveColour</c> and <c>_liveScale</c> —
     /// and <see cref="SetArchetypeLook"/> re-bases them on the rental so a Bloater flashes, swells
-    /// and dissolves in rust rather than reverting to bone grey mid-effect. Putting the tint
-    /// anywhere else would mean a second writer of the same two shader properties, and the first
-    /// flash to end would undo it. <b>This is AR §18.4's pooled-reset invariant gaining two more
-    /// things to forget</b>: a tint left behind produces a Husk that spawns Bloater-red, which
-    /// reads as a rendering bug three systems from its cause.
-    /// </para>
-    /// <para>
-    /// <b>The damage tint is a third term in that composition rather than a fourth writer</b>
-    /// (M3-13b rules 1–4). GD §16.2 wants a body that darkens as it dies, and the paragraph above is
-    /// the whole argument for where it goes: a component painting a darkened colour straight onto the
-    /// renderer would be undone by the first flash that ended. So <see cref="_liveColour"/> keeps its
-    /// one meaning — <em>the archetype's colour</em>, what <see cref="SetArchetypeLook"/> was last
-    /// told — and a single scalar <see cref="_damageTint"/> is composed with it by
-    /// <see cref="BodyColour"/>, which is what the flash returns to, what the dissolve fades from,
-    /// and what a rental repaints. The alternative, making <see cref="_liveColour"/> <em>be</em> the
-    /// darkened colour, needs a second field to remember the archetype's and turns
-    /// <see cref="SetArchetypeLook"/> from absolute into remembered — see that method's remarks for
-    /// why absolute is the property AR §18.4 leans on.
+    /// and dissolves in rust rather than reverting to bone grey mid-effect.
     /// </para>
     /// <para>
     /// <b>Emission carries the flash and the wind-up as well, as of M7-05h</b>, and only a material that
@@ -74,12 +57,6 @@ namespace Soulvail.Game.Views
     /// <b>Two switches for the Puffball, as of JG-03b.</b> <c>_sporeTelegraph</c> glows the wind-up in
     /// <see cref="Palette.SporeGlow"/> rather than danger, the owner's one exception; <c>_deathBurst</c>
     /// is a particle system the death plays and the reset clears. Both are off on every other body.
-    /// </para>
-    /// <para>
-    /// <b>The tint is composed from <c>EnemyDamaged.HpFraction</c>, so no health is held here.</b>
-    /// That field has ridden the event since M1-11; this reads it, keeps one float, and decides
-    /// nothing. At full health the lerp is identity, so a freshly spawned body looks exactly as M2-06
-    /// authored it and the three archetypes still tell themselves apart (GD §8.1).
     /// </para>
     /// </remarks>
     [RequireComponent(typeof(EnemyView))]
@@ -159,21 +136,6 @@ namespace Soulvail.Game.Views
         private Color _liveColour;
 
         private Vector3 _liveScale;
-
-        /// <summary>
-        /// How far toward <see cref="Palette.EnemyDying"/> the body is drawn: <c>0</c> is unhurt,
-        /// <c>1</c> is the last hit that could land. <c>1 − HpFraction</c>, and nothing derivable
-        /// about the enemy's health beyond it (M3-13b rule 2).
-        /// </summary>
-        /// <remarks>
-        /// <b>The third thing a rental has to forget</b> (AR §18.4, rule 4). M2-06 gave the invariant
-        /// two; the failure this one prevents is specific and would read as a rendering bug: a Bloater
-        /// that died at 5 % HP goes back to the pool nearly black, and the next Husk rented from it
-        /// spawns looking half dead. Both <see cref="ResetVisuals"/> and <see cref="SetArchetypeLook"/>
-        /// clear it, and both clear it <em>before</em> the property-block guard, so a body that has
-        /// never woken up forgets it too.
-        /// </remarks>
-        private float _damageTint;
 
         /// <summary>
         /// The scale the prefab itself was authored at, which <see cref="SetArchetypeLook"/>
@@ -315,12 +277,6 @@ namespace Soulvail.Game.Views
             _liveColour = tint;
             _liveScale = _prefabScale * bodyScale;
 
-            // Ahead of every guard below, for _liveScale's reason: a body rented without ever having
-            // woken up still has to forget what the last enemy in it died at. This is the half of
-            // rule 4 that makes the restore absolute — the rental is told what it is, rather than
-            // asked to undo what it was.
-            _damageTint = 0f;
-
             transform.localScale = _liveScale;
 
             // Unity's == rather than `is null`: an unassigned serialized reference is a live object
@@ -365,12 +321,6 @@ namespace Soulvail.Game.Views
             _dissolveElapsed = 0f;
             _flashRemaining = 0f;
             _telegraphRemaining = 0f;
-
-            // The third entry on AR §18.4's list, cleared here as well as on the next rental and for
-            // the same reason the scale is: this runs before the property-block guard, so a body that
-            // has never woken up is still left unhurt rather than carrying the last life's darkness
-            // into the pool.
-            _damageTint = 0f;
 
             // Ahead of the property-block guard below, unlike every other line here, because as of
             // M2-06 a body can have been rescaled before Awake ever ran — SetArchetypeLook writes
@@ -466,12 +416,6 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-
-            // Ahead of the killing-blow return, deliberately: the tint is a pure function of the last
-            // HpFraction this body was told, and the killing blow carries one like every other hit.
-            // Putting it after would leave a body frozen at the fraction before the one that killed
-            // it, so the dissolve would fade from a colour the enemy was never drawn in.
-            SetDamageTint(evt.HpFraction);
 
             // A killing blow does not flash. EnemyDied arrives in the same call and the dissolve is
             // the answer to it; flashing first would be one frame of white under a fade that is
@@ -634,56 +578,13 @@ namespace Soulvail.Game.Views
             scale.y = _liveScale.y * Mathf.Lerp(1f, _dissolveStretch, t);
             transform.localScale = scale;
 
-            // Both the rgb and the alpha come off the composed colour, so a body that was nearly dead
-            // fades out of the darkness it died in rather than snapping back to its archetype's
-            // colour for the half-second it takes to go.
+            // Fade from the archetype colour, whatever HP the body had on the killing blow.
             Color colour = BodyColour();
             colour.a *= 1f - t;
             SetColour(colour);
         }
 
-        /// <summary>
-        /// Darkens the body toward <see cref="Palette.EnemyDying"/> as HP falls. 1 is unhurt.
-        /// </summary>
-        /// <param name="hpFraction">
-        /// <c>EnemyDamaged.HpFraction</c> — hit points over the live maximum, after the hit. A
-        /// non-finite value is read as unhurt rather than clamped: <c>Mathf.Clamp01</c> is two
-        /// comparisons and every comparison against NaN is false, so a NaN passes straight through
-        /// both bounds and would reach the lerp (AR §18.3, and <c>Palette.Quantise</c>'s own note one
-        /// layer down).
-        /// </param>
-        private void SetDamageTint(float hpFraction)
-        {
-            float fraction = float.IsFinite(hpFraction) ? Mathf.Clamp01(hpFraction) : 1f;
-
-            _damageTint = 1f - fraction;
-
-            // Unity's == rather than `is null`: an unassigned serialized reference is a live object
-            // that only compares equal to null through the engine's operator. Guarded the way
-            // SetArchetypeLook is, so an EditMode body that never woke up still remembers the tint
-            // even though there is nothing to paint it onto.
-            if (_renderer == null)
-            {
-                return;
-            }
-
-            _block ??= new MaterialPropertyBlock();
-
-            SetColour(BodyColour());
-        }
-
-        /// <summary>
-        /// The colour the body rests at right now: the archetype's, darkened by however much health
-        /// it has lost.
-        /// </summary>
-        /// <remarks>
-        /// The one place the two terms are composed, which is what keeps the flash, the telegraph and
-        /// the dissolve written against a single value. The zero case returns
-        /// <see cref="_liveColour"/> itself rather than a lerp of it — free, and it makes
-        /// <c>Tint_FullHealthIsTheArchetypeColour</c> an identity rather than a rounding.
-        /// </remarks>
-        private Color BodyColour() =>
-            _damageTint <= 0f ? _liveColour : Color.Lerp(_liveColour, Palette.EnemyDying, _damageTint);
+        private Color BodyColour() => _liveColour;
 
         /// <remarks>
         /// The block is filled from the renderer first, so any property the material carries that

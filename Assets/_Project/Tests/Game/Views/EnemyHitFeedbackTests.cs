@@ -12,8 +12,7 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.Game.Views;
 
 /// <summary>
-/// GD §16.2's first row: a basic enemy that darkens as it dies, and does so without ever arriving at
-/// the one colour GD §16.4 reserves for danger.
+/// The archetype colour remains fixed through damage, flash, wind-up and dissolve (JG-08a).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -27,7 +26,7 @@ namespace Soulvail.Tests.Game.Views;
 /// <c>Awake</c> and <c>Update</c> do not run in EditMode (Traps §5), so this calls <c>Awake</c>
 /// itself and drives the private <c>Tick(dt)</c> the component gained for exactly this reason —
 /// <c>Time.deltaTime</c> is not something an EditMode fixture can advance, and every claim about
-/// what the tint looks like <em>after</em> a flash or a telegraph is a claim about elapsed time.
+/// what the body looks like <em>after</em> a flash or a telegraph is a claim about elapsed time.
 /// </para>
 /// <para>
 /// The body is built here rather than loaded from <c>Enemy.prefab</c>, for
@@ -49,9 +48,6 @@ public sealed class EnemyHitFeedbackTests
 
     /// <summary>The Bloater's shipped tint — the reddest archetype in the build, and the one that matters.</summary>
     private static readonly Color BloaterTint = new Color(0.6392157f, 0.34117648f, 0.21960784f, 1f);
-
-    /// <summary>The Spitter's shipped tint, for the third of the three.</summary>
-    private static readonly Color SpitterTint = new Color(0.60784316f, 0.69803923f, 0.5686275f, 1f);
 
     private const int Id = 7;
 
@@ -128,304 +124,55 @@ public sealed class EnemyHitFeedbackTests
         _dissolve = null;
     }
 
-    // ---- The tint itself (rules 1–3) -------------------------------------------------------------
+    // ---- The archetype colour through damage and effects (JG-08a) ------------------------------
 
-    [Test]
-    public void Tint_FullHealthIsTheArchetypeColour()
+    [TestCase(1f)]
+    [TestCase(0.5f)]
+    [TestCase(0.01f)]
+    [TestCase(0f)]
+    public void Colour_UnchangedAtAnyHealth(float hpFraction)
     {
         _feedback.SetArchetypeLook(HuskTint, 1f);
-
-        Rest(1f);
-
-        // At full health the composition is an identity rather than a rounding — BodyColour returns
-        // _liveColour itself — so a freshly spawned body looks exactly as M2-06 authored it and the
-        // three archetypes still tell themselves apart (GD §8.1, rule 2). The tolerance is the
-        // *property block's*, not the lerp's: a MaterialPropertyBlock round-trips a channel at about
-        // one ULP (0.431372553 goes in, 0.4313725 comes back), which is why Color.Equals is false on
-        // a value that was never changed and why every colour row in this file compares per channel.
+        Damage(hpFraction);
+        Tick(1f);
         AssertColour(HuskTint, Painted());
     }
 
     [Test]
-    public void Tint_DarkensAsHealthFalls()
-    {
-        _feedback.SetArchetypeLook(HuskTint, 1f);
-
-        Color three = Rest(0.75f);
-        Color half = Rest(0.5f);
-        Color quarter = Rest(0.25f);
-
-        Assert.That(Luminance(half), Is.LessThan(Luminance(three)), "0.5 is darker than 0.75.");
-        Assert.That(Luminance(quarter), Is.LessThan(Luminance(half)), "0.25 is darker than 0.5.");
-
-        // And it is darkening *toward* the named colour rather than merely downward, which is the
-        // half of rule 2 a luminance comparison alone would not catch: a body multiplied toward black
-        // would pass the two rows above and fail this one.
-        Assert.That(
-            Distance(quarter, Palette.EnemyDying),
-            Is.LessThan(Distance(three, Palette.EnemyDying)),
-            "A quarter-health body is nearer Palette.EnemyDying than a three-quarter-health one.");
-    }
-
-    [Test]
-    public void Tint_NeverApproachesDanger()
-    {
-        // Every archetype the build ships, because the row samples the lerp's intermediates and the
-        // reddest body is the one that can cross. The Bloater is that body: it ships at (0.639,
-        // 0.341, 0.220), whose green is 0.051 from Danger's and whose blue is 0.098 from it, both
-        // inside the band *before any tint is applied at all*.
-        foreach ((string name, Color tint) in new[]
-                 {
-                     ("Husk", HuskTint), ("Spitter", SpitterTint), ("Bloater", BloaterTint),
-                 })
-        {
-            _feedback.SetArchetypeLook(tint, 1f);
-
-            for (int step = 0; step <= 20; step++)
-            {
-                float hp = 1f - (step * 0.05f);
-
-                Color painted = Rest(hp);
-
-                Assert.That(
-                    Palette.IsDanger(painted),
-                    Is.False,
-                    $"{name} at hp {hp:0.00} is drawn in GD §16.4's reserved colour.");
-
-                // NOT ALL THREE channels within 0.15 — which is a claim about a colour *being* the
-                // danger colour. The other reading, "no channel within 0.15", is red on a Bloater
-                // standing at full health in the build that exists, and would therefore be a row
-                // about coincidence rather than about readability. Red is the whole of the margin:
-                // as hp falls the Bloater's green crosses Danger's exactly and its blue converges to
-                // 0.012 away, so neither can carry a distance claim, while red stays at least 0.36
-                // clear at every step of every archetype.
-                bool r = Mathf.Abs(painted.r - Palette.Danger.r) < 0.15f;
-                bool g = Mathf.Abs(painted.g - Palette.Danger.g) < 0.15f;
-                bool b = Mathf.Abs(painted.b - Palette.Danger.b) < 0.15f;
-
-                Assert.That(
-                    r && g && b,
-                    Is.False,
-                    $"{name} at hp {hp:0.00} is within 0.15 of Danger on all three channels.");
-
-                Assert.That(
-                    Mathf.Abs(painted.r - Palette.Danger.r),
-                    Is.GreaterThan(0.15f),
-                    $"{name} at hp {hp:0.00}: red is the channel with room, and it has run out.");
-            }
-        }
-    }
-
-    // ---- The tint against the three effects that were already here (rule 1) ----------------------
-
-    [Test]
-    public void Tint_SurvivesAFlash()
+    public void Colour_FlashAndTelegraphReturnToTheArchetype()
     {
         _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        // The hit flashes white and the flash then expires, which is the M1-12 behaviour the tint
-        // shares a handler with and must not disturb.
-        Damage(0.3f);
-
+        Damage(0.01f);
         AssertColour(Palette.HitFlash, Painted(), "A hit still flashes white.");
-
         Tick(1f);
+        AssertColour(BloaterTint, Painted(), "The flash returns to the archetype.");
 
-        Color tinted = Painted();
-
-        // And it returns to the *tinted* colour, not to the archetype's. This is the row that would
-        // go red if a second component painted the tint straight onto the renderer: the first flash
-        // to end would restore bone rust and the body would un-die.
-        AssertColour(tinted, Painted());
-
-        Assert.That(
-            Distance(Painted(), BloaterTint),
-            Is.GreaterThan(0.05f),
-            "And not to the archetype's: this is the row a second writer of the tint would redden.");
-    }
-
-    [Test]
-    public void Tint_SurvivesATelegraph()
-    {
-        _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        Damage(0.3f);
-        Tick(1f);
-
-        Color tinted = Painted();
         Vector3 rest = _body.transform.localScale;
-
         _hub.Publish(new EnemyTelegraph(Id, 0.4f));
-
         Tick(0.2f);
-
-        Assert.That(_body.transform.localScale.x, Is.GreaterThan(rest.x), "The body swells.");
-        AssertColour(tinted, Painted(), "A wind-up is a shape change and not a colour one.");
-
-        Tick(0.3f);
-
-        // The snap back, and the base colour never moved: the telegraph's red-orange is emission's
-        // (M7-05h, the Glow rows below), and only a material with emission on shows it. The tint
-        // stays the archetype's — the same ruling that put EnemyDying where it is.
-        Assert.That(_body.transform.localScale, Is.EqualTo(rest));
-        AssertColour(tinted, Painted());
-    }
-
-    [Test]
-    public void Tint_DissolveFadesFromTheTintedColour()
-    {
-        _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        Damage(0.1f);
-        Tick(1f);
-
-        Color tinted = Painted();
-
-        _hub.Publish(new EnemyDied(Id, Bloater, System.Numerics.Vector3.Zero));
-
-        Color opening = Painted();
-
-        // The corpse starts at the colour it died in, opaque, and fades from there. Both the rgb and
-        // the alpha come off the composed colour: a dissolve that took its rgb from the archetype
-        // would snap a nearly-dead body back to full rust for the half-second it takes to go.
-        Assert.That(opening.r, Is.EqualTo(tinted.r).Within(1e-4f));
-        Assert.That(opening.g, Is.EqualTo(tinted.g).Within(1e-4f));
-        Assert.That(opening.b, Is.EqualTo(tinted.b).Within(1e-4f));
-        Assert.That(opening.a, Is.EqualTo(1f).Within(1e-4f));
-
-        Tick(0.25f);
-
-        Color halfway = Painted();
-
-        Assert.That(halfway.a, Is.LessThan(opening.a), "The alpha ramps.");
-        Assert.That(halfway.r, Is.EqualTo(tinted.r).Within(1e-4f), "And only the alpha ramps.");
-    }
-
-    [Test]
-    public void Tint_KillingBlowDoesNotFlash()
-    {
-        _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        Damage(0.4f);
-        Tick(1f);
-
-        // The existing M1-12 rule, unchanged by the tint sharing a handler with it: EnemyDied arrives
-        // in the same call and the dissolve is the answer to it, so one frame of white under a fade
-        // that is already starting would read as a glitch rather than as a hit.
-        _hub.Publish(new EnemyDamaged(Id, 12f, 0f, killed: true));
-
-        Assert.That(
-            Distance(Painted(), Palette.HitFlash),
-            Is.GreaterThan(0.05f),
-            "A killing blow does not flash.");
-
-        // And the tint did move, because the killing blow carries an HpFraction like every other hit
-        // — so the body the dissolve is about to fade is the one the last hit left, rather than the
-        // one before it.
-        Assert.That(
-            Distance(Painted(), Palette.EnemyDying),
-            Is.LessThan(0.01f),
-            "A body at zero HP is drawn at Palette.EnemyDying.");
-    }
-
-    // ---- What a rental has to forget (rule 4, AR §18.4) ------------------------------------------
-
-    [Test]
-    public void Tint_ResetForgetsIt()
-    {
-        _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        Damage(0.05f);
-        Tick(1f);
-
-        Assert.That(
-            Distance(Painted(), BloaterTint),
-            Is.GreaterThan(0.05f),
-            "Setup: the body is nearly dead.");
-
-        _feedback.ResetVisuals();
-
-        // The third entry on AR §18.4's list. Without it a Bloater that died at 5 % HP goes back to
-        // the pool nearly black, and the next Husk rented from that body spawns looking half dead —
-        // a rendering bug three systems from its cause.
+        Assert.That(_body.transform.localScale.x, Is.GreaterThan(rest.x));
         AssertColour(BloaterTint, Painted());
+        Tick(0.3f);
+        Assert.That(_body.transform.localScale, Is.EqualTo(rest));
+        AssertColour(BloaterTint, Painted(), "The wind-up returns to the archetype.");
     }
 
     [Test]
-    public void Tint_ArchetypeLookRebasesIt()
+    public void Colour_DissolveFadesFromTheArchetype()
     {
         _feedback.SetArchetypeLook(BloaterTint, 1f);
-
-        Damage(0.05f);
+        Damage(0.01f);
         Tick(1f);
-
-        _feedback.SetArchetypeLook(HuskTint, 1f);
-
-        // The rental, not the reset, is what undoes it — which is why the restore is *absolute*
-        // rather than accumulated. Every rental is told what it is standing in for, so a body is
-        // never asked to remember what it was.
-        AssertColour(HuskTint, Painted());
-    }
-
-    [Test]
-    public void Tint_IsForgottenBeforeThePropertyBlockExists()
-    {
-        // A body that has never woken up: no Awake, so no property block and nothing to paint. Both
-        // clears run ahead of the block guard, which is what makes the invariant hold for a fixture
-        // that rents and returns without building a whole prefab — _liveScale's own argument, applied
-        // to the third thing on the list.
-        var bare = new GameObject("Bare");
-
-        try
-        {
-            bare.AddComponent<EnemyView>();
-
-            var feedback = bare.AddComponent<EnemyHitFeedback>();
-
-            feedback.SetArchetypeLook(BloaterTint, 1f);
-
-            Assert.That(Tint(feedback), Is.EqualTo(0f));
-
-            typeof(EnemyHitFeedback).GetField("_damageTint", Private).SetValue(feedback, 0.9f);
-
-            feedback.ResetVisuals();
-
-            Assert.That(Tint(feedback), Is.EqualTo(0f));
-        }
-        finally
-        {
-            Object.DestroyImmediate(bare);
-        }
-    }
-
-    // ---- Doors (guard rows) ----------------------------------------------------------------------
-
-    [Test]
-    public void Tint_IgnoresANonFiniteFraction()
-    {
-        _feedback.SetArchetypeLook(HuskTint, 1f);
-
-        foreach (float bad in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
-        {
-            Damage(0.5f);
-            Damage(bad);
-
-            // Read as unhurt rather than clamped. Mathf.Clamp01 is two comparisons and every
-            // comparison against NaN is false, so a NaN passes straight through both bounds and would
-            // reach the lerp (AR §18.3, and Palette.Quantise's own note one layer down).
-            Assert.That(Tint(_feedback), Is.EqualTo(0f), $"{bad} was let into the lerp.");
-        }
-    }
-
-    [Test]
-    public void Tint_IgnoresOtherEnemies()
-    {
-        _feedback.SetArchetypeLook(HuskTint, 1f);
-
-        _hub.Publish(new EnemyDamaged(Id + 1, 5f, 0.1f, killed: false));
-
-        Assert.That(Tint(_feedback), Is.EqualTo(0f));
-        AssertColour(HuskTint, Painted());
+        _hub.Publish(new EnemyDamaged(Id, 12f, 0f, killed: true));
+        AssertColour(BloaterTint, Painted(), "A killing blow does not flash or darken.");
+        _hub.Publish(new EnemyDied(Id, Bloater, System.Numerics.Vector3.Zero));
+        AssertColour(BloaterTint, Painted());
+        Tick(0.25f);
+        Color halfway = Painted();
+        Assert.That(halfway.a, Is.LessThan(1f));
+        Assert.That(halfway.r, Is.EqualTo(BloaterTint.r).Within(1e-4f));
+        Assert.That(halfway.g, Is.EqualTo(BloaterTint.g).Within(1e-4f));
+        Assert.That(halfway.b, Is.EqualTo(BloaterTint.b).Within(1e-4f));
     }
 
     // ---- The glow (M7-05h rule 6) ---------------------------------------------------------------
@@ -629,25 +376,9 @@ public sealed class EnemyHitFeedbackTests
     private void Damage(float hpFraction) =>
         _hub.Publish(new EnemyDamaged(Id, 5f, hpFraction, killed: false));
 
-    /// <summary>
-    /// The colour the body <em>rests</em> at after a hit of <paramref name="hpFraction"/>: the hit
-    /// itself paints M1-12's white flash, so every claim about the tint has to let that expire first.
-    /// </summary>
-    private Color Rest(float hpFraction)
-    {
-        Damage(hpFraction);
-        Tick(1f);
-
-        return Painted();
-    }
-
     private void Tick(float dt) =>
         typeof(EnemyHitFeedback).GetMethod("Tick", Private).Invoke(_feedback, new object[] { dt });
 
-    private static float Tint(EnemyHitFeedback feedback) =>
-        (float)typeof(EnemyHitFeedback).GetField("_damageTint", Private).GetValue(feedback);
-
-    /// <summary>The colour actually written into the renderer's property block.</summary>
     private Color Painted()
     {
         var block = new MaterialPropertyBlock();
@@ -675,9 +406,6 @@ public sealed class EnemyHitFeedbackTests
     }
 
     /// <summary>Rec. 709 luminance — "darker" as an eye reads it rather than as a sum.</summary>
-    private static float Luminance(Color colour) =>
-        (0.2126f * colour.r) + (0.7152f * colour.g) + (0.0722f * colour.b);
-
     private static float Distance(Color a, Color b) =>
         Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b);
 

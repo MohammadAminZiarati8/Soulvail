@@ -57,4 +57,11 @@ player runs.
 
 ## As built
 
-_Not built._
+Built 2026-10-29. `EnterLash` stores the lane direction in `_lashAim`; every lash tick emits zero
+velocity with that facing. Approach resumes following the player after the lash. Three Core tests
+pin the held facing, lane match, and recovery.
+
+Verification: one full EditMode run after JG-08b and JG-08c — 4,522 total, 4,521 pass, 0 fail,
+1 inconclusive (animator clock by construction). `dotnet format whitespace` and `git diff --check`
+clean. Manual Editor check remains: stage 5, sidestep during the tongue wind-up and confirm the
+body keeps looking down the lane.

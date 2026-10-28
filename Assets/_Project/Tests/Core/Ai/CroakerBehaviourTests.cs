@@ -326,6 +326,51 @@ public sealed class CroakerBehaviourTests
     // ---- JG-04e rule 4 ----------------------------------------------------------------------------
 
     [Test]
+    public void Croaker_Lash_HoldsFacingWhilePlayerCircles()
+    {
+        CroakerBehaviour croaker = EnterLash();
+        Vector2 aimed = _lanes.DirectionAt(0);
+
+        _driven.Blackboard.DirectionToPlayer = new Vector2(1f, 0f);
+
+        while (croaker.State == CroakerState.Lash)
+        {
+            _intents.Clear();
+            Tick(croaker);
+
+            Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+            Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(aimed));
+        }
+    }
+
+    [Test]
+    public void Croaker_Lash_FacingMatchesTheLane()
+    {
+        CroakerBehaviour croaker = EnterLash();
+
+        _intents.Clear();
+        Tick(croaker);
+
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(_lanes.DirectionAt(0)));
+    }
+
+    [Test]
+    public void Croaker_AfterLash_FacesThePlayerAgain()
+    {
+        CroakerBehaviour croaker = EnterLash();
+
+        _driven.Blackboard.DirectionToPlayer = new Vector2(1f, 0f);
+        TickUntil(croaker, CroakerState.Approach, CroakerBehaviour.LashTelegraphSeconds + (2f * Frame));
+
+        _intents.Clear();
+        Tick(croaker);
+
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(new Vector2(1f, 0f)));
+    }
+
+    [Test]
     public void Croaker_Lash_LaneCarriesATongue()
     {
         // JG-07a rule 12: the lash's lane says a tongue strikes down it, so the view draws one.
@@ -804,6 +849,19 @@ public sealed class CroakerBehaviourTests
     {
         TickUntil(croaker, CroakerState.Recover, 2f);
         TickUntil(croaker, CroakerState.Approach, CroakerBehaviour.RecoverSeconds + (2f * Frame));
+    }
+
+    private CroakerBehaviour EnterLash()
+    {
+        CroakerBehaviour croaker = Croaker();
+
+        Place(distance: 6f);
+        TickUntil(croaker, CroakerState.Slam, 1f);
+        RunOutTheSlam(croaker);
+        Place(distance: 6f);
+        TickUntil(croaker, CroakerState.Lash, CroakerBehaviour.AttackGapSeconds + (2f * Frame));
+
+        return croaker;
     }
 
     /// <summary>

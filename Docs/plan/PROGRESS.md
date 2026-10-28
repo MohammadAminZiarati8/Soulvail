@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-29, after the CharacterPreview depth-test fix._
+_Updated 2026-10-29, after JG-08b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **CharacterPreview depth-test fix**: accepts a backend's ≥24-bit allocation for the requested 24-bit texture. RS-08c and JG-08a are built and playtest-approved. |
-| **Next task** | **JG-08b/c** specced, awaiting the owner's go. |
-| **Verified** | Full EditMode after depth-test fix: 4 518 total, 4 517 pass, 0 fail, 1 inconclusive (animator clock by construction). Strict Unity recompile 0 errors/warnings. RS-08c and JG-08a manual checks passed by owner. |
+| **Last merged** | **JG-08b**: Old Croaker holds its facing along the tongue lane throughout the lash. RS-08c and JG-08a are playtest-approved. |
+| **Next task** | **JG-08c** approved; lower Old Croaker's hit to 12. |
+| **Verified** | One full EditMode run after JG-08b/c implementation: 4 522 total, 4 521 pass, 0 fail, 1 inconclusive (animator clock by construction). No new compiler or analyzer diagnostics. Manual stage 5 checks remain. |
 
 ## What works
 

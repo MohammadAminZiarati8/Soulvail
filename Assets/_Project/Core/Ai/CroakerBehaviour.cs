@@ -223,6 +223,9 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
     /// <summary>The ground velocity that carries the body from take-off to the landing in the telegraph.</summary>
     private Vector3 _hopVelocity;
 
+    /// <summary>The lane's direction, held from the lash wind-up until it lands.</summary>
+    private Vector2 _lashAim;
+
     /// <param name="agent">The boss's own body.</param>
     /// <param name="shockwaves">Where a landing's ring is sent.</param>
     /// <param name="fissures">Where a landing circle is armed.</param>
@@ -342,6 +345,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         _hopsLanded = 0;
         _airborne = false;
         _leaping = false;
+        _lashAim = Vector2.Zero;
 
         _agent.Blackboard.StateTimer = 0f;
     }
@@ -545,14 +549,14 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
         // From the wind-up, like the slam's from its first take-off.
         _nextLashAt = _now + LashCooldown;
 
-        Vector2 aim = blackboard.DirectionToPlayer;
+        _lashAim = blackboard.DirectionToPlayer;
 
         _events.Publish(new EnemyTelegraph(_agent.Id, LashTelegraphSeconds, LashMove));
 
         // A dropped lane (a full table) is not a special case — the fissure's rule 8.
         _lanes.Open(
             _agent.Position,
-            new Vector3(aim.X, 0f, aim.Y),
+            new Vector3(_lashAim.X, 0f, _lashAim.Y),
             LashLength,
             LashHalfWidth,
             LashTelegraphSeconds,
@@ -568,7 +572,7 @@ public sealed class CroakerBehaviour : IEnemyBehaviour
 
         blackboard.StateTimer += dt;
 
-        Stand();
+        Emit(Vector3.Zero, _lashAim);
 
         if (blackboard.StateTimer >= LashTelegraphSeconds)
         {

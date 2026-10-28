@@ -11,7 +11,7 @@ _Updated 2026-10-28, after JG-07d._
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
 | **Last merged** | **JG-07c–d**: `Panther.prefab` crouches on the 0.9 s wind-up, bounds the dash; `enemy.panther` (a Lunger) in the Jungle from stage 6, which is 2 Panthers. |
-| **Next task** | **None named.** The owner plays stage 6 first. |
+| **Next task** | **RS-08a–c, JG-08a–c** specced (ROADMAP, owner 2026-10-28), awaiting the owner's OK; RS-08b after RS-08a. |
 | **Verified** | JG-07d: EditMode 4 515 — 4 512 pass, 2 fail (the known pair, [Traps §7](../Traps.md#7-tests-nunit-allocation)), 1 inconclusive. |
 
 ## What works

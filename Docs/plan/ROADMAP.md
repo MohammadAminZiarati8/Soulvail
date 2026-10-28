@@ -51,3 +51,12 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-07b** — The Panther's model: the TRELLIS sculpt cut to the crowd's budget, repainted on the atlas, on `Rig_Panther` with six clips (M) · [spec](tasks/JG-07b-the-panthers-model.md)
 - [x] **JG-07c** — The Panther's body: prefab and animator, crouch on the wind-up, bound through the dash; the tongue only down a tongue's lane (M) · [spec](tasks/JG-07c-the-panthers-body.md)
 - [x] **JG-07d** — Panthers in the Jungle: `enemy.panther` from stage 6, stage 6 scripted as 2 Panthers (M) · [spec](tasks/JG-07d-panthers-in-the-jungle.md)
+
+**Playtest fixes, the Ranger and Old Croaker** (owner, 2026-10-28). Specs for the owner to OK; each built only on the owner's go. RS-08b after RS-08a (both `PlayerCombat.cs`); the rest are independent.
+
+- [ ] **RS-08a** — The Ranger's rate holds (no Focus ramp) and the first arrow after stopping leaves in ~0.27 s, the draw timed to it (M) · [spec](tasks/RS-08a-the-rangers-rate-holds.md)
+- [ ] **RS-08b** — A volley looses one arrow at every enemy in range, not a fixed fan (M) · [spec](tasks/RS-08b-a-volley-finds-every-enemy.md)
+- [ ] **RS-08c** — A pale wind trail on the ordinary arrow; the volley arrow cyan and ~1.9× its size (S) · [spec](tasks/RS-08c-a-wind-trail-on-the-arrow.md)
+- [ ] **JG-08a** — Enemies keep their colour as they lose health; bars carry the read (S) · [spec](tasks/JG-08a-enemies-keep-their-colour.md)
+- [ ] **JG-08b** — Old Croaker holds its aim down the lane through the lash (S) · [spec](tasks/JG-08b-old-croaker-holds-its-aim.md)
+- [ ] **JG-08c** — Old Croaker hits for 12, not 22 (S) · [spec](tasks/JG-08c-old-croaker-hits-softer.md)

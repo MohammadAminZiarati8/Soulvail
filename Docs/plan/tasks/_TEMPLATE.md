@@ -51,11 +51,11 @@ _Only if a Game-side change is visible._ Numbered steps, each with the expected 
 
 ## Out of scope
 
-- Tempting things NOT to do here. This section keeps the branch at 1–5 files.
+- Tempting things NOT to do here. This section keeps the task at 1–8 files.
 
 ## As built
 
-_Filled at merge, **6 000 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one paragraph that links to the test that pins it, and the argument that does not fit is the argument that was not needed. No superlatives. There is no separate PROGRESS log entry: this footer is the record, and the spec is deleted once its work is merged and its manual steps are done (git keeps it)._
+_Filled at merge, **1 500 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one sentence that names the test that pins it. No superlatives. There is no separate PROGRESS log entry: this footer is the record, and the spec is deleted once its work is merged and its manual steps are done (git keeps it)._
 
 ---
 
@@ -63,4 +63,5 @@ _Spec self-check, before a spec is called finished — delete this block from th
 - [ ] Every § reference resolves to a heading that exists.
 - [ ] Every member Behaviour names is in the Public API block, with the same signature.
 - [ ] Every Behaviour rule has at least one Tests row, and no row tests a rule that isn't written.
+- [ ] The spec above the footer is **4 000 bytes or fewer** (`wc -c`): rules and tests, not the reasoning behind them.
 - [ ] Code is cited by member (`HudPresenter.ReturnToMenu`), never by line number.

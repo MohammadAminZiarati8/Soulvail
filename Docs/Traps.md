@@ -1,7 +1,7 @@
 # Soulvail — Traps
 
 **Things in this toolchain that lie to you.** One entry per trap: the symptom, why, what to do.
-Rules the *code* depends on live in [Architecture.md §18](Architecture.md#18-invariants); this file
+Rules the *code* depends on live in [Invariants.md](Invariants.md) (AR §18); this file
 is about probes, tools and the Editor. **Read §1 first** — most of the rest are instances of it.
 
 ---

@@ -5,7 +5,7 @@
 
 ## How to read this
 
-- A task is **1–5 files**. Size S = 1–3, M = 4–5, L = split before starting. Count new code files
+- A task is **1–8 files**. Size S = 1–3, M = 4–8, L = split before starting. Count new code files
   and substantial rewrites; small additive edits (a field, a registration, an event struct) are
   listed in the spec but not counted.
 - IDs are `<track>-<nn>` (`M7-01`, `UI-03`); splits keep the parent ID (`UI-03a`, `UI-03b`). Branch

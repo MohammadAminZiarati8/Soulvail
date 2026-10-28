@@ -223,11 +223,11 @@ call. A PlayMode run clears the Console — sweep right after the run you mean t
 - `Temp/` is wiped by Unity mid-session; keep evidence in `Logs/`.
 - **Known flakes, re-run before bisecting:**
   - A save-store row on a Windows file lock (`IOException … file to be replaced`) — re-run alone.
-  - `CharacterPreviewTests.Resize_…` fails in the open Editor (D3D12 reports 24-bit depth as 32),
-    passes in batch.
   - One animator-clock row is inconclusive by construction.
   - `RangerSandboxTests.Loop_ShootsOnlyStandingStill` fails when Unity isn't the active
     application (see §8).
+- `RenderTexture.depth` may report 32 when the constructor requested 24 on D3D12; test the
+  required minimum depth rather than an exact backend allocation (`CharacterPreviewTests.Resize_…`).
 - Assembly-level `[PrebuildSetup]`/`[PostBuildCleanup]` only work in assemblies referencing
   `UnityEditor.TestRunner`; put them per fixture.
 - **PlayMode never touches real saves:** `SaveShelter` moves `run.json`/`profile.json` to

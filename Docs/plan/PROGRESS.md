@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-29, after JG-08a._
+_Updated 2026-10-29, after the CharacterPreview depth-test fix._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-08a**: enemies and bosses keep archetype colour at every HP; bars carry the health read. RS-08c is on `dev` too. |
+| **Last merged** | **CharacterPreview depth-test fix**: accepts a backend's ≥24-bit allocation for the requested 24-bit texture. RS-08c and JG-08a are built and playtest-approved. |
 | **Next task** | **JG-08b/c** specced, awaiting the owner's go. |
-| **Verified** | Full EditMode once after both: 4 518 total, 4 514 pass, 3 fail (2 superseded Ranger assertions fixed and targeted RangerTests 9/9; known `CharacterPreviewTests.Resize_…` D3D12), 1 inconclusive. JG-08a's 6 new cases and `EnemyHealthBarTests` 28/28 pass. Strict Unity recompile 0 errors/warnings; format clean. |
+| **Verified** | Full EditMode after depth-test fix: 4 518 total, 4 517 pass, 0 fail, 1 inconclusive (animator clock by construction). Strict Unity recompile 0 errors/warnings. RS-08c and JG-08a manual checks passed by owner. |
 
 ## What works
 
@@ -44,8 +44,6 @@ every string a `LocKey`.
 14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.
 16. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
-17. RS-08c: stage 1 ordinary arrows have a thin pale wind streak; the sixth shot's volley arrows are bigger and cyan.
-18. JG-08a: low-HP Frog at stage 1 and Old Croaker at stage 5 retain their colour; their bars drain.
 
 ## What does not work yet
 

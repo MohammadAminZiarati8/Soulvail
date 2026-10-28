@@ -102,7 +102,8 @@ public sealed class CharacterPreviewTests
 
         Assert.That(first.width, Is.EqualTo(512));
         Assert.That(first.height, Is.EqualTo(768));
-        Assert.That(first.depth, Is.EqualTo(24));
+        Assert.That(first.depth, Is.GreaterThanOrEqualTo(24),
+            "The requested 24-bit depth may be allocated as 32 bits by the graphics backend.");
         Assert.That(first.antiAliasing, Is.EqualTo(2));
         Assert.That(StageCamera.targetTexture, Is.SameAs(first));
 

@@ -61,4 +61,4 @@ Elite's fixed bar, and the basic enemy's brief bar on hit.
 
 ## As built
 
-`EnemyHitFeedback` no longer stores or applies a health tint. Damage still flashes white, the wind-up still glows, and the corpse dissolves from its archetype colour. `Palette.EnemyDying` and its boss-bar comparison are gone; GD §16.2 records the owner's bar-only ruling. Six new EditMode cases passed, covering HP fractions 1, 0.5, 0.01 and 0, flash and telegraph return, and dissolve. `EnemyHealthBarTests` passed 28/28 unchanged. Manual Editor checks: a low-HP Frog on stage 1 and Old Croaker on stage 5 should retain their colour while their bars drain.
+`EnemyHitFeedback` no longer stores or applies a health tint. Damage still flashes white, the wind-up still glows, and the corpse dissolves from its archetype colour. `Palette.EnemyDying` and its boss-bar comparison are gone; GD §16.2 records the owner's bar-only ruling. Six new EditMode cases passed, covering HP fractions 1, 0.5, 0.01 and 0, flash and telegraph return, and dissolve. `EnemyHealthBarTests` passed 28/28 unchanged. Manual playtest approved by owner 2026-10-29.

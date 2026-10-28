@@ -2155,6 +2155,7 @@ MonoBehaviour:
   _menu: {fileID: 707872287}
   _classSelect: {fileID: 1537660220}
   _preview: {fileID: 352383039}
+  _testStart: {fileID: 1782486848}
 --- !u!4 &1468701933
 Transform:
   m_ObjectHideFlags: 0
@@ -3049,6 +3050,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1767431525}
   m_CullTransparentMesh: 1
+--- !u!1 &1782486847
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1782486849}
+  - component: {fileID: 1782486848}
+  m_Layer: 0
+  m_Name: TestStart
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1782486848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782486847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4171b8b9e5cc73a4aa28fc70e9833ecd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.TestStartPanel
+  _on: 1
+  _stage: 10
+--- !u!4 &1782486849
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782486847}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1835305406
 GameObject:
   m_ObjectHideFlags: 0
@@ -3402,3 +3449,4 @@ SceneRoots:
   - {fileID: 652852361}
   - {fileID: 1468701933}
   - {fileID: 352383038}
+  - {fileID: 1782486849}

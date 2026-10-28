@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-29, after JG-08c._
+_Updated 2026-10-29, after DT-01._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-08b/c**: Old Croaker holds its facing along the tongue lane throughout the lash and deals 12 base damage per hit. RS-08c and JG-08a are playtest-approved. |
-| **Next task** | No named task awaiting a go; owner playtest of JG-08b/c. |
-| **Verified** | One full EditMode run after JG-08b/c implementation: 4 522 total, 4 521 pass, 0 fail, 1 inconclusive (animator clock by construction). No new compiler or analyzer diagnostics. Manual stage 5 checks remain. |
+| **Last merged** | **DT-01**: dev-only Test start panel on the menu begins a run at any stage with the earlier stages' XP banked as picks. Before it, JG-08b/c (Croaker facing, 12 damage). |
+| **Next task** | No named task awaiting a go; owner playtest of JG-08b/c and DT-01. |
+| **Verified** | EditMode after DT-01: 4 528 pass, 0 fail, 1 inconclusive (animator clock by construction). No compiler or analyzer diagnostics. Editor probe: test start at 12 → stage 12, level 14, 13 owed. |
 
 ## What works
 
@@ -23,7 +23,7 @@ lane tongue). Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitcher
 4 = 2 Puffballs, 6 = 2 Panthers. Jungle enemies: Frog (`Rig_Frog`), Pitcher (lobs `PitcherSpit`),
 Puffball (Bloater role), Panther (Lunger). Descent keeps the capsules. **Ranger:** own model, arrows
 with a pale wind trail, cyan Volley at every enemy in range, roll on Space; one steady rate (no Focus ramp), first arrow ~¼ s after stopping. **Levelling:** a level banks a point; the tree pauses for a pick.
-Death pays Shards. Saves `run.json` v4, `profile.json` v5, all older load. Clash-style UI throughout;
+Death pays Shards. **Test start (DT-01):** menu top-left, dev builds only; untick `_on` on the Menu scene's `TestStart` to hide. Saves `run.json` v4, `profile.json` v5, all older load. Clash-style UI throughout;
 every string a `LocKey`.
 
 ## Owed to the owner (Editor checks)
@@ -44,6 +44,7 @@ every string a `LocKey`.
 14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.
 16. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
+17. DT-01: menu panel → stage 12, Start → stage 12 with the tree open and points to spend; untick `_on` → no panel, Play/Continue unchanged.
 
 ## What does not work yet
 

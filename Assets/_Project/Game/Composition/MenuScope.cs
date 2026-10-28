@@ -41,6 +41,9 @@ namespace Soulvail.Game.Composition
 
         [SerializeField] private CharacterPreview _preview;
 
+        [Tooltip("DT-01's development start. Leave empty to remove it from the menu.")]
+        [SerializeField] private TestStartPanel _testStart;
+
         protected override void Configure(IContainerBuilder builder)
         {
             if (_menu == null)
@@ -75,6 +78,13 @@ namespace Soulvail.Game.Composition
             }
 
             builder.RegisterComponent(_preview);
+
+            // Optional, unlike the three above (DT-01 rule 7): the development start is a tool, and
+            // a Menu scene without it is the menu as it shipped before it.
+            if (_testStart != null)
+            {
+                builder.RegisterComponent(_testStart);
+            }
         }
     }
 }

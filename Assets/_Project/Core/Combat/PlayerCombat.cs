@@ -1632,7 +1632,7 @@ public sealed class PlayerCombat
 
         if (tick.SwingStarted)
         {
-            _events.Publish(new PlayerAttacked(facingXZ, _weaponSpec.Kind));
+            _events.Publish(new PlayerAttacked(facingXZ, _weaponSpec.Kind, Weapon.DrawSeconds));
         }
 
         if (!tick.DamageFrame)

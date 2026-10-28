@@ -235,15 +235,23 @@ public readonly struct PlayerAttacked
     /// </summary>
     public readonly WeaponKind Kind;
 
+    /// <summary>
+    /// Seconds from this swing's start to its damage frame — <c>Weapon.DrawSeconds</c>. RS-08a:
+    /// the Ranger's bow fits its draw into it. Zero when unsaid.
+    /// </summary>
+    public readonly float DrawSeconds;
+
     /// <param name="facingXZ">The swing's facing.</param>
     /// <param name="kind">
     /// The weapon's kind. A cone when unsaid, which is what every swing was before M5-01 and what
     /// <c>default(PlayerAttacked)</c> reads anyway, since <see cref="WeaponKind.Cone"/> is zero.
     /// </param>
-    public PlayerAttacked(Vector2 facingXZ, WeaponKind kind = WeaponKind.Cone)
+    /// <param name="drawSeconds">Seconds from the swing's start to its damage frame.</param>
+    public PlayerAttacked(Vector2 facingXZ, WeaponKind kind = WeaponKind.Cone, float drawSeconds = 0f)
     {
         FacingXZ = facingXZ;
         Kind = kind;
+        DrawSeconds = drawSeconds;
     }
 }
 

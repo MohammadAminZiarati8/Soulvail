@@ -335,6 +335,9 @@ public sealed class WeaponTests
         // swing" is one answer too many.
         Assert.That(attacked.FacingXZ.X, Is.EqualTo(_intents.ConeHits[0].FacingXZ.X).Within(1e-6f));
         Assert.That(attacked.FacingXZ.Y, Is.EqualTo(_intents.ConeHits[0].FacingXZ.Y).Within(1e-6f));
+
+        // RS-08a: the swing's draw time rides on the event, so a view never guesses it.
+        Assert.That(attacked.DrawSeconds, Is.EqualTo(DamageFrameFraction * Interval).Within(1e-5f));
     }
 
     [Test]
@@ -550,6 +553,74 @@ public sealed class WeaponTests
         {
             combat.Tick(Step, i * Step, snapshot, registry.Alive, Facing);
         }
+    }
+
+    // ---- RS-08a rules 3 and 4: the draw time ----------------------------------------------------
+
+    [Test]
+    public void DrawSeconds_IsFrameTimesInterval_HeldThroughTheSwing()
+    {
+        var weapon = new Weapon(Spec());
+
+        Assert.That(weapon.DrawSeconds, Is.Zero, "Zero at rest.");
+        Assert.That(weapon.Tick(Step, 0f, true).SwingStarted, Is.True, "Sanity: a swing is running.");
+        Assert.That(weapon.DrawSeconds, Is.EqualTo(DamageFrameFraction * Interval).Within(1e-5f),
+            "DamageFrame × interval, sampled at swing start.");
+
+        weapon.FireRate.Add(new Modifier(ModifierKind.PercentAdd, 1f, this));
+        weapon.Tick(Step, Step, true);
+
+        Assert.That(weapon.DrawSeconds, Is.EqualTo(DamageFrameFraction * Interval).Within(1e-5f),
+            "A modifier mid-swing leaves the running swing's draw time alone.");
+    }
+
+    [Test]
+    public void DrawSeconds_ZeroAfterReset()
+    {
+        var weapon = new Weapon(Spec());
+
+        weapon.Tick(Step, 0f, true);
+        Assert.That(weapon.DrawSeconds, Is.GreaterThan(0f), "Sanity: a swing is running.");
+
+        weapon.Reset();
+
+        Assert.That(weapon.DrawSeconds, Is.Zero);
+    }
+
+    /// <summary>
+    /// The Ranger's numbers — 1.1 a second, released at 0.3 — and the hold his owner applies on the
+    /// move: a swing dropped by <see cref="Weapon.Reset"/>, then the first still tick 0.5 s later.
+    /// </summary>
+    [Test]
+    public void FirstSwingAfterRest_DamageFrameAtDrawSeconds()
+    {
+        var weapon = new Weapon(Spec(swingsPerSecond: 1.1f, damageFrame: 0.3f));
+
+        weapon.Tick(Step, 0f, true);
+        weapon.Reset();
+
+        const float stoppedAt = 0.5f;
+
+        Assert.That(weapon.Tick(Step, stoppedAt, true).SwingStarted, Is.True,
+            "The first still tick starts a swing, with no leftover wait from the moving time.");
+
+        float drawSeconds = weapon.DrawSeconds;
+        float frameAt = float.NaN;
+
+        for (int i = 1; i <= 100; i++)
+        {
+            float now = stoppedAt + (i * Step);
+
+            if (weapon.Tick(Step, now, true).DamageFrame)
+            {
+                frameAt = now;
+                break;
+            }
+        }
+
+        Assert.That(drawSeconds, Is.EqualTo(0.3f / 1.1f).Within(1e-5f), "Sanity: 0.27 s of draw.");
+        Assert.That(frameAt - stoppedAt, Is.EqualTo(drawSeconds).Within(Step),
+            "The arrow leaves DrawSeconds after the swing starts.");
     }
 
     // ---- M3-12a rule 2: the two forwarded floats became stats ------------------------------------

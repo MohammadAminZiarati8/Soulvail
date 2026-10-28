@@ -54,7 +54,7 @@ _No milestone. The owner is setting the next direction._
 
 **Playtest fixes, the Ranger and Old Croaker** (owner, 2026-10-28). Specs for the owner to OK; each built only on the owner's go. RS-08b after RS-08a (both `PlayerCombat.cs`); the rest are independent.
 
-- [ ] **RS-08a** — The Ranger's rate holds (no Focus ramp) and the first arrow after stopping leaves in ~0.27 s, the draw timed to it (M) · [spec](tasks/RS-08a-the-rangers-rate-holds.md)
+- [x] **RS-08a** — The Ranger's rate holds (no Focus ramp) and the first arrow after stopping leaves in ~0.27 s, the draw timed to it (M) · [spec](tasks/RS-08a-the-rangers-rate-holds.md)
 - [ ] **RS-08b** — A volley looses one arrow at every enemy in range, not a fixed fan (M) · [spec](tasks/RS-08b-a-volley-finds-every-enemy.md)
 - [ ] **RS-08c** — A pale wind trail on the ordinary arrow; the volley arrow cyan and ~1.9× its size (S) · [spec](tasks/RS-08c-a-wind-trail-on-the-arrow.md)
 - [ ] **JG-08a** — Enemies keep their colour as they lose health; bars carry the read (S) · [spec](tasks/JG-08a-enemies-keep-their-colour.md)

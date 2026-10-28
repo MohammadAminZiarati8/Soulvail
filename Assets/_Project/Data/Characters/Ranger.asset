@@ -35,14 +35,14 @@ MonoBehaviour:
   _weaponSwingsPerSecond: 1.1
   _weaponRange: 13
   _weaponConeAngleDeg: 360
-  _weaponDamageFrame: 0.72
+  _weaponDamageFrame: 0.3
   _weaponShotSpeed: 30
   _weaponShotRadius: 0.5
   _weaponShotSpread: 0
   _weaponFiresWhileMoving: 0
   _focusDelay: 0.4
   _focusRampTime: 1
-  _focusMaxMultiplier: 1.3
+  _focusMaxMultiplier: 1
   _movementSkillKind: 0
   _movementSkillDistance: 5
   _movementSkillDuration: 0.3

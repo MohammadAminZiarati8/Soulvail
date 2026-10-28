@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.Game.Views;
 
 /// <summary>
-/// RS-02a rules V1–V7: the Ranger's legs, its shot speed, its bowstring, and the three facts it
+/// RS-02a rules V1–V7: the Ranger's legs, its shot speed (RS-08a rule 5), its bowstring, and the three facts it
 /// draws a bow from. RS-03d rules 1–3: the hold, the volley's glow, and the roll.
 /// </summary>
 /// <remarks>
@@ -23,8 +23,8 @@ namespace Soulvail.Tests.Game.Views;
 /// <c>AC_Ranger</c> in <c>RangerSandboxTests</c>.
 /// </para>
 /// <para>
-/// <b>No row reads <c>Time.time</c>.</b> The view keeps its own clock, advanced by
-/// <see cref="RangerAnimatorView.Step"/>, so the shot-speed rows are exact on any Editor.
+/// <b>No row reads <c>Time.time</c>.</b> Since RS-08a the shot speed comes from the event's
+/// <see cref="PlayerAttacked.DrawSeconds"/>, so the shot-speed rows are exact on any Editor.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -35,8 +35,11 @@ public sealed class RangerAnimatorViewTests
     /// <summary>The player's body scale, Player.prefab's <c>Body</c>.</summary>
     private const float BodyScale = 0.6615215f;
 
-    /// <summary>A shot's authored length, duplicated so the rows do not read the constant they pin.</summary>
-    private const float AuthoredShotSeconds = 1.2f;
+    /// <summary>
+    /// The authored seconds to full draw — 0.6 of a 1.2 s shot — duplicated so the rows do not read
+    /// the constants they pin.
+    /// </summary>
+    private const float FullDrawSeconds = 0.72f;
 
     private static readonly System.Numerics.Vector2 Facing = new System.Numerics.Vector2(0f, 1f);
 
@@ -258,81 +261,47 @@ public sealed class RangerAnimatorViewTests
         Assert.That(_animator.GetBool(ShootId), Is.True);
     }
 
-    [Test]
-    public void Attack_TheFirstShotLeavesTheShotSpeed()
-    {
-        _view.Construct(_hub);
-        _animator.SetFloat(ShotSpeedId, 1.7f);
-
-        _hub.Publish(new PlayerAttacked(Facing));
-
-        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(1.7f));
-    }
-
-    /// <summary>Half a second between shots: the 1.2 s shot plays at 2.4×.</summary>
-    [Test]
-    public void Attack_TheShotSpeedFollowsTheGapOnTheViewsOwnClock()
-    {
-        _view.Construct(_hub);
-
-        _hub.Publish(new PlayerAttacked(Facing));
-        _view.Step(0.25f);
-        _view.Step(0.25f);
-        _hub.Publish(new PlayerAttacked(Facing));
-
-        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 0.5f).Within(1e-4f));
-    }
-
     /// <summary>
-    /// V3: three seconds with the bow down is a run, not a fire rate. The first shot after it keeps
-    /// the last volley's speed, and the next one measures again.
+    /// RS-08a rule 5: the speed is the event's draw time, whatever the gap — a first shot after a
+    /// pause draws as fast as the next one.
     /// </summary>
     [Test]
-    public void Target_LoweringTheBowEndsTheVolley()
+    public void Attack_TheShotSpeedFollowsTheDrawTimeNotTheGap()
     {
         _view.Construct(_hub);
 
-        _hub.Publish(new TargetChanged(1, false, false, -1));
-        _hub.Publish(new PlayerAttacked(Facing));
-        _view.Step(0.5f);
-        _hub.Publish(new PlayerAttacked(Facing));
+        _hub.Publish(new PlayerAttacked(Facing, WeaponKind.Projectile, 0.36f));
 
-        _hub.Publish(new TargetChanged(-1, false, false, -1));
+        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(2f).Within(1e-4f), "0.72 s of draw into 0.36 s.");
+
         _view.Step(3f);
-        _hub.Publish(new TargetChanged(1, false, false, -1));
-        _hub.Publish(new PlayerAttacked(Facing));
+        _hub.Publish(new PlayerAttacked(Facing, WeaponKind.Projectile, 0.36f));
 
-        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 0.5f).Within(1e-4f));
-
-        _view.Step(1f);
-        _hub.Publish(new PlayerAttacked(Facing));
-
-        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(AuthoredShotSeconds / 1f).Within(1e-4f));
+        Assert.That(_animator.GetFloat(ShotSpeedId), Is.EqualTo(2f).Within(1e-4f), "three seconds' gap is not read.");
     }
 
+    /// <summary>The Ranger's 0.27 s draw: 0.6 × 1.2 s of draw played in it, ≈ 2.67×.</summary>
     [Test]
-    public void ShotSpeed_FitsTheShotToTheInterval()
+    public void ShotSpeed_FitsFullDrawIntoDrawSeconds()
     {
-        Assert.That(RangerAnimatorView.ShotSpeed(AuthoredShotSeconds), Is.EqualTo(1f).Within(1e-5f));
-        Assert.That(RangerAnimatorView.ShotSpeed(0.6f), Is.EqualTo(2f).Within(1e-5f));
-        Assert.That(RangerAnimatorView.ShotSpeed(1f), Is.EqualTo(1.2f).Within(1e-5f));
+        float drawSeconds = 0.3f / 1.1f;
+
+        Assert.That(RangerAnimatorView.ShotSpeed(drawSeconds), Is.EqualTo(FullDrawSeconds / drawSeconds).Within(1e-4f));
+        Assert.That(RangerAnimatorView.ShotSpeed(drawSeconds), Is.EqualTo(2.64f).Within(0.01f));
+        Assert.That(RangerAnimatorView.ShotSpeed(0.36f), Is.EqualTo(2f).Within(1e-5f));
+        Assert.That(RangerAnimatorView.ShotSpeed(FullDrawSeconds), Is.EqualTo(1f).Within(1e-5f));
     }
 
-    /// <summary>A slow bow holds at full draw; it does not draw in slow motion.</summary>
-    [Test]
-    public void ShotSpeed_IsNeverSlowerThanAuthored()
+    [TestCase(3f, 1f)]
+    [TestCase(0.1f, RangerAnimatorView.MaxShotSpeed)]
+    [TestCase(0f, RangerAnimatorView.MaxShotSpeed)]
+    [TestCase(-1f, RangerAnimatorView.MaxShotSpeed)]
+    [TestCase(float.NaN, RangerAnimatorView.MaxShotSpeed)]
+    [TestCase(float.PositiveInfinity, RangerAnimatorView.MaxShotSpeed)]
+    [TestCase(float.NegativeInfinity, RangerAnimatorView.MaxShotSpeed)]
+    public void ShotSpeed_ClampsAndRefusesNonFinite(float drawSeconds, float expected)
     {
-        Assert.That(RangerAnimatorView.ShotSpeed(3f), Is.EqualTo(1f));
-    }
-
-    [TestCase(0.1f)]
-    [TestCase(0f)]
-    [TestCase(-1f)]
-    [TestCase(float.NaN)]
-    [TestCase(float.PositiveInfinity)]
-    public void ShotSpeed_IsCappedAndADegenerateIntervalIsTheCap(float interval)
-    {
-        Assert.That(RangerAnimatorView.ShotSpeed(interval), Is.EqualTo(RangerAnimatorView.MaxShotSpeed));
+        Assert.That(RangerAnimatorView.ShotSpeed(drawSeconds), Is.EqualTo(expected));
     }
 
     // ---------------------------------------------------------------- V5: the release

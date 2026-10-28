@@ -135,6 +135,16 @@ public sealed class Weapon
     public bool IsSwinging { get; private set; }
 
     /// <summary>
+    /// Seconds from the current swing's start to its damage frame: the spec's <c>DamageFrame</c>
+    /// times the interval, sampled at swing start and held for the swing. Zero at rest.
+    /// </summary>
+    /// <remarks>
+    /// RS-08a rule 3. Carried on <c>PlayerAttacked</c> so a view can time a draw to the shot it
+    /// is drawing, instead of guessing from the gap since the last one.
+    /// </remarks>
+    public float DrawSeconds { get; private set; }
+
+    /// <summary>
     /// What a second of uninterrupted fire is expected to do to one enemy — 39 for the Censer.
     /// </summary>
     /// <remarks>
@@ -197,7 +207,8 @@ public sealed class Weapon
             IsSwinging = true;
             swingStarted = true;
 
-            _damageFrameAt = now + (_spec.DamageFrame * interval);
+            DrawSeconds = _spec.DamageFrame * interval;
+            _damageFrameAt = now + DrawSeconds;
             _damageFrameFired = false;
             _swingEndsAt = now + interval;
 
@@ -226,6 +237,7 @@ public sealed class Weapon
         _nextSwingAt = 0f;
         _swingEndsAt = 0f;
         _damageFrameAt = 0f;
+        DrawSeconds = 0f;
     }
 
     /// <summary>

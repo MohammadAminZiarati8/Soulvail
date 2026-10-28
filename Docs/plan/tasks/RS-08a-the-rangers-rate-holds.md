@@ -75,4 +75,17 @@ public static float RangerAnimatorView.ShotSpeed(float drawSeconds);
 
 ## As built
 
-_Not built._
+_2026-10-28._ As specced. `Ranger.asset`: Focus ×1, damage frame 0.3. `Weapon.DrawSeconds` set at swing
+start (`DamageFrame × interval`), zeroed by `Reset`. `PlayerAttacked` gained `DrawSeconds` (default 0);
+`PlayerCombat` and `RangerSandboxLoop` publish it. `RangerAnimatorView.ShotSpeed(drawSeconds)` =
+0.6 × 1.2 / d, clamped `[1, 4]`; its `_clock` and `_lastShotAt` are gone with the gap.
+
+Tests: the seven rows, plus `PlayerCombat_PublishesPlayerAttacked_OnSwingStart` now checks the draw time
+and `Attack_TheShotSpeedFollowsTheDrawTimeNotTheGap` covers the view's use of it. Ripple: the
+`Ranger_NumbersAreTheTables` row (0.3, ×1, 14 DPS planted); the four gap rows in
+`RangerAnimatorViewTests` replaced. The Ranger's exact draw is 0.3 / 1.1 = 0.273 s → ×2.64 (the spec's
+≈ 2.67 rounds the draw to 0.27).
+
+Left alone: the sandbox's own `_releaseFraction` 0.72 (`RangerSandboxScope`, sandbox scene only).
+
+EditMode 4 519 — 4 517 pass, 1 fail (`CharacterPreviewTests.Resize_…`, Traps §7), 1 inconclusive.

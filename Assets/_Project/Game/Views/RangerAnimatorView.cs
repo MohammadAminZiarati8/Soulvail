@@ -39,10 +39,10 @@ namespace Soulvail.Game.Views
     /// whatever the legs are doing.
     /// </para>
     /// <para>
-    /// <b>This view keeps its own clock.</b> It is the sum of the steps it is given, not
-    /// <c>Time.time</c>. That clock reads zero in an EditMode fixture until the Editor has been in
-    /// front (the M6-11e rows of <c>PlayerAnimatorViewTests</c>), so a shot cadence measured on it
-    /// cannot be tested.
+    /// <b>The draw is timed by core.</b> Since RS-08a each <see cref="PlayerAttacked"/> carries the
+    /// seconds to its arrow's release, and the shot's speed fits full draw into them. The view no
+    /// longer measures the gap between shots, so a first shot after a pause draws as fast as the
+    /// arrow leaves.
     /// </para>
     /// <para>
     /// <b>It lives on its body, <c>Bodies/Ranger</c>, and reads the <see cref="PlayerView"/> above
@@ -75,9 +75,9 @@ namespace Soulvail.Game.Views
         /// and <c>Ranged_Bow_Release</c> through its follow-through (0.4 s).
         /// </summary>
         /// <remarks>
-        /// Paired with the gap between two <see cref="PlayerAttacked"/> events to give the shot's
-        /// speed multiplier, for the reason <see cref="PlayerAnimatorView"/> scales its swing: a
-        /// fire rate is a <c>Stat</c>, and a constant speed would drift apart from it.
+        /// Paired with <see cref="PlayerAttacked.DrawSeconds"/> to give the shot's speed
+        /// multiplier, for the reason <see cref="PlayerAnimatorView"/> scales its swing: a fire
+        /// rate is a <c>Stat</c>, and a constant speed would drift apart from it.
         /// </remarks>
         public const float AuthoredShotSeconds = 1.2f;
 
@@ -149,8 +149,6 @@ namespace Soulvail.Game.Views
         private IDisposable _diedSubscription;
 
         private Vector3 _shownVelocity;
-        private float _clock;
-        private float _lastShotAt = -1f;
         private int _upperLayer = -2;
         private int _drawShape = -2;
         private int _targetId = -1;
@@ -238,23 +236,24 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
-        /// The shot's speed multiplier for a gap of <paramref name="interval"/> seconds between two
-        /// shots: fast enough that the draw finishes before the next shot, and never slower than
+        /// The shot's speed multiplier for an arrow that leaves <paramref name="drawSeconds"/> after
+        /// the shot starts: fast enough that full draw lands on the release, and never slower than
         /// authored, because a bow with time to spare holds at full draw rather than drawing in
-        /// slow motion.
+        /// slow motion. RS-08a rule 5.
         /// </summary>
         /// <returns>
-        /// In <c>[1, <see cref="MaxShotSpeed"/>]</c>. A zero, negative or non-finite interval is
+        /// <c><see cref="FullDrawNormalized"/> × <see cref="AuthoredShotSeconds"/> / drawSeconds</c>,
+        /// in <c>[1, <see cref="MaxShotSpeed"/>]</c>. A zero, negative or non-finite draw time is
         /// the ceiling.
         /// </returns>
-        public static float ShotSpeed(float interval)
+        public static float ShotSpeed(float drawSeconds)
         {
-            if (!(interval > 0f) || float.IsInfinity(interval))
+            if (!(drawSeconds > 0f) || float.IsInfinity(drawSeconds))
             {
                 return MaxShotSpeed;
             }
 
-            return Mathf.Clamp(AuthoredShotSeconds / interval, 1f, MaxShotSpeed);
+            return Mathf.Clamp(FullDrawNormalized * AuthoredShotSeconds / drawSeconds, 1f, MaxShotSpeed);
         }
 
         /// <summary>
@@ -285,7 +284,7 @@ namespace Soulvail.Game.Views
         /// bowstring. Called from <c>Update</c> with <c>Time.deltaTime</c>.
         /// </summary>
         /// <remarks>
-        /// Public so an EditMode fixture can advance the view's clock, which <c>Update</c> never
+        /// Public so an EditMode fixture can advance the view, which <c>Update</c> never
         /// does there. A zero, negative or non-finite step does nothing.
         /// </remarks>
         public void Step(float dt)
@@ -294,8 +293,6 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-
-            _clock += dt;
 
             // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake. Only
             // while there is none, so a body that has one never looks again.
@@ -408,9 +405,9 @@ namespace Soulvail.Game.Views
 
         /// <remarks>
         /// <para>
-        /// The multiplier is measured from the gap between this shot and the last, so it follows
-        /// whatever the fire rate currently is without this view knowing a weapon exists. The first
-        /// shot has nothing to measure against and keeps the controller's value.
+        /// The multiplier comes from the event's draw time, so it follows whatever the fire rate
+        /// currently is without this view knowing a weapon exists — the first shot after a pause
+        /// included.
         /// </para>
         /// <para>
         /// <b>A bow already drawing, or already drawn, is not told to draw again.</b> Acquiring a
@@ -426,12 +423,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            if (_lastShotAt >= 0f)
-            {
-                _animator.SetFloat(_shotSpeedId, ShotSpeed(_clock - _lastShotAt));
-            }
-
-            _lastShotAt = _clock;
+            _animator.SetFloat(_shotSpeedId, ShotSpeed(evt.DrawSeconds));
 
             if (IsDrawingOrDrawn())
             {
@@ -572,11 +564,6 @@ namespace Soulvail.Game.Views
             bool aiming = _targetId >= 0 && !_holding && !_dead;
 
             _animator.SetBool(_aimingId, aiming);
-
-            if (!aiming)
-            {
-                _lastShotAt = -1f;
-            }
         }
 
         private void PullString()

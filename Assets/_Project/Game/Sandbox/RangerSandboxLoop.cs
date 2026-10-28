@@ -311,7 +311,8 @@ public sealed class RangerSandboxLoop : IStartable, ITickable, IDisposable
             _shotTarget = target;
             _hub.Publish(new PlayerAttacked(
                 new System.Numerics.Vector2(_motor.Facing.X, _motor.Facing.Z),
-                WeaponKind.Projectile));
+                WeaponKind.Projectile,
+                _weapon.DrawSeconds));
         }
 
         if (shot.DamageFrame)

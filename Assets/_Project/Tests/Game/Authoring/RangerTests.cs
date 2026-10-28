@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Presentation;
@@ -110,7 +112,7 @@ public sealed class RangerTests
         Assert.That(bow.Damage, Is.EqualTo(13f).Within(Tolerance), "Bow: 13 damage.");
         Assert.That(bow.SwingsPerSecond, Is.EqualTo(1.1f).Within(Tolerance), "Bow: 1.1 shots/s (the owner, 2026-10-22).");
         Assert.That(bow.Range, Is.EqualTo(13f).Within(Tolerance), "Bow: 13 m (the owner, 2026-10-22).");
-        Assert.That(bow.DamageFrame, Is.EqualTo(0.72f).Within(Tolerance), "Bow: damage frame 0.72.");
+        Assert.That(bow.DamageFrame, Is.EqualTo(0.3f).Within(Tolerance), "Bow: damage frame 0.3 (RS-08a).");
         Assert.That(bow.ShotSpeed, Is.EqualTo(30f).Within(Tolerance), "Bow: 30 m/s.");
         Assert.That(bow.ShotRadius, Is.EqualTo(0.5f).Within(Tolerance), "Bow: radius 0.5.");
         Assert.That(bow.ConeAngleDeg, Is.EqualTo(360f).Within(Tolerance), "WeaponSpec's one spelling for a projectile.");
@@ -120,7 +122,7 @@ public sealed class RangerTests
         Assert.That(spec.Targeting.AcquireRange, Is.EqualTo(15f).Within(Tolerance), "Acquire: 15 m, 2 m past the bow.");
         Assert.That(spec.Focus.Delay, Is.EqualTo(0.4f).Within(Tolerance), "Focus: 0.4 s.");
         Assert.That(spec.Focus.RampTime, Is.EqualTo(1f).Within(Tolerance), "Focus: 1 s.");
-        Assert.That(spec.Focus.MaxMultiplier, Is.EqualTo(1.3f).Within(Tolerance), "Focus: ×1.3.");
+        Assert.That(spec.Focus.MaxMultiplier, Is.EqualTo(1f).Within(Tolerance), "Focus: ×1, no ramp (RS-08a).");
 
         MovementSkillSpec roll = spec.MovementSkill;
 
@@ -142,15 +144,43 @@ public sealed class RangerTests
         Assert.That(spec.Kindling, Is.Null, "no Kindling.");
         Assert.That(spec.Veilrot, Is.Null, "no Veilrot relationship: it meets the Veil neutrally.");
 
-        // The table's own arithmetic: resting DPS is what the card draws, and planted DPS is the
-        // Focus ramp's ×1.3 — under the Oathbound's resting 39.
+        // The table's own arithmetic: resting DPS is what the card draws, and since RS-08a planted
+        // DPS is the same — under the Oathbound's resting 39.
         float resting = bow.Damage * bow.SwingsPerSecond;
         CharacterSpec oathbound = Character("Assets/_Project/Data/Characters/Oathbound.asset");
 
         Assert.That(MathF.Round(resting), Is.EqualTo(14f), "the card's 14 DPS.");
-        Assert.That(MathF.Round(resting * spec.Focus.MaxMultiplier), Is.EqualTo(19f), "19 DPS planted.");
+        Assert.That(MathF.Round(resting * spec.Focus.MaxMultiplier), Is.EqualTo(14f), "14 DPS planted: no ramp.");
         Assert.That(oathbound.Weapon.Damage * oathbound.Weapon.SwingsPerSecond, Is.EqualTo(39f).Within(Tolerance),
             "the Oathbound's 39, the table's comparison.");
+    }
+
+    /// <summary>RS-08a rule 1: three seconds planted leaves the rate where it started.</summary>
+    [Test]
+    public void Ranger_FocusDoesNotRamp()
+    {
+        CharacterSpec spec = Ranger();
+        var weapon = new Weapon(spec.Weapon);
+        using var hub = new DomainEventHub();
+        var focus = new FocusTracker(spec.Focus, weapon.FireRate, hub);
+
+        for (int i = 0; i < 60; i++)
+        {
+            focus.Tick(0.05f, isMoving: false);
+        }
+
+        Assert.That(focus.StationaryTime, Is.EqualTo(3f).Within(1e-3f), "the premise: the clock still counts.");
+        Assert.That(weapon.FireRate.Value, Is.EqualTo(1.1f).Within(Tolerance), "standing still never changes the rate.");
+    }
+
+    /// <summary>RS-08a rule 2: the arrow leaves 0.3 into the swing, at the same 1.1 a second.</summary>
+    [Test]
+    public void Ranger_ReleasesAtThirtyPercent()
+    {
+        WeaponSpec bow = Ranger().Weapon;
+
+        Assert.That(bow.DamageFrame, Is.EqualTo(0.3f).Within(Tolerance), "released at 0.3 of the swing.");
+        Assert.That(bow.SwingsPerSecond, Is.EqualTo(1.1f).Within(Tolerance), "the rate is unchanged.");
     }
 
     [Test]

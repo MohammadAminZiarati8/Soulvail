@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-28, after JG-07d._
+_Updated 2026-10-28, after RS-08a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-07c–d**: `Panther.prefab` crouches on the 0.9 s wind-up, bounds the dash; `enemy.panther` (a Lunger) in the Jungle from stage 6, which is 2 Panthers. |
-| **Next task** | **RS-08a–c, JG-08a–c** specced (ROADMAP, owner 2026-10-28), awaiting the owner's OK; RS-08b after RS-08a. |
-| **Verified** | JG-07d: EditMode 4 515 — 4 512 pass, 2 fail (the known pair, [Traps §7](../Traps.md#7-tests-nunit-allocation)), 1 inconclusive. |
+| **Last merged** | **RS-08a**: the Ranger has no Focus ramp (×1); his arrow leaves 0.3 into the swing (0.27 s); `PlayerAttacked.DrawSeconds` times the bow's draw. |
+| **Next task** | **RS-08b–c, JG-08a–c** specced (ROADMAP, owner 2026-10-28), awaiting the owner's go; RS-08b is now unblocked. |
+| **Verified** | RS-08a: EditMode 4 519 — 4 517 pass, 1 fail (`CharacterPreviewTests.Resize_…`, [Traps §7](../Traps.md#7-tests-nunit-allocation)), 1 inconclusive. |
 
 ## What works
 
@@ -22,7 +22,7 @@ threat-budgeted telegraphed waves, then a door; boss every fifth (Warden; Jungle
 lane tongue). Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
 4 = 2 Puffballs, 6 = 2 Panthers. Jungle enemies: Frog (`Rig_Frog`), Pitcher (lobs `PitcherSpit`),
 Puffball (Bloater role), Panther (Lunger). Descent keeps the capsules. **Ranger:** own model, arrows
-with cyan trail, Volley, roll on Space. **Levelling:** a level banks a point; the tree pauses for a pick.
+with cyan trail, Volley, roll on Space; one steady rate (no Focus ramp), first arrow ~¼ s after stopping. **Levelling:** a level banks a point; the tree pauses for a pick.
 Death pays Shards. Saves `run.json` v4, `profile.json` v5, all older load. Clash-style UI throughout;
 every string a `LocKey`.
 
@@ -41,7 +41,8 @@ every string a `LocKey`.
 11. Jungle arenas have open floors, no falling flakes; enemies path round the edges.
 12. JG-07b: preview `Panther.fbx` — **rule whether the sculpt stays.**
 13. JG-07d: stage 6 Panthers warn, crouch, bound down the strip (no tongue), 14 damage; read as a cat on the dark floor; appear from stage 7 on.
-14. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
+14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
+15. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
 
 ## What does not work yet
 

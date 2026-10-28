@@ -242,7 +242,7 @@ public sealed class RangerTests
     }
 
     [Test]
-    public void Arrow_TrailsThinShortAndCyan()
+    public void Arrow_TrailsThinShortAndWind()
     {
         var arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPath);
         TrailRenderer trail = arrow.GetComponentInChildren<TrailRenderer>();
@@ -253,16 +253,19 @@ public sealed class RangerTests
             Is.SameAs(trail),
             "named as ProjectileView._trail, so Bind and OnDespawn clear it (JG-02).");
 
-        Assert.That(trail.time, Is.EqualTo(0.15f).Within(Tolerance), "short: 0.15 s.");
+        Assert.That(trail.time, Is.EqualTo(0.18f).Within(Tolerance), "short: 0.18 s.");
         Assert.That(trail.widthMultiplier * trail.widthCurve.Evaluate(0f), Is.EqualTo(0.12f).Within(1e-3f), "thin at the head.");
         Assert.That(trail.widthCurve.Evaluate(1f), Is.EqualTo(0f).Within(Tolerance), "tapering to nothing.");
         Assert.That(trail.shadowCastingMode, Is.EqualTo(UnityEngine.Rendering.ShadowCastingMode.Off));
 
         Assert.That(
             new SerializedObject(arrow).FindProperty("_trailInPlayerCyan").boolValue,
-            Is.True,
-            "the cyan is Palette.Player's, laid on at Bind (PaletteTests bans an authored copy).");
-        Assert.That(trail.colorGradient.Evaluate(0f), Is.EqualTo(Color.white), "full shade at the head.");
+            Is.False,
+            "the ordinary arrow no longer uses Palette.Player.");
+        Assert.That(new SerializedObject(arrow).FindProperty("_trailInWind").boolValue, Is.True);
+        Color authoredHead = trail.colorGradient.Evaluate(0f);
+        Assert.That(authoredHead.r, Is.EqualTo(1f).Within(Tolerance), "full shade at the head.");
+        Assert.That(authoredHead.a, Is.EqualTo(0.55f).Within(Tolerance));
 
         // The colour a run sees: a body cloned from the prefab, bound once.
         var body = UnityEngine.Object.Instantiate(arrow);
@@ -273,9 +276,9 @@ public sealed class RangerTests
 
             Color head = body.GetComponentInChildren<TrailRenderer>().colorGradient.Evaluate(0f);
 
-            Assert.That(head.r, Is.EqualTo(Palette.Player.r).Within(0.01f), "GD §16.4: player shots are cyan.");
-            Assert.That(head.g, Is.EqualTo(Palette.Player.g).Within(0.01f));
-            Assert.That(head.b, Is.EqualTo(Palette.Player.b).Within(0.01f));
+            Assert.That(head.r, Is.EqualTo(Palette.Wind.r).Within(0.01f));
+            Assert.That(head.g, Is.EqualTo(Palette.Wind.g).Within(0.01f));
+            Assert.That(head.b, Is.EqualTo(Palette.Wind.b).Within(0.01f));
         }
         finally
         {
@@ -299,7 +302,7 @@ public sealed class RangerTests
         Assert.That(volley, Is.Not.Null, $"No ProjectileView on {VolleyArrowPath}.");
         Assert.That(Definition().ToLook().VolleyProjectile, Is.SameAs(volley), "the Ranger names it.");
 
-        Assert.That(volley.transform.Find("Mesh").localScale.x, Is.EqualTo(KayKitArrowScale * 2.2f).Within(1e-3f), "2.2× RS-02c's arrow.");
+        Assert.That(volley.transform.Find("Mesh").localScale.x, Is.EqualTo(2f).Within(1e-3f), "nearly 1.9× the ordinary arrow.");
 
         // The head glows in the player's cyan: a renderer of its own, lit at Bind (rule 5).
         var serialized = new SerializedObject(volley);
@@ -315,7 +318,7 @@ public sealed class RangerTests
 
         Assert.That(serialized.FindProperty("_trail").objectReferenceValue, Is.SameAs(trail));
         Assert.That(serialized.FindProperty("_trailInPlayerCyan").boolValue, Is.True);
-        Assert.That(trail.widthCurve.Evaluate(0f), Is.EqualTo(0.26f).Within(1e-3f), "wider: 0.26 m.");
+        Assert.That(trail.widthCurve.Evaluate(0f), Is.EqualTo(0.4f).Within(1e-3f), "wider: 0.4 m.");
         Assert.That(trail.time, Is.EqualTo(0.22f).Within(Tolerance), "longer: 0.22 s.");
         Assert.That(trail.colorGradient.Evaluate(1f).g, Is.GreaterThan(plain.colorGradient.Evaluate(1f).g), "brighter to its tail.");
         Assert.That(trail.sharedMaterial.shader, Is.SameAs(AssetDatabase.LoadAssetAtPath<Material>(ImpactMaterialPath).shader), "opaque, M_Impact's shader.");

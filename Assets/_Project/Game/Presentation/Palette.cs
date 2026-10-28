@@ -75,6 +75,9 @@ public static class Palette
     /// </remarks>
     public static readonly Color Player = Rgb(0x22, 0xD3, 0xEE);
 
+    /// <summary>Near-white, cool wind on an ordinary Ranger arrow (RS-08c).</summary>
+    public static readonly Color Wind = Rgb(0xE5, 0xF5, 0xFA);
+
     /// <summary>
     /// <c>#FF4A1F</c> — GD §16.4's saturated red-orange. <em>Danger, and nothing else, ever.</em>
     /// </summary>

@@ -49,7 +49,8 @@ MonoBehaviour:
   _arcHeight: 0.25
   _impact: {fileID: 5716996564123738491, guid: f8e65b70909c04249be795f855d5d819, type: 3}
   _trail: {fileID: 3208391341270130990}
-  _trailInPlayerCyan: 1
+  _trailInPlayerCyan: 0
+  _trailInWind: 1
   _playerGlow: {fileID: 0}
 --- !u!1 &8875860149655508159
 GameObject:
@@ -132,7 +133,7 @@ TrailRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Time: 0.15
+  m_Time: 0.18
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
@@ -163,8 +164,8 @@ TrailRenderer:
       m_RotationOrder: 4
     colorGradient:
       serializedVersion: 2
-      key0: {r: 1, g: 1, b: 1, a: 1}
-      key1: {r: 0.4, g: 0.4, b: 0.4, a: 1}
+      key0: {r: 1, g: 1, b: 1, a: 0.55}
+      key1: {r: 0.4, g: 0.4, b: 0.4, a: 0}
       key2: {r: 0, g: 0, b: 0, a: 0}
       key3: {r: 0, g: 0, b: 0, a: 0}
       key4: {r: 0, g: 0, b: 0, a: 0}

@@ -143,7 +143,7 @@ TrailRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 0.26
+        value: 0.4
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -335,15 +335,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 755c8b518c930fb4a8e673b1d925d3d3, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.4553473
+      value: 2.0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 755c8b518c930fb4a8e673b1d925d3d3, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.4553473
+      value: 2.0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 755c8b518c930fb4a8e673b1d925d3d3, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.4553473
+      value: 2.0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 755c8b518c930fb4a8e673b1d925d3d3, type: 3}
       propertyPath: m_LocalPosition.x

@@ -70,6 +70,8 @@ public sealed class ProjectileViewsTests
     private const string BoltMesh = "BoltMesh";
     private const string ArrowMesh = "ArrowMesh";
     private const string VolleyMesh = "VolleyMesh";
+    private const string ArrowPrefabPath = "Assets/_Project/Prefabs/Projectiles/Arrow.prefab";
+    private const string VolleyPrefabPath = "Assets/_Project/Prefabs/Projectiles/VolleyArrow.prefab";
 
     private const string OathboundPath = "Assets/_Project/Data/Characters/Oathbound.asset";
     private const string GravecallerPath = "Assets/_Project/Data/Characters/Gravecaller.asset";
@@ -627,44 +629,71 @@ public sealed class ProjectileViewsTests
     }
 
     [Test]
+    public void Bind_PaintsAnArrowsTrailInWind()
+    {
+        ProjectileView arrow = Object.Instantiate(AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPrefabPath));
+        try
+        {
+            arrow.Bind(1, UnityEngine.Vector3.zero, UnityEngine.Vector3.forward, 1f);
+            TrailRenderer trail = arrow.GetComponentInChildren<TrailRenderer>();
+            Color head = trail.colorGradient.Evaluate(0f);
+            Color tail = trail.colorGradient.Evaluate(1f);
+            Assert.That(head.r, Is.EqualTo(Soulvail.Game.Presentation.Palette.Wind.r).Within(0.01f));
+            Assert.That(head.g, Is.EqualTo(Soulvail.Game.Presentation.Palette.Wind.g).Within(0.01f));
+            Assert.That(head.b, Is.EqualTo(Soulvail.Game.Presentation.Palette.Wind.b).Within(0.01f));
+            Assert.That(head.a, Is.EqualTo(0.55f).Within(0.01f));
+            Assert.That(tail.a, Is.EqualTo(0f).Within(0.01f));
+            Assert.That(trail.time, Is.EqualTo(0.18f).Within(0.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(arrow.gameObject);
+        }
+    }
+
+    [Test]
+    public void Wind_IsPaleAndNotPlayerCyan()
+    {
+        Color wind = Soulvail.Game.Presentation.Palette.Wind;
+        Color player = Soulvail.Game.Presentation.Palette.Player;
+        Assert.That(wind.r, Is.GreaterThanOrEqualTo(0.8f));
+        Assert.That(wind.g, Is.GreaterThanOrEqualTo(0.8f));
+        Assert.That(wind.b, Is.GreaterThanOrEqualTo(0.8f));
+        Assert.That(wind, Is.Not.EqualTo(player));
+    }
+
+    [Test]
     public void Bind_PaintsAPlayersTrailInPaletteCyan()
     {
-        // RS-07a: the gradient is a shade ramp, and Palette.Player is laid over it — never authored.
-        TrailRenderer trail = _prefabObject.AddComponent<TrailRenderer>();
-        var ramp = new Gradient();
-
-        ramp.SetKeys(
-            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.5f, 0.5f, 0.5f), 1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
-        trail.colorGradient = ramp;
-
-        using (var serialized = new SerializedObject(_prefab))
+        ProjectileView volley = Object.Instantiate(AssetDatabase.LoadAssetAtPath<ProjectileView>(VolleyPrefabPath));
+        try
         {
-            serialized.FindProperty("_trail").objectReferenceValue = trail;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            volley.Bind(1, UnityEngine.Vector3.zero, UnityEngine.Vector3.forward, 1f);
+            TrailRenderer trail = volley.GetComponentInChildren<TrailRenderer>();
+            Color head = trail.colorGradient.Evaluate(0f);
+            Color player = Soulvail.Game.Presentation.Palette.Player;
+            Assert.That(head.r, Is.EqualTo(player.r).Within(0.01f));
+            Assert.That(head.g, Is.EqualTo(player.g).Within(0.01f));
+            Assert.That(head.b, Is.EqualTo(player.b).Within(0.01f));
         }
-
-        Bound(1, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
-
-        Assert.That(trail.colorGradient.Evaluate(0f), Is.EqualTo(Color.white), "Unflagged, the trail is left as authored (JG-02's spit).");
-
-        using (var serialized = new SerializedObject(_prefab))
+        finally
         {
-            serialized.FindProperty("_trailInPlayerCyan").boolValue = true;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Object.DestroyImmediate(volley.gameObject);
         }
+    }
 
-        Bound(2, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
-        Bound(3, Vector3.Zero, new Vector3(6f, 0f, 0f), 1f);
-
-        Color player = Soulvail.Game.Presentation.Palette.Player;
-        Color head = trail.colorGradient.Evaluate(0f);
-        Color tail = trail.colorGradient.Evaluate(1f);
-
-        Assert.That(head.r, Is.EqualTo(player.r).Within(0.01f), "white × cyan is cyan, and a second Bind does not darken it again.");
-        Assert.That(head.g, Is.EqualTo(player.g).Within(0.01f));
-        Assert.That(head.b, Is.EqualTo(player.b).Within(0.01f));
-        Assert.That(tail.g, Is.EqualTo(player.g * 0.5f).Within(0.01f), "half shade × cyan.");
+    [Test]
+    public void VolleyArrow_IsBiggerThanTheArrow()
+    {
+        ProjectileView arrow = AssetDatabase.LoadAssetAtPath<ProjectileView>(ArrowPrefabPath);
+        ProjectileView volley = AssetDatabase.LoadAssetAtPath<ProjectileView>(VolleyPrefabPath);
+        float arrowScale = arrow.transform.GetChild(0).localScale.x;
+        float volleyScale = volley.transform.GetChild(0).localScale.x;
+        Assert.That(volleyScale / arrowScale, Is.GreaterThanOrEqualTo(1.8f));
+        float arrowWidth = arrow.GetComponentInChildren<TrailRenderer>().widthCurve.Evaluate(0f);
+        float volleyWidth = volley.GetComponentInChildren<TrailRenderer>().widthCurve.Evaluate(0f);
+        Assert.That(volleyWidth, Is.GreaterThan(arrowWidth));
+        Assert.That(volleyWidth, Is.EqualTo(0.4f).Within(0.001f));
     }
 
     [Test]

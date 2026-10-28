@@ -76,12 +76,15 @@ namespace Soulvail.Game.Views
                  "player's cyan is read, never authored (GD §16.4), so a copy cannot drift.")]
         [SerializeField] private bool _trailInPlayerCyan;
 
+        [Tooltip("Paint the trail's shade ramp in Palette.Wind when first bound (RS-08c).")]
+        [SerializeField] private bool _trailInWind;
+
         [Tooltip("A renderer lit in Palette.Player, base and emission, when the body is first bound " +
                  "(RS-07b): the volley arrow's glowing head. Or none. Its material carries white; " +
                  "the cyan is read, never authored (GD §16.4).")]
         [SerializeField] private Renderer _playerGlow;
 
-        /// <summary>Whether <see cref="_trail"/> has had <see cref="Palette.Player"/> laid on it.</summary>
+        /// <summary>Whether <see cref="_trail"/> has had its palette tint laid on it.</summary>
         private bool _trailPainted;
 
         /// <summary>Whether <see cref="_playerGlow"/> has been lit.</summary>
@@ -297,7 +300,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void PaintTrail()
         {
-            if (_trailPainted || !_trailInPlayerCyan || _trail == null)
+            if (_trailPainted || (!_trailInPlayerCyan && !_trailInWind) || _trail == null)
             {
                 return;
             }
@@ -306,13 +309,13 @@ namespace Soulvail.Game.Views
 
             Gradient gradient = _trail.colorGradient;
             GradientColorKey[] keys = gradient.colorKeys;
-            Color cyan = Palette.Player;
+            Color tint = _trailInPlayerCyan ? Palette.Player : Palette.Wind;
 
             for (int i = 0; i < keys.Length; i++)
             {
                 Color shade = keys[i].color;
 
-                keys[i].color = new Color(shade.r * cyan.r, shade.g * cyan.g, shade.b * cyan.b, 1f);
+                keys[i].color = new Color(shade.r * tint.r, shade.g * tint.g, shade.b * tint.b, 1f);
             }
 
             gradient.SetKeys(keys, gradient.alphaKeys);

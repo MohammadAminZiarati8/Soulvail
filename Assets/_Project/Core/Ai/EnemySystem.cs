@@ -430,6 +430,9 @@ public sealed class EnemySystem
         return agent;
     }
 
+    /// <summary>The authored boss data used by the director before spawning its body.</summary>
+    internal BossSpec Boss(ContentId bossId) => _catalog.Boss(bossId);
+
     /// <summary>
     /// Brings the boss <paramref name="bossId"/> names into being at <paramref name="position"/>:
     /// an ordinary agent wearing its authored body, with a <see cref="BossBehaviour"/> on it.

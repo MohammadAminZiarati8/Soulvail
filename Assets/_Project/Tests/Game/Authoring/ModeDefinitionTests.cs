@@ -310,19 +310,29 @@ public sealed class ModeDefinitionTests
         // `_startingStage` initialises to 1 and ships 1, `_isEndless` initialises to true and
         // ships true, so the row above cannot tell a bound key from a misspelled one for either.
         //
-        // ForceReserializeAssets drops keys matching no field, so a reserialise that changes the
-        // file is a key that did not bind. Comparing the text either side is the assertion — and
-        // it leaves no diff behind when it passes, which a bare reserialise would not (M1-03).
+        // Reserialising drops unknown keys and adds newly declared fields. JG-12a deliberately
+        // leaves assets unchanged, so allow only its omitted cycle-row default, _atStage: 0.
         string before = System.IO.File.ReadAllText(DescentPath);
 
-        AssetDatabase.ForceReserializeAssets(new[] { DescentPath });
+        try
+        {
+            AssetDatabase.ForceReserializeAssets(new[] { DescentPath });
+            string after = System.IO.File.ReadAllText(DescentPath);
+            string expected = before.Replace("    _everyNStages: 5\n", "    _everyNStages: 5\n    _atStage: 0\n");
+            if (before.Contains("    _atStage:"))
+            {
+                expected = before;
+            }
 
-        string after = System.IO.File.ReadAllText(DescentPath);
-
-        Assert.That(after, Is.EqualTo(before),
-            "Reserialising Descent.asset changed it, which means at least one of its YAML keys " +
-            "matches no field on ModeDefinition and was dropped. Compare the two and fix the " +
-            "name — a dropped key reads as a field quietly holding its C# initialiser.");
+            Assert.That(after, Is.EqualTo(expected),
+                "Reserialising Descent.asset dropped or changed an authored key, or added a field " +
+                "other than the default boss stage. Compare the two and fix the binding.");
+        }
+        finally
+        {
+            System.IO.File.WriteAllText(DescentPath, before);
+            AssetDatabase.ImportAsset(DescentPath);
+        }
     }
 
     [Test]

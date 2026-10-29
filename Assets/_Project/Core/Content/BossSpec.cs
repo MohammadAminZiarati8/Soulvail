@@ -269,7 +269,8 @@ public sealed class BossSpec
         ContentId id,
         ContentId enemySpecId,
         IReadOnlyList<BossPhaseSpec> phases,
-        float beatSeconds)
+        float beatSeconds,
+        bool spawnsCentral = false)
     {
         if (id.Value is null)
         {
@@ -306,6 +307,7 @@ public sealed class BossSpec
         Id = id;
         EnemySpecId = enemySpecId;
         BeatSeconds = beatSeconds;
+        SpawnsCentral = spawnsCentral;
 
         _phases = CopyPhases(phases, id);
 
@@ -333,6 +335,9 @@ public sealed class BossSpec
     /// two lengths, the number moves onto <see cref="BossPhaseSpec"/> along with the reason.
     /// </remarks>
     public float BeatSeconds { get; }
+
+    /// <summary>Whether this boss waits for the spawn point nearest the arena mean.</summary>
+    public bool SpawnsCentral { get; }
 
     /// <summary>The most bodies any one of this boss's phases summons.</summary>
     /// <remarks>

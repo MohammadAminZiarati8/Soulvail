@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-11._
+_Updated 2026-10-30, after JG-12a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-11**: Jungle 7–9 scripted; threat 18 → 37 → 56 → 77 from 6. Stage 10 Croaker; 11 budgeted. |
-| **Next task** | Playtest 7–9. **JG-12a–h** (Mother Pitcher, stage 10) specced, await a go; d's sculpt is in. |
-| **Verified** | JG-11 EditMode: 4 581 pass, 0 fail, 1 known inconclusive. No compiler errors or new warnings; format clean. |
+| **Last merged** | **JG-12a**: bosses can own one stage, overriding cycles; central bosses wait for the middle spawn point to be safe. No asset edits. |
+| **Next task** | Playtest 7–9. **JG-12b–h** await a go; d's sculpt is in. |
+| **Verified** | JG-12a EditMode: 4 590 pass, 0 fail, 1 known inconclusive. No compiler errors or new analyzer warnings; format clean. |
 
 ## What works
 

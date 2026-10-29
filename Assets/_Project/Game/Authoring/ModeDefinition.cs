@@ -894,11 +894,14 @@ namespace Soulvail.Game.Authoring
             [SerializeField] private string _bossId;
 
             [Tooltip("How often this boss comes round. 5 = stages 5, 10, 15, …")]
-            [SerializeField, Min(1)] private int _everyNStages;
+            [SerializeField, Min(0)] private int _everyNStages;
+
+            [Tooltip("One stage this boss owns. Set the cycle interval to 0 when using a stage.")]
+            [SerializeField, Min(0)] private int _atStage;
 
             /// <summary>Converts this row, letting <see cref="BossRosterEntry"/> refuse a bad one.</summary>
             public BossRosterEntry ToEntry() =>
-                new BossRosterEntry(new ContentId(_bossId), _everyNStages);
+                new BossRosterEntry(new ContentId(_bossId), _everyNStages, _atStage);
         }
 
         /// <summary>One authored scripted stage: the stage, and every line of it (JG-01).</summary>

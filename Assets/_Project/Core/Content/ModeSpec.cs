@@ -96,11 +96,11 @@ public readonly struct BossRosterEntry
     /// Refused where the roster is built rather than where it is spawned, for the reason
     /// <see cref="RosterEntry"/> gives.
     /// </exception>
+    /// <param name="atStage">One stage this boss owns, or zero for a cycle row.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="everyNStages"/> is not positive. Zero would be a modulo by zero on the first
-    /// stage the mode is asked about, and a negative one is a schedule nothing could read.
+    /// The row does not name exactly one positive interval or stage, with the other zero.
     /// </exception>
-    public BossRosterEntry(ContentId bossId, int everyNStages)
+    public BossRosterEntry(ContentId bossId, int everyNStages, int atStage = 0)
     {
         if (bossId.Value is null)
         {
@@ -109,17 +109,16 @@ public readonly struct BossRosterEntry
                 nameof(bossId));
         }
 
-        if (everyNStages < 1)
+        if (everyNStages < 0 || atStage < 0 || (everyNStages >= 1) == (atStage >= 1))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(everyNStages),
-                everyNStages,
-                $"everyNStages for '{bossId}' must be at least 1. A zero would divide by zero on "
-                    + "the first stage this mode is asked about.");
+                "A boss row must name exactly one positive cycle interval or stage; the other is zero.");
         }
 
         BossId = bossId;
         EveryNStages = everyNStages;
+        AtStage = atStage;
     }
 
     /// <summary>The boss, resolved against the <see cref="ContentCatalog"/>.</summary>
@@ -127,6 +126,9 @@ public readonly struct BossRosterEntry
 
     /// <summary>How often it comes round. 5 = stages 5, 10, 15, …</summary>
     public int EveryNStages { get; }
+
+    /// <summary>The single stage this boss owns; zero for a cycle row.</summary>
+    public int AtStage { get; }
 }
 
 /// <summary>
@@ -699,7 +701,7 @@ public sealed class ModeSpec
     /// Which stages hold a boss, and which boss (GD §9, M4-01b rule 1). Copied, like the roster.
     /// Null and empty mean the same thing and are both legal: a mode with no boss roster never
     /// reaches a boss stage, which is every mode in every build until M4-02 authors one.
-    /// <b>Order is meaningful and the first match wins</b> — see <see cref="TryGetBossFor"/>.
+    /// <b>A stage row wins; otherwise the first matching cycle row wins</b> — see <see cref="TryGetBossFor"/>.
     /// </param>
     /// <param name="overflow">
     /// CH §5.2's Overflow for this mode — what a level is worth when there is nothing left to buy
@@ -1200,7 +1202,7 @@ public sealed class ModeSpec
     /// and this asks the asset. M7's Archon is a second row rather than a second branch.
     /// </para>
     /// <para>
-    /// <b>The first matching row wins, and that is the ordering a designer has to know about.</b>
+    /// <b>A stage row wins first; otherwise the first matching cycle row wins.</b>
     /// GD §9 puts an Archon on every 20th stage <em>and</em> a boss on every 5th, and stage 20 is
     /// both — so the Archon's row is authored first and stage 20 is an Archon. Stated rather than
     /// resolved by picking the larger interval, because <em>"the rarer one wins"</em> is a rule
@@ -1216,7 +1218,16 @@ public sealed class ModeSpec
     {
         for (int i = 0; i < _bossRoster.Length; i++)
         {
-            if (stage % _bossRoster[i].EveryNStages == 0)
+            if (_bossRoster[i].AtStage == stage && stage >= 1)
+            {
+                bossId = _bossRoster[i].BossId;
+                return true;
+            }
+        }
+
+        for (int i = 0; i < _bossRoster.Length; i++)
+        {
+            if (_bossRoster[i].EveryNStages >= 1 && stage % _bossRoster[i].EveryNStages == 0)
             {
                 bossId = _bossRoster[i].BossId;
                 return true;
@@ -1618,7 +1629,7 @@ public sealed class ModeSpec
         return false;
     }
 
-    private static BossRosterEntry[] CopyBossRoster(
+    private BossRosterEntry[] CopyBossRoster(
         IReadOnlyList<BossRosterEntry> bossRoster,
         ContentId id)
     {
@@ -1630,6 +1641,7 @@ public sealed class ModeSpec
         var copy = new BossRosterEntry[bossRoster.Count];
         var ids = new HashSet<ContentId>();
         var intervals = new HashSet<int>();
+        var stages = new HashSet<int>();
 
         for (int i = 0; i < bossRoster.Count; i++)
         {
@@ -1654,7 +1666,19 @@ public sealed class ModeSpec
                     nameof(bossRoster));
             }
 
-            if (!intervals.Add(entry.EveryNStages))
+            if (entry.EveryNStages < 0 || entry.AtStage < 0
+                || (entry.EveryNStages >= 1) == (entry.AtStage >= 1))
+            {
+                throw new ArgumentException("A boss row must name a cycle or a stage.", nameof(bossRoster));
+            }
+
+            if (entry.AtStage >= 1 && (!HasStage(entry.AtStage) || !stages.Add(entry.AtStage)))
+            {
+                throw new ArgumentException(
+                    $"'{id}' has a duplicate or unavailable boss stage {entry.AtStage}.", nameof(bossRoster));
+            }
+
+            if (entry.EveryNStages >= 1 && !intervals.Add(entry.EveryNStages))
             {
                 throw new ArgumentException(
                     $"'{id}' lists two bosses every {entry.EveryNStages} stages, and "

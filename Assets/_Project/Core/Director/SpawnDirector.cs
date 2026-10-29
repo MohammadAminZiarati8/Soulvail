@@ -601,7 +601,12 @@ public sealed class SpawnDirector
     {
         if (_bossEnemyId == 0)
         {
-            if (!TryPickPoint(now, playerPosition, spawn, out int index, out Vector3 point))
+            bool central = _enemies.Boss(_bossId).SpawnsCentral;
+            bool picked = central
+                ? TryPickCentralPoint(now, playerPosition, spawn, out int index, out Vector3 point)
+                : TryPickPoint(now, playerPosition, spawn, out index, out point);
+
+            if (!picked)
             {
                 return;
             }
@@ -840,6 +845,46 @@ public sealed class SpawnDirector
         }
 
         Telegraph(index, point, now);
+    }
+
+    /// <summary>Waits for the point nearest the mean; never substitutes a safer edge point.</summary>
+    private bool TryPickCentralPoint(float now, Vector3 playerPosition, IRandomStream spawn, out int index, out Vector3 point)
+    {
+        index = -1;
+        point = default;
+
+        if (_spawnPointCount == 0)
+        {
+            return false;
+        }
+
+        Vector3 mean = Vector3.Zero;
+
+        for (int i = 0; i < _spawnPointCount; i++)
+        {
+            mean += _spawnPoints[i] / _spawnPointCount;
+        }
+
+        // One Spawn draw per choice, as in TryPickPoint (AR §18.3); it breaks equal-distance ties.
+        int first = spawn.NextInt(0, _spawnPointCount);
+        index = first;
+        float nearest = float.PositiveInfinity;
+
+        for (int i = 0; i < _spawnPointCount; i++)
+        {
+            int candidateIndex = (first + i) % _spawnPointCount;
+            float distance = DistanceSquaredXZ(_spawnPoints[candidateIndex], mean);
+
+            if (distance < nearest)
+            {
+                nearest = distance;
+                index = candidateIndex;
+            }
+        }
+
+        point = _spawnPoints[index];
+        return DistanceSquaredXZ(point, playerPosition) >= MinPlayerDistanceSquared
+            && IsClearOfClaims(point, now);
     }
 
     /// <summary>

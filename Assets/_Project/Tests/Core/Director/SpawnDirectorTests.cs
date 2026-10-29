@@ -89,6 +89,51 @@ public sealed class SpawnDirectorTests
         _arena = Points(8);
     }
 
+    [Test]
+    public void Director_CentralBoss_SpawnsNearestTheMiddle()
+    {
+        SpawnDirector director = CentralBossDirector(out EnemySystem enemies, out Vector3 middle);
+        director.Tick(0f, middle + new Vector3(14f, 0f, 0f), Stream(0f));
+        Assert.That(enemies.Registry.AliveCount, Is.EqualTo(1));
+        Assert.That(enemies.Registry.Alive[0].Position, Is.EqualTo(middle));
+    }
+
+    [Test]
+    public void Director_CentralBoss_WaitsForThePlayerToStepOff()
+    {
+        SpawnDirector director = CentralBossDirector(out EnemySystem enemies, out Vector3 middle);
+        director.Tick(0f, middle + new Vector3(2f, 0f, 0f), Stream(0f));
+        Assert.That(enemies.Registry.AliveCount, Is.Zero);
+        Assert.That(director.BossEnemyId, Is.Zero);
+        Assert.That(_events.Of<WaveStarted>(), Is.Empty);
+        director.Tick(1f, middle + new Vector3(7f, 0f, 0f), Stream(0f));
+        Assert.That(enemies.Registry.AliveCount, Is.EqualTo(1));
+        Assert.That(enemies.Registry.Alive[0].Position, Is.EqualTo(middle));
+    }
+
+    private SpawnDirector CentralBossDirector(out EnemySystem enemies, out Vector3 middle)
+    {
+        var bossId = new ContentId("boss.central");
+        var boss = new BossSpec(bossId, new ContentId(HuskId),
+            new[] { new BossPhaseSpec(1f) }, 1f, spawnsCentral: true);
+        _catalog = new ContentCatalog(new[] { Oathbound() },
+            new[] { Archetype(HuskId, HuskCost, 8f) }, bosses: new[] { boss });
+        ModeSpec mode = Mode(120f, 1, DeviceCap, (HuskId, 1));
+        enemies = Enemies(mode);
+        // An offset room: its mean is near (20, 0, 30), not the world origin or first point.
+        middle = new Vector3(20.5f, 0f, 30f);
+        var points = new[]
+        {
+            new Vector3(10f, 0f, 20f), new Vector3(30f, 0f, 20f),
+            new Vector3(10f, 0f, 40f), new Vector3(30f, 0f, 40f),
+            new Vector3(10f, 0f, 30f), new Vector3(30f, 0f, 30f),
+            new Vector3(24f, 0f, 30f), middle,
+        };
+        SpawnDirector director = Director(enemies, points);
+        director.Begin(Composed(mode, 5), points, 0f, bossId);
+        return director;
+    }
+
     // ---- Waves (rules 1, 2, 4, 5, 6) -----------------------------------------------------------
 
     [Test]

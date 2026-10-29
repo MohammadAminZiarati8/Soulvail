@@ -70,4 +70,17 @@ None: no asset names a stage row or a central boss until JG-12h.
 
 ## As built
 
-_Filled at merge._
+Implemented rules 1–5 and every Tests-table row; no asset changes or manual checks.
+
+Deviations / existing-code resolutions:
+- `Core/Ai/EnemySystem.cs`: added internal `Boss(ContentId)` lookup because `SpawnDirector`
+  has no catalog access before spawning. No new constructor wiring.
+- `Tests/Game/Authoring/ModeDefinitionTests.cs`: `Descent_EveryYamlKeyBindsToAField`
+  permits only the newly serialized `_atStage: 0` default and restores the original text
+  in `finally`. Its exact-text comparison otherwise fails rule 4 and rewrites Descent.asset.
+- Rule 3 retains the existing refusal of duplicate boss ids, alongside stage/interval guards.
+- Existing Core `System.Numerics.Vector3` API retained (AR §18.4: XZ geometry).
+  Central selection keeps AR §18.3's single Spawn draw, breaking equal-distance ties.
+
+Verification: full EditMode suite through TestRunnerApi; final counts in PROGRESS.
+Whitespace check clean; no compiler errors or new analyzer warnings.

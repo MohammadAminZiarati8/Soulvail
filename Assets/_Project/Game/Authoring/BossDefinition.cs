@@ -70,6 +70,9 @@ namespace Soulvail.Game.Authoring
                  "fraction. GD §9.1 rule 3 ships 1, 0.66 and 0.33.")]
         [SerializeField] private PhaseRow[] _phases = Array.Empty<PhaseRow>();
 
+        [Tooltip("Spawn at the point nearest the arena middle, once the player is safely away.")]
+        [SerializeField] private bool _spawnsCentral;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -95,7 +98,8 @@ namespace Soulvail.Game.Authoring
                     new ContentId(_id),
                     new ContentId(_enemySpecId),
                     BuildPhases(),
-                    _beatSeconds);
+                    _beatSeconds,
+                    _spawnsCentral);
             }
             catch (ArgumentException inner)
             {

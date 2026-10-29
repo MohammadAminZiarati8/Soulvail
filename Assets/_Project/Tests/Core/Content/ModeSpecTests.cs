@@ -783,6 +783,91 @@ public sealed class ModeSpecTests
         AllocationAssert.None(() => mode.ArenaFor(9, 7), 10_000);
     }
 
+    [Test]
+    public void BossRow_CycleOrStage_NeverBoth()
+    {
+        var id = new ContentId("boss.croaker");
+        Assert.That(new BossRosterEntry(id, 5).AtStage, Is.Zero);
+        Assert.That(new BossRosterEntry(id, 0, 10).EveryNStages, Is.Zero);
+        Assert.That(new BossRosterEntry(id, 0, 10).AtStage, Is.EqualTo(10));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BossRosterEntry(id, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BossRosterEntry(id, 5, 10));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BossRosterEntry(id, 0, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BossRosterEntry(id, -1, 10));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BossRosterEntry(id, 5, -1));
+        Assert.Throws<ArgumentException>(() => BossMode(new[] { default(BossRosterEntry) }));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BossRoster_StageRowWins_WhateverTheOrder(bool reverse)
+    {
+        var croaker = new ContentId("boss.croaker");
+        var mother = new ContentId("boss.mother");
+        var rows = new[] { new BossRosterEntry(croaker, 5), new BossRosterEntry(mother, 0, 10) };
+        if (reverse)
+        {
+            Array.Reverse(rows);
+        }
+
+        ModeSpec mode = BossMode(rows);
+        foreach (int stage in new[] { 5, 10, 15, 20 })
+        {
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.True);
+            Assert.That(boss, Is.EqualTo(stage == 10 ? mother : croaker));
+        }
+    }
+
+    [Test]
+    public void BossRoster_RefusesTwoOnAStage_OrAStageItLacks()
+    {
+        var first = new ContentId("boss.first");
+        var second = new ContentId("boss.second");
+        Assert.Throws<ArgumentException>(() => BossMode(new[]
+        {
+            new BossRosterEntry(first, 0, 10), new BossRosterEntry(second, 0, 10),
+        }));
+        Assert.Throws<ArgumentException>(() => BossMode(new[] { new BossRosterEntry(first, 0, 99) }));
+        Assert.Throws<ArgumentException>(() => BossMode(new[] { new BossRosterEntry(first, 0, 1) }, startingStage: 2));
+        Assert.Throws<ArgumentException>(() => BossMode(new[]
+        {
+            new BossRosterEntry(first, 5), new BossRosterEntry(second, 5),
+        }));
+        Assert.That(() => BossMode(new[]
+        {
+            new BossRosterEntry(first, 0, 10), new BossRosterEntry(second, 0, 20),
+        }), Throws.Nothing, "Stage rows do not share a cycle interval of zero.");
+    }
+
+    [Test]
+    public void BossRoster_ScriptOnAStageRow_IsRefused()
+    {
+        var stage = new ScriptedStage(10, new[] { new ScriptedSpawn(1, DesignRoster[0].SpecId, 1) });
+        Assert.Throws<ArgumentException>(() => BossMode(
+            new[] { new BossRosterEntry(new ContentId("boss.mother"), 0, 10) }, new[] { stage }));
+    }
+
+    [TestCase(false, "boss.warden")]
+    [TestCase(true, "boss.croaker")]
+    public void BossRoster_CycleOnly_AnswersAsBefore(bool finite, string bossId)
+    {
+        var id = new ContentId(bossId);
+        var mode = new ModeSpec(Id(), Name(), 1, !finite, finite ? 30 : 0,
+            Scalings.Design(), Scalings.Xp(), DesignRoster,
+            bossRoster: new[] { new BossRosterEntry(id, 5) });
+        for (int stage = 1; stage <= 40; stage++)
+        {
+            bool found = mode.TryGetBossFor(stage, out ContentId boss);
+            Assert.That(found, Is.EqualTo(stage % 5 == 0), $"Stage {stage}");
+            Assert.That(boss, Is.EqualTo(found ? id : default));
+        }
+    }
+
+    private ModeSpec BossMode(
+        BossRosterEntry[] rows, ScriptedStage[] scripts = null, int startingStage = 1) =>
+        new ModeSpec(Id(), Name(), startingStage, false, 30, Scalings.Design(), Scalings.Xp(),
+            DesignRoster, bossRoster: rows, scriptedStages: scripts);
+
     private static ContentId Id() => new ContentId(DescentId);
 
     private static LocKey Name() => new LocKey("mode.descent.name");

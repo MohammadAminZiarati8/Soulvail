@@ -79,7 +79,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **JG-11** — Stages seven to nine are scripted: mixes of Frog, Pitcher, Puffball and Panther climbing 37 → 56 → 77 threat (S) · [spec](tasks/JG-11-stages-seven-to-nine.md)
 
-**Mother Pitcher, the stage-10 boss** (owner, 2026-10-30). Specs for the owner to OK; each built only on the owner's go. a, b, d independent (d after the owner's sculpt); c needs b; e needs c and d; f needs c; g after f (both widen `EnemyLook`); h needs all.
+**Mother Pitcher, the stage-10 boss** (owner, 2026-10-30). Specs for the owner to OK; each built only on the owner's go. a, b, d independent (d's sculpt is in); c needs b; e needs c and d; f needs c; g after f (both widen `EnemyLook`); h needs all.
 
 - [ ] **JG-12a** — A boss can own a stage: roster rows name one stage, and a central boss spawns mid-arena (M) · [spec](tasks/JG-12a-a-boss-can-own-a-stage.md)
 - [ ] **JG-12b** — The plant and its buds: rooted `MotherPitcherBehaviour`, ×0.2 damage while a bud lives, opening-phase summons (M) · [spec](tasks/JG-12b-the-plant-and-its-buds.md)

@@ -1,10 +1,10 @@
 # JG-12d — Mother Pitcher's model
 
-**Size:** M · **Depends on:** the owner's sculpt (below) · **Branch:** `dev` (direct)
+**Size:** M · **Depends on:** — · **Branch:** `dev` (direct)
 **Design refs:** GD §16.4, GD §17.1; AR §18.2 (Generic, no root motion)
 
-**Before the go:** the owner makes the sculpt the Panther's way: a Gemini picture (prompt in the
-JG-12 report), image-to-3D, holes fixed. It lands as `Tools/Blender/Sources/MotherPitcher_src.glb`.
+**The sculpt is in** (2026-10-30): the owner's image-to-3D model (seed 42), cleaned by `Tools/Blender/fix_glb.py` to
+`Tools/Blender/Sources/MotherPitcher_src.glb`: 31 650 faces, every face outward, holes capped, 1.0 × 0.85 × 0.86 m.
 
 ## Goal
 

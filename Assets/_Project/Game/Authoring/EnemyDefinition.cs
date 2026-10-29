@@ -223,7 +223,9 @@ namespace Soulvail.Game.Authoring
                             _lungeSpeed,
                             _lungeHalfWidth,
                             _lungeCooldown)
-                        : null);
+                        : null,
+                    // The body EnemyLook draws, so a shot that touches it on screen touches it here.
+                    EnemySpec.BaseBodyRadius * _bodyScale);
             }
             catch (ArgumentException inner)
             {

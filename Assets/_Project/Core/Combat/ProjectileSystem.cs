@@ -265,6 +265,14 @@ public readonly struct Projectile
 /// shove.
 /// </para>
 /// <para>
+/// <b>A player's shot is swept, not only landed.</b> Each tick an <see cref="ShotSide.AtEnemies"/>
+/// shot's XZ path since the last tick is tested against every living body, with the body's own
+/// <c>EnemySpec.BodyRadius</c> and its reported velocity, and the first body it touches stops it
+/// there, where its radius then lands as usual — so an arrow that reaches an enemy hits it even if the enemy hopped into its path, and one
+/// that touches nobody lands on the ground and misses. A shot at the player is still only landed,
+/// so it stays dodgeable exactly as before.
+/// </para>
+/// <para>
 /// <b>Nothing here allocates and nothing here draws from <c>IRandom</c>.</b> Two preallocated arrays
 /// sized at construction, neither of which ever grows. A shot's spread, if there is ever one, is a
 /// change to what a seed means (ADR-0011); today the shot goes exactly where it was aimed, which is
@@ -282,6 +290,9 @@ public sealed class ProjectileSystem
 
     /// <summary>The first id of a run.</summary>
     private const int FirstId = 1;
+
+    /// <summary>A landing that touched no body on the way. Enemy ids are issued from 1.</summary>
+    private const int NoContact = 0;
 
     private readonly IDomainEvents _events;
 
@@ -392,7 +403,7 @@ public sealed class ProjectileSystem
         int id = _nextId;
         _nextId++;
 
-        _shots[_count] = new InFlight(id, now + flightTime, shot);
+        _shots[_count] = new InFlight(id, now, now + flightTime, shot);
         _count++;
 
         _events.Publish(new ProjectileFired(
@@ -472,18 +483,31 @@ public sealed class ProjectileSystem
 
         for (int read = 0; read < _count; read++)
         {
+            InFlight flight = _shots[read];
+
+            // A player's shot that touched a body on this tick's stretch of its path stops there.
+            // It only reads the registry, so the bookkeeping-first rule above still holds.
+            if (flight.Shot.Side == ShotSide.AtEnemies
+                && TryContact(flight, now, enemies, out Vector3 contact, out int contactId))
+            {
+                _landing[landingCount] = flight.LandingAt(contact, contactId);
+                landingCount++;
+
+                continue;
+            }
+
             // Negated, so a shot whose arrival somehow is not a number lands rather than living
             // for ever: the guards above make that unreachable, and this is which way it fails if
             // one is ever removed.
-            if (_shots[read].ArrivesAt > now)
+            if (flight.ArrivesAt > now)
             {
-                _shots[write] = _shots[read];
+                _shots[write] = flight.SweptUntil(now);
                 write++;
 
                 continue;
             }
 
-            _landing[landingCount] = _shots[read];
+            _landing[landingCount] = flight.LandingAt(flight.Shot.Target, NoContact);
             landingCount++;
         }
 
@@ -543,7 +567,7 @@ public sealed class ProjectileSystem
         Projectile shot = flight.Shot;
 
         bool hit = shot.Side == ShotSide.AtEnemies
-            ? LandOnEnemies(shot, now, player, enemies)
+            ? LandOnEnemies(shot, flight.Impact, flight.ContactId, now, player, enemies)
             : LandOnPlayer(shot, now, playerPosition, player);
 
         // **One orb is one Kindling stack however many it caught, and a miss is nothing** (M6-07a
@@ -558,7 +582,7 @@ public sealed class ProjectileSystem
 
         // After the damage, so a listener handling this has already seen the PlayerDamaged — or the
         // EnemyDamaged and EnemyDied — that the same arrival caused.
-        _events.Publish(new ProjectileImpacted(flight.Id, shot.Target, hit));
+        _events.Publish(new ProjectileImpacted(flight.Id, flight.Impact, hit));
     }
 
     /// <summary>
@@ -588,8 +612,8 @@ public sealed class ProjectileSystem
     }
 
     /// <summary>
-    /// An <see cref="ShotSide.AtEnemies"/> arrival: every living agent inside the radius takes the
-    /// shot's damage.
+    /// An <see cref="ShotSide.AtEnemies"/> arrival: the body it touched, and every other living
+    /// agent whose body is inside the radius of where it stopped, takes the shot's damage.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -626,13 +650,14 @@ public sealed class ProjectileSystem
     /// </remarks>
     private static bool LandOnEnemies(
         in Projectile shot,
+        Vector3 impact,
+        int contactId,
         float now,
         PlayerCombat player,
         EnemySystem enemies)
     {
         ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
 
-        float radiusSquared = shot.Radius * shot.Radius;
         bool hit = false;
 
         for (int i = 0; i < agents.Length; i++)
@@ -648,13 +673,14 @@ public sealed class ProjectileSystem
 
             Vector3 position = agent.Position;
 
-            float dx = position.X - shot.Target.X;
-            float dz = position.Z - shot.Target.Z;
+            float dx = position.X - impact.X;
+            float dz = position.Z - impact.Z;
+            float reach = shot.Radius + agent.Spec.BodyRadius;
 
-            // XZ (AR §18.4) and inclusive, exactly as the player's branch tests it, and spelled as
-            // the negated `<=` so that a distance which somehow is not a number skips the agent
-            // rather than catching it.
-            if (!((dx * dx) + (dz * dz) <= radiusSquared))
+            // The touched body is caught by id rather than re-measured, so float error at its edge
+            // can never turn a contact into a miss. Everyone else: XZ (AR §18.4), inclusive, to the
+            // body's edge, spelled as the negated `<=` so a distance that is not a number skips.
+            if (agent.Id != contactId && !((dx * dx) + (dz * dz) <= reach * reach))
             {
                 continue;
             }
@@ -669,6 +695,108 @@ public sealed class ProjectileSystem
         }
 
         return hit;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="flight"/> touched a living body on its path from
+    /// <see cref="InFlight.SweptTo"/> to this tick, and if so the first body and the point.
+    /// </summary>
+    /// <remarks>
+    /// Relative motion on XZ: each agent is walked back along its reported velocity to where it
+    /// stood at both ends of the stretch, so a frog hopping across the arrow's line inside one
+    /// frame is still met. The earliest first touch along the stretch wins. No allocation.
+    /// </remarks>
+    private static bool TryContact(
+        in InFlight flight,
+        float now,
+        EnemySystem enemies,
+        out Vector3 contact,
+        out int contactId)
+    {
+        float from = flight.SweptTo;
+        float to = MathF.Min(now, flight.ArrivesAt);
+
+        Vector3 start = flight.PositionAt(from);
+        Vector3 end = flight.PositionAt(to);
+
+        ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
+
+        float first = float.PositiveInfinity;
+        contactId = NoContact;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent agent = agents[i];
+
+            if (!agent.IsAlive)
+            {
+                continue;
+            }
+
+            Vector3 bodyAtStart = agent.Position - (agent.Velocity * (now - from));
+            Vector3 bodyAtEnd = agent.Position - (agent.Velocity * (now - to));
+            // The body alone: the shot is a line, and its radius is the blast where it stops — a
+            // contact reach that included it would set an orb off on the first body it came near.
+            if (FirstTouch(start - bodyAtStart, end - bodyAtEnd, agent.Spec.BodyRadius, out float along)
+                && along < first)
+            {
+                first = along;
+                contactId = agent.Id;
+            }
+        }
+
+        if (contactId == NoContact)
+        {
+            contact = default;
+
+            return false;
+        }
+
+        contact = start + ((end - start) * first);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Where along <paramref name="from"/> → <paramref name="to"/>, in <c>[0, 1]</c>, a point moving
+    /// from one to the other first comes within <paramref name="reach"/> of the origin, on XZ.
+    /// </summary>
+    /// <remarks>
+    /// The smaller root of <c>|from + s·d|² = reach²</c>. Inside already is 0; moving away, or a
+    /// line that never comes close enough, is no touch. Every comparison answers no for NaN.
+    /// </remarks>
+    private static bool FirstTouch(Vector3 from, Vector3 to, float reach, out float along)
+    {
+        along = 0f;
+
+        float dx = to.X - from.X;
+        float dz = to.Z - from.Z;
+
+        float c = (from.X * from.X) + (from.Z * from.Z) - (reach * reach);
+
+        if (c <= 0f)
+        {
+            return true;
+        }
+
+        float a = (dx * dx) + (dz * dz);
+        float halfB = (from.X * dx) + (from.Z * dz);
+
+        if (!(a > 0f) || !(halfB < 0f))
+        {
+            return false;
+        }
+
+        float discriminant = (halfB * halfB) - (a * c);
+
+        if (!(discriminant >= 0f))
+        {
+            return false;
+        }
+
+        along = (-halfB - MathF.Sqrt(discriminant)) / a;
+
+        return along <= 1f;
     }
 
     /// <summary>
@@ -707,15 +835,66 @@ public sealed class ProjectileSystem
         }
     }
 
-    /// <summary>One shot and the two things the store knows about it that the shot does not.</summary>
+    /// <summary>One shot and the things the store knows about it that the shot does not.</summary>
     private readonly struct InFlight
     {
-        public InFlight(int id, float arrivesAt, in Projectile shot)
+        public InFlight(int id, float firedAt, float arrivesAt, in Projectile shot)
+            : this(id, firedAt, arrivesAt, firedAt, shot, shot.Target, NoContact)
+        {
+        }
+
+        private InFlight(
+            int id,
+            float firedAt,
+            float arrivesAt,
+            float sweptTo,
+            in Projectile shot,
+            Vector3 impact,
+            int contactId)
         {
             Id = id;
+            FiredAt = firedAt;
             ArrivesAt = arrivesAt;
+            SweptTo = sweptTo;
             Shot = shot;
+            Impact = impact;
+            ContactId = contactId;
         }
+
+        /// <summary>When it left, in simulated run seconds.</summary>
+        public float FiredAt { get; }
+
+        /// <summary>How far along its flight contact has already been tested, in run seconds.</summary>
+        public float SweptTo { get; }
+
+        /// <summary>Where it stops: the edge of the body it touched, or <see cref="Projectile.Target"/>.</summary>
+        public Vector3 Impact { get; }
+
+        /// <summary>The agent it touched on the way, or <see cref="NoContact"/>.</summary>
+        public int ContactId { get; }
+
+        /// <summary>Where the shot is on its straight XZ line at <paramref name="time"/>.</summary>
+        public Vector3 PositionAt(float time)
+        {
+            float flightTime = ArrivesAt - FiredAt;
+
+            if (!(flightTime > 0f))
+            {
+                return Shot.Target;
+            }
+
+            float t = Math.Clamp((time - FiredAt) / flightTime, 0f, 1f);
+
+            return Vector3.Lerp(Shot.Origin, Shot.Target, t);
+        }
+
+        /// <summary>This shot, tested for contact up to <paramref name="time"/>.</summary>
+        public InFlight SweptUntil(float time) =>
+            new(Id, FiredAt, ArrivesAt, time, Shot, Impact, ContactId);
+
+        /// <summary>This shot, stopping at <paramref name="impact"/>.</summary>
+        public InFlight LandingAt(Vector3 impact, int contactId) =>
+            new(Id, FiredAt, ArrivesAt, SweptTo, Shot, impact, contactId);
 
         /// <summary>The run-stable id, issued from 1 and never reused within a run.</summary>
         public int Id { get; }

@@ -123,6 +123,12 @@ public enum EnemyBehaviourKind
 /// </remarks>
 public sealed class EnemySpec
 {
+    /// <summary>
+    /// The body's XZ radius at a body scale of 1: <c>Enemy.prefab</c>'s capsule, which every
+    /// archetype's body inherits.
+    /// </summary>
+    public const float BaseBodyRadius = 0.4f;
+
     /// <summary>The lowest legal <see cref="TargetPriority"/> — GD §8.1's Husk.</summary>
     private const int MinPriority = 1;
 
@@ -194,6 +200,7 @@ public sealed class EnemySpec
     /// How it dashes, or <see langword="null"/> for an archetype that does not — which is every
     /// archetype but the Lunger.
     /// </param>
+    /// <param name="bodyRadius">How wide the body is on XZ. See <see cref="BodyRadius"/>.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -209,8 +216,8 @@ public sealed class EnemySpec
     /// <paramref name="contactDamage"/>, <paramref name="windupTime"/> or
     /// <paramref name="recoverTime"/>, <paramref name="hopTime"/> or <paramref name="hopRestTime"/>
     /// is negative, NaN or infinite;
-    /// <paramref name="xpValue"/> is not a finite number greater than zero;
-    /// <paramref name="targetPriority"/> is outside 1–8; <paramref name="threatCost"/> is
+    /// <paramref name="xpValue"/> or <paramref name="bodyRadius"/> is not a finite number greater
+    /// than zero; <paramref name="targetPriority"/> is outside 1–8; <paramref name="threatCost"/> is
     /// below 1; or a Lunger's <paramref name="windupTime"/> is under GD §9.1 rule 1's
     /// <see cref="Ai.WardenBehaviour.MinTelegraphSeconds"/>.
     /// </exception>
@@ -233,7 +240,8 @@ public sealed class EnemySpec
         ExplosionSpec explosion = null,
         float hopTime = 0f,
         float hopRestTime = 0f,
-        LungeSpec lunge = null)
+        LungeSpec lunge = null,
+        float bodyRadius = BaseBodyRadius)
     {
         if (id.Value is null)
         {
@@ -317,6 +325,7 @@ public sealed class EnemySpec
         HopTime = NonNegative(hopTime, nameof(hopTime));
         HopRestTime = NonNegative(hopRestTime, nameof(hopRestTime));
         Lunge = lunge;
+        BodyRadius = Positive(bodyRadius, nameof(bodyRadius));
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -444,6 +453,12 @@ public sealed class EnemySpec
     /// </summary>
     /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Lunger and JG-07a.</remarks>
     public LungeSpec Lunge { get; }
+
+    /// <summary>
+    /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within
+    /// to touch it. <see cref="BaseBodyRadius"/> times the authored body scale.
+    /// </summary>
+    public float BodyRadius { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too: every

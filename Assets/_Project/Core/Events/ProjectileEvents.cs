@@ -127,11 +127,11 @@ public readonly struct ProjectileImpacted
     public readonly int Id;
 
     /// <summary>
-    /// Where it landed, in world metres: the target point it was fired at, always.
+    /// Where it landed, in world metres: the target point it was fired at, or — for a player's
+    /// shot that touched a body on the way — the point on its path where it touched.
     /// </summary>
     /// <remarks>
-    /// The same <c>Target</c> the <see cref="ProjectileFired"/> carried, repeated rather than left
-    /// to be correlated by id, for the reason <c>EnemyDied</c> repeats a position: an impact VFX has
+    /// Repeated rather than left to be correlated by id, for the reason <c>EnemyDied</c> repeats a position: an impact VFX has
     /// to be placed, and making every listener hold a table of shots in flight to find out where
     /// would be a state machine per projectile in every view.
     /// </remarks>

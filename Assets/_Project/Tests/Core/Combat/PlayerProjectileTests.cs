@@ -467,7 +467,68 @@ public sealed class PlayerProjectileTests
         ProjectileImpacted impacted = _events.Single<ProjectileImpacted>();
 
         Assert.That(impacted.Hit, Is.True);
-        Assert.That(impacted.Position, Is.EqualTo(At(TargetRange)));
+
+        // Stopped where it touched the first body, on the near edge — not on the ground beyond it.
+        Assert.That(
+            Vector3.Distance(impacted.Position, At(TargetRange - EnemySpec.BaseBodyRadius)),
+            Is.LessThan(1e-3f));
+    }
+
+    [Test]
+    public void Shot_AnEnemyThatHopsIntoThePathIsHit()
+    {
+        // Aimed at bare ground, with a Husk three metres to the side of the line, hopping across
+        // it mid-flight: the frog bug. Under the landing-only test this was a miss the player saw
+        // pass straight through the body.
+        float side = 3.75f;
+
+        EnemyAgent hopper = Spawn(TargetRange / 2f, x: side);
+        var hop = new Vector3(-30f, 0f, 0f);
+
+        FireAtEnemies(At(TargetRange));
+
+        float frame = 1f / 60f;
+
+        for (float t = frame; t < FlightTime + frame; t += frame)
+        {
+            // On the line as the bolt passes halfway, then sat still on the far side — a hop and a
+            // rest, so by the landing it is nowhere near where the bolt comes down.
+            float x = MathF.Max(side + (hop.X * t), -side);
+            Vector3 velocity = x > -side ? hop : Vector3.Zero;
+
+            Sense(hopper.Id, new Vector3(x, 0f, TargetRange / 2f), velocity);
+            IngestSenses();
+
+            _projectiles.Tick(t, Vector3.Zero, _player, _enemies);
+        }
+
+        Assert.That(hopper.Health.Current, Is.EqualTo(HuskMaxHp - BoltDamage).Within(1e-4f));
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.True);
+    }
+
+    [Test]
+    public void Shot_ThatTouchesNobodyStillMisses()
+    {
+        // The body's edge is 0.4 m out and the blast at the far end 0.8 + 0.4: a Husk standing
+        // 1.3 m off the line and short of the landing point is never touched, so it dodged.
+        EnemyAgent dodger = Spawn(TargetRange / 2f, x: 1.3f);
+
+        Land(FireAtEnemies(At(TargetRange)));
+
+        Assert.That(dodger.Health.Current, Is.EqualTo(HuskMaxHp).Within(1e-4f));
+        Assert.That(_events.Single<ProjectileImpacted>().Hit, Is.False);
+    }
+
+    [Test]
+    public void Shot_GrazingTheBodysEdgeIsAHit()
+    {
+        // 0.35 m off the line, inside the 0.4 m body, halfway along: touched on the way past.
+        EnemyAgent grazed = Spawn(TargetRange / 2f, x: 0.35f);
+
+        Land(FireAtEnemies(At(TargetRange)));
+
+        Assert.That(grazed.Health.Current, Is.EqualTo(HuskMaxHp - BoltDamage).Within(1e-4f));
+        Assert.That(_events.Single<ProjectileImpacted>().Position.Z, Is.LessThan(TargetRange / 2f));
     }
 
     [Test]
@@ -791,6 +852,17 @@ public sealed class PlayerProjectileTests
     {
         _now += Frame;
 
+        IngestSenses();
+
+        // Facing +Z, held: the body never turns in this fixture, and a projectile weapon's aim comes
+        // from the lead rather than from the facing — which is one of the things that makes the two
+        // kinds different at the damage frame and identical everywhere else.
+        player.Tick(Frame, _now, _snapshot, _enemies.Registry.Alive, Vector3.UnitZ);
+    }
+
+    /// <summary>Hands core what the body reports this frame, as <c>RunSession.Tick</c> does first.</summary>
+    private void IngestSenses()
+    {
         _snapshot.EnemyCount = 0;
 
         for (int i = 0; i < _senses.Count; i++)
@@ -799,11 +871,6 @@ public sealed class PlayerProjectileTests
         }
 
         _enemies.Ingest(_snapshot);
-
-        // Facing +Z, held: the body never turns in this fixture, and a projectile weapon's aim comes
-        // from the lead rather than from the facing — which is one of the things that makes the two
-        // kinds different at the damage frame and identical everywhere else.
-        player.Tick(Frame, _now, _snapshot, _enemies.Registry.Alive, Vector3.UnitZ);
     }
 
     /// <summary>Ticks until the weapon offers a shot.</summary>

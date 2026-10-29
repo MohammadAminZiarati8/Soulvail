@@ -281,10 +281,12 @@ public sealed class EmberwrightTests
 
         var impact = new Vector3(0f, 0f, 10f);
 
-        // Four Husks on a 2.5 m ring around the impact — all inside 3 m, none on top of it.
+        // Four Husks on a 2.5 m ring around the impact — all inside 3 m, none on top of it, and
+        // turned 45° so none stands on the line of fire: an orb stops at the first body it
+        // touches, and this row is about the blast, not the path.
         for (int i = 0; i < 4; i++)
         {
-            float angle = i * MathF.PI / 2f;
+            float angle = (i * MathF.PI / 2f) + (MathF.PI / 4f);
 
             enemies.Spawn(
                 new ContentId("enemy.husk"),

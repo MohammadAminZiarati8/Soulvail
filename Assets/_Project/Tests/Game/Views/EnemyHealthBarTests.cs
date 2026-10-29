@@ -696,7 +696,7 @@ public sealed class EnemyHealthBarTests
     {
         _bar.Bind(Id, false);
         Damage(0.6f);
-        Tick(0.39f);
+        Tick(0.09f);
         Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
         Assert.That(_fill.fillAmount, Is.EqualTo(0.6f));
     }
@@ -706,7 +706,7 @@ public sealed class EnemyHealthBarTests
     {
         _bar.Bind(Id, false);
         Damage(0.6f);
-        Tick(0.4f);
+        Tick(0.1f);
         Tick(0.2f);
         Assert.That(_bar.GhostFraction, Is.EqualTo(0.7f).Within(1e-4f));
         Tick(1f);
@@ -719,9 +719,9 @@ public sealed class EnemyHealthBarTests
     {
         _bar.Bind(Id, false);
         Damage(0.8f);
-        Tick(0.3f);
+        Tick(0.08f);
         Damage(0.5f);
-        Tick(0.3f);
+        Tick(0.08f);
         Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
     }
 
@@ -730,7 +730,7 @@ public sealed class EnemyHealthBarTests
     {
         _bar.Bind(Id, false);
         Damage(0.6f);
-        Tick(0.5f);
+        Tick(0.2f);
         float before = _bar.GhostFraction;
         for (int i = 0; i < 10; i++)
         {

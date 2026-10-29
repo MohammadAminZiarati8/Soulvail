@@ -38,7 +38,7 @@ public float GhostFraction { get; }
 1. `Track` uses `Art/UI/Hud/Pill_Dark.png`; `Fill` and `Ghost` use `Art/UI/Hud/Fill_BarThin.png`, `Filled`, Horizontal, origin Left.
 2. Children of `HealthBar` in sibling order `Track`, `Ghost`, `Fill`.
 3. `Draw` writes `EnemyBarTrack`, `EnemyBarGhost`, `EnemyBar` to the three images, each write guarded by a compare. `Palette.Neutral` is no longer read here.
-4. A hit snaps the fill. The ghost holds its old value 0.4 s, then drains at 1.5/s to the fill; each hit restarts the hold; never below the fill. `Bind`/`Unbind` set it to 1. A non-finite fraction leaves ghost = fill.
+4. A hit snaps the fill. The ghost holds its old value 0.1 s, then drains at 1.5/s to the fill; each hit restarts the hold; never below the fill. `Bind`/`Unbind` set it to 1. A non-finite fraction leaves ghost = fill.
 5. The ghost advances in `Tick(dt)`: `dt = 0` freezes it, and it still drains on an Elite.
 6. Root is `_widthDp` (basic) or `_eliteWidthDp` (Elite) × `_heightDp`, set in `Start` and `Bind`. `Fill` and `Ghost` sit 1 dp inside the track on every side (`offsetMin`/`offsetMax`, in `Place`). The prefab stores 36, 6, 48.
 7. `Tick` allocates nothing.
@@ -50,10 +50,10 @@ public float GhostFraction { get; }
 | `Prefab_BarImagesCarrySprites` | `Enemy.prefab` and every variant / load / three images wired, each with a sprite; fill and ghost Filled, Horizontal, Left |
 | `Prefab_FillDrawsOnTop` | prefab / sibling indices / track < ghost < fill |
 | `Bar_DrawsThePaletteColours` (renamed) | hit 0.6 / — / the three `Palette` colours |
-| `Ghost_HoldsAfterAHit` | hit 0.6 / `Tick(0.39)` / ghost 1, fill 0.6 |
-| `Ghost_DrainsToTheFill` | hit 0.6 / `Tick(0.4)`, `Tick(0.2)` / 0.7; after `Tick(1)`, 0.6 |
-| `Ghost_EachHitRestartsTheHold` | hit 0.8, `Tick(0.3)`, hit 0.5 / `Tick(0.3)` / ghost 1 |
-| `Ghost_FreezesUnderAPause` | hit 0.6, `Tick(0.5)` / `Tick(0)` ×10 / unchanged |
+| `Ghost_HoldsAfterAHit` | hit 0.6 / `Tick(0.09)` / ghost 1, fill 0.6 |
+| `Ghost_DrainsToTheFill` | hit 0.6 / `Tick(0.1)`, `Tick(0.2)` / 0.7; after `Tick(1)`, 0.6 |
+| `Ghost_EachHitRestartsTheHold` | hit 0.8, `Tick(0.08)`, hit 0.5 / `Tick(0.08)` / ghost 1 |
+| `Ghost_FreezesUnderAPause` | hit 0.6, `Tick(0.2)` / `Tick(0)` ×10 / unchanged |
 | `Ghost_DrainsOnAnElite` | Elite, hit 0.5 / `Tick(2)` / 0.5 |
 | `Ghost_ResetsOnRebind` | hit 0.3, `Unbind`, `Bind` / — / 1 |
 | `Ghost_IgnoresANonFiniteFraction` | hit NaN / `Tick(1)` / ghost = fill, finite |
@@ -74,7 +74,8 @@ public float GhostFraction { get; }
 
 Built 2026-10-30. Base prefab has Track, Ghost, Fill with existing HUD sprites;
 fill now shortens. Palette supplies light fill, white loss ghost and Ink track (0.85 alpha).
-Ghost holds 0.4 s per hit, drains at 1.5/s, freezes at dt 0 and resets with the rental;
+Owner playtest: reduced ghost hold from 0.4 s to 0.1 s per hit; drains at 1.5/s,
+freezes at dt 0 and resets with the rental;
 non-finite health draws full. Bind/Start size basic/Elite bars at 36/48 x 6 dp with 1 dp insets.
 No variant edits: Croaker already removes EnemyHealthBar and hides its inherited children for
 the boss HUD; tests check its inherited sprites and preserve that exception.

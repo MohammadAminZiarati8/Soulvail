@@ -10,7 +10,7 @@ _Updated 2026-10-30, after JG-10._
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-10**: enemy bars shorten with health; dark track, light fill, white loss ghost; basic/Elite 36/48 x 6 dp. Before it: arrow contact fix, JG-09 and RS-09/09a. |
+| **Last merged** | **JG-10**: enemy bars shorten with health; dark track, light fill, white loss ghost (0.1 s hold); basic/Elite 36/48 x 6 dp. Before it: arrow contact fix, JG-09 and RS-09/09a. |
 | **Next task** | No named task awaiting a go; owner playtests below, including JG-10. |
 | **Verified** | EditMode after JG-10: 4 576 pass, 0 fail, 1 existing inconclusive (animator clock). Zero compiler errors/new analyzer warnings; format clean (549 files). |
 

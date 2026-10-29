@@ -394,7 +394,7 @@ namespace Soulvail.Game.Views
             _fraction = float.IsFinite(evt.HpFraction) ? Mathf.Clamp01(evt.HpFraction) : 1f;
 
             _ghostFraction = float.IsFinite(evt.HpFraction) ? Mathf.Max(_ghostFraction, _fraction) : _fraction;
-            _ghostHoldRemaining = 0.4f;
+            _ghostHoldRemaining = 0.1f;
 
             // Restarted from the top by every hit, so a flurry leaves one bar rather than a stutter —
             // HpBarView's ghost rule, for its reason.

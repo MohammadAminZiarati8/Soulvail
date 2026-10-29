@@ -56,4 +56,9 @@ Existing rows (`Jungle_ScriptsItsFirstFourStages`, `Jungle_StageSix_IsTwoPanther
 
 ## As built
 
-_Filled at merge._
+as specified. Added only the stage 7–9 scripted entries and five behaviour tests; removed the old
+stage-7 budget assertion. Threat costs come from enemy assets: totals 18, 37, 56, 77.
+
+Verified: 4 581 EditMode pass, 0 fail, 1 existing inconclusive (animator clock); zero compiler errors
+and new analyzer warnings; dotnet format clean across 549 files. Manual Editor checks above remain
+owed to the owner. No runtime code changes or deviations.

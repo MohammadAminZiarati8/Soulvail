@@ -77,4 +77,4 @@ _No milestone. The owner is setting the next direction._
 
 **Jungle stages 7–9** (owner, 2026-10-30). Spec for the owner to OK; built only on the owner's go. Stage 11 on is decided after playing it.
 
-- [ ] **JG-11** — Stages seven to nine are scripted: mixes of Frog, Pitcher, Puffball and Panther climbing 37 → 56 → 77 threat (S) · [spec](tasks/JG-11-stages-seven-to-nine.md)
+- [x] **JG-11** — Stages seven to nine are scripted: mixes of Frog, Pitcher, Puffball and Panther climbing 37 → 56 → 77 threat (S) · [spec](tasks/JG-11-stages-seven-to-nine.md)

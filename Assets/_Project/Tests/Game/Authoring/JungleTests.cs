@@ -309,7 +309,80 @@ public sealed class JungleTests
         Assert.That(jungle.TryGetScriptedStage(6, out ScriptedStage sixth), Is.True);
         Assert.That(sixth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)),
             Is.EqualTo(new[] { (1, "enemy.panther", 2) }), "Two Panthers and nothing else.");
-        Assert.That(jungle.TryGetScriptedStage(7, out _), Is.False, "Stage 7 on draws it from the budget.");
+    }
+
+    [Test]
+    public void Jungle_StageSeven_IsOnePantherAmongFrogs()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(7, out ScriptedStage seventh), Is.True);
+        Assert.That(seventh.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.frog", 4),
+            (2, "enemy.panther", 1),
+            (2, "enemy.frog", 3),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageEight_IsPitchersThenPanthers()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(8, out ScriptedStage eighth), Is.True);
+        Assert.That(eighth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.pitcher", 2),
+            (1, "enemy.frog", 3),
+            (2, "enemy.panther", 2),
+            (2, "enemy.frog", 3),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageNine_UsesAllFour()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(9, out ScriptedStage ninth), Is.True);
+        Assert.That(ninth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.frog", 3),
+            (1, "enemy.puffball", 2),
+            (2, "enemy.pitcher", 2),
+            (2, "enemy.panther", 1),
+            (3, "enemy.panther", 2),
+            (3, "enemy.frog", 2),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StagesSixToNine_ClimbInThreat()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Dictionary<ContentId, int> costs = new[] { FrogPath, PitcherPath, PuffballPath, PantherPath }
+            .Select(path => Load<EnemyDefinition>(path).ToSpec())
+            .ToDictionary(enemy => enemy.Id, enemy => enemy.ThreatCost);
+        var totals = new List<int>();
+
+        for (int stage = 6; stage <= 9; stage++)
+        {
+            Assert.That(jungle.TryGetScriptedStage(stage, out ScriptedStage scripted), Is.True);
+            totals.Add(scripted.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]));
+        }
+
+        Assert.That(totals, Is.EqualTo(new[] { 18, 37, 56, 77 }));
+        Assert.That(totals, Is.Ordered.Ascending);
+    }
+
+    [Test]
+    public void Jungle_StagesTenAndEleven_AreNotScripted()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(10, out _), Is.False, "Stage 10 is Old Croaker's.");
+        Assert.That(jungle.TryGetScriptedStage(11, out _), Is.False, "Stage 11 draws from the budget.");
     }
 
     [Test]

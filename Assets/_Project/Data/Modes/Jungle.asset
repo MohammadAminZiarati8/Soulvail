@@ -109,6 +109,51 @@ MonoBehaviour:
     - _wave: 1
       _specId: enemy.panther
       _count: 2
+  - _stage: 7
+    _spawns:
+    - _wave: 1
+      _specId: enemy.frog
+      _count: 4
+    - _wave: 2
+      _specId: enemy.panther
+      _count: 1
+    - _wave: 2
+      _specId: enemy.frog
+      _count: 3
+  - _stage: 8
+    _spawns:
+    - _wave: 1
+      _specId: enemy.pitcher
+      _count: 2
+    - _wave: 1
+      _specId: enemy.frog
+      _count: 3
+    - _wave: 2
+      _specId: enemy.panther
+      _count: 2
+    - _wave: 2
+      _specId: enemy.frog
+      _count: 3
+  - _stage: 9
+    _spawns:
+    - _wave: 1
+      _specId: enemy.frog
+      _count: 3
+    - _wave: 1
+      _specId: enemy.puffball
+      _count: 2
+    - _wave: 2
+      _specId: enemy.pitcher
+      _count: 2
+    - _wave: 2
+      _specId: enemy.panther
+      _count: 1
+    - _wave: 3
+      _specId: enemy.panther
+      _count: 2
+    - _wave: 3
+      _specId: enemy.frog
+      _count: 2
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

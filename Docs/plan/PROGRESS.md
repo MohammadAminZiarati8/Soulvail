@@ -1,18 +1,17 @@
 # Soulvail — Progress
 
-**Where the project stands, today.** Overwritten, never appended; history is `git log`.
-**Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
+Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-10._
+_Updated 2026-10-30, after JG-11._
 
 ## Current State
 
 | | |
 |---|---|
-| **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-10**: enemy bars shorten with health; dark track, light fill, white loss ghost (0.1 s hold); basic/Elite 36/48 x 6 dp. Before it: arrow contact fix, JG-09 and RS-09/09a. |
-| **Next task** | **JG-11** (stages 7–9 scripted) specced, awaiting the owner's go; stage 11 on decided after. |
-| **Verified** | EditMode after JG-10: 4 576 pass, 0 fail, 1 existing inconclusive (animator clock). Zero compiler errors/new analyzer warnings; format clean (549 files). |
+| **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
+| **Last merged** | **JG-11**: Jungle 7–9 scripted; threat 18 → 37 → 56 → 77 from 6. Stage 10 Croaker; 11 budgeted. |
+| **Next task** | Playtest 7–9, then owner decides 11 onward. |
+| **Verified** | JG-11 EditMode: 4 581 pass, 0 fail, 1 existing inconclusive (animator clock). Zero compiler errors/new analyzer warnings; format clean (549 files). |
 
 ## What works
 
@@ -20,7 +19,7 @@ Portrait run. Home (Heroes, Places); the **Jungle** is the first place, 30 stage
 Veilrot, Sanctum, Focus disc off (mode flags); class select = Ranger alone (BootScope list). Stages:
 threat-budgeted telegraphed waves, then a door; boss every fifth (Warden; Jungle: Old Croaker — hop-slam,
 lane tongue). Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
-4 = 2 Puffballs, 6 = 2 Panthers. Jungle enemies: Frog (`Rig_Frog`), Pitcher (lobs `PitcherSpit`),
+4 = 2 Puffballs, 6 = 2 Panthers; 7–9 = mixed waves of all four. Jungle enemies: Frog (`Rig_Frog`), Pitcher (lobs `PitcherSpit`),
 Puffball (Bloater role), Panther (Lunger). Descent keeps the capsules. **Ranger:** own model, arrows
 with a pale wind trail, cyan Volley at every enemy in range, roll on Space, upper-body flinch when hurt; one steady rate (no Focus ramp), first arrow ~¼ s after stopping. **Levelling:** a level banks a point; the tree pauses for a pick.
 Death pays Shards. **Test start (DT-01):** menu top-left, dev builds only; untick `_on` on the Menu scene's `TestStart` to hide. Saves `run.json` v4, `profile.json` v5, all older load. Clash-style UI throughout;
@@ -50,6 +49,8 @@ every string a `LocKey`.
 20. Arrow fix: stage 1/3 Frogs mid-hop — every arrow that visibly reaches a Frog hurts it; one that lands on empty ground does not.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
 
+22. JG-11: Test start 7: 4 Frogs → Panther + 3 Frogs; 8: 2 Pitchers + 3 Frogs → 2 Panthers + 3 Frogs; 9: 3 Frogs + 2 Puffballs → 2 Pitchers + Panther → 2 Panthers + 2 Frogs, door after wave 3. Rule on the climb from 6 and fairness before Croaker.
+
 ## What does not work yet
 
 1. Balance: Gravecaller over / Emberwright under GD §12.4's band; Warden passes 120 s near stage 33; no natural run past 19.
@@ -74,4 +75,4 @@ every string a `LocKey`.
 None; nothing has run outside the Editor (BlueStacks crashes in Vulkan). Editor `Screen.dpi` 120 vs
 phone ~400 ([Traps §9](../Traps.md#9-rendering-canvas-and-tmp)). Deferred: multi-touch, kill-from-recents,
 haptics, latency, frame time at depth, thermal, screen-open cost, hero-sheet scroll feel.
-Placeholders permanent at store upload: `com.soulvail.dev`, company `Soulvail`; business model unruled.
+Store placeholders: `com.soulvail.dev`, company `Soulvail`; business model unruled.

@@ -54,7 +54,7 @@ namespace Soulvail.Game.Views
     /// precisely because it has to outlive a screen.
     /// </para>
     /// <para>
-    /// <b>It carries no colour of its own.</b> The fill is <see cref="Palette.Neutral"/> — GD §16.4's
+    /// <b>It carries no colour of its own.</b> The fill is <see cref="Palette.EnemyBar"/> — GD §16.4's
     /// <em>everything else</em>, which is what an enemy is: not the player, not danger, not corruption,
     /// not a reward. A serialized <see cref="Color"/> here would be the placeholder problem with an
     /// extra step (M3-13a rule 8, and <c>Views_CarryNoSerializedColour</c> from this side).
@@ -93,6 +93,9 @@ namespace Soulvail.Game.Views
                  "left — fillAmount and color are the only things written to it.")]
         [SerializeField] private Image _fill;
 
+        [SerializeField] private Image _track;
+        [SerializeField] private Image _ghost;
+
         [Tooltip("How long the bar stays up at full brightness after a hit, in seconds. GD §16.2's " +
                  "two seconds. An Elite ignores it entirely.")]
         [Min(0f)]
@@ -107,16 +110,24 @@ namespace Soulvail.Game.Views
                  "its own: a canvas measures in reference pixels, which are a different physical " +
                  "size on every phone.")]
         [Min(1f)]
-        [SerializeField] private float _widthDp = 28f;
+        [SerializeField] private float _widthDp = 36f;
 
         [Tooltip("How tall the bar is, in dp. Three is thin enough to read as a bar rather than as " +
                  "a second body — whether it reads at all on a six-inch screen is ledger row 4.")]
         [Min(1f)]
-        [SerializeField] private float _heightDp = 3f;
+        [SerializeField] private float _heightDp = 6f;
 
         [Tooltip("How far above the body's origin the bar floats, in metres. Clear of the tallest " +
                  "archetype's head at its authored body scale.")]
         [SerializeField] private float _heightMetres = 2.1f;
+
+        [Min(1f)]
+        [SerializeField] private float _eliteWidthDp = 48f;
+
+        private float _ghostFraction = 1f;
+        private float _ghostHoldRemaining;
+
+        public float GhostFraction => _ghostFraction;
 
         private IDisposable _damagedSubscription;
 
@@ -203,6 +214,8 @@ namespace Soulvail.Game.Views
             _id = id;
             _isElite = isElite;
             _fraction = 1f;
+            _ghostFraction = 1f;
+            _ghostHoldRemaining = 0f;
 
             // A basic enemy opens hidden and earns its bar with the first hit (GD §16.2 gives it no
             // standing bar); an Elite's is up from this moment, which is the whole of rule 7.
@@ -211,6 +224,11 @@ namespace Soulvail.Game.Views
             // Re-armed so the first LateUpdate after a rental orients the bar, whatever the body it
             // is standing on was pointing at when it died.
             _oriented = false;
+
+            if (_root != null)
+            {
+                Place();
+            }
 
             Draw();
         }
@@ -228,6 +246,8 @@ namespace Soulvail.Game.Views
             _id = EnemyView.Unbound;
             _isElite = false;
             _fraction = 1f;
+            _ghostFraction = 1f;
+            _ghostHoldRemaining = 0f;
             _shownRemaining = 0f;
 
             Draw();
@@ -244,12 +264,12 @@ namespace Soulvail.Game.Views
         {
             // Unity's == rather than `is null`: an unassigned serialized reference is a live object
             // that only compares equal to null through the engine's operator.
-            if (_root == null || _fill == null)
+            if (_root == null || _fill == null || _track == null || _ghost == null)
             {
                 throw new MissingReferenceException(
-                    $"{nameof(EnemyHealthBar)} on '{name}' is missing its root or its fill. Drag " +
-                    "the Health Bar child's CanvasGroup and its Fill image onto them — without " +
-                    "both, an Elite is a priority target the player has no way of reading.");
+                    $"{nameof(EnemyHealthBar)} on '{name}' is missing its root, track, ghost or fill. Drag " +
+                    "the HealthBar child's CanvasGroup and its three images onto them — without " +
+                    "them, an Elite is a priority target the player has no way of reading.");
             }
 
             if (!_injected)
@@ -274,8 +294,7 @@ namespace Soulvail.Game.Views
         }
 
         /// <remarks>
-        /// Most frames this returns after one comparison: a basic enemy's bar is down for all but
-        /// 2.25 s of each of its lives, and an Elite's never moves.
+        /// Uses scaled time so both the fade and the lost-health ghost freeze under a pause.
         /// </remarks>
         private void Update()
         {
@@ -287,7 +306,7 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>
-        /// Advances the fade by <paramref name="dt"/> seconds.
+        /// Advances the ghost and fade by <paramref name="dt"/> seconds.
         /// </summary>
         /// <remarks>
         /// Split out of <c>Update</c> on <c>FirstActiveHint</c>'s precedent: <c>Time.deltaTime</c> is
@@ -296,16 +315,18 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void Tick(float dt)
         {
-            if (_isElite || _shownRemaining <= 0f)
+            if (!(dt > 0f))
             {
                 return;
             }
 
-            _shownRemaining -= dt;
+            float drainDt = Mathf.Max(0f, dt - _ghostHoldRemaining);
+            _ghostHoldRemaining = Mathf.Max(0f, _ghostHoldRemaining - dt);
+            _ghostFraction = Mathf.MoveTowards(_ghostFraction, _fraction, 1.5f * drainDt);
 
-            if (_shownRemaining < 0f)
+            if (!_isElite && _shownRemaining > 0f)
             {
-                _shownRemaining = 0f;
+                _shownRemaining = Mathf.Max(0f, _shownRemaining - dt);
             }
 
             Draw();
@@ -372,6 +393,9 @@ namespace Soulvail.Game.Views
             // NaN would pass straight through both bounds into fillAmount (AR §18.3).
             _fraction = float.IsFinite(evt.HpFraction) ? Mathf.Clamp01(evt.HpFraction) : 1f;
 
+            _ghostFraction = float.IsFinite(evt.HpFraction) ? Mathf.Max(_ghostFraction, _fraction) : _fraction;
+            _ghostHoldRemaining = 0.4f;
+
             // Restarted from the top by every hit, so a flurry leaves one bar rather than a stutter —
             // HpBarView's ghost rule, for its reason.
             _shownRemaining = _secondsShown + _fadeSeconds;
@@ -390,7 +414,7 @@ namespace Soulvail.Game.Views
             // Unity's ==, and a silent return: Bind can be called before Start has run — EnemyViews
             // binds on the rental, and a prewarmed pool is built before anything's Start — so an
             // undressed reference is reported by the guard in Start rather than by a null here.
-            if (_root == null || _fill == null)
+            if (_root == null || _fill == null || _track == null || _ghost == null)
             {
                 return;
             }
@@ -407,9 +431,24 @@ namespace Soulvail.Game.Views
                 _fill.fillAmount = _fraction;
             }
 
-            if (_fill.color != Palette.Neutral)
+            if (!Mathf.Approximately(_ghost.fillAmount, _ghostFraction))
             {
-                _fill.color = Palette.Neutral;
+                _ghost.fillAmount = _ghostFraction;
+            }
+
+            if (_track.color != Palette.EnemyBarTrack)
+            {
+                _track.color = Palette.EnemyBarTrack;
+            }
+
+            if (_ghost.color != Palette.EnemyBarGhost)
+            {
+                _ghost.color = Palette.EnemyBarGhost;
+            }
+
+            if (_fill.color != Palette.EnemyBar)
+            {
+                _fill.color = Palette.EnemyBar;
             }
         }
 
@@ -445,15 +484,29 @@ namespace Soulvail.Game.Views
         /// </summary>
         /// <remarks>
         /// <c>SkillButton</c>'s argument, applied to a world-space canvas: a canvas measures in
-        /// reference pixels, so a bar authored at 28 of those is a different physical width on every
+        /// reference pixels, so a bar authored in those units is a different physical width on every
         /// phone. The height is metres and the width is dp because they answer to different things —
         /// how tall the body is, and how big a thumb-sized screen is.
         /// </remarks>
         private void Place()
         {
+            float pxPerDp = PixelsPerDp();
             if (_root.transform is RectTransform rect)
             {
-                rect.sizeDelta = new Vector2(_widthDp, _heightDp) * PixelsPerDp();
+                rect.sizeDelta = new Vector2(_isElite ? _eliteWidthDp : _widthDp, _heightDp) * pxPerDp;
+            }
+
+            Vector2 inset = Vector2.one * pxPerDp;
+            if (_fill != null)
+            {
+                _fill.rectTransform.offsetMin = inset;
+                _fill.rectTransform.offsetMax = -inset;
+            }
+
+            if (_ghost != null)
+            {
+                _ghost.rectTransform.offsetMin = inset;
+                _ghost.rectTransform.offsetMax = -inset;
             }
 
             _root.transform.localPosition = new Vector3(0f, _heightMetres, 0f);

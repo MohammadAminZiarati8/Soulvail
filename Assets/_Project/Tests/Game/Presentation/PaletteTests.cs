@@ -632,18 +632,15 @@ public sealed class PaletteTests
     }
 
     [Test]
-    public void Palette_IsEntirelyOpaque()
+    public void Palette_IsOpaqueExceptTheEnemyTrack()
     {
         foreach (FieldInfo field in ColourMembers())
         {
             Assert.That(
                 Value(field).a,
-                Is.EqualTo(1f),
-                $"Palette.{field.Name} is not opaque. Rule 8: a view that wants transparency "
-                    + "multiplies its own — ThreatArrows ramps by distance, ZoneView carries a "
-                    + "resting and a pulse alpha, BulwarkView a maximum, and PlayerView._swingColour "
-                    + "is authored at 0.25. A palette that grew a curve would be a style system, and "
-                    + "GD §16.4 is five rows.");
+                Is.EqualTo(field.Name == nameof(Palette.EnemyBarTrack) ? 0.85f : 1f),
+                $"Palette.{field.Name} has the wrong opacity. JG-10's enemy track is 0.85; "
+                    + "every other member stays opaque.");
         }
     }
 
@@ -687,11 +684,11 @@ public sealed class PaletteTests
 
         Assert.That(
             typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
-            Is.EqualTo(26),
+            Is.EqualTo(29),
             "Palette gained a member. A Pact is GD §16.4's violet, not a second one. "
                 + "The twentieth is UI-01a's Ink, the HUD art's outline; the next three are UI-01b's "
                 + "ghost, low beat and band text; the twenty-fourth is UI-01d's caption; the twenty-fifth is UI-03b's Available green; "
-                + "the twenty-sixth is JG-03b's SporeGlow, the Puffball's wind-up, by the owner's ruling.");
+                + "the twenty-sixth is JG-03b's SporeGlow; JG-10 adds enemy fill, ghost and track.");
     }
 
     /// <summary>

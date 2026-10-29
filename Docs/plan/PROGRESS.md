@@ -3,16 +3,16 @@
 **Where the project stands, today.** Overwritten, never appended; history is `git log`.
 **Capped at 6 000 bytes** — `wc -c` before a handover; over the cap, shorten the line that grew.
 
-_Updated 2026-10-29, after the arrow-contact fix._
+_Updated 2026-10-30, after JG-10._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**; the owner is setting direction. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **Arrow contact fix**: a player shot hits the first enemy body it touches in flight (swept, body radius 0.4 x body scale); one touching nobody misses. Before it JG-09 and RS-09/09a (flinches). |
-| **Next task** | No named task awaiting a go; owner playtest of JG-08b/c, DT-01, RS-09/09a, JG-09 and the arrow fix. |
-| **Verified** | EditMode after the arrow fix: 4 557 pass, 0 fail, 1 inconclusive (animator clock by construction). No compiler or analyzer diagnostics. |
+| **Last merged** | **JG-10**: enemy bars shorten with health; dark track, light fill, white loss ghost; basic/Elite 36/48 x 6 dp. Before it: arrow contact fix, JG-09 and RS-09/09a. |
+| **Next task** | No named task awaiting a go; owner playtests below, including JG-10. |
+| **Verified** | EditMode after JG-10: 4 576 pass, 0 fail, 1 existing inconclusive (animator clock). Zero compiler errors/new analyzer warnings; format clean (549 files). |
 
 ## What works
 
@@ -48,6 +48,7 @@ every string a `LocKey`.
 18. RS-09/09a: stage 1, take Frog bites while shooting — one jerk each, then draw and release look as before; legs keep running; a roll through a hit shows no flinch.
 19. JG-09: shoot a Frog (stage 1) and a Panther (stage 6) without killing — one jerk per arrow, then walk and idle as before.
 20. Arrow fix: stage 1/3 Frogs mid-hop — every arrow that visibly reaches a Frog hurts it; one that lands on empty ground does not.
+21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
 
 ## What does not work yet
 

@@ -33,7 +33,7 @@ namespace Soulvail.Game.Presentation;
 /// the ban itself, so the next static has to argue against this rather than against nothing.
 /// </para>
 /// <para>
-/// <b>Every value is opaque, and a view that wants transparency multiplies its own.</b> Alpha is 1 on
+/// <b>Except JG-10's enemy track, every value is opaque, and a view that wants transparency multiplies its own.</b> Alpha is 1 on
 /// every member by construction — <see cref="Rgb"/> is the only way a colour is made here — and
 /// <see cref="Palette"/> has no ramp, no gradient and no per-tier variant, because a palette that
 /// grew a curve would be a style system and GD §16.4 is five rows. The views that fade already own
@@ -303,6 +303,15 @@ public static class Palette
     /// </para>
     /// </remarks>
     public static readonly Color Ink = Rgb(0x0F, 0x14, 0x19);
+
+    /// <summary>Light enemy health fill (JG-10).</summary>
+    public static readonly Color EnemyBar = Rgb(0xE8, 0xE2, 0xD6);
+
+    /// <summary>The health just lost (JG-10).</summary>
+    public static readonly Color EnemyBarGhost = Rgb(0xFF, 0xFF, 0xFF);
+
+    /// <summary>Ink at 85% opacity behind enemy health (JG-10).</summary>
+    public static readonly Color EnemyBarTrack = new Color(Ink.r, Ink.g, Ink.b, 0.85f);
 
     /// <summary>
     /// <c>#FFFFFF</c> — every number on the top band: the health, the level, the wave (UI-01b).

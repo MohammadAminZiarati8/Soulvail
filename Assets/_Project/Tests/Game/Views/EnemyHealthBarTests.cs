@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
+using Soulvail.Tests.Core.Support;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
@@ -53,6 +54,8 @@ public sealed class EnemyHealthBarTests
     private EnemyHealthBar _bar;
     private CanvasGroup _root;
     private Image _fill;
+    private Image _track;
+    private Image _ghost;
     private DomainEventHub _hub;
 
     [SetUp]
@@ -79,6 +82,10 @@ public sealed class EnemyHealthBarTests
         _fill.type = Image.Type.Filled;
         _fill.fillMethod = Image.FillMethod.Horizontal;
 
+        _track = NewImage("Track", barObject.transform);
+        _ghost = NewImage("Ghost", barObject.transform);
+        Set(_bar, "_track", _track);
+        Set(_bar, "_ghost", _ghost);
         Set(_bar, "_root", _root);
         Set(_bar, "_fill", _fill);
 
@@ -406,17 +413,16 @@ public sealed class EnemyHealthBarTests
         }
     }
 
-    [Test]
-    public void Bar_IsSizedInDp()
+    [TestCase(false, 36f)]
+    [TestCase(true, 48f)]
+    public void Bar_IsSizedInDp(bool elite, float widthDp)
     {
         var canvasObject = new GameObject("Canvas", typeof(Canvas));
 
         canvasObject.transform.SetParent(_root.transform, false);
 
-        float widthDp = Field("_widthDp");
-        float heightDp = Field("_heightDp");
-
-        Invoke(_bar, "Place");
+        _bar.Bind(Id, elite);
+        const float heightDp = 6f;
 
         var canvas = canvasObject.GetComponent<Canvas>();
         float scale = canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
@@ -428,6 +434,12 @@ public sealed class EnemyHealthBarTests
         // those is a different physical width on every phone.
         Assert.That(rect.sizeDelta.x, Is.EqualTo(widthDp * pxPerDp).Within(1e-2f));
         Assert.That(rect.sizeDelta.y, Is.EqualTo(heightDp * pxPerDp).Within(1e-2f));
+
+        foreach (Image image in new[] { _fill, _ghost })
+        {
+            Assert.That(image.rectTransform.offsetMin, Is.EqualTo(Vector2.one * pxPerDp));
+            Assert.That(image.rectTransform.offsetMax, Is.EqualTo(-Vector2.one * pxPerDp));
+        }
 
         // And it floats above the body rather than standing in it.
         Assert.That(_root.transform.localPosition.y, Is.EqualTo(Field("_heightMetres")).Within(1e-4f));
@@ -584,7 +596,7 @@ public sealed class EnemyHealthBarTests
         // PaletteTests.Views_CarryNoSerializedColour makes this claim about the nine files ledger row
         // 6 collected — a historical set, which a tenth entry would change the meaning of. The claim
         // itself is the one that has to keep holding for every view written after it, so a new view
-        // brings its own copy: the fill is Palette.Neutral, GD §16.4's "everything else", which is
+        // brings its own copy: the fill is Palette.EnemyBar, GD §16.4's "everything else", which is
         // what an enemy is.
         Assert.That(
             colours.Select(f => f.Name),
@@ -595,13 +607,15 @@ public sealed class EnemyHealthBarTests
     }
 
     [Test]
-    public void Bar_DrawsThePaletteColour()
+    public void Bar_DrawsThePaletteColours()
     {
         _bar.Bind(Id, isElite: false);
 
         Damage(0.6f);
 
-        Assert.That(_fill.color, Is.EqualTo(Palette.Neutral));
+        Assert.That(_fill.color, Is.EqualTo(Palette.EnemyBar));
+        Assert.That(_ghost.color, Is.EqualTo(Palette.EnemyBarGhost));
+        Assert.That(_track.color, Is.EqualTo(Palette.EnemyBarTrack));
     }
 
     [Test]
@@ -675,6 +689,167 @@ public sealed class EnemyHealthBarTests
             Is.Not.Null,
             "The bar's fill Image is not wired.");
 #endif
+    }
+
+    [Test]
+    public void Ghost_HoldsAfterAHit()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.6f);
+        Tick(0.39f);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
+        Assert.That(_fill.fillAmount, Is.EqualTo(0.6f));
+    }
+
+    [Test]
+    public void Ghost_DrainsToTheFill()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.6f);
+        Tick(0.4f);
+        Tick(0.2f);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(0.7f).Within(1e-4f));
+        Tick(1f);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(0.6f));
+        Assert.That(_ghost.fillAmount, Is.EqualTo(0.6f));
+    }
+
+    [Test]
+    public void Ghost_EachHitRestartsTheHold()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.8f);
+        Tick(0.3f);
+        Damage(0.5f);
+        Tick(0.3f);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void Ghost_FreezesUnderAPause()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.6f);
+        Tick(0.5f);
+        float before = _bar.GhostFraction;
+        for (int i = 0; i < 10; i++)
+        {
+            Tick(0f);
+        }
+        Assert.That(before, Is.LessThan(1f));
+        Assert.That(_bar.GhostFraction, Is.EqualTo(before));
+    }
+
+    [Test]
+    public void Ghost_DrainsOnAnElite()
+    {
+        _bar.Bind(Id, true);
+        Damage(0.5f);
+        Tick(2f);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(0.5f));
+    }
+
+    [Test]
+    public void Ghost_ResetsOnRebind()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.3f);
+        Tick(1f);
+        _bar.Unbind();
+        Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
+        _bar.Bind(Id, false);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(1f));
+    }
+
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    [TestCase(float.NegativeInfinity)]
+    public void Ghost_IgnoresANonFiniteFraction(float fraction)
+    {
+        _bar.Bind(Id, false);
+        Damage(0.3f);
+        Damage(fraction);
+        Tick(1f);
+        Assert.That(float.IsFinite(_bar.GhostFraction), Is.True);
+        Assert.That(_bar.GhostFraction, Is.EqualTo(_fill.fillAmount));
+    }
+
+    [Test]
+    public void Tick_AllocatesNothing()
+    {
+        _bar.Bind(Id, false);
+        Damage(0.5f);
+        var tick = (Action<float>)Delegate.CreateDelegate(typeof(Action<float>), _bar,
+            typeof(EnemyHealthBar).GetMethod("Tick", Private));
+        AllocationAssert.None(() => tick(0.016f), iterations: 100);
+    }
+
+    [TestCase("Enemy")]
+    [TestCase("Croaker")]
+    [TestCase("Frog")]
+    [TestCase("Panther")]
+    [TestCase("Pitcher")]
+    [TestCase("Puffball")]
+    [TestCase("Rootling")]
+    public void Prefab_BarImagesCarrySprites(string name)
+    {
+        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/_Project/Prefabs/Enemies/" + name + ".prefab");
+        Assert.That(prefab, Is.Not.Null);
+        EnemyHealthBar component = prefab.GetComponent<EnemyHealthBar>();
+        // Croaker removes the component and hides these children: it uses the boss HUD instead.
+        var bar = component != null ? new UnityEditor.SerializedObject(component) : null;
+        Transform root = prefab.transform.Find("HealthBar");
+        foreach (string field in new[] { "_track", "_ghost", "_fill" })
+        {
+            string child = field == "_track" ? "Track" : field == "_ghost" ? "Ghost" : "Fill";
+            var image = root.Find(child).GetComponent<Image>();
+            if (bar != null)
+            {
+                Assert.That(bar.FindProperty(field).objectReferenceValue, Is.SameAs(image));
+            }
+            Assert.That(image, Is.Not.Null, name + field);
+            Assert.That(image.sprite, Is.Not.Null, name + field);
+            string sprite = field == "_track" ? "Pill_Dark" : "Fill_BarThin";
+            Assert.That(UnityEditor.AssetDatabase.GetAssetPath(image.sprite),
+                Is.EqualTo("Assets/_Project/Art/UI/Hud/" + sprite + ".png"));
+            if (field != "_track")
+            {
+                Assert.That(image.type, Is.EqualTo(Image.Type.Filled));
+                Assert.That(image.fillMethod, Is.EqualTo(Image.FillMethod.Horizontal));
+                Assert.That(image.fillOrigin, Is.EqualTo((int)Image.OriginHorizontal.Left));
+            }
+        }
+        if (bar != null)
+        {
+            Assert.That(bar.FindProperty("_widthDp").floatValue, Is.EqualTo(36f));
+            Assert.That(bar.FindProperty("_heightDp").floatValue, Is.EqualTo(6f));
+            Assert.That(bar.FindProperty("_eliteWidthDp").floatValue, Is.EqualTo(48f));
+        }
+        else
+        {
+            Assert.That(name, Is.EqualTo("Croaker"));
+            Assert.That(root.gameObject.activeSelf, Is.False);
+        }
+    }
+
+    [Test]
+    public void Prefab_FillDrawsOnTop()
+    {
+        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
+        Transform root = prefab.transform.Find("HealthBar");
+        Assert.That(Enumerable.Range(0, root.childCount).Select(i => root.GetChild(i).name),
+            Is.EqualTo(new[] { "Track", "Ghost", "Fill" }));
+    }
+
+    private static Image NewImage(string name, Transform parent)
+    {
+        var child = new GameObject(name, typeof(RectTransform), typeof(Image));
+        child.transform.SetParent(parent, false);
+        var image = child.GetComponent<Image>();
+        image.rectTransform.anchorMin = Vector2.zero;
+        image.rectTransform.anchorMax = Vector2.one;
+        return image;
     }
 
     // ---- Fixture helpers ------------------------------------------------------------------------

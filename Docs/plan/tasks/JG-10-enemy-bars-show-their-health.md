@@ -72,4 +72,17 @@ public float GhostFraction { get; }
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30. Base prefab has Track, Ghost, Fill with existing HUD sprites;
+fill now shortens. Palette supplies light fill, white loss ghost and Ink track (0.85 alpha).
+Ghost holds 0.4 s per hit, drains at 1.5/s, freezes at dt 0 and resets with the rental;
+non-finite health draws full. Bind/Start size basic/Elite bars at 36/48 x 6 dp with 1 dp insets.
+No variant edits: Croaker already removes EnemyHealthBar and hides its inherited children for
+the boss HUD; tests check its inherited sprites and preserve that exception.
+
+Verified: full EditMode 4 576 passed, 0 failed, 1 existing inconclusive (animator clock);
+all Behaviour rows covered, including allocation measurement. Zero compiler errors or new
+analyzer warnings. dotnet format whitespace verified all 549 project files clean.
+Palette's opacity test now explicitly permits only the enemy track's 0.85 alpha.
+
+Still owed: Editor stage 1 Frog hit (track/fill/ghost, gone after 2 s), stage 6 Panther hit
+(shortens and reads against the dark floor). No device playtest.

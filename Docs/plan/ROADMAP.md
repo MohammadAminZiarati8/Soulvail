@@ -73,4 +73,4 @@ _No milestone. The owner is setting the next direction._
 
 **Enemy health bars** (owner, 2026-10-30). Spec for the owner to OK; built only on the owner's go.
 
-- [ ] **JG-10** — Enemy bars show their health: the fill gets a sprite so it shortens, on a dark track with a white ghost, 36 × 6 dp (S) · [spec](tasks/JG-10-enemy-bars-show-their-health.md)
+- [x] **JG-10** — Enemy bars show their health: the fill gets a sprite so it shortens, on a dark track with a white ghost, 36 × 6 dp (S) · [spec](tasks/JG-10-enemy-bars-show-their-health.md)

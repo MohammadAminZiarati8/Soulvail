@@ -49,7 +49,7 @@ public float GhostFraction { get; }
 |---|---|
 | `Prefab_BarImagesCarrySprites` | `Enemy.prefab` and every variant / load / three images wired, each with a sprite; fill and ghost Filled, Horizontal, Left |
 | `Prefab_FillDrawsOnTop` | prefab / sibling indices / track < ghost < fill |
-| `Bar_DrawsThePaletteColours` (replaces `…Colour`) | hit 0.6 / — / the three `Palette` colours |
+| `Bar_DrawsThePaletteColours` (renamed) | hit 0.6 / — / the three `Palette` colours |
 | `Ghost_HoldsAfterAHit` | hit 0.6 / `Tick(0.39)` / ghost 1, fill 0.6 |
 | `Ghost_DrainsToTheFill` | hit 0.6 / `Tick(0.4)`, `Tick(0.2)` / 0.7; after `Tick(1)`, 0.6 |
 | `Ghost_EachHitRestartsTheHold` | hit 0.8, `Tick(0.3)`, hit 0.5 / `Tick(0.3)` / ghost 1 |

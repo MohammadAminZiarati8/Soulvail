@@ -10,8 +10,8 @@ _Updated 2026-10-30, after JG-11._
 |---|---|
 | **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
 | **Last merged** | **JG-11**: Jungle 7–9 scripted; threat 18 → 37 → 56 → 77 from 6. Stage 10 Croaker; 11 budgeted. |
-| **Next task** | Playtest 7–9, then owner decides 11 onward. |
-| **Verified** | JG-11 EditMode: 4 581 pass, 0 fail, 1 existing inconclusive (animator clock). Zero compiler errors/new analyzer warnings; format clean (549 files). |
+| **Next task** | Playtest 7–9. **JG-12a–h** (Mother Pitcher, stage 10) specced, await a go; d needs the owner's sculpt. |
+| **Verified** | JG-11 EditMode: 4 581 pass, 0 fail, 1 known inconclusive. No compiler errors or new warnings; format clean. |
 
 ## What works
 

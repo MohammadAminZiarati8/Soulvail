@@ -78,3 +78,14 @@ _No milestone. The owner is setting the next direction._
 **Jungle stages 7–9** (owner, 2026-10-30). Spec for the owner to OK; built only on the owner's go. Stage 11 on is decided after playing it.
 
 - [x] **JG-11** — Stages seven to nine are scripted: mixes of Frog, Pitcher, Puffball and Panther climbing 37 → 56 → 77 threat (S) · [spec](tasks/JG-11-stages-seven-to-nine.md)
+
+**Mother Pitcher, the stage-10 boss** (owner, 2026-10-30). Specs for the owner to OK; each built only on the owner's go. a, b, d independent (d after the owner's sculpt); c needs b; e needs c and d; f needs c; g after f (both widen `EnemyLook`); h needs all.
+
+- [ ] **JG-12a** — A boss can own a stage: roster rows name one stage, and a central boss spawns mid-arena (M) · [spec](tasks/JG-12a-a-boss-can-own-a-stage.md)
+- [ ] **JG-12b** — The plant and its buds: rooted `MotherPitcherBehaviour`, ×0.2 damage while a bud lives, opening-phase summons (M) · [spec](tasks/JG-12b-the-plant-and-its-buds.md)
+- [ ] **JG-12c** — Barrage, spray and seed pods: five spit lobs, an 80° spray cover blocks, a Frog per pod (M) · [spec](tasks/JG-12c-barrage-spray-and-seed-pods.md)
+- [ ] **JG-12d** — Mother Pitcher's model: the owner's sculpt cut to the crowd's budget on `Rig_MotherPitcher`, five clips (M) · [spec](tasks/JG-12d-mother-pitchers-model.md)
+- [ ] **JG-12e** — Mother Pitcher's body: prefab and animator, attack by move, a 4 m giant (S) · [spec](tasks/JG-12e-mother-pitchers-body.md)
+- [ ] **JG-12f** — The spray and lobs are drawn: a wedge with cover's shadows cut out, a landing ring per lob (M) · [spec](tasks/JG-12f-the-spray-and-lobs-are-drawn.md)
+- [ ] **JG-12g** — Stones to hide behind: an archetype brings cover; four stones ring Mother Pitcher (M) · [spec](tasks/JG-12g-stones-to-hide-behind.md)
+- [ ] **JG-12h** — Mother Pitcher in the Jungle: the assets, stage 10 hers and the other fifths Croaker's, boots (M) · [spec](tasks/JG-12h-mother-pitcher-in-the-jungle.md)

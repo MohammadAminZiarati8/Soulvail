@@ -89,3 +89,12 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-12f** — The spray and lobs are drawn: a wedge with cover's shadows cut out, a landing ring per lob (M) · [spec](tasks/JG-12f-the-spray-and-lobs-are-drawn.md)
 - [x] **JG-12g** — Stones to hide behind: an archetype brings cover; four stones ring Mother Pitcher (M) · [spec](tasks/JG-12g-stones-to-hide-behind.md)
 - [x] **JG-12h** — Mother Pitcher in the Jungle: the assets, stage 10 hers and the other fifths Croaker's, boots (M) · [spec](tasks/JG-12h-mother-pitcher-in-the-jungle.md)
+
+**Mother Pitcher, playtest fixes** (owner, 2026-10-30). Approved by the owner; each built only on the owner's go. a, b, c, e each edit `MotherPitcherBehaviour.cs`, so they go in that order; d needs c; e needs c; f needs e.
+
+- [ ] **JG-13a** — The spray winds up 2.5 s; the wedge fills over it and her follow-through plays at clip speed (S) · [spec](tasks/JG-13a-the-spray-winds-up-longer.md)
+- [ ] **JG-13b** — Buds guard their mother: a `Guard` idle on the Pitcher rig, buds turned to face her (M) · [spec](tasks/JG-13b-buds-guard-their-mother.md)
+- [ ] **JG-13c** — Adds stand on open ground: `WorldSnapshot.OpenGround` and a seeded 4–8 m picker for buds and phase Frogs (M) · [spec](tasks/JG-13c-adds-stand-on-open-ground.md)
+- [ ] **JG-13d** — Unity reports open ground: a NavMesh lattice clear of `Cover`, re-sensed on change (S) · [spec](tasks/JG-13d-unity-reports-open-ground.md)
+- [ ] **JG-13e** — Pods are lobbed and hatch: a Frog-shot lob onto open ground, planted 1 s, then a Frog (S) · [spec](tasks/JG-13e-pods-are-lobbed-and-hatch.md)
+- [ ] **JG-13f** — The pod is drawn: a green pod in flight with a landing ring, swelling where it lands (M) · [spec](tasks/JG-13f-the-pod-is-drawn.md)

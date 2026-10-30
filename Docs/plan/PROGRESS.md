@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after the Mother Pitcher colour fix._
+_Updated 2026-10-30, after the JG-13 specs._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-10-30, after the Mother Pitcher colour fix._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
 | **Last merged** | **Mother colour fix**: repainted in the sculpt's greens (was black lid, brown body); JG-12d rule 6 rewritten. |
-| **Next task** | Owner playtest 7–10: difficulty/feel, phone readability, Mother's colours; no next spec planned. |
+| **Next task** | **JG-13a** (spray 2.5 s), on the owner's go; then b–f in order (ROADMAP › Mother Pitcher, playtest fixes). |
 | **Verified** | Mother model 8/8; EditMode 4 660 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works

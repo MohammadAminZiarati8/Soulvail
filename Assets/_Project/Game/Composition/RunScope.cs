@@ -1023,7 +1023,17 @@ namespace Soulvail.Game.Composition
             // identically — a singleton registered here still resolves and disposes scope-locally
             // — so the only thing the label can do is tell the truth about the lifetime, and this
             // object's lifetime is one run.
-            builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped);
+            builder.Register<CoverViews>(Lifetime.Scoped)
+                .WithParameter("parent", _decalRoot);
+
+            // Put cover on the ticker's constructor chain without growing its public signature:
+            // BossViews is already required there, and both listeners must precede Start.
+            builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped)
+                .WithParameter("bossViews", resolver =>
+                {
+                    resolver.Resolve<CoverViews>();
+                    return resolver.Resolve<BossViews>();
+                });
         }
 
         /// <summary>

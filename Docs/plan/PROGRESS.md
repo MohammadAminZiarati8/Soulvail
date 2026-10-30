@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12f._
+_Updated 2026-10-30, after JG-12g._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-12f**: pooled spray wedge, cover shadows, opt-in lob rings; prefab + Run wired. |
-| **Next task** | **JG-12g**: stones to hide behind; Mother assets/check at JG-12h; playtest 7–9 due. |
-| **Verified** | JG-12f: 10/10; EditMode 4 644 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **JG-12g**: prebuilt archetype cover; four Editor-built KayKit stones, sight and room tests. |
+| **Next task** | **JG-12h**: Mother assets, stage 10, cover binding and live fight check; playtest 7–9 due. |
+| **Verified** | JG-12g: 9/9; EditMode 4 653 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -49,7 +49,7 @@ Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
 22. JG-11 Test start: 7 = 4 Frogs → Panther + 3 Frogs; 8 = 2 Pitchers + 3 Frogs → 2 Panthers + 3 Frogs; 9 = 3 Frogs + 2 Puffballs → 2 Pitchers + Panther → 2 Panthers + 2 Frogs; door after wave 3. Judge climb/fairness.
 
-23. JG-12f at JG-12h: 411 × 914 — readable wedge, safe stone shadows, rings at lob landings. Prefab/Run wired; Mother assets due.
+23. JG-12f/g at JG-12h: bind Mother's Cover to `Cover_MotherStones`; 411 × 914 — grey stones read on the floor, Frogs path around them, safe spray shadows and lob rings.
 
 ## What does not work yet
 

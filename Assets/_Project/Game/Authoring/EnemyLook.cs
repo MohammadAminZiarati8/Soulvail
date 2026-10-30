@@ -72,13 +72,14 @@ public readonly struct EnemyLook
     /// The prefab this archetype wears, if it has one of its own. Null is not an error: it is the
     /// shared body. Optional, so a look that names only a tint and a scale is written as it was.
     /// </param>
-    public EnemyLook(Color tint, float bodyScale, EnemyView body = null, ProjectileView projectile = null, bool marksLanding = false)
+    public EnemyLook(Color tint, float bodyScale, EnemyView body = null, ProjectileView projectile = null, bool marksLanding = false, GameObject cover = null)
     {
         Tint = tint;
         BodyScale = bodyScale;
         Body = body;
         Projectile = projectile;
         MarksLanding = marksLanding;
+        Cover = cover;
     }
 
     /// <summary>Grey, scale 1 — what an id nobody authored a look for gets.</summary>
@@ -111,6 +112,9 @@ public readonly struct EnemyLook
 
     /// <summary>Whether shots from this archetype announce their landing circle.</summary>
     public bool MarksLanding { get; }
+
+    /// <summary>Stationary cover brought by this archetype, or null.</summary>
+    public GameObject Cover { get; }
 }
 
 /// <summary>
@@ -207,6 +211,9 @@ public sealed class EnemyLookBook
     /// <c>ProjectileViews</c> prewarms a pool for while the scene loads.
     /// </summary>
     public IReadOnlyList<ProjectileView> Projectiles => _projectiles;
+
+    /// <summary>Authored entries, for cover's one instance per look at construction.</summary>
+    internal IReadOnlyDictionary<ContentId, EnemyLook> Entries => _looks;
 
     /// <summary>
     /// The look authored for <paramref name="specId"/>, or <see cref="EnemyLook.Default"/> for an id

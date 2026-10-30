@@ -73,4 +73,32 @@ namespace Soulvail.Game.Views
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30 on `dev`.
+
+- `CoverViews` builds one instance per authored look beneath an inactive holding root; constructor
+  subscriptions place it at the owner's spawn (identity rotation), lift it on that owner's despawn,
+  and sweep it on arrival. Dispose unsubscribes and destroys the instances. No per-frame work.
+- `EnemyLook.Cover` is optional and last; `EnemyDefinition._cover` carries it. `RunScope` registers
+  the listener and resolves it through RunTicker's existing `bossViews` parameter factory, before
+  resolving `BossViews`, keeping all implementation edits inside the Files table.
+- Prefab made through the Unity Editor MCP with four nested KayKit Forest Nature
+  `Rock_1_A_Color1.fbx` instances at scale 3.4, radius 6 m and the four specified diagonal angles.
+  Each stone is approximately 1.97 × 1.84 × 2.07 m, grounded, with a matching box collider and
+  carving box obstacle. Models and colliders use `Cover`; the imported Forest Nature material
+  remains assigned. Tests pin the eye-height ray and actual `LineOfSightSense` answer, floor,
+  edge clearances, nested model/material links and averaged sampled albedo per material.
+- **Scope exception:** `Data/Enemies/Husk.asset` gains only `_cover: {fileID: 0}`. The existing
+  `EnemyDefinitionTests.Husk_EveryYamlKeyBindsToAField` requires serialized text to survive an Editor
+  reserialize unchanged; adding the field otherwise fails it. Existing code/test wins over Files.
+- **Rule resolution:** Tests includes rule 6 although the Files purpose says “Rules 1–5”; Tests
+  wins, so `MotherStones_WearNoReservedColour` is included. Nine named tests map to the Tests table.
+- **Verified:** JG-12g 9/9. Final full EditMode: 4 653 passed, 0 failed (failing names: none),
+  1 known animator-clock inconclusive, 4 654 total. Project compiler errors 0; new analyzer warnings
+  0 (both affected assemblies also compiled against Unity's response files with its analyzers).
+  `dotnet format whitespace --folder --verify-no-changes --include` checked all five changed C#
+  files: clean. The initial full run failed only the Husk serialization row described above;
+  retaining its null cover field made the full rerun green.
+- **Manual steps:** no prefab creation remains. At JG-12h assign `Cover_MotherStones.prefab` to
+  MotherPitcher's Cover field (that task owns the asset), then verify stage 10 in the Editor:
+  four grey stones ring her, Frogs path around them, and the stones read clearly on the dark floor.
+  That live fight/device check remains deferred until JG-12h.

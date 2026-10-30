@@ -42,3 +42,4 @@ MonoBehaviour:
   _body: {fileID: 0}
   _projectile: {fileID: 0}
   _marksLanding: 0
+  _cover: {fileID: 0}

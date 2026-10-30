@@ -156,6 +156,9 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Draw a filling landing ring for each lob from this archetype.")]
         [SerializeField] private bool _marksLanding;
 
+        [Tooltip("Stationary cover placed at this archetype's spawn, or none.")]
+        [SerializeField] private GameObject _cover;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -253,7 +256,7 @@ namespace Soulvail.Game.Authoring
         /// <see cref="EnemyLook"/>'s constructor gives: a wrong colour is wrong on screen, where a
         /// wrong number would be wrong in a rule.
         /// </remarks>
-        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body, _projectile, _marksLanding);
+        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body, _projectile, _marksLanding, _cover);
 
         /// <remarks>
         /// Only the id, and only its shape — the same bargain <c>CharacterDefinition</c> makes. A

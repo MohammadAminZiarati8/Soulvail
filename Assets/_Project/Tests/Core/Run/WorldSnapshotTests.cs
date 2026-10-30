@@ -9,6 +9,19 @@ namespace Soulvail.Tests.Core.Run;
 [TestFixture]
 public sealed class WorldSnapshotTests
 {
+    // JG-13c rule 1.
+    [Test]
+    public void Snapshot_OpenGround_EmptyUntilFilledAndAfterClear()
+    {
+        var snapshot = new WorldSnapshot(4);
+        Assert.That(snapshot.OpenGround.Count, Is.Zero);
+        var ground = new[] { new Vector3(4f, 0f, 0f) };
+        snapshot.OpenGround = ground;
+        Assert.That(snapshot.OpenGround, Is.SameAs(ground));
+        snapshot.Clear();
+        Assert.That(snapshot.OpenGround.Count, Is.Zero);
+    }
+
     [Test]
     public void Ctor_AllocatesArrayOfCapacity()
     {

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Numerics;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Ports;
 
@@ -82,7 +84,8 @@ public readonly struct EnemyTickContext
         IDomainEvents events,
         ProjectileSystem projectiles,
         EnemySystem enemies,
-        LaneSystem lanes = null)
+        LaneSystem lanes = null,
+        IReadOnlyList<Vector3> openGround = null)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -92,6 +95,7 @@ public readonly struct EnemyTickContext
         Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         Enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
         Lanes = lanes;
+        OpenGround = openGround ?? Array.Empty<Vector3>();
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
@@ -122,6 +126,9 @@ public readonly struct EnemyTickContext
     /// constructor. Read by <c>LungerBehaviour</c> alone.
     /// </summary>
     public LaneSystem Lanes { get; }
+
+    /// <summary>This tick's open-ground report; empty when omitted.</summary>
+    public IReadOnlyList<Vector3> OpenGround { get; }
 
     private static float Finite(float value, string paramName)
     {

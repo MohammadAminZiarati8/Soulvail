@@ -1350,7 +1350,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             _events,
             State.Projectiles,
             State.Enemies,
-            _lanes);
+            _lanes,
+            snapshot.OpenGround);
 
         State.Enemies.Tick(enemies);
 

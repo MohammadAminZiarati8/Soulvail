@@ -9,7 +9,7 @@ using Soulvail.Core.Run;
 namespace Soulvail.Core.Ai;
 
 /// <summary>A rooted boss whose living buds reduce every incoming hit to a fifth and face her.</summary>
-public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
+public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener, ISummonPlacer
 {
     public const float ShieldedDamageTaken = 0.2f;
     public const int BarrageMove = 1, SprayMove = 2, PodMove = 3;
@@ -27,6 +27,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
     private readonly ContentId _frogId;
     private readonly ProjectileSystem _projectiles;
     private readonly IRandomStream _random;
+    private readonly OpenGroundPicker _ground;
     private int _nextMove = BarrageMove;
     private int _move;
     private float _remaining = AttackGapSeconds;
@@ -43,9 +44,24 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
         _frogId = frogId;
         _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         _random = random ?? throw new ArgumentNullException(nameof(random));
+        _ground = new OpenGroundPicker(_random);
     }
 
     public bool IsShielded { get; private set; }
+
+    public Vector3 PlaceAdd(in EnemyTickContext ctx, Vector3 ring)
+    {
+        Vector3 centre = _agent.Position;
+        if (_ground.TryPick(ctx, centre, ctx.Player.Blackboard.PlayerPosition,
+            ReadOnlySpan<Vector3>.Empty, out Vector3 spot))
+        {
+            return spot;
+        }
+
+        var direction = new Vector2(ring.X - centre.X, ring.Z - centre.Z);
+        direction = Vector2.Normalize(direction);
+        return centre + new Vector3(direction.X, 0f, direction.Y) * OpenGroundPicker.MinDistance;
+    }
 
     public void Tick(in EnemyTickContext ctx)
     {

@@ -311,9 +311,8 @@ public sealed class BossBehaviour : IEnemyBehaviour
     /// waves to pace.
     /// </para>
     /// <para>
-    /// <b>Positions are derived, never drawn</b> (ADR-0011's spirit): a ring around the boss, evenly
-    /// spaced, so summoning consumes no randomness at all and a seeded run replays a boss fight
-    /// identically whatever else has drawn from the <c>Spawn</c> stream.
+    /// <b>The default is an evenly spaced ring</b>, without random draws for Warden and Croaker.
+    /// An inner <see cref="ISummonPlacer"/> may place its own adds from the ground report instead.
     /// </para>
     /// </remarks>
     private void Summon(in EnemyTickContext ctx)
@@ -352,6 +351,11 @@ public sealed class BossBehaviour : IEnemyBehaviour
                     centre.X + (MathF.Cos(angle) * AddRingRadius),
                     centre.Y,
                     centre.Z + (MathF.Sin(angle) * AddRingRadius));
+
+                if (Inner is ISummonPlacer placer)
+                {
+                    at = placer.PlaceAdd(ctx, at);
+                }
 
                 EnemyAgent add = ctx.Enemies.Spawn(wave.SpecId, at);
 

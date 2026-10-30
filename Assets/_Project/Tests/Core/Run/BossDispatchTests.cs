@@ -127,6 +127,46 @@ public sealed class BossDispatchTests
         Assert.That(agent.DamageTaken.Value, Is.EqualTo(MotherPitcherBehaviour.ShieldedDamageTaken).Within(1e-5f));
     }
 
+    // JG-13c rule 1: a real stage-10 session carries the report into its inner behaviour.
+    [Test]
+    public void Dispatch_MotherSummons_StandOnTheReportedGround()
+    {
+        var spec = new BossSpec(new ContentId("boss.mother_pitcher"), new ContentId("enemy.mother_pitcher"),
+            new[] { new BossPhaseSpec(1f, new[] { new AddWave(new ContentId("enemy.pitcher_bud"), 3) }) }, 1.5f);
+        RunSession session = Session(Mode("boss.mother_pitcher"), spec);
+        session.Start(new RunConfig(new ContentId(ModeId), new ContentId(OathboundId), 0, 10,
+            new SpawnPlan(Array.Empty<SpawnPlan.Entry>()), restore: null));
+        var ground = new Vector3[625];
+        int index = 0;
+        for (int x = -12; x <= 12; x++)
+        {
+            for (int z = -12; z <= 12; z++)
+            {
+                ground[index++] = new Vector3(x, 0f, z);
+            }
+        }
+
+        WorldSnapshot snapshot = Snapshot(Vector3.Zero);
+        snapshot.OpenGround = ground;
+        for (int i = 0; i < 1_200 && _events.Count<EnemySpawned>() < 4; i++)
+        {
+            session.Tick(snapshot);
+        }
+
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(4));
+        int buds = 0;
+        foreach (EnemySpawned spawned in _events.Of<EnemySpawned>())
+        {
+            if (spawned.SpecId.Value == "enemy.pitcher_bud")
+            {
+                buds++;
+                Assert.That(ground, Does.Contain(spawned.Position));
+            }
+        }
+
+        Assert.That(buds, Is.EqualTo(3));
+    }
+
     // ---- Fixture ---------------------------------------------------------------------------------
 
     /// <summary>

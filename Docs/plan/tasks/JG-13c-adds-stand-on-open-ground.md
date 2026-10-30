@@ -70,4 +70,16 @@ public sealed class OpenGroundPicker
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30. `OpenGround` resets with the snapshot and reaches each behaviour. The picker
+counts qualifying spots, then selects in list order with one draw; crowded reports use the band,
+empty bands draw nothing. XZ clearances include live enemies and reserved spots. Mother uses her
+injected Misc stream for buds and phase Frogs, spawning each before the next pick; no report gives
+a 4 m ring. Warden/Croaker retain their 3 m ring without placement draws. No Unity report writer
+until JG-13d; pods remain JG-13e.
+
+Verification: full Unity EditMode 4 680 passed, 0 failed (names: none), 1 known inconclusive;
+all 10 spec rows pass, including `AllocationAssert.None` over 300 spots. Compiler errors 0,
+new analyzer warnings 0; whitespace format clean (11 C# files). TimeManager reverted.
+Outside Files table: this footer, PROGRESS, ROADMAP and four required `.meta` companions only.
+Manual Editor checks owed: stage 10 opening/phase adds at 4 m with the empty report, buds still
+face Mother; Warden/Croaker summon rings unchanged. Open-ground/stone clearance awaits JG-13d.

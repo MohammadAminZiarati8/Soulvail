@@ -95,6 +95,9 @@ public sealed class WorldSnapshot
     /// </remarks>
     public IReadOnlyList<Vector3> SpawnPoints = NoSpawnPoints;
 
+    /// <summary>Ground reported open by the arena for this tick, in world metres.</summary>
+    public IReadOnlyList<Vector3> OpenGround = NoSpawnPoints;
+
     /// <summary>How many entries of <see cref="Enemies"/> are live: <c>[0, EnemyCount)</c>.</summary>
     public int EnemyCount;
 
@@ -252,6 +255,7 @@ public sealed class WorldSnapshot
         // snapshot nobody refilled would be places in a room that has been torn down, and the
         // director would put the next stage's wave in them.
         SpawnPoints = NoSpawnPoints;
+        OpenGround = NoSpawnPoints;
 
         EnemyCount = 0;
 

@@ -38,9 +38,10 @@ PYTHONHASHSEED=0 "C:/Program Files/Blender Foundation/Blender 4.1/blender.exe" -
    (24 f, the cup rears and heaves), `Spray` (30 f, the cup tips forward, lid wide, held from 10),
    `Hit` (12 f), `Death` (40 f, wilts and folds). Own avatar, not optimised.
 5. **Every clip binds; none moves `root`.**
-6. **Repainted from existing swatches**: the Pitcher's columns 4–5 and the Frog's mouth and pupil.
-   Averaged luma 0.15–0.45, saturation ≤ 0.4; no reserved colour
-   (`RootlingModelTests.EnemyAtlas_CarriesNoReservedColour`, unchanged).
+6. **Repainted from existing swatches, in the sculpt's own colours**: each face wears the swatch whose
+   ramp lies nearest the sculpt's texture under it (`PALETTE`: the Pitcher's, Frog's and Croaker's
+   greens, chartreuse, cream, roots). Green leads the area average; no near-black face; no reserved
+   colour (`RootlingModelTests.EnemyAtlas_CarriesNoReservedColour`, unchanged).
 7. **A squat giant, not a tall jug.** At rest its width is at least 0.7 × its height, which tells
    it from the Pitcher (narrow) in silhouette.
 
@@ -55,7 +56,7 @@ PYTHONHASHSEED=0 "C:/Program Files/Blender Foundation/Blender 4.1/blender.exe" -
 | `MotherModel_EveryVertexIsWeighted` | bone weights / read / as rule 3 |
 | `MotherModel_ImportsGenericWithItsClips` | importer, clips / read / Generic, five clips, one loop, 30 fps (rule 4) |
 | `MotherModel_EveryClipBindsAndLeavesTheRootAlone` | each clip, every frame / sampled / as rule 5 |
-| `MotherModel_IsDarkButReadable` | atlas under each triangle / averaged / as rule 6 |
+| `MotherModel_WearsTheSculptsGreens` | atlas under each triangle / averaged / as rule 6 |
 | `MotherModel_IsSquat` | mesh at rest / bounds / as rule 7 |
 
 Rule 1 is checked by hand: two runs and a byte compare.
@@ -73,8 +74,8 @@ Rule 1 is checked by hand: two runs and a byte compare.
 ## As built
 
 Built 2026-10-30. The source was already shipped by `f6b52fb`; it is unchanged.
-`mother_pitcher.py` voxel-remeshes and decimates that sculpt, repaints from existing Pitcher
-swatches plus Frog pupil, smooth-shades, weights and exports one mesh on `Rig_MotherPitcher`.
+`mother_pitcher.py` voxel-remeshes and decimates that sculpt, repaints from existing
+swatches, smooth-shades, weights and exports one mesh on `Rig_MotherPitcher`.
 The atlas is read only. No prefab/controller work (JG-12e).
 
 - 2,400 triangles; 1,138 Blender vertices / 1,325 imported vertices (UV splits).
@@ -83,11 +84,10 @@ The atlas is read only. No prefab/controller work (JG-12e).
 - All 11 named bones; every vertex weighted to at most two, normalised, none on `root`.
   One slot remapped to `M_Enemy`; own Generic avatar, unoptimised, uncompressed (Spray hold), empty motion node.
 - Idle 60 (only loop), Barrage 24, Spray 30 (held from 10), Hit 12, Death 40; all 30 fps,
-  bound, in place, no events. Area-averaged atlas luma 0.326, saturation 0.391.
-- Two runs: 550,236 FBX bytes, zero differences outside the header timestamp.
-  Eight model tests pass; full EditMode: 4,627 pass, 0 fail, 1 known animator-clock inconclusive.
-  Compiler errors 0, new analyzer warnings 0; format clean.
-- Owner: preview all five clips in the Editor and review `Logs/JG12d-mother-pose-sheet.png`
-  beside Pitcher/Croaker; rule whether the sculpt stays. No setup steps required.
+  bound, in place, no events.
+- Two runs: same FBX bytes outside the header timestamp. Errors 0, new warnings 0; format clean.
 
-No spec precedence conflicts resolved.
+Owner fix (2026-10-30, after JG-12h): the first repaint's dark rule 6 (luma ≤ 0.45, saturation
+≤ 0.4) left a black lid and brown body. Rule 6 now matches the sculpt: 2,221 Croaker-moss faces,
+171 chartreuse (rim, teeth), 8 dark green; mean (0.38, 0.50, 0.17), none near-black.
+EditMode 4,660 pass, 0 fail, 1 known inconclusive.

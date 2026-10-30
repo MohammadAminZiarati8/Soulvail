@@ -19,7 +19,7 @@ from mathutils.bvhtree import BVHTree
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True
-from enemy_atlas import uv_for, save_png  # noqa: E402
+from enemy_atlas import SWATCHES, rgb, uv_for, save_png  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 SOURCE = os.path.join(HERE, "Sources", "MotherPitcher_src.glb")
@@ -28,6 +28,10 @@ TEX = os.path.join(OUT, "Textures")
 FPS = 30
 TRIANGLES = 2400
 VOXEL = 0.009
+# The swatches the sculpt's colours are matched to: the Pitcher's and the Frog's greens, the Pitcher's
+# chartreuse for the rim and teeth, the Frog's cream, Old Croaker's moss and the Pitcher's roots.
+PALETTE = ("pitcher_skin", "pitcher_lid", "pitcher_leaf", "pitcher_root", "frog_green", "frog_spot",
+           "frog_belly", "croak_skin", "croak_moss")
 
 
 def v(x, y, z):
@@ -101,11 +105,6 @@ def luma(c):
     return c[..., 0] * 0.2126 + c[..., 1] * 0.7152 + c[..., 2] * 0.0722
 
 
-def saturation(c):
-    hi, lo = c.max(axis=-1), c.min(axis=-1)
-    return np.where(hi > 0, (hi - lo) / np.maximum(hi, 1e-9), 0.0)
-
-
 def shape(obj):
     # Source: Z up, mouth toward -Y. Centre horizontally and stand on the floor.
     co = np.array([tuple(vt.co) for vt in obj.data.vertices])
@@ -163,25 +162,42 @@ def weigh(body, bones):
                 groups[name].add([vt.index], weight, "REPLACE")
 
 
+def nearest_swatch(colour):
+    """The PALETTE swatch whose light-to-dark ramp passes closest to `colour`, shading aside."""
+    best, best_distance = None, math.inf
+    for name in PALETTE:
+        top, bottom = rgb(SWATCHES[name][2]), rgb(SWATCHES[name][3])
+        ramp = bottom - top
+        s = min(1.0, max(0.0, float(np.dot(colour - top, ramp) / np.dot(ramp, ramp))))
+        distance = float(np.linalg.norm(colour - (top + s * ramp)))
+        if distance < best_distance:
+            best, best_distance = name, distance
+    return best
+
+
+def settle(body, kinds):
+    """A face most of whose neighbours wear one other swatch takes it: the cut leaves speckle."""
+    faces_of = {}
+    for poly in body.data.polygons:
+        for key in poly.edge_keys:
+            faces_of.setdefault(key, []).append(poly.index)
+    for _ in range(2):
+        settled = list(kinds)
+        for poly in body.data.polygons:
+            around = [kinds[f] for key in poly.edge_keys for f in faces_of[key] if f != poly.index]
+            top = max(sorted(set(around)), key=around.count)
+            if top != kinds[poly.index] and around.count(top) * 2 > len(around):
+                settled[poly.index] = top
+        kinds = settled
+    return kinds
+
+
 def paint(body, colours):
     uv = body.data.uv_layers.new(name="UVMap").data
-    kinds = []
-    for poly, colour in zip(body.data.polygons, colours):
-        co = poly.center
-        lum = float(luma(colour))
-        # Muted brown roots and bowl, black throat, pale teeth/rim, a dark lid and green
-        # leaf tips. Spatial landmarks preserve large readable patches after the cut.
-        if is_lid(co):
-            swatch = "pitcher_eye"
-        elif co.z > 1.28 and lum > .58:
-            swatch = "pitcher_shine"
-        elif co.z > 1.10 and (co.y < .15 or lum < .15):
-            swatch = "frog_pupil"
-        elif co.z < .9 and math.hypot(co.x, co.y) > .95:
-            swatch = "pitcher_lid"
-        else:
-            swatch = "pitcher_root"
-        kinds.append(swatch)
+    # The sculpt's own colours: each face wears the nearest of the atlas's greens, its pale
+    # yellow-green rim and teeth, and its tan roots; the height gradient does the shading.
+    kinds = settle(body, [nearest_swatch(colour) for colour in colours])
+    for poly, swatch in zip(body.data.polygons, kinds):
         for li in poly.loop_indices:
             z = body.data.vertices[body.data.loops[li].vertex_index].co.z
             uv[li].uv = uv_for(swatch, min(1.0, max(0.0, 1 - z / 2)))
@@ -202,17 +218,21 @@ def check(body):
     w, h = atlas.size
     px = np.array(atlas.pixels[:]).reshape(h, w, 4)[..., :3]
     # Image.pixels, as loaded here, carries the stored atlas values.
-    area = lum = sat = 0.0
+    area = lum = dark = 0.0
+    mean = np.zeros(3)
     uv = mesh.uv_layers.active.data
     for poly in mesh.polygons:
         u, t = sum((uv[i].uv for i in poly.loop_indices), Vector((0, 0))) / poly.loop_total
         c = px[min(h - 1, int(t * h)), min(w - 1, int(u * w))]
         area += poly.area
         lum += poly.area * float(luma(c))
-        sat += poly.area * float(saturation(c))
+        dark += poly.area * (float(luma(c)) < .1)
+        mean += poly.area * c
+    mean /= area
     print(f"MotherPitcher: {len(mesh.polygons)} triangles, {len(mesh.vertices)} vertices, "
-          f"bounds {tuple(body.dimensions)}, luma {lum / area:.3f}, saturation {sat / area:.3f}")
-    assert .15 <= lum / area <= .45 and sat / area <= .4, "repaint outside JG-12d rule 6"
+          f"bounds {tuple(body.dimensions)}, luma {lum / area:.3f}, mean {tuple(mean.round(3))}, "
+          f"near-black {dark / area:.3f}")
+    assert mean[1] > mean[0] > mean[2] and dark == 0, "repaint outside JG-12d rule 6"
 
 
 # Degrees about model axes: positive pitch bends the plant toward -Y.

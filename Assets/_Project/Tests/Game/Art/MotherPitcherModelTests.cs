@@ -208,7 +208,7 @@ public sealed class MotherPitcherModelTests
     }
 
     [Test]
-    public void MotherModel_IsDarkButReadable()
+    public void MotherModel_WearsTheSculptsGreens()
     {
         // Surface-area average of the atlas sampled at each triangle centroid. Each
         // triangle counts in proportion to its area.
@@ -218,7 +218,8 @@ public sealed class MotherPitcherModelTests
         Vector2[] uv = mesh.uv;
         int[] triangles = mesh.triangles;
 
-        float area = 0f, luminance = 0f, saturation = 0f;
+        float area = 0f;
+        Color mean = Color.clear;
 
         for (int i = 0; i < triangles.Length; i += 3)
         {
@@ -227,25 +228,26 @@ public sealed class MotherPitcherModelTests
             Vector2 centroid = (uv[triangles[i]] + uv[triangles[i + 1]] + uv[triangles[i + 2]]) / 3f;
             Color colour = atlas.GetPixelBilinear(centroid.x, centroid.y);
 
-            Color.RGBToHSV(colour, out _, out float s, out _);
+            Assert.That(Luma(colour), Is.GreaterThanOrEqualTo(0.1f), $"Triangle {i / 3} is near-black.");
 
             area += weight;
-            luminance += weight * Luma(colour);
-            saturation += weight * s;
+            mean += weight * colour;
         }
 
         Assert.That(area, Is.GreaterThan(0f));
-        Assert.That(luminance / area, Is.InRange(0.15f, 0.45f));
-        Assert.That(saturation / area, Is.LessThanOrEqualTo(0.4f));
+        mean /= area;
+        Assert.That(mean.g, Is.GreaterThan(mean.r), "Green leads, as on the sculpt.");
+        Assert.That(mean.r, Is.GreaterThan(mean.b), "A warm green, not a blue one.");
 
-        // Every triangle uses only Pitcher columns 4-5 or Frog mouth/pupil cells.
+        // Every triangle wears a green, chartreuse, cream or root cell (mother_pitcher.py's PALETTE).
+        var palette = new HashSet<(int, int)> { (4, 0), (4, 1), (5, 0), (5, 1), (2, 0), (2, 3), (3, 0), (7, 2), (7, 3) };
+
         for (int i = 0; i < triangles.Length; i += 3)
         {
             Vector2 centroid = (uv[triangles[i]] + uv[triangles[i + 1]] + uv[triangles[i + 2]]) / 3f;
             int column = Mathf.FloorToInt(centroid.x * 8);
             int row = Mathf.FloorToInt((1f - centroid.y) * 4);
-            Assert.That(column == 4 || column == 5 || ((column == 2 || column == 3) && row == 2), Is.True,
-                $"Triangle {i / 3} samples column {column}, row {row}.");
+            Assert.That(palette.Contains((column, row)), Is.True, $"Triangle {i / 3} samples column {column}, row {row}.");
         }
     }
 

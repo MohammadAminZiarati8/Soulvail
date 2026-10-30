@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12h._
+_Updated 2026-10-30, after the Mother Pitcher colour fix._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-12h**: Mother Pitcher owns Jungle 10; buds, phases, cover and names bound in Editor. |
-| **Next task** | Owner playtest 7–10: difficulty/feel, phone readability, black lid/mouth; no next spec planned. |
-| **Verified** | JG-12h 7/7; EditMode 4 660 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. Live 10 + other fifths passed. |
+| **Last merged** | **Mother colour fix**: repainted in the sculpt's greens (was black lid, brown body); JG-12d rule 6 rewritten. |
+| **Next task** | Owner playtest 7–10: difficulty/feel, phone readability, Mother's colours; no next spec planned. |
+| **Verified** | Mother model 8/8; EditMode 4 660 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 9. JG-05: walled Pitcher takes every arrow; Frogs hop-sit-hop; Croaker never walks; two steps clear a Puffball.
 10. JG-06: tongue shoots down the lane; every landing jolts the camera and bursts dust; ground-wave band with earth ridge (Warden too).
 11. Jungle arenas have open floors, no falling flakes; enemies path round the edges.
-12. JG-07b/JG-12h: rule on Panther/Mother sculpts. Live camera `Logs/JG12h-gameplay-opening.png`: lid solid black; mouth mostly black, brown centre strip.
+12. JG-07b/JG-12h: rule on Panther/Mother sculpts. Mother now green, chartreuse rim/teeth, no black; check her on stage 10.
 13. JG-07d: stage 6 Panthers warn, crouch, bound down the strip (no tongue), 14 damage; read as a cat on the dark floor; appear from stage 7 on.
 14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.

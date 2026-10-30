@@ -9,7 +9,7 @@ _Updated 2026-10-31, after the JG-13 playtest fixes._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13 playtest fixes**: boss bar one line; Pitcher rings; all floor decals over stone. |
+| **Last merged** | **JG-13 playtest fixes**: boss bar one line; Pitcher rings; floor decals over stone. |
 | **Next task** | None planned; owner to set direction. |
 | **Verified** | EditMode total 4 707: 4 706 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 

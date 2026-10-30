@@ -62,4 +62,23 @@ None. `MotherPitcherBodyTests.BodyScale` = 2.5, the `_bodyScale` JG-12h authors.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30 through the Editor: an `Enemy` variant, Mother's own rig and five clips,
+Idle default, Move 1/3 → Barrage and 2 → Spray, independent Flinch, Dead → Death; all Write
+Defaults off. No production scripts or assets outside the Files table changed; `.meta`s and
+the requested planning documents included. Captures/test evidence are untracked under `Logs/`.
+
+Rule 2: release measured at Barrage frame 12 and Spray frame 10 (30 fps). View starts at 0 s,
+strike 0.4 s; Spray's state multiplier is 5/6, both using AttackRate. Their releases match
+core's 0.8/1.0/0.8 s wind-ups within half a frame.
+
+Rule 5 resolved against existing `EnemyHealthBar`: it positions locally, so `_heightMetres`
+is 1.76, world 4.4 m at BodyScale 2.5, ~0.4 m over the ~4 m mesh. Controller radius 1.3 m;
+trigger radius 0.78 m covers the cup (authored local dimensions).
+
+Seven named body rows pass. Full EditMode: 4,634 pass, 0 fail, 1 known animator-clock
+inconclusive; failing names: none. Compiler errors 0, new analyzer warnings 0; format clean.
+
+`Logs/JG12e-gameplay-{Idle,Barrage,Spray}.png`: 411×914, Run camera 57°, distance 16 m,
+short-side FOV 60°, scale 2.5, Jungle clearing. Lid reads solid black; mouth has a black
+center but visible brown interior and pale rim. Manual: review captures; verify live run at
+JG-12h. No manual asset-authoring steps remain.

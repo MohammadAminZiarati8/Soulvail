@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12c._
+_Updated 2026-10-30, after JG-12d._
 
 ## Current State
 
 | | |
 |---|---|
-| **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-12c**: Mother barrage/spray/pod loop, cover-aware spray, crossing cancellation. |
-| **Next task** | **JG-12d**: Mother Pitcher model; playtest 7-9 due. |
-| **Verified** | JG-12c EditMode: 4 627 pass, 0 fail, 1 known inconclusive (includes JG-12d tests). Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
+| **Last merged** | **JG-12d**: Mother sculpt, shared-atlas repaint, own rig and five clips. |
+| **Next task** | **JG-12e**: Mother Pitcher prefab and animator; playtest 7-9 due. |
+| **Verified** | JG-12d: model 8/8; EditMode 4 627 pass, 0 fail, 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -38,7 +38,7 @@ every string a `LocKey`.
 9. JG-05: walled Pitcher takes every arrow; Frogs hop-sit-hop; Croaker never walks; two steps clear a Puffball.
 10. JG-06: tongue shoots down the lane; every landing jolts the camera and bursts dust; ground-wave band with earth ridge (Warden too).
 11. Jungle arenas have open floors, no falling flakes; enemies path round the edges.
-12. JG-07b: preview `Panther.fbx` — **rule whether the sculpt stays.**
+12. JG-07b/JG-12d: preview Panther/MotherPitcher; review `Logs/JG12d-mother-pose-sheet.png` and Mother’s five clips. **Rule whether the sculpts stay.**
 13. JG-07d: stage 6 Panthers warn, crouch, bound down the strip (no tongue), 14 damage; read as a cat on the dark floor; appear from stage 7 on.
 14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.
@@ -48,7 +48,6 @@ every string a `LocKey`.
 19. JG-09: shoot a Frog (stage 1) and a Panther (stage 6) without killing — one jerk per arrow, then walk and idle as before.
 20. Arrow fix: stage 1/3 Frogs mid-hop — every arrow that visibly reaches a Frog hurts it; one that lands on empty ground does not.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
-
 22. JG-11: Test start 7: 4 Frogs → Panther + 3 Frogs; 8: 2 Pitchers + 3 Frogs → 2 Panthers + 3 Frogs; 9: 3 Frogs + 2 Puffballs → 2 Pitchers + Panther → 2 Panthers + 2 Frogs, door after wave 3. Rule on the climb from 6 and fairness before Croaker.
 
 ## What does not work yet

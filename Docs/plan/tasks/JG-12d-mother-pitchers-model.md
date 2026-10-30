@@ -72,4 +72,22 @@ Rule 1 is checked by hand: two runs and a byte compare.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30. The source was already shipped by `f6b52fb`; it is unchanged.
+`mother_pitcher.py` voxel-remeshes and decimates that sculpt, repaints from existing Pitcher
+swatches plus Frog pupil, smooth-shades, weights and exports one mesh on `Rig_MotherPitcher`.
+The atlas is read only. No prefab/controller work (JG-12e).
+
+- 2,400 triangles; 1,138 Blender vertices / 1,325 imported vertices (UV splits).
+  Rest bounds (Unity XYZ): 1.869 × 1.600 × 1.580 m; width/height 1.168.
+  Height at JG-12e's 2.5 scale is 4 m.
+- All 11 named bones; every vertex weighted to at most two, normalised, none on `root`.
+  One slot remapped to `M_Enemy`; own Generic avatar, unoptimised, uncompressed (Spray hold), empty motion node.
+- Idle 60 (only loop), Barrage 24, Spray 30 (held from 10), Hit 12, Death 40; all 30 fps,
+  bound, in place, no events. Area-averaged atlas luma 0.326, saturation 0.391.
+- Two runs: 550,236 FBX bytes, zero differences outside the header timestamp.
+  Eight model tests pass; full EditMode: 4,627 pass, 0 fail, 1 known animator-clock inconclusive.
+  Compiler errors 0, new analyzer warnings 0; format clean.
+- Owner: preview all five clips in the Editor and review `Logs/JG12d-mother-pose-sheet.png`
+  beside Pitcher/Croaker; rule whether the sculpt stays. No setup steps required.
+
+No spec precedence conflicts resolved.

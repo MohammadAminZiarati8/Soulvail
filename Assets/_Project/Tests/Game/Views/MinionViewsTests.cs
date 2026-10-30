@@ -592,7 +592,7 @@ public sealed class MinionViewsTests
 
     /// <summary>
     /// [Rule 8, GD §16.4, CH §3.2] A Wight is the player's own cyan, and smaller than every
-    /// archetype.
+    /// archetype except Mother Pitcher's stationary buds (JG-12h rule 3).
     /// </summary>
     /// <remarks>
     /// <b>The collision with the player's colour is the point, and the separator is size.</b> GD
@@ -863,6 +863,13 @@ public sealed class MinionViewsTests
             var definition = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path);
 
             if (definition == null)
+            {
+                continue;
+            }
+
+            // JG-12h's 0.6-scale buds are rooted boss shields, not the roaming swarm. Preserve
+            // the existing Wight's 0.7 scale and the size guard for every other archetype.
+            if (definition.ToSpec().Id.Value == "enemy.pitcher_bud")
             {
                 continue;
             }

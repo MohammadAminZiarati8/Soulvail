@@ -68,4 +68,37 @@ None.
 
 ## As built
 
-_Filled at merge._
+- Authored Mother (750 HP, scale 2.5, landing marks and four-stone cover), the static
+  24-HP / scale-0.6 bud, and the central three-phase boss through the Editor. BootScope and
+  Jungle's stage-10 override were bound there too; both names are in English and generated Pseudo.
+- Seven tests in `JungleTests` map to rules 1–6 (rule 3 has its specified two rows). The HP sum
+  uses the shipped stage-10 scaling and phase summons: **94.8 s** at 27 DPS × 60% uptime.
+- **Scope exception / rule 3:** `Tests/Game/Views/MinionViewsTests.cs` also changed. Its older
+  blanket size sweep rejected the specified 0.6-scale bud against the existing 0.7-scale Wight.
+  The Wight remains unchanged; the sweep now explicitly exempts this rooted boss shield, retaining
+  its guard for every other archetype. No production code, models or materials changed. New assets
+  include their Editor-generated `.meta` files; the requested PROGRESS and ROADMAP edits are included.
+- **Live Editor, via MCP:** normal Jungle Test start at 10; Mother at central spawn XZ (0, 2),
+  three buds and four stones. Default targeting killed the buds first. A normal bow hit dealt
+  **2.6 while shielded, 13 after the last bud died**. Barrage fired five lobs; spray hit in the open
+  (26.3 damage at stage 10), but reported no hit behind a stone; pods spawned Frogs. Both thresholds
+  regrew three buds and added 2 / 3 Frogs, with 1.5-second beats. An instrumented run spent the
+  Test-start Ranger's Quick Draw / Volley picks and repositioned the player through MCP: Mother
+  died at **77.9 s**, the final pod Frog at 78.7 s. This verifies the live mechanics, not natural
+  movement, fight duration or feel. Original saves were sheltered for the check.
+  Live boots at **5, 15, 20, 25 and 30** each spawned Old Croaker.
+- **Rule 2 / manual check 3 resolved against existing code:** `BossBehaviour` clears only the
+  adds tracked from phase summons. A Frog spawned by a pod survived the phase beat in the live
+  trace; the earlier behaviour wins over “adds cleared” meaning every Frog. No AI change is included.
+- Gameplay-camera capture: `Logs/JG12h-gameplay-opening.png`, **411 × 914**. **The lid reads as
+  solid black; the mouth interior reads mostly black with a visible brown centre strip.** The
+  owner must rule on the existing sculpt/materials. Evidence traces are in
+  `Logs/JG12h-live-{shield-cover,phases,fifths}.txt` (local, untracked).
+- Verification: **7/7 task tests; full EditMode 4 660 passed, 0 failed (failing names: none),
+  1 known inconclusive**. Clean compiler pass: **0 errors, 0 compiler/analyzer warnings**
+  (so 0 new analyzer warnings). `dotnet format whitespace --folder --verify-no-changes` clean
+  for both changed C# files; `git diff --check` clean. Test and compiler evidence:
+  `Logs/JG12h-final-editmode.xml`, `Logs/JG12h-compiler.txt` (local, untracked).
+- Manual owner steps: play Jungle 7–10 with ordinary movement and a representative build; judge
+  the difficulty climb and 75–120-second fight feel, cover/wedge readability on a phone, and the
+  black lid/mouth. No asset wiring or BootScope setup remains for the owner.

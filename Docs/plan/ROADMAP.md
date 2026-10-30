@@ -88,4 +88,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-12e** — Mother Pitcher's body: prefab and animator, attack by move, a 4 m giant (S) · [spec](tasks/JG-12e-mother-pitchers-body.md)
 - [x] **JG-12f** — The spray and lobs are drawn: a wedge with cover's shadows cut out, a landing ring per lob (M) · [spec](tasks/JG-12f-the-spray-and-lobs-are-drawn.md)
 - [x] **JG-12g** — Stones to hide behind: an archetype brings cover; four stones ring Mother Pitcher (M) · [spec](tasks/JG-12g-stones-to-hide-behind.md)
-- [ ] **JG-12h** — Mother Pitcher in the Jungle: the assets, stage 10 hers and the other fifths Croaker's, boots (M) · [spec](tasks/JG-12h-mother-pitcher-in-the-jungle.md)
+- [x] **JG-12h** — Mother Pitcher in the Jungle: the assets, stage 10 hers and the other fifths Croaker's, boots (M) · [spec](tasks/JG-12h-mother-pitcher-in-the-jungle.md)

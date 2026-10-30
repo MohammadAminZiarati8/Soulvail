@@ -2,10 +2,13 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Soulvail.Core.Content;
+using Soulvail.Core.Run;
+using Soulvail.Core.Save;
 using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Views;
+using Soulvail.Tests.Core.Fakes;
 using UnityEditor;
 using UnityEngine;
 
@@ -48,6 +51,9 @@ public sealed class JungleTests
     private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
     private const string PantherPath = "Assets/_Project/Data/Enemies/Panther.asset";
     private const string CroakerPath = "Assets/_Project/Data/Enemies/Croaker.asset";
+    private const string MotherPath = "Assets/_Project/Data/Enemies/MotherPitcher.asset";
+    private const string MotherBossPath = "Assets/_Project/Data/Enemies/MotherPitcherBoss.asset";
+    private const string BudPath = "Assets/_Project/Data/Enemies/PitcherBud.asset";
     private const string WardenPath = "Assets/_Project/Data/Enemies/Warden.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
@@ -381,7 +387,7 @@ public sealed class JungleTests
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
-        Assert.That(jungle.TryGetScriptedStage(10, out _), Is.False, "Stage 10 is Old Croaker's.");
+        Assert.That(jungle.TryGetScriptedStage(10, out _), Is.False, "Stage 10 is Mother Pitcher's boss stage.");
         Assert.That(jungle.TryGetScriptedStage(11, out _), Is.False, "Stage 11 draws from the budget.");
     }
 
@@ -400,6 +406,153 @@ public sealed class JungleTests
 
         Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[key], Is.EqualTo("Panther"));
         Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary().ContainsKey(key), Is.True);
+    }
+
+    [Test]
+    public void Jungle_MotherPitcher_HasItsNumbers()
+    {
+        EnemyDefinition definition = Load<EnemyDefinition>(MotherPath);
+        EnemySpec mother = definition.ToSpec();
+        EnemyLook look = definition.ToLook();
+
+        Assert.That(mother.Id.Value, Is.EqualTo("enemy.mother_pitcher"));
+        Assert.That(mother.NameKey.Key, Is.EqualTo("enemy.mother_pitcher.name"));
+        Assert.That(mother.Behaviour, Is.EqualTo(EnemyBehaviourKind.Boss));
+        Assert.That((mother.MaxHp, mother.TargetPriority, mother.ThreatCost, mother.XpValue, mother.ContactDamage),
+            Is.EqualTo((750f, 2, 40, 400f, 10f)));
+        Assert.That(mother.MoveSpeed, Is.Zero);
+        Assert.That(look.BodyScale, Is.EqualTo(2.5f));
+        Assert.That(look.Body, Is.SameAs(Load<EnemyView>("Assets/_Project/Prefabs/Enemies/MotherPitcher.prefab")));
+        Assert.That(look.Projectile, Is.SameAs(Load<ProjectileView>(PitcherSpitPath)));
+        Assert.That(look.MarksLanding, Is.True);
+        Assert.That(look.Cover, Is.SameAs(Load<GameObject>("Assets/_Project/Prefabs/Arenas/Jungle/Cover_MotherStones.prefab")));
+    }
+
+    [Test]
+    public void Jungle_MotherPitcherBoss_HasItsPhases()
+    {
+        BossSpec boss = Load<BossDefinition>(MotherBossPath).ToSpec();
+
+        Assert.That(boss.Id.Value, Is.EqualTo("boss.mother_pitcher"));
+        Assert.That(boss.EnemySpecId.Value, Is.EqualTo("enemy.mother_pitcher"));
+        Assert.That(boss.SpawnsCentral, Is.True);
+        Assert.That(boss.BeatSeconds, Is.EqualTo(1.5f));
+        Assert.That(boss.Phases.Select(p => p.EntersBelow), Is.EqualTo(new[] { 1f, 0.66f, 0.33f }));
+        Assert.That(boss.Phases[0].Summons.Select(a => (a.SpecId.Value, a.Count)),
+            Is.EqualTo(new[] { ("enemy.pitcher_bud", 3) }));
+        Assert.That(boss.Phases[1].Summons.Select(a => (a.SpecId.Value, a.Count)),
+            Is.EqualTo(new[] { ("enemy.pitcher_bud", 3), ("enemy.frog", 2) }));
+        Assert.That(boss.Phases[2].Summons.Select(a => (a.SpecId.Value, a.Count)),
+            Is.EqualTo(new[] { ("enemy.pitcher_bud", 3), ("enemy.frog", 3) }));
+    }
+
+    [Test]
+    public void Jungle_PitcherBud_IsAHighPriorityStatic()
+    {
+        EnemyDefinition definition = Load<EnemyDefinition>(BudPath);
+        EnemySpec bud = definition.ToSpec();
+
+        Assert.That(bud.Id.Value, Is.EqualTo("enemy.pitcher_bud"));
+        Assert.That(bud.NameKey.Key, Is.EqualTo("enemy.pitcher_bud.name"));
+        Assert.That(bud.Behaviour, Is.EqualTo(EnemyBehaviourKind.Static));
+        Assert.That((bud.MaxHp, bud.TargetPriority, bud.ThreatCost, bud.XpValue, bud.ContactDamage),
+            Is.EqualTo((24f, 8, 4, 6f, 0f)));
+        Assert.That(bud.MoveSpeed, Is.Zero);
+        Assert.That(definition.ToLook().BodyScale, Is.EqualTo(0.6f));
+        Assert.That(definition.ToLook().Body, Is.SameAs(Load<EnemyView>(PitcherBodyPath)));
+    }
+
+    [Test]
+    public void Jungle_PitcherBud_IsNotRostered()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:ModeDefinition", new[] { "Assets/_Project/Data/Modes" }))
+        {
+            ModeSpec mode = Load<ModeDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
+            Assert.That(mode.Roster.Select(r => r.SpecId.Value), Has.No.Member("enemy.pitcher_bud"), mode.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Jungle_StageTen_IsMotherPitcher_OtherFifthsCroaker()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        for (int stage = 1; stage <= jungle.FinalStage; stage++)
+        {
+            bool hasBoss = jungle.TryGetBossFor(stage, out ContentId boss);
+            Assert.That(hasBoss, Is.EqualTo(stage % 5 == 0), $"Stage {stage}");
+            if (hasBoss)
+            {
+                Assert.That(boss.Value, Is.EqualTo(stage == 10 ? "boss.mother_pitcher" : "boss.croaker"), $"Stage {stage}");
+            }
+        }
+    }
+
+    [Test]
+    public void Jungle_MotherPitcher_Boots()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec()),
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+
+        Assert.That(catalog.Enemy(new ContentId("enemy.mother_pitcher")), Is.Not.Null);
+        Assert.That(catalog.Enemy(new ContentId("enemy.pitcher_bud")), Is.Not.Null);
+        Assert.That(catalog.Boss(new ContentId("boss.mother_pitcher")), Is.Not.Null);
+        foreach (var name in new[] { ("enemy.mother_pitcher.name", "Mother Pitcher"), ("enemy.pitcher_bud.name", "Pitcher Bud") })
+        {
+            var key = new LocKey(name.Item1);
+            Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[key], Is.EqualTo(name.Item2));
+            Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[key], Is.Not.Empty);
+        }
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(12);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 10);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 10, SpawnPlan.Empty, restore)));
+            Assert.That(session.IsRunning, Is.True);
+            Assert.That(session.State.StageIndex, Is.EqualTo(10));
+        }
+        finally
+        {
+            session.End();
+        }
+    }
+
+    [Test]
+    public void Jungle_MotherPitcher_FightIsInTheBand()
+    {
+        EnemySpec mother = Load<EnemyDefinition>(MotherPath).ToSpec();
+        EnemySpec bud = Load<EnemyDefinition>(BudPath).ToSpec();
+        BossSpec boss = Load<BossDefinition>(MotherBossPath).ToSpec();
+        float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(10);
+        // Rule 6: stage-10 Ranger ~27 DPS, standing 60% of the fight. Buds use the same uptime.
+        const float EffectiveDps = 27f * 0.6f;
+        int buds = boss.Phases.Sum(p => p.Summons.Where(a => a.SpecId == bud.Id).Sum(a => a.Count));
+        float seconds = ((mother.MaxHp + buds * bud.MaxHp) * hpScale / EffectiveDps)
+            + (boss.Phases.Count - 1) * boss.BeatSeconds;
+
+        Assert.That(hpScale, Is.EqualTo(1.54f).Within(1e-5f));
+        Assert.That(seconds, Is.InRange(75f, 120f), $"Authored HP + buds + beats: {seconds:F1} s.");
+    }
+
+    private static TSpec[] BootSpecs<TDefinition, TSpec>(SerializedObject boot, string field, System.Func<TDefinition, TSpec> convert)
+        where TDefinition : ScriptableObject
+    {
+        SerializedProperty rows = boot.FindProperty(field);
+        return Enumerable.Range(0, rows.arraySize)
+            .Select(i => convert((TDefinition)rows.GetArrayElementAtIndex(i).objectReferenceValue)).ToArray();
     }
 
     [Test]

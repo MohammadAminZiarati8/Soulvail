@@ -141,7 +141,7 @@ MonoBehaviour:
   - _key: ui.places.finished
     _text: Finished
   - _key: ui.places.locked
-    _text: 'Finish {0} to open'
+    _text: Finish {0} to open
   - _key: ui.places.soon
     _text: More places coming
   - _key: ui.death.title
@@ -165,7 +165,7 @@ MonoBehaviour:
   - _key: ui.pause.tree
     _text: View Tree
   - _key: ui.pause.tree.points
-    _text: 'View Tree ({0:0})'
+    _text: View Tree ({0:0})
   - _key: ui.pause.quit
     _text: Quit
   - _key: ui.pause.title
@@ -353,8 +353,8 @@ MonoBehaviour:
   - _key: character.emberwright.name
     _text: Emberwright
   - _key: character.emberwright.description
-    _text: A wizard. Enormous, slow, unforgiving. The orb is the widest blast in the
-      game, and every hit you land without being touched makes the next one hotter.
+    _text: A wizard. Enormous, slow, unforgiving. The orb is the widest blast in
+      the game, and every hit you land without being touched makes the next one hotter.
   - _key: ui.splash.title
     _text: Borrow a discipline
   - _key: ui.splash.class
@@ -366,7 +366,7 @@ MonoBehaviour:
   - _key: ui.splash.refused.primitive
     _text: Needs a power your class cannot use
   - _key: ui.splash.refused.minions
-    _text: Commands minions — your class raises none
+    _text: "Commands minions \u2014 your class raises none"
   - _key: ui.splash.refused.address
     _text: Needs a number your class does not have
   - _key: ui.sanctum.title
@@ -458,7 +458,8 @@ MonoBehaviour:
   - _key: skill.ranger.volley.name
     _text: Volley
   - _key: skill.ranger.volley.description
-    _text: After every 5 shots, the next one fires an arrow at every enemy in range, each dealing 50% more.
+    _text: After every 5 shots, the next one fires an arrow at every enemy in range,
+      each dealing 50% more.
   - _key: skill.ranger.volley-2.name
     _text: Volley II
   - _key: skill.ranger.volley-2.description
@@ -517,7 +518,7 @@ MonoBehaviour:
   - _key: ui.hero.tree
     _text: Skill tree
   - _key: ui.hero.rank
-    _text: 'Rank {0}'
+    _text: Rank {0}
   - _key: ui.hero.stat.health
     _text: Health
   - _key: ui.hero.stat.damage
@@ -539,4 +540,9 @@ MonoBehaviour:
   - _key: character.ranger.attack.name
     _text: Longbow
   - _key: character.ranger.attack.description
-    _text: Looses an arrow at the nearest enemy in range. The Ranger only shoots while standing still.
+    _text: Looses an arrow at the nearest enemy in range. The Ranger only shoots
+      while standing still.
+  - _key: enemy.mother_pitcher.name
+    _text: Mother Pitcher
+  - _key: enemy.pitcher_bud.name
+    _text: Pitcher Bud

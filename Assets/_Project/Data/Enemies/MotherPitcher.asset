@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: MotherPitcher
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.mother_pitcher
+  _nameKey: enemy.mother_pitcher.name
+  _maxHp: 750
+  _moveSpeed: 0
+  _targetPriority: 2
+  _threatCost: 40
+  _xpValue: 400
+  _isElite: 0
+  _contactDamage: 10
+  _reach: 1.2
+  _windupTime: 0.8
+  _recoverTime: 0.6
+  _aggroRange: 30
+  _behaviour: 4
+  _projectileStandoffRange: 0
+  _projectileSpeed: 12
+  _projectileRadius: 1.6
+  _explosionRadius: 0
+  _hopTime: 0
+  _hopRestTime: 0
+  _lungeRange: 0
+  _lungeLength: 0
+  _lungeSpeed: 0
+  _lungeHalfWidth: 0
+  _lungeCooldown: 0
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 2.5
+  _body: {fileID: 3876620693293453234, guid: 4d2ca1e61d66fa644bb7aeecbba83f72, type: 3}
+  _projectile: {fileID: 7540841994579863046, guid: 06ce5ae1043e2124aac9f2e4fa9a33c1, type: 3}
+  _marksLanding: 1
+  _cover: {fileID: 833027112022586619, guid: dad8e47b01df5094b9a666e44cdba3af, type: 3}

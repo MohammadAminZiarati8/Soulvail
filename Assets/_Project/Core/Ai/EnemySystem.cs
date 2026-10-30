@@ -662,7 +662,7 @@ public sealed class EnemySystem
             return result;
         }
 
-        _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed));
+        _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));
 
         // Exactly once per life without a flag to remember it: Killed is true only on the call that
         // took HP to zero, and every later call finds a corpse and returns None above.
@@ -913,6 +913,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Spitter:
                 case EnemyBehaviourKind.Bloater:
                 case EnemyBehaviourKind.Lunger:
+                case EnemyBehaviourKind.Bulwark:
                     agent.Behaviour.Tick(ctx);
                     break;
 

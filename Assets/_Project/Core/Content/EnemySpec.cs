@@ -68,6 +68,9 @@ public enum EnemyBehaviourKind
     /// Implemented by <c>LungerBehaviour</c> in JG-07a. Appended, for <see cref="Boss"/>'s reason.
     /// </summary>
     Lunger,
+
+    /// <summary>Turns a frontal shield toward the player, then commits to a melee bash (JG-14a).</summary>
+    Bulwark,
 }
 
 /// <summary>
@@ -201,6 +204,7 @@ public sealed class EnemySpec
     /// archetype but the Lunger.
     /// </param>
     /// <param name="bodyRadius">How wide the body is on XZ. See <see cref="BodyRadius"/>.</param>
+    /// <param name="bulwark">Front shield and steering, or null for an archetype without them.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -218,7 +222,7 @@ public sealed class EnemySpec
     /// is negative, NaN or infinite;
     /// <paramref name="xpValue"/> or <paramref name="bodyRadius"/> is not a finite number greater
     /// than zero; <paramref name="targetPriority"/> is outside 1–8; <paramref name="threatCost"/> is
-    /// below 1; or a Lunger's <paramref name="windupTime"/> is under GD §9.1 rule 1's
+    /// below 1; or a Lunger's or Bulwark's <paramref name="windupTime"/> is under GD §9.1 rule 1's
     /// <see cref="Ai.WardenBehaviour.MinTelegraphSeconds"/>.
     /// </exception>
     public EnemySpec(
@@ -241,7 +245,8 @@ public sealed class EnemySpec
         float hopTime = 0f,
         float hopRestTime = 0f,
         LungeSpec lunge = null,
-        float bodyRadius = BaseBodyRadius)
+        float bodyRadius = BaseBodyRadius,
+        BulwarkSpec bulwark = null)
     {
         if (id.Value is null)
         {
@@ -273,6 +278,18 @@ public sealed class EnemySpec
                 "A Lunger must carry a LungeSpec — the dash is the whole of what it does, and a " +
                 "behaviour with no dash would stalk the player for the rest of the run.",
                 nameof(lunge));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Bulwark && bulwark is null)
+        {
+            throw new ArgumentException("A Bulwark must carry a BulwarkSpec.", nameof(bulwark));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Bulwark && windupTime < Ai.WardenBehaviour.MinTelegraphSeconds)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(windupTime), windupTime,
+                $"A Bulwark must warn for at least {Ai.WardenBehaviour.MinTelegraphSeconds} s before a bash.");
         }
 
         // Before the general NonNegative check runs below, so NaN is refused there and a number
@@ -326,6 +343,7 @@ public sealed class EnemySpec
         HopRestTime = NonNegative(hopRestTime, nameof(hopRestTime));
         Lunge = lunge;
         BodyRadius = Positive(bodyRadius, nameof(bodyRadius));
+        Bulwark = bulwark;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -453,6 +471,9 @@ public sealed class EnemySpec
     /// </summary>
     /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Lunger and JG-07a.</remarks>
     public LungeSpec Lunge { get; }
+
+    /// <summary>Frontal shield and steering; absent on archetypes that do not use them.</summary>
+    public BulwarkSpec Bulwark { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

@@ -2,29 +2,29 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-31, after JG-13g + 3 fixes._
+_Updated 2026-10-31, after JG-14a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13g**: Mother's fan pulses and fills; her spray splats goo at the clipped ends. |
-| **Next task** | JG-14a–e specs await the owner's OK. |
-| **Verified** | EditMode total 4 720: 4 719 pass, 0 fail, 1 known inconclusive. Errors 0; analyzer warnings 0; format clean. |
+| **Last merged** | **JG-14a**: Bulwark core shields its front, turns at 75°/s, commits to bash/recover; blocked-hit fact. |
+| **Next task** | JG-14b: model; awaits owner's name/look/sculpt and go. JG-14c–e follow. |
+| **Verified** | EditMode 4 749: 4 748 pass, 0 fail, 1 known inconclusive; Bulwark 29/29. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
-Portrait. Home: Heroes, Places. **Jungle** first, 30 stages. **Focus build:**
-Veilrot, Sanctum, Focus disc off (mode flags); class select = Ranger alone (BootScope list). Stages:
-threat-budgeted telegraphed waves, then a door; boss every fifth (Descent: Warden; Jungle: Old Croaker,
-except 10 = Mother Pitcher). Mother: central/rooted, three shielding buds per phase (facing her), five-lob barrage,
-stone-blocked spray (pulsing fan, goo splash), ringed pods that swell 1 s, hatch Frogs, 66/33% beats. Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
-4 = 2 Puffballs, 6 = 2 Panthers; 7–9 = mixed waves of all four. Frog, Pitcher (`PitcherSpit` lobs with landing rings),
-Puffball and Panther have their own bodies; Descent keeps capsules. **Ranger:** pale arrow trails,
-cyan Volley per enemy, Space roll, upper-body flinch; first arrow ~¼ s after stopping. Levelling:
-points, paused tree picks. Death pays Shards. **DT-01:** menu Test start; `TestStart._on` hides it.
-Boss bar one line, none overhead; boss adds pay no XP. Saves: run v4, profile v5; older load. Clash UI; all strings `LocKey`.
+Portrait. Home: Heroes, Places. Jungle: 30 stages. Focus switches: Veilrot, Sanctum, disc off;
+BootScope selects Ranger alone. Threat-budgeted waves → door; boss every fifth: Descent Warden,
+Jungle Croaker, except 10 Mother Pitcher. Mother: rooted, three shielding buds/phase facing her,
+five-lob barrage, stone-blocked pulsing spray and goo, ringed pods swell 1 s then hatch Frogs,
+66/33% beats. Scripted Jungle: 1 = 3 Frogs; 2 = 2 Pitchers; 3 = both; 4 = 2 Puffballs;
+6 = 2 Panthers; 7–9 mixed waves. All four have bodies; Pitcher lobs ringed; Descent capsules.
+Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
+Levels bank points; paused tree picks. Death pays Shards. Test start: `TestStart._on` hides it.
+Boss bar one line, none overhead; boss adds pay no XP. Bulwark core ready, unauthored: front shield,
+limited turning, frozen bash/recover. Saves run v4/profile v5, older load. Clash UI; `LocKey` strings.
 
 ## Owed to the owner (Editor checks)
 

@@ -81,4 +81,18 @@ recover 1.5 s, damage 16.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-31. `BulwarkSpec`, appended kind and pooled dispatch; Approach turns along the path,
+walks within its cone, and updates both shield flags after steering. First tick after reset faces
+the player outright, even when the path differs. Wind-up freezes the front; Bash resolves once at
+its end, rechecking reach/arc and refusing decoy damage. Recover counts from that bash instant,
+including the Bash state's following tick; `NextAttackAt` is bash + recover. Blocked damage rides
+the optional trailing `EnemyDamaged.Blocked`. No authored content or placeholder-name dependency.
+
+Ten test methods map one to one to Behaviour 1–10, with 29 cases, all passing (including allocation).
+Full EditMode: 4 749 total / 4 748 passed / 0 failed / 1 known animator-clock inconclusive;
+UTC start 2026-10-30 23:02:31, after submission. Zero compiler errors or new analyzer warnings;
+only existing tests' expected fault logs. `dotnet format` clean on all seven C# files.
+Files table only, plus Unity `.meta` companions and protocol docs.
+
+Manual: none for this core-only task. After JG-14d authors the body, check front blocking,
+rolling round its frozen bash/recover, and the 75°/s turn against walking at 3 m.

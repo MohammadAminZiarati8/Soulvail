@@ -130,12 +130,16 @@ public readonly struct EnemyDamaged
     /// <summary>This hit took it to zero. An <see cref="EnemyDied"/> follows immediately.</summary>
     public readonly bool Killed;
 
-    public EnemyDamaged(int id, float amount, float hpFraction, bool killed)
+    /// <summary>The hit was turned away by invulnerability, including a Bulwark's front shield.</summary>
+    public readonly bool Blocked;
+
+    public EnemyDamaged(int id, float amount, float hpFraction, bool killed, bool blocked = false)
     {
         Id = id;
         Amount = amount;
         HpFraction = hpFraction;
         Killed = killed;
+        Blocked = blocked;
     }
 }
 

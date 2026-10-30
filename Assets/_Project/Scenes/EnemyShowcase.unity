@@ -280,6 +280,7 @@ Transform:
   - {fileID: 185029311}
   - {fileID: 297419079}
   - {fileID: 481824604}
+  - {fileID: 1057050351}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &185029310
@@ -304,7 +305,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -1.15
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.y
@@ -403,7 +404,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.3
+      value: 1.15
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.y
@@ -605,7 +606,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -2.3
+      value: -3.4499998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.y
@@ -704,7 +705,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 4.6
+      value: 3.4499998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1114,6 +1115,105 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Sandbox.ShowcaseClip
   _state: Walk
+--- !u!1001 &1057050350
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 126732473}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 5.75
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.00000004371139
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_Name
+      value: Pitcher_Guard
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 400537cf28cb2bf4fba589214be31920, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1057050353}
+  m_SourcePrefab: {fileID: 100100000, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+--- !u!4 &1057050351 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+  m_PrefabInstance: {fileID: 1057050350}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1057050352 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
+  m_PrefabInstance: {fileID: 1057050350}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1057050353
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1057050352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41aa330f2da253f46af6545a4e5f501c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Sandbox.ShowcaseClip
+  _state: Guard
 --- !u!1001 &1118313022
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1239,7 +1339,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -4.6
+      value: -5.75
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7cd72ea710c66e45a5723f99bf7ab61, type: 3}
       propertyPath: m_LocalPosition.y

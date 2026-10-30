@@ -2,23 +2,23 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-13a._
+_Updated 2026-10-30, after JG-13b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13a**: Mother's spray winds up 2.5 s; wedge fills over it; `_releaseAtClipSpeed` returns her follow-through to 1x. |
-| **Next task** | **JG-13b** (buds guard their mother), on the owner's go; then c–f in order (ROADMAP › Mother Pitcher, playtest fixes). |
-| **Verified** | EditMode 4 665 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
+| **Last merged** | **JG-13b**: buds face Mother and idle in a `Guard` lean (`Pitcher_Bud` variant). |
+| **Next task** | **JG-13c** (adds stand on open ground), on the owner's go; then d–f in order (ROADMAP › Mother Pitcher, playtest fixes). |
+| **Verified** | EditMode 4 670 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works
 
 Portrait run. Home (Heroes, Places); the **Jungle** is the first place, 30 stages. **Focus build:**
 Veilrot, Sanctum, Focus disc off (mode flags); class select = Ranger alone (BootScope list). Stages:
 threat-budgeted telegraphed waves, then a door; boss every fifth (Descent: Warden; Jungle: Old Croaker,
-except 10 = Mother Pitcher). Mother: central/rooted, three shielding buds per phase, five-lob barrage,
+except 10 = Mother Pitcher). Mother: central/rooted, three shielding buds per phase (facing her), five-lob barrage,
 stone-blocked spray, Frog pods, 66/33% beats. Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
 4 = 2 Puffballs, 6 = 2 Panthers; 7–9 = mixed waves of all four. Frog, Pitcher (`PitcherSpit` lobs),
 Puffball and Panther have their own bodies; Descent keeps capsules. **Ranger:** pale arrow trails,
@@ -49,10 +49,11 @@ Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 19. JG-09: shoot a Frog (stage 1) and a Panther (stage 6) without killing — one jerk per arrow, then walk and idle as before.
 20. Arrow fix: stage 1/3 mid-hop Frogs — visible arrow contact hurts; empty ground does not.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
-22. JG-11: play Test start 7–9; judge the scripted mixed-wave climb/fairness and stage 9's door after wave 3.
+22. JG-11: Test start 7–9: judge the mixed-wave climb/fairness and stage 9's door after wave 3.
 
-23. JG-12h: play 10 with ordinary movement for duration/feel and phone wedge/stone readability.
-24. JG-13a: stage 10 wedge grows 2.5 s; stone shadow at the bite is safe; stream after the blow at 1x.
+23. JG-12h: play 10 for duration/feel and phone wedge/stone readability.
+24. JG-13a: stage 10 wedge grows 2.5 s; stone shadow is safe; stream after the blow at 1x.
+25. JG-13b: stage 10 buds face her, lean, pulse; stage 2 Pitchers unchanged.
 
 ## What does not work yet
 

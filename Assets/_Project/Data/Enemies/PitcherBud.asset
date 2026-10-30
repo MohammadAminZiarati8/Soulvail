@@ -39,7 +39,7 @@ MonoBehaviour:
   _lungeCooldown: 0
   _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 0.6
-  _body: {fileID: 4602156729013314041, guid: f50ac3e459cef0e4c8be525a64c9851c, type: 3}
+  _body: {fileID: 8910031282948795326, guid: 5d0880ed1488cfc499fc6e3ee1133875, type: 3}
   _projectile: {fileID: 0}
   _marksLanding: 0
   _cover: {fileID: 0}

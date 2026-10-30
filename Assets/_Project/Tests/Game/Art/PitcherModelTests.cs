@@ -49,9 +49,9 @@ public sealed class PitcherModelTests
 
     private const float FrogAtMost = 1f;
 
-    private static readonly string[] Clips = { "Attack", "Death", "Hit", "Idle", "Shuffle" };
+    private static readonly string[] Clips = { "Attack", "Death", "Guard", "Hit", "Idle", "Shuffle" };
 
-    private static readonly string[] Loops = { "Idle", "Shuffle" };
+    private static readonly string[] Loops = { "Guard", "Idle", "Shuffle" };
 
     private readonly List<Object> _created = new List<Object>();
 
@@ -127,7 +127,7 @@ public sealed class PitcherModelTests
     public void PitcherModel_ImportsGenericWithItsClips()
     {
         // Generic, so no per-frame retargeting on 28 bodies; not optimised, so the transform paths the
-        // clips bind to exist; and the five clips named, the two a body cycles in looping.
+        // clips bind to exist; and the six clips named, the three a body cycles in looping.
         var importer = (ModelImporter)AssetImporter.GetAtPath(ModelPath);
 
         Assert.That(importer.animationType, Is.EqualTo(ModelImporterAnimationType.Generic));

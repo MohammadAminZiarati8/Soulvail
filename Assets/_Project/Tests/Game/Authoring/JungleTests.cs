@@ -58,6 +58,7 @@ public sealed class JungleTests
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
     private const string PitcherBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher.prefab";
+    private const string BudBodyPath = "Assets/_Project/Prefabs/Enemies/Pitcher_Bud.prefab";
     private const string PuffballBodyPath = "Assets/_Project/Prefabs/Enemies/Puffball.prefab";
     private const string PantherBodyPath = "Assets/_Project/Prefabs/Enemies/Panther.prefab";
     private const string EnglishPath = "Assets/_Project/Data/Localisation/English.asset";
@@ -459,7 +460,7 @@ public sealed class JungleTests
             Is.EqualTo((24f, 8, 4, 6f, 0f)));
         Assert.That(bud.MoveSpeed, Is.Zero);
         Assert.That(definition.ToLook().BodyScale, Is.EqualTo(0.6f));
-        Assert.That(definition.ToLook().Body, Is.SameAs(Load<EnemyView>(PitcherBodyPath)));
+        Assert.That(definition.ToLook().Body, Is.SameAs(Load<EnemyView>(BudBodyPath)));
     }
 
     [Test]

@@ -5,6 +5,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
+using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -89,21 +90,34 @@ public sealed class MotherPitcherBehaviourTests
         Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(7));
     }
 
-    // Rule 3: exactly one rooted intent, facing each new player direction.
+    // Rule 3: exactly one rooted intent of her own, facing each new player direction; buds write theirs.
     [Test]
     public void Mother_StandsRootedFacingThePlayer()
     {
+        Bud();
         for (int i = 0; i < 8; i++)
         {
             var direction = new Vector2(MathF.Cos(i), MathF.Sin(i));
             _agent.Blackboard.DirectionToPlayer = direction;
             _intents.Clear();
             _mother.Tick(Context());
-            Assert.That(_intents.EnemyMoves.Count, Is.EqualTo(1));
+            Assert.That(_intents.CountEnemyMoves(_agent.Id), Is.EqualTo(1));
             Assert.That(_intents.LastEnemyMove.Id, Is.EqualTo(_agent.Id));
             Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
             Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(direction));
         }
+    }
+
+    // JG-13b rule 3: every living bud stands rooted, turned to her.
+    [Test]
+    public void Mother_TurnsHerBudsToFaceHer()
+    {
+        EnemyAgent east = _enemies.Spawn(new ContentId(BudId), new Vector3(4f, 0f, 0f));
+        EnemyAgent south = _enemies.Spawn(new ContentId(BudId), new Vector3(0f, 0f, -5f));
+        _intents.Clear();
+        _mother.Tick(Context());
+        AssertFacesHer(east, new Vector2(-1f, 0f));
+        AssertFacesHer(south, new Vector2(0f, 1f));
     }
 
     // Rule 4: any living bud, exactly one owned PercentMult, corpses excluded.
@@ -194,6 +208,8 @@ public sealed class MotherPitcherBehaviourTests
     public void Mother_Tick_AllocatesNothing()
     {
         Bud();
+        Bud();
+        Bud();
         var ctx = Context();
         _mother.Tick(ctx);
         AllocationAssert.None(() =>
@@ -204,6 +220,20 @@ public sealed class MotherPitcherBehaviourTests
             _intents.Clear();
             _mother.Tick(ctx);
         });
+    }
+
+    private void AssertFacesHer(EnemyAgent bud, Vector2 facing)
+    {
+        Assert.That(_intents.CountEnemyMoves(bud.Id), Is.EqualTo(1), $"bud {bud.Id}'s intents");
+        foreach (EnemyMoveIntent intent in _intents.EnemyMoves)
+        {
+            if (intent.Id == bud.Id)
+            {
+                Assert.That(intent.Velocity, Is.EqualTo(Vector3.Zero));
+                Assert.That(intent.FacingXZ.X, Is.EqualTo(facing.X).Within(Tolerance));
+                Assert.That(intent.FacingXZ.Y, Is.EqualTo(facing.Y).Within(Tolerance));
+            }
+        }
     }
 
     private MotherPitcherBehaviour Mother(EnemyAgent agent) => new MotherPitcherBehaviour(

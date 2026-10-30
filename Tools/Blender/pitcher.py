@@ -623,7 +623,7 @@ class Poser:
         body = Matrix.Translation(pose.get("offset", v(0, 0, 0))) @ about(self.head["body"], rot(*pose.get("body", (0, 0, 0))))
         W["body"] = body @ self.rest["body"]
         carry["body"] = body
-        fk("jug", "body", rot(*pose.get("jug", (0, 0, 0))))
+        fk("jug", "body", rot(*pose.get("jug", (0, 0, 0))), scale=pose.get("pulse"))  # > 1 swells the whole jug
         fk("mouth", "jug", rot(pose.get("mouth", 0.0)), scale=pose.get("gulp"))  # >= 1: a smaller rim bares the lip
         fk("lid", "mouth", rot(-pose.get("lid", 0.0)))  # opening turns the lid up and back
         for side, s in SIDES:
@@ -685,6 +685,9 @@ class Poser:
 #                           EnemyAnimatorView's strike time
 #     Hit      12 f         a flinch: the jug knocked back, the lid slammed, the leaves flung up
 #     Death    30 f         wilts, then topples onto its left side, on the ground by frame 15
+#     Guard    60 f  loop   a bud's idle (JG-13b): leans in toward its front at 15 and 45, leaves raised
+#                           and reaching, the jug swelling 8 %, and stands again at 0 and 30. A bud
+#                           faces its mother, so the lean reads as guarding her
 # ---------------------------------------------------------------------------------------------
 
 STEP = 0.11  # how far each foot plants ahead of and behind its hip
@@ -760,6 +763,13 @@ def clips():
             18: P(**{**lying, "body": (0, 86, 0), "lid": 5.0}),
             22: P(**lying),
             30: P(**lying),
+        }),
+        "Guard": (True, {
+            0: P(),
+            15: P(jug=(15.0, 0, 0), mouth=2.0, lid=12.0, pulse=1.08, leaf_l=(24.0, 26.0), leaf_r=(24.0, 26.0), offset=v(0, 0, -0.01)),
+            30: P(lid=4.0, leaf_l=(4.0, 2.0), leaf_r=(4.0, 2.0)),
+            45: P(jug=(15.0, 2.0, 0), mouth=2.0, lid=10.0, pulse=1.08, leaf_l=(22.0, 28.0), leaf_r=(26.0, 24.0), offset=v(0, 0, -0.01)),
+            60: P(),
         }),
     }
 
@@ -847,6 +857,7 @@ SHEET = {
     "Attack": (0, 4, 10, 14, 18, 26),
     "Hit": (0, 3, 7, 12),
     "Death": (0, 4, 8, 12, 15, 30),
+    "Guard": (0, 8, 15, 30, 45),
 }
 
 
@@ -919,7 +930,7 @@ def pose_sheet(path):
     arm.animation_data_create()
     for clip, frames in SHEET.items():
         arm.animation_data.action = actions[clip]
-        for view in (("three_quarter", "side") if clip in ("Shuffle", "Attack", "Death") else ("three_quarter",)):
+        for view in (("three_quarter", "side") if clip in ("Shuffle", "Attack", "Death", "Guard") else ("three_quarter",)):
             aim(*views[view])
             cells = []
             for f in frames:

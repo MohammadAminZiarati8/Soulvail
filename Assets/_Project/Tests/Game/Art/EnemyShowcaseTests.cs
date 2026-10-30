@@ -14,7 +14,7 @@ namespace Soulvail.Tests.Game.Art;
 
 /// <summary>
 /// <c>EnemyShowcase.unity</c>: every enemy body looping each of its clips side by side, the Frog's
-/// six, the Rootling's five and the Pitcher's five (M7-05r), on the Jungle's ground.
+/// six, the Rootling's five and the Pitcher's six (M7-05r, JG-13b), on the Jungle's ground.
 /// </summary>
 /// <remarks>
 /// The scene is a review tool, so what can rot is its wiring: a clip renamed in <c>frog.py</c>, a
@@ -82,7 +82,7 @@ public sealed class EnemyShowcaseTests
     [Test]
     public void Showcase_ShowsEveryPitcherClip()
     {
-        ShowsEveryClip("Pitcher_", PitcherPath, PitcherControllerPath, new[] { "Attack", "Death", "Hit", "Idle", "Shuffle" });
+        ShowsEveryClip("Pitcher_", PitcherPath, PitcherControllerPath, new[] { "Attack", "Death", "Guard", "Hit", "Idle", "Shuffle" });
     }
 
     [Test]

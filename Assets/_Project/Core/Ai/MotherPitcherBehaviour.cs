@@ -8,7 +8,7 @@ using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ai;
 
-/// <summary>A rooted boss whose living buds reduce every incoming hit to a fifth.</summary>
+/// <summary>A rooted boss whose living buds reduce every incoming hit to a fifth and face her.</summary>
 public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
 {
     public const float ShieldedDamageTaken = 0.2f;
@@ -51,14 +51,23 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
     {
         bool shielded = false;
         ReadOnlySpan<EnemyAgent> agents = ctx.Enemies.Registry.Alive;
+        Vector3 self = _agent.Position;
 
+        // Every living bud stands rooted, turned to her: a guard, not a sentry (JG-13b).
         for (int i = 0; i < agents.Length; i++)
         {
-            if (agents[i].IsAlive && agents[i].Spec.Id == _budId)
+            EnemyAgent bud = agents[i];
+            if (!bud.IsAlive || bud.Spec.Id != _budId)
             {
-                shielded = true;
-                break;
+                continue;
             }
+
+            shielded = true;
+            Vector3 toHer = self - bud.Position;
+            var facing = new Vector2(toHer.X, toHer.Z);
+            float length = facing.Length();
+            ctx.Intents.EnemyMove(new EnemyMoveIntent(bud.Id, Vector3.Zero,
+                length > 0f ? facing / length : Vector2.Zero));
         }
 
         if (shielded != IsShielded)

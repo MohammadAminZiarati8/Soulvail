@@ -61,4 +61,17 @@ toward her with leaves raised and a slow pulse, so it reads as guarding her.
 
 ## As built
 
-_Filled at merge._
+- `Guard`: jug pitch 15° at 15 and 45 (roll 2° on the second), `pulse` 1.08 (new pose key: a scale on
+  `fk("jug")`, so the whole jug swells from its roots), leaves (24, 26) lift/swing, lid 10–12°; 30 is
+  a near-rest stir. Pose sheet row shows the lean side-on. Atlas byte-identical.
+- Bud facing reads `EnemyAgent.Position`, not `Blackboard.SelfPosition` (perception writes that, so a
+  bud spawned this tick reads zero). A bud on her exact spot gets zero facing; `EnemyView.Face` keeps
+  its turn.
+- `Pitcher_Bud.prefab` is a variant of `Pitcher.prefab` with one override (`m_Controller`).
+- Outside the table, said so: `AC_Pitcher_Showcase` gains a `Guard` state and `EnemyShowcase.unity`
+  a `Pitcher_Guard` body, the row respaced to the Frog's six (`Showcase_ShowsEveryPitcherClip` pins
+  every clip once); `EnemyShowcaseTests` lists `Guard`; `JungleTests.Jungle_PitcherBud_IsAHighPriorityStatic`
+  now expects `Pitcher_Bud.prefab`.
+- `Mother_StandsRootedFacingThePlayer` spawns a bud and counts her own intent only;
+  `Mother_Tick_AllocatesNothing` runs with three buds.
+- EditMode 4 670 pass, 0 fail, 1 known inconclusive.

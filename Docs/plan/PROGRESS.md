@@ -10,7 +10,7 @@ _Updated 2026-10-31, after JG-13g + 3 fixes._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
 | **Last merged** | **JG-13g**: Mother's fan pulses and fills; her spray splats goo at the clipped ends. |
-| **Next task** | None planned; owner to set direction. |
+| **Next task** | JG-14a–e specs await the owner's OK. |
 | **Verified** | EditMode total 4 720: 4 719 pass, 0 fail, 1 known inconclusive. Errors 0; analyzer warnings 0; format clean. |
 
 ## What works

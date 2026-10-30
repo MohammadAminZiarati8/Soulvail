@@ -77,4 +77,31 @@ namespace Soulvail.Game.Views
 
 ## As built
 
-_Filled at merge._
+- **Rules 1–4:** `SprayConeView` draws 32 floor rays with a persistent rim and radial
+  edges; the fan fills over the wind-up. Cover is sampled once at `LineOfSightSense.EyeHeight`.
+  Fire draws the full fan for 0.15 s; Clear/despawn hide and reset it. The runtime mesh is reused
+  across rentals and destroyed with its body.
+- **Rule 5:** `ProjectileFired.Radius` is optional last and published from the accepted shot.
+  `EnemyLook.MarksLanding` / `EnemyDefinition._marksLanding` opt a look into filling target rings
+  over the flight. The Pitcher's and player's shots remain unmarked. Mother's content opt-in is
+  still JG-12h's asset work.
+- **Rule 6:** `BossViews` rents by spray id, fires even on a miss, clears by id, steps from its
+  existing snapshot-dt path, and returns completed flashes to the pool. Its run-scoped disposal
+  removes all three subscriptions and destroys the cone pool.
+- **Editor:** authored `VFX_SprayCone.prefab` on the existing `M_TelegraphRing`, shadows off;
+  assigned RunScope's `_sprayConePrefab` in `Run.unity` through MCP Editor commands. No manual
+  prefab or scene setup remains.
+- **Resolved / scope:** Files' `Prefabs/VFX` casing follows the existing `Prefabs/Vfx` directory
+  (earlier code wins). Rules 1 and 5 require two announced additions outside the Files table:
+  `Tests/Game/Views/TelegraphRingsTests.cs` explicitly names the seventh material-sharing prefab,
+  and the Editor-reserialized `Data/Enemies/Husk.asset` carries `_marksLanding: 0`, preserving its
+  exact serialization round-trip test. The existing serialization test itself is unchanged.
+  Unity-generated `.meta` files accompany all three new assets/scripts. No other scope additions.
+- **Verification:** all ten Tests-table rows pass (rules 1–6, including the dressed prefab and
+  Run scene reference). Full EditMode: **4,644 passed, 0 failed, 1 known inconclusive** out of
+  4,645; failing names: **none**. Inconclusive:
+  `PlayerAnimatorViewTests.Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns`.
+  Compiler errors **0**, new analyzer warnings **0**; `dotnet format whitespace --folder
+  --verify-no-changes` clean across all ten changed C# files; `git diff --check` clean.
+- **Manual, deferred as specified to JG-12h:** at **411 × 914**, check the wedge on a 6-inch frame,
+  clearly safe stone shadows, and a ring at each lob's actual landing. No device verification yet.

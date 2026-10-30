@@ -54,11 +54,11 @@ public sealed class TelegraphRingsTests
 
     /// <summary>
     /// [Ledger row 3] The one material the whole telegraph family shares, and the reason one edit to
-    /// it is a look change across six prefabs rather than a one-line correction.
+    /// it is a look change across seven prefabs rather than a one-line correction.
     /// </summary>
     private const string TelegraphMaterialPath = "Assets/_Project/Materials/M_TelegraphRing.mat";
 
-    /// <summary>Where the six live, walked by <see cref="Telegraph_SixPrefabsShareOneMaterial"/>.</summary>
+    /// <summary>Where the seven live, walked by <see cref="Telegraph_SevenPrefabsShareOneMaterial"/>.</summary>
     private const string VfxPrefabFolder = "Assets/_Project/Prefabs/Vfx";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -666,7 +666,7 @@ public sealed class TelegraphRingsTests
     /// does not inherit the telegraph's tuning.
     /// </remarks>
     [Test]
-    public void Telegraph_SixPrefabsShareOneMaterial()
+    public void Telegraph_SevenPrefabsShareOneMaterial()
     {
         string materialGuid = AssetDatabase.AssetPathToGUID(TelegraphMaterialPath);
 
@@ -675,7 +675,7 @@ public sealed class TelegraphRingsTests
         var expected = new[]
         {
             "VFX_TelegraphRing", "VFX_Shockwave", "VFX_Fissure",
-            "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
+            "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone", "VFX_SprayCone",
         };
 
         var found = new List<string>();

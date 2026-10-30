@@ -413,7 +413,8 @@ public sealed class ProjectileSystem
             shot.Origin,
             shot.Target,
             flightTime,
-            shot.IsVolley));
+            shot.IsVolley,
+            shot.Radius));
 
         return id;
     }

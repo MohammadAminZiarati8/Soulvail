@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Soulvail.Core.Director;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Pooling;
 using Soulvail.Game.Presentation;
 using UnityEngine;
@@ -81,6 +82,9 @@ public sealed class TelegraphRings : IDisposable
     private readonly IDisposable _telegraphedSubscription;
     private readonly IDisposable _explodedSubscription;
 
+    private readonly IDisposable _projectileSubscription;
+    private readonly EnemyLookBook _looks;
+
     private bool _disposed;
 
     /// <param name="resolver">
@@ -109,7 +113,8 @@ public sealed class TelegraphRings : IDisposable
         TelegraphRingView prefab,
         Transform parent,
         DomainEventHub hub,
-        int prewarm = 8)
+        int prewarm = 8,
+        EnemyLookBook looks = null)
     {
         if (hub is null)
         {
@@ -125,6 +130,8 @@ public sealed class TelegraphRings : IDisposable
 
         _telegraphedSubscription = hub.Subscribe<SpawnTelegraphed>(OnTelegraphed);
         _explodedSubscription = hub.Subscribe<EnemyExploded>(OnExploded);
+        _looks = looks;
+        _projectileSubscription = hub.Subscribe<ProjectileFired>(OnProjectileFired);
     }
 
     /// <summary>How many rings are currently drawn on the floor.</summary>
@@ -203,6 +210,7 @@ public sealed class TelegraphRings : IDisposable
 
         _telegraphedSubscription.Dispose();
         _explodedSubscription.Dispose();
+        _projectileSubscription.Dispose();
 
         _pool.Dispose();
 
@@ -234,6 +242,15 @@ public sealed class TelegraphRings : IDisposable
         // not pay for on a phone — ProjectileViews' rule, for its reason.
         _live[_live.Count - 1].name = $"Ring {evt.SpecId}";
 #endif
+    }
+
+    /// <summary>Only an opted-in enemy look promises a lob landing.</summary>
+    private void OnProjectileFired(ProjectileFired evt)
+    {
+        if (_looks != null && _looks.For(evt.SpecId).MarksLanding)
+        {
+            Rent(evt.Target.ToUnity(), evt.Radius, evt.FlightTime, fills: true);
+        }
     }
 
     /// <summary>

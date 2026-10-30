@@ -126,6 +126,12 @@ public sealed class BossViews : IDisposable
     /// <summary>A white-textured copy of the fissure's material, owned and destroyed here.</summary>
     private readonly Material _laneMaterial;
 
+    private readonly ViewPool<SprayConeView> _sprayPool;
+    private readonly Dictionary<int, SprayConeView> _sprays = new Dictionary<int, SprayConeView>();
+    private readonly IDisposable _sprayArmedSubscription;
+    private readonly IDisposable _sprayFiredSubscription;
+    private readonly IDisposable _sprayClearedSubscription;
+
     private readonly Transform _parent;
 
     /// <summary>
@@ -218,7 +224,8 @@ public sealed class BossViews : IDisposable
         int beatPrewarm = 1,
         TongueView tonguePrefab = null,
         SlamDustView slamDustPrefab = null,
-        CameraShake shake = null)
+        CameraShake shake = null,
+        SprayConeView sprayConePrefab = null)
     {
         if (hub is null)
         {
@@ -249,6 +256,9 @@ public sealed class BossViews : IDisposable
             : null;
 
         _shake = shake != null ? shake : null;
+        _sprayPool = sprayConePrefab != null
+            ? new ViewPool<SprayConeView>(resolver, sprayConePrefab, parent, 1)
+            : null;
 
         // Unity's ==, for a destroyed parent; the pools have already refused a missing prefab.
         _parent = parent != null ? parent : null;
@@ -283,6 +293,9 @@ public sealed class BossViews : IDisposable
         _laneArmedSubscription = hub.Subscribe<LaneArmed>(OnLaneArmed);
         _laneFiredSubscription = hub.Subscribe<LaneFired>(OnLaneFired);
         _laneClosedSubscription = hub.Subscribe<LaneClosed>(OnLaneClosed);
+        _sprayArmedSubscription = hub.Subscribe<SprayArmed>(OnSprayArmed);
+        _sprayFiredSubscription = hub.Subscribe<SprayFired>(OnSprayFired);
+        _sprayClearedSubscription = hub.Subscribe<SprayCleared>(OnSprayCleared);
     }
 
     /// <summary>How many rings are travelling across the floor right now.</summary>
@@ -363,6 +376,7 @@ public sealed class BossViews : IDisposable
         StepTongues(dt);
         StepDust(dt);
         StepBeats(dt);
+        StepSprays(dt);
     }
 
     /// <summary>
@@ -394,6 +408,11 @@ public sealed class BossViews : IDisposable
         _laneArmedSubscription.Dispose();
         _laneFiredSubscription.Dispose();
         _laneClosedSubscription.Dispose();
+        _sprayArmedSubscription.Dispose();
+        _sprayFiredSubscription.Dispose();
+        _sprayClearedSubscription.Dispose();
+        _sprayPool?.Dispose();
+        _sprays.Clear();
 
         for (int i = 0; i < _allLanes.Count; i++)
         {
@@ -644,6 +663,61 @@ public sealed class BossViews : IDisposable
         for (int i = 0; i < _orphans.Count; i++)
         {
             RetireFissure(_orphans[i]);
+        }
+    }
+
+    /// <summary>A spray owns one pooled fan until cleared or its flash ends.</summary>
+    private void OnSprayArmed(SprayArmed evt)
+    {
+        if (_sprayPool == null)
+        {
+            return;
+        }
+
+        RetireSpray(evt.Id);
+        SprayConeView view = _sprayPool.Get();
+        view.Arm(evt.Origin.ToUnity(), evt.Direction.ToUnity(), evt.HalfAngleDeg, evt.Range, evt.Seconds);
+        _sprays.Add(evt.Id, view);
+    }
+
+    private void OnSprayFired(SprayFired evt)
+    {
+        if (_sprays.TryGetValue(evt.Id, out SprayConeView view) && view != null)
+        {
+            view.Fire();
+        }
+    }
+
+    private void OnSprayCleared(SprayCleared evt) => RetireSpray(evt.Id);
+
+    private void RetireSpray(int id)
+    {
+        if (_sprays.TryGetValue(id, out SprayConeView view))
+        {
+            _sprays.Remove(id);
+            _sprayPool.Release(view);
+        }
+    }
+
+    private void StepSprays(float dt)
+    {
+        _orphans.Clear();
+        foreach (KeyValuePair<int, SprayConeView> entry in _sprays)
+        {
+            if (entry.Value != null)
+            {
+                entry.Value.Step(dt);
+            }
+
+            if (entry.Value == null || !entry.Value.IsLive)
+            {
+                _orphans.Add(entry.Key);
+            }
+        }
+
+        for (int i = 0; i < _orphans.Count; i++)
+        {
+            RetireSpray(_orphans[i]);
         }
     }
 

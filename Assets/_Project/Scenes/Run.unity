@@ -1005,6 +1005,7 @@ MonoBehaviour:
   _bossBeatPrefab: {fileID: 9067622823958853639, guid: 5711fdb9978d8984899daa1a60f97c1a, type: 3}
   _tonguePrefab: {fileID: 4121612379532422000, guid: 1ed080b482c5ef742beb3e2e111dd258, type: 3}
   _slamDustPrefab: {fileID: 2373594765693874534, guid: cf6d52cf806aab14eb0d05ecd110cdcb, type: 3}
+  _sprayConePrefab: {fileID: 1019352675881933244, guid: b407c5e17703e994bb5232612cdcd589, type: 3}
   _cameraShake: {fileID: 1167978319}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}

@@ -72,12 +72,13 @@ public readonly struct EnemyLook
     /// The prefab this archetype wears, if it has one of its own. Null is not an error: it is the
     /// shared body. Optional, so a look that names only a tint and a scale is written as it was.
     /// </param>
-    public EnemyLook(Color tint, float bodyScale, EnemyView body = null, ProjectileView projectile = null)
+    public EnemyLook(Color tint, float bodyScale, EnemyView body = null, ProjectileView projectile = null, bool marksLanding = false)
     {
         Tint = tint;
         BodyScale = bodyScale;
         Body = body;
         Projectile = projectile;
+        MarksLanding = marksLanding;
     }
 
     /// <summary>Grey, scale 1 — what an id nobody authored a look for gets.</summary>
@@ -107,6 +108,9 @@ public readonly struct EnemyLook
     /// The prefab this archetype's shots fly (JG-02), or null: they fly the default bolt.
     /// </summary>
     public ProjectileView Projectile { get; }
+
+    /// <summary>Whether shots from this archetype announce their landing circle.</summary>
+    public bool MarksLanding { get; }
 }
 
 /// <summary>

@@ -153,6 +153,9 @@ namespace Soulvail.Game.Authoring
                  "a ProjectileView. Empty flies the default bolt. Only a projectile behaviour throws.")]
         [SerializeField] private ProjectileView _projectile;
 
+        [Tooltip("Draw a filling landing ring for each lob from this archetype.")]
+        [SerializeField] private bool _marksLanding;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -250,7 +253,7 @@ namespace Soulvail.Game.Authoring
         /// <see cref="EnemyLook"/>'s constructor gives: a wrong colour is wrong on screen, where a
         /// wrong number would be wrong in a rule.
         /// </remarks>
-        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body, _projectile);
+        public EnemyLook ToLook() => new EnemyLook(_tint, _bodyScale, _body, _projectile, _marksLanding);
 
         /// <remarks>
         /// Only the id, and only its shape — the same bargain <c>CharacterDefinition</c> makes. A

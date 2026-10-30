@@ -292,6 +292,8 @@ namespace Soulvail.Game.Composition
                  "without it a landing only shakes the camera.")]
         [SerializeField] private SlamDustView _slamDustPrefab;
 
+        [SerializeField] private SprayConeView _sprayConePrefab;
+
         [Tooltip("The shake on this scene's camera, kicked by every slam's landing (JG-06b). " +
                  "Optional — without it the camera never shakes.")]
         [SerializeField] private CameraShake _cameraShake;
@@ -1014,7 +1016,8 @@ namespace Soulvail.Game.Composition
                 .WithParameter("beatPrewarm", 1)
                 .WithParameter("tonguePrefab", _tonguePrefab)
                 .WithParameter("slamDustPrefab", _slamDustPrefab)
-                .WithParameter("shake", _cameraShake);
+                .WithParameter("shake", _cameraShake)
+                .WithParameter("sprayConePrefab", _sprayConePrefab);
 
             // Scoped rather than the default Singleton. Inside a child scope the two behave
             // identically — a singleton registered here still resolves and disposes scope-locally

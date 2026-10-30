@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12e._
+_Updated 2026-10-30, after JG-12f._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-12e**: Mother body/controller, attacks by Move, ~4 m at scale 2.5. |
-| **Next task** | **JG-12f**: spray wedge and lob landing rings; playtest 7–9 due. |
-| **Verified** | JG-12e: body 7/7; EditMode 4 634 pass, 0 fail, 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **JG-12f**: pooled spray wedge, cover shadows, opt-in lob rings; prefab + Run wired. |
+| **Next task** | **JG-12g**: stones to hide behind; Mother assets/check at JG-12h; playtest 7–9 due. |
+| **Verified** | JG-12f: 10/10; EditMode 4 644 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -20,10 +20,9 @@ Veilrot, Sanctum, Focus disc off (mode flags); class select = Ranger alone (Boot
 threat-budgeted telegraphed waves, then a door; boss every fifth (Warden; Jungle: Old Croaker — hop-slam,
 lane tongue). Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
 4 = 2 Puffballs, 6 = 2 Panthers; 7–9 = mixed waves of all four. Jungle enemies: Frog (`Rig_Frog`), Pitcher (lobs `PitcherSpit`),
-Puffball (Bloater role), Panther (Lunger). Descent keeps the capsules. **Ranger:** own model, arrows
-with a pale wind trail, cyan Volley at every enemy in range, roll on Space, upper-body flinch when hurt; one steady rate (no Focus ramp), first arrow ~¼ s after stopping. **Levelling:** a level banks a point; the tree pauses for a pick.
-Death pays Shards. **Test start (DT-01):** menu top-left, dev builds only; untick `_on` on the Menu scene's `TestStart` to hide. Saves `run.json` v4, `profile.json` v5, all older load. Clash-style UI throughout;
-every string a `LocKey`.
+Puffball (Bloater role), Panther (Lunger). Descent keeps the capsules. **Ranger:** own model, pale arrow trails, cyan Volley per enemy, Space roll, upper-body flinch; steady rate, first arrow ~¼ s after stopping. **Levelling:** points, paused tree picks.
+Death pays Shards. **DT-01:** dev-only Test start, menu top-left; Menu `TestStart._on` hides it.
+Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 
 ## Owed to the owner (Editor checks)
 
@@ -43,12 +42,14 @@ every string a `LocKey`.
 14. RS-08a: stand still 5 s near a Frog — one steady beat; run, stop — fast draw, arrow in ~¼ s.
 15. RS-08b: stage 1 sixth shot sends three arrows, one per Frog; a late wave sends one per enemy in range.
 16. `Soulvail/Capture Look` at 411 × 914 and 360 × 780 of every portrait screen.
-17. DT-01: menu panel → stage 12, Start → stage 12 with the tree open and points to spend; untick `_on` → no panel, Play/Continue unchanged.
-18. RS-09/09a: stage 1, take Frog bites while shooting — one jerk each, then draw and release look as before; legs keep running; a roll through a hit shows no flinch.
+17. DT-01: Start stage 12 → tree open with points; `_on` off → panel hidden, Play/Continue unchanged.
+18. RS-09/09a: stage 1 Frog bites while shooting — one flinch, then normal draw/release; running legs unchanged; roll hits never flinch.
 19. JG-09: shoot a Frog (stage 1) and a Panther (stage 6) without killing — one jerk per arrow, then walk and idle as before.
-20. Arrow fix: stage 1/3 Frogs mid-hop — every arrow that visibly reaches a Frog hurts it; one that lands on empty ground does not.
+20. Arrow fix: stage 1/3 mid-hop Frogs — visible arrow contact hurts; empty ground does not.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
-22. JG-11: Test start 7: 4 Frogs → Panther + 3 Frogs; 8: 2 Pitchers + 3 Frogs → 2 Panthers + 3 Frogs; 9: 3 Frogs + 2 Puffballs → 2 Pitchers + Panther → 2 Panthers + 2 Frogs, door after wave 3. Rule on the climb from 6 and fairness before Croaker.
+22. JG-11 Test start: 7 = 4 Frogs → Panther + 3 Frogs; 8 = 2 Pitchers + 3 Frogs → 2 Panthers + 3 Frogs; 9 = 3 Frogs + 2 Puffballs → 2 Pitchers + Panther → 2 Panthers + 2 Frogs; door after wave 3. Judge climb/fairness.
+
+23. JG-12f at JG-12h: 411 × 914 — readable wedge, safe stone shadows, rings at lob landings. Prefab/Run wired; Mother assets due.
 
 ## What does not work yet
 
@@ -71,7 +72,6 @@ every string a `LocKey`.
 10. HUD ~15 draw calls (no sprite atlas). No PlayMode row taps Continue. Disk near full.
 ## Device
 
-None; nothing has run outside the Editor (BlueStacks crashes in Vulkan). Editor `Screen.dpi` 120 vs
-phone ~400 ([Traps §9](../Traps.md#9-rendering-canvas-and-tmp)). Deferred: multi-touch, kill-from-recents,
+Editor only (BlueStacks crashes in Vulkan). `Screen.dpi` 120 vs phone ~400 ([Traps §9](../Traps.md#9-rendering-canvas-and-tmp)). Deferred: multi-touch, kill-from-recents,
 haptics, latency, frame time at depth, thermal, screen-open cost, hero-sheet scroll feel.
 Store placeholders: `com.soulvail.dev`, company `Soulvail`; business model unruled.

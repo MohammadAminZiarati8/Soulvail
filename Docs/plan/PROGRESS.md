@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-13d._
+_Updated 2026-10-30, after JG-13e._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13d**: Unity reports NavMesh ground clear of cover, cached on change. |
-| **Next task** | **JG-13e**, on the owner's go; then f. |
-| **Verified** | EditMode 4 688 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
+| **Last merged** | **JG-13e**: pods lob onto open ground, plant for 1 s, then hatch a Frog. |
+| **Next task** | **JG-13f**, on the owner's go. |
+| **Verified** | EditMode 4 698 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works
 
@@ -19,7 +19,7 @@ Portrait run. Home (Heroes, Places); the **Jungle** is the first place, 30 stage
 Veilrot, Sanctum, Focus disc off (mode flags); class select = Ranger alone (BootScope list). Stages:
 threat-budgeted telegraphed waves, then a door; boss every fifth (Descent: Warden; Jungle: Old Croaker,
 except 10 = Mother Pitcher). Mother: central/rooted, three shielding buds per phase (facing her), five-lob barrage,
-stone-blocked spray, Frog pods, 66/33% beats. Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
+stone-blocked spray, lobbed pods that plant for 1 s then hatch Frogs, 66/33% beats. Scripted Jungle stages: 1 = 3 Frogs, 2 = 2 Pitchers, 3 = 2 Pitchers + 3 Frogs,
 4 = 2 Puffballs, 6 = 2 Panthers; 7–9 = mixed waves of all four. Frog, Pitcher (`PitcherSpit` lobs),
 Puffball and Panther have their own bodies; Descent keeps capsules. **Ranger:** pale arrow trails,
 cyan Volley per enemy, Space roll, upper-body flinch; first arrow ~¼ s after stopping. Levelling:

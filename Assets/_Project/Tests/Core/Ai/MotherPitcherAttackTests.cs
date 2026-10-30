@@ -92,6 +92,9 @@ public sealed class MotherPitcherAttackTests
         Finish();
         Arm();
         Assert.That(_events.Of<EnemyTelegraph>()[5].Move, Is.EqualTo(3));
+        Finish();
+        Step(1f);
+        Assert.That(_events.Count<PodHatched>(), Is.EqualTo(1));
     }
 
     // Rule 2: the centre is read on release, and one Misc draw turns the entire cross.
@@ -219,25 +222,6 @@ public sealed class MotherPitcherAttackTests
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
 
-    // Rule 4.
-    [Test]
-    public void Mother_Pod_DropsAFrogAway()
-    {
-        Arm();
-        Finish();
-        Arm();
-        Finish();
-        Arm();
-        Assert.That(_events.Count<EnemySpawned>(), Is.Zero);
-        Place(new Vector3(5f, 0f, 0f));
-        Step(0.79f);
-        Assert.That(_events.Count<EnemySpawned>(), Is.Zero);
-        Step(0.02f);
-        EnemySpawned frog = _events.Single<EnemySpawned>();
-        Assert.That(frog.SpecId, Is.EqualTo(new ContentId(FrogId)));
-        Assert.That(frog.Position, Is.EqualTo(new Vector3(-3f, 0f, 0f)));
-    }
-
     // Rule 5: even a large gap tick cannot also finish a wind-up.
     [Test]
     public void Mother_EveryWindup_AtLeastPointSix()
@@ -347,6 +331,10 @@ public sealed class MotherPitcherAttackTests
                 _intents.Clear();
                 mother.Tick(new EnemyTickContext(1f, 2f, player, _intents, silent, projectiles, enemies));
             }
+            _intents.Clear();
+            mother.Tick(new EnemyTickContext(1f, 4f, player, _intents, silent, projectiles, enemies));
+            _intents.Clear();
+            mother.Tick(new EnemyTickContext(1f, 5f, player, _intents, silent, projectiles, enemies));
             projectiles.Clear();
             // Return the spawned Frog to its warmed pool, keeping the pod path live.
             ReadOnlySpan<EnemyAgent> alive = enemies.Registry.Alive;

@@ -96,5 +96,5 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-13b** — Buds guard their mother: a `Guard` idle on the Pitcher rig, buds turned to face her (M) · [spec](tasks/JG-13b-buds-guard-their-mother.md)
 - [x] **JG-13c** — Adds stand on open ground: `WorldSnapshot.OpenGround` and a seeded 4–8 m picker for buds and phase Frogs (M) · [spec](tasks/JG-13c-adds-stand-on-open-ground.md)
 - [x] **JG-13d** — Unity reports open ground: a NavMesh lattice clear of `Cover`, re-sensed on change (S) · [spec](tasks/JG-13d-unity-reports-open-ground.md)
-- [ ] **JG-13e** — Pods are lobbed and hatch: a Frog-shot lob onto open ground, planted 1 s, then a Frog (S) · [spec](tasks/JG-13e-pods-are-lobbed-and-hatch.md)
+- [x] **JG-13e** — Pods are lobbed and hatch: a Frog-shot lob onto open ground, planted 1 s, then a Frog (S) · [spec](tasks/JG-13e-pods-are-lobbed-and-hatch.md)
 - [ ] **JG-13f** — The pod is drawn: a green pod in flight with a landing ring, swelling where it lands (M) · [spec](tasks/JG-13f-the-pod-is-drawn.md)

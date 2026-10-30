@@ -3,6 +3,33 @@ using System.Numerics;
 
 namespace Soulvail.Core.Events;
 
+/// <summary>A lob has planted a pod; Id is the projectile's id.</summary>
+public readonly struct PodPlanted
+{
+    public readonly int Id, BossId;
+    public readonly Vector3 At;
+    public readonly float Seconds;
+
+    public PodPlanted(int id, int bossId, Vector3 at, float seconds)
+    {
+        Id = id;
+        BossId = bossId;
+        At = at;
+        Seconds = seconds;
+    }
+}
+
+/// <summary>A planted pod has finished, even when the enemy registry refused its Frog.</summary>
+public readonly struct PodHatched
+{
+    public readonly int Id;
+
+    public PodHatched(int id)
+    {
+        Id = id;
+    }
+}
+
 /// <summary>A rooted spray warning. Id is the attacking enemy's run-stable id.</summary>
 public readonly struct SprayArmed
 {

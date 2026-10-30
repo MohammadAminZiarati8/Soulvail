@@ -19,7 +19,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
     public const float LobSpeed = 7f, LobRadius = 1.6f;
     public const float SprayTelegraphSeconds = 2.5f, SprayHalfAngleDeg = 40f;
     public const float SprayRange = 12f, SprayDamageScale = 2f;
-    public const float PodTelegraphSeconds = 0.8f, PodDistance = 3f;
+    public const float PodTelegraphSeconds = 0.8f, PodHatchSeconds = 1f;
     public const int MaxPodFrogs = 3;
 
     private readonly EnemyAgent _agent;
@@ -35,6 +35,11 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
     private Vector2 _aim;
     private Vector3 _sprayOrigin;
     private IDomainEvents _sprayEvents;
+    private readonly Vector3[] _podSpots = new Vector3[MaxPodFrogs];
+    private readonly int[] _podIds = new int[MaxPodFrogs];
+    private readonly float[] _podDue = new float[MaxPodFrogs];
+    private readonly bool[] _podPlanted = new bool[MaxPodFrogs];
+    private int _podCount;
 
     public MotherPitcherBehaviour(EnemyAgent agent, ProjectileSystem projectiles,
         IRandomStream random, ContentId budId, ContentId frogId)
@@ -65,6 +70,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     public void Tick(in EnemyTickContext ctx)
     {
+        TickPods(ctx);
         bool shielded = false;
         ReadOnlySpan<EnemyAgent> agents = ctx.Enemies.Registry.Alive;
         Vector3 self = _agent.Position;
@@ -139,7 +145,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
                 }
             }
 
-            if (frogs >= MaxPodFrogs)
+            if (frogs + _podCount >= MaxPodFrogs)
             {
                 _move = BarrageMove;
             }
@@ -194,8 +200,61 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
         else
         {
             Vector2 away = -board.DirectionToPlayer;
-            ctx.Enemies.Spawn(_frogId, board.SelfPosition
-                + new Vector3(away.X, 0f, away.Y) * PodDistance);
+            if (!_ground.TryPick(ctx, _agent.Position, ctx.Player.Blackboard.PlayerPosition,
+                _podSpots.AsSpan(0, _podCount), out Vector3 spot))
+            {
+                away = away.LengthSquared() > 0f ? Vector2.Normalize(away) : -Vector2.UnitY;
+                spot = _agent.Position + new Vector3(away.X, 0f, away.Y) * OpenGroundPicker.MinDistance;
+            }
+
+            int id = _projectiles.Fire(new Projectile(_frogId, _agent.Id,
+                _agent.Position, spot, LobSpeed, LobRadius, _agent.ContactDamage.Value), ctx.Now);
+            if (id != ProjectileSystem.NoProjectile)
+            {
+                var flat = new Vector2(spot.X - _agent.Position.X, spot.Z - _agent.Position.Z);
+                _podSpots[_podCount] = spot;
+                _podIds[_podCount] = id;
+                _podDue[_podCount] = ctx.Now + flat.Length() / LobSpeed;
+                _podPlanted[_podCount] = false;
+                _podCount++;
+            }
+        }
+    }
+
+    private void TickPods(in EnemyTickContext ctx)
+    {
+        for (int i = 0; i < _podCount; i++)
+        {
+            if (ctx.Now < _podDue[i])
+            {
+                continue;
+            }
+
+            if (!_podPlanted[i])
+            {
+                _podPlanted[i] = true;
+                _podDue[i] = ctx.Now + PodHatchSeconds;
+                ctx.Events.Publish(new PodPlanted(_podIds[i], _agent.Id, _podSpots[i], PodHatchSeconds));
+                continue;
+            }
+
+            if (ctx.Enemies.Registry.AliveCount < ctx.Enemies.Registry.Capacity)
+            {
+                ctx.Enemies.Spawn(_frogId, _podSpots[i]);
+            }
+
+            int id = _podIds[i];
+            _podCount--;
+            for (int j = i; j < _podCount; j++)
+            {
+                _podIds[j] = _podIds[j + 1];
+                _podSpots[j] = _podSpots[j + 1];
+                _podDue[j] = _podDue[j + 1];
+                _podPlanted[j] = _podPlanted[j + 1];
+            }
+
+            i--;
+            ctx.Events.Publish(new PodHatched(id));
         }
     }
 
@@ -211,6 +270,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     public void Reset()
     {
+        _podCount = 0;
         _agent.DamageTaken.RemoveAll(this);
         IsShielded = false;
         OnPhaseEntered(0);

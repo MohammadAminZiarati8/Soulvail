@@ -67,4 +67,13 @@ Owed after JG-13f, which draws it.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30. Pods fire Frog-spec projectiles onto picked open ground, reserving pending
+spots; no-ground fallback is 4 m away from the player. Three preallocated slots track flight
+and a 1 s planted wait. Pending pods count beside living Frogs at arm time. Plant/hatch events
+carry the shot id; a full registry still retires the pod. Phase entry keeps pending pods;
+Reset silently forgets them. Damage stays in ProjectileSystem's normal lob landing path.
+
+Verified: EditMode 4 699 total / 4 698 passed / 0 failed / 1 known inconclusive; failing names:
+none. All 11 pod cases passed, including warmed release/plant/hatch allocation coverage.
+Compiler errors 0, new analyzer warnings 0; dotnet format whitespace and git diff --check clean.
+Manual verification remains owed after JG-13f draws the pod. No scope deviations.

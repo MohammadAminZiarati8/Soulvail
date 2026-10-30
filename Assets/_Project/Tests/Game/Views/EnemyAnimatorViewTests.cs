@@ -217,6 +217,40 @@ public sealed class EnemyAnimatorViewTests
         Assert.That(_animator.GetBool(AttackId), Is.True);
     }
 
+    // JG-13a rule 4.
+    [Test]
+    public void Attack_ReleasesAtClipSpeedAfterTheWindup()
+    {
+        typeof(EnemyAnimatorView).GetField("_releaseAtClipSpeed", Private).SetValue(_view, true);
+        _view.Construct(_hub);
+
+        _hub.Publish(new EnemyTelegraph(Id, 2.5f));
+        _view.Step(2.4f);
+
+        Assert.That(_animator.GetFloat(AttackRateId), Is.EqualTo(0.52f / 2.5f).Within(1e-4f));
+
+        _view.Step(0.2f);
+
+        Assert.That(_animator.GetFloat(AttackRateId), Is.EqualTo(1f));
+
+        // A new wind-up restarts the count.
+        _hub.Publish(new EnemyTelegraph(Id, 2.5f));
+        _view.Step(2.4f);
+
+        Assert.That(_animator.GetFloat(AttackRateId), Is.EqualTo(0.52f / 2.5f).Within(1e-4f));
+    }
+
+    [Test]
+    public void Attack_WithoutReleaseFlag_RateHolds()
+    {
+        _view.Construct(_hub);
+
+        _hub.Publish(new EnemyTelegraph(Id, 0.8f));
+        _view.Step(2f);
+
+        Assert.That(_animator.GetFloat(AttackRateId), Is.EqualTo(0.52f / 0.8f).Within(1e-4f));
+    }
+
     [Test]
     public void View_WithoutMoveParam_Unchanged()
     {

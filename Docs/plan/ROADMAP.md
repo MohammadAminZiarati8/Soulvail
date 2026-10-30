@@ -92,7 +92,7 @@ _No milestone. The owner is setting the next direction._
 
 **Mother Pitcher, playtest fixes** (owner, 2026-10-30). Approved by the owner; each built only on the owner's go. a, b, c, e each edit `MotherPitcherBehaviour.cs`, so they go in that order; d needs c; e needs c; f needs e.
 
-- [ ] **JG-13a** — The spray winds up 2.5 s; the wedge fills over it and her follow-through plays at clip speed (S) · [spec](tasks/JG-13a-the-spray-winds-up-longer.md)
+- [x] **JG-13a** — The spray winds up 2.5 s; the wedge fills over it and her follow-through plays at clip speed (S) · [spec](tasks/JG-13a-the-spray-winds-up-longer.md)
 - [ ] **JG-13b** — Buds guard their mother: a `Guard` idle on the Pitcher rig, buds turned to face her (M) · [spec](tasks/JG-13b-buds-guard-their-mother.md)
 - [ ] **JG-13c** — Adds stand on open ground: `WorldSnapshot.OpenGround` and a seeded 4–8 m picker for buds and phase Frogs (M) · [spec](tasks/JG-13c-adds-stand-on-open-ground.md)
 - [ ] **JG-13d** — Unity reports open ground: a NavMesh lattice clear of `Cover`, re-sensed on change (S) · [spec](tasks/JG-13d-unity-reports-open-ground.md)

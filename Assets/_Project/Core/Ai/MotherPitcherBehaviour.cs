@@ -17,7 +17,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
     public const float BarrageTelegraphSeconds = 0.8f, BarrageSpread = 3.5f;
     public const int BarrageLobs = 5;
     public const float LobSpeed = 7f, LobRadius = 1.6f;
-    public const float SprayTelegraphSeconds = 1f, SprayHalfAngleDeg = 40f;
+    public const float SprayTelegraphSeconds = 2.5f, SprayHalfAngleDeg = 40f;
     public const float SprayRange = 12f, SprayDamageScale = 2f;
     public const float PodTelegraphSeconds = 0.8f, PodDistance = 3f;
     public const int MaxPodFrogs = 3;

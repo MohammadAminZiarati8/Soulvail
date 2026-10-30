@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after the JG-13 specs._
+_Updated 2026-10-30, after JG-13a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **Mother colour fix**: repainted in the sculpt's greens (was black lid, brown body); JG-12d rule 6 rewritten. |
-| **Next task** | **JG-13a** (spray 2.5 s), on the owner's go; then b–f in order (ROADMAP › Mother Pitcher, playtest fixes). |
-| **Verified** | Mother model 8/8; EditMode 4 660 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
+| **Last merged** | **JG-13a**: Mother's spray winds up 2.5 s; wedge fills over it; `_releaseAtClipSpeed` returns her follow-through to 1x. |
+| **Next task** | **JG-13b** (buds guard their mother), on the owner's go; then c–f in order (ROADMAP › Mother Pitcher, playtest fixes). |
+| **Verified** | EditMode 4 665 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works
 
@@ -51,7 +51,8 @@ Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 21. JG-10: stage 1 Frog - light fill shortens, white chunk holds then drains over a dark track, bar gone after 2 s; stage 6 Panther - readable shortening bar.
 22. JG-11: play Test start 7–9; judge the scripted mixed-wave climb/fairness and stage 9's door after wave 3.
 
-23. JG-12h: play 10 with ordinary movement for duration/feel and phone wedge/stone readability. Live MCP mechanics passed; see As built.
+23. JG-12h: play 10 with ordinary movement for duration/feel and phone wedge/stone readability.
+24. JG-13a: stage 10 wedge grows 2.5 s; stone shadow at the bite is safe; stream after the blow at 1x.
 
 ## What does not work yet
 

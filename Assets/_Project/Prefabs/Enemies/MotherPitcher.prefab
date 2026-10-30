@@ -240,6 +240,7 @@ MonoBehaviour:
   _windupFromSeconds: 0
   _strikeSeconds: 0.4
   _hops: 0
+  _releaseAtClipSpeed: 1
 --- !u!4 &6370546873736351778 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 764966fe4f4b760408b97197c78098cc, type: 3}

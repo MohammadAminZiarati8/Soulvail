@@ -61,4 +61,15 @@ public const float SprayTelegraphSeconds = 2.5f;   // MotherPitcherBehaviour; ba
 
 ## As built
 
-_Filled at merge._
+2026-10-30. `SprayTelegraphSeconds` 2.5 (barrage, pod 0.8). `EnemyAnimatorView._releaseAtClipSpeed`
+(off by default): a telegraph arms a countdown of its `Duration`; `Step` sets `AttackRate` to 1 when
+it runs out; a new telegraph restarts it; `Forget` clears it. On in `MotherPitcher.prefab` only.
+
+Ripple in `MotherPitcherAttackTests`: `Finish()` steps `SprayTelegraphSeconds` then 1 s; spray rows
+step 2.5 s; `Mother_EveryWindup_AtLeastPointSix` finishes each wind-up with a 10 s step; the
+allocation row's middle tick is 2.5 s, so all three moves still release. `Mother_Spray_HoldsItsAim`
+now steps 2.49 + 0.02 and leaves the seconds check to the new rule 1 row.
+
+`MotherBody_BlowLandsAtTheWindupsEnd` passes unchanged at 2.5 s.
+EditMode 4 665 pass, 0 fail, 1 known inconclusive. Compile errors 0, warnings 0, format clean.
+Manual steps 1–2 not yet run.

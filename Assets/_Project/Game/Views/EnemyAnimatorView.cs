@@ -33,6 +33,12 @@ namespace Soulvail.Game.Views
     /// does to the wind-up.
     /// </para>
     /// <para>
+    /// <b>A long wind-up can hand the follow-through back to the clip</b> (JG-13a). With
+    /// <see cref="_releaseAtClipSpeed"/> on, <c>AttackRate</c> returns to 1 once the wind-up has passed
+    /// in <see cref="Step"/>, so what plays after the blow is not stretched by the wind-up's slow rate.
+    /// Off, the rate holds until the next wind-up, as every body but Mother Pitcher's plays it.
+    /// </para>
+    /// <para>
     /// <b>A body with more than one attack picks it by <c>Move</c></b> (JG-04d). The view sets that
     /// int from <see cref="EnemyTelegraph.Move"/> just before the trigger, so the controller's
     /// transitions see both on the same frame. Unity warns on every write to a parameter a controller
@@ -82,6 +88,11 @@ namespace Soulvail.Game.Views
                  "the hop core is moving it through.")]
         [SerializeField] private bool _hops;
 
+        [Tooltip("Once core's wind-up has passed, return the attack to 1x, so the clip after the blow " +
+                 "plays at its own speed rather than the wind-up's (JG-13a). For a wind-up long " +
+                 "enough to crawl the follow-through.")]
+        [SerializeField] private bool _releaseAtClipSpeed;
+
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
@@ -98,6 +109,9 @@ namespace Soulvail.Game.Views
         private IDisposable _diedSubscription;
         private float _shownSpeed;
         private float _bodySpeed;
+
+        /// <summary>Seconds of the wind-up still to pass before the rate returns to 1; none at or below zero.</summary>
+        private float _windupLeft;
         private bool _dead;
         private bool _injected;
 
@@ -183,6 +197,16 @@ namespace Soulvail.Game.Views
             }
 
             FlinchLayer.Drive(_animator, _flinchLayer, _hitStateId);
+
+            if (_windupLeft > 0f)
+            {
+                _windupLeft -= dt;
+
+                if (!(_windupLeft > 0f))
+                {
+                    _animator.SetFloat(_attackRateId, 1f);
+                }
+            }
         }
 
         /// <summary>
@@ -199,6 +223,7 @@ namespace Soulvail.Game.Views
             _dead = false;
             _shownSpeed = 0f;
             _bodySpeed = 0f;
+            _windupLeft = 0f;
 
             if (_animator == null)
             {
@@ -294,6 +319,11 @@ namespace Soulvail.Game.Views
 
             _animator.SetFloat(_attackRateId, Mathf.Max(_strikeSeconds - _windupFromSeconds, 0.01f) / evt.Duration);
             _animator.SetTrigger(_attackId);
+
+            if (_releaseAtClipSpeed)
+            {
+                _windupLeft = evt.Duration;
+            }
         }
 
         /// <summary>Whether the controller has a <c>Move</c> int, asked of the Animator once.</summary>

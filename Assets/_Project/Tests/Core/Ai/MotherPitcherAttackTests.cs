@@ -11,7 +11,7 @@ using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Ai;
 
-/// <summary>JG-12c rules 1–8, in specification order.</summary>
+/// <summary>JG-12c rules 1–8, in specification order; JG-13a rule 1's 2.5 s spray.</summary>
 [TestFixture]
 public sealed class MotherPitcherAttackTests
 {
@@ -156,13 +156,25 @@ public sealed class MotherPitcherAttackTests
         Assert.That(armed.Direction, Is.EqualTo(Vector2.UnitY));
         Assert.That(armed.HalfAngleDeg, Is.EqualTo(40f));
         Assert.That(armed.Range, Is.EqualTo(12f));
-        Assert.That(armed.Seconds, Is.EqualTo(1f));
         Place(new Vector3(5f, 0f, 0f));
-        Step(0.99f);
+        Step(2.49f);
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(Vector2.UnitY));
         Assert.That(_events.Count<SprayFired>(), Is.Zero);
         Step(0.02f);
         Assert.That(_events.Single<SprayFired>().Hit, Is.False);
+    }
+
+    // JG-13a rule 1: the bite is decided at 2.5 s and on no tick before.
+    [Test]
+    public void Mother_Spray_WindsUpForTwoAndAHalfSeconds()
+    {
+        Spray();
+        Assert.That(_events.Single<EnemyTelegraph>().Duration, Is.EqualTo(2.5f));
+        Assert.That(_events.Single<SprayArmed>().Seconds, Is.EqualTo(2.5f));
+        Step(2.49f);
+        Assert.That(_events.Count<SprayFired>(), Is.Zero);
+        Step(0.02f);
+        Assert.That(_events.Count<SprayFired>(), Is.EqualTo(1));
     }
 
     [TestCase(0f, 5f)]
@@ -174,7 +186,7 @@ public sealed class MotherPitcherAttackTests
         float radians = angle * MathF.PI / 180f;
         Place(new Vector3(MathF.Sin(radians) * distance, 50f, MathF.Cos(radians) * distance));
         _events.Clear();
-        Step(1f);
+        Step(2.5f);
         Assert.That(_events.Single<SprayFired>().Hit, Is.True);
         Assert.That(_events.Single<SprayFired>().Id, Is.EqualTo(_agent.Id));
         var hit = _events.Single<PlayerDamaged>();
@@ -189,7 +201,7 @@ public sealed class MotherPitcherAttackTests
     {
         Spray();
         _agent.Blackboard.HasLineOfSight = false;
-        Step(1f);
+        Step(2.5f);
         Assert.That(_events.Single<SprayFired>().Hit, Is.False);
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
@@ -202,7 +214,7 @@ public sealed class MotherPitcherAttackTests
         Spray();
         float radians = angle * MathF.PI / 180f;
         Place(new Vector3(MathF.Sin(radians) * distance, 0f, MathF.Cos(radians) * distance));
-        Step(1f);
+        Step(2.5f);
         Assert.That(_events.Single<SprayFired>().Hit, Is.False);
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
     }
@@ -242,7 +254,7 @@ public sealed class MotherPitcherAttackTests
             Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(shots));
             Assert.That(_events.Count<SprayFired>(), Is.EqualTo(sprays));
             Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(frogs));
-            Step(0.42f);
+            Step(10f);
             Step(1f);
         }
     }
@@ -331,7 +343,7 @@ public sealed class MotherPitcherAttackTests
                 _intents.Clear();
                 mother.Tick(new EnemyTickContext(2f, 0f, player, _intents, silent, projectiles, enemies));
                 _intents.Clear();
-                mother.Tick(new EnemyTickContext(1f, 1f, player, _intents, silent, projectiles, enemies));
+                mother.Tick(new EnemyTickContext(2.5f, 1f, player, _intents, silent, projectiles, enemies));
                 _intents.Clear();
                 mother.Tick(new EnemyTickContext(1f, 2f, player, _intents, silent, projectiles, enemies));
             }
@@ -360,7 +372,7 @@ public sealed class MotherPitcherAttackTests
     private EnemyTickContext Context(float dt) => new EnemyTickContext(
         dt, _now, _player, _intents, _events, _projectiles, _enemies);
     private void Arm() => Step(2f);
-    private void Finish() { Step(1f); Step(1f); }
+    private void Finish() { Step(MotherPitcherBehaviour.SprayTelegraphSeconds); Step(1f); }
     private void Spray() { Arm(); Finish(); _events.Clear(); Arm(); }
 
     private MotherPitcherBehaviour Mother(EnemyAgent agent, ProjectileSystem projectiles) =>

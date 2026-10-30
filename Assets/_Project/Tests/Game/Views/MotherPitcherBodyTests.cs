@@ -124,6 +124,13 @@ public sealed class MotherPitcherBodyTests
         }
     }
 
+    // JG-13a rule 4: after the 2.5 s wind-up the stream plays at the clip's own speed.
+    [Test]
+    public void MotherBody_ReleasesAtClipSpeed()
+    {
+        Assert.That(View().FindProperty("_releaseAtClipSpeed").boolValue, Is.True);
+    }
+
     [Test]
     public void MotherBody_EveryStateIsTheModelsAndNoWriteDefaults()
     {

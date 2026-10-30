@@ -101,6 +101,18 @@ public sealed class SprayConeViewTests
         Assert.That(cone.IsLive, Is.True, "Only Fire or Clear ends the promise.");
     }
 
+    // JG-13a rule 3: Mother's 2.5 s wind-up, as SprayArmed carries it.
+    [Test]
+    public void Step_FillsOverATwoAndAHalfSecondWindup()
+    {
+        SprayConeView cone = Cone();
+        cone.Arm(Vector3.zero, Vector2.up, 40f, 12f, 2.5f);
+        cone.Step(1f);
+        Assert.That(cone.Fill, Is.EqualTo(0.4f).Within(1e-5f));
+        cone.Step(1.5f);
+        Assert.That(cone.Fill, Is.EqualTo(1f));
+    }
+
     // Rule 4.
     [Test]
     public void Fire_FlashesThenHides()

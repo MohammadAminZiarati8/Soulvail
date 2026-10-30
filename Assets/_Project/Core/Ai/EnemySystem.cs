@@ -636,7 +636,7 @@ public sealed class EnemySystem
             return DamageResult.None;
         }
 
-        DamageResult result = agent.Health.ApplyDamage(amount, now);
+        DamageResult result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now);
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
         // DamageResult field cannot quietly change what counts as silence. The same spelling, for

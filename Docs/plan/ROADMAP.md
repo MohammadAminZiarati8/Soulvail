@@ -82,7 +82,7 @@ _No milestone. The owner is setting the next direction._
 **Mother Pitcher, the stage-10 boss** (owner, 2026-10-30). Specs for the owner to OK; each built only on the owner's go. a, b, d independent (d's sculpt is in); c needs b; e needs c and d; f needs c; g after f (both widen `EnemyLook`); h needs all.
 
 - [x] **JG-12a** — A boss can own a stage: roster rows name one stage, and a central boss spawns mid-arena (M) · [spec](tasks/JG-12a-a-boss-can-own-a-stage.md)
-- [ ] **JG-12b** — The plant and its buds: rooted `MotherPitcherBehaviour`, ×0.2 damage while a bud lives, opening-phase summons (M) · [spec](tasks/JG-12b-the-plant-and-its-buds.md)
+- [x] **JG-12b** — The plant and its buds: rooted `MotherPitcherBehaviour`, ×0.2 damage while a bud lives, opening-phase summons (M) · [spec](tasks/JG-12b-the-plant-and-its-buds.md)
 - [ ] **JG-12c** — Barrage, spray and seed pods: five spit lobs, an 80° spray cover blocks, a Frog per pod (M) · [spec](tasks/JG-12c-barrage-spray-and-seed-pods.md)
 - [ ] **JG-12d** — Mother Pitcher's model: the owner's sculpt cut to the crowd's budget on `Rig_MotherPitcher`, five clips (M) · [spec](tasks/JG-12d-mother-pitchers-model.md)
 - [ ] **JG-12e** — Mother Pitcher's body: prefab and animator, attack by move, a 4 m giant (S) · [spec](tasks/JG-12e-mother-pitchers-body.md)

@@ -85,6 +85,9 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
 
 **Enemies**
 
+- `EnemySystem.ApplyDamage` multiplies each hit by `DamageTaken.Value` before `Health`;
+  `EnemyDamaged` reports the applied result (`DamageTaken_ScalesTheHit`).
+
 - `ApplyDamage` leaves the corpse registered; a behaviour retiring another agent uses
   `DespawnAtEndOfTick`; the walk stays forward (order feeds `TargetScorer`'s tie-break).
 - Ingest runs before anything reads an enemy, in two passes split by writer.

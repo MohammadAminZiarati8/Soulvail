@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
@@ -99,6 +100,33 @@ public sealed class BossDispatchTests
         Assert.That(_events.Count<RunStarted>(), Is.Zero, "Nothing is announced before the refusal.");
     }
 
+    // JG-12b rule 8: inspect the attached behaviour after the real session dispatch.
+    [Test]
+    public void Dispatch_MotherPitcher_IsDriven()
+    {
+        const string Mother = "boss.mother_pitcher";
+        RunSession session = Session(Mode(Mother), Boss(Mother, "enemy.mother_pitcher"));
+        session.Start(Config());
+        for (int i = 0; i < 1_200 && _events.Count<EnemySpawned>() == 0; i++)
+        {
+            session.Tick(Snapshot(Vector3.Zero));
+        }
+
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(1));
+        // Reflection reads the attachment without adding a public live-object escape to RunState.
+        var enemies = (EnemySystem)typeof(RunState)
+            .GetProperty("Enemies", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(session.State);
+        EnemyAgent agent = enemies.Registry.Alive[0];
+        var wrapper = agent.Behaviour as BossBehaviour;
+        Assert.That(wrapper, Is.Not.Null);
+        Assert.That(wrapper.Inner, Is.TypeOf<MotherPitcherBehaviour>());
+        enemies.Spawn(new ContentId("enemy.pitcher_bud"), Vector3.Zero);
+        session.Tick(Snapshot(Vector3.Zero));
+        Assert.That(((MotherPitcherBehaviour)wrapper.Inner).IsShielded, Is.True);
+        Assert.That(agent.DamageTaken.Value, Is.EqualTo(MotherPitcherBehaviour.ShieldedDamageTaken).Within(1e-5f));
+    }
+
     // ---- Fixture ---------------------------------------------------------------------------------
 
     /// <summary>
@@ -157,7 +185,8 @@ public sealed class BossDispatchTests
     private RunSession Session(ModeSpec mode, BossSpec boss) => new RunSession(
         new ContentCatalog(
             new[] { Oathbound() },
-            new[] { Husk(), Body(WardenEnemyId), Body(CroakerEnemyId) },
+            new[] { Husk(), Body(WardenEnemyId), Body(CroakerEnemyId),
+                Body("enemy.mother_pitcher"), Bud() },
             new[] { mode },
             skills: null,
             trees: null,
@@ -252,6 +281,10 @@ public sealed class BossDispatchTests
         recoverTime: 0.6f,
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
+
+    private static EnemySpec Bud() => new EnemySpec(
+        new ContentId("enemy.pitcher_bud"), new LocKey("enemy.pitcher_bud.name"),
+        10f, 0f, 1, 4, 12f, false, 0f, 1f, 0.6f, 0.6f, 40f, EnemyBehaviourKind.Static);
 
     private static CharacterSpec Oathbound() => new CharacterSpec(
         new ContentId(OathboundId),

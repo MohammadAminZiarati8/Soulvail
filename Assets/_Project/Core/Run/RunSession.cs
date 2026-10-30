@@ -269,7 +269,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // ticks, and a run boundary is not a reason to allocate an array of the same size again.
         _deaths = new EnemyDeath[enemyCapacity];
 
-        // The Misc stream and no other, for both: a boss drawing from Spawn would make every later
+        // The Misc stream and no other, for every boss: a boss drawing from Spawn would make every later
         // stage of a seeded run depend on how long this fight took (ADR-0011).
         _bossBehaviours = new Dictionary<ContentId, Func<EnemyAgent, IEnemyBehaviour>>
         {
@@ -277,6 +277,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
             [new ContentId("boss.croaker")] =
                 agent => new CroakerBehaviour(agent, _shockwaves, _fissures, _lanes, _random.Misc),
+            [new ContentId("boss.mother_pitcher")] =
+                agent => new MotherPitcherBehaviour(
+                    agent, State.Projectiles, _random.Misc,
+                    new ContentId("enemy.pitcher_bud"), new ContentId("enemy.frog")),
         };
     }
 

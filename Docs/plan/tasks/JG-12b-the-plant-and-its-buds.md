@@ -76,4 +76,20 @@ None until JG-12h.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30. Rules 1-7 are pinned by the nine named rows in
+`MotherPitcherBehaviourTests`; rule 8 by `BossDispatchTests.Dispatch_MotherPitcher_IsDriven`.
+`DamageTaken` is a base-1 stat, cleared on rental and applied before `Health`; events retain the
+applied result. The rooted behaviour owns one -0.8 `PercentMult` while any live bud remains,
+removes it on reset, and resumes its registry scan after a phase beat. Opening summons run once
+per life, re-armed by `BossBehaviour.Reset`. The session row passes the current run's projectile
+system, Misc stream, bud id and Frog id; the attack dependencies stay unused until JG-12c.
+AR section 18.1 records the damage ordering. No spec/code conflicts or rule resolutions were needed.
+
+Verification: full EditMode rerun 4 600 pass, 0 fail, 0 skipped, 1 known inconclusive
+(`PlayerAnimatorViewTests.Animator_AttackSpeedFollowsTheSwingRatioWhenTheClockRuns`: Editor clock
+stands at zero). Failing names: none. Compiler errors 0; new analyzer warnings 0;
+`dotnet format whitespace --folder --verify-no-changes --include Assets/_Project` clean.
+All ten new rows pass. The first full run's sole failure,
+`LocalJsonSaveStoreTests.Store_RoundTripsClaimed`, was an I/O error replacing its temporary save;
+it passed on the full rerun.
+Manual Editor/device verification remains deferred to JG-12h as specified.

@@ -84,6 +84,8 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
     private int _addCount;
 
+    private bool _openingSummoned;
+
     /// <param name="agent">The body this drives. Its <c>Health</c> is what the phases are read off.</param>
     /// <param name="spec">The boss it is an instance of.</param>
     /// <param name="inner">
@@ -147,6 +149,12 @@ public sealed class BossBehaviour : IEnemyBehaviour
     /// </remarks>
     public void Tick(in EnemyTickContext ctx)
     {
+        if (!_openingSummoned)
+        {
+            _openingSummoned = true;
+            Summon(ctx);
+        }
+
         bool wasInBeat = _phases.IsInBeat;
 
         // Health.Fraction, never Blackboard.HpFraction — see the class remarks, and M4-01a's
@@ -198,6 +206,7 @@ public sealed class BossBehaviour : IEnemyBehaviour
     public void Reset()
     {
         _phases.Reset();
+        _openingSummoned = false;
 
         _addCount = 0;
 

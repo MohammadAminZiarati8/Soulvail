@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12a._
+_Updated 2026-10-30, after JG-12b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-12a**: bosses can own one stage, overriding cycles; central bosses wait for the middle spawn point to be safe. No asset edits. |
-| **Next task** | Playtest 7–9. **JG-12b–h** await a go; d's sculpt is in. |
-| **Verified** | JG-12a EditMode: 4 590 pass, 0 fail, 1 known inconclusive. No compiler errors or new analyzer warnings; format clean. |
+| **Last merged** | **JG-12b**: rooted Mother Pitcher, bud shield, opening summons, dispatch. |
+| **Next task** | **JG-12c**: barrage, spray, seed pods; playtest 7-9 due. |
+| **Verified** | JG-12b EditMode: 4 600 pass, 0 fail, 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 

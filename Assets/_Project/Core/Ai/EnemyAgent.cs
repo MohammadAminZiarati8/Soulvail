@@ -26,7 +26,7 @@ namespace Soulvail.Core.Ai;
 /// fresh one per spawn would allocate and leave the old one wired to a stat nobody owns.
 /// </para>
 /// <para>
-/// <b>A recycled agent forgets everything, and <see cref="Initialise"/> is where.</b> All three of
+/// <b>A recycled agent forgets everything, and <see cref="Initialise"/> is where.</b> All four of
 /// its stats are wiped with <c>Stat.RemoveAll()</c> — the no-argument overload — before they are
 /// re-based, so an agent handed back out cannot arrive wearing the previous life's depth scaling
 /// (M2-03) or, later, the previous life's Elite affixes (M7-02) and player-inflicted debuffs (M3).
@@ -59,6 +59,7 @@ public sealed class EnemyAgent
         // times, and Initialise re-bases these two exactly as it re-bases MaxHp.
         MoveSpeed = new Stat(spec.MoveSpeed);
         ContactDamage = new Stat(spec.ContactDamage);
+        DamageTaken = new Stat(1f);
 
         Blackboard = new EnemyBlackboard();
 
@@ -104,6 +105,9 @@ public sealed class EnemyAgent
     /// depth, which is an acceptance check against d(n) rather than a clamp here (M2-15).
     /// </remarks>
     public Stat ContactDamage { get; }
+
+    /// <summary>Multiplier applied to every incoming hit before Health sees it; base 1.</summary>
+    public Stat DamageTaken { get; }
 
     /// <summary>Its perception and working memory. The instance is stable across recycling.</summary>
     public EnemyBlackboard Blackboard { get; }
@@ -188,7 +192,7 @@ public sealed class EnemyAgent
     public bool IsVulnerable { get; internal set; }
 
     /// <summary>
-    /// Establishes a fresh agent: a new id, an archetype, a position, three stats wiped and
+    /// Establishes a fresh agent: a new id, an archetype, a position, four stats wiped and
     /// re-based to that archetype, full health and a blank blackboard.
     /// </summary>
     /// <remarks>
@@ -249,6 +253,7 @@ public sealed class EnemyAgent
         Health.MaxHp.RemoveAll();
         MoveSpeed.RemoveAll();
         ContactDamage.RemoveAll();
+        DamageTaken.RemoveAll();
 
         MoveSpeed.Base = spec.MoveSpeed;
         ContactDamage.Base = spec.ContactDamage;

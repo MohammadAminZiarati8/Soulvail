@@ -67,7 +67,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 473075f18ec527d4bb2ebdd8240b9908, type: 2}
+  - {fileID: 2100000, guid: 8c98b626af6463147882735e2c1c412a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -101,5 +101,5 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 708b76de22f429d4aa2ff82734d28b76, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.SprayConeView

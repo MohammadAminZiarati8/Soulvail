@@ -131,6 +131,8 @@ public sealed class BossViews : IDisposable
     private readonly IDisposable _sprayArmedSubscription;
     private readonly IDisposable _sprayFiredSubscription;
     private readonly IDisposable _sprayClearedSubscription;
+    private readonly ViewPool<SprayBurstView> _burstPool;
+    private readonly List<SprayBurstView> _bursts = new List<SprayBurstView>();
 
     private readonly ViewPool<SeedPodView> _podPool;
     private readonly Dictionary<int, (int BossId, SeedPodView View)> _pods = new Dictionary<int, (int, SeedPodView)>();
@@ -234,7 +236,8 @@ public sealed class BossViews : IDisposable
         SlamDustView slamDustPrefab = null,
         CameraShake shake = null,
         SprayConeView sprayConePrefab = null,
-        SeedPodView seedPodPrefab = null)
+        SeedPodView seedPodPrefab = null,
+        SprayBurstView sprayBurstPrefab = null)
     {
         if (hub is null)
         {
@@ -267,6 +270,9 @@ public sealed class BossViews : IDisposable
         _shake = shake != null ? shake : null;
         _sprayPool = sprayConePrefab != null
             ? new ViewPool<SprayConeView>(resolver, sprayConePrefab, parent, 1)
+            : null;
+        _burstPool = sprayBurstPrefab != null
+            ? new ViewPool<SprayBurstView>(resolver, sprayBurstPrefab, parent, 1)
             : null;
         _podPool = seedPodPrefab != null
             ? new ViewPool<SeedPodView>(resolver, seedPodPrefab, parent, Soulvail.Core.Ai.MotherPitcherBehaviour.MaxPodFrogs)
@@ -431,6 +437,8 @@ public sealed class BossViews : IDisposable
         _sprayClearedSubscription.Dispose();
         _sprayPool?.Dispose();
         _sprays.Clear();
+        _burstPool?.Dispose();
+        _bursts.Clear();
         _podPlantedSubscription.Dispose();
         _podHatchedSubscription.Dispose();
         _podDeathSubscription.Dispose();
@@ -779,6 +787,14 @@ public sealed class BossViews : IDisposable
     {
         if (_sprays.TryGetValue(evt.Id, out SprayConeView view) && view != null)
         {
+            // The goo reads the fan's clipped rays before its flash can clear them (JG-13g).
+            if (_burstPool != null && view.IsLive)
+            {
+                SprayBurstView burst = _burstPool.Get();
+                burst.Play(view);
+                _bursts.Add(burst);
+            }
+
             view.Fire();
         }
     }
@@ -813,6 +829,21 @@ public sealed class BossViews : IDisposable
         for (int i = 0; i < _orphans.Count; i++)
         {
             RetireSpray(_orphans[i]);
+        }
+
+        for (int i = _bursts.Count - 1; i >= 0; i--)
+        {
+            SprayBurstView burst = _bursts[i];
+            if (burst != null)
+            {
+                burst.Step(dt);
+            }
+
+            if (burst == null || !burst.IsLive)
+            {
+                _bursts.RemoveAt(i);
+                _burstPool.Release(burst);
+            }
         }
     }
 

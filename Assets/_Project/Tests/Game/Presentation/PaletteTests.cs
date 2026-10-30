@@ -684,11 +684,12 @@ public sealed class PaletteTests
 
         Assert.That(
             typeof(Palette).GetFields(BindingFlags.Public | BindingFlags.Static).Count(f => f.FieldType == typeof(Color)),
-            Is.EqualTo(29),
+            Is.EqualTo(31),
             "Palette gained a member. A Pact is GD §16.4's violet, not a second one. "
                 + "The twentieth is UI-01a's Ink, the HUD art's outline; the next three are UI-01b's "
                 + "ghost, low beat and band text; the twenty-fourth is UI-01d's caption; the twenty-fifth is UI-03b's Available green; "
-                + "the twenty-sixth is JG-03b's SporeGlow; JG-10 adds enemy fill, ghost and track.");
+                + "the twenty-sixth is JG-03b's SporeGlow; JG-10 adds enemy fill, ghost and track; "
+                + "JG-13g adds Mother's goo and acid.");
     }
 
     /// <summary>

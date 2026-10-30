@@ -1006,6 +1006,7 @@ MonoBehaviour:
   _tonguePrefab: {fileID: 4121612379532422000, guid: 1ed080b482c5ef742beb3e2e111dd258, type: 3}
   _slamDustPrefab: {fileID: 2373594765693874534, guid: cf6d52cf806aab14eb0d05ecd110cdcb, type: 3}
   _sprayConePrefab: {fileID: 1019352675881933244, guid: b407c5e17703e994bb5232612cdcd589, type: 3}
+  _sprayBurstPrefab: {fileID: 8712668048788630546, guid: de4cada5bc1b01748a21345f65cf63b0, type: 3}
   _seedPodPrefab: {fileID: 250933443141460476, guid: 4cd59dc5523fe7c4c85bd810899524ad, type: 3}
   _cameraShake: {fileID: 1167978319}
   _arenaPrefabs:

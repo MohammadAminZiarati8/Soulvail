@@ -314,6 +314,20 @@ public static class Palette
     public static readonly Color EnemyBarTrack = new Color(Ink.r, Ink.g, Ink.b, 0.85f);
 
     /// <summary>
+    /// A palette colour as a mesh's vertex colour: a material's colour is converted from sRGB in a
+    /// linear project, a vertex colour is not, so without this a vertex-coloured
+    /// <see cref="Danger"/> draws salmon (JG-13g).
+    /// </summary>
+    public static Color Vertex(Color colour) =>
+        QualitySettings.activeColorSpace == ColorSpace.Linear ? colour.linear : colour;
+
+    /// <summary><c>#5E7D2B</c> — Mother Pitcher's body green (<c>M_SeedPod</c>'s): her spray's goo (JG-13g).</summary>
+    public static readonly Color MotherGoo = Rgb(0x5E, 0x7D, 0x2B);
+
+    /// <summary><c>#CCE060</c> — Mother Pitcher's chartreuse rim: the acid sheen on her goo (JG-13g).</summary>
+    public static readonly Color MotherAcid = Rgb(0xCC, 0xE0, 0x60);
+
+    /// <summary>
     /// <c>#FFFFFF</c> — every number on the top band: the health, the level, the wave (UI-01b).
     /// </summary>
     /// <remarks>

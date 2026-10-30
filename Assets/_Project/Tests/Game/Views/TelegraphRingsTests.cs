@@ -54,11 +54,11 @@ public sealed class TelegraphRingsTests
 
     /// <summary>
     /// [Ledger row 3] The one material the whole telegraph family shares, and the reason one edit to
-    /// it is a look change across seven prefabs rather than a one-line correction.
+    /// it is a look change across six prefabs rather than a one-line correction.
     /// </summary>
     private const string TelegraphMaterialPath = "Assets/_Project/Materials/M_TelegraphRing.mat";
 
-    /// <summary>Where the seven live, walked by <see cref="Telegraph_SevenPrefabsShareOneMaterial"/>.</summary>
+    /// <summary>Where the six live, walked by <see cref="Telegraph_SixPrefabsShareOneMaterial"/>.</summary>
     private const string VfxPrefabFolder = "Assets/_Project/Prefabs/Vfx";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -663,10 +663,11 @@ public sealed class TelegraphRingsTests
     /// is why row 3 was placed on a task whose reviewer is already judging translucency. The
     /// corpse M5-05b also ships is deliberately <em>not</em> in this list: <c>VFX_Decoy.prefab</c>
     /// sits in the same folder and carries <c>M_DecoyCyan.mat</c>, so a body that is not a telegraph
-    /// does not inherit the telegraph's tuning.
+    /// does not inherit the telegraph's tuning. <c>VFX_SprayCone</c> left the family at JG-13g: its
+    /// layered fan is drawn in vertex colour, which wants <c>M_SprayCone</c>'s particle shader.
     /// </remarks>
     [Test]
-    public void Telegraph_SevenPrefabsShareOneMaterial()
+    public void Telegraph_SixPrefabsShareOneMaterial()
     {
         string materialGuid = AssetDatabase.AssetPathToGUID(TelegraphMaterialPath);
 
@@ -675,7 +676,7 @@ public sealed class TelegraphRingsTests
         var expected = new[]
         {
             "VFX_TelegraphRing", "VFX_Shockwave", "VFX_Fissure",
-            "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone", "VFX_SprayCone",
+            "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
         };
 
         var found = new List<string>();

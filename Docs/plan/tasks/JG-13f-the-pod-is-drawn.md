@@ -72,4 +72,16 @@ namespace Soulvail.Game.Views
 
 ## As built
 
-_Filled at merge._
+2026-10-30. Built the Files table, including Unity-generated metas. Frog look now selects the
+PitcherSpit variant and landing ring without enabling a Frog ranged attack. The flight has a 0.5 m
+green bulb and no spit trail/impact; Pitcher/player rendering is unchanged. SeedPodView grows
+0.7 → 1 with a damped wobble on snapshot dt. BossViews prewarms three pods, returns by hatch id,
+boss death/despawn or stage arrival, resets rentals and unsubscribes/destroys on disposal. Run binds
+the planted prefab. M_SeedPod samples the centre of Mother's dominant croak_moss body swatch
+(atlas cell 7,3), rather than her chartreuse rim. No scope deviations.
+
+Verified: EditMode total 4 704, passed 4 703, failed 0 (names: none), inconclusive 1 (known).
+All five spec tests pass. Compiler errors 0, new analyzer warnings 0; final Console errors/warnings 0;
+dotnet format and git diff --check clean. Rendered flight/landing-ring and planted swelling states
+checked via MCP. Manual step 1's live stage-10 timing/damage check and step 2's device readability
+remain owed; no device available.

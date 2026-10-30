@@ -132,6 +132,14 @@ public sealed class BossViews : IDisposable
     private readonly IDisposable _sprayFiredSubscription;
     private readonly IDisposable _sprayClearedSubscription;
 
+    private readonly ViewPool<SeedPodView> _podPool;
+    private readonly Dictionary<int, (int BossId, SeedPodView View)> _pods = new Dictionary<int, (int, SeedPodView)>();
+    private readonly IDisposable _podPlantedSubscription;
+    private readonly IDisposable _podHatchedSubscription;
+    private readonly IDisposable _podDeathSubscription;
+    private readonly IDisposable _podDespawnSubscription;
+    private readonly IDisposable _podArrivalSubscription;
+
     private readonly Transform _parent;
 
     /// <summary>
@@ -225,7 +233,8 @@ public sealed class BossViews : IDisposable
         TongueView tonguePrefab = null,
         SlamDustView slamDustPrefab = null,
         CameraShake shake = null,
-        SprayConeView sprayConePrefab = null)
+        SprayConeView sprayConePrefab = null,
+        SeedPodView seedPodPrefab = null)
     {
         if (hub is null)
         {
@@ -258,6 +267,9 @@ public sealed class BossViews : IDisposable
         _shake = shake != null ? shake : null;
         _sprayPool = sprayConePrefab != null
             ? new ViewPool<SprayConeView>(resolver, sprayConePrefab, parent, 1)
+            : null;
+        _podPool = seedPodPrefab != null
+            ? new ViewPool<SeedPodView>(resolver, seedPodPrefab, parent, Soulvail.Core.Ai.MotherPitcherBehaviour.MaxPodFrogs)
             : null;
 
         // Unity's ==, for a destroyed parent; the pools have already refused a missing prefab.
@@ -296,6 +308,11 @@ public sealed class BossViews : IDisposable
         _sprayArmedSubscription = hub.Subscribe<SprayArmed>(OnSprayArmed);
         _sprayFiredSubscription = hub.Subscribe<SprayFired>(OnSprayFired);
         _sprayClearedSubscription = hub.Subscribe<SprayCleared>(OnSprayCleared);
+        _podPlantedSubscription = hub.Subscribe<PodPlanted>(OnPodPlanted);
+        _podHatchedSubscription = hub.Subscribe<PodHatched>(evt => RetirePod(evt.Id));
+        _podDeathSubscription = hub.Subscribe<EnemyDied>(evt => RetireBossPods(evt.Id));
+        _podDespawnSubscription = hub.Subscribe<EnemyDespawned>(evt => RetireBossPods(evt.Id));
+        _podArrivalSubscription = hub.Subscribe<StageArrived>(_ => ClearPods());
     }
 
     /// <summary>How many rings are travelling across the floor right now.</summary>
@@ -377,6 +394,7 @@ public sealed class BossViews : IDisposable
         StepDust(dt);
         StepBeats(dt);
         StepSprays(dt);
+        StepPods(dt);
     }
 
     /// <summary>
@@ -413,6 +431,13 @@ public sealed class BossViews : IDisposable
         _sprayClearedSubscription.Dispose();
         _sprayPool?.Dispose();
         _sprays.Clear();
+        _podPlantedSubscription.Dispose();
+        _podHatchedSubscription.Dispose();
+        _podDeathSubscription.Dispose();
+        _podDespawnSubscription.Dispose();
+        _podArrivalSubscription.Dispose();
+        ClearPods();
+        _podPool?.Dispose();
 
         for (int i = 0; i < _allLanes.Count; i++)
         {
@@ -663,6 +688,76 @@ public sealed class BossViews : IDisposable
         for (int i = 0; i < _orphans.Count; i++)
         {
             RetireFissure(_orphans[i]);
+        }
+    }
+
+    private void OnPodPlanted(PodPlanted evt)
+    {
+        if (_podPool == null)
+        {
+            return;
+        }
+
+        RetirePod(evt.Id);
+        SeedPodView view = _podPool.Get();
+        view.Plant(evt.At.ToUnity(), evt.Seconds);
+        _pods.Add(evt.Id, (evt.BossId, view));
+    }
+
+    private void RetirePod(int id)
+    {
+        if (_pods.TryGetValue(id, out var pod))
+        {
+            _pods.Remove(id);
+            _podPool.Release(pod.View);
+        }
+    }
+
+    private void RetireBossPods(int bossId)
+    {
+        _orphans.Clear();
+        foreach (var entry in _pods)
+        {
+            if (entry.Value.BossId == bossId)
+            {
+                _orphans.Add(entry.Key);
+            }
+        }
+
+        for (int i = 0; i < _orphans.Count; i++)
+        {
+            RetirePod(_orphans[i]);
+        }
+    }
+
+    private void ClearPods()
+    {
+        foreach (var pod in _pods.Values)
+        {
+            _podPool.Release(pod.View);
+        }
+
+        _pods.Clear();
+    }
+
+    private void StepPods(float dt)
+    {
+        _orphans.Clear();
+        foreach (var entry in _pods)
+        {
+            if (entry.Value.View == null)
+            {
+                _orphans.Add(entry.Key);
+            }
+            else
+            {
+                entry.Value.View.Step(dt);
+            }
+        }
+
+        for (int i = 0; i < _orphans.Count; i++)
+        {
+            RetirePod(_orphans[i]);
         }
     }
 

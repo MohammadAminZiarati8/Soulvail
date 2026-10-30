@@ -211,6 +211,36 @@ public sealed class SprayConeViewTests
         Assert.That(parent.GetComponentInChildren<SprayConeView>(), Is.Null);
     }
 
+    // Fix: a fan armed when Mother dies, leaves or the stage turns goes with her.
+    [Test]
+    public void BossViews_BossGone_ClearsHerWindup()
+    {
+        using IObjectResolver container = new ContainerBuilder().Build();
+        using var hub = new DomainEventHub();
+        using var enemies = new EnemyViews(container, Keep(new GameObject("Enemy")).AddComponent<EnemyView>(),
+            null, hub, new EnemyLookBook(new Dictionary<ContentId, EnemyLook>()), prewarm: 0);
+        Transform parent = Keep(new GameObject("Decals")).transform;
+        using var views = new BossViews(container, Decal<ShockwaveView>(), Decal<FissureView>(), Decal<BossBeatView>(),
+            parent, hub, enemies, null, shockwavePrewarm: 0, fissurePrewarm: 0, beatPrewarm: 0, sprayConePrefab: Cone());
+        var origin = System.Numerics.Vector3.Zero;
+        var aim = new System.Numerics.Vector2(0f, 1f);
+        hub.Publish(new SprayArmed(7, origin, aim, 30f, 8f, 2.5f));
+        SprayConeView cone = parent.GetComponentInChildren<SprayConeView>();
+        hub.Publish(new EnemyDied(99, default, origin));
+        Assert.That(cone.IsLive, Is.True, "Another enemy's death leaves her fan.");
+        hub.Publish(new EnemyDied(7, default, origin));
+        Assert.That(cone.IsLive, Is.False, "Dies.");
+        Assert.That(cone.gameObject.activeSelf, Is.False);
+        hub.Publish(new SprayArmed(7, origin, aim, 30f, 8f, 2.5f));
+        hub.Publish(new EnemyDespawned(7));
+        Assert.That(cone.IsLive, Is.False, "Leaves.");
+        hub.Publish(new SprayArmed(7, origin, aim, 30f, 8f, 2.5f));
+        hub.Publish(new StageArrived(11, default));
+        Assert.That(cone.IsLive, Is.False, "Stage turns.");
+        hub.Publish(new SprayArmed(7, origin, aim, 30f, 8f, 2.5f));
+        Assert.That(cone.IsLive, Is.True, "A later wind-up still draws.");
+    }
+
     // Rule 1, Traps §5: asset links and scene binding survive serialization.
     [Test]
     public void Prefab_IsDressed()

@@ -316,9 +316,9 @@ public sealed class BossViews : IDisposable
         _sprayClearedSubscription = hub.Subscribe<SprayCleared>(OnSprayCleared);
         _podPlantedSubscription = hub.Subscribe<PodPlanted>(OnPodPlanted);
         _podHatchedSubscription = hub.Subscribe<PodHatched>(evt => RetirePod(evt.Id));
-        _podDeathSubscription = hub.Subscribe<EnemyDied>(evt => RetireBossPods(evt.Id));
-        _podDespawnSubscription = hub.Subscribe<EnemyDespawned>(evt => RetireBossPods(evt.Id));
-        _podArrivalSubscription = hub.Subscribe<StageArrived>(_ => ClearPods());
+        _podDeathSubscription = hub.Subscribe<EnemyDied>(evt => RetireBoss(evt.Id));
+        _podDespawnSubscription = hub.Subscribe<EnemyDespawned>(evt => RetireBoss(evt.Id));
+        _podArrivalSubscription = hub.Subscribe<StageArrived>(_ => ClearBossLeftovers());
     }
 
     /// <summary>How many rings are travelling across the floor right now.</summary>
@@ -736,6 +736,27 @@ public sealed class BossViews : IDisposable
         {
             RetirePod(_orphans[i]);
         }
+    }
+
+    /// <summary>
+    /// A boss that dies or leaves takes its pods and its wind-up fan with it: core clears a spray
+    /// only on a phase beat, so a fan armed when she fell would otherwise never fire or go.
+    /// </summary>
+    private void RetireBoss(int bossId)
+    {
+        RetireBossPods(bossId);
+        RetireSpray(bossId);
+    }
+
+    private void ClearBossLeftovers()
+    {
+        ClearPods();
+        foreach (SprayConeView view in _sprays.Values)
+        {
+            _sprayPool.Release(view);
+        }
+
+        _sprays.Clear();
     }
 
     private void ClearPods()

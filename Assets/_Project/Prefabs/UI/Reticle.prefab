@@ -231,7 +231,7 @@ MonoBehaviour:
   _heldChevron: {fileID: 624260565771989885}
   _radius: 0.9
   _segments: 32
-  _groundOffset: 0.02
+  _groundOffset: 0.07
   _chevronHeight: 2.2
   _autoAlpha: 0.6
   _width: 0.08

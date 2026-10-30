@@ -9,7 +9,7 @@ _Updated 2026-10-31, after the JG-13 playtest fixes._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13 playtest fixes**: boss bar one line; Pitcher rings; decals over stone. |
+| **Last merged** | **JG-13 playtest fixes**: boss bar one line; Pitcher rings; all floor decals over stone. |
 | **Next task** | None planned; owner to set direction. |
 | **Verified** | EditMode total 4 707: 4 706 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
@@ -54,7 +54,7 @@ Boss bar one line. Saves: run v4, profile v5; older load. Clash-style UI; all st
 24. JG-13a: stage 10 wedge grows 2.5 s; stone shadow is safe; stream after the blow at 1x.
 25. JG-13b/c/d: stage 10 buds face her, lean, pulse; buds/phase Frogs clear stones, floor edges and player.
 26. JG-13e/f: stage 10 pod arcs with filling ring, lands clear, swells ~1 s, hatches Frog; landing hurts. Render checked; live/device pending.
-27. Fixes: stage 10 bar one line; spray fan/rings show on stone, rim reads; stage 2 Pitcher lobs ringed.
+27. Fixes: stage 10 bar one line; fan/rings/lanes/waves show on stone; fan rim reads; Pitcher lobs ringed.
 
 ## What does not work yet
 

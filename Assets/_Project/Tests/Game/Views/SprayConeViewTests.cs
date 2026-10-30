@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
@@ -247,7 +248,7 @@ public sealed class SprayConeViewTests
         }
     }
 
-    // JG-13 playtest: the fan and the landing rings show on the stone slabs, and the fan's rim reads.
+    // JG-13 playtest: every floor decal shows on the stone slabs, and the fan's rim reads.
     [Test]
     public void Decals_DrawAboveTheJungleStone_WithAThickRim()
     {
@@ -268,9 +269,27 @@ public sealed class SprayConeViewTests
 
         Assert.That(stoneTop, Is.GreaterThan(0f), "No raised floor found; the row would pass on nothing.");
         Assert.That(SprayConeView.GroundOffset, Is.GreaterThan(stoneTop + 0.01f), "The stone hides the spray fan.");
-        var ring = AssetDatabase.LoadAssetAtPath<TelegraphRingView>("Assets/_Project/Prefabs/Vfx/VFX_TelegraphRing.prefab");
-        Assert.That(new SerializedObject(ring).FindProperty("_groundOffset").floatValue, Is.GreaterThan(stoneTop + 0.01f),
-            "The stone hides a landing ring.");
+        var decals = new (string Path, System.Type View)[]
+        {
+            ("Prefabs/Vfx/VFX_TelegraphRing.prefab", typeof(TelegraphRingView)),
+            ("Prefabs/Vfx/VFX_Fissure.prefab", typeof(FissureView)),
+            ("Prefabs/Vfx/VFX_Shockwave.prefab", typeof(ShockwaveView)),
+            ("Prefabs/Vfx/VFX_ConsecrateZone.prefab", typeof(ZoneView)),
+            ("Prefabs/UI/Reticle.prefab", typeof(ReticleView)),
+            ("Prefabs/Player/Player.prefab", typeof(FocusGlowView)),
+        };
+        foreach ((string path, System.Type view) in decals)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/{path}");
+            Assert.That(prefab, Is.Not.Null, path);
+            Component decal = prefab.GetComponentInChildren(view, true);
+            Assert.That(decal, Is.Not.Null, $"{path} has no {view.Name}.");
+            Assert.That(new SerializedObject(decal).FindProperty("_groundOffset").floatValue, Is.GreaterThan(stoneTop + 0.01f),
+                $"The stone hides {view.Name}.");
+        }
+
+        object lane = typeof(BossViews).GetField("LaneGroundOffset", BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
+        Assert.That((float)lane, Is.GreaterThan(stoneTop + 0.01f), "The stone hides the tongue lane.");
 
         SprayConeView cone = Cone();
         cone.Arm(Vector3.zero, Vector2.up, 30f, 8f, 2f);

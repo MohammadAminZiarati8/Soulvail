@@ -108,4 +108,4 @@ MonoBehaviour:
   _fireAlpha: 0.95
   _fireFlare: 1.35
   _fireSeconds: 0.35
-  _groundOffset: 0.02
+  _groundOffset: 0.07

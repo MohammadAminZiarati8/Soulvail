@@ -84,7 +84,7 @@ namespace Soulvail.Game.Views
 
         [Tooltip("Metres above the floor. Enough to clear z-fighting with the arena, little " +
                  "enough that the disc still reads as lying on the ground.")]
-        [SerializeField] private float _groundOffset = 0.015f;
+        [SerializeField] private float _groundOffset = 0.068f;
 
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because

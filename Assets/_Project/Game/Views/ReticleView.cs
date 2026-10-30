@@ -108,7 +108,7 @@ namespace Soulvail.Game.Views
 
         [Tooltip("Metres above the floor. Enough to clear z-fighting with the arena, little " +
                  "enough that the ring still reads as lying on the ground.")]
-        [SerializeField] private float _groundOffset = 0.02f;
+        [SerializeField] private float _groundOffset = 0.07f;
 
         [Tooltip("How high over the target the focused chevron floats, in metres.")]
         [SerializeField] private float _chevronHeight = 2.2f;

@@ -107,4 +107,4 @@ MonoBehaviour:
   _baseAlpha: 0.18
   _pulseAlpha: 0.55
   _pulseSeconds: 0.2
-  _groundOffset: 0.01
+  _groundOffset: 0.065

@@ -76,7 +76,7 @@ public sealed class BossViews : IDisposable
     private const float LaneFireAlpha = 0.95f;
 
     /// <summary>Metres above the floor — just over a fissure's, so a strip across a crack wins.</summary>
-    private const float LaneGroundOffset = 0.025f;
+    private const float LaneGroundOffset = 0.075f;
 
     private const string BaseMapName = "_BaseMap";
 

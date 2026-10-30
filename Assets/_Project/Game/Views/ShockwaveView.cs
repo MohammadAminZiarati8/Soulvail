@@ -145,7 +145,7 @@ namespace Soulvail.Game.Views
                  "arena it is drawn on. Cosmetic in the strict sense: no value here can change " +
                  "which circle core tested, because every distance in the game is measured on XZ.")]
         [Min(0f)]
-        [SerializeField] private float _groundOffset = 0.03f;
+        [SerializeField] private float _groundOffset = 0.08f;
 
         /// <summary>URP's colour property, resolved once rather than per write.</summary>
         private readonly int _baseColorId = Shader.PropertyToID("_BaseColor");

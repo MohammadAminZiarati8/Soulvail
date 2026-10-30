@@ -98,7 +98,7 @@ namespace Soulvail.Game.Views
                  "arena it is drawn on. Cosmetic in the strict sense: no value here can change " +
                  "which circle core tested, because every distance in the game is measured on XZ.")]
         [Min(0f)]
-        [SerializeField] private float _groundOffset = 0.02f;
+        [SerializeField] private float _groundOffset = 0.07f;
 
         /// <summary>
         /// Where the colour and the alpha are written, so nothing here ever touches a shared

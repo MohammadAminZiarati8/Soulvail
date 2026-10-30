@@ -108,7 +108,7 @@ MonoBehaviour:
   _lip: {fileID: 9200648809718527416}
   _baseAlpha: 0.65
   _fadeFraction: 0.2
-  _groundOffset: 0.03
+  _groundOffset: 0.08
 --- !u!1 &7139266561696329016
 GameObject:
   m_ObjectHideFlags: 0

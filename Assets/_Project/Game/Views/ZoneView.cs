@@ -91,7 +91,7 @@ namespace Soulvail.Game.Views
         [Tooltip("Metres the decal floats above the floor, to keep it out of a z-fight with the " +
                  "arena it is drawn on. Cosmetic in the strict sense: no value here can change " +
                  "which circle core tested, because every distance in the game is measured on XZ.")]
-        [SerializeField] private float _groundOffset = 0.01f;
+        [SerializeField] private float _groundOffset = 0.065f;
 
         /// <summary>
         /// Where the colour and the alpha are written, so nothing here ever touches a shared

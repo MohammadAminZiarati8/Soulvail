@@ -458,7 +458,7 @@ MonoBehaviour:
   _maxAlpha: 0.35
   _baseRadius: 1
   _radiusGain: 0.5
-  _groundOffset: 0.015
+  _groundOffset: 0.068
 --- !u!114 &4401292794507055000
 MonoBehaviour:
   m_ObjectHideFlags: 0

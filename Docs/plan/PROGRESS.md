@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-31, after JG-13g + spray fix._
+_Updated 2026-10-31, after JG-13g + 2 fixes._
 
 ## Current State
 
@@ -11,7 +11,7 @@ _Updated 2026-10-31, after JG-13g + spray fix._
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
 | **Last merged** | **JG-13g**: Mother's fan pulses and fills; her spray splats goo at the clipped ends. |
 | **Next task** | None planned; owner to set direction. |
-| **Verified** | EditMode total 4 715: 4 714 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
+| **Verified** | EditMode total 4 718: 4 717 pass, 0 fail, 1 known inconclusive. Errors 0; analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -24,7 +24,7 @@ stone-blocked spray (pulsing fan, goo splash), ringed pods that swell 1 s, hatch
 Puffball and Panther have their own bodies; Descent keeps capsules. **Ranger:** pale arrow trails,
 cyan Volley per enemy, Space roll, upper-body flinch; first arrow ~¼ s after stopping. Levelling:
 points, paused tree picks. Death pays Shards. **DT-01:** menu Test start; `TestStart._on` hides it.
-Boss bar one line. Saves: run v4, profile v5; older load. Clash UI; all strings `LocKey`.
+Boss bar one line, none overhead. Saves: run v4, profile v5; older load. Clash UI; all strings `LocKey`.
 
 ## Owed to the owner (Editor checks)
 
@@ -55,7 +55,7 @@ Boss bar one line. Saves: run v4, profile v5; older load. Clash UI; all strings 
 25. JG-13b/c/d: stage 10 buds face her, lean, pulse; buds/phase Frogs clear stones, floor edges and player.
 26. JG-13e/f: stage 10 pod arcs with filling ring, lands clear, swells ~1 s, hatches Frog; landing hurts.
 27. Fixes: stage 10 bar one line; rings/lanes/waves show on stone; Pitcher lobs ringed.
-28. JG-13g: stage 10 fan reads on grass/stone, beats faster; goo splats floor/stone, < 1 s; kill mid wind-up, fan goes.
+28. JG-13g: stage 10 fan reads on grass/stone, beats faster; goo splats floor/stone, < 1 s; kill mid wind-up, fan goes; no bar over her.
 
 ## What does not work yet
 

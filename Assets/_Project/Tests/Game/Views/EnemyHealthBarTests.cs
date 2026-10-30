@@ -240,6 +240,51 @@ public sealed class EnemyHealthBarTests
         Assert.That(_fill.fillAmount, Is.EqualTo(0.4f).Within(1e-4f));
     }
 
+    // ---- The boss (fix: the HUD's boss bar is its readout) ---------------------------------------
+
+    [Test]
+    public void Bar_BossNeverShows()
+    {
+        _bar.Bind(Id, isElite: false);
+        Damage(0.8f);
+
+        // Core announces a boss's phase straight after its spawn; a bar already up goes at once.
+        _hub.Publish(new BossPhaseChanged(Id, 0, 3));
+
+        Assert.That(_bar.IsShown, Is.False);
+        Assert.That(_root.alpha, Is.EqualTo(0f));
+
+        Damage(0.5f);
+
+        Assert.That(_bar.IsShown, Is.False);
+        Assert.That(_root.alpha, Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void Bar_AnotherBossLeavesItAlone()
+    {
+        _bar.Bind(Id, isElite: false);
+
+        _hub.Publish(new BossPhaseChanged(Id + 1, 0, 3));
+        Damage(0.6f);
+
+        Assert.That(_bar.IsShown, Is.True);
+    }
+
+    [Test]
+    public void Bar_RebindForgetsTheBoss()
+    {
+        _bar.Bind(Id, isElite: false);
+        _hub.Publish(new BossPhaseChanged(Id, 0, 3));
+
+        _bar.Unbind();
+        _bar.Bind(Id, isElite: false);
+        Damage(0.6f);
+
+        // AR §18.4: a pooled body rented once by a boss and again by a Frog shows the Frog's bar.
+        Assert.That(_bar.IsShown, Is.True);
+    }
+
     // ---- The id filter and the pooled reset (rule 8, AR §18.4) -----------------------------------
 
     [Test]

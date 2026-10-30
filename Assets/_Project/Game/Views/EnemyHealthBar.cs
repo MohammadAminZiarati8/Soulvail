@@ -130,12 +130,19 @@ namespace Soulvail.Game.Views
         public float GhostFraction => _ghostFraction;
 
         private IDisposable _damagedSubscription;
+        private IDisposable _bossSubscription;
 
         /// <summary>The id this bar is standing over, or <see cref="EnemyView.Unbound"/>.</summary>
         private int _id = EnemyView.Unbound;
 
         /// <summary>Whether the bound body is a priority target, and therefore never fades.</summary>
         private bool _isElite;
+
+        /// <summary>
+        /// Whether the bound body is a boss, whose health the HUD's boss bar already shows; this one
+        /// then never draws.
+        /// </summary>
+        private bool _isBoss;
 
         /// <summary>The fill as last drawn, in <c>[0, 1]</c>.</summary>
         private float _fraction = 1f;
@@ -177,16 +184,20 @@ namespace Soulvail.Game.Views
 
             _injected = true;
 
-            // One subscription, and deliberately not a second to EnemySpawned. EnemyViews calls
+            // Deliberately no subscription to EnemySpawned. EnemyViews calls
             // Bind on the rental — before the body is in service — and EnemyView.OnDespawn calls
             // Unbind on the way out, which is where "what a rental has to forget" already lives. A
             // census subscription here would hand every spawn in the arena to every body in the pool
             // in order to discover that twenty-seven of them are not it.
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
+
+            // A boss is an ordinary spawn, told apart only by the phase it announces straight after
+            // (BossBehaviour.Announce). A few events per fight, so the census cost above does not apply.
+            _bossSubscription = hub.Subscribe<BossPhaseChanged>(OnBossPhaseChanged);
         }
 
         /// <summary>Whether the bar is currently drawn at all.</summary>
-        public bool IsShown => _id != EnemyView.Unbound && (_isElite || _shownRemaining > 0f);
+        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && (_isElite || _shownRemaining > 0f);
 
         /// <summary>
         /// Told what it is standing over, on the rental. Before the body is in service.
@@ -213,6 +224,7 @@ namespace Soulvail.Game.Views
 
             _id = id;
             _isElite = isElite;
+            _isBoss = false;
             _fraction = 1f;
             _ghostFraction = 1f;
             _ghostHoldRemaining = 0f;
@@ -245,6 +257,7 @@ namespace Soulvail.Game.Views
         {
             _id = EnemyView.Unbound;
             _isElite = false;
+            _isBoss = false;
             _fraction = 1f;
             _ghostFraction = 1f;
             _ghostHoldRemaining = 0f;
@@ -291,6 +304,8 @@ namespace Soulvail.Game.Views
             // component Unity has already killed.
             _damagedSubscription?.Dispose();
             _damagedSubscription = null;
+            _bossSubscription?.Dispose();
+            _bossSubscription = null;
         }
 
         /// <remarks>
@@ -381,6 +396,19 @@ namespace Soulvail.Game.Views
             _root.transform.rotation = FacingCamera;
         }
 
+        private void OnBossPhaseChanged(BossPhaseChanged evt)
+        {
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id)
+            {
+                return;
+            }
+
+            _isBoss = true;
+            _shownRemaining = 0f;
+
+            Draw();
+        }
+
         private void OnDamaged(EnemyDamaged evt)
         {
             if (_id == EnemyView.Unbound || evt.Id != _id)
@@ -458,7 +486,7 @@ namespace Soulvail.Game.Views
         /// </summary>
         private float Alpha()
         {
-            if (_id == EnemyView.Unbound)
+            if (_id == EnemyView.Unbound || _isBoss)
             {
                 return 0f;
             }

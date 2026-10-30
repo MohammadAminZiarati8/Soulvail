@@ -163,6 +163,11 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
         if (entered)
         {
+            if (Inner is IBossPhaseListener listener)
+            {
+                listener.OnPhaseEntered(_phases.Current);
+            }
+
             EnterPhase(ctx);
 
             Stand(ctx);

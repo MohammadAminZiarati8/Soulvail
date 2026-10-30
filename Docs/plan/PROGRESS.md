@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-12b._
+_Updated 2026-10-30, after JG-12c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | **None planned**. M0–M5 tagged; `m6` is the owner's to tag. |
-| **Last merged** | **JG-12b**: rooted Mother Pitcher, bud shield, opening summons, dispatch. |
-| **Next task** | **JG-12c**: barrage, spray, seed pods; playtest 7-9 due. |
-| **Verified** | JG-12b EditMode: 4 600 pass, 0 fail, 1 known inconclusive. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **JG-12c**: Mother barrage/spray/pod loop, cover-aware spray, crossing cancellation. |
+| **Next task** | **JG-12d**: Mother Pitcher model; playtest 7-9 due. |
+| **Verified** | JG-12c EditMode: 4 627 pass, 0 fail, 1 known inconclusive (includes JG-12d tests). Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 

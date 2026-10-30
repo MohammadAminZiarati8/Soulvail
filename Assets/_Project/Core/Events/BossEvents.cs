@@ -3,6 +3,52 @@ using System.Numerics;
 
 namespace Soulvail.Core.Events;
 
+/// <summary>A rooted spray warning. Id is the attacking enemy's run-stable id.</summary>
+public readonly struct SprayArmed
+{
+    public readonly int Id;
+    public readonly Vector3 Origin;
+    public readonly Vector2 Direction;
+    public readonly float HalfAngleDeg;
+    public readonly float Range;
+    public readonly float Seconds;
+
+    public SprayArmed(int id, Vector3 origin, Vector2 direction,
+        float halfAngleDeg, float range, float seconds)
+    {
+        Id = id;
+        Origin = origin;
+        Direction = direction;
+        HalfAngleDeg = halfAngleDeg;
+        Range = range;
+        Seconds = seconds;
+    }
+}
+
+/// <summary>The spray resolved; Hit describes geometry and sight, including a blocked bite.</summary>
+public readonly struct SprayFired
+{
+    public readonly int Id;
+    public readonly bool Hit;
+
+    public SprayFired(int id, bool hit)
+    {
+        Id = id;
+        Hit = hit;
+    }
+}
+
+/// <summary>A phase crossing cancelled this enemy's armed spray.</summary>
+public readonly struct SprayCleared
+{
+    public readonly int Id;
+
+    public SprayCleared(int id)
+    {
+        Id = id;
+    }
+}
+
 // A boss fight's domain events. Grouped per module like StageEvents, SpawnEvents and EnemyEvents,
 // for the same reason: an event is three lines, and reading a module's vocabulary in one place is
 // worth more than one type per file. See AR §5, §8 and

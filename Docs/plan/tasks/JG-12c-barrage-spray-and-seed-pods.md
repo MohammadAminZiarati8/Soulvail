@@ -83,4 +83,30 @@ None until JG-12h.
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-30.
+
+- Rules 1–4: rooted barrage, spray, pod loop; a capped pod takes the barrage slot.
+  Barrage reads the release-time player position and rotates four outer lobs with one Misc draw.
+  Spray keeps its starting origin/aim, tests XZ range/angle plus sight, then applies one scaled bite.
+  Pods spawn through EnemySystem, away from the release-time player direction; only living Frogs
+  count. Recovery stands for 1 s, followed by the 2 s gap.
+- Rules 5–7: one timer transition per tick preserves the whole announced wind-up on long frames.
+  BossBehaviour calls IBossPhaseListener before the crossing beat; Mother clears an armed spray
+  immediately, abandons the move and restarts at the barrage gap. Airborne lobs remain untouched.
+  Warden/Croaker remain non-listeners. Every Mother intent has zero velocity; JG-12b shield stays.
+- Rule 8: AllocationAssert.None exercises all three attacks, including a warmed pooled Frog spawn
+  and the spray damage call, using a silent event publisher.
+- Tests: all 14 specified test names, 19 cases, mapped by rule in MotherPitcherAttackTests.
+- Resolution (rules 2–3 / damage paragraph): keep the existing full-precision ContactDamage and
+  DepthScaling arithmetic; the prose's stage-10 13/26 are rounded descriptions, not a new rounding
+  operation or a hard-coded damage value.
+- Resolution (rule 8): allocation checks use the project's warmed steady-state convention.
+  Existing EnemyRegistry.Spawn creates an agent when its free pool is empty; a cold pod spawn
+  retains that earlier code's allocation. No registry/pool rewrite outside this task's Files.
+- Files outside the table: this footer, PROGRESS/ROADMAP as requested, and Unity .meta sidecars
+  for the two new scripts. No views, assets or other gameplay files changed.
+- Verification: JG-12c 19/19 pass. Full EditMode: 4,627 pass, 0 fail, 0 skipped,
+  1 known inconclusive (includes the 8 concurrent JG-12d model tests). Failing names: none.
+  The inconclusive is Animator_AttackSpeedIsUnreachableFromAnEditorClock. Compiler errors 0,
+  new analyzer warnings 0; dotnet format whitespace clean across Assets/_Project.
+- Manual verification: none until JG-12h, as specified.

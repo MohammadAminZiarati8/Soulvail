@@ -357,7 +357,7 @@ public sealed class BossBehaviour : IEnemyBehaviour
                     at = placer.PlaceAdd(ctx, at);
                 }
 
-                EnemyAgent add = ctx.Enemies.Spawn(wave.SpecId, at);
+                EnemyAgent add = ctx.Enemies.SpawnSummon(wave.SpecId, at);
 
                 _addIds[placed] = add.Id;
 

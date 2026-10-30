@@ -430,6 +430,22 @@ public sealed class EnemySystem
         return agent;
     }
 
+    /// <summary>
+    /// <see cref="Spawn"/> for a body a boss calls up — a phase add or a hatched pod — which pays
+    /// no experience when it dies (<see cref="EnemyAgent.PaysXp"/>). Every boss summons through
+    /// here, so the rule holds for each one without its behaviour having to remember it.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">As <see cref="Spawn"/>.</exception>
+    /// <exception cref="InvalidOperationException">As <see cref="Spawn"/>.</exception>
+    public EnemyAgent SpawnSummon(ContentId specId, Vector3 position)
+    {
+        EnemyAgent agent = Spawn(specId, position);
+
+        agent.PaysXp = false;
+
+        return agent;
+    }
+
     /// <summary>The authored boss data used by the director before spawning its body.</summary>
     internal BossSpec Boss(ContentId bossId) => _catalog.Boss(bossId);
 
@@ -661,7 +677,12 @@ public sealed class EnemySystem
             // M5-04's Wights all bank the same way without anybody having to ask who swung. A rule
             // about *who* killed it would need a second mechanism the day minions exist, and GD §15
             // says only that experience is granted on kill.
-            PendingXp += agent.Spec.XpValue;
+            //
+            // The one exception is a boss's summon, which pays nothing (EnemyAgent.PaysXp).
+            if (agent.PaysXp)
+            {
+                PendingXp += agent.Spec.XpValue;
+            }
 
             // On the same line and through the same door, so that "every death pays" is one rule
             // with two currencies rather than two rules that can drift apart. Anything that ever

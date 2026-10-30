@@ -240,7 +240,7 @@ public sealed class MotherPitcherBehaviour : IEnemyBehaviour, IBossPhaseListener
 
             if (ctx.Enemies.Registry.AliveCount < ctx.Enemies.Registry.Capacity)
             {
-                ctx.Enemies.Spawn(_frogId, _podSpots[i]);
+                ctx.Enemies.SpawnSummon(_frogId, _podSpots[i]);
             }
 
             int id = _podIds[i];

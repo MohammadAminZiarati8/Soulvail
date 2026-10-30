@@ -303,6 +303,43 @@ public sealed class LevelTrackerTests
     }
 
     [Test]
+    public void Kill_ABossSummonPaysNoXpButCounts()
+    {
+        EnemySystem system = System();
+        var player = new PlayerCombat(Oathbound(), _events, new RecordingIntents(), Capacity);
+
+        EnemyAgent add = system.SpawnSummon(new ContentId(HuskId), new Vector3(0f, 0f, 5f));
+
+        system.ApplyDamage(add.Id, 10_000f, _now, player);
+
+        // A boss's add pays no experience, every boss (owner ruling, 2026-10-31) — but it is still
+        // a kill, so what reads the kill count is unchanged.
+        Assert.That(system.PendingXp, Is.EqualTo(0f));
+        Assert.That(system.DrainKills(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Kill_ARecycledSummonPaysAsAnOrdinarySpawn()
+    {
+        EnemySystem system = System();
+        var player = new PlayerCombat(Oathbound(), _events, new RecordingIntents(), Capacity);
+
+        EnemyAgent add = system.SpawnSummon(new ContentId(HuskId), new Vector3(0f, 0f, 5f));
+
+        system.ApplyDamage(add.Id, 10_000f, _now, player);
+        system.Despawn(add.Id);
+
+        // The registry hands the same instance back; Initialise must not let it keep the flag.
+        EnemyAgent husk = system.Spawn(new ContentId(HuskId), new Vector3(0f, 0f, 5f));
+
+        Assert.That(husk, Is.SameAs(add), "Sanity: the free list recycled the summon's agent.");
+
+        system.ApplyDamage(husk.Id, 10_000f, _now, player);
+
+        Assert.That(system.PendingXp, Is.EqualTo(HuskXp));
+    }
+
+    [Test]
     public void Kill_ByItsOwnFusePays()
     {
         EnemySystem system = System();

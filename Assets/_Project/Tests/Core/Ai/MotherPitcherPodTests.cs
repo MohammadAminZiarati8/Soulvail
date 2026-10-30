@@ -100,6 +100,8 @@ public sealed class MotherPitcherPodTests
         var frog = _events.Single<EnemySpawned>();
         Assert.That(frog.SpecId, Is.EqualTo(new ContentId(FrogId)));
         Assert.That(frog.Position, Is.EqualTo(_ground[0]));
+        Assert.That(_enemies.Registry.TryGet(frog.Id, out EnemyAgent hatched), Is.True);
+        Assert.That(hatched.PaysXp, Is.False, "A hatched Frog is Mother's summon: no experience.");
         Assert.That(_events.Single<PodHatched>().Id, Is.EqualTo(_events.Single<PodPlanted>().Id));
         Step(1f);
         Assert.That(_events.Count<PodHatched>(), Is.EqualTo(1));

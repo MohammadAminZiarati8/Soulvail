@@ -192,6 +192,13 @@ public sealed class EnemyAgent
     public bool IsVulnerable { get; internal set; }
 
     /// <summary>
+    /// Whether its death banks <see cref="EnemySpec.XpValue"/>. True for every body but a boss's
+    /// summon — lowered by <c>EnemySystem.SpawnSummon</c>, because a boss's adds pay no experience
+    /// (owner ruling, 2026-10-31, every boss). A summon still counts as a kill.
+    /// </summary>
+    public bool PaysXp { get; internal set; }
+
+    /// <summary>
     /// Establishes a fresh agent: a new id, an archetype, a position, four stats wiped and
     /// re-based to that archetype, full health and a blank blackboard.
     /// </summary>
@@ -207,6 +214,7 @@ public sealed class EnemyAgent
         Position = position;
         Velocity = Vector3.Zero;
         IsVulnerable = true;
+        PaysXp = true;
 
         // Back to "has never died", so a recycled agent cannot inherit the previous life's death
         // stamp and be swept the moment it spawns.

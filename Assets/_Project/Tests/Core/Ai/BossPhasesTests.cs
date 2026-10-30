@@ -501,11 +501,12 @@ public sealed class BossPhasesTests
             EnemyAgent husk = husks[i];
 
             // Ordinary in every way that matters: the same registry, the same announcement, the same
-            // depth scaling, the same experience (rule 5). Depth 1 multiplies by exactly 1, so the
-            // hit points are the archetype's — what is asserted is that it came through Spawn, which
-            // the announcement is the evidence for.
+            // depth scaling (rule 5). Depth 1 multiplies by exactly 1, so the hit points are the
+            // archetype's — what is asserted is that it came through Spawn, which the announcement
+            // is the evidence for. The one difference: a boss's add pays no experience (owner
+            // ruling, 2026-10-31, every boss).
             Assert.That(_enemies.Registry.TryGet(husk.Id, out _), Is.True);
-            Assert.That(husk.Spec.XpValue, Is.EqualTo(12f).Within(Tolerance));
+            Assert.That(husk.PaysXp, Is.False);
             Assert.That(husk.Health.MaxHp.Value, Is.EqualTo(36f).Within(Tolerance));
         }
 

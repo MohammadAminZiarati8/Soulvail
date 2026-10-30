@@ -626,7 +626,7 @@ If retention data later demands a permanent layer, it should be **classes and co
 
 | Currency | Scope | Source | Sink |
 |---|---|---|---|
-| **XP** | Single run | Every kill | Levels → one skill-tree node each |
+| **XP** | Single run | Every kill but a boss's adds | Levels → one skill-tree node each |
 | **Essence** | Single run | Stage clear, Elites, bosses | Sanctum shop: reroll, banish, heal, cleanse |
 | **Soul Shards** | Permanent | Awarded on death | Class unlocks and cosmetics. **Nothing that grants power.** |
 | **Veilrot** | Single run | Pact nodes, some Ordeals | Cleansing (Essence), Cleansing shrines |

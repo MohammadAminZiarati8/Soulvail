@@ -11,8 +11,10 @@ namespace Soulvail.Game.Views
     {
         public const int Rays = 32;
         public const float FlashSeconds = 0.15f;
-        private const float GroundOffset = 0.03f;
-        private const float EdgeWidth = 0.04f;
+        // Above the Jungle's stone slabs (top 0.05 m): at 0.03 the stone hid the fan (JG-13 playtest).
+        public const float GroundOffset = 0.08f;
+        // The rim and side strips, in metres; 0.04 read as a hairline on a phone (JG-13 playtest).
+        public const float EdgeWidth = 0.2f;
 
         private readonly float[] _lengths = new float[Rays];
         private readonly Vector3[] _ends = new Vector3[Rays];

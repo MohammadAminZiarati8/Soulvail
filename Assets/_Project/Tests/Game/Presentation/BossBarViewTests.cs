@@ -230,6 +230,22 @@ public sealed class BossBarViewTests
     }
 
     [Test]
+    public void Bar_ShipsAsOneUnbrokenLine()
+    {
+        BuildHud(seams: false);
+
+        // The owner's JG-13 playtest: three marked segments told the player nothing, so the shipped
+        // band is one fill over one track. The fight still has its phases; the bar just doesn't cut.
+        Announce(BossEnemyId, ofPhases: 3, entersBelow: WardenPhases);
+        _hub.Publish(new EnemyDamaged(BossEnemyId, 100f, 0.5f, false));
+
+        Assert.That(_bar.IsShown, Is.True, "the band never appeared.");
+        Assert.That(_bar.MarkCount, Is.Zero, "the shipped band still draws phase seams.");
+        Assert.That(LiveMarks(), Is.Empty);
+        Assert.That(_bar.Fraction, Is.EqualTo(0.5f).Within(1e-4f), "the one line stopped tracking health.");
+    }
+
+    [Test]
     public void Bar_LeavesOnDeath()
     {
         BuildHud();
@@ -1109,7 +1125,11 @@ public sealed class BossBarViewTests
     /// A started run and the shipped HUD over it, injected and started — the screen under test is the
     /// asset.
     /// </summary>
-    private void BuildHud()
+    /// <param name="seams">
+    /// The shipped band draws no seams (JG-13 playtest); every row about the seam machinery switches
+    /// it back on, so only <see cref="Bar_ShipsAsOneUnbrokenLine"/> reads the asset's own setting.
+    /// </param>
+    private void BuildHud(bool seams = true)
     {
         StartRun();
 
@@ -1129,6 +1149,11 @@ public sealed class BossBarViewTests
         // registers nothing new.
         _presenter.Construct(_hub, _session, Passthrough());
         _strip.Construct(_session, _hub);
+
+        if (seams)
+        {
+            SetPrivate(_bar, "_drawSeams", true);
+        }
 
         Invoke(_presenter, "Start");
         Invoke(_strip, "Start");

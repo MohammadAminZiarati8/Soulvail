@@ -36,3 +36,4 @@ MonoBehaviour:
   _bodyScale: 1
   _body: {fileID: 4602156729013314041, guid: f50ac3e459cef0e4c8be525a64c9851c, type: 3}
   _projectile: {fileID: 7540841994579863046, guid: 06ce5ae1043e2124aac9f2e4fa9a33c1, type: 3}
+  _marksLanding: 1

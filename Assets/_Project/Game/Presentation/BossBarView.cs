@@ -135,6 +135,11 @@ namespace Soulvail.Game.Presentation
                  "about it is written.")]
         [SerializeField] private Image _mark;
 
+        [Tooltip("Whether the phase seams are drawn at all. Off since the owner's JG-13 playtest: " +
+                 "the marks read as three bars that meant nothing, so the band is one unbroken line. " +
+                 "Switched off, not removed.")]
+        [SerializeField] private bool _drawSeams;
+
         [Tooltip("How tall the band is, in dp. Applied at runtime for the reason SkillButton " +
                  "applies its own: a Scale-With-Screen-Size canvas measures in reference pixels, " +
                  "which are a different physical size on every phone.")]
@@ -444,7 +449,7 @@ namespace Soulvail.Game.Presentation
 
             // The outermost phase enters at 1 — the band's own full end — so the seams are the
             // thresholds after it, and there are never more of them than there are segments to divide.
-            int wanted = entersBelow is null ? 0 : Mathf.Min(segments, entersBelow.Count);
+            int wanted = !_drawSeams || entersBelow is null ? 0 : Mathf.Min(segments, entersBelow.Count);
 
             for (int i = 1; i < wanted; i++)
             {

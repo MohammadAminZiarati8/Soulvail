@@ -104,4 +104,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.TelegraphRingView
   _quad: {fileID: 4631639409530905111}
-  _groundOffset: 0.02
+  _groundOffset: 0.07

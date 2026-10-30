@@ -611,6 +611,15 @@ public sealed class JungleTests
     }
 
     [Test]
+    public void JunglesSpitter_MarksWhereItsSpitLands()
+    {
+        // The owner's JG-13 playtest: the Pitcher's lob shows its target the way Mother's barrage does.
+        Assert.That(Load<EnemyDefinition>(PitcherPath).ToLook().MarksLanding, Is.True);
+        Assert.That(Load<EnemyDefinition>(SpitterPath).ToLook().MarksLanding, Is.False,
+            "Descent's Spitter fires a straight bolt; it has no landing to mark.");
+    }
+
+    [Test]
     public void Jungle_OpensInASmallRoom()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();

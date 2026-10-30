@@ -53,7 +53,7 @@ public sealed class SprayConeViewTests
             Assert.That(angle, Is.EqualTo(-30f + (60f * i / 31f)).Within(0.001f));
         }
 
-        Assert.That(cone.transform.position, Is.EqualTo(new Vector3(2f, 0.03f, 3f)));
+        Assert.That(cone.transform.position, Is.EqualTo(new Vector3(2f, SprayConeView.GroundOffset, 3f)));
         Assert.That(cone.GetComponent<MeshRenderer>().enabled, Is.True);
         Assert.That(vertices[32].magnitude, Is.LessThan(vertices[0].magnitude), "The rim has width before fill starts.");
         Assert.That(vertices[64], Is.EqualTo(Vector3.zero));
@@ -170,7 +170,7 @@ public sealed class SprayConeViewTests
     [Test]
     public void Rings_MarkedLob_GetsALandingRing() => CheckRings(true);
 
-    // Rule 5. The player's missing look and the Pitcher's unmarked look stay quiet.
+    // Rule 5. The player's missing look and an unmarked look stay quiet.
     [Test]
     public void Rings_UnmarkedLob_GetsNone() => CheckRings(false);
 
@@ -245,6 +245,38 @@ public sealed class SprayConeViewTests
         {
             EditorSceneManager.CloseScene(scene, true);
         }
+    }
+
+    // JG-13 playtest: the fan and the landing rings show on the stone slabs, and the fan's rim reads.
+    [Test]
+    public void Decals_DrawAboveTheJungleStone_WithAThickRim()
+    {
+        float stoneTop = 0f;
+        foreach (string arena in new[] { "Arena_Hollow", "Arena_Clearing" })
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Prefabs/Arenas/Jungle/{arena}.prefab");
+            Assert.That(prefab, Is.Not.Null, arena);
+            foreach (Renderer floor in prefab.GetComponentsInChildren<Renderer>(true))
+            {
+                // Flat floor pieces only; walls, trees and cover are meant to stand over a decal.
+                if (floor.bounds.size.y < 0.3f)
+                {
+                    stoneTop = Mathf.Max(stoneTop, floor.bounds.max.y);
+                }
+            }
+        }
+
+        Assert.That(stoneTop, Is.GreaterThan(0f), "No raised floor found; the row would pass on nothing.");
+        Assert.That(SprayConeView.GroundOffset, Is.GreaterThan(stoneTop + 0.01f), "The stone hides the spray fan.");
+        var ring = AssetDatabase.LoadAssetAtPath<TelegraphRingView>("Assets/_Project/Prefabs/Vfx/VFX_TelegraphRing.prefab");
+        Assert.That(new SerializedObject(ring).FindProperty("_groundOffset").floatValue, Is.GreaterThan(stoneTop + 0.01f),
+            "The stone hides a landing ring.");
+
+        SprayConeView cone = Cone();
+        cone.Arm(Vector3.zero, Vector2.up, 30f, 8f, 2f);
+        Vector3[] vertices = cone.GetComponent<MeshFilter>().sharedMesh.vertices;
+        Assert.That(vertices[0].magnitude - vertices[SprayConeView.Rays].magnitude, Is.EqualTo(SprayConeView.EdgeWidth).Within(0.001f));
+        Assert.That(SprayConeView.EdgeWidth, Is.GreaterThanOrEqualTo(0.15f), "The fan's border is a hairline.");
     }
 
     private void CheckRings(bool marked)

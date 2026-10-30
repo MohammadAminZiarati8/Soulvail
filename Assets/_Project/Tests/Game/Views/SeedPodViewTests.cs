@@ -74,7 +74,7 @@ public sealed class SeedPodViewTests
         Assert.That(new SerializedObject(frog).FindProperty("_projectileStandoffRange").floatValue, Is.Zero);
         Assert.That(frog.ToSpec().Projectile, Is.Null);
         Assert.That(pitcher.ToLook().Projectile, Is.EqualTo(spit));
-        Assert.That(pitcher.ToLook().MarksLanding, Is.False);
+        Assert.That(pitcher.ToLook().MarksLanding, Is.True, "JG-13 playtest: the Pitcher marks its lob too.");
         Assert.That(pitcher.ToSpec().Projectile.StandoffRange, Is.EqualTo(14f));
         Assert.That(PrefabUtility.GetPrefabAssetType(pod), Is.EqualTo(PrefabAssetType.Variant));
         Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(pod), Is.EqualTo(spit));

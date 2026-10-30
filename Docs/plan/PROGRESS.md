@@ -10,7 +10,7 @@ _Updated 2026-10-31, after JG-14a._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
 | **Last merged** | **JG-14a**: Bulwark core shields its front, turns at 75°/s, commits to bash/recover; blocked-hit fact. |
-| **Next task** | JG-14b: model; awaits owner's name/look/sculpt and go. JG-14c–e follow. |
+| **Next task** | JG-14b: Mossguard model; awaits the owner's two sculpts and go. JG-14c–e follow. |
 | **Verified** | EditMode 4 749: 4 748 pass, 0 fail, 1 known inconclusive; Bulwark 29/29. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works

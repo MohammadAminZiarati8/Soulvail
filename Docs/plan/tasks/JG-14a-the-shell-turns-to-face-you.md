@@ -5,7 +5,7 @@
 
 ## Goal
 
-The brain of stage 11's Warden-role **Shellback** (placeholder). The Warden of Ash has no front shield
+The brain of stage 11's Warden-role **Mossguard**. The Warden of Ash has no front shield
 to reuse; the boss beat's pair is reused: `Health.SetExternalInvulnerable` blocks, `IsVulnerable`
 false keeps aim off and shows the blocked glyph (GD §5.4). Walking round it at 3 m (61°/s) loses to
 75°/s; a roll, or walking round in its recover, wins.

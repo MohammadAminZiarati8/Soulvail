@@ -146,6 +146,19 @@ public sealed class CoverViewsTests
         Assert.That(_parent.transform.childCount, Is.Zero);
     }
 
+    // JG-13d rule 3.
+    [Test]
+    public void CoverViews_VersionRisesOnPlaceLiftSweep()
+    {
+        Assert.That(_views.Version, Is.Zero);
+        Spawn(7, _mother, Vector3.zero);
+        Assert.That(_views.Version, Is.EqualTo(1));
+        _hub.Publish(new EnemyDespawned(7));
+        Assert.That(_views.Version, Is.EqualTo(2));
+        _hub.Publish(new StageArrived(11, default));
+        Assert.That(_views.Version, Is.EqualTo(3));
+    }
+
     // Rule 4: actual physics bounds and a ray, rather than prefab-space Collider.bounds (Traps §5).
     [Test]
     public void MotherStones_AreFourSightBlockers()

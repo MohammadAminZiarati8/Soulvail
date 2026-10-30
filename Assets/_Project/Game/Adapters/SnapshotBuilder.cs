@@ -77,6 +77,7 @@ public sealed class SnapshotBuilder
     /// census knows only where its own bodies are.
     /// </remarks>
     private readonly LineOfSightSense _sight;
+    private readonly OpenGroundSense _openGround;
 
     /// <summary>
     /// The arenas, asked once a frame which room is standing and where its door and spawn points
@@ -145,6 +146,7 @@ public sealed class SnapshotBuilder
     /// because the permissive default is the whole of M2-11b rule 3: a fixture with no sense wired
     /// gets the arena M2-07b shipped, not one where no Spitter ever fires.
     /// </param>
+    /// <param name="openGround">The standing floor clear of cover; null in fixtures without this sense.</param>
     public SnapshotBuilder(
         PlayerView player,
         InputAdapter input,
@@ -152,7 +154,8 @@ public sealed class SnapshotBuilder
         MinionViews minions,
         NavPathSense paths,
         ArenaPool arenas,
-        LineOfSightSense sight)
+        LineOfSightSense sight,
+        OpenGroundSense openGround)
     {
         _player = player;
         _input = input;
@@ -161,6 +164,7 @@ public sealed class SnapshotBuilder
         _paths = paths;
         _arenas = arenas;
         _sight = sight;
+        _openGround = openGround;
     }
 
     /// <summary>
@@ -202,6 +206,12 @@ public sealed class SnapshotBuilder
         // and a plain reference comparison does not. An arena with no door — or no arena at all —
         // says so, and core parks its stage flow rather than throwing (M2-10 rule 15).
         ArenaView arena = _arenas is null ? null : _arenas.Active;
+
+        if (_openGround is not null)
+        {
+            _openGround.Sense(arena);
+            snapshot.OpenGround = _openGround.Spots;
+        }
 
         // A different room means different pillars, so every cached answer about the old ones is
         // worse than no answer at all (M2-11b rule 8). Compared rather than subscribed to, and

@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-30, after JG-13c._
+_Updated 2026-10-30, after JG-13d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-13c**: Mother’s buds/phase Frogs use seeded open ground; 4 m fallback. |
-| **Next task** | **JG-13d**, on the owner's go; then e–f in order. |
-| **Verified** | EditMode 4 680 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
+| **Last merged** | **JG-13d**: Unity reports NavMesh ground clear of cover, cached on change. |
+| **Next task** | **JG-13e**, on the owner's go; then f. |
+| **Verified** | EditMode 4 688 pass, 0 fail (names: none), 1 known inconclusive. Compiler errors 0; analyzer warnings 0; dotnet format clean. |
 
 ## What works
 
@@ -52,7 +52,7 @@ Saves: run v4, profile v5; older load. Clash-style UI; all strings `LocKey`.
 22. JG-11: Test start 7–9: judge the mixed-wave climb/fairness and stage 9's door after wave 3.
 23. JG-12h: play 10 for duration/feel and phone wedge/stone readability.
 24. JG-13a: stage 10 wedge grows 2.5 s; stone shadow is safe; stream after the blow at 1x.
-25. JG-13b/c: stage 10 buds face her, lean, pulse; opening/phase adds 4 m out until 13d. Stage 2 Pitchers and Warden/Croaker rings unchanged.
+25. JG-13b/c/d: stage 10 buds face her, lean, pulse; buds/phase Frogs clear stones, floor edges and player. Stage 2 Pitchers and boss rings unchanged.
 
 ## What does not work yet
 

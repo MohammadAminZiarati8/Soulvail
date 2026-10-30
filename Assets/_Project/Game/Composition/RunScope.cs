@@ -1026,6 +1026,9 @@ namespace Soulvail.Game.Composition
             builder.Register<CoverViews>(Lifetime.Scoped)
                 .WithParameter("parent", _decalRoot);
 
+            builder.Register<OpenGroundSense>(Lifetime.Scoped)
+                .WithParameter("cover", _coverLayer);
+
             // Put cover on the ticker's constructor chain without growing its public signature:
             // BossViews is already required there, and both listeners must precede Start.
             builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped)

@@ -800,7 +800,7 @@ public sealed class MinionViewsTests
         }
 
         return new Frame(
-            new SnapshotBuilder(player, input, enemyViews, _views, paths, null, sight),
+            new SnapshotBuilder(player, input, enemyViews, _views, paths, null, sight, null),
             new WorldSnapshot(64),
             enemyViews,
             _views,

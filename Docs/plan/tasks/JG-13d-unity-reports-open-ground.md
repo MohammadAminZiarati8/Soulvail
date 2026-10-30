@@ -73,4 +73,16 @@ public int Version { get; }                       // CoverViews
 
 ## As built
 
-_Filled at merge._
+`OpenGroundSense` preallocates a read-only list (cap 1 024), samples a 1 m lattice on the
+standing surface's agent NavMesh within 0.3 m, and rejects Cover capsules of radius 1 m up
+to eye height after syncing transforms. Surface bounds include walls: probes use the authored
+player-start floor height, with the surface's position/rotation applied to the lattice.
+Arena identity and `CoverViews.Version` invalidate the cache; destroyed/no arena clears it.
+Place, owner lift and stage sweep advance Version. `SnapshotBuilder` reports the same list
+every frame; RunScope supplies the Cover mask. Constructor ripple only in the existing fixtures.
+
+Verification: EditMode total 4 689 / passed 4 688 / failed 0 (names: none) / inconclusive 1
+(known animator clock); fresh XML start 2026-10-30 20:11:30Z. Compiler errors/analyzer warnings 0;
+dotnet format clean (11 C# files). Eight new rule tests include actual Clearing/Spawn_06 with
+Mother stones, next-Build invalidation, reference identity and allocation-free re-sensing.
+Manual still owed: Test start 10, judge buds/phase Frogs clear stones, floor edges and the player.

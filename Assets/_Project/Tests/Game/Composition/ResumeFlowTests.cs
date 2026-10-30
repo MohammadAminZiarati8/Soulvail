@@ -888,7 +888,7 @@ public sealed class ResumeFlowTests
             Catalog(),
             random,
             new WorldSnapshot(8),
-            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null, null),
             new IntentBuffer(),
             player,
             charge,

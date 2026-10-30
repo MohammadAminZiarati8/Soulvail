@@ -1466,7 +1466,7 @@ public sealed class SkillBarPresenterTests
             _catalog,
             _random,
             _tickerSnapshot,
-            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null),
+            new SnapshotBuilder(player, input, enemyViews, minionViews, null, null, null, null),
             new IntentBuffer(),
             player,
             charge,

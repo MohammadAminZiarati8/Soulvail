@@ -268,7 +268,7 @@ public sealed class FrameOrderTests
             new ContentCatalog(Array.Empty<CharacterSpec>(), Array.Empty<EnemySpec>()),
             new SeededRandom(7),
             _snapshot,
-            new SnapshotBuilder(player, _input, _enemyViews, _minionViews, null, null, null),
+            new SnapshotBuilder(player, _input, _enemyViews, _minionViews, null, null, null, null),
             _intents,
             player,
             charge,

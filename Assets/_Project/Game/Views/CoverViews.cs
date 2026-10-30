@@ -55,6 +55,9 @@ public sealed class CoverViews : IDisposable
     /// <summary>How many archetypes currently have standing cover.</summary>
     public int LiveCount => _owners.Count;
 
+    /// <summary>Changes whenever cover is placed, lifted, or swept at a stage boundary.</summary>
+    public int Version { get; private set; }
+
     private void OnSpawned(EnemySpawned e)
     {
         if (!_covers.TryGetValue(e.SpecId, out GameObject cover))
@@ -66,6 +69,7 @@ public sealed class CoverViews : IDisposable
         cover.transform.SetParent(_parent, false);
         cover.transform.SetPositionAndRotation(e.Position.ToUnity(), Quaternion.identity);
         cover.SetActive(true);
+        Version++;
     }
 
     private void OnDespawned(EnemyDespawned e)
@@ -75,6 +79,7 @@ public sealed class CoverViews : IDisposable
             if (owner.Value == e.Id)
             {
                 Lift(_covers[owner.Key]);
+                Version++;
                 _owners.Remove(owner.Key);
                 return;
             }
@@ -95,6 +100,7 @@ public sealed class CoverViews : IDisposable
         }
 
         _owners.Clear();
+        Version++;
     }
 
     /// <summary>Unsubscribes and destroys every instance, including standing cover.</summary>

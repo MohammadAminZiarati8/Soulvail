@@ -953,7 +953,7 @@ public sealed class GravecallerTreeTests
             skills.Add(definition.ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(61), "Three twelve-node classes, Ranger's nine, and sixteen Marksman ranks.");
+        Assert.That(skills, Has.Count.EqualTo(64), "Three twelve-node classes, Ranger's nine, and nineteen Marksman ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

@@ -79,3 +79,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-08b — Binding Shot in Unity
 
 - [ ] **[Editor]** Stage 12 at level 14: shoot an enemy standing in front of a stone — chain to the stone, long stun; two enemies in a line — both chained; open ground — short stun. Check the quick draw/release, cyan rope tail and simple readable chain/clasps; chains should follow bodies and disappear with the stun or stage change.
+
+## MK-09b — Hunter's Snare drawn and authored (2026-11-01)
+
+- [ ] **[Editor]** Ranger / Marksman at level 17 with Hunter's Snare learned: let a Frog hop within 3 m. The Ranger stoops briefly (legs keep running); a small rope-and-stakes snare drops at their feet with a dust puff and, after ~0.3 s, a faint cyan ring pulses slowly on it. When the Frog steps on it the loop jerks up and cinches round its feet, the prop vanishes, root coils show and the Frog loses health. An untouched snare sinks and fades after 10 s; a third cast fades the oldest. Crossing a stage clears every snare.

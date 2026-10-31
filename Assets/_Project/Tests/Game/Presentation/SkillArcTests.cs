@@ -66,7 +66,7 @@ public sealed class SkillArcTests
     public void Arc_OneCirclePerActive_InOrder()
     {
         Build(extraActives: 2);
-        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, new ContentId("skill.marksman.rain-of-arrows"), new ContentId("skill.marksman.binding-shot"), _extras[0].Id, _extras[1].Id }));
+        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, new ContentId("skill.marksman.rain-of-arrows"), new ContentId("skill.marksman.binding-shot"), new ContentId("skill.marksman.hunters-snare"), _extras[0].Id, _extras[1].Id }));
         Assert.That(_arc.Passives.Count, Is.EqualTo(4), "two Ranger passives plus the two Marksman passives");
     }
 
@@ -78,7 +78,7 @@ public sealed class SkillArcTests
         Assert.That(_arc.Passives.Count, Is.EqualTo(2));
         _session.ChoosePath(_path.Id);
         _arc.Refresh();
-        Assert.That(_arc.Actives.Count, Is.EqualTo(5));
+        Assert.That(_arc.Actives.Count, Is.EqualTo(6));
         Assert.That(_arc.Passives.Count, Is.EqualTo(4));
     }
 
@@ -108,7 +108,7 @@ public sealed class SkillArcTests
     [Test]
     public void Arc_MirrorIncludesRollAndPassives()
     {
-        Build(extraActives: 4);
+        Build(extraActives: 3);
         var before = _arc.Actives.Concat(_arc.Passives).Select(b => ((RectTransform)b.transform).anchoredPosition).ToArray();
         var so = new SerializedObject(_arc);
         so.FindProperty("_leftHanded").boolValue = true;
@@ -320,13 +320,17 @@ public sealed class SkillArcTests
     [Test]
     public void SixToggles_AndVolley_RestoreFromSave()
     {
-        Build(extraActives: 4);
+        Build(extraActives: 3);
         _session.TakeNode(VolleyId);
         _input.Toggle(VolleyId);
         _input.Poll();
         var binding = new ContentId("skill.marksman.binding-shot");
         _session.TakeNode(binding);
         _input.Toggle(binding);
+        _input.Poll();
+        var snare = new ContentId("skill.marksman.hunters-snare");
+        _session.TakeNode(snare);
+        _input.Toggle(snare);
         _input.Poll();
         foreach (var skill in _extras)
         {
@@ -342,6 +346,7 @@ public sealed class SkillArcTests
         _session.Start(new RunConfig(saved.ModeId, saved.CharacterId, saved.Seed, saved.StageIndex, SpawnPlan.Empty, saved));
         Assert.That(_session.State.IsAutoCast(VolleyId), Is.False);
         Assert.That(_session.State.IsAutoCast(binding), Is.False);
+        Assert.That(_session.State.IsAutoCast(snare), Is.False);
         foreach (var skill in _extras)
             Assert.That(_session.State.IsAutoCast(skill.Id), Is.False);
     }

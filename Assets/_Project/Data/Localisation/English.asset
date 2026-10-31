@@ -636,3 +636,17 @@ MonoBehaviour:
     _text: Binding Shot 4
   - _key: skill.marksman.binding-shot-4.description
     _text: Binding Shot cooldown is reduced by 3 s.
+  - _key: skill.marksman.hunters-snare.name
+    _text: Hunter's Snare
+  - _key: skill.marksman.hunters-snare.description
+    _text: When an enemy gets close, drop a trap. The first to step on it is rooted
+      and hurt.
+  - _key: skill.marksman.hunters-snare-2.name
+    _text: Hunter's Snare 2
+  - _key: skill.marksman.hunters-snare-2.description
+    _text: Snare roots 0.5 s longer and hurts 33% more.
+  - _key: skill.marksman.hunters-snare-3.name
+    _text: Hunter's Snare 3
+  - _key: skill.marksman.hunters-snare-3.description
+    _text: Snare roots another 0.5 s longer. Hunter's Snare cooldown is reduced by
+      2 s.

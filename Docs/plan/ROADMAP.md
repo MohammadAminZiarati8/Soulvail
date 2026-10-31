@@ -49,7 +49,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-08a** — Binding Shot in core, with Unity's anchor probe as a port (M)
 - [x] **MK-08b** — Binding Shot in Unity: the probe, the chain, the assets (M)
 - [x] **MK-09a** — Hunter's Snare in core (M)
-- [ ] **MK-09b** — Hunter's Snare drawn and authored (M) · [spec](tasks/MK-09b-hunters-snare-drawn.md)
+- [x] **MK-09b** — Hunter's Snare drawn and authored (M)
 - [ ] **MK-10a** — Killshot in core (M) · [spec](tasks/MK-10a-killshot.md)
 - [ ] **MK-10b** — Killshot drawn and authored: the kneel, the streak, the jolt (M) · [spec](tasks/MK-10b-killshot-drawn.md)
 - [ ] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M) · [spec](tasks/MK-11-the-marksmans-look.md)

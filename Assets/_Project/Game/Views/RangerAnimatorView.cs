@@ -99,6 +99,9 @@ namespace Soulvail.Game.Views
         /// <summary>The upper-body layer's name in <c>AC_Ranger</c>.</summary>
         public const string UpperBodyLayer = "Upper Body";
 
+        /// <summary>How long the snare's crouch-and-place holds the upper body.</summary>
+        public const float PlaceSeconds = 0.4f;
+
         /// <summary>
         /// How fast the shown velocity may chase the body's real one, in m/s². The value and
         /// the reason are <see cref="PlayerAnimatorView"/>'s: it smooths the sample, not the
@@ -132,6 +135,11 @@ namespace Soulvail.Game.Views
         private float _castUpLeft;
         private float _bindingReleaseLeft;
         private IDisposable _bindingCastSubscription;
+        [SerializeField] private TrapViews _snarePrefab;
+        private TrapViews _snareView;
+        private GameObject _snareRoot;
+        private IDisposable _placedSubscription;
+        private readonly int _placeId = Animator.StringToHash("Place");
 
         // Hashed once. Instance fields rather than statics, because nothing in this project holds
         // static state (AR §7).
@@ -175,7 +183,7 @@ namespace Soulvail.Game.Views
         /// <param name="hub">The scope's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         [Inject]
-        public void Construct(DomainEventHub hub, IRunSession session = null)
+        public void Construct(DomainEventHub hub, IRunSession session = null, EnemyViews enemies = null)
         {
             if (hub is null)
             {
@@ -203,6 +211,16 @@ namespace Soulvail.Game.Views
                 _rainView = Instantiate(_rainPrefab, _rainRoot.transform, false);
                 _rainView.Construct(hub, session, _bow != null ? _bow.transform : transform);
                 _rainRoot.SetActive(true);
+            }
+            _placedSubscription = hub.Subscribe<TrapPlaced>(OnTrapPlaced);
+            if (_snarePrefab != null)
+            {
+                // Scene-root as well: a placed snare stays where it was dropped.
+                _snareRoot = new GameObject("Hunter's Snares (pooled)");
+                _snareRoot.SetActive(false);
+                _snareView = Instantiate(_snarePrefab, _snareRoot.transform, false);
+                _snareView.Construct(hub, session, enemies);
+                _snareRoot.SetActive(true);
             }
         }
 
@@ -416,6 +434,19 @@ namespace Soulvail.Game.Views
         private void OnDestroy()
         {
             _bindingCastSubscription?.Dispose();
+            _placedSubscription?.Dispose();
+            if (_snareRoot != null)
+            {
+                _snareView.Dispose();
+                if (Application.isPlaying)
+                {
+                    Destroy(_snareRoot);
+                }
+                else
+                {
+                    DestroyImmediate(_snareRoot);
+                }
+            }
             _rainSubscription?.Dispose();
             if (_rainRoot != null)
             {
@@ -536,6 +567,21 @@ namespace Soulvail.Game.Views
             _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
             _animator.Play(_drawStateId, _animator.GetLayerIndex(UpperBodyLayer), NockedNormalized);
             _bindingReleaseLeft = 0.1f;
+        }
+
+        private void OnTrapPlaced(TrapPlaced evt)
+        {
+            if (_animator == null || _dead)
+            {
+                return;
+            }
+            // A quick upper-body stoop; the legs keep running and nothing waits on it.
+            _bindingReleaseLeft = 0f;
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            _animator.ResetTrigger(_castUpId);
+            _castUpLeft = PlaceSeconds;
+            _animator.SetTrigger(_placeId);
         }
 
         /// <remarks>

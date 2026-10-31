@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-31, after Mossguard source preparation (JG-14b still open)._
+_Updated 2026-10-31, after JG-14b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-14a**, plus Mossguard's approved repaired source, reusable repair tool and static Unity preview. |
-| **Next task** | JG-14b: approved body source imported; owner making shield. Rig/budget/atlas and model tests remain; JG-14c–e follow. |
-| **Verified** | EditMode 4 749: 4 748 pass, 0 fail, 1 known inconclusive; Bulwark 29/29. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **JG-14b**: rigged Mossguard and repaired seed 42 shield; source preview preserved. Local only; push held. |
+| **Next task** | JG-14c, awaiting go-ahead. JG-14c–e not started. |
+| **Verified** | EditMode 4 757: 4 756 pass, 0 fail, 1 known inconclusive; Mossguard 8/8. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -57,6 +57,7 @@ limited turning, frozen bash/recover. Saves run v4/profile v5, older load. Clash
 27. Fixes: stage 10 bar one line; rings/lanes/waves show on stone; Pitcher lobs ringed.
 28. JG-13g: stage 10 fan reads on grass/stone, beats faster; goo splats floor/stone, < 1 s; kill mid wind-up, fan goes; no bar over her.
 29. Stage 5/10: boss adds and pod Frogs give no XP.
+30. JG-14b: judge Mossguard's runtime pose sheet and shield; rig/budget/import checks pass.
 
 ## What does not work yet
 

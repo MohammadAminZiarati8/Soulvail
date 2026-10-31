@@ -4,15 +4,39 @@
 **Design refs:** GD §16.4, GD §17.1; AR §18.2 (Generic, no root motion)
 
 **Source preparation, approved 2026-10-31:** the owner approved the repaired lizard and requested
-that its procedure be saved and the detailed model imported into Unity while they make the shield.
-`Tools/Blender/Sources/Mossguard_src.glb` is that approved master. The shield is still pending.
+that its procedure be saved and the detailed model imported into Unity while they made the shield.
+`Tools/Blender/Sources/Mossguard_src.glb` is that approved master; it remains byte-identical.
+The owner then selected shield seed 42, with its backing and grip explicitly retained.
 Use [the source workflow](../../../Tools/Blender/README.md) and `repair_scan.py` for fragmented scans.
 `fix_glb.py` remains available for legacy source workflows.
 
 Preparation also ships `mossguard_source.py`, `Art/Enemies/MossguardSource.fbx` and its dedicated
 `Textures/T_MossguardSource_Albedo.png`: a static detailed source preview, outside the runtime Files
 table below, explicitly requested by the owner. Do not use it as the final body or spawn it in runs.
-Rig fitting, the runtime budget/atlas and shield work below remain open; this is not JG-14b complete.
+The preview remains separate from the budgeted, rigged runtime body below.
+
+**Selected shield and conversion reading (2026-10-31):** raw seed 42 remains in the generator's
+`outputs/generated/MossguardShield-24b8be8b-seed42_00001_.glb` (SHA-256
+`0018de945a997ae3fbd4f934f33425817004c075d1f2dd26f444095c21cea29c`). The reference's wooden
+backing and rear grips are intentional. `mossguard.py --prepare-shield <raw.glb> --review-dir <dir>`
+fits the rear assembly against the front, turns its grips toward the wielder, reuses the outside wood
+texture on the exposed inside, removes the reddish hanging nub, then invokes `repair_scan.py`.
+Reimport strips only detached reconstruction crumbs; the front, backing and grips form one closed
+connected source. The final source SHA-256 is
+`d58e6350a648a0512fe3b40549263dea655fbe5bf655ff2fa8911f2e15d23ed2`.
+
+The runtime reduction reserves 152 shield triangles for the existing diamond/branch emblem and four
+crossed vine bindings; automatic reduction erased these shallow details. The rest retains the frame,
+backing and open grips. These reliefs sample the existing stone/leaf swatches. The +X source grip
+becomes the pivot, bringing the shield over the chest at identity on `handslot.l`; the static FBX
+bakes axis conversion so its Unity root has identity rotation. Body eye meshes survive reduction;
+regions restrict distance weighting, with the tail riding `hips`. No rig or atlas edits.
+
+Review artifacts (outside the repository):
+`C:/Users/mazia/.codex/visualizations/2026/10/31/01a18f51-1d94-71a3-85fd-61c35225b722/Mossguard/`.
+`pose-sheet.png` rows follow rule 7's clip order; columns are three phases from the game/front and
+three-quarter views. `unity-<clip>-0/1/2.png` shows the imported material from front, three-quarter
+and game angles. `unity-shield-0/1/2.png` and `shield-reimport-front/side/back.png` verify exports.
 
 ## Goal
 
@@ -83,14 +107,16 @@ PYTHONHASHSEED=0 "C:/Program Files/Blender Foundation/Blender 4.1/blender.exe" -
 
 ## As built
 
-2026-10-31 — **Source preparation only; JG-14b remains open.** Owner-approved repaired master
-stored in `Sources/Mossguard_src.glb`. Reusable `repair_scan.py` and Blender README preserve the
-thin closed shell → voxel reconstruction → clean mesh → per-face source-UV color transfer → opaque
-export procedure, including the rear-view/export checks that caught missing geometry and UV specks.
-The tool was rerun on the unrepaired body: zero boundary/non-manifold edges; serialized body and
-opaque, non-transmissive double-sided materials verified. `mossguard_source.py` exports a static
-183,160-triangle FBX preview (1.8 m tall), dedicated 2048 texture and four embedded URP Lit materials.
-No gameplay registration, rig or atlas changes. Unity imported all seven renderers and the texture;
-all four materials are opaque. EditMode: 4,749 total / 4,748 passed / 0 failed / 1 known inconclusive
-(fresh UTC start 2026-10-31 00:00:48). Format clean; no new project C# or analyzer diagnostics.
-Next: owner supplies shield, then build the budgeted Rig_Medium body and shield and their tests.
+2026-10-31 — Built. Approved body master and detailed static preview preserved unchanged. Seed 42's
+backing fitted against the face, both rear grips/openings kept, reddish nub removed; `repair_scan.py`
+closure and texture transfer reused. Final source: 179,834 triangles, one connected shell, zero
+boundary/non-manifold edges, consistent outward normals; serialized mesh, opacity and reimported
+front/side/back verified. `mossguard.py` ships a 2,056-triangle body on untouched Rig_Medium and a
+384-triangle shield (2,440 combined), one M_Enemy slot each, existing atlas only. Side-grip pivot,
+identity attachment, +Z face, 1.05 x 0.63 m; explicit crest/bindings survive the reduction. Every
+vertex has normalized regional weights to at most two bones; tail rides hips. Seven KayKit clips
+bind and sample with root still; blocking stays upright ahead of the chest. Exported pose sheet and
+Unity views checked, no arm/tail tearing. Rebuild differs only in FBX timestamps. Eight model tests
+pass. Full EditMode: 4,757 total / 4,756 passed / 0 failed / 1 known inconclusive; fresh UTC start
+2026-10-31 00:43:04. Format clean; no new compiler/analyzer diagnostics. Owner visual judgement of
+the runtime pose sheet remains owed. JG-14c–e untouched. Push held by explicit owner instruction.

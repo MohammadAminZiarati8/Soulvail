@@ -145,6 +145,32 @@ Pleasing synergy worth noting: slow projectiles are normally the hardest thing t
 | **Active** | **Volley**, earned from the tree; the cell glows cyan when ready |
 | **Tree** | 3 branches × 3 nodes, free-pick (§5.1). No Veilrot relationship yet |
 
+### 3.5 Ranger paths — levels 11 to 30
+
+*Owner's ruling, 2026-10-31. For the Ranger this replaces §5.4: the second discipline is a specialisation of the Ranger, not a branch of another class.*
+
+The level cap is **30**. Points from levels 2–10 fill the Ranger tree (9). From level **11** the player chooses **one** of three paths, locked for the run; levels 11–30 (20 points) are spent in it. **The Ranger's skills stay** — the path is added above them.
+
+Each path is **8 skills: 5 passives, 2 actives, 1 ultimate**. Seven have 3 ranks, the ultimate 2 — **23 ranks for 20 points**, so even a level-30 build leaves three unbought. Rows are level-gated:
+
+| Unlocks at | Opens |
+|---|---|
+| Lv 11 | 1 passive + the signature active |
+| Lv 15 | 2 passives |
+| Lv 20 | 1 active + 1 passive |
+| Lv 25 | 1 passive |
+| Lv 28 | Ultimate (rank 2 needs Lv 30) |
+
+Built one at a time: **Marksman first**, playtested, then the next. Skirmisher and Echo Archer below are recorded, not specced.
+
+**Marksman — stand still.** Steady Aim (P 11: arrows while standing stack damage ×5) · **Ballista Bolt** (A 11: huge line-piercing bolt) · Piercing Arrows (P 15: through 1/2/3) · Deadeye (P 15: first arrow after stopping crits) · **Mark Target** (A 20: toughest enemy takes more; its kill resets Ballista) · Eagle Eye (P 20: range, more damage far) · Hold the Line (P 25: less damage taken standing) · *Killshot* (U 28/30: every 3rd standing arrow is a Ballista Bolt).
+
+**Skirmisher — never stop.** Running Shot (P 11: fire while moving at 40/55/70% rate) · **Caltrop Roll** (A 11: roll leaves slowing spikes) · Hit and Run (P 15: hits give a speed burst) · Momentum (P 15: damage from distance moved in 2 s) · **Whirlwind** (A 20: spin, arrows all round) · Second Wind (P 20: roll cooldown; rank 3 two charges) · Untouchable (P 25: first hit within 1 s of a roll misses) · *Storm Run* (U 28/30: every roll fires a Volley).
+
+**Echo Archer — copies shoot for you.** Echo Arrow (P 11: every 4th/3rd/2nd arrow repeated by a shadow) · **Mirror Image** (A 11: 1–3 clones shoot for 5 s) · Decoy Roll (P 15: roll leaves a clone enemies target) · Shared Volley (P 15: clones Volley with you) · **Shadow Swap** (A 20: swap with farthest clone; auto at low HP) · Fading Burst (P 20: clones explode on expiry) · Umbral Link (P 25: clones take part of your damage) · *Twin Shadow* (U 28/30: one permanent clone).
+
+**The tree screen** shows one icon per skill with rank pips (●●○), not a node per rank: Ranger row at the bottom, the chosen path's level rows above, locked rows marked with their level. Before level 11 the path area shows the three cards (tap = greyed preview); after the choice, the other two disappear. Actives auto-cast and get a cyan edge; no active buttons on the battle HUD.
+
 ---
 
 ## 4. Skills — passive, active, auto-cast

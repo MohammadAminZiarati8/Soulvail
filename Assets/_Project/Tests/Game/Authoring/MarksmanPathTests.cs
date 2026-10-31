@@ -24,16 +24,16 @@ public sealed class MarksmanPathTests
 
         Assert.That(path.Id, Is.EqualTo(new ContentId("path.ranger.marksman")));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId("character.ranger")));
-        Assert.That(path.Skills.Count, Is.EqualTo(2));
-        Assert.That(path.NodeCount, Is.EqualTo(8));
+        Assert.That(path.Skills.Count, Is.EqualTo(3));
+        Assert.That(path.NodeCount, Is.EqualTo(12));
 
-        for (int skill = 0; skill < 2; skill++)
+        for (int skill = 0; skill < 3; skill++)
         {
             PathSkillSpec row = path.Skills[skill];
-            string stem = skill == 0 ? "steady-aim" : "eagle-eye";
-            int count = skill == 0 ? 5 : 3;
+            string stem = skill == 0 ? "steady-aim" : skill == 1 ? "rain-of-arrows" : "eagle-eye";
+            int count = skill == 0 ? 5 : skill == 1 ? 4 : 3;
 
-            Assert.That(row.UnlockLevel, Is.EqualTo(skill == 0 ? 11 : 14));
+            Assert.That(row.UnlockLevel, Is.EqualTo(skill < 2 ? 11 : 14));
             Assert.That(row.Ranks.TierCount, Is.EqualTo(count));
 
             for (int rank = 1; rank <= count; rank++)
@@ -54,7 +54,8 @@ public sealed class MarksmanPathTests
             {
                 SkillSpec spec = skill.Ranks[rank].ToSpec();
 
-                Assert.That(spec.Kind, Is.EqualTo(rank == 0 ? SkillKind.Passive : SkillKind.Upgrade), spec.Id.Value);
+                SkillKind first = skill.Ranks[0].Id == "skill.marksman.rain-of-arrows" ? SkillKind.Active : SkillKind.Passive;
+                Assert.That(spec.Kind, Is.EqualTo(rank == 0 ? first : SkillKind.Upgrade), spec.Id.Value);
                 Assert.That(spec.ParentId, Is.EqualTo(rank == 0 ? default : new ContentId(skill.Ranks[rank - 1].Id)), spec.Id.Value);
             }
         }
@@ -79,7 +80,7 @@ public sealed class MarksmanPathTests
             AssertModifier(spec.Effects[0], stats[rank], values[rank]);
         }
 
-        foreach (SkillDefinition rank in path.Skills[1].Ranks)
+        foreach (SkillDefinition rank in path.Skills[2].Ranks)
         {
             SkillSpec spec = rank.ToSpec();
 
@@ -112,7 +113,7 @@ public sealed class MarksmanPathTests
         Assert.That(catalog.TryGetPath(new ContentId("path.ranger.marksman"), out PathSpec path), Is.True);
         Assert.That(catalog.Paths.Count, Is.EqualTo(1));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId(Ranger().Id)));
-        Assert.That(catalog.Skills.Count, Is.EqualTo(8), "Ranks come from the path, without duplicate registration.");
+        Assert.That(catalog.Skills.Count, Is.EqualTo(12), "Ranks come from the path, without duplicate registration.");
 
         foreach (PathDefinition.SkillField skill in Marksman().Skills)
         {
@@ -176,6 +177,63 @@ public sealed class MarksmanPathTests
         }
 
         Assert.That(book.TintFor(default), Is.EqualTo(Color.white));
+    }
+
+    [Test]
+    public void Assets_MatchTheRankTable()
+    {
+        IReadOnlyList<SkillDefinition> ranks = Marksman().Skills[1].Ranks;
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(10f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(3f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        var rain = first.Active.OnCast[0] as RainOfArrows;
+        Assert.That(rain, Is.Not.Null);
+        Assert.That(rain.Radius, Is.EqualTo(1.5f));
+        Assert.That(rain.Duration, Is.EqualTo(2f));
+        Assert.That(rain.PulseInterval, Is.EqualTo(0.25f));
+        Assert.That(rain.DamageOfWeapon, Is.EqualTo(0.6f));
+        Assert.That(ranks[1].ToSpec().Effects.Count, Is.EqualTo(1));
+        AssertModifier(ranks[1].ToSpec().Effects[0], PlayerStat.RainDamage, 0.25f);
+        Assert.That(ranks[2].ToSpec().Effects.Count, Is.EqualTo(2));
+        AssertModifier(ranks[2].ToSpec().Effects[0], PlayerStat.RainRadius, 0.5f);
+        AssertModifier(ranks[2].ToSpec().Effects[1], PlayerStat.RainSlow, 0.3f);
+        Assert.That(ranks[3].ToSpec().Effects.Count, Is.EqualTo(1));
+        var cooldown = ranks[3].ToSpec().Effects[0] as ModifySkillCooldown;
+        Assert.That(cooldown, Is.Not.Null);
+        Assert.That(cooldown.SkillId, Is.EqualTo(first.Id));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-2f));
+    }
+
+    [Test]
+    public void Path_RainIsSecondAtEleven()
+    {
+        PathSkillSpec rain = Marksman().ToSpec(new ContentId(Ranger().Id)).Skills[1];
+        Assert.That(rain.UnlockLevel, Is.EqualTo(11));
+        Assert.That(rain.Ranks.TierCount, Is.EqualTo(4));
+        Assert.That(rain.Ranks.Tier(1)[0], Is.EqualTo(new ContentId("skill.marksman.rain-of-arrows")));
+    }
+
+    [Test]
+    public void Loc_Keys()
+    {
+        var english = Load<LocalizationTable>("Localisation/English").ToDictionary();
+        var pseudo = Load<LocalizationTable>("Localisation/Pseudo").ToDictionary();
+        Assert.That(english[new LocKey("skill.marksman.rain-of-arrows.name")], Is.EqualTo("Rain of Arrows"));
+        Assert.That(english[new LocKey("skill.marksman.rain-of-arrows.description")],
+            Is.EqualTo("Arrows rain on the largest group for 2 s."));
+        foreach (SkillDefinition rank in Marksman().Skills[1].Ranks)
+        {
+            SkillSpec spec = rank.ToSpec();
+            Assert.That(english[spec.DescriptionKey], Is.Not.Empty);
+            Assert.That(pseudo[spec.DescriptionKey], Does.StartWith("[").And.EndWith("]"));
+        }
     }
 
     private static IObjectResolver Boot()

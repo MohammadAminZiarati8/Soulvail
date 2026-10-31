@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
 using UnityEngine;
 using VContainer;
@@ -123,6 +124,13 @@ namespace Soulvail.Game.Views
                  "Optional: without it a volley is told by its fan alone.")]
         [SerializeField] private GameObject _volleyGlow;
 
+        [SerializeField] private RainOfArrowsView _rainPrefab;
+        private RainOfArrowsView _rainView;
+        private GameObject _rainRoot;
+        private IDisposable _rainSubscription;
+        private readonly int _castUpId = Animator.StringToHash("CastUp");
+        private float _castUpLeft;
+
         // Hashed once. Instance fields rather than statics, because nothing in this project holds
         // static state (AR §7).
         private readonly int _moveXId = Animator.StringToHash("MoveX");
@@ -165,7 +173,7 @@ namespace Soulvail.Game.Views
         /// <param name="hub">The scope's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         [Inject]
-        public void Construct(DomainEventHub hub)
+        public void Construct(DomainEventHub hub, IRunSession session = null)
         {
             if (hub is null)
             {
@@ -183,6 +191,16 @@ namespace Soulvail.Game.Views
             _rollEndedSubscription = hub.Subscribe<ChargeEnded>(OnRollEnded);
             _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnDamaged);
+            _rainSubscription = hub.Subscribe<RainOfArrowsCast>(OnRainCast);
+            if (_rainPrefab != null)
+            {
+                // A scene-root pool: neither the ring nor falling arrows follow the moving body.
+                _rainRoot = new GameObject("Rain of Arrows (pooled)");
+                _rainRoot.SetActive(false);
+                _rainView = Instantiate(_rainPrefab, _rainRoot.transform, false);
+                _rainView.Construct(hub, session, _bow != null ? _bow.transform : transform);
+                _rainRoot.SetActive(true);
+            }
         }
 
         /// <summary>
@@ -300,6 +318,7 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
+            _castUpLeft = Mathf.Max(0f, _castUpLeft - dt);
 
             // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake. Only
             // while there is none, so a body that has one never looks again.
@@ -385,6 +404,19 @@ namespace Soulvail.Game.Views
 
         private void OnDestroy()
         {
+            _rainSubscription?.Dispose();
+            if (_rainRoot != null)
+            {
+                _rainView.Dispose();
+                if (Application.isPlaying)
+                {
+                    Destroy(_rainRoot);
+                }
+                else
+                {
+                    DestroyImmediate(_rainRoot);
+                }
+            }
             // Unsubscribed explicitly, for PlayerAnimatorView's reason: a body destroyed while its
             // scope lives would otherwise be handed events for a component Unity has killed.
             _attackSubscription?.Dispose();
@@ -428,6 +460,10 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnAttacked(PlayerAttacked evt)
         {
+            if (_castUpLeft > 0f)
+            {
+                return;
+            }
             if (_animator == null)
             {
                 return;
@@ -451,13 +487,25 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0)
+            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f)
             {
                 return;
             }
 
             _animator.ResetTrigger(_shootId);
             _animator.SetTrigger(_releaseId);
+        }
+
+        private void OnRainCast(RainOfArrowsCast evt)
+        {
+            if (_animator == null || _dead)
+            {
+                return;
+            }
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            _castUpLeft = 0.4f;
+            _animator.SetTrigger(_castUpId);
         }
 
         /// <remarks>

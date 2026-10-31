@@ -66,7 +66,7 @@ public sealed class SkillArcTests
     public void Arc_OneCirclePerActive_InOrder()
     {
         Build(extraActives: 2);
-        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, _extras[0].Id, _extras[1].Id }));
+        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, new ContentId("skill.marksman.rain-of-arrows"), _extras[0].Id, _extras[1].Id }));
         Assert.That(_arc.Passives.Count, Is.EqualTo(4), "two Ranger passives plus the two Marksman passives");
     }
 
@@ -78,7 +78,7 @@ public sealed class SkillArcTests
         Assert.That(_arc.Passives.Count, Is.EqualTo(2));
         _session.ChoosePath(_path.Id);
         _arc.Refresh();
-        Assert.That(_arc.Actives.Count, Is.EqualTo(3));
+        Assert.That(_arc.Actives.Count, Is.EqualTo(4));
         Assert.That(_arc.Passives.Count, Is.EqualTo(4));
     }
 
@@ -287,7 +287,7 @@ public sealed class SkillArcTests
         _session.TakeNode(steady);
         _arc.Refresh();
         Assert.That(_arc.Passives.Single(b => b.Id == steady).IsLocked, Is.False);
-        var eagle = _arc.Passives.Single(b => b.Id == _path.Skills[1].Ranks.Tier(1)[0]);
+        var eagle = _arc.Passives.Single(b => b.Id == new ContentId("skill.marksman.eagle-eye"));
         Assert.That(eagle.IsLocked, Is.True);
         Assert.That(eagle.LevelLabel, Is.EqualTo("Lv 14"));
     }

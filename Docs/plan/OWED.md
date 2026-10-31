@@ -71,3 +71,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-06b — Enemy crowd-control visuals (2026-10-31)
 
 - [ ] **[Editor]** Start a Jungle run. Use the dev DebugOverlay's **Stun 3s**, **Root 3s** and **Slow 3s** buttons on the nearest living enemy. Confirm three pale sparks circle above a stunned head, cyan-lit coils fit a rooted body's feet while its legs keep moving, and faint pale-blue frost reads on the dark floor with slower animation. A stunned enemy still flinches on hits. Full-health basic bars appear during a status; 14 dp icons stay ordered stun → root → slow and their circular sweeps count down. Effects/icons clear at the end event, death and pooled reuse. Boss durations are 1.5 s and their ordinary world bars stay suppressed. Skills that apply these remain future work.
+
+## MK-07b — Rain of Arrows drawn and authored (2026-11-01)
+
+- [ ] **[Editor]** Stage 12, Ranger / Marksman, Rain learned: with ≥ 3 enemies in acquire range, check the upward bow release and cyan sky streak while moving; a fixed cyan-rimmed circle appears on the largest group, ordinary arrows fall inside it for 2 s with small landing dust, and enemies inside lose health. At rank 3 the circle widens, the faint fill turns pale blue and enemies visibly slow. Pause/resume and cross a stage boundary: no lingering arrows, dust or ring.

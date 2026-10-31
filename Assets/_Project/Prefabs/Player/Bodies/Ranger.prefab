@@ -271,6 +271,7 @@ MonoBehaviour:
   _animator: {fileID: 4114342119296087160}
   _bow: {fileID: 7896143896897907084}
   _volleyGlow: {fileID: 780447140516411255}
+  _rainPrefab: {fileID: 4060942388007416727, guid: d92663e73134e1543b98f1e5afe0182d, type: 3}
 --- !u!95 &4114342119296087160 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5299648820469042616, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}

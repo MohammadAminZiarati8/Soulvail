@@ -1166,7 +1166,7 @@ public sealed class TreeViewPresenterTests
     public void Skill_PipsMatchRanks()
     {
         RankedRun(chosen: true, ranks: 2);
-        Assert.That(ShownCells().Length, Is.EqualTo(5));
+        Assert.That(ShownCells().Length, Is.EqualTo(6));
         Assert.That(Steady().RankCount, Is.EqualTo(5));
         Assert.That(Steady().FilledPips, Is.EqualTo(2));
         Image[] pips = Steady().GetComponentsInChildren<Image>().Where(i => i.name == "RankPip").ToArray();
@@ -1250,7 +1250,7 @@ public sealed class TreeViewPresenterTests
         }
         Assert.That(ShownCells().Length, Is.EqualTo(3));
         Transform strip = PathCards().Card(0).transform.Find("SkillStrip");
-        Assert.That(strip.childCount, Is.EqualTo(2));
+        Assert.That(strip.childCount, Is.EqualTo(3));
         Assert.That(strip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
     }
 

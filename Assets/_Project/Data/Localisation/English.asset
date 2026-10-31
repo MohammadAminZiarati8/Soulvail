@@ -599,3 +599,19 @@ MonoBehaviour:
     _text: Coming soon
   - _key: ui.tree.unlocks-at
     _text: 'Lv {0:0}'
+  - _key: skill.marksman.rain-of-arrows.name
+    _text: Rain of Arrows
+  - _key: skill.marksman.rain-of-arrows.description
+    _text: Arrows rain on the largest group for 2 s.
+  - _key: skill.marksman.rain-of-arrows-2.name
+    _text: Rain of Arrows 2
+  - _key: skill.marksman.rain-of-arrows-2.description
+    _text: Rain of Arrows deals 25% more damage.
+  - _key: skill.marksman.rain-of-arrows-3.name
+    _text: Rain of Arrows 3
+  - _key: skill.marksman.rain-of-arrows-3.description
+    _text: Rain of Arrows reaches 0.5 m farther and slows enemies by 30%.
+  - _key: skill.marksman.rain-of-arrows-4.name
+    _text: Rain of Arrows 4
+  - _key: skill.marksman.rain-of-arrows-4.description
+    _text: Rain of Arrows cooldown is reduced by 2 s.

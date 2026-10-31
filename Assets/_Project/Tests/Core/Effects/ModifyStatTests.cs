@@ -129,6 +129,11 @@ public sealed class ModifyStatTests
                 PlayerStat.VolleyEvery => combat.Volley.Every,
                 PlayerStat.VolleyArrows => combat.Volley.Arrows,
                 PlayerStat.VolleyDamage => combat.Volley.Damage,
+                PlayerStat.SteadyAimPerStack => combat.SteadyAim.PerStack,
+                PlayerStat.SteadyAimStopCrit => combat.SteadyAim.StopCrit,
+                PlayerStat.SteadyAimGuard => combat.SteadyAim.Guard,
+                PlayerStat.EagleEyeFarBonus => combat.EagleEye.FarBonus,
+                PlayerStat.SteadyAimMaxStacks => combat.SteadyAim.MaxStacks,
                 _ => null,
             };
 
@@ -156,7 +161,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(19), "Twenty members, one named exception.");
+        Assert.That(answered, Is.EqualTo(24), "Twenty-five members after MK-02a, one named exception.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

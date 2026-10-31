@@ -342,6 +342,8 @@ public sealed class PlayerCombat
     /// <summary>How many of <see cref="_shots"/> the last damage frame wrote.</summary>
     private int _shotCount;
 
+    private bool _isStanding;
+
     /// <param name="spec">
     /// The class being played. Read once, here: its health numbers seed <see cref="Health"/>, its
     /// <see cref="CharacterSpec.Targeting"/> is shared by the scorer and the targeter, which both
@@ -418,6 +420,8 @@ public sealed class PlayerCombat
         // reason: the one edge that moves it — a shot leaving — is this class's. Null for every class
         // that ships.
         Volley = spec.Volley is null ? null : new Volley(spec.Volley, _events);
+        SteadyAim = new SteadyAim(_events);
+        EagleEye = new EagleEye();
 
         // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
         // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
@@ -505,6 +509,10 @@ public sealed class PlayerCombat
     /// volley. A cone looses nothing, so a volley on a cone class never counts.
     /// </remarks>
     public Volley Volley { get; }
+
+    public SteadyAim SteadyAim { get; }
+
+    public EagleEye EagleEye { get; }
 
     /// <summary>
     /// CC §5's dodge: when it may fire, which way it goes, how long it protects, and how much of
@@ -762,7 +770,7 @@ public sealed class PlayerCombat
     /// <returns>What <see cref="Health"/> did, unchanged, for a caller that has its own conclusions to draw.</returns>
     public DamageResult ApplyDamage(float amount, float now)
     {
-        DamageResult result = Health.ApplyDamage(amount, now);
+        DamageResult result = Health.ApplyDamage(amount * SteadyAim.IncomingMultiplier, now);
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
         // DamageResult field cannot quietly change what counts as silence.
@@ -1300,6 +1308,13 @@ public sealed class PlayerCombat
         // about moving, and after the dash, whose flight counts as moving here too.
         bool firesWhileMoving = FireWhileMoving.Value > FireWhileMovingThreshold;
 
+        _isStanding = !Charge.IsActive
+            && snapshot.PlayerVelocity.LengthSquared() <= StillSpeedSquared;
+        if (!_isStanding)
+        {
+            SteadyAim.OnMoved();
+        }
+
         UpdateHoldFire(firesWhileMoving, stickPushed, snapshot.PlayerVelocity);
 
         DpsOneSecond = Weapon.DpsOneSecond;
@@ -1356,6 +1371,7 @@ public sealed class PlayerCombat
     /// </remarks>
     public void Reset()
     {
+        SteadyAim.OnMoved();
         Health.Reset();
         Targeter.Reset();
         Weapon.Reset();
@@ -1466,6 +1482,7 @@ public sealed class PlayerCombat
 
         if (started)
         {
+            SteadyAim.OnMoved();
             Health.SetExternalInvulnerable(true);
 
             // Both cleared on the start rather than on the end of the previous dash, so a report
@@ -1762,7 +1779,7 @@ public sealed class PlayerCombat
             {
                 Vector3 aim = ProjectileLead.Solve(
                     playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
-                QueueShot(playerPosition, aim, ShotDamage(Weapon.Damage.Value), isVolley: false);
+                QueueShot(playerPosition, aim, agent.Position, Weapon.Damage.Value, isVolley: false);
 
                 return;
             }
@@ -1790,7 +1807,7 @@ public sealed class PlayerCombat
 
                 Vector3 lead = ProjectileLead.Solve(
                     playerPosition, candidate.Position, candidate.Velocity, _weaponSpec.ShotSpeed);
-                QueueShot(playerPosition, lead, damage, isVolley: true);
+                QueueShot(playerPosition, lead, candidate.Position, damage, isVolley: true);
             }
 
             return;
@@ -1806,8 +1823,14 @@ public sealed class PlayerCombat
     /// one arrow per registry entry, which fits the enemy-capacity queue.
     /// <paramref name="isVolley"/> marks a volley's arrow for the view (RS-07b) and changes nothing here.
     /// </remarks>
-    private void QueueShot(Vector3 origin, Vector3 target, float damage, bool isVolley)
+    private void QueueShot(Vector3 origin, Vector3 target, Vector3 targetPosition, float damage, bool isVolley)
     {
+        bool isCrit = false;
+        float standing = _isStanding ? SteadyAim.OnLoose(out isCrit) : 1f;
+        float dx = targetPosition.X - origin.X;
+        float dz = targetPosition.Z - origin.Z;
+        damage = ShotDamage(damage * standing * EagleEye.MultiplierAt(MathF.Sqrt((dx * dx) + (dz * dz))));
+
         _shots[_shotCount] = new Projectile(
             _characterId,
             sourceId: 0,
@@ -1817,7 +1840,8 @@ public sealed class PlayerCombat
             _weaponSpec.ShotRadius,
             damage,
             ShotSide.AtEnemies,
-            isVolley);
+            isVolley,
+            isCrit);
 
         _shotCount++;
     }

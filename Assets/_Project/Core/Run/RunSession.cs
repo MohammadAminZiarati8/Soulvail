@@ -1514,6 +1514,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // Copied rather than owned, because the two numbers answer different questions: the
             // flow's is what the stage machine is running, and this is what the run reports and
             // saves (M2-13). They agree because this is the one line that moves the second one.
+            if (State.StageIndex != _flow.Stage)
+            {
+                State.Combat.SteadyAim.OnMoved();
+            }
+
             State.StageIndex = _flow.Stage;
 
             // The same copy for the same reason, one line down (M6-02a rule 4). Written every tick
@@ -1559,6 +1564,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // written anyway for M2-10 rule 14's reason.
             if (phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear)
             {
+                State.Combat.SteadyAim.OnMoved();
                 _recorder.Take(State, _flow.Stage + 1);
             }
         }

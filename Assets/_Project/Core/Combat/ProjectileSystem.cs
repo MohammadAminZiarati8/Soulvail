@@ -92,7 +92,7 @@ public readonly struct Projectile
         float radius,
         float damage,
         ShotSide side = ShotSide.AtPlayer,
-        bool isVolley = false)
+        bool isVolley = false, bool isCrit = false)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -103,6 +103,7 @@ public readonly struct Projectile
         Damage = NotNegative(damage, nameof(damage));
         Side = Defined(side);
         IsVolley = isVolley;
+        IsCrit = isCrit;
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
@@ -151,6 +152,8 @@ public readonly struct Projectile
     /// other field (RS-07b rule 1).
     /// </remarks>
     public bool IsVolley { get; }
+
+    public bool IsCrit { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3),
@@ -414,7 +417,8 @@ public sealed class ProjectileSystem
             shot.Target,
             flightTime,
             shot.IsVolley,
-            shot.Radius));
+            shot.Radius,
+            shot.IsCrit));
 
         return id;
     }

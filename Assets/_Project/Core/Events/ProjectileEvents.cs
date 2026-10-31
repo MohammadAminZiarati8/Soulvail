@@ -77,6 +77,8 @@ public readonly struct ProjectileFired
     /// </summary>
     public readonly bool IsVolley;
 
+    public readonly bool IsCrit;
+
     /// <summary>The impact radius in metres, copied from the accepted shot.</summary>
     public readonly float Radius;
 
@@ -88,7 +90,7 @@ public readonly struct ProjectileFired
         Vector3 target,
         float flightTime,
         bool isVolley = false,
-        float radius = 0f)
+        float radius = 0f, bool isCrit = false)
     {
         Id = id;
         SpecId = specId;
@@ -97,6 +99,7 @@ public readonly struct ProjectileFired
         Target = target;
         FlightTime = flightTime;
         IsVolley = isVolley;
+        IsCrit = isCrit;
         Radius = radius;
     }
 }

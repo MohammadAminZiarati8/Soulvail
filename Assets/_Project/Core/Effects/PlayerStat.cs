@@ -189,6 +189,12 @@ public enum PlayerStat
 
     /// <summary>Each volley arrow's damage, as a multiple of a shot's — <c>Volley.Damage</c>.</summary>
     VolleyDamage,
+
+    SteadyAimPerStack,
+    SteadyAimStopCrit,
+    SteadyAimGuard,
+    EagleEyeFarBonus,
+    SteadyAimMaxStacks,
 }
 
 /// <summary>
@@ -269,6 +275,11 @@ public sealed class PlayerStats : IStatBlock
     {
         return stat switch
         {
+            PlayerStat.SteadyAimStopCrit => _combat.SteadyAim.StopCrit,
+            PlayerStat.SteadyAimPerStack => _combat.SteadyAim.PerStack,
+            PlayerStat.EagleEyeFarBonus => _combat.EagleEye.FarBonus,
+            PlayerStat.SteadyAimGuard => _combat.SteadyAim.Guard,
+            PlayerStat.SteadyAimMaxStacks => _combat.SteadyAim.MaxStacks,
             PlayerStat.MaxHp => _combat.Health.MaxHp,
             PlayerStat.WeaponDamage => _combat.Weapon.Damage,
             PlayerStat.FireRate => _combat.Weapon.FireRate,
@@ -318,6 +329,11 @@ public sealed class PlayerStats : IStatBlock
     {
         return stat switch
         {
+            PlayerStat.SteadyAimStopCrit => true,
+            PlayerStat.SteadyAimPerStack => true,
+            PlayerStat.EagleEyeFarBonus => true,
+            PlayerStat.SteadyAimGuard => true,
+            PlayerStat.SteadyAimMaxStacks => true,
             PlayerStat.MaxHp => true,
             PlayerStat.WeaponDamage => true,
             PlayerStat.FireRate => true,

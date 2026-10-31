@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(17), "The other seventeen of twenty are player numbers — M6-08 added four, RS-03a one, RS-03b three.");
+        Assert.That(refused, Is.EqualTo(22), "Twenty-two of twenty-five are player numbers; MK-02a adds five.");
     }
 
     [Test]
@@ -444,8 +444,15 @@ public sealed class StatBlockTests
             nameof(PlayerStat.VolleyEvery),
             nameof(PlayerStat.VolleyArrows),
             nameof(PlayerStat.VolleyDamage),
+
+            // MK-02a, appended: Steady Aim and Eagle Eye are player numbers.
+            nameof(PlayerStat.SteadyAimPerStack),
+            nameof(PlayerStat.SteadyAimStopCrit),
+            nameof(PlayerStat.SteadyAimGuard),
+            nameof(PlayerStat.EagleEyeFarBonus),
+            nameof(PlayerStat.SteadyAimMaxStacks),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
-            + "RS-03b's three volley numbers. A new member goes *after* VolleyDamage and updates this "
+            + "RS-03b's three volley numbers and MK-02a's five. A new member goes *after* SteadyAimMaxStacks and updates this "
             + "row saying which task added it.");
     }
 

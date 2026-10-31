@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks and device notes: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-01b built._
+_Updated 2026-10-31, MK-02a built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-01b**: free path choice, derived resume and Overflow room. |
-| **Next task** | **MK-02a**: Steady Aim and Eagle Eye in core. |
-| **Verified** | EditMode 4 811: 4 810 pass, 0 fail, 1 known clock inconclusive; MK-01b 18/18. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **MK-02a**: Steady Aim stacks, stop crit, guard and Eagle Eye in core. |
+| **Next task** | **MK-02b**: author the Marksman path, Steady Aim and Eagle Eye assets. |
+| **Verified** | EditMode 4 827: 4 826 pass, 0 fail, 1 known clock inconclusive; MK-02a 16/16. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
@@ -25,7 +25,7 @@ threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
 Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.
 Boss bar one line, none overhead; boss adds pay no XP. Saves run v4/profile v5, older load.
-Clash UI; `LocKey` strings. Core path choice opens at the class level gate, restores from taken IDs, and banks points while a path has room; authoring/cards follow in MK-02b/MK-03.
+Clash UI; `LocKey` strings. Core path choice opens at the class level gate, restores from taken IDs, and banks points while a path has room; authoring/cards follow in MK-02b/MK-03. Standing arrows build damage stacks, the first can crit, full stacks guard; Eagle Eye boosts far shots. These remain inert until assets grant them.
 
 ## What does not work yet
 

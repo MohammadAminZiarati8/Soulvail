@@ -411,8 +411,8 @@ public sealed class JungleTests
         Assert.That(mossguard.WindupTime, Is.EqualTo(0.7f).Within(1e-5f));
         Assert.That(mossguard.RecoverTime, Is.EqualTo(1.5f));
         Assert.That(mossguard.ContactDamage, Is.EqualTo(16f));
-        Assert.That(definition.ToLook().BodyScale, Is.EqualTo(1.1f).Within(1e-5f));
-        Assert.That(mossguard.BodyRadius, Is.EqualTo(EnemySpec.BaseBodyRadius * 1.1f).Within(1e-5f));
+        Assert.That(definition.ToLook().BodyScale, Is.EqualTo(1.27f).Within(1e-5f));
+        Assert.That(mossguard.BodyRadius, Is.EqualTo(EnemySpec.BaseBodyRadius * 1.27f).Within(1e-5f));
         Assert.That(mossguard.XpValue, Is.EqualTo(30f));
         Assert.That(mossguard.Bulwark, Is.Not.Null);
         Assert.That((mossguard.Bulwark.ShieldHalfArcDegrees, mossguard.Bulwark.TurnRateDegrees, mossguard.Bulwark.WalkConeDegrees),

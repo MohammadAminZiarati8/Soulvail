@@ -9,7 +9,7 @@ _Updated 2026-10-31, after JG-14f._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-14f**: spear, 2 m stab; Mossguard +10%. |
+| **Last merged** | **JG-14f**: spear, 2 m stab; Mossguard +27%. |
 | **Next task** | None specified; owner playtest. |
 | **Verified** | EditMode 4 786: 4 785 pass, 0 fail, 1 known clock inconclusive; JG-14f 9/9. Compiler errors 0; new analyzer warnings 0; format clean. |
 

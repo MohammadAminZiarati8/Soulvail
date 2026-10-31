@@ -1066,6 +1066,12 @@ public sealed class RunState
     /// </remarks>
     public int EnemyCount => Enemies.Registry.AliveCount;
 
+    /// <summary>The active slow for a body's animation; never hands a live agent to Unity.</summary>
+    public float EnemySlowFraction(int id) =>
+        Enemies.Registry.TryGet(id, out var enemy) && enemy.IsAlive ? enemy.CrowdControl.SlowFraction : 0f;
+
+    public bool IsEnemyAlive(int id) => Enemies.Registry.TryGet(id, out var enemy) && enemy.IsAlive;
+
     /// <summary>
     /// The living enemies and the bodies still to come this stage (UI-01c): what the stage has left.
     /// </summary>

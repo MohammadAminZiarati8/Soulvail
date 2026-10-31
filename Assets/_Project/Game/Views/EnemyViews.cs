@@ -340,6 +340,7 @@ public sealed class EnemyViews : IDisposable
         }
 
         view.Bind(evt.Id, position);
+        view.GetComponent<EnemyStatusView>()?.Bind(evt.Id);
 
         _byId[evt.Id] = new Rental(view, pool);
 

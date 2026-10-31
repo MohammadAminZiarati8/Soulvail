@@ -43,7 +43,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-04** — The skill arc: every active a circle beside the roll, tap casts, long-press toggles auto; passives in the corner; auto-casts 0.5 s apart (M)
 - [x] **MK-05** — The status row: buffs and debuffs beside the HP bar with timers and stacks (M)
 - [x] **MK-06a** — Enemies can be stunned, rooted and slowed (M)
-- [ ] **MK-06b** — Stun, root and slow are drawn on the enemy and over its bar (M) · [spec](tasks/MK-06b-stun-root-and-slow-drawn.md)
+- [x] **MK-06b** — Stun, root and slow are drawn on the enemy and over its bar (M)
 - [ ] **MK-07a** — Rain of Arrows in core (M) · [spec](tasks/MK-07a-rain-of-arrows.md)
 - [ ] **MK-07b** — Rain of Arrows drawn and authored (M) · [spec](tasks/MK-07b-rain-of-arrows-drawn.md)
 - [ ] **MK-08a** — Binding Shot in core, with Unity's anchor probe as a port (M) · [spec](tasks/MK-08a-binding-shot.md)

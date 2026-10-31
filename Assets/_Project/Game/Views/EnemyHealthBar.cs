@@ -1,6 +1,8 @@
 using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Core.Content;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
 using UnityEngine;
@@ -164,6 +166,118 @@ namespace Soulvail.Game.Views
         private bool _oriented;
 
         private bool _injected;
+        private readonly Image[] _statusIcons = new Image[3];
+        private readonly Image[] _statusSweeps = new Image[3];
+        private readonly float[] _statusRemaining = new float[3];
+        private readonly float[] _statusDuration = new float[3];
+        private readonly bool[] _statuses = new bool[3];
+        private IDisposable _statusSubscription;
+        private IDisposable _deathSubscription;
+        private float _statusPx = 1f;
+        private bool HasStatuses => _statuses[0] || _statuses[1] || _statuses[2];
+
+        public Image StatusIcon(EnemyStatus status) => _statusIcons[(int)status];
+        public Image StatusSweep(EnemyStatus status) => _statusSweeps[(int)status];
+
+        public void ConfigureStatuses(StatusIconBook icons, Sprite sweep)
+        {
+            if (_root == null || _statusIcons[0] != null)
+            {
+                return;
+            }
+            string[] keys = { "status.enemy.stunned", "status.enemy.rooted", "status.enemy.slowed" };
+            _statusPx = PixelsPerDp();
+            for (int i = 0; i < 3; i++)
+            {
+                var icon = new GameObject(keys[i], typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                icon.transform.SetParent(_root.transform, false);
+                icon.sprite = icons != null ? icons.For(new ContentId(keys[i])) : sweep;
+                icon.color = Color.white;
+                icon.raycastTarget = false;
+                var mask = new GameObject("Sweep", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mask.transform.SetParent(icon.transform, false);
+                mask.sprite = sweep;
+                mask.color = new Color(Palette.Ink.r, Palette.Ink.g, Palette.Ink.b, 0.65f);
+                mask.type = Image.Type.Filled;
+                mask.fillMethod = Image.FillMethod.Radial360;
+                mask.fillOrigin = (int)Image.Origin360.Top;
+                mask.fillClockwise = false;
+                mask.raycastTarget = false;
+                mask.rectTransform.anchorMin = Vector2.zero;
+                mask.rectTransform.anchorMax = Vector2.one;
+                mask.rectTransform.sizeDelta = Vector2.zero;
+                _statusIcons[i] = icon;
+                _statusSweeps[i] = mask;
+                icon.gameObject.SetActive(false);
+            }
+        }
+
+        public void ClearStatuses()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                _statuses[i] = false;
+                _statusRemaining[i] = 0f;
+                _statusDuration[i] = 0f;
+            }
+            DrawStatuses();
+            Draw();
+        }
+
+        private void OnStatusChanged(EnemyStatusChanged evt)
+        {
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)evt.Status >= 3u)
+            {
+                return;
+            }
+            int i = (int)evt.Status;
+            _statuses[i] = evt.Seconds > 0f;
+            _statusRemaining[i] = _statusDuration[i] = Mathf.Max(0f, evt.Seconds);
+            DrawStatuses();
+            Draw();
+        }
+
+        private void OnDied(EnemyDied evt)
+        {
+            if (_id != EnemyView.Unbound && evt.Id == _id)
+            {
+                Unbind();
+            }
+        }
+
+        private void DrawStatuses()
+        {
+            int count = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                if (_statuses[i])
+                {
+                    count++;
+                }
+            }
+            float px = _statusPx;
+            int slot = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                Image icon = _statusIcons[i];
+                if (icon == null)
+                {
+                    continue;
+                }
+                icon.gameObject.SetActive(_statuses[i] && IsShown);
+                if (!_statuses[i])
+                {
+                    continue;
+                }
+                RectTransform rect = icon.rectTransform;
+                rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+                rect.pivot = new Vector2(0.5f, 0f);
+                rect.sizeDelta = Vector2.one * (14f * px);
+                rect.anchoredPosition = new Vector2((slot++ - (count - 1) * 0.5f) * 16f, 2f) * px;
+                _statusSweeps[i].fillAmount = _statusDuration[i] > 0f
+                    ? Mathf.Clamp01(_statusRemaining[i] / _statusDuration[i]) : 0f;
+            }
+        }
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
@@ -194,10 +308,12 @@ namespace Soulvail.Game.Views
             // A boss is an ordinary spawn, told apart only by the phase it announces straight after
             // (BossBehaviour.Announce). A few events per fight, so the census cost above does not apply.
             _bossSubscription = hub.Subscribe<BossPhaseChanged>(OnBossPhaseChanged);
+            _statusSubscription = hub.Subscribe<EnemyStatusChanged>(OnStatusChanged);
+            _deathSubscription = hub.Subscribe<EnemyDied>(OnDied);
         }
 
         /// <summary>Whether the bar is currently drawn at all.</summary>
-        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && (_isElite || _shownRemaining > 0f);
+        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && (_isElite || HasStatuses || _shownRemaining > 0f);
 
         /// <summary>
         /// Told what it is standing over, on the rental. Before the body is in service.
@@ -223,6 +339,7 @@ namespace Soulvail.Game.Views
             }
 
             _id = id;
+            ClearStatuses();
             _isElite = isElite;
             _isBoss = false;
             _fraction = 1f;
@@ -256,6 +373,7 @@ namespace Soulvail.Game.Views
         public void Unbind()
         {
             _id = EnemyView.Unbound;
+            ClearStatuses();
             _isElite = false;
             _isBoss = false;
             _fraction = 1f;
@@ -306,6 +424,8 @@ namespace Soulvail.Game.Views
             _damagedSubscription = null;
             _bossSubscription?.Dispose();
             _bossSubscription = null;
+            _statusSubscription?.Dispose();
+            _deathSubscription?.Dispose();
         }
 
         /// <remarks>
@@ -334,6 +454,12 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
+
+            for (int i = 0; i < 3; i++)
+            {
+                _statusRemaining[i] = Mathf.Max(0f, _statusRemaining[i] - dt);
+            }
+            DrawStatuses();
 
             float drainDt = Mathf.Max(0f, dt - _ghostHoldRemaining);
             _ghostHoldRemaining = Mathf.Max(0f, _ghostHoldRemaining - dt);
@@ -404,6 +530,7 @@ namespace Soulvail.Game.Views
             }
 
             _isBoss = true;
+            DrawStatuses();
             _shownRemaining = 0f;
 
             Draw();
@@ -491,7 +618,7 @@ namespace Soulvail.Game.Views
                 return 0f;
             }
 
-            if (_isElite)
+            if (_isElite || HasStatuses)
             {
                 return 1f;
             }

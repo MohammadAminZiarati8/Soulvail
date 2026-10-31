@@ -67,3 +67,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-06a — Stun, root and slow (2026-10-31)
 
 - [ ] **[Editor]** Regression only — nothing applies these yet (MK-07a+) and nothing draws them (MK-06b). Play stages 1–14 and a boss: Frogs, Pitchers, Panthers, Mossguard and Warden/Croaker/Mother move, wind up and strike exactly as before.
+
+## MK-06b — Enemy crowd-control visuals (2026-10-31)
+
+- [ ] **[Editor]** Start a Jungle run. Use the dev DebugOverlay's **Stun 3s**, **Root 3s** and **Slow 3s** buttons on the nearest living enemy. Confirm three pale sparks circle above a stunned head, cyan-lit coils fit a rooted body's feet while its legs keep moving, and faint pale-blue frost reads on the dark floor with slower animation. A stunned enemy still flinches on hits. Full-health basic bars appear during a status; 14 dp icons stay ordered stun → root → slow and their circular sweeps count down. Effects/icons clear at the end event, death and pooled reuse. Boss durations are 1.5 s and their ordinary world bars stay suppressed. Skills that apply these remain future work.

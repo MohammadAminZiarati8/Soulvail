@@ -398,6 +398,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         public void OnDespawn()
         {
+            GetComponent<EnemyStatusView>()?.Unbind();
             EnemyHitFeedback feedback = Feedback;
 
             if (feedback != null)

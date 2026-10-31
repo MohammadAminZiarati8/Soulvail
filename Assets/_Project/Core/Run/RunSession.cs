@@ -1608,6 +1608,24 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         TickBody(snapshot);
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    /// <summary>Development overlay command; uses the same core rules as future skills.</summary>
+    public bool DebugEnemyStatus(int enemyId, EnemyStatus status)
+    {
+        if (State is null)
+        {
+            return false;
+        }
+        return status switch
+        {
+            EnemyStatus.Stunned => State.Enemies.Stun(enemyId, 3f),
+            EnemyStatus.Rooted => State.Enemies.Root(enemyId, 3f),
+            EnemyStatus.Slowed => State.Enemies.Slow(enemyId, 0.5f, 3f),
+            _ => false,
+        };
+    }
+#endif
+
     /// <inheritdoc />
     /// <remarks>
     /// <para>

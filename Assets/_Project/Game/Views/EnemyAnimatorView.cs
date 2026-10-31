@@ -115,6 +115,18 @@ namespace Soulvail.Game.Views
         /// <summary>Seconds of the wind-up still to pass before the rate returns to 1; none at or below zero.</summary>
         private float _windupLeft;
         private bool _dead;
+        private bool _rooted;
+        private bool _stunned;
+
+        public void SetCrowdControl(bool stunned, bool rooted, float slowFraction)
+        {
+            _rooted = rooted;
+            _stunned = stunned;
+            if (_animator != null)
+            {
+                _animator.speed = _dead ? 1f : stunned ? 0.1f : 1f - Mathf.Clamp(slowFraction, 0f, 0.9f);
+            }
+        }
         private bool _injected;
 
         /// <summary>The controller has a <c>Move</c> int; meaningful once <see cref="_moveChecked"/>.</summary>
@@ -171,30 +183,37 @@ namespace Soulvail.Game.Views
                 _body = GetComponentInParent<EnemyView>();
             }
 
-            Vector3 velocity = _dead || _body == null ? Vector3.zero : _body.Velocity;
-            velocity.y = 0f;
-
-            float speed = velocity.magnitude;
-            bool takeoff = _hops && speed > 0f && !(_bodySpeed > 0f);
-
-            _bodySpeed = speed;
-
-            if (takeoff)
+            if (!_stunned)
             {
-                // A hop leaves at full speed and from the clip's first frame, never mid-leap from
-                // wherever the last one stopped.
-                _shownSpeed = speed;
+                Vector3 velocity = _dead || _body == null ? Vector3.zero : _body.Velocity;
+                velocity.y = 0f;
 
-                if (_animator.HasState(0, _locomotionId))
+                float speed = velocity.magnitude;
+                if (_rooted && !_dead)
                 {
-                    _animator.Play(_locomotionId, 0, 0f);
+                    speed = Mathf.Max(_bodySpeed, _strideSpeed);
                 }
+                bool takeoff = _hops && speed > 0f && !(_bodySpeed > 0f);
+
+                _bodySpeed = speed;
+
+                if (takeoff)
+                {
+                    // A hop leaves at full speed and from the clip's first frame, never mid-leap from
+                    // wherever the last one stopped.
+                    _shownSpeed = speed;
+
+                    if (_animator.HasState(0, _locomotionId))
+                    {
+                        _animator.Play(_locomotionId, 0, 0f);
+                    }
+                }
+
+                _shownSpeed = Mathf.MoveTowards(_shownSpeed, speed, SpeedFollowRate * dt);
+
+                _animator.SetFloat(_speedId, _shownSpeed);
+                _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
             }
-
-            _shownSpeed = Mathf.MoveTowards(_shownSpeed, speed, SpeedFollowRate * dt);
-
-            _animator.SetFloat(_speedId, _shownSpeed);
-            _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
 
             if (_flinchLayer == -2)
             {
@@ -210,7 +229,7 @@ namespace Soulvail.Game.Views
 
             FlinchLayer.Drive(_animator, _strikeLayer, _attackStateId);
 
-            if (_windupLeft > 0f)
+            if (_windupLeft > 0f && !_stunned)
             {
                 _windupLeft -= dt;
 
@@ -233,6 +252,7 @@ namespace Soulvail.Game.Views
         public void Forget()
         {
             _dead = false;
+            SetCrowdControl(false, false, 0f);
             _shownSpeed = 0f;
             _bodySpeed = 0f;
             _windupLeft = 0f;
@@ -417,6 +437,7 @@ namespace Soulvail.Game.Views
             }
 
             _dead = true;
+            SetCrowdControl(false, false, 0f);
 
             // Nothing queued may outlive the life it was for: a strike cancelled by the death, and a
             // flinch from the blow before it.

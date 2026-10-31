@@ -462,6 +462,56 @@ namespace Soulvail.Game.Presentation
             Refresh();
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private void OnGUI()
+        {
+            if (_session?.State is null)
+            {
+                return;
+            }
+            float top = Screen.height * 0.3f;
+            if (GUI.Button(new Rect(8f, top, 84f, 32f), "Stun 3s"))
+            {
+                ApplyNearestStatus(EnemyStatus.Stunned);
+            }
+            if (GUI.Button(new Rect(8f, top + 36f, 84f, 32f), "Root 3s"))
+            {
+                ApplyNearestStatus(EnemyStatus.Rooted);
+            }
+            if (GUI.Button(new Rect(8f, top + 72f, 84f, 32f), "Slow 3s"))
+            {
+                ApplyNearestStatus(EnemyStatus.Slowed);
+            }
+        }
+
+        public bool ApplyNearestStatus(EnemyStatus status)
+        {
+            if (_session is not RunSession session || session.State is null)
+            {
+                return false;
+            }
+            int id = EnemyView.Unbound;
+            float nearest = float.PositiveInfinity;
+            for (int i = 0; i < _snapshot.EnemyCount; i++)
+            {
+                ref var enemy = ref _snapshot.Enemies[i];
+                if (!session.State.IsEnemyAlive(enemy.Id))
+                {
+                    continue;
+                }
+                float dx = enemy.Position.X - _snapshot.PlayerPosition.X;
+                float dz = enemy.Position.Z - _snapshot.PlayerPosition.Z;
+                float distance = dx * dx + dz * dz;
+                if (distance < nearest || distance == nearest && enemy.Id < id)
+                {
+                    nearest = distance;
+                    id = enemy.Id;
+                }
+            }
+            return id != EnemyView.Unbound && session.DebugEnemyStatus(id, status);
+        }
+#endif
+
         private void Refresh()
         {
             // var, not an explicit type: these are System.Numerics vectors and UnityEngine has its

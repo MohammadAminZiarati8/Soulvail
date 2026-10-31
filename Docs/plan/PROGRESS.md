@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-06a built._
+_Updated 2026-10-31, MK-06b built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-06a**: core stuns, roots and slows enemies (bosses half); behaviours obey without knowing; `EnemyStatusChanged` events. |
-| **Next task** | **MK-06b**: stun, root and slow are drawn on the enemy and over its bar. |
-| **Verified** | EditMode 4 843: 4 842 pass, 0 fail, 1 known animator-clock inconclusive; new 11/11. Compiler errors 0; new analyzer warnings 0; format clean (5 C# files). |
+| **Last merged** | **MK-06b**: pooled enemy stun sparks, root coils and faint frost; animator response; ordered timed bar icons; dev nearest-enemy buttons. |
+| **Next task** | **MK-07a**: Rain of Arrows in core. |
+| **Verified** | EditMode 4 863: 4 862 pass, 0 fail, 1 known animator-clock inconclusive; new 20/20. Compiler errors 0; new analyzer warnings 0; format clean (9 C# files). Three-effect render inspected. |
 
 ## What works
 
@@ -27,12 +27,14 @@ Clash UI; LocKey strings. Ranger paths from level 11. Marksman: Steady Aim (5 ra
 Eagle Eye (3, Lv 14); path icons, preview/choice, ranked pips and next-rank Learn.
 Minimal arc: class then chosen-path actives, locks/levels, sweep/seconds, cyan ready border,
 auto badge; Volley retains shot pips. Ready taps fire even on Auto; 0.45 s hold toggles with
-settings-aware haptics. Shot-charged Volley taps use fresh senses next tick. All auto casts,
-including bought casts and Volley, wait 0.5 s after any cast. Untappable corner passives;
+settings-aware haptics. All auto casts wait 0.5 s after any cast. Untappable corner passives;
 six-circle ellipse stays outside the stick at 360 dp, with a mirrored cluster option.
-Status row: 24 dp placeholder icons under the HP bar, cyan/violet rims, sweep or stack count;
-cleared at stage boundaries and run end.
-Core crowd control: stun freezes a behaviour, root zeroes its moves, strongest slow wins; undrawn, unused.
+Player status row: 24 dp icons under HP, cyan/violet rims, sweep/stacks; clears at boundaries/end.
+Enemy crowd control: stun freezes behaviour, root zeroes moves, strongest slow wins; bosses half.
+Drawn with pooled head sparks/foot coils/frost; stun holds at 0.1x, root keeps legs moving,
+slow scales animation. 14 dp stun/root/slow icons with sweeps reveal full-health basic bars;
+boss bars keep their existing HUD treatment. End/death/despawn clear effects and pooled state.
+Dev overlay buttons apply stun/root/50% slow to the nearest living enemy for 3 s (bosses 1.5 s).
 
 ## What does not work yet
 
@@ -44,8 +46,8 @@ Core crowd control: stun freezes a behaviour, root zeroes its moves, strongest s
 ## Known issues
 
 1. ArenaView warns zero spawn points on reload; harmless. TimeManager reserialises; revert before commits.
-2. ContactDamage stat ruling pending. Invalid tree saves strand Continue; XP 1e38 hangs levelling.
+2. ContactDamage ruling pending. Invalid tree saves strand Continue; XP 1e38 hangs levelling.
 3. Stage-boundary bolts leave bodies; pooled Bind/Move can snap with autoSyncTransforms off.
-4. Sanctum event draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
+4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full.
 6. Mother pod Frogs can survive phase beats (JG-12h). Run unload can reactivate destroyed cover (MK-02b smoke).

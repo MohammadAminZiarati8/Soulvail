@@ -9,7 +9,7 @@ _Updated 2026-10-31, after JG-14f._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-14f**: spear, shield-up stab, 2 m reach. |
+| **Last merged** | **JG-14f**: spear, 2 m stab; Mossguard +10%. |
 | **Next task** | None specified; owner playtest. |
 | **Verified** | EditMode 4 786: 4 785 pass, 0 fail, 1 known clock inconclusive; JG-14f 9/9. Compiler errors 0; new analyzer warnings 0; format clean. |
 
@@ -20,7 +20,7 @@ Threat-budgeted waves → door; fifth-stage bosses: Descent Warden, Jungle Croak
 Mother: rooted, three facing shield buds/phase, five-lob barrage, stone-blocked pulsing spray/goo,
 ringed pods swell 1 s → Frogs, 66/33% beats. Scripts: 1 = 3 Frogs; 2 = 2 Pitchers;
 3 = both; 4 = 2 Puffballs; 6 = 2 Panthers; 7–9 mixed waves. Stage 11: Mossguard, then one + four
-Frogs; shield blocks, spear stabs (2 m), hit feedback. Stages 12–14: shield/spit, pincer, exam; 76 → 110 → 128
+Frogs; larger Mossguard, shield blocks, 2 m spear stab. Stages 12–14: shield/spit, pincer, exam; 76 → 110 → 128
 threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
 Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.

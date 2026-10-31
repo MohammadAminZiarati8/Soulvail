@@ -7,6 +7,9 @@ Owner, 2026-10-31: the Mossguard carries a spear, which from above points where 
 `C:/Users/mazia/Documents/Codex/2026-10-23/sa/outputs/generated/MossguardSpear-8e9dbfe7-seed42_00001_.glb`
 (SHA-256 `7ef268515a4cd0d4e28a02bc5913d9a332365ce77d952e187b39000b9abbca44`).
 
+Owner size follow-up, 2026-10-31: overall archetype scale 1.1 (+10%). The whole spawned body,
+props, colliders and bar scale together; core body radius follows at 0.44 m. Reach remains 2.0.
+
 ## Goal
 
 A spear in `handslot.r`; the shield shove becomes a 2 m right-arm stab over the raised shield.
@@ -75,8 +78,8 @@ Rebuild compared element-by-element: only FBX CreationTimeStamp differs. Body/sh
 Strike sits between Guard and Flinch, right-arm-only mask, weight 0 except Attack; Stab peak at
 14/30 s, offset 8/30 s, timed to 0.7 s within half a frame. Guard keeps Blocking; shield pose
 unchanged. Write Defaults off. Reach alone changes to 2.0. Optional Strike driven by FlinchLayer.
-Nine specified rows pass; preparation/determinism assertions pass. Full EditMode 4,786 / 4,785 passed / 0 failed / 1 known clock inconclusive; UTC start 01:52:46.
-Zero compiler errors/new analyzer warnings; five C# files format clean.
+Nine specified rows pass; preparation/determinism assertions pass. Full EditMode 4,786 / 4,785 passed / 0 failed / 1 known clock inconclusive; UTC start 02:00:50.
+Zero compiler errors/new analyzer warnings; format clean. Owner size follow-up: bodyScale 1.1.
 Imported prefab front/side/game and mid-thrust renders:
-`C:/Users/mazia/.codex/visualizations/2026/10/31/01a18f9f-af6f-7ce2-a80c-032369daad18/Mossguard/unity-{guard,stab}-{front,side,game}.png`.
+`C:/Users/mazia/.codex/visualizations/2026/10/31/01a18f9f-af6f-7ce2-a80c-032369daad18/Mossguard/unity{-larger,}-{guard,stab}-{front,side,game}.png`.
 Manual remaining: stage 11 in-run feel and device judgement.

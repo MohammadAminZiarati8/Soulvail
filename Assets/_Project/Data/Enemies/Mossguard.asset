@@ -41,7 +41,7 @@ MonoBehaviour:
   _shieldTurnRate: 75
   _shieldWalkCone: 45
   _tint: {r: 1, g: 1, b: 1, a: 1}
-  _bodyScale: 1
+  _bodyScale: 1.1
   _body: {fileID: 9153038320951049130, guid: 9f591c403a45a9346b0ec212287aedc6, type: 3}
   _projectile: {fileID: 0}
   _marksLanding: 0

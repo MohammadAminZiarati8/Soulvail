@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 
@@ -7,7 +8,13 @@ namespace Soulvail.Core.Combat;
 /// <summary>Standing arrows build damage; movement gives up the stack and its guard.</summary>
 public sealed class SteadyAim
 {
+    public const string StatusKey = "status.steady-aim";
+    public const string GuardStatusKey = "status.steady-aim.guard";
+
     private readonly IDomainEvents _events;
+    private readonly ContentId _statusId = new(StatusKey);
+    private readonly ContentId _guardStatusId = new(GuardStatusKey);
+    private StatusBoard _status;
 
     public SteadyAim(IDomainEvents events)
     {
@@ -49,14 +56,50 @@ public sealed class SteadyAim
 
     public void OnMoved() => SetStacks(0);
 
+    /// <summary>Mirrors the stacks and the guard onto the player's status row (MK-05).</summary>
+    public void AttachStatus(StatusBoard status)
+    {
+        _status = status ?? throw new ArgumentNullException(nameof(status));
+        SyncStatus();
+    }
+
     private void SetStacks(int value)
     {
-        if (Stacks == value)
+        // Synced even when unchanged: a Guard rank bought at full stacks shows on the next arrow.
+        bool changed = Stacks != value;
+        Stacks = value;
+        SyncStatus();
+        if (!changed)
         {
             return;
         }
 
-        Stacks = value;
         _events.Publish(new SteadyAimChanged(Stacks, Cap));
+    }
+
+    private void SyncStatus()
+    {
+        if (_status is null)
+        {
+            return;
+        }
+
+        if (Stacks > 0)
+        {
+            _status.Post(_statusId, true, float.PositiveInfinity, Stacks);
+        }
+        else
+        {
+            _status.Clear(_statusId);
+        }
+
+        if (Guard.Value > 0f && IncomingMultiplier < 1f)
+        {
+            _status.Post(_guardStatusId, true, float.PositiveInfinity, 1);
+        }
+        else
+        {
+            _status.Clear(_guardStatusId);
+        }
     }
 }

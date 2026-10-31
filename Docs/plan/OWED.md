@@ -58,3 +58,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [ ] **[Editor]** Start stage 12 with Marksman: roll sits in from the corner, Volley is above it, passives below/right; untaken Eagle Eye shows a lock and Lv 14. The path actives are authored in later tasks.
 - [ ] **[Editor]** Charge Volley with ordinary arrows. Hold its circle at least 0.45 s: A toggles once; releasing does not cast. Tap while ready, including with A on: Volley fires; an uncharged tap does nothing. Check pips, ready cyan border and passive locks.
 - [ ] **[device]** Check thumb reach, circle separation and left-stick coexistence. A hold gives one small buzz with haptics enabled and none when disabled. If using the serialized left-handed mirror, verify roll, arc and passives mirror together.
+
+## MK-05 — Status row (2026-10-31)
+
+- [ ] **[Editor]** Start stage 12 as Marksman with Steady Aim: stand still — a cyan-rimmed placeholder icon appears under the HP bar, left-aligned with it, counting 2…5 bottom-right (1 shows no number); move — it vanishes. With rank 5 (Guard), a second icon joins at full stacks and leaves on moving. Clear a stage: the row empties.
+- [ ] **[Editor]** Device Simulator at 360 x 780: the 24 dp row clears the stage chip and the threat arrows. Placeholder art; the HUD is to be redone.

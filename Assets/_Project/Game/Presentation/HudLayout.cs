@@ -89,6 +89,15 @@ public static class HudLayout
     /// </remarks>
     public const float SkillRowTopDp = RowTopDp + ((StarSizeDp - BarHeightDp) * 0.5f) + BarHeightDp + 8f;
 
+    /// <summary>A status icon's side (MK-05); the row sits at <see cref="SkillRowTopDp"/>.</summary>
+    public const float StatusSizeDp = 24f;
+
+    /// <summary>The gap between two status icons.</summary>
+    public const float StatusGapDp = 4f;
+
+    /// <summary>Status <paramref name="index"/>'s left edge, the first flush with the HP bar.</summary>
+    public static float StatusLeftDp(int index) => BarLeftDp + (index * (StatusSizeDp + StatusGapDp));
+
     /// <summary>The widest the health bar is ever drawn — the owner's starting size.</summary>
     public const float BarMaxWidthDp = 240f;
 

@@ -182,6 +182,18 @@ public sealed class RunState
     /// </remarks>
     internal PlayerCombat Combat { get; }
 
+    /// <summary>The player's buffs and debuffs, drawn under the HP bar (MK-05).</summary>
+    internal StatusBoard Status { get; } = new();
+
+    /// <summary>How many statuses the row draws.</summary>
+    public int StatusCount => Status.Count;
+
+    /// <summary>True once a ninth status was refused; the row logs it once.</summary>
+    public bool StatusRefused => Status.HasRefused;
+
+    /// <summary>Status <paramref name="index"/>: debuffs first, then buffs, in posting order.</summary>
+    public StatusEntry StatusAt(int index) => Status[index];
+
     /// <summary>Every enemy in the run, and the verbs that create, retire and tick them.</summary>
     /// <remarks>
     /// <c>internal</c> for exactly the reason <see cref="Motor"/> is, and this is the second time

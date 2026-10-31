@@ -103,6 +103,9 @@ namespace Soulvail.Game.Composition
         [Tooltip("The skill arc beside the roll, and its passive corner. Optional in an undressed scene.")]
         [SerializeField] private SkillArc _skillArc;
 
+        [Tooltip("The status icons under the HP bar (MK-05). Optional in an undressed scene.")]
+        [SerializeField] private StatusRow _statusRow;
+
         [Tooltip("The player's row on the HUD: health, the Aegis, the level and the boss band. " +
                  "Optional on the same terms as the reticle — an arena without one plays exactly " +
                  "the same, it just cannot say how the player is doing. The way out of a death is " +
@@ -627,6 +630,12 @@ namespace Soulvail.Game.Composition
             if (_skillArc != null)
             {
                 builder.RegisterComponent(_skillArc);
+            }
+
+            // MK-05's status row: reads the run, optional like the arc.
+            if (_statusRow != null)
+            {
+                builder.RegisterComponent(_statusRow);
             }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated

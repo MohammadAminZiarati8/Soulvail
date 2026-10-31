@@ -896,6 +896,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ordeals,
             mode.HasSanctum);
 
+        // MK-05: Steady Aim's stacks and guard are the row's first statuses.
+        combat.SteadyAim.AttachStatus(State.Status);
+
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
         _wasCharging = false;
@@ -1328,6 +1331,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // bolts were resolved would have absorbed a hit it was no longer entitled to.
         _timed.Tick(State.Time);
 
+        // The HUD's status row counts down with the timed effects it mirrors (MK-05).
+        State.Status.Tick(snapshot.Dt);
+
         // **Immediately after the timed effects, which keeps the whole skills block above the
         // projectile step** (M3-11b rule 3, AR §18.1). *After the runner*, because a zone cast this
         // tick has to exist this tick — a player who drops below 60 % is standing on healing ground
@@ -1538,6 +1544,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (State.StageIndex != _flow.Stage)
             {
                 State.Combat.SteadyAim.OnMoved();
+                State.Status.Reset();
             }
 
             State.StageIndex = _flow.Stage;
@@ -1586,6 +1593,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear)
             {
                 State.Combat.SteadyAim.OnMoved();
+                State.Status.Reset();
                 _recorder.Take(State, _flow.Stage + 1);
             }
         }
@@ -2064,6 +2072,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a
         // view that is being destroyed (M3-11a-ii rule 8).
         _timed.Clear();
+        State.Status.Reset();
 
         // And the ground a cast put down, forgotten in the same silence and for the same sentence.
         // This is the *only* caller — a stage boundary deliberately leaves a zone standing and

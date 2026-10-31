@@ -550,6 +550,8 @@ MonoBehaviour:
     _text: "[P\xFBffb\xE1ll \xB7\xB7\xB7]"
   - _key: enemy.panther.name
     _text: "[P\xE1\xF1th\xE9r \xB7\xB7\xB7]"
+  - _key: enemy.mossguard.name
+    _text: "[M\xF4ssg\xFB\xE1rd \xB7\xB7\xB7\xB7]"
   - _key: enemy.croaker.name
     _text: "[\xD4ld \xC7r\xF4\xE1k\xE9r \xB7\xB7\xB7\xB7]"
   - _key: ui.hero.stats

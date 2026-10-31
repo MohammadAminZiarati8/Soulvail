@@ -70,6 +70,8 @@ MonoBehaviour:
     _introducedAtStage: 4
   - _specId: enemy.panther
     _introducedAtStage: 6
+  - _specId: enemy.mossguard
+    _introducedAtStage: 11
   _arenas:
   - _arenaId: arena.jungle.hollow
     _firstStage: 1
@@ -158,6 +160,17 @@ MonoBehaviour:
     - _wave: 3
       _specId: enemy.frog
       _count: 2
+  - _stage: 11
+    _spawns:
+    - _wave: 1
+      _specId: enemy.mossguard
+      _count: 1
+    - _wave: 2
+      _specId: enemy.mossguard
+      _count: 1
+    - _wave: 2
+      _specId: enemy.frog
+      _count: 4
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

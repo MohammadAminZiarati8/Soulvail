@@ -226,6 +226,24 @@ public sealed class EnemyDefinitionTests
     }
 
     [Test]
+    public void Definition_BulwarkBlock_BuildsASpecOnlyWithAnArc()
+    {
+        EnemyDefinition definition = NewDefinition("Shielded");
+        SetFloat(definition, "_shieldHalfArc", 60f);
+        SetFloat(definition, "_shieldTurnRate", 75f);
+        SetFloat(definition, "_shieldWalkCone", 45f);
+
+        BulwarkSpec bulwark = definition.ToSpec().Bulwark;
+
+        Assert.That(bulwark, Is.Not.Null);
+        Assert.That((bulwark.ShieldHalfArcDegrees, bulwark.TurnRateDegrees, bulwark.WalkConeDegrees),
+            Is.EqualTo((60f, 75f, 45f)));
+
+        SetFloat(definition, "_shieldHalfArc", 0f);
+        Assert.That(definition.ToSpec().Bulwark, Is.Null);
+    }
+
+    [Test]
     public void ToSpec_InvalidPriority_ThrowsNamingAsset()
     {
         EnemyDefinition definition = NewDefinition("BrokenPriority");

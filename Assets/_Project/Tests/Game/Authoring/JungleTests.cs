@@ -50,6 +50,8 @@ public sealed class JungleTests
     private const string PuffballPath = "Assets/_Project/Data/Enemies/Puffball.asset";
     private const string BloaterPath = "Assets/_Project/Data/Enemies/Bloater.asset";
     private const string PantherPath = "Assets/_Project/Data/Enemies/Panther.asset";
+    private const string MossguardPath = "Assets/_Project/Data/Enemies/Mossguard.asset";
+    private const string MossguardBodyPath = "Assets/_Project/Prefabs/Enemies/Mossguard.prefab";
     private const string CroakerPath = "Assets/_Project/Data/Enemies/Croaker.asset";
     private const string MotherPath = "Assets/_Project/Data/Enemies/MotherPitcher.asset";
     private const string MotherBossPath = "Assets/_Project/Data/Enemies/MotherPitcherBoss.asset";
@@ -264,7 +266,8 @@ public sealed class JungleTests
             ("enemy.pitcher", 2),
             ("enemy.puffball", 4),
             ("enemy.panther", 6),
-        }), "The Frog, the Pitcher and the Puffball where Descent has the Husk, the Spitter and the Bloater (the owner, 2026-09-29 and 2026-10-22), and the Panther after Old Croaker (JG-07d).");
+            ("enemy.mossguard", 11),
+        }), "The Jungle's own enemies, with the Panther after Old Croaker and the Mossguard after Mother Pitcher.");
     }
 
     [Test]
@@ -384,12 +387,106 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesTenAndEleven_AreNotScripted()
+    public void Jungle_StageTen_IsNotScripted()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
         Assert.That(jungle.TryGetScriptedStage(10, out _), Is.False, "Stage 10 is Mother Pitcher's boss stage.");
-        Assert.That(jungle.TryGetScriptedStage(11, out _), Is.False, "Stage 11 draws from the budget.");
+    }
+
+    [Test]
+    public void Jungle_Mossguard_IsABulwarkWithItsNumbers()
+    {
+        EnemyDefinition definition = Load<EnemyDefinition>(MossguardPath);
+        EnemySpec mossguard = definition.ToSpec();
+
+        Assert.That(mossguard.Id.Value, Is.EqualTo("enemy.mossguard"));
+        Assert.That(mossguard.NameKey.Key, Is.EqualTo("enemy.mossguard.name"));
+        Assert.That(mossguard.Behaviour, Is.EqualTo(EnemyBehaviourKind.Bulwark));
+        Assert.That(mossguard.MaxHp, Is.EqualTo(90f));
+        Assert.That(mossguard.ThreatCost, Is.EqualTo(14));
+        Assert.That(mossguard.TargetPriority, Is.EqualTo(3));
+        Assert.That(mossguard.MoveSpeed, Is.EqualTo(1.6f).Within(1e-5f));
+        Assert.That(mossguard.Reach, Is.EqualTo(1.6f).Within(1e-5f));
+        Assert.That(mossguard.WindupTime, Is.EqualTo(0.7f).Within(1e-5f));
+        Assert.That(mossguard.RecoverTime, Is.EqualTo(1.5f));
+        Assert.That(mossguard.ContactDamage, Is.EqualTo(16f));
+        Assert.That(mossguard.XpValue, Is.EqualTo(30f));
+        Assert.That(mossguard.Bulwark, Is.Not.Null);
+        Assert.That((mossguard.Bulwark.ShieldHalfArcDegrees, mossguard.Bulwark.TurnRateDegrees, mossguard.Bulwark.WalkConeDegrees),
+            Is.EqualTo((60f, 75f, 45f)));
+        Assert.That(mossguard.Projectile, Is.Null);
+        Assert.That(mossguard.Explosion, Is.Null);
+        Assert.That(mossguard.Lunge, Is.Null);
+        Assert.That(definition.ToLook().Body, Is.EqualTo(Load<GameObject>(MossguardBodyPath).GetComponent<EnemyView>()));
+    }
+
+    [Test]
+    public void Jungle_RostersTheMossguardFromStageEleven()
+    {
+        RosterEntry mossguard = Load<ModeDefinition>(JunglePath).ToSpec().Roster.Single(r => r.SpecId.Value == "enemy.mossguard");
+
+        Assert.That(mossguard.IntroducedAtStage, Is.EqualTo(11));
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.Select(r => r.SpecId.Value), Has.No.Member("enemy.mossguard"));
+    }
+
+    [Test]
+    public void Jungle_StageEleven_MeetsTheMossguard()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(11, out ScriptedStage eleventh), Is.True);
+        Assert.That(eleventh.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.mossguard", 1),
+            (2, "enemy.mossguard", 1),
+            (2, "enemy.frog", 4),
+        }));
+        var costs = new Dictionary<ContentId, int>
+        {
+            [new ContentId("enemy.mossguard")] = Load<EnemyDefinition>(MossguardPath).ToSpec().ThreatCost,
+            [new ContentId("enemy.frog")] = Load<EnemyDefinition>(FrogPath).ToSpec().ThreatCost,
+        };
+        Assert.That(eleventh.Spawns.Sum(s => s.Count * costs[s.SpecId]), Is.EqualTo(44));
+    }
+
+    [Test]
+    public void Jungle_Mossguard_Boots()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var enemies = BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec());
+        Assert.That(enemies.Select(e => e.Id.Value), Does.Contain("enemy.mossguard"));
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            enemies,
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        Assert.That(catalog.Enemy(new ContentId("enemy.mossguard")).Behaviour, Is.EqualTo(EnemyBehaviourKind.Bulwark));
+
+        var key = new LocKey("enemy.mossguard.name");
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[key], Is.EqualTo("Mossguard"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[key], Is.Not.Empty);
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(14);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 11);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 11, SpawnPlan.Empty, restore)));
+            Assert.That(session.IsRunning, Is.True);
+            Assert.That(session.State.StageIndex, Is.EqualTo(11));
+        }
+        finally
+        {
+            session.End();
+        }
     }
 
     [Test]

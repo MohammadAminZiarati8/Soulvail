@@ -134,6 +134,11 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Seconds from one dash's end to the next wind-up.")]
         [SerializeField, Min(0f)] private float _lungeCooldown;
 
+        [Header("Bulwark — leave the half-arc at 0 on an archetype without a shield")]
+        [SerializeField, Min(0f)] private float _shieldHalfArc;
+        [SerializeField, Min(0f)] private float _shieldTurnRate;
+        [SerializeField, Min(0f)] private float _shieldWalkCone;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -231,7 +236,10 @@ namespace Soulvail.Game.Authoring
                             _lungeCooldown)
                         : null,
                     // The body EnemyLook draws, so a shot that touches it on screen touches it here.
-                    EnemySpec.BaseBodyRadius * _bodyScale);
+                    EnemySpec.BaseBodyRadius * _bodyScale,
+                    _shieldHalfArc > 0f
+                        ? new BulwarkSpec(_shieldHalfArc, _shieldTurnRate, _shieldWalkCone)
+                        : null);
             }
             catch (ArgumentException inner)
             {

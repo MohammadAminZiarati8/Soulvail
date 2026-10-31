@@ -105,5 +105,5 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-14a** — The shell turns to face you: `BulwarkBehaviour` blocks every hit inside a ±60° front, turns at 75°/s, bashes for 16 (M) · [spec](tasks/JG-14a-the-shell-turns-to-face-you.md)
 - [x] **JG-14b** — The Mossguard's model: the owner's lizard sculpt fitted to `Rig_Medium`, its shield a prop for `handslot.l`, both painted from the atlas (M) · [spec](tasks/JG-14b-the-mossguards-model.md)
 - [x] **JG-14c** — The Mossguard's body: prefab and animator on KayKit's clips, shield always up; a blocked hit jolts and sparks, no flash, no flinch (S) · [spec](tasks/JG-14c-the-mossguards-body.md)
-- [ ] **JG-14d** — Mossguards in the Jungle: `enemy.mossguard` from stage 11, stage 11 scripted as "meet the Mossguard" (M) · [spec](tasks/JG-14d-mossguards-in-the-jungle.md)
+- [x] **JG-14d** — Mossguards in the Jungle: `enemy.mossguard` from stage 11, stage 11 scripted as "meet the Mossguard" (M) · [spec](tasks/JG-14d-mossguards-in-the-jungle.md)
 - [ ] **JG-14e** — Stages twelve to fourteen are scripted: 76 → 110 → 128 threat with the Mossguard (S) · [spec](tasks/JG-14e-stages-twelve-to-fourteen.md)

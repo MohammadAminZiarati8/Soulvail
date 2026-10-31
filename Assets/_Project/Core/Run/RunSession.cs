@@ -712,6 +712,26 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // runner gets it; InstantCastCost is 0 for a class that cannot buy one.
         var skills = new SkillRunner(effects, combat.Blackboard, _events, veilrot);
 
+        if (treeRules is not null && combat.Volley is not null)
+        {
+            foreach (SkillSpec candidate in _catalog.Skills)
+            {
+                if (candidate.Kind != SkillKind.Passive || !treeRules.TryLocate(candidate.Id, out _, out _))
+                {
+                    continue;
+                }
+
+                foreach (IEffect effect in candidate.Effects)
+                {
+                    if (effect is ModifyStat modify && modify.Target == StatTarget.Player && modify.Stat == PlayerStat.VolleyEvery)
+                    {
+                        skills.RegisterVolley(candidate.Id, combat.Volley);
+                        break;
+                    }
+                }
+            }
+        }
+
         // The two primitives a PlayerStat cannot express, registered beside ModifyStatHandler and
         // before RunStarted like every one before them (M3-12b rule 10) — so SkillTree's CanApply
         // sweep finds them and a tree authored against either is accepted at the run's opening
@@ -1245,6 +1265,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // The zones go down beside the lures, and for the lures' reason: a Blink drops its fire pool
         // on the start edge, from this snapshot's position (M6-07b rule 3). The step writes one, and
         // State.Zones.Tick below is still the only thing that pulses it.
+        State.Skills.PrepareVolley(State.Time);
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
@@ -1698,6 +1719,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// game is paused.
     /// </para>
     /// </remarks>
+    public void CastSkillNow(ContentId skillId)
+    {
+        RequireRunning(nameof(CastSkillNow));
+        State.Skills.CastNow(skillId, State.Time);
+    }
+
     public void CastSkill(int slot)
     {
         RequireRunning(nameof(CastSkill));

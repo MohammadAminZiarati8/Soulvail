@@ -78,7 +78,7 @@ public sealed class PaletteTests
         typeof(HpBarView),
         typeof(OfferCard),
         typeof(TreeNodeButton),
-        typeof(AutoCastRow),
+        typeof(SkillArcButton),
         typeof(ZoneView),
         typeof(BulwarkView),
         typeof(EnemyHitFeedback),
@@ -906,7 +906,6 @@ public sealed class PaletteTests
             ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_TilesByState", nameof(Palette.NodeLocked)),
             // UI-01e took the row's kind tint away with the icons, so the row that asserts its colours
             // is the one that replaced Row_TintsByKind, and its member is the sweep's ink.
-            ("Soulvail.Tests.Game.Presentation.AutoCastRowTests", "Row_CarriesNoColourOfItsOwn", nameof(Palette.Ink)),
         };
 
         foreach ((string fixture, string row, string member) in rows)

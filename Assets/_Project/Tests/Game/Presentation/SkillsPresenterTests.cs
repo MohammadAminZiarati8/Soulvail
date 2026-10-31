@@ -398,16 +398,16 @@ public sealed class SkillsPresenterTests
     // ---- The prompt (rules 9, 10) -----------------------------------------------------------------
 
     [Test]
-    public void Switch_AtFourShowsThePromptAndSendsNothing()
+    public void Switch_AtSixShowsThePromptAndSendsNothing()
     {
-        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        StartRun(actives: 7, manual: new[] { 0, 1, 2, 3, 4, 5 });
         BuildScreen();
 
         _presenter.Open();
 
-        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(4), "The fixture's premise.");
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(6), "The fixture's premise.");
 
-        Flip(Shown()[4], auto: false);
+        Flip(Shown()[6], auto: false);
 
         // **Zero commands.** The count is read before the command and the prompt is shown *instead
         // of* sending it, so core never sees a fifth request — its InvalidOperationException stays
@@ -421,7 +421,7 @@ public sealed class SkillsPresenterTests
 
         SkillRow[] occupants = PromptRows();
 
-        Assert.That(occupants.Length, Is.EqualTo(4), "The prompt does not list the four occupants.");
+        Assert.That(occupants.Length, Is.EqualTo(6), "The prompt does not list the four occupants.");
 
         for (int slot = 0; slot < occupants.Length; slot++)
         {
@@ -442,15 +442,15 @@ public sealed class SkillsPresenterTests
     [Test]
     public void Prompt_ChoosingSendsTwoCommandsInOrder()
     {
-        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        StartRun(actives: 7, manual: new[] { 0, 1, 2, 3, 4, 5 });
         BuildScreen();
 
         _presenter.Open();
 
-        Flip(Shown()[4], auto: false);
+        Flip(Shown()[6], auto: false);
 
         ContentId victim = _session.State.ManualSlotAt(1);
-        ContentId requested = new ContentId(_activeIds[4]);
+        ContentId requested = new ContentId(_activeIds[6]);
 
         Assert.That(_presenter.IsPromptUp, Is.True, "The fixture's premise.");
 
@@ -470,25 +470,25 @@ public sealed class SkillsPresenterTests
         // And the requested skill landed in the freed slot rather than anywhere else, which is
         // SetAutoCast's "lowest free slot" seen from the screen.
         Assert.That(_session.State.ManualSlotAt(1), Is.EqualTo(requested));
-        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(4));
+        Assert.That(_session.State.ManualSlotCount, Is.EqualTo(6));
         Assert.That(_session.State.IsAutoCast(victim), Is.True);
 
-        Assert.That(Text(Shown()[4], "_slot"), Is.EqualTo("S2"));
+        Assert.That(Text(Shown()[6], "_slot"), Is.EqualTo("S2"));
         Assert.That(Text(Shown()[1], "_slot"), Is.Empty, "The victim's row still names a slot.");
     }
 
     [Test]
     public void Prompt_CancelSendsNothingAndRestoresTheSwitch()
     {
-        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        StartRun(actives: 7, manual: new[] { 0, 1, 2, 3, 4, 5 });
         BuildScreen();
 
         _presenter.Open();
 
-        Flip(Shown()[4], auto: false);
+        Flip(Shown()[6], auto: false);
 
         Assert.That(_presenter.IsPromptUp, Is.True, "The fixture's premise.");
-        Assert.That(Toggle(Shown()[4]).isOn, Is.False, "The fixture's premise: the thumb moved it.");
+        Assert.That(Toggle(Shown()[6]).isOn, Is.False, "The fixture's premise: the thumb moved it.");
 
         TapCancel();
 
@@ -497,9 +497,9 @@ public sealed class SkillsPresenterTests
 
         // **The switch goes back where it was**, and it goes back from core rather than from a
         // remembered value: the fifth skill is still Auto because nothing was ever sent.
-        Assert.That(_session.State.IsAutoCast(new ContentId(_activeIds[4])), Is.True);
-        Assert.That(Toggle(Shown()[4]).isOn, Is.True, "The switch stayed where the thumb left it.");
-        Assert.That(Text(Shown()[4], "_slot"), Is.Empty);
+        Assert.That(_session.State.IsAutoCast(new ContentId(_activeIds[6])), Is.True);
+        Assert.That(Toggle(Shown()[6]).isOn, Is.True, "The switch stayed where the thumb left it.");
+        Assert.That(Text(Shown()[6], "_slot"), Is.Empty);
 
         // And the list is live again — the prompt took its interactability rather than a canvas.
         Assert.That(Toggle(Shown()[0]).interactable, Is.True);
@@ -508,7 +508,7 @@ public sealed class SkillsPresenterTests
     [Test]
     public void Prompt_RaisesNoSecondPause()
     {
-        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        StartRun(actives: 7, manual: new[] { 0, 1, 2, 3, 4, 5 });
         BuildScreen();
         BuildPauseScreen();
 
@@ -518,7 +518,7 @@ public sealed class SkillsPresenterTests
 
         _pausePresenter.OpenSkills();
 
-        Assert.That(() => Flip(Shown()[4], auto: false), Throws.Nothing, "The prompt tripped RunPause.");
+        Assert.That(() => Flip(Shown()[6], auto: false), Throws.Nothing, "The prompt tripped RunPause.");
 
         Assert.That(_presenter.IsPromptUp, Is.True);
 
@@ -840,7 +840,7 @@ public sealed class SkillsPresenterTests
     [Test]
     public void Prompt_ReadsEnglishWhenItIsAsked()
     {
-        StartRun(actives: 5, manual: new[] { 0, 1, 2, 3 });
+        StartRun(actives: 7, manual: new[] { 0, 1, 2, 3, 4, 5 });
         BuildScreen(Shipped());
 
         RunStart();
@@ -857,7 +857,7 @@ public sealed class SkillsPresenterTests
         // state a player can see — after CC §6.2's question is up.
         _presenter.Open();
 
-        Flip(Shown()[4], auto: false);
+        Flip(Shown()[6], auto: false);
 
         Assert.That(
             _presenter.IsPromptUp,
@@ -866,7 +866,7 @@ public sealed class SkillsPresenterTests
 
         Assert.That(
             Field<TMP_Text>(_presenter, "_slotsFullLabel").text,
-            Is.EqualTo("All four slots are full. Which goes back to Auto?"));
+            Is.EqualTo("All six slots are full. Which goes back to Auto?"));
 
         Assert.That(Field<TMP_Text>(_presenter, "_promptCancelLabel").text, Is.EqualTo("Cancel"));
     }
@@ -1505,6 +1505,8 @@ public sealed class SkillsPresenterTests
             OtherCalls++;
             _inner.MovementSkill();
         }
+
+        public void CastSkillNow(ContentId skillId) => CastSkill(0);
 
         public void CastSkill(int slot)
         {

@@ -1355,7 +1355,21 @@ public sealed class PlayerCombat
             FaceDirection = null;
         }
 
-        TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
+        // A manual Volley uses this frame's target and senses, without waiting for a basic shot.
+        // Refuse a targetless/blocked request this tick rather than buffering it into a later cast.
+        if (Volley?.HasRequest == true)
+        {
+            if (IsTargetInWeaponRange(count))
+            {
+                OfferShot(snapshot.PlayerPosition, enemies);
+            }
+
+            Volley.ClearRequest();
+        }
+        else
+        {
+            TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
+        }
     }
 
     /// <summary>

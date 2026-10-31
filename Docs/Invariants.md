@@ -16,7 +16,7 @@ traps are in [Traps.md](Traps.md).
 clear intents → core tick → enemy moves → minion moves → `Physics.SyncTransforms()` → facts →
 knockbacks (`FrameOrderTests`).
 
-- Every command adapter (`TapToFocusAdapter.Poll`, `SkillSlotInput.Poll`, the movement-skill press)
+- Every command adapter (`TapToFocusAdapter.Poll`, `SkillArcInput.Poll`, the movement-skill press)
   is polled from `CommandPhase`, never an `ITickable` or a uGUI `onClick` — else a tap lands a frame
   late or casts against stale senses.
 - One `Physics.SyncTransforms()` between bodies and facts; never `autoSyncTransforms` — else sweeps
@@ -42,6 +42,7 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
   drain step calls `PlayerCombat.AnnounceDeath` (the one `PlayerDied` publisher).
 - `TryTakeShot` drains right after combat; a projectile weapon writes `PendingShot`, not a
   `ConeHitIntent`.
+- `SkillRunner.PrepareVolley` before combat gates the shot-driven Volley; its casts are recorded by the runner. Auto casts wait 0.5 s after any cast; manual requests bypass the gap.
 - `SkillRunner.Tick` after combat, before behaviours and projectiles — HP triggers and Bulwark read
   this tick's state.
 - `TimedEffects.Tick` right after the runner, on `SimulatedClock` (never `IClock`); `ZoneSystem.Tick`

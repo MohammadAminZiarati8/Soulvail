@@ -559,9 +559,9 @@ public sealed class VeilrotMeterViewTests
         // On top of everything M4-04 left.
         Assert.That(prefab.GetComponentInChildren<BossBarView>(true), Is.Not.Null, "BossBarView is gone.");
         Assert.That(prefab.GetComponentInChildren<XpBarView>(true), Is.Not.Null, "XpBarView is gone.");
-        Assert.That(prefab.GetComponentInChildren<AutoCastRow>(true), Is.Not.Null, "AutoCastRow is gone.");
+        Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
         Assert.That(prefab.GetComponentInChildren<OverflowToast>(true), Is.Not.Null, "OverflowToast is gone.");
-        Assert.That(prefab.GetComponentInChildren<SkillBarPresenter>(true), Is.Not.Null, "SkillBarPresenter is gone.");
+        Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
     }
 
     // ---- Guard rows ----------------------------------------------------------------------------
@@ -588,7 +588,7 @@ public sealed class VeilrotMeterViewTests
         _presenter = _hud.GetComponent<HudPresenter>();
         _presenter.Construct(_hub, _session, Passthrough());
 
-        // SkillBarPresenter's bargain: an undressed readout is a silent readout, not a stopped run.
+        // SkillArc's bargain: an undressed readout is a silent readout, not a stopped run.
         foreach (string field in new[] { "_meter", "_essenceText", "_essenceLabel", "_veilrotLabel", "_claimedLabel" })
         {
             SetPrivate(_presenter, field, null);

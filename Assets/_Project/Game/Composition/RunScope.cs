@@ -100,11 +100,8 @@ namespace Soulvail.Game.Composition
                  "from a keyboard, it just cannot be dashed with a thumb.")]
         [SerializeField] private SkillButton _skillButton;
 
-        [Tooltip("CC §6.2's four slot buttons, clustered beside the Charge on the HUD. Optional on " +
-                 "the Charge button's terms — an arena without one plays the same fight and every " +
-                 "skill the player set to Manual is uncastable, which is the whole of what this " +
-                 "object is for.")]
-        [SerializeField] private SkillBarPresenter _skillBar;
+        [Tooltip("The skill arc beside the roll, and its passive corner. Optional in an undressed scene.")]
+        [SerializeField] private SkillArc _skillArc;
 
         [Tooltip("The player's row on the HUD: health, the Aegis, the level and the boss band. " +
                  "Optional on the same terms as the reticle — an arena without one plays exactly " +
@@ -123,11 +120,6 @@ namespace Soulvail.Game.Composition
                  "level is.")]
         [SerializeField] private XpBarView _xpBar;
 
-        [Tooltip("GD §16.1's auto-cast cooldowns, under the health bar. Optional on the HUD's " +
-                 "terms, and the one here whose absence costs the *default* build the most: every " +
-                 "skill starts on Auto (CC §6.1), so a scene without this row is one where a " +
-                 "player who never opens a menu has no readout of their build at all.")]
-        [SerializeField] private AutoCastRow _autoCastRow;
 
         [Tooltip("The stage chip and the enemies-left chip, top-right on the HUD (UI-01d). Optional " +
                  "on the HUD's terms — a scene without it plays the same stage and simply never says " +
@@ -471,10 +463,6 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_xpBar);
             }
 
-            if (_autoCastRow != null)
-            {
-                builder.RegisterComponent(_autoCastRow);
-            }
 
             // UI-01d's chips, on the same terms as the strip and the row above: a live component in
             // this scene, injected and destroyed with it, and loud from its own Start if it is on the
@@ -635,18 +623,10 @@ namespace Soulvail.Game.Composition
                 builder.RegisterComponent(_skillButton);
             }
 
-            // Optional on the Charge button's terms and for the same reason — it is an *input*
-            // rather than a decoration, so a scene without it is one where a Manual skill has no way
-            // to be cast at all. It stays optional rather than guarded because the undressed Run
-            // scene is the fastest iteration loop in the project, and because nothing in
-            // Data/Trees ships an Active until M3-12: every run in the current build has four empty
-            // slots, so this object's absence and its presence look identical on screen.
-            //
-            // Registered here rather than in RunInstaller for every other component's reason: it is
-            // a live object in this scene, and the container injects it and destroys nothing.
-            if (_skillBar != null)
+            // Scene component: inject the run reads and the buffered command adapter.
+            if (_skillArc != null)
             {
-                builder.RegisterComponent(_skillBar);
+                builder.RegisterComponent(_skillArc);
             }
 
             // Types, not instances, so the scope disposes them — the adapter owns a generated

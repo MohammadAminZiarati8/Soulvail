@@ -64,7 +64,8 @@ public sealed class PaidCastTests
         Build(ClassVeilrotTests.Emberwright(), rot: 40f);
         OpenOnCooldown(LongCooldown);
 
-        Step();
+        _now = SkillRunner.AutoCastGap;
+        _runner.Tick(Frame, _now);
 
         Assert.That(_events.Count<SkillCast>(), Is.EqualTo(1));
 
@@ -87,7 +88,8 @@ public sealed class PaidCastTests
         Build(ClassVeilrotTests.Emberwright(), rot: 40f);
         OpenOnCooldown(LongCooldown);
 
-        Step();
+        _now = SkillRunner.AutoCastGap;
+        _runner.Tick(Frame, _now);
 
         // The free cast at 0 set the clock to 20; a frame later it has 20 − 1/60 left, bought or not.
         float expected = (LongCooldown - _now) / LongCooldown;
@@ -278,7 +280,7 @@ public sealed class PaidCastTests
         // A cooldown of three frames, so a free cast and a bought one come round every few ticks
         // and both doors are inside the measurement. The price is paid back after each purchase so
         // the meter never runs dry, and the cast's own buff is taken off, SkillRunnerTests' way.
-        SkillSpec skill = AddActive(0.05f);
+        SkillSpec skill = AddActive(2f);
         Hold(true);
 
         Stat damage = _stats.Resolve(PlayerStat.WeaponDamage);
@@ -289,7 +291,7 @@ public sealed class PaidCastTests
             {
                 int before = _runner.PaidCasts;
 
-                now += Frame;
+                now += SkillRunner.AutoCastGap;
                 _runner.Tick(Frame, now);
                 damage.RemoveAll(skill.Active);
 

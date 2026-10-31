@@ -196,7 +196,7 @@ public sealed class SaveDtoTests
     [Test]
     public void Snapshot_RecordsTheSlots()
     {
-        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) };
+        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) };
 
         RunSnapshot snapshot = Snapshot(manualSkillIds: slots);
 

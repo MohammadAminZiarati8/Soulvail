@@ -32,6 +32,8 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IPlayerCommands
 {
+    /// <summary>Cast an owned, ready skill by identity, including one set to auto.</summary>
+    void CastSkillNow(ContentId skillId);
     /// <summary>
     /// The player tapped <paramref name="worldPoint"/> on the ground: focus the enemy nearest to it
     /// within <c>FocusResolver.RadiusMetres</c>, or drop the focus when there is none.

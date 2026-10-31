@@ -618,11 +618,9 @@ public sealed class XpBarViewTests
         GameObject hud = Instantiate();
 
         var strip = hud.GetComponentInChildren<XpBarView>(true);
-        var row = hud.GetComponentInChildren<AutoCastRow>(true);
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
@@ -631,9 +629,7 @@ public sealed class XpBarViewTests
 
         // The row's own event, and it needs the frame the deferred rebuild happens on — see
         // AutoCastRow's remarks for why that deferral is mandatory rather than tidy.
-        Invoke(row, "Update");
 
-        Assert.That(row.CellCount, Is.EqualTo(1), "the row heard nothing.");
 
         _hub.Publish(new OverflowGranted(4, 1));
 
@@ -648,27 +644,20 @@ public sealed class XpBarViewTests
         GameObject hud = Instantiate();
 
         var strip = hud.GetComponentInChildren<XpBarView>(true);
-        var row = hud.GetComponentInChildren<AutoCastRow>(true);
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub);
-        row.Construct(_session, _hub, NoIcons(), NoLooks());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
         Assert.That(_hub.SubscriberCount<OverflowGranted>(), Is.EqualTo(1));
-        Assert.That(_hub.SubscriberCount<NodeTaken>(), Is.EqualTo(1));
-        Assert.That(_hub.SubscriberCount<SkillAutoCastChanged>(), Is.EqualTo(1));
 
         // Unity does not call OnDestroy on an object whose Awake never ran, and none did here.
         Invoke(strip, "OnDestroy");
-        Invoke(row, "OnDestroy");
         Invoke(toast, "OnDestroy");
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.Zero);
         Assert.That(_hub.SubscriberCount<OverflowGranted>(), Is.Zero);
-        Assert.That(_hub.SubscriberCount<NodeTaken>(), Is.Zero);
-        Assert.That(_hub.SubscriberCount<SkillAutoCastChanged>(), Is.Zero);
 
         // A component destroyed before its scope would otherwise be handed an event for an object
         // Unity has killed, which is the failure the explicit disposal exists for.
@@ -708,12 +697,10 @@ public sealed class XpBarViewTests
         // component that deserialises as null with nothing reported anywhere, and it is only visible
         // from here.
         var strip = prefab.GetComponentInChildren<XpBarView>(true);
-        var row = prefab.GetComponentInChildren<AutoCastRow>(true);
         var toast = prefab.GetComponentInChildren<OverflowToast>(true);
         var presenter = prefab.GetComponent<HudPresenter>();
 
         Assert.That(strip, Is.Not.Null, "XpBarView did not load off Hud.prefab (Traps §5).");
-        Assert.That(row, Is.Not.Null, "AutoCastRow did not load off Hud.prefab (Traps §5).");
         Assert.That(toast, Is.Not.Null, "OverflowToast did not load off Hud.prefab (Traps §5).");
         Assert.That(presenter, Is.Not.Null, "HudPresenter did not load off Hud.prefab (Traps §5).");
 
@@ -740,38 +727,6 @@ public sealed class XpBarViewTests
 
         Assert.That(stripSo.FindProperty("_heightDp").floatValue, Is.EqualTo(StripDp));
 
-        // Twelve row cells present and wired, because rule 7 authors them rather than cloning a
-        // template. Since UI-01e a cell is a container and its sweep a shade over the icon.
-        var rowSo = new SerializedObject(row);
-        SerializedProperty fills = rowSo.FindProperty("_sweeps");
-        SerializedProperty strips = rowSo.FindProperty("_cells");
-
-        Assert.That(fills.arraySize, Is.EqualTo(SkillRunner.MaxActives));
-        Assert.That(strips.arraySize, Is.EqualTo(SkillRunner.MaxActives));
-
-        for (int cell = 0; cell < SkillRunner.MaxActives; cell++)
-        {
-            var fill = fills.GetArrayElementAtIndex(cell).objectReferenceValue as Image;
-            var body = strips.GetArrayElementAtIndex(cell).objectReferenceValue as RectTransform;
-
-            Assert.That(fill, Is.Not.Null, $"cell {cell + 1} has no fill.");
-            Assert.That(body, Is.Not.Null, $"cell {cell + 1} has no body.");
-
-            Assert.That(fill.type, Is.EqualTo(Image.Type.Filled), $"cell {cell + 1} fill is not Filled.");
-            Assert.That(
-                fill.fillMethod,
-                Is.EqualTo(Image.FillMethod.Radial360),
-                $"cell {cell + 1} fill is not Radial360, so fillAmount draws a bar rather than a ring.");
-
-            Assert.That(
-                body.gameObject.activeSelf,
-                Is.False,
-                $"cell {cell + 1} ships active, so a run owning nothing shows twelve dots.");
-        }
-
-        Assert.That(rowSo.FindProperty("_cellSizeDp").floatValue, Is.EqualTo(AutoCastRow.CellSizeDp));
-        Assert.That(rowSo.FindProperty("_gapDp").floatValue, Is.EqualTo(AutoCastRow.GapDp));
-
         var toastSo = new SerializedObject(toast);
         var toastRoot = toastSo.FindProperty("_root").objectReferenceValue as CanvasGroup;
 
@@ -790,7 +745,7 @@ public sealed class XpBarViewTests
         // is mandatory rather than defensive: every object on a prefab *asset* reports
         // `activeInHierarchy` false, because it is in no scene — so the default overload answers null
         // for a correctly dressed prefab, which cost M3-10a a red row.
-        foreach (Component component in new Component[] { strip, row, toast })
+        foreach (Component component in new Component[] { strip, toast })
         {
             Assert.That(
                 component.GetComponentInParent<Soulvail.Game.Controls.SafeAreaFitter>(includeInactive: true),
@@ -802,15 +757,10 @@ public sealed class XpBarViewTests
         // is about the prefab having been saved rather than about the new objects on it. This is the
         // second consecutive task to touch the one asset every screen in the game sorts against.
         var charge = prefab.GetComponentInChildren<Soulvail.Game.Controls.SkillButton>(true);
-        var bar = prefab.GetComponentInChildren<SkillBarPresenter>(true);
 
         Assert.That(charge, Is.Not.Null, "the Charge did not load off Hud.prefab.");
-        Assert.That(bar, Is.Not.Null, "SkillBarPresenter did not load off Hud.prefab.");
 
         Assert.That(new SerializedObject(charge).FindProperty("_sizeDp").floatValue, Is.EqualTo(72f));
-        Assert.That(
-            new SerializedObject(bar).FindProperty("_buttons").arraySize,
-            Is.EqualTo(SkillRunner.MaxManualSlots));
     }
 
     // ---- Fixture ---------------------------------------------------------------------------------

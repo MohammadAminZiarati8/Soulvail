@@ -239,23 +239,6 @@ public sealed class HudLayoutTests
     }
 
     [Test]
-    public void Band_TheRowStartsUnderTheBar()
-    {
-        foreach (Vector2 size in new[] { Landscape, Portrait })
-        {
-            Dictionary<string, Rect> band = Lay(size);
-
-            Assert.That(band["volley"].xMin, Is.EqualTo(band["bar"].xMin).Within(Slack), $"at {size}");
-            Assert.That(band["volley"].yMin - band["bar"].yMax, Is.EqualTo(8f).Within(Slack), $"at {size}");
-
-            // The pips under the volley's cell, as wide together as it, and inside the band.
-            Assert.That(band["pip1"].xMin, Is.EqualTo(band["volley"].xMin).Within(Slack), $"at {size}");
-            Assert.That(band[$"pip{AutoCastRow.MaxPips}"].xMax, Is.EqualTo(band["volley"].xMax).Within(Slack), $"at {size}");
-            Assert.That(band["pip1"].yMin - band["volley"].yMax, Is.EqualTo(3f).Within(Slack), $"at {size}");
-        }
-    }
-
-    [Test]
     public void Band_ANonFiniteFieldLeavesThePieceAlone()
     {
         Build(Landscape);
@@ -434,7 +417,7 @@ public sealed class HudLayoutTests
     };
 
     /// <summary>The Roll and the four skill buttons: the right thumb's controls.</summary>
-    private static readonly string[] RightThumb = { "roll", "s1", "s2", "s3", "s4" };
+    private static readonly string[] RightThumb = { "roll" };
 
     /// <summary>UI-08c rule 3's distance from the safe area's edges, in dp.</summary>
     private const float EdgeClearDp = 24f;
@@ -456,7 +439,6 @@ public sealed class HudLayoutTests
         Build(size);
 
         Invoke(_hud.GetComponentInChildren<SkillButton>(true), "Place");
-        Invoke(_hud.GetComponentInChildren<SkillBarPresenter>(true), "Place");
 
         // The stick places its ring in Awake, from its zone's bottom-left corner, after HudPresenter's
         // Start has sized the zone — the order a run gets, since every Awake precedes every Start.
@@ -472,10 +454,6 @@ public sealed class HudLayoutTests
             ["zone"] = Dp(safe, "Region", px),
             ["stick"] = Dp(safe, "Region/Base", px),
             ["roll"] = Dp(safe, "SkillButton", px),
-            ["s1"] = Dp(safe, "SkillBar/S1", px),
-            ["s2"] = Dp(safe, "SkillBar/S2", px),
-            ["s3"] = Dp(safe, "SkillBar/S3", px),
-            ["s4"] = Dp(safe, "SkillBar/S4", px),
             ["lane"] = Dp(safe, "Arrows", px),
         };
     }
@@ -664,26 +642,6 @@ public sealed class HudLayoutTests
             ["toast"] = Dp(hudSafe, "PointBadge/LevelUpToast", px),
         };
 
-        Transform row = hudSafe.Find("AutoCastRow");
-
-        // The volley's cell, its five pips, and the first `cells` Active cells after it (six unless a row
-        // asks for fewer): the row packs from the front, and past the seventh cell a 411 dp portrait runs
-        // it under the right-hand column, past the sixth a 360 dp one (the parking lot's line). No
-        // shipped class owns more than three Actives.
-        var volley = (RectTransform)row.Find("VolleyCell");
-
-        pieces["volley"] = Dp(hudSafe, volley, px);
-
-        for (int pip = 1; pip <= AutoCastRow.MaxPips; pip++)
-        {
-            pieces[$"pip{pip}"] = Dp(hudSafe, (RectTransform)volley.Find($"Pip{pip}"), px);
-        }
-
-        for (int cell = 1; cell <= cells; cell++)
-        {
-            pieces[$"cell{cell}"] = Dp(hudSafe, (RectTransform)row.Find($"Cell{cell}"), px);
-        }
-
         return pieces;
     }
 
@@ -703,12 +661,6 @@ public sealed class HudLayoutTests
 
         Invoke(_hud.GetComponent<HudPresenter>(), "Place");
         Invoke(_hud.GetComponentInChildren<XpBarView>(true), "Place");
-        // Laid out as a Ranger's row is once Volley is taken: the volley's cell first, and every Active
-        // cell one slot right of it (UI-01e rule 1).
-        AutoCastRow row = _hud.GetComponentInChildren<AutoCastRow>(true);
-
-        SetField(row, "_hasVolley", true);
-        Invoke(row, "Place");
         Invoke(_hud.GetComponentInChildren<BossBarView>(true), "Place");
         Invoke(_pause.GetComponent<PausePresenter>(), "Place");
         Invoke(_hud.GetComponentInChildren<StageReadout>(true), "Place");

@@ -49,6 +49,35 @@ namespace Soulvail.Core.Combat;
 /// </remarks>
 public sealed class SkillRunner
 {
+    public const float AutoCastGap = 0.5f;
+    private float _lastCastAt = float.NegativeInfinity;
+    private Volley _volley;
+    private ContentId _volleyId;
+    private int _volleyCasts;
+
+    internal void RegisterVolley(ContentId id, Volley volley)
+    {
+        _volleyId = id;
+        _volley = volley;
+    }
+
+    internal void PrepareVolley(float now)
+    {
+        if (_volley is not null)
+        {
+            _volley.AllowAutoCast = now - _lastCastAt >= AutoCastGap;
+        }
+    }
+
+    public bool CastNow(ContentId id, float now)
+    {
+        if (_volley is not null && id == _volleyId)
+        {
+            return _volley.RequestCast();
+        }
+
+        return TryIndexOf(id, out int index) && Cast(index, now, auto: false);
+    }
     /// <summary>
     /// The most actives one run may own.
     /// </summary>
@@ -63,19 +92,8 @@ public sealed class SkillRunner
     /// </remarks>
     public const int MaxActives = 12;
 
-    /// <summary>
-    /// The most skills the player may hold as Manual at once — CC §6.2's four thumb positions.
-    /// </summary>
-    /// <remarks>
-    /// <b>An ergonomic ceiling rather than a storage one</b>, which is why it is four against
-    /// <see cref="MaxActives"/>' twelve and why it is not the same kind of number. CC §6.2 draws
-    /// four fixed buttons beside the always-present movement one, and a fifth is not a bigger array
-    /// but a thumb that cannot reach. The movement skill is not counted here and never will be
-    /// (rule 6): it is <c>ChargeSkill</c>, which has no <c>SkillSpec</c>, no trigger and no entry in
-    /// this class, so CC §6.2's <em>"4 manual slots, plus the always-present movement button"</em> is
-    /// true by construction rather than by an exemption somebody has to remember.
-    /// </remarks>
-    public const int MaxManualSlots = 4;
+    /// <summary>The six arc skills may all be manual; identities retain stable save slots.</summary>
+    public const int MaxManualSlots = 6;
 
     private readonly EffectRegistry _effects;
     private readonly CombatBlackboard _blackboard;
@@ -436,6 +454,10 @@ public sealed class SkillRunner
     /// </exception>
     public bool IsAuto(ContentId skillId)
     {
+        if (_volley is not null && skillId == _volleyId)
+        {
+            return _volley.IsAuto;
+        }
         if (!TryIndexOf(skillId, out int index))
         {
             throw NotOwned(skillId, nameof(IsAuto));
@@ -625,6 +647,18 @@ public sealed class SkillRunner
     {
         _now = now;
 
+        if (_volley is not null && _volley.Casts != _volleyCasts)
+        {
+            _volleyCasts = _volley.Casts;
+            _lastCastAt = now;
+            _events.Publish(new SkillCast(_volleyId, 0f, _volley.LastWasAuto));
+        }
+
+        if (!(now - _lastCastAt >= AutoCastGap))
+        {
+            return;
+        }
+
         for (int i = 0; i < _count; i++)
         {
             // **Above the cooldown and above the trigger, and the order is a rule rather than an
@@ -692,7 +726,7 @@ public sealed class SkillRunner
 
         _now = now;
 
-        if (!(now >= _readyAt[index]))
+        if (!(now >= _readyAt[index]) || (auto && !(now - _lastCastAt >= AutoCastGap)))
         {
             return false;
         }
@@ -743,7 +777,8 @@ public sealed class SkillRunner
     /// </remarks>
     public void SetAutoCast(ContentId skillId, bool auto)
     {
-        if (!TryIndexOf(skillId, out int index))
+        bool volley = _volley is not null && skillId == _volleyId;
+        if ((!TryIndexOf(skillId, out int index) && !volley) || (volley && _volley.EveryCount < 1))
         {
             throw NotOwned(skillId, nameof(SetAutoCast));
         }
@@ -753,7 +788,7 @@ public sealed class SkillRunner
         // without this line it would take a *second* slot for one skill — ManualSlotCount would
         // reach four with two skills owned and the ceiling above would throw for a reason no screen
         // could explain. AR §8: an event describes what happened, and nothing happened here.
-        if (_isAuto[index] == auto)
+        if ((volley ? _volley.IsAuto : _isAuto[index]) == auto)
         {
             return;
         }
@@ -765,7 +800,6 @@ public sealed class SkillRunner
             slot = SlotOf(skillId);
 
             _slots[slot] = default;
-            _isAuto[index] = true;
 
             // −1 rather than the slot it just left: the event says where the skill *is*, and an Auto
             // skill is in no slot. M3-09's list and M3-10's buttons both redraw from this.
@@ -785,7 +819,15 @@ public sealed class SkillRunner
             }
 
             _slots[slot] = skillId;
-            _isAuto[index] = false;
+        }
+
+        if (volley)
+        {
+            _volley.IsAuto = auto;
+        }
+        else
+        {
+            _isAuto[index] = auto;
         }
 
         // Published after the change, carrying the slot, so a listener redrawing from it needs no
@@ -850,6 +892,13 @@ public sealed class SkillRunner
         {
             ContentId skillId = slots[slot];
 
+            if (_volley is not null && skillId == _volleyId && _volley.EveryCount >= 1)
+            {
+                _slots[slot] = skillId;
+                _volley.IsAuto = false;
+                continue;
+            }
+
             // Empty stays empty, and an id the runner was never told about becomes empty — the two
             // are the same write and that is the whole of rule 6. Assigned rather than skipped, so
             // a restore is a complete statement of the table rather than a set of edits to whatever
@@ -900,15 +949,9 @@ public sealed class SkillRunner
                     + "it is not drawing rather than a player pressing anything.");
         }
 
-        // Owned by construction: SetAutoCast is the only writer of _slots and it refuses an id the
-        // runner does not hold, so this cannot miss. Asked through TryIndexOf rather than cached
-        // beside the slot for TriggerSpec's reason — one place owns the mapping from id to entry,
-        // and a second copy is the first thing that could disagree with it.
-        TryIndexOf(skillId, out int index);
-
         // `auto: false`, which is the whole difference a listener can see: CC §6.2 gives a manual
         // cast a haptic and an automatic one none, and SkillCast.WasAuto is how it tells them apart.
-        return Cast(index, now, auto: false);
+        return CastNow(skillId, now);
     }
 
     /// <summary>
@@ -938,6 +981,7 @@ public sealed class SkillRunner
     /// </remarks>
     public void Reset()
     {
+        _lastCastAt = float.NegativeInfinity;
         for (int i = 0; i < _count; i++)
         {
             _readyAt[i] = 0f;
@@ -950,6 +994,7 @@ public sealed class SkillRunner
     /// </summary>
     private void Fire(int index, float now, bool auto)
     {
+        _lastCastAt = now;
         SkillSpec spec = _specs[index];
 
         ApplyCast(index);
@@ -1017,6 +1062,7 @@ public sealed class SkillRunner
 
         _paid[index] = true;
         PaidCasts++;
+        _lastCastAt = now;
 
         ApplyCast(index);
 

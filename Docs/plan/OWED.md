@@ -52,3 +52,9 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 
 - [ ] **Editor:** DT-01 test start at stage **12+** (stage 12 for the first check) to reach the path. Open the tree: Ranger's Quick Draw, Volley and Fleet Foot share the bottom row, with rank pips; above are three path cards, two Coming soon. Preview Marksman, then Choose; cards disappear, Steady Aim is learnable at Lv 11, Eagle Eye stays locked until Lv 14. Learn repeatedly: the next rank's text and pips advance, spending one point; MAX disables Learn. Check cyan edges on Volley/actives, the points pill, pause and Close.
 - [ ] **Editor:** Soulvail/Capture Look at **411 x 914** and **360 x 780**, before and after choosing Marksman: no clipped icons, labels or detail text; no overlap. Final art and device legibility remain owner checks.
+
+## MK-04 — Skill arc (2026-10-31)
+
+- [ ] **[Editor]** Start stage 12 with Marksman: roll sits in from the corner, Volley is above it, passives below/right; untaken Eagle Eye shows a lock and Lv 14. The path actives are authored in later tasks.
+- [ ] **[Editor]** Charge Volley with ordinary arrows. Hold its circle at least 0.45 s: A toggles once; releasing does not cast. Tap while ready, including with A on: Volley fires; an uncharged tap does nothing. Check pips, ready cyan border and passive locks.
+- [ ] **[device]** Check thumb reach, circle separation and left-stick coexistence. A hold gives one small buzz with haptics enabled and none when disabled. If using the serialized left-handed mirror, verify roll, arc and passives mirror together.

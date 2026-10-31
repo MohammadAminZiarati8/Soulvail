@@ -420,7 +420,7 @@ public sealed class SkillRunnerTests
     }
 
     [Test]
-    public void Tick_ReachesTheSecondOnTheNextTick()
+    public void Tick_ReachesTheSecondAfterTheAutoGap()
     {
         _runner.Add(Active(ActiveA));
         _runner.Add(Active(ActiveB));
@@ -430,10 +430,8 @@ public sealed class SkillRunnerTests
         _runner.Tick(Frame, 1f);
         _events.Clear();
 
-        // No starvation: the first is on cooldown now, so the walk reaches the second on the very
-        // next tick. Four ready-and-triggered actives are therefore all away within four frames,
-        // ≈ 50 ms at 60 fps, which is below anything a player can time.
-        _runner.Tick(Frame, 1f + Frame);
+        // The second remains eligible until the shared half-second gap has elapsed.
+        _runner.Tick(Frame, 1f + SkillRunner.AutoCastGap);
 
         Assert.That(_events.Single<SkillCast>().SkillId, Is.EqualTo(Id(ActiveB)));
     }
@@ -885,27 +883,31 @@ public sealed class SkillRunnerTests
     }
 
     [Test]
-    public void SetManual_FifthThrowsNamingTheCeiling()
+    public void SetManual_SeventhThrowsNamingTheCeiling()
     {
         ManualFour();
 
         _runner.Add(Active(ActiveFifth));
 
+        _runner.SetAutoCast(Id(ActiveFifth), false);
+        _runner.Add(Active("skill.test.sixth"));
+        _runner.SetAutoCast(Id("skill.test.sixth"), false);
+        _runner.Add(Active("skill.test.seventh"));
         _events.Clear();
 
         InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(
-            () => _runner.SetAutoCast(Id(ActiveFifth), auto: false));
+            () => _runner.SetAutoCast(Id("skill.test.seventh"), auto: false));
 
         // The message has to carry both numbers, because the screen that hit this is the one that
         // did not ask ManualSlotCount first — and CC §6.2's "Manual slots full — which skill goes
         // back to auto?" is what it should have shown instead of sending the command.
-        Assert.That(thrown.Message, Does.Contain("4"));
+        Assert.That(thrown.Message, Does.Contain("6"));
         Assert.That(thrown.Message, Does.Contain("ManualSlotCount"));
 
         // **Nothing moved and nothing was published.** A refusal that had already half-applied
         // itself would leave the loadout describing a state the player never chose.
-        Assert.That(_runner.ManualSlotCount, Is.EqualTo(4));
-        Assert.That(_runner.IsAuto(Id(ActiveFifth)), Is.True);
+        Assert.That(_runner.ManualSlotCount, Is.EqualTo(6));
+        Assert.That(_runner.IsAuto(Id("skill.test.seventh")), Is.True);
         Assert.That(_events.Count<SkillAutoCastChanged>(), Is.Zero);
     }
 
@@ -1445,7 +1447,7 @@ public sealed class SkillRunnerTests
         // **Rule 6, and it is true by construction rather than by an exemption.** The dash is
         // ChargeSkill — no SkillSpec, no trigger, no entry in the runner — so CC §6.2's "4 manual
         // slots, plus the always-present movement button" needs nothing to enforce it.
-        StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown, actives: 4);
+        StartSession(Below(TriggerField.HpFraction, 0.6f), ActiveCooldown, actives: 6);
 
         var commands = (IPlayerCommands)_session;
 
@@ -1479,7 +1481,7 @@ public sealed class SkillRunnerTests
         // `RunSnapshot` looking like a slot — a red row M3-07b had to *change* rather than
         // remember. Kept and turned over rather than deleted, because the thing worth asserting for
         // ever is the same thing from the other side: the runner's table is what reaches the file.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(4), "M3-07b was the bump; M6-01b is v4.");
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5), "M3-07b was the bump; M6-01b is v4.");
 
         Assert.That(
             typeof(RunSnapshot).GetProperty(nameof(RunSnapshot.ManualSkillIds)),
@@ -1503,7 +1505,7 @@ public sealed class SkillRunnerTests
 
         RunSnapshot snapshot = _events.Single<RunSnapshotTaken>().Snapshot;
 
-        Assert.That(snapshot.Version, Is.EqualTo(4));
+        Assert.That(snapshot.Version, Is.EqualTo(5));
         Assert.That(
             snapshot.TakenNodeIds.Count,
             Is.EqualTo(2),
@@ -1570,13 +1572,11 @@ public sealed class SkillRunnerTests
         // Bulwark means. Ticked below that step, the field would read 0 on the landing tick and
         // nothing would cast at all.
         //
-        // The cooldown is a hundredth of a second so the skill is ready on every tick a bolt is
-        // inbound, which is what puts the cast and the landing in the same frame. A long cooldown
-        // would fire once, several ticks earlier, and the ordering assertion would be vacuously
-        // true across two different ticks.
+        // Step by AutoCastGap with a tiny cooldown: the skill is ready on every sampled inbound
+        // tick, including the landing. This keeps the assertion within one tick.
         StartSession(AtLeast(TriggerField.IncomingProjectiles, 1f), cooldown: 0.01f);
 
-        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0);
+        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0, SkillRunner.AutoCastGap);
 
         Assert.That(landing, Is.GreaterThan(0), "The fixture failed to land a bolt on the player.");
 
@@ -1973,13 +1973,13 @@ public sealed class SkillRunnerTests
     /// events when it returns.
     /// </summary>
     /// <returns>How many ticks it took, or −1 if it never happened.</returns>
-    private int TickUntil(Func<bool> done)
+    private int TickUntil(Func<bool> done, float dt = Frame)
     {
         for (int i = 1; i <= 3_000; i++)
         {
             _events.Clear();
 
-            TickOnce();
+            TickOnce(dt);
 
             if (done())
             {
@@ -1990,11 +1990,11 @@ public sealed class SkillRunnerTests
         return -1;
     }
 
-    private void TickOnce()
+    private void TickOnce(float dt = Frame)
     {
         var snapshot = new WorldSnapshot(EnemyCapacity)
         {
-            Dt = Frame,
+            Dt = dt,
             PlayerPosition = Vector3.Zero,
             HasGate = true,
             GatePosition = Door,

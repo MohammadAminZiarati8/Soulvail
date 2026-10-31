@@ -1038,12 +1038,12 @@ public sealed class BossBarViewTests
         // asset having been saved rather than about the objects added to it. This is the fourth task to
         // touch the one asset every screen in the game sorts against.
         Assert.That(prefab.GetComponentInChildren<XpBarView>(true), Is.Not.Null, "XpBarView is gone.");
-        Assert.That(prefab.GetComponentInChildren<AutoCastRow>(true), Is.Not.Null, "AutoCastRow is gone.");
+        Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
         Assert.That(prefab.GetComponentInChildren<OverflowToast>(true), Is.Not.Null, "OverflowToast is gone.");
         Assert.That(
-            prefab.GetComponentInChildren<SkillBarPresenter>(true),
+            prefab.GetComponentInChildren<SkillArc>(true),
             Is.Not.Null,
-            "SkillBarPresenter is gone.");
+            "SkillArc is gone.");
         Assert.That(
             new SerializedObject(prefab.GetComponentInChildren<XpBarView>(true))
                 .FindProperty("_heightDp").floatValue,

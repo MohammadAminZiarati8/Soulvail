@@ -175,7 +175,7 @@ MonoBehaviour:
   - _key: ui.skills.cancel
     _text: Cancel
   - _key: ui.skills.slotsFull
-    _text: All four slots are full. Which goes back to Auto?
+    _text: All six slots are full. Which goes back to Auto?
   - _key: ui.levelup.tree
     _text: View Tree
   - _key: ui.levelup.level

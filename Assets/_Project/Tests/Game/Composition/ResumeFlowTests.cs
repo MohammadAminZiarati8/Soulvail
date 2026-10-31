@@ -912,7 +912,7 @@ public sealed class ResumeFlowTests
             // M3-10a's second poller in CommandPhase. Nothing here presses a slot — these rows are
             // about what Start hands over — but the constructor guards every argument, which is what
             // makes this a compile-forced line rather than a choice.
-            new SkillSlotInput(session),
+            new SkillArcInput(session),
             cone);
 
         try
@@ -1153,6 +1153,8 @@ public sealed class ResumeFlowTests
 
         // M3-07a grew IPlayerCommands. Empty like the three above: this fake exists to be resolved
         // from the container, not to be commanded.
+        public void CastSkillNow(ContentId skillId) => CastSkill(0);
+
         public void CastSkill(int slot)
         {
         }

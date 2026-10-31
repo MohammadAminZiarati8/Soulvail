@@ -131,7 +131,7 @@ public sealed class PathFlowTests
         Assert.That(_session.State.UnlockLevelOf(BaseNodes()[0]), Is.EqualTo(1));
         Assert.That(_events.Count<PathChosen>(), Is.Zero);
         Assert.That(_events.Count<NodeTaken>(), Is.Zero);
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(4));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5));
     }
 
     [Test]

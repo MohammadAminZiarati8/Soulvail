@@ -474,7 +474,7 @@ public sealed class TableLocalizerTests
         // The control, so this row cannot pass on a sweep that finds nothing: the class card formats.
         Assert.That(LocalisationSweepTests.Calls(typeof(ClassCard), port), Is.True, "the IL sweep is blind.");
 
-        foreach (Type frameAdjacent in new[] { typeof(HudPresenter), typeof(AutoCastRow) })
+        foreach (Type frameAdjacent in new[] { typeof(HudPresenter) })
         {
             Assert.That(
                 LocalisationSweepTests.Calls(frameAdjacent, port) || LocalisationSweepTests.Calls(frameAdjacent, adapter),
@@ -872,7 +872,6 @@ public sealed class TableLocalizerTests
         {
             typeof(OfferCard),
             typeof(SkillRow),
-            typeof(ManualSkillButton),
             typeof(FirstActiveHint),
             typeof(OverflowToast),
         })
@@ -903,7 +902,7 @@ public sealed class TableLocalizerTests
     {
         foreach (Type cell in new[]
         {
-            typeof(OfferCard), typeof(SkillRow), typeof(ManualSkillButton),
+            typeof(OfferCard), typeof(SkillRow),
         })
         {
             MethodInfo show = cell.GetMethod("Show", BindingFlags.Instance | BindingFlags.Public);
@@ -950,7 +949,6 @@ public sealed class TableLocalizerTests
             ("Soulvail.Tests.Game.Presentation.LevelUpPresenterTests", "Card_DrawsEnglish"),
             ("Soulvail.Tests.Game.Presentation.SkillsPresenterTests", "Card_DrawsEnglish"),
             ("Soulvail.Tests.Game.Presentation.TreeViewPresenterTests", "Tree_DrawsEnglish"),
-            ("Soulvail.Tests.Game.Presentation.SkillBarPresenterTests", "Bar_LabelsAreWords"),
             ("Soulvail.Tests.Game.Presentation.FirstActiveHintTests", "Hint_ShowsOnTheFirstActive"),
         };
 

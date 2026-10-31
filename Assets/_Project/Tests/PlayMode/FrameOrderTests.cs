@@ -55,9 +55,9 @@ namespace Soulvail.Tests.PlayMode;
 /// <b>The commands phase was the one step not observed here, and since M3-10a it is observed.</b>
 /// Its two original members reach core only when the Input System reports a press, and this assembly
 /// does not reference the Input System — adding it would put un-isolated device state into the
-/// assembly that also holds the boot smoke tests. <c>SkillSlotInput</c> needs none: a slot button
+/// assembly that also holds the boot smoke tests. <c>SkillArcInput</c> needs none: a slot button
 /// writes an <c>int</c> into it and <c>CommandPhase</c> polls that, so
-/// <see cref="Frame_SlotPollSitsBesideTapToFocus"/> pins the adjacency the other two still inherit
+/// <see cref="Input_PolledFromCommandPhase"/> pins the adjacency the other two still inherit
 /// by sitting in the same three lines.
 /// </para>
 /// </remarks>
@@ -160,10 +160,10 @@ public sealed class FrameOrderTests
 
     /// <summary>
     /// The frame's one-press buffer for CC §6.2's slot buttons. Real rather than a fake: it is half
-    /// of what <see cref="Frame_SlotPollSitsBesideTapToFocus"/> is about, and the other half is where
+    /// of what <see cref="Input_PolledFromCommandPhase"/> is about, and the other half is where
     /// the ticker polls it (M3-10a rule 3).
     /// </summary>
-    private SkillSlotInput _skillSlots;
+    private SkillArcInput _skillArc;
 
     /// <summary>
     /// The gate the level-up phase raises. Real rather than a fake: it is the object under test in
@@ -257,7 +257,7 @@ public sealed class FrameOrderTests
 
         _pause = new RunPause();
 
-        _skillSlots = new SkillSlotInput(_core);
+        _skillArc = new SkillArcInput(_core);
 
         _ticker = new RunTicker(
             _core,
@@ -294,7 +294,7 @@ public sealed class FrameOrderTests
             _input,
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
-            _skillSlots,
+            _skillArc,
             cone);
 
         // Announced the way core announces it, so the body arrives through the subscription M1-07
@@ -351,7 +351,7 @@ public sealed class FrameOrderTests
         _ticker = null;
         _core = null;
         _body = null;
-        _skillSlots = null;
+        _skillArc = null;
 
         for (int i = 0; i < _created.Count; i++)
         {
@@ -1149,7 +1149,7 @@ public sealed class FrameOrderTests
     /// <b>This is the row that retires the fixture's standing exemption.</b> The class remarks above
     /// say the commands phase is "the one step not observed here", because it reached core only when
     /// the Input System reported a press and this assembly does not reference the Input System.
-    /// <see cref="SkillSlotInput"/> needs no Input System at all — a button writes an
+    /// <see cref="SkillArcInput"/> needs no Input System at all — a button writes an
     /// <see cref="int"/> into it — so the phase is finally observable, and AR §18.1's first row is
     /// asserted end to end.
     /// </para>
@@ -1163,7 +1163,7 @@ public sealed class FrameOrderTests
     /// </para>
     /// </remarks>
     [UnityTest]
-    public IEnumerator Frame_SlotPollSitsBesideTapToFocus()
+    public IEnumerator Input_PolledFromCommandPhase()
     {
         CoreVector3 snapshotAtCommandTime = default;
         bool sawCommand = false;
@@ -1175,12 +1175,13 @@ public sealed class FrameOrderTests
         };
 
         // A thumb, whenever in the frame uGUI happened to report it. Nothing has polled it yet.
-        _skillSlots.Press(0);
+        _skillArc.Tap(new ContentId("skill.test.arc"));
 
         Assert.That(_core.Touched, Is.Empty, "The press reached core without a frame asking for it.");
 
         yield return Frame();
 
+        Assert.That(_core.LastCastSkill, Is.EqualTo(new ContentId("skill.test.arc")));
         Assert.That(sawCommand, Is.True, "The slot poll never ran, so a tap on S1 casts nothing.");
 
         // 1. It ran *above the snapshot build*, which is the claim: the player stands a kilometre
@@ -1201,12 +1202,12 @@ public sealed class FrameOrderTests
 
         // 3. Beside the focus tap and above the tick, in the phase AR §18.1 names.
         Assert.That(
-            IndexIn(_core.Touched, "command:cast-slot"),
+            IndexIn(_core.Touched, "command:cast-now"),
             Is.EqualTo(0),
             "Something reached core before the command phase did.");
 
         Assert.That(
-            IndexIn(_core.Touched, "command:cast-slot"),
+            IndexIn(_core.Touched, "command:cast-now"),
             Is.LessThan(IndexIn(_core.Touched, "tick")),
             "The command phase ran below the tick it is meant to precede.");
 
@@ -1215,7 +1216,7 @@ public sealed class FrameOrderTests
         yield return Frame();
 
         Assert.That(
-            CountIn(_core.Touched, "command:cast-slot"),
+            CountIn(_core.Touched, "command:cast-now"),
             Is.EqualTo(1),
             "The press outlived the frame it was made in.");
 
@@ -1228,6 +1229,49 @@ public sealed class FrameOrderTests
 
         _ticker.Tick();
     }
+
+#if UNITY_EDITOR
+    [UnityTest]
+    public IEnumerator Arc_CircleReceivesUiRaycasts()
+    {
+        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/UI/Hud.prefab");
+        GameObject hud = Track(UnityEngine.Object.Instantiate(prefab));
+        // The fixture tests the saved circle's raycast path, without starting an uninjected HUD.
+        foreach (MonoBehaviour behaviour in hud.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (behaviour.GetType().Assembly == typeof(Soulvail.Game.Presentation.SkillArc).Assembly)
+            {
+                behaviour.enabled = false;
+            }
+        }
+
+        var safe = (RectTransform)hud.GetComponentInChildren<Soulvail.Game.Controls.SafeAreaFitter>(true).transform;
+        safe.anchorMin = Vector2.zero;
+        safe.anchorMax = Vector2.one;
+        safe.offsetMin = safe.offsetMax = Vector2.zero;
+        var circle = hud.GetComponentInChildren<Soulvail.Game.Presentation.SkillArcButton>(true);
+        circle.Bind(new ContentId("skill.test.arc"), _skillArc, true, null, Color.white);
+        circle.gameObject.SetActive(true);
+        var events = Track(new GameObject("ArcEventSystem", typeof(UnityEngine.EventSystems.EventSystem)));
+        yield return null;
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+        var pointer = new UnityEngine.EventSystems.PointerEventData(events.GetComponent<UnityEngine.EventSystems.EventSystem>())
+        {
+            position = RectTransformUtility.WorldToScreenPoint(null, circle.transform.position),
+        };
+        var hits = new List<UnityEngine.EventSystems.RaycastResult>();
+        events.GetComponent<UnityEngine.EventSystems.EventSystem>().RaycastAll(pointer, hits);
+        bool found = false;
+        foreach (var hit in hits)
+        {
+            found |= hit.gameObject == circle.gameObject;
+        }
+
+        Assert.That(circle.GetComponent<UnityEngine.UI.Image>().depth, Is.GreaterThanOrEqualTo(0), "the fixture never rendered the circle");
+        Assert.That(found, Is.True, "the saved circle did not receive a UI raycast");
+    }
+#endif
 
     /// <summary>
     /// Stands one Wight up, announced the way core announces it, and hands back its body.
@@ -1690,17 +1734,26 @@ public sealed class FrameOrderTests
 
         /// <summary>
         /// What <see cref="CastSkill"/> does when the frame calls it — how
-        /// <see cref="Frame_SlotPollSitsBesideTapToFocus"/> looks at the snapshot from inside the
+        /// <see cref="Input_PolledFromCommandPhase"/> looks at the snapshot from inside the
         /// command phase. <see cref="OnOpenLevelUp"/>'s shape.
         /// </summary>
         public Action OnCastSkill { get; set; }
 
         // M3-07a grew IPlayerCommands. Recorded like the three above rather than left empty, so
         // this fake keeps saying what it was asked for — and since M3-10a one row does send it,
-        // through SkillSlotInput and RunTicker's command phase.
+        // through SkillArcInput and RunTicker's command phase.
+        public void CastSkillNow(ContentId skillId)
+        {
+            LastCastSkill = skillId;
+            _touched.Add("command:cast-now");
+            OnCastSkill?.Invoke();
+        }
+
+        public ContentId LastCastSkill { get; private set; }
+
         public void CastSkill(int slot)
         {
-            _touched.Add("command:cast-slot");
+            _touched.Add("command:cast-now");
 
             OnCastSkill?.Invoke();
         }

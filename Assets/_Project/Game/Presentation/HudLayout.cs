@@ -36,6 +36,26 @@ namespace Soulvail.Game.Presentation;
 /// </remarks>
 public static class HudLayout
 {
+    public const int MaxArcSkills = 6;
+    public const float RollRightDp = 96f;
+    public const float RollBottomDp = 120f;
+    public const float ArcSizeDp = 52f;
+    public const float ArcGapDp = 8f;
+    public const float ArcRadiusDp = 76f;
+    public const float PassiveSizeDp = 28f;
+
+    /// <summary>Quarter ellipse stretched vertically to keep six circles clear of the stick.</summary>
+    public static Vector2 ArcCentreDp(int index, int count)
+    {
+        float vertical = count <= 1 ? 1f : 1f - ((float)index / (count - 1));
+        float height = Mathf.Max(ArcRadiusDp, (count - 1) * (ArcSizeDp + ArcGapDp));
+        return new Vector2(-RollRightDp - ArcRadiusDp * Mathf.Sqrt(1f - vertical * vertical),
+            RollBottomDp + height * vertical);
+    }
+
+    public static Vector2 PassiveCentreDp(int index) =>
+        index < 6 ? new Vector2(-24f - (index % 3) * 32f, 24f + (index / 3) * 32f)
+            : new Vector2(-24f, 88f + (index - 6) * 32f);
     /// <summary>From the safe area's left and right edges to the first piece, in dp.</summary>
     public const float MarginDp = 12f;
 

@@ -419,6 +419,8 @@ public sealed class RunRecorderTests
                 default(ContentId),
                 new ContentId(ActiveC),
                 default(ContentId),
+                default(ContentId),
+                default(ContentId),
             }));
 
         // A copy, not the run's own view: what RunState hands out is SkillRunner.Slots, which is

@@ -543,16 +543,13 @@ public sealed class GrantShieldTests
     {
         // **CC §6.4's trigger, end to end.** `IncomingProjectiles` is written by ProjectileSystem at
         // the end of its own step and nowhere else, so read above that step it counts bolts still in
-        // the air — a shield raised *before* the bolt lands rather than over the wound (M3-06
-        // rule 7). The cooldown is a hundredth of a second so the skill is ready on every tick a
-        // bolt is inbound, which is what puts the cast and the landing in the same frame; a long one
-        // would fire once, seventy ticks earlier, and the ordering assertion would be vacuously true
-        // across two different ticks.
+        // the air — a shield raised before the bolt lands (M3-06 rule 7). Step by AutoCastGap
+        // with a tiny cooldown so it is ready on the sampled landing tick.
         float bare = BareBolt();
 
         StartSession(AtLeast(TriggerField.IncomingProjectiles, 1f), cooldown: 0.01f);
 
-        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0);
+        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0, SkillRunner.AutoCastGap);
 
         Assert.That(landing, Is.GreaterThan(0), "The fixture failed to land a bolt on the player.");
 
@@ -666,7 +663,7 @@ public sealed class GrantShieldTests
     {
         StartSession(Never(), cooldown: 0.01f);
 
-        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0);
+        int landing = TickUntil(() => _events.Count<PlayerDamaged>() > 0, SkillRunner.AutoCastGap);
 
         Assert.That(landing, Is.GreaterThan(0), "The control failed to land a bolt.");
         Assert.That(_events.Count<SkillCast>(), Is.Zero, "And it cast nothing while doing it.");
@@ -871,13 +868,13 @@ public sealed class GrantShieldTests
     /// when it returns.
     /// </summary>
     /// <returns>How many ticks it took, or −1 if it never happened.</returns>
-    private int TickUntil(Func<bool> done)
+    private int TickUntil(Func<bool> done, float dt = Frame)
     {
         for (int i = 1; i <= 3_000; i++)
         {
             _events.Clear();
 
-            TickOnce();
+            TickOnce(dt);
 
             if (done())
             {
@@ -888,11 +885,11 @@ public sealed class GrantShieldTests
         return -1;
     }
 
-    private void TickOnce()
+    private void TickOnce(float dt = Frame)
     {
         var snapshot = new WorldSnapshot(EnemyCapacity)
         {
-            Dt = Frame,
+            Dt = dt,
             PlayerPosition = Vector3.Zero,
             HasGate = true,
             GatePosition = Door,

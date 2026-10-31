@@ -34,6 +34,24 @@ namespace Soulvail.Core.Combat;
 /// </remarks>
 public sealed class Volley
 {
+    private bool _requested;
+    internal bool HasRequest => _requested;
+    internal void ClearRequest() => _requested = false;
+    public bool IsAuto { get; internal set; } = true;
+    internal bool AllowAutoCast { get; set; } = true;
+    internal int Casts { get; private set; }
+    internal bool LastWasAuto { get; private set; }
+
+    internal bool RequestCast()
+    {
+        if (!IsReady)
+        {
+            return false;
+        }
+
+        _requested = true;
+        return true;
+    }
     private readonly IDomainEvents _events;
 
     /// <param name="spec">The class's authored volley. Null is refused — build one or do not.</param>
@@ -147,6 +165,14 @@ public sealed class Volley
     {
         if (IsReady)
         {
+            if (!_requested && (!IsAuto || !AllowAutoCast))
+            {
+                return false;
+            }
+
+            LastWasAuto = !_requested;
+            _requested = false;
+            Casts++;
             ShotsTowardNext = 0;
             SetReady(false);
 
@@ -177,6 +203,7 @@ public sealed class Volley
     /// </remarks>
     public void Reset()
     {
+        _requested = false;
         ShotsTowardNext = 0;
         IsReady = false;
     }

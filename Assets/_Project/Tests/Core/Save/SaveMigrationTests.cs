@@ -70,7 +70,7 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Gate_AcceptsOneToFourRefusesFive()
+    public void Gate_AcceptsOneToFiveRefusesSix()
     {
         // The numbers written out, which the four rows around this one deliberately cannot say:
         // they are all phrased against CurrentVersion, so they would keep passing unchanged if the
@@ -81,17 +81,18 @@ public sealed class SaveMigrationTests
         Assert.That(SaveMigrations.CanReadRun(2), Is.True, "and so are v2 ones.");
         Assert.That(SaveMigrations.CanReadRun(3), Is.True, "and so are v3 ones.");
         Assert.That(SaveMigrations.CanReadRun(4), Is.True);
-        Assert.That(SaveMigrations.CanReadRun(5), Is.False);
+        Assert.That(SaveMigrations.CanReadRun(5), Is.True);
+        Assert.That(SaveMigrations.CanReadRun(6), Is.False);
 
         Assert.That(SaveMigrations.OldestSupportedRunVersion, Is.EqualTo(1));
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(4));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5));
 
         // And a version above the current one is refused at the gate *and* at the migration, which
         // are two different answers a downgraded build has to get right: reading a v5 document as
         // though the fields it does not know were absent would silently delete them on the next
         // write. `ProfileGate_AcceptsOneToFourRefusesFive`'s pairing, for this format.
         Assert.Throws<NotSupportedException>(
-            () => SaveMigrations.MigrateRun(5, SnapshotAt(RunSnapshot.CurrentVersion)));
+            () => SaveMigrations.MigrateRun(6, SnapshotAt(RunSnapshot.CurrentVersion)));
     }
 
     [Test]
@@ -155,7 +156,7 @@ public sealed class SaveMigrationTests
             xp: 99f,
             pendingLevelUps: 2,
             takenNodeIds: new[] { Bulwark },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
             economy: new RunEconomy(500, 42.5f, 3, 2),
             banishedNodeIds: new[] { Bulwark },
             pactedNodeIds: new[] { Consecrate },
@@ -167,7 +168,7 @@ public sealed class SaveMigrationTests
         // what a chain whose later steps read `decoded` instead of `current` would produce, and
         // landing at 4 with an earlier step's fields unwritten is what one whose steps ran out of
         // order would — so this single number is load-bearing three times over.
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
 
         // A v1 run was unlevelled by construction, so its v2 form is the opening state of a run.
         Assert.That(migrated.Level, Is.EqualTo(1));
@@ -207,7 +208,7 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Migrate_V4_IsIdentity()
+    public void Migrate_V5_IsIdentity()
     {
         // **Renamed from Migrate_V3_IsIdentity rather than joined by a second row**: identity is a
         // property of the *current* version, so it moves up with every bump and there is only ever
@@ -219,7 +220,7 @@ public sealed class SaveMigrationTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
             economy: new RunEconomy(317, 42.5f, 2, 1),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },
@@ -246,7 +247,7 @@ public sealed class SaveMigrationTests
         // 1 exists to refuse, and it would be invisible in a fixture whose slots were contiguous.
         Assert.That(
             migrated.ManualSkillIds,
-            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
 
         Assert.That(migrated.Version, Is.EqualTo(original.Version));
         Assert.That(migrated.ModeId, Is.EqualTo(original.ModeId));
@@ -283,7 +284,7 @@ public sealed class SaveMigrationTests
 
         // **4 rather than 3 as of M6-01b**: a v2 document walks the v2 → v3 step this row is about
         // and then the v3 → v4 one, which is what a chain being a chain means.
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
 
         // A v2 run had no loadout by construction, so its v3 form is four empty slots — every skill
         // on Auto, which is also CC §6.1's default (rule 5).
@@ -322,7 +323,7 @@ public sealed class SaveMigrationTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
             economy: new RunEconomy(500, 42.5f, 3, 2),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },
@@ -330,7 +331,7 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(3, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(4));
+        Assert.That(migrated.Version, Is.EqualTo(5));
 
         // A v3 run had no economy by construction — none of the mechanics existed — so its v4 form
         // is `default(RunEconomy)` and three empty lists, which is the opening state of a fresh run
@@ -354,7 +355,7 @@ public sealed class SaveMigrationTests
         Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
         Assert.That(
             migrated.ManualSkillIds,
-            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }),
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }),
             "The hole included: a step that compacted the slots is the silent re-bind M3-07a refuses.");
 
         Assert.That(migrated.ModeId, Is.EqualTo(decoded.ModeId));
@@ -453,7 +454,7 @@ public sealed class SaveMigrationTests
         // And the two formats still version independently: they read 4 and 4 as of M6-09a, which
         // is a coincidence of arithmetic again rather than a rule — M6-01b bumped the run alone and
         // this task bumps the profile alone.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(4));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5));
     }
 
     [Test]

@@ -241,7 +241,7 @@ public readonly struct RunEconomy
 public readonly struct RunSnapshot
 {
     /// <summary>The format this build writes. Bumped by the migration that changes the shape.</summary>
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 
     /// <summary>
     /// The four empty slots, shared: what <see cref="ManualSkillIds"/> answers for
@@ -798,19 +798,17 @@ public readonly struct RunSnapshot
     /// </remarks>
     private static IReadOnlyList<ContentId> CopySlots(IReadOnlyList<ContentId> manualSkillIds)
     {
-        if (manualSkillIds.Count != SkillRunner.MaxManualSlots)
+        if (manualSkillIds.Count != 4 && manualSkillIds.Count != SkillRunner.MaxManualSlots)
         {
             throw new ArgumentException(
-                $"manualSkillIds must name exactly {SkillRunner.MaxManualSlots} slots and names " +
-                $"{manualSkillIds.Count}. CC §6.2 draws four fixed thumb positions, so the length " +
-                "is the format: an empty slot is default(ContentId) in place, never an entry left " +
-                "out. A shorter list cannot say which of the four are empty.",
+                $"manualSkillIds must name 4 legacy or {SkillRunner.MaxManualSlots} arc identities, " +
+                $"and names {manualSkillIds.Count}. Empty entries remain in place.",
                 nameof(manualSkillIds));
         }
 
         bool anyOccupied = false;
 
-        for (int i = 0; i < SkillRunner.MaxManualSlots; i++)
+        for (int i = 0; i < manualSkillIds.Count; i++)
         {
             // `default(ContentId)` is legal, and this is the one list in this struct where it is —
             // see ManualSkillIds. A hole is an ordinary state and is never compacted away.
@@ -842,7 +840,7 @@ public readonly struct RunSnapshot
 
         var copy = new ContentId[SkillRunner.MaxManualSlots];
 
-        for (int i = 0; i < SkillRunner.MaxManualSlots; i++)
+        for (int i = 0; i < manualSkillIds.Count; i++)
         {
             copy[i] = manualSkillIds[i];
         }

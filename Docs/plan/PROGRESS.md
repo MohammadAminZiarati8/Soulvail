@@ -1,50 +1,48 @@
 # Soulvail — Progress
 
-Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks and device notes: [OWED.md](OWED.md).
+Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-03 built._
+_Updated 2026-10-31, MK-04 built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-03**: ranked skill icons, level rows, path preview/choice and next-rank Learn. |
-| **Next task** | **MK-04**: skill arc, manual casts, auto toggles and passive icons. |
-| **Verified** | EditMode 4 846: 4 845 pass, 0 fail, 1 known clock inconclusive; tree presenter 38/38 (12 new MK-03 cases). Compiler errors 0; new analyzer warnings 0; format clean (6 C# files). URP UI renders at 360 x 780 and 411 x 914; four path rows fit. |
+| **Last merged** | **MK-04**: minimal skill arc, tap casts, hold auto toggles, corner passives and shared 0.5 s auto spacing. |
+| **Next task** | **MK-05**: buffs and debuffs beside HP, with timers and stacks. |
+| **Verified** | EditMode 4 821: 4 820 pass, 0 fail, 1 known animator-clock inconclusive. Arc 29/29; PlayMode FrameOrder 20/20, including command identity/order and UI raycasts. Compiler errors 0; new analyzer warnings 0; format clean (33 C# files). Saved prefabs: zero missing scripts. |
 
 ## What works
 
-Portrait; Heroes/Places. Jungle 30 stages; Veilrot, Sanctum, disc off; Ranger alone.
-Threat-budgeted waves → door; fifth-stage bosses: Descent Warden, Jungle Croaker except 10 Mother.
-Mother: rooted, three facing shield buds/phase, five-lob barrage, stone-blocked pulsing spray/goo,
-ringed pods swell 1 s → Frogs, 66/33% beats. Scripts: 1 = 3 Frogs; 2 = 2 Pitchers;
-3 = both; 4 = 2 Puffballs; 6 = 2 Panthers; 7–9 mixed waves. Stage 11: Mossguard, then one + four
-Frogs; larger Mossguard, shield blocks, 2 m spear stab. Stages 12–14: shield/spit, pincer, exam; 76 → 110 → 128
-threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
-Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
-Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.
-Boss bar one line, none overhead; boss adds pay no XP. Saves run v4/profile v5, older load.
-Clash UI; `LocKey` strings. Ranger offers three path slots from level 11; Marksman has Steady Aim (5 ranks, level 11) and Eagle Eye (3, level 14). Boot collects path skills, loc and cyan-tinted placeholders. Paused tree groups ranks into pips; path cards preview and choose, level rows lock, Learn advances one rank through core.
+Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
+Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother.
+Mother has facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
+Stages 1–14 scripted: Frogs, Pitchers, Puffballs, Panthers, Mossguard and shield/spit/pincer exams.
+Five enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
+Ranger: pale arrows, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
+Levels bank points; paused tree picks. Death pays Shards. Test start can jump stages.
+Run save v5/profile v5; older saves load. Four legacy manual identities expand to six.
+Clash UI; LocKey strings. Ranger paths from level 11. Marksman: Steady Aim (5 ranks, Lv 11),
+Eagle Eye (3, Lv 14); path icons, preview/choice, ranked pips and next-rank Learn.
+Minimal arc: class then chosen-path actives, locks/levels, sweep/seconds, cyan ready border,
+auto badge; Volley retains shot pips. Ready taps fire even on Auto; 0.45 s hold toggles with
+settings-aware haptics. Shot-charged Volley taps use fresh senses next tick. All auto casts,
+including bought casts and Volley, wait 0.5 s after any cast. Untappable corner passives;
+six-circle ellipse stays outside the stick at 360 dp, with a mirrored cluster option.
 
 ## What does not work yet
 
-1. Balance: Gravecaller over / Emberwright under GD §12.4's band; Warden passes 120 s near stage 33; no natural run past 19.
+1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
-3. Past stage ~26 late waves are all Bloaters/Puffballs (`WaveComposer.Upgrade`).
-4. No audio, no Elites, three bosses; no feel pass, no second language.
+3. Past ~26 late waves are all Bloaters/Puffballs.
+4. No audio, Elites, feel pass or second language; only three bosses. Path actives are future tasks.
 
 ## Known issues
 
-1. `ArenaView.OnValidate` warns "0 spawn point(s)" on reload; harmless.
-2. `PlayerStat.ContactDamage` refused by `PlayerStats.Resolve` — awaiting a ruling.
-3. `TimeManager.asset` re-serialises on Editor open; revert before every commit.
-4. A save the tree refuses (`SkillTree.Restore` throws) strands the player; Continue offers the dead run.
-5. Save with huge XP (`1e38`) hangs `LevelTracker`.
-6. A bolt in the air at a stage boundary leaves its body (`ProjectileViews`, no `StageArrived` teardown).
-7. A pooled body teleported by `Bind` can snap back on first `Move` (`autoSyncTransforms` 0).
-8. `SanctumOpened` publishes before `IsSanctumOpen`; presenter draws a frame late.
-9. Nothing damages a Wight. The Knight's Charge root curve snaps 0.22 m.
-10. HUD ~15 draw calls (no atlas). No PlayMode row taps Continue. Disk near full.
-11. Mother phase beats clear phase summons only; pod Frogs can survive (existing code; JG-12h As built).
-12. Boot smoke batch: unloading a run can make CoverViews.Dispose reactivate a destroyed cover (MK-02b verification).
+1. ArenaView warns zero spawn points on reload; harmless. TimeManager reserialises; revert before commits.
+2. ContactDamage stat ruling pending. Invalid tree saves strand Continue; XP 1e38 hangs levelling.
+3. Stage-boundary bolts leave bodies; pooled Bind/Move can snap with autoSyncTransforms off.
+4. Sanctum event draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
+5. HUD ~15 draw calls; no PlayMode Continue row; disk near full.
+6. Mother pod Frogs can survive phase beats (JG-12h). Run unload can reactivate destroyed cover (MK-02b smoke).

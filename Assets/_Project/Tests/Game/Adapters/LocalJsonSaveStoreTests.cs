@@ -338,7 +338,7 @@ public sealed class LocalJsonSaveStoreTests
         // one row that walks the entire path a player's loadout takes: the runner's table, the
         // recorder's read, the DTO's copy, the mirror's array, the file's bytes, and back through
         // all five into a live run's slots.
-        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) };
+        var slots = new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) };
 
         Await(_store.SaveRun(Snapshot()));
 
@@ -606,7 +606,7 @@ public sealed class LocalJsonSaveStoreTests
         // order. Asserting it here rather than only on SaveMigrations is the difference between "the
         // steps are correct" and "the steps are wired up", and ledger row 2's trap is precisely that
         // the second can be false while the first is true.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
 
         // A v1 run was unlevelled by construction (rule 3). The mirror's `level = 1` initialiser is
         // what lets the document reach the constructor at all — a v1 file has no `level` key, and
@@ -826,7 +826,7 @@ public sealed class LocalJsonSaveStoreTests
         // **v4, because this literal is the input to a two-step walk as of M6-01b.** The document is
         // unchanged from M3-01b; what changed is first that loading it became a migration rather
         // than a read, and now that the migration runs a second step over the top.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
         Assert.That(run.Level, Is.EqualTo(7));
         Assert.That(run.Xp, Is.EqualTo(33.5f));
         Assert.That(run.PendingLevelUps, Is.EqualTo(1));
@@ -863,7 +863,7 @@ public sealed class LocalJsonSaveStoreTests
 
         // **v4, because this literal is now the v3 → v4 step's input.** The document is unchanged
         // from M3-07b; what changed is that loading it is a migration rather than a read.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
 
         // A v3 run had no economy by construction — none of GD §15's or §13's mechanics existed —
         // so its v4 form is a fresh economy and three empty lists. The document has none of the
@@ -876,7 +876,7 @@ public sealed class LocalJsonSaveStoreTests
         // move a button out from under the thumb that had learned it (rule 1).
         Assert.That(
             run.ManualSkillIds,
-            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
 
         // And the v1 and v2 halves of the document are still read the same way, which is the part a
         // bump is most likely to break by shifting a field.
@@ -902,7 +902,7 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
         Assert.That(
             run.Economy.Essence,
             Is.Zero,
@@ -917,7 +917,7 @@ public sealed class LocalJsonSaveStoreTests
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
         // No migration ran: this is what the build writes, read back.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
 
         // **The five scalars and the three lists, each a value no step could have produced.** The
         // step writes zeroes and empties, so every one of these assertions fails the day the mirror
@@ -935,7 +935,7 @@ public sealed class LocalJsonSaveStoreTests
         // bump is most likely to break by shifting a field.
         Assert.That(
             run.ManualSkillIds,
-            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) }));
+            Is.EqualTo(new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
 
         Assert.That(run.Level, Is.EqualTo(7));
         Assert.That(run.TakenNodeIds, Is.EqualTo(new[] { Bulwark, Consecrate }));
@@ -972,15 +972,15 @@ public sealed class LocalJsonSaveStoreTests
 
         // No migration ran, so the four scalars are still the document's own — which is what makes
         // this a row about the arrays rather than about the step.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
         Assert.That(run.Economy.Essence, Is.EqualTo(317));
     }
 
     [Test]
-    public void Fixture_V4Run_IsWhatThisBuildWrites()
+    public void Fixture_V5Run_IsWhatThisBuildWrites()
     {
         Await(_store.SaveRun(new RunSnapshot(
-            version: 4,
+            version: 5,
             Mode,
             Character,
             seed: -20260912,
@@ -994,7 +994,7 @@ public sealed class LocalJsonSaveStoreTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
             economy: new RunEconomy(317, 42.5f, 2, 1, claimed: true),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },
@@ -1016,7 +1016,9 @@ public sealed class LocalJsonSaveStoreTests
         // **Re-pointed once, at M6-11b's re-cut**, from V4Run to V4RunClaimed: the shape did change
         // — one key — and the version did not, which M6-01b licensed until `m6` was tagged. V4Run
         // was not edited to match; it is now the pre-re-cut document the next row reads.
-        Assert.That(written, Is.EqualTo(V4RunClaimed));
+        string expected = V4RunClaimed.Replace("\"version\":4", "\"version\":5")
+            .Replace("\"\"],\"essence\"", "\"\",\"\",\"\"],\"essence\"");
+        Assert.That(written, Is.EqualTo(expected));
     }
 
     [Test]
@@ -1036,7 +1038,7 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f), "the meter as written.");
 
         // No migration ran, and no step was needed: the version is the same four.
-        Assert.That(run.Version, Is.EqualTo(4));
+        Assert.That(run.Version, Is.EqualTo(5));
         Assert.That(run.Economy.Essence, Is.EqualTo(317));
     }
 
@@ -1109,7 +1111,7 @@ public sealed class LocalJsonSaveStoreTests
             xp: 33.5f,
             pendingLevelUps: 1,
             takenNodeIds: new[] { Bulwark, Consecrate },
-            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId) },
+            manualSkillIds: new[] { Bulwark, default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
             economy: economy ?? new RunEconomy(317, 42.5f, 2, 1),
             banishedNodeIds: new[] { Reprisal },
             pactedNodeIds: new[] { Consecrate },

@@ -617,7 +617,7 @@ public sealed class RunSessionResumeTests
 
         Assert.That(
             RunSnapshot.CurrentVersion,
-            Is.EqualTo(4),
+            Is.EqualTo(5),
             "deriving it is what keeps Overflow off the format — v4 added six fields and "
                 + "still carries none for this one.");
     }
@@ -1144,7 +1144,7 @@ public sealed class RunSessionResumeTests
         // A resume hands back ready cooldowns, and the runner casts at most one skill a frame, bought
         // or free (M3-06 rule 6) — so four frames: the first free, the first bought through the wait
         // it just started, then the second the same way.
-        TickFor(4);
+        TickFor(120);
 
         Assert.That(_events.Count<CastBought>(), Is.EqualTo(2), "Arranged: two paid casts.");
         Assert.That(_session.State.Veilrot, Is.EqualTo(90f));

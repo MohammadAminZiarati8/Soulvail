@@ -132,7 +132,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// The second poller that phase has ever had, and the first since M1-09's. It is here for
     /// exactly the reason the first one is — see <see cref="CommandPhase"/>.
     /// </remarks>
-    private readonly SkillSlotInput _skillSlots;
+    private readonly SkillArcInput _skillArc;
 
     private readonly ConeOverlapQuery _cone;
 
@@ -175,7 +175,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         InputAdapter input,
         SpawnPlan spawnPlan,
         TapToFocusAdapter tapToFocus,
-        SkillSlotInput skillSlots,
+        SkillArcInput skillArc,
         ConeOverlapQuery cone,
         ClassSelectRoster classSelect = null,
         PlaceWriter placeWriter = null)
@@ -234,7 +234,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _spawnPlan = spawnPlan ?? throw new ArgumentNullException(nameof(spawnPlan));
         _tapToFocus = tapToFocus ?? throw new ArgumentNullException(nameof(tapToFocus));
-        _skillSlots = skillSlots ?? throw new ArgumentNullException(nameof(skillSlots));
+        _skillArc = skillArc ?? throw new ArgumentNullException(nameof(skillArc));
         _cone = cone ?? throw new ArgumentNullException(nameof(cone));
 
         _coneHitIds = new int[cone.Capacity];
@@ -837,7 +837,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     {
         _tapToFocus.Poll();
 
-        _skillSlots.Poll();
+        _skillArc.Poll();
 
         if (_input.MovementSkillPressedThisFrame)
         {

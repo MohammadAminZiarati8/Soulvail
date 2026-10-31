@@ -214,6 +214,16 @@ public static class SaveMigrations
                 Array.Empty<ContentId>());
         }
 
+        if (version < 5)
+        {
+            // v5 expands the manual identity list from four slots to six arc circles.
+            current = new RunSnapshot(5, current.ModeId, current.CharacterId, current.Seed,
+                current.StageIndex, current.Random, current.PlayerHp, current.PlayerShield,
+                current.RunTime, current.WrittenAt, current.Level, current.Xp,
+                current.PendingLevelUps, current.TakenNodeIds, current.ManualSkillIds,
+                current.Economy, current.BanishedNodeIds, current.PactedNodeIds, current.OrdealIds);
+        }
+
         return current;
     }
 

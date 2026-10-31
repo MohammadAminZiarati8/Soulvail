@@ -176,7 +176,9 @@ namespace Soulvail.Game.Presentation
             int tiers,
             bool canLearn,
             ILocalizer localizer,
-            bool free = true)
+            bool free = true,
+            bool ranked = false,
+            LocKey skillName = default)
         {
             if (spec is null)
             {
@@ -197,8 +199,8 @@ namespace Soulvail.Game.Presentation
             SetActive(_level, true);
             SetActive(_description, true);
 
-            Write(_title, $"{localizer.Get(spec.NameKey)} {TreeNodeButton.NumeralFor(tier)}");
-            Write(_level, localizer.Format(LevelKey, tier, tiers));
+            Write(_title, ranked ? localizer.Get(skillName.Key != null ? skillName : spec.NameKey) : $"{localizer.Get(spec.NameKey)} {TreeNodeButton.NumeralFor(tier)}");
+            Write(_level, localizer.Format(ranked ? new LocKey("ui.tree.path.rank") : LevelKey, tier, tiers));
             Write(_description, localizer.Get(spec.DescriptionKey));
 
             if (_tile != null)
@@ -223,7 +225,7 @@ namespace Soulvail.Game.Presentation
             SetActive(_learn, free);
             DressLearn(learnable, free && taken);
 
-            Write(_learnLabel, localizer.Get(free && taken ? LearnedKey : LearnKey));
+            Write(_learnLabel, localizer.Get(free && taken ? (ranked ? new LocKey("ui.tree.path.max") : LearnedKey) : LearnKey));
         }
 
         /// <summary>Shows "Tap a skill to see it" and nothing else (UI-04d rule 2).</summary>
@@ -240,6 +242,26 @@ namespace Soulvail.Game.Presentation
             SetActive(_learn, false);
 
             Write(_hint, localizer is null ? PickKey.ToString() : localizer.Get(PickKey));
+        }
+
+        /// <summary>The icon is already in the row; use the full width for the next rank's text.</summary>
+        public void LayoutRanked(float px)
+        {
+            float width = ((RectTransform)transform).rect.width;
+            SetActive(_tile, false);
+            SetActive(_icon, false);
+            if (_ribbon != null)
+                Anchor(_ribbon, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    new Vector2(Mathf.Min(220f * px, width - 20f * px), 28f * px), new Vector2(0f, -8f * px));
+            if (_level != null)
+                Anchor(_level.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                    new Vector2(width - 24f * px, 18f * px), new Vector2(12f * px, -38f * px));
+            if (_description != null)
+            {
+                Anchor(_description.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                    new Vector2(width - 24f * px, 60f * px), new Vector2(12f * px, -56f * px));
+                _description.fontSize = 12f * px;
+            }
         }
 
         /// <summary>

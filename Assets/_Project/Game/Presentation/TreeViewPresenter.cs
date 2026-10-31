@@ -198,6 +198,12 @@ namespace Soulvail.Game.Presentation
         [Tooltip("The card under the block: the selected node and its Learn button (UI-04d).")]
         [SerializeField] private TreeDetailCard _card;
 
+        [SerializeField] private PathCardsView _pathCards;
+        [SerializeField] private CharacterDefinition _pathCharacter;
+        private ContentId _previewPath;
+        private readonly List<SkillBranchSpec> _skills = new List<SkillBranchSpec>();
+        private readonly List<int> _skillLevels = new List<int>();
+
         [Tooltip("The pill's count of banked points, from ui.tree.points: a bare number. A drawing " +
                  "run reads 0 (UI-04b rule 5).")]
         [SerializeField] private TMP_Text _pointsLabel;
@@ -619,6 +625,14 @@ namespace Soulvail.Game.Presentation
                 return;
             }
 
+            if (_catalog.Character(state.CharacterId).PathOpensAtLevel > 0)
+            {
+                DrawRanked(state, tree);
+                return;
+            }
+            if (_pathCards != null)
+                _pathCards.gameObject.SetActive(false);
+
             Build(tree);
 
             if (_block != null)
@@ -759,15 +773,151 @@ namespace Soulvail.Game.Presentation
         private void Learn()
         {
             RunState state = _session?.State;
+            ContentId next = NextSelectedNode(state);
 
             if (!IsOpen || state is null || _progression is null || _selected == default
-                || !state.IsFreePick || state.SkillPoints <= 0 || !state.IsNodeAvailable(_selected))
+                || !state.IsFreePick || state.SkillPoints <= 0 || next == default || !state.IsNodeAvailable(next))
             {
                 return;
             }
 
-            _progression.TakeNode(_selected);
+            _progression.TakeNode(next);
 
+            Draw(state);
+        }
+
+        private ContentId NextSelectedNode(RunState state)
+        {
+            if (state == null)
+                return default;
+            for (int i = 0; i < _skills.Count; i++)
+            {
+                SkillBranchSpec skill = _skills[i];
+                if (skill.Tier(1)[0] != _selected)
+                    continue;
+                int taken = RanksTaken(state, skill);
+                return taken < skill.TierCount ? skill.Tier(taken + 1)[0] : default;
+            }
+            return _selected;
+        }
+
+        private int RanksTaken(RunState state, SkillBranchSpec skill)
+        {
+            int taken = 0;
+            for (int rank = 1; rank <= skill.TierCount; rank++)
+                if (StateOf(state, skill.Tier(rank)[0]) == NodeState.Taken)
+                    taken++;
+            return taken;
+        }
+
+        private void DrawRanked(RunState state, SkillTreeSpec tree)
+        {
+            _skills.Clear();
+            _skillLevels.Clear();
+            foreach (RectTransform column in _branchColumns)
+                column.parent.gameObject.SetActive(false);
+            foreach (SkillBranchSpec branch in tree.Branches)
+            {
+                _skills.Add(branch);
+                _skillLevels.Add(1);
+            }
+            bool choosing = state.PathId == default;
+            ContentId pathId = choosing ? _previewPath : state.PathId;
+            if (pathId != default)
+            {
+                foreach (PathSkillSpec skill in _catalog.Path(pathId).Skills)
+                {
+                    _skills.Add(skill.Ranks);
+                    _skillLevels.Add(skill.UnlockLevel);
+                }
+            }
+            while (_cells.Count < _skills.Count)
+            {
+                TreeNodeButton cell = Instantiate(_cellTemplate, _block.transform);
+                cell.Bind(OnCellTapped);
+                _cells.Add(cell);
+            }
+            var visible = new List<TreeNodeButton>();
+            for (int i = 0; i < _cells.Count; i++)
+            {
+                if (i < _skills.Count)
+                    visible.Add(_cells[i]);
+                else
+                    _cells[i].Hide();
+            }
+            float px = PixelsPerDp();
+            ContentId volley = _pathCharacter != null ? _pathCharacter.ToLook().VolleyNode : default;
+            if (_pathCards != null)
+            {
+                _pathCards.gameObject.SetActive(choosing);
+                if (choosing)
+                {
+                    var cards = (RectTransform)_pathCards.transform;
+                    cards.anchorMin = new Vector2(0f, 1f);
+                    cards.anchorMax = Vector2.one;
+                    cards.pivot = new Vector2(0.5f, 1f);
+                    cards.sizeDelta = new Vector2(-16f * px, 194f * px);
+                    cards.anchoredPosition = new Vector2(0f, -8f * px);
+                    _pathCards.Show(_pathCharacter, _catalog, _icons, _block.Placeholder, _localizer, state.Level,
+                        state.IsPathChoiceOpen, _previewPath, px, PreviewPath, ChoosePreview);
+                }
+            }
+            _block.ArrangeSkills(visible, _skillLevels, choosing ? 204f * px : 0f, px,
+                _localizer, _catalog.Character(state.CharacterId).NameKey);
+            _pathCards?.transform.SetAsLastSibling();
+            for (int i = 0; i < _skills.Count; i++)
+            {
+                SkillBranchSpec skill = _skills[i];
+                int taken = RanksTaken(state, skill);
+                bool max = taken == skill.TierCount;
+                ContentId next = skill.Tier(max ? taken : taken + 1)[0];
+                bool preview = choosing && i >= tree.Branches.Count;
+                NodeState status = preview ? NodeState.Locked : max ? NodeState.Taken : StateOf(state, next);
+                SkillSpec first = _catalog.Skill(skill.Tier(1)[0]);
+                _cells[i].ShowRanks(first, status, IconOf(first.Id), skill.TierCount, taken,
+                    state.IsFreePick && state.SkillPoints > 0 && !preview, _skillLevels[i], state.Level, _localizer, preview, first.Id == volley);
+                _cells[i].SetSelected(first.Id == _selected);
+                if (first.Id != _selected)
+                    continue;
+                _card.gameObject.SetActive(true);
+                _card.Layout(px, _compact);
+                _card.Show(_catalog.Skill(next), IconOf(first.Id), status, taken, skill.TierCount,
+                    state.SkillPoints > 0 && !preview, _localizer, state.IsFreePick, ranked: true, skillName: first.NameKey);
+                if (!_compact)
+                    _card.LayoutRanked(px);
+            }
+            if (_selected == default)
+            {
+                _card.gameObject.SetActive(true);
+                _card.Layout(px, _compact);
+                _card.ShowHint(_localizer);
+            }
+        }
+
+        private void PreviewPath(int index)
+        {
+            if (!IsOpen || _session.State.PathId != default)
+                return;
+            PathDefinition path = _pathCharacter.PathSlots[index];
+            if (path == null)
+                return;
+            _previewPath = new ContentId(path.Id);
+            _selected = default;
+            Draw(_session.State);
+        }
+
+        private void ChoosePreview()
+        {
+            RunState state = _session?.State;
+            if (!IsOpen || state == null || !state.IsPathChoiceOpen || _previewPath == default)
+                return;
+            bool candidate = false;
+            foreach (ContentId id in state.PathCandidates)
+                if (id == _previewPath)
+                    candidate = true;
+            if (!candidate)
+                return;
+            _progression.ChoosePath(_previewPath);
             Draw(state);
         }
 

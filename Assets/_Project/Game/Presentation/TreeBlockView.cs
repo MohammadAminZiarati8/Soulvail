@@ -96,6 +96,70 @@ namespace Soulvail.Game.Presentation
         /// <summary>Icon_Placeholder, for a skill with no icon of its own (UI-04c rule 3).</summary>
         public Sprite Placeholder => _placeholder;
 
+        /// <summary>One row per unlock level, with the class's skills below the path.</summary>
+        public void ArrangeSkills(IReadOnlyList<TreeNodeButton> cells, IReadOnlyList<int> levels,
+            float topSpace, float px, ILocalizer localizer, LocKey className)
+        {
+            var rect = (RectTransform)transform;
+            var rows = new List<int> { 1 };
+            for (int i = 0; i < levels.Count; i++)
+                if (!rows.Contains(levels[i]))
+                    rows.Add(levels[i]);
+            rows.Sort();
+            _rowCount = rows.Count;
+            foreach (Link link in _links)
+                link.Image.gameObject.SetActive(false);
+            if (_plate != null)
+                _plate.gameObject.SetActive(false);
+            if (_panel != null)
+            {
+                _panel.anchorMin = Vector2.zero;
+                _panel.anchorMax = Vector2.one;
+                _panel.offsetMin = Vector2.zero;
+                _panel.offsetMax = Vector2.zero;
+                SetBorder(_panel, PanelBorderPx, 12f * px);
+            }
+            float pitch = Mathf.Min(82f * px, (rect.rect.height - topSpace - 12f * px) / rows.Count);
+            float labelWidth = 46f * px;
+            float tile = Mathf.Min(60f * px, pitch - 8f * px, (rect.rect.width - labelWidth - 24f * px) / 3f);
+            while (_rows.Count < rows.Count && _rowTemplate != null)
+                _rows.Add(Instantiate(_rowTemplate, transform));
+            for (int r = 0; r < _rows.Count; r++)
+            {
+                TMP_Text label = _rows[r];
+                label.gameObject.SetActive(r < rows.Count);
+                if (r >= rows.Count)
+                    continue;
+                RectTransform lr = label.rectTransform;
+                lr.anchorMin = lr.anchorMax = new Vector2(0f, 0f);
+                lr.pivot = new Vector2(0f, 0.5f);
+                lr.sizeDelta = new Vector2(labelWidth, pitch);
+                lr.anchoredPosition = new Vector2(8f * px, (r + 0.5f) * pitch + 6f * px);
+                label.text = r == 0 ? localizer.Get(className) : localizer.Format(new LocKey("ui.tree.unlocks-at"), rows[r]);
+                label.fontSize = 12f * px;
+                label.alignment = TextAlignmentOptions.Center;
+                label.textWrappingMode = TextWrappingModes.Normal;
+                int count = 0;
+                for (int i = 0; i < levels.Count; i++)
+                    if (levels[i] == rows[r])
+                        count++;
+                int column = 0;
+                for (int i = 0; i < cells.Count; i++)
+                {
+                    if (levels[i] != rows[r])
+                        continue;
+                    var cell = (RectTransform)cells[i].transform;
+                    cell.SetParent(transform, false);
+                    cell.anchorMin = cell.anchorMax = new Vector2(0.5f, 0f);
+                    cell.pivot = new Vector2(0.5f, 0.5f);
+                    cell.sizeDelta = new Vector2(tile, tile);
+                    cell.anchoredPosition = new Vector2(labelWidth / 2f + (column++ - (count - 1) / 2f) * (tile + 8f * px),
+                        (r + 0.5f) * pitch + 6f * px);
+                    cells[i].Size(tile, 11f * px);
+                }
+            }
+        }
+
         /// <summary>How many "LV n" labels are showing.</summary>
         public int RowCount => _rowCount;
 

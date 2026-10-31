@@ -589,3 +589,13 @@ MonoBehaviour:
     _text: Eagle Eye 3
   - _key: skill.marksman.eagle-eye-3.description
     _text: Gain +3 m range and deal +30% damage to targets farther than 6 m.
+  - _key: ui.tree.path.choose
+    _text: Choose
+  - _key: ui.tree.path.rank
+    _text: 'Rank {0:0}/{1:0}'
+  - _key: ui.tree.path.max
+    _text: MAX
+  - _key: ui.tree.coming-soon
+    _text: Coming soon
+  - _key: ui.tree.unlocks-at
+    _text: 'Lv {0:0}'

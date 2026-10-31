@@ -1162,6 +1162,228 @@ public sealed class TreeViewPresenterTests
     /// <paramref name="level"/> has to account for what is taken and what is owed, or M3-08a rule
     /// 9's identity refuses the run.
     /// </remarks>
+    [Test]
+    public void Skill_PipsMatchRanks()
+    {
+        RankedRun(chosen: true, ranks: 2);
+        Assert.That(ShownCells().Length, Is.EqualTo(5));
+        Assert.That(Steady().RankCount, Is.EqualTo(5));
+        Assert.That(Steady().FilledPips, Is.EqualTo(2));
+        Image[] pips = Steady().GetComponentsInChildren<Image>().Where(i => i.name == "RankPip").ToArray();
+        Assert.That(pips.Length, Is.EqualTo(5));
+        Assert.That(pips.Count(p => p.color == Palette.Player), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Learn_TakesTheNextRank()
+    {
+        RankedRun(chosen: true, ranks: 2);
+        TapRank(Steady());
+        var card = Field<TreeDetailCard>(_presenter, "_card");
+        Assert.That(card.LevelText, Is.EqualTo("Rank 2/5"));
+        Assert.That(card.DescriptionText, Is.EqualTo(Shipped().Get(_catalog.Skill(new ContentId("skill.marksman.steady-aim-3")).DescriptionKey)));
+        Field<Button>(card, "_learn").onClick.Invoke();
+        Assert.That(_session.State.TakenNodeIds, Does.Contain(new ContentId("skill.marksman.steady-aim-3")));
+        Assert.That(Steady().FilledPips, Is.EqualTo(3));
+        Assert.That(_session.State.SkillPoints, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void Learn_DisabledWithoutPoint()
+    {
+        RankedRun(chosen: true, points: 0);
+        TapRank(Steady());
+        var card = Field<TreeDetailCard>(_presenter, "_card");
+        Assert.That(card.LearnInteractable, Is.False);
+        Field<Button>(card, "_learn").onClick.Invoke();
+        Assert.That(_session.State.TakenNodeIds.Count, Is.Zero);
+    }
+
+    [Test]
+    public void Learn_DisabledWhenMax()
+    {
+        RankedRun(chosen: true, ranks: 5);
+        TapRank(Steady());
+        var card = Field<TreeDetailCard>(_presenter, "_card");
+        Assert.That(card.LearnInteractable, Is.False);
+        Assert.That(card.LearnText, Is.EqualTo("MAX"));
+        Assert.That(card.LevelText, Is.EqualTo("Rank 5/5"));
+    }
+
+    [Test]
+    public void Row_AboveLevel_LockedWithLevel()
+    {
+        RankedRun(chosen: true);
+        TreeNodeButton eagle = CellFor("skill.marksman.eagle-eye");
+        Assert.That(eagle.State, Is.EqualTo(NodeState.Locked));
+        Assert.That(eagle.LockText, Is.EqualTo("Lv 14"));
+        Assert.That(Field<Image>(eagle, "_badge").gameObject.activeSelf, Is.True);
+        TapRank(eagle);
+        Assert.That(Field<TreeDetailCard>(_presenter, "_card").LearnInteractable, Is.False);
+        var block = Field<TreeBlockView>(_presenter, "_block");
+        Assert.That(block.RowText(1), Is.EqualTo("Lv 11"));
+        Assert.That(block.RowText(2), Is.EqualTo("Lv 14"));
+        Assert.That(eagle.transform.position.y, Is.GreaterThan(Steady().transform.position.y));
+    }
+
+    [Test]
+    public void Active_HasCyanEdge()
+    {
+        RankedRun();
+        TreeNodeButton volley = CellFor("skill.ranger.volley");
+        TreeNodeButton draw = CellFor("skill.ranger.quick-draw");
+        Assert.That(volley.HasCyanEdge, Is.True);
+        Assert.That(Field<Image>(volley, "_tile").GetComponent<Outline>().effectColor, Is.EqualTo(Palette.Player));
+        Assert.That(draw.HasCyanEdge, Is.False);
+        Assert.That(Field<Image>(draw, "_tile").GetComponent<Outline>().effectColor, Is.EqualTo(Palette.HudCaption));
+    }
+
+    [Test]
+    public void Cards_ThreeSlots_TwoComingSoon()
+    {
+        RankedRun();
+        Assert.That(PathCards().CardText(0), Is.EqualTo("Marksman"));
+        for (int i = 1; i < 3; i++)
+        {
+            Assert.That(PathCards().CardText(i), Is.EqualTo("Coming soon"));
+            Assert.That(PathCards().Card(i).interactable, Is.False);
+        }
+        Assert.That(ShownCells().Length, Is.EqualTo(3));
+        Transform strip = PathCards().Card(0).transform.Find("SkillStrip");
+        Assert.That(strip.childCount, Is.EqualTo(2));
+        Assert.That(strip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
+    }
+
+    [Test]
+    public void Cards_BelowLevel_ChooseDisabled()
+    {
+        RankedRun(level: 10, points: 9);
+        PathCards().Card(0).onClick.Invoke();
+        Assert.That(PathCards().ChooseEnabled, Is.False);
+        foreach (TMP_Text gate in Field<TMP_Text[]>(PathCards(), "_gates"))
+            Assert.That(gate.text, Is.EqualTo("Lv 11"));
+        PathCards().Confirm();
+        Assert.That(_session.State.PathId, Is.EqualTo(default(ContentId)));
+    }
+
+    [Test]
+    public void Choose_SendsChoosePath()
+    {
+        RankedRun();
+        PathCards().Card(0).onClick.Invoke();
+        Assert.That(Steady().State, Is.EqualTo(NodeState.Locked));
+        Assert.That(Field<Image>(Steady(), "_icon").color, Is.EqualTo(Palette.NodeLocked));
+        TapRank(Steady());
+        Assert.That(Field<TreeDetailCard>(_presenter, "_card").LearnInteractable, Is.False);
+        int points = _session.State.SkillPoints;
+        PathCards().Confirm();
+        Assert.That(_session.State.PathId, Is.EqualTo(new ContentId("path.ranger.marksman")));
+        Assert.That(_session.State.SkillPoints, Is.EqualTo(points));
+    }
+
+    [Test]
+    public void Chosen_CardsGo_RowsStay()
+    {
+        RankedRun();
+        PathCards().Card(0).onClick.Invoke();
+        TreeNodeButton before = Steady();
+        PathCards().Confirm();
+        Assert.That(PathCards().gameObject.activeSelf, Is.False);
+        Assert.That(Steady(), Is.SameAs(before));
+        Assert.That(Steady().IsTakeable, Is.True);
+        Assert.That(_presenter.IsOpen, Is.True);
+    }
+
+    [TestCase(360, 780)]
+    [TestCase(411, 914)]
+    public void Fits_360x780(int width, int height)
+    {
+        RankedRun(futureRows: true);
+        var safe = (RectTransform)_presenter.GetComponentInChildren<SafeAreaFitter>(true).transform;
+        safe.anchorMin = safe.anchorMax = new Vector2(0.5f, 0.5f);
+        safe.sizeDelta = new Vector2(width, height);
+        _screen.GetComponent<Canvas>().scaleFactor = 1f;
+        _presenter.UsePixelsPerDp(1f);
+        PathCards().Card(0).onClick.Invoke();
+        AssertRankLayout(safe);
+        PathCards().Confirm();
+        AssertRankLayout(safe);
+        Assert.That(Field<TreeBlockView>(_presenter, "_block").RowCount, Is.EqualTo(5));
+    }
+
+    private void AssertRankLayout(RectTransform safe)
+    {
+        Canvas.ForceUpdateCanvases();
+        var rects = new List<Rect>();
+        var corners = new Vector3[4];
+        foreach (TreeNodeButton cell in ShownCells())
+        {
+            ((RectTransform)cell.transform).GetWorldCorners(corners);
+            Vector3 lo = safe.InverseTransformPoint(corners[0]);
+            Vector3 hi = safe.InverseTransformPoint(corners[2]);
+            var rect = Rect.MinMaxRect(lo.x, lo.y, hi.x, hi.y);
+            Assert.That(safe.rect.Contains(rect.min) && safe.rect.Contains(rect.max), Is.True, cell.Node.Value);
+            Assert.That(rect.width, Is.GreaterThanOrEqualTo(28f));
+            foreach (Rect other in rects)
+                Assert.That(rect.Overlaps(other), Is.False);
+            rects.Add(rect);
+        }
+        if (!PathCards().gameObject.activeSelf)
+            return;
+        foreach (Button button in PathCards().GetComponentsInChildren<Button>())
+        {
+            ((RectTransform)button.transform).GetWorldCorners(corners);
+            Vector3 lo = safe.InverseTransformPoint(corners[0]);
+            Vector3 hi = safe.InverseTransformPoint(corners[2]);
+            var rect = Rect.MinMaxRect(lo.x, lo.y, hi.x, hi.y);
+            Assert.That(safe.rect.Contains(rect.min) && safe.rect.Contains(rect.max), Is.True, button.name);
+            foreach (Rect other in rects)
+                Assert.That(rect.Overlaps(other), Is.False, button.name);
+        }
+    }
+
+    private void RankedRun(int level = 12, bool chosen = false, int ranks = 0, int points = 11, bool futureRows = false)
+    {
+        CharacterSpec character = AssetDatabase.LoadAssetAtPath<CharacterDefinition>("Assets/_Project/Data/Characters/Ranger.asset").ToSpec();
+        _tree = AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>("Assets/_Project/Data/Trees/Ranger.asset").ToSpec();
+        PathSpec path = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/Marksman.asset").ToSpec(character.Id);
+        var skills = new List<SkillSpec>();
+        foreach (string guid in AssetDatabase.FindAssets("t:SkillDefinition", new[] { "Assets/_Project/Data/Skills" }))
+        {
+            SkillSpec skill = AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
+            if (skill.Id.Value.StartsWith("skill.ranger.", StringComparison.Ordinal) || skill.Id.Value.StartsWith("skill.marksman.", StringComparison.Ordinal))
+                skills.Add(skill);
+        }
+        if (futureRows)
+        {
+            var pathSkills = path.Skills.ToList();
+            foreach (int unlock in new[] { 17, 20 })
+            {
+                SkillSpec skill = Passive($"skill.test.path{unlock}");
+                skills.Add(skill);
+                pathSkills.Add(new PathSkillSpec(new SkillBranchSpec(skill.NameKey, new[] { (IReadOnlyList<ContentId>)new[] { skill.Id } }), unlock));
+            }
+            path = new PathSpec(path.Id, path.CharacterId, path.NameKey, path.DescriptionKey, pathSkills);
+        }
+        _catalog = new ContentCatalog(new[] { character }, new[] { Husk() }, new[] { Mode(free: true) }, skills, new[] { _tree }, paths: new[] { path });
+        _session = new RunSession(_catalog, _random, _hub, new RecordingIntents(), new RunRecorder(_random, _clock, _hub), Capacity, DeviceCap, ProjectileCapacity);
+        var snapshot = new RunSnapshot(RunSnapshot.CurrentVersion, new ContentId(ModeId), character.Id, _random.Seed, 1,
+            new RandomState(101, 102, 103, 104, 105), 90f, 0f, 120f, Instant, level, 0f, points,
+            Array.Empty<ContentId>(), new ContentId[SkillRunner.MaxManualSlots], default, Array.Empty<ContentId>(), Array.Empty<ContentId>(), Array.Empty<ContentId>());
+        _session.Start(new RunConfig(new ContentId(ModeId), character.Id, _random.Seed, 1, SpawnPlan.Empty, snapshot));
+        if (chosen)
+            _session.ChoosePath(path.Id);
+        for (int r = 1; r <= ranks; r++)
+            _session.TakeNode(path.Skills[0].Ranks.Tier(r)[0]);
+        BuildScreen(Shipped());
+        _presenter.UsePixelsPerDp(1f);
+        _presenter.Open(null);
+    }
+
+    private PathCardsView PathCards() => Field<PathCardsView>(_presenter, "_pathCards");
+    private TreeNodeButton Steady() => CellFor("skill.marksman.steady-aim");
+    private static void TapRank(TreeNodeButton cell) => Field<Button>(cell, "_button").onClick.Invoke();
+
     private void StartRun(
         int level = 1,
         int pending = 0,
@@ -1619,7 +1841,7 @@ public sealed class TreeViewPresenterTests
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
-    private static ModeSpec Mode()
+    private static ModeSpec Mode(bool free = false)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -1642,7 +1864,7 @@ public sealed class TreeViewPresenterTests
             // is in another assembly.
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
-            new[] { new ArenaEntry(new ContentId(ArenaId)) });
+            new[] { new ArenaEntry(new ContentId(ArenaId)) }, hasFreePick: free);
     }
 
     private static float[] Alternating(int count)

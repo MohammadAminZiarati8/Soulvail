@@ -39,7 +39,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-01b** — A path is chosen from level 11: `PathFlow`, the free-pick command, derived on resume, no Overflow while a path has room (M)
 - [x] **MK-02a** — Steady Aim and Eagle Eye in core: standing stacks, the stop crit, the full-stack guard, far-target damage (M)
 - [x] **MK-02b** — The Marksman authored: `PathDefinition`, the Ranger's three path slots, Steady Aim and Eagle Eye as assets (M)
-- [ ] **MK-03** — The tree screen: one icon per skill with rank pips, path cards, level-locked rows (M) · [spec](tasks/MK-03-the-tree-shows-a-path.md)
+- [x] **MK-03** — The tree screen: one icon per skill with rank pips, path cards, level-locked rows (M)
 - [ ] **MK-04** — The skill arc: every active a circle beside the roll, tap casts, long-press toggles auto; passives in the corner; auto-casts 0.5 s apart (M) · [spec](tasks/MK-04-the-skill-arc.md)
 - [ ] **MK-05** — The status row: buffs and debuffs beside the HP bar with timers and stacks (M) · [spec](tasks/MK-05-the-status-row.md)
 - [ ] **MK-06a** — Enemies can be stunned, rooted and slowed (M) · [spec](tasks/MK-06a-stun-root-and-slow.md)

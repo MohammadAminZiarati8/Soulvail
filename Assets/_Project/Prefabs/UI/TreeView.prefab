@@ -1038,6 +1038,8 @@ MonoBehaviour:
   _cellTemplate: {fileID: 7383040514034832149}
   _block: {fileID: 950341340779483733}
   _card: {fileID: 5007287695882082501}
+  _pathCards: {fileID: 7632127309829324154}
+  _pathCharacter: {fileID: 11400000, guid: 99cf9a2515092c846bee505b3dbaaeeb, type: 2}
   _pointsLabel: {fileID: 3531754787844597760}
   _frame: {fileID: 8965892627871277980}
   _ribbon: {fileID: 5829234326298057167}
@@ -1122,6 +1124,7 @@ RectTransform:
   - {fileID: 1875282763762324564}
   - {fileID: 4044386578193274969}
   - {fileID: 3373420680981602697}
+  - {fileID: 6501847807045113944}
   m_Father: {fileID: 7551956262682476728}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2480,6 +2483,57 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1 &5898663113256442239
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6501847807045113944}
+  - component: {fileID: 7632127309829324154}
+  m_Layer: 0
+  m_Name: PathCards
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &6501847807045113944
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5898663113256442239}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8878067209121586064}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &7632127309829324154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5898663113256442239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e087241b78d4c16b06e96d1a52ca490, type: 3}
+  m_Name: ''
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.PathCardsView
+  _labelTemplate: {fileID: 6882252547738072067}
+  _panelSprite: {fileID: 21300000, guid: 54f91231c3397ce4eb64ba1c06084dba, type: 3}
+  _buttonSprite: {fileID: 21300000, guid: c4b8cf8331e779143abdb3fa63a31b8e, type: 3}
 --- !u!1 &5957798668197481607
 GameObject:
   m_ObjectHideFlags: 0

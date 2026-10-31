@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using TMPro;
 using UnityEngine;
@@ -103,6 +104,60 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>The presenter's handler, handed the node on a tap.</summary>
         private Action<ContentId> _tapped;
+
+        private readonly List<Image> _pips = new List<Image>();
+        public int RankCount { get; private set; }
+        public int FilledPips { get; private set; }
+        public bool HasCyanEdge { get; private set; }
+        public string LockText => _numeral != null ? _numeral.text : string.Empty;
+
+        public void ShowRanks(SkillSpec skill, NodeState state, Sprite icon, int ranks, int taken,
+            bool takeable, int unlockLevel, int level, Soulvail.Core.Ports.ILocalizer localizer, bool preview, bool active = false)
+        {
+            Show(skill, state, icon, 1, takeable);
+            RankCount = ranks;
+            FilledPips = taken;
+            HasCyanEdge = active || skill.Kind == SkillKind.Active;
+            if (_tile != null)
+            {
+                var edge = _tile.GetComponent<Outline>();
+                if (edge == null)
+                    edge = _tile.gameObject.AddComponent<Outline>();
+                edge.effectColor = HasCyanEdge ? Palette.Player : Palette.HudCaption;
+                edge.effectDistance = new Vector2(2f, -2f);
+            }
+            if (_numeral != null)
+            {
+                _numeral.text = level < unlockLevel
+                    ? localizer.Format(new LocKey("ui.tree.unlocks-at"), unlockLevel) : string.Empty;
+                RectTransform label = _numeral.rectTransform;
+                label.anchorMin = label.anchorMax = new Vector2(0.5f, 0f);
+                label.pivot = new Vector2(0.5f, 0f);
+                float tileSide = ((RectTransform)transform).rect.width;
+                label.sizeDelta = new Vector2(tileSide, tileSide * 0.25f);
+                label.anchoredPosition = new Vector2(0f, tileSide * 0.17f);
+                _numeral.alignment = TextAlignmentOptions.Center;
+            }
+            if (_icon != null && preview)
+                _icon.color = Palette.NodeLocked;
+            while (_pips.Count < ranks)
+            {
+                var pip = new GameObject("RankPip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                pip.transform.SetParent(transform, false);
+                var image = pip.GetComponent<Image>();
+                image.raycastTarget = false;
+                _pips.Add(image);
+            }
+            float side = ((RectTransform)transform).rect.width;
+            for (int i = 0; i < _pips.Count; i++)
+            {
+                Image pip = _pips[i];
+                pip.gameObject.SetActive(i < ranks);
+                pip.color = i < taken ? Palette.Player : Palette.NodeLocked;
+                Place(pip.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), side * 0.09f,
+                    new Vector2((i - ((ranks - 1) / 2f)) * side * 0.14f, side * 0.04f));
+            }
+        }
 
         /// <summary>Whether the tile is currently drawn.</summary>
         public bool IsShown => gameObject.activeSelf;

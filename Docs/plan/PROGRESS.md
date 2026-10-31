@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks and device notes: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-02b built._
+_Updated 2026-10-31, MK-03 built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-02b**: Marksman path, eight ranks, Ranger slots, loc and placeholder icons. |
-| **Next task** | **MK-03**: tree screen with path cards, rank pips and level gates. |
-| **Verified** | EditMode 4 834: 4 833 pass, 0 fail, 1 known clock inconclusive; MK-02b 7/7. Compiler errors 0; new analyzer warnings 0; format clean (9 files). Boot/Jungle start smoke pass; root passes alone (batch teardown issue below). |
+| **Last merged** | **MK-03**: ranked skill icons, level rows, path preview/choice and next-rank Learn. |
+| **Next task** | **MK-04**: skill arc, manual casts, auto toggles and passive icons. |
+| **Verified** | EditMode 4 846: 4 845 pass, 0 fail, 1 known clock inconclusive; tree presenter 38/38 (12 new MK-03 cases). Compiler errors 0; new analyzer warnings 0; format clean (6 C# files). URP UI renders at 360 x 780 and 411 x 914; four path rows fit. |
 
 ## What works
 
@@ -25,7 +25,7 @@ threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
 Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.
 Boss bar one line, none overhead; boss adds pay no XP. Saves run v4/profile v5, older load.
-Clash UI; `LocKey` strings. Ranger offers three path slots from level 11; Marksman has Steady Aim (5 ranks, level 11) and Eagle Eye (3, level 14). Boot collects path skills, loc and cyan-tinted placeholders. Choosing a path in play awaits MK-03's screen.
+Clash UI; `LocKey` strings. Ranger offers three path slots from level 11; Marksman has Steady Aim (5 ranks, level 11) and Eagle Eye (3, level 14). Boot collects path skills, loc and cyan-tinted placeholders. Paused tree groups ranks into pips; path cards preview and choose, level rows lock, Learn advances one rank through core.
 
 ## What does not work yet
 

@@ -47,3 +47,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [ ] [Editor] Confirm boot and a Jungle run look unchanged; no path selection UI is expected until MK-03. Automated boot/run smoke checks are reported in the commit body.
 - [ ] [Editor] Recheck run-to-boot teardown: MK-02b's smoke batch hit MissingReferenceException in CoverViews.Dispose/Lift after Jungle start. Boot and run-start checks passed; teardown code is unchanged.
   Isolated RootScope_SurvivesSceneLoad rerun: 1/1 pass with a clean console.
+
+## MK-03 — Tree path screen (2026-10-31)
+
+- [ ] **Editor:** DT-01 test start at stage **12+** (stage 12 for the first check) to reach the path. Open the tree: Ranger's Quick Draw, Volley and Fleet Foot share the bottom row, with rank pips; above are three path cards, two Coming soon. Preview Marksman, then Choose; cards disappear, Steady Aim is learnable at Lv 11, Eagle Eye stays locked until Lv 14. Learn repeatedly: the next rank's text and pips advance, spending one point; MAX disables Learn. Check cyan edges on Volley/actives, the points pill, pause and Close.
+- [ ] **Editor:** Soulvail/Capture Look at **411 x 914** and **360 x 780**, before and after choosing Marksman: no clipped icons, labels or detail text; no overlap. Final art and device legibility remain owner checks.

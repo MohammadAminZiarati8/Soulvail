@@ -41,3 +41,9 @@ owner deletes items as they pass.
 Editor only (BlueStacks Vulkan crash). DPI 120 vs phone ~400 ([Traps §9](../Traps.md#9-rendering-canvas-and-tmp)). Deferred: multi-touch, kill-from-recents,
 haptics, latency, frame time at depth, thermal, screen-open cost, hero-sheet scroll feel.
 Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
+
+## MK-02b — Marksman authored (2026-10-31)
+
+- [ ] [Editor] Confirm boot and a Jungle run look unchanged; no path selection UI is expected until MK-03. Automated boot/run smoke checks are reported in the commit body.
+- [ ] [Editor] Recheck run-to-boot teardown: MK-02b's smoke batch hit MissingReferenceException in CoverViews.Dispose/Lift after Jungle start. Boot and run-start checks passed; teardown code is unchanged.
+  Isolated RootScope_SurvivesSceneLoad rerun: 1/1 pass with a clean console.

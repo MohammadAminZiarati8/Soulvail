@@ -30,11 +30,12 @@ namespace Soulvail.Game.Authoring;
 public sealed class SkillIconBook
 {
     private readonly Dictionary<ContentId, Sprite> _icons;
+    private readonly Dictionary<ContentId, Color> _tints;
 
     /// <param name="icons">Each skill's icon by its id. Copied, so a later change to the source does not reach the book.</param>
     /// <exception cref="ArgumentNullException"><paramref name="icons"/> is null.</exception>
     /// <exception cref="ArgumentException">An entry is keyed by <c>default(ContentId)</c>.</exception>
-    public SkillIconBook(IReadOnlyDictionary<ContentId, Sprite> icons)
+    public SkillIconBook(IReadOnlyDictionary<ContentId, Sprite> icons, IReadOnlyDictionary<ContentId, Color> tints = null)
     {
         if (icons is null)
         {
@@ -42,6 +43,7 @@ public sealed class SkillIconBook
         }
 
         _icons = new Dictionary<ContentId, Sprite>(icons.Count);
+        _tints = tints is null ? new Dictionary<ContentId, Color>() : new Dictionary<ContentId, Color>(tints);
 
         foreach (KeyValuePair<ContentId, Sprite> entry in icons)
         {
@@ -71,4 +73,8 @@ public sealed class SkillIconBook
     /// </summary>
     public Sprite For(ContentId skillId) =>
         skillId.Value is not null && _icons.TryGetValue(skillId, out Sprite icon) ? icon : null;
+
+    /// <summary>Placeholder art's tint; authored art and unknown ids default to white.</summary>
+    public Color TintFor(ContentId skillId) =>
+        skillId.Value is not null && _tints.TryGetValue(skillId, out Color tint) ? tint : Color.white;
 }

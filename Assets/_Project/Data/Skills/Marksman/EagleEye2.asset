@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: EagleEye2
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.marksman.eagle-eye-2
+  _nameKey: skill.marksman.eagle-eye-2.name
+  _descriptionKey: skill.marksman.eagle-eye-2.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: 9c87e4655378c6541882f00a444c5d20, type: 2}
+  - {fileID: 11400000, guid: 3fa288079c1ea4348962466d9fe0b089, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: 3a2557c25bec17b4aba0d3b246122d16, type: 2}
+  _icon: {fileID: 21300000, guid: 45da503226699424c8699dbe05cba358, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

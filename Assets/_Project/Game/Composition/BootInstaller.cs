@@ -230,7 +230,38 @@ public static class BootInstaller
 
         // Hoisted into a local like the two above, so the icon book below is built from the same
         // converted ids the catalog holds (UI-01e).
-        SkillSpec[] skillSpecs = Convert(skills, definition => definition.ToSpec(), "skill", nameof(skills));
+        var allSkills = new List<SkillDefinition>(skills);
+        var paths = new List<PathSpec>();
+        var iconTints = new Dictionary<ContentId, Color>();
+
+        for (int c = 0; c < characters.Count; c++)
+        {
+            foreach (PathDefinition path in characters[c].PathSlots)
+            {
+                if (path == null)
+                {
+                    continue;
+                }
+
+                paths.Add(path.ToSpec(characterSpecs[c].Id));
+
+                foreach (PathDefinition.SkillField skill in path.Skills)
+                {
+                    foreach (SkillDefinition rank in skill.Ranks)
+                    {
+                        if (!allSkills.Contains(rank))
+                        {
+                            allSkills.Add(rank);
+                        }
+
+                        // Reused Ranger art, cyan until dedicated path art arrives (MK-03 draws it).
+                        iconTints[new ContentId(rank.Id)] = new Color(0.55f, 1f, 1f, 1f);
+                    }
+                }
+            }
+        }
+
+        SkillSpec[] skillSpecs = Convert(allSkills, definition => definition.ToSpec(), "skill", nameof(skills));
 
         // Hoisted for the place book below, as the skills are for the icon book.
         ModeSpec[] modeSpecs = Convert(modes, definition => definition.ToSpec(), "mode", nameof(modes));
@@ -245,7 +276,8 @@ public static class BootInstaller
                 bosses ?? Array.Empty<BossDefinition>(),
                 definition => definition.ToSpec(),
                 "boss",
-                nameof(bosses))));
+                nameof(bosses)),
+            paths));
 
         // After the catalog and not before, so a pair of definitions sharing an id is reported by
         // ContentCatalog — which is the message that names the failure people already know how to
@@ -259,7 +291,7 @@ public static class BootInstaller
         builder.RegisterInstance(BuildCharacterLookBook(characters, characterSpecs));
 
         // The skills' icons (UI-01e), after the catalog and at the root for the two books' reasons.
-        builder.RegisterInstance(BuildSkillIconBook(skills, skillSpecs));
+        builder.RegisterInstance(BuildSkillIconBook(allSkills, skillSpecs, iconTints));
 
         // Which classes class select shows (RS-05c). Always registered, so everything that asks
         // for it resolves; an omitted list is an empty roster, which shows every class.
@@ -470,7 +502,8 @@ public static class BootInstaller
     /// <see cref="BuildCharacterLookBook"/>'s shape: keyed by the spec's id, index-parallel with the
     /// definitions. A skill with no icon is left out, and the book answers null for it.
     /// </remarks>
-    private static SkillIconBook BuildSkillIconBook(IReadOnlyList<SkillDefinition> definitions, SkillSpec[] specs)
+    private static SkillIconBook BuildSkillIconBook(
+        IReadOnlyList<SkillDefinition> definitions, SkillSpec[] specs, IReadOnlyDictionary<ContentId, Color> tints)
     {
         var icons = new Dictionary<ContentId, Sprite>(specs.Length);
 
@@ -482,7 +515,7 @@ public static class BootInstaller
             }
         }
 
-        return new SkillIconBook(icons);
+        return new SkillIconBook(icons, tints);
     }
 
     /// <summary>

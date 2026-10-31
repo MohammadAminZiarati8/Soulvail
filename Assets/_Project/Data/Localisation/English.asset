@@ -548,3 +548,44 @@ MonoBehaviour:
     _text: Mother Pitcher
   - _key: enemy.pitcher_bud.name
     _text: Pitcher Bud
+  - _key: path.ranger.marksman.name
+    _text: Marksman
+  - _key: path.ranger.marksman.description
+    _text: Stand your ground. Every arrow you loose standing still hits harder.
+  - _key: skill.marksman.steady-aim.name
+    _text: Steady Aim 1
+  - _key: skill.marksman.steady-aim.description
+    _text: Each arrow you loose standing still deals +5% damage, up to 5 times. Moving
+      or rolling resets it.
+  - _key: skill.marksman.steady-aim-2.name
+    _text: Steady Aim 2
+  - _key: skill.marksman.steady-aim-2.description
+    _text: Each standing arrow adds +7% damage, up to 5 times. Moving or rolling
+      resets it.
+  - _key: skill.marksman.steady-aim-3.name
+    _text: Steady Aim 3
+  - _key: skill.marksman.steady-aim-3.description
+    _text: The first arrow after stopping deals double damage. Standing arrows still
+      add +7% damage, up to 5 times.
+  - _key: skill.marksman.steady-aim-4.name
+    _text: Steady Aim 4
+  - _key: skill.marksman.steady-aim-4.description
+    _text: Each standing arrow adds +9% damage, up to 5 times. The first arrow after
+      stopping still deals double damage.
+  - _key: skill.marksman.steady-aim-5.name
+    _text: Steady Aim 5
+  - _key: skill.marksman.steady-aim-5.description
+    _text: At 5 standing-arrow stacks, take 20% less damage. Moving or rolling resets
+      the stacks.
+  - _key: skill.marksman.eagle-eye.name
+    _text: Eagle Eye 1
+  - _key: skill.marksman.eagle-eye.description
+    _text: Gain +1 m range and deal +10% damage to targets farther than 6 m.
+  - _key: skill.marksman.eagle-eye-2.name
+    _text: Eagle Eye 2
+  - _key: skill.marksman.eagle-eye-2.description
+    _text: Gain +2 m range and deal +20% damage to targets farther than 6 m.
+  - _key: skill.marksman.eagle-eye-3.name
+    _text: Eagle Eye 3
+  - _key: skill.marksman.eagle-eye-3.description
+    _text: Gain +3 m range and deal +30% damage to targets farther than 6 m.

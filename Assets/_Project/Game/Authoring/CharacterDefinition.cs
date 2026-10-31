@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Soulvail.Core.Content;
 using Soulvail.Game.Views;
 using UnityEngine;
@@ -36,6 +37,12 @@ namespace Soulvail.Game.Authoring
     {
         [SerializeField] private string _id = "character.new";
         [SerializeField] private string _nameKey = "character.new.name";
+
+        [SerializeField] private PathDefinition[] _paths = new PathDefinition[3];
+        [SerializeField, Min(0)] private int _pathOpensAtLevel;
+
+        /// <summary>Three cards in display order; empty slots are coming soon.</summary>
+        public IReadOnlyList<PathDefinition> PathSlots => Array.AsReadOnly(_paths);
 
         [Tooltip("The one line the class-select screen's card draws under the name (M5-07). " +
                  "Required — there is no such thing as a class with nothing to say about it, and " +
@@ -414,7 +421,9 @@ namespace Soulvail.Game.Authoring
                         : null,
                     _volleyArrows > 0
                         ? new VolleySpec(_volleyArrows, _volleyFanAngleDeg, _volleyDamageMultiplier)
-                        : null);
+                        : null,
+                    pathIds: PathIds(),
+                    pathOpensAtLevel: _pathOpensAtLevel);
             }
             catch (ArgumentException inner)
             {
@@ -451,6 +460,27 @@ namespace Soulvail.Game.Authoring
             string.IsNullOrEmpty(_attackNameKey) ? default : new LocKey(_attackNameKey),
             string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey),
             _volleyProjectile);
+
+        /// <summary>Only filled cards cross into core as available paths.</summary>
+        private IReadOnlyList<ContentId> PathIds()
+        {
+            if (_paths is null || _paths.Length != 3)
+            {
+                throw new ArgumentException("A character needs exactly three path slots.");
+            }
+
+            var ids = new List<ContentId>(3);
+
+            foreach (PathDefinition path in _paths)
+            {
+                if (path != null)
+                {
+                    ids.Add(new ContentId(path.Id));
+                }
+            }
+
+            return ids;
+        }
 
         /// <summary>Whether all five Veilrot dials sit at the value that changes nothing.</summary>
         /// <remarks>

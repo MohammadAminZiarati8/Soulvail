@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.CharacterDefinition
   _id: character.ranger
   _nameKey: character.ranger.name
+  _paths:
+  - {fileID: 11400000, guid: 791c799fae66f5c4fa83ce895cf211b1, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  _pathOpensAtLevel: 11
   _descriptionKey: character.ranger.description
   _maxHp: 90
   _speed: 3.2

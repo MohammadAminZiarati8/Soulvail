@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0b38c48bc8f4d54787009501aa08b5d, type: 3}
+  m_Name: Marksman
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.PathDefinition
+  _id: path.ranger.marksman
+  _nameKey: path.ranger.marksman.name
+  _descriptionKey: path.ranger.marksman.description
+  _skills:
+  - _ranks:
+    - {fileID: 11400000, guid: 7ba02d0596bfb1b4085898892c1d9085, type: 2}
+    - {fileID: 11400000, guid: b4d214eef35a6d740b5211d22d76f5f1, type: 2}
+    - {fileID: 11400000, guid: a4624210d20b1a249b24b25637e5027a, type: 2}
+    - {fileID: 11400000, guid: 6baca68d305e92c47a8ea113a5e467ae, type: 2}
+    - {fileID: 11400000, guid: 886e204903018814ab4867702a2ddedb, type: 2}
+    _unlockLevel: 11
+  - _ranks:
+    - {fileID: 11400000, guid: 3a2557c25bec17b4aba0d3b246122d16, type: 2}
+    - {fileID: 11400000, guid: faf4fece010ed4b4ab59c8f3edfea91c, type: 2}
+    - {fileID: 11400000, guid: d7206ed48924ec544a189eadecbc4f5e, type: 2}
+    _unlockLevel: 14

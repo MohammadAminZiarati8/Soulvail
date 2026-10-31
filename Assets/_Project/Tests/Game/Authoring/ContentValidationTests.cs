@@ -1437,6 +1437,21 @@ public sealed class ContentValidationTests
     /// </remarks>
     internal static IEnumerable<AuthoredKey> EveryAuthoredKey()
     {
+        foreach (string path in PathsOf<PathDefinition>())
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<PathDefinition>(path);
+
+            if (asset == null)
+            {
+                continue;
+            }
+
+            var serialized = new SerializedObject(asset);
+
+            yield return new AuthoredKey(path, "the path's name key", new LocKey(serialized.FindProperty("_nameKey").stringValue));
+            yield return new AuthoredKey(path, "the path's description key", new LocKey(serialized.FindProperty("_descriptionKey").stringValue));
+        }
+
         foreach (string path in PathsOf<CharacterDefinition>())
         {
             var asset = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path);

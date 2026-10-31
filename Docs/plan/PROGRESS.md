@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks and device notes: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-02a built._
+_Updated 2026-10-31, MK-02b built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-02a**: Steady Aim stacks, stop crit, guard and Eagle Eye in core. |
-| **Next task** | **MK-02b**: author the Marksman path, Steady Aim and Eagle Eye assets. |
-| **Verified** | EditMode 4 827: 4 826 pass, 0 fail, 1 known clock inconclusive; MK-02a 16/16. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **MK-02b**: Marksman path, eight ranks, Ranger slots, loc and placeholder icons. |
+| **Next task** | **MK-03**: tree screen with path cards, rank pips and level gates. |
+| **Verified** | EditMode 4 834: 4 833 pass, 0 fail, 1 known clock inconclusive; MK-02b 7/7. Compiler errors 0; new analyzer warnings 0; format clean (9 files). Boot/Jungle start smoke pass; root passes alone (batch teardown issue below). |
 
 ## What works
 
@@ -25,7 +25,7 @@ threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
 Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.
 Boss bar one line, none overhead; boss adds pay no XP. Saves run v4/profile v5, older load.
-Clash UI; `LocKey` strings. Core path choice opens at the class level gate, restores from taken IDs, and banks points while a path has room; authoring/cards follow in MK-02b/MK-03. Standing arrows build damage stacks, the first can crit, full stacks guard; Eagle Eye boosts far shots. These remain inert until assets grant them.
+Clash UI; `LocKey` strings. Ranger offers three path slots from level 11; Marksman has Steady Aim (5 ranks, level 11) and Eagle Eye (3, level 14). Boot collects path skills, loc and cyan-tinted placeholders. Choosing a path in play awaits MK-03's screen.
 
 ## What does not work yet
 
@@ -47,3 +47,4 @@ Clash UI; `LocKey` strings. Core path choice opens at the class level gate, rest
 9. Nothing damages a Wight. The Knight's Charge root curve snaps 0.22 m.
 10. HUD ~15 draw calls (no atlas). No PlayMode row taps Continue. Disk near full.
 11. Mother phase beats clear phase summons only; pod Frogs can survive (existing code; JG-12h As built).
+12. Boot smoke batch: unloading a run can make CoverViews.Dispose reactivate a destroyed cover (MK-02b verification).

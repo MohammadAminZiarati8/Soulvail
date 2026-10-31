@@ -42,7 +42,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-03** — The tree screen: one icon per skill with rank pips, path cards, level-locked rows (M)
 - [x] **MK-04** — The skill arc: every active a circle beside the roll, tap casts, long-press toggles auto; passives in the corner; auto-casts 0.5 s apart (M)
 - [x] **MK-05** — The status row: buffs and debuffs beside the HP bar with timers and stacks (M)
-- [ ] **MK-06a** — Enemies can be stunned, rooted and slowed (M) · [spec](tasks/MK-06a-stun-root-and-slow.md)
+- [x] **MK-06a** — Enemies can be stunned, rooted and slowed (M)
 - [ ] **MK-06b** — Stun, root and slow are drawn on the enemy and over its bar (M) · [spec](tasks/MK-06b-stun-root-and-slow-drawn.md)
 - [ ] **MK-07a** — Rain of Arrows in core (M) · [spec](tasks/MK-07a-rain-of-arrows.md)
 - [ ] **MK-07b** — Rain of Arrows drawn and authored (M) · [spec](tasks/MK-07b-rain-of-arrows-drawn.md)

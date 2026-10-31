@@ -165,6 +165,9 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
   pending spawns). `Clear` is the exception.
 - A Spitter's aim never cancels (the dodge is the flight); a Chaser's windup can.
 - Walking in follows `PathDirectionToPlayer`; walking out is `−DirectionToPlayer`.
+- No behaviour knows crowd control. A stunned agent's behaviour is not ticked (`EnemySystem` writes
+  it a stand-still move); a rooted agent's every `EnemyMove` loses its velocity in `EnemySystem`'s
+  `RootGate` — the one derived `EnemyTickContext`, built once per tick only while something is rooted.
 - `EnemyRegistry.Alive` means registered; check `IsAlive`.
 - `Targeter`'s cadence accumulator is never reset by an immediate retarget. `FocusedTargetId` lags
   `Focus(id)` by a tick. `TargetScorer` breaks exact ties to the lowest id, even against the

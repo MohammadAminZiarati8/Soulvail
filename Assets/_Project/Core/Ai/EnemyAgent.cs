@@ -61,6 +61,8 @@ public sealed class EnemyAgent
         ContactDamage = new Stat(spec.ContactDamage);
         DamageTaken = new Stat(1f);
 
+        CrowdControl = new CrowdControl(MoveSpeed);
+
         Blackboard = new EnemyBlackboard();
 
         Initialise(id, spec, position);
@@ -108,6 +110,12 @@ public sealed class EnemyAgent
 
     /// <summary>Multiplier applied to every incoming hit before Health sees it; base 1.</summary>
     public Stat DamageTaken { get; }
+
+    /// <summary>
+    /// Its stun, root and slow timers (MK-06a). Stable across recycling; cleared by
+    /// <see cref="Initialise"/>. Written through <c>EnemySystem</c>, never by a behaviour.
+    /// </summary>
+    public CrowdControl CrowdControl { get; }
 
     /// <summary>Its perception and working memory. The instance is stable across recycling.</summary>
     public EnemyBlackboard Blackboard { get; }
@@ -259,6 +267,10 @@ public sealed class EnemyAgent
         // Wiped *before* the re-basing below rather than after, so nothing is ever briefly true —
         // and with the no-argument overload rather than a list of known sources, because a list is
         // what gets one entry short the first time something else buffs an enemy (Stat.RemoveAll).
+        // The previous life's stun, root and slow, silently (MK-06a rule 8) — and before the wipe
+        // below, so its slow modifier is taken off by its own source rather than swept.
+        CrowdControl.Reset();
+
         Health.MaxHp.RemoveAll();
         MoveSpeed.RemoveAll();
         ContactDamage.RemoveAll();

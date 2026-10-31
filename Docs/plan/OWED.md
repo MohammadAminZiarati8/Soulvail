@@ -63,3 +63,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 
 - [ ] **[Editor]** Start stage 12 as Marksman with Steady Aim: stand still — a cyan-rimmed placeholder icon appears under the HP bar, left-aligned with it, counting 2…5 bottom-right (1 shows no number); move — it vanishes. With rank 5 (Guard), a second icon joins at full stacks and leaves on moving. Clear a stage: the row empties.
 - [ ] **[Editor]** Device Simulator at 360 x 780: the 24 dp row clears the stage chip and the threat arrows. Placeholder art; the HUD is to be redone.
+
+## MK-06a — Stun, root and slow (2026-10-31)
+
+- [ ] **[Editor]** Regression only — nothing applies these yet (MK-07a+) and nothing draws them (MK-06b). Play stages 1–14 and a boss: Frogs, Pitchers, Panthers, Mossguard and Warden/Croaker/Mother move, wind up and strike exactly as before.

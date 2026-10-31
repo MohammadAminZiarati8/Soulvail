@@ -142,6 +142,9 @@ public sealed class EnemySystem
     /// </summary>
     private const float MinDirectionDistance = 1e-4f;
 
+    /// <summary>What a boss keeps of every stun, root and slow duration (MK-06a rule 1).</summary>
+    private const float BossDurationScale = 0.5f;
+
     private readonly ContentCatalog _catalog;
     private readonly IDomainEvents _events;
     private readonly IRandom _random;
@@ -214,6 +217,9 @@ public sealed class EnemySystem
 
     private int _deathCount;
 
+    /// <summary>Zeroes a rooted agent's moves; stands between the behaviours and the sink (MK-06a).</summary>
+    private readonly RootGate _rootGate;
+
     /// <param name="catalog">Where a spawn's <see cref="ContentId"/> becomes an <see cref="EnemySpec"/>.</param>
     /// <param name="events">Where <see cref="EnemySpawned"/> and <see cref="EnemyDespawned"/> go.</param>
     /// <param name="random">
@@ -280,6 +286,8 @@ public sealed class EnemySystem
         // the registry's capacity is the most deaths one tick can produce. Allocated here rather
         // than grown, because Rise puts this write behind every kill (M5-04b rule 2).
         _deaths = new EnemyDeath[Registry.Capacity];
+
+        _rootGate = new RootGate(Registry);
     }
 
     /// <summary>
@@ -593,6 +601,85 @@ public sealed class EnemySystem
     }
 
     /// <summary>
+    /// Stuns a living enemy for <paramref name="seconds"/> (half on a boss): its behaviour is not
+    /// ticked, so its timers freeze and it neither moves nor attacks (MK-06a rule 2).
+    /// </summary>
+    /// <returns><see langword="false"/> for an unknown id or a corpse, with nothing changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is not positive and finite.</exception>
+    public bool Stun(int enemyId, float seconds)
+    {
+        Duration(seconds);
+
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return false;
+        }
+
+        Announce(enemyId, EnemyStatus.Stunned, agent.CrowdControl.Stun(Scaled(agent, seconds)));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Roots a living enemy: its behaviour ticks and may attack, and every move it asks for —
+    /// a dash, a hop, a lunge — is zeroed (MK-06a rule 3).
+    /// </summary>
+    /// <returns>As <see cref="Stun"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">As <see cref="Stun"/>.</exception>
+    public bool Root(int enemyId, float seconds)
+    {
+        Duration(seconds);
+
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return false;
+        }
+
+        Announce(enemyId, EnemyStatus.Rooted, agent.CrowdControl.Root(Scaled(agent, seconds)));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Slows a living enemy's <see cref="EnemyAgent.MoveSpeed"/> by <paramref name="fraction"/>;
+    /// the strongest active slow wins (MK-06a rule 4).
+    /// </summary>
+    /// <returns>As <see cref="Stun"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="fraction"/> is outside (0, <see cref="CrowdControl.MaxSlow"/>], or
+    /// <paramref name="seconds"/> is not positive and finite.
+    /// </exception>
+    public bool Slow(int enemyId, float fraction, float seconds)
+    {
+        if (!(fraction > 0f) || fraction > CrowdControl.MaxSlow)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(fraction),
+                fraction,
+                $"A slow is a fraction in (0, {CrowdControl.MaxSlow}]; a full stop is a root.");
+        }
+
+        Duration(seconds);
+
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return false;
+        }
+
+        Announce(enemyId, EnemyStatus.Slowed, agent.CrowdControl.Slow(fraction, Scaled(agent, seconds)));
+
+        return true;
+    }
+
+    /// <summary>Whether a living enemy is under <paramref name="status"/>; false for an unknown id.</summary>
+    public bool Has(int enemyId, EnemyStatus status) =>
+        TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(status);
+
+    /// <summary>Seconds of <paramref name="status"/> left; 0 for an unknown id.</summary>
+    public float Remaining(int enemyId, EnemyStatus status) =>
+        TryLiving(enemyId, out EnemyAgent agent) ? agent.CrowdControl.Remaining(status) : 0f;
+
+    /// <summary>
     /// Applies <paramref name="amount"/> to the enemy with <paramref name="enemyId"/> at time
     /// <paramref name="now"/> and announces what happened.
     /// </summary>
@@ -697,6 +784,9 @@ public sealed class EnemySystem
             // Above the publish, like the two counters and like Spawn's register-then-announce: by
             // the time anything handles EnemyDied, everything this death is worth has been banked.
             Bank(agent);
+
+            // Death ends every status silently (MK-06a rule 7): nothing about it follows EnemyDied.
+            agent.CrowdControl.Reset();
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
@@ -888,6 +978,33 @@ public sealed class EnemySystem
 
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
 
+        // MK-06a rule 6: every timer counts down before any behaviour runs, in a pass of its own so
+        // a status one behaviour applies to a later agent is not shortened on the tick it landed.
+        bool anyRooted = false;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent agent = agents[i];
+
+            if (!agent.IsAlive)
+            {
+                continue;
+            }
+
+            agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events);
+
+            anyRooted |= agent.CrowdControl.IsRooted;
+        }
+
+        // Rule 3: while anything is rooted the behaviours write through the gate, which zeroes that
+        // agent's moves whoever writes them. One derived context per tick, never per agent.
+        _rootGate.Inner = ctx.Intents;
+
+        EnemyTickContext behaviourCtx = anyRooted
+            ? new EnemyTickContext(
+                ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround)
+            : ctx;
+
         for (int i = 0; i < agents.Length; i++)
         {
             EnemyAgent agent = agents[i];
@@ -904,6 +1021,19 @@ public sealed class EnemySystem
                 continue;
             }
 
+            // Rule 2: a stunned behaviour is not ticked, so a wind-up resumes where it stopped and no
+            // strike can land. It stands instead — without an intent its body would replay the last
+            // velocity it was given. Zero facing keeps the rotation it had.
+            if (agent.CrowdControl.IsStunned)
+            {
+                if (agent.Behaviour != null)
+                {
+                    ctx.Intents.EnemyMove(new EnemyMoveIntent(agent.Id, Vector3.Zero, Vector2.Zero));
+                }
+
+                continue;
+            }
+
             switch (agent.Spec.Behaviour)
             {
                 case EnemyBehaviourKind.Static:
@@ -914,7 +1044,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Bloater:
                 case EnemyBehaviourKind.Lunger:
                 case EnemyBehaviourKind.Bulwark:
-                    agent.Behaviour.Tick(ctx);
+                    agent.Behaviour.Tick(behaviourCtx);
                     break;
 
                 case EnemyBehaviourKind.Boss:
@@ -932,7 +1062,7 @@ public sealed class EnemySystem
                                 + "the one place that holds both its BossSpec and its body.");
                     }
 
-                    agent.Behaviour.Tick(ctx);
+                    agent.Behaviour.Tick(behaviourCtx);
                     break;
 
                 default:
@@ -940,6 +1070,8 @@ public sealed class EnemySystem
                         $"Unhandled enemy behaviour '{agent.Spec.Behaviour}' on '{agent.Spec.Id}'.");
             }
         }
+
+        _rootGate.Inner = null;
 
         // Last, and after the walk rather than inside it — see DespawnAtEndOfTick. Nothing between
         // here and the loop may take a span over the registry.
@@ -1152,6 +1284,30 @@ public sealed class EnemySystem
     /// 10 says an Oathbound run pays one array write per kill and nothing else.
     /// </para>
     /// </remarks>
+    private static void Duration(float seconds)
+    {
+        if (!(seconds > 0f) || float.IsInfinity(seconds))
+        {
+            throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "A status lasts a positive, finite time.");
+        }
+    }
+
+    /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes half; an Elite takes full.</summary>
+    private static float Scaled(EnemyAgent agent, float seconds) =>
+        agent.Behaviour is BossBehaviour ? seconds * BossDurationScale : seconds;
+
+    private bool TryLiving(int enemyId, out EnemyAgent agent) =>
+        Registry.TryGet(enemyId, out agent) && agent.IsAlive;
+
+    /// <summary>Rule 7: a start or a lengthening; 0 means neither, and says nothing.</summary>
+    private void Announce(int enemyId, EnemyStatus status, float seconds)
+    {
+        if (seconds > 0f)
+        {
+            _events.Publish(new EnemyStatusChanged(enemyId, status, seconds));
+        }
+    }
+
     private void Bank(EnemyAgent agent)
     {
         if (_deathCount == _deaths.Length)
@@ -1359,5 +1515,45 @@ public sealed class EnemySystem
         }
 
         return count;
+    }
+    /// <summary>
+    /// The sink a rooted tick's behaviours write to: everything passes through, except that a rooted
+    /// agent's <see cref="IIntentSink.EnemyMove"/> keeps its facing and loses its velocity — so a
+    /// dash, a hop or a lunge plays out on the spot (MK-06a rule 3). Keyed on the intent's id, not
+    /// the agent being ticked, because a boss may steer bodies other than its own.
+    /// </summary>
+    private sealed class RootGate : IIntentSink
+    {
+        private readonly EnemyRegistry _registry;
+
+        public RootGate(EnemyRegistry registry)
+        {
+            _registry = registry;
+        }
+
+        /// <summary>The tick's real sink; set for the behaviour pass and cleared after it.</summary>
+        public IIntentSink Inner { get; set; }
+
+        public void PlayerMove(in PlayerMoveIntent intent) => Inner.PlayerMove(intent);
+
+        public void ConeHit(in ConeHitIntent intent) => Inner.ConeHit(intent);
+
+        public void Charge(in ChargeIntent intent) => Inner.Charge(intent);
+
+        public void EnemyMove(in EnemyMoveIntent intent)
+        {
+            if (_registry.TryGet(intent.Id, out EnemyAgent agent) && agent.CrowdControl.IsRooted)
+            {
+                Inner.EnemyMove(new EnemyMoveIntent(intent.Id, Vector3.Zero, intent.FacingXZ));
+
+                return;
+            }
+
+            Inner.EnemyMove(intent);
+        }
+
+        public void MinionMove(in EnemyMoveIntent intent) => Inner.MinionMove(intent);
+
+        public void EnemyKnockback(in EnemyKnockbackIntent intent) => Inner.EnemyKnockback(intent);
     }
 }

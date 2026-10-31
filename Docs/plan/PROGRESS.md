@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-10-31, MK-05 built._
+_Updated 2026-10-31, MK-06a built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **MK-05**: core status board (8 max, debuffs first, timers/stacks); Steady Aim stacks and guard show as icons under the HP bar. |
-| **Next task** | **MK-06a**: enemies can be stunned, rooted and slowed. |
-| **Verified** | EditMode 4 832: 4 831 pass, 0 fail, 1 known animator-clock inconclusive; new 11/11. PlayMode FrameOrder 20/20. Compiler errors 0; new analyzer warnings 0; format clean (11 C# files). |
+| **Last merged** | **MK-06a**: core stuns, roots and slows enemies (bosses half); behaviours obey without knowing; `EnemyStatusChanged` events. |
+| **Next task** | **MK-06b**: stun, root and slow are drawn on the enemy and over its bar. |
+| **Verified** | EditMode 4 843: 4 842 pass, 0 fail, 1 known animator-clock inconclusive; new 11/11. Compiler errors 0; new analyzer warnings 0; format clean (5 C# files). |
 
 ## What works
 
@@ -32,6 +32,7 @@ including bought casts and Volley, wait 0.5 s after any cast. Untappable corner 
 six-circle ellipse stays outside the stick at 360 dp, with a mirrored cluster option.
 Status row: 24 dp placeholder icons under the HP bar, cyan/violet rims, sweep or stack count;
 cleared at stage boundaries and run end.
+Core crowd control: stun freezes a behaviour, root zeroes its moves, strongest slow wins; undrawn, unused.
 
 ## What does not work yet
 

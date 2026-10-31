@@ -85,6 +85,7 @@ public sealed class TreeRules
     /// <see cref="SkillBranchSpec.NameKey"/> to draw without a second shape to special-case.
     /// </remarks>
     private SkillBranchSpec _splash;
+    private PathSpec _path;
 
     /// <summary>
     /// Each borrowed node's tier, 1-based and the tier it had in its own tree. Null while no branch
@@ -148,19 +149,18 @@ public sealed class TreeRules
     public SkillTreeSpec Tree { get; }
 
     /// <summary>
-    /// How many nodes this run's tree holds. Twenty-seven for a full class (CH §5), plus the
-    /// borrowed branch once one is installed — CH §5.4's <em>"one branch minus its Keystone is 7"</em>.
+    /// How many nodes this run holds: the class tree plus a path or a borrowed branch.
     /// </summary>
     /// <remarks>
     /// Surfaced here because this is the object <see cref="SkillTree"/> is written against: its
     /// <c>IsFull</c> is a comparison against this number and <c>OfferGenerator</c> sizes its buffers
     /// by it. <b>It is no longer <see cref="SkillTreeSpec.NodeCount"/>,</b> which is what a class
-    /// authored, and the gap between the two is exactly the borrowed branch.
+    /// authored, and the gap between the two is the installed path or borrowed branch.
     /// </remarks>
-    public int Count => Tree.NodeCount + (_splash is null ? 0 : _splash.NodeCount);
+    public int Count => Tree.NodeCount + (_splash is null ? 0 : _splash.NodeCount) + (_path?.NodeCount ?? 0);
 
     /// <summary>
-    /// How many branches this run has: three, or four once a branch has been borrowed.
+    /// Class branches plus one per path skill, or one borrowed branch.
     /// </summary>
     /// <remarks>
     /// <b>The number every branch-shaped member is indexed against</b> — this type's
@@ -171,7 +171,9 @@ public sealed class TreeRules
     /// number is what made CH §5.4's borrowed branch an <c>IndexOutOfRangeException</c> rather than
     /// a refusal.
     /// </remarks>
-    public int BranchCount => Tree.Branches.Count + (_splash is null ? 0 : 1);
+    public int BranchCount => Tree.Branches.Count + (_splash is null ? 0 : 1) + (_path?.Skills.Count ?? 0);
+
+    public ContentId PathId => _path?.Id ?? default;
 
     /// <summary>
     /// The borrowed branch's index, or <see cref="NoSplash"/> while none is installed.
@@ -273,6 +275,12 @@ public sealed class TreeRules
             return true;
         }
 
+        if (_path is not null && _path.TryLocate(id, out int skill, out tier))
+        {
+            branch = Tree.Branches.Count + skill;
+            return true;
+        }
+
         if (_splashTiers is not null && _splashTiers.TryGetValue(id, out tier))
         {
             branch = SplashBranch;
@@ -316,7 +324,91 @@ public sealed class TreeRules
                         : $"'{SplashCharacterId}' lent one."));
         }
 
-        return branch < Tree.Branches.Count ? Tree.Branches[branch] : _splash;
+        return branch < Tree.Branches.Count
+            ? Tree.Branches[branch]
+            : _path is not null ? _path.Skills[branch - Tree.Branches.Count].Ranks : _splash;
+    }
+
+    /// <summary>The unlock level of a path skill, or 1 for a class or borrowed node.</summary>
+    public int UnlockLevelOf(ContentId id)
+    {
+        Skill(id);
+        return _path is not null && _path.TryLocate(id, out int skill, out _)
+            ? _path.Skills[skill].UnlockLevel
+            : 1;
+    }
+
+    /// <summary>Validates the whole path before appending any node to the run.</summary>
+    public void InstallPath(PathSpec path, ContentCatalog catalog)
+    {
+        if (path is null)
+        {
+            throw new ArgumentNullException(nameof(path));
+        }
+
+        if (catalog is null)
+        {
+            throw new ArgumentNullException(nameof(catalog));
+        }
+
+        if (_path is not null || _splash is not null)
+        {
+            throw new InvalidOperationException("A run can install one path or borrow one splash branch.");
+        }
+
+        if (path.CharacterId != Tree.CharacterId)
+        {
+            throw new ArgumentException($"Path '{path.Id}' belongs to another class.", nameof(path));
+        }
+
+        var resolved = new List<SkillSpec>(path.NodeCount);
+        int actives = 0;
+
+        for (int skill = 0; skill < path.Skills.Count; skill++)
+        {
+            SkillBranchSpec ranks = path.Skills[skill].Ranks;
+
+            for (int rank = 1; rank <= ranks.TierCount; rank++)
+            {
+                ContentId id = ranks.Tier(rank)[0];
+                SkillSpec spec = catalog.Skill(id);
+
+                if (_specs.ContainsKey(id))
+                {
+                    throw new ArgumentException($"'{id}' is already in the class tree.", nameof(path));
+                }
+
+                bool valid = rank == 1
+                    ? spec.Kind == SkillKind.Active || spec.Kind == SkillKind.Passive
+                    : spec.Kind == SkillKind.Upgrade && spec.ParentId == ranks.Tier(rank - 1)[0];
+
+                if (!valid)
+                {
+                    throw new ArgumentException(
+                        $"'{id}' must start a skill or upgrade its immediately preceding rank.", nameof(path));
+                }
+
+                if (spec.Kind == SkillKind.Active)
+                {
+                    actives++;
+                }
+
+                resolved.Add(spec);
+            }
+        }
+
+        if (ActiveCount + actives > SkillRunner.MaxActives)
+        {
+            throw new ArgumentException("The path exceeds the runner's active capacity.", nameof(path));
+        }
+
+        for (int i = 0; i < resolved.Count; i++)
+        {
+            _specs.Add(resolved[i].Id, resolved[i]);
+        }
+
+        _path = path;
+        ActiveCount += actives;
     }
 
     /// <summary>Whether <paramref name="id"/> is the build-defining node at the end of a branch.</summary>
@@ -452,6 +544,11 @@ public sealed class TreeRules
     /// <exception cref="InvalidOperationException">A branch is already installed.</exception>
     public void InstallSplash(SkillTreeSpec tree, int branch, ContentCatalog catalog)
     {
+        if (_path is not null)
+        {
+            throw new InvalidOperationException("A run with a path cannot borrow a splash branch.");
+        }
+
         if (tree is null)
         {
             throw new ArgumentNullException(nameof(tree));

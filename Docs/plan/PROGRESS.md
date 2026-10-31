@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-31, Marksman specced._
+_Updated 2026-10-31, MK-01a built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-14f**: spear, 2 m stab; Mossguard +27%. |
-| **Next task** | **MK-01a** (Marksman), on the go. |
-| **Verified** | EditMode 4 786: 4 785 pass, 0 fail, 1 known clock inconclusive; JG-14f 9/9. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **MK-01a**: ranked path specs, install and level gate. |
+| **Next task** | **MK-01b**: a path is chosen. |
+| **Verified** | EditMode 4 793: 4 792 pass, 0 fail, 1 known clock inconclusive; MK-01a 7/7. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 

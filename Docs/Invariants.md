@@ -143,6 +143,9 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
   index; never renumber.
 - `TreeRules.BranchCount` is the run's count; `SkillTreeSpec.BranchCount` (3) is per class. A
   borrowed branch is always index 3, appended, never interleaved.
+- A path and a borrowed branch are mutually exclusive. Path skills append at indices 3, 4, …;
+  ranks are one-node tiers, upgrades parented to the preceding rank. `SkillTree.SyncLevel` runs
+  after XP grants and before restored takes; every availability reader uses its level gate.
 - Choosing a position is exactly one draw: draw a start index, then walk deterministically.
 - GD §12's formulas beat its tables.
 - `WaveComposer` spends in `int` against a cumulative share, never a float remainder.

@@ -131,6 +131,7 @@ public sealed class SkillTree
 
     private readonly EffectRegistry _effects;
     private readonly IDomainEvents _events;
+    private int _level = 1;
 
     /// <param name="rules">The class's tree, resolved and cross-checked.</param>
     /// <param name="effects">
@@ -707,6 +708,32 @@ public sealed class SkillTree
                     + "its own.");
         }
 
+        Rebuild();
+    }
+
+    /// <summary>Appends path nodes while preserving the class's taken, banished and Pact flags.</summary>
+    public void OnPathInstalled()
+    {
+        if (Rules.PathId.Value is null)
+        {
+            throw new InvalidOperationException("No path has been installed.");
+        }
+
+        Rebuild();
+    }
+
+    internal void SyncLevel(int level)
+    {
+        if (level < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(level));
+        }
+
+        _level = level;
+    }
+
+    private void Rebuild()
+    {
         if (_nodes.Length == Rules.Count)
         {
             return;
@@ -810,6 +837,11 @@ public sealed class SkillTree
         Node node = _nodes[ordinal];
         SkillSpec spec = node.Spec;
 
+        if (_level < Rules.UnlockLevelOf(spec.Id))
+        {
+            return Gate.Level;
+        }
+
         // Asked of TreeRules rather than recomputed here, at the cost of two dictionary probes per
         // candidate: the keystone exception to the tier rule is the kind of arithmetic that gets
         // copied and then drifts, and an offer is drawn once per pick rather than once per frame.
@@ -856,6 +888,8 @@ public sealed class SkillTree
 
             Gate.Banished =>
                 $"'{spec.Id}' was banished in the Sanctum and is out of this run for good (GD §13.3).",
+
+            Gate.Level => $"'{spec.Id}' unlocks at level {Rules.UnlockLevelOf(spec.Id)}; this run is level {_level}.",
 
             Gate.Tier =>
                 $"'{spec.Id}' is at branch {node.Branch}, tier {node.Tier}, which needs "
@@ -1055,6 +1089,9 @@ public sealed class SkillTree
 
         /// <summary>It was banished — GD §13.3, M6-02b.</summary>
         Banished,
+
+        /// <summary>The path skill's unlock level has not been reached.</summary>
+        Level,
 
         /// <summary>Not enough of its branch is taken for its tier.</summary>
         Tier,

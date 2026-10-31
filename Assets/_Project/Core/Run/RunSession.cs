@@ -743,6 +743,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new SkillTree(treeRules, effects, _events);
 
+        tree?.SyncLevel(progression.Level);
+
         // **A tree that would not fit the runner refuses the run** (M3-06 rule 5, and the owner's
         // ruling at M3-06). The alternative was letting SkillRunner.Add throw on the thirteenth,
         // which lands inside M3-08a's ChooseOffer — *after* SkillTree.Take has recorded the node,
@@ -929,6 +931,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // M3-01b and here (rule 10). **The Pacts ride the same replay** (M6-05a rule 5): a
             // corrupted node's effects go on in its take-order slot, so a `−25 max HP` Pact is on
             // the stat before Health.Restore's clamp for the reason every other take is.
+            // Settle the saved level before replaying takes: path ranks use that level's gate.
+            progression.Restore(resumed.Level, resumed.Xp, resumed.PendingLevelUps);
+            tree?.SyncLevel(progression.Level);
             tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds);
 
             // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
@@ -1052,11 +1057,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             veilrot.Restore(resumed.Economy.Veilrot, resumed.Economy.Claimed);
 
             combat.Health.Restore(resumed.PlayerHp, resumed.PlayerShield);
-
-            // Silent and settling, for the reason the whole block is here: a presenter reading
-            // State.Level from inside RunStarted must already see it, and nothing may publish
-            // before the run it belongs to has been announced (M3-01b rule 7).
-            progression.Restore(resumed.Level, resumed.Xp, resumed.PendingLevelUps);
 
             State.Time = resumed.RunTime;
         }
@@ -1456,6 +1456,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // anything that is not greater than zero, so there is no branch here for a caller to get
         // wrong.
         State.Progression.Grant(State.Enemies.DrainXp());
+        State.Tree?.SyncLevel(State.Progression.Level);
 
         // The same drain in the other currency (M3-12a rule 5), immediately beside it because the
         // two are banked on the same line of EnemySystem and must be spent on the same tick — a

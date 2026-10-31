@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Soulvail.Core.Content;
 
@@ -143,7 +144,9 @@ public sealed class CharacterSpec
         KindlingSpec kindling = null,
         VeilrotSpec veilrot = null,
         UnlockSpec unlock = null,
-        VolleySpec volley = null)
+        VolleySpec volley = null,
+        IReadOnlyList<ContentId> pathIds = null,
+        int pathOpensAtLevel = 0)
     {
         if (id.Value is null)
         {
@@ -181,6 +184,29 @@ public sealed class CharacterSpec
                 "hitIFrames must be a finite number of seconds, zero or more.");
         }
 
+        int pathCount = pathIds?.Count ?? 0;
+
+        if (pathCount == 0 ? pathOpensAtLevel != 0 : pathOpensAtLevel < 2)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(pathOpensAtLevel), "No paths means level 0; paths open at level 2 or later.");
+        }
+
+        var paths = new ContentId[pathCount];
+        var uniquePaths = new HashSet<ContentId>();
+
+        for (int i = 0; i < pathCount; i++)
+        {
+            if (pathIds[i].Value is null || !uniquePaths.Add(pathIds[i]))
+            {
+                throw new ArgumentException("Path ids must be valid and unique.", nameof(pathIds));
+            }
+
+            paths[i] = pathIds[i];
+        }
+
+        PathIds = Array.AsReadOnly(paths);
+        PathOpensAtLevel = pathOpensAtLevel;
         Id = id;
         NameKey = nameKey;
         DescriptionKey = descriptionKey;
@@ -201,6 +227,9 @@ public sealed class CharacterSpec
 
     /// <summary>Stable identity, e.g. <c>character.oathbound</c>.</summary>
     public ContentId Id { get; }
+
+    public IReadOnlyList<ContentId> PathIds { get; }
+    public int PathOpensAtLevel { get; }
 
     /// <summary>Localisation key for the display name — never the name itself.</summary>
     public LocKey NameKey { get; }

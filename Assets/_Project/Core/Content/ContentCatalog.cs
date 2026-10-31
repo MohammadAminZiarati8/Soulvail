@@ -42,6 +42,8 @@ public sealed class ContentCatalog
     private readonly ReadOnlyCollection<SkillTreeSpec> _trees;
     private readonly Dictionary<ContentId, BossSpec> _bossesById;
     private readonly ReadOnlyCollection<BossSpec> _bosses;
+    private readonly Dictionary<ContentId, PathSpec> _pathsById;
+    private readonly ReadOnlyCollection<PathSpec> _paths;
 
     /// <summary>
     /// The trees again, keyed by the class they belong to — see <see cref="TryGetTreeFor"/>.
@@ -95,7 +97,8 @@ public sealed class ContentCatalog
         IReadOnlyList<ModeSpec> modes = null,
         IReadOnlyList<SkillSpec> skills = null,
         IReadOnlyList<SkillTreeSpec> trees = null,
-        IReadOnlyList<BossSpec> bosses = null)
+        IReadOnlyList<BossSpec> bosses = null,
+        IReadOnlyList<PathSpec> paths = null)
     {
         if (characters is null)
         {
@@ -145,7 +148,28 @@ public sealed class ContentCatalog
             "boss",
             nameof(bosses),
             out _bossesById);
+
+        _paths = Index(
+            paths ?? Array.Empty<PathSpec>(),
+            spec => spec.Id,
+            "path",
+            nameof(paths),
+            out _pathsById);
     }
+
+    public IReadOnlyList<PathSpec> Paths => _paths;
+
+    public PathSpec Path(ContentId id)
+    {
+        if (!_pathsById.TryGetValue(id, out PathSpec spec))
+        {
+            throw new KeyNotFoundException($"No path with id '{id}' in the catalog.");
+        }
+
+        return spec;
+    }
+
+    public bool TryGetPath(ContentId id, out PathSpec spec) => _pathsById.TryGetValue(id, out spec);
 
     /// <summary>Every registered character, in the order they were supplied.</summary>
     public IReadOnlyList<CharacterSpec> Characters => _characters;

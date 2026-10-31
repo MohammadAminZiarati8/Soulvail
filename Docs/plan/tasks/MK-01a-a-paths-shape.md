@@ -74,4 +74,15 @@ public sealed class PathSpec {
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-31. Immutable path specs and catalog lookups; optional class path ids/opening level.
+Each path skill is a single-node-per-tier branch appended at 3, 4, …; installation validates
+Active/Passive heads and immediately parented Upgrade ranks before changing the rules. Paths and
+splash branches are mutually exclusive. Tree rebuild preserves taken/banished/Pact flags.
+The shared gate uses the last synced level for availability, offers, free picks and restore;
+RunSession syncs at construction, after XP grants and before replaying restored takes.
+
+Seven tests, one per Behaviour rule: 7/7 pass, including AllocationAssert.None. Full EditMode:
+4 793 total / 4 792 passed / 0 failed / 1 known animator-clock inconclusive; fresh XML start
+2026-10-31 14:41:55Z. Compiler errors 0; new analyzer warnings 0; format clean (8 C# files).
+No fixture ripple required: new constructor arguments default to no paths. Manual steps: none
+(core data/gates only). Choosing, saving, Overflow, authoring and screens remain MK-01b onward.

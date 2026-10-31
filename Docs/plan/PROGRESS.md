@@ -10,7 +10,7 @@ _Updated 2026-10-31, after JG-14e._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
 | **Last merged** | **JG-14e**: 12–14 scripted, 76/110/128 threat. |
-| **Next task** | None planned; awaiting owner. |
+| **Next task** | JG-14f: the spear (stab over shield). |
 | **Verified** | EditMode 4 779: 4 778 pass, 0 fail, 1 known clock inconclusive; Jungle 45/45, JG-14e 5/5. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works

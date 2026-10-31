@@ -2,28 +2,29 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 6 000 bytes.**
 
-_Updated 2026-10-31, after JG-14d._
+_Updated 2026-10-31, after JG-14e._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; `m6` owner to tag. |
-| **Last merged** | **JG-14d**: Mossguard rostered at 11; two scripted waves, authored shield and boot wiring. |
-| **Next task** | JG-14e, awaiting go-ahead. |
-| **Verified** | EditMode 4 774: 4 773 pass, 0 fail, 1 known clock inconclusive; JG-14d 6/6. Compiler errors 0; new analyzer warnings 0; format clean. |
+| **Last merged** | **JG-14e**: 12–14 scripted, 76/110/128 threat. |
+| **Next task** | None planned; awaiting owner. |
+| **Verified** | EditMode 4 779: 4 778 pass, 0 fail, 1 known clock inconclusive; Jungle 45/45, JG-14e 5/5. Compiler errors 0; new analyzer warnings 0; format clean. |
 
 ## What works
 
-Portrait. Home: Heroes, Places. Jungle: 30 stages. Focus switches: Veilrot, Sanctum, disc off;
-BootScope selects Ranger alone. Threat-budgeted waves → door; boss every fifth: Descent Warden,
-Jungle Croaker, except 10 Mother Pitcher. Mother: rooted, three shielding buds/phase facing her,
-five-lob barrage, stone-blocked pulsing spray and goo, ringed pods swell 1 s then hatch Frogs,
-66/33% beats. Scripted Jungle: 1 = 3 Frogs; 2 = 2 Pitchers; 3 = both; 4 = 2 Puffballs;
-6 = 2 Panthers; 7–9 mixed waves. All four have bodies; Pitcher lobs ringed; Descent capsules.
+Portrait; Heroes/Places home. Jungle 30 stages. Veilrot, Sanctum, disc off; Ranger alone.
+Threat-budgeted waves → door; fifth-stage bosses: Descent Warden, Jungle Croaker except 10 Mother.
+Mother: rooted, three facing shield buds/phase, five-lob barrage, stone-blocked pulsing spray/goo,
+ringed pods swell 1 s → Frogs, 66/33% beats. Scripts: 1 = 3 Frogs; 2 = 2 Pitchers;
+3 = both; 4 = 2 Puffballs; 6 = 2 Panthers; 7–9 mixed waves. Stage 11: Mossguard, then one + four
+Frogs; shield blocks, bash, hit feedback. Stages 12–14: shield/spit, pincer, exam; 76 → 110 → 128
+threat. All five have bodies; Pitcher lobs ringed; Descent capsules.
 Ranger: pale trails, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
-Levels bank points; paused tree picks. Death pays Shards. Test start: `TestStart._on` hides it.
-Boss bar one line, none overhead; boss adds pay no XP. Stage 11: one Mossguard, then one + four Frogs; shield blocks, bash, hit feedback. Saves run v4/profile v5, older load.
+Levels bank points; paused tree picks. Death pays Shards. `TestStart._on` hides test start.
+Boss bar one line, none overhead; boss adds pay no XP. Saves run v4/profile v5, older load.
 Clash UI; `LocKey` strings.
 
 ## Owed to the owner (Editor checks)
@@ -58,6 +59,7 @@ Clash UI; `LocKey` strings.
 28. JG-13g: stage 10 fan reads on grass/stone, beats faster; goo splats floor/stone, < 1 s; kill mid wind-up, fan goes; no bar over her.
 29. Stage 5/10: boss adds and pod Frogs give no XP.
 30. JG-14b-d: stage 11 shield/reticle, roll round, bash, block sparks/jolt; wave-two feel.
+31. JG-14e: start 12–14; check mixes, wave-3 door at 14; judge climb 11→15.
 
 ## What does not work yet
 

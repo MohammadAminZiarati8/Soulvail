@@ -54,4 +54,15 @@ Existing rows (stages 1–11, roster, bosses) stay green and cover the rest of r
 
 ## As built
 
-_Filled at merge._
+Built 2026-10-31. Only the two Files-table assets plus this footer, PROGRESS and ROADMAP changed.
+Three `_scriptedStages` entries follow the specified wave order and counts: stage 12 shield/spit,
+13 pincer, 14 exam. Five new JungleTests rows map one-to-one to rules 1–5; threat is summed from
+all five shipped enemy assets, pinning 44 < 76 < 110 < 128. Stages 15/16 remain unscripted;
+existing rows cover stages 1–11, roster, scaling and bosses. No runtime code change.
+
+Verified: full EditMode 4 779 total / 4 778 passed / 0 failed / 1 known animator-clock inconclusive;
+JungleTests 45/45 and JG-14e 5/5. Compiler errors 0, new analyzer warnings 0; dotnet format clean
+(1 file checked). Focused run adds 0 errors/warnings; full-suite failure-path logs are expected.
+
+Manual Editor/device checks remain: Test start 12 shield/spit, 13 pincer, 14 three waves and door
+after wave 3; owner judges the 11–14 climb into Old Croaker at 15. No tuning beyond the spec.

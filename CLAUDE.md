@@ -6,7 +6,9 @@ Solo project. The owner directs the game and playtests; Claude is the engineer. 
 ## Read budget
 
 Every byte read stays in the session and is paid again on every turn. At session start read **only**:
-[PROGRESS](Docs/plan/PROGRESS.md), the named task's spec, and [Invariants](Docs/Invariants.md) if the task touches code.
+[PROGRESS](Docs/plan/PROGRESS.md), the named task's spec, and — if the task touches code — [Invariants](Docs/Invariants.md) §18.2, §18.3 and §18.5.
+Invariants §18.1 (frame order) only when the task touches `RunTicker`, `RunSession.Tick` or a tick phase; §18.4 only for combat, targeting or perception.
+Never read [OWED](Docs/plan/OWED.md) (the owner's Editor checks); append to it.
 Everything else is opened **by section, when needed** (`grep -n '^#'` the file, then read the range):
 
 - [Docs/Workflow.md](Docs/Workflow.md) — git and commit rules, Editor verification, lint, asset naming. Read §1 before committing, §2 before verifying.
@@ -21,7 +23,7 @@ Report test results as counts plus failing names; never paste whole logs. Prefer
 
 1. Build exactly the spec's Files table. Behaviour rules ↔ tests, one to one. Nothing outside the table without saying so.
 2. Before handing over: tests green, zero errors, zero new analyzer warnings, `dotnet format` clean, manual steps listed.
-3. In the same change: fill the spec's *As built* footer (≤ 1 500 bytes), overwrite PROGRESS's rows (≤ 6 000 bytes, never append history), tick the ROADMAP box.
+3. In the same change: write the *As built* record (≤ 1 500 bytes) as the commit body, **delete the spec** and tick its ROADMAP box without the spec link, overwrite PROGRESS's rows (≤ 3 500 bytes, never append history), append manual steps the owner owes to [OWED](Docs/plan/OWED.md).
 4. Commit and push to `dev` per [Workflow §1](Docs/Workflow.md#1-git) (`ALLOW_DIRECT_COMMIT=1`, subject ≤ 72 chars counted, **no `Co-Authored-By`**).
 5. Report what changed. **Anything the owner is meant to copy goes in a fenced code block** — commands, tag messages (labelled as such), and the prompt for the next task.
 6. A task is up to 8 files ([ROADMAP › How to read this](Docs/plan/ROADMAP.md#how-to-read-this)); split before starting, never after.

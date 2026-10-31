@@ -6,26 +6,6 @@
 
 ---
 
-## 0. What changed from v0.1, and why it's better
-
-v0.1 put the skill tree in **meta-progression** — permanent, levelled across runs, with a separate in-run card system beside it. That was wrong for this game.
-
-**The tree is in-run.** You pick a class, enter stage 1, kill things, gain XP, level up mid-run, and each level lets you take a node. At death the tree is gone and the next run builds a new one.
-
-This is strictly better here, and it collapses three problems at once:
-
-| v0.1 problem | Resolved by |
-|---|---|
-| Two progression systems (tree + Sanctum cards) competing for the same design space | **They merge.** The tree *is* the in-run progression. Cards are deleted as a separate system; every former card is now a tree node. |
-| Replay fatigue — good players re-grinding solved early stages | **Dissolved.** Replaying stages 1–10 isn't repeating solved content, it's *rebuilding your build*, which is the core fun. |
-| **Anchors** (§14.3) existed only to paper over that fatigue | **Cut entirely.** A whole system removed from scope. |
-
-Meta-progression shrinks to one job: **unlocking characters**. That's a significant scope reduction, and it makes the game more of a roguelite rather than less.
-
-**v0.3 changed one thing on top of that:** halfway through the tree, a run picks up **one branch of a second unlocked class** (§5.4). It adds no nodes — it multiplies the ones v0.2 already scoped — and it gives the unlocks above something to be worth.
-
----
-
 ## 1. Mode context
 
 This document describes character behaviour in **Descent** — the first and, for V1, only mode.
@@ -397,20 +377,7 @@ If retention data later demands a permanent layer, add it as **cosmetics and cla
 
 ## 7. Scope
 
-Merging cards into the tree and cutting Anchors makes this **smaller** than v0.1, not larger.
-
-| | v0.1 (meta trees + cards) | v0.2 (in-run trees) |
-|---|---|---|
-| Classes in V1 | 2 | **3** |
-| Per class | 33 tree nodes + ~10 cards | **27 tree nodes** |
-| Shared card pool | 24 | — *(deleted)* |
-| Anchors | Yes | **Cut** |
-| Meta systems | XP, levels, skill points, respec, meta tree UI | **Class unlocks only** |
-| Total content units | ~110 | **~81** |
-
-**v0.3 adds no content units.** §5.4's second class is a rule over nodes that already exist: three classes make **18 pairings** where there were three, and the count above stays at ~81. The cost is one screen (**M5-07a-ii**) and a wider draw (**M5-07a-i**).
-
-### 7.1 What was built
+Meta-progression is **class unlocks only**: no respec, no Anchors, no separate card pool (all cut with v0.1). V1 scopes three classes at 27 tree nodes each, ~81 content units.
 
 The Oathbound first and completely, then the Gravecaller, the Emberwright and the Ranger. The current build ships **the Ranger alone** in class select; the other three are switched off, not removed.
 

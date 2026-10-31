@@ -121,24 +121,7 @@ This is the model Archero and Survivor.io use, and it dominates the genre for a 
 
 Critically, **this makes our pillars stronger, not weaker.** P2 already says "movement is the answer." Removing manual aim doesn't remove skill — it concentrates *all* skill into positioning, which is exactly where we wanted it.
 
-### 5.2 Layout (portrait; the diagram below is the old landscape sketch, re-laid by UI-08c)
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ ♥♥♥♥♥♥♥░░  100/100          STAGE 12  ▮▮▮▯▯      ✦ 340  │  ← top strip: safe from thumbs
-│                                                     ▓    │
-│                        ▲                            ▓    │  ← Veilrot bar (right edge)
-│              ▲    ◈────────→   ▲                    ▓    │
-│                  (you)                              ▓    │
-│         ▲              ▲              ▲                  │
-│                                                          │
-│    ╭───╮                                        ╭──╮╭──╮ │
-│    │ ◉ │  ← fixed stick                         │⚡││✦ │ │  ← dash / ability
-│    ╰───╯     (grabbed by any touch in the zone) ╰──╯╰──╯ │
-└──────────────────────────────────────────────────────────┘
-     LEFT ZONE (45%)                          RIGHT ZONE
-     movement only                     buttons + tap-to-focus
-```
+### 5.2 Layout (portrait)
 
 | Input | Gesture | Notes |
 |---|---|---|
@@ -843,29 +826,3 @@ Ranked by how much downstream work they affect.
 | **Keystone** | Tier-8 build-defining tree node. One per branch, three per class. |
 | **Overflow** | Post-full-tree levels: +2% damage and max HP each, uncapped. |
 
----
-
-## Appendix A — References consulted
-
-**Difficulty and roguelite structure**
-- [Risk of Rain 2 — Directors](https://riskofrain2.wiki.gg/wiki/Directors) — the credit/budget spawn director model §12 adapts
-- [Risk of Rain 2 — Difficulty](https://riskofrain2.wiki.gg/wiki/Difficulty) — stage-driven difficulty coefficient
-- [Risk of Rain 2 — Level](https://riskofrain2.fandom.com/wiki/Level) — enemy level derived from the coefficient
-- [Bullet Sponges — Game Design Snacks](https://game-design-snacks.fandom.com/wiki/Bullet_Sponges) — why HP inflation fails as a difficulty lever
-- [There Are Too Many Bullet Sponges In Action Games — Den of Geek](https://www.denofgeek.com/games/bullet-sponges-v/) — the boss-as-sponge failure case
-- [5 Essential Tips to Make Your Roguelite Game Work — Entalto Studios](https://entaltostudios.com/5-essential-tips-to-make-your-roguelite-game-work/) — run length, clarity of death, gradual complexity
-- [RogueWave (Unity roguelite wave shooter)](https://github.com/TheWizardsCode/RogueWave) — spawner placement and elite design as difficulty axes
-
-**Mobile controls**
-- [A Guide To iOS Twin Stick Shooter Usability — Game Developer](https://www.gamedeveloper.com/design/a-guide-to-ios-twin-stick-shooter-usability) — the virtual joystick region and its four core design decisions
-- [Everything I Learned About Dual-Stick Shooter Controls — Game Developer](https://www.gamedeveloper.com/design/everything-i-learned-about-dual-stick-shooter-controls) — sticks beat buttons; auto-fire pairing
-- [Survivor.io: Will It Follow in Archero's Footsteps? — Naavik](https://naavik.co/deep-dives/survivorio-archeros-footsteps/) — the one-finger + auto-aim genre standard
-- [Archero 2 vs. the Competition — Mobile Game Report](https://www.mobilegamereport.com/articles/archero2-vs-competition) — accessibility vs. precision tradeoff against Soul Knight
-- [Control Mode: Auto-Aim — Survivorslikes](https://survivorslikes.com/control-modes/auto-aim/) — auto-aim as a spectrum and as accessibility
-- [Tilt-Touch Synergy (York University)](https://www.yorku.ca/mack/ec2017.html) — empirical: touch beats tilt; never put aiming on tilt
-
-**Mobile performance**
-- [Unity — Introduction to GPU instancing](https://docs.unity3d.com/Manual/GPUInstancing.html) — instancing benefits are larger on mobile; URP SRP Batcher caveat
-- [Reduce Draw Calls Unity 6 Mobile](https://game-developers.org/reduce-draw-calls-unity-6-mobile) — draw call targets, GPU Resident Drawer setup
-- [Unity Draw Call Batching: The Ultimate Guide — TheGamedev.Guru](https://thegamedev.guru/unity-performance/draw-call-optimization/) — batching stack priority, Frame Debugger verification
-- [Art optimization tips for mobile game developers — Unity](https://unity.com/how-to/mobile-game-optimization-tips-part-2) — atlasing, overdraw, baked lighting

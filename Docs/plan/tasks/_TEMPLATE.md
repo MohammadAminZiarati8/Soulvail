@@ -47,7 +47,7 @@ Only these files change. Anything else is a deviation: say so in *As built*.
 
 ## Manual verification (Editor / device)
 
-_Only if a Game-side change is visible._ Numbered steps, each with the expected observation, each tagged **[Editor]** (a probe, or the owner's Play) or **[device]** (deferred until a phone exists — PROGRESS lists them). Steps the owner still owes after merge go into PROGRESS → *Owed to the owner*.
+_Only if a Game-side change is visible._ Numbered steps, each with the expected observation, each tagged **[Editor]** (a probe, or the owner's Play) or **[device]** (deferred until a phone exists — [OWED](../OWED.md) lists them). Steps the owner still owes after merge are appended to [OWED](../OWED.md).
 
 ## Out of scope
 
@@ -55,7 +55,7 @@ _Only if a Game-side change is visible._ Numbered steps, each with the expected 
 
 ## As built
 
-_Filled at merge, **1 500 bytes or fewer, measured** (`awk '/^## As built/,0' <spec> | wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one sentence that names the test that pins it. No superlatives. There is no separate PROGRESS log entry: this footer is the record, and the spec is deleted once its work is merged and its manual steps are done (git keeps it)._
+_Written at merge as the **commit body**, 1 500 bytes or fewer, measured (`wc -c`). Deviations from the above with their reasons, or "as specified"; a finding is one sentence that names the test that pins it. No superlatives. The same commit deletes this spec and ticks its ROADMAP box; `git log` is the record._
 
 ---
 

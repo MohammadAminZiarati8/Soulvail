@@ -15,6 +15,7 @@ public sealed class MossguardModelTests
     private const string Art = "Assets/_Project/Art/Enemies/";
     private const string ModelPath = Art + "Mossguard.fbx";
     private const string ShieldPath = Art + "MossguardShield.fbx";
+    private const string SpearPath = Art + "MossguardSpear.fbx";
     private const string MaterialPath = "Assets/_Project/Materials/Enemies/M_Enemy.mat";
     private const string MinionPath = "Assets/ThirdParty/KayKit/Skeletons/Characters/Skeleton_Minion.fbx";
     private const string ClipFolder = "Assets/ThirdParty/KayKit/Animations/Rig_Medium";
@@ -83,11 +84,50 @@ public sealed class MossguardModelTests
         int shieldTriangles = shield.triangles.Length / 3;
         Assert.That(bodyTriangles, Is.InRange(1200, 2200));
         Assert.That(shieldTriangles, Is.InRange(150, 400));
-        Assert.That(bodyTriangles + shieldTriangles, Is.LessThanOrEqualTo(2500));
+        int spearTriangles = Load(SpearPath).GetComponentInChildren<MeshFilter>(true).sharedMesh.triangles.Length / 3;
+        Assert.That(bodyTriangles + shieldTriangles + spearTriangles, Is.LessThanOrEqualTo(2800));
         Assert.That(body.subMeshCount, Is.EqualTo(1));
         Assert.That(shield.subMeshCount, Is.EqualTo(1));
         Assert.That(body.normals, Has.Length.EqualTo(body.vertexCount));
         Assert.That(shield.normals, Has.Length.EqualTo(shield.vertexCount));
+    }
+
+    [Test]
+    public void MossguardSpear_StaysInBudget()
+    {
+        GameObject spear = Load(SpearPath);
+        Mesh mesh = spear.GetComponentInChildren<MeshFilter>(true).sharedMesh;
+        Assert.That(mesh.triangles.Length / 3, Is.InRange(120, 300));
+        Assert.That(mesh.subMeshCount, Is.EqualTo(1));
+        Assert.That(spear.GetComponentInChildren<MeshRenderer>(true).sharedMaterials,
+            Is.EqualTo(new[] { AssetDatabase.LoadAssetAtPath<Material>(MaterialPath) }));
+        int total = mesh.triangles.Length / 3 + Body().sharedMesh.triangles.Length / 3
+            + Shield().GetComponentInChildren<MeshFilter>(true).sharedMesh.triangles.Length / 3;
+        Assert.That(total, Is.LessThanOrEqualTo(2800));
+        // Atlas UVs stay in exactly the three existing spear swatches.
+        Assert.That(mesh.uv.Select(uv => (Mathf.FloorToInt(uv.x * 8), Mathf.FloorToInt((1f - uv.y) * 4))).Distinct(),
+            Is.EquivalentTo(new[] { (5, 0), (5, 1), (7, 3) }));
+        Assert.That(mesh.normals, Has.Length.EqualTo(mesh.vertexCount));
+    }
+
+    [Test]
+    public void MossguardSpear_FitsTheHand()
+    {
+        GameObject spear = Load(SpearPath);
+        MeshFilter filter = spear.GetComponentInChildren<MeshFilter>(true);
+        Vector3[] vertices = filter.sharedMesh.vertices.Select(v => spear.transform.InverseTransformPoint(filter.transform.TransformPoint(v))).ToArray();
+        Vector3 min = vertices.Aggregate(Vector3.Min), max = vertices.Aggregate(Vector3.Max);
+        Assert.That(max.y - min.y, Is.InRange(1.6f, 2f));
+        Assert.That(SurfaceDistance(Vector3.zero, vertices, filter.sharedMesh.triangles), Is.LessThan(0.08f), "Pivot inside the middle grip wrap.");
+        Assert.That(Mathf.Abs((max.y + min.y) * 0.5f), Is.LessThan(0.15f));
+        GameObject sword = Load("Assets/ThirdParty/KayKit/Adventurers/Props/sword_1handed.fbx");
+        Bounds blade = sword.GetComponentInChildren<MeshFilter>(true).sharedMesh.bounds;
+        Assert.That(blade.center.y, Is.GreaterThan(0f));
+        Assert.That(max.y, Is.GreaterThan(-min.y), "Head toward KayKit's +Y blade axis.");
+        float headWidth = vertices.Where(v => v.y > max.y * 0.6f).Max(v => v.x) - vertices.Where(v => v.y > max.y * 0.6f).Min(v => v.x);
+        float buttWidth = vertices.Where(v => v.y < min.y * 0.6f).Max(v => v.x) - vertices.Where(v => v.y < min.y * 0.6f).Min(v => v.x);
+        Assert.That(headWidth, Is.GreaterThan(buttWidth * 1.3f), "The broad stone head, not the shaft butt, points along the blade.");
+        Assert.That(spear.transform.localRotation, Is.EqualTo(Quaternion.identity));
     }
 
     [Test]

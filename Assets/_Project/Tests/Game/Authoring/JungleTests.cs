@@ -407,7 +407,7 @@ public sealed class JungleTests
         Assert.That(mossguard.ThreatCost, Is.EqualTo(14));
         Assert.That(mossguard.TargetPriority, Is.EqualTo(3));
         Assert.That(mossguard.MoveSpeed, Is.EqualTo(1.6f).Within(1e-5f));
-        Assert.That(mossguard.Reach, Is.EqualTo(1.6f).Within(1e-5f));
+        Assert.That(mossguard.Reach, Is.EqualTo(2f).Within(1e-5f));
         Assert.That(mossguard.WindupTime, Is.EqualTo(0.7f).Within(1e-5f));
         Assert.That(mossguard.RecoverTime, Is.EqualTo(1.5f));
         Assert.That(mossguard.ContactDamage, Is.EqualTo(16f));

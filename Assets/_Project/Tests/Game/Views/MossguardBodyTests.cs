@@ -55,14 +55,14 @@ public sealed class MossguardBodyTests
     }
 
     [Test]
-    public void MossguardBody_BashLandsAtTheWindupsEnd()
+    public void MossguardBody_StabLandsAtTheWindupsEnd()
     {
-        AnimatorStateMachine guard = Controller().layers[1].stateMachine;
-        AnimatorState attack = State(guard, "Attack");
+        AnimatorStateMachine strikeLayer = Controller().layers[2].stateMachine;
+        AnimatorState attack = State(strikeLayer, "Attack");
         var clip = (AnimationClip)attack.motion;
-        Assert.That(clip.name, Is.EqualTo("Melee_Block_Attack"));
+        Assert.That(clip.name, Is.EqualTo("Melee_1H_Attack_Stab"));
         Assert.That(attack.speedParameterActive && attack.speedParameter == "AttackRate", Is.True);
-        AnimatorStateTransition entry = guard.anyStateTransitions.Single(t => t.destinationState == attack);
+        AnimatorStateTransition entry = strikeLayer.anyStateTransitions.Single(t => t.destinationState == attack);
         Assert.That(entry.conditions.Any(c => c.parameter == "Attack" && c.mode == AnimatorConditionMode.If), Is.True);
         Assert.That(entry.conditions.Any(c => c.parameter == "Dead" && c.mode == AnimatorConditionMode.IfNot), Is.True);
         Assert.That(entry.hasExitTime, Is.False);
@@ -76,12 +76,19 @@ public sealed class MossguardBodyTests
         try
         {
             GameObject model = body.transform.Find("Model").gameObject;
-            Transform slot = model.GetComponentsInChildren<Transform>().Single(t => t.name == "handslot.l");
+            Transform slot = model.GetComponentsInChildren<Transform>().Single(t => t.name == "handslot.r");
+            Animator animator = model.GetComponent<Animator>();
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.Rebind();
+            animator.Update(0f);
+            animator.SetLayerWeight(2, 1f);
             float maximum = float.MinValue, blow = -1f;
             for (int frame = 0; frame <= Mathf.RoundToInt(clip.length * clip.frameRate); frame++)
             {
                 float time = frame / clip.frameRate;
-                clip.SampleAnimation(model, time);
+                animator.Play("Blocking", 1, 0f);
+                animator.Play("Attack", 2, time / clip.length);
+                animator.Update(0f);
                 float forward = model.transform.InverseTransformPoint(slot.position).z;
                 if (forward > maximum + 1e-4f)
                 {
@@ -90,15 +97,15 @@ public sealed class MossguardBodyTests
                 }
             }
 
-            Assert.That(maximum, Is.GreaterThan(1f), "The probe must see the bash extend.");
+            Assert.That(maximum, Is.GreaterThan(0.4f), "The masked arm must extend over the held guard.");
+            Assert.That(strike, Is.EqualTo(blow).Within(0.5f / clip.frameRate));
             EnemyAnimatorView view = model.GetComponent<EnemyAnimatorView>();
             view.Construct(hub);
             body.GetComponent<EnemyView>().Bind(11, Vector3.zero);
-            Animator animator = model.GetComponent<Animator>();
             hub.Publish(new EnemyTelegraph(11, 0.7f));
             float rate = animator.GetFloat("AttackRate") * attack.speed;
             Assert.That((blow - from) / rate, Is.EqualTo(0.7f).Within(0.5f / clip.frameRate));
-            Assert.That(attack.transitions.Single().destinationState, Is.EqualTo(guard.defaultState));
+            Assert.That(attack.transitions.Single().destinationState, Is.EqualTo(strikeLayer.defaultState));
         }
         finally
         {
@@ -136,7 +143,7 @@ public sealed class MossguardBodyTests
             Assert.That(AnimationUtility.GetAnimationEvents(clip), Is.Empty);
         }
 
-        AnimatorControllerLayer flinch = controller.layers[2];
+        AnimatorControllerLayer flinch = controller.layers[3];
         Assert.That(flinch.name, Is.EqualTo("Flinch"));
         Assert.That(flinch.defaultWeight, Is.Zero);
         Assert.That(flinch.avatarMask, Is.EqualTo(controller.layers[1].avatarMask));
@@ -146,6 +153,71 @@ public sealed class MossguardBodyTests
         Assert.That(flinch.stateMachine.anyStateTransitions.Single(t => t.destinationState == hit)
             .conditions.Any(c => c.parameter == "Hit" && c.mode == AnimatorConditionMode.If), Is.True);
         Assert.That(hit.transitions.Single().destinationState, Is.EqualTo(flinch.stateMachine.defaultState));
+    }
+
+    [Test]
+    public void MossguardBody_CarriesTheSpear()
+    {
+        Transform spear = Prefab().GetComponentsInChildren<Transform>(true).Single(t => t.name == "Spear");
+        Assert.That(spear.parent.name, Is.EqualTo("handslot.r"));
+        Assert.That(spear.localPosition, Is.EqualTo(Vector3.zero));
+        Assert.That(spear.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(spear.localScale, Is.EqualTo(Vector3.one));
+        Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(spear.gameObject),
+            Is.EqualTo(AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Art/Enemies/MossguardSpear.fbx")));
+    }
+
+    [Test]
+    public void MossguardBody_StrikeLayerIsTheRightArm()
+    {
+        AnimatorController controller = Controller();
+        Assert.That(controller.layers.Select(l => l.name), Is.EqualTo(new[] { "Base Layer", "Guard", "Strike", "Flinch" }));
+        AnimatorControllerLayer strike = controller.layers[2];
+        Assert.That(strike.defaultWeight, Is.Zero);
+        Assert.That(strike.blendingMode, Is.EqualTo(AnimatorLayerBlendingMode.Override));
+        AvatarMask mask = strike.avatarMask;
+        Assert.That(mask, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AvatarMask>(Root + "Animation/Masks/AM_Mossguard_RightArm.mask")));
+        GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Art/Enemies/Mossguard.fbx");
+        Transform arm = model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "upperarm.r");
+        string[] bones = arm.GetComponentsInChildren<Transform>(true)
+            .Select(t => AnimationUtility.CalculateTransformPath(t, model.transform)).ToArray();
+        string[] enabled = Enumerable.Range(0, mask.transformCount).Where(mask.GetTransformActive).Select(mask.GetTransformPath).ToArray();
+        Assert.That(enabled, Is.EquivalentTo(bones));
+        Assert.That(strike.stateMachine.defaultState.motion, Is.Null);
+        Assert.That(State(strike.stateMachine, "Attack").motion.name, Is.EqualTo("Melee_1H_Attack_Stab"));
+    }
+
+    [Test]
+    public void MossguardBody_GuardHoldsThroughTheStab()
+    {
+        AnimatorStateMachine guard = Controller().layers[1].stateMachine;
+        Assert.That(guard.states.Select(s => s.state.name), Does.Not.Contain("Attack"));
+        var blocking = (AnimationClip)guard.defaultState.motion;
+        Assert.That(blocking.name, Is.EqualTo("Melee_Blocking"));
+        Assert.That(blocking.isLooping, Is.True);
+        GameObject body = Object.Instantiate(Prefab());
+        try
+        {
+            Animator animator = body.GetComponentInChildren<Animator>();
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.Rebind();
+            animator.Update(0f);
+            animator.Play("Blocking", 1, 0f);
+            animator.Update(0f);
+            Transform shield = body.GetComponentsInChildren<Transform>().Single(t => t.name == "Shield");
+            Vector3 position = shield.position;
+            Quaternion rotation = shield.rotation;
+            animator.SetLayerWeight(2, 1f);
+            animator.Play("Attack", 2, (14f / 30f) / State(Controller().layers[2].stateMachine, "Attack").motion.averageDuration);
+            animator.Update(0f);
+            Assert.That(Vector3.Distance(shield.position, position), Is.LessThan(0.001f));
+            Assert.That(Quaternion.Angle(shield.rotation, rotation), Is.LessThan(0.1f));
+            Assert.That(animator.GetCurrentAnimatorStateInfo(1).IsName("Blocking"), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(body);
+        }
     }
 
     [Test]

@@ -65,4 +65,18 @@ A spear in `handslot.r`; the shield shove becomes a 2 m right-arm stab over the 
 
 ## As built
 
-_Filled at merge._
+2026-10-31 — Built. Seed 42 raw SHA-256 verified unchanged. `--prepare-spear` keeps shaft,
+head and bindings, runs `repair_scan.py`, then audits the serialized source: 179,998 triangles,
+one connected outward shell, zero boundary/non-manifold edges. Source SHA-256:
+`065d8cbd9ab0a5bab19054861964ab8ee9d6fbcd91fd905e9e5bbfa0e337169f`.
+Runtime: 280 triangles (2,720 with body/shield), one M_Enemy slot; existing root/moss/leaf swatches.
+1.8 m, pivot in middle wrap (raw y=.035), head along KayKit sword's +Y; identity on handslot.r.
+Rebuild compared element-by-element: only FBX CreationTimeStamp differs. Body/shield untouched.
+Strike sits between Guard and Flinch, right-arm-only mask, weight 0 except Attack; Stab peak at
+14/30 s, offset 8/30 s, timed to 0.7 s within half a frame. Guard keeps Blocking; shield pose
+unchanged. Write Defaults off. Reach alone changes to 2.0. Optional Strike driven by FlinchLayer.
+Nine specified rows pass; preparation/determinism assertions pass. Full EditMode 4,786 / 4,785 passed / 0 failed / 1 known clock inconclusive; UTC start 01:52:46.
+Zero compiler errors/new analyzer warnings; five C# files format clean.
+Imported prefab front/side/game and mid-thrust renders:
+`C:/Users/mazia/.codex/visualizations/2026/10/31/01a18f9f-af6f-7ce2-a80c-032369daad18/Mossguard/unity-{guard,stab}-{front,side,game}.png`.
+Manual remaining: stage 11 in-run feel and device judgement.

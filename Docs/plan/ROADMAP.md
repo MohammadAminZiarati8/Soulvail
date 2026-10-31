@@ -107,4 +107,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-14c** — The Mossguard's body: prefab and animator on KayKit's clips, shield always up; a blocked hit jolts and sparks, no flash, no flinch (S) · [spec](tasks/JG-14c-the-mossguards-body.md)
 - [x] **JG-14d** — Mossguards in the Jungle: `enemy.mossguard` from stage 11, stage 11 scripted as "meet the Mossguard" (M) · [spec](tasks/JG-14d-mossguards-in-the-jungle.md)
 - [x] **JG-14e** — Stages twelve to fourteen are scripted: 76 → 110 → 128 threat with the Mossguard (S) · [spec](tasks/JG-14e-stages-twelve-to-fourteen.md)
-- [ ] **JG-14f** — The Mossguard's spear (owner, 2026-10-31; built only on the owner's go): the owner's seed-42 spear in `handslot.r`, a right-arm stab over the raised shield, reach 2 m (M) · [spec](tasks/JG-14f-the-mossguards-spear.md)
+- [x] **JG-14f** — The Mossguard's spear (owner, 2026-10-31; built only on the owner's go): the owner's seed-42 spear in `handslot.r`, a right-arm stab over the raised shield, reach 2 m (M) · [spec](tasks/JG-14f-the-mossguards-spear.md)

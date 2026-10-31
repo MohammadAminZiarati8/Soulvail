@@ -103,6 +103,7 @@ namespace Soulvail.Game.Views
         private readonly int _deadId = Animator.StringToHash("Dead");
         private readonly int _locomotionId = Animator.StringToHash("Locomotion");
         private readonly int _hitStateId = Animator.StringToHash("Hit");
+        private readonly int _attackStateId = Animator.StringToHash("Attack");
 
         private EnemyView _body;
         private IDisposable _telegraphSubscription;
@@ -125,6 +126,7 @@ namespace Soulvail.Game.Views
 
         /// <summary>The flinch layer's index: -2 not yet asked, -1 absent.</summary>
         private int _flinchLayer = -2;
+        private int _strikeLayer = -2;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
@@ -200,6 +202,13 @@ namespace Soulvail.Game.Views
             }
 
             FlinchLayer.Drive(_animator, _flinchLayer, _hitStateId);
+
+            if (_strikeLayer == -2)
+            {
+                _strikeLayer = _animator.GetLayerIndex("Strike");
+            }
+
+            FlinchLayer.Drive(_animator, _strikeLayer, _attackStateId);
 
             if (_windupLeft > 0f)
             {

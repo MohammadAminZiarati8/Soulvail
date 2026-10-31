@@ -9,6 +9,10 @@ Fits the generated rear backing and its inward-facing grip behind the front, rem
 reddish hanging speck, then delegates closure/texture transfer to repair_scan.py. The repaired
 source is Sources/MossguardShield_src.glb. Never regenerates or overwrites Mossguard_src.glb.
 The runtime build reads both sources and the existing full atlas; it never writes the atlas.
+
+JG-14f spear: -- --prepare-spear <raw seed42.glb> --review-dir <directory>
+Repairs the selected shaft/head/bindings without overwriting the raw. --spear-only rebuilds
+just the static spear; normal builds include it, without changing body/shield conversion.
 """
 import argparse
 import hashlib
@@ -219,6 +223,98 @@ def load_source(name):
     for obj in objs:
         world_mesh(obj)
     return sorted(objs, key=lambda o: o.name)
+
+
+def prepare_spear(raw, review):
+    raw = os.path.abspath(raw)
+    digest = hashlib.sha256(open(raw, 'rb').read()).hexdigest()
+    assert digest == '7ef268515a4cd0d4e28a02bc5913d9a332365ce77d952e187b39000b9abbca44'
+    os.makedirs(review, exist_ok=True)
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=raw)
+    obj = max((o for o in bpy.context.scene.objects if o.type == 'MESH'), key=lambda o: len(o.data.polygons))
+    world_mesh(obj)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-6)
+    bm.verts.index_update()
+    parts = components(bm)
+    for part in parts[1:]:
+        assert max(max(v.co[k] for v in part) - min(v.co[k] for v in part) for k in range(3)) < .02
+        bmesh.ops.delete(bm, geom=part, context='VERTS')
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    bm.to_mesh(obj.data)
+    bm.free()
+    fitted = os.path.join(review, 'Spear-before-repair.glb')
+    activate(obj)
+    bpy.ops.export_scene.gltf(filepath=fitted, export_format='GLB', use_selection=True)
+    path = os.path.join(SOURCES, 'MossguardSpear_src.glb')
+    sys.argv = ['repair_scan.py', '--', fitted, path, '--preview-dir', review,
+                '--report', os.path.join(review, 'spear-repair.json')]
+    runpy.run_path(os.path.join(HERE, 'repair_scan.py'), run_name='__main__')
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    obj = load_source('MossguardSpear')[0]
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-6)
+    bm.verts.index_update()
+    parts = components(bm)
+    crumbs = [len(p) for p in parts[1:]]
+    for part in parts[1:]:
+        assert max(max(v.co[k] for v in part) - min(v.co[k] for v in part) for k in range(3)) < .02
+        bmesh.ops.delete(bm, geom=part, context='VERTS')
+    assert all(e.is_manifold for e in bm.edges) and bm.calc_volume() > 0
+    bm.to_mesh(obj.data)
+    bm.free()
+    activate(obj)
+    bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True)
+    # Rule 1: audit the serialized master, not the pre-export mesh.
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    obj = load_source('MossguardSpear')[0]
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-6)
+    bm.verts.index_update()
+    assert len(components(bm)) == 1 and all(e.is_manifold for e in bm.edges)
+    assert bm.calc_volume() > 0 and all(e.is_contiguous for e in bm.edges)
+    report = {'raw_sha256': digest, 'source_sha256': hashlib.sha256(open(path, 'rb').read()).hexdigest(),
+              'connected_components': 1, 'boundary_edges': 0, 'nonmanifold_edges': 0,
+              'outward_volume': bm.calc_volume(), 'triangles': sum(len(f.verts) - 2 for f in bm.faces),
+              'discarded_detached_crumbs': crumbs, 'kept': ['shaft', 'head', 'bindings']}
+    bm.free()
+    assert hashlib.sha256(open(raw, 'rb').read()).hexdigest() == digest
+    with open(os.path.join(review, 'spear-final-reimport.json'), 'w') as f:
+        json.dump(report, f, indent=2)
+    print('SPEAR_SOURCE_REIMPORTED', report, flush=True)
+
+
+def build_spear():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    high = load_source('MossguardSpear')[0]
+    sample = texture_sampler(high)
+    spear = reduce(high, 280)
+    spear.name = 'MossguardSpear'
+    uv = spear.data.uv_layers.new(name='UVMap').data
+    kinds = {}
+    for face in spear.data.polygons:
+        p = face.center
+        r, g, b = sample(p)
+        swatch = 'croak_moss' if p.y < -.32 else ('pitcher_leaf' if g > r * .96 and g > b * 1.3 else 'pitcher_root')
+        kinds[swatch] = kinds.get(swatch, 0) + 1
+        for li in face.loop_indices:
+            uv[li].uv = uv_for(swatch, .45)
+        face.use_smooth = True
+    spear.data.materials.clear()
+    spear.data.materials.append(bpy.data.materials.new('enemy'))
+    length = max(v.co.y for v in high.data.vertices) - min(v.co.y for v in high.data.vertices)
+    for v in spear.data.vertices:
+        # Raw -Y is the head. Blender +Z exports as Unity +Y, KayKit sword's blade axis.
+        # The middle vine wrap surrounds raw y=.035; center the palm in that wrap.
+        x, y, z = v.co
+        v.co = Vector((x, z, .035 - y)) * (1.8 / length)
+    assert 120 <= len(spear.data.polygons) <= 300
+    export(os.path.join(OUT, 'MossguardSpear.fbx'), [spear])
+    print('SPEAR_TRIANGLES', len(spear.data.polygons), 'SWATCHES', kinds, flush=True)
 
 
 def reduce(obj, count, voxel=None):
@@ -473,6 +569,7 @@ def build():
     export(os.path.join(OUT, 'MossguardShield.fbx'), [shield])
     assert hashlib.sha256(open(ATLAS, 'rb').read()).hexdigest() == atlas_hash
     print('RUNTIME_TRIANGLES', len(body.data.polygons), len(shield.data.polygons), flush=True)
+    build_spear()
 
 
 def pose_sheet(path):
@@ -551,10 +648,17 @@ def main():
     assert os.environ.get('PYTHONHASHSEED') == '0', 'Set PYTHONHASHSEED=0 for stable FBX node IDs'
     parser = argparse.ArgumentParser()
     parser.add_argument('--prepare-shield')
+    parser.add_argument('--prepare-spear')
+    parser.add_argument('--spear-only', action='store_true')
     parser.add_argument('--review-dir')
     parser.add_argument('--pose-sheet')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
-    if args.prepare_shield:
+    if args.prepare_spear:
+        assert args.review_dir, 'Keep source repair audit outside the repository'
+        prepare_spear(args.prepare_spear, os.path.abspath(args.review_dir))
+    elif args.spear_only:
+        build_spear()
+    elif args.prepare_shield:
         assert args.review_dir, 'Keep source fitting and repair audit in a review directory'
         prepare_shield(args.prepare_shield, os.path.abspath(args.review_dir))
     else:

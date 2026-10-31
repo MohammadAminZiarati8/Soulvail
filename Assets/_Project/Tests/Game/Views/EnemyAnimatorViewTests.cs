@@ -398,6 +398,83 @@ public sealed class EnemyAnimatorViewTests
     // ---- The shipped controller and body (rules 7, 8) --------------------------------------------
 
     [Test]
+    public void AnimatorView_DrivesAStrikeLayer()
+    {
+        _controller.AddLayer("Strike");
+        AnimatorStateMachine machine = _controller.layers[1].stateMachine;
+        AnimatorState empty = machine.AddState("Empty");
+        empty.writeDefaultValues = false;
+        machine.defaultState = empty;
+        AnimatorState attack = machine.AddState("Attack");
+        attack.writeDefaultValues = false;
+        var clip = new AnimationClip { hideFlags = HideFlags.HideAndDontSave };
+        clip.SetCurve("", typeof(Transform), "localPosition.x", AnimationCurve.Linear(0f, 0f, 1f, 0.1f));
+        attack.motion = clip;
+        AnimatorStateTransition entry = machine.AddAnyStateTransition(attack);
+        entry.hasExitTime = false;
+        entry.duration = 0f;
+        entry.canTransitionToSelf = false;
+        entry.AddCondition(AnimatorConditionMode.If, 0f, "Attack");
+        AnimatorStateTransition exit = attack.AddTransition(empty);
+        exit.hasExitTime = true;
+        exit.exitTime = 1f;
+        exit.duration = 0f;
+        try
+        {
+            _animator.Rebind();
+            _animator.Update(0f);
+            _view.Construct(_hub);
+            _view.Step(0.01f);
+            Assert.That(_animator.GetLayerWeight(1), Is.Zero);
+            _hub.Publish(new EnemyTelegraph(Id, 0.7f));
+            _animator.Update(0f);
+            _view.Step(0.01f);
+            Assert.That(_animator.GetCurrentAnimatorStateInfo(1).IsName("Attack"), Is.True);
+            Assert.That(_animator.GetLayerWeight(1), Is.EqualTo(1f));
+            _animator.Update(1.1f);
+            _animator.Update(0f);
+            _view.Step(0.01f);
+            Assert.That(_animator.GetLayerWeight(1), Is.Zero);
+            _hub.Publish(new EnemyTelegraph(Id, 0.7f));
+            _animator.Update(0f);
+            _view.Step(0.01f);
+            _view.Forget();
+            _animator.Update(0f);
+            _view.Step(0.01f);
+            Assert.That(_animator.GetLayerWeight(1), Is.Zero, "A pooled body forgets its stab.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void AnimatorView_NoStrikeLayer_Unchanged()
+    {
+        GameObject frog = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Enemies/Frog.prefab"));
+        try
+        {
+            Animator animator = frog.GetComponentInChildren<Animator>();
+            EnemyAnimatorView view = frog.GetComponentInChildren<EnemyAnimatorView>();
+            view.Construct(_hub);
+            frog.GetComponent<EnemyView>().Bind(Id, Vector3.zero);
+            animator.Rebind();
+            animator.Update(0f);
+            Assert.That(animator.GetLayerIndex("Strike"), Is.EqualTo(-1));
+            _hub.Publish(new EnemyTelegraph(Id, 0.7f));
+            view.Step(0.01f);
+            Assert.That(animator.GetFloat(AttackRateId), Is.GreaterThan(0f));
+            Assert.That(animator.layerCount, Is.EqualTo(2));
+            UnityEngine.TestTools.LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            Object.DestroyImmediate(frog);
+        }
+    }
+
+    [Test]
     public void Rootling_ControllerNamesItsStates()
     {
         var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);

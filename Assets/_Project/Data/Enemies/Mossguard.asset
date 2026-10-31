@@ -21,7 +21,7 @@ MonoBehaviour:
   _xpValue: 30
   _isElite: 0
   _contactDamage: 16
-  _reach: 1.6
+  _reach: 2
   _windupTime: 0.7
   _recoverTime: 1.5
   _aggroRange: 30

@@ -28,7 +28,7 @@ namespace Soulvail.Tests.Core.Content;
 public sealed class TriggerTextTests
 {
     /// <summary>Ten fields times two comparisons — the cross product this file walks.</summary>
-    private const int PairCount = 20;
+    private const int PairCount = 22;
 
     [Test]
     public void Trigger_EveryPairHasAKey()
@@ -70,7 +70,7 @@ public sealed class TriggerTextTests
         Assert.That(
             seen.Count,
             Is.EqualTo(PairCount),
-            "Ten fields and two comparisons is twenty keys. If the enum grew, this number grows "
+            "Eleven fields after MK-09a and two comparisons is twenty-two keys. If the enum grew, this number grows "
                 + "with it — and so does the table.");
     }
 
@@ -120,6 +120,7 @@ public sealed class TriggerTextTests
         Assert.That(TriggerText.UnitOf(TriggerField.EnemiesWithin6m), Is.EqualTo(TriggerUnit.Count));
         Assert.That(TriggerText.UnitOf(TriggerField.Veilrot), Is.EqualTo(TriggerUnit.Points));
         Assert.That(TriggerText.UnitOf(TriggerField.StationaryTime), Is.EqualTo(TriggerUnit.Seconds));
+        Assert.That(TriggerText.UnitOf(TriggerField.NearestEnemyDistance), Is.EqualTo(TriggerUnit.Metres));
 
         // **And FocusRampLevel, which the spec's rule 2 puts in Count and CombatBlackboard declares
         // a float in [0, 1].** Pinned here rather than left implicit so that the day someone moves

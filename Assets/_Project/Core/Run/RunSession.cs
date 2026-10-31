@@ -111,6 +111,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// </remarks>
     private TimedEffects _timed;
 
+    private TrapSystem _traps;
+
     /// <summary>
     /// This run's simulated seconds, for the one handler that needs them. See
     /// <see cref="SimulatedClock"/> for why it exists at all rather than being a parameter.
@@ -630,6 +632,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // to know whom to catch. Wired for every class, because the pair is what a burn needs and
         // not what a class has — a run without a Blink simply never places one.
         var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events, enemies, combat);
+        _traps = new TrapSystem(enemies, combat, _events);
+        effects.Register<PlaceSnare>(new PlaceSnareHandler(_traps, _clock, playerStats, combat.Blackboard));
 
         // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
         // file and one Register line, with nothing in the clock, the registry or Tick changing to
@@ -1345,6 +1349,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // because a zone is a place with its own life and a grant is state on the player that
         // something has to take back (rule 9).
         State.Zones.Tick(State.Time);
+        _traps.Tick(State.Time);
 
         // **The two boss hazards, immediately beside the zone step, and the placement is the same
         // argument reached from the other side** (M4-02 rule 5, AR §18.1). All three are ground
@@ -1545,6 +1550,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // saves (M2-13). They agree because this is the one line that moves the second one.
             if (State.StageIndex != _flow.Stage)
             {
+                // Like projectiles, traps cannot cross into the freshly composed arena.
+                _traps.Clear();
                 State.Combat.SteadyAim.OnMoved();
                 State.Status.Reset();
             }
@@ -2104,6 +2111,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // This is the *only* caller — a stage boundary deliberately leaves a zone standing and
         // pulsing, which is the mirror of M2-10's rule that a door heals nobody (M3-11b).
         State.Zones.Clear();
+        _traps.Clear();
 
         // And the corpses a Shroudstep left standing, in the same silence — but *not* for the
         // zone's reason, and the difference is the line (M5-03 rule 9). A zone is the player's own

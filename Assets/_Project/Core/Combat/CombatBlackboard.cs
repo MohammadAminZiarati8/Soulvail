@@ -73,6 +73,9 @@ public sealed class CombatBlackboard
     /// </summary>
     public int EnemiesInAcquireRange;
 
+    /// <summary>Closest living enemy in XZ metres; infinity when the census is empty.</summary>
+    public float NearestEnemyDistance = float.PositiveInfinity;
+
     /// <summary>
     /// The enemy the character is facing, or −1 for none. The same id
     /// <see cref="Targeter.CurrentTargetId"/> carries, so nothing has to hold two answers.
@@ -200,6 +203,7 @@ public sealed class CombatBlackboard
         EnemiesWithin6m = 0;
         EnemiesWithin8m = 0;
         EnemiesInAcquireRange = 0;
+        NearestEnemyDistance = float.PositiveInfinity;
         CurrentTargetId = -1;
         IsTargetBlocked = false;
         HasFocus = false;

@@ -62,6 +62,9 @@ public enum TriggerField
     /// minions, which is what makes the clause false rather than absent (M5-06a rule 7).
     /// </summary>
     MinionCount,
+
+    /// <summary>The closest living enemy's XZ distance in metres, filled by PlayerCombat.</summary>
+    NearestEnemyDistance,
 }
 
 /// <summary>
@@ -209,6 +212,7 @@ public readonly struct TriggerClause
             TriggerField.StationaryTime => blackboard.StationaryTime,
             TriggerField.FocusRampLevel => blackboard.FocusRampLevel,
             TriggerField.MinionCount => blackboard.MinionCount,
+            TriggerField.NearestEnemyDistance => blackboard.NearestEnemyDistance,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(Field),
                 Field,

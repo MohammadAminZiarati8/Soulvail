@@ -108,6 +108,10 @@ MonoBehaviour:
     _text: Wights standing below
   - _key: trigger.minionCount.atLeast
     _text: Wights standing at least
+  - _key: trigger.nearestEnemyDistance.below
+    _text: Nearest enemy distance (m) below
+  - _key: trigger.nearestEnemyDistance.atLeast
+    _text: Nearest enemy distance (m) at least
   - _key: ui.hint.firstActive
     _text: "Skills can be set to Manual: Pause \u2192 Skills"
   - _key: ui.overflow.granted

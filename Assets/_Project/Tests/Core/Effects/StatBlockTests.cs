@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(26), "Twenty-six of twenty-nine are player numbers; MK-08a adds BindStun.");
+        Assert.That(refused, Is.EqualTo(28), "Twenty-eight of thirty-one are player numbers; MK-09a adds SnareRoot/SnareDamage.");
     }
 
     [Test]
@@ -457,8 +457,11 @@ public sealed class StatBlockTests
             nameof(PlayerStat.RainSlow),
             // MK-08a, appended: the bound stun upgrade is never an enemy or minion stat.
             nameof(PlayerStat.BindStun),
+            // MK-09a, appended: trap upgrades are player numbers, never body stats.
+            nameof(PlayerStat.SnareRoot),
+            nameof(PlayerStat.SnareDamage),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
-            + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three and MK-08a's BindStun. A new member goes *after* BindStun and updates this "
+            + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun and MK-09a's SnareRoot/SnareDamage. A new member goes *after* SnareDamage and updates this "
             + "row saying which task added it.");
     }
 

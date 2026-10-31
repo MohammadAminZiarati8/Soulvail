@@ -303,12 +303,12 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(29),
+            Is.EqualTo(31),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
                 + "FireWhileMoving, RS-03b's three volley numbers, MK-02a's five aim/range numbers "
-                + "and MK-07a's three Rain numbers plus MK-08a's BindStun. A member arriving without a "
+                + "and MK-07a's three Rain numbers, MK-08a's BindStun and MK-09a's SnareRoot/SnareDamage. A member arriving without a "
                 + "spec is what this catches; update the number and say which task added it.");
     }
 

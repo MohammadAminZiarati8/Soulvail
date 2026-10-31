@@ -37,6 +37,9 @@ public enum TriggerUnit
 
     /// <summary>A duration in seconds.</summary>
     Seconds,
+
+    /// <summary>An XZ distance in world metres.</summary>
+    Metres,
 }
 
 /// <summary>
@@ -139,6 +142,11 @@ public static class TriggerText
             (TriggerField.MinionCount, TriggerComparison.AtLeast) =>
                 new LocKey("trigger.minionCount.atLeast"),
 
+            (TriggerField.NearestEnemyDistance, TriggerComparison.Below) =>
+                new LocKey("trigger.nearestEnemyDistance.below"),
+            (TriggerField.NearestEnemyDistance, TriggerComparison.AtLeast) =>
+                new LocKey("trigger.nearestEnemyDistance.atLeast"),
+
             _ => throw Unknown(field, comparison),
         };
     }
@@ -186,6 +194,7 @@ public static class TriggerText
             TriggerField.Veilrot => TriggerUnit.Points,
 
             TriggerField.StationaryTime => TriggerUnit.Seconds,
+            TriggerField.NearestEnemyDistance => TriggerUnit.Metres,
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(field),

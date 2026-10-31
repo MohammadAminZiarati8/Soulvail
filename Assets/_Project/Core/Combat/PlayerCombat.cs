@@ -2078,6 +2078,7 @@ public sealed class PlayerCombat
         int within6 = 0;
         int within8 = 0;
         int inRange = 0;
+        float nearest = float.PositiveInfinity;
 
         for (int i = 0; i < count; i++)
         {
@@ -2092,6 +2093,7 @@ public sealed class PlayerCombat
             }
 
             float distance = candidate.Distance;
+            nearest = MathF.Min(nearest, distance);
 
             // Three independent tests rather than nested bands, because the three radii are
             // authored separately and the widest is a per-class number: nesting them would encode
@@ -2117,6 +2119,7 @@ public sealed class PlayerCombat
         Blackboard.EnemiesWithin6m = within6;
         Blackboard.EnemiesWithin8m = within8;
         Blackboard.EnemiesInAcquireRange = inRange;
+        Blackboard.NearestEnemyDistance = nearest;
 
         // The fourth count, and the only one that is not about enemies (M5-06a rule 6). Written in
         // this block rather than by the army itself — the way ProjectileSystem writes

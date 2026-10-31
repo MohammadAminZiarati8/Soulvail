@@ -1,6 +1,24 @@
+using System.Numerics;
 using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ports;
+
+/// <summary>Collider question only. The body reports a hit point; core chooses the bind outcome.</summary>
+public readonly struct BindProbeIntent
+{
+    public BindProbeIntent(int targetId, Vector3 from, Vector3 direction, float reach)
+    {
+        TargetId = targetId;
+        From = from;
+        Direction = direction;
+        Reach = reach;
+    }
+
+    public int TargetId { get; }
+    public Vector3 From { get; }
+    public Vector3 Direction { get; }
+    public float Reach { get; }
+}
 
 /// <summary>
 /// The outbound port core writes per-tick intents to: "this is what the body should do now."
@@ -25,6 +43,9 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IIntentSink
 {
+    /// <summary>Accumulated obstacle probes, answered through IRunSession during facts.</summary>
+    void BindProbe(in BindProbeIntent intent);
+
     /// <summary>
     /// Sets the player's movement intent for this tick, replacing whatever was already set.
     /// The session emits exactly one per tick; last write wins.

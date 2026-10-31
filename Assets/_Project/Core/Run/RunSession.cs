@@ -134,6 +134,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private FissureSystem _fissures;
 
     private LaneSystem _lanes;
+    private BindResolver _binds;
 
     /// <summary>
     /// What each boss fights with, by its id (JG-04c): <c>boss.warden</c> the Warden's slams,
@@ -500,11 +501,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _fissures = new FissureSystem(_events);
         _lanes = new LaneSystem(_events);
 
-        // One per run, like the two above: a second Start must not inherit the first run's shots or
-        // its ids. It takes no generator, because a shot goes exactly where it was aimed and spread
-        // would be a change to what a seed means (ADR-0011).
-        var projectiles = new ProjectileSystem(_events, _projectileCapacity);
-
         // One per run, like the two above: a second Start must not inherit the first run's level.
         // The curve comes off the mode rather than off the character or a constant here, because
         // levelling pace is the mode's statement about itself (GD §4.5) — the same argument that
@@ -585,6 +581,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             Depth = config.StageIndex,
         };
 
+        // Built after the census and stats: binds share projectile lifetime and resolve after hits.
+        _binds = new BindResolver(enemies, playerStats, combat.Blackboard, _events, _intents, _projectileCapacity);
+        var projectiles = new ProjectileSystem(_events, _projectileCapacity, _binds);
+
         // **What a Wight is born with, this run** (M5-06a rules 1 and 4). Built here rather than
         // inside MinionSystem because two things need the same instance: the army, which re-bases
         // every body it hands out from it, and the handler below, which is where CH §3.2's Legion
@@ -641,6 +641,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // lend the Emberwright's Ash and Arcana to any class. RaiseMinions below is the opposite call.
         effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
         effects.Register<RainOfArrows>(new RainOfArrowsHandler(zones, _clock, enemies, playerStats, combat.Blackboard, _events));
+        effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
@@ -1418,8 +1419,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // a Husk's strike does — put after the check and the player would keep playing for one
         // frame with no hit points.
         //
-        // Core decides the arrival and calls PlayerCombat.ApplyDamage itself; nothing is asked of
-        // the body (ledger row 7, settled at M2-07a rule 1).
+        // Core decides arrivals and damage. Binds resolve after hits; only an obstacle anchor
+        // asks the body for a fact, to be consumed during the next projectile step.
         State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat, State.Enemies);
 
         // **After every pass that can kill an enemy, and above the death check** (M5-04b rule 4,
@@ -1650,6 +1651,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         RequireRunning(nameof(ReportConeHits));
 
         State.Combat.ResolveConeHits(enemyIds, State.Time, State.Enemies);
+    }
+
+    public void ReportBindAnchor(int targetId, bool hit, Vector3 point)
+    {
+        RequireRunning(nameof(ReportBindAnchor));
+        _binds.ReportAnchor(targetId, hit, point);
     }
 
     /// <inheritdoc />

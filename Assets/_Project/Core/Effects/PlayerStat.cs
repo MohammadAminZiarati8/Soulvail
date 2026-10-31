@@ -198,6 +198,7 @@ public enum PlayerStat
     RainDamage,
     RainRadius,
     RainSlow,
+    BindStun,
 }
 
 /// <summary>
@@ -245,6 +246,9 @@ public sealed class PlayerStats : IStatBlock
     /// <summary>Enemy slow fraction refreshed by Rain pulses; zero until rank three.</summary>
     public Stat RainSlow { get; } = new(0f);
 
+    /// <summary>Extra seconds for a Binding Shot with an enemy or obstacle anchor.</summary>
+    public Stat BindStun { get; } = new(0f);
+
     /// <summary>Whether this run's movement skill leaves a fire pool — a Blink, and nothing else.</summary>
     /// <remarks>
     /// Read off the pool's <em>base</em> once, here, rather than off a kind nothing exposes:
@@ -290,6 +294,7 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.RainDamage => RainDamage,
             PlayerStat.RainRadius => RainRadius,
             PlayerStat.RainSlow => RainSlow,
+            PlayerStat.BindStun => BindStun,
             PlayerStat.SteadyAimStopCrit => _combat.SteadyAim.StopCrit,
             PlayerStat.SteadyAimPerStack => _combat.SteadyAim.PerStack,
             PlayerStat.EagleEyeFarBonus => _combat.EagleEye.FarBonus,
@@ -347,6 +352,7 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.RainDamage => true,
             PlayerStat.RainRadius => true,
             PlayerStat.RainSlow => true,
+            PlayerStat.BindStun => true,
             PlayerStat.SteadyAimStopCrit => true,
             PlayerStat.SteadyAimPerStack => true,
             PlayerStat.EagleEyeFarBonus => true,

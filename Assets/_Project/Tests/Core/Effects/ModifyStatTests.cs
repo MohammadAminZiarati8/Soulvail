@@ -137,6 +137,7 @@ public sealed class ModifyStatTests
                 PlayerStat.RainDamage => stats.RainDamage,
                 PlayerStat.RainRadius => stats.RainRadius,
                 PlayerStat.RainSlow => stats.RainSlow,
+                PlayerStat.BindStun => stats.BindStun,
                 _ => null,
             };
 
@@ -164,7 +165,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(27), "Twenty-eight members after MK-07a, one named exception.");
+        Assert.That(answered, Is.EqualTo(28), "Twenty-nine members after MK-08a, one named exception.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ports;
@@ -51,6 +52,9 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IRunSession
 {
+    /// <summary>Answers an outstanding bind probe. Resolution happens in the next projectile step.</summary>
+    void ReportBindAnchor(int targetId, bool hit, Vector3 point);
+
     /// <summary>Whether a run is live: <see cref="Start"/> has been called and <see cref="End"/> has not.</summary>
     bool IsRunning { get; }
 

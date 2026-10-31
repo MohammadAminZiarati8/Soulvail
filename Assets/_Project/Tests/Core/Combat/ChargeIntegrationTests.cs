@@ -751,6 +751,8 @@ public sealed class ChargeIntegrationTests
     /// <summary>An <see cref="IIntentSink"/> that keeps nothing, so no list can grow mid-measurement.</summary>
     private sealed class SilentIntents : IIntentSink
     {
+        public void BindProbe(in BindProbeIntent intent) { }
+
         public void PlayerMove(in PlayerMoveIntent intent)
         {
             // Deliberately nothing.

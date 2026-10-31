@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 
@@ -92,7 +93,7 @@ public readonly struct Projectile
         float radius,
         float damage,
         ShotSide side = ShotSide.AtPlayer,
-        bool isVolley = false, bool isCrit = false)
+        bool isVolley = false, bool isCrit = false, BindingShot bind = null)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -104,6 +105,12 @@ public readonly struct Projectile
         Side = Defined(side);
         IsVolley = isVolley;
         IsCrit = isCrit;
+        if (bind != null && side != ShotSide.AtEnemies)
+        {
+            throw new ArgumentException("Only a player arrow can carry a bind.", nameof(bind));
+        }
+
+        Bind = bind;
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
@@ -154,6 +161,8 @@ public readonly struct Projectile
     public bool IsVolley { get; }
 
     public bool IsCrit { get; }
+
+    public BindingShot Bind { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3),
@@ -298,6 +307,7 @@ public sealed class ProjectileSystem
     private const int NoContact = 0;
 
     private readonly IDomainEvents _events;
+    private readonly BindResolver _binds;
 
     /// <summary>
     /// The shots in flight, in the order they were fired, in <c>[0, <see cref="InFlightCount"/>)</c>.
@@ -336,8 +346,9 @@ public sealed class ProjectileSystem
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="events"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
-    public ProjectileSystem(IDomainEvents events, int capacity)
+    public ProjectileSystem(IDomainEvents events, int capacity, BindResolver binds = null)
     {
+        _binds = binds;
         _events = events ?? throw new ArgumentNullException(nameof(events));
 
         if (capacity <= 0)
@@ -523,6 +534,9 @@ public sealed class ProjectileSystem
             Land(_landing[i], now, playerPosition, player, enemies);
         }
 
+        // Every hit has dealt damage before binds inspect survivors and resolve pending facts.
+        _binds?.Tick();
+
         // **The count is of <see cref="ShotSide.AtPlayer"/> shots rather than of every shot in the
         // air, and that is M5-01's one addition to this field.**
         // <c>CombatBlackboard.IncomingProjectiles</c> is CC §6.4's Bulwark trigger — "an enemy
@@ -549,6 +563,7 @@ public sealed class ProjectileSystem
     /// </remarks>
     public void Clear()
     {
+        _binds?.Clear();
         _count = 0;
         _nextId = FirstId;
     }
@@ -653,7 +668,7 @@ public sealed class ProjectileSystem
     /// agent once.
     /// </para>
     /// </remarks>
-    private static bool LandOnEnemies(
+    private bool LandOnEnemies(
         in Projectile shot,
         Vector3 impact,
         int contactId,
@@ -664,6 +679,45 @@ public sealed class ProjectileSystem
         ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
 
         bool hit = false;
+
+        if (shot.Bind != null)
+        {
+            // Binding arrows stop on one body; an ordinary orb may still splash every neighbour.
+            EnemyAgent target = null;
+            float best = float.PositiveInfinity;
+            for (int i = 0; i < agents.Length; i++)
+            {
+                EnemyAgent agent = agents[i];
+                Vector3 delta = agent.Position - impact;
+                float distance = delta.X * delta.X + delta.Z * delta.Z;
+                float reach = shot.Radius + agent.Spec.BodyRadius;
+                if (!agent.IsAlive || (agent.Id != contactId && !(distance <= reach * reach)))
+                {
+                    continue;
+                }
+
+                if (agent.Id == contactId)
+                {
+                    target = agent;
+                    break;
+                }
+
+                if (target == null || distance < best || (distance == best && agent.Id < target.Id))
+                {
+                    target = agent;
+                    best = distance;
+                }
+            }
+
+            if (target == null)
+            {
+                return false;
+            }
+
+            enemies.ApplyDamage(target.Id, shot.Damage, now, player);
+            _binds?.Hit(target.Id, shot.Bind);
+            return true;
+        }
 
         for (int i = 0; i < agents.Length; i++)
         {

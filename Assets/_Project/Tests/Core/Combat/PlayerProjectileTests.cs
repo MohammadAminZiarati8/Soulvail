@@ -1035,6 +1035,8 @@ public sealed class PlayerProjectileTests
     /// </remarks>
     private sealed class SilentIntents : IIntentSink
     {
+        public void BindProbe(in BindProbeIntent intent) { }
+
         public void PlayerMove(in PlayerMoveIntent intent)
         {
             // Deliberately nothing.

@@ -1135,6 +1135,8 @@ public sealed class ResumeFlowTests
         {
         }
 
+        public void ReportBindAnchor(int targetId, bool hit, System.Numerics.Vector3 point) { }
+
         public void ReportChargeHits(ReadOnlySpan<int> enemyIds)
         {
         }

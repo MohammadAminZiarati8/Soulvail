@@ -46,7 +46,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-06b** — Stun, root and slow are drawn on the enemy and over its bar (M)
 - [x] **MK-07a** — Rain of Arrows in core (M)
 - [x] **MK-07b** — Rain of Arrows drawn and authored (M)
-- [ ] **MK-08a** — Binding Shot in core, with Unity's anchor probe as a port (M) · [spec](tasks/MK-08a-binding-shot.md)
+- [x] **MK-08a** — Binding Shot in core, with Unity's anchor probe as a port (M)
 - [ ] **MK-08b** — Binding Shot in Unity: the probe, the chain, the assets (M) · [spec](tasks/MK-08b-binding-shot-drawn.md)
 - [ ] **MK-09a** — Hunter's Snare in core (M) · [spec](tasks/MK-09a-hunters-snare.md)
 - [ ] **MK-09b** — Hunter's Snare drawn and authored (M) · [spec](tasks/MK-09b-hunters-snare-drawn.md)

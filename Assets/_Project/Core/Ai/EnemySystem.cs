@@ -1538,6 +1538,8 @@ public sealed class EnemySystem
 
         public void ConeHit(in ConeHitIntent intent) => Inner.ConeHit(intent);
 
+        public void BindProbe(in BindProbeIntent intent) => Inner.BindProbe(intent);
+
         public void Charge(in ChargeIntent intent) => Inner.Charge(intent);
 
         public void EnemyMove(in EnemyMoveIntent intent)

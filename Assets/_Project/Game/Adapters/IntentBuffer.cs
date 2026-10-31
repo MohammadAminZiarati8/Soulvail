@@ -56,6 +56,9 @@ public sealed class IntentBuffer : IIntentSink
     private const int EnemyMoveCapacity = 64;
 
     private readonly List<ConeHitIntent> _coneHits = new(ConeHitCapacity);
+    // At most one request per landing arrow, prewarmed to the live run's projectile capacity.
+    private readonly List<BindProbeIntent> _bindProbes = new(Composition.BootInstaller.ProjectileCapacity);
+    public IReadOnlyList<BindProbeIntent> BindProbes => _bindProbes;
     private readonly List<EnemyKnockbackIntent> _knockbacks = new(KnockbackCapacity);
     private readonly List<EnemyMoveIntent> _enemyMoves = new(EnemyMoveCapacity);
 
@@ -178,6 +181,8 @@ public sealed class IntentBuffer : IIntentSink
         _coneHits.Add(intent);
     }
 
+    void IIntentSink.BindProbe(in BindProbeIntent intent) => _bindProbes.Add(intent);
+
     void IIntentSink.Charge(in ChargeIntent intent)
     {
         _charge = intent;
@@ -217,6 +222,7 @@ public sealed class IntentBuffer : IIntentSink
         HasCharge = false;
 
         _coneHits.Clear();
+        _bindProbes.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
         _minionMoves.Clear();

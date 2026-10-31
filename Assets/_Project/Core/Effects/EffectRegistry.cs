@@ -30,6 +30,12 @@ public interface IEffect
 {
 }
 
+/// <summary>Optional, side-effect-free runtime check before a cast spends cooldown or resources.</summary>
+public interface IEffectCastGuard<in TEffect> where TEffect : IEffect
+{
+    bool CanCast(TEffect effect);
+}
+
 /// <summary>
 /// The run-side half of a primitive: what applying <typeparamref name="TEffect"/>'s data to this
 /// run's live objects actually means.
@@ -190,6 +196,9 @@ public sealed class EffectRegistry
         Bind(effect, source).Apply(effect, source);
     }
 
+    /// <summary>Checks runtime cast eligibility; CanApply remains the registration check.</summary>
+    public bool CanCast(IEffect effect, object source) => Bind(effect, source).CanCast(effect);
+
     /// <summary>
     /// Takes <paramref name="source"/>'s claim on <paramref name="effect"/> back, through
     /// whichever handler answers for its type.
@@ -246,6 +255,8 @@ public sealed class EffectRegistry
     /// </remarks>
     private interface IBinding
     {
+        bool CanCast(IEffect effect);
+
         void Apply(IEffect effect, object source);
 
         void Remove(IEffect effect, object source);
@@ -260,6 +271,9 @@ public sealed class EffectRegistry
         {
             _handler = handler;
         }
+
+        public bool CanCast(IEffect effect) =>
+            _handler is not IEffectCastGuard<TEffect> guard || guard.CanCast((TEffect)effect);
 
         public void Apply(IEffect effect, object source)
         {

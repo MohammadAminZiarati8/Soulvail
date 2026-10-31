@@ -146,6 +146,7 @@ public sealed class ZoneSystem
     private readonly float[] _radii = new float[Capacity];
     private readonly float[] _heals = new float[Capacity];
     private readonly ZoneSide[] _sides = new ZoneSide[Capacity];
+    private readonly float[] _slows = new float[Capacity];
     private readonly float[] _intervals = new float[Capacity];
     private readonly float[] _nextPulseAt = new float[Capacity];
     private readonly float[] _expiresAt = new float[Capacity];
@@ -295,6 +296,7 @@ public sealed class ZoneSystem
     /// <param name="at">
     /// Where to place it, or <see langword="null"/> for the blackboard's position — M6-07b rule 3.
     /// </param>
+    /// <param name="slow">Optional enemy slow fraction, up to CrowdControl.MaxSlow, for 0.35 s per pulse.</param>
     /// <returns>Its run-stable id, issued from 1 and never reused within a run.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -313,7 +315,8 @@ public sealed class ZoneSystem
         float now,
         object source,
         ZoneSide side = ZoneSide.HealsThePlayer,
-        Vector3? at = null)
+        Vector3? at = null,
+        float slow = 0f)
     {
         if (source is null)
         {
@@ -325,6 +328,11 @@ public sealed class ZoneSystem
         Positive(amountPerPulse, nameof(amountPerPulse));
         Positive(pulseInterval, nameof(pulseInterval));
         RequireFinite(now);
+
+        if (!(slow >= 0f && slow <= CrowdControl.MaxSlow) || (slow > 0f && side != ZoneSide.BurnsEnemies))
+        {
+            throw new ArgumentOutOfRangeException(nameof(slow));
+        }
 
         if (at is Vector3 given && !(Finite(given.X) && Finite(given.Y) && Finite(given.Z)))
         {
@@ -375,6 +383,7 @@ public sealed class ZoneSystem
         _radii[slot] = radius;
         _heals[slot] = amountPerPulse;
         _sides[slot] = side;
+        _slows[slot] = slow;
         _intervals[slot] = pulseInterval;
         _nextPulseAt[slot] = now + pulseInterval;
         _expiresAt[slot] = now + duration;
@@ -595,6 +604,11 @@ public sealed class ZoneSystem
 
             DamageResult result = _enemies.ApplyDamage(agent.Id, _heals[index], now, _combat);
 
+            if (_slows[index] > 0f)
+            {
+                _enemies.Slow(agent.Id, _slows[index], 0.35f);
+            }
+
             // After the damage, so a subscriber reading the enemy's health sees the burn applied.
             // "Nothing arrived" is EnemySystem.ApplyDamage's own spelling of silence, so this event
             // goes out exactly when EnemyDamaged did — per enemy damaged, and none for nobody.
@@ -622,6 +636,7 @@ public sealed class ZoneSystem
             _radii[i] = _radii[i + 1];
             _heals[i] = _heals[i + 1];
             _sides[i] = _sides[i + 1];
+            _slows[i] = _slows[i + 1];
             _intervals[i] = _intervals[i + 1];
             _nextPulseAt[i] = _nextPulseAt[i + 1];
             _expiresAt[i] = _expiresAt[i + 1];

@@ -195,6 +195,9 @@ public enum PlayerStat
     SteadyAimGuard,
     EagleEyeFarBonus,
     SteadyAimMaxStacks,
+    RainDamage,
+    RainRadius,
+    RainSlow,
 }
 
 /// <summary>
@@ -232,6 +235,15 @@ public sealed class PlayerStats : IStatBlock
     private readonly PlayerCombat _combat;
     private readonly PlayerMotor _motor;
     private readonly LevelTracker _progression;
+
+    /// <summary>Extra fraction of Rain's weapon damage per pulse.</summary>
+    public Stat RainDamage { get; } = new(0f);
+
+    /// <summary>Extra metres of Rain radius.</summary>
+    public Stat RainRadius { get; } = new(0f);
+
+    /// <summary>Enemy slow fraction refreshed by Rain pulses; zero until rank three.</summary>
+    public Stat RainSlow { get; } = new(0f);
 
     /// <summary>Whether this run's movement skill leaves a fire pool — a Blink, and nothing else.</summary>
     /// <remarks>
@@ -275,6 +287,9 @@ public sealed class PlayerStats : IStatBlock
     {
         return stat switch
         {
+            PlayerStat.RainDamage => RainDamage,
+            PlayerStat.RainRadius => RainRadius,
+            PlayerStat.RainSlow => RainSlow,
             PlayerStat.SteadyAimStopCrit => _combat.SteadyAim.StopCrit,
             PlayerStat.SteadyAimPerStack => _combat.SteadyAim.PerStack,
             PlayerStat.EagleEyeFarBonus => _combat.EagleEye.FarBonus,
@@ -329,6 +344,9 @@ public sealed class PlayerStats : IStatBlock
     {
         return stat switch
         {
+            PlayerStat.RainDamage => true,
+            PlayerStat.RainRadius => true,
+            PlayerStat.RainSlow => true,
             PlayerStat.SteadyAimStopCrit => true,
             PlayerStat.SteadyAimPerStack => true,
             PlayerStat.EagleEyeFarBonus => true,

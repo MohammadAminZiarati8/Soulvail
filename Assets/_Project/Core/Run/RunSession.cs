@@ -640,6 +640,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // run** (M6-08 rule 5): a burn needs the zones and nothing class-specific, so CH §5.4 can
         // lend the Emberwright's Ash and Arcana to any class. RaiseMinions below is the opposite call.
         effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
+        effects.Register<RainOfArrows>(new RainOfArrowsHandler(zones, _clock, enemies, playerStats, combat.Blackboard, _events));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a

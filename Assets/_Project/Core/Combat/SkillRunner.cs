@@ -696,6 +696,11 @@ public sealed class SkillRunner
                 continue;
             }
 
+            if (!CanCastEffects(i))
+            {
+                continue;
+            }
+
             Fire(i, now, auto: true);
 
             return;
@@ -727,6 +732,11 @@ public sealed class SkillRunner
         _now = now;
 
         if (!(now >= _readyAt[index]) || (auto && !(now - _lastCastAt >= AutoCastGap)))
+        {
+            return false;
+        }
+
+        if (!CanCastEffects(index))
         {
             return false;
         }
@@ -1052,7 +1062,7 @@ public sealed class SkillRunner
             return false;
         }
 
-        if (!_specs[index].Active.Trigger.IsMet(_blackboard))
+        if (!_specs[index].Active.Trigger.IsMet(_blackboard) || !CanCastEffects(index))
         {
             return false;
         }
@@ -1072,6 +1082,21 @@ public sealed class SkillRunner
         // price, beside it rather than as a flag on it (the event's own remarks).
         _events.Publish(new SkillCast(id, _readyAt[index] - now, wasAuto: true));
         _events.Publish(new CastBought(id, cost, _veilrot.Value));
+
+        return true;
+    }
+
+    /// <summary>Checks every cast effect before any effects, cooldown or payment can change.</summary>
+    private bool CanCastEffects(int index)
+    {
+        ActiveSpec active = _specs[index].Active;
+        for (int i = 0; i < active.OnCast.Count; i++)
+        {
+            if (!_effects.CanCast(active.OnCast[i], active))
+            {
+                return false;
+            }
+        }
 
         return true;
     }

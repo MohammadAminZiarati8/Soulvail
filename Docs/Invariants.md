@@ -47,7 +47,7 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
   this tick's state.
 - `TimedEffects.Tick` right after the runner, on `SimulatedClock` (never `IClock`); `ZoneSystem.Tick`
   right after it; within a zone, pulses before retirement; zones spawn at
-  `CombatBlackboard.PlayerPosition`.
+  `CombatBlackboard.PlayerPosition` unless a cast supplies a fixed point (Rain of Arrows).
 - `MinionSystem` ingests beside enemies and ticks after behaviours, above the death check; inside:
   expire → choose → walk → strike. A Wight is never an `EnemyAgent`; its kills go through
   `EnemySystem.ApplyDamage`.

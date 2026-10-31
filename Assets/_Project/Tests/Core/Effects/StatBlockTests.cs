@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(22), "Twenty-two of twenty-five are player numbers; MK-02a adds five.");
+        Assert.That(refused, Is.EqualTo(25), "Twenty-five of twenty-eight are player numbers; MK-07a adds three.");
     }
 
     [Test]
@@ -451,8 +451,12 @@ public sealed class StatBlockTests
             nameof(PlayerStat.SteadyAimGuard),
             nameof(PlayerStat.EagleEyeFarBonus),
             nameof(PlayerStat.SteadyAimMaxStacks),
+            // MK-07a, appended: Rain upgrades are player numbers, never combatant numbers.
+            nameof(PlayerStat.RainDamage),
+            nameof(PlayerStat.RainRadius),
+            nameof(PlayerStat.RainSlow),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
-            + "RS-03b's three volley numbers and MK-02a's five. A new member goes *after* SteadyAimMaxStacks and updates this "
+            + "RS-03b's three volley numbers, MK-02a's five and MK-07a's three. A new member goes *after* RainSlow and updates this "
             + "row saying which task added it.");
     }
 

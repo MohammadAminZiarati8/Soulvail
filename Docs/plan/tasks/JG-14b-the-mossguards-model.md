@@ -3,8 +3,16 @@
 **Size:** M · **Depends on:** the owner's two sculpts · **Branch:** `dev` (direct)
 **Design refs:** GD §16.4, GD §17.1; AR §18.2 (Generic, no root motion)
 
-**Needs before the go:** the owner's TRELLIS sculpts, cleaned by `fix_glb.py`: the lizard warrior in a
-T-pose, and its bark-and-stone tower shield (owner's pick, 2026-10-31).
+**Source preparation, approved 2026-10-31:** the owner approved the repaired lizard and requested
+that its procedure be saved and the detailed model imported into Unity while they make the shield.
+`Tools/Blender/Sources/Mossguard_src.glb` is that approved master. The shield is still pending.
+Use [the source workflow](../../../Tools/Blender/README.md) and `repair_scan.py` for fragmented scans.
+`fix_glb.py` remains available for legacy source workflows.
+
+Preparation also ships `mossguard_source.py`, `Art/Enemies/MossguardSource.fbx` and its dedicated
+`Textures/T_MossguardSource_Albedo.png`: a static detailed source preview, outside the runtime Files
+table below, explicitly requested by the owner. Do not use it as the final body or spawn it in runs.
+Rig fitting, the runtime budget/atlas and shield work below remain open; this is not JG-14b complete.
 
 ## Goal
 
@@ -75,4 +83,14 @@ PYTHONHASHSEED=0 "C:/Program Files/Blender Foundation/Blender 4.1/blender.exe" -
 
 ## As built
 
-_Filled at merge._
+2026-10-31 — **Source preparation only; JG-14b remains open.** Owner-approved repaired master
+stored in `Sources/Mossguard_src.glb`. Reusable `repair_scan.py` and Blender README preserve the
+thin closed shell → voxel reconstruction → clean mesh → per-face source-UV color transfer → opaque
+export procedure, including the rear-view/export checks that caught missing geometry and UV specks.
+The tool was rerun on the unrepaired body: zero boundary/non-manifold edges; serialized body and
+opaque, non-transmissive double-sided materials verified. `mossguard_source.py` exports a static
+183,160-triangle FBX preview (1.8 m tall), dedicated 2048 texture and four embedded URP Lit materials.
+No gameplay registration, rig or atlas changes. Unity imported all seven renderers and the texture;
+all four materials are opaque. EditMode: 4,749 total / 4,748 passed / 0 failed / 1 known inconclusive
+(fresh UTC start 2026-10-31 00:00:48). Format clean; no new project C# or analyzer diagnostics.
+Next: owner supplies shield, then build the budgeted Rig_Medium body and shield and their tests.

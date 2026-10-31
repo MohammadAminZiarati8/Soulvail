@@ -806,10 +806,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
         // CH §5.2 an Inspector edit and the other half a rebuild. The run's Ordeals ride last, for
         // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
+        PathFlow path = tree is null ? null : new PathFlow(tree, _catalog, character, _events);
+
         LevelUpFlow levelUp = tree is null
             ? null
             : new LevelUpFlow(
-                tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals, mode.HasFreePick);
+                tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals, mode.HasFreePick, path);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -867,6 +869,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             rise,
             levelUp,
             splash,
+            path,
             essence,
             veilrot,
             shop,
@@ -919,6 +922,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // This is what keeps a single enum-sized fact off the save format altogether, which is
             // LevelUpFlow.GrantOverflow's bargain exactly — and v4 shipping at M6-01b did not change
             // it: the branch is still derived, because the reason was never that a bump was dear.
+            // Paths follow the same derived-save bargain, and must precede the replay too.
+            if (path is not null && path.TryDerive(resumed.TakenNodeIds, out ContentId pathId))
+            {
+                path.Restore(pathId);
+            }
+
             if (splash is not null &&
                 splash.TryDerive(resumed.TakenNodeIds, out ContentId lender, out int lentBranch))
             {
@@ -1741,6 +1750,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// <inheritdoc />
     /// <remarks><see cref="IsLevelUpPending"/>'s reasoning — a read, zero outside a run.</remarks>
     public int SkillPoints => IsRunning ? State.SkillPoints : 0;
+
+    public void ChoosePath(ContentId pathId)
+    {
+        if (!IsRunning || !State.IsPathChoiceOpen)
+        {
+            return;
+        }
+
+        for (int i = 0; i < State.PathCandidates.Count; i++)
+        {
+            if (State.PathCandidates[i] == pathId)
+            {
+                State.Path.Choose(pathId);
+                return;
+            }
+        }
+    }
 
     /// <inheritdoc />
     /// <remarks>

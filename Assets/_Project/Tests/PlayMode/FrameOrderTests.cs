@@ -1753,6 +1753,8 @@ public sealed class FrameOrderTests
             OnOpenSplash?.Invoke();
         }
 
+        public void ChoosePath(ContentId pathId) => _touched.Add("path:choose");
+
         public void ChooseSplash(ContentId characterId, int branch) =>
             _touched.Add("splash:choose");
 

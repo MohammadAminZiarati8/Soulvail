@@ -67,6 +67,7 @@ public sealed class RunState
         RisePassive rise,
         LevelUpFlow levelUp,
         SplashFlow splash,
+        PathFlow path,
         EssenceWallet wallet,
         Veilrot rot,
         SanctumShop shop,
@@ -93,6 +94,7 @@ public sealed class RunState
         Rise = rise;
         LevelUp = levelUp;
         Splash = splash;
+        Path = path;
         Wallet = wallet;
         Rot = rot;
         Shop = shop;
@@ -282,15 +284,23 @@ public sealed class RunState
     public int TreeNodeCount => Tree is null ? 0 : Tree.Rules.Count;
 
     /// <summary>
-    /// Whether every node of the class's tree is taken — what M3-08 reads to know a pick has
-    /// nothing left to buy and becomes Overflow instead (CH §5.2).
+    /// Whether every class and path node is taken, with no unchosen candidate path still to add.
+    /// Only then does a banked pick become Overflow (CH §5.2, MK-01b).
     /// </summary>
     /// <remarks>
     /// False for a class with no tree, and that is the right answer rather than a convenient one: a
     /// run with no tree has nodes it has not taken in exactly the sense a run at the start does, so
     /// M3-08 banks the level either way and needs no second question.
     /// </remarks>
-    public bool IsTreeFull => Tree is not null && Tree.IsFull;
+    public bool IsTreeFull => LevelUp is not null && LevelUp.IsFull;
+
+    internal PathFlow Path { get; }
+
+    public ContentId PathId => Path?.ChosenId ?? default;
+    public bool IsPathChoiceOpen => Path is not null && Path.IsOpen;
+    public IReadOnlyList<ContentId> PathCandidates => Path?.Candidates ?? Array.Empty<ContentId>();
+
+    public int UnlockLevelOf(ContentId nodeId) => Tree is null ? 1 : Tree.Rules.UnlockLevelOf(nodeId);
 
     /// <summary>
     /// The nodes taken this run, in take order — the list <c>RunRecorder</c> writes into a

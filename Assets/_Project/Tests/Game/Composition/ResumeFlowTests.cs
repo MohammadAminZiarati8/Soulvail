@@ -1188,6 +1188,10 @@ public sealed class ResumeFlowTests
         {
         }
 
+        public void ChoosePath(ContentId pathId)
+        {
+        }
+
         public void ChooseSplash(ContentId characterId, int branch)
         {
         }

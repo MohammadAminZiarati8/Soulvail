@@ -76,11 +76,12 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
 
 **`RunSession.Start`**
 
-- Restore order: `SplashFlow.TryDerive` + `Restore` → `LevelTracker.Restore` →
+- Restore order: `PathFlow.TryDerive` + `Restore` → `SplashFlow.TryDerive` + `Restore` → `LevelTracker.Restore` →
   `SkillTree.Restore` → runner told about Actives → `SkillRunner.Restore` →
   `LevelUpFlow.GrantOverflow` → wallet, banishes, Pacts, `Veilrot.Restore` → `Health.Restore`
   **last** (saved HP is absolute and clamped to the live max). Overflow and the borrowed branch are
-  derived, not saved. Ordeals restore above the opening `Compose`. A new restore adds itself here.
+  derived, not saved; the path is also derived from taken ids (a choice with no path pick is lost).
+  Ordeals restore above the opening `Compose`. A new restore adds itself here.
 - Compose the stage before `RunStarted`; begin the director after `SpawnAll`.
 
 **Enemies**

@@ -50,6 +50,9 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IProgressionCommands
 {
+    /// <summary>Chooses a path for this run; a closed choice or non-candidate is ignored.</summary>
+    void ChoosePath(ContentId pathId);
+
     /// <summary>
     /// Whether a pick is owed with no offer on the table and a tree to spend it on — the one
     /// question that decides whether this frame opens a level-up.

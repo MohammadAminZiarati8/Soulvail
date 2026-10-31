@@ -31,11 +31,9 @@ namespace Soulvail.Core.Progression;
 /// would be a free reroll. Nothing here reads a clock; <c>RunTicker</c> owns the <em>when</em>.
 /// </para>
 /// <para>
-/// <b><see cref="Open"/> asks the generator, and the answer decides everything —
-/// <c>SkillTree.IsFull</c> is deliberately not the test.</b> M3-04 rule 1 writes nothing and makes
-/// no draw when nothing is available, and <em>"nothing available"</em> is not the same as
-/// <em>"tree full"</em>: a branch whose remaining nodes are Upgrades of an untaken parent can be
-/// blocked while the tree is half empty. The honest condition is what <c>Draw</c> returned.
+/// An empty draw does not prove the run is full: level-gated nodes may remain, and an unchosen
+/// path still has room. MK-01b keeps those points banked until a node can be taken; only a full
+/// class and path tree pays Overflow.
 /// </para>
 /// <para>
 /// <b>Overflow is silent and instant: no pause, no screen.</b> CH §5.2 makes it a consolation for a
@@ -97,10 +95,9 @@ public sealed class LevelUpFlow
     private readonly ModifyStat _overflowMaxHp;
 
     /// <summary>
-    /// Where <see cref="Settle"/> asks the tree what is available. Allocated only for a free run and
-    /// regrown if a borrowed branch ever widens the tree; a drawing run never reads it.
+    /// The uninstalled path also counts as room when deciding whether to pay Overflow.
     /// </summary>
-    private ContentId[] _availability;
+    private readonly PathFlow _path;
 
     private int _count;
 
@@ -135,13 +132,14 @@ public sealed class LevelUpFlow
     /// </param>
     /// <param name="isFree">
     /// Whether a level banks a point to spend on any open node rather than opening a draw of three
-    /// (<see cref="ModeSpec.HasFreePick"/>, UI-03a). Optional and last, and off omitted: a flow built
+    /// (<see cref="ModeSpec.HasFreePick"/>, UI-03a). Optional, and off omitted: a flow built
     /// without it is the one every earlier fixture built.
     /// </param>
-    /// <exception cref="ArgumentNullException">Any reference argument but <paramref name="ordeals"/> is null.</exception>
+    /// <param name="path">The run's path choice, or null for a class without paths.</param>
+    /// <exception cref="ArgumentNullException">A required reference argument is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
                        EffectRegistry effects, IDomainEvents events, OverflowSpec overflow,
-                       Veilrot veilrot, Ordeals ordeals = null, bool isFree = false)
+                       Veilrot veilrot, Ordeals ordeals = null, bool isFree = false, PathFlow path = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -152,7 +150,7 @@ public sealed class LevelUpFlow
         _ordeals = ordeals;
 
         IsFree = isFree;
-        _availability = isFree ? new ContentId[tree.Rules.Count] : Array.Empty<ContentId>();
+        _path = path;
 
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
@@ -169,6 +167,11 @@ public sealed class LevelUpFlow
     /// an offer — the mode's <c>HasFreePick</c>. Fixed for the run.
     /// </summary>
     public bool IsFree { get; }
+
+    // Future path nodes count as room even before they have been installed. A level gate never
+    // makes a node disappear from the run's capacity.
+    internal bool IsFull => (_path is null || _path.Candidates.Count == 0 ||
+        _path.ChosenId.Value is not null) && _tree.IsFull;
 
     /// <summary>Whether an offer is on the table.</summary>
     public bool HasOffer => _count > 0;
@@ -302,9 +305,12 @@ public sealed class LevelUpFlow
                 return;
             }
 
-            // Nothing available for this pick. Spend it on CH §5.2 and ask again for the next one —
-            // the tree cannot have opened up in between, but the loop is written against what
-            // `Draw` answers rather than against that assumption (rule 2).
+            // A locked level gate or a future path is room for this point, even with an empty draw.
+            if (!IsFull)
+            {
+                return;
+            }
+
             GrantOne();
         }
     }
@@ -460,12 +466,7 @@ public sealed class LevelUpFlow
             return;
         }
 
-        if (_tree.Rules.Count > _availability.Length)
-        {
-            _availability = new ContentId[_tree.Rules.Count];
-        }
-
-        if (_tree.Available(_availability) > 0)
+        if (!IsFull)
         {
             return;
         }

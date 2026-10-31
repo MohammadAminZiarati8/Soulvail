@@ -36,7 +36,7 @@ _No milestone. The owner is setting the next direction._
 **The Marksman, the Ranger's first path** (owner, 2026-10-31; design [CH §3.5](../Characters.md), HUD [GD §5.2](../GameDesign.md)). Specs written for an outside implementer; each built only on the owner's go, one at a time, in this order. Playtestable from MK-03 on, with DT-01's test start at stage 12+.
 
 - [x] **MK-01a** — A path's shape: `PathSpec`, skills as ranked branches with an unlock level, installed after the class's tree; a gated node is unavailable below its level (M)
-- [ ] **MK-01b** — A path is chosen from level 11: `PathFlow`, the free-pick command, derived on resume, no Overflow while a path has room (M) · [spec](tasks/MK-01b-a-path-is-chosen.md)
+- [x] **MK-01b** — A path is chosen from level 11: `PathFlow`, the free-pick command, derived on resume, no Overflow while a path has room (M)
 - [ ] **MK-02a** — Steady Aim and Eagle Eye in core: standing stacks, the stop crit, the full-stack guard, far-target damage (M) · [spec](tasks/MK-02a-steady-aim-and-eagle-eye.md)
 - [ ] **MK-02b** — The Marksman authored: `PathDefinition`, the Ranger's three path slots, Steady Aim and Eagle Eye as assets (M) · [spec](tasks/MK-02b-the-marksman-authored.md)
 - [ ] **MK-03** — The tree screen: one icon per skill with rank pips, path cards, level-locked rows (M) · [spec](tasks/MK-03-the-tree-shows-a-path.md)

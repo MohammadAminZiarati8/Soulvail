@@ -1125,6 +1125,8 @@ public sealed class SanctumPresenterTests
 
         public void OpenSplash() => _inner.OpenSplash();
 
+        public void ChoosePath(ContentId pathId) => _inner.ChoosePath(pathId);
+
         public void ChooseSplash(ContentId characterId, int branch) => _inner.ChooseSplash(characterId, branch);
 
         public void LeaveSanctum()

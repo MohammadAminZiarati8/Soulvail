@@ -722,6 +722,8 @@ public sealed class SkillTree
         Rebuild();
     }
 
+    internal int Level => _level;
+
     internal void SyncLevel(int level)
     {
         if (level < 1)

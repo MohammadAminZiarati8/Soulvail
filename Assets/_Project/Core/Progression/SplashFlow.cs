@@ -822,6 +822,11 @@ public sealed class SplashFlow
     {
         var candidates = new List<ContentId>(catalog.Characters.Count);
 
+        if (catalog.Character(ownCharacterId).PathIds.Count > 0)
+        {
+            return candidates.AsReadOnly();
+        }
+
         for (int i = 0; i < catalog.Characters.Count; i++)
         {
             ContentId id = catalog.Characters[i].Id;

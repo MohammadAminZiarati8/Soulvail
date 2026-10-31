@@ -364,6 +364,45 @@ public sealed class EnemyHitFeedbackTests
         return burst;
     }
 
+    [Test]
+    public void HitFeedback_Blocked_SparksNoFlash()
+    {
+        ParticleSystem glance = Burst();
+        Set("_deathBurst", null);
+        Set("_glance", glance);
+        _feedback.SetArchetypeLook(HuskTint, 1f);
+
+        _hub.Publish(new EnemyDamaged(Id + 1, 0f, 1f, killed: false, blocked: true));
+        Assert.That(glance.isPlaying, Is.False, "Another body cannot spark this shield.");
+
+        _hub.Publish(new EnemyDamaged(Id, 0f, 1f, killed: false, blocked: true));
+        Assert.That(glance.isPlaying, Is.True);
+        AssertColour(HuskTint, Painted());
+        AssertColour(Color.black, Glowing());
+
+        _feedback.ResetVisuals();
+        Assert.That(glance.isPlaying, Is.False, "A pooled body clears its sparks.");
+        Assert.That(glance.particleCount, Is.Zero);
+
+        Set("_glance", null);
+        Assert.DoesNotThrow(() => _hub.Publish(new EnemyDamaged(Id, 0f, 1f, killed: false, blocked: true)));
+        AssertColour(HuskTint, Painted());
+    }
+
+    [Test]
+    public void HitFeedback_Unblocked_FlashesNoSpark()
+    {
+        ParticleSystem glance = Burst();
+        Set("_deathBurst", null);
+        Set("_glance", glance);
+
+        _hub.Publish(new EnemyDamaged(Id, 10f, 0.5f, killed: false));
+
+        AssertColour(Palette.HitFlash, Painted());
+        AssertColour(Palette.HitFlash, Glowing());
+        Assert.That(glance.isPlaying, Is.False);
+    }
+
     private Color Glowing()
     {
         var block = new MaterialPropertyBlock();

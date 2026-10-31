@@ -99,6 +99,7 @@ namespace Soulvail.Game.Views
         private readonly int _attackId = Animator.StringToHash("Attack");
         private readonly int _moveId = Animator.StringToHash("Move");
         private readonly int _hitId = Animator.StringToHash("Hit");
+        private readonly int _blockId = Animator.StringToHash("Block");
         private readonly int _deadId = Animator.StringToHash("Dead");
         private readonly int _locomotionId = Animator.StringToHash("Locomotion");
         private readonly int _hitStateId = Animator.StringToHash("Hit");
@@ -119,6 +120,8 @@ namespace Soulvail.Game.Views
         private bool _hasMove;
 
         private bool _moveChecked;
+        private bool _hasBlock;
+        private bool _blockChecked;
 
         /// <summary>The flinch layer's index: -2 not yet asked, -1 absent.</summary>
         private int _flinchLayer = -2;
@@ -239,6 +242,10 @@ namespace Soulvail.Game.Views
             _animator.SetBool(_deadId, false);
             _animator.ResetTrigger(_attackId);
             _animator.ResetTrigger(_hitId);
+            if (_hasBlock)
+            {
+                _animator.ResetTrigger(_blockId);
+            }
         }
 
         private void Awake()
@@ -351,11 +358,42 @@ namespace Soulvail.Game.Views
             return _hasMove;
         }
 
+        /// <summary>Optional shield jolt, probed on the first blocked hit while the body is active.</summary>
+        private bool HasBlock()
+        {
+            if (_blockChecked)
+            {
+                return _hasBlock;
+            }
+
+            _blockChecked = true;
+
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == _blockId && parameter.type == AnimatorControllerParameterType.Trigger)
+                {
+                    _hasBlock = true;
+                }
+            }
+
+            return _hasBlock;
+        }
+
         private void OnDamaged(EnemyDamaged evt)
         {
             // A killing blow does not flinch: the death is the answer to it, in the same call.
             if (_animator == null || _dead || evt.Killed || !IsMine(evt.Id))
             {
+                return;
+            }
+
+            if (evt.Blocked)
+            {
+                if (HasBlock())
+                {
+                    _animator.SetTrigger(_blockId);
+                }
+
                 return;
             }
 
@@ -375,6 +413,10 @@ namespace Soulvail.Game.Views
             // flinch from the blow before it.
             _animator.ResetTrigger(_attackId);
             _animator.ResetTrigger(_hitId);
+            if (_hasBlock)
+            {
+                _animator.ResetTrigger(_blockId);
+            }
             _animator.SetBool(_deadId, true);
         }
     }

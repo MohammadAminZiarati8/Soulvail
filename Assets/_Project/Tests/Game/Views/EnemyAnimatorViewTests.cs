@@ -289,6 +289,45 @@ public sealed class EnemyAnimatorViewTests
     // ---- The flinch and the fall (rules 3, 4) ----------------------------------------------------
 
     [Test]
+    public void AnimatorView_Blocked_SetsBlockNotHit()
+    {
+        _controller.AddParameter("Block", AnimatorControllerParameterType.Trigger);
+        _animator.Rebind();
+        _view.Construct(_hub);
+        int block = Animator.StringToHash("Block");
+
+        _hub.Publish(new EnemyDamaged(Id + 1, 0f, 1f, killed: false, blocked: true));
+        Assert.That(_animator.GetBool(block), Is.False);
+        _hub.Publish(new EnemyDamaged(Id, 0f, 1f, killed: false, blocked: true));
+        Assert.That(_animator.GetBool(block), Is.True);
+        Assert.That(_animator.GetBool(HitId), Is.False);
+
+        _view.Forget();
+        Assert.That(_animator.GetBool(block), Is.False);
+        _hub.Publish(new EnemyDamaged(Id, 5f, 0.5f, killed: false));
+        Assert.That(_animator.GetBool(HitId), Is.True);
+        Assert.That(_animator.GetBool(block), Is.False);
+        _hub.Publish(new EnemyDamaged(Id, 0f, 0.5f, killed: false, blocked: true));
+        _hub.Publish(new EnemyDied(Id, Rootling, System.Numerics.Vector3.Zero));
+        Assert.That(_animator.GetBool(block), Is.False, "Death clears a queued jolt.");
+        _hub.Publish(new EnemyDamaged(Id, 0f, 0f, killed: false, blocked: true));
+        Assert.That(_animator.GetBool(block), Is.False, "A corpse cannot jolt.");
+    }
+
+    [Test]
+    public void AnimatorView_NoBlockParam_SetsNothing()
+    {
+        _animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+            "Assets/_Project/Animation/Controllers/AC_Frog.controller");
+        _view.Construct(_hub);
+
+        _hub.Publish(new EnemyDamaged(Id, 0f, 1f, killed: false, blocked: true));
+
+        Assert.That(_animator.GetBool(HitId), Is.False);
+        UnityEngine.TestTools.LogAssert.NoUnexpectedReceived();
+    }
+
+    [Test]
     public void Hit_FlinchesOnAHitThatDoesNotKill()
     {
         _view.Construct(_hub);

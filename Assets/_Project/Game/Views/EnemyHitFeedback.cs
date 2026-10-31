@@ -107,6 +107,9 @@ namespace Soulvail.Game.Views
                  "inside EnemySystem.CorpseTime, or the despawn cuts it off. Empty on most bodies.")]
         [SerializeField] private ParticleSystem _deathBurst;
 
+        [Tooltip("Shield-face sparks for a blocked hit. Empty on bodies without a shield.")]
+        [SerializeField] private ParticleSystem _glance;
+
         /// <summary>
         /// URP's colour property, hashed once. An instance field rather than a static, because
         /// nothing in this project holds static state (AR §7) and the four bytes are free.
@@ -340,6 +343,11 @@ namespace Soulvail.Game.Views
                 _deathBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
 
+            if (_glance != null)
+            {
+                _glance.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
             if (_block is null)
             {
                 return;
@@ -422,6 +430,16 @@ namespace Soulvail.Game.Views
             // already starting, which reads as a glitch rather than as a hit.
             if (evt.Killed)
             {
+                return;
+            }
+
+            if (evt.Blocked)
+            {
+                if (_glance != null)
+                {
+                    _glance.Play(true);
+                }
+
                 return;
             }
 

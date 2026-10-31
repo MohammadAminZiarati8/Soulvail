@@ -76,4 +76,15 @@ jolting on a blocked hit, flinching on a real one, dying.
 
 ## As built
 
-_Filled at merge._
+2026-10-31 — Built. Enemy variant with Mossguard on AC_Mossguard; shield attached at identity to
+handslot.l. Rootling-shaped legs blend Idle_B/Walking_B at 0/0.8 m/s; Guard uses AM_UpperBody at 1,
+blocking, bashing and jolting; Flinch rests at 0 above it. All states use Rig_Medium clips with
+Write Defaults off. Bash samples the forward-most hand at frame 14; frames 8–14 map to the 0.7 s
+wind-up. Guard dies with the base rather than holding up the corpse. Model scale 1.05 gives 1.23×
+Ranger height; bar 1.92 m, controller radius 0.5 m. Shield-face glance emits eight M_Impact sparks
+for 0.2 s. Blocked damage skips flash/Hit, plays optional sparks/Block; unblocked damage keeps the
+old flash/flinch. Pool reset clears sparks and Block; death clears Block. Twelve specified tests
+pass. Full EditMode: 4,769 total / 4,768 passed / 0 failed / 1 known clock inconclusive; fresh UTC
+start 2026-10-31 00:55:13. Compiler errors 0; new analyzer warnings 0; format clean (5 files).
+Prefab blocking render checked. Manual: see it in a Jungle run at JG-14d; owner sculpt judgement
+remains owed. JG-14d/e not built.

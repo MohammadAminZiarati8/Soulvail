@@ -615,3 +615,20 @@ MonoBehaviour:
     _text: Rain of Arrows 4
   - _key: skill.marksman.rain-of-arrows-4.description
     _text: Rain of Arrows cooldown is reduced by 2 s.
+  - _key: skill.marksman.binding-shot.name
+    _text: Binding Shot
+  - _key: skill.marksman.binding-shot.description
+    _text: 'Chains an enemy to whatever is behind it: another enemy, a stone, a tree
+      or a wall. Both are stunned.'
+  - _key: skill.marksman.binding-shot-2.name
+    _text: Binding Shot 2
+  - _key: skill.marksman.binding-shot-2.description
+    _text: Bound stun lasts 0.4 s longer.
+  - _key: skill.marksman.binding-shot-3.name
+    _text: Binding Shot 3
+  - _key: skill.marksman.binding-shot-3.description
+    _text: Bound stun lasts another 0.6 s longer.
+  - _key: skill.marksman.binding-shot-4.name
+    _text: Binding Shot 4
+  - _key: skill.marksman.binding-shot-4.description
+    _text: Binding Shot cooldown is reduced by 3 s.

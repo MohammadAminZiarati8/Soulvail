@@ -130,6 +130,8 @@ namespace Soulvail.Game.Views
         private IDisposable _rainSubscription;
         private readonly int _castUpId = Animator.StringToHash("CastUp");
         private float _castUpLeft;
+        private float _bindingReleaseLeft;
+        private IDisposable _bindingCastSubscription;
 
         // Hashed once. Instance fields rather than statics, because nothing in this project holds
         // static state (AR §7).
@@ -192,6 +194,7 @@ namespace Soulvail.Game.Views
             _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnDamaged);
             _rainSubscription = hub.Subscribe<RainOfArrowsCast>(OnRainCast);
+            _bindingCastSubscription = hub.Subscribe<SkillCast>(OnBindingCast);
             if (_rainPrefab != null)
             {
                 // A scene-root pool: neither the ring nor falling arrows follow the moving body.
@@ -319,6 +322,14 @@ namespace Soulvail.Game.Views
                 return;
             }
             _castUpLeft = Mathf.Max(0f, _castUpLeft - dt);
+            if (_bindingReleaseLeft > 0f)
+            {
+                _bindingReleaseLeft = Mathf.Max(0f, _bindingReleaseLeft - dt);
+                if (_bindingReleaseLeft == 0f && !_dead)
+                {
+                    _animator.SetTrigger(_releaseId);
+                }
+            }
 
             // Resolved lazily as well as in Awake: an EditMode fixture never gets an Awake. Only
             // while there is none, so a body that has one never looks again.
@@ -404,6 +415,7 @@ namespace Soulvail.Game.Views
 
         private void OnDestroy()
         {
+            _bindingCastSubscription?.Dispose();
             _rainSubscription?.Dispose();
             if (_rainRoot != null)
             {
@@ -498,6 +510,7 @@ namespace Soulvail.Game.Views
 
         private void OnRainCast(RainOfArrowsCast evt)
         {
+            _bindingReleaseLeft = 0f;
             if (_animator == null || _dead)
             {
                 return;
@@ -506,6 +519,23 @@ namespace Soulvail.Game.Views
             _animator.ResetTrigger(_releaseId);
             _castUpLeft = 0.4f;
             _animator.SetTrigger(_castUpId);
+        }
+
+        private void OnBindingCast(SkillCast evt)
+        {
+            if (evt.SkillId.Value != "skill.marksman.binding-shot" || _animator == null || _dead)
+            {
+                return;
+            }
+            // SkillCast follows the accepted arrow's ProjectileFired. Show a quick draw and
+            // release cosmetically; the simulation never waits for an animation frame.
+            _castUpLeft = 0f;
+            _animator.ResetTrigger(_castUpId);
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
+            _animator.Play(_drawStateId, _animator.GetLayerIndex(UpperBodyLayer), NockedNormalized);
+            _bindingReleaseLeft = 0.1f;
         }
 
         /// <remarks>

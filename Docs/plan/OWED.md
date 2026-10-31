@@ -75,3 +75,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-07b — Rain of Arrows drawn and authored (2026-11-01)
 
 - [ ] **[Editor]** Stage 12, Ranger / Marksman, Rain learned: with ≥ 3 enemies in acquire range, check the upward bow release and cyan sky streak while moving; a fixed cyan-rimmed circle appears on the largest group, ordinary arrows fall inside it for 2 s with small landing dust, and enemies inside lose health. At rank 3 the circle widens, the faint fill turns pale blue and enemies visibly slow. Pause/resume and cross a stage boundary: no lingering arrows, dust or ring.
+
+## MK-08b — Binding Shot in Unity
+
+- [ ] **[Editor]** Stage 12 at level 14: shoot an enemy standing in front of a stone — chain to the stone, long stun; two enemies in a line — both chained; open ground — short stun. Check the quick draw/release, cyan rope tail and simple readable chain/clasps; chains should follow bodies and disappear with the stun or stage change.

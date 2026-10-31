@@ -234,6 +234,7 @@ namespace Soulvail.Game.Composition
                  "pillars on, and nothing else. Never the Enemy layer — a Spitter that could not " +
                  "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
         [SerializeField] private LayerMask _coverLayer;
+        [SerializeField] private BindingChainView _bindingChainPrefab;
 
         [Tooltip("The archetype the dummies below are spawned as — and what the enemy pool's " +
                  "prewarm keys on, so empty means no bodies built up front. An arena that starts " +
@@ -1023,9 +1024,28 @@ namespace Soulvail.Game.Composition
             builder.Register<OpenGroundSense>(Lifetime.Scoped)
                 .WithParameter("cover", _coverLayer);
 
+            builder.Register<BindProbeAdapter>(Lifetime.Scoped)
+                .WithParameter("cover", _coverLayer);
+
             // Put cover on the ticker's constructor chain without growing its public signature:
             // BossViews is already required there, and both listeners must precede Start.
             builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped)
+                .WithParameter("bindingChains", resolver =>
+                {
+                    if (_bindingChainPrefab == null)
+                    {
+                        // Older headless composition fixtures do not dress cosmetic prefabs.
+                        // The shipped Run scene assigns this alongside its other VFX.
+                        return null;
+                    }
+                    var root = new GameObject("Binding chains (pooled)");
+                    root.SetActive(false);
+                    root.transform.SetParent(_decalRoot, false);
+                    BindingChainView chains = Instantiate(_bindingChainPrefab, root.transform, false);
+                    chains.Construct(resolver.Resolve<DomainEventHub>(), resolver.Resolve<EnemyViews>());
+                    root.SetActive(true);
+                    return chains;
+                })
                 .WithParameter("bossViews", resolver =>
                 {
                     resolver.Resolve<CoverViews>();

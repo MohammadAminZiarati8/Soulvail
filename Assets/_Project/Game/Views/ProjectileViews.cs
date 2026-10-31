@@ -53,6 +53,11 @@ namespace Soulvail.Game.Views;
 /// </remarks>
 public sealed class ProjectileViews : IDisposable
 {
+    private readonly Dictionary<int, BindLook> _bindLooks = new();
+    private readonly IDisposable _bindCastSubscription;
+    private readonly IDisposable _bindBoundarySubscription;
+    private readonly IDisposable _bindEndedSubscription;
+    private int _lastPlayerShot;
     /// <summary>
     /// How many impacts the live list holds before it grows: past any hits that can overlap, which
     /// is a volley's worst case landing twice inside one impact's life.
@@ -214,6 +219,9 @@ public sealed class ProjectileViews : IDisposable
 
         _firedSubscription = hub.Subscribe<ProjectileFired>(OnFired);
         _impactedSubscription = hub.Subscribe<ProjectileImpacted>(OnImpacted);
+        _bindCastSubscription = hub.Subscribe<SkillCast>(OnBindingCast);
+        _bindBoundarySubscription = hub.Subscribe<StageTransitionStarted>(_ => ClearBindingArrows());
+        _bindEndedSubscription = hub.Subscribe<RunEnded>(_ => ClearBindingArrows());
     }
 
     /// <summary>How many bolts are currently drawn in the arena.</summary>
@@ -374,6 +382,10 @@ public sealed class ProjectileViews : IDisposable
 
         _firedSubscription.Dispose();
         _impactedSubscription.Dispose();
+        _bindCastSubscription.Dispose();
+        _bindBoundarySubscription.Dispose();
+        _bindEndedSubscription.Dispose();
+        ClearBindingArrows();
 
         foreach (Rental rental in _byId.Values)
         {
@@ -412,6 +424,10 @@ public sealed class ProjectileViews : IDisposable
         view.Bind(evt.Id, evt.Origin.ToUnity(), evt.Target.ToUnity(), evt.FlightTime);
 
         _byId[evt.Id] = new Rental(view, kind);
+        if (evt.SourceId == 0)
+        {
+            _lastPlayerShot = evt.Id;
+        }
 
 #if UNITY_EDITOR
         // Thirty objects called "Projectile" in the hierarchy are unreadable the moment one of them
@@ -432,6 +448,7 @@ public sealed class ProjectileViews : IDisposable
         }
 
         _byId.Remove(evt.Id);
+        RestoreBindingArrow(evt.Id);
 
         // RS-06b rule 2: a hit plays the shot's impact, a miss plays nothing. The travel is read
         // before the release, which forgets the flight.
@@ -447,6 +464,90 @@ public sealed class ProjectileViews : IDisposable
         }
 
         rental.Kind.Shots.Release(rental.View);
+    }
+
+    private void OnBindingCast(SkillCast cast)
+    {
+        // ActiveSpec applies its effects before publishing SkillCast. Binding Shot emits
+        // exactly one player arrow, so the latest accepted player shot is this cast's arrow.
+        if (cast.SkillId.Value != "skill.marksman.binding-shot"
+            || !_byId.TryGetValue(_lastPlayerShot, out Rental rental))
+        {
+            return;
+        }
+        ProjectileView view = rental.View;
+        var trail = view.GetComponentInChildren<TrailRenderer>(true);
+        var bodies = view.GetComponentsInChildren<MeshRenderer>(true);
+        var look = new BindLook { Trail = trail, Bodies = bodies };
+        if (trail != null)
+        {
+            look.Gradient = trail.colorGradient;
+            look.Width = trail.widthMultiplier;
+            look.WidthCurve = trail.widthCurve;
+            look.Time = trail.time;
+            // A thin, short, opaque tail reads as rope instead of the ordinary fading streak.
+            trail.startColor = trail.endColor = Presentation.Palette.Player;
+            trail.widthMultiplier = 0.035f;
+            trail.widthCurve = AnimationCurve.Constant(0f, 1f, 1f);
+            trail.time = 0.12f;
+        }
+        var cyan = new MaterialPropertyBlock();
+        cyan.SetColor("_BaseColor", Presentation.Palette.Player);
+        cyan.SetColor("_EmissionColor", Presentation.Palette.Player * 2f);
+        foreach (MeshRenderer body in bodies)
+        {
+            body.SetPropertyBlock(cyan);
+        }
+        _bindLooks[_lastPlayerShot] = look;
+    }
+
+    private void RestoreBindingArrow(int id)
+    {
+        if (!_bindLooks.TryGetValue(id, out BindLook look))
+        {
+            return;
+        }
+        if (look.Trail != null)
+        {
+            look.Trail.colorGradient = look.Gradient;
+            look.Trail.widthMultiplier = look.Width;
+            look.Trail.widthCurve = look.WidthCurve;
+            look.Trail.time = look.Time;
+            look.Trail.Clear();
+        }
+        foreach (MeshRenderer body in look.Bodies)
+        {
+            if (body != null)
+            {
+                body.SetPropertyBlock(null);
+            }
+        }
+        _bindLooks.Remove(id);
+    }
+
+    private void ClearBindingArrows()
+    {
+        // Lifecycle edge only. Copy ids because returning a body also removes its saved look.
+        var ids = new int[_bindLooks.Count];
+        _bindLooks.Keys.CopyTo(ids, 0);
+        foreach (int id in ids)
+        {
+            RestoreBindingArrow(id);
+            if (_byId.TryGetValue(id, out Rental rental))
+            {
+                _byId.Remove(id);
+                rental.Kind.Shots.Release(rental.View);
+            }
+        }
+    }
+
+    private struct BindLook
+    {
+        public TrailRenderer Trail;
+        public MeshRenderer[] Bodies;
+        public Gradient Gradient;
+        public AnimationCurve WidthCurve;
+        public float Width, Time;
     }
 
     /// <summary>

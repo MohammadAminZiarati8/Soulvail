@@ -993,6 +993,7 @@ MonoBehaviour:
   _coverLayer:
     serializedVersion: 2
     m_Bits: 512
+  _bindingChainPrefab: {fileID: 4300016082244171333, guid: b34da863492092e47a136d52f64d7699, type: 3}
   _dummySpec: {fileID: 11400000, guid: d699454cab5316a46bfc47a5de2aa4a7, type: 2}
   _dummyPositions: []
   _threatArrowPrefab: {fileID: 3318980382163284144, guid: 0981ac6eefc5b634ea7eeda8652c008a, type: 3}

@@ -135,6 +135,8 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly SkillArcInput _skillArc;
 
     private readonly ConeOverlapQuery _cone;
+    private readonly BindProbeAdapter _bindProbe;
+    private readonly BindingChainView _bindingChains;
 
     /// <summary>
     /// Where a swing's answer is assembled before it is handed back to core. One array for the
@@ -178,8 +180,12 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         SkillArcInput skillArc,
         ConeOverlapQuery cone,
         ClassSelectRoster classSelect = null,
-        PlaceWriter placeWriter = null)
+        PlaceWriter placeWriter = null,
+        BindProbeAdapter bindProbe = null,
+        BindingChainView bindingChains = null)
     {
+        _bindProbe = bindProbe;
+        _bindingChains = bindingChains;
         // Taken and not kept: being on this chain is what constructs the writer before core can
         // publish (AR §18.1). Optional for the fixtures that build a ticker by hand, like the
         // roster above; the scope always supplies it.
@@ -503,7 +509,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         ResolveConeHits();
 
+        _bindProbe?.Resolve(_intents, _session);
+
         ApplyKnockbacks();
+        _bindingChains?.Step(_snapshot.Dt);
     }
 
     /// <summary>
@@ -871,6 +880,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         }
 
         _session.End();
+        if (_bindingChains != null)
+        {
+            _bindingChains.Dispose();
+        }
         _input.Disable();
         Screen.sleepTimeout = SleepTimeout.SystemSetting;
     }

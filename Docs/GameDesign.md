@@ -144,8 +144,9 @@ Critically, **this makes our pillars stronger, not weaker.** P2 already says "mo
 |---|---|---|
 | **Move** | Touch anywhere in the left 45% and drag | *Fixed* stick at the bottom-left, always visible; a touch anywhere in the zone grabs it (owner's ruling 2026-10-13; [CC §2.1](CoreCombat.md)). The floating stick survives as an option. |
 | **Fire** | Automatic | Continuous, at the current target. No fire button. |
-| **Movement skill** | Tap the fixed right-side button | 48dp minimum, corner-anchored in natural thumb arc. Radial cooldown fill on the button. |
-| **Manual skills** | Tap — up to 4 optional buttons | Only appear for skills the player has switched to Manual. Everything else auto-casts. |
+| **Movement skill** | Tap the fixed right-side button | 48dp minimum, set in from the bottom-right corner so passives fit below and right of it. Radial cooldown fill on the button. |
+| **Active skills** | Tap = cast now · long-press = auto-cast on/off | **Owner, 2026-10-31 (supersedes "up to 4 manual buttons"):** every owned active is always a circle in an arc above and left of the roll — cooldown sweep, cyan ready glow, "A" badge while auto, padlock + unlock level while locked. Passives: small untappable icons in the corner. [CH §3.5](Characters.md). |
+| **Status** | — | Buffs and debuffs on the player as icons beside the HP bar, each with its timer or stack count. |
 | **Focus target** | Tap any enemy | Locks auto-aim to it until it dies. See §5.4. |
 | **Pause** | Tap top-right icon | Small target, but non-critical and out of the way |
 

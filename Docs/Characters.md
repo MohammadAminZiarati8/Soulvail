@@ -151,25 +151,32 @@ Pleasing synergy worth noting: slow projectiles are normally the hardest thing t
 
 The level cap is **30**. Points from levels 2–10 fill the Ranger tree (9). From level **11** the player chooses **one** of three paths, locked for the run; levels 11–30 (20 points) are spent in it. **The Ranger's skills stay** — the path is added above them.
 
-Each path is **8 skills: 5 passives, 2 actives, 1 ultimate**. Seven have 3 ranks, the ultimate 2 — **23 ranks for 20 points**, so even a level-30 build leaves three unbought. Rows are level-gated:
+A path is **a handful of skills, most of them actives, each with 3–5 ranks**, and no "ultimate": its last skill is simply the strongest, unlocking at Lv 20. Skills are level-gated. The Marksman's **22 ranks for 20 points** leave two unbought at level 30. Choosing a path costs no point; the choice opens at level 11 whether or not the Ranger tree is full.
 
-| Unlocks at | Opens |
-|---|---|
-| Lv 11 | 1 passive + the signature active |
-| Lv 15 | 2 passives |
-| Lv 20 | 1 active + 1 passive |
-| Lv 25 | 1 passive |
-| Lv 28 | Ultimate (rank 2 needs Lv 30) |
+Built one at a time: **Marksman first**, playtested, then the next.
 
-Built one at a time: **Marksman first**, playtested, then the next. Skirmisher and Echo Archer below are recorded, not specced.
+**Marksman — stand still.** (Owner, 2026-10-31.)
 
-**Marksman — stand still.** Steady Aim (P 11: arrows while standing stack damage ×5) · **Ballista Bolt** (A 11: huge line-piercing bolt) · Piercing Arrows (P 15: through 1/2/3) · Deadeye (P 15: first arrow after stopping crits) · **Mark Target** (A 20: toughest enemy takes more; its kill resets Ballista) · Eagle Eye (P 20: range, more damage far) · Hold the Line (P 25: less damage taken standing) · *Killshot* (U 28/30: every 3rd standing arrow is a Ballista Bolt).
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Steady Aim** | Passive | 5 | Each arrow loosed standing still adds a damage stack (max 5); moving or rolling clears them. Rank 3+: the first arrow after stopping crits ×2. Rank 5: −20% damage taken at 5 stacks. |
+| 11 | **Rain of Arrows** | Active | 4 | Arrows fall on a 3 m circle for 2 s at the densest group. Ranks: damage, cooldown; rank 3: wider and slows. |
+| 14 | **Binding Shot** | Active | 4 | Chains the target to an enemy, stone, tree or wall within 4 m behind it: both stunned 2–3 s. Nothing behind: 0.75 s. Bosses: half. |
+| 14 | **Eagle Eye** | Passive | 3 | +1/2/3 m range; +10/20/30% damage to targets farther than 6 m. |
+| 17 | **Hunter's Snare** | Active | 3 | A trap at your feet when an enemy closes in; the first to step on it is rooted and hurt. |
+| 20 | **Killshot** | Active | 3 | Kneel and draw 0.7 s, then one arrow across the arena down the most crowded line, losing damage per enemy; non-bosses under 15/20/25% HP die outright. |
+
+Every active auto-casts on its own trigger (densest group · nearest threat · an enemy closing in · the longest line), and no two auto-casts fire within 0.5 s of each other. Each skill has its own effect and animation; a chosen path changes the hero's look.
+
+*Recorded, not specced* — 8-skill drafts, to be reshaped like the Marksman before their turn:
 
 **Skirmisher — never stop.** Running Shot (P 11: fire while moving at 40/55/70% rate) · **Caltrop Roll** (A 11: roll leaves slowing spikes) · Hit and Run (P 15: hits give a speed burst) · Momentum (P 15: damage from distance moved in 2 s) · **Whirlwind** (A 20: spin, arrows all round) · Second Wind (P 20: roll cooldown; rank 3 two charges) · Untouchable (P 25: first hit within 1 s of a roll misses) · *Storm Run* (U 28/30: every roll fires a Volley).
 
 **Echo Archer — copies shoot for you.** Echo Arrow (P 11: every 4th/3rd/2nd arrow repeated by a shadow) · **Mirror Image** (A 11: 1–3 clones shoot for 5 s) · Decoy Roll (P 15: roll leaves a clone enemies target) · Shared Volley (P 15: clones Volley with you) · **Shadow Swap** (A 20: swap with farthest clone; auto at low HP) · Fading Burst (P 20: clones explode on expiry) · Umbral Link (P 25: clones take part of your damage) · *Twin Shadow* (U 28/30: one permanent clone).
 
-**The tree screen** shows one icon per skill with rank pips (●●○), not a node per rank: Ranger row at the bottom, the chosen path's level rows above, locked rows marked with their level. Before level 11 the path area shows the three cards (tap = greyed preview); after the choice, the other two disappear. Actives auto-cast and get a cyan edge; no active buttons on the battle HUD.
+**The tree screen** shows one icon per skill with rank pips (●●○), not a node per rank: Ranger row at the bottom, the chosen path's level rows above, locked rows marked with their level. Before level 11 the path area shows the cards (tap = greyed preview); after the choice the others disappear.
+
+**The battle HUD** (owner, 2026-10-31; GD §5.2): the roll button sits in from the bottom-right corner; every owned active is a circle in an arc above and left of it — cooldown sweep, cyan ready glow, an "A" badge while auto-cast is on, a padlock and level while locked. Tap casts now; long-press toggles auto-cast. Passives are small untappable icons in the corner below and right of the roll. **Buffs and debuffs** — on the player beside the HP bar, with a timer or stack count; stun, root and slow also as an icon over an enemy's bar.
 
 ---
 

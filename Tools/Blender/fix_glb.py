@@ -1,3 +1,6 @@
+# For fragmented TRELLIS scans with holes/see-through backs, prefer repair_scan.py.
+# See README.md: it rebuilds a closed shell, preserves source UV islands and verifies the export.
+# This older utility remains for legacy source workflows and its targeted repaint rules.
 # Usage: PYTHONHASHSEED=0 "C:/Program Files/Blender Foundation/Blender 4.1/blender.exe" -b --factory-startup \
 #            -P Tools/Blender/fix_glb.py -- <in.glb> <out.glb> [target_faces=30000]
 # Copied from the TBD_ project's tools/art/3d/fix_glb.py (which made Sources/Panther_trellis.glb), plus

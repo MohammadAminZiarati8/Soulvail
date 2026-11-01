@@ -107,8 +107,8 @@ public sealed class ShamanViewTests
         Assert.That(icon.gameObject.activeSelf, Is.False);
     }
 
-    [TestCase(2.4f, false)]
-    [TestCase(2.8f, true)]
+    [TestCase(1.2f, false)]
+    [TestCase(2f, true)]
     public void AnimatorView_RunsAboveOnePointTwo(float speed, bool running)
     {
         typeof(EnemyView).GetField("_velocity", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_root.GetComponent<EnemyView>(), Vector3.forward * speed);

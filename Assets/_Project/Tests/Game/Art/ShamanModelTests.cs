@@ -195,5 +195,164 @@ public sealed class ShamanModelTests
         view.OnDespawn();
         hub.Dispose();
     }
+    [TestCase(WalkPath)]
+    [TestCase(RunPath)]
+    public void ShamanGait_BobsTheHipsAndPlantsTheFeet(string path)
+    {
+        AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+        GameObject model = Object.Instantiate(Model);
+        _created.Add(model);
+        Transform hips = Bone(model, "hips");
+        float ground = LowestFoot(model, Clip("Idle_B"));
+        float low = float.MaxValue, high = float.MinValue;
+
+        for (int i = 0; i <= Samples; i++)
+        {
+            clip.SampleAnimation(model, clip.length * i / Samples);
+            float y = model.transform.InverseTransformPoint(hips.position).y;
+            low = Mathf.Min(low, y);
+            high = Mathf.Max(high, y);
+        }
+
+        Assert.That(clip.isLooping, Is.True);
+        Assert.That(clip.frameRate, Is.EqualTo(30));
+        Assert.That(high - low, Is.GreaterThan(.02f), "The hips ride the steps, not frozen as JG-16g's clips were.");
+        Assert.That(LowestFoot(model, clip), Is.EqualTo(ground).Within(.005f), "Feet touch the idle's ground, neither sinking nor floating.");
+    }
+
+    [TestCase(WalkPath)]
+    [TestCase(RunPath)]
+    public void ShamanGait_LoopsWithoutAPop(string path)
+    {
+        AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+        GameObject model = Object.Instantiate(Model);
+        _created.Add(model);
+        Transform[] bones = model.GetComponentsInChildren<Transform>(true);
+        var previous = new Quaternion[bones.Length];
+        int frames = Mathf.RoundToInt(clip.length * clip.frameRate);
+
+        // Every frame in order, then the last back to the first: the seam a loop plays every cycle.
+        for (int f = 0; f <= frames; f++)
+        {
+            clip.SampleAnimation(model, f % frames / clip.frameRate);
+
+            for (int b = 0; b < bones.Length; b++)
+            {
+                if (f > 0)
+                {
+                    // KayKit's own knee turns up to ~51° a frame; JG-16g's flips were 170°+.
+                    Assert.That(Quaternion.Angle(previous[b], bones[b].localRotation), Is.LessThan(60f), $"{bones[b].name} at frame {f}");
+                }
+
+                previous[b] = bones[b].localRotation;
+            }
+        }
+    }
+
+    [Test]
+    public void ShamanGait_StaffArmKeepsTheIdleGrip()
+    {
+        GameObject model = Object.Instantiate(Model);
+        _created.Add(model);
+        Clip("Idle_B").SampleAnimation(model, 0f);
+        string[] arm = { "upperarm.r", "lowerarm.r", "wrist.r", "hand.r", "handslot.r" };
+        Quaternion[] grip = arm.Select(name => Bone(model, name).localRotation).ToArray();
+
+        foreach (string path in new[] { WalkPath, RunPath })
+        {
+            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+
+            foreach (float time in new[] { 0f, .25f, .5f, .75f })
+            {
+                clip.SampleAnimation(model, clip.length * time);
+
+                for (int i = 0; i < arm.Length; i++)
+                {
+                    Assert.That(Quaternion.Angle(grip[i], Bone(model, arm[i]).localRotation), Is.LessThan(.5f), $"{path} {arm[i]} at {time}");
+                }
+            }
+        }
+    }
+
+    [Test]
+    public void ShamanGait_StridesMatchTheClips()
+    {
+        var view = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath).GetComponentInChildren<Soulvail.Game.Views.EnemyAnimatorView>(true);
+        var fields = new SerializedObject(view);
+        float walkStride = fields.FindProperty("_strideSpeed").floatValue;
+        float runStride = fields.FindProperty("_runStrideSpeed").floatValue;
+        float runBase = fields.FindProperty("_runBaseSpeed").floatValue;
+        GameObject model = Object.Instantiate(Model);
+        _created.Add(model);
+
+        Assert.That(walkStride, Is.EqualTo(PlantedFootSpeed(model, AssetDatabase.LoadAssetAtPath<AnimationClip>(WalkPath))).Within(.05f));
+        Assert.That(runStride, Is.EqualTo(PlantedFootSpeed(model, AssetDatabase.LoadAssetAtPath<AnimationClip>(RunPath))).Within(.1f));
+        Assert.That(runBase * 1.2f, Is.LessThan(2f), "The Shaman's own 2 m/s plays the run, not a walk blurred past the ceiling.");
+
+        var controller = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(ControllerPath);
+        UnityEditor.Animations.AnimatorState[] states = controller.layers[0].stateMachine.states.Select(s => s.state).ToArray();
+        var tree = (UnityEditor.Animations.BlendTree)states.Single(s => s.name == "Locomotion").motion;
+        Assert.That(tree.children[1].motion, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AnimationClip>(WalkPath)));
+        Assert.That(tree.children[1].threshold, Is.EqualTo(walkStride).Within(1e-4f));
+        Assert.That(states.Single(s => s.name == "Run").motion, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AnimationClip>(RunPath)));
+    }
+
+    private const string WalkPath = "Assets/_Project/Animation/Clips/A_Shaman_Walk.anim";
+    private const string RunPath = "Assets/_Project/Animation/Clips/A_Shaman_Run.anim";
+    private const string PrefabPath = "Assets/_Project/Prefabs/Enemies/Shaman.prefab";
+    private const string ControllerPath = "Assets/_Project/Animation/Controllers/AC_Shaman.controller";
+    private const int Samples = 120;
+
+    private static Transform Bone(GameObject model, string name) => model.GetComponentsInChildren<Transform>(true).Single(t => t.name == name);
+
+    private static float LowestFoot(GameObject model, AnimationClip clip)
+    {
+        Transform left = Bone(model, "foot.l"), right = Bone(model, "foot.r");
+        float lowest = float.MaxValue;
+
+        for (int i = 0; i <= Samples; i++)
+        {
+            clip.SampleAnimation(model, clip.length * i / Samples);
+            lowest = Mathf.Min(lowest, model.transform.InverseTransformPoint(left.position).y, model.transform.InverseTransformPoint(right.position).y);
+        }
+
+        return lowest;
+    }
+
+    /// <summary>How fast a foot on the ground slides back under the body: the ground the clip covers at 1x.</summary>
+    private static float PlantedFootSpeed(GameObject model, AnimationClip clip)
+    {
+        float sum = 0f;
+        int count = 0;
+
+        foreach (string name in new[] { "foot.l", "foot.r" })
+        {
+            Transform foot = Bone(model, name);
+            var heights = new float[Samples + 1];
+            var depths = new float[Samples + 1];
+
+            for (int i = 0; i <= Samples; i++)
+            {
+                clip.SampleAnimation(model, clip.length * i / Samples);
+                Vector3 local = model.transform.InverseTransformPoint(foot.position);
+                heights[i] = local.y;
+                depths[i] = local.z;
+            }
+
+            float floor = heights.Min() + .02f;
+
+            for (int i = 0; i < Samples; i++)
+            {
+                if (heights[i] < floor && heights[i + 1] < floor)
+                {
+                    sum += (depths[i] - depths[i + 1]) * Samples / clip.length;
+                    count++;
+                }
+            }
+        }
+
+        return sum / count;
+    }
+
     private static AnimationClip Clip(string name) => AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>().Single(c => c.name == name);
 }

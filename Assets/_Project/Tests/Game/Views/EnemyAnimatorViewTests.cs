@@ -134,6 +134,28 @@ public sealed class EnemyAnimatorViewTests
         Assert.That(_animator.GetFloat(WalkRateId), Is.EqualTo(rate).Within(1e-4f));
     }
 
+    [TestCase(2f, true, 1.6f)]
+    [TestCase(0.9f, false, 2f)]
+    public void Run_PlaysAtItsOwnStride(float speed, bool running, float rate)
+    {
+        // Run above 1.2 m/s on a 1.25 m/s run stride; below it the 0.45 m/s walk stride.
+        _controller.AddParameter("Run", AnimatorControllerParameterType.Bool);
+        _animator.Rebind();
+        typeof(EnemyAnimatorView).GetField("_strideSpeed", Private).SetValue(_view, 0.45f);
+        typeof(EnemyAnimatorView).GetField("_runBaseSpeed", Private).SetValue(_view, 1f);
+        typeof(EnemyAnimatorView).GetField("_runStrideSpeed", Private).SetValue(_view, 1.25f);
+
+        Walk(speed);
+
+        for (int i = 0; i < 20; i++)
+        {
+            _view.Step(0.05f);
+        }
+
+        Assert.That(_animator.GetBool("Run"), Is.EqualTo(running));
+        Assert.That(_animator.GetFloat(WalkRateId), Is.EqualTo(rate).Within(1e-4f));
+    }
+
     [Test]
     public void Walk_ABadStepDoesNothing()
     {

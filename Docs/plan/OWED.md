@@ -133,3 +133,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16h verification clarification: the run-start test reports 1/1 passed, but errors can arrive afterward during scene teardown (CoverViews and Ranger Killshot VFX). The earlier commit body's claim that the post-smoke Console was clean was incorrect; these cleanup errors remain outside the model correction.
 
 - JG-16f (2026-11-02): Jungle stages 18–19 scripted (178, 208 threat). Test start at 18: Shaman behind two Mossguards with Pitchers; the open crowd; a second Shaman wall with Panthers. Test start at 19: the crowd; two Shamans behind three Mossguards; the last mix; the door. Rule whether 16–19 (121 → 144 → 178 → 208) climb fairly into stage 20.
+
+- JG-16i (2026-11-02): Shaman gait. Test start at 17 or 18 and watch the Shaman: legs step with the body (no glide), it turns to face where it walks or flees (no sideways slide or backwards run), turns back to face you when it stops or casts, and the staff stays in hand without whipping. Its Hit, Cast and Death clips still carry the old retarget's 170°+ single-frame flips (not touched here).

@@ -937,12 +937,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyAnimatorView
   _animator: {fileID: 481902759347679980}
-  _strideSpeed: 2
+  _strideSpeed: 0.46
   _windupFromSeconds: 0.35
   _strikeSeconds: 0.87
   _hops: 0
   _releaseAtClipSpeed: 0
-  _runBaseSpeed: 2
+  _runBaseSpeed: 1
+  _runStrideSpeed: 1.36
 --- !u!4 &7254883291450261369 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -5515783359193845756, guid: 524249040fadeed45bc8521eee1de690, type: 3}

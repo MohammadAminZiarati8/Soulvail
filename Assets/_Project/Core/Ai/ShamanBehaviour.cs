@@ -9,15 +9,26 @@ namespace Soulvail.Core.Ai;
 public enum ShamanState { Reposition, Cast, Flee }
 
 /// <summary>Hides beyond weapon range, supports living allies and breaks away from pursuit.</summary>
+/// <remarks>
+/// It looks where it walks and turns to the player once it stands, so a sidestep or a flight never
+/// plays the forward gait sideways or backwards; the turn is rate-limited, as Bulwark's is.
+/// </remarks>
 public sealed class ShamanBehaviour : IEnemyBehaviour
 {
+    /// <summary>How fast the body turns, in degrees per second: a half-turn in a third of a second.</summary>
+    public const float TurnRateDegrees = 540f;
+
     private readonly EnemyAgent _agent;
+    private Vector2 _facing;
     private float _anchorTimer;
     private float _pulseTimer;
     private float _stateTimer;
     public ShamanBehaviour(EnemyAgent agent) { _agent = agent ?? throw new ArgumentNullException(nameof(agent)); Reset(); }
     public ShamanState State { get; private set; }
     public int AnchorId { get; private set; }
+
+    /// <summary>Where the body looks on the ground plane; zero until the first tick.</summary>
+    public Vector2 Facing => _facing;
 
     public void Reset()
     {
@@ -26,6 +37,7 @@ public sealed class ShamanBehaviour : IEnemyBehaviour
         _anchorTimer = 0f;
         _pulseTimer = 2f;
         _stateTimer = 0f;
+        _facing = Vector2.Zero;
     }
 
     public void Tick(in EnemyTickContext ctx)
@@ -104,7 +116,27 @@ public sealed class ShamanBehaviour : IEnemyBehaviour
                 velocity = delta / distance * speed;
             }
         }
-        ctx.Intents.EnemyMove(new EnemyMoveIntent(_agent.Id, velocity, -away));
+        Vector2 heading = new Vector2(velocity.X, velocity.Z);
+        Turn(heading.LengthSquared() > 1e-4f ? Vector2.Normalize(heading) : -away, MathF.Max(0f, ctx.Dt));
+        ctx.Intents.EnemyMove(new EnemyMoveIntent(_agent.Id, velocity, _facing));
+    }
+
+    private void Turn(Vector2 direction, float dt)
+    {
+        if (_facing == Vector2.Zero)
+        {
+            _facing = direction;
+            return;
+        }
+
+        float angle = MathF.Atan2(_facing.X * direction.Y - _facing.Y * direction.X,
+            Vector2.Dot(_facing, direction));
+        float limit = TurnRateDegrees * (MathF.PI / 180f) * dt;
+        float step = MathF.Max(-limit, MathF.Min(limit, angle));
+        float sin = MathF.Sin(step);
+        float cos = MathF.Cos(step);
+        _facing = Vector2.Normalize(new Vector2(_facing.X * cos - _facing.Y * sin,
+            _facing.X * sin + _facing.Y * cos));
     }
 
     private bool Ally(EnemyAgent other) => other.Id != _agent.Id && other.IsAlive &&

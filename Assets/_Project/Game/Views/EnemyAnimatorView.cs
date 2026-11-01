@@ -96,6 +96,11 @@ namespace Soulvail.Game.Views
         [Tooltip("Base movement speed for controllers with a Run bool; zero leaves it unused.")]
         [SerializeField] private float _runBaseSpeed;
 
+        [Tooltip("The ground speed the run clip covers at 1x, in m/s, while the Run bool is on. Zero " +
+                 "plays the run at the walk's stride.")]
+        [Min(0f)]
+        [SerializeField] private float _runStrideSpeed;
+
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
@@ -215,9 +220,11 @@ namespace Soulvail.Game.Views
                 _shownSpeed = Mathf.MoveTowards(_shownSpeed, speed, SpeedFollowRate * dt);
 
                 _animator.SetFloat(_speedId, _shownSpeed);
+                bool running = _runBaseSpeed > 0f && speed > _runBaseSpeed * 1.2f;
                 if (_runBaseSpeed > 0f)
-                { _animator.SetBool("Run", speed > _runBaseSpeed * 1.2f); }
-                _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
+                { _animator.SetBool("Run", running); }
+                float stride = running && _runStrideSpeed > 0f ? _runStrideSpeed : _strideSpeed;
+                _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / stride, MinWalkRate, MaxWalkRate));
             }
 
             if (_flinchLayer == -2)

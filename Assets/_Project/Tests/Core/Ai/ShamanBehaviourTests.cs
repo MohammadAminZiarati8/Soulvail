@@ -171,6 +171,48 @@ public sealed class ShamanBehaviourTests
         Assert.Throws<ArgumentOutOfRangeException>(() => _system.Haste(_agent.Id, value, 1));
     }
 
+    [Test]
+    public void Facing_LooksAtThePlayerWhileStanding()
+    {
+        Tick(0);
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(-Vector2.UnitY));
+    }
+
+    [Test]
+    public void Facing_TurnsToLookWhereItSidesteps()
+    {
+        Tick(0);
+        _system.Spawn(new ContentId("enemy.ally"), new Vector3(6, 0, 12));
+        Tick(0.1f);
+        Vector3 velocity = _intents.LastEnemyMove.Velocity;
+        Vector2 heading = Vector2.Normalize(new Vector2(velocity.X, velocity.Z));
+        Assert.That(MathF.Abs(heading.X), Is.GreaterThan(0.9f), "The anchor sits to the side: a sidestep.");
+        Assert.That(Degrees(-Vector2.UnitY, Shaman.Facing), Is.EqualTo(54f).Within(0.5f), "Rate-limited: 540°/s for 0.1 s.");
+
+        for (int i = 0; i < 3; i++)
+        {
+            Tick(0.1f);
+        }
+
+        Assert.That(Degrees(heading, _intents.LastEnemyMove.FacingXZ), Is.LessThan(0.5f));
+    }
+
+    [Test]
+    public void Facing_TurnsAwayToFlee()
+    {
+        Tick(0);
+        Bearing(3);
+        Tick(0.1f);
+        Assert.That(Shaman.State, Is.EqualTo(ShamanState.Flee));
+        Assert.That(Degrees(Vector2.UnitY, Shaman.Facing), Is.GreaterThan(90f), "Still turning, not snapped.");
+        Tick(0.3f);
+        Assert.That(Degrees(Vector2.UnitY, _intents.LastEnemyMove.FacingXZ), Is.LessThan(0.5f), "It runs away facing away, never backwards.");
+    }
+
+    private static float Degrees(Vector2 a, Vector2 b) =>
+        MathF.Acos(Math.Clamp(Vector2.Dot(Vector2.Normalize(a), Vector2.Normalize(b)), -1f, 1f)) * 180f / MathF.PI;
+
     private EnemyAgent Ally(float z) => _system.Spawn(new ContentId("enemy.ally"), new Vector3(0, 0, z));
     private void Bearing(float distance)
     { _agent.Blackboard.DistanceToPlayer = distance; _agent.Blackboard.DirectionToPlayer = -Vector2.UnitY; _agent.Blackboard.PlayerPosition = new Vector3(0, 0, 12 - distance); }

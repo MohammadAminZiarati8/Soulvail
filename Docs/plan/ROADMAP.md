@@ -74,3 +74,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)
 - [x] **JG-16g** — Preserve the repaired Shaman body and texture in game (owner correction)
 - [x] **JG-16h** — Preserve the repaired staff and source grip in game (owner correction)
+- [x] **JG-16i** — Shaman gait: hips that move, a staff that stays, faces where it goes (owner correction)

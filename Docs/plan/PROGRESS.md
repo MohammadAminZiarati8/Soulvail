@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, JG-16f._
+_Updated 2026-11-02, JG-16i._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-16f**: Jungle stages 18–19 scripted; 16–19 climb 121 → 144 → 178 → 208. |
+| **Last merged** | **JG-16i**: Shaman gait — new walk/run, matched strides, faces where it moves. |
 | **Next task** | None specced. Stage 20 and its boss undecided; owner rules the 16–19 climb. |
-| **Verified** | EditMode 5 159: 5 158 pass, 0 fail, 1 known inconclusive. PlayMode not rerun (data only). Compiler errors 0; no new analyzer warnings; format clean. |
+| **Verified** | EditMode 5 170: 5 169 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Compiler errors 0; no new analyzer warnings; format clean. |
 
 ## What works
 
@@ -23,8 +23,8 @@ Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard sum
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.
 Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 m,
 heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
-expires and stacks with slow. Full repaired body/staff and original textures; fitted KayKit hierarchy,
-six retargeted clips, colored seed glow, lime ring, healed bars and haste chevrons; pooled cleanly.
+expires and stacks with slow. Faces its path, the player when still; walks under 1.2 m/s, runs above.
+Repaired body/staff, source textures, fitted KayKit rig, own walk/run (staff arm held), seed glow, lime ring, healed bars, haste chevrons; pooled.
 Stage 17: healer/guards; 18: the healer's wall; 19: the gate, two Shamans. XP 32, priority 8. Full-detail mobile cost unmeasured.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.

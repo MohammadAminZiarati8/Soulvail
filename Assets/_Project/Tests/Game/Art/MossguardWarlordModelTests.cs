@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Soulvail.Game.Presentation;
+using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -54,7 +55,8 @@ public sealed class MossguardWarlordModelTests
         Assert.That(PrefabUtility.GetPrefabAssetType(warlord), Is.EqualTo(PrefabAssetType.Variant));
         Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(warlord), Is.EqualTo(Load(BasePath)));
         Assert.That(warlord.GetComponents<Component>().Select(c => c.GetType()),
-            Is.EqualTo(Load(BasePath).GetComponents<Component>().Select(c => c.GetType())));
+            Is.EqualTo(Load(BasePath).GetComponents<Component>().Select(c => c.GetType()).Append(typeof(WarlordView))),
+            "The base's components, plus JG-15f's WarlordView.");
         Assert.That(warlord.transform.localScale, Is.EqualTo(Vector3.one), "The 1.6× is the data's BodyScale (15g).");
     }
 

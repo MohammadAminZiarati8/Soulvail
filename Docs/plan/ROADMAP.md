@@ -61,5 +61,5 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-15c** — War cry: two Mossguards from the edges, shield lock, cleared at beats (M)
 - [x] **JG-15d** — Phases: spear lobs at 66 %, the shield shatters at 33 % (M)
 - [x] **JG-15e** — The model: the Mossguard grown and war-painted, glaive, big shield, sculpt slot (M)
-- [ ] **JG-15f** — The body: animator, guard wedge, daze, shatter (M)
+- [x] **JG-15f** — The body: animator, guard wedge, daze, shatter (M)
 - [ ] **JG-15g** — Stage 15 is his: data, stones, spear, lane probe adapter (M)

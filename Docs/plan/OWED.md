@@ -101,3 +101,9 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## JG-15e — The Warlord's model (2026-11-01)
 
 - [ ] **[Editor]** Scene view: `Mossguard_Warlord.prefab` at scale 2.03 beside `Mossguard.prefab` at 1.27, then at the game camera height. He should read as the same kind, clearly bigger and war-painted: darker olive skin, umber cloth, bone-white stripes on skirt, tail and shield. Glaive (axe head on the spear haft) and the 1.35× shield should be readable at phone zoom. Judge the KayKit axe's slate-blue neck wrap (hue 203°, 3° outside the cyan band): if it reads as player cyan, say so and 15f/15g can swap the head's material.
+
+## JG-15f — The Warlord's body (2026-11-01)
+
+- [ ] **[Editor]** After JG-15g, DT-01 start at stage 15: each move reads before it lands — two-handed slice (sweep and combo first), chop (combo second), throw (lob), taunt (war cry), shield-braced charge with running legs. The flat grey wedge at his feet shows the guarded front and widens when a guard Mossguard stands within 3.5 m. Judge whether the charge's running legs (Running_A at up to 4×) blur.
+- [ ] **[Editor]** Charge him into a stone: Hit_B then a slumped Idle_B, a dust puff, three bone-grey motes circling over the head for 2 s, guard pose dropped. At 33 %: the shield vanishes in a burst of wood/moss shards and dust, and the guard pose never returns.
+- [ ] **[device]** All of the above at phone size (GD §9.1 rule 7); the wedge must stay readable but quieter than the danger telegraphs.

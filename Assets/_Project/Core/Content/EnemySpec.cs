@@ -71,6 +71,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Turns a frontal shield toward the player, then commits to a melee bash (JG-14a).</summary>
     Bulwark,
+
+    /// <summary>Range-edge healer and haste support (JG-16b).</summary>
+    Shaman,
 }
 
 /// <summary>
@@ -246,7 +249,8 @@ public sealed class EnemySpec
         float hopRestTime = 0f,
         LungeSpec lunge = null,
         float bodyRadius = BaseBodyRadius,
-        BulwarkSpec bulwark = null)
+        BulwarkSpec bulwark = null,
+        ShamanSpec shaman = null)
     {
         if (id.Value is null)
         {
@@ -278,6 +282,11 @@ public sealed class EnemySpec
                 "A Lunger must carry a LungeSpec — the dash is the whole of what it does, and a " +
                 "behaviour with no dash would stalk the player for the rest of the run.",
                 nameof(lunge));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Shaman && shaman is null)
+        {
+            throw new ArgumentException("A Shaman must carry a ShamanSpec.", nameof(shaman));
         }
 
         if (behaviour == EnemyBehaviourKind.Bulwark && bulwark is null)
@@ -344,6 +353,7 @@ public sealed class EnemySpec
         Lunge = lunge;
         BodyRadius = Positive(bodyRadius, nameof(bodyRadius));
         Bulwark = bulwark;
+        Shaman = shaman;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -474,6 +484,8 @@ public sealed class EnemySpec
 
     /// <summary>Frontal shield and steering; absent on archetypes that do not use them.</summary>
     public BulwarkSpec Bulwark { get; }
+
+    public ShamanSpec Shaman { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

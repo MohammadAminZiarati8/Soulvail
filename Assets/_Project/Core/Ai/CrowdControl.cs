@@ -36,6 +36,9 @@ public sealed class CrowdControl
     private readonly float[] _slowFraction = new float[SlowSlots];
     private readonly float[] _slowRemaining = new float[SlowSlots];
 
+    private readonly object _hasteSource = new();
+    private float _hasted;
+    private float _hasteFraction;
     private int _slowCount;
     private float _stunned;
     private float _rooted;
@@ -64,6 +67,7 @@ public sealed class CrowdControl
         EnemyStatus.Stunned => _stunned,
         EnemyStatus.Rooted => _rooted,
         EnemyStatus.Slowed => LongestSlow(),
+        EnemyStatus.Hasted => _hasted,
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Not a crowd-control status."),
     };
 
@@ -87,6 +91,19 @@ public sealed class CrowdControl
     }
 
     /// <summary>Counts every timer down by <paramref name="dt"/> and announces what ended.</summary>
+    internal float Haste(float fraction, float seconds)
+    {
+        float strongest = MathF.Max(fraction, _hasteFraction);
+        if (strongest != _hasteFraction)
+        {
+            _moveSpeed.RemoveAll(_hasteSource);
+            _moveSpeed.Add(new Modifier(ModifierKind.PercentMult, strongest, _hasteSource));
+            _hasteFraction = strongest;
+        }
+        _hasted = MathF.Max(_hasted, seconds);
+        return _hasted;
+    }
+
     internal void Tick(float dt, int enemyId, IDomainEvents events)
     {
         if (Expire(ref _stunned, dt))
@@ -97,6 +114,13 @@ public sealed class CrowdControl
         if (Expire(ref _rooted, dt))
         {
             events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Rooted, 0f));
+        }
+
+        if (Expire(ref _hasted, dt))
+        {
+            _moveSpeed.RemoveAll(_hasteSource);
+            _hasteFraction = 0f;
+            events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Hasted, 0f));
         }
 
         if (_slowCount == 0)
@@ -133,6 +157,9 @@ public sealed class CrowdControl
     /// <summary>Everything off, silently: a death, a despawn, a recycle (rules 7–8).</summary>
     internal void Reset()
     {
+        _moveSpeed.RemoveAll(_hasteSource);
+        _hasted = 0f;
+        _hasteFraction = 0f;
         _stunned = 0f;
         _rooted = 0f;
         _slowCount = 0;

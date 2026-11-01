@@ -6,6 +6,7 @@ public enum EnemyStatus
     Stunned,
     Rooted,
     Slowed,
+    Hasted,
 }
 
 /// <summary>

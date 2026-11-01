@@ -671,6 +671,19 @@ public sealed class EnemySystem
         return true;
     }
 
+    /// <summary>Hastens a living enemy; strongest wins and the duration refreshes.</summary>
+    public bool Haste(int enemyId, float fraction, float seconds)
+    {
+        if (!(fraction > 0f) || float.IsInfinity(fraction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(fraction));
+        }
+        Duration(seconds);
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        { return false; }
+        Announce(enemyId, EnemyStatus.Hasted, agent.CrowdControl.Haste(fraction, seconds));
+        return true;
+    }
     /// <summary>Whether a living enemy is under <paramref name="status"/>; false for an unknown id.</summary>
     public bool Has(int enemyId, EnemyStatus status) =>
         TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(status);
@@ -1064,6 +1077,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Spitter:
                 case EnemyBehaviourKind.Bloater:
                 case EnemyBehaviourKind.Lunger:
+                case EnemyBehaviourKind.Shaman:
                 case EnemyBehaviourKind.Bulwark:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;

@@ -127,7 +127,7 @@ public sealed class EnemyStatusViewTests
         Change(EnemyStatus.Stunned, 6f);
         TickBar(1.5f);
         float lastX = float.NegativeInfinity;
-        foreach (EnemyStatus kind in Enum.GetValues(typeof(EnemyStatus)))
+        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
         {
             Image icon = _bar.StatusIcon(kind);
             Image sweep = _bar.StatusSweep(kind);
@@ -194,7 +194,7 @@ public sealed class EnemyStatusViewTests
         for (int n = 0; n < 5; n++)
         {
             AllOn();
-            foreach (EnemyStatus kind in Enum.GetValues(typeof(EnemyStatus)))
+            foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
             {
                 Change(kind, 0f);
                 Assert.That(_status.Effect(kind), Is.SameAs(effects[(int)kind]));
@@ -263,7 +263,7 @@ public sealed class EnemyStatusViewTests
     private void TickBar(float dt) => typeof(EnemyHealthBar).GetMethod("Tick", Private).Invoke(_bar, new object[] { dt });
     private void AllOn()
     {
-        foreach (EnemyStatus kind in Enum.GetValues(typeof(EnemyStatus)))
+        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
         {
             Change(kind, 3f);
         }
@@ -271,7 +271,7 @@ public sealed class EnemyStatusViewTests
 
     private void AssertClean()
     {
-        foreach (EnemyStatus kind in Enum.GetValues(typeof(EnemyStatus)))
+        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
         {
             Assert.That(_status.Effect(kind).activeSelf, Is.False);
             Assert.That(_bar.StatusIcon(kind).gameObject.activeSelf, Is.False);

@@ -117,3 +117,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## JG-16a — Stage 16 is a breather (2026-11-01)
 
 - [ ] **[Editor]** DT-01 start at stage 16: 6 Frogs + 2 Pitchers; then 2 Mossguards with 2 Panthers; then 1 Mossguard, 2 Puffballs and a Pitcher; the door after wave 3. Judge it as a breather after the Warlord (121 threat vs stage 14's 128).
+
+- JG-16b (2026-11-01): no standalone visual check; judge the healer's range-edge hiding, pulse and flee with its body in JG-16e.

@@ -71,6 +71,6 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-16c** — The model: the owner's sculpt on Rig_Medium, staff on the right hand (M)
 - [x] **JG-16d** — The body: animator, seed glow, aura ring, healed bars, haste mark (M)
 - [x] **JG-16e** — The Shaman in the Jungle: data, roster from 17, stage 17 scripted (M)
-- [ ] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)
+- [x] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)
 - [x] **JG-16g** — Preserve the repaired Shaman body and texture in game (owner correction)
 - [x] **JG-16h** — Preserve the repaired staff and source grip in game (owner correction)

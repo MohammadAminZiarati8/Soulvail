@@ -131,3 +131,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16h (2026-11-02): repaired full-detail body and staff now used in game, with original UVs/albedo, source-fitted rig and six retargeted clips. Judge appearance/motion at Jungle 17. Actual game-asset Blender review: Temp/ShamanInGame/Shaman_Corrected_Game.blend; Unity preview: Temp/ShamanInGame/CompleteUnity.png. EditMode 5156/5155/0/1; PlayMode run-start 1/1 pass. Full-detail mobile performance unmeasured.
 
 - JG-16h verification clarification: the run-start test reports 1/1 passed, but errors can arrive afterward during scene teardown (CoverViews and Ranger Killshot VFX). The earlier commit body's claim that the post-smoke Console was clean was incorrect; these cleanup errors remain outside the model correction.
+
+- JG-16f (2026-11-02): Jungle stages 18–19 scripted (178, 208 threat). Test start at 18: Shaman behind two Mossguards with Pitchers; the open crowd; a second Shaman wall with Panthers. Test start at 19: the crowd; two Shamans behind three Mossguards; the last mix; the door. Rule whether 16–19 (121 → 144 → 178 → 208) climb fairly into stage 20.

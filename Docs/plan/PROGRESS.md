@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-16b built._
+_Updated 2026-11-01, JG-16c built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-16b**: Moss Shaman core: anchor, range-edge hiding, heal/haste pulse and flee. |
-| **Next task** | **JG-16c**. Owner supplied body and staff; model conversion underway, then 16d–e. |
-| **Verified** | EditMode 5 128: 5 127 pass, 1 known inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
+| **Last merged** | **JG-16c**: repaired Shaman body/staff, atlas paint, KayKit rig and six shared clips verified. |
+| **Next task** | **JG-16d**. Body/view, then 16e data and stage 17; owner authorised both. |
+| **Verified** | EditMode 5 139: 5 138 pass, 1 known inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works
 

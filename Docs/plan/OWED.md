@@ -119,3 +119,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [ ] **[Editor]** DT-01 start at stage 16: 6 Frogs + 2 Pitchers; then 2 Mossguards with 2 Panthers; then 1 Mossguard, 2 Puffballs and a Pitcher; the door after wave 3. Judge it as a breather after the Warlord (121 threat vs stage 14's 128).
 
 - JG-16b (2026-11-01): no standalone visual check; judge the healer's range-edge hiding, pulse and flee with its body in JG-16e.
+
+- JG-16c (2026-11-01): judge the Shaman silhouette and source likeness; repaired front/back/side previews under Temp/ShamanReview and Temp/ShamanStaffReview, six-clip pose sheet at Temp/ShamanReview/poses-staff-upright.png. Agent inspected closure and poses; owner art ruling remains.

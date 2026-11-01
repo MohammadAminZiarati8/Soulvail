@@ -1720,6 +1720,7 @@ public sealed class FrameOrderTests
         public void ReportChargeHits(ReadOnlySpan<int> enemyIds) => _touched.Add("charge-facts");
 
         public void ReportBindAnchor(int targetId, bool hit, System.Numerics.Vector3 point) { }
+        public void ReportLaneStop(int enemyId, bool hit, float distance) { }
 
         public void End()
         {

@@ -1561,6 +1561,8 @@ public sealed class EnemySystem
 
         public void BindProbe(in BindProbeIntent intent) => Inner.BindProbe(intent);
 
+        public void LaneProbe(in LaneProbeIntent intent) => Inner.LaneProbe(intent);
+
         public void Charge(in ChargeIntent intent) => Inner.Charge(intent);
 
         public void EnemyMove(in EnemyMoveIntent intent)

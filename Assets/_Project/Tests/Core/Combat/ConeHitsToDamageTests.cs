@@ -564,6 +564,7 @@ public sealed class ConeHitsToDamageTests
     private sealed class SilentIntents : IIntentSink
     {
         public void BindProbe(in BindProbeIntent intent) { }
+        public void LaneProbe(in LaneProbeIntent intent) { }
 
         public void PlayerMove(in PlayerMoveIntent intent)
         {

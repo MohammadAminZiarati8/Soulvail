@@ -52,6 +52,9 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IRunSession
 {
+    /// <summary>Answers the live boss's pending lane probe; unknown or dead ids are ignored.</summary>
+    void ReportLaneStop(int enemyId, bool hit, float distance);
+
     /// <summary>Answers an outstanding bind probe. Resolution happens in the next projectile step.</summary>
     void ReportBindAnchor(int targetId, bool hit, Vector3 point);
 

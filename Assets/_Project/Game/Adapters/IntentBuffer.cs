@@ -59,6 +59,8 @@ public sealed class IntentBuffer : IIntentSink
     // At most one request per landing arrow, prewarmed to the live run's projectile capacity.
     private readonly List<BindProbeIntent> _bindProbes = new(Composition.BootInstaller.ProjectileCapacity);
     public IReadOnlyList<BindProbeIntent> BindProbes => _bindProbes;
+    private readonly List<LaneProbeIntent> _laneProbes = new(EnemyMoveCapacity);
+    public IReadOnlyList<LaneProbeIntent> LaneProbes => _laneProbes;
     private readonly List<EnemyKnockbackIntent> _knockbacks = new(KnockbackCapacity);
     private readonly List<EnemyMoveIntent> _enemyMoves = new(EnemyMoveCapacity);
 
@@ -183,6 +185,8 @@ public sealed class IntentBuffer : IIntentSink
 
     void IIntentSink.BindProbe(in BindProbeIntent intent) => _bindProbes.Add(intent);
 
+    void IIntentSink.LaneProbe(in LaneProbeIntent intent) => _laneProbes.Add(intent);
+
     void IIntentSink.Charge(in ChargeIntent intent)
     {
         _charge = intent;
@@ -223,6 +227,7 @@ public sealed class IntentBuffer : IIntentSink
 
         _coneHits.Clear();
         _bindProbes.Clear();
+        _laneProbes.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
         _minionMoves.Clear();

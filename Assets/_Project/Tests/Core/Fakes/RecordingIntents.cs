@@ -29,6 +29,8 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<ConeHitIntent> _coneHits = new();
     private readonly List<BindProbeIntent> _bindProbes = new();
     public IReadOnlyList<BindProbeIntent> BindProbes => _bindProbes;
+    private readonly List<LaneProbeIntent> _laneProbes = new();
+    public IReadOnlyList<LaneProbeIntent> LaneProbes => _laneProbes;
     private readonly List<ChargeIntent> _charges = new();
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
     private readonly List<EnemyMoveIntent> _enemyMoves = new();
@@ -211,6 +213,7 @@ public sealed class RecordingIntents : IIntentSink
         _playerMoves.Clear();
         _coneHits.Clear();
         _bindProbes.Clear();
+        _laneProbes.Clear();
         _charges.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
@@ -228,6 +231,8 @@ public sealed class RecordingIntents : IIntentSink
     }
 
     void IIntentSink.BindProbe(in BindProbeIntent intent) => _bindProbes.Add(intent);
+
+    void IIntentSink.LaneProbe(in LaneProbeIntent intent) => _laneProbes.Add(intent);
 
     void IIntentSink.Charge(in ChargeIntent intent)
     {

@@ -1674,6 +1674,16 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _binds.ReportAnchor(targetId, hit, point);
     }
 
+    public void ReportLaneStop(int enemyId, bool hit, float distance)
+    {
+        RequireRunning(nameof(ReportLaneStop));
+        if (State.Enemies.Registry.TryGet(enemyId, out EnemyAgent agent) && agent.IsAlive
+            && agent.Behaviour is BossBehaviour boss && boss.Inner is ILaneStopListener listener)
+        {
+            listener.OnLaneStop(hit, distance);
+        }
+    }
+
     /// <inheritdoc />
     /// <remarks>
     /// <para>

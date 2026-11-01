@@ -3,6 +3,25 @@ using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ports;
 
+/// <summary>Collider question for a shield charge; core owns the lane and daze decisions.</summary>
+public readonly struct LaneProbeIntent
+{
+    public readonly int EnemyId;
+    public readonly Vector3 From;
+    public readonly Vector3 Direction;
+    public readonly float Reach;
+    public readonly float Radius;
+
+    public LaneProbeIntent(int enemyId, Vector3 from, Vector3 direction, float reach, float radius)
+    {
+        EnemyId = enemyId;
+        From = from;
+        Direction = direction;
+        Reach = reach;
+        Radius = radius;
+    }
+}
+
 /// <summary>Collider question only. The body reports a hit point; core chooses the bind outcome.</summary>
 public readonly struct BindProbeIntent
 {
@@ -43,6 +62,9 @@ public readonly struct BindProbeIntent
 /// </remarks>
 public interface IIntentSink
 {
+    /// <summary>Accumulated charge lane probes, answered through IRunSession during facts.</summary>
+    void LaneProbe(in LaneProbeIntent intent);
+
     /// <summary>Accumulated obstacle probes, answered through IRunSession during facts.</summary>
     void BindProbe(in BindProbeIntent intent);
 

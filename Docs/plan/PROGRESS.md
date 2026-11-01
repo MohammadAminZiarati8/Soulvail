@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-16c built._
+_Updated 2026-11-01, JG-16d built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-16c**: repaired Shaman body/staff, atlas paint, KayKit rig and six shared clips verified. |
-| **Next task** | **JG-16d**. Body/view, then 16e data and stage 17; owner authorised both. |
-| **Verified** | EditMode 5 139: 5 138 pass, 1 known inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
+| **Last merged** | **JG-16d**: Shaman prefab, cast glow, support ring, healed bars and haste mark. |
+| **Next task** | **JG-16e**. Data, roster and stage 17; owner authorised. |
+| **Verified** | EditMode 5 148: 5 147 pass, 1 known inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works
 

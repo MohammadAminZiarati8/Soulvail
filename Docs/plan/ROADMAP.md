@@ -69,6 +69,6 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-16a** — Stage 16 is a breather: known enemies, 121 threat (S)
 - [x] **JG-16b** — The Moss Shaman in core: anchor, range-edge hiding, heal and haste pulse, flee (M)
 - [x] **JG-16c** — The model: the owner's sculpt on Rig_Medium, staff on the right hand (M)
-- [ ] **JG-16d** — The body: animator, seed glow, aura ring, healed bars, haste mark (M)
+- [x] **JG-16d** — The body: animator, seed glow, aura ring, healed bars, haste mark (M)
 - [ ] **JG-16e** — The Shaman in the Jungle: data, roster from 17, stage 17 scripted (M)
 - [ ] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)

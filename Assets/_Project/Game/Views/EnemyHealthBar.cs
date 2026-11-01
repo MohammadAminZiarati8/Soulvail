@@ -131,6 +131,7 @@ namespace Soulvail.Game.Views
 
         public float GhostFraction => _ghostFraction;
 
+        private IDisposable _healedSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _bossSubscription;
 
@@ -166,15 +167,15 @@ namespace Soulvail.Game.Views
         private bool _oriented;
 
         private bool _injected;
-        private readonly Image[] _statusIcons = new Image[3];
-        private readonly Image[] _statusSweeps = new Image[3];
-        private readonly float[] _statusRemaining = new float[3];
-        private readonly float[] _statusDuration = new float[3];
-        private readonly bool[] _statuses = new bool[3];
+        private readonly Image[] _statusIcons = new Image[4];
+        private readonly Image[] _statusSweeps = new Image[4];
+        private readonly float[] _statusRemaining = new float[4];
+        private readonly float[] _statusDuration = new float[4];
+        private readonly bool[] _statuses = new bool[4];
         private IDisposable _statusSubscription;
         private IDisposable _deathSubscription;
         private float _statusPx = 1f;
-        private bool HasStatuses => _statuses[0] || _statuses[1] || _statuses[2];
+        private bool HasStatuses => _statuses[0] || _statuses[1] || _statuses[2] || _statuses[3];
 
         public Image StatusIcon(EnemyStatus status) => _statusIcons[(int)status];
         public Image StatusSweep(EnemyStatus status) => _statusSweeps[(int)status];
@@ -185,19 +186,34 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-            string[] keys = { "status.enemy.stunned", "status.enemy.rooted", "status.enemy.slowed" };
+            string[] keys = { "status.enemy.stunned", "status.enemy.rooted", "status.enemy.slowed", "status.enemy.hasted" };
             _statusPx = PixelsPerDp();
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var icon = new GameObject(keys[i], typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 icon.transform.SetParent(_root.transform, false);
-                icon.sprite = icons != null ? icons.For(new ContentId(keys[i])) : sweep;
-                icon.color = Color.white;
+                icon.sprite = i == 3 ? null : icons != null ? icons.For(new ContentId(keys[i])) : sweep;
+                icon.color = i == 3 ? Color.clear : Color.white;
+                if (i == 3)
+                {
+                    for (int side = 0; side < 2; side++)
+                    {
+                        var stroke = new GameObject("Haste chevron", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                        stroke.transform.SetParent(icon.transform, false);
+                        stroke.color = new Color(.75f, .9f, .38f, 1f);
+                        stroke.raycastTarget = false;
+                        stroke.rectTransform.sizeDelta = new Vector2(8f, 2.5f);
+                        stroke.rectTransform.anchoredPosition = new Vector2(side == 0 ? -2.5f : 2.5f, 0f);
+                        stroke.rectTransform.localRotation = Quaternion.Euler(0f, 0f, side == 0 ? 45f : -45f);
+                    }
+                }
                 icon.raycastTarget = false;
                 var mask = new GameObject("Sweep", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 mask.transform.SetParent(icon.transform, false);
                 mask.sprite = sweep;
                 mask.color = new Color(Palette.Ink.r, Palette.Ink.g, Palette.Ink.b, 0.65f);
+                if (i == 3)
+                { mask.color = Color.clear; }
                 mask.type = Image.Type.Filled;
                 mask.fillMethod = Image.FillMethod.Radial360;
                 mask.fillOrigin = (int)Image.Origin360.Top;
@@ -214,7 +230,7 @@ namespace Soulvail.Game.Views
 
         public void ClearStatuses()
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 _statuses[i] = false;
                 _statusRemaining[i] = 0f;
@@ -226,7 +242,7 @@ namespace Soulvail.Game.Views
 
         private void OnStatusChanged(EnemyStatusChanged evt)
         {
-            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)evt.Status >= 3u)
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)evt.Status >= 4u)
             {
                 return;
             }
@@ -248,7 +264,7 @@ namespace Soulvail.Game.Views
         private void DrawStatuses()
         {
             int count = 0;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (_statuses[i])
                 {
@@ -257,7 +273,7 @@ namespace Soulvail.Game.Views
             }
             float px = _statusPx;
             int slot = 0;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 Image icon = _statusIcons[i];
                 if (icon == null)
@@ -304,6 +320,7 @@ namespace Soulvail.Game.Views
             // census subscription here would hand every spawn in the arena to every body in the pool
             // in order to discover that twenty-seven of them are not it.
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
+            _healedSubscription = hub.Subscribe<EnemyHealed>(OnHealed);
 
             // A boss is an ordinary spawn, told apart only by the phase it announces straight after
             // (BossBehaviour.Announce). A few events per fight, so the census cost above does not apply.
@@ -420,6 +437,7 @@ namespace Soulvail.Game.Views
             // Unsubscribed explicitly rather than left to the hub's disposal: a body destroyed
             // mid-run would otherwise stay in the subscriber list and be handed events for a
             // component Unity has already killed.
+            _healedSubscription?.Dispose();
             _damagedSubscription?.Dispose();
             _damagedSubscription = null;
             _bossSubscription?.Dispose();
@@ -455,7 +473,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 _statusRemaining[i] = Mathf.Max(0f, _statusRemaining[i] - dt);
             }
@@ -533,6 +551,17 @@ namespace Soulvail.Game.Views
             DrawStatuses();
             _shownRemaining = 0f;
 
+            Draw();
+        }
+
+        private void OnHealed(EnemyHealed evt)
+        {
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id)
+            { return; }
+            _fraction = float.IsFinite(evt.HpFraction) ? Mathf.Clamp01(evt.HpFraction) : 1f;
+            _ghostFraction = _fraction;
+            _ghostHoldRemaining = 0f;
+            _shownRemaining = _secondsShown + _fadeSeconds;
             Draw();
         }
 

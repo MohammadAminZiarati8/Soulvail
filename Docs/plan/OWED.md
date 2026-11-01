@@ -121,3 +121,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16b (2026-11-01): no standalone visual check; judge the healer's range-edge hiding, pulse and flee with its body in JG-16e.
 
 - JG-16c (2026-11-01): judge the Shaman silhouette and source likeness; repaired front/back/side previews under Temp/ShamanReview and Temp/ShamanStaffReview, six-clip pose sheet at Temp/ShamanReview/poses-staff-upright.png. Agent inspected closure and poses; owner art ruling remains.
+
+- JG-16d (2026-11-01): with the stage-17 encounter, judge lantern glow, pale-lime support ring, healed bars and haste chevrons from the game camera; approach to cancel its cast and see it flee. Automated view/pool checks passed.

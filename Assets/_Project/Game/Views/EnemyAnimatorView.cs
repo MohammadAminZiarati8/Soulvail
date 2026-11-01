@@ -93,6 +93,9 @@ namespace Soulvail.Game.Views
                  "enough to crawl the follow-through.")]
         [SerializeField] private bool _releaseAtClipSpeed;
 
+        [Tooltip("Base movement speed for controllers with a Run bool; zero leaves it unused.")]
+        [SerializeField] private float _runBaseSpeed;
+
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
@@ -212,6 +215,8 @@ namespace Soulvail.Game.Views
                 _shownSpeed = Mathf.MoveTowards(_shownSpeed, speed, SpeedFollowRate * dt);
 
                 _animator.SetFloat(_speedId, _shownSpeed);
+                if (_runBaseSpeed > 0f)
+                { _animator.SetBool("Run", speed > _runBaseSpeed * 1.2f); }
                 _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / _strideSpeed, MinWalkRate, MaxWalkRate));
             }
 
@@ -268,6 +273,8 @@ namespace Soulvail.Game.Views
             }
 
             _animator.SetFloat(_speedId, 0f);
+            if (_runBaseSpeed > 0f)
+            { _animator.SetBool("Run", false); }
             _animator.SetBool(_deadId, false);
             _animator.ResetTrigger(_attackId);
             _animator.ResetTrigger(_hitId);

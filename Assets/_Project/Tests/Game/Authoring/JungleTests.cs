@@ -56,6 +56,9 @@ public sealed class JungleTests
     private const string MotherPath = "Assets/_Project/Data/Enemies/MotherPitcher.asset";
     private const string MotherBossPath = "Assets/_Project/Data/Enemies/MotherPitcherBoss.asset";
     private const string BudPath = "Assets/_Project/Data/Enemies/PitcherBud.asset";
+    private const string WarlordPath = "Assets/_Project/Data/Enemies/MossguardWarlord.asset";
+    private const string WarlordBossPath = "Assets/_Project/Data/Enemies/MossguardWarlordBoss.asset";
+    private const string WarlordStonesPath = "Assets/_Project/Prefabs/Arenas/Jungle/Cover_WarlordStones.prefab";
     private const string WardenPath = "Assets/_Project/Data/Enemies/Warden.asset";
     private const string RootlingBodyPath = "Assets/_Project/Prefabs/Enemies/Rootling.prefab";
     private const string FrogBodyPath = "Assets/_Project/Prefabs/Enemies/Frog.prefab";
@@ -529,7 +532,7 @@ public sealed class JungleTests
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
-        Assert.That(jungle.TryGetScriptedStage(15, out _), Is.False, "Stage 15 is Old Croaker's.");
+        Assert.That(jungle.TryGetScriptedStage(15, out _), Is.False, "Stage 15 is the Mossguard Warlord's.");
         Assert.That(jungle.TryGetScriptedStage(16, out _), Is.False, "Stage 16 uses the threat budget.");
     }
 
@@ -654,7 +657,7 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StageTen_IsMotherPitcher_OtherFifthsCroaker()
+    public void Jungle_FifthStages_HaveTheirBosses()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
@@ -664,7 +667,12 @@ public sealed class JungleTests
             Assert.That(hasBoss, Is.EqualTo(stage % 5 == 0), $"Stage {stage}");
             if (hasBoss)
             {
-                Assert.That(boss.Value, Is.EqualTo(stage == 10 ? "boss.mother_pitcher" : "boss.croaker"), $"Stage {stage}");
+                Assert.That(boss.Value, Is.EqualTo(stage switch
+                {
+                    10 => "boss.mother_pitcher",
+                    15 => "boss.mossguard_warlord",
+                    _ => "boss.croaker",
+                }), $"Stage {stage}");
             }
         }
     }
@@ -726,6 +734,137 @@ public sealed class JungleTests
 
         Assert.That(hpScale, Is.EqualTo(1.54f).Within(1e-5f));
         Assert.That(seconds, Is.InRange(75f, 120f), $"Authored HP + buds + beats: {seconds:F1} s.");
+    }
+
+    [Test]
+    public void Jungle_Warlord_HasItsNumbers()
+    {
+        EnemyDefinition definition = Load<EnemyDefinition>(WarlordPath);
+        EnemySpec warlord = definition.ToSpec();
+        EnemyLook look = definition.ToLook();
+
+        Assert.That(warlord.Id.Value, Is.EqualTo("enemy.mossguard_warlord"));
+        Assert.That(warlord.NameKey.Key, Is.EqualTo("enemy.mossguard_warlord.name"));
+        Assert.That(warlord.Behaviour, Is.EqualTo(EnemyBehaviourKind.Boss));
+        Assert.That((warlord.MoveSpeed, warlord.ContactDamage, warlord.XpValue, warlord.ThreatCost),
+            Is.EqualTo((1.4f, 20f, 500f, 40)));
+        Assert.That(look.BodyScale, Is.EqualTo(1.27f * 1.6f).Within(0.005f));
+        Assert.That(look.Body, Is.SameAs(Load<EnemyView>("Assets/_Project/Prefabs/Enemies/Mossguard_Warlord.prefab")));
+        Assert.That(look.Projectile, Is.SameAs(Load<ProjectileView>("Assets/_Project/Prefabs/Projectiles/WarlordSpear.prefab")));
+        Assert.That(look.MarksLanding, Is.True);
+        Assert.That(look.Cover, Is.SameAs(Load<GameObject>(WarlordStonesPath)));
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[warlord.NameKey], Is.EqualTo("Mossguard Warlord"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[warlord.NameKey], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Jungle_WarlordBoss_HasItsPhases()
+    {
+        BossSpec boss = Load<BossDefinition>(WarlordBossPath).ToSpec();
+
+        Assert.That(boss.Id.Value, Is.EqualTo("boss.mossguard_warlord"));
+        Assert.That(boss.EnemySpecId.Value, Is.EqualTo("enemy.mossguard_warlord"));
+        Assert.That(boss.SpawnsCentral, Is.True);
+        Assert.That(boss.BeatSeconds, Is.EqualTo(1.5f));
+        Assert.That(boss.Phases.Select(p => p.EntersBelow), Is.EqualTo(new[] { 1f, 0.66f, 0.33f }));
+        Assert.That(boss.Phases.SelectMany(p => p.Summons), Is.Empty, "The war cry is its adds.");
+    }
+
+    [Test]
+    public void Jungle_WarlordStones_AreCoverAndRingTheCentre()
+    {
+        GameObject prefab = Load<GameObject>(WarlordStonesPath);
+        Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(prefab),
+            Is.SameAs(Load<GameObject>("Assets/_Project/Prefabs/Arenas/Jungle/Cover_MotherStones.prefab")),
+            "A variant of the Mother's stones.");
+        GameObject stones = Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
+        try
+        {
+            Physics.SyncTransforms();
+            BoxCollider[] boxes = stones.GetComponentsInChildren<BoxCollider>();
+            Assert.That(boxes.Length, Is.EqualTo(5));
+            var angles = new List<float>();
+            foreach (BoxCollider box in boxes)
+            {
+                Assert.That(box.gameObject.layer, Is.EqualTo(LayerMask.NameToLayer("Cover")), box.name);
+                Assert.That(box.isTrigger, Is.False, box.name);
+                Vector3 half = Vector3.Scale(box.size, box.transform.lossyScale) * 0.5f;
+                Assert.That(Mathf.Min(half.x, half.z), Is.GreaterThanOrEqualTo(1.2f), box.name);
+                Vector3 at = box.bounds.center;
+                float distance = new Vector2(at.x, at.z).magnitude;
+                Assert.That(distance, Is.InRange(6f, 7f), box.name);
+                Assert.That(distance - new Vector2(half.x, half.z).magnitude, Is.GreaterThan(3f), $"{box.name} clears the centre.");
+                angles.Add(Mathf.Repeat(Mathf.Atan2(at.x, at.z) * Mathf.Rad2Deg, 360f));
+            }
+            angles.Sort();
+            float[] gaps = angles.Select((a, i) => Mathf.Repeat(angles[(i + 1) % angles.Count] - a, 360f)).ToArray();
+            // A 90° gap at 6.5 m leaves no ring point ~5 m from a stone: well inside a 14 m charge.
+            Assert.That(gaps.Max(), Is.LessThanOrEqualTo(90f), "Every approach has a stone.");
+            Assert.That(gaps.Max() - gaps.Min(), Is.GreaterThan(5f), "Uneven angles.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stones);
+        }
+    }
+
+    [Test]
+    public void Jungle_Warlord_FightIsInTheBand()
+    {
+        EnemySpec warlord = Load<EnemyDefinition>(WarlordPath).ToSpec();
+        BossSpec boss = Load<BossDefinition>(WarlordBossPath).ToSpec();
+        float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(15);
+        // Rule 6: stage-15 Ranger ~33 DPS, half of it past the front guard. Guards excluded.
+        const float EffectiveDps = 33f * 0.5f;
+        float seconds = (warlord.MaxHp * hpScale / EffectiveDps) + ((boss.Phases.Count - 1) * boss.BeatSeconds);
+
+        Assert.That(hpScale, Is.EqualTo(1.84f).Within(1e-5f));
+        Assert.That(seconds, Is.InRange(90f, 100f), $"Aimed at ~95 s: {seconds:F1} s.");
+    }
+
+    [Test]
+    public void Jungle_StageFifteen_StartsWithTheWarlord()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec()),
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        var random = new Soulvail.Game.Adapters.SeededRandom(12);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 15);
+
+        try
+        {
+            session.Start(new RunConfig(mode, ranger, random.Seed, 15, SpawnPlan.Empty, restore));
+            Assert.That(session.State.StageIndex, Is.EqualTo(15));
+            var world = new WorldSnapshot(64)
+            {
+                Dt = 1f / 30f,
+                SpawnPoints = new[]
+                {
+                    new System.Numerics.Vector3(-8f, 0f, 8f), new System.Numerics.Vector3(8f, 0f, 8f),
+                    new System.Numerics.Vector3(-8f, 0f, -8f), new System.Numerics.Vector3(8f, 0f, -8f),
+                },
+            };
+            for (int frame = 0; frame < 300 && events.Count<Soulvail.Core.Events.EnemySpawned>() == 0; frame++)
+            {
+                session.Tick(world);
+            }
+            Assert.That(events.Of<Soulvail.Core.Events.EnemySpawned>().Select(e => e.SpecId.Value),
+                Has.Member("enemy.mossguard_warlord"));
+        }
+        finally
+        {
+            session.End();
+        }
     }
 
     private static TSpec[] BootSpecs<TDefinition, TSpec>(SerializedObject boot, string field, System.Func<TDefinition, TSpec> convert)

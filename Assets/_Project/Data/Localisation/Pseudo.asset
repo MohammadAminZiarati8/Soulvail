@@ -598,6 +598,8 @@ MonoBehaviour:
     _text: "[M\xF4th\xE9r P\xEEt\xE7h\xE9r \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.pitcher_bud.name
     _text: "[P\xEEt\xE7h\xE9r B\xFBd \xB7\xB7\xB7\xB7]"
+  - _key: enemy.mossguard_warlord.name
+    _text: "[M\xF4ssg\xFB\xE1rd W\xE1rl\xF4rd \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: path.ranger.marksman.name
     _text: "[M\xE1rksm\xE1\xF1 \xB7\xB7\xB7]"
   - _key: path.ranger.marksman.description

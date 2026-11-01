@@ -83,6 +83,9 @@ MonoBehaviour:
   - _bossId: boss.mother_pitcher
     _everyNStages: 0
     _atStage: 10
+  - _bossId: boss.mossguard_warlord
+    _everyNStages: 0
+    _atStage: 15
   - _bossId: boss.croaker
     _everyNStages: 5
     _atStage: 0

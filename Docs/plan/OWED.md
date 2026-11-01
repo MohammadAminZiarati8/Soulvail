@@ -107,3 +107,9 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [ ] **[Editor]** After JG-15g, DT-01 start at stage 15: each move reads before it lands — two-handed slice (sweep and combo first), chop (combo second), throw (lob), taunt (war cry), shield-braced charge with running legs. The flat grey wedge at his feet shows the guarded front and widens when a guard Mossguard stands within 3.5 m. Judge whether the charge's running legs (Running_A at up to 4×) blur.
 - [ ] **[Editor]** Charge him into a stone: Hit_B then a slumped Idle_B, a dust puff, three bone-grey motes circling over the head for 2 s, guard pose dropped. At 33 %: the shield vanishes in a burst of wood/moss shards and dust, and the guard pose never returns.
 - [ ] **[device]** All of the above at phone size (GD §9.1 rule 7); the wedge must stay readable but quieter than the danger telegraphs.
+
+## JG-15g — Stage 15 is the Warlord's (2026-11-01)
+
+- [ ] **[Editor]** DT-01 start at stage 15: the Warlord spawns central among five stones (uneven ring ~6.5 m out). Roll behind him and shoot; bait a charge into a stone — 2 s daze; Binding Shot him to a stone; Snare his lane. His spears fly tip first and land on their rings.
+- [ ] **[Editor]** Fight lands in 75–120 s with a Marksman build (authored 825 HP aims at ~95 s); war-cry guards vanish at 66 % and 33 %.
+- [ ] **[Editor]** Known, not in 15g's table: his death dissolve still shows the unpainted atlas (M_Enemy_Dissolve).

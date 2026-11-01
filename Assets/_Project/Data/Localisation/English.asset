@@ -552,6 +552,8 @@ MonoBehaviour:
     _text: Mother Pitcher
   - _key: enemy.pitcher_bud.name
     _text: Pitcher Bud
+  - _key: enemy.mossguard_warlord.name
+    _text: Mossguard Warlord
   - _key: path.ranger.marksman.name
     _text: Marksman
   - _key: path.ranger.marksman.description

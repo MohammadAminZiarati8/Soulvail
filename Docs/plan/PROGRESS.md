@@ -2,27 +2,28 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-15f built._
+_Updated 2026-11-01, JG-15g built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-15f**: Warlord body: move clips, guard wedge, daze, shield shatter. |
-| **Next task** | **JG-15g** (stage 15: data, stones, spear, lane probe adapter), on the owner's go. |
-| **Verified** | EditMode 5 100: 5 099 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
+| **Last merged** | **JG-15g**: stage 15 is the Warlord's: data, five stones, spear, lane probe adapter. |
+| **Next task** | None specced; the Warlord arc is done. Owner to name the next. |
+| **Verified** | EditMode 5 109: 5 108 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
-Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother.
+Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
 Stages 1–14 scripted; five enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
 Warlord core: 60° front guard, 40°/s turn, 45° walk cone; 1.4 s gap, 0.8 s
 sweep 3.5 m/60°, 1.5× damage, 0.8 s recovery. Far: 0.9 s charge warning,
 probe-clipped 14 m lane, 2× damage, 16 m/s dash; reached stone: 2 s daze, guard
-down; 6 s cooldown. Phase drops the move, keeps opened lanes. Probe adapter/data JG-15g.
+down; 6 s cooldown. Phase drops the move, keeps opened lanes. Cover sphere
+cast probes the lane. Stage 15: 825 HP (~95 s), five uneven stones.
 War cry from 8 s, 14 s cooldown: 1 s stand, up to two 0-XP Mossguards on far
 open ground, else a ring; a guard within 3.5 m locks 90°; beats despawn, rearm 8 s.
 Phase 1: 0.8 s lob, 3 ringed spears at ≥ 5 m, 5 s cooldown. Phase 2: shield
@@ -36,14 +37,14 @@ Tree preview/choice, rank pips and Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles/haptics; 0.5 s auto gap; mirrored option. Legacy saves expand to six.
 Player status icons; pooled enemy CC, bosses half duration. All Marksman skills authored/drawn.
 Marksman look: forest hood/cloak, cyan trim, KayKit quiver, emissive string,
-brighter arrows; choice shimmer, silent resume, plain menu/fresh run. Reversible.
+brighter arrows; choice shimmer, silent resume, plain menu/fresh run.
 
 ## What does not work yet
 
 1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
 3. Past ~26 late waves are all Bloaters/Puffballs.
-4. No audio, Elites, feel pass or second language; Warlord not in a stage until JG-15g.
+4. No audio, Elites, feel pass or second language.
 
 ## Known issues
 
@@ -54,4 +55,4 @@ brighter arrows; choice shimmer, silent resume, plain menu/fresh run. Reversible
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; no reference device.
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
-8. Warlord's death dissolve shows the unpainted atlas (not in 15f's table).
+8. Warlord's death dissolve shows the unpainted atlas.

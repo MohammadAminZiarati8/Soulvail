@@ -136,6 +136,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
     private readonly ConeOverlapQuery _cone;
     private readonly BindProbeAdapter _bindProbe;
+    private readonly LaneProbeAdapter _laneProbe;
     private readonly BindingChainView _bindingChains;
 
     /// <summary>
@@ -182,9 +183,11 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ClassSelectRoster classSelect = null,
         PlaceWriter placeWriter = null,
         BindProbeAdapter bindProbe = null,
-        BindingChainView bindingChains = null)
+        BindingChainView bindingChains = null,
+        LaneProbeAdapter laneProbe = null)
     {
         _bindProbe = bindProbe;
+        _laneProbe = laneProbe;
         _bindingChains = bindingChains;
         // Taken and not kept: being on this chain is what constructs the writer before core can
         // publish (AR §18.1). Optional for the fixtures that build a ticker by hand, like the
@@ -510,6 +513,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         ResolveConeHits();
 
         _bindProbe?.Resolve(_intents, _session);
+        _laneProbe?.Resolve(_intents, _session);
 
         ApplyKnockbacks();
         _bindingChains?.Step(_snapshot.Dt);

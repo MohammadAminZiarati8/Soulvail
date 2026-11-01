@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, MK-11 built._
+_Updated 2026-11-01, JG-15 specs written._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-11-01, MK-11 built._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **MK-11**: the Marksman's look; the Marksman path is complete. |
-| **Next task** | **Owner to name — the Marksman path is complete.** |
+| **Next task** | **JG-15a** (Mossguard Warlord in core), on the owner's go; JG-15a–g specced. |
 | **Verified** | EditMode 5 003: 5 002 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; new analyzer warnings 0; format clean (6 files). Menu/run smoke 1/1 pass. Look/resume playchecks owed (OWED). |
 
 ## What works
@@ -41,7 +41,7 @@ cyan trim, KayKit back quiver, emissive string, brighter ordinary arrows. Choice
 1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
 3. Past ~26 late waves are all Bloaters/Puffballs.
-4. No audio, Elites, feel pass or second language; three bosses. Jungle trees without colliders out of scope.
+4. No audio, Elites, feel pass or second language; three bosses (Warlord specced). Jungle trees without colliders out of scope.
 
 ## Known issues
 

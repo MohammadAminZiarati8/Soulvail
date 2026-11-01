@@ -336,8 +336,10 @@ Every 5th stage. Every 20th is an **Archon** — longer, multi-phase, with a bio
 |---|---|---|
 | 5 | **The Warden of Ash** | A Warden that grew. Shield-slam shockwaves, ground fissures, summons Husks. *Teaches: attack from behind, keep moving.* |
 | 10 | **Choirmother** | Immobile, ringed by rotating Weaver shields. Sonic cone broken by line-of-sight. *Teaches: target priority.* |
-| 15 | **Gravemaw** | Burrows, surfaces under the player's *predicted* position. *Teaches: break your movement pattern.* |
+| 15 | **Mossguard Warlord** (Jungle) | A Mossguard grown into a chieftain: blocks from the front and turns slowly; a shield charge that a stone stops cold, stunning him back-open; a war cry that calls guards who lock shields with him; at 33 % the shield shatters. *Teaches: get behind it, and make the arena fight for you.* |
 | 20 | **Archon of the Vail** (major) | Mirrors the player's own Pacts back at them — the more corrupt your build, the deadlier this fight. *Teaches: your choices have weight.* |
+
+*Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). **Gravemaw** — burrows, surfaces under the player's *predicted* position, *teaches: break your movement pattern* — is deferred to stage 20 or a later place.
 
 Past stage 20, bosses recycle with stacking Ordeals and one previously-unseen attack pattern per repeat.
 

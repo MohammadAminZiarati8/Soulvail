@@ -53,3 +53,13 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-10a** — Killshot in core (M)
 - [x] **MK-10b** — Killshot drawn and authored: the kneel, the streak, the jolt (M)
 - [x] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M)
+
+**The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
+
+- [ ] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)
+- [ ] **JG-15b** — Shield charge and stone daze, with a lane probe port (M)
+- [ ] **JG-15c** — War cry: two Mossguards from the edges, shield lock, cleared at beats (M)
+- [ ] **JG-15d** — Phases: spear lobs at 66 %, the shield shatters at 33 % (M)
+- [ ] **JG-15e** — The model: the Mossguard grown and war-painted, glaive, big shield, sculpt slot (M)
+- [ ] **JG-15f** — The body: animator, guard wedge, daze, shatter (M)
+- [ ] **JG-15g** — Stage 15 is his: data, stones, spear, lane probe adapter (M)

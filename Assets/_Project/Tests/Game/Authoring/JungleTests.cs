@@ -528,12 +528,45 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesFifteenAndSixteen_AreNotScripted()
+    public void Jungle_StagesFifteenAndSeventeen_AreNotScripted()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
         Assert.That(jungle.TryGetScriptedStage(15, out _), Is.False, "Stage 15 is the Mossguard Warlord's.");
-        Assert.That(jungle.TryGetScriptedStage(16, out _), Is.False, "Stage 16 uses the threat budget.");
+        Assert.That(jungle.TryGetScriptedStage(17, out _), Is.False, "Stage 17 uses the threat budget.");
+    }
+
+    [Test]
+    public void Jungle_StageSixteen_Regroups()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(16, out ScriptedStage sixteenth), Is.True);
+        Assert.That(sixteenth.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.frog", 6),
+            (1, "enemy.pitcher", 2),
+            (2, "enemy.mossguard", 2),
+            (2, "enemy.panther", 2),
+            (3, "enemy.mossguard", 1),
+            (3, "enemy.puffball", 2),
+            (3, "enemy.pitcher", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageSixteen_IsABreather()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Dictionary<ContentId, int> costs = new[] { FrogPath, PitcherPath, PuffballPath, PantherPath, MossguardPath }
+            .Select(path => Load<EnemyDefinition>(path).ToSpec())
+            .ToDictionary(enemy => enemy.Id, enemy => enemy.ThreatCost);
+
+        Assert.That(jungle.TryGetScriptedStage(16, out ScriptedStage sixteenth), Is.True);
+        int total = sixteenth.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]);
+
+        Assert.That(total, Is.EqualTo(121));
+        Assert.That(total, Is.LessThan(128), "Stage 16 steps down from stage 14 after the Warlord.");
     }
 
     [Test]

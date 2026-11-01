@@ -113,3 +113,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [ ] **[Editor]** DT-01 start at stage 15: the Warlord spawns central among five stones (uneven ring ~6.5 m out). Roll behind him and shoot; bait a charge into a stone — 2 s daze; Binding Shot him to a stone; Snare his lane. His spears fly tip first and land on their rings.
 - [ ] **[Editor]** Fight lands in 75–120 s with a Marksman build (authored 825 HP aims at ~95 s); war-cry guards vanish at 66 % and 33 %.
 - [ ] **[Editor]** Known, not in 15g's table: his death dissolve still shows the unpainted atlas (M_Enemy_Dissolve).
+
+## JG-16a — Stage 16 is a breather (2026-11-01)
+
+- [ ] **[Editor]** DT-01 start at stage 16: 6 Frogs + 2 Pitchers; then 2 Mossguards with 2 Panthers; then 1 Mossguard, 2 Puffballs and a Pitcher; the door after wave 3. Judge it as a breather after the Warlord (121 threat vs stage 14's 128).

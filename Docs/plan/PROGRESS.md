@@ -2,22 +2,22 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-16 specced._
+_Updated 2026-11-01, JG-16a built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-15g**: stage 15 is the Warlord's: data, five stones, spear, lane probe adapter. |
-| **Next task** | **JG-16a**. JG-16a–f specced (16–19, Moss Shaman); 16c needs sculpts. |
-| **Verified** | EditMode 5 109: 5 108 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
+| **Last merged** | **JG-16a**: stage 16 scripted, a 121-threat breather after the Warlord. |
+| **Next task** | **JG-16b**. JG-16b–f specced (17–19, Moss Shaman); 16c needs sculpts. |
+| **Verified** | EditMode 5 111: 5 110 pass, 1 known inconclusive; save-store flake passed alone. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
-Stages 1–14 scripted; five enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
+Stages 1–14 and 16 scripted; five enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
 Warlord core: 60° front guard, 40°/s turn, 45° walk cone; 1.4 s gap, 0.8 s
 sweep 3.5 m/60°, 1.5× damage, 0.8 s recovery. Far: 0.9 s charge warning,

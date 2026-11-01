@@ -75,3 +75,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-16g** — Preserve the repaired Shaman body and texture in game (owner correction)
 - [x] **JG-16h** — Preserve the repaired staff and source grip in game (owner correction)
 - [x] **JG-16i** — Shaman gait: hips that move, a staff that stays, faces where it goes (owner correction)
+- [x] **JG-16j** — Shaman hit, cast and death rebuilt without frame flips (owner correction)

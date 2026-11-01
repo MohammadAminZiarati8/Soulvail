@@ -108,7 +108,7 @@ public sealed class ShamanModelTests
         var seedFilter = staff.GetComponentsInChildren<MeshFilter>().Single(f => f.name == "ShamanStaff_Seed");
         Mesh mesh = seedFilter.sharedMesh;
         Vector3[] v = mesh.vertices;
-        Clip("Ranged_Magic_Spellcasting").SampleAnimation(model, .45f);
+        AssetDatabase.LoadAssetAtPath<AnimationClip>(CastPath).SampleAnimation(model, .45f);
         float seed = float.NegativeInfinity;
         for (int i = 0; i < v.Length; i++)
         { seed = Mathf.Max(seed, seedFilter.transform.TransformPoint(v[i]).y); }
@@ -220,9 +220,12 @@ public sealed class ShamanModelTests
         Assert.That(LowestFoot(model, clip), Is.EqualTo(ground).Within(.005f), "Feet touch the idle's ground, neither sinking nor floating.");
     }
 
-    [TestCase(WalkPath)]
-    [TestCase(RunPath)]
-    public void ShamanGait_LoopsWithoutAPop(string path)
+    [TestCase(WalkPath, true)]
+    [TestCase(RunPath, true)]
+    [TestCase(HitPath, false)]
+    [TestCase(CastPath, false)]
+    [TestCase(DeathPath, false)]
+    public void ShamanClips_PlayWithoutAPop(string path, bool loops)
     {
         AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
         GameObject model = Object.Instantiate(Model);
@@ -231,10 +234,12 @@ public sealed class ShamanModelTests
         var previous = new Quaternion[bones.Length];
         int frames = Mathf.RoundToInt(clip.length * clip.frameRate);
 
-        // Every frame in order, then the last back to the first: the seam a loop plays every cycle.
+        Assert.That(clip.isLooping, Is.EqualTo(loops));
+
+        // Every frame in order; a loop then goes from the last back to the first, the seam it plays every cycle.
         for (int f = 0; f <= frames; f++)
         {
-            clip.SampleAnimation(model, f % frames / clip.frameRate);
+            clip.SampleAnimation(model, (loops ? f % frames : f) / clip.frameRate);
 
             for (int b = 0; b < bones.Length; b++)
             {
@@ -297,8 +302,27 @@ public sealed class ShamanModelTests
         Assert.That(states.Single(s => s.name == "Run").motion, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AnimationClip>(RunPath)));
     }
 
+    [Test]
+    public void ShamanActions_PlayTheRebuiltClips()
+    {
+        var controller = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(ControllerPath);
+        UnityEditor.Animations.AnimatorState[] states = controller.layers
+            .SelectMany(layer => layer.stateMachine.states.Select(s => s.state)).ToArray();
+        var shaman = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath).GetComponentInChildren<Soulvail.Game.Views.ShamanView>(true);
+        AnimationClip cast = AssetDatabase.LoadAssetAtPath<AnimationClip>(CastPath);
+
+        Assert.That(states.Single(s => s.name == "Hit").motion, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AnimationClip>(HitPath)));
+        Assert.That(states.Single(s => s.name == "Cast").motion, Is.EqualTo(cast));
+        Assert.That(states.Single(s => s.name == "Death").motion, Is.EqualTo(AssetDatabase.LoadAssetAtPath<AnimationClip>(DeathPath)));
+        Assert.That(new SerializedObject(shaman).FindProperty("_castClipSeconds").floatValue, Is.EqualTo(cast.length).Within(1e-3f),
+            "The cast rate stretches this clip over core's cast.");
+    }
+
     private const string WalkPath = "Assets/_Project/Animation/Clips/A_Shaman_Walk.anim";
     private const string RunPath = "Assets/_Project/Animation/Clips/A_Shaman_Run.anim";
+    private const string HitPath = "Assets/_Project/Animation/Clips/A_Shaman_Hit.anim";
+    private const string CastPath = "Assets/_Project/Animation/Clips/A_Shaman_Cast.anim";
+    private const string DeathPath = "Assets/_Project/Animation/Clips/A_Shaman_Death.anim";
     private const string PrefabPath = "Assets/_Project/Prefabs/Enemies/Shaman.prefab";
     private const string ControllerPath = "Assets/_Project/Animation/Controllers/AC_Shaman.controller";
     private const int Samples = 120;

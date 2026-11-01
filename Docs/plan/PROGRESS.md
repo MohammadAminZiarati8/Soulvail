@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, MK-10b built._
+_Updated 2026-11-01, MK-11 built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **MK-10b**: Killshot drawn and authored. |
-| **Next task** | **MK-11** — The Marksman's look. |
-| **Verified** | EditMode 4 995: 4 994 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; new analyzer warnings 0; format clean (14 files). Level-20 playcheck owed (OWED). |
+| **Last merged** | **MK-11**: the Marksman's look; the Marksman path is complete. |
+| **Next task** | **Owner to name — the Marksman path is complete.** |
+| **Verified** | EditMode 5 003: 5 002 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; new analyzer warnings 0; format clean (6 files). Menu/run smoke 1/1 pass. Look/resume playchecks owed (OWED). |
 
 ## What works
 
@@ -21,21 +21,20 @@ Stages 1–14 scripted; five enemies have bodies; Pitcher lobs ringed. Boss adds
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
 Ranger: pale arrows, cyan Volley/enemy, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run save v5/profile v5; older saves load.
-Clash UI; LocKey strings. Ranger paths from level 11. Marksman: Steady Aim (5 ranks, Lv 11),
-Rain of Arrows (4, Lv 11), Binding Shot (4, Lv 14), Eagle Eye (3, Lv 14), Hunter's Snare (3, Lv 17), Killshot (3, Lv 20).
+Clash UI; LocKey strings. Ranger paths from level 11. All 22 Marksman ranks authored:
+Steady Aim (5 ranks, Lv 11), Rain of Arrows (4, Lv 11), Binding Shot (4, Lv 14),
+Eagle Eye (3, Lv 14), Hunter's Snare (3, Lv 17), Killshot (3, Lv 20).
 Tree preview/choice, rank pips and Learn. Six-circle skill arc: ready taps fire on Auto,
 0.45 s hold toggles with haptics; 0.5 s auto gap; mirrored option. Legacy saves expand to six.
-Player status icons; pooled enemy CC, bosses half duration. Rain: densest XZ cluster, eight
-weapon-scaled pulses in 2 s; slow, cyan rim, pooled arrows/dust. Binding: 2× arrow,
-rear body or solid probe; 2 s (+0.4/+0.6), alone 0.75 s. Auto 12 s (rank four −3 s).
-Snare: two slots; arms 0.3 s, radius 0.8 m + body, roots 2 s (+0.5/+0.5), damage 3×
-(+33% rank two), expires 10 s. Auto nearest <3 m, cooldown 10 s (rank three −2 s).
-Drawn stoop, pooled rope/stakes, pulse, snap, dust and expiry fade; stage/run clear.
-Killshot: locked crowded XZ line; 0.7 s crouched draw/glow/aim; 30 m cyan-white streak,
-0.1 s bright + 0.4 s fade; 0.55 m/0.22 s camera jolt; pooled sparks and execute bursts.
-8× weapon, −0.15/hit to 0.4 floor; ignores walls. Non-boss executes at ≤15/20/25% HP.
-Auto ≥3 in acquire range; 30 s cooldown (rank three −8 s); rank two +25% damage.
-Stands in 0.18 s; death/boundary/run end clear pose and VFX. All 22 Marksman ranks authored.
+Player status icons; pooled enemy CC, bosses half duration. Rain: densest XZ cluster,
+eight pulses in 2 s, slow, cyan rim, pooled arrows/dust. Binding: 2× arrow, rear body/solid
+probe; 2–3 s stun, alone 0.75 s. Snare: two slots; 0.3 s arm, 0.8 m + body radius,
+2–3 s root, 3× weapon damage, 10 s expiry; pooled rope/stakes/snap/dust.
+Killshot: crowded XZ line; 0.7 s crouched draw/aim, 30 m cyan-white streak, camera jolt,
+pooled sparks/execute bursts; 8× weapon with per-hit falloff; non-boss executes at 15–25% HP.
+Marksman look: data-driven material slots/atlas meshes and socket props; forest hood/cloak,
+cyan trim, KayKit back quiver, emissive string, brighter ordinary arrows. Choice shimmers
+0.4 s; resume silent; fresh run/menu plain. Reversible; shared assets untouched by applying.
 
 ## What does not work yet
 

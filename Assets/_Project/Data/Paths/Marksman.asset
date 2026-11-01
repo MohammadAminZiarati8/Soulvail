@@ -50,3 +50,4 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7021099a881749b690a5d9417c362587, type: 2}
     - {fileID: 11400000, guid: 56f1672d43354530b685cadc2d6dfcb4, type: 2}
     _unlockLevel: 20
+  _look: {fileID: 11400000, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}

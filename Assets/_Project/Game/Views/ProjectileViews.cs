@@ -58,6 +58,22 @@ public sealed class ProjectileViews : IDisposable
     private readonly IDisposable _bindBoundarySubscription;
     private readonly IDisposable _bindEndedSubscription;
     private int _lastPlayerShot;
+    private readonly Dictionary<ProjectileView, TrailLook> _trailLooks = new();
+    private PathLook _playerPathLook;
+
+    /// <summary>Only ordinary player arrows inherit a path tint; pooled enemy and Volley shots reset.</summary>
+    public PathLook PlayerPathLook
+    {
+        get => _playerPathLook;
+        set
+        {
+            _playerPathLook = value;
+            foreach (TrailLook trail in _trailLooks.Values)
+            {
+                PaintPathTrail(trail);
+            }
+        }
+    }
     /// <summary>
     /// How many impacts the live list holds before it grows: past any hits that can overlap, which
     /// is a volley's worst case landing twice inside one impact's life.
@@ -414,6 +430,7 @@ public sealed class ProjectileViews : IDisposable
         }
 
         _impactPools.Clear();
+        _trailLooks.Clear();
     }
 
     private void OnFired(ProjectileFired evt)
@@ -422,6 +439,14 @@ public sealed class ProjectileViews : IDisposable
         ProjectileView view = kind.Shots.Get();
 
         view.Bind(evt.Id, evt.Origin.ToUnity(), evt.Target.ToUnity(), evt.FlightTime);
+        if (!_trailLooks.TryGetValue(view, out TrailLook trailLook))
+        {
+            var trail = view.GetComponentInChildren<TrailRenderer>(true);
+            trailLook = new TrailLook { Trail = trail, Gradient = trail != null ? trail.colorGradient : null };
+            _trailLooks.Add(view, trailLook);
+        }
+        trailLook.Player = evt.SourceId == 0 && !evt.IsVolley;
+        PaintPathTrail(trailLook);
 
         _byId[evt.Id] = new Rental(view, kind);
         if (evt.SourceId == 0)
@@ -435,6 +460,34 @@ public sealed class ProjectileViews : IDisposable
         // should not pay for on a phone.
         view.name = $"Projectile {evt.Id} ({evt.SpecId})";
 #endif
+    }
+
+    private void PaintPathTrail(TrailLook trail)
+    {
+        Color tint = trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
+        if (trail.Trail == null || trail.Tint == tint)
+        {
+            return;
+        }
+        trail.Tint = tint;
+        if (tint.a > 0f)
+        {
+            var gradient = new Gradient();
+            gradient.SetKeys(new[] { new GradientColorKey(tint, 0f), new GradientColorKey(tint, 1f) }, trail.Gradient.alphaKeys);
+            trail.Trail.colorGradient = gradient;
+        }
+        else
+        {
+            trail.Trail.colorGradient = trail.Gradient;
+        }
+    }
+
+    private sealed class TrailLook
+    {
+        public TrailRenderer Trail;
+        public Gradient Gradient;
+        public Color Tint;
+        public bool Player;
     }
 
     private void OnImpacted(ProjectileImpacted evt)

@@ -90,6 +90,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &1380385182461303471
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 912306641964463288}
+  m_Layer: 0
+  m_Name: back
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &912306641964463288
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1380385182461303471}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.3, y: 0.25, z: -0.55}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5626374200390465574}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2853396282554151326
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -228,6 +259,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 387877134995374599, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4993059987550888222, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
       propertyPath: m_Name
       value: Ranger
@@ -243,6 +278,9 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4504113491631669734, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 912306641964463288}
     - targetCorrespondingSourceObject: {fileID: 139727139401138714, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2311461171908187765}
@@ -250,6 +288,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4993059987550888222, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4630744708753775717}
+    - targetCorrespondingSourceObject: {fileID: 4993059987550888222, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 839898024975075071}
   m_SourcePrefab: {fileID: 100100000, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
 --- !u!1 &3882066901720750302 stripped
 GameObject:
@@ -274,9 +315,27 @@ MonoBehaviour:
   _rainPrefab: {fileID: 4060942388007416727, guid: d92663e73134e1543b98f1e5afe0182d, type: 3}
   _snarePrefab: {fileID: 7080111410115603631, guid: fc8cc795333d6284baf1591ba4cdc3d7, type: 3}
   _killshotPrefab: {fileID: 467179600233064026, guid: 11d79f180e4344a4e981e583c2415e84, type: 3}
+--- !u!114 &839898024975075071
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3882066901720750302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0210707c6f3fab945af2a91e8cb11f75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PathLookView
+  _character: {fileID: 11400000, guid: 99cf9a2515092c846bee505b3dbaaeeb, type: 2}
 --- !u!95 &4114342119296087160 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5299648820469042616, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
+  m_PrefabInstance: {fileID: 8112450630275185088}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5626374200390465574 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4504113491631669734, guid: 74d010b2099582c44b37b3efb599fa15, type: 3}
   m_PrefabInstance: {fileID: 8112450630275185088}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &8171042420491729882 stripped

@@ -52,4 +52,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-09b** — Hunter's Snare drawn and authored (M)
 - [x] **MK-10a** — Killshot in core (M)
 - [x] **MK-10b** — Killshot drawn and authored: the kneel, the streak, the jolt (M)
-- [ ] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M) · [spec](tasks/MK-11-the-marksmans-look.md)
+- [x] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Arena;
@@ -1096,6 +1097,13 @@ namespace Soulvail.Game.Composition
             body.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             container.InjectGameObject(body);
+
+            var pathLook = body.GetComponent<PathLookView>();
+            if (pathLook != null)
+            {
+                pathLook.Construct(container.Resolve<DomainEventHub>(), container.Resolve<IRunSession>(),
+                    container.Resolve<ProjectileViews>());
+            }
         }
 
         /// <summary>

@@ -13,8 +13,10 @@ namespace Soulvail.Game.Authoring
         [SerializeField] private string _nameKey = "path.new.name";
         [SerializeField] private string _descriptionKey = "path.new.description";
         [SerializeField] private SkillField[] _skills = Array.Empty<SkillField>();
+        [SerializeField] private PathLook _look;
 
         public string Id => _id;
+        public PathLook Look => _look;
         public IReadOnlyList<SkillField> Skills => Array.AsReadOnly(_skills);
 
         public PathSpec ToSpec(ContentId characterId)

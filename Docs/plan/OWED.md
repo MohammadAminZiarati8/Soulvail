@@ -92,3 +92,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 
 - [ ] **[Editor]** Level 20 on a crowded late stage: learn Killshot as the sixth Marksman skill. Check the locked facing, crouched bow draw, growing cyan-white tip and faint aim line for 0.7 s; the full-arena streak, brief stronger camera jolt, sparks on each hit and bright bursts on executed enemies. The Ranger should stand within 0.25 s and move as soon as core releases the hold. Confirm it reads as the strongest skill in the kit, without a polish pass.
 - [ ] **[Editor]** Die or cross a stage boundary during the draw: no stuck crouch, glow, aim line or delayed streak. Check the three ranks at 15/20/25% execution thresholds, rank-two damage and rank-three cooldown, plus the existing MK-10a level-20 playcheck.
+
+## MK-11 — The Marksman's look (2026-11-01)
+
+- [ ] **[Editor]** Choose Marksman at level 11: notice the 0.4 s cyan shimmer, then compare against the plain Ranger at the game camera height. Hood/cloak should be deep forest green with cyan trim, the KayKit quiver visible on the back, the bowstring faintly glowing cyan and ordinary arrow trails a little brighter. Judge readability on the dark floor; no polish pass is included.
+- [ ] **[Editor]** Continue a saved Marksman with a purchased path rank: the look should already be applied without a shimmer. Return to Heroes/class select and start a fresh run: plain Ranger, no path prop or glow.

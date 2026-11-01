@@ -341,7 +341,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ShamanView
   _animator: {fileID: 481902759347679980}
-  _seed: {fileID: 1794053305229184274}
+  _seed: {fileID: 3016463154730866368}
   _seedMask: {fileID: 2800000, guid: bf1005a5294ea6d418cecd8686ba848a, type: 3}
   _ring: {fileID: 6219453636596842329}
   _castClipSeconds: 0.6666667
@@ -785,7 +785,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -805,11 +805,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -837,9 +837,9 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
   m_PrefabInstance: {fileID: 1091089747149820310}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &1794053305229184274 stripped
+--- !u!23 &3016463154730866368 stripped
 MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
+  m_CorrespondingSourceObject: {fileID: 2808263858662541142, guid: 2e7a2d3e9d0aa014ead11421a46b730e, type: 3}
   m_PrefabInstance: {fileID: 1091089747149820310}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6330519184315928445

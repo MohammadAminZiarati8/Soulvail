@@ -299,10 +299,11 @@ def build_staff():
         # Rigid prop fit only: original geometry/UVs survive. Face the crescent outward.
         rotation = Matrix.Rotation(-math.atan2(.8, .6), 4, 'Y') @ Matrix.Rotation(math.pi / 2, 4, 'Z')
         for vertex in obj.data.vertices:
-            vertex.co = rotation @ ((vertex.co - Vector((-.008, 0, -.16))) * 1.9)
+            vertex.co = rotation @ ((vertex.co - Vector((-.008, 0, -.29))) * 1.9)
         obj.data.calc_loop_triangles()
     assert sum(len(obj.data.loop_triangles) for obj in (staff, seed)) == triangles == 179996
     export(os.path.join(OUT, 'ShamanStaff.fbx'), [staff, seed])
+    save_png(np.ones((2, 2, 3), np.float32), os.path.join(TEX, 'T_ShamanStaff_Emission.png'))
     print('STAFF_PRESERVED', triangles, 'triangles; seed faces', len(seed_faces), flush=True)
 
 

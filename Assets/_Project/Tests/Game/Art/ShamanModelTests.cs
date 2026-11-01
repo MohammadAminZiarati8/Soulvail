@@ -28,11 +28,14 @@ public sealed class ShamanModelTests
         Assert.That(body[0].sharedMesh.triangles.Length / 3, Is.EqualTo(179970));
         Assert.That(body[0].sharedMesh.subMeshCount, Is.EqualTo(1));
         var staff = Staff.GetComponentsInChildren<MeshRenderer>(true);
-        Assert.That(staff, Has.Length.EqualTo(1));
-        Assert.That(Staff.GetComponentInChildren<MeshFilter>(true).sharedMesh.triangles.Length / 3, Is.InRange(100, 400));
+        Assert.That(staff, Has.Length.EqualTo(2));
+        Assert.That(Staff.GetComponentsInChildren<MeshFilter>(true).Sum(m => m.sharedMesh.triangles.Length / 3), Is.EqualTo(179996));
         var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_Shaman.mat");
         Assert.That(body[0].sharedMaterial, Is.EqualTo(material));
-        Assert.That(staff[0].sharedMaterial, Is.EqualTo(AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_Enemy.mat")));
+        foreach (var renderer in staff)
+        {
+            Assert.That(renderer.sharedMaterial, Is.EqualTo(AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_ShamanStaff.mat")));
+        }
         Assert.That(material.GetTexture("_BaseMap"), Is.EqualTo(AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_Shaman_Albedo.png")));
     }
 
@@ -102,13 +105,13 @@ public sealed class ShamanModelTests
         staff.transform.SetParent(slot, false);
         Clip("Idle_B").SampleAnimation(model, 0);
         Assert.That(Vector3.Distance(staff.transform.position, slot.position), Is.LessThan(.05f));
-        Mesh mesh = staff.GetComponentInChildren<MeshFilter>().sharedMesh;
-        Vector2[] uv = mesh.uv;
+        var seedFilter = staff.GetComponentsInChildren<MeshFilter>().Single(f => f.name == "ShamanStaff_Seed");
+        Mesh mesh = seedFilter.sharedMesh;
         Vector3[] v = mesh.vertices;
         Clip("Ranged_Magic_Spellcasting").SampleAnimation(model, .45f);
         float seed = float.NegativeInfinity;
         for (int i = 0; i < v.Length; i++)
-        { if (uv[i].x > .5f && uv[i].x < .625f && uv[i].y > .75f) { seed = Mathf.Max(seed, staff.GetComponentInChildren<MeshFilter>().transform.TransformPoint(v[i]).y); } }
+        { seed = Mathf.Max(seed, seedFilter.transform.TransformPoint(v[i]).y); }
         Transform head = model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "head");
         Assert.That(seed, Is.GreaterThan(head.position.y));
     }
@@ -118,14 +121,11 @@ public sealed class ShamanModelTests
     {
         Texture2D mask = AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_ShamanStaff_Emission.png");
         Assert.That(mask, Is.Not.Null);
-        var staff = Staff.GetComponentInChildren<MeshFilter>().sharedMesh;
-        int glowing = 0;
-        foreach (Vector2 uv in staff.uv)
-        {
-            if (uv.x > .5f && uv.x < .625f && uv.y > .75f)
-            { glowing++; }
-        }
-        Assert.That(glowing, Is.InRange(3, staff.vertexCount - 3));
+        Assert.That(mask.width, Is.EqualTo(2));
+        Assert.That(mask.GetPixels().All(c => c.r > .99f && c.g > .99f && c.b > .99f), Is.True);
+        var filters = Staff.GetComponentsInChildren<MeshFilter>();
+        Assert.That(filters.Any(f => f.name == "ShamanStaff_Seed" && f.sharedMesh.triangles.Length > 0), Is.True);
+        Assert.That(filters.Any(f => f.name == "ShamanStaff_Wood" && f.sharedMesh.triangles.Length > 0), Is.True);
         Assert.That(Model.GetComponentInChildren<SkinnedMeshRenderer>().sharedMaterial.GetColor("_EmissionColor"), Is.EqualTo(Color.black));
     }
 
@@ -166,6 +166,34 @@ public sealed class ShamanModelTests
         Assert.That(maximum, Is.LessThan(.002f), "The animation bind must preserve the actual sculpt, not reshape it.");
         Assert.That(renderer.sharedMesh.bounds.size.y, Is.InRange(1.56f, 1.64f));
         Assert.That(AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_Shaman_Albedo.png").width, Is.EqualTo(2048));
+    }
+    [Test]
+    public void ShamanModel_SourceSeedGlowStaysColored()
+    {
+        var root = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Enemies/Shaman.prefab"));
+        _created.Add(root);
+        var animator = root.GetComponentInChildren<Animator>();
+        animator.Rebind();
+        animator.Update(0f);
+        var hub = new Soulvail.Game.Adapters.DomainEventHub();
+        var view = root.GetComponent<Soulvail.Game.Views.ShamanView>();
+        root.GetComponent<Soulvail.Game.Views.EnemyView>().Bind(17, Vector3.zero);
+        view.Construct(hub);
+        hub.Publish(new Soulvail.Core.Events.ShamanCast(17, .6f));
+        view.Step(.6f);
+        var seed = root.GetComponentsInChildren<Renderer>(true).Single(r => r.name == "ShamanStaff_Seed");
+        var wood = root.GetComponentsInChildren<Renderer>(true).Single(r => r.name == "ShamanStaff_Wood");
+        var block = new MaterialPropertyBlock();
+        seed.GetPropertyBlock(block);
+        Color color = block.GetColor("_EmissionColor");
+        Assert.That(color.g, Is.GreaterThan(color.r));
+        Assert.That(color.r, Is.GreaterThan(color.b));
+        Assert.That(color.maxColorComponent, Is.LessThanOrEqualTo(.5f), "Keep the original green seed visible instead of clipping it white.");
+        wood.GetPropertyBlock(block);
+        Assert.That(block.GetColor("_EmissionColor").maxColorComponent, Is.Zero);
+        Assert.That(seed.sharedMaterial.GetTexture("_BaseMap"), Is.EqualTo(AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_ShamanStaff_Albedo.png")));
+        view.OnDespawn();
+        hub.Dispose();
     }
     private static AnimationClip Clip(string name) => AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>().Single(c => c.name == name);
 }

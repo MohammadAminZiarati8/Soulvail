@@ -73,4 +73,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-16e** — The Shaman in the Jungle: data, roster from 17, stage 17 scripted (M)
 - [ ] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)
 - [x] **JG-16g** — Preserve the repaired Shaman body and texture in game (owner correction)
-- [ ] **JG-16h** — Preserve the repaired staff and source grip in game (owner correction)
+- [x] **JG-16h** — Preserve the repaired staff and source grip in game (owner correction)

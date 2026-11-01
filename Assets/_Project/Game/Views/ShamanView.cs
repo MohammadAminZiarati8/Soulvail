@@ -164,7 +164,7 @@ namespace Soulvail.Game.Views
             _seedBlock ??= new MaterialPropertyBlock();
             _seed.GetPropertyBlock(_seedBlock);
             _seedBlock.SetTexture("_EmissionMap", _seedMask);
-            _seedBlock.SetColor("_EmissionColor", _lime * (fraction * 3f));
+            _seedBlock.SetColor("_EmissionColor", _lime * (fraction * 0.4f));
             _seed.SetPropertyBlock(_seedBlock);
         }
 

@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, JG-16g body correction built._
+_Updated 2026-11-02, JG-16g–h source correction built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-16g**: repaired source body/texture in game, source-fitted rig and six clips. |
-| **Next task** | **JG-16h**: full-detail source staff, authorised; then 16f awaits owner go. |
-| **Verified** | EditMode 5 155: 5 154 pass, 0 fail, 1 known inconclusive. PlayMode boot smoke 3: 2 pass, 1 scene-unload failure (below). Compiler errors 0; no new analyzer warnings; format clean. |
+| **Last merged** | **JG-16h**: repaired full-detail Shaman and staff now in game, with original textures. |
+| **Next task** | **JG-16f**: stages 18–19 specced; awaits owner go. |
+| **Verified** | EditMode 5 156: 5 155 pass, 0 fail, 1 known inconclusive. PlayMode run-start smoke 1/1 pass. Compiler errors 0; no new analyzer warnings; format clean. |
 
 ## What works
 
@@ -23,9 +23,9 @@ Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard sum
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.
 Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 m,
 heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
-expires and stacks with slow. Repaired source body/texture, fitted KayKit hierarchy,
-six clips, seed-only glow, lime pulse ring, healed bars and haste chevrons; pooled cleanly.
-Stage 17: Shaman + two guards; Shaman/Frogs/Pitchers; guards/Panthers. XP 32, priority 8.
+expires and stacks with slow. Full repaired body/staff and original textures; fitted KayKit hierarchy,
+six retargeted clips, colored seed glow, lime ring, healed bars and haste chevrons; pooled cleanly.
+Stage 17: healer/guards; healer/Frogs/Pitchers; guards/Panthers. XP 32, priority 8. Full-detail mobile cost unmeasured.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
 Clash UI; LocKey strings. All 22 Marksman ranks from level 11, all skills authored/drawn.

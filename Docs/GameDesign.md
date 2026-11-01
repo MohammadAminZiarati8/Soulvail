@@ -693,6 +693,26 @@ One rule, enforced globally:
 
 Environment art stays desaturated so gameplay-critical colors pop. This is why low-poly works here: it's cheap *and* it enforces the readability pillar. It also survives outdoor screen glare, which a muddy, detailed art style would not.
 
+### 16.5 Buffs and debuffs
+
+**Owner ruling (2026-11-02).** A timed status is a **buff** or a **debuff**, judged by its *wearer*: haste on an enemy is a buff even though it is bad news for you. **A heal is neither** — an instant heal is an effect, never a status. A heal spread over time (regen) is a buff.
+
+| Family | Side | Examples | Stacking | Bosses |
+|---|---|---|---|---|
+| Crowd control | Debuff | stun, root, slow | longer refreshes; strongest slow wins | half duration |
+| Damage over time | Debuff | poison (burn, bleed later) | stacks add, capped; one shared timer | full |
+| Stat down | Debuff | weaken, armour break | strongest wins | full |
+| Stat up | Buff | attack up, defense up, attack speed up, haste | strongest wins | full |
+| Regen | Buff | heal over time | strongest wins | full |
+
+Families are a design and code idea, not UI text. Each status also has a **priority** that orders its icon.
+
+**Where it shows.** Icons sit above the HP bar, debuffs first, then buffs, each by priority, with a timer sweep and a stack count above 1. On a phone a full row on every enemy is noise (P1), so:
+
+- **Basic enemies:** the body carries the read (stun stars, root vines, frost, poison bubbles); the bar shows **one** icon, the highest-ranked.
+- **Elites:** up to four icons.
+- **Bosses:** a row under the boss bar, once a boss can carry one.
+
 ---
 
 ## 17. Art and audio direction

@@ -10,7 +10,7 @@ _Updated 2026-11-02, JG-16j._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **JG-16j**: Shaman hit/cast/death rebuilt; with JG-16i, all its moving clips. |
-| **Next task** | None specced. Stage 20 and its boss undecided; owner rules the 16–19 climb. |
+| **Next task** | **ST-01** (buffs and debuffs, specced 2026-11-02) on the owner's go. Stage 20 and its boss undecided. |
 | **Verified** | EditMode 5 174: 5 173 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Compiler errors 0; no new analyzer warnings; format clean. |
 
 ## What works

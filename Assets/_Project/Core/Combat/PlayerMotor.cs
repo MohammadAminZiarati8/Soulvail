@@ -42,6 +42,22 @@ public sealed class PlayerMotor
 
     private Vector3 _velocity;
     private Vector3 _facing;
+    private float _holdRemaining;
+
+    public bool IsHeld => _holdRemaining > 0f;
+
+    public void Hold(float seconds)
+    {
+        if (!(seconds > 0f) || !float.IsFinite(seconds))
+        {
+            throw new ArgumentOutOfRangeException(nameof(seconds));
+        }
+
+        _holdRemaining = MathF.Max(_holdRemaining, seconds);
+        Stop();
+    }
+
+    public void ClearHold() => _holdRemaining = 0f;
 
     /// <param name="initialFacing">
     /// Which way the character starts looking. Flattened to the ground plane and normalised; if
@@ -106,6 +122,14 @@ public sealed class PlayerMotor
         // wrong way, and NaN, which would be unrecoverable. No time passed, nothing happens.
         if (!(dt > 0f))
         {
+            return;
+        }
+
+        if (IsHeld)
+        {
+            _holdRemaining = MathF.Max(0f, _holdRemaining - dt);
+            Stop();
+            IntegrateFacing(dt, faceDirection);
             return;
         }
 

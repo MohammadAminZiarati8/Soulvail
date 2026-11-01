@@ -140,6 +140,8 @@ public sealed class ModifyStatTests
                 PlayerStat.BindStun => stats.BindStun,
                 PlayerStat.SnareRoot => stats.SnareRoot,
                 PlayerStat.SnareDamage => stats.SnareDamage,
+                PlayerStat.KillshotExecute => stats.KillshotExecute,
+                PlayerStat.KillshotDamage => stats.KillshotDamage,
                 _ => null,
             };
 
@@ -167,7 +169,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(30), "Thirty-one members after MK-09a, one named exception.");
+        Assert.That(answered, Is.EqualTo(32), "Thirty-three members after MK-10a, one named exception.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

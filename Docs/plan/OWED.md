@@ -83,3 +83,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-09b — Hunter's Snare drawn and authored (2026-11-01)
 
 - [ ] **[Editor]** Ranger / Marksman at level 17 with Hunter's Snare learned: let a Frog hop within 3 m. The Ranger stoops briefly (legs keep running); a small rope-and-stakes snare drops at their feet with a dust puff and, after ~0.3 s, a faint cyan ring pulses slowly on it. When the Frog steps on it the loop jerks up and cinches round its feet, the prop vanishes, root coils show and the Frog loses health. An untouched snare sinks and fades after 10 s; a third cast fades the oldest. Crossing a stage clears every snare.
+
+## MK-10a — deferred until MK-10b supplies the assets (2026-11-01)
+
+- At level 20 with Killshot learned, playcheck the kneel/held movement and roll, no basic arrows during the draw, locked arena-crossing shot through cover, falloff, and normal XP/drop feedback for non-boss executes. Check damage does not cancel the draw, while player death and stage arrival do. Core behaviour and allocation checks are automated and green; this is the integrated presentation check after MK-10b.

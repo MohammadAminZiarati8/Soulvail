@@ -642,6 +642,8 @@ public sealed class PlayerCombat
     /// <summary>The player's HP has reached zero.</summary>
     public bool IsDead => Health.IsDead;
 
+    public bool IsHeld { get; internal set; }
+
     /// <summary>
     /// A unit vector on the ground plane pointing at the current target, or <see langword="null"/>
     /// when there is nothing to point at.
@@ -1284,7 +1286,10 @@ public sealed class PlayerCombat
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
+        if (!IsHeld)
+        {
+            TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
+        }
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1355,6 +1360,12 @@ public sealed class PlayerCombat
             FaceDirection = null;
         }
 
+        if (IsHeld)
+        {
+            Volley?.ClearRequest();
+            return;
+        }
+
         // A manual Volley uses this frame's target and senses, without waiting for a basic shot.
         // Refuse a targetless/blocked request this tick rather than buffering it into a later cast.
         if (Volley?.HasRequest == true)
@@ -1385,6 +1396,7 @@ public sealed class PlayerCombat
     /// </remarks>
     public void Reset()
     {
+        IsHeld = false;
         SteadyAim.OnMoved();
         Health.Reset();
         Targeter.Reset();

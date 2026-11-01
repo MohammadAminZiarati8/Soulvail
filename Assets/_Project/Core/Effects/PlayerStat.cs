@@ -201,6 +201,8 @@ public enum PlayerStat
     BindStun,
     SnareRoot,
     SnareDamage,
+    KillshotExecute,
+    KillshotDamage,
 }
 
 /// <summary>
@@ -257,6 +259,9 @@ public sealed class PlayerStats : IStatBlock
     /// <summary>Additive weapon-damage fraction snapshotted when a snare is placed.</summary>
     public Stat SnareDamage { get; } = new(0f);
 
+    public Stat KillshotExecute { get; } = new(0f);
+    public Stat KillshotDamage { get; } = new(0f);
+
     /// <summary>Whether this run's movement skill leaves a fire pool — a Blink, and nothing else.</summary>
     /// <remarks>
     /// Read off the pool's <em>base</em> once, here, rather than off a kind nothing exposes:
@@ -305,6 +310,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.BindStun => BindStun,
             PlayerStat.SnareRoot => SnareRoot,
             PlayerStat.SnareDamage => SnareDamage,
+            PlayerStat.KillshotExecute => KillshotExecute,
+            PlayerStat.KillshotDamage => KillshotDamage,
             PlayerStat.SteadyAimStopCrit => _combat.SteadyAim.StopCrit,
             PlayerStat.SteadyAimPerStack => _combat.SteadyAim.PerStack,
             PlayerStat.EagleEyeFarBonus => _combat.EagleEye.FarBonus,
@@ -365,6 +372,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.BindStun => true,
             PlayerStat.SnareRoot => true,
             PlayerStat.SnareDamage => true,
+            PlayerStat.KillshotExecute => true,
+            PlayerStat.KillshotDamage => true,
             PlayerStat.SteadyAimStopCrit => true,
             PlayerStat.SteadyAimPerStack => true,
             PlayerStat.EagleEyeFarBonus => true,

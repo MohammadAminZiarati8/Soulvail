@@ -110,6 +110,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// thirteenth).
     /// </remarks>
     private TimedEffects _timed;
+    private KillshotHandler _killshot;
 
     private TrapSystem _traps;
 
@@ -634,6 +635,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         var zones = new ZoneSystem(combat.Health, combat.Blackboard, _events, enemies, combat);
         _traps = new TrapSystem(enemies, combat, _events);
         effects.Register<PlaceSnare>(new PlaceSnareHandler(_traps, _clock, playerStats, combat.Blackboard));
+        _killshot = new KillshotHandler(enemies, combat, motor, playerStats, _clock, _events);
+        effects.Register<Killshot>(_killshot);
 
         // The promise TimedEffects was built to keep, called in one task later: a new primitive is one
         // file and one Register line, with nothing in the clock, the registry or Tick changing to
@@ -1328,6 +1331,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Skills.Tick(snapshot.Dt, State.Time);
+        _killshot.Tick(State.Time);
 
         // **Immediately after the runner and above the projectile step, and both halves are the
         // mechanic's** (M3-11a-ii rule 3, AR §18.1). *After the runner*, because it may cast this
@@ -1552,6 +1556,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 // Like projectiles, traps cannot cross into the freshly composed arena.
                 _traps.Clear();
+                _killshot.Clear();
                 State.Combat.SteadyAim.OnMoved();
                 State.Status.Reset();
             }
@@ -1740,7 +1745,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     {
         RequireRunning(nameof(MovementSkill));
 
-        State.Combat.Charge.Request(State.Time);
+        if (!State.Combat.IsHeld && !State.Motor.IsHeld)
+        {
+            State.Combat.Charge.Request(State.Time);
+        }
     }
 
     /// <inheritdoc />
@@ -2105,6 +2113,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a
         // view that is being destroyed (M3-11a-ii rule 8).
         _timed.Clear();
+        _killshot.Clear();
         State.Status.Reset();
 
         // And the ground a cast put down, forgotten in the same silence and for the same sentence.
@@ -2180,6 +2189,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// </remarks>
     private void TickBody(WorldSnapshot snapshot)
     {
+        if (State.Combat.IsHeld)
+        {
+            State.Motor.Stop();
+            _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));
+            return;
+        }
+
         if (State.Combat.Charge.IsActive)
         {
             _wasCharging = true;

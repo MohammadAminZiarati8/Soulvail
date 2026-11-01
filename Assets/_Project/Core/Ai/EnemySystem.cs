@@ -726,6 +726,13 @@ public sealed class EnemySystem
     /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
     /// <returns>What <see cref="Health"/> did, unchanged, for a caller with its own conclusions to draw.</returns>
     public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
+        => ResolveDamage(enemyId, amount, now, player, execute: false);
+
+    /// <summary>Kill a living non-boss through the same reward and announcement path as damage.</summary>
+    public DamageResult Execute(int enemyId, float now, PlayerCombat player)
+        => ResolveDamage(enemyId, 0f, now, player, execute: true);
+
+    private DamageResult ResolveDamage(int enemyId, float amount, float now, PlayerCombat player, bool execute)
     {
         if (player is null)
         {
@@ -739,7 +746,21 @@ public sealed class EnemySystem
             return DamageResult.None;
         }
 
-        DamageResult result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now);
+        DamageResult result;
+        if (execute)
+        {
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss)
+            {
+                return DamageResult.None;
+            }
+
+            result = new DamageResult(0f, agent.Health.Current, blocked: false, killed: true);
+            agent.Health.Restore(0f, 0f);
+        }
+        else
+        {
+            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now);
+        }
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
         // DamageResult field cannot quietly change what counts as silence. The same spelling, for

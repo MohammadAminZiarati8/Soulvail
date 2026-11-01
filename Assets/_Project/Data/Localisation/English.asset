@@ -664,3 +664,5 @@ MonoBehaviour:
     _text: 'Killshot 3'
   - _key: skill.marksman.killshot-3.description
     _text: 'Killshot executes non-bosses at 25% HP or below. Cooldown is reduced by 8 s.'
+  - _key: enemy.shaman.name
+    _text: 'Moss Shaman'

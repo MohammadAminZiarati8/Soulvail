@@ -2,42 +2,37 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-16d built._
+_Updated 2026-11-02, JG-16b–e built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-16d**: Shaman prefab, cast glow, support ring, healed bars and haste mark. |
-| **Next task** | **JG-16e**. Data, roster and stage 17; owner authorised. |
-| **Verified** | EditMode 5 148: 5 147 pass, 1 known inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
+| **Last merged** | **JG-16e**: Moss Shaman and staff in the Jungle from 17; stage 17 scripted, 144 threat. |
+| **Next task** | **JG-16f**: stages 18–19 specced; awaits the owner's go. |
+| **Verified** | EditMode 5 154: 5 153 pass, 0 fail, 1 known inconclusive. PlayMode boot smoke 3: 2 pass, 1 scene-unload failure (below). Compiler errors 0; no new analyzer warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
-Stages 1–14 and 16 scripted; five enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
+Stages 1–14 and 16–17 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
-Warlord core: 60° front guard, 40°/s turn, 45° walk cone; 1.4 s gap, 0.8 s
-sweep 3.5 m/60°, 1.5× damage, 0.8 s recovery. Far: 0.9 s charge warning,
-probe-clipped 14 m lane, 2× damage, 16 m/s dash; reached stone: 2 s daze, guard
-down; 6 s cooldown. Phase drops the move, keeps opened lanes. Cover sphere
-cast probes the lane. Stage 15: 825 HP (~95 s), five uneven stones.
-War cry from 8 s, 14 s cooldown: 1 s stand, up to two 0-XP Mossguards on far
-open ground, else a ring; a guard within 3.5 m locks 90°; beats despawn, rearm 8 s.
-Phase 1: 0.8 s lob, 3 ringed spears at ≥ 5 m, 5 s cooldown. Phase 2: shield
-shatters (no guard, +40 % speed, 120°/s, 0.5/0.9 s gaps), sweep → 0.8+0.6 s combo.
-Warlord: painted Mossguard variant, glaive; a clip per move, guard wedge, daze, shatter.
+Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
+three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.
+Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 m,
+heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
+expires and stacks with slow. Repaired owner body/staff, atlas, unchanged KayKit rig,
+six clips, seed-only glow, lime pulse ring, healed bars and haste chevrons; pooled cleanly.
+Stage 17: Shaman + two guards; Shaman/Frogs/Pitchers; guards/Panthers. XP 32, priority 8.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
-Clash UI; LocKey strings. Marksman path complete: all 22 ranks from level 11;
-Steady Aim, Rain of Arrows, Binding Shot, Eagle Eye, Hunter's Snare, Killshot.
+Clash UI; LocKey strings. All 22 Marksman ranks from level 11, all skills authored/drawn.
 Tree preview/choice, rank pips and Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles/haptics; 0.5 s auto gap; mirrored option. Legacy saves expand to six.
-Player status icons; pooled enemy CC, bosses half duration. All Marksman skills authored/drawn.
-Marksman look: forest hood/cloak, cyan trim, KayKit quiver, emissive string,
-brighter arrows; choice shimmer, silent resume, plain menu/fresh run.
+Player status icons; pooled enemy CC, bosses half duration. Marksman forest look, cyan trim,
+KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain menu/fresh run.
 
 ## What does not work yet
 
@@ -56,3 +51,4 @@ brighter arrows; choice shimmer, silent resume, plain menu/fresh run.
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
 8. Warlord's death dissolve shows the unpainted atlas.
+9. BootSmoke RootScope_SurvivesSceneLoad fails unloading: destroyed Ranger VFX trails/particles/player; an earlier run hit CoverViews. No Shaman warnings after the prewarm guard.

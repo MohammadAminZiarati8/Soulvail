@@ -72,6 +72,8 @@ MonoBehaviour:
     _introducedAtStage: 6
   - _specId: enemy.mossguard
     _introducedAtStage: 11
+  - _specId: enemy.shaman
+    _introducedAtStage: 17
   _arenas:
   - _arenaId: arena.jungle.hollow
     _firstStage: 1
@@ -263,6 +265,29 @@ MonoBehaviour:
     - _wave: 3
       _specId: enemy.pitcher
       _count: 1
+  - _stage: 17
+    _spawns:
+    - _wave: 1
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 1
+      _specId: enemy.mossguard
+      _count: 2
+    - _wave: 2
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 2
+      _specId: enemy.frog
+      _count: 6
+    - _wave: 2
+      _specId: enemy.pitcher
+      _count: 2
+    - _wave: 3
+      _specId: enemy.mossguard
+      _count: 2
+    - _wave: 3
+      _specId: enemy.panther
+      _count: 2
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

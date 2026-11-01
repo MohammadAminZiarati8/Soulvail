@@ -119,6 +119,97 @@ public sealed class JungleTests
     };
 
     [Test]
+    public void Jungle_Shaman_IsAShamanWithItsNumbers()
+    {
+        var definition = Load<EnemyDefinition>("Assets/_Project/Data/Enemies/Shaman.asset");
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Shaman));
+        Assert.That(spec.MaxHp, Is.EqualTo(60));
+        Assert.That(spec.MoveSpeed, Is.EqualTo(2));
+        Assert.That(spec.TargetPriority, Is.EqualTo(8));
+        Assert.That(spec.ThreatCost, Is.EqualTo(16));
+        Assert.That(spec.XpValue, Is.EqualTo(32));
+        Assert.That(spec.ContactDamage, Is.Zero);
+        Assert.That(spec.Shaman, Is.Not.Null);
+        Assert.That(new[] { spec.Shaman.AuraRadius, spec.Shaman.PulseInterval, spec.Shaman.CastSeconds,
+            spec.Shaman.HealFraction, spec.Shaman.HasteFraction, spec.Shaman.HasteSeconds,
+            spec.Shaman.HoldDistance, spec.Shaman.BehindDistance, spec.Shaman.FleeDistance,
+            spec.Shaman.FleeSeconds, spec.Shaman.FleeSpeedMultiplier },
+            Is.EqualTo(new[] { 8f, 3f, .6f, .1f, .25f, 3.5f, 11f, 2.5f, 4f, 1.2f, 1.4f }));
+        Assert.That(definition.ToLook().Body.gameObject, Is.EqualTo(Load<GameObject>("Assets/_Project/Prefabs/Enemies/Shaman.prefab")));
+    }
+
+    [Test]
+    public void Jungle_RostersTheShamanFromStageSeventeen()
+    {
+        RosterEntry shaman = Load<ModeDefinition>(JunglePath).ToSpec().Roster.Single(r => r.SpecId.Value == "enemy.shaman");
+        Assert.That(shaman.IntroducedAtStage, Is.EqualTo(17));
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.Select(r => r.SpecId.Value), Has.No.Member("enemy.shaman"));
+    }
+
+    [Test]
+    public void Jungle_StageSeventeen_MeetsTheHealer()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Assert.That(jungle.TryGetScriptedStage(17, out ScriptedStage stage), Is.True);
+        Assert.That(stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.shaman", 1), (1, "enemy.mossguard", 2),
+            (2, "enemy.shaman", 1), (2, "enemy.frog", 6), (2, "enemy.pitcher", 2),
+            (3, "enemy.mossguard", 2), (3, "enemy.panther", 2),
+        }));
+        var costs = new Dictionary<string, int>
+        {
+            ["enemy.shaman"] = 16,
+            ["enemy.mossguard"] = 14,
+            ["enemy.frog"] = 4,
+            ["enemy.pitcher"] = 7,
+            ["enemy.panther"] = 9
+        };
+        Assert.That(stage.Spawns.Sum(s => s.Count * costs[s.SpecId.Value]), Is.EqualTo(144));
+    }
+
+    [Test]
+    public void Jungle_Shaman_Boots()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var enemies = BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec());
+        Assert.That(enemies.Select(e => e.Id.Value), Does.Contain("enemy.shaman"));
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            enemies,
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        Assert.That(catalog.Enemy(new ContentId("enemy.shaman")).Behaviour, Is.EqualTo(EnemyBehaviourKind.Shaman));
+
+        var key = new LocKey("enemy.shaman.name");
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[key], Is.EqualTo("Moss Shaman"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[key], Is.Not.Empty);
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(14);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 17);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 17, SpawnPlan.Empty, restore)));
+            Assert.That(session.IsRunning, Is.True);
+            Assert.That(session.State.StageIndex, Is.EqualTo(17));
+        }
+        finally
+        {
+            session.End();
+        }
+    }
+
+
+    [Test]
     public void OldCroaker_HitsForTwelve()
     {
         EnemySpec croaker = Load<EnemyDefinition>(CroakerPath).ToSpec();
@@ -270,6 +361,7 @@ public sealed class JungleTests
             ("enemy.puffball", 4),
             ("enemy.panther", 6),
             ("enemy.mossguard", 11),
+            ("enemy.shaman", 17),
         }), "The Jungle's own enemies, with the Panther after Old Croaker and the Mossguard after Mother Pitcher.");
     }
 
@@ -528,12 +620,12 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesFifteenAndSeventeen_AreNotScripted()
+    public void Jungle_StagesFifteenAndEighteen_AreNotScripted()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
         Assert.That(jungle.TryGetScriptedStage(15, out _), Is.False, "Stage 15 is the Mossguard Warlord's.");
-        Assert.That(jungle.TryGetScriptedStage(17, out _), Is.False, "Stage 17 uses the threat budget.");
+        Assert.That(jungle.TryGetScriptedStage(18, out _), Is.False, "Stage 18 uses the threat budget.");
     }
 
     [Test]

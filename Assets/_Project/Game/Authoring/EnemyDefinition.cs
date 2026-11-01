@@ -139,6 +139,19 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _shieldTurnRate;
         [SerializeField, Min(0f)] private float _shieldWalkCone;
 
+        [Header("Shaman — leave aura at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _shamanAuraRadius;
+        [SerializeField, Min(0f)] private float _shamanPulseInterval;
+        [SerializeField, Min(0f)] private float _shamanCastSeconds;
+        [SerializeField, Range(0f, 1f)] private float _shamanHealFraction;
+        [SerializeField, Min(0f)] private float _shamanHasteFraction;
+        [SerializeField, Min(0f)] private float _shamanHasteSeconds;
+        [SerializeField, Min(0f)] private float _shamanHoldDistance;
+        [SerializeField, Min(0f)] private float _shamanBehindDistance;
+        [SerializeField, Min(0f)] private float _shamanFleeDistance;
+        [SerializeField, Min(0f)] private float _shamanFleeSeconds;
+        [SerializeField, Min(0f)] private float _shamanFleeSpeedMultiplier;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -239,6 +252,12 @@ namespace Soulvail.Game.Authoring
                     EnemySpec.BaseBodyRadius * _bodyScale,
                     _shieldHalfArc > 0f
                         ? new BulwarkSpec(_shieldHalfArc, _shieldTurnRate, _shieldWalkCone)
+                        : null,
+                    _shamanAuraRadius > 0f
+                        ? new ShamanSpec(_shamanAuraRadius, _shamanPulseInterval, _shamanCastSeconds,
+                            _shamanHealFraction, _shamanHasteFraction, _shamanHasteSeconds,
+                            _shamanHoldDistance, _shamanBehindDistance, _shamanFleeDistance,
+                            _shamanFleeSeconds, _shamanFleeSpeedMultiplier)
                         : null);
             }
             catch (ArgumentException inner)

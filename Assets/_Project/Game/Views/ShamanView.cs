@@ -181,7 +181,7 @@ namespace Soulvail.Game.Views
                 _ring.localPosition = Vector3.up * .035f;
                 _ring.localScale = Vector3.zero;
             }
-            if (_animator != null)
+            if (_animator != null && _animator.isActiveAndEnabled && _animator.isInitialized)
             { _animator.ResetTrigger("Cast"); }
         }
     }

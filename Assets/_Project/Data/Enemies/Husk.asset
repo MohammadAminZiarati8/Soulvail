@@ -40,6 +40,17 @@ MonoBehaviour:
   _shieldHalfArc: 0
   _shieldTurnRate: 0
   _shieldWalkCone: 0
+  _shamanAuraRadius: 0
+  _shamanPulseInterval: 0
+  _shamanCastSeconds: 0
+  _shamanHealFraction: 0
+  _shamanHasteFraction: 0
+  _shamanHasteSeconds: 0
+  _shamanHoldDistance: 0
+  _shamanBehindDistance: 0
+  _shamanFleeDistance: 0
+  _shamanFleeSeconds: 0
+  _shamanFleeSpeedMultiplier: 0
   _tint: {r: 0.43137255, g: 0.41568628, b: 0.3882353, a: 1}
   _bodyScale: 1
   _body: {fileID: 0}

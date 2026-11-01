@@ -54,6 +54,26 @@ public sealed class EnemyDefinitionTests
         _created.Clear();
     }
 
+    [TestCase(0f, false)]
+    [TestCase(8f, true)]
+    public void Definition_ShamanBlock_BuildsASpecOnlyWithAnAura(float aura, bool exists)
+    {
+        EnemyDefinition definition = NewDefinition("Healer");
+        string[] fields = { "_shamanAuraRadius", "_shamanPulseInterval", "_shamanCastSeconds", "_shamanHealFraction",
+            "_shamanHasteFraction", "_shamanHasteSeconds", "_shamanHoldDistance", "_shamanBehindDistance",
+            "_shamanFleeDistance", "_shamanFleeSeconds", "_shamanFleeSpeedMultiplier" };
+        float[] values = { aura, 3, .6f, .1f, .25f, 3.5f, 11, 2.5f, 4, 1.2f, 1.4f };
+        for (int i = 0; i < fields.Length; i++)
+        { SetFloat(definition, fields[i], values[i]); }
+        ShamanSpec spec = definition.ToSpec().Shaman;
+        Assert.That(spec != null, Is.EqualTo(exists));
+        if (!exists)
+        { return; }
+        Assert.That(new[] { spec.AuraRadius, spec.PulseInterval, spec.CastSeconds, spec.HealFraction,
+            spec.HasteFraction, spec.HasteSeconds, spec.HoldDistance, spec.BehindDistance,
+            spec.FleeDistance, spec.FleeSeconds, spec.FleeSpeedMultiplier }, Is.EqualTo(values));
+    }
+
     [Test]
     public void Husk_ToSpec_MatchesGameDesign()
     {

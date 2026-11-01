@@ -258,6 +258,8 @@ public sealed class BossBehaviour : IEnemyBehaviour
     {
         ClearAdds(ctx);
 
+        (Inner as IBossAddOwner)?.ClearAdds(ctx);
+
         SetBeat(true);
 
         Summon(ctx);

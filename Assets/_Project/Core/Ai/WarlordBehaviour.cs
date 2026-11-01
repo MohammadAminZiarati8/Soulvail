@@ -10,8 +10,8 @@ namespace Soulvail.Core.Ai;
 
 public enum WarlordMove { None, Sweep = 1, Charge = 2, WarCry = 3, Lob = 4, Combo = 5, ComboSecond = 6 }
 
-/// <summary>A slow turning frontal guard with a committed sweep and shield charge.</summary>
-public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener
+/// <summary>A slow turning frontal guard with a committed sweep, shield charge and war cry.</summary>
+public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener, IBossAddOwner
 {
     public const float HalfArcDeg = 60f, TurnRateDeg = 40f, WalkConeDeg = 45f;
     public const float AttackGapSeconds = 1.4f, RecoverSeconds = 0.8f;
@@ -20,6 +20,9 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     public const float ChargeTelegraphSeconds = 0.9f, ChargeMinRange = 4f, ChargeLength = 14f,
         ChargeHalfWidth = 1.1f, ChargeSpeed = 16f, ChargeDamageScale = 2f, ChargeCooldownSeconds = 6f,
         ProbeRadius = 0.8f, DazeSeconds = 2f, DazeSlack = 1f, DashGraceSeconds = 0.3f;
+    public const float WarCryTelegraphSeconds = 1f, WarCryCooldownSeconds = 14f,
+        WarCryFirstAtSeconds = 8f, LockRadius = 3.5f, LockedHalfArcDeg = 90f, EdgeSpacing = 6f;
+    public const int MaxGuards = 2;
 
     private readonly EnemyAgent _agent;
     private bool _firstTick = true;
@@ -38,6 +41,10 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     private float _laneLength;
     private float _dashElapsed;
     private int _probeTicks;
+    private readonly ContentId _guardId;
+    private readonly int[] _guardIds = new int[MaxGuards];
+    private readonly Vector3[] _picks = new Vector3[MaxGuards];
+    private float _warCryCooldown = WarCryFirstAtSeconds;
 
     public WarlordBehaviour(EnemyAgent agent, ProjectileSystem projectiles, IRandomStream random,
         ContentId guardId)
@@ -46,15 +53,19 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         // These dependencies are part of the boss's API for its later moves.
         _ = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         _ = random ?? throw new ArgumentNullException(nameof(random));
+        _guardId = guardId;
     }
 
     public WarlordMove Move { get; private set; }
     public float GuardHalfArcDeg { get; private set; } = HalfArcDeg;
     public Vector2 Facing { get; private set; } = Vector2.UnitY;
     public bool IsDazed { get; private set; }
+    public int GuardCount { get; private set; }
+    public bool IsLocked { get; private set; }
 
     public void Tick(in EnemyTickContext ctx)
     {
+        RollCall(ctx.Enemies.Registry);
         if (_firstTick)
         {
             Facing = Aim();
@@ -67,12 +78,12 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
 
         _remaining -= ctx.Dt;
         _chargeCooldown = MathF.Max(0f, _chargeCooldown - ctx.Dt);
+        _warCryCooldown = MathF.Max(0f, _warCryCooldown - ctx.Dt);
         if (IsDazed)
         {
             if (_remaining <= 0f)
             {
                 IsDazed = false;
-                GuardHalfArcDeg = HalfArcDeg;
                 _remaining = AttackGapSeconds;
             }
         }
@@ -84,7 +95,14 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         {
             if (_remaining <= 0f)
             {
-                Release(ctx);
+                if (Move == WarlordMove.WarCry)
+                {
+                    ReleaseWarCry(ctx);
+                }
+                else
+                {
+                    Release(ctx);
+                }
             }
         }
         else if (_recovering)
@@ -97,7 +115,14 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         }
         else if (_remaining <= 0f)
         {
-            if (_agent.Blackboard.DistanceToPlayer <= SweepReach)
+            if (_warCryCooldown <= 0f && GuardCount < MaxGuards
+                && ctx.Enemies.Registry.AliveCount < ctx.Enemies.Registry.Capacity)
+            {
+                Move = WarlordMove.WarCry;
+                _remaining = WarCryTelegraphSeconds;
+                ctx.Events.Publish(new EnemyTelegraph(_agent.Id, WarCryTelegraphSeconds, (int)Move));
+            }
+            else if (_agent.Blackboard.DistanceToPlayer <= SweepReach)
             {
                 Arm(ctx);
             }
@@ -107,6 +132,8 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
             }
         }
 
+        IsLocked = !IsDazed && AnyGuardNear(ctx.Enemies.Registry);
+        GuardHalfArcDeg = IsDazed ? 0f : IsLocked ? LockedHalfArcDeg : HalfArcDeg;
         bool guarded = GuardHalfArcDeg > 0f
             && InArc(Facing, _agent.Blackboard.DirectionToPlayer, GuardHalfArcDeg);
         _agent.Health.SetExternalInvulnerable(guarded);
@@ -205,7 +232,6 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
             _remaining = IsDazed ? DazeSeconds : RecoverSeconds;
             if (IsDazed)
             {
-                GuardHalfArcDeg = 0f;
                 ctx.Events.Publish(new WarlordDazed(_agent.Id, _agent.Blackboard.SelfPosition, DazeSeconds));
             }
         }
@@ -243,6 +269,123 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         Facing = _aim;
     }
 
+    private void ReleaseWarCry(in EnemyTickContext ctx)
+    {
+        EnemyRegistry registry = ctx.Enemies.Registry;
+        int wanted = Math.Min(MaxGuards - GuardCount, registry.Capacity - registry.AliveCount);
+        Vector3 self = _agent.Blackboard.SelfPosition;
+        Vector3 player = _agent.Blackboard.PlayerPosition;
+        int picked = 0;
+        while (picked < wanted)
+        {
+            int best = -1;
+            float bestDistance = -1f;
+            for (int i = 0; i < ctx.OpenGround.Count; i++)
+            {
+                Vector3 point = ctx.OpenGround[i];
+                if (!(FlatSquared(point, player)
+                        >= OpenGroundPicker.PlayerClearance * OpenGroundPicker.PlayerClearance)
+                    || !Spaced(point, picked))
+                {
+                    continue;
+                }
+
+                float distance = FlatSquared(point, self);
+                if (distance > bestDistance)
+                {
+                    best = i;
+                    bestDistance = distance;
+                }
+            }
+
+            if (best < 0)
+            {
+                break;
+            }
+
+            _picks[picked++] = ctx.OpenGround[best];
+        }
+
+        // Too little open ground: the rest stand on the add ring, on the side away from the player.
+        Vector2 away = -Aim();
+        int rest = wanted - picked;
+        for (int n = 0; n < rest; n++)
+        {
+            float offset = (n - (rest - 1) * 0.5f) * (MathF.PI / 2f);
+            float sin = MathF.Sin(offset);
+            float cos = MathF.Cos(offset);
+            _picks[picked++] = self + new Vector3(away.X * cos - away.Y * sin, 0f,
+                away.X * sin + away.Y * cos) * BossBehaviour.AddRingRadius;
+        }
+
+        for (int i = 0; i < picked; i++)
+        {
+            _guardIds[GuardCount++] = ctx.Enemies.SpawnSummon(_guardId, _picks[i]).Id;
+        }
+
+        Move = WarlordMove.None;
+        _recovering = true;
+        _remaining = RecoverSeconds;
+        _warCryCooldown = WarCryCooldownSeconds;
+    }
+
+    private bool Spaced(Vector3 point, int picked)
+    {
+        for (int i = 0; i < picked; i++)
+        {
+            if (!(FlatSquared(point, _picks[i]) >= EdgeSpacing * EdgeSpacing))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // A dead or despawned guard leaves the count on the tick it goes; registry ids are never reused.
+    private void RollCall(EnemyRegistry registry)
+    {
+        int kept = 0;
+        for (int i = 0; i < GuardCount; i++)
+        {
+            if (registry.TryGet(_guardIds[i], out EnemyAgent guard) && guard.IsAlive)
+            {
+                _guardIds[kept++] = _guardIds[i];
+            }
+        }
+
+        GuardCount = kept;
+    }
+
+    private bool AnyGuardNear(EnemyRegistry registry)
+    {
+        for (int i = 0; i < GuardCount; i++)
+        {
+            if (registry.TryGet(_guardIds[i], out EnemyAgent guard)
+                && FlatSquared(guard.Position, _agent.Blackboard.SelfPosition) <= LockRadius * LockRadius)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void ClearAdds(in EnemyTickContext ctx)
+    {
+        for (int i = 0; i < GuardCount; i++)
+        {
+            if (ctx.Enemies.Registry.TryGet(_guardIds[i], out EnemyAgent guard) && guard.IsAlive)
+            {
+                ctx.Enemies.DespawnAtEndOfTick(_guardIds[i]);
+            }
+        }
+
+        GuardCount = 0;
+        IsLocked = false;
+        _warCryCooldown = WarCryFirstAtSeconds;
+    }
+
     public void OnPhaseEntered(int phase)
     {
         _coneEvents?.Publish(new SprayCleared(_agent.Id));
@@ -265,6 +408,9 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         _firstTick = true;
         _publishedArc = -1f;
         _chargeCooldown = 0f;
+        _warCryCooldown = WarCryFirstAtSeconds;
+        GuardCount = 0;
+        IsLocked = false;
     }
 
     private Vector2 Aim() => _agent.Blackboard.DirectionToPlayer != Vector2.Zero
@@ -288,6 +434,13 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         float cos = MathF.Cos(step);
         Facing = Vector2.Normalize(new Vector2(Facing.X * cos - Facing.Y * sin,
             Facing.X * sin + Facing.Y * cos));
+    }
+
+    private static float FlatSquared(Vector3 a, Vector3 b)
+    {
+        float x = a.X - b.X;
+        float z = a.Z - b.Z;
+        return x * x + z * z;
     }
 
     private bool InArc(Vector2 facing, Vector2 direction, float degrees) => direction == Vector2.Zero

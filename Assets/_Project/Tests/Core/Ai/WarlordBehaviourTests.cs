@@ -182,9 +182,9 @@ public sealed class WarlordBehaviourTests
         Assert.That(first.HalfArcDeg, Is.EqualTo(60f));
         Tick(0f);
         Assert.That(_events.Count<WarlordGuardArc>(), Is.EqualTo(1));
-        // Later phases change the private arc; no public mutation port is needed for this test.
-        typeof(WarlordBehaviour).GetProperty(nameof(WarlordBehaviour.GuardHalfArcDeg))
-            .SetValue(_warlord, 0f);
+        // The arc is derived each tick (JG-15c); a daze drops it to zero without a public port.
+        typeof(WarlordBehaviour).GetProperty(nameof(WarlordBehaviour.IsDazed))
+            .SetValue(_warlord, true);
         Tick(0f);
         Assert.That(_events.Of<WarlordGuardArc>()[1].HalfArcDeg, Is.Zero);
         AssertGuard(false);

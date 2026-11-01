@@ -92,6 +92,12 @@ public sealed class WarlordChargeTests
         Tick(1.4f);
         Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.None));
         Assert.That(_events.Count<EnemyTelegraph>(), Is.EqualTo(1));
+        // A full registry keeps the 8 s war cry (JG-15c) from outranking the charge.
+        while (_enemies.Registry.AliveCount < _enemies.Registry.Capacity)
+        {
+            _enemies.Registry.Spawn(Body(), Vector3.UnitX * 30f);
+        }
+
         Tick(3.8f);
         Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.Charge));
         Assert.That(_events.Count<EnemyTelegraph>(), Is.EqualTo(2));

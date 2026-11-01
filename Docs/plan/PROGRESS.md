@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-15d built._
+_Updated 2026-11-01, JG-15e built._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-15d**: Warlord phases in core: spear lobs from 66 %, shield shatter and combo from 33 %. |
-| **Next task** | **JG-15e** (the model: Mossguard grown, war paint, glaive, big shield), on the owner's go; 15e–g specced. |
-| **Verified** | EditMode 5 080: 5 079 pass, 0 fail, 1 known animator-clock inconclusive. All 16 phase cases pass. Compiler errors 0; new analyzer warnings 0; format clean. Core only: no owner checks. |
+| **Last merged** | **JG-15e**: Warlord model: Mossguard variant, war paint, glaive, big shield. |
+| **Next task** | **JG-15f** (the body: animator, guard wedge, daze, shatter), on the owner's go; 15f–g specced. |
+| **Verified** | EditMode 5 089: 5 088 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works
 
@@ -27,6 +27,7 @@ War cry from 8 s, 14 s cooldown: 1 s stand, up to two 0-XP Mossguards on far
 open ground, else a ring; a guard within 3.5 m locks 90°; beats despawn, rearm 8 s.
 Phase 1: 0.8 s lob, 3 ringed spears at ≥ 5 m, 5 s cooldown. Phase 2: shield
 shatters (no guard, +40 % speed, 120°/s, 0.5/0.9 s gaps), sweep → 0.8+0.6 s combo.
+Warlord model: painted Mossguard variant, axe-headed glaive.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
 Clash UI; LocKey strings. Marksman path complete: all 22 ranks from level 11;
@@ -42,7 +43,7 @@ brighter arrows; choice shimmer, silent resume, plain menu/fresh run. Reversible
 1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
 3. Past ~26 late waves are all Bloaters/Puffballs.
-4. No audio, Elites, feel pass or second language; Warlord integration awaits JG-15e–g.
+4. No audio, Elites, feel pass or second language; Warlord integration awaits JG-15f–g.
 
 ## Known issues
 
@@ -53,3 +54,4 @@ brighter arrows; choice shimmer, silent resume, plain menu/fresh run. Reversible
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; no reference device.
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
+8. Warlord's death dissolve shows the unpainted atlas (15f).

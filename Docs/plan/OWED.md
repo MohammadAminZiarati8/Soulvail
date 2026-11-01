@@ -97,3 +97,7 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 
 - [ ] **[Editor]** Choose Marksman at level 11: notice the 0.4 s cyan shimmer, then compare against the plain Ranger at the game camera height. Hood/cloak should be deep forest green with cyan trim, the KayKit quiver visible on the back, the bowstring faintly glowing cyan and ordinary arrow trails a little brighter. Judge readability on the dark floor; no polish pass is included.
 - [ ] **[Editor]** Continue a saved Marksman with a purchased path rank: the look should already be applied without a shimmer. Return to Heroes/class select and start a fresh run: plain Ranger, no path prop or glow.
+
+## JG-15e — The Warlord's model (2026-11-01)
+
+- [ ] **[Editor]** Scene view: `Mossguard_Warlord.prefab` at scale 2.03 beside `Mossguard.prefab` at 1.27, then at the game camera height. He should read as the same kind, clearly bigger and war-painted: darker olive skin, umber cloth, bone-white stripes on skirt, tail and shield. Glaive (axe head on the spear haft) and the 1.35× shield should be readable at phone zoom. Judge the KayKit axe's slate-blue neck wrap (hue 203°, 3° outside the cyan band): if it reads as player cyan, say so and 15f/15g can swap the head's material.

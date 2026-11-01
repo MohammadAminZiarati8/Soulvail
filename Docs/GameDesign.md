@@ -296,6 +296,8 @@ New enemies arrive one at a time, in a wave where they're the *only* new thing.
 | 17 | Revenant |
 | 21+ | No new archetypes — new *combinations* and Ordeals (§13.4) |
 
+*Owner, 2026-11-01:* in the Jungle the Choir's role is the **Moss Shaman**, met at stage 17 (JG-16); the Revenant's waits for a later place.
+
 By stage 21 the player knows the full vocabulary. Everything after is composition, density, and modifiers. **This is deliberate**: an endless game can't ship endless content, so depth must come from interaction between known parts.
 
 ### 8.3 Elites and affixes

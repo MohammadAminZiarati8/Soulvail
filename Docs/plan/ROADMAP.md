@@ -63,3 +63,12 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-15e** — The model: the Mossguard grown and war-painted, glaive, big shield, sculpt slot (M)
 - [x] **JG-15f** — The body: animator, guard wedge, daze, shatter (M)
 - [x] **JG-15g** — Stage 15 is his: data, stones, spear, lane probe adapter (M)
+
+**Stages 16–19 and the Moss Shaman** (owner, 2026-11-01; design [GD §8.1–8.2](../GameDesign.md)). A lizard shaman in the Choir's role: never attacks, hides behind Mossguards at the edge of range, heals and hastens them, runs when you close. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (16a any time; 16c needs the owner's two sculpts and may go any time before 16d). Playtestable from JG-16e with DT-01's test start at stage 17.
+
+- [ ] **JG-16a** — Stage 16 is a breather: known enemies, 121 threat (S)
+- [ ] **JG-16b** — The Moss Shaman in core: anchor, range-edge hiding, heal and haste pulse, flee (M)
+- [ ] **JG-16c** — The model: the owner's sculpt on Rig_Medium, staff on the right hand (M)
+- [ ] **JG-16d** — The body: animator, seed glow, aura ring, healed bars, haste mark (M)
+- [ ] **JG-16e** — The Shaman in the Jungle: data, roster from 17, stage 17 scripted (M)
+- [ ] **JG-16f** — Stages 18 and 19 scripted, climbing to 208 (S)

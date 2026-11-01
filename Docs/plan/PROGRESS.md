@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-01, JG-15g built._
+_Updated 2026-11-01, JG-16 specced._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-11-01, JG-15g built._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **JG-15g**: stage 15 is the Warlord's: data, five stones, spear, lane probe adapter. |
-| **Next task** | None specced; the Warlord arc is done. Owner to name the next. |
+| **Next task** | **JG-16a**. JG-16a–f specced (16–19, Moss Shaman); 16c needs sculpts. |
 | **Verified** | EditMode 5 109: 5 108 pass, 0 fail, 1 known animator-clock inconclusive. Compiler errors 0; analyzer warnings 0 new; format clean. |
 
 ## What works

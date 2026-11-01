@@ -501,7 +501,7 @@ public sealed class BindResolverTests
     }
 
     private void Step(float now = 1f) => _projectiles.Tick(now, _player.Blackboard.PlayerPosition, _player, _enemies);
-    private float Remaining(EnemyAgent agent) => _enemies.Remaining(agent.Id, EnemyStatus.Stunned);
+    private float Remaining(EnemyAgent agent) => _enemies.Remaining(agent.Id, new ContentId(EnemyStatuses.StunnedKey));
     private EnemyAgent Spawn(float x, float z = 0f) => _enemies.Spawn(new ContentId("enemy.husk"), new Vector3(x, 0f, z));
     private void Upgrade(float seconds) => _effects.Apply(new ModifyStat(PlayerStat.BindStun, ModifierKind.Flat, seconds), new object());
 

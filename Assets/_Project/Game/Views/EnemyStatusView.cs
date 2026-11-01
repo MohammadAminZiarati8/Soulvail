@@ -1,4 +1,6 @@
 using System;
+using Soulvail.Core.Ai;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
@@ -63,7 +65,17 @@ namespace Soulvail.Game.Views
             _died = hub.Subscribe<EnemyDied>(OnDied);
         }
 
-        public GameObject Effect(EnemyStatus status) => _effects[(int)status];
+        public GameObject Effect(ContentId status) => _effects[Slot(status)];
+
+        private static int Slot(ContentId status) => status.Value switch
+        {
+            EnemyStatuses.StunnedKey => 0,
+            EnemyStatuses.RootedKey => 1,
+            EnemyStatuses.SlowedKey => 2,
+            EnemyStatuses.HastedKey => 3,
+            _ => -1,
+        };
+
 
         public void Bind(int id)
         {
@@ -120,11 +132,11 @@ namespace Soulvail.Game.Views
 
         private void OnChanged(EnemyStatusChanged evt)
         {
-            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)evt.Status >= 3u)
+            int index = Slot(evt.Status);
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)index >= 3u)
             {
                 return;
             }
-            int index = (int)evt.Status;
             _active[index] = evt.Seconds > 0f;
             if (_effects[index] != null)
             {

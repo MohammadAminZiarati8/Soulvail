@@ -93,9 +93,9 @@ public sealed class ShamanBehaviourTests
         Tick(0.61f);
         Assert.That(ally.Health.Fraction, Is.EqualTo(0.6f).Within(0.001f));
         Assert.That(_events.Single<EnemyHealed>().Amount, Is.EqualTo(10f));
-        Assert.That(_system.Has(ally.Id, EnemyStatus.Hasted), Is.True);
+        Assert.That(_system.Has(ally.Id, new ContentId(EnemyStatuses.HastedKey)), Is.True);
         Assert.That(ally.MoveSpeed.Value, Is.EqualTo(2.5f));
-        Assert.That(_system.Remaining(ally.Id, EnemyStatus.Hasted), Is.EqualTo(3.5f));
+        Assert.That(_system.Remaining(ally.Id, new ContentId(EnemyStatuses.HastedKey)), Is.EqualTo(3.5f));
     }
 
     [Test]
@@ -140,7 +140,7 @@ public sealed class ShamanBehaviourTests
         Assert.That(_events.Count<EnemyStatusChanged>(), Is.Zero, "Nothing grew, nothing announced.");
         _system.Tick(new EnemyTickContext(1, 1, _player, _intents, _events, _projectiles, _system));
         Assert.That(ally.MoveSpeed.Value, Is.EqualTo(1f), "The weaker, longer haste did not stretch it.");
-        Assert.That(_system.Has(ally.Id, EnemyStatus.Hasted), Is.False);
+        Assert.That(_system.Has(ally.Id, new ContentId(EnemyStatuses.HastedKey)), Is.False);
         Assert.That(_events.Count<EnemyStatusChanged>(), Is.EqualTo(1));
     }
 

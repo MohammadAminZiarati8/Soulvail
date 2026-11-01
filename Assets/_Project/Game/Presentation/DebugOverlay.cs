@@ -1,7 +1,9 @@
 using System;
 using System.Globalization;
 using System.Text;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -472,19 +474,19 @@ namespace Soulvail.Game.Presentation
             float top = Screen.height * 0.3f;
             if (GUI.Button(new Rect(8f, top, 84f, 32f), "Stun 3s"))
             {
-                ApplyNearestStatus(EnemyStatus.Stunned);
+                ApplyNearestStatus(new ContentId(EnemyStatuses.StunnedKey));
             }
             if (GUI.Button(new Rect(8f, top + 36f, 84f, 32f), "Root 3s"))
             {
-                ApplyNearestStatus(EnemyStatus.Rooted);
+                ApplyNearestStatus(new ContentId(EnemyStatuses.RootedKey));
             }
             if (GUI.Button(new Rect(8f, top + 72f, 84f, 32f), "Slow 3s"))
             {
-                ApplyNearestStatus(EnemyStatus.Slowed);
+                ApplyNearestStatus(new ContentId(EnemyStatuses.SlowedKey));
             }
         }
 
-        public bool ApplyNearestStatus(EnemyStatus status)
+        public bool ApplyNearestStatus(ContentId status)
         {
             if (_session is not RunSession session || session.State is null)
             {

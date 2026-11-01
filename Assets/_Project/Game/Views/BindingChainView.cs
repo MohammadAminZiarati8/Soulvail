@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Presentation;
@@ -174,7 +175,7 @@ namespace Soulvail.Game.Views
 
         private void OnStatus(EnemyStatusChanged status)
         {
-            if (status.Status != EnemyStatus.Stunned || status.Seconds > 0f)
+            if (status.Status.Value != EnemyStatuses.StunnedKey || status.Seconds > 0f)
             {
                 return;
             }

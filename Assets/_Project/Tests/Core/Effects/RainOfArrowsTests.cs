@@ -149,7 +149,7 @@ public sealed class RainOfArrowsTests
         Assert.That(edge.Health.Current, Is.EqualTo(Hp - PulseDamage).Within(Tolerance));
         Assert.That(edge.MoveSpeed.Value, Is.EqualTo(1.4f).Within(Tolerance));
         Assert.That(body.MoveSpeed.Value, Is.EqualTo(1.4f).Within(Tolerance));
-        Assert.That(_enemies.Remaining(edge.Id, EnemyStatus.Slowed), Is.EqualTo(0.35f).Within(Tolerance));
+        Assert.That(_enemies.Remaining(edge.Id, new ContentId(EnemyStatuses.SlowedKey)), Is.EqualTo(0.35f).Within(Tolerance));
     }
 
     [Test]
@@ -178,7 +178,7 @@ public sealed class RainOfArrowsTests
         StepEnemies(0.02f, 0.61f);
         _zones.Tick(0.61f);
         Assert.That(body.MoveSpeed.Value, Is.EqualTo(2f));
-        Assert.That(_enemies.Has(body.Id, EnemyStatus.Slowed), Is.False);
+        Assert.That(_enemies.Has(body.Id, new ContentId(EnemyStatuses.SlowedKey)), Is.False);
     }
 
     [Test]

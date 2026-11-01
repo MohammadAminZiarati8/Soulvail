@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -141,7 +142,7 @@ public sealed class BindProbeAdapterTests
         LineRenderer line = Show();
         _chains.Step(5f);
         Assert.That(_chains.ActiveCount, Is.EqualTo(1), "Use the actual end event, including extended stuns.");
-        _hub.Publish(new EnemyStatusChanged(1, EnemyStatus.Stunned, 0f));
+        _hub.Publish(new EnemyStatusChanged(1, new EnemyStatuses().Stunned, 0f, 1));
         _chains.Step(0.06f);
         Assert.That(line.startColor.a, Is.InRange(0.4f, 0.6f));
         _chains.Step(0.07f);
@@ -159,7 +160,7 @@ public sealed class BindProbeAdapterTests
         float initial = (line.GetPosition(0) - target.position).x;
         _chains.Step(0.15f);
         Assert.That((line.GetPosition(0) - target.position).x, Is.LessThan(initial));
-        _hub.Publish(new EnemyStatusChanged(1, EnemyStatus.Stunned, 0f));
+        _hub.Publish(new EnemyStatusChanged(1, new EnemyStatuses().Stunned, 0f, 1));
         _chains.Step(0.13f);
         Assert.That(_chains.ActiveCount, Is.Zero);
     }

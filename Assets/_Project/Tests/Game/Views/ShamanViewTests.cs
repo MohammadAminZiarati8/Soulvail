@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using Soulvail.Core.Content;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
@@ -99,11 +101,11 @@ public sealed class ShamanViewTests
     [Test]
     public void StatusView_ShowsAndClearsHaste()
     {
-        _hub.Publish(new EnemyStatusChanged(17, EnemyStatus.Hasted, 3.5f));
-        var icon = _bar.StatusIcon(EnemyStatus.Hasted);
+        _hub.Publish(new EnemyStatusChanged(17, new EnemyStatuses().Hasted, 3.5f, 1));
+        var icon = _bar.StatusIcon(new ContentId(EnemyStatuses.HastedKey));
         Assert.That(icon.gameObject.activeSelf, Is.True);
         Assert.That(icon.GetComponentsInChildren<UnityEngine.UI.Image>().Count(i => i.name == "Haste chevron"), Is.EqualTo(2));
-        _hub.Publish(new EnemyStatusChanged(17, EnemyStatus.Hasted, 0f));
+        _hub.Publish(new EnemyStatusChanged(17, new EnemyStatuses().Hasted, 0f, 1));
         Assert.That(icon.gameObject.activeSelf, Is.False);
     }
 

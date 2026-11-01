@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Core.Content;
@@ -177,8 +178,18 @@ namespace Soulvail.Game.Views
         private float _statusPx = 1f;
         private bool HasStatuses => _statuses[0] || _statuses[1] || _statuses[2] || _statuses[3];
 
-        public Image StatusIcon(EnemyStatus status) => _statusIcons[(int)status];
-        public Image StatusSweep(EnemyStatus status) => _statusSweeps[(int)status];
+        public Image StatusIcon(ContentId status) => _statusIcons[Slot(status)];
+        public Image StatusSweep(ContentId status) => _statusSweeps[Slot(status)];
+
+        private static int Slot(ContentId status) => status.Value switch
+        {
+            EnemyStatuses.StunnedKey => 0,
+            EnemyStatuses.RootedKey => 1,
+            EnemyStatuses.SlowedKey => 2,
+            EnemyStatuses.HastedKey => 3,
+            _ => -1,
+        };
+
 
         public void ConfigureStatuses(StatusIconBook icons, Sprite sweep)
         {
@@ -242,11 +253,11 @@ namespace Soulvail.Game.Views
 
         private void OnStatusChanged(EnemyStatusChanged evt)
         {
-            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)evt.Status >= 4u)
+            int i = Slot(evt.Status);
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)i >= 4u)
             {
                 return;
             }
-            int i = (int)evt.Status;
             _statuses[i] = evt.Seconds > 0f;
             _statusRemaining[i] = _statusDuration[i] = Mathf.Max(0f, evt.Seconds);
             DrawStatuses();

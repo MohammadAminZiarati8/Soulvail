@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -68,8 +70,8 @@ public sealed class EnemyStatusViewTests
     [Test]
     public void Stun_ShowsSparks_HoldsAnimator()
     {
-        Change(EnemyStatus.Stunned, 3f);
-        GameObject sparks = _status.Effect(EnemyStatus.Stunned);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 3f);
+        GameObject sparks = _status.Effect(new ContentId(EnemyStatuses.StunnedKey));
         Assert.That(sparks.activeSelf, Is.True);
         Assert.That(sparks.transform.childCount, Is.EqualTo(3));
         Quaternion before = sparks.transform.localRotation;
@@ -81,10 +83,10 @@ public sealed class EnemyStatusViewTests
     [Test]
     public void Stun_End_Resumes()
     {
-        Change(EnemyStatus.Stunned, 3f);
-        Change(EnemyStatus.Stunned, 0f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 3f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 0f);
         Assert.That(_animator.speed, Is.EqualTo(1f));
-        Assert.That(_status.Effect(EnemyStatus.Stunned).activeSelf, Is.False);
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.StunnedKey)).activeSelf, Is.False);
     }
 
     [Test]
@@ -92,42 +94,42 @@ public sealed class EnemyStatusViewTests
     {
         _body.GetComponent<CapsuleCollider>().radius = 0.8f;
         _status.Bind(Id);
-        Change(EnemyStatus.Rooted, 3f);
-        GameObject coils = _status.Effect(EnemyStatus.Rooted);
+        Change(new ContentId(EnemyStatuses.RootedKey), 3f);
+        GameObject coils = _status.Effect(new ContentId(EnemyStatuses.RootedKey));
         Assert.That(coils.activeSelf, Is.True);
         Assert.That(coils.transform.localScale.x, Is.EqualTo(1.6f));
         Assert.That(coils.GetComponent<LineRenderer>().positionCount, Is.GreaterThan(30));
         _animation.Step(0.1f);
         Assert.That(_animator.GetFloat("Speed"), Is.GreaterThan(0f), "Rooted legs keep animating.");
         Assert.That(_animator.speed, Is.EqualTo(1f));
-        Change(EnemyStatus.Rooted, 0f);
+        Change(new ContentId(EnemyStatuses.RootedKey), 0f);
         Assert.That(coils.activeSelf, Is.False);
     }
 
     [Test]
     public void Slow_ScalesAnimator()
     {
-        Assert.That(_session.DebugEnemyStatus(Id, EnemyStatus.Slowed), Is.True);
-        Assert.That(_status.Effect(EnemyStatus.Slowed).activeSelf, Is.True);
+        Assert.That(_session.DebugEnemyStatus(Id, new ContentId(EnemyStatuses.SlowedKey)), Is.True);
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.SlowedKey)).activeSelf, Is.True);
         Assert.That(_animator.speed, Is.EqualTo(0.5f));
-        Change(EnemyStatus.Stunned, 2f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 2f);
         Assert.That(_animator.speed, Is.EqualTo(0.1f));
-        Change(EnemyStatus.Stunned, 0f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 0f);
         Assert.That(_animator.speed, Is.EqualTo(0.5f));
-        Change(EnemyStatus.Slowed, 0f);
+        Change(new ContentId(EnemyStatuses.SlowedKey), 0f);
         Assert.That(_animator.speed, Is.EqualTo(1f));
-        Assert.That(_status.Effect(EnemyStatus.Slowed).activeSelf, Is.False);
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.SlowedKey)).activeSelf, Is.False);
     }
 
     [Test]
     public void Bar_IconsInOrderWithSweep()
     {
-        Change(EnemyStatus.Slowed, 6f);
-        Change(EnemyStatus.Rooted, 6f);
-        Change(EnemyStatus.Stunned, 6f);
+        Change(new ContentId(EnemyStatuses.SlowedKey), 6f);
+        Change(new ContentId(EnemyStatuses.RootedKey), 6f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 6f);
         TickBar(1.5f);
         float lastX = float.NegativeInfinity;
-        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
+        foreach (ContentId kind in new[] { new ContentId(EnemyStatuses.StunnedKey), new ContentId(EnemyStatuses.RootedKey), new ContentId(EnemyStatuses.SlowedKey) })
         {
             Image icon = _bar.StatusIcon(kind);
             Image sweep = _bar.StatusSweep(kind);
@@ -141,22 +143,22 @@ public sealed class EnemyStatusViewTests
             Assert.That(icon.rectTransform.sizeDelta.x,
                 Is.EqualTo(14f * Soulvail.Game.Controls.StickShaper.PixelsPerDp(Screen.dpi)).Within(0.01f));
         }
-        Change(EnemyStatus.Rooted, 0f);
-        Assert.That(_bar.StatusIcon(EnemyStatus.Rooted).gameObject.activeSelf, Is.False);
-        Assert.That(_bar.StatusIcon(EnemyStatus.Stunned).rectTransform.anchoredPosition.x,
-            Is.LessThan(_bar.StatusIcon(EnemyStatus.Slowed).rectTransform.anchoredPosition.x));
+        Change(new ContentId(EnemyStatuses.RootedKey), 0f);
+        Assert.That(_bar.StatusIcon(new ContentId(EnemyStatuses.RootedKey)).gameObject.activeSelf, Is.False);
+        Assert.That(_bar.StatusIcon(new ContentId(EnemyStatuses.StunnedKey)).rectTransform.anchoredPosition.x,
+            Is.LessThan(_bar.StatusIcon(new ContentId(EnemyStatuses.SlowedKey)).rectTransform.anchoredPosition.x));
     }
 
     [Test]
     public void Bar_AppearsWhileStatused()
     {
         Assert.That(_bar.IsShown, Is.False);
-        Change(EnemyStatus.Rooted, 3f);
+        Change(new ContentId(EnemyStatuses.RootedKey), 3f);
         Assert.That(_bar.IsShown, Is.True);
         TickBar(4f);
         Assert.That(_bar.IsShown, Is.True, "Only core's end event hides a status.");
-        Assert.That(_status.Effect(EnemyStatus.Rooted).activeSelf, Is.True);
-        Change(EnemyStatus.Rooted, 0f);
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.RootedKey)).activeSelf, Is.True);
+        Change(new ContentId(EnemyStatuses.RootedKey), 0f);
         Assert.That(_bar.IsShown, Is.False);
     }
 
@@ -166,7 +168,7 @@ public sealed class EnemyStatusViewTests
         AllOn();
         _hub.Publish(new EnemyDied(Id, Rootling, System.Numerics.Vector3.Zero));
         AssertClean();
-        Change(EnemyStatus.Stunned, 2f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 2f);
         AssertClean();
     }
 
@@ -179,26 +181,27 @@ public sealed class EnemyStatusViewTests
         Spawn(2);
         Assert.That(_body, Is.SameAs(before));
         AssertClean();
-        Change(EnemyStatus.Rooted, 3f);
+        Change(new ContentId(EnemyStatuses.RootedKey), 3f);
         AssertClean();
-        _hub.Publish(new EnemyStatusChanged(2, EnemyStatus.Rooted, 3f));
-        Assert.That(_status.Effect(EnemyStatus.Rooted).activeSelf, Is.True);
+        _hub.Publish(new EnemyStatusChanged(2, new EnemyStatuses().Rooted, 3f, 1));
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.RootedKey)).activeSelf, Is.True);
     }
 
     [Test]
     public void Effects_ArePooled()
     {
-        var effects = new[] { _status.Effect(EnemyStatus.Stunned), _status.Effect(EnemyStatus.Rooted), _status.Effect(EnemyStatus.Slowed) };
-        var icons = new[] { _bar.StatusIcon(EnemyStatus.Stunned), _bar.StatusIcon(EnemyStatus.Rooted), _bar.StatusIcon(EnemyStatus.Slowed) };
+        var effects = new[] { _status.Effect(new ContentId(EnemyStatuses.StunnedKey)), _status.Effect(new ContentId(EnemyStatuses.RootedKey)), _status.Effect(new ContentId(EnemyStatuses.SlowedKey)) };
+        var icons = new[] { _bar.StatusIcon(new ContentId(EnemyStatuses.StunnedKey)), _bar.StatusIcon(new ContentId(EnemyStatuses.RootedKey)), _bar.StatusIcon(new ContentId(EnemyStatuses.SlowedKey)) };
         int count = _parent.GetComponentsInChildren<Transform>(true).Length;
         for (int n = 0; n < 5; n++)
         {
             AllOn();
-            foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
+            var kinds = new[] { new ContentId(EnemyStatuses.StunnedKey), new ContentId(EnemyStatuses.RootedKey), new ContentId(EnemyStatuses.SlowedKey) };
+            for (int k = 0; k < kinds.Length; k++)
             {
-                Change(kind, 0f);
-                Assert.That(_status.Effect(kind), Is.SameAs(effects[(int)kind]));
-                Assert.That(_bar.StatusIcon(kind), Is.SameAs(icons[(int)kind]));
+                Change(kinds[k], 0f);
+                Assert.That(_status.Effect(kinds[k]), Is.SameAs(effects[k]));
+                Assert.That(_bar.StatusIcon(kinds[k]), Is.SameAs(icons[k]));
             }
         }
         Assert.That(_parent.GetComponentsInChildren<Transform>(true).Length, Is.EqualTo(count));
@@ -209,7 +212,7 @@ public sealed class EnemyStatusViewTests
     {
         _parent.SetActive(true);
         _animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        Change(EnemyStatus.Stunned, 3f);
+        Change(new ContentId(EnemyStatuses.StunnedKey), 3f);
         _hub.Publish(new EnemyDamaged(Id, 1f, 0.9f, false));
         int layer = _animator.GetLayerIndex(FlinchLayer.Name);
         bool hit = false;
@@ -259,11 +262,15 @@ public sealed class EnemyStatusViewTests
         _animator.Update(0f);
     }
 
-    private void Change(EnemyStatus kind, float seconds) => _hub.Publish(new EnemyStatusChanged(Id, kind, seconds));
+    private void Change(ContentId kind, float seconds)
+    {
+        new EnemyStatuses().TryGet(kind, out StatusRule rule);
+        _hub.Publish(new EnemyStatusChanged(Id, rule, seconds, 1));
+    }
     private void TickBar(float dt) => typeof(EnemyHealthBar).GetMethod("Tick", Private).Invoke(_bar, new object[] { dt });
     private void AllOn()
     {
-        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
+        foreach (ContentId kind in new[] { new ContentId(EnemyStatuses.StunnedKey), new ContentId(EnemyStatuses.RootedKey), new ContentId(EnemyStatuses.SlowedKey) })
         {
             Change(kind, 3f);
         }
@@ -271,7 +278,7 @@ public sealed class EnemyStatusViewTests
 
     private void AssertClean()
     {
-        foreach (EnemyStatus kind in new[] { EnemyStatus.Stunned, EnemyStatus.Rooted, EnemyStatus.Slowed })
+        foreach (ContentId kind in new[] { new ContentId(EnemyStatuses.StunnedKey), new ContentId(EnemyStatuses.RootedKey), new ContentId(EnemyStatuses.SlowedKey) })
         {
             Assert.That(_status.Effect(kind).activeSelf, Is.False);
             Assert.That(_bar.StatusIcon(kind).gameObject.activeSelf, Is.False);

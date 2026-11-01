@@ -137,3 +137,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16i (2026-11-02): Shaman gait. Test start at 17 or 18 and watch the Shaman: legs step with the body (no glide), it turns to face where it walks or flees (no sideways slide or backwards run), turns back to face you when it stops or casts, and the staff stays in hand without whipping. Its Hit, Cast and Death clips still carry the old retarget's 170°+ single-frame flips (not touched here).
 
 - JG-16j (2026-11-02): Shaman Hit, Cast and Death rebuilt (supersedes the "still carry flips" note above). At Jungle 17, hit the Shaman, let it cast near a Mossguard, and kill it: the staff should never jump out of the hand at the start of any of the three, and the cast should raise the seed above the head smoothly.
+
+- ST-01 (2026-11-02): enemy statuses are now ids. In a run, press the debug Stun, Root and Slow buttons on an enemy and let the Shaman haste an ally: sparks, vines, frost and the haste chevron should show and clear as before, and a stunned enemy should free its binding chain.

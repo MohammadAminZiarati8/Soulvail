@@ -142,9 +142,6 @@ public sealed class EnemySystem
     /// </summary>
     private const float MinDirectionDistance = 1e-4f;
 
-    /// <summary>What a boss keeps of every stun, root and slow duration (MK-06a rule 1).</summary>
-    private const float BossDurationScale = 0.5f;
-
     private readonly ContentCatalog _catalog;
     private readonly IDomainEvents _events;
     private readonly IRandom _random;
@@ -296,6 +293,9 @@ public sealed class EnemySystem
     /// register an enemy that was never announced.
     /// </summary>
     public EnemyRegistry Registry { get; }
+
+    /// <summary>The ids and rules of the statuses an enemy can be under.</summary>
+    public EnemyStatuses Statuses { get; } = new();
 
     /// <summary>
     /// What the deaths since the last <see cref="DrainXp"/> are worth, in experience.
@@ -615,7 +615,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        Announce(enemyId, EnemyStatus.Stunned, agent.CrowdControl.Stun(Scaled(agent, seconds)));
+        Announce(enemyId, Statuses.Stunned, agent.CrowdControl.Stun(Scaled(agent, Statuses.Stunned, seconds)));
 
         return true;
     }
@@ -635,7 +635,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        Announce(enemyId, EnemyStatus.Rooted, agent.CrowdControl.Root(Scaled(agent, seconds)));
+        Announce(enemyId, Statuses.Rooted, agent.CrowdControl.Root(Scaled(agent, Statuses.Rooted, seconds)));
 
         return true;
     }
@@ -666,7 +666,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        Announce(enemyId, EnemyStatus.Slowed, agent.CrowdControl.Slow(fraction, Scaled(agent, seconds)));
+        Announce(enemyId, Statuses.Slowed, agent.CrowdControl.Slow(fraction, Scaled(agent, Statuses.Slowed, seconds)));
 
         return true;
     }
@@ -681,17 +681,27 @@ public sealed class EnemySystem
         Duration(seconds);
         if (!TryLiving(enemyId, out EnemyAgent agent))
         { return false; }
-        Announce(enemyId, EnemyStatus.Hasted, agent.CrowdControl.Haste(fraction, seconds));
+        Announce(enemyId, Statuses.Hasted, agent.CrowdControl.Haste(fraction, Scaled(agent, Statuses.Hasted, seconds)));
         return true;
     }
 
     /// <summary>Whether a living enemy is under <paramref name="status"/>; false for an unknown id.</summary>
-    public bool Has(int enemyId, EnemyStatus status) =>
-        TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(status);
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="status"/> is not an enemy status.</exception>
+    public bool Has(int enemyId, ContentId status)
+    {
+        StatusRule rule = Rule(status);
+
+        return TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(rule);
+    }
 
     /// <summary>Seconds of <paramref name="status"/> left; 0 for an unknown id.</summary>
-    public float Remaining(int enemyId, EnemyStatus status) =>
-        TryLiving(enemyId, out EnemyAgent agent) ? agent.CrowdControl.Remaining(status) : 0f;
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="status"/> is not an enemy status.</exception>
+    public float Remaining(int enemyId, ContentId status)
+    {
+        StatusRule rule = Rule(status);
+
+        return TryLiving(enemyId, out EnemyAgent agent) ? agent.CrowdControl.Remaining(rule) : 0f;
+    }
 
     /// <summary>
     /// Applies <paramref name="amount"/> to the enemy with <paramref name="enemyId"/> at time
@@ -1026,7 +1036,7 @@ public sealed class EnemySystem
                 continue;
             }
 
-            agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events);
+            agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events, Statuses);
 
             anyRooted |= agent.CrowdControl.IsRooted;
         }
@@ -1328,19 +1338,29 @@ public sealed class EnemySystem
         }
     }
 
-    /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes half; an Elite takes full.</summary>
-    private static float Scaled(EnemyAgent agent, float seconds) =>
-        agent.Behaviour is BossBehaviour ? seconds * BossDurationScale : seconds;
+    /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes the rule's share; an Elite takes full.</summary>
+    private static float Scaled(EnemyAgent agent, StatusRule rule, float seconds) =>
+        agent.Behaviour is BossBehaviour ? seconds * rule.BossScale : seconds;
+
+    private StatusRule Rule(ContentId status)
+    {
+        if (!Statuses.TryGet(status, out StatusRule rule))
+        {
+            throw new ArgumentOutOfRangeException(nameof(status), status, "Not an enemy status.");
+        }
+
+        return rule;
+    }
 
     private bool TryLiving(int enemyId, out EnemyAgent agent) =>
         Registry.TryGet(enemyId, out agent) && agent.IsAlive;
 
     /// <summary>Rule 7: a start or a lengthening; 0 means neither, and says nothing.</summary>
-    private void Announce(int enemyId, EnemyStatus status, float seconds)
+    private void Announce(int enemyId, StatusRule rule, float seconds)
     {
         if (seconds > 0f)
         {
-            _events.Publish(new EnemyStatusChanged(enemyId, status, seconds));
+            _events.Publish(new EnemyStatusChanged(enemyId, rule, seconds, 1));
         }
     }
 

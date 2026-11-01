@@ -82,9 +82,9 @@ public sealed class TrapSystemTests
         _traps.Tick(0.3f);
         _traps.Tick(0.6f);
         Assert.That(first.Health.Current, Is.EqualTo(Hp - 51f));
-        Assert.That(_enemies.Remaining(first.Id, EnemyStatus.Rooted), Is.EqualTo(2f));
+        Assert.That(_enemies.Remaining(first.Id, new ContentId(EnemyStatuses.RootedKey)), Is.EqualTo(2f));
         Assert.That(second.Health.Current, Is.EqualTo(Hp));
-        Assert.That(_enemies.Has(second.Id, EnemyStatus.Rooted), Is.False);
+        Assert.That(_enemies.Has(second.Id, new ContentId(EnemyStatuses.RootedKey)), Is.False);
         Assert.That(_events.Single<TrapSprung>().EnemyId, Is.EqualTo(first.Id));
         Assert.That(_events.Count<TrapExpired>(), Is.Zero);
     }
@@ -96,7 +96,7 @@ public sealed class TrapSystemTests
         Upgrade(PlayerStat.SnareRoot, 1f);
         _handler.Apply(Snare(), this);
         _traps.Tick(0.3f);
-        Assert.That(_enemies.Remaining(boss.Id, EnemyStatus.Rooted), Is.EqualTo(1.5f));
+        Assert.That(_enemies.Remaining(boss.Id, new ContentId(EnemyStatuses.RootedKey)), Is.EqualTo(1.5f));
         Assert.That(boss.Health.Current, Is.EqualTo(Hp - 51f));
     }
 
@@ -207,7 +207,7 @@ public sealed class TrapSystemTests
         EnemyAgent body = Spawn(Vector3.Zero);
         _runner.Cast(0, 0f, auto: false);
         _traps.Tick(0.3f);
-        Assert.That(_enemies.Remaining(body.Id, EnemyStatus.Rooted), Is.EqualTo(3f));
+        Assert.That(_enemies.Remaining(body.Id, new ContentId(EnemyStatuses.RootedKey)), Is.EqualTo(3f));
         Assert.That(body.Health.Current, Is.EqualTo(Hp - 3f * 20f * 1.33f).Within(Tolerance));
         _runner.Tick(7.99f, 7.99f);
         Assert.That(_runner.IsReady(0), Is.False);
@@ -233,7 +233,7 @@ public sealed class TrapSystemTests
         Assert.That(_traps.Count, Is.EqualTo(1));
         _traps.Tick(0.6f);
         Assert.That(body.Health.Current, Is.EqualTo(Hp - 51f));
-        Assert.That(_enemies.Remaining(body.Id, EnemyStatus.Rooted), Is.EqualTo(2f));
+        Assert.That(_enemies.Remaining(body.Id, new ContentId(EnemyStatuses.RootedKey)), Is.EqualTo(2f));
         _handler.Apply(effect, this);
         _traps.Tick(3f);
         Assert.That(_events.Count<TrapExpired>(), Is.EqualTo(1));
@@ -366,7 +366,7 @@ public sealed class TrapSystemTests
         });
         Assert.That(springs, Is.GreaterThan(10_000));
         Assert.That(body.Health.Current, Is.LessThan(1e8f - 100_000f));
-        Assert.That(enemies.Has(body.Id, EnemyStatus.Rooted), Is.True);
+        Assert.That(enemies.Has(body.Id, new ContentId(EnemyStatuses.RootedKey)), Is.True);
     }
 
     [Test]

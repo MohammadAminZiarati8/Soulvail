@@ -58,17 +58,17 @@ public sealed class CrowdControl
     /// <summary>The strongest active slow, or 0.</summary>
     public float SlowFraction => _applied;
 
-    public bool Has(EnemyStatus status) => Remaining(status) > 0f;
+    public bool Has(StatusRule rule) => Remaining(rule) > 0f;
 
     /// <summary>Seconds left; for a slow, of the longest one.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">Not one of the three.</exception>
-    public float Remaining(EnemyStatus status) => status switch
+    /// <exception cref="ArgumentOutOfRangeException">Not one of the four.</exception>
+    public float Remaining(StatusRule rule) => rule.Id.Value switch
     {
-        EnemyStatus.Stunned => _stunned,
-        EnemyStatus.Rooted => _rooted,
-        EnemyStatus.Slowed => LongestSlow(),
-        EnemyStatus.Hasted => _hasted,
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Not a crowd-control status."),
+        EnemyStatuses.StunnedKey => _stunned,
+        EnemyStatuses.RootedKey => _rooted,
+        EnemyStatuses.SlowedKey => LongestSlow(),
+        EnemyStatuses.HastedKey => _hasted,
+        _ => throw new ArgumentOutOfRangeException(nameof(rule), rule.Id, "Not a crowd-control status."),
     };
 
     /// <returns>The new remaining when it started or lengthened, else 0 (nothing to announce).</returns>
@@ -116,23 +116,23 @@ public sealed class CrowdControl
     }
 
     /// <summary>Counts every timer down by <paramref name="dt"/> and announces what ended.</summary>
-    internal void Tick(float dt, int enemyId, IDomainEvents events)
+    internal void Tick(float dt, int enemyId, IDomainEvents events, EnemyStatuses statuses)
     {
         if (Expire(ref _stunned, dt))
         {
-            events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Stunned, 0f));
+            events.Publish(new EnemyStatusChanged(enemyId, statuses.Stunned, 0f, 1));
         }
 
         if (Expire(ref _rooted, dt))
         {
-            events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Rooted, 0f));
+            events.Publish(new EnemyStatusChanged(enemyId, statuses.Rooted, 0f, 1));
         }
 
         if (Expire(ref _hasted, dt))
         {
             _moveSpeed.RemoveAll(_hasteSource);
             _hasteFraction = 0f;
-            events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Hasted, 0f));
+            events.Publish(new EnemyStatusChanged(enemyId, statuses.Hasted, 0f, 1));
         }
 
         if (_slowCount == 0)
@@ -162,7 +162,7 @@ public sealed class CrowdControl
 
         if (_slowCount == 0)
         {
-            events.Publish(new EnemyStatusChanged(enemyId, EnemyStatus.Slowed, 0f));
+            events.Publish(new EnemyStatusChanged(enemyId, statuses.Slowed, 0f, 1));
         }
     }
 

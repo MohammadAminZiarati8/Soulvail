@@ -1627,17 +1627,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     /// <summary>Development overlay command; uses the same core rules as future skills.</summary>
-    public bool DebugEnemyStatus(int enemyId, EnemyStatus status)
+    public bool DebugEnemyStatus(int enemyId, ContentId status)
     {
         if (State is null)
         {
             return false;
         }
-        return status switch
+        return status.Value switch
         {
-            EnemyStatus.Stunned => State.Enemies.Stun(enemyId, 3f),
-            EnemyStatus.Rooted => State.Enemies.Root(enemyId, 3f),
-            EnemyStatus.Slowed => State.Enemies.Slow(enemyId, 0.5f, 3f),
+            EnemyStatuses.StunnedKey => State.Enemies.Stun(enemyId, 3f),
+            EnemyStatuses.RootedKey => State.Enemies.Root(enemyId, 3f),
+            EnemyStatuses.SlowedKey => State.Enemies.Slow(enemyId, 0.5f, 3f),
             _ => false,
         };
     }

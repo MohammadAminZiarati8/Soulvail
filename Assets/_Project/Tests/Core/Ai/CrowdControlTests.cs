@@ -66,8 +66,8 @@ public sealed class CrowdControlTests
         Assert.That(_system.Stun(boss.Id, 2f), Is.True);
         Assert.That(_system.Stun(elite.Id, 2f), Is.True);
 
-        Assert.That(_system.Remaining(boss.Id, EnemyStatus.Stunned), Is.EqualTo(1f).Within(Tolerance));
-        Assert.That(_system.Remaining(elite.Id, EnemyStatus.Stunned), Is.EqualTo(2f).Within(Tolerance), "Elites take full.");
+        Assert.That(_system.Remaining(boss.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(1f).Within(Tolerance));
+        Assert.That(_system.Remaining(elite.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(2f).Within(Tolerance), "Elites take full.");
     }
 
     // ---- Rule 2 -------------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ public sealed class CrowdControlTests
 
         TickFor(0.25f);
 
-        Assert.That(_system.Has(husk.Id, EnemyStatus.Stunned), Is.False);
+        Assert.That(_system.Has(husk.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.False);
         Assert.That(husk.Blackboard.StateTimer, Is.GreaterThan(timer), "It resumes where it stopped.");
     }
 
@@ -151,7 +151,7 @@ public sealed class CrowdControlTests
         TickFor(1.5f);
 
         Assert.That(_projectiles.InFlightCount, Is.EqualTo(1), "Rooted, it still fires.");
-        Assert.That(_system.Has(spitter.Id, EnemyStatus.Rooted), Is.True);
+        Assert.That(_system.Has(spitter.Id, new ContentId(EnemyStatuses.RootedKey)), Is.True);
     }
 
     [Test]
@@ -208,7 +208,7 @@ public sealed class CrowdControlTests
 
         TickFor(1f);
 
-        Assert.That(_system.Has(husk.Id, EnemyStatus.Slowed), Is.False);
+        Assert.That(_system.Has(husk.Id, new ContentId(EnemyStatuses.SlowedKey)), Is.False);
         Assert.That(husk.MoveSpeed.Value, Is.EqualTo(speed), "Exactly its own modifier comes off.");
     }
 
@@ -222,11 +222,11 @@ public sealed class CrowdControlTests
         _system.Stun(husk.Id, 2f);
         _system.Stun(husk.Id, 1f);
 
-        Assert.That(_system.Remaining(husk.Id, EnemyStatus.Stunned), Is.EqualTo(2f).Within(Tolerance));
+        Assert.That(_system.Remaining(husk.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(2f).Within(Tolerance));
 
         _system.Stun(husk.Id, 3f);
 
-        Assert.That(_system.Remaining(husk.Id, EnemyStatus.Stunned), Is.EqualTo(3f).Within(Tolerance), "Never 5.");
+        Assert.That(_system.Remaining(husk.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(3f).Within(Tolerance), "Never 5.");
     }
 
     // ---- Rule 7 -------------------------------------------------------------------------------------
@@ -252,7 +252,7 @@ public sealed class CrowdControlTests
         for (int i = 0; i < changes.Count; i++)
         {
             Assert.That(changes[i].EnemyId, Is.EqualTo(husk.Id));
-            Assert.That(changes[i].Status, Is.EqualTo(EnemyStatus.Rooted));
+            Assert.That(changes[i].Status, Is.EqualTo(new ContentId(EnemyStatuses.RootedKey)));
         }
     }
 
@@ -309,11 +309,11 @@ public sealed class CrowdControlTests
         _system.Root(other.Id, 5f);
 
         Assert.That(_system.Despawn(other.Id), Is.True);
-        Assert.That(_system.Has(other.Id, EnemyStatus.Rooted), Is.False, "A despawn clears.");
+        Assert.That(_system.Has(other.Id, new ContentId(EnemyStatuses.RootedKey)), Is.False, "A despawn clears.");
 
         _system.Clear();
 
-        Assert.That(_system.Has(huskId, EnemyStatus.Stunned), Is.False);
+        Assert.That(_system.Has(huskId, new ContentId(EnemyStatuses.StunnedKey)), Is.False);
         Assert.That(_system.Stun(huskId, 1f), Is.False, "Unknown after the boundary.");
 
         EnemyAgent recycled = _system.Spawn(new ContentId(HuskId), Vector3.Zero);

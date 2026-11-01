@@ -242,6 +242,10 @@ public sealed class KillshotTests
         Assert.That(body.IsAlive, Is.False, "Execute bypasses damage immunity and shields.");
         Assert.That(_events.Single<KillshotExecuted>().EnemyId, Is.EqualTo(body.Id));
         int executed = Index<KillshotExecuted>();
+        KillshotHit hit = _events.Single<KillshotHit>();
+        Assert.That(hit.EnemyId, Is.EqualTo(body.Id));
+        Assert.That(hit.At, Is.EqualTo(body.Position));
+        Assert.That(Index<KillshotHit>(), Is.EqualTo(executed - 1));
         Assert.That(executed, Is.LessThan(Index<EnemyDied>()));
         Assert.That(_enemies.DrainXp(), Is.EqualTo(12f));
         Assert.That(_enemies.DrainKills(), Is.EqualTo(1));

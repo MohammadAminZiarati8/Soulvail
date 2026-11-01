@@ -66,7 +66,7 @@ public sealed class SkillArcTests
     public void Arc_OneCirclePerActive_InOrder()
     {
         Build(extraActives: 2);
-        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, new ContentId("skill.marksman.rain-of-arrows"), new ContentId("skill.marksman.binding-shot"), new ContentId("skill.marksman.hunters-snare"), _extras[0].Id, _extras[1].Id }));
+        Assert.That(_arc.Actives.Select(c => c.Id), Is.EqualTo(new[] { VolleyId, new ContentId("skill.marksman.rain-of-arrows"), new ContentId("skill.marksman.binding-shot"), new ContentId("skill.marksman.hunters-snare"), new ContentId("skill.marksman.killshot"), _extras[0].Id }));
         Assert.That(_arc.Passives.Count, Is.EqualTo(4), "two Ranger passives plus the two Marksman passives");
     }
 
@@ -423,6 +423,12 @@ public sealed class SkillArcTests
                 skills.Add(skill);
         }
         var pathSkills = _path.Skills.ToList();
+        if (extraActives == 3)
+        {
+            // Timing/save stress rows use three synthetic actives in place of Killshot;
+            // six shipped skills plus three extras would exceed core's eight-skill path limit.
+            pathSkills.RemoveAt(5);
+        }
         _extras = new SkillSpec[extraActives];
         for (int i = 0; i < extraActives; i++)
         {

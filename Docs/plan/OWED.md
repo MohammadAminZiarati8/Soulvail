@@ -87,3 +87,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 ## MK-10a — deferred until MK-10b supplies the assets (2026-11-01)
 
 - At level 20 with Killshot learned, playcheck the kneel/held movement and roll, no basic arrows during the draw, locked arena-crossing shot through cover, falloff, and normal XP/drop feedback for non-boss executes. Check damage does not cancel the draw, while player death and stage arrival do. Core behaviour and allocation checks are automated and green; this is the integrated presentation check after MK-10b.
+
+## MK-10b — Killshot drawn and authored (2026-11-01)
+
+- [ ] **[Editor]** Level 20 on a crowded late stage: learn Killshot as the sixth Marksman skill. Check the locked facing, crouched bow draw, growing cyan-white tip and faint aim line for 0.7 s; the full-arena streak, brief stronger camera jolt, sparks on each hit and bright bursts on executed enemies. The Ranger should stand within 0.25 s and move as soon as core releases the hold. Confirm it reads as the strongest skill in the kit, without a polish pass.
+- [ ] **[Editor]** Die or cross a stage boundary during the draw: no stuck crouch, glow, aim line or delayed streak. Check the three ranks at 15/20/25% execution thresholds, rank-two damage and rank-three cooldown, plus the existing MK-10a level-20 playcheck.

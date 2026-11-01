@@ -140,6 +140,7 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
 
             float factor = MathF.Max(effect.MinFactor, 1f - effect.FalloffPerHit * hits);
             hits++;
+            _events.Publish(new KillshotHit(agent.Id, agent.Position));
             if (!_ordered[i].IsBoss && agent.Health.Fraction <= threshold)
             {
                 _events.Publish(new KillshotExecuted(agent.Id));

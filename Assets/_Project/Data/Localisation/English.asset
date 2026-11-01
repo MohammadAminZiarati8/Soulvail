@@ -650,3 +650,15 @@ MonoBehaviour:
   - _key: skill.marksman.hunters-snare-3.description
     _text: Snare roots another 0.5 s longer. Hunter's Snare cooldown is reduced by
       2 s.
+  - _key: skill.marksman.killshot.name
+    _text: 'Killshot'
+  - _key: skill.marksman.killshot.description
+    _text: 'Kneel and loose one arrow across the whole arena. It weakens through each enemy and kills the badly wounded outright.'
+  - _key: skill.marksman.killshot-2.name
+    _text: 'Killshot 2'
+  - _key: skill.marksman.killshot-2.description
+    _text: 'Killshot deals 25% more damage and executes non-bosses at 20% HP or below.'
+  - _key: skill.marksman.killshot-3.name
+    _text: 'Killshot 3'
+  - _key: skill.marksman.killshot-3.description
+    _text: 'Killshot executes non-bosses at 25% HP or below. Cooldown is reduced by 8 s.'

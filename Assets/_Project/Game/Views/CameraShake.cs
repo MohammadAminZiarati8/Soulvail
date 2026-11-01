@@ -35,6 +35,9 @@ namespace Soulvail.Game.Views
         /// <summary>Seconds from a kick to rest.</summary>
         public const float Seconds = 0.4f;
 
+        public const float KillshotStrength = 0.55f;
+        public const float KillshotSeconds = 0.22f;
+
         /// <summary>The vertical bounce, in swings per second.</summary>
         private const float BounceHz = 12f;
 
@@ -45,6 +48,7 @@ namespace Soulvail.Game.Views
 
         private float _strength;
         private float _age;
+        private float _duration = Seconds;
         private bool _shaking;
 
         /// <summary>Where the camera is pushed from its follow position now, in world metres.</summary>
@@ -57,7 +61,7 @@ namespace Soulvail.Game.Views
                     return Vector3.zero;
                 }
 
-                float u = _age / Seconds;
+                float u = _age / _duration;
                 float envelope = _strength * (1f - u) * (1f - u);
                 float phase = _age * Mathf.PI * 2f;
 
@@ -78,11 +82,23 @@ namespace Soulvail.Game.Views
         /// </summary>
         public void Kick(float strength)
         {
+            Kick(strength, Seconds);
+        }
+
+        /// <summary>A stronger, shorter release than a Croaker landing.</summary>
+        public void KickKillshot() => Kick(KillshotStrength, KillshotSeconds);
+
+        private void Kick(float strength, float duration)
+        {
             if (!(strength > 0f) || float.IsInfinity(strength))
             {
                 return;
             }
 
+            if (!_shaking || strength >= _strength)
+            {
+                _duration = duration;
+            }
             _strength = _shaking ? Mathf.Max(_strength, strength) : strength;
             _age = 0f;
             _shaking = true;
@@ -101,7 +117,7 @@ namespace Soulvail.Game.Views
 
             _age += dt;
 
-            if (_age >= Seconds)
+            if (_age >= _duration)
             {
                 _shaking = false;
                 _age = 0f;

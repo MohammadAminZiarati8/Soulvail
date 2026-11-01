@@ -441,6 +441,9 @@ AnimatorStateMachine:
   - serializedVersion: 1
     m_State: {fileID: -686098219385449968}
     m_Position: {x: 200, y: 120, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 5368574052214780061}
+    m_Position: {x: 235, y: 185, z: 0}
   m_ChildStateMachines: []
   m_AnyStateTransitions: []
   m_EntryTransitions: []
@@ -698,6 +701,32 @@ AnimatorStateTransition:
   m_InterruptionSource: 0
   m_OrderedInterruption: 1
   m_CanTransitionToSelf: 0
+--- !u!1102 &5368574052214780061
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Kneel
+  m_Speed: 0
+  m_CycleOffset: 0.5
+  m_Transitions: []
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: 5147928276633869896, guid: 3a20fbe190f26f14f97a3f17bbbdd127, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
 --- !u!1101 &5559032415221685714
 AnimatorStateTransition:
   m_ObjectHideFlags: 1

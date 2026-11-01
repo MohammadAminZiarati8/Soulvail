@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: Killshot2
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.marksman.killshot-2
+  _nameKey: skill.marksman.killshot-2.name
+  _descriptionKey: skill.marksman.killshot-2.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: cab9c91b82be4be3be09fc548b268bc3, type: 2}
+  - {fileID: 11400000, guid: dc63fda44c5a4270b924a0e4d6ded840, type: 2}
+  _cooldown: 30
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: 91f04c49dfc545cfa24efaf2d8e938ea, type: 2}
+  _icon: {fileID: 21300000, guid: 45da503226699424c8699dbe05cba358, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

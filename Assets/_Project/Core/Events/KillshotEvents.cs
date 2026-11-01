@@ -30,6 +30,19 @@ public readonly struct KillshotFired
     public int Hits { get; }
 }
 
+/// <summary>A confirmed hit, before damage or death can retire the enemy's view.</summary>
+public readonly struct KillshotHit
+{
+    public KillshotHit(int enemyId, Vector3 at)
+    {
+        EnemyId = enemyId;
+        At = at;
+    }
+
+    public int EnemyId { get; }
+    public Vector3 At { get; }
+}
+
 public readonly struct KillshotExecuted
 {
     public KillshotExecuted(int enemyId) => EnemyId = enemyId;

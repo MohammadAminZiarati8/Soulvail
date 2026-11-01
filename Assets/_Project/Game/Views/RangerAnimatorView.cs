@@ -140,6 +140,12 @@ namespace Soulvail.Game.Views
         private GameObject _snareRoot;
         private IDisposable _placedSubscription;
         private readonly int _placeId = Animator.StringToHash("Place");
+        [SerializeField] private KillshotView _killshotPrefab;
+        private KillshotView _killshotView;
+        private GameObject _killshotRoot;
+        private IDisposable _killshotWind, _killshotFire, _killshotBoundary, _killshotArrived, _killshotEnded;
+        private bool _killshotWinding;
+        private Vector3 _killshotDirection;
 
         // Hashed once. Instance fields rather than statics, because nothing in this project holds
         // static state (AR §7).
@@ -213,6 +219,21 @@ namespace Soulvail.Game.Views
                 _rainRoot.SetActive(true);
             }
             _placedSubscription = hub.Subscribe<TrapPlaced>(OnTrapPlaced);
+            _killshotWind = hub.Subscribe<KillshotWindUp>(OnKillshotWindUp);
+            _killshotFire = hub.Subscribe<KillshotFired>(_ => EndKillshot(true));
+            _killshotBoundary = hub.Subscribe<StageTransitionStarted>(_ => EndKillshot(false));
+            _killshotArrived = hub.Subscribe<StageArrived>(_ => EndKillshot(false));
+            _killshotEnded = hub.Subscribe<RunEnded>(_ => EndKillshot(false));
+            if (_killshotPrefab != null)
+            {
+                _killshotRoot = new GameObject("Killshot (pooled)");
+                _killshotRoot.SetActive(false);
+                _killshotView = Instantiate(_killshotPrefab, _killshotRoot.transform, false);
+                Camera camera = Camera.main;
+                _killshotView.Construct(hub, session, _bow != null ? _bow.transform : transform,
+                    camera != null ? camera.GetComponent<CameraShake>() : null);
+                _killshotRoot.SetActive(true);
+            }
             if (_snarePrefab != null)
             {
                 // Scene-root as well: a placed snare stays where it was dropped.
@@ -433,6 +454,23 @@ namespace Soulvail.Game.Views
 
         private void OnDestroy()
         {
+            _killshotWind?.Dispose();
+            _killshotFire?.Dispose();
+            _killshotBoundary?.Dispose();
+            _killshotArrived?.Dispose();
+            _killshotEnded?.Dispose();
+            if (_killshotRoot != null)
+            {
+                _killshotView.Dispose();
+                if (Application.isPlaying)
+                {
+                    Destroy(_killshotRoot);
+                }
+                else
+                {
+                    DestroyImmediate(_killshotRoot);
+                }
+            }
             _bindingCastSubscription?.Dispose();
             _placedSubscription?.Dispose();
             if (_snareRoot != null)
@@ -488,6 +526,67 @@ namespace Soulvail.Game.Views
             Step(Time.deltaTime);
         }
 
+        private void LateUpdate()
+        {
+            if (_killshotWinding)
+            {
+                // Only the visual body turns; core still owns the motor and its release.
+                transform.rotation = Quaternion.LookRotation(_killshotDirection, Vector3.up);
+            }
+        }
+
+        private void OnDisable()
+        {
+            EndKillshot(false);
+            _killshotView?.Clear();
+        }
+
+        private void OnKillshotWindUp(KillshotWindUp evt)
+        {
+            if (_animator == null || _dead)
+            {
+                return;
+            }
+            _killshotWinding = true;
+            _killshotDirection = new Vector3(evt.Direction.X, 0f, evt.Direction.Z);
+            transform.rotation = Quaternion.LookRotation(_killshotDirection, Vector3.up);
+            _castUpLeft = 0f;
+            _bindingReleaseLeft = 0f;
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            _animator.ResetTrigger(_castUpId);
+            _animator.ResetTrigger(_placeId);
+            _animator.ResetTrigger(_hitId);
+            _animator.SetBool(_aimingId, true);
+            _animator.CrossFadeInFixedTime("Kneel", 0.1f, 0, 0f);
+            _animator.SetFloat(_shotSpeedId, ShotSpeed(evt.Seconds));
+            _animator.Play(_drawStateId, _animator.GetLayerIndex(UpperBodyLayer), NockedNormalized);
+        }
+
+        private void EndKillshot(bool release)
+        {
+            if (!_killshotWinding)
+            {
+                return;
+            }
+            _killshotWinding = false;
+            transform.localRotation = Quaternion.identity;
+            _animator.CrossFadeInFixedTime("Locomotion", 0.18f, 0);
+            int layer = _animator.GetLayerIndex(UpperBodyLayer);
+            if (release)
+            {
+                _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
+                _animator.Play("Release", layer, 0f);
+            }
+            else
+            {
+                _animator.ResetTrigger(_shootId);
+                _animator.ResetTrigger(_releaseId);
+                _animator.Play("Empty", layer, 0f);
+            }
+            Aim();
+        }
+
         /// <remarks>
         /// <para>
         /// The multiplier comes from the event's draw time, so it follows whatever the fire rate
@@ -503,7 +602,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnAttacked(PlayerAttacked evt)
         {
-            if (_castUpLeft > 0f)
+            if (_castUpLeft > 0f || _killshotWinding)
             {
                 return;
             }
@@ -530,7 +629,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f)
+            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f || _killshotWinding)
             {
                 return;
             }
@@ -541,6 +640,10 @@ namespace Soulvail.Game.Views
 
         private void OnRainCast(RainOfArrowsCast evt)
         {
+            if (_killshotWinding)
+            {
+                return;
+            }
             _bindingReleaseLeft = 0f;
             if (_animator == null || _dead)
             {
@@ -554,7 +657,7 @@ namespace Soulvail.Game.Views
 
         private void OnBindingCast(SkillCast evt)
         {
-            if (evt.SkillId.Value != "skill.marksman.binding-shot" || _animator == null || _dead)
+            if (evt.SkillId.Value != "skill.marksman.binding-shot" || _animator == null || _dead || _killshotWinding)
             {
                 return;
             }
@@ -571,7 +674,7 @@ namespace Soulvail.Game.Views
 
         private void OnTrapPlaced(TrapPlaced evt)
         {
-            if (_animator == null || _dead)
+            if (_animator == null || _dead || _killshotWinding)
             {
                 return;
             }
@@ -672,7 +775,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDamaged(PlayerDamaged evt)
         {
-            if (_animator == null || _dead || _rolling || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
+            if (_animator == null || _dead || _rolling || _killshotWinding || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
             {
                 return;
             }
@@ -686,6 +789,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDied(PlayerDied evt)
         {
+            EndKillshot(false);
             _dead = true;
 
             if (_volleyGlow != null)
@@ -715,7 +819,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            bool aiming = _targetId >= 0 && !_holding && !_dead;
+            bool aiming = !_dead && (_killshotWinding || (_targetId >= 0 && !_holding));
 
             _animator.SetBool(_aimingId, aiming);
         }

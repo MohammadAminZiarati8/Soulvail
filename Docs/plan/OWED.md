@@ -129,3 +129,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16g (2026-11-02): full-detail repaired source body and original texture are now in the game prefab. No decimation, atlas repaint or proportion warp; retargeted clips on source-fitted KayKit joints. Staff source correction follows as JG-16h before handover. Full-detail mobile cost unmeasured.
 
 - JG-16h (2026-11-02): repaired full-detail body and staff now used in game, with original UVs/albedo, source-fitted rig and six retargeted clips. Judge appearance/motion at Jungle 17. Actual game-asset Blender review: Temp/ShamanInGame/Shaman_Corrected_Game.blend; Unity preview: Temp/ShamanInGame/CompleteUnity.png. EditMode 5156/5155/0/1; PlayMode run-start 1/1 pass. Full-detail mobile performance unmeasured.
+
+- JG-16h verification clarification: the run-start test reports 1/1 passed, but errors can arrive afterward during scene teardown (CoverViews and Ranger Killshot VFX). The earlier commit body's claim that the post-smoke Console was clean was incorrect; these cleanup errors remain outside the model correction.

@@ -11,7 +11,7 @@ _Updated 2026-11-02, JG-16g–h source correction built._
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **JG-16h**: repaired full-detail Shaman and staff now in game, with original textures. |
 | **Next task** | **JG-16f**: stages 18–19 specced; awaits owner go. |
-| **Verified** | EditMode 5 156: 5 155 pass, 0 fail, 1 known inconclusive. PlayMode run-start smoke 1/1 pass. Compiler errors 0; no new analyzer warnings; format clean. |
+| **Verified** | EditMode 5 156: 5 155 pass, 0 fail, 1 known inconclusive. PlayMode run-start smoke 1/1 pass; late unload errors below. Compiler errors 0; no new analyzer warnings; format clean. |
 
 ## What works
 
@@ -51,4 +51,4 @@ KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain m
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
 8. Warlord's death dissolve shows the unpainted atlas.
-9. BootSmoke RootScope_SurvivesSceneLoad fails unloading: destroyed Ranger VFX trails/particles/player; an earlier run hit CoverViews. No Shaman warnings after the prewarm guard.
+9. PlayMode unload can hit destroyed cover/Ranger VFX/player objects. The run-start case passes, but late teardown errors remain; no Shaman prewarm warnings.

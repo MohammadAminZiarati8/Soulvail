@@ -280,7 +280,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyHitFeedback
   _renderer: {fileID: 8253648005416674869}
-  _dissolveMaterial: {fileID: 2100000, guid: 853019743a7800548bff5d9b71521be8, type: 2}
+  _dissolveMaterial: {fileID: 2100000, guid: 8fbc3c333a3fcdb45b7ea35ac279f107, type: 2}
   _flashSeconds: 0.08
   _dissolveSeconds: 0.5
   _dissolveStretch: 1.4

@@ -11,7 +11,7 @@ namespace Soulvail.Tests.Game.Art;
 public sealed class ShamanModelTests
 {
     private const string Art = "Assets/_Project/Art/Enemies/";
-    private const string Clips = "Assets/ThirdParty/KayKit/Animations/Rig_Medium/Rig_Medium_";
+    private const string ModelPath = Art + "Shaman.fbx";
     private readonly List<Object> _created = new();
     private GameObject Model => AssetDatabase.LoadAssetAtPath<GameObject>(Art + "Shaman.fbx");
     private GameObject Staff => AssetDatabase.LoadAssetAtPath<GameObject>(Art + "ShamanStaff.fbx");
@@ -25,14 +25,15 @@ public sealed class ShamanModelTests
     {
         var body = Model.GetComponentsInChildren<SkinnedMeshRenderer>(true);
         Assert.That(body, Has.Length.EqualTo(1));
-        Assert.That(body[0].sharedMesh.triangles.Length / 3, Is.InRange(400, 2500));
+        Assert.That(body[0].sharedMesh.triangles.Length / 3, Is.EqualTo(179970));
         Assert.That(body[0].sharedMesh.subMeshCount, Is.EqualTo(1));
         var staff = Staff.GetComponentsInChildren<MeshRenderer>(true);
         Assert.That(staff, Has.Length.EqualTo(1));
         Assert.That(Staff.GetComponentInChildren<MeshFilter>(true).sharedMesh.triangles.Length / 3, Is.InRange(100, 400));
-        var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_Enemy.mat");
+        var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_Shaman.mat");
         Assert.That(body[0].sharedMaterial, Is.EqualTo(material));
-        Assert.That(staff[0].sharedMaterial, Is.EqualTo(material));
+        Assert.That(staff[0].sharedMaterial, Is.EqualTo(AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Enemies/M_Enemy.mat")));
+        Assert.That(material.GetTexture("_BaseMap"), Is.EqualTo(AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_Shaman_Albedo.png")));
     }
 
     [Test]
@@ -47,28 +48,29 @@ public sealed class ShamanModelTests
             { Assert.That(body.bones[w.boneIndex1].name, Is.Not.EqualTo("root")); }
         }
         var rig = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/ThirdParty/KayKit/Skeletons/Characters/Skeleton_Minion.fbx");
-        var expected = rig.GetComponentsInChildren<Transform>(true).Where(t => t != rig.transform).ToDictionary(t => t.name);
-        var actual = Model.GetComponentsInChildren<Transform>(true).ToDictionary(t => t.name);
-        foreach (var pair in expected.Where(p => p.Key == "Rig_Medium" || p.Key == "root" || p.Key == "head" || p.Key.Contains("slot")))
+        var expectedRoot = rig.GetComponentsInChildren<Transform>(true).Single(t => t.name == "root");
+        var actualRoot = Model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "root");
+        var expected = expectedRoot.GetComponentsInChildren<Transform>(true).ToDictionary(t => t.name);
+        var actual = actualRoot.GetComponentsInChildren<Transform>(true).ToDictionary(t => t.name);
+        Assert.That(actual.Keys, Is.EquivalentTo(expected.Keys));
+        Assert.That(actual.Count, Is.EqualTo(23));
+        foreach (var pair in expected)
         {
-            Assert.That(actual.ContainsKey(pair.Key), Is.True, pair.Key);
-            Assert.That(Vector3.Distance(actual[pair.Key].localPosition, pair.Value.localPosition), Is.LessThan(0.001), pair.Key);
+            Assert.That(actual[pair.Key].parent.name, Is.EqualTo(pair.Value.parent.name), pair.Key);
         }
-        Assert.That(Model.GetComponentsInChildren<Transform>(true).Count(t => expected.ContainsKey(t.name)), Is.EqualTo(24));
     }
-
-    [TestCase("General", "Idle_B", true)]
-    [TestCase("MovementBasic", "Walking_B", true)]
-    [TestCase("MovementBasic", "Running_A", true)]
-    [TestCase("CombatRanged", "Ranged_Magic_Spellcasting", false)]
-    [TestCase("General", "Hit_A", false)]
-    [TestCase("General", "Death_A", false)]
-    public void ShamanModel_ImportsGenericWithItsClips(string file, string name, bool loops)
+    [TestCase("Idle_B", true)]
+    [TestCase("Walking_B", true)]
+    [TestCase("Running_A", true)]
+    [TestCase("Ranged_Magic_Spellcasting", false)]
+    [TestCase("Hit_A", false)]
+    [TestCase("Death_A", false)]
+    public void ShamanModel_ImportsGenericWithItsClips(string name, bool loops)
     {
         var importer = (ModelImporter)AssetImporter.GetAtPath(Art + "Shaman.fbx");
         Assert.That(importer.animationType, Is.EqualTo(ModelImporterAnimationType.Generic));
         Assert.That(importer.optimizeGameObjects, Is.False);
-        AnimationClip clip = Clip(file, name);
+        AnimationClip clip = Clip(name);
         Assert.That(clip.frameRate, Is.EqualTo(30));
         Assert.That(clip.isLooping, Is.EqualTo(loops));
         GameObject model = Object.Instantiate(Model);
@@ -98,12 +100,12 @@ public sealed class ShamanModelTests
         _created.Add(staff);
         Transform slot = model.GetComponentsInChildren<Transform>(true).Single(t => t.name == "handslot.r");
         staff.transform.SetParent(slot, false);
-        Clip("General", "Idle_B").SampleAnimation(model, 0);
+        Clip("Idle_B").SampleAnimation(model, 0);
         Assert.That(Vector3.Distance(staff.transform.position, slot.position), Is.LessThan(.05f));
         Mesh mesh = staff.GetComponentInChildren<MeshFilter>().sharedMesh;
         Vector2[] uv = mesh.uv;
         Vector3[] v = mesh.vertices;
-        Clip("CombatRanged", "Ranged_Magic_Spellcasting").SampleAnimation(model, .45f);
+        Clip("Ranged_Magic_Spellcasting").SampleAnimation(model, .45f);
         float seed = float.NegativeInfinity;
         for (int i = 0; i < v.Length; i++)
         { if (uv[i].x > .5f && uv[i].x < .625f && uv[i].y > .75f) { seed = Mathf.Max(seed, staff.GetComponentInChildren<MeshFilter>().transform.TransformPoint(v[i]).y); } }
@@ -141,5 +143,29 @@ public sealed class ShamanModelTests
         Assert.That(Width(body), Is.LessThan(Width(guard)));
     }
 
-    private static AnimationClip Clip(string file, string name) => AssetDatabase.LoadAllAssetsAtPath(Clips + file + ".fbx").OfType<AnimationClip>().Single(c => c.name == name);
+    [Test]
+    public void ShamanModel_IdlePreservesTheSourceMesh()
+    {
+        var instance = Object.Instantiate(Model);
+        _created.Add(instance);
+        var renderer = instance.GetComponentInChildren<SkinnedMeshRenderer>();
+        Vector3[] source = renderer.sharedMesh.vertices;
+        Vector2[] uv = renderer.sharedMesh.uv;
+        Assert.That(uv.Length, Is.EqualTo(source.Length));
+        Assert.That(uv.Distinct().Count(), Is.GreaterThan(10000), "Original source UVs, not constant atlas swatches.");
+        Clip("Idle_B").SampleAnimation(instance, 0f);
+        var baked = new Mesh();
+        _created.Add(baked);
+        renderer.BakeMesh(baked);
+        Vector3[] idle = baked.vertices;
+        float maximum = 0f;
+        for (int i = 0; i < source.Length; i++)
+        {
+            maximum = Mathf.Max(maximum, Vector3.Distance(source[i], idle[i]));
+        }
+        Assert.That(maximum, Is.LessThan(.002f), "The animation bind must preserve the actual sculpt, not reshape it.");
+        Assert.That(renderer.sharedMesh.bounds.size.y, Is.InRange(1.56f, 1.64f));
+        Assert.That(AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "Textures/T_Shaman_Albedo.png").width, Is.EqualTo(2048));
+    }
+    private static AnimationClip Clip(string name) => AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<AnimationClip>().Single(c => c.name == name);
 }

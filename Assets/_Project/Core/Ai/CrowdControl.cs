@@ -90,20 +90,32 @@ public sealed class CrowdControl
         return after > before ? after : 0f;
     }
 
-    /// <summary>Counts every timer down by <paramref name="dt"/> and announces what ended.</summary>
+    /// <summary>
+    /// The strongest active haste wins: a weaker one is ignored, so it can never stretch a stronger
+    /// one; a stronger one replaces it; an equal one refreshes to the longer.
+    /// </summary>
+    /// <returns>As <see cref="Stun"/>: the new remaining when it started, strengthened or lengthened, else 0.</returns>
     internal float Haste(float fraction, float seconds)
     {
-        float strongest = MathF.Max(fraction, _hasteFraction);
-        if (strongest != _hasteFraction)
+        if (_hasted > 0f && fraction < _hasteFraction)
+        {
+            return 0f;
+        }
+
+        if (fraction != _hasteFraction)
         {
             _moveSpeed.RemoveAll(_hasteSource);
-            _moveSpeed.Add(new Modifier(ModifierKind.PercentMult, strongest, _hasteSource));
-            _hasteFraction = strongest;
+            _moveSpeed.Add(new Modifier(ModifierKind.PercentMult, fraction, _hasteSource));
+            _hasteFraction = fraction;
+            _hasted = seconds;
+
+            return seconds;
         }
-        _hasted = MathF.Max(_hasted, seconds);
-        return _hasted;
+
+        return Lengthen(ref _hasted, seconds);
     }
 
+    /// <summary>Counts every timer down by <paramref name="dt"/> and announces what ended.</summary>
     internal void Tick(float dt, int enemyId, IDomainEvents events)
     {
         if (Expire(ref _stunned, dt))

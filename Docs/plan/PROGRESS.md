@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, JG-16g–h source correction built._
+_Updated 2026-11-02, JG-16b haste fix._
 
 ## Current State
 

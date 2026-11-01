@@ -135,9 +135,13 @@ public sealed class ShamanBehaviourTests
         Assert.That(ally.MoveSpeed.Value, Is.EqualTo(2.5f));
         _system.Slow(ally.Id, 0.5f, 3);
         Assert.That(ally.MoveSpeed.Value, Is.EqualTo(1.25f));
-        _system.Tick(new EnemyTickContext(2, 2, _player, _intents, _events, _projectiles, _system));
-        Assert.That(ally.MoveSpeed.Value, Is.EqualTo(1f));
+        _events.Clear();
+        _system.Haste(ally.Id, 0.25f, 0.5f);
+        Assert.That(_events.Count<EnemyStatusChanged>(), Is.Zero, "Nothing grew, nothing announced.");
+        _system.Tick(new EnemyTickContext(1, 1, _player, _intents, _events, _projectiles, _system));
+        Assert.That(ally.MoveSpeed.Value, Is.EqualTo(1f), "The weaker, longer haste did not stretch it.");
         Assert.That(_system.Has(ally.Id, EnemyStatus.Hasted), Is.False);
+        Assert.That(_events.Count<EnemyStatusChanged>(), Is.EqualTo(1));
     }
 
     [Test]

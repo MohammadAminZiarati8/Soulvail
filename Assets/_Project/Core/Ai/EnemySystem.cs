@@ -684,6 +684,7 @@ public sealed class EnemySystem
         Announce(enemyId, EnemyStatus.Hasted, agent.CrowdControl.Haste(fraction, seconds));
         return true;
     }
+
     /// <summary>Whether a living enemy is under <paramref name="status"/>; false for an unknown id.</summary>
     public bool Has(int enemyId, EnemyStatus status) =>
         TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(status);

@@ -10,7 +10,10 @@ namespace Soulvail.Core.Ai;
 
 public enum WarlordMove { None, Sweep = 1, Charge = 2, WarCry = 3, Lob = 4, Combo = 5, ComboSecond = 6 }
 
-/// <summary>A slow turning frontal guard with a committed sweep, shield charge and war cry.</summary>
+/// <summary>
+/// A slow turning frontal guard with a committed sweep, shield charge and war cry; spear lobs from
+/// phase 1, and from phase 2 a shattered shield: no guard, faster, and a two-hit combo.
+/// </summary>
 public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener, IBossAddOwner
 {
     public const float HalfArcDeg = 60f, TurnRateDeg = 40f, WalkConeDeg = 45f;
@@ -23,8 +26,14 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     public const float WarCryTelegraphSeconds = 1f, WarCryCooldownSeconds = 14f,
         WarCryFirstAtSeconds = 8f, LockRadius = 3.5f, LockedHalfArcDeg = 90f, EdgeSpacing = 6f;
     public const int MaxGuards = 2;
+    public const float LobTelegraphSeconds = 0.8f, LobCooldownSeconds = 5f, LobMinRange = 5f,
+        LobSpeed = 9f, LobRadius = 1.4f, LobSpread = 2.5f;
+    public const int LobSpears = 3;
+    public const float ShatteredSpeedBonus = 0.4f, ShatteredTurnRateDeg = 120f,
+        ShatteredRecoverSeconds = 0.5f, ShatteredAttackGapSeconds = 0.9f, ComboSecondWindupSeconds = 0.6f;
 
     private readonly EnemyAgent _agent;
+    private readonly ProjectileSystem _projectiles;
     private bool _firstTick = true;
     private float _publishedArc = -1f;
     private float _remaining = AttackGapSeconds;
@@ -45,13 +54,15 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     private readonly int[] _guardIds = new int[MaxGuards];
     private readonly Vector3[] _picks = new Vector3[MaxGuards];
     private float _warCryCooldown = WarCryFirstAtSeconds;
+    private float _lobCooldown;
+    private bool _shatterPending;
 
     public WarlordBehaviour(EnemyAgent agent, ProjectileSystem projectiles, IRandomStream random,
         ContentId guardId)
     {
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
-        // These dependencies are part of the boss's API for its later moves.
-        _ = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+        _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+        // The lob's spread is fixed, so a volley spends none of the stream it may draw from.
         _ = random ?? throw new ArgumentNullException(nameof(random));
         _guardId = guardId;
     }
@@ -62,9 +73,21 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     public bool IsDazed { get; private set; }
     public int GuardCount { get; private set; }
     public bool IsLocked { get; private set; }
+    public int Phase { get; private set; }
+    public bool IsShattered { get; private set; }
+
+    private float Gap => IsShattered ? ShatteredAttackGapSeconds : AttackGapSeconds;
+    private float Recover => IsShattered ? ShatteredRecoverSeconds : RecoverSeconds;
 
     public void Tick(in EnemyTickContext ctx)
     {
+        // OnPhaseEntered has no context, so the shatter is announced on the next tick the boss runs.
+        if (_shatterPending)
+        {
+            _shatterPending = false;
+            ctx.Events.Publish(new WarlordShattered(_agent.Id));
+        }
+
         RollCall(ctx.Enemies.Registry);
         if (_firstTick)
         {
@@ -79,12 +102,13 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         _remaining -= ctx.Dt;
         _chargeCooldown = MathF.Max(0f, _chargeCooldown - ctx.Dt);
         _warCryCooldown = MathF.Max(0f, _warCryCooldown - ctx.Dt);
+        _lobCooldown = MathF.Max(0f, _lobCooldown - ctx.Dt);
         if (IsDazed)
         {
             if (_remaining <= 0f)
             {
                 IsDazed = false;
-                _remaining = AttackGapSeconds;
+                _remaining = Gap;
             }
         }
         else if (Move == WarlordMove.Charge)
@@ -99,6 +123,10 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
                 {
                     ReleaseWarCry(ctx);
                 }
+                else if (Move == WarlordMove.Lob)
+                {
+                    ReleaseLob(ctx);
+                }
                 else
                 {
                     Release(ctx);
@@ -110,7 +138,7 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
             if (_remaining <= 0f)
             {
                 _recovering = false;
-                _remaining = AttackGapSeconds;
+                _remaining = Gap;
             }
         }
         else if (_remaining <= 0f)
@@ -122,6 +150,13 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
                 _remaining = WarCryTelegraphSeconds;
                 ctx.Events.Publish(new EnemyTelegraph(_agent.Id, WarCryTelegraphSeconds, (int)Move));
             }
+            else if (Phase >= 1 && _lobCooldown <= 0f && _agent.Blackboard.DistanceToPlayer >= LobMinRange)
+            {
+                Move = WarlordMove.Lob;
+                _remaining = LobTelegraphSeconds;
+                Facing = Aim();
+                ctx.Events.Publish(new EnemyTelegraph(_agent.Id, LobTelegraphSeconds, (int)Move));
+            }
             else if (_agent.Blackboard.DistanceToPlayer <= SweepReach)
             {
                 Arm(ctx);
@@ -132,8 +167,8 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
             }
         }
 
-        IsLocked = !IsDazed && AnyGuardNear(ctx.Enemies.Registry);
-        GuardHalfArcDeg = IsDazed ? 0f : IsLocked ? LockedHalfArcDeg : HalfArcDeg;
+        IsLocked = !IsShattered && !IsDazed && AnyGuardNear(ctx.Enemies.Registry);
+        GuardHalfArcDeg = IsShattered || IsDazed ? 0f : IsLocked ? LockedHalfArcDeg : HalfArcDeg;
         bool guarded = GuardHalfArcDeg > 0f
             && InArc(Facing, _agent.Blackboard.DirectionToPlayer, GuardHalfArcDeg);
         _agent.Health.SetExternalInvulnerable(guarded);
@@ -229,7 +264,7 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
             _chargeCooldown = ChargeCooldownSeconds;
             IsDazed = _probeHit && travel >= _probeDistance - DazeSlack;
             _recovering = !IsDazed;
-            _remaining = IsDazed ? DazeSeconds : RecoverSeconds;
+            _remaining = IsDazed ? DazeSeconds : Recover;
             if (IsDazed)
             {
                 ctx.Events.Publish(new WarlordDazed(_agent.Id, _agent.Blackboard.SelfPosition, DazeSeconds));
@@ -237,17 +272,20 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
         }
     }
 
-    private void Arm(in EnemyTickContext ctx)
+    private void Arm(in EnemyTickContext ctx) =>
+        ArmCone(ctx, IsShattered ? WarlordMove.Combo : WarlordMove.Sweep, SweepWindupSeconds);
+
+    private void ArmCone(in EnemyTickContext ctx, WarlordMove move, float windup)
     {
-        Move = WarlordMove.Sweep;
-        _remaining = SweepWindupSeconds;
+        Move = move;
+        _remaining = windup;
         _aim = Aim();
         _origin = _agent.Blackboard.SelfPosition;
         Facing = _aim;
         _coneEvents = ctx.Events;
-        ctx.Events.Publish(new EnemyTelegraph(_agent.Id, SweepWindupSeconds, (int)Move));
+        ctx.Events.Publish(new EnemyTelegraph(_agent.Id, windup, (int)Move));
         ctx.Events.Publish(new SprayArmed(_agent.Id, _origin, _aim,
-            SweepHalfAngleDeg, SweepReach, SweepWindupSeconds));
+            SweepHalfAngleDeg, SweepReach, windup));
     }
 
     private void Release(in EnemyTickContext ctx)
@@ -263,10 +301,37 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
 
         _coneEvents = null;
         ctx.Events.Publish(new SprayFired(_agent.Id, hit));
+        if (Move == WarlordMove.Combo)
+        {
+            // The combo's second hit re-aims at the player and winds its own cone.
+            ArmCone(ctx, WarlordMove.ComboSecond, ComboSecondWindupSeconds);
+            return;
+        }
+
         Move = WarlordMove.None;
         _recovering = true;
-        _remaining = RecoverSeconds;
+        _remaining = Recover;
         Facing = _aim;
+    }
+
+    private void ReleaseLob(in EnemyTickContext ctx)
+    {
+        Vector3 self = _agent.Blackboard.SelfPosition;
+        Vector3 target = _agent.Blackboard.PlayerPosition;
+        Vector2 line = Aim();
+        var across = new Vector3(-line.Y, 0f, line.X) * LobSpread;
+        float damage = _agent.ContactDamage.Value;
+        for (int i = 0; i < LobSpears; i++)
+        {
+            Vector3 offset = i == 0 ? Vector3.Zero : i == 1 ? across : -across;
+            _projectiles.Fire(new Projectile(_agent.Spec.Id, _agent.Id, self, target + offset,
+                LobSpeed, LobRadius, damage), ctx.Now);
+        }
+
+        Move = WarlordMove.None;
+        _recovering = true;
+        _remaining = Recover;
+        _lobCooldown = LobCooldownSeconds;
     }
 
     private void ReleaseWarCry(in EnemyTickContext ctx)
@@ -325,7 +390,7 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
 
         Move = WarlordMove.None;
         _recovering = true;
-        _remaining = RecoverSeconds;
+        _remaining = Recover;
         _warCryCooldown = WarCryCooldownSeconds;
     }
 
@@ -388,18 +453,31 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
 
     public void OnPhaseEntered(int phase)
     {
+        // The armed move drops first; only then do the phase's changes apply.
         _coneEvents?.Publish(new SprayCleared(_agent.Id));
         _coneEvents = null;
         Move = WarlordMove.None;
         _recovering = false;
         _dashing = false;
         IsDazed = false;
-        GuardHalfArcDeg = HalfArcDeg;
-        _remaining = AttackGapSeconds;
+        Phase = phase;
+        if (phase >= 2 && !IsShattered)
+        {
+            IsShattered = true;
+            _shatterPending = true;
+            _agent.MoveSpeed.Add(new Modifier(ModifierKind.PercentMult, ShatteredSpeedBonus, this));
+        }
+
+        GuardHalfArcDeg = IsShattered ? 0f : HalfArcDeg;
+        _remaining = Gap;
     }
 
     public void Reset()
     {
+        _agent.MoveSpeed.RemoveAll(this);
+        IsShattered = false;
+        _shatterPending = false;
+        _lobCooldown = 0f;
         OnPhaseEntered(0);
         _agent.Health.SetExternalInvulnerable(false);
         _agent.IsVulnerable = true;
@@ -428,7 +506,7 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
 
         float angle = MathF.Atan2(Facing.X * direction.Y - Facing.Y * direction.X,
             Vector2.Dot(Facing, direction));
-        float limit = TurnRateDeg * (MathF.PI / 180f) * dt;
+        float limit = (IsShattered ? ShatteredTurnRateDeg : TurnRateDeg) * (MathF.PI / 180f) * dt;
         float step = MathF.Max(-limit, MathF.Min(limit, angle));
         float sin = MathF.Sin(step);
         float cos = MathF.Cos(step);

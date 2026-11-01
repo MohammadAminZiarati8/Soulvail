@@ -59,7 +59,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)
 - [x] **JG-15b** — Shield charge and stone daze, with a lane probe port (M)
 - [x] **JG-15c** — War cry: two Mossguards from the edges, shield lock, cleared at beats (M)
-- [ ] **JG-15d** — Phases: spear lobs at 66 %, the shield shatters at 33 % (M)
+- [x] **JG-15d** — Phases: spear lobs at 66 %, the shield shatters at 33 % (M)
 - [ ] **JG-15e** — The model: the Mossguard grown and war-painted, glaive, big shield, sculpt slot (M)
 - [ ] **JG-15f** — The body: animator, guard wedge, daze, shatter (M)
 - [ ] **JG-15g** — Stage 15 is his: data, stones, spear, lane probe adapter (M)

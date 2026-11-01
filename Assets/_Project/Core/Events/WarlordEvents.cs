@@ -29,3 +29,14 @@ public readonly struct WarlordDazed
         Seconds = seconds;
     }
 }
+
+/// <summary>The Warlord's shield shattered on entering its last phase; it guards no more.</summary>
+public readonly struct WarlordShattered
+{
+    public readonly int BossId;
+
+    public WarlordShattered(int bossId)
+    {
+        BossId = bossId;
+    }
+}

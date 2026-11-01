@@ -56,7 +56,7 @@ _No milestone. The owner is setting the next direction._
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
-- [ ] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)
+- [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)
 - [ ] **JG-15b** — Shield charge and stone daze, with a lane probe port (M)
 - [ ] **JG-15c** — War cry: two Mossguards from the edges, shield lock, cleared at beats (M)
 - [ ] **JG-15d** — Phases: spear lobs at 66 %, the shield shatters at 33 % (M)

@@ -127,6 +127,26 @@ public sealed class BossDispatchTests
         Assert.That(agent.DamageTaken.Value, Is.EqualTo(MotherPitcherBehaviour.ShieldedDamageTaken).Within(1e-5f));
     }
 
+    [Test]
+    public void Dispatch_WarlordBossId_BuildsWarlord()
+    {
+        const string Warlord = "boss.mossguard_warlord";
+        RunSession session = Session(Mode(Warlord), Boss(Warlord, "enemy.mossguard_warlord"));
+        session.Start(Config());
+        for (int i = 0; i < 1_200 && _events.Count<EnemySpawned>() == 0; i++)
+        {
+            session.Tick(Snapshot(Vector3.Zero));
+        }
+
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(1));
+        var enemies = (EnemySystem)typeof(RunState)
+            .GetProperty("Enemies", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(session.State);
+        var wrapper = enemies.Registry.Alive[0].Behaviour as BossBehaviour;
+        Assert.That(wrapper, Is.Not.Null);
+        Assert.That(wrapper.Inner, Is.TypeOf<WarlordBehaviour>());
+    }
+
     // JG-13c rule 1: a real stage-10 session carries the report into its inner behaviour.
     [Test]
     public void Dispatch_MotherSummons_StandOnTheReportedGround()
@@ -226,7 +246,7 @@ public sealed class BossDispatchTests
         new ContentCatalog(
             new[] { Oathbound() },
             new[] { Husk(), Body(WardenEnemyId), Body(CroakerEnemyId),
-                Body("enemy.mother_pitcher"), Bud() },
+                Body("enemy.mother_pitcher"), Body("enemy.mossguard_warlord"), Bud() },
             new[] { mode },
             skills: null,
             trees: null,

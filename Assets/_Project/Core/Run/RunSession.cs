@@ -285,6 +285,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 agent => new MotherPitcherBehaviour(
                     agent, State.Projectiles, _random.Misc,
                     new ContentId("enemy.pitcher_bud"), new ContentId("enemy.frog")),
+            [new ContentId("boss.mossguard_warlord")] =
+                agent => new WarlordBehaviour(
+                    agent, State.Projectiles, _random.Misc, new ContentId("enemy.mossguard")),
         };
     }
 

@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, ST-02._
+_Updated 2026-11-02, ST-03a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **ST-02**: the enemy bar draws statuses by id, debuffs first; one icon on a basic enemy, four on an Elite, stack counts above 1. |
-| **Next task** | **ST-03a** (poison in core) on the owner's go. Stage 20 undecided. |
-| **Verified** | EditMode 5 193: 5 192 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **ST-03a**: poison in core. Up to 5 stacks share a timer; pulses every 0.5 s through the damage door; a debug Poison button; no icon yet. |
+| **Next task** | **ST-03b** (poison look and icon) on the owner's go. Stage 20 undecided. |
+| **Verified** | EditMode 5 206: 5 205 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 

@@ -1638,8 +1638,22 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             EnemyStatuses.StunnedKey => State.Enemies.Stun(enemyId, 3f),
             EnemyStatuses.RootedKey => State.Enemies.Root(enemyId, 3f),
             EnemyStatuses.SlowedKey => State.Enemies.Slow(enemyId, 0.5f, 3f),
+            EnemyStatuses.PoisonedKey => DebugPoison(enemyId),
             _ => false,
         };
+    }
+
+    /// <summary>Three stacks of 4 dps for 4 s.</summary>
+    private bool DebugPoison(int enemyId)
+    {
+        bool applied = false;
+
+        for (int i = 0; i < 3; i++)
+        {
+            applied = State.Enemies.Poison(enemyId, 4f, 4f);
+        }
+
+        return applied;
     }
 #endif
 

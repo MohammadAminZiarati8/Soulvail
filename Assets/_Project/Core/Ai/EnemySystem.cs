@@ -685,13 +685,66 @@ public sealed class EnemySystem
         return true;
     }
 
+    /// <summary>
+    /// Poisons a living enemy: one more stack up to <see cref="Ai.Poison.MaxStacks"/>, one shared timer
+    /// refreshed to the longer, and the strongest damage per stack (ST-03a rules 2–4).
+    /// </summary>
+    /// <returns><see langword="false"/> for an unknown id or a corpse, with nothing changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="damagePerStackPerSecond"/> or <paramref name="seconds"/> is not positive and finite.
+    /// </exception>
+    public bool Poison(int enemyId, float damagePerStackPerSecond, float seconds)
+    {
+        if (!(damagePerStackPerSecond > 0f) || float.IsInfinity(damagePerStackPerSecond))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(damagePerStackPerSecond),
+                damagePerStackPerSecond,
+                "Poison deals a positive, finite damage per second.");
+        }
+
+        Duration(seconds);
+
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return false;
+        }
+
+        if (agent.Poison.Apply(damagePerStackPerSecond, Scaled(agent, Statuses.Poisoned, seconds)))
+        {
+            _events.Publish(new EnemyStatusChanged(enemyId, Statuses.Poisoned, agent.Poison.Remaining, agent.Poison.Stacks));
+        }
+
+        return true;
+    }
+
+    /// <summary>Poison stacks on an enemy; 0 for an unknown id or a corpse.</summary>
+    public int PoisonStacks(int enemyId) => TryLiving(enemyId, out EnemyAgent agent) ? agent.Poison.Stacks : 0;
+
+    /// <summary>Rules 5–7: pulses go through the damage door; expiry announces, a death says nothing.</summary>
+    private void TickPoison(EnemyAgent agent, in EnemyTickContext ctx)
+    {
+        bool expired = agent.Poison.Tick(ctx.Dt, out int pulses);
+
+        for (int i = 0; i < pulses && agent.IsAlive; i++)
+        {
+            ApplyDamage(agent.Id, agent.Poison.PulseDamage, ctx.Now, ctx.Player);
+        }
+
+        if (expired && agent.IsAlive)
+        {
+            ctx.Events.Publish(new EnemyStatusChanged(agent.Id, Statuses.Poisoned, 0f, 0));
+        }
+    }
+
     /// <summary>Whether a living enemy is under <paramref name="status"/>; false for an unknown id.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="status"/> is not an enemy status.</exception>
     public bool Has(int enemyId, ContentId status)
     {
         StatusRule rule = Rule(status);
 
-        return TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.Has(rule);
+        return TryLiving(enemyId, out EnemyAgent agent)
+            && (rule.Id.Value == EnemyStatuses.PoisonedKey ? agent.Poison.Stacks > 0 : agent.CrowdControl.Has(rule));
     }
 
     /// <summary>Seconds of <paramref name="status"/> left; 0 for an unknown id.</summary>
@@ -700,7 +753,12 @@ public sealed class EnemySystem
     {
         StatusRule rule = Rule(status);
 
-        return TryLiving(enemyId, out EnemyAgent agent) ? agent.CrowdControl.Remaining(rule) : 0f;
+        if (!TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return 0f;
+        }
+
+        return rule.Id.Value == EnemyStatuses.PoisonedKey ? agent.Poison.Remaining : agent.CrowdControl.Remaining(rule);
     }
 
     /// <summary>
@@ -832,6 +890,7 @@ public sealed class EnemySystem
 
             // Death ends every status silently (MK-06a rule 7): nothing about it follows EnemyDied.
             agent.CrowdControl.Reset();
+            agent.Poison.Reset();
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
@@ -1037,6 +1096,8 @@ public sealed class EnemySystem
             }
 
             agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events, Statuses);
+
+            TickPoison(agent, ctx);
 
             anyRooted |= agent.CrowdControl.IsRooted;
         }

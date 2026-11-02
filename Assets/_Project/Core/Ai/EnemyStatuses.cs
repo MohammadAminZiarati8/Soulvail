@@ -10,6 +10,7 @@ public sealed class EnemyStatuses
     public const string RootedKey = "status.enemy.rooted";
     public const string SlowedKey = "status.enemy.slowed";
     public const string HastedKey = "status.enemy.hasted";
+    public const string PoisonedKey = "status.enemy.poisoned";
 
     private const float CrowdControlBossScale = 0.5f;
 
@@ -19,6 +20,7 @@ public sealed class EnemyStatuses
         Rooted = new StatusRule(new ContentId(RootedKey), StatusSide.Debuff, 30, CrowdControlBossScale);
         Slowed = new StatusRule(new ContentId(SlowedKey), StatusSide.Debuff, 20, CrowdControlBossScale);
         Hasted = new StatusRule(new ContentId(HastedKey), StatusSide.Buff, 10, 1f);
+        Poisoned = new StatusRule(new ContentId(PoisonedKey), StatusSide.Debuff, 25, 1f);
     }
 
     public StatusRule Stunned { get; }
@@ -29,7 +31,9 @@ public sealed class EnemyStatuses
 
     public StatusRule Hasted { get; }
 
-    /// <returns>False for any id but the four.</returns>
+    public StatusRule Poisoned { get; }
+
+    /// <returns>False for any id but the five.</returns>
     public bool TryGet(ContentId id, out StatusRule rule)
     {
         string key = id.Value;
@@ -49,6 +53,10 @@ public sealed class EnemyStatuses
         else if (key == HastedKey)
         {
             rule = Hasted;
+        }
+        else if (key == PoisonedKey)
+        {
+            rule = Poisoned;
         }
         else
         {

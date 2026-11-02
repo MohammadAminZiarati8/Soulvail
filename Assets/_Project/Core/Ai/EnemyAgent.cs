@@ -117,6 +117,9 @@ public sealed class EnemyAgent
     /// </summary>
     public CrowdControl CrowdControl { get; }
 
+    /// <summary>Its poison stacks and pulse clock (ST-03a). Stable across recycling; cleared by <see cref="Initialise"/>.</summary>
+    public Poison Poison { get; } = new();
+
     /// <summary>Its perception and working memory. The instance is stable across recycling.</summary>
     public EnemyBlackboard Blackboard { get; }
 
@@ -271,6 +274,7 @@ public sealed class EnemyAgent
         // The previous life's stun, root and slow, silently (MK-06a rule 8) — and before the wipe
         // below, so its slow modifier is taken off by its own source rather than swept.
         CrowdControl.Reset();
+        Poison.Reset();
 
         Health.MaxHp.RemoveAll();
         MoveSpeed.RemoveAll();

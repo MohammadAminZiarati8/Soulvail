@@ -81,7 +81,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **ST-01** — Enemy statuses get an id, a side and a priority; the enum goes (M)
 - [x] **ST-02** — The enemy bar's row: by id, debuffs first, one icon on basic enemies, four on Elites (M)
-- [ ] **ST-03a** — Poison in core: capped stacks, one timer, pulses through the damage door ([spec](tasks/ST-03a-poison-core.md)) (M)
+- [x] **ST-03a** — Poison in core: capped stacks, one timer, pulses through the damage door (M)
 - [ ] **ST-03b** — Poison drawn: bubbles on the body, a drop on the bar ([spec](tasks/ST-03b-poison-drawn.md)) (S)
 - [ ] ST-04 — Regen: heal over time as a buff (titles only from here)
 - [ ] ST-05 — Stat-up buffs: attack, defense, attack speed; strongest wins

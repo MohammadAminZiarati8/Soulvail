@@ -484,6 +484,10 @@ namespace Soulvail.Game.Presentation
             {
                 ApplyNearestStatus(new ContentId(EnemyStatuses.SlowedKey));
             }
+            if (GUI.Button(new Rect(8f, top + 108f, 84f, 32f), "Poison"))
+            {
+                ApplyNearestStatus(new ContentId(EnemyStatuses.PoisonedKey));
+            }
         }
 
         public bool ApplyNearestStatus(ContentId status)

@@ -91,7 +91,7 @@ _No milestone. The owner is setting the next direction._
 **Thornheart, stage 20's boss** (owner, 2026-11-02; design [GD §9.2](../GameDesign.md)). A strangler tree rooted in the centre, always shootable: thorn spokes that block only the player, a slam that bares its heart, seed pods that grow Rootlings unless shot, a thorn ring closing in from 66 %. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (20e after 20a, 20f any time before 20g). Playtestable from JG-20h with DT-01's test start at stage 20.
 
 - [x] **JG-20a** — Thorn walls in core: arm, bite, stand, wither (M)
-- [ ] **JG-20b** — Thornheart in core: rooted, spokes, the slam that bares its heart ([spec](tasks/JG-20b-thornheart-in-core.md)) (M)
+- [x] **JG-20b** — Thornheart in core: rooted, spokes, the slam that bares its heart (M)
 - [ ] **JG-20c** — Seed pods: a kill race that grows Rootlings ([spec](tasks/JG-20c-thornheart-seed-pods.md)) (M)
 - [ ] **JG-20d** — Phases: the strangling ring at 66 %, a faster grove at 33 % ([spec](tasks/JG-20d-thornheart-phases.md)) (M)
 - [ ] **JG-20e** — Thorn walls in Unity: warned strip, a wall that blocks only you ([spec](tasks/JG-20e-thorn-walls-in-unity.md)) (M)

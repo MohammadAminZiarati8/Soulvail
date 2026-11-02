@@ -291,6 +291,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             [new ContentId("boss.mossguard_warlord")] =
                 agent => new WarlordBehaviour(
                     agent, State.Projectiles, _random.Misc, new ContentId("enemy.mossguard")),
+            [new ContentId("boss.thornheart")] =
+                agent => new ThornheartBehaviour(agent, _thorns, _random.Misc),
         };
     }
 

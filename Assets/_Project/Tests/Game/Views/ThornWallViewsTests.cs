@@ -163,6 +163,71 @@ public sealed class ThornWallViewsTests
     }
 
     [Test]
+    public void Bramble_VineSegments_NoCubeNoCollider()
+    {
+        Transform bramble = _prefab.GetComponent<ThornWallView>().Bramble;
+
+        Assert.That(bramble, Is.Not.Null);
+        Assert.That(bramble.GetComponent<Renderer>(), Is.Null, "the bramble is a parent, not a body");
+        Assert.That(bramble.GetComponentsInChildren<Collider>(true), Is.Empty, "the wall's one collider is the root's");
+
+        var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Mesh cubeMesh = cube.GetComponent<MeshFilter>().sharedMesh;
+        Object.DestroyImmediate(cube);
+
+        MeshFilter[] segments = bramble.GetComponentsInChildren<MeshFilter>(true);
+        Assert.That(segments, Is.Not.Empty);
+
+        foreach (MeshFilter segment in segments)
+        {
+            Assert.That(segment.sharedMesh, Is.Not.Null);
+            Assert.That(segment.sharedMesh, Is.Not.SameAs(cubeMesh), "no primitive cube");
+            Assert.That(segment.sharedMesh.name, Is.EqualTo("ThornVine"));
+            Assert.That(segment.GetComponent<Renderer>().sharedMaterial.name, Is.EqualTo("M_ThornVine"));
+        }
+    }
+
+    [Test]
+    public void Armed_SegmentsEndToEnd_HiddenUntilRisen()
+    {
+        _hub.Publish(new ThornArmed(1, CoreVector3.Zero, new CoreVector2(0f, 1f), 14f, 1.2f, 0.6f));
+        Assert.That(_views.TryGet(1, out ThornWallView wall), Is.True);
+
+        Renderer[] segments = wall.Bramble.GetComponentsInChildren<Renderer>(true);
+        Assert.That(wall.SegmentsShown, Is.EqualTo(5), "14 m at no more than 3.2 m a segment");
+        Assert.That(segments.Length, Is.GreaterThanOrEqualTo(wall.SegmentsShown));
+        Assert.That(segments, Has.All.Property(nameof(Renderer.enabled)).False, "below the floor");
+
+        float covered = 0f;
+        for (int i = 0; i < wall.SegmentsShown; i++)
+        {
+            Transform segment = segments[i].transform;
+            Assert.That(segment.localScale.z, Is.EqualTo(14f / 5f).Within(1e-4f));
+            Assert.That(segment.localScale.x, Is.EqualTo(2.4f).Within(1e-4f));
+            Assert.That(segment.localPosition.z, Is.EqualTo(-7f + (2.8f * (i + 0.5f))).Within(1e-4f));
+            covered += segment.localScale.z;
+        }
+
+        Assert.That(covered, Is.EqualTo(14f).Within(1e-3f));
+
+        _hub.Publish(new ThornRose(1, false));
+        wall.Step(ThornWallView.RiseSeconds);
+        Assert.That(wall.Bramble.localPosition.y, Is.EqualTo(0f).Within(1e-5f), "risen flush with the floor");
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            Assert.That(segments[i].enabled, Is.EqualTo(i < wall.SegmentsShown), segments[i].name);
+        }
+
+        _hub.Publish(new ThornWithered(1));
+        wall.Step(ThornWallView.WitherSeconds * 0.5f);
+        Assert.That(wall.Bramble.localPosition.y, Is.LessThan(0f).And.GreaterThan(-ThornWallView.Height), "sinking");
+
+        wall.Step(ThornWallView.WitherSeconds);
+        Assert.That(segments, Has.All.Property(nameof(Renderer.enabled)).False, "sunk");
+    }
+
+    [Test]
     public void Withered_ColliderOff_ReturnsToPool()
     {
         Arm(1);

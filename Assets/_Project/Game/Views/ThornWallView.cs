@@ -39,6 +39,12 @@ namespace Soulvail.Game.Views
         /// <summary>The wall's height, in metres — above the Ranger's head, so it reads as a wall.</summary>
         public const float Height = 1.6f;
 
+        /// <summary>
+        /// The longest stretch one vine segment covers (JG-20i). A wall lays as many segments as its
+        /// length needs at no more than this, so a thorn never smears along a long wall.
+        /// </summary>
+        public const float SegmentLength = 3.2f;
+
         /// <summary>How opaque the warning strip is drawn at full fill.</summary>
         public const float StripAlpha = 0.55f;
 
@@ -48,11 +54,12 @@ namespace Soulvail.Game.Views
         [Tooltip("The strip's renderer; tinted Palette.Danger through a property block.")]
         [SerializeField] private Renderer _stripRenderer;
 
-        [Tooltip("The bramble body. A unit mesh scaled to the wall and slid up out of the floor.")]
+        [Tooltip("The bramble: the vine segments' parent, slid up out of the floor. Never scaled.")]
         [SerializeField] private Transform _bramble;
 
-        [Tooltip("The bramble's renderer, hidden while it is below the floor.")]
-        [SerializeField] private Renderer _brambleRenderer;
+        [Tooltip("The vine segments under the bramble: unit meshes, base on the floor, laid end to end. "
+            + "As many show as the wall needs; all hide while it is below the floor.")]
+        [SerializeField] private Renderer[] _segments = Array.Empty<Renderer>();
 
         [Tooltip("The blocking box: layer Cover, Exclude Layers = Enemy (rule 4). Off until risen.")]
         [SerializeField] private BoxCollider _collider;
@@ -70,6 +77,7 @@ namespace Soulvail.Game.Views
         private float _armSeconds;
         private float _armElapsed;
         private float _rise;
+        private int _shown;
         private bool _solidPending;
 
         private enum Phase
@@ -91,6 +99,12 @@ namespace Soulvail.Game.Views
 
         /// <summary>How far the bramble stands out of the floor, 0 to 1.</summary>
         public float RiseFraction => _rise;
+
+        /// <summary>How many vine segments this wall lays end to end.</summary>
+        public int SegmentsShown => _shown;
+
+        /// <summary>The vine segments' parent. Exposed for the fixture.</summary>
+        public Transform Bramble => _bramble;
 
         /// <summary>Whether the warning strip is showing.</summary>
         public bool IsStripShown => _strip != null && _strip.gameObject.activeSelf;
@@ -145,6 +159,7 @@ namespace Soulvail.Game.Views
             }
 
             TintStrip();
+            LaySegments();
             Draw();
         }
 
@@ -329,13 +344,46 @@ namespace Soulvail.Game.Views
 
             if (_bramble != null)
             {
-                _bramble.localPosition = new Vector3(0f, (Height * 0.5f) - (Height * (1f - _rise)), 0f);
-                _bramble.localScale = new Vector3(width, Height, _length);
+                _bramble.localPosition = new Vector3(0f, -Height * (1f - _rise), 0f);
             }
 
-            if (_brambleRenderer != null)
+            for (int i = 0; i < _segments.Length; i++)
             {
-                _brambleRenderer.enabled = _rise > 0f;
+                if (_segments[i] != null)
+                {
+                    _segments[i].enabled = _rise > 0f && i < _shown;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lays the segments end to end along the wall, each at most <see cref="SegmentLength"/> and
+        /// every other one turned round, so the repeat reads less. Once per arm, never per frame.
+        /// </summary>
+        private void LaySegments()
+        {
+            int needed = Mathf.Max(Mathf.CeilToInt(_length / SegmentLength), 1);
+            _shown = Mathf.Min(needed, _segments.Length);
+
+            if (_shown == 0)
+            {
+                return;
+            }
+
+            float span = _length / _shown;
+            var scale = new Vector3(_halfWidth * 2f, Height, span);
+
+            for (int i = 0; i < _shown; i++)
+            {
+                if (_segments[i] == null)
+                {
+                    continue;
+                }
+
+                Transform segment = _segments[i].transform;
+                segment.localPosition = new Vector3(0f, 0f, (-_length * 0.5f) + (span * (i + 0.5f)));
+                segment.localRotation = (i & 1) == 0 ? Quaternion.identity : Quaternion.Euler(0f, 180f, 0f);
+                segment.localScale = scale;
             }
         }
 

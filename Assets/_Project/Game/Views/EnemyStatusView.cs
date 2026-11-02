@@ -17,10 +17,22 @@ namespace Soulvail.Game.Views
         [SerializeField] private GameObject _stunSparks;
         [SerializeField] private GameObject _rootVines;
         [SerializeField] private GameObject _slowFrost;
+        [SerializeField] private GameObject _poisonBubbles;
         [SerializeField] private StatusIconBook _icons;
         [SerializeField] private Sprite _sweepSprite;
-        private readonly GameObject[] _effects = new GameObject[3];
-        private readonly bool[] _active = new bool[3];
+        private const int Stun = 0;
+        private const int Slow = 2;
+        private const int Poison = 3;
+        private static readonly ContentId[] Keys =
+        {
+            new(EnemyStatuses.StunnedKey),
+            new(EnemyStatuses.RootedKey),
+            new(EnemyStatuses.SlowedKey),
+            new(EnemyStatuses.PoisonedKey),
+        };
+        private readonly GameObject[] _effects = new GameObject[4];
+        private readonly ParticleSystem[] _particles = new ParticleSystem[4];
+        private readonly bool[] _active = new bool[4];
         private EnemyView _body;
         private EnemyHealthBar _bar;
         private EnemyAnimatorView _animator;
@@ -28,7 +40,6 @@ namespace Soulvail.Game.Views
         private IDisposable _changed;
         private IDisposable _died;
         private int _id;
-        private ParticleSystem _frostParticles;
 
         [Inject]
         public void Construct(DomainEventHub hub, IRunSession session)
@@ -40,7 +51,7 @@ namespace Soulvail.Game.Views
             var parked = new GameObject("Status effects (pooled)");
             parked.SetActive(false);
             parked.transform.SetParent(transform, false);
-            GameObject[] prefabs = { _stunSparks, _rootVines, _slowFrost };
+            GameObject[] prefabs = { _stunSparks, _rootVines, _slowFrost, _poisonBubbles };
             for (int i = 0; i < _effects.Length; i++)
             {
                 if (prefabs[i] == null)
@@ -49,33 +60,49 @@ namespace Soulvail.Game.Views
                 }
                 _effects[i] = Instantiate(prefabs[i], parked.transform, false);
                 _effects[i].SetActive(false);
+                if (i >= Slow)
+                {
+                    _particles[i] = _effects[i].GetComponent<ParticleSystem>();
+                    Tint(_particles[i]);
+                }
             }
             parked.SetActive(true);
-            _frostParticles = _effects[2] != null ? _effects[2].GetComponent<ParticleSystem>() : null;
-            if (_frostParticles != null)
-            {
-                // The shared transparent unlit material has no particle vertex-colour input.
-                // Tint this renderer once, without cloning a material or changing other effects.
-                var tint = new MaterialPropertyBlock();
-                tint.SetColor("_BaseColor", _frostParticles.main.startColor.color);
-                _frostParticles.GetComponent<ParticleSystemRenderer>().SetPropertyBlock(tint);
-            }
             _bar?.ConfigureStatuses(_icons, _sweepSprite);
             _changed = hub.Subscribe<EnemyStatusChanged>(OnChanged);
             _died = hub.Subscribe<EnemyDied>(OnDied);
         }
 
-        public GameObject Effect(ContentId status) => _effects[Slot(status)];
-
-        private static int Slot(ContentId status) => status.Value switch
+        /// <summary>The body effect drawn for a status; null for a status without one.</summary>
+        public GameObject Effect(ContentId status)
         {
-            EnemyStatuses.StunnedKey => 0,
-            EnemyStatuses.RootedKey => 1,
-            EnemyStatuses.SlowedKey => 2,
-            EnemyStatuses.HastedKey => 3,
-            _ => -1,
-        };
+            int index = Slot(status);
+            return index < 0 ? null : _effects[index];
+        }
 
+        private static int Slot(ContentId status)
+        {
+            for (int i = 0; i < Keys.Length; i++)
+            {
+                if (Keys[i] == status)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // The shared transparent unlit material has no particle vertex-colour input.
+        // Tint each particle renderer once, without cloning a material or changing other effects.
+        private static void Tint(ParticleSystem particles)
+        {
+            if (particles == null)
+            {
+                return;
+            }
+            var tint = new MaterialPropertyBlock();
+            tint.SetColor("_BaseColor", particles.main.startColor.color);
+            particles.GetComponent<ParticleSystemRenderer>().SetPropertyBlock(tint);
+        }
 
         public void Bind(int id)
         {
@@ -89,13 +116,18 @@ namespace Soulvail.Game.Views
                 {
                     continue;
                 }
-                _effects[i].transform.localScale = Vector3.one * (i == 0 ? 1f : radius * 2f);
-                _effects[i].transform.localPosition = i == 0
-                    ? Vector3.up * (capsule != null ? capsule.center.y + capsule.height * 0.5f + 0.2f : 2f)
-                    : Vector3.up * 0.06f;
+                _effects[i].transform.localScale = Vector3.one * (i == Stun ? 1f : radius * 2f);
+                _effects[i].transform.localPosition = Vector3.up * Height(i, capsule);
                 _effects[i].transform.localRotation = Quaternion.identity;
             }
         }
+
+        private static float Height(int index, CapsuleCollider capsule) => index switch
+        {
+            Stun => capsule != null ? capsule.center.y + capsule.height * 0.5f + 0.2f : 2f,
+            Poison => capsule != null ? capsule.center.y : 1f,
+            _ => 0.06f,
+        };
 
         public void Unbind()
         {
@@ -107,17 +139,17 @@ namespace Soulvail.Game.Views
                 {
                     _effects[i].SetActive(false);
                 }
+                _particles[i]?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
             _animator?.SetCrowdControl(false, false, 0f);
-            _frostParticles?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             _bar?.ClearStatuses();
         }
 
         public void Step(float dt)
         {
-            if (_active[0] && _effects[0] != null && dt > 0f && float.IsFinite(dt))
+            if (_active[Stun] && _effects[Stun] != null && dt > 0f && float.IsFinite(dt))
             {
-                _effects[0].transform.Rotate(Vector3.up, 150f * dt, Space.Self);
+                _effects[Stun].transform.Rotate(Vector3.up, 150f * dt, Space.Self);
             }
             ApplyAnimator();
         }
@@ -126,14 +158,14 @@ namespace Soulvail.Game.Views
 
         private void ApplyAnimator()
         {
-            float slow = _active[2] ? _session?.State?.EnemySlowFraction(_id) ?? 0f : 0f;
-            _animator?.SetCrowdControl(_active[0], _active[1], slow);
+            float slow = _active[Slow] ? _session?.State?.EnemySlowFraction(_id) ?? 0f : 0f;
+            _animator?.SetCrowdControl(_active[Stun], _active[1], slow);
         }
 
         private void OnChanged(EnemyStatusChanged evt)
         {
             int index = Slot(evt.Status);
-            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)index >= 3u)
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id || index < 0)
             {
                 return;
             }
@@ -142,15 +174,16 @@ namespace Soulvail.Game.Views
             {
                 _effects[index].SetActive(_active[index]);
             }
-            if (index == 2 && _frostParticles != null)
+            ParticleSystem particles = _particles[index];
+            if (particles != null)
             {
                 if (_active[index])
                 {
-                    _frostParticles.Play(true);
+                    particles.Play(true);
                 }
                 else
                 {
-                    _frostParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 }
             }
             ApplyAnimator();

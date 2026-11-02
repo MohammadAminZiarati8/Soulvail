@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, JG-20a._
+_Updated 2026-11-03, ST-03b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20a**: thorn walls in core (arm, bite on rising, stand, wither). Nobody opens one yet. |
-| **Next task** | **ST-03b** on the owner's go. Thornheart: JG-20b–e, g, h. Gravemaw parked at 25. |
-| **Verified** | EditMode 5 226: 5 225 pass, 0 fail, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **ST-03b**: poison drawn: body bubbles, a drop icon with stacks. No source yet. |
+| **Next task** | Owner's pick: Thornheart JG-20b–e, g, h or a poison source. Gravemaw parked at 25. |
+| **Verified** | EditMode 5 234: 5 233 pass, 0 fail, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 
@@ -32,7 +32,7 @@ Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; o
 Clash UI; LocKey strings. All 22 Marksman ranks from level 11, all skills authored/drawn.
 Tree preview/choice, rank pips and Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles/haptics; 0.5 s auto gap; mirrored option. Legacy saves expand to six.
-Player status icons; pooled enemy CC, bosses half duration. Marksman forest look, cyan trim,
+Player status icons; pooled enemy CC, bosses half duration; poison bubbles, drop icon. Marksman forest look, cyan trim,
 KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain menu/fresh run.
 
 ## What does not work yet

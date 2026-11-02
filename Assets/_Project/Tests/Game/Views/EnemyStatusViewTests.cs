@@ -22,7 +22,7 @@ using Object = UnityEngine.Object;
 
 namespace Soulvail.Tests.Game.Views;
 
-/// <summary>MK-06b: shipped body effects, animation, timed icons and pool lifecycle.</summary>
+/// <summary>MK-06b, ST-03b: shipped body effects, animation, timed icons and pool lifecycle.</summary>
 [TestFixture]
 public sealed class EnemyStatusViewTests
 {
@@ -224,6 +224,79 @@ public sealed class EnemyStatusViewTests
             hit |= _animator.GetCurrentAnimatorStateInfo(layer).IsName("Hit");
         }
         Assert.That(hit, Is.True, "Hit must reach the flinch layer even at the held animator rate.");
+    }
+
+    [Test]
+    public void Poisoned_TurnsBubblesOn_AndOff()
+    {
+        Change(new ContentId(EnemyStatuses.PoisonedKey), 4f);
+        GameObject bubbles = _status.Effect(new ContentId(EnemyStatuses.PoisonedKey));
+        Assert.That(bubbles.activeSelf, Is.True);
+        Change(new ContentId(EnemyStatuses.PoisonedKey), 0f);
+        Assert.That(bubbles.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void Poisoned_Death_ClearsBubbles()
+    {
+        Change(new ContentId(EnemyStatuses.PoisonedKey), 4f);
+        GameObject bubbles = _status.Effect(new ContentId(EnemyStatuses.PoisonedKey));
+        var particles = bubbles.GetComponent<ParticleSystem>();
+        particles.Simulate(1f, true, false);
+        Assert.That(particles.particleCount, Is.GreaterThan(0));
+        _hub.Publish(new EnemyDied(Id, Rootling, System.Numerics.Vector3.Zero));
+        Assert.That(bubbles.activeSelf, Is.False);
+        Assert.That(particles.particleCount, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Poisoned_BubblesSitMidBody_ScaledToRadius()
+    {
+        var capsule = _body.GetComponent<CapsuleCollider>();
+        capsule.radius = 0.8f;
+        _status.Bind(Id);
+        Transform bubbles = _status.Effect(new ContentId(EnemyStatuses.PoisonedKey)).transform;
+        Assert.That(bubbles.localPosition.y, Is.EqualTo(capsule.center.y).Within(1e-5f));
+        Assert.That(bubbles.localScale.x, Is.EqualTo(1.6f).Within(1e-5f));
+    }
+
+    [Test]
+    public void Poisoned_Icon_OutranksSlow_LosesToStun()
+    {
+        var book = AssetDatabase.LoadAssetAtPath<StatusIconBook>("Assets/_Project/Data/StatusIconBook.asset");
+        _bar.Bind(Id, false);
+        Change(new ContentId(EnemyStatuses.SlowedKey), 4f);
+        Change(new ContentId(EnemyStatuses.PoisonedKey), 4f);
+        Assert.That(_bar.StatusIcon(0).sprite, Is.SameAs(book.For(new ContentId(EnemyStatuses.PoisonedKey))));
+        Change(new ContentId(EnemyStatuses.StunnedKey), 2f);
+        Assert.That(_bar.StatusIcon(0).sprite, Is.SameAs(book.For(new ContentId(EnemyStatuses.StunnedKey))));
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.PoisonedKey)).activeSelf, Is.True);
+    }
+
+    [Test]
+    public void Effect_ById_NullWhenNone()
+    {
+        Assert.That(_status.Effect(new ContentId(EnemyStatuses.HastedKey)), Is.Null);
+    }
+
+    [TestCase("Enemy")]
+    [TestCase("Shaman")]
+    public void Prefabs_HaveBubbles(string name)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Enemies/" + name + ".prefab");
+        var so = new SerializedObject(prefab.GetComponent<EnemyStatusView>());
+        Assert.That(so.FindProperty("_poisonBubbles").objectReferenceValue, Is.Not.Null, name);
+    }
+
+    [Test]
+    public void IconBook_Poisoned_HasSprite()
+    {
+        var book = AssetDatabase.LoadAssetAtPath<StatusIconBook>("Assets/_Project/Data/StatusIconBook.asset");
+        Sprite fallback = book.For(new ContentId("status.enemy.unmapped"));
+        Sprite drop = book.For(new ContentId(EnemyStatuses.PoisonedKey));
+        Assert.That(drop, Is.Not.Null);
+        Assert.That(drop, Is.Not.SameAs(fallback));
+        Assert.That(drop.name, Is.EqualTo("T_Status_Poisoned"));
     }
 
     [TestCase("Enemy")]

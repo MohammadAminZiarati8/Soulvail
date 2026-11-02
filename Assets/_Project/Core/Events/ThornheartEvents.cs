@@ -47,3 +47,29 @@ public readonly struct ThornPodPlanted
         RipenSeconds = ripenSeconds;
     }
 }
+
+/// <summary>
+/// Thornheart's strangling ring opened round it and began closing in (JG-20d rule 2). Standing
+/// outside it bites; the circle-strafe lane runs just inside it.
+/// </summary>
+public readonly struct StrangleRing
+{
+    public readonly int BossId;
+
+    /// <summary>The radius it opens at, metres from the boss on the ground plane.</summary>
+    public readonly float FromRadius;
+
+    /// <summary>The radius it closes to and then holds.</summary>
+    public readonly float ToRadius;
+
+    /// <summary>How long the close takes.</summary>
+    public readonly float Seconds;
+
+    public StrangleRing(int bossId, float fromRadius, float toRadius, float seconds)
+    {
+        BossId = bossId;
+        FromRadius = fromRadius;
+        ToRadius = toRadius;
+        Seconds = seconds;
+    }
+}

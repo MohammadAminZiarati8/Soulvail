@@ -93,7 +93,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-20a** — Thorn walls in core: arm, bite, stand, wither (M)
 - [x] **JG-20b** — Thornheart in core: rooted, spokes, the slam that bares its heart (M)
 - [x] **JG-20c** — Seed pods: a kill race that grows Rootlings (M)
-- [ ] **JG-20d** — Phases: the strangling ring at 66 %, a faster grove at 33 % ([spec](tasks/JG-20d-thornheart-phases.md)) (M)
+- [x] **JG-20d** — Phases: the strangling ring at 66 %, a faster grove at 33 % (M)
 - [ ] **JG-20e** — Thorn walls in Unity: warned strip, a wall that blocks only you ([spec](tasks/JG-20e-thorn-walls-in-unity.md)) (M)
 - [x] **JG-20f** — The model: strangler tree, glowing heart, thorn pod (M)
 - [ ] **JG-20g** — The body: tells, lit heart, ripening pods, the ring ([spec](tasks/JG-20g-thornheart-body.md)) (M)

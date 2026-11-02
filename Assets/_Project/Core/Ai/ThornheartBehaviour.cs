@@ -20,7 +20,9 @@ public enum ThornheartMove
 /// <summary>
 /// A rooted boss that can always be shot: it grows thorn spokes, plants seed pods that burst into
 /// Rootlings unless killed (JG-20c), and slams a root down a line that bares its heart to double
-/// damage when it rises (JG-20b). The rotation is Roots → Pods → Roots → Slam.
+/// damage when it rises (JG-20b). The rotation is Roots → Pods → Roots → Slam. From 66 % a
+/// strangling ring closes in and bites anyone outside it, and spokes stop short of a strafe lane
+/// inside it; from 33 % the grove is faster and plants more (JG-20d).
 /// </summary>
 /// <remarks>
 /// The heart opens on the slam wall's rise, read off the deadline the wall was opened with rather
@@ -42,8 +44,18 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
     public const float PodTelegraphSeconds = 0.8f, PodRipenSeconds = 6f, PodClearance = 1.5f;
     public const int PodsPerCast = 2, RootlingsPerPod = 3, MaxAdds = 8;
 
+    // JG-20d: the strangling ring from phase 1 (66 %), the faster grove from phase 2 (33 %).
+    public const float RingStartRadius = 17f, RingRadius = 11f, RingCloseSeconds = 6f,
+                       RingPulseSeconds = 0.5f, RingDamageScale = 0.25f, StrafeLane = 3f;
+    public const int PhaseTwoSpokes = 4;
+    public const float PhaseThreeRootTelegraphSeconds = 0.7f, PhaseThreeAttackGapSeconds = 1.1f;
+    public const int PhaseThreePodsPerCast = 3;
+
+    /// <summary>Phase 2's cap: room for one full cast, which <see cref="MaxAdds"/> is not.</summary>
+    public const int PhaseThreeMaxAdds = PhaseThreePodsPerCast * RootlingsPerPod;
+
     private const float RootlingRing = 1f;
-    private const int MaxPods = MaxAdds / RootlingsPerPod;
+    private const int MaxPods = PhaseThreeMaxAdds / RootlingsPerPod;
 
     // Thorn-blocked open ground handed to the picker as reserved, so it prefers ground off the walls.
     private const int MaxBlocked = 32;
@@ -58,7 +70,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
     private readonly ContentId _rootlingId;
     private readonly int[] _podIds = new int[MaxPods];
     private readonly float[] _podRipensAt = new float[MaxPods];
-    private readonly int[] _rootlingIds = new int[MaxAdds];
+    private readonly int[] _rootlingIds = new int[PhaseThreeMaxAdds];
     private readonly Vector3[] _blocked = new Vector3[MaxBlocked];
     private int _rootlingCount;
     private int _rotation;
@@ -69,6 +81,10 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
     private float _slamRisesAt;
     private float _exposedRemaining;
     private IDomainEvents _heartEvents;
+    private bool _ringUp;
+    private bool _ringAnnounced;
+    private float _ringElapsed;
+    private float _pulseRemaining = RingPulseSeconds;
 
     public ThornheartBehaviour(EnemyAgent agent, ThornSystem thorns, IRandomStream random,
         ContentId podId, ContentId rootlingId)
@@ -90,9 +106,28 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
 
     public bool IsExposed { get; private set; }
 
+    /// <summary>The boss's phase, 0 until the 66 % crossing (JG-20d rule 1).</summary>
+    public int Phase { get; private set; }
+
+    /// <summary>The ring's radius this tick, metres from the boss; 0 while there is no ring.</summary>
+    public float RingRadiusNow => _ringUp
+        ? RingStartRadius + ((RingRadius - RingStartRadius) * MathF.Min(_ringElapsed / RingCloseSeconds, 1f))
+        : 0f;
+
+    private float AttackGap => Phase >= 2 ? PhaseThreeAttackGapSeconds : AttackGapSeconds;
+
+    private float RootTelegraph => Phase >= 2 ? PhaseThreeRootTelegraphSeconds : RootTelegraphSeconds;
+
+    private int Spokes => Phase >= 1 ? PhaseTwoSpokes : RootSpokes;
+
+    private int PodsThisCast => Phase >= 2 ? PhaseThreePodsPerCast : PodsPerCast;
+
+    private int AddCap => Phase >= 2 ? PhaseThreeMaxAdds : MaxAdds;
+
     public void Tick(in EnemyTickContext ctx)
     {
         RollCall(ctx);
+        Strangle(ctx);
 
         if (IsExposed)
         {
@@ -127,7 +162,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
             else if (_recovering)
             {
                 _recovering = false;
-                _remaining = AttackGapSeconds;
+                _remaining = AttackGap;
             }
             else
             {
@@ -152,7 +187,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         {
             ThornheartMove.Pods => PodTelegraphSeconds,
             ThornheartMove.Slam => SlamTelegraphSeconds,
-            _ => RootTelegraphSeconds,
+            _ => RootTelegraph,
         };
         ctx.Events.Publish(new EnemyTelegraph(_agent.Id, _remaining, (int)Move));
         if (Move == ThornheartMove.Pods)
@@ -172,17 +207,60 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
             return;
         }
 
+        // JG-20d rule 4: with a ring up a spoke stops a lane short of where the ring ends — not of
+        // where it is, since a spoke outstands the close and would otherwise cross the lane later.
+        float outer = _ringUp ? MathF.Min(RootOuter, RingRadius - StrafeLane) : RootOuter;
+        int spokes = Spokes;
+        float telegraph = RootTelegraph;
         float jitter = ((_random.NextFloat() * 2f) - 1f) * RootAimJitterDeg * DegToRad;
         float bearing = MathF.Atan2(_aim.Y, _aim.X) + jitter;
-        for (int i = 0; i < RootSpokes; i++)
+        for (int i = 0; i < spokes; i++)
         {
-            float angle = bearing + (i * (2f * MathF.PI / RootSpokes));
+            float angle = bearing + (i * (2f * MathF.PI / spokes));
             var direction = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
             Vector3 origin = _agent.Position + (new Vector3(direction.X, 0f, direction.Y) * RootInner);
 
             // A refused spoke (Open returned 0) is simply skipped; the move keeps its clock (rule 6).
-            _thorns.Open(origin, direction, RootOuter - RootInner, RootHalfWidth,
-                RootTelegraphSeconds, RootStandSeconds, damage * RootDamageScale, ctx.Now);
+            _thorns.Open(origin, direction, outer - RootInner, RootHalfWidth,
+                telegraph, RootStandSeconds, damage * RootDamageScale, ctx.Now);
+        }
+    }
+
+    // JG-20d rules 2–3. The ring is announced on the first tick after the beat (the beat does not
+    // tick the inner behaviour) and closes on this behaviour's own clock, so a stunned boss's ring
+    // holds still and does not bite. Outside it, a pulse every RingPulseSeconds; stepping in resets.
+    private void Strangle(in EnemyTickContext ctx)
+    {
+        if (!_ringUp)
+        {
+            return;
+        }
+
+        if (!_ringAnnounced)
+        {
+            _ringAnnounced = true;
+            ctx.Events.Publish(new StrangleRing(_agent.Id, RingStartRadius, RingRadius, RingCloseSeconds));
+        }
+        else
+        {
+            _ringElapsed += ctx.Dt;
+        }
+
+        float radius = RingRadiusNow;
+        Vector3 player = _agent.Blackboard.PlayerPosition;
+        float x = player.X - _agent.Position.X;
+        float z = player.Z - _agent.Position.Z;
+        if (!((x * x) + (z * z) > radius * radius))
+        {
+            _pulseRemaining = RingPulseSeconds;
+            return;
+        }
+
+        _pulseRemaining -= ctx.Dt;
+        if (_pulseRemaining <= 0f)
+        {
+            _pulseRemaining = RingPulseSeconds;
+            ctx.Player.ApplyDamage(_agent.ContactDamage.Value * RingDamageScale, ctx.Now);
         }
     }
 
@@ -201,9 +279,11 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         }
 
         EnemyRegistry registry = ctx.Enemies.Registry;
-        for (int n = 0; n < PodsPerCast; n++)
+        int pods = PodsThisCast;
+        int cap = AddCap;
+        for (int n = 0; n < pods; n++)
         {
-            if (AddCount + RootlingsPerPod > MaxAdds || registry.AliveCount >= registry.Capacity)
+            if (AddCount + RootlingsPerPod > cap || registry.AliveCount >= registry.Capacity)
             {
                 return;
             }
@@ -284,7 +364,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         EnemyRegistry registry = ctx.Enemies.Registry;
         for (int i = 0; i < RootlingsPerPod; i++)
         {
-            if (registry.AliveCount >= registry.Capacity || _rootlingCount >= MaxAdds)
+            if (registry.AliveCount >= registry.Capacity || _rootlingCount >= PhaseThreeMaxAdds)
             {
                 return;
             }
@@ -341,19 +421,36 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         _exposedRemaining = 0f;
     }
 
+    /// <summary>
+    /// The beat: the armed move drops, the heart closes and every wall withers (JG-20b rule 8);
+    /// from phase 1 the ring reopens wide and closes again (JG-20d rule 2).
+    /// </summary>
     public void OnPhaseEntered(int phase)
     {
+        Phase = phase;
         Move = ThornheartMove.None;
         _recovering = false;
-        _remaining = AttackGapSeconds;
+        _remaining = AttackGap;
         _slamWall = 0;
         CloseHeart();
         _thorns.WitherAll();
+        DropRing();
+        _ringUp = phase >= 1;
+    }
+
+    private void DropRing()
+    {
+        _ringUp = false;
+        _ringAnnounced = false;
+        _ringElapsed = 0f;
+        _pulseRemaining = RingPulseSeconds;
     }
 
     public void Reset()
     {
         CloseHeart();
+        DropRing();
+        Phase = 0;
         _heartEvents = null;
         _slamWall = 0;
         Move = ThornheartMove.None;

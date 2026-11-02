@@ -12,7 +12,10 @@ using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Ai;
 
-/// <summary>JG-20b rules 1–9; the dispatch row lives in BossDispatchTests.</summary>
+/// <summary>
+/// JG-20b rules 1–9; the dispatch row lives in BossDispatchTests and the pods (JG-20c) in
+/// ThornheartPodTests. No open ground is reported here, so every Pods cast plants nothing.
+/// </summary>
 [TestFixture]
 public sealed class ThornheartBehaviourTests
 {
@@ -23,6 +26,13 @@ public sealed class ThornheartBehaviourTests
     private const float Contact = 20f;
     private const float Dt = 0.05f;
     private const float Tolerance = 1e-4f;
+
+    /// <summary>Roots → Pods → Roots → Slam: the slam is the fourth telegraph, after two spoke sets.</summary>
+    private const int SlamTelegraph = 4;
+    private const int SpokesBeforeSlam = 2 * ThornheartBehaviour.RootSpokes;
+
+    private static readonly ContentId Pod = new ContentId("enemy.thorn_pod");
+    private static readonly ContentId Rootling = new ContentId("enemy.rootling");
 
     /// <summary>Far from every wall, so nothing bites unless a row moves the player.</summary>
     private static readonly Vector3 Away = new Vector3(0f, 0f, -40f);
@@ -53,7 +63,7 @@ public sealed class ThornheartBehaviourTests
             bosses: new[] { Boss() });
         _enemies = new EnemySystem(catalog, _events, new FixedRandom(),
             new DepthScaling(Scalings.Design()), Capacity,
-            (agent, _) => new ThornheartBehaviour(agent, _thorns, new FixedRandom().Misc));
+            (agent, _) => new ThornheartBehaviour(agent, _thorns, new FixedRandom().Misc, Pod, Rootling));
         _agent = _enemies.Spawn(new ContentId(BodyId), Vector3.Zero);
         _agent.Blackboard.DirectionToPlayer = Vector2.UnitX;
         _heart = Heart(0.5f);
@@ -77,45 +87,19 @@ public sealed class ThornheartBehaviourTests
         Assert.That(Hit(10f).Applied, Is.GreaterThan(0f), "Never externally invulnerable.");
     }
 
-    // Rule 2.
-    [Test]
-    public void Rotation_RootsSlamAlternate_WithGaps()
-    {
-        var times = new List<float>();
-        var moves = new List<int>();
-        for (int i = 0; i < 400 && times.Count < 4; i++)
-        {
-            int before = _events.Count<EnemyTelegraph>();
-            Step();
-            if (_events.Count<EnemyTelegraph>() > before)
-            {
-                times.Add(_now);
-                moves.Add(_events.Of<EnemyTelegraph>()[before].Move);
-                Assert.That((int)_heart.Move, Is.EqualTo(moves[moves.Count - 1]));
-            }
-        }
-
-        Assert.That(moves, Is.EqualTo(new[] { 1, 2, 1, 2 }));
-        float rootsCycle = ThornheartBehaviour.RootTelegraphSeconds + ThornheartBehaviour.RecoverSeconds
-            + ThornheartBehaviour.AttackGapSeconds;
-        float slamCycle = ThornheartBehaviour.SlamTelegraphSeconds + ThornheartBehaviour.RecoverSeconds
-            + ThornheartBehaviour.AttackGapSeconds;
-        Assert.That(times[0], Is.EqualTo(ThornheartBehaviour.AttackGapSeconds).Within(Dt * 1.5f));
-        Assert.That(times[1] - times[0], Is.EqualTo(rootsCycle).Within(Dt * 3.5f));
-        Assert.That(times[2] - times[1], Is.EqualTo(slamCycle).Within(Dt * 3.5f));
-        Assert.That(times[3] - times[2], Is.EqualTo(rootsCycle).Within(Dt * 3.5f));
-    }
-
+    // Rule 2; the order is Rotation_RootsPodsRootsSlam in ThornheartPodTests.
     [Test]
     public void Telegraphs_PublishKinds()
     {
-        RunUntilTelegraphs(2);
+        RunUntilTelegraphs(SlamTelegraph);
         IReadOnlyList<EnemyTelegraph> telegraphs = _events.Of<EnemyTelegraph>();
         Assert.That(telegraphs[0].Id, Is.EqualTo(_agent.Id));
         Assert.That(telegraphs[0].Move, Is.EqualTo((int)ThornheartMove.Roots));
         Assert.That(telegraphs[0].Duration, Is.EqualTo(ThornheartBehaviour.RootTelegraphSeconds));
-        Assert.That(telegraphs[1].Move, Is.EqualTo((int)ThornheartMove.Slam));
-        Assert.That(telegraphs[1].Duration, Is.EqualTo(ThornheartBehaviour.SlamTelegraphSeconds));
+        Assert.That(telegraphs[1].Move, Is.EqualTo((int)ThornheartMove.Pods));
+        Assert.That(telegraphs[1].Duration, Is.EqualTo(ThornheartBehaviour.PodTelegraphSeconds));
+        Assert.That(telegraphs[3].Move, Is.EqualTo((int)ThornheartMove.Slam));
+        Assert.That(telegraphs[3].Duration, Is.EqualTo(ThornheartBehaviour.SlamTelegraphSeconds));
     }
 
     // Rule 3.
@@ -162,10 +146,10 @@ public sealed class ThornheartBehaviourTests
     [Test]
     public void Slam_BearingFixedAtTelegraph_LengthAndDamage()
     {
-        RunUntilTelegraphs(1);
+        RunUntilTelegraphs(SlamTelegraph - 1);
         _agent.Blackboard.DirectionToPlayer = Vector2.UnitX;
-        RunUntilTelegraphs(2);
-        int roots = ThornheartBehaviour.RootSpokes;
+        RunUntilTelegraphs(SlamTelegraph);
+        int roots = SpokesBeforeSlam;
         _agent.Blackboard.DirectionToPlayer = Vector2.UnitY;
         _playerAt = new Vector3(5f, 0f, 0f);
         _intents.Clear();
@@ -191,7 +175,7 @@ public sealed class ThornheartBehaviourTests
         _playerAt = new Vector3(5f, 0f, 0f);
         RunUntilSlamRises();
         Assert.That(_heart.IsExposed, Is.True, "Opens on the rise's own tick.");
-        Assert.That(_events.Of<ThornRose>()[ThornheartBehaviour.RootSpokes].Hit, Is.True);
+        Assert.That(_events.Of<ThornRose>()[SpokesBeforeSlam].Hit, Is.True);
         HeartExposed open = _events.Single<HeartExposed>();
         Assert.That(open.BossId, Is.EqualTo(_agent.Id));
         Assert.That(open.Open, Is.True);
@@ -211,7 +195,7 @@ public sealed class ThornheartBehaviourTests
     public void Exposed_Miss_StillOpens()
     {
         RunUntilSlamRises();
-        Assert.That(_events.Of<ThornRose>()[ThornheartBehaviour.RootSpokes].Hit, Is.False);
+        Assert.That(_events.Of<ThornRose>()[SpokesBeforeSlam].Hit, Is.False);
         Assert.That(_heart.IsExposed, Is.True);
         Assert.That(_agent.DamageTaken.Value, Is.EqualTo(ThornheartBehaviour.ExposedDamageTaken).Within(Tolerance));
     }
@@ -230,7 +214,7 @@ public sealed class ThornheartBehaviourTests
         Assert.That(_events.Count<ThornArmed>() - filler, Is.EqualTo(1), "Two spokes refused.");
 
         RunUntilTelegraphs(2);
-        Assert.That(_events.Of<EnemyTelegraph>()[1].Move, Is.EqualTo((int)ThornheartMove.Slam), "The rotation ran on.");
+        Assert.That(_events.Of<EnemyTelegraph>()[1].Move, Is.EqualTo((int)ThornheartMove.Pods), "The rotation ran on.");
     }
 
     // Rule 7, through the census that skips a stunned boss.
@@ -242,7 +226,7 @@ public sealed class ThornheartBehaviourTests
         _agent.Blackboard.DirectionToPlayer = Vector2.UnitX;
         _heart = (ThornheartBehaviour)((BossBehaviour)_agent.Behaviour).Inner;
 
-        RunUntilTelegraphs(2, census: true);
+        RunUntilTelegraphs(SlamTelegraph, census: true);
         Assert.That(_heart.Move, Is.EqualTo(ThornheartMove.Slam));
         float slamAt = _now;
         Assert.That(_enemies.Stun(_agent.Id, 4f), Is.True);
@@ -269,7 +253,7 @@ public sealed class ThornheartBehaviourTests
         RunUntil(() => !_heart.IsExposed, census: true);
         Assert.That(_now - openedAt, Is.GreaterThan(ThornheartBehaviour.ExposedSeconds + 1f), "The exposed clock paused.");
 
-        RunUntilTelegraphs(3, census: true);
+        RunUntilTelegraphs(SlamTelegraph + 1, census: true);
         float slamCycle = ThornheartBehaviour.SlamTelegraphSeconds + ThornheartBehaviour.RecoverSeconds
             + ThornheartBehaviour.AttackGapSeconds;
         Assert.That(_now - slamAt, Is.GreaterThan(slamCycle + 2f), "The rotation paused through both stuns.");
@@ -313,7 +297,7 @@ public sealed class ThornheartBehaviourTests
     {
         var silent = new SilentEvents();
         var thorns = new ThornSystem(silent);
-        var heart = new ThornheartBehaviour(_agent, thorns, new FixedRandom().Misc);
+        var heart = new ThornheartBehaviour(_agent, thorns, new FixedRandom().Misc, Pod, Rootling);
         float now = 0f;
         Action step = () =>
         {
@@ -360,12 +344,12 @@ public sealed class ThornheartBehaviourTests
     private void RunUntilTelegraphs(int count, bool census = false) =>
         RunUntil(() => _events.Count<EnemyTelegraph>() >= count, census);
 
-    private void RunUntilSlamRises() => RunUntil(() => RoseCount() > ThornheartBehaviour.RootSpokes);
+    private void RunUntilSlamRises() => RunUntil(() => RoseCount() > SpokesBeforeSlam);
 
     private int RoseCount() => _events.Count<ThornRose>();
 
     private ThornheartBehaviour Heart(float draw) =>
-        new ThornheartBehaviour(_agent, _thorns, new FixedRandom(draw).Misc);
+        new ThornheartBehaviour(_agent, _thorns, new FixedRandom(draw).Misc, Pod, Rootling);
 
     private DamageResult Hit(float damage) => _enemies.ApplyDamage(_agent.Id, damage, _now, _player);
 

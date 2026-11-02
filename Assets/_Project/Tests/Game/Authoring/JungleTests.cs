@@ -626,7 +626,7 @@ public sealed class JungleTests
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
 
         Assert.That(jungle.TryGetScriptedStage(15, out _), Is.False, "Stage 15 is the Mossguard Warlord's.");
-        Assert.That(jungle.TryGetScriptedStage(20, out _), Is.False, "Stage 20 keeps its boss slot.");
+        Assert.That(jungle.TryGetScriptedStage(20, out _), Is.False, "Stage 20 is Thornheart's.");
     }
 
     [Test]
@@ -844,6 +844,7 @@ public sealed class JungleTests
                 {
                     10 => "boss.mother_pitcher",
                     15 => "boss.mossguard_warlord",
+                    20 => "boss.thornheart",
                     _ => "boss.croaker",
                 }), $"Stage {stage}");
             }
@@ -1168,9 +1169,10 @@ public sealed class JungleTests
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(BloaterPath)), "Descent still rosters the Bloater's capsule.");
 
         // Every bodied archetype the catalog lists is prewarmed to a pool of DeviceEnemyCap + 1 at
-        // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode.
-        Assert.That(listed, Has.No.Member(Load<EnemyDefinition>(RootlingPath)),
-            "The Rootling is listed but no mode rosters it, so a run builds 29 of its bodies for nothing.");
+        // every Run load, rostered or not (M7-05g). The Rootling is rostered by no mode, but
+        // Thornheart's ripe pods grow it (JG-20h), so the catalog must hold it.
+        Assert.That(listed, Does.Contain(Load<EnemyDefinition>(RootlingPath)),
+            "Thornheart's pods summon Rootlings; a catalog without one throws mid-fight.");
     }
 
     /// <summary><c>enemy.frog</c> → <c>Frog</c>: an asset's file name is its id's last segment.</summary>

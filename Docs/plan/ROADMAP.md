@@ -97,7 +97,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-20e** — Thorn walls in Unity: warned strip, a wall that blocks only you (M)
 - [x] **JG-20f** — The model: strangler tree, glowing heart, thorn pod (M)
 - [x] **JG-20g** — The body: tells, lit heart, ripening pods, the ring (M)
-- [ ] **JG-20h** — Stage 20 is Thornheart's: data, pod, roster ([spec](tasks/JG-20h-thornheart-stage-20.md)) (M)
+- [x] **JG-20h** — Stage 20 is Thornheart's: data, pod, roster (M)
 
 **Stages 21–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced one block at a time, after stage 20 is built and played. Titles only.
 

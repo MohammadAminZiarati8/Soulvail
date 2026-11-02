@@ -554,6 +554,10 @@ MonoBehaviour:
     _text: Pitcher Bud
   - _key: enemy.mossguard_warlord.name
     _text: Mossguard Warlord
+  - _key: enemy.thornheart.name
+    _text: Thornheart
+  - _key: enemy.thorn_pod.name
+    _text: Thorn Pod
   - _key: path.ranger.marksman.name
     _text: Marksman
   - _key: path.ranger.marksman.description

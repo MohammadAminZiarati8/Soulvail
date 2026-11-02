@@ -600,6 +600,10 @@ MonoBehaviour:
     _text: "[P\xEEt\xE7h\xE9r B\xFBd \xB7\xB7\xB7\xB7]"
   - _key: enemy.mossguard_warlord.name
     _text: "[M\xF4ssg\xFB\xE1rd W\xE1rl\xF4rd \xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: enemy.thornheart.name
+    _text: "[Thôrñhéárt ····]"
+  - _key: enemy.thorn_pod.name
+    _text: "[Thôrñ Pôd ····]"
   - _key: path.ranger.marksman.name
     _text: "[M\xE1rksm\xE1\xF1 \xB7\xB7\xB7]"
   - _key: path.ranger.marksman.description

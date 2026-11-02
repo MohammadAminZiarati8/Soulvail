@@ -2,31 +2,31 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-20g._
+_Updated 2026-11-03, JG-20h._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20g**: Thornheart's body. |
-| **Next task** | Owner's pick: JG-20h (stage 20) or a poison source. Gravemaw parked at 25. |
-| **Verified** | EditMode 5 290: 5 289 pass, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **JG-20h**: stage 20 is Thornheart's. |
+| **Next task** | Owner's pick: a poison source, or Gravemaw (JG-25a) for stage 25. |
+| **Verified** | EditMode 5 297: 5 296 pass, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
-Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
+Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
 Stages 1–14, 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds: no XP.
-Thornheart (no stage): spokes, pods, slam, heart ×2; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
+Thornheart (stage 20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart while exposed, pod rings fill, band 17→11 m; walls warn, rise, block.
-Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, beats.
+Mother: facing shields, lobs, blocked spray/goo, pods → Frogs.
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.
-Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 m,
+Moss Shaman: never attacks, anchors on a Mossguard within 12 m, holds at 11 m,
 heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
 expires and stacks with slow. Faces its path, the player when still; walks under 1.2 m/s, runs above.
-Fitted body/staff, clips, seed glow, lime ring, healed bars, haste chevrons; pooled.
+Fitted body/staff, clips, seed glow, lime ring, haste chevrons.
 Stage 17: healer/guards; 18: the healer's wall; 19: the gate, two Shamans. XP 32, priority 8.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
@@ -38,7 +38,7 @@ KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain m
 
 ## What does not work yet
 
-1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19; stage 20 unscripted.
+1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
 3. Past ~26 late waves are all Bloaters/Puffballs.
 4. No audio, Elites, feel pass or second language.

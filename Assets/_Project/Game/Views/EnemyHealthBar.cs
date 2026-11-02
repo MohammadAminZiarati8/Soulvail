@@ -1,11 +1,10 @@
 using System;
-using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
-using Soulvail.Core.Content;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Controls;
 using Soulvail.Game.Presentation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -88,6 +87,22 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private static readonly Quaternion FacingCamera = Quaternion.Euler(57f, 0f, 0f);
 
+        private const int SlotCount = EnemyStatusRow.EliteShown;
+
+        /// <summary>"0".."99", built once so a stack count never formats a string at draw time.</summary>
+        private static readonly string[] StackLabels = BuildStackLabels();
+
+        private static string[] BuildStackLabels()
+        {
+            var labels = new string[100];
+            for (int i = 0; i < labels.Length; i++)
+            {
+                labels[i] = i.ToString();
+            }
+
+            return labels;
+        }
+
         [Tooltip("The bar's root, on the child canvas above the body. Its alpha is the fade and its " +
                  "rect is what gets sized; nothing else is written to it.")]
         [SerializeField] private CanvasGroup _root;
@@ -168,28 +183,22 @@ namespace Soulvail.Game.Views
         private bool _oriented;
 
         private bool _injected;
-        private readonly Image[] _statusIcons = new Image[4];
-        private readonly Image[] _statusSweeps = new Image[4];
-        private readonly float[] _statusRemaining = new float[4];
-        private readonly float[] _statusDuration = new float[4];
-        private readonly bool[] _statuses = new bool[4];
+        private readonly EnemyStatusRow _row = new();
+        private readonly Image[] _statusIcons = new Image[SlotCount];
+        private readonly Image[] _statusSweeps = new Image[SlotCount];
+        private readonly TMP_Text[] _statusStacks = new TMP_Text[SlotCount];
+        private StatusIconBook _book;
         private IDisposable _statusSubscription;
         private IDisposable _deathSubscription;
         private float _statusPx = 1f;
-        private bool HasStatuses => _statuses[0] || _statuses[1] || _statuses[2] || _statuses[3];
+        private bool HasStatuses => _row.Count > 0;
 
-        public Image StatusIcon(ContentId status) => _statusIcons[Slot(status)];
-        public Image StatusSweep(ContentId status) => _statusSweeps[Slot(status)];
+        /// <summary>The icon drawn at <paramref name="rank"/>: 0 is the first, the one a basic enemy shows.</summary>
+        public Image StatusIcon(int rank) => _statusIcons[rank];
 
-        private static int Slot(ContentId status) => status.Value switch
-        {
-            EnemyStatuses.StunnedKey => 0,
-            EnemyStatuses.RootedKey => 1,
-            EnemyStatuses.SlowedKey => 2,
-            EnemyStatuses.HastedKey => 3,
-            _ => -1,
-        };
+        public Image StatusSweep(int rank) => _statusSweeps[rank];
 
+        public TMP_Text StatusStacks(int rank) => _statusStacks[rank];
 
         public void ConfigureStatuses(StatusIconBook icons, Sprite sweep)
         {
@@ -197,34 +206,19 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-            string[] keys = { "status.enemy.stunned", "status.enemy.rooted", "status.enemy.slowed", "status.enemy.hasted" };
+
+            _book = icons;
             _statusPx = PixelsPerDp();
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < SlotCount; i++)
             {
-                var icon = new GameObject(keys[i], typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                var icon = new GameObject("Status " + i, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 icon.transform.SetParent(_root.transform, false);
-                icon.sprite = i == 3 ? null : icons != null ? icons.For(new ContentId(keys[i])) : sweep;
-                icon.color = i == 3 ? Color.clear : Color.white;
-                if (i == 3)
-                {
-                    for (int side = 0; side < 2; side++)
-                    {
-                        var stroke = new GameObject("Haste chevron", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                        stroke.transform.SetParent(icon.transform, false);
-                        stroke.color = new Color(.75f, .9f, .38f, 1f);
-                        stroke.raycastTarget = false;
-                        stroke.rectTransform.sizeDelta = new Vector2(8f, 2.5f);
-                        stroke.rectTransform.anchoredPosition = new Vector2(side == 0 ? -2.5f : 2.5f, 0f);
-                        stroke.rectTransform.localRotation = Quaternion.Euler(0f, 0f, side == 0 ? 45f : -45f);
-                    }
-                }
+                icon.color = Color.white;
                 icon.raycastTarget = false;
                 var mask = new GameObject("Sweep", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 mask.transform.SetParent(icon.transform, false);
                 mask.sprite = sweep;
                 mask.color = new Color(Palette.Ink.r, Palette.Ink.g, Palette.Ink.b, 0.65f);
-                if (i == 3)
-                { mask.color = Color.clear; }
                 mask.type = Image.Type.Filled;
                 mask.fillMethod = Image.FillMethod.Radial360;
                 mask.fillOrigin = (int)Image.Origin360.Top;
@@ -233,33 +227,39 @@ namespace Soulvail.Game.Views
                 mask.rectTransform.anchorMin = Vector2.zero;
                 mask.rectTransform.anchorMax = Vector2.one;
                 mask.rectTransform.sizeDelta = Vector2.zero;
+                var label = new GameObject("Stacks", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+                label.transform.SetParent(icon.transform, false);
+                label.alignment = TextAlignmentOptions.BottomRight;
+                label.textWrappingMode = TextWrappingModes.NoWrap;
+                label.fontSize = 9f * _statusPx;
+                label.color = Color.white;
+                label.raycastTarget = false;
+                label.rectTransform.anchorMin = Vector2.zero;
+                label.rectTransform.anchorMax = Vector2.one;
+                label.rectTransform.sizeDelta = Vector2.zero;
+                label.gameObject.SetActive(false);
                 _statusIcons[i] = icon;
                 _statusSweeps[i] = mask;
+                _statusStacks[i] = label;
                 icon.gameObject.SetActive(false);
             }
         }
 
         public void ClearStatuses()
         {
-            for (int i = 0; i < 4; i++)
-            {
-                _statuses[i] = false;
-                _statusRemaining[i] = 0f;
-                _statusDuration[i] = 0f;
-            }
+            _row.Clear();
             DrawStatuses();
             Draw();
         }
 
         private void OnStatusChanged(EnemyStatusChanged evt)
         {
-            int i = Slot(evt.Status);
-            if (_id == EnemyView.Unbound || evt.EnemyId != _id || (uint)i >= 4u)
+            if (_id == EnemyView.Unbound || evt.EnemyId != _id)
             {
                 return;
             }
-            _statuses[i] = evt.Seconds > 0f;
-            _statusRemaining[i] = _statusDuration[i] = Mathf.Max(0f, evt.Seconds);
+
+            _row.Apply(in evt);
             DrawStatuses();
             Draw();
         }
@@ -274,35 +274,60 @@ namespace Soulvail.Game.Views
 
         private void DrawStatuses()
         {
-            int count = 0;
-            for (int i = 0; i < 4; i++)
-            {
-                if (_statuses[i])
-                {
-                    count++;
-                }
-            }
+            int shown = IsShown ? _row.Shown(_isElite) : 0;
             float px = _statusPx;
-            int slot = 0;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < SlotCount; i++)
             {
                 Image icon = _statusIcons[i];
                 if (icon == null)
                 {
                     continue;
                 }
-                icon.gameObject.SetActive(_statuses[i] && IsShown);
-                if (!_statuses[i])
+
+                bool on = i < shown;
+                if (icon.gameObject.activeSelf != on)
+                {
+                    icon.gameObject.SetActive(on);
+                }
+
+                if (!on)
                 {
                     continue;
                 }
+
+                Sprite sprite = _book != null ? _book.For(_row.RuleAt(i).Id) : null;
+                if (icon.sprite != sprite)
+                {
+                    icon.sprite = sprite;
+                }
+
                 RectTransform rect = icon.rectTransform;
                 rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
                 rect.pivot = new Vector2(0.5f, 0f);
                 rect.sizeDelta = Vector2.one * (14f * px);
-                rect.anchoredPosition = new Vector2((slot++ - (count - 1) * 0.5f) * 16f, 2f) * px;
-                _statusSweeps[i].fillAmount = _statusDuration[i] > 0f
-                    ? Mathf.Clamp01(_statusRemaining[i] / _statusDuration[i]) : 0f;
+                rect.anchoredPosition = new Vector2((i - (shown - 1) * 0.5f) * 16f, 2f) * px;
+                float fill = _row.FillAt(i);
+                if (!Mathf.Approximately(_statusSweeps[i].fillAmount, fill))
+                {
+                    _statusSweeps[i].fillAmount = fill;
+                }
+
+                int stacks = _row.StacksAt(i);
+                TMP_Text label = _statusStacks[i];
+                bool counted = stacks > 1;
+                if (label.gameObject.activeSelf != counted)
+                {
+                    label.gameObject.SetActive(counted);
+                }
+
+                if (counted)
+                {
+                    string text = StackLabels[stacks < StackLabels.Length ? stacks : StackLabels.Length - 1];
+                    if (!ReferenceEquals(label.text, text))
+                    {
+                        label.text = text;
+                    }
+                }
             }
         }
 
@@ -484,10 +509,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            for (int i = 0; i < 4; i++)
-            {
-                _statusRemaining[i] = Mathf.Max(0f, _statusRemaining[i] - dt);
-            }
+            _row.Step(dt);
             DrawStatuses();
 
             float drainDt = Mathf.Max(0f, dt - _ghostHoldRemaining);

@@ -80,7 +80,7 @@ _No milestone. The owner is setting the next direction._
 **Buffs and debuffs** (owner, 2026-11-02; design [GD §16.5](../GameDesign.md)). Statuses get an identity and a side; heal stays an effect. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (ST-02 and ST-03a may swap). Playtestable from ST-03b with the debug overlay's Poison key; a poison source in play is the owner's pick.
 
 - [x] **ST-01** — Enemy statuses get an id, a side and a priority; the enum goes (M)
-- [ ] **ST-02** — The enemy bar's row: by id, debuffs first, one icon on basic enemies, four on Elites ([spec](tasks/ST-02-status-row.md)) (M)
+- [x] **ST-02** — The enemy bar's row: by id, debuffs first, one icon on basic enemies, four on Elites (M)
 - [ ] **ST-03a** — Poison in core: capped stacks, one timer, pulses through the damage door ([spec](tasks/ST-03a-poison-core.md)) (M)
 - [ ] **ST-03b** — Poison drawn: bubbles on the body, a drop on the bar ([spec](tasks/ST-03b-poison-drawn.md)) (S)
 - [ ] ST-04 — Regen: heal over time as a buff (titles only from here)

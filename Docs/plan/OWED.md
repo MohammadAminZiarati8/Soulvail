@@ -139,3 +139,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-16j (2026-11-02): Shaman Hit, Cast and Death rebuilt (supersedes the "still carry flips" note above). At Jungle 17, hit the Shaman, let it cast near a Mossguard, and kill it: the staff should never jump out of the hand at the start of any of the three, and the cast should raise the seed above the head smoothly.
 
 - ST-01 (2026-11-02): enemy statuses are now ids. In a run, press the debug Stun, Root and Slow buttons on an enemy and let the Shaman haste an ally: sparks, vines, frost and the haste chevron should show and clear as before, and a stunned enemy should free its binding chain.
+
+- ST-02 (2026-11-02): the enemy bar's status row. Stage 17: debug-stun a hasted Mossguard: one stun icon over the bar, and when the stun ends the new lime hasted chevron returns. Debug-slow a Frog: frost on the body and one slow icon draining over 3 s. Check the hasted icon reads at phone size.

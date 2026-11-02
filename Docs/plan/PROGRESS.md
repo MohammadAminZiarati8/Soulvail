@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, ST-01._
+_Updated 2026-11-02, ST-02._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **ST-01**: enemy statuses are ids with a side, priority and boss scale; the enum is gone. |
-| **Next task** | **ST-02** (status row order and icons) on the owner's go. Stage 20 undecided. |
-| **Verified** | EditMode 5 181: 5 180 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **ST-02**: the enemy bar draws statuses by id, debuffs first; one icon on a basic enemy, four on an Elite, stack counts above 1. |
+| **Next task** | **ST-03a** (poison in core) on the owner's go. Stage 20 undecided. |
+| **Verified** | EditMode 5 193: 5 192 pass, 0 fail, 1 known inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 
@@ -25,7 +25,7 @@ Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 
 heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
 expires and stacks with slow. Faces its path, the player when still; walks under 1.2 m/s, runs above.
 Repaired body/staff, source textures, fitted KayKit rig, own walk/run/hit/cast/death, seed glow, lime ring, healed bars, haste chevrons; pooled.
-Stage 17: healer/guards; 18: the healer's wall; 19: the gate, two Shamans. XP 32, priority 8. Full-detail mobile cost unmeasured.
+Stage 17: healer/guards; 18: the healer's wall; 19: the gate, two Shamans. XP 32, priority 8.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
 Clash UI; LocKey strings. All 22 Marksman ranks from level 11, all skills authored/drawn.

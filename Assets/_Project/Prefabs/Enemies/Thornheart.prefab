@@ -62,13 +62,37 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1350838798255331985, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9045771713673397524}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1747012703412578570, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1884959378277872556}
   m_SourcePrefab: {fileID: 100100000, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
 --- !u!4 &8215776611034302767 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1350838798255331985, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   m_PrefabInstance: {fileID: 6970281356395451326}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8684570909064493748 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1747012703412578570, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+  m_PrefabInstance: {fileID: 6970281356395451326}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1884959378277872556
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8684570909064493748}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e883abf0516bde347a1eedd6abaac068, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ThornheartView
+  _animator: {fileID: 3128072815202951022}
+  _heart: {fileID: 3693142137154173427}
+  _ringPrefab: {fileID: 4446971861099884827, guid: 55de9be45d932524a8a3d4610c86d9b6, type: 3}
+  _ripenPrefab: {fileID: 8646990255422389962, guid: be2931fd350221e40b5dab891db05fb2, type: 3}
 --- !u!1001 &8792064476271272703
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -145,6 +169,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: ea0749ab7c6fb0c47bbdd14722a809f9, type: 2}
+    - target: {fileID: 5866666021909216657, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 76e1daed66ce1d148b7730e022bb3e84, type: 2}
     - target: {fileID: 7640575629648568210, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -152,8 +180,46 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1856982580283124348}
   m_SourcePrefab: {fileID: 100100000, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+--- !u!95 &3128072815202951022 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+  m_PrefabInstance: {fileID: 8792064476271272703}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &3693142137154173427 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 5279095331347438348, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+  m_PrefabInstance: {fileID: 8792064476271272703}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8557641793397055406 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f5719f1334d8f1946ad96107d091442b, type: 3}
+  m_PrefabInstance: {fileID: 8792064476271272703}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1856982580283124348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557641793397055406}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e8a00dd2ec3ba84e875c662011675a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyAnimatorView
+  _animator: {fileID: 3128072815202951022}
+  _strideSpeed: 0.37
+  _windupFromSeconds: 0.1
+  _strikeSeconds: 0.5
+  _hops: 0
+  _releaseAtClipSpeed: 1
+  _runBaseSpeed: 0
+  _runStrideSpeed: 0
 --- !u!4 &9045771713673397524 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f5719f1334d8f1946ad96107d091442b, type: 3}

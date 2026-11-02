@@ -58,7 +58,7 @@ public sealed class TelegraphRingsTests
     /// </summary>
     private const string TelegraphMaterialPath = "Assets/_Project/Materials/M_TelegraphRing.mat";
 
-    /// <summary>Where the six live, walked by <see cref="Telegraph_SixPrefabsShareOneMaterial"/>.</summary>
+    /// <summary>Where the family lives, walked by <see cref="Telegraph_FamilySharesOneMaterial"/>.</summary>
     private const string VfxPrefabFolder = "Assets/_Project/Prefabs/Vfx";
 
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -665,9 +665,11 @@ public sealed class TelegraphRingsTests
     /// sits in the same folder and carries <c>M_DecoyCyan.mat</c>, so a body that is not a telegraph
     /// does not inherit the telegraph's tuning. <c>VFX_SprayCone</c> left the family at JG-13g: its
     /// layered fan is drawn in vertex colour, which wants <c>M_SprayCone</c>'s particle shader.
+    /// <c>FX_PodRipen</c> joined at JG-20g: a pod's ripening ring fills toward its burst, which is
+    /// a spawn telegraph's promise exactly, so it reads in the same ring.
     /// </remarks>
     [Test]
-    public void Telegraph_SixPrefabsShareOneMaterial()
+    public void Telegraph_FamilySharesOneMaterial()
     {
         string materialGuid = AssetDatabase.AssetPathToGUID(TelegraphMaterialPath);
 
@@ -677,6 +679,7 @@ public sealed class TelegraphRingsTests
         {
             "VFX_TelegraphRing", "VFX_Shockwave", "VFX_Fissure",
             "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
+            "FX_PodRipen", "FX_PodRipen",
         };
 
         var found = new List<string>();

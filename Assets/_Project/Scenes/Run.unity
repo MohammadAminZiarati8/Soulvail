@@ -1009,6 +1009,7 @@ MonoBehaviour:
   _sprayConePrefab: {fileID: 1019352675881933244, guid: b407c5e17703e994bb5232612cdcd589, type: 3}
   _sprayBurstPrefab: {fileID: 8712668048788630546, guid: de4cada5bc1b01748a21345f65cf63b0, type: 3}
   _seedPodPrefab: {fileID: 250933443141460476, guid: 4cd59dc5523fe7c4c85bd810899524ad, type: 3}
+  _thornWallPrefab: {fileID: 7873233084408181980, guid: 5013d46234db0034891c5cd59106106a, type: 3}
   _cameraShake: {fileID: 1167978319}
   _arenaPrefabs:
   - {fileID: 5018997994959263211, guid: f268a216b371723429a00b60c43d2bda, type: 3}

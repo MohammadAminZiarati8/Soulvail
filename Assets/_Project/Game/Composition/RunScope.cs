@@ -294,6 +294,11 @@ namespace Soulvail.Game.Composition
         [SerializeField] private SprayBurstView _sprayBurstPrefab;
         [SerializeField] private SeedPodView _seedPodPrefab;
 
+        [Tooltip("Thornheart's thorn wall (JG-20e): warning strip, rising bramble, and a Cover " +
+                 "collider that stops the player but not enemies. Optional — without it walls " +
+                 "still bite in core but nothing stands in the arena.")]
+        [SerializeField] private GameObject _thornWallPrefab;
+
         [Tooltip("The shake on this scene's camera, kicked by every slam's landing (JG-06b). " +
                  "Optional — without it the camera never shakes.")]
         [SerializeField] private CameraShake _cameraShake;
@@ -1022,6 +1027,15 @@ namespace Soulvail.Game.Composition
             builder.Register<CoverViews>(Lifetime.Scoped)
                 .WithParameter("parent", _decalRoot);
 
+            // Thorn walls (JG-20e): prewarmed to ThornSystem.Capacity under their own inactive
+            // root, parented under the decal root rather than the arena for DecoyViews' reason.
+            if (_thornWallPrefab != null)
+            {
+                builder.Register<ThornWallViews>(Lifetime.Scoped)
+                    .WithParameter("wallPrefab", _thornWallPrefab)
+                    .WithParameter("parent", _decalRoot);
+            }
+
             builder.Register<OpenGroundSense>(Lifetime.Scoped)
                 .WithParameter("cover", _coverLayer);
 
@@ -1053,6 +1067,11 @@ namespace Soulvail.Game.Composition
                 .WithParameter("bossViews", resolver =>
                 {
                     resolver.Resolve<CoverViews>();
+                    if (_thornWallPrefab != null)
+                    {
+                        resolver.Resolve<ThornWallViews>();
+                    }
+
                     return resolver.Resolve<BossViews>();
                 });
         }

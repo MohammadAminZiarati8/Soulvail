@@ -2,34 +2,35 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-20d._
+_Updated 2026-11-03, JG-20e._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20d**: Thornheart's ring from 66 %, faster grove from 33 %. |
-| **Next task** | Owner's pick: JG-20e, g, h or a poison source. Gravemaw parked at 25. |
-| **Verified** | EditMode 5 276: 5 275 pass, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **JG-20e**: thorn walls in Unity. |
+| **Next task** | Owner's pick: JG-20g, h or a poison source. Gravemaw parked at 25. |
+| **Verified** | EditMode 5 284: 5 283 pass, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
-Stages 1–14 and 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
+Stages 1–14, 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds: no XP.
 Thorn walls; core Thornheart: spokes, pods, slam, heart ×2; 66 % ring bites outside, 3 m lane, 4 spokes; 33 % faster, 3 pods. No body/stage.
-Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
+Walls drawn: Danger strip, rise, Cover box enemies pass, solid once clear.
+Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, beats.
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.
 Moss Shaman: never attacks, prefers a Mossguard anchor within 12 m, holds at 11 m,
 heals 10% max HP and hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
 expires and stacks with slow. Faces its path, the player when still; walks under 1.2 m/s, runs above.
-Repaired body/staff, fitted KayKit rig, own clips, seed glow, lime ring, healed bars, haste chevrons; pooled.
+Fitted body/staff, own clips, seed glow, lime ring, healed bars, haste chevrons; pooled.
 Stage 17: healer/guards; 18: the healer's wall; 19: the gate, two Shamans. XP 32, priority 8.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; first arrow ~¼ s after stopping.
 Levels bank points; paused tree picks. Death pays Shards. Run/profile save v5; older saves load.
-Clash UI; LocKey strings. All 22 Marksman ranks from lvl 11, authored/drawn.
+Clash UI; LocKeys. All 22 Marksman ranks from lvl 11, authored/drawn.
 Tree preview/choice, rank pips and Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles/haptics; 0.5 s auto gap; mirrored option. Legacy saves expand to six.
 Player status icons; pooled enemy CC, bosses half duration; poison bubbles, drop icon. Marksman forest look, cyan trim,

@@ -1,4 +1,6 @@
-# JG-20g — Stage 20 is Gravemaw's: data, ruins, roster, the script
+# JG-25g — Stage 20 is Gravemaw's: data, ruins, roster, the script
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** JG-20f · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1 rules 5, 6, §9.2; AR §18.1; JG-15g's shape; M4-01b (a boss stage has no director waves)

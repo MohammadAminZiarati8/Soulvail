@@ -1,4 +1,6 @@
-# JG-20e — Gravemaw's model: a giant burrower with a maw, on a rig the owner picks
+# JG-25e — Gravemaw's model: a giant burrower with a maw, on a rig the owner picks
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** the owner's rig answer (open question 1) · **Branch:** `dev` (direct)
 **Design refs:** GD §17.1; colour law (`Palette.Player` cyan is the player's alone, `Palette.Danger` is telegraphs'); art source ruling

@@ -88,12 +88,22 @@ _No milestone. The owner is setting the next direction._
 - [ ] ST-06 — Stat-down debuffs: weaken, armour break
 - [ ] ST-07 — A status row under the boss bar, once a boss carries one
 
-**Gravemaw, stage 20's boss** (owner, 2026-11-01 deferral, 2026-11-02 skills; design [GD §9.2](../GameDesign.md)). A burrower that surfaces under your predicted position and throws you clear of the ring. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (20e needs the owner's rig answer and may go any time before 20f). Playtestable from JG-20g with DT-01's test start at stage 20.
+**Thornheart, stage 20's boss** (owner, 2026-11-02; design [GD §9.2](../GameDesign.md)). A strangler tree rooted in the centre, always shootable: thorn spokes that block only the player, a slam that bares its heart, seed pods that grow Rootlings unless shot, a thorn ring closing in from 66 %. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (20e after 20a, 20f any time before 20g). Playtestable from JG-20h with DT-01's test start at stage 20.
 
-- [ ] **JG-20a** — Gravemaw in core: burrow chase, predicted ring, eruption, 4 s window ([spec](tasks/JG-20a-gravemaw-in-core.md)) (M)
-- [ ] **JG-20b** — The eruption's throw: ring-exit probe and a forced player move ([spec](tasks/JG-20b-gravemaw-throw.md)) (M)
-- [ ] **JG-20c** — Tremor the roll answers, and rock spit while surfaced ([spec](tasks/JG-20c-gravemaw-tremor-and-spit.md)) (M)
-- [ ] **JG-20d** — Phase 2 at 50 %: double surface, Frogs from cracks ([spec](tasks/JG-20d-gravemaw-phase-two.md)) (M)
-- [ ] **JG-20e** — The model: a giant burrower with a maw, seven clips ([spec](tasks/JG-20e-gravemaw-model.md)) (M)
-- [ ] **JG-20f** — The body: buried trail, filling ring, rise, lit maw, cracks ([spec](tasks/JG-20f-gravemaw-body.md)) (M)
-- [ ] **JG-20g** — Stage 20 is his: data, ruins, roster, the script ([spec](tasks/JG-20g-gravemaw-stage-20.md)) (M)
+- [ ] **JG-20a** — Thorn walls in core: arm, bite, stand, wither ([spec](tasks/JG-20a-thorn-walls-in-core.md)) (M)
+- [ ] **JG-20b** — Thornheart in core: rooted, spokes, the slam that bares its heart ([spec](tasks/JG-20b-thornheart-in-core.md)) (M)
+- [ ] **JG-20c** — Seed pods: a kill race that grows Rootlings ([spec](tasks/JG-20c-thornheart-seed-pods.md)) (M)
+- [ ] **JG-20d** — Phases: the strangling ring at 66 %, a faster grove at 33 % ([spec](tasks/JG-20d-thornheart-phases.md)) (M)
+- [ ] **JG-20e** — Thorn walls in Unity: warned strip, a wall that blocks only you ([spec](tasks/JG-20e-thorn-walls-in-unity.md)) (M)
+- [ ] **JG-20f** — The model: strangler tree, glowing heart, thorn pod ([spec](tasks/JG-20f-thornheart-model.md)) (M)
+- [ ] **JG-20g** — The body: tells, lit heart, ripening pods, the ring ([spec](tasks/JG-20g-thornheart-body.md)) (M)
+- [ ] **JG-20h** — Stage 20 is Thornheart's: data, pod, roster ([spec](tasks/JG-20h-thornheart-stage-20.md)) (M)
+
+**Stages 21–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced one block at a time, after stage 20 is built and played. Titles only.
+
+- [ ] JG-21 — The cousins: Bullfrog, Shadow panther, Thorn pitcher, Chain bomber; the easy four leave the waves
+- [ ] JG-22 — Chameleon stalker (the Revenant's role)
+- [ ] JG-24 — Thornweaver, on `ThornSystem`
+- [ ] JG-25 — Gravemaw at stage 25 (parked specs JG-25a–g, revise first: [a](tasks/JG-25a-gravemaw-in-core.md) · [b](tasks/JG-25b-gravemaw-throw.md) · [c](tasks/JG-25c-gravemaw-tremor-and-spit.md) · [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
+- [ ] JG-27 — Lizard skirmisher squad (first cut if short)
+- [ ] JG-30 — The Apex, the Jungle's last boss

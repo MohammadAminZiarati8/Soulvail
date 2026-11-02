@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, ST-03a._
+_Updated 2026-11-02, Thornheart specs._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-11-02, ST-03a._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **ST-03a**: poison in core. 5 stacks max, one timer; pulses 0.5 s via the damage door; debug Poison button; no icon. |
-| **Next task** | **ST-03b** on the owner's go. Gravemaw: JG-20a-g. |
+| **Next task** | **ST-03b** on the owner's go. Thornheart: JG-20a–h (20f: TRELLIS). Gravemaw parked at 25. |
 | **Verified** | EditMode 5 206: 5 205 pass, 0 fail, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works

@@ -298,6 +298,8 @@ New enemies arrive one at a time, in a wave where they're the *only* new thing.
 
 *Owner, 2026-11-01:* in the Jungle the Choir's role is the **Moss Shaman**, met at stage 17 (JG-16); the Revenant's waits for a later place.
 
+*Owner, 2026-11-02, overriding the 21+ row for the Jungle:* after stage 20 the Frog, Panther, Pitcher and bombers (Bloater/Puffball) leave the waves and appear only as boss adds and Elites. Each is replaced by a harder cousin on the same model — **Bullfrog** (leap gap-closer), **Shadow panther** (hunts in pairs, one flanks), **Thorn pitcher** (3-shot fan or ringed lobs), **Chain bomber** (death sets off nearby bombers). Three new archetypes: **Chameleon stalker** (22, the Revenant's role: invisible while still, strikes from behind), **Thornweaver** (24, plants short thorn walls on Thornheart's `ThornSystem`), **Lizard skirmisher squad** (27, one pins, two flank; kill the leader and they scatter). If the budget is short, the squad is cut first.
+
 By stage 21 the player knows the full vocabulary. Everything after is composition, density, and modifiers. **This is deliberate**: an endless game can't ship endless content, so depth must come from interaction between known parts.
 
 ### 8.3 Elites and affixes
@@ -341,7 +343,12 @@ Every 5th stage. Every 20th is an **Archon** — longer, multi-phase, with a bio
 | 15 | **Mossguard Warlord** (Jungle) | A Mossguard grown into a chieftain: blocks from the front and turns slowly; a shield charge that a stone stops cold, stunning him back-open; a war cry that calls guards who lock shields with him; at 33 % the shield shatters. *Teaches: get behind it, and make the arena fight for you.* |
 | 20 | **Archon of the Vail** (major) | Mirrors the player's own Pacts back at them — the more corrupt your build, the deadlier this fight. *Teaches: your choices have weight.* |
 
-*Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). **Gravemaw** — burrows, surfaces under the player's *predicted* position, *teaches: break your movement pattern* — takes the Jungle's stage 20 (JG-20a–g; phase 2 at 50 %, which overrides rule 3's 66/33 for it). The Archon row above waits for a later place's stage 20.
+*Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). *Owner, 2026-11-02:* the Jungle's late bosses are —
+- **20 Thornheart** — a strangler tree round a shrine, rooted in the centre and always shootable; it grows spokes of thorn wall that block the player (not enemies), slams a root that bares its heart to double damage, plants seed pods that grow Rootlings unless shot, and from 66 % closes a thorn ring in from the edge, never sealing the strafe lane. *Teaches: space is a resource — don't get cornered.* (JG-20a–h.)
+- **25 Gravemaw** — burrows, surfaces under the player's *predicted* position. *Teaches: break your movement pattern.* Specs parked as JG-25a–g; phase 2 at 50 % overrides rule 3 for it.
+- **30 the Apex** — the Panthers' matriarch, the Jungle's last boss: vanishes in tall grass, rustles give it away, a long pounce the roll answers, Shadow panthers at 66 %, nonstop hunt at 33 %. *Teaches: read the tell under pressure.*
+
+The Archon row above waits for a later place's stage 20.
 
 Past stage 20, bosses recycle with stacking Ordeals and one previously-unseen attack pattern per repeat.
 

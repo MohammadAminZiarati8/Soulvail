@@ -1,4 +1,6 @@
-# JG-20c — Gravemaw's tremor and rock spit while surfaced
+# JG-25c — Gravemaw's tremor and rock spit while surfaced
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** JG-20b · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1 rules 1, 2; Warlord lobs (JG-15d); `ShockwaveSystem`; Ranger roll (CC §5)

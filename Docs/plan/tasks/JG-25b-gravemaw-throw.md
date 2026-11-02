@@ -1,4 +1,6 @@
-# JG-20b — The eruption's throw: a ring-exit probe and a forced player move
+# JG-25b — The eruption's throw: a ring-exit probe and a forced player move
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** JG-20a · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1 rule 2; AR §18.2 (core holds no walls), §4.1; JG-15b's lane probe

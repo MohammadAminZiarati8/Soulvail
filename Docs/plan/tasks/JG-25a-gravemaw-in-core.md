@@ -1,4 +1,6 @@
-# JG-20a — Gravemaw in core: burrow chase, predicted ring, eruption, vulnerable window
+# JG-25a — Gravemaw in core: burrow chase, predicted ring, eruption, vulnerable window
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** — · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1; AR §18.4

@@ -1,4 +1,6 @@
-# JG-20d — Gravemaw's phase 2 at 50 %: a double surface and adds from the cracks
+# JG-25d — Gravemaw's phase 2 at 50 %: a double surface and adds from the cracks
+
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
 
 **Size:** M · **Depends on:** JG-20c · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1 rules 3, 4; owner 2026-11-02 (phase 2 near 50 %); `IBossAddOwner` (JG-15c); boss summons pay no XP

@@ -137,6 +137,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private FissureSystem _fissures;
 
     private LaneSystem _lanes;
+
+    /// <summary>Thorn walls (JG-20a); nobody opens one until Thornheart (JG-20b).</summary>
+    private ThornSystem _thorns;
     private BindResolver _binds;
 
     /// <summary>
@@ -506,6 +509,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _shockwaves = new ShockwaveSystem(_events);
         _fissures = new FissureSystem(_events);
         _lanes = new LaneSystem(_events);
+        _thorns = new ThornSystem(_events);
 
         // One per run, like the two above: a second Start must not inherit the first run's level.
         // The curve comes off the mode rather than off the character or a constant here, because
@@ -1378,6 +1382,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _shockwaves.Tick(State.Time, State.PlayerPosition, State.Combat);
         _fissures.Tick(State.Time, State.PlayerPosition, State.Combat);
         _lanes.Tick(State.Time, State.PlayerPosition, State.Combat);
+        _thorns.Tick(State.Time, State.PlayerPosition, State.Combat);
 
         // After combat, and the order decides who wins a trade. The player's swing this tick is
         // resolved against enemies as they were seen, and the enemy's strike lands against a player
@@ -1560,6 +1565,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 // Like projectiles, traps cannot cross into the freshly composed arena.
                 _traps.Clear();
                 _killshot.Clear();
+
+                // A wall stands for seconds, longer than a boundary's gate (JG-20a rule 6).
+                _thorns.Clear();
                 State.Combat.SteadyAim.OnMoved();
                 State.Status.Reset();
             }
@@ -2181,6 +2189,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _shockwaves.Clear();
         _fissures.Clear();
         _lanes.Clear();
+        _thorns.Clear();
     }
 
     /// <summary>

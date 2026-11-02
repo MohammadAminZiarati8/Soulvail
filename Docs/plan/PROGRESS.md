@@ -2,22 +2,23 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-02, JG-20f._
+_Updated 2026-11-02, JG-20a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20f**: Thornheart body at TRELLIS full detail (182k tris), gold Heart, four roots, seven clips; ThornPod (97k). |
-| **Next task** | **ST-03b** on the owner's go. Thornheart: JG-20a–e, g, h. Gravemaw parked at 25. |
-| **Verified** | EditMode 5 213: 5 212 pass, 0 fail, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **JG-20a**: thorn walls in core (arm, bite on rising, stand, wither). Nobody opens one yet. |
+| **Next task** | **ST-03b** on the owner's go. Thornheart: JG-20b–e, g, h. Gravemaw parked at 25. |
+| **Verified** | EditMode 5 226: 5 225 pass, 0 fail, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord.
 Stages 1–14 and 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds give no XP.
+Thorn walls in core; cleared at boundaries.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs, phase beats.
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, five stones.

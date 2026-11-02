@@ -230,10 +230,11 @@ def grade(image):
     h, s, v = hsv[:, 0] * 360, hsv[:, 1], hsv[:, 2]
     thorn = (h > 38) & (h < 75) & (v > 0.55) & (s > 0.2)
     bark = ~thorn
-    # Bark: hue pulled a third of the way toward olive (62 deg), darker than the moss floor.
+    # Bark: hue pulled a third of the way toward olive (62 deg), a little below the scan's value
+    # (owner, 2026-11-03: 0.48 read too dark in play).
     h[bark] = h[bark] + (62 - np.clip(h[bark], 0, 62)) * 0.35
     s[bark] = np.clip(s[bark] * 0.9, 0, 0.7)
-    v[bark] = v[bark] * 0.48
+    v[bark] = v[bark] * 0.78
     # Thorns: bone, pale and barely tinted, so they read against the bark from above.
     h[thorn] = 70
     s[thorn] = np.minimum(s[thorn] * 0.3, 0.18)

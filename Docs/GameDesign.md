@@ -341,7 +341,7 @@ Every 5th stage. Every 20th is an **Archon** — longer, multi-phase, with a bio
 | 15 | **Mossguard Warlord** (Jungle) | A Mossguard grown into a chieftain: blocks from the front and turns slowly; a shield charge that a stone stops cold, stunning him back-open; a war cry that calls guards who lock shields with him; at 33 % the shield shatters. *Teaches: get behind it, and make the arena fight for you.* |
 | 20 | **Archon of the Vail** (major) | Mirrors the player's own Pacts back at them — the more corrupt your build, the deadlier this fight. *Teaches: your choices have weight.* |
 
-*Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). **Gravemaw** — burrows, surfaces under the player's *predicted* position, *teaches: break your movement pattern* — is deferred to stage 20 or a later place.
+*Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). **Gravemaw** — burrows, surfaces under the player's *predicted* position, *teaches: break your movement pattern* — takes the Jungle's stage 20 (JG-20a–g; phase 2 at 50 %, which overrides rule 3's 66/33 for it). The Archon row above waits for a later place's stage 20.
 
 Past stage 20, bosses recycle with stacking Ordeals and one previously-unseen attack pattern per repeat.
 

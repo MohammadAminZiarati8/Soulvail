@@ -355,16 +355,58 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
 
         ProjectileSpec projectile = _agent.Spec.Projectile;
 
-        var shot = new Projectile(
-            _agent.Spec.Id,
-            _agent.Id,
-            blackboard.SelfPosition,
-            blackboard.PlayerPosition,
-            projectile.Speed,
-            projectile.Radius,
-            _agent.ContactDamage.Value);
+        Vector3 origin = blackboard.SelfPosition;
+        Vector3 target = blackboard.PlayerPosition;
+        Vector3 across = Across(target - origin, blackboard.DirectionToPlayer);
+        int count = projectile.Count;
+        float damage = _agent.ContactDamage.Value;
 
-        _projectiles.Fire(shot, _now);
+        // JG-21c: centre out, so a full sky drops the outside lobs first (rule 4). Lob i's offset in
+        // spreads: odd counts 0, −1, +1, −2, +2; even counts −½, +½, −1½, +1½.
+        for (int i = 0; i < count; i++)
+        {
+            float offset = (count & 1) == 1
+                ? ((i + 1) / 2) * ((i & 1) == 1 ? -1f : 1f)
+                : ((i / 2) + 0.5f) * ((i & 1) == 0 ? -1f : 1f);
+
+            var shot = new Projectile(
+                _agent.Spec.Id,
+                _agent.Id,
+                origin,
+                target + (across * (offset * projectile.Spread)),
+                projectile.Speed,
+                projectile.Radius,
+                damage);
+
+            if (_projectiles.Fire(shot, _now) == ProjectileSystem.NoProjectile)
+            {
+                // Whatever is left is further out and will not fit either.
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The unit XZ perpendicular to a throw along <paramref name="throwVector"/> — +X for a throw due
+    /// north. Falls back to the perceived direction, then to +X, when the player stands on the agent.
+    /// </summary>
+    private static Vector3 Across(Vector3 throwVector, Vector2 directionToPlayer)
+    {
+        var flat = new Vector2(throwVector.X, throwVector.Z);
+
+        if (!(flat.LengthSquared() > 0f))
+        {
+            flat = directionToPlayer;
+        }
+
+        if (!(flat.LengthSquared() > 0f))
+        {
+            return Vector3.UnitX;
+        }
+
+        flat = Vector2.Normalize(flat);
+
+        return new Vector3(flat.Y, 0f, -flat.X);
     }
 
     /// <summary>Rule 8: one tick, then the reload.</summary>

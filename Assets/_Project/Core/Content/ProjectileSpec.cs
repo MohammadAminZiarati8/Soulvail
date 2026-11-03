@@ -45,18 +45,55 @@ public sealed class ProjectileSpec
     /// Metres from the impact point that still count as a hit. Not the projectile's drawn size: it
     /// is the forgiveness on a shot, and the number M2-07a's overlap test is written against.
     /// </param>
+    /// <param name="count">
+    /// Lobs per release, 1–5 (JG-21c). One is every Spitter before the Thorn pitcher; more is a fan
+    /// of ringed lobs landing in a line across the throw.
+    /// </param>
+    /// <param name="spread">
+    /// Metres between neighbouring landings, along the perpendicular to the throw. Required above
+    /// zero when <paramref name="count"/> is above one — a fan at zero spread is one ring drawn
+    /// <paramref name="count"/> times.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Any value is not a finite number greater than zero. A zero <paramref name="speed"/> is a shot
+    /// <paramref name="count"/> is outside 1–5, <paramref name="spread"/> is negative or not finite,
+    /// or a fan has no spread. Otherwise:
+    /// any value is not a finite number greater than zero. A zero <paramref name="speed"/> is a shot
     /// that never arrives, a zero <paramref name="radius"/> is one that can only hit a mathematical
     /// point, and a zero <paramref name="standoffRange"/> is an archer that walks into melee — all
     /// three are better said by passing no spec at all.
     /// </exception>
-    public ProjectileSpec(float standoffRange, float speed, float radius)
+    public ProjectileSpec(float standoffRange, float speed, float radius, int count = 1,
+        float spread = 0f)
     {
         StandoffRange = Positive(standoffRange, nameof(standoffRange));
         Speed = Positive(speed, nameof(speed));
         Radius = Positive(radius, nameof(radius));
+
+        if (count < 1 || count > MaxCount)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(count), count, $"count must be between 1 and {MaxCount}.");
+        }
+
+        // Negated for AR §18.3: NaN fails every comparison, so `spread < 0f` would wave it through.
+        if (!(spread >= 0f) || float.IsInfinity(spread))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(spread), spread, "spread must be a finite number, zero or more.");
+        }
+
+        if (count > 1 && !(spread > 0f))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(spread), spread, "A fan of more than one lob needs a spread above zero.");
+        }
+
+        Count = count;
+        Spread = spread;
     }
+
+    /// <summary>The most lobs one release may throw.</summary>
+    public const int MaxCount = 5;
 
     /// <summary>Metres it stops at and fires from — 14 for the Spitter (GD §8.1).</summary>
     public float StandoffRange { get; }
@@ -66,6 +103,12 @@ public sealed class ProjectileSpec
 
     /// <summary>Metres from the impact point that still count as a hit.</summary>
     public float Radius { get; }
+
+    /// <summary>Lobs per release, 1–5; one is the plain Spitter (JG-21c).</summary>
+    public int Count { get; }
+
+    /// <summary>Metres between neighbouring landings, across the throw.</summary>
+    public float Spread { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3):

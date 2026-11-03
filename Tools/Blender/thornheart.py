@@ -574,4 +574,5 @@ def main():
             render(parts, raw, args.preview, 'ThornPod', views)
 
 
-main()
+if __name__ == '__main__':
+    main()

@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-24b._
+_Updated 2026-11-04, JG-24c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-24b**: Thornweaver model, five clips. |
-| **Next task** | **JG-24c**; then JG-24d. |
-| **Verified** | EditMode 5 421: 5 420 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-24c**: Thornweaver cast, crown, root. |
+| **Next task** | **JG-24d**. |
+| **Verified** | EditMode 5 427: 5 426 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
@@ -24,7 +24,8 @@ Mother: shields, lobs, spray, pods.
 Leap: crouch, ring, clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
-Thornweaver (core): holds 10 m, walls past player, ≤ 2, die with it. Crone model.
+Thornweaver (core): holds 10 m, walls past player, ≤ 2, die with it. Crone;
+casts, lime crown, moss root.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,
@@ -37,7 +38,7 @@ Levels bank points; paused tree picks. Death pays Shards. Save v5; older saves l
 Clash UI; LocKeys. 22 Marksman ranks.
 Tree preview/choice, rank pips, Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s auto gap; mirrored. Legacy saves expand to six.
-Player status icons; pooled enemy CC, bosses half; poison bubbles, drop icon. Marksman forest look, cyan trim,
+Player status icons; pooled enemy CC, bosses half; poison bubbles, drop icon. Marksman look, cyan trim,
 KayKit quiver, glowing string, bright arrows; silent resume, plain menu.
 
 ## What does not work yet

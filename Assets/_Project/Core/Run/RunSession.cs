@@ -1410,7 +1410,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Projectiles,
             State.Enemies,
             _lanes,
-            snapshot.OpenGround);
+            snapshot.OpenGround,
+            new Vector2(State.Motor.Facing.X, State.Motor.Facing.Z));
 
         State.Enemies.Tick(enemies);
 

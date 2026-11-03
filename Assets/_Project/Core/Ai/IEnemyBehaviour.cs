@@ -85,7 +85,8 @@ public readonly struct EnemyTickContext
         ProjectileSystem projectiles,
         EnemySystem enemies,
         LaneSystem lanes = null,
-        IReadOnlyList<Vector3> openGround = null)
+        IReadOnlyList<Vector3> openGround = null,
+        Vector2 playerFacing = default)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -96,6 +97,7 @@ public readonly struct EnemyTickContext
         Enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
         Lanes = lanes;
         OpenGround = openGround ?? Array.Empty<Vector3>();
+        PlayerFacing = playerFacing;
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
@@ -129,6 +131,12 @@ public readonly struct EnemyTickContext
 
     /// <summary>This tick's open-ground report; empty when omitted.</summary>
     public IReadOnlyList<Vector3> OpenGround { get; }
+
+    /// <summary>
+    /// <c>PlayerMotor.Facing</c> on XZ; zero in a context built without one. Read by
+    /// <c>StalkerBehaviour</c> to find "behind" (JG-22a).
+    /// </summary>
+    public Vector2 PlayerFacing { get; }
 
     private static float Finite(float value, string paramName)
     {

@@ -1819,7 +1819,7 @@ public sealed class PlayerCombat
             for (int enemy = 0; enemy < enemies.Length; enemy++)
             {
                 EnemyAgent candidate = enemies[enemy];
-                if (!candidate.IsAlive || !candidate.IsVulnerable)
+                if (!candidate.IsAlive || !candidate.IsVulnerable || candidate.IsHidden)
                 {
                     continue;
                 }
@@ -2043,9 +2043,19 @@ public sealed class PlayerCombat
                     + "snapshot must all be built with the same capacity.");
         }
 
+        int count = 0;
+
         for (int i = 0; i < enemies.Length; i++)
         {
             EnemyAgent agent = enemies[i];
+
+            // JG-22a rule 5: a hidden stalker is left out rather than marked invulnerable — the
+            // targeter holds facing on an invulnerable nearest (CC §3.6), which would point at it.
+            if (agent.IsHidden)
+            {
+                continue;
+            }
+
             Vector3 position = agent.Position;
 
             // XZ, like every other distance in this project: the height difference between a
@@ -2054,7 +2064,7 @@ public sealed class PlayerCombat
             float dx = position.X - playerPosition.X;
             float dz = position.Z - playerPosition.Z;
 
-            _candidates[i] = new TargetCandidate(
+            _candidates[count++] = new TargetCandidate(
                 agent.Id,
                 MathF.Sqrt((dx * dx) + (dz * dz)),
                 agent.Spec.TargetPriority,
@@ -2063,7 +2073,7 @@ public sealed class PlayerCombat
                 agent.Health.Current);
         }
 
-        return enemies.Length;
+        return count;
     }
 
     /// <summary>Rule 2's last step: everything a trigger condition may ask about, refilled.</summary>

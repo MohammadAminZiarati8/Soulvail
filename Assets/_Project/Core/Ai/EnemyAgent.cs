@@ -216,6 +216,15 @@ public sealed class EnemyAgent
     public bool PaysXp { get; internal set; }
 
     /// <summary>
+    /// A stalker gone hidden: no auto-aim, skill or focus selects it, though anything that reaches it
+    /// still hurts it (JG-22a rule 5). False on every other kind and on the dead.
+    /// </summary>
+    public bool IsHidden { get; internal set; }
+
+    /// <summary>Run seconds until which damage keeps it from hiding (JG-22a rule 6).</summary>
+    internal float RevealedUntil { get; set; } = float.NegativeInfinity;
+
+    /// <summary>
     /// Establishes a fresh agent: a new id, an archetype, a position, four stats wiped and
     /// re-based to that archetype, full health and a blank blackboard.
     /// </summary>
@@ -232,6 +241,8 @@ public sealed class EnemyAgent
         Velocity = Vector3.Zero;
         IsVulnerable = true;
         PaysXp = true;
+        IsHidden = false;
+        RevealedUntil = float.NegativeInfinity;
 
         // Back to "has never died", so a recycled agent cannot inherit the previous life's death
         // stamp and be swept the moment it spawns.
@@ -259,6 +270,7 @@ public sealed class EnemyAgent
             EnemyBehaviourKind.Lunger => Behaviour as LungerBehaviour ?? new LungerBehaviour(this),
             EnemyBehaviourKind.Shaman => Behaviour as ShamanBehaviour ?? new ShamanBehaviour(this),
             EnemyBehaviourKind.Bulwark => Behaviour as BulwarkBehaviour ?? new BulwarkBehaviour(this),
+            EnemyBehaviourKind.Stalker => Behaviour as StalkerBehaviour ?? new StalkerBehaviour(this),
 
             // Boss falls through to null on purpose, and it is the one kind that does so while
             // meaning something. A BossBehaviour cannot be built from an EnemySpec — it needs the

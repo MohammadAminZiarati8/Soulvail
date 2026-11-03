@@ -352,3 +352,20 @@ public readonly struct EnemyChainLit
         Seconds = seconds;
     }
 }
+
+/// <summary>
+/// A stalker went hidden or showed itself (JG-22a). Never published for a death: dying clears it
+/// silently, and the view drops the shimmer on <see cref="EnemyDied"/>.
+/// </summary>
+public readonly struct EnemyHiddenChanged
+{
+    public readonly int Id;
+
+    public readonly bool Hidden;
+
+    public EnemyHiddenChanged(int id, bool hidden)
+    {
+        Id = id;
+        Hidden = hidden;
+    }
+}

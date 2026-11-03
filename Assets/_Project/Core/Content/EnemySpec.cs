@@ -74,6 +74,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Range-edge healer and haste support (JG-16b).</summary>
     Shaman,
+
+    /// <summary>Lurks behind the player hidden, then strikes down a warned lane (JG-22a).</summary>
+    Stalker,
 }
 
 /// <summary>
@@ -258,7 +261,8 @@ public sealed class EnemySpec
         BulwarkSpec bulwark = null,
         ShamanSpec shaman = null,
         LeapSpec leap = null,
-        PackSpec pack = null)
+        PackSpec pack = null,
+        StalkerSpec stalker = null)
     {
         if (id.Value is null)
         {
@@ -295,6 +299,11 @@ public sealed class EnemySpec
         if (behaviour == EnemyBehaviourKind.Shaman && shaman is null)
         {
             throw new ArgumentException("A Shaman must carry a ShamanSpec.", nameof(shaman));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Stalker && stalker is null)
+        {
+            throw new ArgumentException("A Stalker must carry a StalkerSpec.", nameof(stalker));
         }
 
         if (behaviour == EnemyBehaviourKind.Bulwark && bulwark is null)
@@ -364,6 +373,7 @@ public sealed class EnemySpec
         Shaman = shaman;
         Leap = leap;
         Pack = pack;
+        Stalker = stalker;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -508,6 +518,12 @@ public sealed class EnemySpec
     /// <c>LungerBehaviour</c> alone (JG-21b).
     /// </summary>
     public PackSpec Pack { get; }
+
+    /// <summary>
+    /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.
+    /// Read by <c>StalkerBehaviour</c> and by <c>EnemySystem</c>'s reveal on damage (JG-22a).
+    /// </summary>
+    public StalkerSpec Stalker { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

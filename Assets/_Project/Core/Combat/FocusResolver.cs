@@ -102,7 +102,7 @@ public static class FocusResolver
 
             // A corpse sits in the registry until M1-11 despawns it, so the span genuinely carries
             // the dead and this is not a defensive check — it is rule 1.
-            if (!agent.IsAlive)
+            if (!agent.IsAlive || agent.IsHidden)
             {
                 continue;
             }

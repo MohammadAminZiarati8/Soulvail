@@ -860,6 +860,19 @@ public sealed class EnemySystem
 
         _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));
 
+        // JG-22a rule 6: any damage shows a stalker, and keeps it from hiding for a while. Here, at
+        // the one door, so an arrow, a zone, a trap and a Wight all reveal it alike.
+        if (agent.Spec.Stalker != null && !result.Killed)
+        {
+            agent.RevealedUntil = now + agent.Spec.Stalker.RevealSeconds;
+
+            if (agent.IsHidden)
+            {
+                agent.IsHidden = false;
+                _events.Publish(new EnemyHiddenChanged(enemyId, false));
+            }
+        }
+
         // Exactly once per life without a flag to remember it: Killed is true only on the call that
         // took HP to zero, and every later call finds a corpse and returns None above.
         if (result.Killed)
@@ -895,6 +908,8 @@ public sealed class EnemySystem
             Bank(agent);
 
             // Death ends every status silently (MK-06a rule 7): nothing about it follows EnemyDied.
+            // Hidden too, and as silently (JG-22a rule 8).
+            agent.IsHidden = false;
             agent.CrowdControl.Reset();
             agent.Poison.Reset();
 
@@ -1173,7 +1188,8 @@ public sealed class EnemySystem
 
         EnemyTickContext behaviourCtx = anyRooted
             ? new EnemyTickContext(
-                ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround)
+                ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround,
+                ctx.PlayerFacing)
             : ctx;
 
         for (int i = 0; i < agents.Length; i++)
@@ -1216,6 +1232,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Lunger:
                 case EnemyBehaviourKind.Shaman:
                 case EnemyBehaviourKind.Bulwark:
+                case EnemyBehaviourKind.Stalker:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 

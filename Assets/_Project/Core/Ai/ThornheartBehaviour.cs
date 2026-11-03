@@ -44,8 +44,9 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
     public const float PodTelegraphSeconds = 0.8f, PodRipenSeconds = 6f, PodClearance = 1.5f;
     public const int PodsPerCast = 2, RootlingsPerPod = 3, MaxAdds = 8;
 
-    // JG-20d: the strangling ring from phase 1 (66 %), the faster grove from phase 2 (33 %).
-    public const float RingStartRadius = 17f, RingRadius = 11f, RingCloseSeconds = 6f,
+    // JG-20d: the strangling ring from phase 1 (66 %), the faster grove from phase 2 (33 %). It
+    // opens at 14 m, not 17: the Clearing is ~37 m across, so 17 put its edge on the walls (JG-20j).
+    public const float RingStartRadius = 14f, RingRadius = 11f, RingCloseSeconds = 6f,
                        RingPulseSeconds = 0.5f, RingDamageScale = 0.25f, StrafeLane = 3f;
     public const int PhaseTwoSpokes = 4;
     public const float PhaseThreeRootTelegraphSeconds = 0.7f, PhaseThreeAttackGapSeconds = 1.1f;

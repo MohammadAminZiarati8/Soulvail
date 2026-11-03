@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Pooling;
 using Soulvail.Game.Presentation;
 using UnityEngine;
@@ -34,6 +35,11 @@ namespace Soulvail.Game.Views
     /// <c>StrangleBite</c> flashes it brighter, so a bite from nothing in particular is drawn.
     /// </para>
     /// <para>
+    /// <b>Nothing is drawn past the standing arena's floor</b>: every spoke stops at the NavMesh's
+    /// bounds, so the tint ends at the walls and a band behind a wall is not drawn at all. With no
+    /// arena standing (an EditMode body) the tint runs out to <see cref="ZoneReach"/>.
+    /// </para>
+    /// <para>
     /// <b>The pool calls only <see cref="EnemyView"/>'s <see cref="IPoolable"/></b>, so the restore runs
     /// from <c>OnDisable</c>, which the pool's deactivation raises on the same line.
     /// </para>
@@ -43,7 +49,7 @@ namespace Soulvail.Game.Views
         /// <summary>How far out the bramble band reaches past the core radius, in metres.</summary>
         public const float BandWidth = 0.8f;
 
-        /// <summary>How far the danger tint reaches from the boss, in metres — past any arena's edge.</summary>
+        /// <summary>How far the danger tint may reach from the boss, in metres; the arena's walls stop it sooner.</summary>
         public const float ZoneReach = 40f;
 
         /// <summary>The tint's opacity outside the band at rest.</summary>
@@ -98,6 +104,7 @@ namespace Soulvail.Game.Views
         private readonly Color[] _bandColours = new Color[(BandSegments + 1) * 4];
 
         private EnemyView _body;
+        private ArenaPool _arenas;
         private IDisposable _heartSubscription;
         private IDisposable _podSubscription;
         private IDisposable _ringSubscription;
@@ -116,6 +123,9 @@ namespace Soulvail.Game.Views
         private float _ringSeconds;
         private float _ringElapsed;
         private float _drawnRadius = -1f;
+        private bool _drawnClipped;
+        private Rect _drawnFloor;
+        private Vector2 _drawnAt;
         private float _biteLeft;
         private float _zoneAlpha = -1f;
 
@@ -156,15 +166,17 @@ namespace Soulvail.Game.Views
         public float ZoneAlphaShown => _ringShown ? ZoneAlphaNow() : 0f;
 
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
+        /// <param name="arenas">The run's arenas; the standing one's floor clips the ring. Null draws it unclipped.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         [Inject]
-        public void Construct(DomainEventHub hub)
+        public void Construct(DomainEventHub hub, ArenaPool arenas = null)
         {
             if (hub is null)
             {
                 throw new ArgumentNullException(nameof(hub));
             }
 
+            _arenas = arenas;
             Unsubscribe();
             _heartSubscription = hub.Subscribe<HeartExposed>(OnHeartExposed);
             _podSubscription = hub.Subscribe<ThornPodPlanted>(OnPodPlanted);
@@ -496,10 +508,17 @@ namespace Soulvail.Game.Views
             _ring.transform.SetPositionAndRotation(new Vector3(at.x, at.y + BandHeight, at.z), Flat);
 
             float radius = CurrentRadius();
+            bool clipped = TryFloor(out Rect floor);
+            var from = new Vector2(at.x, at.z);
 
-            if (!Mathf.Approximately(radius, _drawnRadius))
+            // The clip depends on where the boss stands, so a clipped band redraws as it walks.
+            if (!Mathf.Approximately(radius, _drawnRadius) || clipped != _drawnClipped
+                || (clipped && (floor != _drawnFloor || (from - _drawnAt).sqrMagnitude > 1e-4f)))
             {
                 _drawnRadius = radius;
+                _drawnClipped = clipped;
+                _drawnFloor = floor;
+                _drawnAt = from;
                 DrawBand(radius);
             }
 
@@ -544,14 +563,66 @@ namespace Soulvail.Game.Views
                 float x = Mathf.Sin(rad);
                 float z = Mathf.Cos(rad);
                 int v = i * 4;
-                _bandVertices[v] = new Vector3(x * inner, 0f, z * inner);
-                _bandVertices[v + 1] = new Vector3(x * outer, 0f, z * outer);
+
+                // A spoke whose band lies behind a wall collapses onto the wall: nothing is drawn there.
+                float wall = _drawnClipped ? ToWall(x, z) : float.PositiveInfinity;
+                float a = Mathf.Min(inner, wall);
+                float b = Mathf.Min(outer, wall);
+                float c = Mathf.Min(reach, wall);
+                _bandVertices[v] = new Vector3(x * a, 0f, z * a);
+                _bandVertices[v + 1] = new Vector3(x * b, 0f, z * b);
                 _bandVertices[v + 2] = _bandVertices[v + 1];
-                _bandVertices[v + 3] = new Vector3(x * reach, 0f, z * reach);
+                _bandVertices[v + 3] = new Vector3(x * c, 0f, z * c);
             }
 
             _bandMesh.vertices = _bandVertices;
             _bandMesh.RecalculateBounds();
+        }
+
+        // The standing arena's floor in world XZ (Rect.y is world z), from its NavMesh's bounds the
+        // way OpenGroundSense reads them. Two opposite corners suffice: arenas turn in right angles.
+        private bool TryFloor(out Rect floor)
+        {
+            ArenaView arena = _arenas?.Active;
+
+            if (arena == null || arena.Surface == null || arena.Surface.navMeshData == null)
+            {
+                floor = default;
+                return false;
+            }
+
+            Bounds bounds = arena.Surface.navMeshData.sourceBounds;
+            Transform surface = arena.Surface.transform;
+            Vector3 min = surface.position + (surface.rotation * bounds.min);
+            Vector3 max = surface.position + (surface.rotation * bounds.max);
+            floor = Rect.MinMaxRect(Mathf.Min(min.x, max.x), Mathf.Min(min.z, max.z), Mathf.Max(min.x, max.x), Mathf.Max(min.z, max.z));
+            return true;
+        }
+
+        // Metres from the boss to the floor's edge along (x, z); 0 when the boss stands past it.
+        private float ToWall(float x, float z)
+        {
+            float t = float.PositiveInfinity;
+
+            if (x > 1e-5f)
+            {
+                t = Mathf.Min(t, (_drawnFloor.xMax - _drawnAt.x) / x);
+            }
+            else if (x < -1e-5f)
+            {
+                t = Mathf.Min(t, (_drawnFloor.xMin - _drawnAt.x) / x);
+            }
+
+            if (z > 1e-5f)
+            {
+                t = Mathf.Min(t, (_drawnFloor.yMax - _drawnAt.y) / z);
+            }
+            else if (z < -1e-5f)
+            {
+                t = Mathf.Min(t, (_drawnFloor.yMin - _drawnAt.y) / z);
+            }
+
+            return Mathf.Max(0f, t);
         }
 
         private void PaintZone(float alpha)

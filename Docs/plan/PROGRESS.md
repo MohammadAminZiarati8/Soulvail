@@ -9,17 +9,17 @@ _Updated 2026-11-03, JG-20j._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20j**: the 66 % ring tints its bite zone and flashes on a bite. |
-| **Next task** | Owner's pick: a poison source, or Gravemaw (JG-25a) for stage 25. |
-| **Verified** | EditMode 5 301: 5 300 pass, 1 inconclusive. PlayMode not rerun. Errors 0; no new warnings; format clean. |
+| **Last merged** | **JG-20j** fix: the ring opens at 14 m, stops at the walls. |
+| **Next task** | Owner: a poison source, or Gravemaw (JG-25a). |
+| **Verified** | EditMode 5 302: 5 301 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
 Stages 1–14, 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds: no XP.
-Thornheart (stage 20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside (tinted, flashes), 4 spokes; 33 % faster, 3 pods.
-Drawn: clips per move, amber heart while exposed, pod rings fill, band 17→11 m; walls warn, rise as vines, block.
+Thornheart (stage 20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside (tint flashes), 4 spokes; 33 % faster, 3 pods.
+Drawn: clips per move, amber heart while exposed, pod rings fill, band 14→11 m, clipped to the walls; walls warn, rise as vines, block.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs.
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, 5 stones.
@@ -38,7 +38,7 @@ KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain m
 
 ## What does not work yet
 
-1. Balance: Gravecaller over / Emberwright under GD §12.4; Warden passes 120 s near stage 33; no natural run past 19.
+1. Balance: Gravecaller over, Emberwright under; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.
 3. Past ~26 late waves are all Bloaters/Puffballs.
 4. No audio, Elites, feel pass or second language.
@@ -49,8 +49,8 @@ KayKit quiver, emissive string, brighter arrows; shimmer, silent resume, plain m
 2. ContactDamage ruling pending. Invalid tree saves strand Continue; XP 1e38 hangs levelling.
 3. Boundary non-binding bolts leave bodies; pooled Bind/Move snap with autoSyncTransforms off.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
-5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; Shaman/Thornheart not phone-profiled.
+5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; Shaman/Thornheart unprofiled.
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
 8. Warlord's death dissolve shows the unpainted atlas.
-9. PlayMode unload can hit destroyed cover/VFX/player; late teardown errors.
+9. PlayMode unload hits destroyed cover/VFX/player; teardown errors.

@@ -4,10 +4,12 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
+using VContainer;
 using Object = UnityEngine.Object;
 using Num = System.Numerics;
 
@@ -20,6 +22,10 @@ public sealed class ThornheartViewTests
     private const string PrefabPath = "Assets/_Project/Prefabs/Enemies/Thornheart.prefab";
     private const int Id = 20;
     private const int PodId = 40;
+    private const string ClearingPath = "Assets/_Project/Prefabs/Arenas/Jungle/Arena_Clearing.prefab";
+
+    // The band's spoke pointing −x (spoke i sits at angle 2πi/64, x = sin).
+    private const int West = 48;
 
     private static readonly ContentId Pod = new("enemy.thornpod");
 
@@ -269,6 +275,59 @@ public sealed class ThornheartViewTests
     {
         _animator.Update(0f);
         _animator.Update(0.12f);
+    }
+
+    // JG-20j: on a standing arena the band and tint stop at its floor; the open side keeps the core radius.
+    [Test]
+    public void View_StrangleRing_StopsAtTheArenaWalls()
+    {
+        var playerObject = new GameObject("Player");
+        PlayerView player = playerObject.AddComponent<PlayerView>();
+        IObjectResolver container = new ContainerBuilder().Build();
+        ArenaView clearing = AssetDatabase.LoadAssetAtPath<GameObject>(ClearingPath).GetComponent<ArenaView>();
+        var arenas = new ArenaPool(container, new[] { clearing }, null, _hub, player);
+
+        try
+        {
+            _view.Construct(_hub, arenas);
+            _hub.Publish(new StageArrived(20, clearing.Id));
+            Transform surface = arenas.Active.Surface.transform;
+            var floor = new Bounds(surface.position + arenas.Active.Surface.navMeshData.sourceBounds.center,
+                arenas.Active.Surface.navMeshData.sourceBounds.size);
+
+            Assert.That(ThornheartBehaviour.RingStartRadius + ThornheartView.BandWidth, Is.LessThan(Mathf.Min(floor.extents.x, floor.extents.z) - 1f),
+                "Round a centred boss the ring opens on the floor, inside the walls, where a player can see it.");
+
+            // Off-centre towards +x, so the ring overruns the east wall but not the west.
+            _body.transform.position = new Vector3(10f, 0f, 0f);
+            _hub.Publish(new StrangleRing(Id, ThornheartBehaviour.RingStartRadius, ThornheartBehaviour.RingRadius, 6f));
+            _view.Step(7f);
+
+            Vector3 at = _view.Ring.transform.position;
+            Vector3[] vertices = _view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices;
+
+            foreach (Vector3 v in vertices)
+            {
+                Assert.That(at.x + v.x, Is.InRange(floor.min.x - 1e-3f, floor.max.x + 1e-3f), "Nothing past the walls.");
+                Assert.That(at.z + v.z, Is.InRange(floor.min.z - 1e-3f, floor.max.z + 1e-3f), "Nothing past the walls.");
+            }
+
+            Assert.That(vertices.Max(v => at.x + v.x), Is.EqualTo(floor.max.x).Within(1e-3f), "The tint reaches the east wall.");
+            Assert.That(vertices.Min(v => at.x + v.x), Is.EqualTo(floor.min.x).Within(1e-3f), "And the west wall.");
+            Assert.That(Radii()[West * 4], Is.EqualTo(ThornheartBehaviour.RingRadius).Within(1e-3f), "The open side keeps the core radius.");
+
+            _body.transform.position = new Vector3(-10f, 0f, 0f);
+            _view.Step(0.1f);
+            Assert.That(_view.Ring.transform.position.x, Is.EqualTo(-10f), "It follows the boss.");
+            Assert.That(_view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices.Min(v => -10f + v.x),
+                Is.EqualTo(floor.min.x).Within(1e-3f), "And clips again where the boss now stands.");
+        }
+        finally
+        {
+            arenas.Dispose();
+            container.Dispose();
+            Object.DestroyImmediate(playerObject);
+        }
     }
 
     private Color Emission()

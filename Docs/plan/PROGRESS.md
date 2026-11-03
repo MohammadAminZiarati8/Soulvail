@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-20j._
+_Updated 2026-11-03, JG-21–24 specs._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-11-03, JG-20j._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **JG-20j** fix: ring at true size, 14→11 m, clipped. |
-| **Next task** | Owner: a poison source, or Gravemaw (JG-25a). |
+| **Next task** | **JG-21a**; stages 21–24 specced, JG-21a–24d. |
 | **Verified** | EditMode 5 303: 5 302 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
 
 ## What works

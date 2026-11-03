@@ -101,11 +101,26 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-20i** — The thorn wall's vine: a tiled TRELLIS segment replaces the box (S)
 - [x] **JG-20j** — The ring reads: everything outside it tinted, each bite flashes (S)
 
-**Stages 21–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced one block at a time, after stage 20 is built and played. Titles only.
+**Stages 21–24** (owner, 2026-11-03; design [GD §8.2](../GameDesign.md)). The cousins replace the easy four, then the Chameleon stalker and the Thornweaver arrive; threat climbs 194 → 218 → 242 → 269 into Gravemaw. Specs in [tasks/](tasks/); each built only on the owner's go, in this order. 22b and 24b need the owner's TRELLIS sculpt (prompt in the spec) and may be built any time before their body task.
 
-- [ ] JG-21 — The cousins: Bullfrog, Shadow panther, Thorn pitcher, Chain bomber; the easy four leave the waves
-- [ ] JG-22 — Chameleon stalker (the Revenant's role)
-- [ ] JG-24 — Thornweaver, on `ThornSystem`
+- [ ] **JG-21a** — The Bullfrog's leap: crouch, fixed landing ring, flight, bite (M)
+- [ ] **JG-21b** — Shadow panthers pair up: leader in, flanker to the side, lunge together (M)
+- [ ] **JG-21c** — The Thorn pitcher throws a fan of three ringed lobs (S)
+- [ ] **JG-21d** — The Chain bomber's blast lights nearby bombers (S)
+- [ ] **JG-21e** — Drawn: the landing ring, the hop arc, chain links and fuse flash (M)
+- [ ] **JG-21f** — Cousin assets, the easy four retired at 21, stage 21 scripted (M)
+- [ ] **JG-22a** — Chameleon stalker in core: hides when still, strikes from behind (M)
+- [ ] **JG-22b** — The stalker's model on `Rig_Medium` (M)
+- [ ] **JG-22c** — The stalker's body: shimmer, reveal flash, hidden bar (M)
+- [ ] **JG-22d** — Stalker asset, roster at 22, stage 22 scripted (S)
+- [ ] **JG-23** — Stage 23 mixes what the player knows, 242 threat (S)
+- [ ] **JG-24a** — Thornweaver in core: walls beyond the player on `ThornSystem` (M)
+- [ ] **JG-24b** — The Thornweaver's model on `Rig_Medium` (M)
+- [ ] **JG-24c** — The Thornweaver's body: cast, crown glow, root line (M)
+- [ ] **JG-24d** — Thornweaver asset, roster at 24, stage 24 scripted (S)
+
+**Stages 25–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced after stages 21–24 are built and played. Titles only.
+
 - [ ] JG-25 — Gravemaw at stage 25 (parked specs JG-25a–g, revise first: [a](tasks/JG-25a-gravemaw-in-core.md) · [b](tasks/JG-25b-gravemaw-throw.md) · [c](tasks/JG-25c-gravemaw-tremor-and-spit.md) · [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

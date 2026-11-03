@@ -20,6 +20,7 @@ namespace Soulvail.Tests.Core.Ai;
 public sealed class GravemawThrowTests
 {
     private const float Contact = 20f;
+    private static readonly ContentId Frog = new("enemy.frog");
     private static readonly Vector3 Centre = new(0f, 0f, 3f);
 
     /// <summary>Arm, then erupt: the chase, the warning.</summary>
@@ -47,7 +48,7 @@ public sealed class GravemawThrowTests
         _motor = new PlayerMotor(Character().Movement, Vector3.UnitZ);
         _projectiles = new ProjectileSystem(_events, 8);
         _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc, _motor,
-            new ShockwaveSystem(_events));
+            new ShockwaveSystem(_events), Frog);
         _now = 0f;
         Place(Centre);
         Tick(0f);

@@ -78,3 +78,20 @@ public readonly struct GravemawWindow
         Seconds = seconds;
     }
 }
+
+/// <summary>A crack opened in phase 2; an add crawls out of it after <see cref="Seconds"/> (JG-25d rule 4).</summary>
+public readonly struct GravemawCrack
+{
+    public readonly int BossId;
+
+    public readonly Vector3 At;
+
+    public readonly float Seconds;
+
+    public GravemawCrack(int bossId, Vector3 at, float seconds)
+    {
+        BossId = bossId;
+        At = at;
+        Seconds = seconds;
+    }
+}

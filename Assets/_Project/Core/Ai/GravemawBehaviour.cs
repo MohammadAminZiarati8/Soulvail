@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -49,7 +50,7 @@ public enum GravemawMove
 /// the end of a phase beat, and the first tick after the beat must raise it again.
 /// </para>
 /// </remarks>
-public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
+public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBossAddOwner
 {
     /// <summary>The eruption's <c>EnemyTelegraph</c> kind.</summary>
     public const int EruptionMove = 3;
@@ -65,6 +66,12 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     /// <summary>A player this close to the ring's centre is thrown against their facing (JG-25b rule 2).</summary>
     public const float ThrowCentreEpsilon = 0.01f;
+
+    /// <summary>The most adds and opening cracks it can track; <c>MaxAdds</c> is clamped to it (JG-25d).</summary>
+    public const int AddCapacity = 8;
+
+    /// <summary>Ring B's floor: a second warning shorter than this cannot be read.</summary>
+    public const float MinSecondWarnSeconds = 0.6f;
 
     private readonly EnemyAgent _agent;
     private readonly GravemawStats _stats;
@@ -92,9 +99,23 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     // The thrown player's; held for the throw so no stick velocity argues with it (JG-25b rule 4).
     private readonly PlayerMotor _motor;
 
+    // JG-25d: the armed ring's warning, and where a phase-2 cycle is in its double surface.
+    private float _warn;
+    private bool _rising;
+    private bool _ringIsSecond;
+
+    // JG-25d rules 4-6: the adds that crawled out, and the cracks still opening.
+    private readonly ContentId _addId;
+    private readonly int[] _addIds = new int[AddCapacity];
+    private readonly Vector3[] _crackAt = new Vector3[AddCapacity];
+    private readonly float[] _crackLeft = new float[AddCapacity];
+    private int _liveCount;
+    private int _crackCount;
+
     public GravemawBehaviour(EnemyAgent agent, GravemawStats stats, IRandomStream random, PlayerMotor motor,
-        ShockwaveSystem shockwaves)
+        ShockwaveSystem shockwaves, ContentId addId)
     {
+        _addId = addId;
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         _stats = stats ?? throw new ArgumentNullException(nameof(stats));
         _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -110,8 +131,23 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     /// <summary>The move the next window will run (JG-25c rule 1).</summary>
     public GravemawMove NextMove { get; private set; }
 
+    /// <summary>The boss phase it was last told of; 1 is the 50 % crossing (JG-25d rule 1).</summary>
+    public int Phase { get; private set; }
+
+    /// <summary>Live adds plus cracks still opening (JG-25d rule 4).</summary>
+    public int AddCount => _liveCount + _crackCount;
+
     public void Tick(in EnemyTickContext ctx)
     {
+        RollCall(ctx.Enemies.Registry);
+        Cracks(ctx);
+
+        // JG-25d rule 2: the throw is not the quarry's own speed, so B's estimate starts after it.
+        if (_rising && _elapsed < _stats.ThrowSeconds.Value)
+        {
+            _hasSample = false;
+        }
+
         Sample(ctx.Now);
 
         if (_announceClose)
@@ -138,7 +174,7 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
                 break;
 
             case GravemawState.Tunnel:
-                if (_elapsed >= _stats.WarnSeconds.Value)
+                if (_elapsed >= _warn)
                 {
                     Erupt(ctx);
                     break;
@@ -178,6 +214,9 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     /// <summary>The beat drops the ring and sends it back underground to a fresh chase (rule 10).</summary>
     public void OnPhaseEntered(int phase)
     {
+        Phase = phase;
+        _rising = false;
+        _ringIsSecond = false;
         _announceClose |= State == GravemawState.Surfaced;
         State = GravemawState.Chase;
         _elapsed = 0f;
@@ -197,23 +236,58 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         _velocity = Vector2.Zero;
         NextMove = GravemawMove.Tremor;
         DropMove();
+        Phase = 0;
+        _warn = 0f;
+        _rising = false;
+        _ringIsSecond = false;
+        _liveCount = 0;
+        _crackCount = 0;
+    }
+
+    /// <summary>The beat takes every add with it and closes every crack still opening (JG-25d rule 6).</summary>
+    public void ClearAdds(in EnemyTickContext ctx)
+    {
+        for (int i = 0; i < _liveCount; i++)
+        {
+            if (ctx.Enemies.Registry.TryGet(_addIds[i], out EnemyAgent add) && add.IsAlive)
+            {
+                ctx.Enemies.DespawnAtEndOfTick(_addIds[i]);
+            }
+        }
+
+        _liveCount = 0;
+        _crackCount = 0;
     }
 
     // Rule 3: walk at the quarry; the ring arms once the chase is long enough and the predicted
     // spot is within what the tunnel covers in the warning.
     private Vector3 Chase(in EnemyTickContext ctx)
     {
+        // JG-25d rule 2: between A and B it lies still, then rings B with no reach check.
+        if (_rising)
+        {
+            if (_elapsed >= _stats.DoubleGapSeconds.Value)
+            {
+                _rising = false;
+                _ringIsSecond = true;
+                Arm(ctx, Predicted(), MathF.Max(MinSecondWarnSeconds, _stats.SecondWarnSeconds.Value));
+            }
+
+            return Vector3.Zero;
+        }
+
         float speed = _agent.MoveSpeed.Value;
         Vector2 toQuarry = _agent.Blackboard.DirectionToPlayer;
+        float chase = Phase >= 1 ? _stats.PhaseTwoChaseSeconds.Value : _stats.ChaseSeconds.Value;
 
-        if (_elapsed >= _stats.ChaseSeconds.Value)
+        if (_elapsed >= chase)
         {
             Vector3 predicted = Predicted();
             float reach = speed * _stats.TunnelSpeedScale.Value * _stats.WarnSeconds.Value;
 
             if (!(FlatDistanceSquared(_agent.Position, predicted) > reach * reach))
             {
-                Arm(ctx, predicted);
+                Arm(ctx, predicted, _stats.WarnSeconds.Value);
                 return Vector3.Zero;
             }
         }
@@ -222,13 +296,13 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     }
 
     // Rule 5: the centre is fixed here and nothing moves it.
-    private void Arm(in EnemyTickContext ctx, Vector3 centre)
+    private void Arm(in EnemyTickContext ctx, Vector3 centre, float warn)
     {
         State = GravemawState.Tunnel;
         RingCentre = centre;
         _elapsed = 0f;
+        _warn = warn;
 
-        float warn = _stats.WarnSeconds.Value;
         ctx.Events.Publish(new EnemyTelegraph(_agent.Id, warn, EruptionMove));
         ctx.Events.Publish(new GravemawRingArmed(_agent.Id, centre, _stats.RingRadius.Value, warn));
     }
@@ -272,6 +346,23 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         }
 
         ctx.Events.Publish(new GravemawErupted(_agent.Id, RingCentre, radius, hit));
+
+        if (Phase >= 1)
+        {
+            OpenCracks(ctx);
+
+            // JG-25d rule 2: A goes straight back under; only B opens the window and its one move.
+            if (!_ringIsSecond)
+            {
+                State = GravemawState.Chase;
+                _elapsed = 0f;
+                _rising = true;
+                ctx.Events.Publish(new GravemawBurrowed(_agent.Id));
+                return;
+            }
+
+            _ringIsSecond = false;
+        }
 
         State = GravemawState.Surfaced;
         _elapsed = 0f;
@@ -404,6 +495,111 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         ctx.Intents.Throw(new PlayerThrowIntent(direction, distance, seconds));
         _motor.Hold(seconds);
     }
+
+    // JG-25d rule 4: farthest open ground from the body first, clear of the player and of every
+    // crack still opening; too little ground opens fewer.
+    private void OpenCracks(in EnemyTickContext ctx)
+    {
+        int per = Count(_stats.AddsPerSurface.Value);
+        if (per == 0 || AddCount + per > Count(_stats.MaxAdds.Value))
+        {
+            return;
+        }
+
+        Vector3 self = _agent.Position;
+        Vector3 player = _agent.Blackboard.PlayerPosition;
+        float clearance = OpenGroundPicker.PlayerClearance * OpenGroundPicker.PlayerClearance;
+        float seconds = _stats.CrackSeconds.Value;
+
+        for (int n = 0; n < per; n++)
+        {
+            int best = -1;
+            float bestDistance = -1f;
+
+            for (int i = 0; i < ctx.OpenGround.Count; i++)
+            {
+                Vector3 point = ctx.OpenGround[i];
+                if (!(FlatDistanceSquared(point, player) >= clearance) || !Spaced(point))
+                {
+                    continue;
+                }
+
+                float distance = FlatDistanceSquared(point, self);
+                if (distance > bestDistance)
+                {
+                    best = i;
+                    bestDistance = distance;
+                }
+            }
+
+            if (best < 0)
+            {
+                return;
+            }
+
+            Vector3 at = ctx.OpenGround[best];
+            _crackAt[_crackCount] = at;
+            _crackLeft[_crackCount] = seconds;
+            _crackCount++;
+            ctx.Events.Publish(new GravemawCrack(_agent.Id, at, seconds));
+        }
+    }
+
+    private bool Spaced(Vector3 point)
+    {
+        float spacing = _stats.CrackSpacing.Value;
+        for (int i = 0; i < _crackCount; i++)
+        {
+            if (!(FlatDistanceSquared(point, _crackAt[i]) >= spacing * spacing))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // JG-25d rule 5: on ticked time, so a stun holds the cracks too; a full registry skips the add.
+    private void Cracks(in EnemyTickContext ctx)
+    {
+        EnemyRegistry registry = ctx.Enemies.Registry;
+        int kept = 0;
+
+        for (int i = 0; i < _crackCount; i++)
+        {
+            float left = _crackLeft[i] - ctx.Dt;
+            if (left > 0f)
+            {
+                _crackAt[kept] = _crackAt[i];
+                _crackLeft[kept++] = left;
+                continue;
+            }
+
+            if (registry.AliveCount < registry.Capacity && _liveCount < AddCapacity)
+            {
+                _addIds[_liveCount++] = ctx.Enemies.SpawnSummon(_addId, _crackAt[i]).Id;
+            }
+        }
+
+        _crackCount = kept;
+    }
+
+    // JG-25d rule 6: a dead or despawned add leaves the count on the tick it goes.
+    private void RollCall(EnemyRegistry registry)
+    {
+        int kept = 0;
+        for (int i = 0; i < _liveCount; i++)
+        {
+            if (registry.TryGet(_addIds[i], out EnemyAgent add) && add.IsAlive)
+            {
+                _addIds[kept++] = _addIds[i];
+            }
+        }
+
+        _liveCount = kept;
+    }
+
+    private static int Count(float value) => (int)MathF.Min(AddCapacity, MathF.Max(0f, value));
 
     // Rule 4: an exponentially smoothed velocity with PredictWindowSeconds as its time constant.
     private void Sample(float now)

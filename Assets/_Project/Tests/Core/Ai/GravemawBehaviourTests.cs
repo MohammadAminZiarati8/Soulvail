@@ -20,6 +20,7 @@ public sealed class GravemawBehaviourTests
 {
     private const float Speed = 4f;
     private const float Contact = 20f;
+    private static readonly ContentId Frog = new("enemy.frog");
 
     /// <summary>Exact in binary, so 40 steps make 2.5 s to the bit.</summary>
     private const float Step = 0.0625f;
@@ -49,7 +50,7 @@ public sealed class GravemawBehaviourTests
         _player = new PlayerCombat(Character(), _events, _intents, 8);
         _projectiles = new ProjectileSystem(_events, 8);
         _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc,
-            new PlayerMotor(Character().Movement, Vector3.UnitZ), new ShockwaveSystem(new SilentEvents()));
+            new PlayerMotor(Character().Movement, Vector3.UnitZ), new ShockwaveSystem(new SilentEvents()), Frog);
         _session = null;
         _now = 0f;
         Place(new Vector3(0f, 0f, 3f));
@@ -320,8 +321,12 @@ public sealed class GravemawBehaviourTests
         Assert.That(_events.Count<GravemawBurrowed>(), Is.EqualTo(2));
         AssertGuard(true);
 
+        // Phase 2 surfaces twice (JG-25d): A goes back under, B opens the window.
         Tick(1.5f);
         Tick(1f);
+        Tick(0.3f);
+        Tick(0.3f);
+        Tick(0.8f);
         Assert.That(_gravemaw.State, Is.EqualTo(GravemawState.Surfaced));
         _gravemaw.OnPhaseEntered(2);
         Tick(0f);

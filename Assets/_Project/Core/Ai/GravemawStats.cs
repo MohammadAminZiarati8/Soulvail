@@ -76,4 +76,25 @@ public sealed class GravemawStats
 
     /// <summary>Each rock's damage as a multiple of <c>ContactDamage</c>.</summary>
     public Stat SpitDamageScale { get; } = new(1f);
+
+    /// <summary>Phase 2: how long it waits underground between eruption A and arming B (JG-25d).</summary>
+    public Stat DoubleGapSeconds { get; } = new(0.6f);
+
+    /// <summary>Phase 2: how long ring B warns; never under 0.6 s.</summary>
+    public Stat SecondWarnSeconds { get; } = new(0.8f);
+
+    /// <summary>Phase 2's least chase before the ring may arm.</summary>
+    public Stat PhaseTwoChaseSeconds { get; } = new(1.5f);
+
+    /// <summary>How long a crack opens before its add crawls out.</summary>
+    public Stat CrackSeconds { get; } = new(1f);
+
+    /// <summary>The most adds alive and cracks opening at once.</summary>
+    public Stat MaxAdds { get; } = new(4f);
+
+    /// <summary>How many cracks one phase-2 eruption opens.</summary>
+    public Stat AddsPerSurface { get; } = new(2f);
+
+    /// <summary>The least gap between two opening cracks, metres.</summary>
+    public Stat CrackSpacing { get; } = new(5f);
 }

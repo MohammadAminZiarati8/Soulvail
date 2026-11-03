@@ -296,7 +296,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                     agent, _thorns, _random.Misc,
                     new ContentId("enemy.thorn_pod"), new ContentId("enemy.rootling")),
             [new ContentId("boss.gravemaw")] =
-                agent => new GravemawBehaviour(agent, new GravemawStats(), _random.Misc, State.Motor, _shockwaves),
+                agent => new GravemawBehaviour(
+                    agent, new GravemawStats(), _random.Misc, State.Motor, _shockwaves, new ContentId("enemy.frog")),
         };
     }
 

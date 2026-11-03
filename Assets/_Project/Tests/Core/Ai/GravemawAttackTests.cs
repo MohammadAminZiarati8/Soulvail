@@ -23,6 +23,7 @@ namespace Soulvail.Tests.Core.Ai;
 public sealed class GravemawAttackTests
 {
     private const float Contact = 20f;
+    private static readonly ContentId Frog = new("enemy.frog");
     private const float Frame = 1f / 64f;
     private static readonly Vector3 Centre = new(0f, 0f, 3f);
 
@@ -54,7 +55,7 @@ public sealed class GravemawAttackTests
         _projectiles = new ProjectileSystem(_events, 8);
         _shockwaves = new ShockwaveSystem(_events);
         _stats = new GravemawStats();
-        _gravemaw = new GravemawBehaviour(_agent, _stats, new FixedRandom(0.5f).Misc, _motor, _shockwaves);
+        _gravemaw = new GravemawBehaviour(_agent, _stats, new FixedRandom(0.5f).Misc, _motor, _shockwaves, Frog);
         _session = null;
         _now = 0f;
         Place(Centre);
@@ -266,7 +267,7 @@ public sealed class GravemawAttackTests
         player.Health.SetExternalInvulnerable(true);
         var projectiles = new ProjectileSystem(silent, 8);
         var shockwaves = new ShockwaveSystem(silent);
-        var gravemaw = new GravemawBehaviour(_agent, _stats, new FixedRandom(0.5f).Misc, _motor, shockwaves);
+        var gravemaw = new GravemawBehaviour(_agent, _stats, new FixedRandom(0.5f).Misc, _motor, shockwaves, Frog);
         Place(Centre + new Vector3(5f, 0f, 0f));
         AllocationAssert.None(() =>
         {

@@ -320,3 +320,35 @@ public readonly struct EnemyLeapAimed
         AirSeconds = airSeconds;
     }
 }
+
+/// <summary>
+/// A chain blast has lit a bomber: it goes off <see cref="Seconds"/> later (JG-21d). Published once
+/// per lit agent by <c>EnemySystem</c>, after the <c>EnemyExploded</c> that lit it.
+/// </summary>
+/// <remarks>Both ends ride the event so the view can draw the link line without a lookup.</remarks>
+public readonly struct EnemyChainLit
+{
+    /// <summary>Which enemy is now lit.</summary>
+    public readonly int Id;
+
+    /// <summary>Which enemy's blast lit it.</summary>
+    public readonly int ByEnemyId;
+
+    /// <summary>Where the lighting blast went off, in world metres.</summary>
+    public readonly Vector3 From;
+
+    /// <summary>Where the lit enemy stood when it was lit.</summary>
+    public readonly Vector3 To;
+
+    /// <summary>Seconds until it goes off.</summary>
+    public readonly float Seconds;
+
+    public EnemyChainLit(int id, int byEnemyId, Vector3 from, Vector3 to, float seconds)
+    {
+        Id = id;
+        ByEnemyId = byEnemyId;
+        From = from;
+        To = to;
+        Seconds = seconds;
+    }
+}

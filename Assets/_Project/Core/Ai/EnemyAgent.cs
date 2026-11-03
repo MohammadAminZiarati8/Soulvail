@@ -195,6 +195,12 @@ public sealed class EnemyAgent
     internal float DiedAt { get; set; } = float.NegativeInfinity;
 
     /// <summary>
+    /// Run time at which a neighbour's chain blast kills it, or positive infinity while unlit
+    /// (JG-21d). Set once by <c>EnemySystem</c>'s explosion, burned by its tick.
+    /// </summary>
+    public float ChainFuseAt { get; internal set; } = float.PositiveInfinity;
+
+    /// <summary>
     /// Whether damage can land on it right now. True for everything in M1 — the first archetype
     /// that lowers it is the Warden, whose front shield blocks all damage (GD §8.1, M7-01) — and
     /// read by <c>TargetScorer</c> through a candidate, which never selects an enemy it cannot
@@ -230,6 +236,7 @@ public sealed class EnemyAgent
         // Back to "has never died", so a recycled agent cannot inherit the previous life's death
         // stamp and be swept the moment it spawns.
         DiedAt = float.NegativeInfinity;
+        ChainFuseAt = float.PositiveInfinity;
 
         Blackboard.Reset();
 

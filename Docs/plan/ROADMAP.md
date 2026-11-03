@@ -106,7 +106,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-21a** — The Bullfrog's leap: crouch, fixed landing ring, flight, bite (M)
 - [x] **JG-21b** — Shadow panthers pair up: leader in, flanker to the side, lunge together (M)
 - [x] **JG-21c** — The Thorn pitcher throws a fan of three ringed lobs (S)
-- [ ] **JG-21d** — The Chain bomber's blast lights nearby bombers (S)
+- [x] **JG-21d** — The Chain bomber's blast lights nearby bombers (S)
 - [ ] **JG-21e** — Drawn: the landing ring, the hop arc, chain links and fuse flash (M)
 - [ ] **JG-21f** — Cousin assets, the easy four retired at 21, stage 21 scripted (M)
 - [ ] **JG-22a** — Chameleon stalker in core: hides when still, strikes from behind (M)

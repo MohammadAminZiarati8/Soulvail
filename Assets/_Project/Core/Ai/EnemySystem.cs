@@ -120,6 +120,12 @@ public sealed class EnemySystem
     public const float CorpseTime = 0.6f;
 
     /// <summary>
+    /// Seconds between a chain blast lighting a bomber and that bomber going off (JG-21d) — the
+    /// beat that makes a crowd of them a fuse rather than one explosion.
+    /// </summary>
+    public const float ChainFuseSeconds = 0.3f;
+
+    /// <summary>
     /// Metres within which another enemy counts as an ally, for
     /// <see cref="EnemyBlackboard.AlliesNearby"/> — GD §8.1's clustering pressure.
     /// </summary>
@@ -923,7 +929,8 @@ public sealed class EnemySystem
     /// that <see cref="Tick"/> may be walking. That wants a work queue and a recursion guard, and it
     /// is a bigger change than the archetype. Player-only keeps the whole blast a single leaf call:
     /// one XZ distance test, one <c>PlayerCombat.ApplyDamage</c>, no registry mutation, no
-    /// re-entrancy. M7-02 is where a chain can be afforded.
+    /// re-entrancy. JG-21d's chain keeps that: a blast only <em>lights</em> its neighbours, and each
+    /// dies a beat later from <see cref="Tick"/> — see <see cref="LightChain"/>.
     /// </para>
     /// <para>
     /// <b>XZ, from where it died</b> (AR §18.4) — the height between two capsule centres is a
@@ -962,6 +969,53 @@ public sealed class EnemySystem
         }
 
         _events.Publish(new EnemyExploded(agent.Id, agent.Spec.Id, centre, radius, caught));
+
+        if (agent.Spec.Explosion.ChainRadius > 0f)
+        {
+            LightChain(agent, centre, now);
+        }
+    }
+
+    /// <summary>
+    /// JG-21d rules 1, 3 and 5: every other living, unlit, non-boss bomber within the blast's
+    /// <see cref="ExplosionSpec.ChainRadius"/> (XZ) is lit to go off <see cref="ChainFuseSeconds"/>
+    /// from <paramref name="now"/>. Lighting only stamps a time — the death comes later through
+    /// <see cref="Execute"/>, in <see cref="Tick"/> — so the walk here mutates no registry and is
+    /// safe from inside the behaviour pass.
+    /// </summary>
+    private void LightChain(EnemyAgent source, Vector3 centre, float now)
+    {
+        float chainRadius = source.Spec.Explosion.ChainRadius;
+        float chainSquared = chainRadius * chainRadius;
+        float fuseAt = now + ChainFuseSeconds;
+
+        ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent other = agents[i];
+
+            if (other == source
+                || !other.IsAlive
+                || other.Spec.Explosion is null
+                || other.Spec.Behaviour == EnemyBehaviourKind.Boss
+                || !float.IsPositiveInfinity(other.ChainFuseAt))
+            {
+                continue;
+            }
+
+            float dx = other.Position.X - centre.X;
+            float dz = other.Position.Z - centre.Z;
+
+            if ((dx * dx) + (dz * dz) > chainSquared)
+            {
+                continue;
+            }
+
+            other.ChainFuseAt = fuseAt;
+
+            _events.Publish(new EnemyChainLit(other.Id, source.Id, centre, other.Position, ChainFuseSeconds));
+        }
     }
 
     /// <summary>
@@ -1092,6 +1146,17 @@ public sealed class EnemySystem
 
             if (!agent.IsAlive)
             {
+                continue;
+            }
+
+            // JG-21d rule 2: a lit bomber whose chain fuse has burned dies through the one door, so it
+            // pays and counts like any death and then explodes — which may light agents later in this
+            // span, stamped a full fuse ahead, so none of them burns this tick. A bomber that already
+            // died by its own fuse is not alive and never gets here (rule 4).
+            if (ctx.Now >= agent.ChainFuseAt)
+            {
+                agent.ChainFuseAt = float.PositiveInfinity;
+                Execute(agent.Id, ctx.Now, ctx.Player);
                 continue;
             }
 

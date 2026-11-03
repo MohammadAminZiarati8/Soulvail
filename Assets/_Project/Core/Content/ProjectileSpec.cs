@@ -151,18 +151,35 @@ public sealed class ExplosionSpec
     /// Metres the blast reaches. 3 for the Bloater (GD §8.1) — two and a half times its own 1.2 m
     /// body, so backing out of a lit fuse is a decision with a distance to it.
     /// </param>
+    /// <param name="chainRadius">
+    /// Metres (XZ) within which this blast lights every other bomber, each going off
+    /// <c>EnemySystem.ChainFuseSeconds</c> later (JG-21d). Zero — the default — does not chain.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="radius"/> is not a finite number greater than zero. A zero radius is an
     /// explosion that can only catch something standing on the exact point it went off at, which is
-    /// better said by passing no spec at all.
+    /// better said by passing no spec at all. Or <paramref name="chainRadius"/> is negative or not
+    /// finite.
     /// </exception>
-    public ExplosionSpec(float radius)
+    public ExplosionSpec(float radius, float chainRadius = 0f)
     {
         Radius = Positive(radius, nameof(radius));
+
+        // Negated for AR §18.3: NaN fails every comparison, so `chainRadius < 0f` would wave it through.
+        if (!(chainRadius >= 0f) || float.IsInfinity(chainRadius))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(chainRadius), chainRadius, "chainRadius must be a finite number, zero or more.");
+        }
+
+        ChainRadius = chainRadius;
     }
 
     /// <summary>Metres the blast reaches — 3 for the Bloater (GD §8.1).</summary>
     public float Radius { get; }
+
+    /// <summary>Metres (XZ) within which it lights other bombers; 0 does not chain (JG-21d).</summary>
+    public float ChainRadius { get; }
 
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> rather than <c>value &lt;= 0f</c>, so NaN is refused too (AR §18.3):

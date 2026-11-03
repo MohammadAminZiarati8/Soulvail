@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-25a._
+_Updated 2026-11-04, JG-25b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-25a**: Gravemaw in core. |
-| **Next task** | **JG-25b**; revise spec (knockback). |
-| **Verified** | EditMode 5 453: 5 452 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
+| **Last merged** | **JG-25b**: Gravemaw's throw. |
+| **Next task** | **JG-25c**; revise spec first. |
+| **Verified** | EditMode 5 470: 5 469 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
 
@@ -25,7 +25,7 @@ Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past the player, die with it; crone, lime crown.
-Gravemaw (core): burrow, predicted ring, eruption, 4 s window.
+Gravemaw (core): burrow, predicted ring, eruption + throw, 4 s window.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,

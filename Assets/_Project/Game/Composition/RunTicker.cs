@@ -435,7 +435,13 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         // Before the move below, so that the dash this starts is already in flight when the guard
         // there asks whether one is. Core suspends the motor on the same tick, so there is no
-        // PlayerMove to suppress today — but the two would only have to disagree once.
+        // PlayerMove to suppress today — but the two would only have to disagree once. A throw
+        // first (JG-25b), so a dash core started on the same tick replaces it.
+        if (_intents.HasThrow)
+        {
+            _charge.Throw(_intents.Throw);
+        }
+
         if (_intents.HasCharge)
         {
             _charge.Begin(_intents.Charge, _session);

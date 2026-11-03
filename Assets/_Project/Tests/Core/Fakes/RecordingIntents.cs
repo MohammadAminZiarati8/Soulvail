@@ -32,6 +32,7 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<LaneProbeIntent> _laneProbes = new();
     public IReadOnlyList<LaneProbeIntent> LaneProbes => _laneProbes;
     private readonly List<ChargeIntent> _charges = new();
+    private readonly List<PlayerThrowIntent> _throws = new();
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
     private readonly List<EnemyMoveIntent> _enemyMoves = new();
     private readonly List<EnemyMoveIntent> _minionMoves = new();
@@ -118,6 +119,9 @@ public sealed class RecordingIntents : IIntentSink
             return _charges[_charges.Count - 1];
         }
     }
+
+    /// <summary>Every throw of the player written, in the order core decided them (JG-25b).</summary>
+    public IReadOnlyList<PlayerThrowIntent> Throws => _throws;
 
     /// <summary>Every knockback written, in the order core decided them.</summary>
     /// <remarks>
@@ -215,6 +219,7 @@ public sealed class RecordingIntents : IIntentSink
         _bindProbes.Clear();
         _laneProbes.Clear();
         _charges.Clear();
+        _throws.Clear();
         _knockbacks.Clear();
         _enemyMoves.Clear();
         _minionMoves.Clear();
@@ -238,6 +243,8 @@ public sealed class RecordingIntents : IIntentSink
     {
         _charges.Add(intent);
     }
+
+    void IIntentSink.Throw(in PlayerThrowIntent intent) => _throws.Add(intent);
 
     void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
     {

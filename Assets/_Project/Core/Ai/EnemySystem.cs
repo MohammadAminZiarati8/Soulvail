@@ -1750,6 +1750,8 @@ public sealed class EnemySystem
 
         public void Charge(in ChargeIntent intent) => Inner.Charge(intent);
 
+        public void Throw(in PlayerThrowIntent intent) => Inner.Throw(intent);
+
         public void EnemyMove(in EnemyMoveIntent intent)
         {
             if (_registry.TryGet(intent.Id, out EnemyAgent agent) && agent.CrowdControl.IsRooted)

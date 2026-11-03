@@ -37,4 +37,10 @@ public sealed class GravemawStats
 
     /// <summary>How long it stands untargetable before it burrows again.</summary>
     public Stat DiveSeconds { get; } = new(0.5f);
+
+    /// <summary>How long the eruption's throw takes (JG-25b).</summary>
+    public Stat ThrowSeconds { get; } = new(0.25f);
+
+    /// <summary>How far outside the ring an unobstructed throw lands, metres.</summary>
+    public Stat ThrowMargin { get; } = new(1f);
 }

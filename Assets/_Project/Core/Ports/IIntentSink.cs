@@ -107,6 +107,13 @@ public interface IIntentSink
     void Charge(in ChargeIntent intent);
 
     /// <summary>
+    /// Tells the body an enemy has thrown the player: this far, this way, over this long (JG-25b).
+    /// Written once per throw; core holds the motor for its duration, so the body may ignore every
+    /// <see cref="PlayerMove"/> until it is over.
+    /// </summary>
+    void Throw(in PlayerThrowIntent intent);
+
+    /// <summary>
     /// Tells one enemy's body where to walk and where to look this tick. Written once per living
     /// enemy that has a behaviour driving it, every tick.
     /// </summary>

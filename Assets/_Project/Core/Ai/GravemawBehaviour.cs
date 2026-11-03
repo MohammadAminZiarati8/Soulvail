@@ -47,6 +47,9 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     /// <summary>The tunnel stops this close to the ring's centre.</summary>
     public const float ArriveDistance = 0.3f;
 
+    /// <summary>A player this close to the ring's centre is thrown against their facing (JG-25b rule 2).</summary>
+    public const float ThrowCentreEpsilon = 0.01f;
+
     private readonly EnemyAgent _agent;
     private readonly GravemawStats _stats;
 
@@ -62,11 +65,15 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     private float _sampledAt;
     private Vector2 _velocity;
 
-    public GravemawBehaviour(EnemyAgent agent, GravemawStats stats, IRandomStream random)
+    // The thrown player's; held for the throw so no stick velocity argues with it (JG-25b rule 4).
+    private readonly PlayerMotor _motor;
+
+    public GravemawBehaviour(EnemyAgent agent, GravemawStats stats, IRandomStream random, PlayerMotor motor)
     {
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         _stats = stats ?? throw new ArgumentNullException(nameof(stats));
         _random = random ?? throw new ArgumentNullException(nameof(random));
+        _motor = motor ?? throw new ArgumentNullException(nameof(motor));
     }
 
     public GravemawState State { get; private set; }
@@ -222,6 +229,11 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
             DamageResult bite = ctx.Player.ApplyDamage(
                 _agent.ContactDamage.Value * _stats.RingDamageScale.Value, ctx.Now);
             hit = !bite.Blocked;
+
+            if (hit && !ctx.Player.Health.IsDead)
+            {
+                Throw(ctx, board.PlayerPosition, radius);
+            }
         }
 
         ctx.Events.Publish(new GravemawErupted(_agent.Id, RingCentre, radius, hit));
@@ -229,6 +241,37 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         State = GravemawState.Surfaced;
         _elapsed = 0f;
         ctx.Events.Publish(new GravemawWindow(_agent.Id, true, _stats.WindowSeconds.Value));
+    }
+
+    // JG-25b: straight out from the centre to ThrowMargin past the edge; the body walks it and a
+    // wall stops it short, so core never needs to know where the walls are.
+    private void Throw(in EnemyTickContext ctx, Vector3 player, float radius)
+    {
+        var outward = new Vector2(player.X - RingCentre.X, player.Z - RingCentre.Z);
+        float from = outward.Length();
+        Vector2 direction;
+
+        if (from > ThrowCentreEpsilon)
+        {
+            direction = outward / from;
+        }
+        else
+        {
+            direction = -ctx.PlayerFacing;
+            float length = direction.Length();
+            direction = length > 0f ? direction / length : Vector2.UnitY;
+        }
+
+        float seconds = _stats.ThrowSeconds.Value;
+        float distance = MathF.Max(0f, radius + _stats.ThrowMargin.Value - from);
+
+        if (!(seconds > 0f) || !(distance > 0f))
+        {
+            return;
+        }
+
+        ctx.Intents.Throw(new PlayerThrowIntent(direction, distance, seconds));
+        _motor.Hold(seconds);
     }
 
     // Rule 4: an exponentially smoothed velocity with PredictWindowSeconds as its time constant.

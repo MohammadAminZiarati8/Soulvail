@@ -73,6 +73,7 @@ public sealed class IntentBuffer : IIntentSink
 
     private PlayerMoveIntent _playerMove;
     private ChargeIntent _charge;
+    private PlayerThrowIntent _throw;
 
     /// <summary>Whether core wrote a player move intent during this tick.</summary>
     /// <remarks>
@@ -84,6 +85,15 @@ public sealed class IntentBuffer : IIntentSink
 
     /// <summary>Whether core started a dash during this tick.</summary>
     public bool HasCharge { get; private set; }
+
+    /// <summary>Whether an enemy threw the player during this tick (JG-25b).</summary>
+    public bool HasThrow { get; private set; }
+
+    /// <summary>
+    /// The throw core started this tick. Undefined while <see cref="HasThrow"/> is <c>false</c>,
+    /// for the reason <see cref="Charge"/> is. Callers check the flag.
+    /// </summary>
+    public PlayerThrowIntent Throw => _throw;
 
     /// <summary>
     /// The move intent core wrote this tick. Undefined while <see cref="HasPlayerMove"/> is
@@ -193,6 +203,12 @@ public sealed class IntentBuffer : IIntentSink
         HasCharge = true;
     }
 
+    void IIntentSink.Throw(in PlayerThrowIntent intent)
+    {
+        _throw = intent;
+        HasThrow = true;
+    }
+
     void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
     {
         _enemyMoves.Add(intent);
@@ -224,6 +240,7 @@ public sealed class IntentBuffer : IIntentSink
     {
         HasPlayerMove = false;
         HasCharge = false;
+        HasThrow = false;
 
         _coneHits.Clear();
         _bindProbes.Clear();

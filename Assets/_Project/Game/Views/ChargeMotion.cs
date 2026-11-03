@@ -89,6 +89,9 @@ namespace Soulvail.Game.Views
 
         private Vector3 _direction;
 
+        /// <summary>A dash sweeps enemies; a throw (JG-25b) walks the same way and sweeps nobody.</summary>
+        private bool _sweeps;
+
         private bool _warnedAboutCapacity;
 
         /// <summary>Whether a dash is being walked right now.</summary>
@@ -151,8 +154,35 @@ namespace Soulvail.Game.Views
             _direction = direction.normalized;
             _speed = intent.Distance / intent.Duration;
             _remaining = intent.Duration;
+            _sweeps = true;
 
             transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
+        }
+
+        /// <summary>
+        /// Takes a throw an enemy just landed on the player and starts walking it (JG-25b).
+        /// </summary>
+        /// <remarks>
+        /// A dash in every way that matters to the controller — distance over duration, clipped
+        /// last step, a wall stops it while the timer runs out, <see cref="IsActive"/> keeps
+        /// <c>PlayerMove</c> off the body — but it reports nobody it passes through, and it does not
+        /// turn the character: being thrown is not a direction the player chose to face. A
+        /// <see cref="Begin"/> after it replaces it.
+        /// </remarks>
+        public void Throw(in PlayerThrowIntent intent)
+        {
+            Vector3 direction = new Vector3(intent.DirectionXZ.X, 0f, intent.DirectionXZ.Y);
+
+            if (!(direction.sqrMagnitude > 0f) || !(intent.Duration > 0f) || !(intent.Distance >= 0f))
+            {
+                return;
+            }
+
+            _session = null;
+            _sweeps = false;
+            _direction = direction.normalized;
+            _speed = intent.Distance / intent.Duration;
+            _remaining = intent.Duration;
         }
 
         /// <summary>
@@ -203,7 +233,10 @@ namespace Soulvail.Game.Views
 
             _controller.Move(((_direction * _speed) + new Vector3(0f, GroundedFallSpeed, 0f)) * step);
 
-            Sweep(from, transform.position);
+            if (_sweeps)
+            {
+                Sweep(from, transform.position);
+            }
         }
 
         /// <summary>

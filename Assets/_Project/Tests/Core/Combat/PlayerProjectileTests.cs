@@ -1048,6 +1048,8 @@ public sealed class PlayerProjectileTests
             // Deliberately nothing.
         }
 
+        public void Throw(in PlayerThrowIntent intent) { }
+
         public void Charge(in ChargeIntent intent)
         {
             // Deliberately nothing.

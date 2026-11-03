@@ -48,7 +48,8 @@ public sealed class GravemawBehaviourTests
         _agent = _enemies.Registry.Spawn(Body(), Vector3.Zero);
         _player = new PlayerCombat(Character(), _events, _intents, 8);
         _projectiles = new ProjectileSystem(_events, 8);
-        _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc);
+        _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc,
+            new PlayerMotor(Character().Movement, Vector3.UnitZ));
         _session = null;
         _now = 0f;
         Place(new Vector3(0f, 0f, 3f));
@@ -278,6 +279,20 @@ public sealed class GravemawBehaviourTests
         Assert.That(erupted.At, Is.EqualTo(centre));
         Assert.That(erupted.Hit, Is.True);
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
+    }
+
+    /// <summary>JG-25b rule 4 through the real wiring: the session hands the boss the player's motor.</summary>
+    [Test]
+    public void Session_Throw_HoldsPlayersMotor()
+    {
+        StartSession(new Vector3(0f, 0f, 3f));
+        SessionUntil(() => _gravemaw.State == GravemawState.Surfaced, 5f);
+        Assert.That(_intents.Throws.Count, Is.EqualTo(1));
+        var motor = (PlayerMotor)typeof(RunState).GetProperty("Motor", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(_session.State);
+        Assert.That(motor.IsHeld, Is.True);
+        SessionFor(0.25f);
+        Assert.That(motor.IsHeld, Is.False);
     }
 
     [Test]

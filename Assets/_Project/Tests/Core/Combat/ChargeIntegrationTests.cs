@@ -764,6 +764,8 @@ public sealed class ChargeIntegrationTests
             // Deliberately nothing.
         }
 
+        public void Throw(in PlayerThrowIntent intent) { }
+
         public void Charge(in ChargeIntent intent)
         {
             // Deliberately nothing.

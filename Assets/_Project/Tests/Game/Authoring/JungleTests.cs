@@ -54,6 +54,8 @@ public sealed class JungleTests
     private const string ShamanPath = "Assets/_Project/Data/Enemies/Shaman.asset";
     private const string StalkerPath = "Assets/_Project/Data/Enemies/Stalker.asset";
     private const string StalkerBodyPath = "Assets/_Project/Prefabs/Enemies/Stalker.prefab";
+    private const string ThornweaverPath = "Assets/_Project/Data/Enemies/Thornweaver.asset";
+    private const string ThornweaverBodyPath = "Assets/_Project/Prefabs/Enemies/Thornweaver.prefab";
     private const string MossguardBodyPath = "Assets/_Project/Prefabs/Enemies/Mossguard.prefab";
     private const string CroakerPath = "Assets/_Project/Data/Enemies/Croaker.asset";
     private const string MotherPath = "Assets/_Project/Data/Enemies/MotherPitcher.asset";
@@ -268,7 +270,7 @@ public sealed class JungleTests
         {
             "enemy.mossguard", "enemy.shaman",
             "enemy.bullfrog", "enemy.thorn_pitcher", "enemy.chain_bomber", "enemy.shadow_panther",
-            "enemy.stalker",
+            "enemy.stalker", "enemy.thornweaver",
         }));
         count = jungle.RosterFor(20, buffer);
         Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Is.EquivalentTo(new[]
@@ -424,12 +426,14 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesTwentyOneToTwentyThree_Climb()
+    public void Jungle_StagesTwentyOneToTwentyFour_Climb()
     {
+        // JG-24d rule 5: the weaver's stage tops the climb, and 25 stays Gravemaw's.
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
         Dictionary<ContentId, int> costs = new[]
             {
                 "Bullfrog", "ThornPitcher", "ChainBomber", "ShadowPanther", "Mossguard", "Shaman", "Stalker",
+                "Thornweaver",
             }
             .Select(name => Load<EnemyDefinition>($"Assets/_Project/Data/Enemies/{name}.asset").ToSpec())
             .ToDictionary(enemy => enemy.Id, enemy => enemy.ThreatCost);
@@ -440,7 +444,98 @@ public sealed class JungleTests
             return stage.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]);
         }
 
-        Assert.That((Threat(21), Threat(22), Threat(23)), Is.EqualTo((194, 218, 242)));
+        Assert.That((Threat(21), Threat(22), Threat(23), Threat(24)), Is.EqualTo((194, 218, 242, 269)));
+        Assert.That(jungle.TryGetBossFor(25, out _), Is.True, "Stage 25 stays a boss stage.");
+        Assert.That(jungle.TryGetScriptedStage(25, out _), Is.False);
+    }
+
+    [Test]
+    public void Jungle_Thornweaver_HasItsNumbers()
+    {
+        // JG-24d rule 2.
+        var definition = Load<EnemyDefinition>(ThornweaverPath);
+        EnemySpec spec = definition.ToSpec();
+
+        Assert.That((spec.Id.Value, spec.Behaviour, spec.MaxHp, spec.ThreatCost, spec.TargetPriority,
+            spec.MoveSpeed, spec.XpValue, spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime),
+            Is.EqualTo(("enemy.thornweaver", EnemyBehaviourKind.Thornweaver, 70f, 15, 7, 2f, 34f, 10f, 1f,
+                0.8f, 1f)));
+        ThornweaverSpec weaver = spec.Thornweaver;
+        Assert.That(new[] { weaver.HoldDistance, weaver.CastRange, weaver.CastInterval, weaver.CastSeconds,
+            weaver.WallLength, weaver.WallHalfWidth, weaver.ArmSeconds, weaver.StandSeconds,
+            weaver.BeyondDistance }, Is.EqualTo(new[] { 10f, 14f, 5f, 0.8f, 5f, 0.4f, 0.9f, 5f, 2.5f }),
+            "JG-24a's authored block.");
+        Assert.That(weaver.MaxWalls, Is.EqualTo(2));
+        Assert.That(definition.ToLook().Body.gameObject, Is.EqualTo(Load<GameObject>(ThornweaverBodyPath)));
+    }
+
+    [Test]
+    public void Jungle_RostersThornweaverFrom24()
+    {
+        // JG-24d rule 3.
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        var buffer = new RosterEntry[jungle.Roster.Count];
+
+        int count = jungle.RosterFor(23, buffer);
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Has.No.Member("enemy.thornweaver"));
+        count = jungle.RosterFor(24, buffer);
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Has.Member("enemy.thornweaver"));
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.Select(r => r.SpecId.Value),
+            Has.No.Member("enemy.thornweaver"));
+    }
+
+    [Test]
+    public void Jungle_StageTwentyFour_IsTheWeaver()
+    {
+        // JG-24d rule 4: met alone, then two weavers pen the player toward the Mossguards.
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(24, out ScriptedStage stage), Is.True);
+        Assert.That(stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.thornweaver", 1), (1, "enemy.bullfrog", 8),
+            (2, "enemy.stalker", 2), (2, "enemy.chain_bomber", 4), (2, "enemy.thorn_pitcher", 2),
+            (2, "enemy.bullfrog", 2),
+            (3, "enemy.thornweaver", 2), (3, "enemy.mossguard", 2), (3, "enemy.shadow_panther", 2),
+            (3, "enemy.shaman", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_Thornweaver_Boots()
+    {
+        // JG-24d rule 6.
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec()),
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        EnemySpec weaver = catalog.Enemy(new ContentId("enemy.thornweaver"));
+        Assert.That(weaver.Behaviour, Is.EqualTo(EnemyBehaviourKind.Thornweaver));
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[weaver.NameKey], Is.EqualTo("Thornweaver"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[weaver.NameKey],
+            Is.EqualTo(LocalisationSweepTests.Pseudolocalise("Thornweaver")));
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(24);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 24);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 24, SpawnPlan.Empty, restore)));
+            Assert.That(session.State.StageIndex, Is.EqualTo(24));
+        }
+        finally
+        {
+            session.End();
+        }
     }
 
     [Test]
@@ -650,6 +745,7 @@ public sealed class JungleTests
             ("enemy.chain_bomber", 21),
             ("enemy.shadow_panther", 21),
             ("enemy.stalker", 22),
+            ("enemy.thornweaver", 24),
         }), "The Jungle's own enemies, with the Panther after Old Croaker and the Mossguard after Mother Pitcher.");
     }
 

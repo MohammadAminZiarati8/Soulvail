@@ -95,7 +95,10 @@ public sealed class ThornheartStageTests
         Assert.That(hp, Is.GreaterThan(2f * arrow), "Two base arrows leave it standing.");
         Assert.That(hp, Is.LessThanOrEqualTo(3f * arrow), "Three base arrows kill it.");
 
-        foreach (RosterEntry entry in jungle.Roster.Where(r => r.SpecId.Value != ShamanId))
+        // Outranks whatever can share its fight; the Thornweaver (7, from 24) never meets a pod.
+        var live = new RosterEntry[jungle.Roster.Count];
+        int count = jungle.RosterFor(Stage, live);
+        foreach (RosterEntry entry in live.Take(count).Where(r => r.SpecId.Value != ShamanId))
         {
             string path = AssetPath(entry.SpecId);
             Assert.That(Load<EnemyDefinition>(path).ToSpec().TargetPriority, Is.LessThan(pod.TargetPriority), path);

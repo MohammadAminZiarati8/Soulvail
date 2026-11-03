@@ -325,6 +325,31 @@ public sealed class EnemyDefinitionTests
     }
 
     [Test]
+    public void Definition_WeaverBlock_BuildsOnlyWithAWall()
+    {
+        // JG-24d rule 1: the weaver block is built only when its wall length is above 0.
+        EnemyDefinition weaver = NewDefinition("Weaver");
+        string[] fields = { "_weaverHoldDistance", "_weaverCastRange", "_weaverCastInterval",
+            "_weaverCastSeconds", "_weaverWallLength", "_weaverWallHalfWidth", "_weaverArmSeconds",
+            "_weaverStandSeconds", "_weaverBeyondDistance" };
+        float[] values = { 10f, 14f, 5f, 0.8f, 5f, 0.4f, 0.9f, 5f, 2.5f };
+        for (int i = 0; i < fields.Length; i++)
+        { SetFloat(weaver, fields[i], values[i]); }
+        SetInt(weaver, "_weaverMaxWalls", 2);
+
+        ThornweaverSpec spec = weaver.ToSpec().Thornweaver;
+
+        Assert.That(spec, Is.Not.Null);
+        Assert.That(new[] { spec.HoldDistance, spec.CastRange, spec.CastInterval, spec.CastSeconds,
+            spec.WallLength, spec.WallHalfWidth, spec.ArmSeconds, spec.StandSeconds, spec.BeyondDistance },
+            Is.EqualTo(values));
+        Assert.That(spec.MaxWalls, Is.EqualTo(2));
+
+        SetFloat(weaver, "_weaverWallLength", 0f);
+        Assert.That(weaver.ToSpec().Thornweaver, Is.Null);
+    }
+
+    [Test]
     public void Definition_ProjectileCountAndSpread_ReachTheSpec()
     {
         EnemyDefinition thrower = NewDefinition("Thrower");

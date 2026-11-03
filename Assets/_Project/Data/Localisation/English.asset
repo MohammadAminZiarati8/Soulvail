@@ -680,3 +680,5 @@ MonoBehaviour:
     _text: 'Shadow Panther'
   - _key: enemy.stalker.name
     _text: 'Chameleon Stalker'
+  - _key: enemy.thornweaver.name
+    _text: 'Thornweaver'

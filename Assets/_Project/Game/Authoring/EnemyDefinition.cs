@@ -193,6 +193,20 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _stalkerRevealSeconds;
         [SerializeField, Min(0f)] private float _stalkerStrikeCooldown;
 
+        [Header("Thornweaver — leave the wall length at 0 on other archetypes")]
+        [Tooltip("Metres long each thorn wall it plants is. 0 means no weaver block and the nine " +
+                 "fields beside it are ignored. 5 for the Thornweaver (JG-24d).")]
+        [SerializeField, Min(0f)] private float _weaverWallLength;
+        [SerializeField, Min(0f)] private float _weaverHoldDistance;
+        [SerializeField, Min(0f)] private float _weaverCastRange;
+        [SerializeField, Min(0f)] private float _weaverCastInterval;
+        [SerializeField, Min(0f)] private float _weaverCastSeconds;
+        [SerializeField, Min(0f)] private float _weaverWallHalfWidth;
+        [SerializeField, Min(0f)] private float _weaverArmSeconds;
+        [SerializeField, Min(0f)] private float _weaverStandSeconds;
+        [SerializeField, Min(0f)] private float _weaverBeyondDistance;
+        [SerializeField, Min(0)] private int _weaverMaxWalls;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -314,6 +328,12 @@ namespace Soulvail.Game.Authoring
                             _stalkerStrikeRange, _stalkerBehindAngleDegrees, _stalkerStrikeLength,
                             _stalkerStrikeSpeed, _stalkerStrikeHalfWidth, _stalkerRevealSeconds,
                             _stalkerStrikeCooldown)
+                        : null,
+                    _weaverWallLength > 0f
+                        ? new ThornweaverSpec(_weaverHoldDistance, _weaverCastRange,
+                            _weaverCastInterval, _weaverCastSeconds, _weaverWallLength,
+                            _weaverWallHalfWidth, _weaverArmSeconds, _weaverStandSeconds,
+                            _weaverBeyondDistance, _weaverMaxWalls)
                         : null);
             }
             catch (ArgumentException inner)

@@ -117,7 +117,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-24a** — Thornweaver in core: walls beyond the player on `ThornSystem` (M)
 - [x] **JG-24b** — The Thornweaver's model on `Rig_Medium` (M)
 - [x] **JG-24c** — The Thornweaver's body: cast, crown glow, root line (M)
-- [ ] **JG-24d** — Thornweaver asset, roster at 24, stage 24 scripted (S)
+- [x] **JG-24d** — Thornweaver asset, roster at 24, stage 24 scripted (S)
 
 **Stages 25–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced after stages 21–24 are built and played. Titles only.
 

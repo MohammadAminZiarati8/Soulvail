@@ -2,29 +2,29 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-24c._
+_Updated 2026-11-04, JG-24d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-24c**: Thornweaver cast, crown, root. |
-| **Next task** | **JG-24d**. |
-| **Verified** | EditMode 5 427: 5 426 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-24d**: Thornweaver at stage 24. |
+| **Next task** | **JG-25a**. |
+| **Verified** | EditMode 5 432: 5 431 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–23 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
+Stages 1–14, 16–19, 21–24 scripted; 11 bodied enemies; ringed lobs. Boss adds: no XP.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart, pod rings fill, band 14→11 m in the walls; walls warn, rise as vines.
 Mother: shields, lobs, spray, pods.
 Leap: crouch, ring, clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
-Thornweaver (core): holds 10 m, walls past player, ≤ 2, die with it. Crone;
+Thornweaver (24+): holds 10 m, walls past player, ≤ 2, die with it. Crone;
 casts, lime crown, moss root.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.

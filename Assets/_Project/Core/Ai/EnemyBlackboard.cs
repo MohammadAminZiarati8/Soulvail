@@ -172,7 +172,14 @@ public sealed class EnemyBlackboard
     public float NextAttackAt;
 
     /// <summary>
-    /// Back to a blank blackboard: every field to its default.
+    /// The id of the agent this one hunts with, or −1 for none (JG-21b). Written by the pairing
+    /// <c>LungerBehaviour</c> on both of the pair, so neither is taken twice; each re-checks the other
+    /// every tick and lets go of a partner that died or no longer names it.
+    /// </summary>
+    public int PartnerId = -1;
+
+    /// <summary>
+    /// Back to a blank blackboard: every field to its default, <see cref="PartnerId"/> to −1.
     /// </summary>
     /// <remarks>
     /// What a recycled agent gets instead of a new blackboard (<c>EnemyRegistry</c> rule 8).
@@ -198,5 +205,6 @@ public sealed class EnemyBlackboard
         StateTimer = 0f;
         LungeDirection = Vector2.Zero;
         NextAttackAt = 0f;
+        PartnerId = -1;
     }
 }

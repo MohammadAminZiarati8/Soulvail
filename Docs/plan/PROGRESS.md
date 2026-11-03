@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-21a._
+_Updated 2026-11-03, JG-21b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-21a**: Bullfrog leap in core (no body yet). |
-| **Next task** | **JG-21b**; then JG-21c–24d. |
-| **Verified** | EditMode 5 312: 5 311 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
+| **Last merged** | **JG-21b**: Shadow panther pairs in core (no body yet). |
+| **Next task** | **JG-21c**; then JG-21d–24d. |
+| **Verified** | EditMode 5 321: 5 320 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
 
 ## What works
 
@@ -20,8 +20,8 @@ Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15
 Stages 1–14, 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. Boss adds: no XP.
 Thornheart (stage 20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside (tint flashes), 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart while exposed, pod rings fill, band 14→11 m, clipped to the walls; walls warn, rise as vines, block.
-Mother: facing shields, lobs, blocked spray/goo, pods → Frogs.
-Leap (core): LeapSpec Chasers crouch 0.6 s, fix a ring, fly 0.5 s, bite ×1.5.
+Mother: shields, lobs, blocked spray/goo, pods → Frogs.
+Core only: Leap (crouch, ring, fly, bite); Pack (pairs, 90° flank, joint wind-up).
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds at 11 m,

@@ -23,6 +23,9 @@ public enum LungerState
 
     /// <summary>Standing after the dash, open to punishment.</summary>
     Recover,
+
+    /// <summary>A pack's flanker swinging round to the player's side (JG-21b).</summary>
+    Flank,
 }
 
 /// <summary>
@@ -45,6 +48,13 @@ public enum LungerState
 /// and the strip bites, as a fissure does: the warning was honest when it was drawn.
 /// </para>
 /// <para>
+/// <b>A pair hunts from two angles</b> (JG-21b). With a <see cref="PackSpec"/> it takes the nearest
+/// unpaired agent of its own spec as a partner; the lower id leads and is the Lunger above, the
+/// higher flanks to the player's side and winds up the tick its leader does. Ids only grow and
+/// <see cref="EnemyRegistry.Alive"/> is in spawn order, so the leader is always ticked first and its
+/// wind-up is already visible when the flanker looks.
+/// </para>
+/// <para>
 /// The context is unpacked into fields on the way in and cleared in a <c>finally</c> on the way out,
 /// as <see cref="ChaserBehaviour"/> does it and for its reason.
 /// </para>
@@ -59,6 +69,16 @@ public sealed class LungerBehaviour : IEnemyBehaviour
     private IIntentSink _intents;
     private IDomainEvents _events;
     private LaneSystem _lanes;
+    private EnemyRegistry _registry;
+
+    /// <summary>Seconds until an unpaired pack hunter looks for a partner again.</summary>
+    private float _pairTimer;
+
+    /// <summary>Seconds in the current <see cref="LungerState.Flank"/>.</summary>
+    private float _flankTimer;
+
+    /// <summary>The run time of the last wind-up's start, so a flanker can tell it began this tick.</summary>
+    private float _windupAt = float.NegativeInfinity;
 
     /// <summary>Metres of the current dash already covered, so the last tick stops on its length.</summary>
     private float _dashed;
@@ -85,11 +105,17 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _machine.OnEnter(LungerState.Recover, EnterRecover);
         _machine.OnTick(LungerState.Recover, TickRecover);
 
+        _machine.OnEnter(LungerState.Flank, EnterFlank);
+        _machine.OnTick(LungerState.Flank, Flank);
+
         _machine.Start();
     }
 
     /// <summary>Where it is in its cycle.</summary>
     public LungerState State => _machine.Current;
+
+    /// <summary>Whether it is the higher id of a pair, the one that swings to the side (JG-21b).</summary>
+    public bool IsFlanker => _agent.Blackboard.PartnerId >= 0 && _agent.Blackboard.PartnerId < _agent.Id;
 
     /// <inheritdoc />
     /// <exception cref="InvalidOperationException">
@@ -109,9 +135,15 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _intents = ctx.Intents;
         _events = ctx.Events;
         _lanes = ctx.Lanes;
+        _registry = ctx.Enemies.Registry;
 
         try
         {
+            if (_agent.Spec.Pack is not null)
+            {
+                KeepPartner(ctx.Dt);
+            }
+
             _machine.Tick(ctx.Dt);
         }
         finally
@@ -119,6 +151,7 @@ public sealed class LungerBehaviour : IEnemyBehaviour
             _intents = null;
             _events = null;
             _lanes = null;
+            _registry = null;
         }
     }
 
@@ -132,16 +165,35 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         blackboard.StateTimer = 0f;
         blackboard.NextAttackAt = 0f;
         blackboard.LungeDirection = Vector2.Zero;
+        blackboard.PartnerId = -1;
 
         _dashed = 0f;
+        _pairTimer = 0f;
+        _flankTimer = 0f;
+        _windupAt = float.NegativeInfinity;
         _facing = new Vector2(0f, 1f);
     }
+
+    /// <summary>Seconds between an unpaired pack hunter's looks for a partner (JG-21b rule 1).</summary>
+    private const float PairInterval = 0.5f;
+
+    /// <summary>Metres from its goal at which a flanker counts as there (JG-21b rule 5).</summary>
+    private const float ArriveDistance = 1f;
 
     private LungeSpec Lunge => _agent.Spec.Lunge;
 
     /// <summary>Rule 1: the chaser's walk, path first, until in range and off cooldown.</summary>
     private void TickStalk(float dt)
     {
+        if (IsFlanker)
+        {
+            _machine.Transition(LungerState.Flank);
+
+            Flank(dt);
+
+            return;
+        }
+
         EnemyBlackboard blackboard = _agent.Blackboard;
 
         if (blackboard.DistanceToPlayer <= Lunge.Range && _now >= blackboard.NextAttackAt)
@@ -176,6 +228,7 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         EnemyBlackboard blackboard = _agent.Blackboard;
 
         blackboard.StateTimer = 0f;
+        _windupAt = _now;
 
         Vector2 aim = blackboard.DirectionToPlayer != Vector2.Zero ? blackboard.DirectionToPlayer : _facing;
 
@@ -268,6 +321,173 @@ public sealed class LungerBehaviour : IEnemyBehaviour
 
             _machine.Transition(LungerState.Stalk);
         }
+    }
+
+    /// <summary>
+    /// JG-21b rules 1 and 6: drop a partner that died or no longer names this one, and, while
+    /// unpaired, look every <see cref="PairInterval"/> s for the nearest unpaired one of the same spec.
+    /// </summary>
+    private void KeepPartner(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        if (blackboard.PartnerId >= 0)
+        {
+            if (_registry.TryGet(blackboard.PartnerId, out EnemyAgent partner)
+                && partner.IsAlive
+                && partner.Blackboard.PartnerId == _agent.Id)
+            {
+                return;
+            }
+
+            blackboard.PartnerId = -1;
+            _pairTimer = 0f;
+
+            if (State == LungerState.Flank)
+            {
+                _machine.Transition(LungerState.Stalk);
+            }
+        }
+
+        _pairTimer -= dt;
+
+        if (_pairTimer > 0f)
+        {
+            return;
+        }
+
+        _pairTimer = PairInterval;
+
+        float radius = _agent.Spec.Pack.PartnerRadius;
+        float nearest = radius * radius;
+        EnemyAgent chosen = null;
+
+        foreach (EnemyAgent other in _registry.Alive)
+        {
+            if (other.Id == _agent.Id
+                || !other.IsAlive
+                || other.Blackboard.PartnerId >= 0
+                || other.Behaviour is not LungerBehaviour
+                || !other.Spec.Id.Equals(_agent.Spec.Id))
+            {
+                continue;
+            }
+
+            float distance = DistanceSquaredXZ(other.Position, _agent.Position);
+
+            if (distance <= nearest)
+            {
+                nearest = distance;
+                chosen = other;
+            }
+        }
+
+        if (chosen is not null)
+        {
+            blackboard.PartnerId = chosen.Id;
+            chosen.Blackboard.PartnerId = _agent.Id;
+        }
+    }
+
+    private void EnterFlank() => _flankTimer = 0f;
+
+    /// <summary>
+    /// JG-21b rules 3–5: walk to the side, join the leader's wind-up the tick it starts, or strike
+    /// alone once at the goal or past the timeout while the leader is not winding up.
+    /// </summary>
+    private void Flank(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        _flankTimer += dt;
+
+        if (!_registry.TryGet(blackboard.PartnerId, out EnemyAgent leader)
+            || leader.Behaviour is not LungerBehaviour partner)
+        {
+            _machine.Transition(LungerState.Stalk);
+
+            Stand(_facing);
+
+            return;
+        }
+
+        Vector3 goal = FlankGoal(leader.Position);
+        Vector3 delta = goal - _agent.Position;
+        delta.Y = 0f;
+        float distance = delta.Length();
+
+        bool leaderWinding = partner.State == LungerState.Windup;
+        bool leaderJustWound = leaderWinding && partner._windupAt == _now;
+        bool alone = !leaderWinding
+            && (distance <= ArriveDistance || _flankTimer >= _agent.Spec.Pack.FlankTimeout);
+
+        if (blackboard.DistanceToPlayer <= Lunge.Range
+            && _now >= blackboard.NextAttackAt
+            && (leaderJustWound || alone))
+        {
+            _machine.Transition(LungerState.Windup);
+
+            Stand(blackboard.DirectionToPlayer != Vector2.Zero ? blackboard.DirectionToPlayer : _facing);
+
+            return;
+        }
+
+        if (distance <= ArriveDistance)
+        {
+            if (blackboard.DirectionToPlayer != Vector2.Zero)
+            {
+                _facing = blackboard.DirectionToPlayer;
+            }
+
+            Stand(_facing);
+
+            return;
+        }
+
+        Vector2 heading = new Vector2(delta.X / distance, delta.Z / distance);
+        _facing = heading;
+
+        float speed = _agent.MoveSpeed.Value;
+
+        if (dt > 0f)
+        {
+            speed = MathF.Min(speed, distance / dt);
+        }
+
+        Emit(new Vector3(heading.X * speed, 0f, heading.Y * speed), heading);
+    }
+
+    /// <summary>
+    /// <c>LungeSpec.Range - 1</c> m from the player, <c>FlankAngleDegrees</c> round from the leader's
+    /// bearing, on whichever side this one is already nearer.
+    /// </summary>
+    private Vector3 FlankGoal(Vector3 leaderPosition)
+    {
+        Vector3 player = _agent.Blackboard.PlayerPosition;
+
+        Vector2 bearing = new Vector2(leaderPosition.X - player.X, leaderPosition.Z - player.Z);
+        bearing = bearing.LengthSquared() > 1e-6f ? Vector2.Normalize(bearing) : new Vector2(0f, 1f);
+
+        float radius = MathF.Max(0f, Lunge.Range - 1f);
+        float angle = _agent.Spec.Pack.FlankAngleDegrees * (MathF.PI / 180f);
+        float sin = MathF.Sin(angle);
+        float cos = MathF.Cos(angle);
+
+        Vector2 left = new Vector2(bearing.X * cos - bearing.Y * sin, bearing.X * sin + bearing.Y * cos) * radius;
+        Vector2 right = new Vector2(bearing.X * cos + bearing.Y * sin, -bearing.X * sin + bearing.Y * cos) * radius;
+        Vector2 self = new Vector2(_agent.Position.X - player.X, _agent.Position.Z - player.Z);
+
+        Vector2 side = Vector2.DistanceSquared(self, left) <= Vector2.DistanceSquared(self, right) ? left : right;
+
+        return new Vector3(player.X + side.X, _agent.Position.Y, player.Z + side.Y);
+    }
+
+    private static float DistanceSquaredXZ(Vector3 a, Vector3 b)
+    {
+        float x = a.X - b.X;
+        float z = a.Z - b.Z;
+
+        return x * x + z * z;
     }
 
     private void Stand(Vector2 facingXZ) => Emit(Vector3.Zero, facingXZ);

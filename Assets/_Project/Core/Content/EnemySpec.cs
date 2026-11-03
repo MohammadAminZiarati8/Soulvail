@@ -211,6 +211,9 @@ public sealed class EnemySpec
     /// <param name="leap">
     /// How it leaps, or <see langword="null"/> for one that does not. Honoured by a Chaser only.
     /// </param>
+    /// <param name="pack">
+    /// How it pairs, or <see langword="null"/> for one that hunts alone. Honoured by a Lunger only.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -254,7 +257,8 @@ public sealed class EnemySpec
         float bodyRadius = BaseBodyRadius,
         BulwarkSpec bulwark = null,
         ShamanSpec shaman = null,
-        LeapSpec leap = null)
+        LeapSpec leap = null,
+        PackSpec pack = null)
     {
         if (id.Value is null)
         {
@@ -359,6 +363,7 @@ public sealed class EnemySpec
         Bulwark = bulwark;
         Shaman = shaman;
         Leap = leap;
+        Pack = pack;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -497,6 +502,12 @@ public sealed class EnemySpec
     /// <c>ChaserBehaviour</c> alone; every other behaviour ignores it (JG-21a).
     /// </summary>
     public LeapSpec Leap { get; }
+
+    /// <summary>
+    /// How it pairs with one of its kind, or <see langword="null"/> on one that hunts alone. Read by
+    /// <c>LungerBehaviour</c> alone (JG-21b).
+    /// </summary>
+    public PackSpec Pack { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

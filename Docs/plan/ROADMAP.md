@@ -121,6 +121,7 @@ _No milestone. The owner is setting the next direction._
 
 **Stages 25–30** (owner, 2026-11-02; design [GD §8.2, §9.2](../GameDesign.md)). Specced after stages 21–24 are built and played. Titles only.
 
-- [ ] JG-25 — Gravemaw at stage 25 (parked specs JG-25a–g, revise first: [a](tasks/JG-25a-gravemaw-in-core.md) · [b](tasks/JG-25b-gravemaw-throw.md) · [c](tasks/JG-25c-gravemaw-tremor-and-spit.md) · [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
+- [x] **JG-25a** — Gravemaw in core: burrow chase, predicted ring, eruption, window (M)
+- [ ] JG-25 — the rest of Gravemaw (parked specs JG-25b–g, revise first: [b](tasks/JG-25b-gravemaw-throw.md) · [c](tasks/JG-25c-gravemaw-tremor-and-spit.md) · [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

@@ -436,6 +436,7 @@ namespace Soulvail.Game.Views
         public void OnSpawn()
         {
             GetComponent<ShamanView>()?.OnSpawn();
+            GetComponent<StalkerView>()?.OnSpawn();
         }
 
         /// <inheritdoc />
@@ -466,6 +467,7 @@ namespace Soulvail.Game.Views
         public void OnDespawn()
         {
             GetComponent<ShamanView>()?.OnDespawn();
+            GetComponent<StalkerView>()?.OnDespawn();
             GetComponent<EnemyStatusView>()?.Unbind();
             EnemyHitFeedback feedback = Feedback;
 

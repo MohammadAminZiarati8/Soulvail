@@ -193,6 +193,9 @@ namespace Soulvail.Game.Views
         private float _statusPx = 1f;
         private bool HasStatuses => _row.Count > 0;
 
+        /// <summary>A hidden stalker draws no bar and no status row (JG-22c rule 3).</summary>
+        private bool _hidden;
+
         /// <summary>The icon drawn at <paramref name="rank"/>: 0 is the first, the one a basic enemy shows.</summary>
         public Image StatusIcon(int rank) => _statusIcons[rank];
 
@@ -243,6 +246,22 @@ namespace Soulvail.Game.Views
                 _statusStacks[i] = label;
                 icon.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>
+        /// Hides the bar and its status row while the body is hidden; showing it again draws the
+        /// current fraction under the ordinary fade rules (JG-22c rule 3).
+        /// </summary>
+        public void SetHidden(bool hidden)
+        {
+            if (_hidden == hidden)
+            {
+                return;
+            }
+
+            _hidden = hidden;
+            DrawStatuses();
+            Draw();
         }
 
         public void ClearStatuses()
@@ -366,7 +385,7 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>Whether the bar is currently drawn at all.</summary>
-        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && (_isElite || HasStatuses || _shownRemaining > 0f);
+        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && !_hidden && (_isElite || HasStatuses || _shownRemaining > 0f);
 
         /// <summary>
         /// Told what it is standing over, on the rental. Before the body is in service.
@@ -392,6 +411,7 @@ namespace Soulvail.Game.Views
             }
 
             _id = id;
+            _hidden = false;
             ClearStatuses();
             _isElite = isElite;
             _isBoss = false;
@@ -426,6 +446,7 @@ namespace Soulvail.Game.Views
         public void Unbind()
         {
             _id = EnemyView.Unbound;
+            _hidden = false;
             ClearStatuses();
             _isElite = false;
             _isBoss = false;
@@ -675,7 +696,7 @@ namespace Soulvail.Game.Views
         /// </summary>
         private float Alpha()
         {
-            if (_id == EnemyView.Unbound || _isBoss)
+            if (_id == EnemyView.Unbound || _isBoss || _hidden)
             {
                 return 0f;
             }

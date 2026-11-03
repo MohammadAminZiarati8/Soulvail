@@ -111,7 +111,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-21f** — Cousin assets, the easy four retired at 21, stage 21 scripted (M)
 - [x] **JG-22a** — Chameleon stalker in core: hides when still, strikes from behind (M)
 - [x] **JG-22b** — The stalker's model on `Rig_Medium` (M)
-- [ ] **JG-22c** — The stalker's body: shimmer, reveal flash, hidden bar (M)
+- [x] **JG-22c** — The stalker's body: shimmer, reveal flash, hidden bar (M)
 - [ ] **JG-22d** — Stalker asset, roster at 22, stage 22 scripted (S)
 - [ ] **JG-23** — Stage 23 mixes what the player knows, 242 threat (S)
 - [ ] **JG-24a** — Thornweaver in core: walls beyond the player on `ThornSystem` (M)

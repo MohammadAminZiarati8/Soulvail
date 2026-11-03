@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-22b._
+_Updated 2026-11-03, JG-22c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-22b**: Chameleon stalker model on `Rig_Medium`. |
-| **Next task** | **JG-22c**; then JG-22d–24d. |
-| **Verified** | EditMode 5 387: 5 386 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-22c**: the stalker's cloaked body. |
+| **Next task** | **JG-22d**; then JG-23–24d. |
+| **Verified** | EditMode 5 395: 5 394 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
@@ -23,7 +23,7 @@ Drawn: clips per move, amber heart, pod rings fill, band 14→11 m in the walls;
 Mother: shields, lobs, spray, pods→Frogs.
 Leap: crouch, ring, Leap clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
-Stalker (core): lurks behind, hides when still, hit reveals, strikes from behind; model, no prefab.
+Stalker: lurks behind, hides still, hit reveals, strikes from behind; crouches to a shimmer, flashes on warn.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, summons,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,

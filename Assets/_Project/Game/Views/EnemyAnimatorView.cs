@@ -113,12 +113,14 @@ namespace Soulvail.Game.Views
         private readonly int _hitStateId = Animator.StringToHash("Hit");
         private readonly int _attackStateId = Animator.StringToHash("Attack");
         private readonly int _leapId = Animator.StringToHash("Leap");
+        private readonly int _crouchId = Animator.StringToHash("Crouch");
 
         private EnemyView _body;
         private IDisposable _telegraphSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _leapSubscription;
+        private IDisposable _hiddenSubscription;
         private float _shownSpeed;
         private float _bodySpeed;
 
@@ -147,6 +149,11 @@ namespace Soulvail.Game.Views
         private bool _blockChecked;
         private bool _hasLeap;
         private bool _leapChecked;
+        private bool _hasCrouch;
+        private bool _crouchChecked;
+
+        /// <summary>Core hid this body (JG-22c): a hidden-capable controller crouches while it stands.</summary>
+        private bool _lurking;
 
         /// <summary>
         /// This life has aimed a leap and its crouch's wind-up is next (JG-21e rule 2). Set by the
@@ -180,6 +187,7 @@ namespace Soulvail.Game.Views
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
             _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
+            _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
         }
 
         /// <summary>
@@ -237,6 +245,10 @@ namespace Soulvail.Game.Views
                 { _animator.SetBool("Run", running); }
                 float stride = running && _runStrideSpeed > 0f ? _runStrideSpeed : _strideSpeed;
                 _animator.SetFloat(_walkRateId, _hops ? 1f : Mathf.Clamp(_shownSpeed / stride, MinWalkRate, MaxWalkRate));
+                if (HasCrouch())
+                {
+                    _animator.SetBool(_crouchId, _lurking && !_dead && speed < 0.05f);
+                }
             }
 
             if (_flinchLayer == -2)
@@ -281,6 +293,7 @@ namespace Soulvail.Game.Views
             _bodySpeed = 0f;
             _windupLeft = 0f;
             _leapArmed = false;
+            _lurking = false;
 
             if (_animator == null)
             {
@@ -305,6 +318,10 @@ namespace Soulvail.Game.Views
             if (_hasLeap)
             {
                 _animator.ResetTrigger(_leapId);
+            }
+            if (_hasCrouch)
+            {
+                _animator.SetBool(_crouchId, false);
             }
         }
 
@@ -351,6 +368,8 @@ namespace Soulvail.Game.Views
             _damagedSubscription?.Dispose();
             _diedSubscription?.Dispose();
             _leapSubscription?.Dispose();
+            _hiddenSubscription?.Dispose();
+            _hiddenSubscription = null;
             _telegraphSubscription = null;
             _damagedSubscription = null;
             _diedSubscription = null;
@@ -491,6 +510,34 @@ namespace Soulvail.Game.Views
             _leapArmed = true;
 
             _body.Hop(transform, evt.CrouchSeconds, evt.AirSeconds);
+        }
+
+        private bool HasCrouch()
+        {
+            if (_crouchChecked)
+            {
+                return _hasCrouch;
+            }
+
+            _crouchChecked = true;
+
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == _crouchId && parameter.type == AnimatorControllerParameterType.Bool)
+                {
+                    _hasCrouch = true;
+                }
+            }
+
+            return _hasCrouch;
+        }
+
+        private void OnHiddenChanged(EnemyHiddenChanged evt)
+        {
+            if (IsMine(evt.Id))
+            {
+                _lurking = evt.Hidden && !_dead;
+            }
         }
 
         private void OnDamaged(EnemyDamaged evt)

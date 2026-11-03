@@ -52,6 +52,8 @@ public sealed class JungleTests
     private const string PantherPath = "Assets/_Project/Data/Enemies/Panther.asset";
     private const string MossguardPath = "Assets/_Project/Data/Enemies/Mossguard.asset";
     private const string ShamanPath = "Assets/_Project/Data/Enemies/Shaman.asset";
+    private const string StalkerPath = "Assets/_Project/Data/Enemies/Stalker.asset";
+    private const string StalkerBodyPath = "Assets/_Project/Prefabs/Enemies/Stalker.prefab";
     private const string MossguardBodyPath = "Assets/_Project/Prefabs/Enemies/Mossguard.prefab";
     private const string CroakerPath = "Assets/_Project/Data/Enemies/Croaker.asset";
     private const string MotherPath = "Assets/_Project/Data/Enemies/MotherPitcher.asset";
@@ -266,6 +268,7 @@ public sealed class JungleTests
         {
             "enemy.mossguard", "enemy.shaman",
             "enemy.bullfrog", "enemy.thorn_pitcher", "enemy.chain_bomber", "enemy.shadow_panther",
+            "enemy.stalker",
         }));
         count = jungle.RosterFor(20, buffer);
         Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Is.EquivalentTo(new[]
@@ -338,6 +341,107 @@ public sealed class JungleTests
         {
             Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 21, SpawnPlan.Empty, restore)));
             Assert.That(session.State.StageIndex, Is.EqualTo(21));
+        }
+        finally
+        {
+            session.End();
+        }
+    }
+
+    [Test]
+    public void Jungle_Stalker_IsAStalkerWithItsNumbers()
+    {
+        var definition = Load<EnemyDefinition>(StalkerPath);
+        EnemySpec spec = definition.ToSpec();
+
+        Assert.That((spec.Behaviour, spec.MaxHp, spec.ThreatCost, spec.TargetPriority, spec.MoveSpeed,
+            spec.XpValue, spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime),
+            Is.EqualTo((EnemyBehaviourKind.Stalker, 70f, 18, 6, 2.6f, 36f, 18f, 1.2f, 0.45f, 1f)));
+        Assert.That(new[] { spec.Stalker.BehindDistance, spec.Stalker.CloakDelay, spec.Stalker.StrikeRange,
+            spec.Stalker.BehindAngleDegrees, spec.Stalker.StrikeLength, spec.Stalker.StrikeSpeed,
+            spec.Stalker.StrikeHalfWidth, spec.Stalker.RevealSeconds, spec.Stalker.StrikeCooldown },
+            Is.EqualTo(new[] { 3f, 0.4f, 4f, 110f, 5f, 18f, 0.6f, 1.5f, 3f }), "JG-22a's authored block.");
+        Assert.That(definition.ToLook().Body.gameObject, Is.EqualTo(Load<GameObject>(StalkerBodyPath)));
+    }
+
+    [Test]
+    public void Jungle_RostersStalkerFrom22()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        var buffer = new RosterEntry[jungle.Roster.Count];
+
+        int count = jungle.RosterFor(21, buffer);
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Has.No.Member("enemy.stalker"));
+        count = jungle.RosterFor(22, buffer);
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Has.Member("enemy.stalker"));
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.Select(r => r.SpecId.Value),
+            Has.No.Member("enemy.stalker"));
+    }
+
+    [Test]
+    public void Jungle_StageTwentyTwo_IsTheStalker()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(22, out ScriptedStage stage), Is.True);
+        Assert.That(stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.stalker", 1), (1, "enemy.bullfrog", 6),
+            (2, "enemy.shadow_panther", 2), (2, "enemy.thorn_pitcher", 2), (2, "enemy.chain_bomber", 4),
+            (3, "enemy.stalker", 2), (3, "enemy.mossguard", 2), (3, "enemy.shaman", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StagesTwentyOneToTwentyTwo_Climb()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Dictionary<ContentId, int> costs = new[]
+            {
+                "Bullfrog", "ThornPitcher", "ChainBomber", "ShadowPanther", "Mossguard", "Shaman", "Stalker",
+            }
+            .Select(name => Load<EnemyDefinition>($"Assets/_Project/Data/Enemies/{name}.asset").ToSpec())
+            .ToDictionary(enemy => enemy.Id, enemy => enemy.ThreatCost);
+
+        int Threat(int index)
+        {
+            Assert.That(jungle.TryGetScriptedStage(index, out ScriptedStage stage), Is.True, $"stage {index}");
+            return stage.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]);
+        }
+
+        Assert.That((Threat(21), Threat(22)), Is.EqualTo((194, 218)));
+    }
+
+    [Test]
+    public void Jungle_Stalker_Boots()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec()),
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        EnemySpec stalker = catalog.Enemy(new ContentId("enemy.stalker"));
+        Assert.That(stalker.Behaviour, Is.EqualTo(EnemyBehaviourKind.Stalker));
+        Assert.That(Load<LocalizationTable>(EnglishPath).ToDictionary()[stalker.NameKey],
+            Is.EqualTo("Chameleon Stalker"));
+        Assert.That(Load<LocalizationTable>(PseudoPath).ToDictionary()[stalker.NameKey],
+            Is.EqualTo(LocalisationSweepTests.Pseudolocalise("Chameleon Stalker")));
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(22);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 22);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 22, SpawnPlan.Empty, restore)));
+            Assert.That(session.State.StageIndex, Is.EqualTo(22));
         }
         finally
         {
@@ -514,6 +618,7 @@ public sealed class JungleTests
             ("enemy.thorn_pitcher", 21),
             ("enemy.chain_bomber", 21),
             ("enemy.shadow_panther", 21),
+            ("enemy.stalker", 22),
         }), "The Jungle's own enemies, with the Panther after Old Croaker and the Mossguard after Mother Pitcher.");
     }
 

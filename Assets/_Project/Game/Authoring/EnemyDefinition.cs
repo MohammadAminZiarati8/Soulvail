@@ -180,6 +180,19 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _shamanFleeSeconds;
         [SerializeField, Min(0f)] private float _shamanFleeSpeedMultiplier;
 
+        [Header("Stalker — leave the behind distance at 0 on other archetypes")]
+        [Tooltip("Metres behind the player's facing it lurks at. 0 means no stalker block and the " +
+                 "eight fields below are ignored. 3 for the Chameleon stalker (JG-22d).")]
+        [SerializeField, Min(0f)] private float _stalkerBehindDistance;
+        [SerializeField, Min(0f)] private float _stalkerCloakDelay;
+        [SerializeField, Min(0f)] private float _stalkerStrikeRange;
+        [SerializeField, Range(0f, 180f)] private float _stalkerBehindAngleDegrees;
+        [SerializeField, Min(0f)] private float _stalkerStrikeLength;
+        [SerializeField, Min(0f)] private float _stalkerStrikeSpeed;
+        [SerializeField, Min(0f)] private float _stalkerStrikeHalfWidth;
+        [SerializeField, Min(0f)] private float _stalkerRevealSeconds;
+        [SerializeField, Min(0f)] private float _stalkerStrikeCooldown;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -295,6 +308,12 @@ namespace Soulvail.Game.Authoring
                         : null,
                     _packPartnerRadius > 0f
                         ? new PackSpec(_packPartnerRadius, _packFlankAngleDegrees, _packFlankTimeout)
+                        : null,
+                    _stalkerBehindDistance > 0f
+                        ? new StalkerSpec(_stalkerBehindDistance, _stalkerCloakDelay,
+                            _stalkerStrikeRange, _stalkerBehindAngleDegrees, _stalkerStrikeLength,
+                            _stalkerStrikeSpeed, _stalkerStrikeHalfWidth, _stalkerRevealSeconds,
+                            _stalkerStrikeCooldown)
                         : null);
             }
             catch (ArgumentException inner)

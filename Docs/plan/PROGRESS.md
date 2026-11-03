@@ -2,35 +2,35 @@
 
 Overwritten, never appended; history: `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-22c._
+_Updated 2026-11-04, JG-22d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-22c**: the stalker's cloaked body. |
-| **Next task** | **JG-22d**; then JG-23–24d. |
-| **Verified** | EditMode 5 395: 5 394 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-22d**: the stalker rostered from 22; stage 22 scripted. |
+| **Next task** | **JG-23**; then JG-24a–d. |
+| **Verified** | EditMode 5 401: 5 400 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
+Stages 1–14, 16–19, 21–22 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart, pod rings fill, band 14→11 m in the walls; walls warn, rise as vines.
 Mother: shields, lobs, spray, pods→Frogs.
 Leap: crouch, ring, Leap clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
-Stalker: lurks behind, hides still, hit reveals, strikes from behind; crouches to a shimmer, flashes on warn.
+Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, summons,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,
 heals 10%, hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
 expires and stacks with slow. Faces its path, the player when still; walks < 1.2 m/s, runs above.
 Fitted body/staff, clips, seed glow, lime ring, haste chevrons.
-Stage 17: healer/guards; 18: healer's wall; 19: gate, two Shamans. XP 32, priority 8.
+17–19: healer/guards, healer's wall, gate. XP 32, priority 8.
 Ranger: pale arrows, cyan Volley, Space roll, flinch; 1st arrow ~¼ s on stop.
 Levels bank points; paused tree picks. Death pays Shards. Save v5; older saves load.
 Clash UI; LocKeys. 22 Marksman ranks from 11.

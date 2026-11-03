@@ -64,6 +64,15 @@ MonoBehaviour:
   _shamanFleeDistance: 0
   _shamanFleeSeconds: 0
   _shamanFleeSpeedMultiplier: 0
+  _stalkerBehindDistance: 0
+  _stalkerCloakDelay: 0
+  _stalkerStrikeRange: 0
+  _stalkerBehindAngleDegrees: 0
+  _stalkerStrikeLength: 0
+  _stalkerStrikeSpeed: 0
+  _stalkerStrikeHalfWidth: 0
+  _stalkerRevealSeconds: 0
+  _stalkerStrikeCooldown: 0
   _tint: {r: 0.43137255, g: 0.41568628, b: 0.3882353, a: 1}
   _bodyScale: 1
   _body: {fileID: 0}

@@ -678,3 +678,5 @@ MonoBehaviour:
     _text: 'Chain Bomber'
   - _key: enemy.shadow_panther.name
     _text: 'Shadow Panther'
+  - _key: enemy.stalker.name
+    _text: 'Chameleon Stalker'

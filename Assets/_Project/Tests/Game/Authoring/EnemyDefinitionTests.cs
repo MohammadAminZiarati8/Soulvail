@@ -302,6 +302,29 @@ public sealed class EnemyDefinitionTests
     }
 
     [Test]
+    public void Definition_StalkerBlock_BuildsOnlyWithADistance()
+    {
+        // JG-22d: the stalker block is built only when its behind distance is above 0.
+        EnemyDefinition stalker = NewDefinition("Lurker");
+        string[] fields = { "_stalkerBehindDistance", "_stalkerCloakDelay", "_stalkerStrikeRange",
+            "_stalkerBehindAngleDegrees", "_stalkerStrikeLength", "_stalkerStrikeSpeed",
+            "_stalkerStrikeHalfWidth", "_stalkerRevealSeconds", "_stalkerStrikeCooldown" };
+        float[] values = { 3f, 0.4f, 4f, 110f, 5f, 18f, 0.6f, 1.5f, 3f };
+        for (int i = 0; i < fields.Length; i++)
+        { SetFloat(stalker, fields[i], values[i]); }
+
+        StalkerSpec spec = stalker.ToSpec().Stalker;
+
+        Assert.That(spec, Is.Not.Null);
+        Assert.That(new[] { spec.BehindDistance, spec.CloakDelay, spec.StrikeRange, spec.BehindAngleDegrees,
+            spec.StrikeLength, spec.StrikeSpeed, spec.StrikeHalfWidth, spec.RevealSeconds,
+            spec.StrikeCooldown }, Is.EqualTo(values));
+
+        SetFloat(stalker, "_stalkerBehindDistance", 0f);
+        Assert.That(stalker.ToSpec().Stalker, Is.Null);
+    }
+
+    [Test]
     public void Definition_ProjectileCountAndSpread_ReachTheSpec()
     {
         EnemyDefinition thrower = NewDefinition("Thrower");

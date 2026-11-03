@@ -330,6 +330,25 @@ public sealed class ThornheartViewTests
         }
     }
 
+    // JG-20j: the look scales the body 3x; the band and pod rings still draw in world metres.
+    [Test]
+    public void View_ScaledBody_DrawsRingsInWorldMetres()
+    {
+        _body.transform.localScale = Vector3.one * 3f;
+        _hub.Publish(new StrangleRing(Id, ThornheartBehaviour.RingRadius, ThornheartBehaviour.RingRadius, 0f));
+        _hub.Publish(new ThornPodPlanted(Id, PodId, new Num.Vector3(4f, 0f, 0f), 6f));
+        _view.Step(0.1f);
+
+        Transform ring = _view.Ring.transform;
+        float inner = _view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices
+            .Min(v => Vector3.Distance(ring.TransformPoint(v), ring.position));
+        Assert.That(ring.lossyScale.x, Is.EqualTo(1f).Within(1e-4f));
+        Assert.That(inner, Is.EqualTo(ThornheartBehaviour.RingRadius).Within(1e-3f), "The bite edge on the floor is core's 11 m.");
+
+        Assert.That(_view.RipenRing(PodId).transform.lossyScale.x, Is.EqualTo(1f).Within(1e-4f), "A pod ring keeps its size too.");
+        Assert.That(_view.RipenRing(PodId).transform.position.x, Is.EqualTo(4f).Within(1e-4f));
+    }
+
     private Color Emission()
     {
         var block = new MaterialPropertyBlock();

@@ -9,9 +9,9 @@ _Updated 2026-11-03, JG-20j._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20j** fix: the ring opens at 14 m, stops at the walls. |
+| **Last merged** | **JG-20j** fix: ring at true size, 14→11 m, clipped. |
 | **Next task** | Owner: a poison source, or Gravemaw (JG-25a). |
-| **Verified** | EditMode 5 302: 5 301 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
+| **Verified** | EditMode 5 303: 5 302 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
 
 ## What works
 

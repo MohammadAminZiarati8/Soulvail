@@ -35,6 +35,10 @@ namespace Soulvail.Game.Views
     /// <c>StrangleBite</c> flashes it brighter, so a bite from nothing in particular is drawn.
     /// </para>
     /// <para>
+    /// <b>The rings are drawn in world metres</b>: the look scales the body, so <c>Live</c> is held at
+    /// world scale 1 and the band's edge is the core radius on the floor, not three times it.
+    /// </para>
+    /// <para>
     /// <b>Nothing is drawn past the standing arena's floor</b>: every spoke stops at the NavMesh's
     /// bounds, so the tint ends at the walls and a band behind a wall is not drawn at all. With no
     /// arena standing (an EditMode body) the tint runs out to <see cref="ZoneReach"/>.
@@ -482,6 +486,7 @@ namespace Soulvail.Game.Views
 
         private void PlacePod(ref Pod pod)
         {
+            HoldLiveAtWorldScale();
             pod.Ring.transform.SetPositionAndRotation(new Vector3(pod.At.x, transform.position.y + RipenHeight, pod.At.z), Flat);
 
             if (pod.Rim != null)
@@ -504,6 +509,7 @@ namespace Soulvail.Game.Views
 
         private void PlaceRing()
         {
+            HoldLiveAtWorldScale();
             Vector3 at = transform.position;
             _ring.transform.SetPositionAndRotation(new Vector3(at.x, at.y + BandHeight, at.z), Flat);
 
@@ -755,6 +761,16 @@ namespace Soulvail.Game.Views
 
             return _live;
         }
+
+        // The look scales the body (Thornheart stands at 3x), and the rings are its children: undo
+        // that on Live, so the band is drawn in the metres core bites in and a pod ring keeps its size.
+        private void HoldLiveAtWorldScale()
+        {
+            Vector3 body = transform.lossyScale;
+            Live().localScale = new Vector3(Inverse(body.x), Inverse(body.y), Inverse(body.z));
+        }
+
+        private static float Inverse(float scale) => Mathf.Abs(scale) > 1e-5f ? 1f / scale : 1f;
 
         private Transform MakeChild(string childName, bool active)
         {

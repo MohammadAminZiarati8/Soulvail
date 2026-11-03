@@ -112,11 +112,13 @@ namespace Soulvail.Game.Views
         private readonly int _locomotionId = Animator.StringToHash("Locomotion");
         private readonly int _hitStateId = Animator.StringToHash("Hit");
         private readonly int _attackStateId = Animator.StringToHash("Attack");
+        private readonly int _leapId = Animator.StringToHash("Leap");
 
         private EnemyView _body;
         private IDisposable _telegraphSubscription;
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
+        private IDisposable _leapSubscription;
         private float _shownSpeed;
         private float _bodySpeed;
 
@@ -143,6 +145,15 @@ namespace Soulvail.Game.Views
         private bool _moveChecked;
         private bool _hasBlock;
         private bool _blockChecked;
+        private bool _hasLeap;
+        private bool _leapChecked;
+
+        /// <summary>
+        /// This life has aimed a leap and its crouch's wind-up is next (JG-21e rule 2). Set by the
+        /// body's own <see cref="EnemyLeapAimed"/>, which core publishes just ahead of move 1, so a
+        /// leaper is known by what it does rather than by a look flag.
+        /// </summary>
+        private bool _leapArmed;
 
         /// <summary>The flinch layer's index: -2 not yet asked, -1 absent.</summary>
         private int _flinchLayer = -2;
@@ -168,6 +179,7 @@ namespace Soulvail.Game.Views
             _telegraphSubscription = hub.Subscribe<EnemyTelegraph>(OnTelegraph);
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
+            _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
         }
 
         /// <summary>
@@ -268,6 +280,7 @@ namespace Soulvail.Game.Views
             _shownSpeed = 0f;
             _bodySpeed = 0f;
             _windupLeft = 0f;
+            _leapArmed = false;
 
             if (_animator == null)
             {
@@ -288,6 +301,10 @@ namespace Soulvail.Game.Views
             if (_hasBlock)
             {
                 _animator.ResetTrigger(_blockId);
+            }
+            if (_hasLeap)
+            {
+                _animator.ResetTrigger(_leapId);
             }
         }
 
@@ -333,9 +350,11 @@ namespace Soulvail.Game.Views
             _telegraphSubscription?.Dispose();
             _damagedSubscription?.Dispose();
             _diedSubscription?.Dispose();
+            _leapSubscription?.Dispose();
             _telegraphSubscription = null;
             _damagedSubscription = null;
             _diedSubscription = null;
+            _leapSubscription = null;
         }
 
         private void Update()
@@ -360,6 +379,21 @@ namespace Soulvail.Game.Views
             if (_animator == null || _dead || !IsMine(evt.Id) || !(evt.Duration > 0f))
             {
                 return;
+            }
+
+            // JG-21e rule 2: a leaper's crouch plays the rig's Leap once — crouch, flight and
+            // landing in one clip — instead of the strike. Any other move, or a body whose
+            // controller has no Leap, takes the ordinary wind-up below.
+            if (_leapArmed && evt.Move == 1)
+            {
+                _leapArmed = false;
+
+                if (HasLeap())
+                {
+                    _animator.SetTrigger(_leapId);
+
+                    return;
+                }
             }
 
             if (HasMove())
@@ -422,6 +456,43 @@ namespace Soulvail.Game.Views
             return _hasBlock;
         }
 
+        /// <summary>Optional leap trigger, probed on the first leap while the body is active.</summary>
+        private bool HasLeap()
+        {
+            if (_leapChecked)
+            {
+                return _hasLeap;
+            }
+
+            _leapChecked = true;
+
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == _leapId && parameter.type == AnimatorControllerParameterType.Trigger)
+                {
+                    _hasLeap = true;
+                }
+            }
+
+            return _hasLeap;
+        }
+
+        /// <summary>
+        /// Arms the crouch's clip, and hands the body its cosmetic arc (JG-21e rules 2–3): the arc
+        /// lifts this model, which is the body's child, never its controller.
+        /// </summary>
+        private void OnLeapAimed(EnemyLeapAimed evt)
+        {
+            if (_dead || !IsMine(evt.Id))
+            {
+                return;
+            }
+
+            _leapArmed = true;
+
+            _body.Hop(transform, evt.CrouchSeconds, evt.AirSeconds);
+        }
+
         private void OnDamaged(EnemyDamaged evt)
         {
             // A killing blow does not flinch: the death is the answer to it, in the same call.
@@ -451,6 +522,7 @@ namespace Soulvail.Game.Views
             }
 
             _dead = true;
+            _leapArmed = false;
             SetCrowdControl(false, false, 0f);
 
             // Nothing queued may outlive the life it was for: a strike cancelled by the death, and a
@@ -460,6 +532,10 @@ namespace Soulvail.Game.Views
             if (_hasBlock)
             {
                 _animator.ResetTrigger(_blockId);
+            }
+            if (_hasLeap)
+            {
+                _animator.ResetTrigger(_leapId);
             }
             _animator.SetBool(_deadId, true);
         }

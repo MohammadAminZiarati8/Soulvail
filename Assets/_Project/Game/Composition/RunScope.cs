@@ -74,6 +74,9 @@ namespace Soulvail.Game.Composition
         /// </remarks>
         private const int TelegraphRingPrewarm = 8;
 
+        /// <summary>How many chain links can be drawn at once; a 17th redraws the oldest (JG-21e rule 6).</summary>
+        private const int ChainLinkCapacity = 16;
+
         /// <summary>
         /// How many bodies each class's own shot, and each impact a shot names, is built with before
         /// the run starts (RS-06b rule 3).
@@ -236,6 +239,10 @@ namespace Soulvail.Game.Composition
                  "fire because a Husk stood in front of it reads as broken (GD §7.2).")]
         [SerializeField] private LayerMask _coverLayer;
         [SerializeField] private BindingChainView _bindingChainPrefab;
+
+        [Tooltip("Materials/Enemies/M_ChainLink.mat: the line a chain blast runs to each bomber " +
+                 "it lights (JG-21e). Empty draws no links.")]
+        [SerializeField] private Material _chainLinkMaterial;
 
         [Tooltip("The archetype the dummies below are spawned as — and what the enemy pool's " +
                  "prewarm keys on, so empty means no bodies built up front. An arena that starts " +
@@ -1063,6 +1070,25 @@ namespace Soulvail.Game.Composition
                     chains.Construct(resolver.Resolve<DomainEventHub>(), resolver.Resolve<EnemyViews>());
                     root.SetActive(true);
                     return chains;
+                })
+                .WithParameter("chainLinks", resolver =>
+                {
+                    if (_chainLinkMaterial == null)
+                    {
+                        // Headless composition fixtures dress no cosmetics; the Run scene does.
+                        return null;
+                    }
+
+                    // The one template, built under an inactive root and cloned by the views.
+                    var root = new GameObject("Chain link template");
+                    root.SetActive(false);
+                    root.transform.SetParent(_decalRoot, false);
+                    LineRenderer template = root.AddComponent<LineRenderer>();
+                    template.sharedMaterial = _chainLinkMaterial;
+                    template.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    template.receiveShadows = false;
+                    return new ChainLinkViews(
+                        resolver.Resolve<DomainEventHub>(), template, _decalRoot, ChainLinkCapacity);
                 })
                 .WithParameter("bossViews", resolver =>
                 {

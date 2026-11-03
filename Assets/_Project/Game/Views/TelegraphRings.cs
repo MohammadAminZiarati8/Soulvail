@@ -83,6 +83,7 @@ public sealed class TelegraphRings : IDisposable
     private readonly IDisposable _explodedSubscription;
 
     private readonly IDisposable _projectileSubscription;
+    private readonly IDisposable _leapSubscription;
     private readonly EnemyLookBook _looks;
 
     private bool _disposed;
@@ -132,6 +133,7 @@ public sealed class TelegraphRings : IDisposable
         _explodedSubscription = hub.Subscribe<EnemyExploded>(OnExploded);
         _looks = looks;
         _projectileSubscription = hub.Subscribe<ProjectileFired>(OnProjectileFired);
+        _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
     }
 
     /// <summary>How many rings are currently drawn on the floor.</summary>
@@ -211,6 +213,7 @@ public sealed class TelegraphRings : IDisposable
         _telegraphedSubscription.Dispose();
         _explodedSubscription.Dispose();
         _projectileSubscription.Dispose();
+        _leapSubscription.Dispose();
 
         _pool.Dispose();
 
@@ -251,6 +254,15 @@ public sealed class TelegraphRings : IDisposable
         {
             Rent(evt.Target.ToUnity(), evt.Radius, evt.FlightTime, fills: true);
         }
+    }
+
+    /// <summary>
+    /// A leaper has fixed its landing (JG-21e rule 1): the ringed lob's ring, filling over the crouch
+    /// and the flight, so it is full on the frame the bite lands.
+    /// </summary>
+    private void OnLeapAimed(EnemyLeapAimed evt)
+    {
+        Rent(evt.Target.ToUnity(), evt.Radius, evt.CrouchSeconds + evt.AirSeconds, fills: true);
     }
 
     /// <summary>

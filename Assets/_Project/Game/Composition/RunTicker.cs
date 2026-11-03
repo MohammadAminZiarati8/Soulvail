@@ -138,6 +138,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly BindProbeAdapter _bindProbe;
     private readonly LaneProbeAdapter _laneProbe;
     private readonly BindingChainView _bindingChains;
+    private readonly ChainLinkViews _chainLinks;
 
     /// <summary>
     /// Where a swing's answer is assembled before it is handed back to core. One array for the
@@ -184,8 +185,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         PlaceWriter placeWriter = null,
         BindProbeAdapter bindProbe = null,
         BindingChainView bindingChains = null,
-        LaneProbeAdapter laneProbe = null)
+        LaneProbeAdapter laneProbe = null,
+        ChainLinkViews chainLinks = null)
     {
+        _chainLinks = chainLinks;
         _bindProbe = bindProbe;
         _laneProbe = laneProbe;
         _bindingChains = bindingChains;
@@ -517,6 +520,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         ApplyKnockbacks();
         _bindingChains?.Step(_snapshot.Dt);
+        _chainLinks?.Tick(_snapshot.Dt);
     }
 
     /// <summary>
@@ -888,6 +892,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         {
             _bindingChains.Dispose();
         }
+        _chainLinks?.Dispose();
         _input.Disable();
         Screen.sleepTimeout = SleepTimeout.SystemSetting;
     }

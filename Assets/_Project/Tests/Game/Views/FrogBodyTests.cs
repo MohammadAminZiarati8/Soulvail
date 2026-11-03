@@ -60,8 +60,8 @@ public sealed class FrogBodyTests
 
         Assert.That(controller, Is.Not.Null, ControllerPath);
         Assert.That(controller.parameters.Select(p => p.name),
-            Is.EquivalentTo(new[] { "Speed", "WalkRate", "AttackRate", "Attack", "Hit", "Dead" }),
-            "The six parameters the view writes, and no others.");
+            Is.EquivalentTo(new[] { "Speed", "WalkRate", "AttackRate", "Attack", "Hit", "Dead", "Leap" }),
+            "The seven parameters the view writes, and no others (Leap: JG-21e).");
 
         AnimatorStateMachine body = controller.layers[0].stateMachine;
         AnimatorState locomotion = State(body, "Locomotion");

@@ -131,6 +131,14 @@ namespace Soulvail.Game.Views
         private IDisposable _damagedSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _telegraphSubscription;
+        private IDisposable _chainLitSubscription;
+
+        /// <summary>A lit fuse's flash rate, in hertz (JG-21e rule 5).</summary>
+        public const float FuseFlashHz = 8f;
+
+        /// <summary>Seconds of lit fuse still to flash; none at or below zero.</summary>
+        private float _fuseRemaining;
+        private float _fuseElapsed;
 
         /// <summary>
         /// The archetype's colour, and nothing else ever. What <see cref="SetArchetypeLook"/> was
@@ -188,7 +196,11 @@ namespace Soulvail.Game.Views
             _damagedSubscription = hub.Subscribe<EnemyDamaged>(OnDamaged);
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
             _telegraphSubscription = hub.Subscribe<EnemyTelegraph>(OnTelegraph);
+            _chainLitSubscription = hub.Subscribe<EnemyChainLit>(OnChainLit);
         }
+
+        /// <summary>Whether a chain's lit fuse is flashing on this body (JG-21e rule 5).</summary>
+        public bool FuseLit => _fuseRemaining > 0f;
 
         /// <exception cref="MissingReferenceException">A part of the prefab is unassigned.</exception>
         private void Awake()
@@ -324,6 +336,7 @@ namespace Soulvail.Game.Views
             _dissolveElapsed = 0f;
             _flashRemaining = 0f;
             _telegraphRemaining = 0f;
+            _fuseRemaining = 0f;
 
             // Ahead of the property-block guard below, unlike every other line here, because as of
             // M2-06 a body can have been rescaled before Awake ever ran — SetArchetypeLook writes
@@ -373,6 +386,8 @@ namespace Soulvail.Game.Views
             _damagedSubscription?.Dispose();
             _diedSubscription?.Dispose();
             _telegraphSubscription?.Dispose();
+            _chainLitSubscription?.Dispose();
+            _chainLitSubscription = null;
             _damagedSubscription = null;
             _diedSubscription = null;
             _telegraphSubscription = null;
@@ -402,6 +417,7 @@ namespace Soulvail.Game.Views
             }
 
             TickTelegraph(dt);
+            TickFuse(dt);
 
             if (_flashRemaining <= 0f)
             {
@@ -466,6 +482,9 @@ namespace Soulvail.Game.Views
             _dissolveElapsed = 0f;
             _flashRemaining = 0f;
 
+            // A lit bomber that dies goes off now; the fuse it was counting is over (rule 5).
+            _fuseRemaining = 0f;
+
             // A Husk killed mid-windup has had its strike cancelled by core (EnemySystem does not
             // tick a corpse), so the swell it was in the middle of has to stop too. The dissolve
             // rewrites the scale from _liveScale every frame anyway; this is what stops the two
@@ -523,6 +542,45 @@ namespace Soulvail.Game.Views
 
             _telegraphDuration = evt.Duration;
             _telegraphRemaining = evt.Duration;
+        }
+
+        /// <summary>
+        /// A chain blast lit this body: it flashes danger red-orange until it goes off (JG-21e rule 5).
+        /// </summary>
+        private void OnChainLit(EnemyChainLit evt)
+        {
+            if (evt.Id != _view.Id || _dissolving || !(evt.Seconds > 0f))
+            {
+                return;
+            }
+
+            _fuseRemaining = evt.Seconds;
+            _fuseElapsed = 0f;
+        }
+
+        /// <summary>
+        /// Blinks the fuse at <see cref="FuseFlashHz"/>: on for the first half of each period. A hit
+        /// flash in flight owns the colour until it ends.
+        /// </summary>
+        private void TickFuse(float dt)
+        {
+            if (_fuseRemaining <= 0f)
+            {
+                return;
+            }
+
+            _fuseRemaining -= dt;
+            _fuseElapsed += dt;
+
+            if (_flashRemaining > 0f)
+            {
+                return;
+            }
+
+            bool on = _fuseRemaining > 0f && (_fuseElapsed * FuseFlashHz) % 1f < 0.5f;
+
+            SetColour(on ? Palette.Danger : BodyColour());
+            SetEmission(on ? Palette.Danger : TelegraphGlow());
         }
 
         /// <summary>

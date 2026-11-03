@@ -86,6 +86,9 @@ namespace Soulvail.Game.Views
         /// </summary>
         private const float GroundedFallSpeed = -1f;
 
+        /// <summary>How high a leap's cosmetic arc peaks, in metres (JG-21e rule 3).</summary>
+        public const float HopPeak = 1.2f;
+
         private CapsuleCollider _body;
         private CharacterController _controller;
         private EnemyHitFeedback _feedback;
@@ -102,6 +105,13 @@ namespace Soulvail.Game.Views
         private Vector3 _knockbackTo;
         private float _knockbackElapsed;
         private bool _isKnockedBack;
+
+        /// <summary>The model a leap lifts; never this transform, which the controller owns.</summary>
+        private Transform _hopModel;
+        private float _hopBaseY;
+        private float _hopDelay;
+        private float _hopAir;
+        private float _hopElapsed;
 
         /// <summary>The core-side id this body stands for, or <see cref="Unbound"/>.</summary>
         public int Id => _id;
@@ -357,6 +367,62 @@ namespace Soulvail.Game.Views
             _fallSpeed = 0f;
 
             CancelKnockback();
+            CancelHop();
+        }
+
+        /// <summary>
+        /// Lifts <paramref name="model"/> on a parabola for <paramref name="airSeconds"/>, starting
+        /// <paramref name="delaySeconds"/> from now: a leaper's flight, drawn (JG-21e rule 3).
+        /// </summary>
+        /// <remarks>
+        /// Cosmetic time, like the knockback slide: core moves the body across the ground on its own
+        /// clock and never hears of the height. Only a child moves, so the controller, the trigger
+        /// capsule and every snapshot position stay on the floor. A model that is this transform is
+        /// refused for that reason.
+        /// </remarks>
+        public void Hop(Transform model, float delaySeconds, float airSeconds)
+        {
+            if (model == null || model == transform || !(airSeconds > 0f) || float.IsInfinity(airSeconds))
+            {
+                return;
+            }
+
+            CancelHop();
+
+            _hopModel = model;
+            _hopBaseY = model.localPosition.y;
+            _hopDelay = delaySeconds > 0f ? delaySeconds : 0f;
+            _hopAir = airSeconds;
+            _hopElapsed = 0f;
+        }
+
+        /// <summary>
+        /// Advances the arc by <paramref name="dt"/> seconds. Public for <c>EnemyAnimatorView.Step</c>'s
+        /// reason: an EditMode fixture cannot advance <c>Time.deltaTime</c>.
+        /// </summary>
+        public void StepHop(float dt)
+        {
+            if (_hopModel == null || !(dt > 0f) || float.IsInfinity(dt))
+            {
+                return;
+            }
+
+            _hopElapsed += dt;
+
+            float t = (_hopElapsed - _hopDelay) / _hopAir;
+
+            if (t >= 1f)
+            {
+                CancelHop();
+
+                return;
+            }
+
+            float height = t > 0f ? 4f * HopPeak * t * (1f - t) : 0f;
+
+            Vector3 local = _hopModel.localPosition;
+            local.y = _hopBaseY + height;
+            _hopModel.localPosition = local;
         }
 
         /// <inheritdoc />
@@ -520,6 +586,8 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void Update()
         {
+            StepHop(Time.deltaTime);
+
             if (!_isKnockedBack)
             {
                 return;
@@ -604,6 +672,20 @@ namespace Soulvail.Game.Views
             {
                 transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
             }
+        }
+
+        /// <summary>Lands any arc in flight: the model back at its rest height.</summary>
+        private void CancelHop()
+        {
+            if (_hopModel != null)
+            {
+                Vector3 local = _hopModel.localPosition;
+                local.y = _hopBaseY;
+                _hopModel.localPosition = local;
+            }
+
+            _hopModel = null;
+            _hopElapsed = 0f;
         }
 
         /// <summary>Stops any shove in flight, leaving the body wherever it got to.</summary>

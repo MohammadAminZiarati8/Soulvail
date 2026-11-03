@@ -280,3 +280,43 @@ public readonly struct EnemyExploded
         HitPlayer = hitPlayer;
     }
 }
+
+/// <summary>
+/// A leaper has crouched and fixed where it will land. Published once, on the crouch's first tick,
+/// by <c>ChaserBehaviour</c> for an archetype with a <c>LeapSpec</c> (JG-21a).
+/// </summary>
+/// <remarks>
+/// Everything the ring and the arc need, so the view never looks the spec up: where it leaves from,
+/// where it lands, how wide the bite is, and the two durations. The target never moves after this —
+/// the dodge is leaving the ring — so there is no update and no "leap ended".
+/// </remarks>
+public readonly struct EnemyLeapAimed
+{
+    /// <summary>Which enemy is leaping.</summary>
+    public readonly int Id;
+
+    /// <summary>Where it leaves from, in world metres.</summary>
+    public readonly Vector3 From;
+
+    /// <summary>Where it will land: the player's position as the crouch began.</summary>
+    public readonly Vector3 Target;
+
+    /// <summary>Metres (XZ) of the ring it bites on landing.</summary>
+    public readonly float Radius;
+
+    /// <summary>Seconds of crouch before it leaves the ground.</summary>
+    public readonly float CrouchSeconds;
+
+    /// <summary>Seconds the flight takes.</summary>
+    public readonly float AirSeconds;
+
+    public EnemyLeapAimed(int id, Vector3 from, Vector3 target, float radius, float crouchSeconds, float airSeconds)
+    {
+        Id = id;
+        From = from;
+        Target = target;
+        Radius = radius;
+        CrouchSeconds = crouchSeconds;
+        AirSeconds = airSeconds;
+    }
+}

@@ -103,7 +103,7 @@ _No milestone. The owner is setting the next direction._
 
 **Stages 21–24** (owner, 2026-11-03; design [GD §8.2](../GameDesign.md)). The cousins replace the easy four, then the Chameleon stalker and the Thornweaver arrive; threat climbs 194 → 218 → 242 → 269 into Gravemaw. Specs in [tasks/](tasks/); each built only on the owner's go, in this order. 22b and 24b need the owner's TRELLIS sculpt (prompt in the spec) and may be built any time before their body task.
 
-- [ ] **JG-21a** — The Bullfrog's leap: crouch, fixed landing ring, flight, bite (M)
+- [x] **JG-21a** — The Bullfrog's leap: crouch, fixed landing ring, flight, bite (M)
 - [ ] **JG-21b** — Shadow panthers pair up: leader in, flanker to the side, lunge together (M)
 - [ ] **JG-21c** — The Thorn pitcher throws a fan of three ringed lobs (S)
 - [ ] **JG-21d** — The Chain bomber's blast lights nearby bombers (S)

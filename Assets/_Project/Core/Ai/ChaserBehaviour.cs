@@ -36,6 +36,15 @@ public enum ChaserState
 
     /// <summary>Rooted and vulnerable for <c>EnemySpec.RecoverTime</c> — the window the player is meant to punish.</summary>
     Recover,
+
+    /// <summary>A leaper's tell: stands facing the player for <c>LeapSpec.CrouchSeconds</c>, the landing fixed (JG-21a).</summary>
+    Crouch,
+
+    /// <summary>Flying a straight line to the fixed landing in <c>LeapSpec.AirSeconds</c>. Bites nothing.</summary>
+    Air,
+
+    /// <summary>The landing's bite. One tick, <see cref="Strike"/>'s shape.</summary>
+    Land,
 }
 
 /// <summary>
@@ -100,6 +109,12 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// </remarks>
     public const float WindupCancelReachMultiplier = 1.5f;
 
+    /// <summary>Seconds from a chase's start until a leaper may first crouch (JG-21a rule 1).</summary>
+    public const float FirstLeapDelaySeconds = 1f;
+
+    /// <summary>Metres of flight left that count as arrived, so float drift never adds a tick.</summary>
+    private const float ArrivedEpsilon = 1e-4f;
+
     private readonly EnemyAgent _agent;
     private readonly StateMachine<ChaserState> _machine;
 
@@ -109,6 +124,25 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private PlayerCombat _player;
     private IIntentSink _intents;
     private IDomainEvents _events;
+
+    /// <summary>Where the leap lands, fixed when the crouch begins.</summary>
+    private Vector3 _leapTarget;
+
+    /// <summary>The flight's XZ direction, unit or zero.</summary>
+    private Vector2 _leapDirection;
+
+    /// <summary>The flight's speed: distance over <c>AirSeconds</c>.</summary>
+    private float _leapSpeed;
+
+    /// <summary>Metres of flight still asked for, so the last tick is cut short rather than overshooting.</summary>
+    private float _leapRemaining;
+
+    /// <summary>
+    /// Run time the flight ends at, whatever happened to it. Absolute, so a stun (behaviour not
+    /// ticked) or a root (moves zeroed) leaves the body short and it lands where it stopped (rule 6)
+    /// without the behaviour knowing crowd control exists (AR §18.4).
+    /// </summary>
+    private float _airEndsAt;
 
     /// <param name="agent">The enemy this drives. Its spec supplies every number; its blackboard, every fact.</param>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> is null.</exception>
@@ -136,6 +170,14 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
         _machine.OnEnter(ChaserState.Recover, EnterRecover);
         _machine.OnTick(ChaserState.Recover, TickRecover);
+
+        _machine.OnEnter(ChaserState.Crouch, EnterCrouch);
+        _machine.OnTick(ChaserState.Crouch, TickCrouch);
+
+        _machine.OnTick(ChaserState.Air, TickAir);
+
+        _machine.OnEnter(ChaserState.Land, EnterLand);
+        _machine.OnTick(ChaserState.Land, TickLand);
 
         // Started here rather than on the first Tick, so Current is meaningful the moment the agent
         // exists and Reset never has to ask whether the machine has run yet.
@@ -232,10 +274,20 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         }
     }
 
-    /// <summary>Every chase starts at the top of a hop, for an archetype that hops.</summary>
+    /// <summary>
+    /// Every chase starts at the top of a hop, for an archetype that hops; a leaper's next leap is
+    /// at least <see cref="FirstLeapDelaySeconds"/> away, and never sooner than its cooldown allows.
+    /// </summary>
     private void EnterChase()
     {
-        _agent.Blackboard.StateTimer = 0f;
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        blackboard.StateTimer = 0f;
+
+        if (_agent.Spec.Leap != null)
+        {
+            blackboard.NextAttackAt = MathF.Max(blackboard.NextAttackAt, _now + FirstLeapDelaySeconds);
+        }
     }
 
     /// <summary>Rule 2: walk at the player, and plant when close enough to swing.</summary>
@@ -277,6 +329,19 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         if (blackboard.DistanceToPlayer <= _agent.Spec.Reach)
         {
             _machine.Transition(ChaserState.Windup);
+
+            return;
+        }
+
+        // JG-21a rule 1: a leaper in its band, off cooldown, crouches. No LeapSpec, no change (rule 7).
+        LeapSpec leap = _agent.Spec.Leap;
+
+        if (leap != null
+            && _now >= blackboard.NextAttackAt
+            && blackboard.DistanceToPlayer >= leap.MinRange
+            && blackboard.DistanceToPlayer <= leap.MaxRange)
+        {
+            _machine.Transition(ChaserState.Crouch);
         }
     }
 
@@ -402,6 +467,118 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         {
             _machine.Transition(ChaserState.Chase);
         }
+    }
+
+    /// <summary>JG-21a rule 2: fix the landing where the player stands now, and announce it.</summary>
+    private void EnterCrouch()
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+        LeapSpec leap = _agent.Spec.Leap;
+
+        blackboard.StateTimer = 0f;
+
+        // The quarry's position, as every other attack aims: a decoy draws the leap too.
+        _leapTarget = new Vector3(blackboard.PlayerPosition.X, _agent.Position.Y, blackboard.PlayerPosition.Z);
+
+        _events.Publish(new EnemyLeapAimed(
+            _agent.Id, _agent.Position, _leapTarget, leap.Radius, leap.CrouchSeconds, leap.AirSeconds));
+        _events.Publish(new EnemyTelegraph(_agent.Id, leap.CrouchSeconds, move: 1));
+    }
+
+    /// <summary>Rule 2: stand facing the player; never cancelled — the dodge is leaving the ring.</summary>
+    /// <remarks>
+    /// The tick that completes the crouch already flies, so the flight gets exactly
+    /// <c>AirSeconds</c> of moves and still one intent per tick. The flight is set up here rather
+    /// than on entering <see cref="ChaserState.Air"/>: a transition asked for inside a handler runs
+    /// its enter after the handler returns, too late for this tick's move.
+    /// </remarks>
+    private void TickCrouch(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+
+        blackboard.StateTimer += dt;
+
+        if (blackboard.StateTimer >= _agent.Spec.Leap.CrouchSeconds)
+        {
+            BeginFlight();
+
+            _machine.Transition(ChaserState.Air);
+
+            Fly(dt);
+
+            return;
+        }
+
+        Stand(blackboard.DirectionToPlayer);
+    }
+
+    /// <summary>Rule 3: velocity is the distance over the air time, set once.</summary>
+    private void BeginFlight()
+    {
+        LeapSpec leap = _agent.Spec.Leap;
+
+        var offset = new Vector2(_leapTarget.X - _agent.Position.X, _leapTarget.Z - _agent.Position.Z);
+        float distance = offset.Length();
+
+        _leapDirection = distance > ArrivedEpsilon ? offset / distance : Vector2.Zero;
+        _leapRemaining = distance;
+        _leapSpeed = distance / leap.AirSeconds;
+        _airEndsAt = _now + leap.AirSeconds;
+
+        _agent.Blackboard.StateTimer = 0f;
+    }
+
+    /// <summary>Rules 3 and 6: fly until the distance is covered or the clock runs out, then land.</summary>
+    private void TickAir(float dt)
+    {
+        if (!(_leapRemaining > ArrivedEpsilon) || _now >= _airEndsAt)
+        {
+            _machine.Transition(ChaserState.Land);
+
+            Stand(_leapDirection);
+
+            return;
+        }
+
+        Fly(dt);
+    }
+
+    /// <summary>One tick of flight, the last one cut to what is left.</summary>
+    private void Fly(float dt)
+    {
+        float speed = dt > 0f ? MathF.Min(_leapSpeed, _leapRemaining / dt) : _leapSpeed;
+
+        _leapRemaining -= speed * dt;
+
+        Emit(new Vector3(_leapDirection.X * speed, 0f, _leapDirection.Y * speed), _leapDirection);
+    }
+
+    /// <summary>
+    /// Rules 4–6: one bite, where the body actually is — the blackboard's distance is measured from
+    /// it — so a player who left the ring, or a leap that stopped short, bites only what is there.
+    /// </summary>
+    private void EnterLand()
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+        LeapSpec leap = _agent.Spec.Leap;
+
+        blackboard.StateTimer = 0f;
+
+        // The cooldown counts from the landing (rule 1).
+        blackboard.NextAttackAt = _now + leap.Cooldown;
+
+        if (!blackboard.QuarryIsADecoy && blackboard.DistanceToPlayer <= leap.Radius)
+        {
+            _player.ApplyDamage(_agent.ContactDamage.Value * leap.DamageMultiplier, _now);
+        }
+    }
+
+    /// <summary>Rule 4: one tick, then <see cref="ChaserState.Recover"/>.</summary>
+    private void TickLand(float dt)
+    {
+        Stand(_agent.Blackboard.DirectionToPlayer);
+
+        _machine.Transition(ChaserState.Recover);
     }
 
     /// <summary>Emits a tick's worth of standing still, looking <paramref name="facingXZ"/>.</summary>

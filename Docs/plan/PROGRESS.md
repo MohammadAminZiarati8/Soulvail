@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history is `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-03, JG-21–24 specs._
+_Updated 2026-11-03, JG-21a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-20j** fix: ring at true size, 14→11 m, clipped. |
-| **Next task** | **JG-21a**; stages 21–24 specced, JG-21a–24d. |
-| **Verified** | EditMode 5 303: 5 302 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
+| **Last merged** | **JG-21a**: Bullfrog leap in core (no body yet). |
+| **Next task** | **JG-21b**; then JG-21c–24d. |
+| **Verified** | EditMode 5 312: 5 311 pass, 1 inconclusive. PlayMode not rerun. 0 errors, no new warnings, format clean. |
 
 ## What works
 
@@ -21,6 +21,7 @@ Stages 1–14, 16–19 scripted; six enemies have bodies; Pitcher lobs ringed. B
 Thornheart (stage 20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside (tint flashes), 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart while exposed, pod rings fill, band 14→11 m, clipped to the walls; walls warn, rise as vines, block.
 Mother: facing shields, lobs, blocked spray/goo, pods → Frogs.
+Leap (core): LeapSpec Chasers crouch 0.6 s, fix a ring, fly 0.5 s, bite ×1.5.
 Warlord: frontal guard and slow turn, warned sweep/charge, stone daze, guard summons,
 three ringed spears, phase-2 shatter/speed/combo; painted body, glaive, tells, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds at 11 m,

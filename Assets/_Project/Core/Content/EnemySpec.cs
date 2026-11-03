@@ -208,6 +208,9 @@ public sealed class EnemySpec
     /// </param>
     /// <param name="bodyRadius">How wide the body is on XZ. See <see cref="BodyRadius"/>.</param>
     /// <param name="bulwark">Front shield and steering, or null for an archetype without them.</param>
+    /// <param name="leap">
+    /// How it leaps, or <see langword="null"/> for one that does not. Honoured by a Chaser only.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="id"/> is <c>default(ContentId)</c>. Refused where the data is built rather
     /// than where it is read, for the reason <see cref="CharacterSpec"/> gives: a spec with no id
@@ -250,7 +253,8 @@ public sealed class EnemySpec
         LungeSpec lunge = null,
         float bodyRadius = BaseBodyRadius,
         BulwarkSpec bulwark = null,
-        ShamanSpec shaman = null)
+        ShamanSpec shaman = null,
+        LeapSpec leap = null)
     {
         if (id.Value is null)
         {
@@ -354,6 +358,7 @@ public sealed class EnemySpec
         BodyRadius = Positive(bodyRadius, nameof(bodyRadius));
         Bulwark = bulwark;
         Shaman = shaman;
+        Leap = leap;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -486,6 +491,12 @@ public sealed class EnemySpec
     public BulwarkSpec Bulwark { get; }
 
     public ShamanSpec Shaman { get; }
+
+    /// <summary>
+    /// How it leaps, or <see langword="null"/> on an archetype that does not. Read by
+    /// <c>ChaserBehaviour</c> alone; every other behaviour ignores it (JG-21a).
+    /// </summary>
+    public LeapSpec Leap { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

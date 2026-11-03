@@ -393,7 +393,38 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesTwentyOneToTwentyTwo_Climb()
+    public void Jungle_StageTwentyThree_IsTheTangle()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(23, out ScriptedStage stage), Is.True);
+        Assert.That(stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.chain_bomber", 4), (1, "enemy.shadow_panther", 2), (1, "enemy.bullfrog", 4),
+            (2, "enemy.mossguard", 2), (2, "enemy.shaman", 1), (2, "enemy.thorn_pitcher", 3),
+            (3, "enemy.stalker", 2), (3, "enemy.shadow_panther", 2), (3, "enemy.chain_bomber", 2),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageTwentyThree_IntroducesNothing()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Dictionary<ContentId, int> introductions = jungle.Roster.ToDictionary(r => r.SpecId, r => r.IntroducedAtStage);
+
+        Assert.That(jungle.TryGetScriptedStage(23, out ScriptedStage stage), Is.True);
+        foreach (ScriptedSpawn spawn in stage.Spawns)
+        {
+            Assert.That(introductions.ContainsKey(spawn.SpecId), Is.True, $"{spawn.SpecId} is rostered");
+            Assert.That(introductions[spawn.SpecId], Is.LessThan(23), $"{spawn.SpecId} is known before 23");
+        }
+
+        Assert.That(jungle.TryGetIntroduction(23, out _), Is.False);
+        Assert.That(jungle.TryGetBossFor(25, out _), Is.True, "Stage 25 stays a boss stage.");
+    }
+
+    [Test]
+    public void Jungle_StagesTwentyOneToTwentyThree_Climb()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
         Dictionary<ContentId, int> costs = new[]
@@ -409,7 +440,7 @@ public sealed class JungleTests
             return stage.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]);
         }
 
-        Assert.That((Threat(21), Threat(22)), Is.EqualTo((194, 218)));
+        Assert.That((Threat(21), Threat(22), Threat(23)), Is.EqualTo((194, 218, 242)));
     }
 
     [Test]

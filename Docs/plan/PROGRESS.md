@@ -2,22 +2,22 @@
 
 Overwritten, never appended; history: `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-22d._
+_Updated 2026-11-04, JG-23._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-22d**: the stalker rostered from 22; stage 22 scripted. |
-| **Next task** | **JG-23**; then JG-24a–d. |
-| **Verified** | EditMode 5 401: 5 400 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-23**: stage 23 “the tangle” scripted, 242 threat. |
+| **Next task** | **JG-24a**; then JG-24b–d. |
+| **Verified** | EditMode 5 403: 5 402 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–22 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
+Stages 1–14, 16–19, 21–23 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart, pod rings fill, band 14→11 m in the walls; walls warn, rise as vines.
 Mother: shields, lobs, spray, pods→Frogs.

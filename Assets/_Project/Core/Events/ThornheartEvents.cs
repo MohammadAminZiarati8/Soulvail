@@ -73,3 +73,22 @@ public readonly struct StrangleRing
         Seconds = seconds;
     }
 }
+
+/// <summary>
+/// The strangling ring bit the player for standing outside it (JG-20j). Published only when the
+/// bite landed — a roll or hit i-frames that blocked it publish nothing — so the view's flash
+/// always answers a hit the player felt.
+/// </summary>
+public readonly struct StrangleBite
+{
+    public readonly int BossId;
+
+    /// <summary>Damage that reached HP, after any shield.</summary>
+    public readonly float ToHp;
+
+    public StrangleBite(int bossId, float toHp)
+    {
+        BossId = bossId;
+        ToHp = toHp;
+    }
+}

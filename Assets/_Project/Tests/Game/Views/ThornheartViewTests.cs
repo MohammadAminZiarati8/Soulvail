@@ -174,8 +174,51 @@ public sealed class ThornheartViewTests
         Assert.That(_view.RingRadiusShown, Is.EqualTo(11f), "Holds at the close.");
         Assert.That(InnerEdge(), Is.EqualTo(11f).Within(1e-3f), "The inner edge is the core radius exactly.");
         Assert.That(OuterEdge(), Is.EqualTo(11f + ThornheartView.BandWidth).Within(1e-3f), "The bramble lies outside, where it bites.");
+        Assert.That(Radii().Max(), Is.EqualTo(ThornheartView.ZoneReach).Within(1e-3f), "The tint covers everything past it.");
         Assert.That(_view.Ring.activeInHierarchy, Is.True);
         Assert.That(new Vector2(_view.Ring.transform.position.x, _view.Ring.transform.position.z), Is.EqualTo(Vector2.zero));
+    }
+
+    // JG-20j: the area that bites is tinted Danger, and a bite flashes it.
+    [Test]
+    public void View_StrangleBite_TintsOutsideAndFlashes()
+    {
+        Assert.That(_view.ZoneAlphaShown, Is.Zero, "No ring, no tint.");
+        _hub.Publish(new StrangleBite(Id, 2f));
+        Assert.That(_view.ZoneAlphaShown, Is.Zero, "A bite before any ring draws nothing.");
+
+        _hub.Publish(new StrangleRing(Id, 17f, 11f, 6f));
+        Assert.That(_view.ZoneAlphaShown, Is.EqualTo(ThornheartView.ZoneAlpha));
+
+        Color[] colours = _view.Ring.GetComponent<MeshFilter>().sharedMesh.colors;
+        Vector3[] vertices = _view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices;
+        int zone = 0;
+
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            if (new Vector2(vertices[i].x, vertices[i].z).magnitude > 17f + ThornheartView.BandWidth + 1f)
+            {
+                zone++;
+                Assert.That(colours[i].a, Is.EqualTo(ThornheartView.ZoneAlpha).Within(1e-3f));
+                Assert.That(new Vector3(colours[i].r, colours[i].g, colours[i].b), Is.EqualTo(RgbOf(Palette.Vertex(Palette.Danger))), "Danger, nothing else.");
+            }
+        }
+
+        Assert.That(zone, Is.GreaterThan(0), "The far edge carries the tint.");
+
+        _hub.Publish(new StrangleBite(Id + 1, 2f));
+        Assert.That(_view.ZoneAlphaShown, Is.EqualTo(ThornheartView.ZoneAlpha), "Another boss's bite is not ours.");
+
+        _hub.Publish(new StrangleBite(Id, 2f));
+        Assert.That(_view.ZoneAlphaShown, Is.EqualTo(ThornheartView.BiteAlpha).Within(1e-4f), "Flashes the instant it bites.");
+        Assert.That(MaxZoneAlpha(), Is.EqualTo(ThornheartView.BiteAlpha).Within(1e-3f), "Drawn, not just counted.");
+
+        _view.Step(ThornheartView.BiteFlashSeconds * 0.5f);
+        Assert.That(_view.ZoneAlphaShown, Is.InRange(ThornheartView.ZoneAlpha + 1e-3f, ThornheartView.BiteAlpha - 1e-3f), "Fading.");
+
+        _view.Step(ThornheartView.BiteFlashSeconds);
+        Assert.That(_view.ZoneAlphaShown, Is.EqualTo(ThornheartView.ZoneAlpha), "Back to rest.");
+        Assert.That(MaxZoneAlpha(), Is.EqualTo(ThornheartView.ZoneAlpha).Within(1e-3f));
     }
 
     [Test]
@@ -237,7 +280,13 @@ public sealed class ThornheartViewTests
 
     private float InnerEdge() => Radii().Min();
 
-    private float OuterEdge() => Radii().Max();
+    // The bramble's outer edge: the second vertex of every spoke (the tint starts there too).
+    private float OuterEdge() => Radii().Where((_, i) => i % 4 == 1).Max();
+
+    private static Vector3 RgbOf(Color colour) => new Vector3(colour.r, colour.g, colour.b);
+
+    private float MaxZoneAlpha() =>
+        _view.Ring.GetComponent<MeshFilter>().sharedMesh.colors.Where((_, i) => i % 4 == 3).Max(c => c.a);
 
     private float[] Radii() =>
         _view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices.Select(v => new Vector2(v.x, v.z).magnitude).ToArray();

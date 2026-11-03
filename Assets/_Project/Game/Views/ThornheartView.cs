@@ -29,6 +29,11 @@ namespace Soulvail.Game.Views
     /// bramble is drawn on the side that hurts and its edge is where the hurting starts.
     /// </para>
     /// <para>
+    /// <b>Everything outside the band is tinted Danger</b> (JG-20j), faintly, out to
+    /// <see cref="ZoneReach"/>: the whole area that hurts reads as hurting, not just its edge. Each
+    /// <c>StrangleBite</c> flashes it brighter, so a bite from nothing in particular is drawn.
+    /// </para>
+    /// <para>
     /// <b>The pool calls only <see cref="EnemyView"/>'s <see cref="IPoolable"/></b>, so the restore runs
     /// from <c>OnDisable</c>, which the pool's deactivation raises on the same line.
     /// </para>
@@ -37,6 +42,18 @@ namespace Soulvail.Game.Views
     {
         /// <summary>How far out the bramble band reaches past the core radius, in metres.</summary>
         public const float BandWidth = 0.8f;
+
+        /// <summary>How far the danger tint reaches from the boss, in metres — past any arena's edge.</summary>
+        public const float ZoneReach = 40f;
+
+        /// <summary>The tint's opacity outside the band at rest.</summary>
+        public const float ZoneAlpha = 0.14f;
+
+        /// <summary>The tint's opacity the instant a bite lands; it fades back over <see cref="BiteFlashSeconds"/>.</summary>
+        public const float BiteAlpha = 0.45f;
+
+        /// <summary>How long a bite's flash takes to fade back to <see cref="ZoneAlpha"/>.</summary>
+        public const float BiteFlashSeconds = 0.35f;
 
         /// <summary>A pod's ripening ring, in metres — the pod's footprint and a little more.</summary>
         public const float RipenRadius = 1.2f;
@@ -75,12 +92,16 @@ namespace Soulvail.Game.Views
         private readonly Color _heartAmber = new Color(1f, 0.6f, 0.16f, 1f);
 
         private readonly Pod[] _pods = new Pod[PodCapacity];
-        private readonly Vector3[] _bandVertices = new Vector3[(BandSegments + 1) * 2];
+        // Per spoke of the band: its inner (Danger) edge, the bramble's outer edge, then the tint's
+        // start on that same radius and its far edge at ZoneReach.
+        private readonly Vector3[] _bandVertices = new Vector3[(BandSegments + 1) * 4];
+        private readonly Color[] _bandColours = new Color[(BandSegments + 1) * 4];
 
         private EnemyView _body;
         private IDisposable _heartSubscription;
         private IDisposable _podSubscription;
         private IDisposable _ringSubscription;
+        private IDisposable _biteSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _despawnedSubscription;
         private Transform _pool;
@@ -95,6 +116,8 @@ namespace Soulvail.Game.Views
         private float _ringSeconds;
         private float _ringElapsed;
         private float _drawnRadius = -1f;
+        private float _biteLeft;
+        private float _zoneAlpha = -1f;
 
         public bool IsHeartLit => _heartLeft > 0f;
 
@@ -129,6 +152,9 @@ namespace Soulvail.Game.Views
         /// <summary>The band's instance once made, for tests.</summary>
         public GameObject Ring => _ring;
 
+        /// <summary>The danger tint's opacity now: <see cref="ZoneAlpha"/> at rest, higher just after a bite; 0 with no ring.</summary>
+        public float ZoneAlphaShown => _ringShown ? ZoneAlphaNow() : 0f;
+
         /// <param name="hub">The run's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         [Inject]
@@ -143,6 +169,7 @@ namespace Soulvail.Game.Views
             _heartSubscription = hub.Subscribe<HeartExposed>(OnHeartExposed);
             _podSubscription = hub.Subscribe<ThornPodPlanted>(OnPodPlanted);
             _ringSubscription = hub.Subscribe<StrangleRing>(OnStrangleRing);
+            _biteSubscription = hub.Subscribe<StrangleBite>(OnStrangleBite);
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
             _despawnedSubscription = hub.Subscribe<EnemyDespawned>(OnDespawned);
         }
@@ -208,6 +235,7 @@ namespace Soulvail.Game.Views
             if (_ringShown)
             {
                 _ringElapsed += dt;
+                _biteLeft = Mathf.Max(_biteLeft - dt, 0f);
                 PlaceRing();
             }
         }
@@ -253,11 +281,13 @@ namespace Soulvail.Game.Views
             _heartSubscription?.Dispose();
             _podSubscription?.Dispose();
             _ringSubscription?.Dispose();
+            _biteSubscription?.Dispose();
             _diedSubscription?.Dispose();
             _despawnedSubscription?.Dispose();
             _heartSubscription = null;
             _podSubscription = null;
             _ringSubscription = null;
+            _biteSubscription = null;
             _diedSubscription = null;
             _despawnedSubscription = null;
         }
@@ -357,8 +387,24 @@ namespace Soulvail.Game.Views
             _ringSeconds = evt.Seconds;
             _ringElapsed = 0f;
             _drawnRadius = -1f;
+            _biteLeft = 0f;
+            _zoneAlpha = -1f;
             PlaceRing();
         }
+
+        private void OnStrangleBite(StrangleBite evt)
+        {
+            if (!IsMine(evt.BossId) || !_ringShown)
+            {
+                return;
+            }
+
+            _biteLeft = BiteFlashSeconds;
+            PlaceRing();
+        }
+
+        private float ZoneAlphaNow() =>
+            Mathf.Lerp(ZoneAlpha, BiteAlpha, BiteFlashSeconds > 0f ? _biteLeft / BiteFlashSeconds : 0f);
 
         private void OnDied(EnemyDied evt)
         {
@@ -451,19 +497,26 @@ namespace Soulvail.Game.Views
 
             float radius = CurrentRadius();
 
-            if (Mathf.Approximately(radius, _drawnRadius))
+            if (!Mathf.Approximately(radius, _drawnRadius))
             {
-                return;
+                _drawnRadius = radius;
+                DrawBand(radius);
             }
 
-            _drawnRadius = radius;
-            DrawBand(radius);
+            float alpha = ZoneAlphaNow();
+
+            if (!Mathf.Approximately(alpha, _zoneAlpha))
+            {
+                _zoneAlpha = alpha;
+                PaintZone(alpha);
+            }
         }
 
         private void HideRing()
         {
             _ringShown = false;
             _ringElapsed = 0f;
+            _biteLeft = 0f;
 
             if (_ring != null)
             {
@@ -483,17 +536,40 @@ namespace Soulvail.Game.Views
             EnsureBand(filter);
             float outer = inner + BandWidth;
 
+            float reach = Mathf.Max(ZoneReach, outer);
+
             for (int i = 0; i <= BandSegments; i++)
             {
                 float rad = i * Mathf.PI * 2f / BandSegments;
                 float x = Mathf.Sin(rad);
                 float z = Mathf.Cos(rad);
-                _bandVertices[i * 2] = new Vector3(x * inner, 0f, z * inner);
-                _bandVertices[(i * 2) + 1] = new Vector3(x * outer, 0f, z * outer);
+                int v = i * 4;
+                _bandVertices[v] = new Vector3(x * inner, 0f, z * inner);
+                _bandVertices[v + 1] = new Vector3(x * outer, 0f, z * outer);
+                _bandVertices[v + 2] = _bandVertices[v + 1];
+                _bandVertices[v + 3] = new Vector3(x * reach, 0f, z * reach);
             }
 
             _bandMesh.vertices = _bandVertices;
             _bandMesh.RecalculateBounds();
+        }
+
+        private void PaintZone(float alpha)
+        {
+            if (_bandMesh == null)
+            {
+                return;
+            }
+
+            Color zone = Palette.Vertex(new Color(Palette.Danger.r, Palette.Danger.g, Palette.Danger.b, alpha));
+
+            for (int i = 0; i <= BandSegments; i++)
+            {
+                _bandColours[(i * 4) + 2] = zone;
+                _bandColours[(i * 4) + 3] = zone;
+            }
+
+            _bandMesh.colors = _bandColours;
         }
 
         private void EnsureBand(MeshFilter filter)
@@ -506,32 +582,36 @@ namespace Soulvail.Game.Views
             _bandMesh = new Mesh { name = "Thornheart strangle band (runtime)" };
             _bandMesh.MarkDynamic();
 
-            // The inner edge is the warning, in Danger; the bramble darkens outward.
+            // The inner edge is the warning, in Danger; the bramble darkens outward; past it the
+            // tint, painted by PaintZone.
             Color edge = Palette.Vertex(Palette.Danger);
             Color bramble = Palette.Vertex(Palette.MotherGoo);
-            var colours = new Color[_bandVertices.Length];
-            var triangles = new int[BandSegments * 6];
+            var triangles = new int[BandSegments * 12];
 
             for (int i = 0; i <= BandSegments; i++)
             {
-                colours[i * 2] = edge;
-                colours[(i * 2) + 1] = bramble;
+                _bandColours[i * 4] = edge;
+                _bandColours[(i * 4) + 1] = bramble;
             }
 
             for (int i = 0; i < BandSegments; i++)
             {
-                int a = i * 2;
-                int t = i * 6;
-                triangles[t] = a;
-                triangles[t + 1] = a + 1;
-                triangles[t + 2] = a + 2;
-                triangles[t + 3] = a + 2;
-                triangles[t + 4] = a + 1;
-                triangles[t + 5] = a + 3;
+                for (int strip = 0; strip < 2; strip++)
+                {
+                    int a = (i * 4) + (strip * 2);
+                    int b = a + 4;
+                    int k = (i * 12) + (strip * 6);
+                    triangles[k] = a;
+                    triangles[k + 1] = a + 1;
+                    triangles[k + 2] = b;
+                    triangles[k + 3] = b;
+                    triangles[k + 4] = a + 1;
+                    triangles[k + 5] = b + 1;
+                }
             }
 
             _bandMesh.vertices = _bandVertices;
-            _bandMesh.colors = colours;
+            _bandMesh.colors = _bandColours;
             _bandMesh.triangles = triangles;
             filter.sharedMesh = _bandMesh;
         }

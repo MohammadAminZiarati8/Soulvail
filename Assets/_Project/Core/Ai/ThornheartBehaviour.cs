@@ -260,7 +260,13 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         if (_pulseRemaining <= 0f)
         {
             _pulseRemaining = RingPulseSeconds;
-            ctx.Player.ApplyDamage(_agent.ContactDamage.Value * RingDamageScale, ctx.Now);
+            DamageResult bite = ctx.Player.ApplyDamage(_agent.ContactDamage.Value * RingDamageScale, ctx.Now);
+
+            // JG-20j: a bite the player felt is drawn, so "nothing hit me" has an answer on screen.
+            if (!bite.Blocked)
+            {
+                ctx.Events.Publish(new StrangleBite(_agent.Id, bite.ToHp));
+            }
         }
     }
 

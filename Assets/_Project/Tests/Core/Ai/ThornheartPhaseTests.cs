@@ -197,6 +197,28 @@ public sealed class ThornheartPhaseTests
         Assert.That(_player.Health.Current, Is.LessThan(_player.Health.MaxHp.Value), "Bites once the roll ends.");
     }
 
+    // JG-20j: every bite that lands is published, so the view can draw it; a blocked one is not.
+    [Test]
+    public void Ring_Bite_PublishesStrangleBite_NotWhenBlocked()
+    {
+        _heart.OnPhaseEntered(1);
+        RunFor(ThornheartBehaviour.RingCloseSeconds + 1f);
+        Assert.That(_events.Count<StrangleBite>(), Is.Zero, "Nothing bit inside.");
+
+        Place(Outside);
+        _player.Health.SetExternalInvulnerable(true);
+        RunFor(2f);
+        Assert.That(_events.Count<StrangleBite>(), Is.Zero, "A blocked bite is not drawn.");
+
+        _player.Health.SetExternalInvulnerable(false);
+        float hp = _player.Health.Current;
+        RunUntil(() => _player.Health.Current < hp);
+        Assert.That(_events.Count<StrangleBite>(), Is.EqualTo(1));
+        StrangleBite bite = _events.Single<StrangleBite>();
+        Assert.That(bite.BossId, Is.EqualTo(_agent.Id));
+        Assert.That(bite.ToHp, Is.EqualTo(hp - _player.Health.Current).Within(Tolerance));
+    }
+
     // Rule 4.
     [Test]
     public void Spokes_ClampedInsideRing_LeaveStrafeLane()

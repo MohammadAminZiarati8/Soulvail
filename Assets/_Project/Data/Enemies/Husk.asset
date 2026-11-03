@@ -29,7 +29,10 @@ MonoBehaviour:
   _projectileStandoffRange: 0
   _projectileSpeed: 12
   _projectileRadius: 1.6
+  _projectileCount: 1
+  _projectileSpread: 0
   _explosionRadius: 0
+  _chainRadius: 0
   _hopTime: 0
   _hopRestTime: 0
   _lungeRange: 0
@@ -37,6 +40,16 @@ MonoBehaviour:
   _lungeSpeed: 0
   _lungeHalfWidth: 0
   _lungeCooldown: 0
+  _leapMinRange: 0
+  _leapMaxRange: 0
+  _leapCrouchSeconds: 0
+  _leapAirSeconds: 0
+  _leapRadius: 0
+  _leapDamageMultiplier: 0
+  _leapCooldown: 0
+  _packPartnerRadius: 0
+  _packFlankAngleDegrees: 0
+  _packFlankTimeout: 0
   _shieldHalfArc: 0
   _shieldTurnRate: 0
   _shieldWalkCone: 0

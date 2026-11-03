@@ -103,10 +103,20 @@ namespace Soulvail.Game.Authoring
                  "shot, not the size it is drawn at.")]
         [SerializeField, Min(0.01f)] private float _projectileRadius = 1.6f;
 
+        [Tooltip("Lobs per throw, 1–5. 3 for the Thorn pitcher (JG-21c).")]
+        [SerializeField, Min(1)] private int _projectileCount = 1;
+
+        [Tooltip("Metres between neighbouring landings. Needed when the count is above 1.")]
+        [SerializeField, Min(0f)] private float _projectileSpread;
+
         [Header("Explosion — leave the radius at 0 on an archetype that does not explode")]
         [Tooltip("Metres the blast reaches. 0 means this archetype does not explode. 3 for the " +
                  "Bloater (GD §8.1).")]
         [SerializeField, Min(0f)] private float _explosionRadius;
+
+        [Tooltip("Metres within which its blast lights other bombers. 0 lights none. 4 for the " +
+                 "Chain bomber (JG-21d).")]
+        [SerializeField, Min(0f)] private float _chainRadius;
 
         [Header("Hop — leave the hop time at 0 on an archetype that walks")]
         [Tooltip("Seconds one hop spends in the air. 0 walks. A hopper moves only in the air, at " +
@@ -133,6 +143,24 @@ namespace Soulvail.Game.Authoring
 
         [Tooltip("Seconds from one dash's end to the next wind-up.")]
         [SerializeField, Min(0f)] private float _lungeCooldown;
+
+        [Header("Leap — leave the min range at 0 on an archetype that does not leap")]
+        [Tooltip("Metres from the player below which it does not leap. 0 means no leap and the " +
+                 "six fields below are ignored. 4 for the Bullfrog (JG-21a).")]
+        [SerializeField, Min(0f)] private float _leapMinRange;
+        [SerializeField, Min(0f)] private float _leapMaxRange;
+        [SerializeField, Min(0f)] private float _leapCrouchSeconds;
+        [SerializeField, Min(0f)] private float _leapAirSeconds;
+        [SerializeField, Min(0f)] private float _leapRadius;
+        [SerializeField, Min(0f)] private float _leapDamageMultiplier;
+        [SerializeField, Min(0f)] private float _leapCooldown;
+
+        [Header("Pack — leave the partner radius at 0 on a Lunger that hunts alone")]
+        [Tooltip("Metres within which it finds a partner of its kind. 0 hunts alone. 16 for the " +
+                 "Shadow panther (JG-21b).")]
+        [SerializeField, Min(0f)] private float _packPartnerRadius;
+        [SerializeField, Range(0f, 180f)] private float _packFlankAngleDegrees;
+        [SerializeField, Min(0f)] private float _packFlankTimeout;
 
         [Header("Bulwark — leave the half-arc at 0 on an archetype without a shield")]
         [SerializeField, Min(0f)] private float _shieldHalfArc;
@@ -233,10 +261,12 @@ namespace Soulvail.Game.Authoring
                         ? new ProjectileSpec(
                             _projectileStandoffRange,
                             _projectileSpeed,
-                            _projectileRadius)
+                            _projectileRadius,
+                            _projectileCount,
+                            _projectileSpread)
                         : null,
                     _explosionRadius > 0f
-                        ? new ExplosionSpec(_explosionRadius)
+                        ? new ExplosionSpec(_explosionRadius, _chainRadius)
                         : null,
                     _hopTime,
                     _hopRestTime,
@@ -258,6 +288,13 @@ namespace Soulvail.Game.Authoring
                             _shamanHealFraction, _shamanHasteFraction, _shamanHasteSeconds,
                             _shamanHoldDistance, _shamanBehindDistance, _shamanFleeDistance,
                             _shamanFleeSeconds, _shamanFleeSpeedMultiplier)
+                        : null,
+                    _leapMinRange > 0f
+                        ? new LeapSpec(_leapMinRange, _leapMaxRange, _leapCrouchSeconds,
+                            _leapAirSeconds, _leapRadius, _leapDamageMultiplier, _leapCooldown)
+                        : null,
+                    _packPartnerRadius > 0f
+                        ? new PackSpec(_packPartnerRadius, _packFlankAngleDegrees, _packFlankTimeout)
                         : null);
             }
             catch (ArgumentException inner)

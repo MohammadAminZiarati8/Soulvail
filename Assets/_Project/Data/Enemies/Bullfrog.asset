@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Bullfrog
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.bullfrog
+  _nameKey: enemy.bullfrog.name
+  _maxHp: 52
+  _moveSpeed: 1.4
+  _targetPriority: 2
+  _threatCost: 6
+  _xpValue: 22
+  _isElite: 0
+  _contactDamage: 10
+  _reach: 1.2
+  _windupTime: 0.4
+  _recoverTime: 0.6
+  _aggroRange: 30
+  _behaviour: 1
+  _projectileStandoffRange: 0
+  _projectileSpeed: 12
+  _projectileRadius: 1.6
+  _explosionRadius: 0
+  _hopTime: 0.5
+  _hopRestTime: 0.8
+  _leapMinRange: 4
+  _leapMaxRange: 9
+  _leapCrouchSeconds: 0.6
+  _leapAirSeconds: 0.5
+  _leapRadius: 1.6
+  _leapDamageMultiplier: 1.5
+  _leapCooldown: 4
+  _tint: {r: 0.55, g: 0.6, b: 0.4, a: 1}
+  _bodyScale: 1.3
+  _body: {fileID: 1948692383063977381, guid: 673a5fb7f4116b045b8ebfcd4dcef8d8, type: 3}
+  _projectile: {fileID: 9054373191307789522, guid: 9b220f9bbfe058741a2b47645630c257, type: 3}
+  _marksLanding: 1

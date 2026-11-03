@@ -670,3 +670,11 @@ MonoBehaviour:
     _text: 'Killshot executes non-bosses at 25% HP or below. Cooldown is reduced by 8 s.'
   - _key: enemy.shaman.name
     _text: 'Moss Shaman'
+  - _key: enemy.bullfrog.name
+    _text: Bullfrog
+  - _key: enemy.thorn_pitcher.name
+    _text: 'Thorn Pitcher'
+  - _key: enemy.chain_bomber.name
+    _text: 'Chain Bomber'
+  - _key: enemy.shadow_panther.name
+    _text: 'Shadow Panther'

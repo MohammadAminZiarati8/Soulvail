@@ -108,7 +108,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-21c** — The Thorn pitcher throws a fan of three ringed lobs (S)
 - [x] **JG-21d** — The Chain bomber's blast lights nearby bombers (S)
 - [x] **JG-21e** — Drawn: the landing ring, the hop arc, chain links and fuse flash (M)
-- [ ] **JG-21f** — Cousin assets, the easy four retired at 21, stage 21 scripted (M)
+- [x] **JG-21f** — Cousin assets, the easy four retired at 21, stage 21 scripted (M)
 - [ ] **JG-22a** — Chameleon stalker in core: hides when still, strikes from behind (M)
 - [ ] **JG-22b** — The stalker's model on `Rig_Medium` (M)
 - [ ] **JG-22c** — The stalker's body: shimmer, reveal flash, hidden bar (M)

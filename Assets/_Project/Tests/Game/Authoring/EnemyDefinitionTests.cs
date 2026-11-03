@@ -264,6 +264,75 @@ public sealed class EnemyDefinitionTests
     }
 
     [Test]
+    public void Definition_LeapBlock_BuildsASpecOnlyWithAMinRange()
+    {
+        // JG-21f: a block is built only when its first field is above 0.
+        EnemyDefinition leaper = NewDefinition("Leaper");
+        string[] fields = { "_leapMinRange", "_leapMaxRange", "_leapCrouchSeconds", "_leapAirSeconds",
+            "_leapRadius", "_leapDamageMultiplier", "_leapCooldown" };
+        float[] values = { 4f, 9f, 0.6f, 0.5f, 1.6f, 1.5f, 4f };
+        for (int i = 0; i < fields.Length; i++)
+        { SetFloat(leaper, fields[i], values[i]); }
+
+        LeapSpec leap = leaper.ToSpec().Leap;
+
+        Assert.That(leap, Is.Not.Null);
+        Assert.That(new[] { leap.MinRange, leap.MaxRange, leap.CrouchSeconds, leap.AirSeconds, leap.Radius,
+            leap.DamageMultiplier, leap.Cooldown }, Is.EqualTo(values));
+
+        SetFloat(leaper, "_leapMinRange", 0f);
+        Assert.That(leaper.ToSpec().Leap, Is.Null);
+    }
+
+    [Test]
+    public void Definition_PackBlock_BuildsASpecOnlyWithAPartnerRadius()
+    {
+        EnemyDefinition hunter = NewDefinition("Hunter");
+        SetFloat(hunter, "_packPartnerRadius", 16f);
+        SetFloat(hunter, "_packFlankAngleDegrees", 90f);
+        SetFloat(hunter, "_packFlankTimeout", 3f);
+
+        PackSpec pack = hunter.ToSpec().Pack;
+
+        Assert.That(pack, Is.Not.Null);
+        Assert.That((pack.PartnerRadius, pack.FlankAngleDegrees, pack.FlankTimeout), Is.EqualTo((16f, 90f, 3f)));
+
+        SetFloat(hunter, "_packPartnerRadius", 0f);
+        Assert.That(hunter.ToSpec().Pack, Is.Null);
+    }
+
+    [Test]
+    public void Definition_ProjectileCountAndSpread_ReachTheSpec()
+    {
+        EnemyDefinition thrower = NewDefinition("Thrower");
+        SetFloat(thrower, "_projectileStandoffRange", 14f);
+
+        Assert.That(thrower.ToSpec().Projectile.Count, Is.EqualTo(1), "One lob unless authored.");
+
+        SetInt(thrower, "_projectileCount", 3);
+        SetFloat(thrower, "_projectileSpread", 3f);
+        ProjectileSpec projectile = thrower.ToSpec().Projectile;
+
+        Assert.That((projectile.Count, projectile.Spread), Is.EqualTo((3, 3f)));
+    }
+
+    [Test]
+    public void Definition_ChainRadius_ReachesTheExplosion()
+    {
+        EnemyDefinition bomber = NewDefinition("Bomber");
+        SetFloat(bomber, "_explosionRadius", 2.5f);
+
+        Assert.That(bomber.ToSpec().Explosion.ChainRadius, Is.Zero, "Lights nothing unless authored.");
+
+        SetFloat(bomber, "_chainRadius", 4f);
+        Assert.That(bomber.ToSpec().Explosion.ChainRadius, Is.EqualTo(4f));
+
+        // The blast radius is still the switch: a chain with no blast builds no explosion.
+        SetFloat(bomber, "_explosionRadius", 0f);
+        Assert.That(bomber.ToSpec().Explosion, Is.Null);
+    }
+
+    [Test]
     public void ToSpec_InvalidPriority_ThrowsNamingAsset()
     {
         EnemyDefinition definition = NewDefinition("BrokenPriority");

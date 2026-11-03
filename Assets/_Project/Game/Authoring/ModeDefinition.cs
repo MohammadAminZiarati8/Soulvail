@@ -845,9 +845,13 @@ namespace Soulvail.Game.Authoring
             [Tooltip("The first stage this mode may spawn it at. 1 = from the first stage.")]
             [SerializeField, Min(1)] private int _introducedAtStage;
 
+            [Tooltip("The first stage the budget stops drawing it at. 0 = never. Scripted stages "
+                     + "may still name it.")]
+            [SerializeField, Min(0)] private int _retiredAtStage;
+
             /// <summary>Converts this row, letting <see cref="RosterEntry"/> refuse a bad one.</summary>
             public RosterEntry ToEntry() =>
-                new RosterEntry(new ContentId(_specId), _introducedAtStage);
+                new RosterEntry(new ContentId(_specId), _introducedAtStage, _retiredAtStage);
         }
 
         /// <summary>

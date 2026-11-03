@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: ThornPitcher
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.thorn_pitcher
+  _nameKey: enemy.thorn_pitcher.name
+  _maxHp: 38
+  _moveSpeed: 2.8
+  _targetPriority: 4
+  _threatCost: 10
+  _xpValue: 25
+  _isElite: 0
+  _contactDamage: 12
+  _reach: 1.2
+  _windupTime: 0.7
+  _recoverTime: 2.3
+  _aggroRange: 30
+  _behaviour: 2
+  _projectileStandoffRange: 14
+  _projectileSpeed: 7
+  _projectileRadius: 1.4
+  _projectileCount: 3
+  _projectileSpread: 3
+  _explosionRadius: 0
+  _hopTime: 0
+  _hopRestTime: 0
+  _tint: {r: 0.7, g: 0.8, b: 0.5, a: 1}
+  _bodyScale: 1.15
+  _body: {fileID: 4602156729013314041, guid: f50ac3e459cef0e4c8be525a64c9851c, type: 3}
+  _projectile: {fileID: 7540841994579863046, guid: 06ce5ae1043e2124aac9f2e4fa9a33c1, type: 3}
+  _marksLanding: 1

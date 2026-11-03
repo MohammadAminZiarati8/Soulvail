@@ -863,6 +863,63 @@ public sealed class ModeSpecTests
         }
     }
 
+    [Test]
+    public void Roster_RetiredEntryLeavesFromItsStage()
+    {
+        ModeSpec mode = Mode(new[]
+        {
+            new RosterEntry(new ContentId(HuskId), 1, 21),
+            new RosterEntry(new ContentId(SpitterId), 2),
+        });
+        var buffer = new RosterEntry[4];
+
+        Assert.That(mode.RosterFor(20, buffer), Is.EqualTo(2));
+        Assert.That(buffer[0].SpecId, Is.EqualTo(new ContentId(HuskId)));
+
+        // Retired *at* 21 means gone at 21: the boundary is exclusive, the mirror of introduction.
+        Assert.That(mode.RosterFor(21, buffer), Is.EqualTo(1));
+        Assert.That(buffer[0].SpecId, Is.EqualTo(new ContentId(SpitterId)));
+        Assert.That(mode.Roster[0].RetiredAtStage, Is.EqualTo(21));
+        Assert.That(mode.Roster[1].RetiredAtStage, Is.Zero, "0 = never retired.");
+    }
+
+    [Test]
+    public void Roster_RefusesRetireAtOrBeforeIntro()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RosterEntry(new ContentId(HuskId), 21, 21));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RosterEntry(new ContentId(HuskId), 21, 20));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RosterEntry(new ContentId(HuskId), 21, -1));
+        Assert.DoesNotThrow(() => new RosterEntry(new ContentId(HuskId), 21, 22));
+    }
+
+    [Test]
+    public void Roster_SharedStageNeedsAScript()
+    {
+        RosterEntry[] shared =
+        {
+            new RosterEntry(new ContentId(HuskId), 1),
+            new RosterEntry(new ContentId(SpitterId), 4),
+            new RosterEntry(new ContentId(BloaterId), 4),
+        };
+        var script = new ScriptedStage(4, new[]
+        {
+            new ScriptedSpawn(1, new ContentId(SpitterId), 2),
+            new ScriptedSpawn(2, new ContentId(BloaterId), 2),
+        });
+
+        Assert.DoesNotThrow(() => new ModeSpec(Id(), Name(), 1, true, 0, Scalings.Design(),
+            Scalings.Xp(), shared, scriptedStages: new[] { script }));
+
+        // Unscripted, GD §8.2's refusal stands, and a script on another stage does not excuse it.
+        Assert.Throws<ArgumentException>(() => Mode(shared));
+        var elsewhere = new ScriptedStage(3, new[] { new ScriptedSpawn(1, new ContentId(HuskId), 2) });
+        Assert.Throws<ArgumentException>(() => new ModeSpec(Id(), Name(), 1, true, 0,
+            Scalings.Design(), Scalings.Xp(), shared, scriptedStages: new[] { elsewhere }));
+    }
+
     private ModeSpec BossMode(
         BossRosterEntry[] rows, ScriptedStage[] scripts = null, int startingStage = 1) =>
         new ModeSpec(Id(), Name(), startingStage, false, 30, Scalings.Design(), Scalings.Xp(),

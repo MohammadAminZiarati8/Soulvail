@@ -211,6 +211,153 @@ public sealed class JungleTests
 
 
     [Test]
+    public void Jungle_Cousins_HaveTheirNumbers()
+    {
+        EnemySpec bullfrog = Cousin("Bullfrog", FrogBodyPath, 1.3f, new Color(0.55f, 0.60f, 0.40f));
+        Assert.That((bullfrog.Behaviour, bullfrog.MaxHp, bullfrog.MoveSpeed, bullfrog.TargetPriority,
+            bullfrog.ThreatCost, bullfrog.XpValue, bullfrog.ContactDamage, bullfrog.HopTime, bullfrog.HopRestTime),
+            Is.EqualTo((EnemyBehaviourKind.Chaser, 52f, 1.4f, 2, 6, 22f, 10f, 0.5f, 0.8f)));
+        Assert.That(new[] { bullfrog.Leap.MinRange, bullfrog.Leap.MaxRange, bullfrog.Leap.CrouchSeconds,
+            bullfrog.Leap.AirSeconds, bullfrog.Leap.Radius, bullfrog.Leap.DamageMultiplier, bullfrog.Leap.Cooldown },
+            Is.EqualTo(new[] { 4f, 9f, 0.6f, 0.5f, 1.6f, 1.5f, 4f }), "JG-21a's authored leap.");
+
+        EnemySpec pitcher = Cousin("ThornPitcher", PitcherBodyPath, 1.15f, new Color(0.70f, 0.80f, 0.50f));
+        Assert.That((pitcher.Behaviour, pitcher.MaxHp, pitcher.MoveSpeed, pitcher.TargetPriority,
+            pitcher.ThreatCost, pitcher.XpValue, pitcher.ContactDamage),
+            Is.EqualTo((EnemyBehaviourKind.Spitter, 38f, 2.8f, 4, 10, 25f, 12f)));
+        Assert.That((pitcher.Projectile.StandoffRange, pitcher.Projectile.Speed, pitcher.Projectile.Radius,
+            pitcher.Projectile.Count, pitcher.Projectile.Spread), Is.EqualTo((14f, 7f, 1.4f, 3, 3f)));
+        Assert.That(Load<EnemyDefinition>("Assets/_Project/Data/Enemies/ThornPitcher.asset").ToLook().MarksLanding,
+            Is.True, "Its lobs are ringed, as the Pitcher's are.");
+
+        EnemySpec bomber = Cousin("ChainBomber", PuffballBodyPath, 1.15f, new Color(0.85f, 0.90f, 0.55f));
+        Assert.That((bomber.Behaviour, bomber.MaxHp, bomber.MoveSpeed, bomber.TargetPriority,
+            bomber.ThreatCost, bomber.XpValue, bomber.ContactDamage, bomber.Reach),
+            Is.EqualTo((EnemyBehaviourKind.Bloater, 30f, 2.4f, 2, 10, 28f, 15f, 2f)));
+        Assert.That((bomber.Explosion.Radius, bomber.Explosion.ChainRadius), Is.EqualTo((2.5f, 4f)));
+
+        EnemySpec panther = Cousin("ShadowPanther", PantherBodyPath, 1.1f, new Color(0.35f, 0.35f, 0.40f));
+        EnemySpec parent = Load<EnemyDefinition>(PantherPath).ToSpec();
+        Assert.That((panther.Behaviour, panther.MaxHp, panther.MoveSpeed, panther.TargetPriority,
+            panther.ThreatCost, panther.XpValue, panther.ContactDamage),
+            Is.EqualTo((EnemyBehaviourKind.Lunger, 60f, 2.6f, 5, 12, 31f, 16f)));
+        Assert.That((panther.Lunge.Range, panther.Lunge.Length, panther.Lunge.Speed, panther.Lunge.HalfWidth,
+            panther.Lunge.Cooldown), Is.EqualTo((parent.Lunge.Range, parent.Lunge.Length, parent.Lunge.Speed,
+            parent.Lunge.HalfWidth, parent.Lunge.Cooldown)), "The Panther's lunge.");
+        Assert.That((panther.Pack.PartnerRadius, panther.Pack.FlankAngleDegrees, panther.Pack.FlankTimeout),
+            Is.EqualTo((16f, 90f, 3f)), "JG-21b's authored pack.");
+
+        // The parents gain none of the new blocks.
+        Assert.That(Load<EnemyDefinition>(FrogPath).ToSpec().Leap, Is.Null);
+        Assert.That(Load<EnemyDefinition>(PitcherPath).ToSpec().Projectile.Count, Is.EqualTo(1));
+        Assert.That(Load<EnemyDefinition>(PuffballPath).ToSpec().Explosion.ChainRadius, Is.Zero);
+        Assert.That(parent.Pack, Is.Null);
+    }
+
+    [Test]
+    public void Jungle_RosterAt21_IsCousinsAndKeepers()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        var buffer = new RosterEntry[jungle.Roster.Count];
+
+        int count = jungle.RosterFor(26, buffer);
+
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Is.EquivalentTo(new[]
+        {
+            "enemy.mossguard", "enemy.shaman",
+            "enemy.bullfrog", "enemy.thorn_pitcher", "enemy.chain_bomber", "enemy.shadow_panther",
+        }));
+        count = jungle.RosterFor(20, buffer);
+        Assert.That(buffer.Take(count).Select(r => r.SpecId.Value), Is.EquivalentTo(new[]
+        {
+            "enemy.frog", "enemy.pitcher", "enemy.puffball", "enemy.panther", "enemy.mossguard", "enemy.shaman",
+        }), "The easy four are still drawn up to 20.");
+        Assert.That(Load<ModeDefinition>(DescentPath).ToSpec().Roster.All(r => r.RetiredAtStage == 0),
+            Is.True, "Descent retires nothing.");
+    }
+
+    [Test]
+    public void Jungle_StageTwentyOne_IsTheCousins()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.TryGetScriptedStage(21, out ScriptedStage stage), Is.True);
+        Assert.That(stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)), Is.EqualTo(new[]
+        {
+            (1, "enemy.bullfrog", 6),
+            (2, "enemy.thorn_pitcher", 3), (2, "enemy.bullfrog", 3),
+            (3, "enemy.chain_bomber", 4), (3, "enemy.bullfrog", 2),
+            (4, "enemy.shadow_panther", 2), (4, "enemy.mossguard", 1), (4, "enemy.thorn_pitcher", 2),
+        }));
+
+        Dictionary<ContentId, int> costs = new[] { "Bullfrog", "ThornPitcher", "ChainBomber", "ShadowPanther", "Mossguard" }
+            .Select(name => Load<EnemyDefinition>($"Assets/_Project/Data/Enemies/{name}.asset").ToSpec())
+            .ToDictionary(enemy => enemy.Id, enemy => enemy.ThreatCost);
+        int total = stage.Spawns.Sum(spawn => spawn.Count * costs[spawn.SpecId]);
+        Assert.That(total, Is.EqualTo(194));
+        Assert.That(total, Is.LessThan(208), "The breather after Thornheart, below stage 19's gate.");
+    }
+
+    [Test]
+    public void Jungle_Cousins_Boot()
+    {
+        var boot = new SerializedObject(Load<GameObject>(BootScopePath).GetComponent<BootScope>());
+        var catalog = new ContentCatalog(
+            BootSpecs<CharacterDefinition, CharacterSpec>(boot, "_characters", d => d.ToSpec()),
+            BootSpecs<EnemyDefinition, EnemySpec>(boot, "_enemies", d => d.ToSpec()),
+            BootSpecs<ModeDefinition, ModeSpec>(boot, "_modes", d => d.ToSpec()),
+            BootSpecs<SkillDefinition, SkillSpec>(boot, "_skills", d => d.ToSpec()),
+            BootSpecs<SkillTreeDefinition, SkillTreeSpec>(boot, "_trees", d => d.ToSpec()),
+            BootSpecs<BossDefinition, BossSpec>(boot, "_bosses", d => d.ToSpec()));
+        var english = Load<LocalizationTable>(EnglishPath).ToDictionary();
+        var pseudo = Load<LocalizationTable>(PseudoPath).ToDictionary();
+        var names = new Dictionary<string, string>
+        {
+            ["enemy.bullfrog"] = "Bullfrog",
+            ["enemy.thorn_pitcher"] = "Thorn Pitcher",
+            ["enemy.chain_bomber"] = "Chain Bomber",
+            ["enemy.shadow_panther"] = "Shadow Panther",
+        };
+
+        foreach (KeyValuePair<string, string> cousin in names)
+        {
+            EnemySpec spec = catalog.Enemy(new ContentId(cousin.Key));
+            Assert.That(english[spec.NameKey], Is.EqualTo(cousin.Value));
+            Assert.That(pseudo[spec.NameKey], Is.EqualTo(LocalisationSweepTests.Pseudolocalise(cousin.Value)));
+        }
+
+        var random = new Soulvail.Game.Adapters.SeededRandom(21);
+        var events = new RecordingEvents();
+        var recorder = new RunRecorder(random, new FixedClock(System.DateTimeOffset.UnixEpoch), events);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var mode = new ContentId("mode.jungle");
+        var ranger = new ContentId("character.ranger");
+        RunSnapshot restore = new TestStart(catalog).At(mode, ranger, random.Seed, random.Capture(), 21);
+
+        try
+        {
+            Assert.DoesNotThrow(() => session.Start(new RunConfig(mode, ranger, random.Seed, 21, SpawnPlan.Empty, restore)));
+            Assert.That(session.State.StageIndex, Is.EqualTo(21));
+        }
+        finally
+        {
+            session.End();
+        }
+    }
+
+    /// <summary>A cousin's spec, after checking it wears its parent's body at its own scale and tint.</summary>
+    private static EnemySpec Cousin(string asset, string bodyPath, float scale, Color tint)
+    {
+        var definition = Load<EnemyDefinition>($"Assets/_Project/Data/Enemies/{asset}.asset");
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Body.gameObject, Is.EqualTo(Load<GameObject>(bodyPath)), asset);
+        Assert.That(look.BodyScale, Is.EqualTo(scale).Within(1e-5f), asset);
+        Assert.That(new[] { look.Tint.r, look.Tint.g, look.Tint.b },
+            Is.EqualTo(new[] { tint.r, tint.g, tint.b }).Within(1e-5f), asset);
+        return definition.ToSpec();
+    }
+
+    [Test]
     public void OldCroaker_HitsForTwelve()
     {
         EnemySpec croaker = Load<EnemyDefinition>(CroakerPath).ToSpec();
@@ -363,6 +510,10 @@ public sealed class JungleTests
             ("enemy.panther", 6),
             ("enemy.mossguard", 11),
             ("enemy.shaman", 17),
+            ("enemy.bullfrog", 21),
+            ("enemy.thorn_pitcher", 21),
+            ("enemy.chain_bomber", 21),
+            ("enemy.shadow_panther", 21),
         }), "The Jungle's own enemies, with the Panther after Old Croaker and the Mossguard after Mother Pitcher.");
     }
 

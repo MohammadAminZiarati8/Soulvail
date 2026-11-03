@@ -64,16 +64,34 @@ MonoBehaviour:
   _roster:
   - _specId: enemy.frog
     _introducedAtStage: 1
+    _retiredAtStage: 21
   - _specId: enemy.pitcher
     _introducedAtStage: 2
+    _retiredAtStage: 21
   - _specId: enemy.puffball
     _introducedAtStage: 4
+    _retiredAtStage: 21
   - _specId: enemy.panther
     _introducedAtStage: 6
+    _retiredAtStage: 21
   - _specId: enemy.mossguard
     _introducedAtStage: 11
+    _retiredAtStage: 0
   - _specId: enemy.shaman
     _introducedAtStage: 17
+    _retiredAtStage: 0
+  - _specId: enemy.bullfrog
+    _introducedAtStage: 21
+    _retiredAtStage: 0
+  - _specId: enemy.thorn_pitcher
+    _introducedAtStage: 21
+    _retiredAtStage: 0
+  - _specId: enemy.chain_bomber
+    _introducedAtStage: 21
+    _retiredAtStage: 0
+  - _specId: enemy.shadow_panther
+    _introducedAtStage: 21
+    _retiredAtStage: 0
   _arenas:
   - _arenaId: arena.jungle.hollow
     _firstStage: 1
@@ -348,6 +366,32 @@ MonoBehaviour:
       _count: 2
     - _wave: 3
       _specId: enemy.puffball
+      _count: 2
+  - _stage: 21
+    _spawns:
+    - _wave: 1
+      _specId: enemy.bullfrog
+      _count: 6
+    - _wave: 2
+      _specId: enemy.thorn_pitcher
+      _count: 3
+    - _wave: 2
+      _specId: enemy.bullfrog
+      _count: 3
+    - _wave: 3
+      _specId: enemy.chain_bomber
+      _count: 4
+    - _wave: 3
+      _specId: enemy.bullfrog
+      _count: 2
+    - _wave: 4
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 4
+      _specId: enemy.mossguard
+      _count: 1
+    - _wave: 4
+      _specId: enemy.thorn_pitcher
       _count: 2
   _ordeals:
     _firstStage: 25

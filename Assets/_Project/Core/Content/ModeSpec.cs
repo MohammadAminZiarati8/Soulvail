@@ -37,7 +37,11 @@ public readonly struct RosterEntry
     /// (GD §8.2), so a zero or negative depth is an archetype that is eligible before the game
     /// starts — which reads as "always" and is spelled 1.
     /// </exception>
-    public RosterEntry(ContentId specId, int introducedAtStage)
+    /// <param name="retiredAtStage">
+    /// The first stage the budget stops drawing it at (JG-21f), or 0 for never. A scripted stage
+    /// may still name a retired archetype; only <see cref="ModeSpec.RosterFor"/> lets it go.
+    /// </param>
+    public RosterEntry(ContentId specId, int introducedAtStage, int retiredAtStage = 0)
     {
         if (specId.Value is null)
         {
@@ -55,9 +59,26 @@ public readonly struct RosterEntry
                     + "and an archetype available from the start is introduced at 1.");
         }
 
+        if (retiredAtStage != 0 && retiredAtStage <= introducedAtStage)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(retiredAtStage),
+                retiredAtStage,
+                $"retiredAtStage for '{specId}' must be 0 (never) or after its introduction at "
+                    + $"{introducedAtStage}; otherwise it is never eligible at all.");
+        }
+
         SpecId = specId;
         IntroducedAtStage = introducedAtStage;
+        RetiredAtStage = retiredAtStage;
     }
+
+    /// <summary>The first stage the budget no longer draws it at; 0 = never retired.</summary>
+    public int RetiredAtStage { get; }
+
+    /// <summary>Whether the budget may draw it at <paramref name="stage"/>.</summary>
+    public bool IsEligibleAt(int stage) =>
+        IntroducedAtStage <= stage && (RetiredAtStage == 0 || stage < RetiredAtStage);
 
     /// <summary>The archetype, resolved against the <see cref="ContentCatalog"/>.</summary>
     public ContentId SpecId { get; }
@@ -913,7 +934,7 @@ public sealed class ModeSpec
 
         _ordealsView = Array.AsReadOnly(_ordeals);
 
-        _roster = CopyRoster(roster, id);
+        _roster = CopyRoster(roster, id, scriptedStages);
 
         // Wrapped rather than handed out as the array it is: an array exposed as
         // IReadOnlyList<T> casts straight back to RosterEntry[], and then the copy protects
@@ -1117,7 +1138,7 @@ public sealed class ModeSpec
 
         for (int i = 0; i < _roster.Length; i++)
         {
-            if (_roster[i].IntroducedAtStage <= stage)
+            if (_roster[i].IsEligibleAt(stage))
             {
                 eligible++;
             }
@@ -1137,7 +1158,7 @@ public sealed class ModeSpec
         {
             RosterEntry entry = _roster[i];
 
-            if (entry.IntroducedAtStage <= stage)
+            if (entry.IsEligibleAt(stage))
             {
                 destination[written++] = entry;
             }
@@ -1727,7 +1748,8 @@ public sealed class ModeSpec
     /// caps at ten, so the allocation is a boot cost and the alternative — a nested loop — reads
     /// worse for no measurable gain.
     /// </remarks>
-    private static RosterEntry[] CopyRoster(IReadOnlyList<RosterEntry> roster, ContentId id)
+    private static RosterEntry[] CopyRoster(
+        IReadOnlyList<RosterEntry> roster, ContentId id, IReadOnlyList<ScriptedStage> scriptedStages)
     {
         if (roster.Count == 0)
         {
@@ -1767,12 +1789,16 @@ public sealed class ModeSpec
                     nameof(roster));
             }
 
-            if (!introductions.Add(entry.IntroducedAtStage))
+            // JG-21f rule 2: a shared stage is legal only when it is scripted, because a script
+            // is what keeps "one new thing per wave" true there. Checked after the scripts.
+            if (!introductions.Add(entry.IntroducedAtStage)
+                && !IsScripted(scriptedStages, entry.IntroducedAtStage))
             {
                 throw new ArgumentException(
                     $"'{id}' introduces two archetypes at stage {entry.IntroducedAtStage}, and "
                         + $"'{entry.SpecId}' is the second. GD §8.2: new enemies arrive one at a "
-                        + "time, in a wave where they are the only new thing.",
+                        + "time, in a wave where they are the only new thing — unless the stage "
+                        + "is scripted to stagger them.",
                     nameof(roster));
             }
 
@@ -1780,5 +1806,24 @@ public sealed class ModeSpec
         }
 
         return copy;
+    }
+
+    private static bool IsScripted(IReadOnlyList<ScriptedStage> scriptedStages, int stage)
+    {
+        if (scriptedStages is null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < scriptedStages.Count; i++)
+        {
+            // A null row is CopyScriptedStages' to refuse, with its own message.
+            if (scriptedStages[i] is not null && scriptedStages[i].Stage == stage)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

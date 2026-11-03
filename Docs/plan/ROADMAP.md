@@ -123,6 +123,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **JG-25a** — Gravemaw in core: burrow chase, predicted ring, eruption, window (M)
 - [x] **JG-25b** — Gravemaw's eruption throws the bitten player out of the ring, stopped by walls (S)
-- [ ] JG-25 — the rest of Gravemaw (parked specs JG-25c–g, revise first: [c](tasks/JG-25c-gravemaw-tremor-and-spit.md) · [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
+- [x] **JG-25c** — Gravemaw's tremor and rock spit, one move per window (M)
+- [ ] JG-25 — the rest of Gravemaw (parked specs JG-25d–g, revise first: [d](tasks/JG-25d-gravemaw-phase-two.md) · [e](tasks/JG-25e-gravemaw-model.md) · [f](tasks/JG-25f-gravemaw-body.md) · [g](tasks/JG-25g-gravemaw-stage-25.md))
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

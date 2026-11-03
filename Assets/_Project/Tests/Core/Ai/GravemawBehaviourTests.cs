@@ -49,7 +49,7 @@ public sealed class GravemawBehaviourTests
         _player = new PlayerCombat(Character(), _events, _intents, 8);
         _projectiles = new ProjectileSystem(_events, 8);
         _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc,
-            new PlayerMotor(Character().Movement, Vector3.UnitZ));
+            new PlayerMotor(Character().Movement, Vector3.UnitZ), new ShockwaveSystem(new SilentEvents()));
         _session = null;
         _now = 0f;
         Place(new Vector3(0f, 0f, 3f));

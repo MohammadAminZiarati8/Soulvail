@@ -1,6 +1,6 @@
 # JG-25f — Gravemaw's body: hide underground, dirt trail, ring, cracks, rise and dive
 
-> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references.
+> **Parked** (owner 2026-11-02): Gravemaw moves to stage 25; Thornheart takes 20. Revise before building: cut the ring-exit probe from 25b (a plain knockback stopped by walls), one move per window in phase 1, stage numbers and roster in 25g, and the JG-20x references. Also: JG-25c's rocks carry `enemy.gravemaw`'s spec id, so its `EnemyDefinition` needs `MarksLanding` on (whichever task makes the asset).
 
 **Size:** M · **Depends on:** JG-20d, JG-20e · **Branch:** `dev` (direct)
 **Design refs:** GD §9.1 rule 7 (read on a 6-inch screen), §16.4; Invariants §18.2 (animation never gates a damage frame)

@@ -46,7 +46,8 @@ public sealed class GravemawThrowTests
         _player = new PlayerCombat(Character(), _events, _intents, 8);
         _motor = new PlayerMotor(Character().Movement, Vector3.UnitZ);
         _projectiles = new ProjectileSystem(_events, 8);
-        _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc, _motor);
+        _gravemaw = new GravemawBehaviour(_agent, new GravemawStats(), new FixedRandom(0.5f).Misc, _motor,
+            new ShockwaveSystem(_events));
         _now = 0f;
         Place(Centre);
         Tick(0f);

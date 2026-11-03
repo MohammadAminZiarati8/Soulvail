@@ -23,6 +23,16 @@ public enum GravemawState
     Dive,
 }
 
+/// <summary>The one move a surfaced window runs (JG-25c rule 1).</summary>
+public enum GravemawMove
+{
+    /// <summary>A shockwave ring from the eruption's centre; the roll answers it.</summary>
+    Tremor,
+
+    /// <summary>A volley of rocks lobbed at the quarry and across its line.</summary>
+    Spit,
+}
+
 /// <summary>
 /// Stage 25's boss (JG-25a): it burrows and chases, fixes a ring on where the quarry will be a
 /// second from now, tunnels there and erupts, then stands surfaced and hurtable for a window.
@@ -41,8 +51,14 @@ public enum GravemawState
 /// </remarks>
 public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
 {
-    /// <summary>The eruption's <c>EnemyTelegraph</c> kind; JG-25c's tremor is 4 and spit 5.</summary>
+    /// <summary>The eruption's <c>EnemyTelegraph</c> kind.</summary>
     public const int EruptionMove = 3;
+
+    /// <summary>The tremor's <c>EnemyTelegraph</c> kind (JG-25c).</summary>
+    public const int TremorMove = 4;
+
+    /// <summary>The spit's <c>EnemyTelegraph</c> kind (JG-25c).</summary>
+    public const int SpitMove = 5;
 
     /// <summary>The tunnel stops this close to the ring's centre.</summary>
     public const float ArriveDistance = 0.3f;
@@ -53,8 +69,10 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     private readonly EnemyAgent _agent;
     private readonly GravemawStats _stats;
 
-    // JG-25c draws the spit's spread from it; held from the start so the session row never changes.
+    // Held from the start so the session row never changes when a later move draws from it.
     private readonly IRandomStream _random;
+
+    private readonly ShockwaveSystem _shockwaves;
 
     private float _elapsed;
     private bool _announceBurrow = true;
@@ -65,21 +83,32 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
     private float _sampledAt;
     private Vector2 _velocity;
 
+    // JG-25c: this window's move, whether it is armed and when, and whether it is spent or dropped.
+    private GravemawMove _windowMove;
+    private bool _moveArmed;
+    private bool _moveSpent = true;
+    private float _armedAt;
+
     // The thrown player's; held for the throw so no stick velocity argues with it (JG-25b rule 4).
     private readonly PlayerMotor _motor;
 
-    public GravemawBehaviour(EnemyAgent agent, GravemawStats stats, IRandomStream random, PlayerMotor motor)
+    public GravemawBehaviour(EnemyAgent agent, GravemawStats stats, IRandomStream random, PlayerMotor motor,
+        ShockwaveSystem shockwaves)
     {
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         _stats = stats ?? throw new ArgumentNullException(nameof(stats));
         _random = random ?? throw new ArgumentNullException(nameof(random));
         _motor = motor ?? throw new ArgumentNullException(nameof(motor));
+        _shockwaves = shockwaves ?? throw new ArgumentNullException(nameof(shockwaves));
     }
 
     public GravemawState State { get; private set; }
 
     /// <summary>The armed ring's centre; meaningful from <see cref="GravemawState.Tunnel"/> on.</summary>
     public Vector3 RingCentre { get; private set; }
+
+    /// <summary>The move the next window will run (JG-25c rule 1).</summary>
+    public GravemawMove NextMove { get; private set; }
 
     public void Tick(in EnemyTickContext ctx)
     {
@@ -123,9 +152,12 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
                 {
                     State = GravemawState.Dive;
                     _elapsed = 0f;
+                    DropMove();
                     ctx.Events.Publish(new GravemawWindow(_agent.Id, false, 0f));
+                    break;
                 }
 
+                Move(ctx);
                 break;
 
             default:
@@ -150,6 +182,7 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         State = GravemawState.Chase;
         _elapsed = 0f;
         _announceBurrow = true;
+        DropMove();
     }
 
     public void Reset()
@@ -162,6 +195,8 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
         _announceClose = false;
         _hasSample = false;
         _velocity = Vector2.Zero;
+        NextMove = GravemawMove.Tremor;
+        DropMove();
     }
 
     // Rule 3: walk at the quarry; the ring arms once the chase is long enough and the predicted
@@ -240,7 +275,103 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener
 
         State = GravemawState.Surfaced;
         _elapsed = 0f;
+        _windowMove = NextMove;
+        NextMove = NextMove == GravemawMove.Tremor ? GravemawMove.Spit : GravemawMove.Tremor;
+        _moveArmed = false;
+        _moveSpent = false;
         ctx.Events.Publish(new GravemawWindow(_agent.Id, true, _stats.WindowSeconds.Value));
+    }
+
+    // JG-25c rules 1, 2, 4: one move a window, armed MoveStartSeconds in and released one
+    // telegraph later, each on its own tick.
+    private void Move(in EnemyTickContext ctx)
+    {
+        if (_moveSpent)
+        {
+            return;
+        }
+
+        float telegraph = _stats.MoveTelegraphSeconds.Value;
+
+        if (!_moveArmed)
+        {
+            if (_elapsed >= _stats.MoveStartSeconds.Value)
+            {
+                _moveArmed = true;
+                _armedAt = _elapsed;
+                int kind = _windowMove == GravemawMove.Tremor ? TremorMove : SpitMove;
+                ctx.Events.Publish(new EnemyTelegraph(_agent.Id, telegraph, kind));
+            }
+
+            return;
+        }
+
+        if (_elapsed - _armedAt < telegraph)
+        {
+            return;
+        }
+
+        DropMove();
+
+        if (_windowMove == GravemawMove.Tremor)
+        {
+            Tremor(ctx);
+        }
+        else
+        {
+            Spit(ctx);
+        }
+    }
+
+    // Rule 2: a full system drops the ring (ShockwaveSystem rule 8); a non-positive number skips it.
+    private void Tremor(in EnemyTickContext ctx)
+    {
+        float speed = _stats.TremorSpeed.Value;
+        float reach = _stats.TremorMaxRadius.Value;
+        float thickness = _stats.TremorThickness.Value;
+        float damage = _agent.ContactDamage.Value * _stats.TremorDamageScale.Value;
+
+        if (!(speed > 0f) || !(reach > 0f) || !(thickness > 0f) || !(damage > 0f))
+        {
+            return;
+        }
+
+        _shockwaves.Emit(RingCentre, speed, reach, damage, thickness, ctx.Now);
+    }
+
+    // Rule 4: one rock at the quarry, the rest paired outward across the line, the Warlord's lob.
+    private void Spit(in EnemyTickContext ctx)
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+        Vector3 self = board.SelfPosition;
+        Vector3 target = board.PlayerPosition;
+        Vector2 line = board.DirectionToPlayer;
+
+        if (!(line.LengthSquared() > 0f))
+        {
+            line = Vector2.UnitY;
+        }
+
+        var across = new Vector3(-line.Y, 0f, line.X) * _stats.SpitSpread.Value;
+        float speed = _stats.SpitSpeed.Value;
+        float radius = _stats.SpitRadius.Value;
+        float damage = _agent.ContactDamage.Value * _stats.SpitDamageScale.Value;
+        int spears = (int)MathF.Max(0f, _stats.SpitSpears.Value);
+
+        for (int i = 0; i < spears; i++)
+        {
+            int step = (i + 1) / 2;
+            Vector3 offset = across * ((i & 1) == 1 ? step : -step);
+            ctx.Projectiles.Fire(new Projectile(_agent.Spec.Id, _agent.Id, self, target + offset,
+                speed, radius, damage), ctx.Now);
+        }
+    }
+
+    // Rule 5: a window's end or a beat takes the armed move with it, unreleased.
+    private void DropMove()
+    {
+        _moveArmed = false;
+        _moveSpent = true;
     }
 
     // JG-25b: straight out from the centre to ThrowMargin past the edge; the body walks it and a

@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-25b._
+_Updated 2026-11-04, JG-25c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-25b**: Gravemaw's throw. |
-| **Next task** | **JG-25c**; revise spec first. |
-| **Verified** | EditMode 5 470: 5 469 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
+| **Last merged** | **JG-25c**: Gravemaw tremor, spit. |
+| **Next task** | **JG-25d**; revise spec first. |
+| **Verified** | EditMode 5 483: 5 482 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
 
@@ -22,10 +22,10 @@ Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring 
 Drawn: clips, amber heart, filling pod rings, band 14→11 m; walls warn, rise as vines.
 Mother: shields, lobs, spray, pods.
 Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
-From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
+From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past the player, die with it; crone, lime crown.
-Gravemaw (core): burrow, predicted ring, eruption + throw, 4 s window.
+Gravemaw (core): burrow, predicted ring, bite + throw; 4 s window: tremor or 3 rocks.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,

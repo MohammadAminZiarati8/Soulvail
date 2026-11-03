@@ -43,4 +43,37 @@ public sealed class GravemawStats
 
     /// <summary>How far outside the ring an unobstructed throw lands, metres.</summary>
     public Stat ThrowMargin { get; } = new(1f);
+
+    /// <summary>How long after the eruption the window's move starts its telegraph (JG-25c).</summary>
+    public Stat MoveStartSeconds { get; } = new(0.4f);
+
+    /// <summary>How long the tremor and the spit telegraph before release.</summary>
+    public Stat MoveTelegraphSeconds { get; } = new(0.8f);
+
+    /// <summary>How fast the tremor's ring grows, metres per second.</summary>
+    public Stat TremorSpeed { get; } = new(7f);
+
+    /// <summary>How far the tremor's ring reaches, metres.</summary>
+    public Stat TremorMaxRadius { get; } = new(9f);
+
+    /// <summary>The tremor band's width, metres.</summary>
+    public Stat TremorThickness { get; } = new(1f);
+
+    /// <summary>The tremor's damage as a multiple of <c>ContactDamage</c>.</summary>
+    public Stat TremorDamageScale { get; } = new(1f);
+
+    /// <summary>How many rocks one spit throws.</summary>
+    public Stat SpitSpears { get; } = new(3f);
+
+    /// <summary>How far across the line the outer rocks land, metres.</summary>
+    public Stat SpitSpread { get; } = new(2.5f);
+
+    /// <summary>The rocks' flight speed, metres per second.</summary>
+    public Stat SpitSpeed { get; } = new(9f);
+
+    /// <summary>Each rock's landing radius, metres.</summary>
+    public Stat SpitRadius { get; } = new(1.4f);
+
+    /// <summary>Each rock's damage as a multiple of <c>ContactDamage</c>.</summary>
+    public Stat SpitDamageScale { get; } = new(1f);
 }

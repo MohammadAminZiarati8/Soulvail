@@ -77,6 +77,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Lurks behind the player hidden, then strikes down a warned lane (JG-22a).</summary>
     Stalker,
+
+    /// <summary>Keeps its distance and plants thorn walls beyond the player (JG-24a).</summary>
+    Thornweaver,
 }
 
 /// <summary>
@@ -262,7 +265,8 @@ public sealed class EnemySpec
         ShamanSpec shaman = null,
         LeapSpec leap = null,
         PackSpec pack = null,
-        StalkerSpec stalker = null)
+        StalkerSpec stalker = null,
+        ThornweaverSpec thornweaver = null)
     {
         if (id.Value is null)
         {
@@ -304,6 +308,11 @@ public sealed class EnemySpec
         if (behaviour == EnemyBehaviourKind.Stalker && stalker is null)
         {
             throw new ArgumentException("A Stalker must carry a StalkerSpec.", nameof(stalker));
+        }
+
+        if (behaviour == EnemyBehaviourKind.Thornweaver && thornweaver is null)
+        {
+            throw new ArgumentException("A Thornweaver must carry a ThornweaverSpec.", nameof(thornweaver));
         }
 
         if (behaviour == EnemyBehaviourKind.Bulwark && bulwark is null)
@@ -374,6 +383,7 @@ public sealed class EnemySpec
         Leap = leap;
         Pack = pack;
         Stalker = stalker;
+        Thornweaver = thornweaver;
     }
 
     /// <summary>Stable identity, e.g. <c>enemy.husk</c>.</summary>
@@ -524,6 +534,12 @@ public sealed class EnemySpec
     /// Read by <c>StalkerBehaviour</c> and by <c>EnemySystem</c>'s reveal on damage (JG-22a).
     /// </summary>
     public StalkerSpec Stalker { get; }
+
+    /// <summary>
+    /// Where it holds and the walls it plants, or <see langword="null"/> on an archetype that does
+    /// not. Read by <c>ThornweaverBehaviour</c> alone (JG-24a).
+    /// </summary>
+    public ThornweaverSpec Thornweaver { get; }
 
     /// <summary>
     /// Metres from the body's centre to its edge on XZ — what a player's shot has to come within

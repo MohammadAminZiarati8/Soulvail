@@ -114,7 +114,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-22c** — The stalker's body: shimmer, reveal flash, hidden bar (M)
 - [x] **JG-22d** — Stalker asset, roster at 22, stage 22 scripted (S)
 - [x] **JG-23** — Stage 23 mixes what the player knows, 242 threat (S)
-- [ ] **JG-24a** — Thornweaver in core: walls beyond the player on `ThornSystem` (M)
+- [x] **JG-24a** — Thornweaver in core: walls beyond the player on `ThornSystem` (M)
 - [ ] **JG-24b** — The Thornweaver's model on `Rig_Medium` (M)
 - [ ] **JG-24c** — The Thornweaver's body: cast, crown glow, root line (M)
 - [ ] **JG-24d** — Thornweaver asset, roster at 24, stage 24 scripted (S)

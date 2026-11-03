@@ -203,7 +203,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
         if (Move == ThornheartMove.Slam)
         {
             _slamWall = _thorns.Open(_agent.Position, _aim, SlamLength, SlamHalfWidth,
-                SlamTelegraphSeconds, SlamStandSeconds, damage * SlamDamageScale, ctx.Now);
+                SlamTelegraphSeconds, SlamStandSeconds, damage * SlamDamageScale, ctx.Now, _agent.Id);
             _slamRisesAt = ctx.Now + SlamTelegraphSeconds;
             return;
         }
@@ -223,7 +223,7 @@ public sealed class ThornheartBehaviour : IEnemyBehaviour, IBossPhaseListener, I
 
             // A refused spoke (Open returned 0) is simply skipped; the move keeps its clock (rule 6).
             _thorns.Open(origin, direction, outer - RootInner, RootHalfWidth,
-                telegraph, RootStandSeconds, damage * RootDamageScale, ctx.Now);
+                telegraph, RootStandSeconds, damage * RootDamageScale, ctx.Now, _agent.Id);
         }
     }
 

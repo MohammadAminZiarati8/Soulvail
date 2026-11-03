@@ -46,6 +46,7 @@ public sealed class ThornSystem
     private readonly float[] _risesAt = new float[Capacity];
     private readonly float[] _withersAt = new float[Capacity];
     private readonly bool[] _standing = new bool[Capacity];
+    private readonly int[] _owners = new int[Capacity];
 
     // What a tick or a sweep decided, so the callouts happen after the table is consistent.
     private readonly int[] _rose = new int[Capacity];
@@ -124,6 +125,7 @@ public sealed class ThornSystem
     /// <param name="standSeconds">How long it stands after rising. Finite and greater than zero.</param>
     /// <param name="damage">The rise's one bite. Finite and not negative; zero is a wall with no bite.</param>
     /// <param name="now">Simulated run time.</param>
+    /// <param name="ownerId">The enemy that planted it, carried on <c>ThornArmed</c>; −1 for none (JG-24a rule 7).</param>
     /// <returns>
     /// Its run-stable id, from 1 — or <b>0 when refused</b>: the table is full and every wall in it is
     /// still arming (rule 4). Nothing is published for a refused wall.
@@ -137,7 +139,8 @@ public sealed class ThornSystem
         float armSeconds,
         float standSeconds,
         float damage,
-        float now)
+        float now,
+        int ownerId = -1)
     {
         RequireFinite(origin, nameof(origin));
         Positive(length, nameof(length));
@@ -190,11 +193,12 @@ public sealed class ThornSystem
         _risesAt[slot] = now + armSeconds;
         _withersAt[slot] = now + armSeconds + standSeconds;
         _standing[slot] = false;
+        _owners[slot] = ownerId;
 
         _count++;
 
         // After the entry exists, so a listener reading ActiveCount from inside counts this one.
-        _events.Publish(new ThornArmed(id, origin, flat, length, halfWidth, armSeconds));
+        _events.Publish(new ThornArmed(id, origin, flat, length, halfWidth, armSeconds, ownerId));
 
         return id;
     }
@@ -237,6 +241,35 @@ public sealed class ThornSystem
         }
 
         return false;
+    }
+
+    /// <summary>Whether the wall <paramref name="id"/> is still arming or standing.</summary>
+    public bool IsLive(int id) => SlotOf(id) >= 0;
+
+    /// <summary>
+    /// Drops one wall by id, arming or standing, with <see cref="WitherAll"/>'s <c>ThornWithered</c>
+    /// (JG-24a rule 7) — a Thornweaver's death.
+    /// </summary>
+    /// <returns>Whether there was such a wall.</returns>
+    public bool Wither(int id)
+    {
+        int slot = SlotOf(id);
+
+        if (slot < 0)
+        {
+            return false;
+        }
+
+        for (int j = slot + 1; j < _count; j++)
+        {
+            Move(j, j - 1);
+        }
+
+        _count--;
+
+        _events.Publish(new ThornWithered(id));
+
+        return true;
     }
 
     /// <summary>
@@ -386,6 +419,20 @@ public sealed class ThornSystem
         _risesAt[to] = _risesAt[from];
         _withersAt[to] = _withersAt[from];
         _standing[to] = _standing[from];
+        _owners[to] = _owners[from];
+    }
+
+    private int SlotOf(int id)
+    {
+        for (int i = 0; i < _count; i++)
+        {
+            if (_ids[i] == id)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>Whether the player is inside the wall at <paramref name="index"/> — <c>LaneSystem</c>'s maths.</summary>

@@ -1,17 +1,17 @@
 # Soulvail — Progress
 
-Overwritten, never appended; history: `git log`. **Capped at 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
+Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-23._
+_Updated 2026-11-04, JG-24a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-23**: stage 23 “the tangle” scripted, 242 threat. |
-| **Next task** | **JG-24a**; then JG-24b–d. |
-| **Verified** | EditMode 5 403: 5 402 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **JG-24a**: Thornweaver in core; walls beyond the player. |
+| **Next task** | **JG-24b**; then JG-24c–d. |
+| **Verified** | EditMode 5 412: 5 411 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
@@ -20,24 +20,25 @@ Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15
 Stages 1–14, 16–19, 21–23 scripted; ten bodied enemies; ringed lobs. Boss adds: no XP.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips per move, amber heart, pod rings fill, band 14→11 m in the walls; walls warn, rise as vines.
-Mother: shields, lobs, spray, pods→Frogs.
-Leap: crouch, ring, Leap clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
+Mother: shields, lobs, spray, pods.
+Leap: crouch, ring, clip, 1.2 m arc, bite. Chain: lights bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, Shadow panther) replace their parents.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
-Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, summons,
+Thornweaver (core): holds 10 m, walls past player, ≤ 2, die with it.
+Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,
 heals 10%, hastes 25% in 8 m; flees within 4 m. Strongest haste refreshes,
 expires and stacks with slow. Faces its path, the player when still; walks < 1.2 m/s, runs above.
-Fitted body/staff, clips, seed glow, lime ring, haste chevrons.
+Fitted body/staff, clips, glow, lime ring, chevrons.
 17–19: healer/guards, healer's wall, gate. XP 32, priority 8.
-Ranger: pale arrows, cyan Volley, Space roll, flinch; 1st arrow ~¼ s on stop.
+Ranger: pale arrows, cyan Volley, roll, flinch; 1st arrow ~¼ s on stop.
 Levels bank points; paused tree picks. Death pays Shards. Save v5; older saves load.
-Clash UI; LocKeys. 22 Marksman ranks from 11.
+Clash UI; LocKeys. 22 Marksman ranks.
 Tree preview/choice, rank pips, Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s auto gap; mirrored. Legacy saves expand to six.
 Player status icons; pooled enemy CC, bosses half; poison bubbles, drop icon. Marksman forest look, cyan trim,
-KayKit quiver, emissive string, bright arrows; shimmer, silent resume, plain menu.
+KayKit quiver, glowing string, bright arrows; silent resume, plain menu.
 
 ## What does not work yet
 

@@ -30,13 +30,17 @@ public readonly struct ThornArmed
     /// <summary>Seconds before it rises. Never under GD §9.1 rule 1's 0.6.</summary>
     public readonly float ArmSeconds;
 
+    /// <summary>The enemy that planted it — Thornheart or a Thornweaver; −1 for none (JG-24a rule 7).</summary>
+    public readonly int OwnerId;
+
     public ThornArmed(
         int id,
         Vector3 origin,
         Vector2 direction,
         float length,
         float halfWidth,
-        float armSeconds)
+        float armSeconds,
+        int ownerId = -1)
     {
         Id = id;
         Origin = origin;
@@ -44,6 +48,7 @@ public readonly struct ThornArmed
         Length = length;
         HalfWidth = halfWidth;
         ArmSeconds = armSeconds;
+        OwnerId = ownerId;
     }
 }
 

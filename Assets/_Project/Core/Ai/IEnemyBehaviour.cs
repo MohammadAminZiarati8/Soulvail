@@ -64,6 +64,7 @@ public readonly struct EnemyTickContext
     /// builds a context without one still compiles: only <c>RunSession</c> passes it, and a
     /// <c>LungerBehaviour</c> ticked without one throws rather than dashing unwarned.
     /// </param>
+    /// <param name="thorns">Where a Thornweaver plants its walls (JG-24a); optional, as <paramref name="lanes"/> is.</param>
     /// <exception cref="ArgumentNullException">Any of the five references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="dt"/> or <paramref name="now"/> is not finite. A NaN clock does not produce a
@@ -86,7 +87,8 @@ public readonly struct EnemyTickContext
         EnemySystem enemies,
         LaneSystem lanes = null,
         IReadOnlyList<Vector3> openGround = null,
-        Vector2 playerFacing = default)
+        Vector2 playerFacing = default,
+        ThornSystem thorns = null)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -98,6 +100,7 @@ public readonly struct EnemyTickContext
         Lanes = lanes;
         OpenGround = openGround ?? Array.Empty<Vector3>();
         PlayerFacing = playerFacing;
+        Thorns = thorns;
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
@@ -137,6 +140,12 @@ public readonly struct EnemyTickContext
     /// <c>StalkerBehaviour</c> to find "behind" (JG-22a).
     /// </summary>
     public Vector2 PlayerFacing { get; }
+
+    /// <summary>
+    /// Where a thorn wall is planted, or <see langword="null"/> in a context built without one. Read
+    /// by <c>ThornweaverBehaviour</c> alone (JG-24a); Thornheart is handed its own at construction.
+    /// </summary>
+    public ThornSystem Thorns { get; }
 
     private static float Finite(float value, string paramName)
     {

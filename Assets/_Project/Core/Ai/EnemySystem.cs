@@ -915,6 +915,12 @@ public sealed class EnemySystem
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
+            // JG-24a rule 6: a Thornweaver's walls go with it, and only its own.
+            if (agent.Behaviour is ThornweaverBehaviour weaver)
+            {
+                weaver.WitherWalls();
+            }
+
             // After the death and not instead of it (M2-08 rule 1). The trigger is the spec rather
             // than the kind, which is what makes "explodes on death" true however it died — shot at
             // range, cut down mid-fuse, killed by a Charge, or killed by its own fuse — and true for
@@ -1189,7 +1195,7 @@ public sealed class EnemySystem
         EnemyTickContext behaviourCtx = anyRooted
             ? new EnemyTickContext(
                 ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround,
-                ctx.PlayerFacing)
+                ctx.PlayerFacing, ctx.Thorns)
             : ctx;
 
         for (int i = 0; i < agents.Length; i++)
@@ -1233,6 +1239,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Shaman:
                 case EnemyBehaviourKind.Bulwark:
                 case EnemyBehaviourKind.Stalker:
+                case EnemyBehaviourKind.Thornweaver:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 

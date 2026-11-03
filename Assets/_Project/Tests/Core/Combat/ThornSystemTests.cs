@@ -303,6 +303,31 @@ public sealed class ThornSystemTests
         Assert.That(Open(), Is.EqualTo(4), "Ids carry on past a boundary.");
     }
 
+    // ---- JG-24a rule 7 ----------------------------------------------------------------------------
+
+    [Test]
+    public void Wither_RemovesOneById()
+    {
+        Open();
+        int owned = _thorns.Open(new Vector3(3f, 0f, 0f), North, Length, HalfWidth, Arm, Stand, Damage, 0f, ownerId: 7);
+        Open();
+
+        IReadOnlyList<ThornArmed> armed = _events.Of<ThornArmed>();
+        Assert.That(armed[0].OwnerId, Is.EqualTo(-1), "No owner by default.");
+        Assert.That(armed[1].OwnerId, Is.EqualTo(7));
+
+        Assert.That(_thorns.Wither(owned), Is.True);
+        Assert.That(_thorns.ActiveCount, Is.EqualTo(2));
+        Assert.That(_thorns.IsLive(owned), Is.False);
+        Assert.That(_thorns.OriginAt(1), Is.EqualTo(Vector3.Zero), "The rest close up in order.");
+        Assert.That(_events.Of<ThornWithered>(), Has.Count.EqualTo(1));
+        Assert.That(_events.Of<ThornWithered>()[0].Id, Is.EqualTo(owned));
+
+        Assert.That(_thorns.Wither(owned), Is.False, "Already gone.");
+        Assert.That(_thorns.Wither(99), Is.False, "Never was.");
+        Assert.That(_events.Of<ThornWithered>(), Has.Count.EqualTo(1));
+    }
+
     // ---- Rule 7 -----------------------------------------------------------------------------------
 
     [Test]

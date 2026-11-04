@@ -456,6 +456,7 @@ public sealed class EnemySystem
         EnemyAgent agent = Spawn(specId, position);
 
         agent.PaysXp = false;
+        agent.IsSummon = true;
 
         return agent;
     }
@@ -832,13 +833,14 @@ public sealed class EnemySystem
     /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
     /// <returns>What <see cref="Health"/> did, unchanged, for a caller with its own conclusions to draw.</returns>
     public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
-        => ResolveDamage(enemyId, amount, now, player, execute: false);
+        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true);
 
     /// <summary>Kill a living non-boss through the same reward and announcement path as damage.</summary>
     public DamageResult Execute(int enemyId, float now, PlayerCombat player)
-        => ResolveDamage(enemyId, 0f, now, player, execute: true);
+        => ResolveDamage(enemyId, 0f, now, player, execute: true, explode: true);
 
-    private DamageResult ResolveDamage(int enemyId, float amount, float now, PlayerCombat player, bool execute)
+    private DamageResult ResolveDamage(
+        int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode)
     {
         if (player is null)
         {
@@ -944,13 +946,43 @@ public sealed class EnemySystem
             // range, cut down mid-fuse, killed by a Charge, or killed by its own fuse — and true for
             // anything that ever gets an explosion block, M7-02's Volatile affix included, with no
             // switch on an archetype to keep in step.
-            if (agent.Spec.Explosion != null)
+            //
+            // JG-26d rule 4: a summon taken by its boss's death does not go off, so the boss falling
+            // never hurts the player.
+            if (explode && agent.Spec.Explosion != null)
             {
                 Explode(agent, now, player);
+            }
+
+            // JG-26d rule 2: last, so the boss's own EnemyDied comes first.
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss)
+            {
+                KillSummons(now, player);
             }
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// JG-26d rules 2–4: every living summon dies, in registry order, through the execute path —
+    /// an ordinary death (event, kill, banked death, no XP) without its explosion. A death leaves the
+    /// corpse registered, so the walk mutates no registry and is safe from inside the behaviour pass;
+    /// <c>Execute</c> refuses bosses, so it never recurses.
+    /// </summary>
+    private void KillSummons(float now, PlayerCombat player)
+    {
+        ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent other = agents[i];
+
+            if (other.IsSummon && other.IsAlive)
+            {
+                ResolveDamage(other.Id, 0f, now, player, execute: true, explode: false);
+            }
+        }
     }
 
     /// <summary>

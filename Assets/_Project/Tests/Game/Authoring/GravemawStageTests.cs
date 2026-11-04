@@ -192,8 +192,7 @@ public sealed class GravemawStageTests
 
     /// <summary>
     /// One arrow takes the boss into phase 2; its eruptions there open cracks that spill Frogs; a
-    /// second arrow kills it with the Frogs unseen. The door waits for them, and opens once they are
-    /// shot too.
+    /// second arrow kills it with the Frogs unseen. The Frogs die with it (JG-26d) and the door opens.
     /// </summary>
     /// <remarks>
     /// The boss is the authored one but for its health, cut to a arrow and a half so the row is about
@@ -201,7 +200,7 @@ public sealed class GravemawStageTests
     /// eruption lands; Frogs are withheld from perception until the boss is down.
     /// </remarks>
     [Test]
-    public void StageTwentyFive_DoorOpens_WhenBossAndAddsAreDown()
+    public void StageTwentyFive_DoorOpens_WhenBossFalls_FrogsFallWithIt()
     {
         float arrow = Load<CharacterDefinition>(RangerPath).ToSpec().Weapon.Damage;
         ContentCatalog catalog = Catalog(scaledHp: 1.5f * arrow);
@@ -221,10 +220,12 @@ public sealed class GravemawStageTests
             world.PlayerPosition = maw.Position + new Vector3(0f, 0f, 8f);
             world.OpenGround = Ground(maw.Position);
             int rings = 0;
+            int frogsStanding = 0;
 
             // Standing (so firing), with only the boss in sight, stepping clear of every ring.
             for (int frame = 0; frame < 1500 && !Died(events, maw.Id); frame++)
             {
+                frogsStanding = Breathing(events).Count(e => e.SpecId.Value == FrogId);
                 rings = Dodge(world, events, rings);
                 Sense(world, events, intents, maw.Id);
                 session.Tick(world);
@@ -232,25 +233,13 @@ public sealed class GravemawStageTests
 
             Assert.That(events.Of<BossPhaseChanged>().Any(e => e.Phase == 1), Is.True, "The fixture's premise: phase 2.");
             Assert.That(Died(events, maw.Id), Is.True, "The fixture's premise: the boss fell.");
-            Assert.That(Breathing(events).Where(e => e.SpecId.Value == FrogId), Is.Not.Empty,
-                "The fixture's premise: a Frog outlived the boss.");
+            Assert.That(frogsStanding, Is.GreaterThan(0), "The fixture's premise: Frogs stood when the boss fell.");
+            Assert.That(Breathing(events), Is.Empty, "Every Frog died on the boss's tick.");
 
-            for (int frame = 0; frame < 30; frame++)
-            {
-                Sense(world, events, intents, maw.Id);
-                session.Tick(world);
-            }
-
-            Assert.That(events.Count<StageCleared>(), Is.Zero, "The boss is down but its Frogs breathe.");
-
-            // Now everything is seen, and shot, from where the fight began: the dodges walked the Ranger off.
-            world.PlayerPosition = maw.Position + new Vector3(0f, 0f, 8f);
-            for (int frame = 0; frame < 1800 && events.Count<StageCleared>() == 0; frame++)
+            for (int frame = 0; frame < 30 && events.Count<StageCleared>() == 0; frame++)
             {
                 Sense(world, events, intents, onlyId: 0);
                 session.Tick(world);
-                Assert.That(events.Count<StageCleared>() == 0 || Breathing(events).Count == 0, Is.True,
-                    "The door opened on a living add.");
             }
 
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));

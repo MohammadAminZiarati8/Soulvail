@@ -132,7 +132,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-26a** — bosses ignore stun, root and slow; poison still applies (M)
 - [x] **JG-26b** — Binding shot on a boss draws no rope unless it holds an ordinary enemy (S)
 - [x] **JG-26c** — Stages 26–29 mix what the player knows, 295 → 373 threat (S)
-- [ ] **JG-26d** — [Every boss's adds die with it](tasks/JG-26d-boss-adds-die-with-boss.md) (S)
+- [x] **JG-26d** — Every boss's adds die with it (S)
 
 **Stage 30, the Apex** (owner, 2026-11-04; design [GD §9.2](../GameDesign.md)). The Jungle's last boss, its one fast one: visible, no grass. Built in this order on the owner's go; 30d needs the owner's TRELLIS sculpt (prompt in the spec) any time before it.
 

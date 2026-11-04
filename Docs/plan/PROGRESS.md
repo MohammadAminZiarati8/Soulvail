@@ -2,22 +2,22 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, specs._
+_Updated 2026-11-04, JG-26d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-26c**: stages 26–29 scripted, 295 → 373; squad cut. |
-| **Next task** | JG-26d, then JG-30a–f. |
-| **Verified** | EditMode 5 528: 5 527 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
+| **Last merged** | **JG-26d**: a boss's death kills every living summon. |
+| **Next task** | JG-30a–f. |
+| **Verified** | EditMode 5 543: 5 542 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum, disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Croaker; 11 bodied enemies; ringed lob. Boss adds: no XP.
+Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Croaker; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips, amber heart, filling pod rings, band 14→11 m; walls warn, rise as vines.
 Mother: shields, lobs, spray, pod.

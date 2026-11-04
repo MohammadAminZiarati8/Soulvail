@@ -162,7 +162,7 @@ public sealed class ThornheartStageTests
 
     /// <summary>
     /// The boss plants its pods while the Ranger walks (and so holds fire), then falls to one arrow
-    /// with the pods unseen; the door waits for them, and opens once they are shot too.
+    /// with the pods unseen; its adds die with it (JG-26d) and the door opens.
     /// </summary>
     /// <remarks>
     /// The boss is the authored one but for its health, which is cut to one arrow's worth so the row
@@ -170,7 +170,7 @@ public sealed class ThornheartStageTests
     /// down, so the Ranger cannot take them first.
     /// </remarks>
     [Test]
-    public void StageTwenty_DoorOpens_WhenBossAndAddsAreDown()
+    public void StageTwenty_DoorOpens_WhenBossFalls_AddsFallWithIt()
     {
         ContentCatalog catalog = Catalog(heartHp: 1f);
         var events = new RecordingEvents();
@@ -200,30 +200,22 @@ public sealed class ThornheartStageTests
 
             // Standing, with only the boss in sight.
             world.MoveInput = Vector2.Zero;
+            int addsStanding = 0;
             for (int frame = 0; frame < 300 && !Died(events, heart.Id); frame++)
             {
+                addsStanding = Breathing(events).Count - 1;
                 Sense(world, events, heart.Id);
                 session.Tick(world);
             }
 
             Assert.That(Died(events, heart.Id), Is.True, "The fixture's premise: the boss fell.");
-            Assert.That(Breathing(events), Is.Not.Empty, "The fixture's premise: an add outlived the boss.");
+            Assert.That(addsStanding, Is.GreaterThan(0), "The fixture's premise: adds stood when the boss fell.");
+            Assert.That(Breathing(events), Is.Empty, "Every add died on the boss's tick.");
 
-            for (int frame = 0; frame < 30; frame++)
-            {
-                Sense(world, events, heart.Id);
-                session.Tick(world);
-            }
-
-            Assert.That(events.Count<StageCleared>(), Is.Zero, "The boss is down but its adds breathe.");
-
-            // Now everything is seen, and shot.
-            for (int frame = 0; frame < 1800 && events.Count<StageCleared>() == 0; frame++)
+            for (int frame = 0; frame < 30 && events.Count<StageCleared>() == 0; frame++)
             {
                 Sense(world, events, onlyId: 0);
                 session.Tick(world);
-                Assert.That(events.Count<StageCleared>() == 0 || Breathing(events).Count == 0, Is.True,
-                    "The door opened on a living add.");
             }
 
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));

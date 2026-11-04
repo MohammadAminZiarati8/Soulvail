@@ -216,6 +216,13 @@ public sealed class EnemyAgent
     public bool PaysXp { get; internal set; }
 
     /// <summary>
+    /// True only for a body <c>EnemySystem.SpawnSummon</c> made, this life: a boss's add. When any boss
+    /// dies, every living summon dies with it (JG-26d). Cleared by <c>Initialise</c>, so a pooled body
+    /// a wave reuses is not a summon.
+    /// </summary>
+    public bool IsSummon { get; internal set; }
+
+    /// <summary>
     /// A stalker gone hidden: no auto-aim, skill or focus selects it, though anything that reaches it
     /// still hurts it (JG-22a rule 5). False on every other kind and on the dead.
     /// </summary>
@@ -241,6 +248,7 @@ public sealed class EnemyAgent
         Velocity = Vector3.Zero;
         IsVulnerable = true;
         PaysXp = true;
+        IsSummon = false;
         IsHidden = false;
         RevealedUntil = float.NegativeInfinity;
 

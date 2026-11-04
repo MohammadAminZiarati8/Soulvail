@@ -298,6 +298,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             [new ContentId("boss.gravemaw")] =
                 agent => new GravemawBehaviour(
                     agent, new GravemawStats(), _random.Misc, State.Motor, _shockwaves, new ContentId("enemy.frog")),
+            [new ContentId("boss.apex")] =
+                agent => new ApexBehaviour(agent, new ApexStats(), _random.Misc, _lanes),
         };
     }
 

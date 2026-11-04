@@ -136,7 +136,7 @@ _No milestone. The owner is setting the next direction._
 
 **Stage 30, the Apex** (owner, 2026-11-04; design [GD §9.2](../GameDesign.md)). The Jungle's last boss, its one fast one: visible, no grass. Built in this order on the owner's go; 30d needs the owner's TRELLIS sculpt (prompt in the spec) any time before it.
 
-- [ ] **JG-30a** — [The Apex in core: hunt, dash lane, rake](tasks/JG-30a-apex-core-dash-rake.md) (M)
+- [x] **JG-30a** — The Apex in core: hunt, dash lane, rake (M)
 - [ ] **JG-30b** — [The Apex's pounce and feint](tasks/JG-30b-apex-pounce-feint.md) (M)
 - [ ] **JG-30c** — [The Apex's phases: the pack at 66 %, the hunt at 33 %](tasks/JG-30c-apex-phases.md) (S)
 - [ ] **JG-30d** — [The Apex's model on `Rig_Panther`](tasks/JG-30d-apex-model.md) (M)

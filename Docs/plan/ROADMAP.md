@@ -127,6 +127,6 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-25d** — Gravemaw's phase 2 at 50 %: double surface, Frogs from cracks (M)
 - [x] **JG-25e** — Gravemaw's model: TRELLIS burrower on its own rig, maw lit apart (M)
 - [x] **JG-25f** — Gravemaw's body: trail, ring, rise and dive, lit maw, cracks (M)
-- [ ] JG-25 — the rest of Gravemaw (parked spec JG-25g, revise first: [g](tasks/JG-25g-gravemaw-stage-25.md))
+- [x] **JG-25g** — stage 25 is Gravemaw's: boss data, ruins, rock, roster row (M)
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

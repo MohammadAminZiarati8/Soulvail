@@ -2,31 +2,31 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-25f._
+_Updated 2026-11-04, JG-25g._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-25f**: Gravemaw drawn. |
-| **Next task** | **JG-25g**; revise spec first. |
-| **Verified** | EditMode 5 509: 5 508 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
+| **Last merged** | **JG-25g**: stage 25 is Gravemaw's. |
+| **Next task** | None specced; Apex (30) next. |
+| **Verified** | EditMode 5 517: 5 516 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
 
-Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum and disc off; Ranger alone.
+Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum, disc off; Ranger alone.
 Budgeted waves → door; fifth-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–24 scripted; 11 bodied enemies; ringed lobs. Boss adds: no XP.
+Stages 1–14, 16–19, 21–24 scripted; 30 Croaker; 11 bodied enemies; ringed lob. Boss adds: no XP.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Drawn: clips, amber heart, filling pod rings, band 14→11 m; walls warn, rise as vines.
-Mother: shields, lobs, spray, pods.
+Mother: shields, lobs, spray, pod.
 Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes from behind; shimmer, warn flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past the player, die with it; crone, lime crown.
-Gravemaw (core): burrow, ring, bite+throw; window: tremor|rocks; 50 %: 2 rings, crack Frogs.
-Gravemaw drawn: trail, filling ring, rise/dive, lit maw, cracks; unspawned.
+Gravemaw (25): burrow, ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
+trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Moss Shaman: never attacks; anchors on a Mossguard ≤ 12 m, holds 11 m,

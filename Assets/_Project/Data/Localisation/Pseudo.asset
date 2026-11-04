@@ -602,6 +602,8 @@ MonoBehaviour:
     _text: "[M\xF4ssg\xFB\xE1rd W\xE1rl\xF4rd \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.thornheart.name
     _text: "[Thôrñhéárt ····]"
+  - _key: enemy.gravemaw.name
+    _text: "[Grávémáw ···]"
   - _key: enemy.thorn_pod.name
     _text: "[Thôrñ Pôd ····]"
   - _key: path.ranger.marksman.name

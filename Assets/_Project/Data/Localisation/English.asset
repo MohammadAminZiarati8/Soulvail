@@ -556,6 +556,8 @@ MonoBehaviour:
     _text: Mossguard Warlord
   - _key: enemy.thornheart.name
     _text: Thornheart
+  - _key: enemy.gravemaw.name
+    _text: Gravemaw
   - _key: enemy.thorn_pod.name
     _text: Thorn Pod
   - _key: path.ranger.marksman.name

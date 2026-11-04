@@ -115,6 +115,9 @@ MonoBehaviour:
   - _bossId: boss.thornheart
     _everyNStages: 0
     _atStage: 20
+  - _bossId: boss.gravemaw
+    _everyNStages: 0
+    _atStage: 25
   - _bossId: boss.croaker
     _everyNStages: 5
     _atStage: 0

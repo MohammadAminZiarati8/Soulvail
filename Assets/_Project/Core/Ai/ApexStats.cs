@@ -3,7 +3,7 @@ using Soulvail.Core.Combat;
 namespace Soulvail.Core.Ai;
 
 /// <summary>
-/// Every number the Apex's hunt, dash and rake read (JG-30a), each a <see cref="Stat"/> so a phase or a
+/// Every number the Apex's moves read, each a <see cref="Stat"/> so a phase or a
 /// later tuning pass can sit a modifier on it. Built once per boss by <c>RunSession</c>.
 /// </summary>
 public sealed class ApexStats
@@ -64,4 +64,31 @@ public sealed class ApexStats
 
     /// <summary>How long she stands after the second swipe.</summary>
     public Stat RakeRecoverSeconds { get; } = new(0.6f);
+
+    /// <summary>The pounce's inclusive range band, metres.</summary>
+    public Stat PounceMinRange { get; } = new(5f);
+
+    public Stat PounceMaxRange { get; } = new(11f);
+
+    /// <summary>The real crouch warns for this long; floored at 0.6 s.</summary>
+    public Stat PounceCrouchSeconds { get; } = new(0.8f);
+
+    /// <summary>Time to fly from the crouch to the fixed landing.</summary>
+    public Stat PounceAirSeconds { get; } = new(0.6f);
+
+    /// <summary>The landing ring's radius, metres on XZ.</summary>
+    public Stat PounceRadius { get; } = new(2.2f);
+
+    public Stat PounceDamageScale { get; } = new(2f);
+
+    /// <summary>How long she stands still after landing.</summary>
+    public Stat PounceWindowSeconds { get; } = new(1.5f);
+
+    /// <summary>Counts from a real landing or the end of a feint.</summary>
+    public Stat PounceCooldownSeconds { get; } = new(7f);
+
+    public Stat FeintChance { get; } = new(0.3f);
+
+    /// <summary>The ringless crouch before a forced dash; floored at 0.6 s.</summary>
+    public Stat FeintCrouchSeconds { get; } = new(0.8f);
 }

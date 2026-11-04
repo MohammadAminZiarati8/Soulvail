@@ -170,14 +170,14 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
             EnterPhase(ctx);
 
-            Stand(ctx);
+            StandOrFinishPounce(ctx);
 
             return;
         }
 
         if (_phases.IsInBeat)
         {
-            Stand(ctx);
+            StandOrFinishPounce(ctx);
 
             return;
         }
@@ -197,6 +197,19 @@ public sealed class BossBehaviour : IEnemyBehaviour
         }
 
         Inner.Tick(ctx);
+    }
+
+    private void StandOrFinishPounce(in EnemyTickContext ctx)
+    {
+        // JG-30b: phase entry drops a crouch, but cannot stop a pounce already in the air.
+        if (Inner is ApexBehaviour apex && (apex.IsAirborne || apex.InWindow))
+        {
+            apex.Tick(ctx);
+        }
+        else
+        {
+            Stand(ctx);
+        }
     }
 
     /// <summary>

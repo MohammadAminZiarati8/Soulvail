@@ -38,7 +38,9 @@ public sealed class ApexDashTests
         _enemies = new EnemySystem(Catalog(), _events, new FixedRandom(0.5f),
             new DepthScaling(Scalings.Design()), 8);
         _agent = _enemies.Registry.Spawn(Body(), Vector3.Zero);
-        _apex = new ApexBehaviour(_agent, new ApexStats(), new FixedRandom(0.5f).Misc, _lanes);
+        var stats = new ApexStats();
+        stats.PounceMinRange.Base = 20f; // Isolate JG-30a's dash from the higher-priority pounce.
+        _apex = new ApexBehaviour(_agent, stats, new FixedRandom(0.5f).Misc, _lanes);
         _now = 0f;
         Place(Vector3.Zero, Vector3.UnitZ * 10f);
     }
@@ -153,7 +155,7 @@ public sealed class ApexDashTests
 
     private void SessionTick(RunSession session, EnemyAgent agent, float dt)
     {
-        var snapshot = new WorldSnapshot(8) { Dt = dt, PlayerPosition = Vector3.UnitZ * 10f };
+        var snapshot = new WorldSnapshot(8) { Dt = dt, PlayerPosition = Vector3.UnitZ * 4f };
         ref EnemySense sense = ref snapshot.AddEnemy();
         sense.Id = agent.Id;
         sense.Position = Vector3.Zero;

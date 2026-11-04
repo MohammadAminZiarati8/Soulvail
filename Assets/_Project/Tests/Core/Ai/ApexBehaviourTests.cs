@@ -34,7 +34,7 @@ public sealed class ApexBehaviourTests
         _enemies = new EnemySystem(Catalog(), _events, new FixedRandom(0.5f),
             new DepthScaling(Scalings.Design()), 8);
         _agent = _enemies.Registry.Spawn(Body(), Vector3.Zero);
-        _apex = new ApexBehaviour(_agent, new ApexStats(), new FixedRandom(0.5f).Misc, _lanes);
+        _apex = new ApexBehaviour(_agent, DashAndRakeStats(), new FixedRandom(0.5f).Misc, _lanes);
         _now = 0f;
         Place(Vector3.Zero, Vector3.UnitZ * 10f);
     }
@@ -219,7 +219,7 @@ public sealed class ApexBehaviourTests
     {
         var silent = new SilentEvents();
         var lanes = new LaneSystem(silent);
-        var apex = new ApexBehaviour(_agent, new ApexStats(), new FixedRandom(0.5f).Misc, lanes);
+        var apex = new ApexBehaviour(_agent, DashAndRakeStats(), new FixedRandom(0.5f).Misc, lanes);
         var player = new PlayerCombat(Character(), silent, _intents, 8);
         var projectiles = new ProjectileSystem(silent, 8);
         AllocationAssert.None(() =>
@@ -268,6 +268,14 @@ public sealed class ApexBehaviourTests
     {
         _now += dt;
         _apex.Tick(new EnemyTickContext(dt, _now, _player, _intents, _events, _projectiles, _enemies, _lanes));
+    }
+
+    private static ApexStats DashAndRakeStats()
+    {
+        var stats = new ApexStats();
+        // These JG-30a rows isolate the hunt, dash and rake from JG-30b's higher-priority pounce.
+        stats.PounceMinRange.Base = 20f;
+        return stats;
     }
 
     private void Place(Vector3 self, Vector3 player)

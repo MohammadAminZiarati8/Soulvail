@@ -7,12 +7,12 @@ using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ai;
 
-/// <summary>What the Apex is doing; Pounce and Feint are JG-30b's.</summary>
+/// <summary>What the Apex is doing.</summary>
 public enum ApexMove { None, Dash = 1, Rake = 2, Pounce = 3, Feint = 4 }
 
 /// <summary>
-/// Stage 30's boss (JG-30a): always in sight, she runs the player down, slashes along a warned lane
-/// that stops at a stone, and rakes twice at anyone who stays close.
+/// Stage 30's boss: hunts, dashes a warned lane, rakes twice, and pounces onto a fixed ring.
+/// A feint crouches without a ring, then arms a dash.
 /// </summary>
 /// <remarks>
 /// The rake is decided here against the player's position, as the Warlord's sweep is: a
@@ -22,10 +22,13 @@ public enum ApexMove { None, Dash = 1, Rake = 2, Pounce = 3, Feint = 4 }
 public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener
 {
     private const float LaneEndSlack = 0.1f;
+    private const float ArrivedEpsilon = 1e-4f;
+    private const float MinimumTelegraphSeconds = 0.6f;
 
     private readonly EnemyAgent _agent;
     private readonly ApexStats _stats;
     private readonly LaneSystem _lanes;
+    private readonly IRandomStream _random;
     private float _remaining;
     private float _dashCooldown;
     private Vector2 _facing = Vector2.UnitY;
@@ -40,13 +43,20 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     private float _laneLength;
     private float _dashElapsed;
     private int _probeTicks;
+    private float _pounceReadyAt;
+    private Vector3 _landing;
+    private Vector2 _flightDirection;
+    private float _flightSpeed;
+    private float _flightRemaining;
+    private float _airEndsAt;
+    private bool _hasPounced;
+    private bool _lastWasFeint;
 
     public ApexBehaviour(EnemyAgent agent, ApexStats stats, IRandomStream random, LaneSystem lanes)
     {
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
         _stats = stats ?? throw new ArgumentNullException(nameof(stats));
-        // Nothing in the hunt, dash or rake draws; JG-30b's feint is the first that may.
-        _ = random ?? throw new ArgumentNullException(nameof(random));
+        _random = random ?? throw new ArgumentNullException(nameof(random));
         _lanes = lanes ?? throw new ArgumentNullException(nameof(lanes));
         _remaining = _stats.MoveGapSeconds.Value;
     }
@@ -55,12 +65,30 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
     public bool IsRecovering { get; private set; }
 
+    /// <summary>The landing's stationary punish window; no move may be picked.</summary>
+    public bool InWindow { get; private set; }
+
+    /// <summary>An already launched pounce finishes even during a boss phase beat.</summary>
+    public bool IsAirborne { get; private set; }
+
     public void Tick(in EnemyTickContext ctx)
     {
         _remaining -= ctx.Dt;
         _dashCooldown = MathF.Max(0f, _dashCooldown - ctx.Dt);
         float speed = 0f;
-        if (Move == ApexMove.Dash)
+        if (Move == ApexMove.Pounce)
+        {
+            speed = TickPounce(ctx);
+        }
+        else if (Move == ApexMove.Feint)
+        {
+            if (_remaining <= 0f)
+            {
+                _pounceReadyAt = ctx.Now + _stats.PounceCooldownSeconds.Value;
+                ArmDash(ctx);
+            }
+        }
+        else if (Move == ApexMove.Dash)
         {
             speed = TickDash(ctx);
         }
@@ -68,17 +96,24 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
         {
             TickRake(ctx);
         }
-        else if (IsRecovering)
+        else if (InWindow || IsRecovering)
         {
             if (_remaining <= 0f)
             {
                 IsRecovering = false;
+                InWindow = false;
                 _remaining = _stats.MoveGapSeconds.Value;
             }
         }
         else if (_remaining <= 0f && _agent.Blackboard.DistanceToPlayer <= _stats.RakeRange.Value)
         {
             ArmRake(ctx);
+        }
+        else if (_remaining <= 0f && ctx.Now >= _pounceReadyAt
+            && _agent.Blackboard.DistanceToPlayer >= _stats.PounceMinRange.Value
+            && _agent.Blackboard.DistanceToPlayer <= _stats.PounceMaxRange.Value)
+        {
+            ArmPounce(ctx);
         }
         else if (_remaining <= 0f && _agent.Blackboard.DistanceToPlayer >= _stats.DashMinRange.Value
             && _dashCooldown <= 0f)
@@ -96,14 +131,84 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
             speed = _stats.RunSpeed.Value;
         }
 
+        Vector2 direction = IsAirborne ? _flightDirection : _facing;
         ctx.Intents.EnemyMove(new EnemyMoveIntent(_agent.Id,
-            new Vector3(_facing.X * speed, 0f, _facing.Y * speed), _facing));
+            new Vector3(direction.X * speed, 0f, direction.Y * speed), _facing));
+    }
+
+    private void ArmPounce(in EnemyTickContext ctx)
+    {
+        // Exactly one draw per pick, including forced real pounces, on the injected boss stream.
+        bool rolledFeint = _random.Chance(_stats.FeintChance.Value);
+        bool feint = _hasPounced && !_lastWasFeint && rolledFeint;
+        _hasPounced = true;
+        _lastWasFeint = feint;
+        Move = feint ? ApexMove.Feint : ApexMove.Pounce;
+        _remaining = MathF.Max(MinimumTelegraphSeconds,
+            feint ? _stats.FeintCrouchSeconds.Value : _stats.PounceCrouchSeconds.Value);
+        _facing = Aim();
+        IsAirborne = false;
+        ctx.Events.Publish(new ApexCrouched(_agent.Id, feint, _remaining));
+        if (!feint)
+        {
+            _landing = _agent.Blackboard.PlayerPosition;
+            ctx.Events.Publish(new EnemyLeapAimed(_agent.Id, _agent.Blackboard.SelfPosition,
+                _landing, _stats.PounceRadius.Value, _remaining, _stats.PounceAirSeconds.Value));
+        }
+
+        ctx.Events.Publish(new EnemyTelegraph(_agent.Id, _remaining, (int)Move));
+    }
+
+    private float TickPounce(in EnemyTickContext ctx)
+    {
+        if (!IsAirborne)
+        {
+            if (_remaining > 0f)
+            {
+                return 0f;
+            }
+
+            Vector3 delta = _landing - _agent.Blackboard.SelfPosition;
+            var flat = new Vector2(delta.X, delta.Z);
+            _flightRemaining = flat.Length();
+            _flightDirection = _flightRemaining > ArrivedEpsilon ? flat / _flightRemaining : Vector2.Zero;
+            _flightSpeed = _flightRemaining / _stats.PounceAirSeconds.Value;
+            _airEndsAt = ctx.Now + _stats.PounceAirSeconds.Value;
+            IsAirborne = true;
+        }
+        else if (_flightRemaining <= ArrivedEpsilon || ctx.Now >= _airEndsAt)
+        {
+            Land(ctx);
+            return 0f;
+        }
+
+        // The body integrates the intent. Trim the last step so it cannot overshoot the fixed ring.
+        float speed = ctx.Dt > 0f ? MathF.Min(_flightSpeed, _flightRemaining / ctx.Dt) : _flightSpeed;
+        _flightRemaining -= speed * ctx.Dt;
+        return speed;
+    }
+
+    private void Land(in EnemyTickContext ctx)
+    {
+        IsAirborne = false;
+        Move = ApexMove.None;
+        InWindow = true;
+        _remaining = _stats.PounceWindowSeconds.Value;
+        _pounceReadyAt = ctx.Now + _stats.PounceCooldownSeconds.Value;
+        Vector3 delta = _agent.Blackboard.PlayerPosition - _landing;
+        float radius = _stats.PounceRadius.Value;
+        if (!_agent.Blackboard.QuarryIsADecoy && delta.X * delta.X + delta.Z * delta.Z <= radius * radius)
+        {
+            ctx.Player.ApplyDamage(_agent.ContactDamage.Value * _stats.PounceDamageScale.Value, ctx.Now);
+        }
+
+        ctx.Events.Publish(new ApexLanded(_agent.Id, _landing, _remaining));
     }
 
     private void ArmDash(in EnemyTickContext ctx)
     {
         Move = ApexMove.Dash;
-        float telegraph = _stats.DashTelegraphSeconds.Value;
+        float telegraph = MathF.Max(MinimumTelegraphSeconds, _stats.DashTelegraphSeconds.Value);
         float length = _stats.DashLength.Value;
         _remaining = telegraph;
         _aim = Aim();
@@ -189,7 +294,7 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     private void ArmRake(in EnemyTickContext ctx)
     {
         Move = ApexMove.Rake;
-        float windup = _stats.RakeWindupSeconds.Value;
+        float windup = MathF.Max(MinimumTelegraphSeconds, _stats.RakeWindupSeconds.Value);
         _remaining = windup;
         _swipes = 0;
         _aim = Aim();
@@ -233,9 +338,15 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
     public void OnPhaseEntered(int phase)
     {
+        if (IsAirborne)
+        {
+            return;
+        }
+
         // An opened lane stays in the LaneSystem to fire; she just doesn't dash it.
         Move = ApexMove.None;
         IsRecovering = false;
+        InWindow = false;
         _dashing = false;
         _swipes = 0;
         _remaining = _stats.MoveGapSeconds.Value;
@@ -243,8 +354,13 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
     public void Reset()
     {
+        IsAirborne = false;
         OnPhaseEntered(0);
         _dashCooldown = 0f;
+        _pounceReadyAt = 0f;
+        _hasPounced = false;
+        _lastWasFeint = false;
+        _flightRemaining = 0f;
         _facing = Vector2.UnitY;
         _laneOpened = false;
         _probeAnswered = false;

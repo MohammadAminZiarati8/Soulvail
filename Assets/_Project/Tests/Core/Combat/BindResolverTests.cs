@@ -255,6 +255,37 @@ public sealed class BindResolverTests
         {
             Assert.That(Remaining(anchor), Is.Zero);
         }
+        Assert.That(_events.Count<BindingShotBound>(), Is.Zero, "JG-26b: nothing held, no rope.");
+    }
+
+    /// <summary>JG-26b rule 1, the playtest case: a boss shot against a stone shows no rope.</summary>
+    [Test]
+    public void Boss_ToStone_NoRope()
+    {
+        EnemyAgent target = _enemies.SpawnBoss(new ContentId("boss.test"), new Vector3(4f, 0f, 0f));
+        _binds.Hit(target.Id, _shot);
+        Step();
+        _binds.ReportAnchor(target.Id, true, new Vector3(6f, 0f, 0f));
+        Step();
+
+        Assert.That(Remaining(target), Is.Zero);
+        Assert.That(_events.Count<BindingShotBound>(), Is.Zero);
+    }
+
+    /// <summary>JG-26b rule 1: a boss tied to an ordinary enemy still shows the rope that holds the enemy.</summary>
+    [Test]
+    public void Boss_ToEnemy_RopeHoldsTheEnemy()
+    {
+        EnemyAgent target = _enemies.SpawnBoss(new ContentId("boss.test"), new Vector3(4f, 0f, 0f));
+        EnemyAgent anchor = Spawn(6f);
+        _binds.Hit(target.Id, _shot);
+        Step();
+
+        Assert.That(Remaining(target), Is.Zero);
+        Assert.That(Remaining(anchor), Is.GreaterThan(0f));
+        BindingShotBound bound = _events.Single<BindingShotBound>();
+        Assert.That(bound.Anchor, Is.EqualTo(BindAnchor.Enemy));
+        Assert.That(bound.AnchorEnemyId, Is.EqualTo(anchor.Id));
     }
 
     [TestCase(false)]

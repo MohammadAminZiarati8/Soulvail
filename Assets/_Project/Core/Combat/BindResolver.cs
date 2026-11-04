@@ -164,8 +164,16 @@ public sealed class BindResolver
             _enemies.Stun(enemyId, seconds);
         }
 
-        _events.Publish(new BindingShotBound(pending.TargetId, anchor, enemyId, point, seconds));
+        // JG-26b rule 1: a rope shows only what is held; a boss is never held (JG-26a).
+        bool held = !IsBoss(pending.TargetId) || (anchor == BindAnchor.Enemy && !IsBoss(enemyId));
+        if (held)
+        {
+            _events.Publish(new BindingShotBound(pending.TargetId, anchor, enemyId, point, seconds));
+        }
     }
+
+    private bool IsBoss(int enemyId) =>
+        _enemies.Registry.TryGet(enemyId, out EnemyAgent agent) && agent.Behaviour is BossBehaviour;
 
     private struct Pending
     {

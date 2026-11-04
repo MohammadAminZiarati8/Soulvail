@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-25h._
+_Updated 2026-11-04, JG-26b._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-25h**: Gravemaw vs cover. |
+| **Last merged** | **JG-26b**: no boss rope. |
 | **Next task** | Apex (30). |
-| **Verified** | EditMode 5 521: 5 520 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
+| **Verified** | EditMode 5 523: 5 522 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
 

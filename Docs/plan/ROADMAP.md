@@ -130,5 +130,6 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-25g** — stage 25 is Gravemaw's: boss data, ruins, rock, roster row (M)
 - [x] **JG-25h** — Gravemaw tunnels through cover and surfaces only on open ground (M)
 - [x] **JG-26a** — bosses ignore stun, root and slow; poison still applies (M)
+- [x] **JG-26b** — Binding shot on a boss draws no rope unless it holds an ordinary enemy (S)
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

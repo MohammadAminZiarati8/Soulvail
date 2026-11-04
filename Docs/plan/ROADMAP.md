@@ -140,5 +140,5 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-30b** — The Apex's pounce and feint (M)
 - [x] **JG-30c** — The Apex's phases: the pack at 66 %, the hunt at 33 % (S)
 - [x] **JG-30d** — The Apex's model on `Rig_Panther` (M)
-- [ ] **JG-30e** — [The Apex drawn: eyes, feint, dash streak, window, roar](tasks/JG-30e-apex-body.md) (M)
+- [x] **JG-30e** — The Apex drawn: eyes, feint, dash streak, window, roar (M)
 - [ ] **JG-30f** — [Stage 30 is the Apex's; the Jungle is done](tasks/JG-30f-apex-stage-30.md) (M)

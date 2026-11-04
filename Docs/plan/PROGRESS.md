@@ -2,41 +2,41 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-30d._
+_2026-11-05, JG-30e._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-30d**: Apex body, ten clips, Enemy variant. |
-| **Next task** | JG-30e–f. |
-| **Verified** | EditMode 5606: 5605 pass, 0 failed, 1 inconclusive. No PlayMode. 0 compile errors/new warnings; formatted. |
+| **Last merged** | **JG-30e**: Apex animations, eye tell, streak and punish window. |
+| **Next task** | JG-30f. |
+| **Verified** | EditMode 5621: 5620 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
 
 ## What works
 
-Portrait; Heroes/Places; Jungle 30 stages. Veilrot, Sanctum, disc off; Ranger alone.
+Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
 Budgeted waves → door; 5th-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
 Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Croaker; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
-Art: amber heart, pod rings, 14→11 m band; warned vines.
+Amber heart/pod rings; 14→11 m band; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (unspawned): 2100-tri body, ten clips; view/data next. Stone-stopped dash, rake, pounce/feint.
-Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce, 0.9 s window/0.6 s gap.
+Apex (unspawned): ten clips, lit-eye pounce/dark-eye tail feint, violet streak, low pant/+15% window; data next.
+Stone-stopped dash/rake. Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
-Shaman: noncombat; Mossguard anchor ≤ 12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
-flees < 4 m. Strongest haste refreshes, expires, stacks with slow. Body/staff, lime glow/ring.
-17–19: healer/guards, wall, gate. XP 32, priority 8.
+Shaman: noncombat, guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
+flees <4 m. Strongest haste refreshes, stacks with slow. Lime staff/glow/ring.
+17–19: healer/guards, wall, gate; XP 32, priority 8.
 Banked points; paused free-pick tree, rank pips, Learn; 22 Marksman ranks. Death pays Shards.
-Save v5; older saves load. Clash UI; LocKeys. Six-circle arc: tap fire on Auto,
-0.45 s hold toggles; 0.5 s auto gap; mirrored. Legacy saves expand to six.
-Status icons; pooled enemy CC, bosses immune; poison bubbles/drop icon. Marksman, cyan trim,
+Save v5/legacy load; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
+0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
+Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows (~¼ s first), Volley, roll/flinch; silent resume, plain menu.
 
 ## What does not work yet

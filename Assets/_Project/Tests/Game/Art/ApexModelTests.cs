@@ -49,7 +49,7 @@ public sealed class ApexModelTests
         Assert.That(model.localPosition, Is.EqualTo(Vector3.zero));
         Assert.That(Quaternion.Angle(model.localRotation, Quaternion.identity), Is.LessThan(0.01f));
         Assert.That(prefab.transform.Find("Mesh").gameObject.activeSelf, Is.False);
-        Assert.That(model.GetComponent<Animator>().runtimeAnimatorController, Is.Null, "Controller belongs to 30e.");
+        Assert.That(model.GetComponent<Animator>().runtimeAnimatorController, Is.EqualTo(Load<RuntimeAnimatorController>("Assets/_Project/Animation/Controllers/AC_Apex.controller")));
     }
 
     [Test]
@@ -63,7 +63,7 @@ public sealed class ApexModelTests
         Assert.That(bodies[0].sharedMesh, Is.EqualTo(Body(Load<GameObject>(ModelPath)).sharedMesh));
         foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
         {
-            if (renderer is MeshRenderer)
+            if (renderer is MeshRenderer && !renderer.name.StartsWith("Eye"))
             {
                 Assert.That(renderer.gameObject.activeSelf, Is.False, "The base capsule stays parked.");
             }

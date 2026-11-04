@@ -209,3 +209,12 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - No PlayMode run for this core-only task; full EditMode suite verified. The Apex is still unspawned until JG-30f.
 
 - JG-30d: confirm the Apex matriarch's heavier silhouette and bone scars beside a Shadow Panther at phone zoom (planned BodyScale 1.6 vs 1.1). Unity comparison on Jungle ground and all exported clip poses were inspected; controller/eye/streak wiring and stage-30 data follow in JG-30e/f.
+
+
+## JG-30e — Apex presentation (2026-11-05)
+
+- [Editor, after JG-30f wires the Apex into stage 30] DT-01 to stage 30: at phone zoom, lit-eye real pounces and dark-eye tail-flick feints read without hunting for the tell. Check the low panting, 15% brighter punish window and streak only during dash/flight.
+- [Editor, after JG-30f] Aim a dash lane through a stone: the strip and the body stop at the same stone. Event/endpoint tests passed; the integrated arena check remains owed.
+- [Device, deferred: no reference device] Both eyes read on a 6-inch screen in daylight.
+
+Offscreen 540×960 portrait renders checked the real/feint contrast; these do not replace the stage-30 or device checks. No PlayMode run for this task.

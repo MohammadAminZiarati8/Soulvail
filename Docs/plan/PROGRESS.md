@@ -2,7 +2,7 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-26d/30 specs._
+_Updated 2026-11-04, specs._
 
 ## Current State
 
@@ -10,7 +10,7 @@ _Updated 2026-11-04, JG-26d/30 specs._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **JG-26c**: stages 26–29 scripted, 295 → 373; squad cut. |
-| **Next task** | JG-26d, then JG-30a–f (the Apex). |
+| **Next task** | JG-26d, then JG-30a–f. |
 | **Verified** | EditMode 5 528: 5 527 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works

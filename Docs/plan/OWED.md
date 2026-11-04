@@ -207,3 +207,5 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 
 - After JG-30d–f give the Apex her body and stage-30 phase data, playtest the 66% pack (two panthers, shorter dash cooldown) and the 33% hunt (adds cleared, faster pursuit, three freshly aimed stone-stopped lanes, double ringed pounce, shorter final window). Check every warning remains readable, rolling either landing works, and a pre-hunt airborne pounce finishes during the phase beat.
 - No PlayMode run for this core-only task; full EditMode suite verified. The Apex is still unspawned until JG-30f.
+
+- JG-30d: confirm the Apex matriarch's heavier silhouette and bone scars beside a Shadow Panther at phone zoom (planned BodyScale 1.6 vs 1.1). Unity comparison on Jungle ground and all exported clip poses were inspected; controller/eye/streak wiring and stage-30 data follow in JG-30e/f.

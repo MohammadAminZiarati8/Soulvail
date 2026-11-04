@@ -6,7 +6,8 @@ what keeps one body's re-run from erasing another's columns.
 
 The layout is M7-05b's at half the size: 512 px square in 64 x 128 px strips, each a vertical gradient
 from light (top) to dark. Columns 0-1 are the Rootling's, 2-3 the Frog's, 4-5 the Pitcher's, 6-7 the Puffball's, the
-last two cells of column 7 Old Croaker's, and the last two of column 1 the Panther's, which fills the atlas.
+last two cells of column 7 Old Croaker's, and the last two of column 1 the Panther's. The Apex uses
+16-pixel insets at the edges of the Panther's coat cell; existing bodies keep its centre.
 """
 
 import os
@@ -64,8 +65,14 @@ SWATCHES = {
     # green, its pupils and nose the Frog's pupil and its mouth the Frog's: the atlas is full after it.
     "panther_fur": (1, 2, "5E6A52", "2E3529"),
     "panther_belly": (1, 3, "9A9C8C", "6A6C5E"),
+    # JG-30d: 16-pixel insets at either edge of the Panther's coat cell. Existing bodies
+    # sample its centre (x=96), so their UVs and sampled colours remain unchanged. Keeping both
+    # in that cell also preserves the Warlord's separate war-painted atlas's unchanged cells.
+    "apex_coat": (1, 2, "48414D", "28242E"),
+    "apex_scar": (1, 2, "E2DBC8", "A89F8A"),
 }
 SWATCH_NAMES = list(SWATCHES)
+INSETS = {"apex_coat": (112, 128), "apex_scar": (64, 80)}
 
 # GD 16.4's reserved colours, which no pixel of the atlas may come near.
 RESERVED = ("22D3EE", "FF4A1F", "A855F7", "FBBF24")
@@ -80,6 +87,9 @@ def uv_for(swatch, t):
     col, row = SWATCHES[swatch][0], SWATCHES[swatch][1]
     t = min(1.0, max(0.0, t))
     u = (col * COL_W + COL_W * 0.5) / ATLAS
+    if swatch in INSETS:
+        left, right = INSETS[swatch]
+        u = (left + right) * 0.5 / ATLAS
     y = row * ROW_H + 8 + t * (ROW_H - 16)  # a margin, so mip levels bleed less
     return u, 1.0 - y / ATLAS
 
@@ -103,9 +113,10 @@ def build_atlas(tex_dir):
     unused = rgb("9A9A9A") * (1 - ramp) + rgb("4A4A4A") * ramp
     for row in range(ATLAS // ROW_H):
         img[row * ROW_H:(row + 1) * ROW_H, :, :] = unused[:, None, :]
-    for col, row, top, bottom in SWATCHES.values():
+    for name, (col, row, top, bottom) in SWATCHES.items():
         strip = rgb(top) * (1 - ramp) + rgb(bottom) * ramp
-        img[row * ROW_H:(row + 1) * ROW_H, col * COL_W:(col + 1) * COL_W, :] = strip[:, None, :]
+        left, right = INSETS.get(name, (col * COL_W, (col + 1) * COL_W))
+        img[row * ROW_H:(row + 1) * ROW_H, left:right, :] = strip[:, None, :]
     flat = img.reshape(-1, 3)
     for hex_code in RESERVED:
         nearest = np.abs(flat - rgb(hex_code)).max(axis=1).min()

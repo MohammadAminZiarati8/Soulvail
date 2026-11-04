@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-30c._
+_2026-11-05, JG-30d._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-30c**: Apex pack and hunt phases in core. |
-| **Next task** | JG-30d–f. |
-| **Verified** | EditMode 5598: 5597 pass, 0 failed, 1 inconclusive. No PlayMode. 0 compile errors/new warnings; formatted. |
+| **Last merged** | **JG-30d**: Apex body, ten clips, Enemy variant. |
+| **Next task** | JG-30e–f. |
+| **Verified** | EditMode 5606: 5605 pass, 0 failed, 1 inconclusive. No PlayMode. 0 compile errors/new warnings; formatted. |
 
 ## What works
 
@@ -26,7 +26,7 @@ Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn fl
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (unspawned): stone-stopped dash, rake, pounce/feint; roll blocks bites; air finishes beats.
+Apex (unspawned): 2100-tri body, ten clips; view/data next. Stone-stopped dash, rake, pounce/feint.
 Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce, 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
@@ -55,4 +55,4 @@ Quiver, lit arrows (~¼ s first), Volley, roll/flinch; silent resume, plain menu
 6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
 8. Warlord's death dissolve shows the unpainted atlas.
-9. PlayMode unload hits destroyed cover/VFX/player; teardown errors.
+9. PlayMode unload: destroyed cover/VFX/player; teardown errors.

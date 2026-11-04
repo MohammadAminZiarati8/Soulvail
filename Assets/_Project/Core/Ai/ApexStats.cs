@@ -91,4 +91,23 @@ public sealed class ApexStats
 
     /// <summary>The ringless crouch before a forced dash; floored at 0.6 s.</summary>
     public Stat FeintCrouchSeconds { get; } = new(0.8f);
+
+    /// <summary>Phase 1 and later: cooldown between dash sequences.</summary>
+    public Stat PackDashCooldownSeconds { get; } = new(3f);
+
+    /// <summary>Phase 2's multiplicative bonus to run and dash speed.</summary>
+    public Stat HuntSpeedBonus { get; } = new(0.3f);
+
+    /// <summary>Lanes per hunt dash sequence, capped at three and LaneSystem capacity.</summary>
+    public Stat HuntChainLanes { get; } = new(3f);
+
+    /// <summary>Minimum time after a lane fires before the next can be armed.</summary>
+    public Stat HuntLaneGapSeconds { get; } = new(0.25f);
+
+    public Stat HuntWindowSeconds { get; } = new(0.9f);
+
+    /// <summary>The second real pounce's crouch, floored at 0.6 s.</summary>
+    public Stat HuntSecondCrouchSeconds { get; } = new(0.6f);
+
+    public Stat HuntMoveGapSeconds { get; } = new(0.6f);
 }

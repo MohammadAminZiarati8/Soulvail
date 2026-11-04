@@ -202,3 +202,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - JG-30a (2026-11-04): the Apex in core only. Nothing spawns `boss.apex` until JG-30f, so there is nothing to see yet; check her hunt, warned dash lane that stops at a stone, and double rake then.
 
 - JG-30b (core only): after JG-30e/f wires the Apex, confirm the fixed ring, roll timing, 1.5 s landing punish and ringless feint -> dash at phone size. No new check before then.
+
+## JG-30c — Apex phases (2026-11-05)
+
+- After JG-30d–f give the Apex her body and stage-30 phase data, playtest the 66% pack (two panthers, shorter dash cooldown) and the 33% hunt (adds cleared, faster pursuit, three freshly aimed stone-stopped lanes, double ringed pounce, shorter final window). Check every warning remains readable, rolling either landing works, and a pre-hunt airborne pounce finishes during the phase beat.
+- No PlayMode run for this core-only task; full EditMode suite verified. The Apex is still unspawned until JG-30f.

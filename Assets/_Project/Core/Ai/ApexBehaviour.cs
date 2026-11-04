@@ -51,6 +51,11 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     private float _airEndsAt;
     private bool _hasPounced;
     private bool _lastWasFeint;
+    private bool _secondPounce;
+    private bool _doublePounce;
+    private int _chainLanes;
+    private bool _chainWaiting;
+    private float _nextLaneAt;
 
     public ApexBehaviour(EnemyAgent agent, ApexStats stats, IRandomStream random, LaneSystem lanes)
     {
@@ -62,6 +67,10 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     }
 
     public ApexMove Move { get; private set; }
+
+    public int Phase { get; private set; }
+
+    public bool IsHunting => Phase >= 2;
 
     public bool IsRecovering { get; private set; }
 
@@ -139,6 +148,8 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     private void ArmPounce(in EnemyTickContext ctx)
     {
         // Exactly one draw per pick, including forced real pounces, on the injected boss stream.
+        _secondPounce = false;
+        _doublePounce = IsHunting;
         bool rolledFeint = _random.Chance(_stats.FeintChance.Value);
         bool feint = _hasPounced && !_lastWasFeint && rolledFeint;
         _hasPounced = true;
@@ -191,9 +202,11 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
     private void Land(in EnemyTickContext ctx)
     {
         IsAirborne = false;
-        Move = ApexMove.None;
-        InWindow = true;
-        _remaining = _stats.PounceWindowSeconds.Value;
+        // A phase beat lets an already launched pre-hunt pounce finish its promised landing.
+        bool again = _doublePounce && !_secondPounce;
+        Move = again ? ApexMove.Pounce : ApexMove.None;
+        InWindow = !again;
+        _remaining = again ? 0f : _stats.PounceWindowSeconds.Value;
         _pounceReadyAt = ctx.Now + _stats.PounceCooldownSeconds.Value;
         Vector3 delta = _agent.Blackboard.PlayerPosition - _landing;
         float radius = _stats.PounceRadius.Value;
@@ -203,11 +216,36 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
         }
 
         ctx.Events.Publish(new ApexLanded(_agent.Id, _landing, _remaining));
+        if (again)
+        {
+            _secondPounce = true;
+            _remaining = MathF.Max(MinimumTelegraphSeconds, _stats.HuntSecondCrouchSeconds.Value);
+            _facing = Aim();
+            _landing = _agent.Blackboard.PlayerPosition;
+            ctx.Events.Publish(new ApexCrouched(_agent.Id, false, _remaining));
+            ctx.Events.Publish(new EnemyLeapAimed(_agent.Id, _agent.Blackboard.SelfPosition,
+                _landing, _stats.PounceRadius.Value, _remaining, _stats.PounceAirSeconds.Value));
+            ctx.Events.Publish(new EnemyTelegraph(_agent.Id, _remaining, (int)Move));
+        }
     }
 
-    private void ArmDash(in EnemyTickContext ctx)
+    private void ArmDash(in EnemyTickContext ctx, bool chained = false)
     {
         Move = ApexMove.Dash;
+        if (!chained)
+        {
+            _chainLanes = 0;
+        }
+
+        // Wait for space before promising a lane; never evict a live telegraph.
+        _chainWaiting = IsHunting && _lanes.ActiveCount >= Math.Min(3, LaneSystem.Capacity);
+        if (_chainWaiting)
+        {
+            _remaining = 0f;
+            return;
+        }
+
+        _chainLanes++;
         float telegraph = MathF.Max(MinimumTelegraphSeconds, _stats.DashTelegraphSeconds.Value);
         float length = _stats.DashLength.Value;
         _remaining = telegraph;
@@ -241,6 +279,16 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
     private float TickDash(in EnemyTickContext ctx)
     {
+        if (_chainWaiting)
+        {
+            if (_remaining <= 0f && _lanes.ActiveCount < Math.Min(3, LaneSystem.Capacity))
+            {
+                ArmDash(ctx, true);
+            }
+
+            return 0f;
+        }
+
         float dashSpeed = _stats.DashSpeed.Value;
         if (!_dashing)
         {
@@ -268,6 +316,7 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
             _dashing = true;
             _dashElapsed = 0f;
+            _nextLaneAt = ctx.Now + MathF.Max(0f, _stats.HuntLaneGapSeconds.Value);
         }
         else
         {
@@ -281,6 +330,21 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
             || _dashElapsed >= _laneLength / dashSpeed + _stats.DashGraceSeconds.Value)
         {
             _dashing = false;
+            int chainLimit = (int)MathF.Max(1f,
+                MathF.Min(Math.Min(3, LaneSystem.Capacity), _stats.HuntChainLanes.Value));
+            if (IsHunting && _chainLanes < chainLimit)
+            {
+                // The next probe uses the sensed endpoint and the player's latest position.
+                _chainWaiting = true;
+                _remaining = MathF.Max(0f, _nextLaneAt - ctx.Now);
+                if (_remaining <= 0f)
+                {
+                    ArmDash(ctx, true);
+                }
+
+                return 0f;
+            }
+
             Move = ApexMove.None;
             _dashCooldown = _stats.DashCooldownSeconds.Value;
             IsRecovering = true;
@@ -338,6 +402,28 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
 
     public void OnPhaseEntered(int phase)
     {
+        if (Phase != phase)
+        {
+            RemovePhaseModifiers();
+            Phase = phase;
+            if (Phase >= 1)
+            {
+                _stats.DashCooldownSeconds.Add(new Modifier(ModifierKind.Flat,
+                    _stats.PackDashCooldownSeconds.Value - _stats.DashCooldownSeconds.Base, this));
+                _dashCooldown = MathF.Min(_dashCooldown, _stats.DashCooldownSeconds.Value);
+            }
+
+            if (IsHunting)
+            {
+                _stats.RunSpeed.Add(new Modifier(ModifierKind.PercentMult, _stats.HuntSpeedBonus.Value, this));
+                _stats.DashSpeed.Add(new Modifier(ModifierKind.PercentMult, _stats.HuntSpeedBonus.Value, this));
+                _stats.MoveGapSeconds.Add(new Modifier(ModifierKind.Flat,
+                    _stats.HuntMoveGapSeconds.Value - _stats.MoveGapSeconds.Base, this));
+                _stats.PounceWindowSeconds.Add(new Modifier(ModifierKind.Flat,
+                    _stats.HuntWindowSeconds.Value - _stats.PounceWindowSeconds.Base, this));
+            }
+        }
+
         if (IsAirborne)
         {
             return;
@@ -348,6 +434,9 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
         IsRecovering = false;
         InWindow = false;
         _dashing = false;
+        _chainWaiting = false;
+        _chainLanes = 0;
+        _secondPounce = false;
         _swipes = 0;
         _remaining = _stats.MoveGapSeconds.Value;
     }
@@ -360,6 +449,9 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
         _pounceReadyAt = 0f;
         _hasPounced = false;
         _lastWasFeint = false;
+        _secondPounce = false;
+        _doublePounce = false;
+        _nextLaneAt = 0f;
         _flightRemaining = 0f;
         _facing = Vector2.UnitY;
         _laneOpened = false;
@@ -367,6 +459,15 @@ public sealed class ApexBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneSt
         _probeHit = false;
         _probeTicks = 0;
         _dashElapsed = 0f;
+    }
+
+    private void RemovePhaseModifiers()
+    {
+        _stats.DashCooldownSeconds.RemoveAll(this);
+        _stats.RunSpeed.RemoveAll(this);
+        _stats.DashSpeed.RemoveAll(this);
+        _stats.MoveGapSeconds.RemoveAll(this);
+        _stats.PounceWindowSeconds.RemoveAll(this);
     }
 
     private Vector2 Aim() => _agent.Blackboard.DirectionToPlayer != Vector2.Zero

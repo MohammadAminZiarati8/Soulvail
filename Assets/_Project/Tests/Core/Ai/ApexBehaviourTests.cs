@@ -181,9 +181,9 @@ public sealed class ApexBehaviourTests
         Tick(0.1f);
         float firesAt = _now + 0.6f;
         _apex.OnPhaseEntered(2);
-        Tick(0.7f);
+        Tick(0.59f); // JG-30c shortens the hunt's move gap to 0.6 s.
         Assert.That(_apex.Move, Is.EqualTo(ApexMove.None));
-        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(5.5f), "She does not dash it.");
+        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(7.15f).Within(1e-5f), "She hunts, without dashing the cancelled lane.");
         _lanes.Tick(firesAt + 0.01f, Vector3.UnitZ * 5f, _player);
         Assert.That(_player.Health.Current, Is.EqualTo(70f), "The opened lane still fires.");
     }

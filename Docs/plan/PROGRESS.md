@@ -2,16 +2,16 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-30b._
+_2026-11-05, JG-30c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-30b**: Apex pounce and feint in core. |
-| **Next task** | JG-30c–f. |
-| **Verified** | EditMode 5 583: 5 582 pass, 0 failed, 1 inconclusive. No PlayMode. 0 compile errors/new warnings; formatted. |
+| **Last merged** | **JG-30c**: Apex pack and hunt phases in core. |
+| **Next task** | JG-30d–f. |
+| **Verified** | EditMode 5598: 5597 pass, 0 failed, 1 inconclusive. No PlayMode. 0 compile errors/new warnings; formatted. |
 
 ## What works
 
@@ -26,8 +26,8 @@ Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn fl
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (core, unspawned): hunt, stone-stopped dash, rake; fixed-ring pounce, 1.5 s landing window,
-ringless feint → dash; roll blocks the bite; airborne pounce finishes through phase beats.
+Apex (unspawned): stone-stopped dash, rake, pounce/feint; roll blocks bites; air finishes beats.
+Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce, 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Shaman: noncombat; Mossguard anchor ≤ 12 m, holds 11 m; heals 10%, hastes 25% in 8 m;

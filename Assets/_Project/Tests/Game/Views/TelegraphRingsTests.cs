@@ -667,6 +667,8 @@ public sealed class TelegraphRingsTests
     /// layered fan is drawn in vertex colour, which wants <c>M_SprayCone</c>'s particle shader.
     /// <c>FX_PodRipen</c> joined at JG-20g: a pod's ripening ring fills toward its burst, which is
     /// a spawn telegraph's promise exactly, so it reads in the same ring.
+    /// <c>FX_Gravemaw_Ring</c> and <c>FX_Gravemaw_Crack</c> joined at JG-25f: an eruption's warning
+    /// and a crack a Frog crawls out of are the same promise.
     /// </remarks>
     [Test]
     public void Telegraph_FamilySharesOneMaterial()
@@ -680,6 +682,7 @@ public sealed class TelegraphRingsTests
             "VFX_TelegraphRing", "VFX_Shockwave", "VFX_Fissure",
             "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
             "FX_PodRipen", "FX_PodRipen",
+            "FX_Gravemaw_Ring", "FX_Gravemaw_Ring", "FX_Gravemaw_Crack", "FX_Gravemaw_Crack",
         };
 
         var found = new List<string>();

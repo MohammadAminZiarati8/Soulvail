@@ -1,5 +1,72 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &6722238242880757875
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8229148115924026100}
+    m_Modifications:
+    - target: {fileID: 4059349258882145648, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_Name
+      value: Trail
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+--- !u!4 &2153428507814075063 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4659171457820080836, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+  m_PrefabInstance: {fileID: 6722238242880757875}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7286688631284989187 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4059349258882145648, guid: 7f07e4fdffc395147908af3dd36c36ff, type: 3}
+  m_PrefabInstance: {fileID: 6722238242880757875}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6957192974709626981
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -62,13 +129,43 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1350838798255331985, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7331234435664532349}
-    m_AddedComponents: []
+    - targetCorrespondingSourceObject: {fileID: 1350838798255331985, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2153428507814075063}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1747012703412578570, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3220253427515629772}
   m_SourcePrefab: {fileID: 100100000, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
 --- !u!4 &8229148115924026100 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1350838798255331985, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
   m_PrefabInstance: {fileID: 6957192974709626981}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8697094001983582575 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1747012703412578570, guid: aa62b3f62c6717b4b8b95bbd08246847, type: 3}
+  m_PrefabInstance: {fileID: 6957192974709626981}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3220253427515629772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8697094001983582575}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef92308b0e0c564479a6ddb87c9b7cd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.GravemawView
+  _model: {fileID: 7995602708215433671}
+  _trail: {fileID: 7286688631284989187}
+  _ringPrefab: {fileID: 8646990255422389962, guid: 9d04eceb08ce6cb42a1fde779b44a4c5, type: 3}
+  _crackPrefab: {fileID: 8646990255422389962, guid: baff59fd42808c442a510c136ab7c147, type: 3}
+  _animator: {fileID: 3701371981780257031}
+  _maw: {fileID: 3346684409064552040}
+  _body: {fileID: 8401114353112115652}
 --- !u!1001 &7077265651996832918
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -121,13 +218,60 @@ PrefabInstance:
       propertyPath: m_Name
       value: Model
       objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 0fc74faadac098d4184e77ba428808c1, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4586725046741892900}
   m_SourcePrefab: {fileID: 100100000, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+--- !u!137 &3346684409064552040 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -3727097990083951874, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+  m_PrefabInstance: {fileID: 7077265651996832918}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &3701371981780257031 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+  m_PrefabInstance: {fileID: 7077265651996832918}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7331234435664532349 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+  m_PrefabInstance: {fileID: 7077265651996832918}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7995602708215433671 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
+  m_PrefabInstance: {fileID: 7077265651996832918}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4586725046741892900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7995602708215433671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e8a00dd2ec3ba84e875c662011675a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyAnimatorView
+  _animator: {fileID: 3701371981780257031}
+  _strideSpeed: 0.37
+  _windupFromSeconds: 0
+  _strikeSeconds: 0.4
+  _hops: 0
+  _releaseAtClipSpeed: 1
+  _runBaseSpeed: 0
+  _runStrideSpeed: 0
+--- !u!137 &8401114353112115652 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 1630794972795428178, guid: 9391bf3da8bfdf44b91df1d027c31964, type: 3}
   m_PrefabInstance: {fileID: 7077265651996832918}
   m_PrefabAsset: {fileID: 0}

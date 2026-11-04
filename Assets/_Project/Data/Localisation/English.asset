@@ -684,3 +684,5 @@ MonoBehaviour:
     _text: 'Chameleon Stalker'
   - _key: enemy.thornweaver.name
     _text: 'Thornweaver'
+  - _key: enemy.apex.name
+    _text: 'The Apex'

@@ -1321,6 +1321,7 @@ public sealed class JungleTests
                     15 => "boss.mossguard_warlord",
                     20 => "boss.thornheart",
                     25 => "boss.gravemaw",
+                    30 => "boss.apex",
                     _ => "boss.croaker",
                 }), $"Stage {stage}");
             }

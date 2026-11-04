@@ -758,3 +758,5 @@ MonoBehaviour:
     _text: "[\xC7h\xE1m\xE9l\xE9\xF4\xF1 St\xE1lk\xE9r \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.thornweaver.name
     _text: "[Th\xF4r\xF1w\xE9\xE1v\xE9r \xB7\xB7\xB7\xB7]"
+  - _key: enemy.apex.name
+    _text: '[Thé Ápéx ···]'

@@ -106,7 +106,7 @@ public sealed class GravemawStageTests
         Assert.That(jungle.TryGetBossFor(Stage, out ContentId boss), Is.True);
         Assert.That(boss.Value, Is.EqualTo("boss.gravemaw"));
         Assert.That(jungle.TryGetBossFor(30, out ContentId last), Is.True);
-        Assert.That(last.Value, Is.EqualTo("boss.croaker"), "30 waits for the Apex.");
+        Assert.That(last.Value, Is.EqualTo("boss.apex"), "JG-30f completes the final boss roster.");
     }
 
     [Test]

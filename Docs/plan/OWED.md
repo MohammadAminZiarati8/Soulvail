@@ -218,3 +218,8 @@ Store: `com.soulvail.dev`, `Soulvail` (placeholders); business model unruled.
 - [Device, deferred: no reference device] Both eyes read on a 6-inch screen in daylight.
 
 Offscreen 540×960 portrait renders checked the real/feint contrast; these do not replace the stage-30 or device checks. No PlayMode run for this task.
+
+## JG-30f — Apex stage 30 (2026-11-05)
+
+- [ ] **Editor:** DT-01 start at stage 30 with the Ranger; spend the banked points. Time the full fight; check two Shadow panthers at 66%, none after the 33% beat, faster chained lanes/double pounce, stone-stopped lanes and the final win screen. Automated no-dodge session probe: 87.80 s at 33 expected DPS, base HP 1000 (durability inflated only in the probe).
+- [ ] **Device:** Play stage 30 on a phone. Check all four kit stones read as stones at phone zoom, gaps stay traversable, and eye/feint/pounce/chain tells remain readable. Note anything unclear.

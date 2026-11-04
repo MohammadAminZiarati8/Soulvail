@@ -2,22 +2,22 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-30e._
+_2026-11-05, JG-30f._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-30e**: Apex animations, eye tell, streak and punish window. |
-| **Next task** | JG-30f. |
-| **Verified** | EditMode 5621: 5620 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
+| **Last merged** | **JG-30f**: Apex stage 30; Jungle complete. |
+| **Next task** | None planned. |
+| **Verified** | EditMode 5629: 5628 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
 Budgeted waves → door; 5th-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Croaker; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
+Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Apex; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Amber heart/pod rings; 14→11 m band; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
@@ -26,7 +26,7 @@ Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn fl
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (unspawned): ten clips, lit-eye pounce/dark-eye tail feint, violet streak, low pant/+15% window; data next.
+Apex (30): eye tell/feint, streak, +15% window; 1000 HP/87.80 s at 33 DPS. Four stones; 2 panthers at 66%, cleared at 33%; win.
 Stone-stopped dash/rake. Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.

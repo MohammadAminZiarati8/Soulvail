@@ -199,6 +199,13 @@ public sealed class RangerTests
         {
             EnemySpec enemy = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
 
+            // GD §9.2's owner ruling: the Apex is the Jungle's one fast boss.
+            if (enemy.Id.Value == "enemy.apex")
+            {
+                Assert.That(enemy.MoveSpeed, Is.GreaterThan(spec.Movement.Speed));
+                continue;
+            }
+
             Assert.That(spec.Movement.Speed, Is.GreaterThan(enemy.MoveSpeed), $"a kiter outruns {enemy.Id}.");
         }
 

@@ -121,6 +121,9 @@ MonoBehaviour:
   - _bossId: boss.croaker
     _everyNStages: 5
     _atStage: 0
+  - _bossId: boss.apex
+    _everyNStages: 0
+    _atStage: 30
   _scriptedStages:
   - _stage: 1
     _spawns:

@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Apex
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.apex
+  _nameKey: enemy.apex.name
+  _maxHp: 1000
+  _moveSpeed: 5.5
+  _targetPriority: 2
+  _threatCost: 40
+  _xpValue: 700
+  _isElite: 0
+  _contactDamage: 20
+  _reach: 1.2
+  _windupTime: 0.8
+  _recoverTime: 0.8
+  _aggroRange: 30
+  _behaviour: 4
+  _projectileStandoffRange: 0
+  _projectileSpeed: 9
+  _projectileRadius: 1.4
+  _projectileCount: 1
+  _projectileSpread: 0
+  _explosionRadius: 0
+  _chainRadius: 0
+  _hopTime: 0
+  _hopRestTime: 0
+  _lungeRange: 0
+  _lungeLength: 0
+  _lungeSpeed: 0
+  _lungeHalfWidth: 0
+  _lungeCooldown: 0
+  _leapMinRange: 0
+  _leapMaxRange: 0
+  _leapCrouchSeconds: 0
+  _leapAirSeconds: 0
+  _leapRadius: 0
+  _leapDamageMultiplier: 0
+  _leapCooldown: 0
+  _packPartnerRadius: 0
+  _packFlankAngleDegrees: 0
+  _packFlankTimeout: 0
+  _shieldHalfArc: 0
+  _shieldTurnRate: 0
+  _shieldWalkCone: 0
+  _shamanAuraRadius: 0
+  _shamanPulseInterval: 0
+  _shamanCastSeconds: 0
+  _shamanHealFraction: 0
+  _shamanHasteFraction: 0
+  _shamanHasteSeconds: 0
+  _shamanHoldDistance: 0
+  _shamanBehindDistance: 0
+  _shamanFleeDistance: 0
+  _shamanFleeSeconds: 0
+  _shamanFleeSpeedMultiplier: 0
+  _stalkerBehindDistance: 0
+  _stalkerCloakDelay: 0
+  _stalkerStrikeRange: 0
+  _stalkerBehindAngleDegrees: 0
+  _stalkerStrikeLength: 0
+  _stalkerStrikeSpeed: 0
+  _stalkerStrikeHalfWidth: 0
+  _stalkerRevealSeconds: 0
+  _stalkerStrikeCooldown: 0
+  _weaverWallLength: 0
+  _weaverHoldDistance: 0
+  _weaverCastRange: 0
+  _weaverCastInterval: 0
+  _weaverCastSeconds: 0
+  _weaverWallHalfWidth: 0
+  _weaverArmSeconds: 0
+  _weaverStandSeconds: 0
+  _weaverBeyondDistance: 0
+  _weaverMaxWalls: 0
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1.6
+  _body: {fileID: 1787285514613856457, guid: b1c4801fa033bf046b7421f42b218fc5, type: 3}
+  _projectile: {fileID: 0}
+  _marksLanding: 0
+  _cover: {fileID: 2437011031382774519, guid: 11848b261a13c2b4f90d3086bed7c212, type: 3}

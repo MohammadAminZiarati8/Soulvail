@@ -426,9 +426,9 @@ public sealed class JungleTests
     }
 
     [Test]
-    public void Jungle_StagesTwentyOneToTwentyFour_Climb()
+    public void Jungle_StagesTwentyOneToTwentyNine_Climb()
     {
-        // JG-24d rule 5: the weaver's stage tops the climb, and 25 stays Gravemaw's.
+        // JG-24d rule 5 and JG-26c rules 6–7: 21–24 climb into Gravemaw, 26–29 into the Apex.
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
         Dictionary<ContentId, int> costs = new[]
             {
@@ -445,8 +445,100 @@ public sealed class JungleTests
         }
 
         Assert.That((Threat(21), Threat(22), Threat(23), Threat(24)), Is.EqualTo((194, 218, 242, 269)));
+        Assert.That((Threat(26), Threat(27), Threat(28), Threat(29)), Is.EqualTo((295, 321, 345, 373)));
         Assert.That(jungle.TryGetBossFor(25, out _), Is.True, "Stage 25 stays a boss stage.");
         Assert.That(jungle.TryGetScriptedStage(25, out _), Is.False);
+        Assert.That(jungle.TryGetBossFor(30, out _), Is.True, "Stage 30 stays a boss stage.");
+        Assert.That(jungle.TryGetScriptedStage(30, out _), Is.False);
+    }
+
+    [Test]
+    public void Jungle_StageTwentySix_IsTheClearing()
+    {
+        // JG-26c rule 1: a breather after Gravemaw.
+        Assert.That(Spawns(26), Is.EqualTo(new[]
+        {
+            (1, "enemy.bullfrog", 6), (1, "enemy.chain_bomber", 4), (1, "enemy.shadow_panther", 2),
+            (2, "enemy.thorn_pitcher", 3), (2, "enemy.mossguard", 2), (2, "enemy.shaman", 1),
+            (2, "enemy.bullfrog", 2),
+            (3, "enemy.stalker", 2), (3, "enemy.shadow_panther", 2), (3, "enemy.thornweaver", 1),
+            (3, "enemy.bullfrog", 4), (3, "enemy.chain_bomber", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageTwentySeven_IsTheFortress()
+    {
+        // JG-26c rule 2: a held line to break.
+        Assert.That(Spawns(27), Is.EqualTo(new[]
+        {
+            (1, "enemy.mossguard", 3), (1, "enemy.shaman", 1), (1, "enemy.thorn_pitcher", 3),
+            (1, "enemy.bullfrog", 4),
+            (2, "enemy.thornweaver", 2), (2, "enemy.chain_bomber", 4), (2, "enemy.shadow_panther", 2),
+            (2, "enemy.bullfrog", 1),
+            (3, "enemy.mossguard", 3), (3, "enemy.shaman", 2), (3, "enemy.thornweaver", 1),
+            (3, "enemy.thorn_pitcher", 2),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageTwentyEight_IsTheHunt()
+    {
+        // JG-26c rule 3: danger from the flanks and behind.
+        Assert.That(Spawns(28), Is.EqualTo(new[]
+        {
+            (1, "enemy.shadow_panther", 4), (1, "enemy.bullfrog", 6), (1, "enemy.chain_bomber", 2),
+            (2, "enemy.stalker", 3), (2, "enemy.shadow_panther", 2), (2, "enemy.chain_bomber", 3),
+            (3, "enemy.shadow_panther", 4), (3, "enemy.stalker", 2), (3, "enemy.thornweaver", 1),
+            (3, "enemy.bullfrog", 4), (3, "enemy.thorn_pitcher", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StageTwentyNine_IsTheGauntlet()
+    {
+        // JG-26c rule 4: four waves, one per theme.
+        Assert.That(Spawns(29), Is.EqualTo(new[]
+        {
+            (1, "enemy.bullfrog", 6), (1, "enemy.chain_bomber", 4), (1, "enemy.shadow_panther", 2),
+            (2, "enemy.mossguard", 2), (2, "enemy.shaman", 1), (2, "enemy.thornweaver", 2),
+            (2, "enemy.thorn_pitcher", 2),
+            (3, "enemy.stalker", 2), (3, "enemy.shadow_panther", 4),
+            (4, "enemy.mossguard", 2), (4, "enemy.shaman", 1), (4, "enemy.thornweaver", 1),
+            (4, "enemy.stalker", 1), (4, "enemy.shadow_panther", 1), (4, "enemy.bullfrog", 1),
+        }));
+    }
+
+    [Test]
+    public void Jungle_StagesTwentySixToTwentyNine_IntroduceNothing()
+    {
+        // JG-26c rule 5: the existing roster only, none of the easy four retired at 21.
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        var buffer = new RosterEntry[jungle.Roster.Count];
+        string[] easyFour = { "enemy.frog", "enemy.pitcher", "enemy.puffball", "enemy.panther" };
+
+        for (int index = 26; index <= 29; index++)
+        {
+            Assert.That(jungle.TryGetScriptedStage(index, out ScriptedStage stage), Is.True, $"stage {index}");
+            int count = jungle.RosterFor(index, buffer);
+            RosterEntry[] active = buffer.Take(count).ToArray();
+            foreach (ScriptedSpawn spawn in stage.Spawns)
+            {
+                RosterEntry[] rows = active.Where(r => r.SpecId == spawn.SpecId).ToArray();
+                Assert.That(rows, Has.Length.EqualTo(1), $"{spawn.SpecId} is rostered at {index}");
+                Assert.That(rows[0].IntroducedAtStage, Is.LessThan(26), $"{spawn.SpecId} is known before 26");
+                Assert.That(easyFour, Has.No.Member(spawn.SpecId.Value), $"stage {index}");
+            }
+
+            Assert.That(jungle.TryGetIntroduction(index, out _), Is.False, $"stage {index}");
+        }
+    }
+
+    private static (int Wave, string SpecId, int Count)[] Spawns(int index)
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+        Assert.That(jungle.TryGetScriptedStage(index, out ScriptedStage stage), Is.True, $"stage {index}");
+        return stage.Spawns.Select(s => (s.Wave, s.SpecId.Value, s.Count)).ToArray();
     }
 
     [Test]

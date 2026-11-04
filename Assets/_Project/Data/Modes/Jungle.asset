@@ -489,6 +489,164 @@ MonoBehaviour:
     - _wave: 3
       _specId: enemy.shaman
       _count: 1
+  - _stage: 26
+    _spawns:
+    - _wave: 1
+      _specId: enemy.bullfrog
+      _count: 6
+    - _wave: 1
+      _specId: enemy.chain_bomber
+      _count: 4
+    - _wave: 1
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 2
+      _specId: enemy.thorn_pitcher
+      _count: 3
+    - _wave: 2
+      _specId: enemy.mossguard
+      _count: 2
+    - _wave: 2
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 2
+      _specId: enemy.bullfrog
+      _count: 2
+    - _wave: 3
+      _specId: enemy.stalker
+      _count: 2
+    - _wave: 3
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 3
+      _specId: enemy.thornweaver
+      _count: 1
+    - _wave: 3
+      _specId: enemy.bullfrog
+      _count: 4
+    - _wave: 3
+      _specId: enemy.chain_bomber
+      _count: 1
+  - _stage: 27
+    _spawns:
+    - _wave: 1
+      _specId: enemy.mossguard
+      _count: 3
+    - _wave: 1
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 1
+      _specId: enemy.thorn_pitcher
+      _count: 3
+    - _wave: 1
+      _specId: enemy.bullfrog
+      _count: 4
+    - _wave: 2
+      _specId: enemy.thornweaver
+      _count: 2
+    - _wave: 2
+      _specId: enemy.chain_bomber
+      _count: 4
+    - _wave: 2
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 2
+      _specId: enemy.bullfrog
+      _count: 1
+    - _wave: 3
+      _specId: enemy.mossguard
+      _count: 3
+    - _wave: 3
+      _specId: enemy.shaman
+      _count: 2
+    - _wave: 3
+      _specId: enemy.thornweaver
+      _count: 1
+    - _wave: 3
+      _specId: enemy.thorn_pitcher
+      _count: 2
+  - _stage: 28
+    _spawns:
+    - _wave: 1
+      _specId: enemy.shadow_panther
+      _count: 4
+    - _wave: 1
+      _specId: enemy.bullfrog
+      _count: 6
+    - _wave: 1
+      _specId: enemy.chain_bomber
+      _count: 2
+    - _wave: 2
+      _specId: enemy.stalker
+      _count: 3
+    - _wave: 2
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 2
+      _specId: enemy.chain_bomber
+      _count: 3
+    - _wave: 3
+      _specId: enemy.shadow_panther
+      _count: 4
+    - _wave: 3
+      _specId: enemy.stalker
+      _count: 2
+    - _wave: 3
+      _specId: enemy.thornweaver
+      _count: 1
+    - _wave: 3
+      _specId: enemy.bullfrog
+      _count: 4
+    - _wave: 3
+      _specId: enemy.thorn_pitcher
+      _count: 1
+  - _stage: 29
+    _spawns:
+    - _wave: 1
+      _specId: enemy.bullfrog
+      _count: 6
+    - _wave: 1
+      _specId: enemy.chain_bomber
+      _count: 4
+    - _wave: 1
+      _specId: enemy.shadow_panther
+      _count: 2
+    - _wave: 2
+      _specId: enemy.mossguard
+      _count: 2
+    - _wave: 2
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 2
+      _specId: enemy.thornweaver
+      _count: 2
+    - _wave: 2
+      _specId: enemy.thorn_pitcher
+      _count: 2
+    - _wave: 3
+      _specId: enemy.stalker
+      _count: 2
+    - _wave: 3
+      _specId: enemy.shadow_panther
+      _count: 4
+    - _wave: 4
+      _specId: enemy.mossguard
+      _count: 2
+    - _wave: 4
+      _specId: enemy.shaman
+      _count: 1
+    - _wave: 4
+      _specId: enemy.thornweaver
+      _count: 1
+    - _wave: 4
+      _specId: enemy.stalker
+      _count: 1
+    - _wave: 4
+      _specId: enemy.shadow_panther
+      _count: 1
+    - _wave: 4
+      _specId: enemy.bullfrog
+      _count: 1
   _ordeals:
     _firstStage: 25
     _everyNStages: 10

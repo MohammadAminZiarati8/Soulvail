@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using NUnit.Framework;
@@ -38,6 +39,7 @@ public sealed class GravemawBehaviourTests
     private Vector3 _bossAt;
     private Vector3 _playerAt;
     private float _now;
+    private List<Vector3> _ground;
 
     [SetUp]
     public void SetUp()
@@ -53,6 +55,7 @@ public sealed class GravemawBehaviourTests
             new PlayerMotor(Character().Movement, Vector3.UnitZ), new ShockwaveSystem(new SilentEvents()), Frog);
         _session = null;
         _now = 0f;
+        _ground = null;
         Place(new Vector3(0f, 0f, 3f));
     }
 
@@ -173,6 +176,34 @@ public sealed class GravemawBehaviourTests
         Tick(0.5f);
         Assert.That(_gravemaw.RingCentre, Is.EqualTo(ring.At));
         Assert.That(_events.Count<GravemawRingArmed>(), Is.EqualTo(1));
+    }
+
+    // ---- JG-25h -------------------------------------------------------------------------------------
+
+    [Test]
+    public void Ring_AimInCover_CentreOnNearestOpenSpot()
+    {
+        _ground = new List<Vector3> { new(2f, 0f, 3f), new(0f, 0f, 4.5f), new(-3f, 0f, 3f) };
+        ArmRing();
+        Assert.That(_events.Single<GravemawRingArmed>().At, Is.EqualTo(new Vector3(0f, 0f, 4.5f)));
+        Assert.That(_gravemaw.RingCentre, Is.EqualTo(new Vector3(0f, 0f, 4.5f)));
+    }
+
+    [Test]
+    public void Ring_NearestSpotPastReach_TakesNearestInReach()
+    {
+        Place(new Vector3(0f, 0f, 11.5f));
+        _ground = new List<Vector3> { new(0f, 0f, 12.5f), new(0f, 0f, 10f) };
+        ArmRing();
+        Assert.That(_gravemaw.RingCentre, Is.EqualTo(new Vector3(0f, 0f, 10f)), "12.5 m is past the 12 m tunnel.");
+    }
+
+    [Test]
+    public void Ring_NoSpotInReach_TakesNearest()
+    {
+        _ground = new List<Vector3> { new(0f, 0f, 20f), new(0f, 0f, 13f) };
+        ArmRing();
+        Assert.That(_gravemaw.RingCentre, Is.EqualTo(new Vector3(0f, 0f, 13f)));
     }
 
     // ---- Rule 6 -------------------------------------------------------------------------------------
@@ -418,7 +449,8 @@ public sealed class GravemawBehaviourTests
     {
         _now += dt;
         _intents.Clear();
-        _gravemaw.Tick(new EnemyTickContext(dt, _now, _player, _intents, _events, _projectiles, _enemies));
+        _gravemaw.Tick(new EnemyTickContext(dt, _now, _player, _intents, _events, _projectiles, _enemies,
+            openGround: _ground));
     }
 
     private void Place(Vector3 player)

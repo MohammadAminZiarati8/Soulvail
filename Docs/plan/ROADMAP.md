@@ -128,7 +128,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-25e** — Gravemaw's model: TRELLIS burrower on its own rig, maw lit apart (M)
 - [x] **JG-25f** — Gravemaw's body: trail, ring, rise and dive, lit maw, cracks (M)
 - [x] **JG-25g** — stage 25 is Gravemaw's: boss data, ruins, rock, roster row (M)
+- [x] **JG-25h** — Gravemaw tunnels through cover and surfaces only on open ground (M)
 - [x] **JG-26a** — bosses ignore stun, root and slow; poison still applies (M)
-- [ ] JG-25h — Gravemaw tunnels through cover and surfaces only on open ground (M)
 - [ ] JG-27 — Lizard skirmisher squad (first cut if short)
 - [ ] JG-30 — The Apex, the Jungle's last boss

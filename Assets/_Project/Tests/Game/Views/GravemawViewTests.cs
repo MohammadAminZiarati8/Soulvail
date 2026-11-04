@@ -236,6 +236,37 @@ public sealed class GravemawViewTests
         Assert.That(_view.Crack(new Vector3(1f, 0f, 1f)), Is.SameAs(crack), "Pooled: the same body comes back.");
     }
 
+    /// <summary>JG-25h rule 1: cover stops the body above ground, never under it.</summary>
+    [Test]
+    public void View_Buried_PassesCover_UpIsBlocked()
+    {
+        var cover = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        try
+        {
+            cover.layer = LayerMask.NameToLayer(Soulvail.Game.Arena.ArenaView.CoverLayerName);
+            cover.transform.position = new Vector3(0f, 1f, 2f);
+            cover.transform.localScale = new Vector3(4f, 4f, 0.5f);
+            var controller = _body.GetComponent<CharacterController>();
+            Assume.That(_view.PassesCover, Is.False);
+
+            _hub.Publish(new GravemawBurrowed(Id));
+            Physics.SyncTransforms();
+            controller.Move(new Vector3(0f, 0f, 4f));
+            Assert.That(_view.PassesCover, Is.True);
+            Assert.That(_body.transform.position.z, Is.GreaterThan(3.5f), "Under, it went through.");
+
+            _hub.Publish(new GravemawErupted(Id, Num.Vector3.Zero, 3f, false));
+            Physics.SyncTransforms();
+            controller.Move(new Vector3(0f, 0f, -4f));
+            Assert.That(_view.PassesCover, Is.False);
+            Assert.That(_body.transform.position.z, Is.GreaterThan(2.5f), "Up, the cover stopped it.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(cover);
+        }
+    }
+
     [Test]
     public void View_Despawn_ResetsAll()
     {
@@ -250,6 +281,7 @@ public sealed class GravemawViewTests
         _animator.Update(0f);
 
         Assert.That(_view.IsBuried, Is.False);
+        Assert.That(_view.PassesCover, Is.False);
         Assert.That(ModelDrawn(), Is.True);
         Assert.That(_view.IsTrailPlaying, Is.False);
         Assert.That(Mound().activeSelf, Is.False);

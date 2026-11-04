@@ -112,6 +112,7 @@ public sealed class GravemawPhaseTests
         _gravemaw.OnPhaseEntered(1);
         FirstEruption();
         var landed = new Vector3(4f, 0f, 7f);
+        _ground.Add(landed); // JG-25h: open ground, so the ring keeps the aim.
         Place(landed);
         Tick(0.25f);
         Tick(0.25f);

@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Pooling;
 using Soulvail.Game.Presentation;
 using UnityEngine;
@@ -97,6 +98,7 @@ namespace Soulvail.Game.Views
         private readonly Mark[] _cracks = new Mark[CrackCapacity];
 
         private EnemyView _enemy;
+        private CharacterController _controller;
         private CameraShake _shake;
         private bool _shakeLooked;
         private Renderer[] _modelRenderers;
@@ -119,6 +121,9 @@ namespace Soulvail.Game.Views
 
         /// <summary>Underground: from <c>GravemawBurrowed</c> to <c>GravemawErupted</c>.</summary>
         public bool IsBuried { get; private set; }
+
+        /// <summary>JG-25h: whether the body's controller ignores the cover layer — only while buried.</summary>
+        public bool PassesCover => _controller != null && (_controller.excludeLayers.value & CoverMask()) != 0;
 
         /// <summary>Whether the model's renderers are drawn now.</summary>
         public bool IsModelShown => !_modelHidden;
@@ -249,7 +254,7 @@ namespace Soulvail.Game.Views
         /// <summary>Puts back everything a life changed: model, trail, maw, rings, cracks and triggers.</summary>
         public void OnDespawn()
         {
-            IsBuried = false;
+            Bury(false);
             _diveLeft = 0f;
             _dived = false;
             ShowModel(true);
@@ -301,6 +306,34 @@ namespace Soulvail.Game.Views
             _diedSubscription = null;
         }
 
+        // JG-25h rule 1: under the ground rocks and pillars do not stop the body; other bodies,
+        // the player and the arena's walls still do. Up again, cover blocks it as before.
+        private void Bury(bool buried)
+        {
+            IsBuried = buried;
+
+            if (_controller == null)
+            {
+                _controller = GetComponent<CharacterController>();
+            }
+
+            if (_controller == null)
+            {
+                return;
+            }
+
+            int mask = CoverMask();
+            int excluded = _controller.excludeLayers.value;
+            _controller.excludeLayers = buried ? excluded | mask : excluded & ~mask;
+        }
+
+        private static int CoverMask()
+        {
+            int layer = LayerMask.NameToLayer(ArenaView.CoverLayerName);
+
+            return layer < 0 ? 0 : 1 << layer;
+        }
+
         private bool IsMine(int id)
         {
             if (_enemy == null)
@@ -319,7 +352,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            IsBuried = true;
+            Bury(true);
             PutMawOut();
             PlayTrail(true);
 
@@ -368,7 +401,7 @@ namespace Soulvail.Game.Views
                 Return(_rings, slot);
             }
 
-            IsBuried = false;
+            Bury(false);
             _diveLeft = 0f;
             _dived = false;
             PlayTrail(false);
@@ -451,7 +484,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            IsBuried = false;
+            Bury(false);
             _diveLeft = 0f;
             _dived = false;
             ShowModel(true);

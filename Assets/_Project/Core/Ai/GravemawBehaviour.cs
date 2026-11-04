@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
@@ -295,9 +296,12 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBo
         return new Vector3(toQuarry.X * speed, 0f, toQuarry.Y * speed);
     }
 
-    // Rule 5: the centre is fixed here and nothing moves it.
-    private void Arm(in EnemyTickContext ctx, Vector3 centre, float warn)
+    // Rule 5: the centre is fixed here and nothing moves it. JG-25h: it is the open spot nearest
+    // the aim that the tunnel reaches in the warning, so the body never rises inside cover.
+    private void Arm(in EnemyTickContext ctx, Vector3 aim, float warn)
     {
+        float reach = _agent.MoveSpeed.Value * _stats.TunnelSpeedScale.Value * warn;
+        Vector3 centre = OpenSpot(ctx.OpenGround, aim, reach);
         State = GravemawState.Tunnel;
         RingCentre = centre;
         _elapsed = 0f;
@@ -650,6 +654,40 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBo
     {
         _agent.IsVulnerable = !burrowed;
         _agent.Health.SetExternalInvulnerable(burrowed);
+    }
+
+    // JG-25h rules 2-3: no open ground known leaves the aim; none in reach takes the nearest anywhere.
+    private Vector3 OpenSpot(IReadOnlyList<Vector3> open, Vector3 aim, float reach)
+    {
+        int best = -1;
+        int nearest = -1;
+        float bestDistance = float.MaxValue;
+        float nearestDistance = float.MaxValue;
+        float reachSquared = reach * reach;
+
+        for (int i = 0; i < open.Count; i++)
+        {
+            float distance = FlatDistanceSquared(open[i], aim);
+
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = i;
+            }
+
+            if (distance < bestDistance && !(FlatDistanceSquared(open[i], _agent.Position) > reachSquared))
+            {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+
+        if (best >= 0)
+        {
+            return open[best];
+        }
+
+        return nearest >= 0 ? open[nearest] : aim;
     }
 
     private static float FlatDistanceSquared(Vector3 a, Vector3 b)

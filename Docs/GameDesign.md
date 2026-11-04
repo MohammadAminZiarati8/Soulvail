@@ -346,7 +346,7 @@ Every 5th stage. Every 20th is an **Archon** — longer, multi-phase, with a bio
 *Owner, 2026-11-01:* stage 15 is the Warlord's (JG-15). *Owner, 2026-11-02:* the Jungle's late bosses are —
 - **20 Thornheart** — a strangler tree round a shrine, rooted in the centre and always shootable; it grows spokes of thorn wall that block the player (not enemies), slams a root that bares its heart to double damage, plants seed pods that grow Rootlings unless shot, and from 66 % closes a thorn ring in from the edge, never sealing the strafe lane. *Teaches: space is a resource — don't get cornered.* (JG-20a–h.)
 - **25 Gravemaw** — burrows, surfaces under the player's *predicted* position. *Teaches: break your movement pattern.* Bitten, the player is thrown out of the ring, stopped short by walls; each window holds one tremor or rock spit; phase 2 at 50 % (overriding rule 3) surfaces twice and opens cracks that spill Frogs. Fought among four ruined pillars. (JG-25a–g.)
-- **30 the Apex** — the Panthers' matriarch, the Jungle's last boss: vanishes in tall grass, rustles give it away, a long pounce the roll answers, Shadow panthers at 66 %, nonstop hunt at 33 %. *Teaches: read the tell under pressure.*
+- **30 the Apex** — the Panthers' matriarch, the Jungle's last boss, and its one fast boss: always visible, no grass (owner, 2026-11-04). Dash lanes that stop at stones, a two-swipe rake, a long pounce onto a ring the roll answers with a landing window, and a feint with no ring and dark eyes. Two Shadow panthers at 66 %; alone at 33 %, chaining three lanes and a double pounce. *Teaches: read the tell under pressure.* (JG-30a–f.)
 
 The Archon row above waits for a later place's stage 20.
 

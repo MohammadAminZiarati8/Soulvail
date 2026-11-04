@@ -132,4 +132,13 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-26a** — bosses ignore stun, root and slow; poison still applies (M)
 - [x] **JG-26b** — Binding shot on a boss draws no rope unless it holds an ordinary enemy (S)
 - [x] **JG-26c** — Stages 26–29 mix what the player knows, 295 → 373 threat (S)
-- [ ] JG-30 — The Apex, the Jungle's last boss
+- [ ] **JG-26d** — [Every boss's adds die with it](tasks/JG-26d-boss-adds-die-with-boss.md) (S)
+
+**Stage 30, the Apex** (owner, 2026-11-04; design [GD §9.2](../GameDesign.md)). The Jungle's last boss, its one fast one: visible, no grass. Built in this order on the owner's go; 30d needs the owner's TRELLIS sculpt (prompt in the spec) any time before it.
+
+- [ ] **JG-30a** — [The Apex in core: hunt, dash lane, rake](tasks/JG-30a-apex-core-dash-rake.md) (M)
+- [ ] **JG-30b** — [The Apex's pounce and feint](tasks/JG-30b-apex-pounce-feint.md) (M)
+- [ ] **JG-30c** — [The Apex's phases: the pack at 66 %, the hunt at 33 %](tasks/JG-30c-apex-phases.md) (S)
+- [ ] **JG-30d** — [The Apex's model on `Rig_Panther`](tasks/JG-30d-apex-model.md) (M)
+- [ ] **JG-30e** — [The Apex drawn: eyes, feint, dash streak, window, roar](tasks/JG-30e-apex-body.md) (M)
+- [ ] **JG-30f** — [Stage 30 is the Apex's; the Jungle is done](tasks/JG-30f-apex-stage-30.md) (M)
